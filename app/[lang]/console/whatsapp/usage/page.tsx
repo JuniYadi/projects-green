@@ -83,6 +83,9 @@ interface CostBreakdownData {
     byCategory: { category: string; count: number; totalCost: number }[]
     messageCount: number
     quotaBase: number
+    quotaBaseOut: number
+    addonQuota: number
+    addonQuotaTotal: number
     quotaUsed: number
     quotaPercent: number
   }[]
@@ -379,7 +382,7 @@ export default function WhatsAppUsagePage() {
               ) : (
                 <>
                   <div className="text-2xl font-bold">
-                    {costBreakdown.byDevice.reduce((s, d) => s + d.quotaUsed, 0).toLocaleString()} / {costBreakdown.byDevice.reduce((s, d) => s + d.quotaBase, 0).toLocaleString()}
+                    {costBreakdown.byDevice.reduce((s, d) => s + d.quotaUsed, 0).toLocaleString()} / {costBreakdown.byDevice.reduce((s, d) => s + d.quotaBase + d.addonQuotaTotal, 0).toLocaleString()}
                   </div>
                   <p className="text-xs text-muted-foreground">Quota credits used this month</p>
                 </>
@@ -398,7 +401,7 @@ export default function WhatsAppUsagePage() {
               ) : (
                 <>
                   <div className="text-2xl font-bold">
-                    {(costBreakdown.byDevice.reduce((s, d) => s + d.quotaBase, 0) - costBreakdown.byDevice.reduce((s, d) => s + d.quotaUsed, 0)).toLocaleString()}
+                    {costBreakdown.byDevice.reduce((s, d) => s + d.quotaBaseOut + d.addonQuota, 0).toLocaleString()}
                   </div>
                   <p className="text-xs text-muted-foreground">Remaining credits this period</p>
                 </>
@@ -496,10 +499,10 @@ export default function WhatsAppUsagePage() {
                         )}
                       </div>
                     </div>
-                    {dev.quotaBase > 0 && (
+                    {dev.quotaBase + dev.addonQuotaTotal > 0 && (
                       <QuotaProgressBar
                         used={dev.quotaUsed}
-                        total={dev.quotaBase}
+                        total={dev.quotaBase + dev.addonQuotaTotal}
                       />
                     )}
                   </div>
