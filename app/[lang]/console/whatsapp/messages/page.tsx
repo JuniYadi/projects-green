@@ -678,7 +678,7 @@ export default function WhatsAppMessagesPage() {
           <DialogTrigger asChild>
             <Button disabled={devices.length > 0 && !hasActiveDevice}>
               <PaperPlaneTilt className="mr-2 size-4" weight="bold" />
-              New Message
+              Send Message
             </Button>
           </DialogTrigger>
           <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-5xl">
@@ -925,7 +925,7 @@ export default function WhatsAppMessagesPage() {
                                 <div>
                                   <p className="text-xs text-muted-foreground">Body</p>
                                   <div className="mt-1">
-                                    <WhatsAppTemplatePreview language={lang} values={templateFieldValues} />
+                                    <WhatsAppTemplatePreview language={lang} values={templateFieldValues} mode="compact" />
                                   </div>
                                 </div>
                               )
@@ -1102,16 +1102,6 @@ export default function WhatsAppMessagesPage() {
                     </p>
                   </div>
                 </div>
-                {replyWindowClosed && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openTemplateDialogForConversation(activeConversation)}
-                  >
-                    <PaperPlaneTilt className="mr-1 size-4" weight="bold" />
-                    Send Template
-                  </Button>
-                )}
               </>
             ) : (
               <h3 className="font-semibold">Select a conversation</h3>
@@ -1165,17 +1155,6 @@ export default function WhatsAppMessagesPage() {
                   <p className="text-sm text-muted-foreground">
                     No messages in this conversation yet
                   </p>
-                  {replyWindowClosed && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-3"
-                      onClick={() => openTemplateDialogForConversation(activeConversation)}
-                    >
-                      <PaperPlaneTilt className="mr-1 size-4" weight="bold" />
-                      Send Template
-                    </Button>
-                  )}
                 </div>
               )}
 
