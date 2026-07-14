@@ -109,4 +109,36 @@ describe("Sidebar", () => {
 
     expect(view.getByText("Static")).toBeInTheDocument()
   })
+
+  it("keeps inset sidebar visible after collapsing to icon mode", () => {
+    window.innerWidth = 1280
+
+    const view = render(
+      <TooltipProvider>
+        <SidebarProvider>
+          <Sidebar variant="inset" collapsible="icon">
+            <SidebarContent>Inset</SidebarContent>
+          </Sidebar>
+          <SidebarTrigger />
+        </SidebarProvider>
+      </TooltipProvider>
+    )
+
+    const sidebar = view.container.querySelector('[data-slot="sidebar"]')
+    const container = view.container.querySelector(
+      '[data-slot="sidebar-container"]'
+    )
+    expect(sidebar).toHaveAttribute("data-state", "expanded")
+    expect(container).toBeInTheDocument()
+
+    const trigger = view.container.querySelector(
+      '[data-slot="sidebar-trigger"]'
+    ) as HTMLButtonElement
+    fireEvent.click(trigger)
+
+    expect(sidebar).toHaveAttribute("data-state", "collapsed")
+    expect(sidebar).toHaveAttribute("data-collapsible", "icon")
+    expect(container).toBeInTheDocument()
+    expect(container?.className).toContain("border-sidebar-border")
+  })
 })

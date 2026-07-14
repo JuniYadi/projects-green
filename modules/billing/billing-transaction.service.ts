@@ -89,11 +89,15 @@ export class BillingTransactionService {
   /**
    * Debit balance AND attach a line to the current month's service invoice.
    * Creates a DRAFT service invoice if none exists for the current month.
+   *
+   * Accepts an optional transaction client to join an outer transaction.
+   * When omitted, runs its own $transaction (same behavior as before).
    */
   async debitServiceBalance(
-    input: ServiceBalanceInput
+    input: ServiceBalanceInput,
+    transactionClient: PrismaClient | TxClient = this.prisma
   ): Promise<BalanceMutationResult> {
-    return this.prisma.$transaction(async (tx) => {
+    const run = async (tx: PrismaClient | TxClient) => {
       const account = await tx.billingAccount.findUnique({
         where: { organizationId: input.organizationId },
       })
@@ -153,7 +157,13 @@ export class BillingTransactionService {
         invoice.id,
         line.id
       )
-    })
+    }
+
+    if (transactionClient === this.prisma) {
+      return this.prisma.$transaction(run)
+    }
+
+    return run(transactionClient)
   }
 
   // ─── Private ────────────────────────────────────────────────────────────

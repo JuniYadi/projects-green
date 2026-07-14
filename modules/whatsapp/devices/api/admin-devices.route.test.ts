@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach, mock } from "bun:test"
 import { Elysia } from "elysia"
+import { Prisma } from "@prisma/client"
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -41,6 +42,12 @@ const mockTransaction = mock<(...args: any[]) => any>(
       },
     })
 )
+
+const mockLogAudit = mock<(...args: any[]) => any>(async () => {})
+
+mock.module("@/modules/whatsapp/audit/whatsapp-audit.service", () => ({
+  logWhatsappAuditEvent: mockLogAudit,
+}))
 
 mock.module("@/lib/queue/whatsapp-template-sync", () => ({
   enqueueWhatsAppTemplateSync: mock(async () => {}),
@@ -150,6 +157,7 @@ describe("Admin Devices Routes", () => {
       balance: 0,
     }))
     mockAdjustmentCreate.mockImplementation(async () => ({ id: "adj-1" }))
+    mockLogAudit.mockClear()
     superAdminContext()
   })
 
@@ -917,6 +925,171 @@ describe("Admin Devices Routes", () => {
       expect(body.ok).toBe(true)
       expect(body.newBalance).toBe(150000)
       expect(body.amount).toBe(50000)
+    })
+  })
+
+  // ─── POST /:id/addon-quota ───────────────────────────────────────────
+
+  describe("POST /:id/addon-quota", () => {
+    const deviceWithOrg = {
+      id: "dev-1",
+      organizationId: "org-1",
+      phoneNumber: "+6281234567890",
+      status: "ACTIVE",
+      balance: { toString: () => "250000", valueOf: () => 250000 },
+      quotaBase: { toString: () => "2000", valueOf: () => 2000 },
+      quotaBaseOut: 100,
+      addonQuota: { toString: () => "500", valueOf: () => 500 },
+      addonQuotaTotal: { toString: () => "500", valueOf: () => 500 },
+      dailyLimitMessage: 500,
+      whatsappBusinessAccountId: null,
+      whatsappPhoneId: null,
+      whatsappApplicationId: null,
+      callbackUrl: null,
+      expiredAt: null,
+      whatsappProfile: null,
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-15"),
+    }
+
+    it("returns 401 when not authenticated", async () => {
+      const app = createTestApp(unauthorizedContext())
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/addon-quota`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ organizationId: "org-1", amount: 1000 }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(401)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("UNAUTHORIZED")
+    })
+
+    it("returns 403 when not super admin", async () => {
+      const app = createTestApp(forbiddenContext())
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/addon-quota`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ organizationId: "org-1", amount: 1000 }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(403)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns 422 when organizationId is missing", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/addon-quota`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: 1000 }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(422)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("VALIDATION_ERROR")
+    })
+
+    it("returns 404 when device not found", async () => {
+      mockUpdate.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError("Device not found", {
+          code: "P2025",
+          clientVersion: "5.22.0",
+        })
+      )
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/nonexistent/addon-quota`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ organizationId: "org-1", amount: 1000 }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(404)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("NOT_FOUND")
+    })
+
+    it("returns 404 when device belongs to a different organization", async () => {
+      mockUpdate.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError("Device not found", {
+          code: "P2025",
+          clientVersion: "5.22.0",
+        })
+      )
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/addon-quota`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ organizationId: "wrong-org", amount: 1000 }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(404)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("NOT_FOUND")
+    })
+
+    it("returns 200 and updates addon quota with correct org scope and reason in audit", async () => {
+      const updatedDevice = {
+        ...deviceWithOrg,
+        addonQuota: { toString: () => "1500", valueOf: () => 1500 },
+        addonQuotaTotal: { toString: () => "1500", valueOf: () => 1500 },
+      }
+      mockUpdate.mockResolvedValue(updatedDevice)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1/addon-quota`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            organizationId: "org-1",
+            amount: 1000,
+            reason: "Monthly top-up",
+          }),
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.device.id).toBe("dev-1")
+
+      // Verify the update was called with the correct org-scoped where clause
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "dev-1", organizationId: "org-1" },
+          data: expect.objectContaining({
+            addonQuota: { increment: 1000 },
+            addonQuotaTotal: { increment: 1000 },
+          }),
+        })
+      )
+
+      // Verify audit event logged with reason
+      expect(mockLogAudit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "DEVICE_QUOTA_TOPUP",
+          details: { amount: 1000, reason: "Monthly top-up" },
+        })
+      )
     })
   })
 })

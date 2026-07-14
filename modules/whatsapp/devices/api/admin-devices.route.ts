@@ -11,9 +11,11 @@ import Decimal = Prisma.Decimal
 import { prisma } from "@/lib/prisma"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
 import {
+  addonQuotaTopUpSchema,
   adminCreateDeviceSchema,
   topUpInputSchema,
   updateDeviceSchema,
+  DeviceNotFoundError,
 } from "../devices.schemas"
 import { createDeviceService } from "../devices.service"
 import { enqueueWhatsAppTemplateSync } from "@/lib/queue/whatsapp-template-sync"
@@ -458,6 +460,64 @@ export const createAdminDevicesRoutes = (
 
         console.error("[AdminDevices] Top-up error:", error)
         return toServerError(set, "Unable to process top-up.")
+      }
+    })
+    .post("/:id/addon-quota", async ({ params: { id }, body, set }: any) => {
+      const actor = await guard(set)
+      if (isAdminError(actor)) return actor
+
+      const parsed = addonQuotaTopUpSchema.safeParse(body)
+      if (!parsed.success) {
+        set.status = 422
+        return {
+          ok: false as const,
+          error: "VALIDATION_ERROR" as const,
+          message: "Invalid input.",
+          fields: fieldErrorMapFromIssues(parsed.error.issues),
+        }
+      }
+
+      const { organizationId, amount, reason } = parsed.data
+
+      try {
+        const service = createDeviceService()
+        const device = await service.topUpAddonQuota(
+          id,
+          amount,
+          { organizationId, reason }
+        )
+        logWhatsappAuditEvent({
+          action: "DEVICE_QUOTA_TOPUP",
+          organizationId: device.organizationId,
+          deviceId: id,
+          adminId: actor.userId,
+          message: `Addon quota topped up by ${amount}`,
+          status: "OK",
+          details: { amount, ...(reason ? { reason } : {}) },
+        })
+        return { ok: true as const, device }
+      } catch (error) {
+        if (error instanceof DeviceNotFoundError) {
+          set.status = 404
+          return {
+            ok: false as const,
+            error: "NOT_FOUND" as const,
+            message: "Device not found.",
+          }
+        }
+        if (
+          error instanceof Error &&
+          error.message === "AMOUNT_MUST_BE_POSITIVE"
+        ) {
+          set.status = 400
+          return {
+            ok: false as const,
+            error: "VALIDATION_ERROR" as const,
+            message: error.message,
+          }
+        }
+        console.error("[AdminDevices] Addon quota top-up error:", error)
+        return toServerError(set, "Unable to top up addon quota.")
       }
     })
 }

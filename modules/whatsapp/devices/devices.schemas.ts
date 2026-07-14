@@ -130,6 +130,12 @@ export const topUpInputSchema = z.object({
 })
 export type TopUpInput = z.infer<typeof topUpInputSchema>
 
+export const addonQuotaTopUpSchema = z.object({
+  organizationId: z.string().trim().min(1, "Organization ID is required"),
+  amount: z.number().int().min(1).max(1_000_000_000),
+  reason: z.string().trim().min(1).max(500).optional(),
+})
+
 // ─── Domain errors ────────────────────────────────────────────────────────────
 
 export class DeviceNotFoundError extends Error {
@@ -186,4 +192,9 @@ export type DeviceService = {
   markDisconnected: (deviceId: string) => Promise<void>
   markActive: (deviceId: string) => Promise<void>
   regenerateSigningSecret: (id: string, organizationId: string | null) => Promise<string>
+  topUpAddonQuota: (
+    id: string,
+    amount: number,
+    opts?: { organizationId?: string; reason?: string }
+  ) => Promise<DeviceDetail>
 }
