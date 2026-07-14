@@ -10,10 +10,11 @@ import { workosNodeMock } from "@/test/workos-node-mock"
 
 // ─── Prisma mock ────────────────────────────────────────────────────────────────
 
-const mockFindMany = mock(async () => [] as any)
-const mockFindManyDevices = mock(async () => [] as any)
-const mockFindManyWhatsappLedger = mock(async () => [] as any)
-const mockFindUniqueBillingAccount = mock(async () => null as any)
+const mockFindMany = mock(async () => [] as unknown[])
+const mockFindManyDevices = mock(async () => [] as unknown[])
+const mockFindManyWhatsappLedger = mock(async () => [] as unknown[])
+const mockFindUniqueBillingAccount = mock(async () => null as unknown)
+const mockFindManyAdjustments = mock(async () => [] as unknown[])
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -34,6 +35,9 @@ mock.module("@/lib/prisma", () => ({
     },
     billingAccount: {
       findUnique: mockFindUniqueBillingAccount,
+    },
+    billingAdjustment: {
+      findMany: mockFindManyAdjustments,
     },
   },
 }))
@@ -126,6 +130,21 @@ function makeWhatsappLedgerRow(overrides: Record<string, unknown> = {}) {
   }
 }
 
+function makeAdjustmentRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "adj-1",
+    billingAccountId: "ba-1",
+    adjustmentType: "DEBIT",
+    amount: new Decimal(500),
+    currency: "IDR",
+    reason: "WhatsApp overage charge",
+    metadataJson: { source: "WHATSAPP", deviceId: "dev-1" },
+    createdAt: new Date("2026-06-15T10:00:00Z"),
+    updatedAt: new Date(),
+    ...overrides,
+  }
+}
+
 describe("Usage Routes", () => {
   beforeEach(() => {
     mockFindMany.mockReset()
@@ -136,6 +155,8 @@ describe("Usage Routes", () => {
     mockFindManyWhatsappLedger.mockImplementation(async () => [])
     mockFindUniqueBillingAccount.mockReset()
     mockFindUniqueBillingAccount.mockImplementation(async () => null)
+    mockFindManyAdjustments.mockReset()
+    mockFindManyAdjustments.mockImplementation(async () => [])
 
     setMockAuthContext({
       type: "workos",
@@ -174,11 +195,14 @@ describe("Usage Routes", () => {
         callIndex++
         if (callIndex === 1) return [makeMonthlyCount()]
         if (callIndex === 2) return [makeDailyCount()]
-        if (callIndex === 3) return [makeLedgerRow()]
         return []
       })
       mockFindManyDevices.mockImplementation(async () => [
         { id: "dev-1", phoneNumber: "6281234567890" },
+      ])
+      mockFindUniqueBillingAccount.mockImplementation(async () => ({ id: "ba-1" }))
+      mockFindManyAdjustments.mockImplementation(async () => [
+        makeAdjustmentRow({ amount: new Decimal(500) }),
       ])
 
       const app = createTestApp()
@@ -268,17 +292,10 @@ describe("Usage Routes", () => {
 
   describe("GET /usage/cost", () => {
     it("returns cost breakdown for period", async () => {
-      mockFindMany.mockImplementation(async () => [
-        makeLedgerRow({
-          id: "l1",
-          category: "WHATSAPP_MESSAGE_OUT",
-          amountIdr: new Decimal(500),
-        }),
-        makeLedgerRow({
-          id: "l2",
-          category: "WHATSAPP_MESSAGE_IN",
-          amountIdr: new Decimal(300),
-        }),
+      mockFindUniqueBillingAccount.mockImplementation(async () => ({ id: "ba-1" }))
+      mockFindManyAdjustments.mockImplementation(async () => [
+        makeAdjustmentRow({ id: "adj-1", amount: new Decimal(500) }),
+        makeAdjustmentRow({ id: "adj-2", amount: new Decimal(300) }),
       ])
 
       const app = createTestApp()
@@ -291,7 +308,7 @@ describe("Usage Routes", () => {
       expect(body.ok).toBe(true)
       expect(body.totalAmount).toBe(800)
       expect(body.totalEntries).toBe(2)
-      expect(body.byCategory).toHaveLength(2)
+      expect(body.byCategory).toEqual([])
     })
 
     it("returns 422 when period is missing", async () => {
@@ -336,47 +353,34 @@ describe("Usage Routes", () => {
       expect(body.balance).toBeNull()
     })
 
-    it("returns cost and quota values for a device with ledger rows", async () => {
-      // Set up devices
+    it("returns cost and quota values for a device with adjustment rows", async () => {
       mockFindManyDevices.mockImplementation(async () => [
-        { id: "dev-1", phoneNumber: "6281234567890", quotaBase: new Decimal(100) },
+        {
+          id: "dev-1",
+          phoneNumber: "6281234567890",
+          quotaBase: new Decimal(100),
+          quotaBaseOut: new Decimal(80),
+          addonQuota: new Decimal(10),
+          addonQuotaTotal: new Decimal(20),
+        },
       ])
 
-      // Set up usage ledger rows (cost + messageCount, keyed by metadata.deviceId)
-      mockFindMany.mockImplementation(async () => [
-        makeLedgerRow({
-          id: "ledger-1",
-          metadata: { deviceId: "dev-1" },
-          amountIdr: new Decimal(500),
-        }),
-        makeLedgerRow({
-          id: "ledger-2",
-          metadata: { deviceId: "dev-1" },
-          amountIdr: new Decimal(300),
-        }),
-      ])
-
-      // Set up WhatsApp billing ledger rows (quota credits, keyed by whatsappDeviceId)
-      mockFindManyWhatsappLedger.mockImplementation(async () => [
-        makeWhatsappLedgerRow({
-          id: "wa-1",
-          whatsappDeviceId: "dev-1",
-          quotaValue: new Decimal(2),
-          createdAt: new Date("2026-06-10T10:00:00Z"),
-        }),
-        makeWhatsappLedgerRow({
-          id: "wa-2",
-          whatsappDeviceId: "dev-1",
-          quotaValue: new Decimal(1.5),
-          createdAt: new Date("2026-06-15T10:00:00Z"),
-        }),
-      ])
-
-      // Set up billing account
+      // Cost from BillingAdjustment
       mockFindUniqueBillingAccount.mockImplementation(async () => ({
+        id: "ba-1",
         balance: new Decimal(1000000),
         currency: "IDR",
       }))
+      mockFindManyAdjustments.mockImplementation(async () => [
+        makeAdjustmentRow({ id: "adj-1", amount: new Decimal(500) }),
+        makeAdjustmentRow({ id: "adj-2", amount: new Decimal(300) }),
+      ])
+
+      // Message count from WhatsappBillingLedger
+      mockFindManyWhatsappLedger.mockImplementation(async () => [
+        makeWhatsappLedgerRow({ id: "wa-1", whatsappDeviceId: "dev-1", category: "UTILITY" }),
+        makeWhatsappLedgerRow({ id: "wa-2", whatsappDeviceId: "dev-1", category: "UTILITY" }),
+      ])
 
       const app = createTestApp()
       const res = await app.handle(
@@ -389,11 +393,15 @@ describe("Usage Routes", () => {
       expect(body.totalCost).toBe(800)
       const dev1 = body.byDevice.find((d: any) => d.deviceId === "dev-1")
       expect(dev1).toBeDefined()
-      expect(dev1.quotaUsed).toBe(3.5)
+      expect(dev1.quotaUsed).toBe(30)
       expect(dev1.messageCount).toBe(2)
       expect(dev1.totalCost).toBe(800)
       expect(dev1.quotaBase).toBe(100)
-      expect(dev1.quotaPercent).toBeCloseTo(3.5)
+      expect(dev1.quotaBaseOut).toBe(80)
+      expect(dev1.addonQuota).toBe(10)
+      expect(dev1.addonQuotaTotal).toBe(20)
+      // quotaPercent = min(100, 30/120 * 100) = 25
+      expect(dev1.quotaPercent).toBe(25)
       expect(body.balance).toBe(1000000)
     })
 

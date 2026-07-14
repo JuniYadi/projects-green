@@ -94,44 +94,44 @@ export class WhatsappUsageService {
     organizationId: string,
     period: string
   ): Promise<CostSummaryDTO> {
-    const rows = await prisma.billingUsageLedger.findMany({
-      where: {
-        organizationId,
-        category: { in: WHATSAPP_CATEGORIES },
-        period,
-      },
+    // Query BillingAdjustment for WHATSAPP source in the period
+    const account = await prisma.billingAccount.findUnique({
+      where: { organizationId },
+      select: { id: true },
+    })
+
+    const adjustments = account
+      ? await prisma.billingAdjustment.findMany({
+          where: {
+            billingAccountId: account.id,
+            createdAt: {
+              gte: new Date(`${period}-01`),
+              lt: new Date(
+                Number(period.split("-")[1]) === 12
+                  ? Number(period.split("-")[0]) + 1
+                  : Number(period.split("-")[0]),
+                Number(period.split("-")[1]) === 12 ? 0 : Number(period.split("-")[1]),
+                1
+              ),
+            },
+          },
+        })
+      : []
+
+    const whatsappAdjustments = adjustments.filter((adj) => {
+      const meta = adj.metadataJson as Record<string, unknown> | null
+      return meta?.source === "WHATSAPP"
     })
 
     let total = 0
-    const categoryMap = new Map<string, { count: number; total: number }>()
-
-    for (const row of rows) {
-      const amount = toNum(row.amountIdr)
-      total += amount
-
-      const cat = row.category ?? "UNKNOWN"
-      const existing = categoryMap.get(cat)
-      if (existing) {
-        existing.count++
-        existing.total += amount
-      } else {
-        categoryMap.set(cat, { count: 1, total: amount })
-      }
-    }
-
-    const byCategory: CategoryBreakdownDTO[] = []
-    for (const [category, data] of categoryMap) {
-      byCategory.push({
-        category,
-        count: data.count,
-        totalCost: data.total,
-      })
+    for (const adj of whatsappAdjustments) {
+      total += toNum(adj.amount)
     }
 
     return {
       totalAmount: total,
-      totalEntries: rows.length,
-      byCategory,
+      totalEntries: whatsappAdjustments.length,
+      byCategory: [], // Category breakdown requires WhatsappBillingLedger; not included in summary
     }
   }
 
@@ -260,112 +260,118 @@ export class WhatsappUsageService {
       : { organizationId }
     const devices = await prisma.whatsappDevice.findMany({
       where: deviceWhere,
-      select: { id: true, phoneNumber: true, quotaBase: true },
+      select: { id: true, phoneNumber: true, quotaBase: true, quotaBaseOut: true, addonQuota: true, addonQuotaTotal: true },
     })
 
-    // Fetch ledger rows (cost in IDR) via typed query
-    const ledgerRows = await prisma.billingUsageLedger.findMany({
-      where: {
-        organizationId,
-        period,
-        category: { in: WHATSAPP_CATEGORIES },
-      },
+    // ── Cost source: BillingAdjustment with source=WHATSAPP ─────────────
+    const account = await prisma.billingAccount.findUnique({
+      where: { organizationId },
+      select: { id: true, balance: true, currency: true },
     })
 
-    // Fetch WhatsApp billing ledger rows (quota credits)
+    const costAdjustments = account
+      ? await prisma.billingAdjustment.findMany({
+          where: {
+            billingAccountId: account.id,
+            createdAt: {
+              gte: new Date(`${period}-01`),
+              lt: new Date(
+                month === 12 ? year + 1 : year,
+                month === 12 ? 0 : month,
+                1
+              ),
+            },
+          },
+        })
+      : []
+
+    // Filter to only WhatsApp source adjustments (stored in metadataJson)
+    const whatsappAdjustments = costAdjustments.filter((adj) => {
+      const meta = adj.metadataJson as Record<string, unknown> | null
+      return meta?.source === "WHATSAPP"
+    })
+    // Build per-device cost map from BillingAdjustment (totalCost only)
+    const deviceCostMap = new Map<string, { total: number }>()
+    for (const adj of whatsappAdjustments) {
+      const meta = adj.metadataJson as Record<string, unknown> | null
+      const rowDeviceId =
+        typeof meta?.deviceId === "string" ? meta.deviceId : "unknown"
+      if (opts.deviceId && rowDeviceId !== opts.deviceId) continue
+      const entry = deviceCostMap.get(rowDeviceId) ?? { total: 0 }
+      entry.total += toNum(adj.amount)
+      deviceCostMap.set(rowDeviceId, entry)
+    }
+
+    // ── Category source: WhatsappBillingLedger ─────────────────────────
     const whatsappLedgerRows = await prisma.whatsappBillingLedger.findMany({
       where: {
         organizationId,
         isReverted: false,
         createdAt: {
           gte: new Date(`${period}-01`),
-          lt: new Date(`${month === 12 ? year + 1 : year}-${String(month === 12 ? 1 : month + 1).padStart(2, "0")}-01`),
+          lt: new Date(
+            month === 12 ? year + 1 : year,
+            month === 12 ? 0 : month,
+            1
+          ),
         },
       },
     })
 
-    // Build device cost map from BillingUsageLedger (IDR cost + message count)
-    const deviceCostMap = new Map<string, { total: number; byCat: Map<string, { count: number; total: number }>; messageCount: number }>()
-    for (const row of ledgerRows) {
-      const metadata = row.metadata as Record<string, unknown> | null
-      const rowDeviceId = typeof metadata?.deviceId === "string" ? metadata.deviceId : "unknown"
-      if (opts.deviceId && rowDeviceId !== opts.deviceId) continue
-      if (!deviceCostMap.has(rowDeviceId)) {
-        deviceCostMap.set(rowDeviceId, { total: 0, byCat: new Map(), messageCount: 0 })
-      }
-      const entry = deviceCostMap.get(rowDeviceId)!
-      const amount = toNum(row.amountIdr)
-      entry.total += amount
-      entry.messageCount += 1
-      const cat = row.category ?? "UNKNOWN"
-      const catEntry = entry.byCat.get(cat) ?? { count: 0, total: 0 }
-      catEntry.count += 1
-      catEntry.total += amount
-      entry.byCat.set(cat, catEntry)
-    }
-
-    // Build device quota map from WhatsappBillingLedger (quota credits, keyed by whatsappDeviceId)
-    const deviceQuotaMap = new Map<string, number>()
+    // Build per-device category breakdown from WhatsappBillingLedger
+    const deviceCategoryMap = new Map<
+      string,
+      Map<string, { count: number; total: number }>
+    >()
     for (const row of whatsappLedgerRows) {
       const rowDeviceId = row.whatsappDeviceId ?? "unknown"
       if (opts.deviceId && rowDeviceId !== opts.deviceId) continue
-      const quotaVal = toNum(row.quotaValue)
-      deviceQuotaMap.set(rowDeviceId, (deviceQuotaMap.get(rowDeviceId) ?? 0) + quotaVal)
+      if (!deviceCategoryMap.has(rowDeviceId)) {
+        deviceCategoryMap.set(rowDeviceId, new Map())
+      }
+      const catMap = deviceCategoryMap.get(rowDeviceId)!
+      const cat = row.category ?? "UNKNOWN"
+      const catEntry = catMap.get(cat) ?? { count: 0, total: 0 }
+      catEntry.count += 1
+      catEntry.total += toNum(row.quotaValue)
+      catMap.set(cat, catEntry)
     }
 
-    // Build per-device breakdown — union of known devices and ledger device IDs
-    const deviceIdsFromLedger = Array.from(deviceCostMap.keys())
+    // ── Build per-device breakdown ──────────────────────────────────────
     const byDevice: DeviceCostBreakdownDTO[] = devices.map((dev) => {
-      const costs = deviceCostMap.get(dev.id) ?? { total: 0, byCat: new Map(), messageCount: 0 }
+      const costs = deviceCostMap.get(dev.id) ?? { total: 0 }
+      const catMap = deviceCategoryMap.get(dev.id) ?? new Map()
       const quotaBase = toNum(dev.quotaBase)
-      const quotaUsed = deviceQuotaMap.get(dev.id) ?? 0
-      const quotaPercent = quotaBase > 0 ? Math.min(100, (quotaUsed / quotaBase) * 100) : 0
+      const quotaBaseOut = toNum(dev.quotaBaseOut)
+      const addonQuota = toNum(dev.addonQuota)
+      const addonQuotaTotal = toNum(dev.addonQuotaTotal)
+      const quotaUsed = (quotaBase - quotaBaseOut) + (addonQuotaTotal - addonQuota)
+      const totalQuota = quotaBase + addonQuotaTotal
+      const quotaPercent = totalQuota > 0 ? Math.min(100, (quotaUsed / totalQuota) * 100) : 0
       return {
         deviceId: dev.id,
         phoneNumber: dev.phoneNumber,
         totalCost: costs.total,
-        byCategory: Array.from(costs.byCat.entries()).map(([category, data]) => ({
+        byCategory: Array.from(catMap.entries()).map(([category, data]) => ({
           category,
           count: data.count,
           totalCost: data.total,
         })),
-        messageCount: costs.messageCount,
+        messageCount: Array.from(catMap.values()).reduce((sum, c) => sum + c.count, 0),
         quotaBase,
+        quotaBaseOut,
+        addonQuota,
+        addonQuotaTotal,
         quotaUsed,
         quotaPercent,
       }
     })
 
-    // Add ledger-only device IDs (not in device table)
-    for (const ledgerDevId of deviceIdsFromLedger) {
-      if (devices.some((d) => d.id === ledgerDevId)) continue
-      const costs = deviceCostMap.get(ledgerDevId)!
-      byDevice.push({
-        deviceId: ledgerDevId,
-        phoneNumber: null,
-        totalCost: costs.total,
-        byCategory: Array.from(costs.byCat.entries()).map(([category, data]) => ({
-          category,
-          count: data.count,
-          totalCost: data.total,
-        })),
-        messageCount: costs.messageCount,
-        quotaBase: 0,
-        quotaUsed: deviceQuotaMap.get(ledgerDevId) ?? 0,
-        quotaPercent: 0,
-      })
-    }
-
     const totalCost = byDevice.reduce((s, d) => s + d.totalCost, 0)
-    const projectedCost = isCurrentPeriod && daysElapsed > 0
-      ? (totalCost / daysElapsed) * daysInMonth
-      : totalCost
-
-    // Get billing account for balance
-    const account = await prisma.billingAccount.findUnique({
-      where: { organizationId },
-      select: { balance: true, currency: true },
-    })
+    const projectedCost =
+      isCurrentPeriod && daysElapsed > 0
+        ? (totalCost / daysElapsed) * daysInMonth
+        : totalCost
 
     return {
       period,
