@@ -382,4 +382,39 @@ describe("WhatsAppMessagesPage", () => {
 
     view.unmount()
   })
+
+  it("clicking a conversation row calls the conversation select handler", async () => {
+    mockConversationsList.mockResolvedValueOnce({
+      ok: true,
+      conversations: [{
+        id: "conv_1", organizationId: "org_1", contactPhone: "+6281234567890",
+        lastMessageAt: new Date().toISOString(), lastDirection: "INBOX",
+        whatsappDeviceId: "device_1", createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(), _count: { whatsappMessages: 2 },
+      }],
+    })
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
+    await waitFor(() => { expect(view.getByText("+6281234567890")).toBeInTheDocument() })
+    fireEvent.click(view.getByText("+6281234567890"))
+    await tick(50)
+    // URL updated to reflect selected conversation
+    expect(mockRouterReplace).toHaveBeenCalledWith("/en/console/whatsapp/messages?phone=6281234567890", { scroll: false })
+    view.unmount()
+  })
+
+  it("shows INBOX direction label for received messages", async () => {
+    mockConversationsList.mockResolvedValueOnce({
+      ok: true,
+      conversations: [{
+        id: "conv_1", organizationId: "org_1", contactPhone: "+6281234567890",
+        lastMessageAt: new Date().toISOString(), lastDirection: "INBOX",
+        whatsappDeviceId: "device_1", createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(), _count: { whatsappMessages: 1 },
+      }],
+    })
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
+    await waitFor(() => { expect(view.getByText("+6281234567890")).toBeInTheDocument() })
+    expect(view.getByText("Received")).toBeInTheDocument()
+    view.unmount()
+  })
 })

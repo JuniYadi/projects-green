@@ -57,18 +57,10 @@ export function recommendPlan(
   const framework = detection.framework.toLowerCase()
 
   if (framework in PAYG_FRAMEWORKS) {
-    let cpu = 500
-    let memory = 1024
-
-    if (detection.secondaryEngine) {
-      cpu = 1000
-      memory = 2048
-    }
-
     return {
       resourcePlanId: "payg",
-      cpu,
-      memory,
+      cpu: detection.secondaryEngine ? 1000 : 500,
+      memory: detection.secondaryEngine ? 2048 : 1024,
       label: "AI recommended — heavy framework detected",
     }
   }

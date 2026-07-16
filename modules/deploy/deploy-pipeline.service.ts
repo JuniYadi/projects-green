@@ -163,7 +163,7 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       customDomain: input.customDomain ?? null,
       subdomain: input.subdomain ?? null,
       envVarsJson,
-      metadataJson: Object.keys(buildMetadata).length > 0 ? metadataJson : undefined,
+      metadataJson: Object.keys(buildMetadata).length > 0 ? metadataJson : (existingJson as Prisma.InputJsonValue),
     }
 
     if (existing) {
