@@ -1561,7 +1561,7 @@ model WhatsappDevice {
   quotaBaseOut              Decimal             @default(0) @db.Decimal(12, 2)
   addonQuota               Decimal              @default(0) @db.Decimal(12, 2)
   addonQuotaTotal          Decimal              @default(0) @db.Decimal(12, 2)
-  dailyLimitMessage         Int                  @default(0)
+  dailyLimitMessage         Int                  @default(1000)
   rates                     String?
   status                    WhatsappDeviceStatus @default(ACTIVE)
   token                     String?
@@ -1591,6 +1591,7 @@ model WhatsappDevice {
   broadcastCampaigns    WhatsappBroadcastCampaign[]
   messageConversations  WhatsappConversation[]
   dailyCounts           WhatsappDailyCount[]
+  hourlyCounts          WhatsappHourlyCount[]
   monthlyCounts         WhatsappMonthlyCount[]
   quotaSessions         WhatsappQuotaSession[]
   billingLedgers        WhatsappBillingLedger[]
@@ -1828,6 +1829,20 @@ model WhatsappDailyCount {
   whatsappDeviceId   String?
 
   @@unique([organizationId, date, whatsappDeviceId])
+}
+
+
+model WhatsappHourlyCount {
+  id                 String          @id @default(cuid())
+  organizationId     String
+  hour               DateTime        @db.Timestamp(0)
+  messageOutboxCount Int             @default(0)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  whatsappDevice     WhatsappDevice? @relation(fields: [whatsappDeviceId], references: [id])
+  whatsappDeviceId   String?
+
+  @@unique([organizationId, whatsappDeviceId, hour])
 }
 
 model WhatsappMonthlyCount {

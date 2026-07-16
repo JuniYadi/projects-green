@@ -13,6 +13,7 @@ import {
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import { upsertWhatsappContactFromMessage } from "@/modules/whatsapp/contacts/contacts.service"
 import { resolveWhatsappQuotaCredit } from "@/modules/whatsapp/messages/quota-credit.service"
+import { getHourlyMessageLimit, DEFAULT_DAILY_LIMIT_MESSAGE } from "@/modules/whatsapp/devices/devices.constants"
 
 const redisConnection = getWhatsAppBroadcastRedisConnection()
 const broadcastQueue = new Queue<WhatsAppBroadcastJobData>(
@@ -161,6 +162,117 @@ async function enforceThrottle(data: WhatsAppBroadcastJobData) {
   return true
 }
 
+async function enforceDeviceLimit(data: WhatsAppBroadcastJobData) {
+  const campaign = await prisma.whatsappBroadcastCampaign.findUnique({
+    where: { id: data.campaignId },
+    select: {
+      organizationId: true,
+      whatsappDeviceId: true,
+    },
+  })
+
+  if (!campaign?.whatsappDeviceId) {
+    return true
+  }
+
+  const device = await prisma.whatsappDevice.findUnique({
+    where: { id: campaign.whatsappDeviceId },
+    select: { dailyLimitMessage: true },
+  })
+
+  if (!device) {
+    return true
+  }
+
+  const dailyLimit = device.dailyLimitMessage || DEFAULT_DAILY_LIMIT_MESSAGE
+  const hourlyLimit = getHourlyMessageLimit(dailyLimit)
+
+  const now = new Date()
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+  const hourStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours()))
+
+  const deviceId = campaign.whatsappDeviceId
+  const orgId = campaign.organizationId
+
+  const [dailyCount, hourlyCount] = await Promise.all([
+    prisma.whatsappDailyCount.findUnique({
+      where: {
+        organizationId_date_whatsappDeviceId: {
+          organizationId: orgId,
+          date: today,
+          whatsappDeviceId: deviceId,
+        },
+      },
+      select: { messageOutboxCount: true },
+    }),
+    prisma.whatsappHourlyCount.findUnique({
+      where: {
+        organizationId_whatsappDeviceId_hour: {
+          organizationId: orgId,
+          whatsappDeviceId: deviceId,
+          hour: hourStart,
+        },
+      },
+      select: { messageOutboxCount: true },
+    }),
+  ])
+
+  const dailyUsed = dailyCount?.messageOutboxCount ?? 0
+  const hourlyUsed = hourlyCount?.messageOutboxCount ?? 0
+
+  if (dailyUsed + 1 > dailyLimit) {
+    const nextMidnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
+    const delay = Math.max(nextMidnight.getTime() - now.getTime(), 1_000)
+    await enqueueBroadcastJob({ ...data, method: "dispatch" }, delay)
+    return false
+  }
+
+  if (hourlyUsed + 1 > hourlyLimit) {
+    const nextHour = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours() + 1))
+    const delay = Math.max(nextHour.getTime() - now.getTime(), 1_000)
+    await enqueueBroadcastJob({ ...data, method: "dispatch" }, delay)
+    return false
+  }
+
+  // Increment both counters in a transaction before sending (atomic reservation)
+  await prisma.$transaction([
+    prisma.whatsappDailyCount.upsert({
+      where: {
+        organizationId_date_whatsappDeviceId: {
+          organizationId: orgId,
+          date: today,
+          whatsappDeviceId: deviceId,
+        },
+      },
+      update: { messageOutboxCount: { increment: 1 } },
+      create: {
+        organizationId: orgId,
+        date: today,
+        whatsappDeviceId: deviceId,
+        messageOutboxCount: 1,
+      },
+    }),
+    prisma.whatsappHourlyCount.upsert({
+      where: {
+        organizationId_whatsappDeviceId_hour: {
+          organizationId: orgId,
+          whatsappDeviceId: deviceId,
+          hour: hourStart,
+        },
+      },
+      update: { messageOutboxCount: { increment: 1 } },
+      create: {
+        organizationId: orgId,
+        whatsappDeviceId: deviceId,
+        hour: hourStart,
+        messageOutboxCount: 1,
+      },
+    }),
+  ])
+
+  return true
+}
+
 async function dispatchBroadcast(
   data: WhatsAppBroadcastJobData,
   skipThrottle = false
@@ -198,6 +310,11 @@ async function dispatchBroadcast(
         return
       }
     }
+
+      const canSendDevice = await enforceDeviceLimit(data)
+      if (!canSendDevice) {
+        return
+      }
 
     const client = await WhatsAppDeviceClient.fromDevice({
       accessToken: device.tokenEncrypted,
@@ -284,10 +401,8 @@ async function dispatchBroadcast(
       // Non-critical
     }
 
+
     const _now = new Date()
-    const today = new Date(
-      Date.UTC(_now.getUTCFullYear(), _now.getUTCMonth(), _now.getUTCDate())
-    )
     const _year = _now.getUTCFullYear()
     const _month = _now.getUTCMonth() + 1
 
@@ -300,24 +415,7 @@ async function dispatchBroadcast(
       category: resolvedCategory,
       phoneNumber: recipient.phoneNumber,
     })
-
     await Promise.all([
-      prisma.whatsappDailyCount.upsert({
-        where: {
-          organizationId_date_whatsappDeviceId: {
-            organizationId: campaign.organizationId,
-            date: today,
-            whatsappDeviceId: deviceIdStr,
-          },
-        },
-        update: { messageOutboxCount: { increment: 1 } },
-        create: {
-          organizationId: campaign.organizationId,
-          date: today,
-          whatsappDeviceId: deviceIdStr,
-          messageOutboxCount: 1,
-        },
-      }),
       prisma.whatsappMonthlyCount.upsert({
         where: {
           organizationId_year_month_whatsappDeviceId: {

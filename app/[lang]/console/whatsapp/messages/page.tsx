@@ -150,9 +150,11 @@ function isReplyWindowClosed(conversation: ConversationDetail | null): boolean {
   const newestInbox = inboxMessages.reduce((latest, m) =>
     new Date(m.createdAt) > new Date(latest.createdAt) ? m : latest
   )
-  return Date.now() - new Date(newestInbox.createdAt).getTime() >= 24 * 60 * 60 * 1000
+  return (
+    Date.now() - new Date(newestInbox.createdAt).getTime() >=
+    24 * 60 * 60 * 1000
+  )
 }
-
 
 const PHONE_QUERY_KEY = "phone"
 
@@ -261,29 +263,31 @@ function MessageBubble({ message }: { message: Message }) {
               : "rounded-br-sm bg-primary text-primary-foreground"
           }`}
         >
-        <p className="break-words whitespace-pre-wrap">
-          {message.body || (
-            <span className="text-muted-foreground/60 italic">
-              (no content)
-            </span>
-          )}
-        </p>
-        <div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${
-          isInbox ? "text-muted-foreground" : "text-primary-foreground/70"
-        }`}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span>{formatTime(message.createdAt)}</span>
-            </TooltipTrigger>
-            <TooltipContent>
-              {formatLocalDateTime(message.createdAt)}
-            </TooltipContent>
-          </Tooltip>
-          <MessageStatusBadge
-            statusHistory={message.statusHistory}
-            direction={message.direction}
-          />
-        </div>
+          <p className="break-words whitespace-pre-wrap">
+            {message.body || (
+              <span className="text-muted-foreground/60 italic">
+                (no content)
+              </span>
+            )}
+          </p>
+          <div
+            className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${
+              isInbox ? "text-muted-foreground" : "text-primary-foreground/70"
+            }`}
+          >
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>{formatTime(message.createdAt)}</span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {formatLocalDateTime(message.createdAt)}
+              </TooltipContent>
+            </Tooltip>
+            <MessageStatusBadge
+              statusHistory={message.statusHistory}
+              direction={message.direction}
+            />
+          </div>
         </div>
       </div>
     </TooltipProvider>
@@ -312,28 +316,40 @@ export default function WhatsAppMessagesPage() {
   const [sendPhone, setSendPhone] = React.useState("")
   const [sendDeviceId, setSendDeviceId] = React.useState("")
   const [selectedTemplateId, setSelectedTemplateId] = React.useState("")
-  const [selectedTemplateLanguage, setSelectedTemplateLanguage] = React.useState("")
-  const [templateFieldValues, setTemplateFieldValues] = React.useState<Record<number, string>>({})
+  const [selectedTemplateLanguage, setSelectedTemplateLanguage] =
+    React.useState("")
+  const [templateFieldValues, setTemplateFieldValues] = React.useState<
+    Record<number, string>
+  >({})
   const [templateSearchQuery, setTemplateSearchQuery] = React.useState("")
   const [templatePickerOpen, setTemplatePickerOpen] = React.useState(true)
 
   const queryClient = useQueryClient()
 
-  const { data: conversations = [], isLoading: conversationsLoading, error: conversationsError } = useQuery({
+  const {
+    data: conversations = [],
+    isLoading: conversationsLoading,
+    error: conversationsError,
+  } = useQuery({
     queryKey: ["whatsapp", "conversations", { status: statusFilter }],
-    queryFn: () => whatsappClient.conversations.list({ status: statusFilter !== "all" ? statusFilter : undefined }),
-    select: (payload) => payload.ok ? payload.conversations ?? [] : [],
+    queryFn: () =>
+      whatsappClient.conversations.list({
+        status: statusFilter !== "all" ? statusFilter : undefined,
+      }),
+    select: (payload) => (payload.ok ? (payload.conversations ?? []) : []),
   })
 
-  const { data: activeConversation = null, isLoading: activeLoading } = useQuery<ConversationDetail | null>({
-    queryKey: ["whatsapp", "conversation", activeConversationId],
-    queryFn: async () => {
-      if (!activeConversationId) return null
-      const payload = await whatsappClient.conversations.get(activeConversationId)
-      return payload.ok ? payload.conversation : null
-    },
-    enabled: Boolean(activeConversationId),
-  })
+  const { data: activeConversation = null, isLoading: activeLoading } =
+    useQuery<ConversationDetail | null>({
+      queryKey: ["whatsapp", "conversation", activeConversationId],
+      queryFn: async () => {
+        if (!activeConversationId) return null
+        const payload =
+          await whatsappClient.conversations.get(activeConversationId)
+        return payload.ok ? payload.conversation : null
+      },
+      enabled: Boolean(activeConversationId),
+    })
 
   const { data: devices = [] } = useQuery({
     queryKey: ["whatsapp", "devices"],
@@ -343,10 +359,7 @@ export default function WhatsAppMessagesPage() {
     },
   })
 
-
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
-
-
 
   const loadConversationForPhone = React.useCallback(
     async (phone: string, conversationsCache: ConversationListItem[]) => {
@@ -354,12 +367,16 @@ export default function WhatsAppMessagesPage() {
       if (!target) return null
       const local = findConversationByPhone(conversationsCache, phone)
       if (local) return local
-      const payload = await whatsappClient.conversations.list({ contactPhone: phone })
-      return payload.ok ? findConversationByPhone(payload.conversations ?? [], phone) : null
+      const payload = await whatsappClient.conversations.list({
+        contactPhone: phone,
+      })
+      return payload.ok
+        ? findConversationByPhone(payload.conversations ?? [], phone)
+        : null
     },
     []
   )
-  
+
   // Select conversation from ?phone= query parameter
   React.useEffect(() => {
     const phoneQuery = searchParams.get(PHONE_QUERY_KEY)
@@ -378,16 +395,21 @@ export default function WhatsAppMessagesPage() {
       loadConversationForPhone(phoneDigits, conversations)
         .then((found) => {
           if (cancelled || !found) return
-          setActiveConversationId((prev) => (prev === found.id ? prev : found.id))
+          setActiveConversationId((prev) =>
+            prev === found.id ? prev : found.id
+          )
         })
         .catch(() => {})
       return () => {
         cancelled = true
       }
     }
-  }, [searchParams, conversations, activeConversationId, loadConversationForPhone])
-
-
+  }, [
+    searchParams,
+    conversations,
+    activeConversationId,
+    loadConversationForPhone,
+  ])
 
   const hasActiveDevice = React.useMemo(
     () => devices.some((d) => d.status === "ACTIVE"),
@@ -396,7 +418,12 @@ export default function WhatsAppMessagesPage() {
 
   // ── Device-filtered templates ──────────────────────────────────────────
 
-  const { templates: deviceTemplates, loading: templatesLoading, error: templatesError, reload: reloadTemplates } = useTemplates({
+  const {
+    templates: deviceTemplates,
+    loading: templatesLoading,
+    error: templatesError,
+    reload: reloadTemplates,
+  } = useTemplates({
     whatsappDeviceId: sendDeviceId || undefined,
     enabled: Boolean(sendDeviceId),
     sort: "desc",
@@ -434,8 +461,6 @@ export default function WhatsAppMessagesPage() {
       setTemplatePickerOpen(true)
     }
   }, [sendDeviceId])
-
-
 
   // ── Derived state ──────────────────────────────────────────────────────
 
@@ -506,34 +531,41 @@ export default function WhatsAppMessagesPage() {
     [pathname, router, searchParams]
   )
 
-
-
   // ── Mutations ──────────────────────────────────────────────────────────
   const sendMutation = useMutation({
     mutationFn: whatsappClient.messages.sendTemplate,
     onSuccess: async (data, variables) => {
       toast.success("Template message queued for delivery")
       setSendDialogOpen(false)
-      setSendDeviceId(hasSingleActiveDevice ? activeDevices[0]?.id ?? "" : "")
+      setSendDeviceId(hasSingleActiveDevice ? (activeDevices[0]?.id ?? "") : "")
       setSelectedTemplateId("")
       setSelectedTemplateLanguage("")
       setTemplateFieldValues({})
       setTemplateSearchQuery("")
       let sentConversation: ConversationListItem | null = null
       try {
-        sentConversation = await loadConversationForPhone(variables.phoneNumber, conversations)
+        sentConversation = await loadConversationForPhone(
+          variables.phoneNumber,
+          conversations
+        )
       } catch (lookupError) {
         console.warn(
           "[WhatsAppMessagesPage] Sent template but failed to open conversation",
           { phoneNumber: variables.phoneNumber, error: lookupError }
         )
-        toast.warning("Template sent, but the chat could not be opened automatically.")
+        toast.warning(
+          "Template sent, but the chat could not be opened automatically."
+        )
       }
       if (sentConversation?.id) {
         setActiveConversationId(sentConversation.id)
-        await queryClient.invalidateQueries({ queryKey: ["whatsapp", "conversation", sentConversation.id] })
+        await queryClient.invalidateQueries({
+          queryKey: ["whatsapp", "conversation", sentConversation.id],
+        })
       }
-      await queryClient.invalidateQueries({ queryKey: ["whatsapp", "conversations"] })
+      await queryClient.invalidateQueries({
+        queryKey: ["whatsapp", "conversations"],
+      })
       const next = new URLSearchParams(searchParams.toString())
       next.set(PHONE_QUERY_KEY, cleanPhoneForQuery(variables.phoneNumber))
       router.replace(`${pathname}?${next.toString()}`, { scroll: false })
@@ -565,7 +597,9 @@ export default function WhatsAppMessagesPage() {
       return
     }
 
-    const selectedTemplate = approvedTemplates.find((t) => t.id === selectedTemplateId)
+    const selectedTemplate = approvedTemplates.find(
+      (t) => t.id === selectedTemplateId
+    )
     const selectedLang = selectedTemplate?.languages.find(
       (l) => l.lang === selectedTemplateLanguage
     )
@@ -582,7 +616,9 @@ export default function WhatsAppMessagesPage() {
       phoneNumber: normalizedPhone,
       templateId: selectedTemplateId,
       templateLanguage: selectedTemplateLanguage,
-      fields: placeholderIndexes.map((index) => templateFieldValues[index].trim()),
+      fields: placeholderIndexes.map((index) =>
+        templateFieldValues[index].trim()
+      ),
       deviceId: sendDeviceId,
     })
   }
@@ -599,7 +635,9 @@ export default function WhatsAppMessagesPage() {
 
       // Pre-fill phone from ?phone= query parameter
       const phoneParam = searchParams.get(PHONE_QUERY_KEY)
-      const normalized = phoneParam ? normalizeIndonesianPhoneNumber(phoneParam) : null
+      const normalized = phoneParam
+        ? normalizeIndonesianPhoneNumber(phoneParam)
+        : null
       setSendPhone(normalized ?? "")
     } else {
       // Reset all on close; next open re-reads ?phone=
@@ -613,9 +651,8 @@ export default function WhatsAppMessagesPage() {
     setSendDialogOpen(open)
   }
 
-
   return (
-    <div className="flex flex-1 flex-col min-h-0 gap-6">
+    <main className="flex min-h-0 flex-1 flex-col gap-6 p-6 pt-0">
       <div className="flex shrink-0 items-center gap-2">
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
@@ -634,7 +671,8 @@ export default function WhatsAppMessagesPage() {
             <DialogHeader>
               <DialogTitle>Send Template Message</DialogTitle>
               <DialogDescription>
-                Select a device, choose an approved WhatsApp template, fill required fields, then send it to a phone number.
+                Select a device, choose an approved WhatsApp template, fill
+                required fields, then send it to a phone number.
               </DialogDescription>
             </DialogHeader>
             <div className="min-h-0 flex-1 overflow-y-auto px-1 py-4">
@@ -668,13 +706,20 @@ export default function WhatsAppMessagesPage() {
                   {/* Device Selection — hidden when single active device */}
                   {hasSingleActiveDevice && sendDeviceId ? (
                     <div className="grid gap-1">
-                      <Label className="text-xs text-muted-foreground">Device</Label>
-                      <p className="text-sm font-medium">{activeDevices[0].phoneNumber}</p>
+                      <Label className="text-xs text-muted-foreground">
+                        Device
+                      </Label>
+                      <p className="text-sm font-medium">
+                        {activeDevices[0].phoneNumber}
+                      </p>
                     </div>
                   ) : activeDevices.length > 1 ? (
-                    <div className="grid gap-2 mb-4">
+                    <div className="mb-4 grid gap-2">
                       <Label htmlFor="send-device">Device *</Label>
-                      <Select value={sendDeviceId} onValueChange={setSendDeviceId}>
+                      <Select
+                        value={sendDeviceId}
+                        onValueChange={setSendDeviceId}
+                      >
                         <SelectTrigger id="send-device">
                           <SelectValue placeholder="Select a device..." />
                         </SelectTrigger>
@@ -688,9 +733,12 @@ export default function WhatsAppMessagesPage() {
                       </Select>
                     </div>
                   ) : (
-                    <div className="grid gap-2 mb-4">
+                    <div className="mb-4 grid gap-2">
                       <Label htmlFor="send-device">Device *</Label>
-                      <Select value={sendDeviceId} onValueChange={setSendDeviceId}>
+                      <Select
+                        value={sendDeviceId}
+                        onValueChange={setSendDeviceId}
+                      >
                         <SelectTrigger id="send-device">
                           <SelectValue placeholder="Select a device..." />
                         </SelectTrigger>
@@ -716,8 +764,14 @@ export default function WhatsAppMessagesPage() {
                       </div>
                     ) : templatesError ? (
                       <div className="flex flex-col gap-2 rounded-md border border-destructive/50 p-3">
-                        <span className="text-sm text-destructive">{templatesError}</span>
-                        <Button size="sm" variant="outline" onClick={reloadTemplates}>
+                        <span className="text-sm text-destructive">
+                          {templatesError}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={reloadTemplates}
+                        >
                           Retry
                         </Button>
                       </div>
@@ -728,15 +782,25 @@ export default function WhatsAppMessagesPage() {
                     ) : selectedTemplateId && !templatePickerOpen ? (
                       <div className="rounded-md border p-3">
                         {(() => {
-                          const tpl = approvedTemplates.find((t) => t.id === selectedTemplateId)
+                          const tpl = approvedTemplates.find(
+                            (t) => t.id === selectedTemplateId
+                          )
                           if (!tpl) return null
                           return (
                             <div className="flex items-center justify-between gap-2">
                               <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium truncate">{tpl.name}</p>
-                                <p className="text-xs text-muted-foreground truncate">{tpl.slug}</p>
-                                <Badge variant="secondary" className="mt-1 text-[10px]">
-                                  {tpl.languages.length} lang{tpl.languages.length !== 1 ? "s" : ""}
+                                <p className="truncate text-sm font-medium">
+                                  {tpl.name}
+                                </p>
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {tpl.slug}
+                                </p>
+                                <Badge
+                                  variant="secondary"
+                                  className="mt-1 text-[10px]"
+                                >
+                                  {tpl.languages.length} lang
+                                  {tpl.languages.length !== 1 ? "s" : ""}
                                 </Badge>
                               </div>
                               <Button
@@ -757,7 +821,9 @@ export default function WhatsAppMessagesPage() {
                           id="send-template"
                           placeholder="Type to filter templates..."
                           value={templateSearchQuery}
-                          onChange={(e) => setTemplateSearchQuery(e.target.value)}
+                          onChange={(e) =>
+                            setTemplateSearchQuery(e.target.value)
+                          }
                         />
                         <div className="max-h-64 overflow-y-auto rounded-md border">
                           {visibleTemplates.length === 0 ? (
@@ -775,27 +841,43 @@ export default function WhatsAppMessagesPage() {
                                   setTemplateFieldValues({})
                                   setTemplatePickerOpen(false)
                                   const approvedLang = tpl.languages.find(
-                                    (l) => l.isApproved || l.metaStatus === "APPROVED"
+                                    (l) =>
+                                      l.isApproved ||
+                                      l.metaStatus === "APPROVED"
                                   )
                                   setSelectedTemplateLanguage(
-                                    approvedLang?.lang ?? tpl.languages[0]?.lang ?? ""
+                                    approvedLang?.lang ??
+                                      tpl.languages[0]?.lang ??
+                                      ""
                                   )
                                 }}
                                 className={`flex w-full flex-col gap-0.5 border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-muted/50 ${
-                                  selectedTemplateId === tpl.id ? "bg-muted" : ""
+                                  selectedTemplateId === tpl.id
+                                    ? "bg-muted"
+                                    : ""
                                 }`}
                               >
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="font-medium text-sm truncate">{tpl.name}</span>
-                                  <Badge variant="secondary" className="shrink-0 text-[10px]">
-                                    {tpl.languages.length} lang{tpl.languages.length !== 1 ? "s" : ""}
+                                  <span className="truncate text-sm font-medium">
+                                    {tpl.name}
+                                  </span>
+                                  <Badge
+                                    variant="secondary"
+                                    className="shrink-0 text-[10px]"
+                                  >
+                                    {tpl.languages.length} lang
+                                    {tpl.languages.length !== 1 ? "s" : ""}
                                   </Badge>
                                 </div>
-                                <span className="text-xs text-muted-foreground truncate">{tpl.slug}</span>
+                                <span className="truncate text-xs text-muted-foreground">
+                                  {tpl.slug}
+                                </span>
                                 {tpl.languages[0]?.body && (
-                                  <span className="text-xs text-muted-foreground line-clamp-2">
+                                  <span className="line-clamp-2 text-xs text-muted-foreground">
                                     {tpl.languages[0].body.substring(0, 80)}
-                                    {tpl.languages[0].body.length > 80 ? "…" : ""}
+                                    {tpl.languages[0].body.length > 80
+                                      ? "…"
+                                      : ""}
                                   </span>
                                 )}
                               </button>
@@ -807,55 +889,68 @@ export default function WhatsAppMessagesPage() {
                   </div>
 
                   {/* Language Selection */}
-                  {selectedTemplateId && (() => {
-                    const tpl = approvedTemplates.find((t) => t.id === selectedTemplateId)
-                    if (!tpl) return null
-                    return (
-                      <div className="grid gap-2">
-                        <Label htmlFor="send-language">Language *</Label>
-                        <Select
-                          value={selectedTemplateLanguage}
-                          onValueChange={setSelectedTemplateLanguage}
-                        >
-                          <SelectTrigger id="send-language">
-                            <SelectValue placeholder="Select language..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {tpl.languages.map((lang) => (
-                              <SelectItem key={lang.lang} value={lang.lang}>
-                                {lang.lang}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )
-                  })()}
+                  {selectedTemplateId &&
+                    (() => {
+                      const tpl = approvedTemplates.find(
+                        (t) => t.id === selectedTemplateId
+                      )
+                      if (!tpl) return null
+                      return (
+                        <div className="grid gap-2">
+                          <Label htmlFor="send-language">Language *</Label>
+                          <Select
+                            value={selectedTemplateLanguage}
+                            onValueChange={setSelectedTemplateLanguage}
+                          >
+                            <SelectTrigger id="send-language">
+                              <SelectValue placeholder="Select language..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {tpl.languages.map((lang) => (
+                                <SelectItem key={lang.lang} value={lang.lang}>
+                                  {lang.lang}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )
+                    })()}
 
                   {/* Field placeholders */}
-                  {selectedTemplateLanguage && (() => {
-                    const tpl = approvedTemplates.find((t) => t.id === selectedTemplateId)
-                    const lang = tpl?.languages.find((l) => l.lang === selectedTemplateLanguage)
-                    const indexes = getTemplatePlaceholderIndexes(lang?.body)
-                    if (indexes.length === 0) return null
-                    return (
-                      <>
-                        {indexes.map((index) => (
-                          <div className="grid gap-2" key={index}>
-                            <Label htmlFor={`field-${index}`}>Field {`{{${index}}}`}</Label>
-                            <Input
-                              id={`field-${index}`}
-                              placeholder={`Value for {{${index}}}`}
-                              value={templateFieldValues[index] ?? ""}
-                              onChange={(e) =>
-                                setTemplateFieldValues((prev) => ({ ...prev, [index]: e.target.value }))
-                              }
-                            />
-                          </div>
-                        ))}
-                      </>
-                    )
-                  })()}
+                  {selectedTemplateLanguage &&
+                    (() => {
+                      const tpl = approvedTemplates.find(
+                        (t) => t.id === selectedTemplateId
+                      )
+                      const lang = tpl?.languages.find(
+                        (l) => l.lang === selectedTemplateLanguage
+                      )
+                      const indexes = getTemplatePlaceholderIndexes(lang?.body)
+                      if (indexes.length === 0) return null
+                      return (
+                        <>
+                          {indexes.map((index) => (
+                            <div className="grid gap-2" key={index}>
+                              <Label htmlFor={`field-${index}`}>
+                                Field {`{{${index}}}`}
+                              </Label>
+                              <Input
+                                id={`field-${index}`}
+                                placeholder={`Value for {{${index}}}`}
+                                value={templateFieldValues[index] ?? ""}
+                                onChange={(e) =>
+                                  setTemplateFieldValues((prev) => ({
+                                    ...prev,
+                                    [index]: e.target.value,
+                                  }))
+                                }
+                              />
+                            </div>
+                          ))}
+                        </>
+                      )
+                    })()}
                 </div>
 
                 {/* ── Right Column: Preview Panel ─────────────────────── */}
@@ -865,36 +960,56 @@ export default function WhatsAppMessagesPage() {
                       <h4 className="text-sm font-semibold">Message Preview</h4>
                     </div>
                     <div className="space-y-3 p-4">
-                      {selectedTemplateId ? (() => {
-                        const tpl = approvedTemplates.find((t) => t.id === selectedTemplateId)
-                        if (!tpl) return null
-                        return (
-                          <>
-                            <div>
-                              <p className="text-xs text-muted-foreground">Template</p>
-                              <p className="text-sm font-medium">{tpl.name}</p>
-                            </div>
-                            {selectedTemplateLanguage && (
+                      {selectedTemplateId ? (
+                        (() => {
+                          const tpl = approvedTemplates.find(
+                            (t) => t.id === selectedTemplateId
+                          )
+                          if (!tpl) return null
+                          return (
+                            <>
                               <div>
-                                <p className="text-xs text-muted-foreground">Language</p>
-                                <p className="text-sm">{selectedTemplateLanguage}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Template
+                                </p>
+                                <p className="text-sm font-medium">
+                                  {tpl.name}
+                                </p>
                               </div>
-                            )}
-                            {(() => {
-                              const lang = tpl.languages.find((l) => l.lang === selectedTemplateLanguage)
-                              if (!lang) return null
-                              return (
+                              {selectedTemplateLanguage && (
                                 <div>
-                                  <p className="text-xs text-muted-foreground">Body</p>
-                                  <div className="mt-1">
-                                    <WhatsAppTemplatePreview language={lang} values={templateFieldValues} mode="compact" />
-                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    Language
+                                  </p>
+                                  <p className="text-sm">
+                                    {selectedTemplateLanguage}
+                                  </p>
                                 </div>
-                              )
-                            })()}
-                          </>
-                        )
-                      })() : (
+                              )}
+                              {(() => {
+                                const lang = tpl.languages.find(
+                                  (l) => l.lang === selectedTemplateLanguage
+                                )
+                                if (!lang) return null
+                                return (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground">
+                                      Body
+                                    </p>
+                                    <div className="mt-1">
+                                      <WhatsAppTemplatePreview
+                                        language={lang}
+                                        values={templateFieldValues}
+                                        mode="compact"
+                                      />
+                                    </div>
+                                  </div>
+                                )
+                              })()}
+                            </>
+                          )
+                        })()
+                      ) : (
                         <p className="text-sm text-muted-foreground">
                           Select a template to see a preview.
                         </p>
@@ -905,7 +1020,10 @@ export default function WhatsAppMessagesPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setSendDialogOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setSendDialogOpen(false)}
+              >
                 Cancel
               </Button>
               <Button
@@ -918,14 +1036,16 @@ export default function WhatsAppMessagesPage() {
                   !approvedTemplates.find((t) => t.id === selectedTemplateId)
                 }
               >
-                {sendMutation.isPending ? "Sending..." : "Send Template Message"}
+                {sendMutation.isPending
+                  ? "Sending..."
+                  : "Send Template Message"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3 lg:grid-rows-[minmax(0,1fr)]">
         {/* ── Left Column: Conversations List ─────────────────────────── */}
         <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border bg-card lg:col-span-1">
           {/* Sticky compact filter header */}
@@ -943,10 +1063,17 @@ export default function WhatsAppMessagesPage() {
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="shrink-0 gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 gap-1.5"
+                  >
                     <FunnelSimple className="size-4" />
                     {activeFilterCount > 0 && (
-                      <Badge variant="secondary" className="ml-0.5 h-5 w-5 items-center justify-center p-0 text-[10px]">
+                      <Badge
+                        variant="secondary"
+                        className="ml-0.5 h-5 w-5 items-center justify-center p-0 text-[10px]"
+                      >
                         {activeFilterCount}
                       </Badge>
                     )}
@@ -954,19 +1081,41 @@ export default function WhatsAppMessagesPage() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>Direction</DropdownMenuLabel>
-                  <DropdownMenuRadioGroup value={directionFilter} onValueChange={setDirectionFilter}>
-                    <DropdownMenuRadioItem value="all">All Directions</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="INBOX">Inbox</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="OUTBOX">Outbox</DropdownMenuRadioItem>
+                  <DropdownMenuRadioGroup
+                    value={directionFilter}
+                    onValueChange={setDirectionFilter}
+                  >
+                    <DropdownMenuRadioItem value="all">
+                      All Directions
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="INBOX">
+                      Inbox
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="OUTBOX">
+                      Outbox
+                    </DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuLabel>Status</DropdownMenuLabel>
-                  <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
-                    <DropdownMenuRadioItem value="all">All Status</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="SENT">Sent</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="DELIVERED">Delivered</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="READ">Read</DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value="FAILED">Failed</DropdownMenuRadioItem>
+                  <DropdownMenuRadioGroup
+                    value={statusFilter}
+                    onValueChange={setStatusFilter}
+                  >
+                    <DropdownMenuRadioItem value="all">
+                      All Status
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="SENT">
+                      Sent
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="DELIVERED">
+                      Delivered
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="READ">
+                      Read
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="FAILED">
+                      Failed
+                    </DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -996,11 +1145,18 @@ export default function WhatsAppMessagesPage() {
                   className="mb-3 size-10 text-destructive"
                   weight="fill"
                 />
-                <p className="text-sm text-destructive">{conversationsError?.message ?? "Failed to load conversations"}</p>
+                <p className="text-sm text-destructive">
+                  {conversationsError?.message ??
+                    "Failed to load conversations"}
+                </p>
                 <Button
                   variant="outline"
                   className="mt-3"
-                  onClick={() => queryClient.invalidateQueries({ queryKey: ["whatsapp", "conversations"] })}
+                  onClick={() =>
+                    queryClient.invalidateQueries({
+                      queryKey: ["whatsapp", "conversations"],
+                    })
+                  }
                 >
                   Retry
                 </Button>
@@ -1017,7 +1173,9 @@ export default function WhatsAppMessagesPage() {
                     weight="fill"
                   />
                   <p className="text-sm text-muted-foreground">
-                    {searchQuery || directionFilter !== "all" || statusFilter !== "all"
+                    {searchQuery ||
+                    directionFilter !== "all" ||
+                    statusFilter !== "all"
                       ? "No conversations match your filters"
                       : "No conversations yet"}
                   </p>
@@ -1030,7 +1188,7 @@ export default function WhatsAppMessagesPage() {
                     Start a conversation
                   </Button>
                 </div>
-            )}
+              )}
 
             {!conversationsLoading &&
               !conversationsError &&
@@ -1071,67 +1229,69 @@ export default function WhatsAppMessagesPage() {
           </div>
 
           {/* Messages Area */}
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3">
-            {/* Loading */}
-            {activeLoading && (
-              <div className="flex flex-1 flex-col justify-end gap-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={`flex ${
-                      i % 2 === 0 ? "justify-start" : "justify-end"
-                    }`}
-                  >
-                    <Skeleton
-                      className={`h-12 rounded-2xl ${
-                        i % 2 === 0 ? "rounded-bl-sm" : "rounded-br-sm"
-                      } ${i % 2 === 0 ? "w-3/5" : "w-2/5"}`}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-3">
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+              {/* Loading */}
+              {activeLoading && (
+                <div className="flex flex-1 flex-col justify-end gap-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`flex ${
+                        i % 2 === 0 ? "justify-start" : "justify-end"
+                      }`}
+                    >
+                      <Skeleton
+                        className={`h-12 rounded-2xl ${
+                          i % 2 === 0 ? "rounded-bl-sm" : "rounded-br-sm"
+                        } ${i % 2 === 0 ? "w-3/5" : "w-2/5"}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
 
-            {/* No conversation selected */}
-            {!activeLoading && !activeConversation && (
-              <div className="flex flex-1 flex-col items-center justify-center">
-                <ChatCircle
-                  className="mb-3 size-10 text-muted-foreground"
-                  weight="fill"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Select a conversation to view messages
-                </p>
-              </div>
-            )}
-
-            {/* Empty thread */}
-            {!activeLoading &&
-              activeConversation &&
-              orderedMessages.length === 0 && (
+              {/* No conversation selected */}
+              {!activeLoading && !activeConversation && (
                 <div className="flex flex-1 flex-col items-center justify-center">
                   <ChatCircle
                     className="mb-3 size-10 text-muted-foreground"
                     weight="fill"
                   />
                   <p className="text-sm text-muted-foreground">
-                    No messages in this conversation yet
+                    Select a conversation to view messages
                   </p>
                 </div>
               )}
 
-            {/* Messages */}
-            {!activeLoading && orderedMessages.length > 0 && (
-              <div className="flex flex-1 flex-col justify-end gap-3">
-                {orderedMessages.map((message) => (
-                  <MessageBubble key={message.id} message={message} />
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
-            )}
+              {/* Empty thread */}
+              {!activeLoading &&
+                activeConversation &&
+                orderedMessages.length === 0 && (
+                  <div className="flex flex-1 flex-col items-center justify-center">
+                    <ChatCircle
+                      className="mb-3 size-10 text-muted-foreground"
+                      weight="fill"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      No messages in this conversation yet
+                    </p>
+                  </div>
+                )}
+
+              {/* Messages */}
+              {!activeLoading && orderedMessages.length > 0 && (
+                <div className="mt-auto flex flex-col justify-end gap-3">
+                  {orderedMessages.map((message) => (
+                    <MessageBubble key={message.id} message={message} />
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </main>
   )
 }

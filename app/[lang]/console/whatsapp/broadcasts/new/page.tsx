@@ -6,6 +6,15 @@ import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import {
   Card,
   CardContent,
   CardDescription,
@@ -28,8 +37,9 @@ import {
   type Contact,
   type Device,
   type Template,
+  type DeviceBroadcastCapacity,
+  type BroadcastScheduleRecommendation,
 } from "@/modules/whatsapp/whatsapp-client"
-
 type RecipientSource = "contacts" | "manual"
 
 function parseRecipients(value: string) {
@@ -59,25 +69,13 @@ export default function NewWhatsAppBroadcastPage() {
   const [selectedContactIds, setSelectedContactIds] = React.useState<Set<string>>(new Set())
   const [manualRecipients, setManualRecipients] = React.useState("")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [capacity, setCapacity] = React.useState<DeviceBroadcastCapacity | null>(null)
+  const [recommendation, setRecommendation] = React.useState<BroadcastScheduleRecommendation | null>(null)
+  const [throttleMaxMessages, setThrottleMaxMessages] = React.useState<number>(0)
+  const [throttlePerMinutes, setThrottlePerMinutes] = React.useState<number>(60)
+  const [showConfirmModal, setShowConfirmModal] = React.useState(false)
+  const [acknowledgeMultiDay, setAcknowledgeMultiDay] = React.useState(false)
 
-  React.useEffect(() => {
-    ;(async () => {
-      try {
-        const [templateItems, deviceItems, contactItems] = await Promise.all([
-          whatsappClient.listTemplates(),
-          whatsappClient.listDevices(),
-          whatsappClient.listContacts(),
-        ])
-        setTemplates(templateItems)
-        setDevices(deviceItems)
-        setContacts(contactItems)
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Unable to load form data"
-        )
-      }
-    })()
-  }, [])
 
   const selectedTemplate = templates.find(
     (template) => template.id === templateId
@@ -95,6 +93,16 @@ export default function NewWhatsAppBroadcastPage() {
 
   const allContactsSelected = contacts.length > 0 && selectedContactIds.size === contacts.length
 
+  const totalRecipients = React.useMemo(() => {
+    return (
+      selectedContactPhones.length +
+      parseRecipients(manualRecipients).length
+    )
+  }, [selectedContactPhones, manualRecipients])
+
+
+  const effectiveDeviceId = deviceId || selectedTemplate?.whatsappDeviceId
+  const hasScheduleInputs = Boolean(effectiveDeviceId && totalRecipients > 0)
   function toggleContact(id: string) {
     setSelectedContactIds((prev) => {
       const next = new Set(prev)
@@ -114,13 +122,60 @@ export default function NewWhatsAppBroadcastPage() {
       setSelectedContactIds(new Set(contacts.map((c) => c.id)))
     }
   }
+  React.useEffect(() => {
+    ;(async () => {
+      try {
+        const [templateItems, deviceItems, contactItems] = await Promise.all([
+          whatsappClient.listTemplates(),
+          whatsappClient.listDevices(),
+          whatsappClient.listContacts(),
+        ])
+        setTemplates(templateItems)
+        setDevices(deviceItems)
+        setContacts(contactItems)
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Unable to load form data"
+        )
+      }
+    })()
+  }, [])
 
+  React.useEffect(() => {
+    const manualPhoneNumbers = parseRecipients(manualRecipients)
+    const contactPhoneNumbers = selectedContactPhones.map((p) => ({
+      phoneNumber: p,
+    }))
+    const allRecipients = [...contactPhoneNumbers, ...manualPhoneNumbers]
+
+    if (!effectiveDeviceId || allRecipients.length === 0) {
+      return
+    }
+
+    let cancelled = false
+    whatsappClient.previewBroadcastSchedule({
+      whatsappDeviceId: effectiveDeviceId,
+      recipients: allRecipients,
+    }).then((result) => {
+      if (!cancelled) {
+        setCapacity(result.capacity)
+        setRecommendation(result.recommendation)
+        setThrottleMaxMessages(result.recommendation.throttleMaxMessages)
+        setThrottlePerMinutes(result.recommendation.throttlePerMinutes)
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setCapacity(null)
+        setRecommendation(null)
+      }
+    })
+    return () => { cancelled = true }
+  }, [effectiveDeviceId, manualRecipients, selectedContactPhones])
   const handleTemplateChange = (value: string) => {
     setTemplateId(value)
     const template = templates.find((item) => item.id === value)
     setTemplateLanguage(template?.languages[0]?.lang ?? "")
   }
-
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
@@ -145,12 +200,28 @@ export default function NewWhatsAppBroadcastPage() {
       return
     }
 
+    setShowConfirmModal(true)
+  }
+
+  const handleConfirmCreate = async () => {
+    const manualPhoneNumbers = parseRecipients(manualRecipients)
+    const contactPhoneNumbers = selectedContactPhones.map((phoneNumber) => ({
+      phoneNumber,
+    }))
+    const allRecipients = [...contactPhoneNumbers, ...manualPhoneNumbers]
+
+    if (!selectedTemplate) return
+
+    setShowConfirmModal(false)
     setIsSubmitting(true)
     try {
       const broadcast = await whatsappClient.createBroadcast({
         templateName: selectedTemplate.name,
         templateLanguage,
         whatsappDeviceId: deviceId || selectedTemplate.whatsappDeviceId,
+        throttleMaxMessages,
+        throttlePerMinutes,
+        acknowledgeMultiDay: acknowledgeMultiDay || undefined,
         recipients: allRecipients,
       })
       toast.success("Broadcast created")
@@ -330,7 +401,6 @@ export default function NewWhatsAppBroadcastPage() {
                 </p>
               </div>
             )}
-
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
@@ -346,6 +416,121 @@ export default function NewWhatsAppBroadcastPage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Scheduling card */}
+      {hasScheduleInputs && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Scheduling</CardTitle>
+            {capacity ? (
+              <CardDescription>
+                Device limit of {capacity.dailyLimit} messages / 24h
+                ({capacity.hourlyLimit}/h). Used {capacity.dailyUsed} today,
+                {capacity.hourlyUsed} this hour.
+              </CardDescription>
+            ) : (
+              <CardDescription>Calculating schedule…</CardDescription>
+            )}
+          </CardHeader>
+          <CardContent>
+            {capacity && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="throttleMax">Messages per window</Label>
+                    <Input
+                      id="throttleMax"
+                      type="number"
+                      min={1}
+                      value={throttleMaxMessages}
+                      onChange={(e) => setThrottleMaxMessages(Number(e.target.value))}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="throttleMin">Window (minutes)</Label>
+                    <Input
+                      id="throttleMin"
+                      type="number"
+                      min={1}
+                      value={throttlePerMinutes}
+                      onChange={(e) => setThrottlePerMinutes(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  ~{Math.ceil(
+                    (totalRecipients * throttlePerMinutes) /
+                      (throttleMaxMessages || 1)
+                  )}m at {Math.round((throttleMaxMessages / throttlePerMinutes) * 60)}/h
+                </p>
+                {totalRecipients > capacity.remainingToday && (
+                  <p className="text-sm text-amber-500">
+                    {totalRecipients} recipients exceed {capacity.remainingToday} remaining today —
+                    will span multiple days.
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Confirmation dialog */}
+      <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm broadcast</DialogTitle>
+            <DialogDescription>
+              Review the schedule before sending.
+            </DialogDescription>
+          </DialogHeader>
+            <div className="space-y-3 py-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Recipients</span>
+                <span>{totalRecipients}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Daily limit</span>
+                <span>{capacity?.dailyLimit ?? "—"} / day</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Remaining today</span>
+                <span>{capacity?.remainingToday ?? "—"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Rate</span>
+                <span>{throttleMaxMessages} msg / {throttlePerMinutes}m</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Est. duration</span>
+                <span>~{Math.ceil(
+                  (totalRecipients * throttlePerMinutes) /
+                    (throttleMaxMessages || 1)
+                )}m</span>
+              </div>
+              {totalRecipients > (capacity?.remainingToday ?? 0) && (
+                <div className="flex items-center gap-2 pt-2">
+                  <Checkbox
+                    id="multiDay"
+                    checked={acknowledgeMultiDay}
+                    onCheckedChange={(v) => setAcknowledgeMultiDay(v === true)}
+                  />
+                  <Label htmlFor="multiDay" className="text-sm text-amber-500">
+                    I understand this broadcast will span multiple days
+                  </Label>
+                </div>
+              )}
+            </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfirmModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => void handleConfirmCreate()} disabled={isSubmitting}>
+              {isSubmitting ? "Creating…" : "Confirm & send"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

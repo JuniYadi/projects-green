@@ -8,6 +8,12 @@ import {
   WHATSAPP_BROADCAST_JOB_NAME,
 } from "@/lib/queue/whatsapp-broadcast"
 import { toWhatsappBroadcastCampaignDTO } from "../broadcasts.dto"
+import {
+  getDeviceBroadcastCapacity,
+  computeRecommendedSchedule,
+  validateSchedule,
+} from "../broadcast-schedule.service"
+import { toDeviceBroadcastCapacityDTO, toBroadcastScheduleRecommendationDTO } from "../broadcast-schedule.dto"
 
 const E164_REGEX = /^[+]?[1-9]\d{6,14}$/
 const broadcastRecipientSchema = t.Object({
@@ -24,12 +30,18 @@ const broadcastCampaignBodySchema = t.Object({
   whatsappContactGroupId: t.Optional(t.String()),
   throttleMaxMessages: t.Optional(t.Number()),
   throttlePerMinutes: t.Optional(t.Number()),
+  acknowledgeMultiDay: t.Optional(t.Boolean()),
   recipients: t.Array(broadcastRecipientSchema),
 })
 
 const broadcastCampaignUpdateSchema = t.Partial(
   t.Omit(broadcastCampaignBodySchema, ["recipients"])
 )
+
+const broadcastPreviewBodySchema = t.Object({
+  whatsappDeviceId: t.String(),
+  recipients: t.Array(broadcastRecipientSchema),
+})
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 100
 
@@ -41,6 +53,7 @@ function getPagination(query: Record<string, unknown>) {
   )
   return { page, limit, skip: (page - 1) * limit }
 }
+
 
 export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
   .get(
@@ -140,11 +153,41 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
         }
       }
 
-      const { recipients, ...campaignData } = body
+      const { recipients, acknowledgeMultiDay, ...campaignData } = body
       const organizationId =
         whatsappAuth.type === "workos"
           ? whatsappAuth.organizationId!
           : (body as any).organizationId
+
+      // Validate device schedule limits when throttle is specified
+      if (campaignData.throttleMaxMessages && campaignData.throttlePerMinutes) {
+        if (!campaignData.whatsappDeviceId) {
+          set.status = 400
+          return {
+            ok: false,
+            error: "VALIDATION_ERROR",
+            message: "Device ID is required when throttle is set.",
+          }
+        }
+
+        try {
+          await validateSchedule({
+            throttleMaxMessages: campaignData.throttleMaxMessages,
+            throttlePerMinutes: campaignData.throttlePerMinutes,
+            totalRecipients: recipients.length,
+            organizationId,
+            deviceId: campaignData.whatsappDeviceId,
+            acknowledgeMultiDay,
+          })
+        } catch (error) {
+          set.status = 400
+          return {
+            ok: false,
+            error: "VALIDATION_ERROR",
+            message: error instanceof Error ? error.message : "Schedule validation failed",
+          }
+        }
+      }
 
       const campaign = await prisma.whatsappBroadcastCampaign.create({
         data: {
@@ -367,5 +410,55 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
         ok: true,
         message: `Dispatched ${campaign.recipients.length} recipients for broadcasting.`,
       }
+    }
+  )
+  .post(
+    "/preview",
+    async ({ request, body, set }: { request: any; body: any; set: any }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      if (whatsappAuth.type === "workos" && !whatsappAuth.organizationId) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "BAD_REQUEST",
+          message: "Organization ID required.",
+        }
+      }
+
+      const organizationId =
+        whatsappAuth.type === "workos"
+          ? whatsappAuth.organizationId!
+          : body.organizationId
+
+      try {
+        const [capacity, recommendation] = await Promise.all([
+          getDeviceBroadcastCapacity(organizationId, body.whatsappDeviceId),
+          computeRecommendedSchedule({
+            totalRecipients: body.recipients.length,
+            organizationId,
+            deviceId: body.whatsappDeviceId,
+          }),
+        ])
+
+        return {
+          ok: true,
+          capacity: toDeviceBroadcastCapacityDTO(capacity),
+          recommendation: toBroadcastScheduleRecommendationDTO(recommendation),
+        }
+      } catch (error) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "BAD_REQUEST",
+          message: error instanceof Error ? error.message : "Preview failed",
+        }
+      }
+    },
+    {
+      body: broadcastPreviewBodySchema,
     }
   )
