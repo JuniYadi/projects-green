@@ -44,6 +44,9 @@ const createBaseService = (enabled: boolean): GithubService => ({
       nextCursor: null,
     }
   },
+  async listInstallationsForActor() {
+    return []
+  },
 })
 
 describe("githubRoutes", () => {

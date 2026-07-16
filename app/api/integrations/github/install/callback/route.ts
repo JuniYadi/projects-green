@@ -74,22 +74,21 @@ export const GET = async (request: NextRequest) => {
     throw error
   }
 
-  const auth = await withAuth({ ensureSignedIn: true })
-
-  if (!auth.user) {
-    return NextResponse.json(
-      {
-        ok: false as const,
-        error: "UNAUTHORIZED" as const,
-        message: "You must be signed in to connect GitHub.",
-      },
-      { status: 401 }
-    )
-  }
-
   let errorReturnTo = "/console"
 
   try {
+    const auth = await withAuth({ ensureSignedIn: true })
+
+    if (!auth.user) {
+      return NextResponse.json(
+        {
+          ok: false as const,
+          error: "UNAUTHORIZED" as const,
+          message: "You must be signed in to connect GitHub.",
+        },
+        { status: 401 }
+      )
+    }
     const installationIdRaw =
       request.nextUrl.searchParams.get("installation_id")?.trim() ?? ""
 

@@ -55,7 +55,7 @@ mock.module("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-// eslint-disable-next-line no-global-assign
+ 
 globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch
 
 import { render, waitFor } from "@testing-library/react"

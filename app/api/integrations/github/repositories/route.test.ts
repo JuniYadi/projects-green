@@ -58,6 +58,10 @@ const mockListRepositoriesForActor = mock(async () => ({
   nextCursor: "102",
 }))
 
+const mockListInstallationsForActor = mock(async () => [
+  { githubInstallationId: 9001, accountLogin: "acme", targetId: 5001 },
+])
+
 const mockGithubServiceAssertEnabled = mock(() => {})
 const mockCreateGithubService = mock(() => ({
   getFeatureStatus: () => ({
@@ -67,6 +71,7 @@ const mockCreateGithubService = mock(() => ({
   }),
   assertEnabled: mockGithubServiceAssertEnabled,
   listRepositoriesForActor: mockListRepositoriesForActor,
+  listInstallationsForActor: mockListInstallationsForActor,
 }))
 
 const mockWithAuth = mock(
@@ -92,12 +97,12 @@ mock.module("@/modules/github/github.service", () => {
     createGithubService: mockCreateGithubService,
   }
 })
-
 describe("GET /api/integrations/github/repositories", () => {
   beforeEach(() => {
     mockGithubServiceAssertEnabled.mockClear()
     mockCreateGithubService.mockClear()
     mockWithAuth.mockClear()
+    mockListInstallationsForActor.mockClear()
 
     mockGithubServiceAssertEnabled.mockImplementation(() => {})
     mockListRepositoriesForActor.mockImplementation(async () => ({
@@ -133,6 +138,7 @@ describe("GET /api/integrations/github/repositories", () => {
       }),
       assertEnabled: mockGithubServiceAssertEnabled,
       listRepositoriesForActor: mockListRepositoriesForActor,
+      listInstallationsForActor: mockListInstallationsForActor,
     }))
     mockWithAuth.mockImplementation(async () => ({
       user: { id: "user_123" },
@@ -214,6 +220,7 @@ describe("GET /api/integrations/github/repositories", () => {
         private: boolean
         syncedAt: string | null
       }>
+      owners: Array<{ id: string; name: string; avatarUrl: string | null }>
       nextCursor: string | null
     }
 
@@ -256,6 +263,13 @@ describe("GET /api/integrations/github/repositories", () => {
         query: "api",
       }
     )
+    expect(body.owners).toEqual([
+      { id: "acme", name: "acme", avatarUrl: null },
+    ])
+    expect(mockListInstallationsForActor).toHaveBeenCalledWith({
+      userId: "user_123",
+      organizationId: "org_123",
+    })
   })
 
   it("maps GitHub 401/403 reconnect failures to a 409 reconnect-required response", async () => {

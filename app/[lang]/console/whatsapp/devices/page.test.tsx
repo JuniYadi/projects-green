@@ -77,8 +77,8 @@ mock.module("@/lib/i18n/messages", () => ({
 }))
 
 mock.module("@/lib/i18n/pathname", () => ({
-  localizePathname: (opts: any) => `/en${opts.path}`,
-  resolveLocaleOrDefault: (lang: any) => lang || "en",
+  localizePathname: (opts: { pathname: string; locale: string }) => `/en${opts.pathname}`,
+  resolveLocaleOrDefault: (lang: string) => lang || "en",
 }))
 
 import WhatsAppDevicesPage from "./page"

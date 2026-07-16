@@ -1,5 +1,4 @@
 [test]
-preload = ["./test/setup.ts"]
 coverageReporter = ["text", "lcov"]
 coverageDir = "coverage"
 coverageSkipTestFiles = true

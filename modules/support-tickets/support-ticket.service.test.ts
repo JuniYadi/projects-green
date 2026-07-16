@@ -14,6 +14,7 @@ import {
 import type { SupportTicketRepository } from "@/modules/support-tickets/support-ticket.repository"
 import type {
   SupportTicket,
+  SupportTicketActorContext,
   SupportTicketStatus,
   SupportTicketThread,
 } from "@/modules/support-tickets/support-ticket.types"
@@ -1571,7 +1572,7 @@ describe("supportTicketService", () => {
   describe("addReply auto-transition tests", () => {
     const testAutoTransition = async (
       initialStatus: SupportTicketStatus,
-      actor: any,
+      actor: SupportTicketActorContext,
       expectedStatus: SupportTicketStatus | null,
       isInternalNote = false
     ) => {

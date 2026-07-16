@@ -302,12 +302,34 @@ export const whatsappClient = {
           body: JSON.stringify(input),
         }
       ),
+    update: (
+      id: string,
+      input: { internalNotes?: string | null; labelIds?: string[] }
+    ) =>
+      serverFetch<{ ok: boolean; conversation: any }>(
+        `/api/whatsapp/conversations/${id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(input),
+        }
+      ),
     delete: (id: string) =>
       serverFetch<{ ok: boolean }>(`/api/whatsapp/conversations/${id}`, {
         method: "DELETE",
       }),
+    getLabels: () =>
+      serverFetch<{ ok: boolean; labels: any[] }>(
+        "/api/whatsapp/conversations/labels"
+      ),
+    createLabel: (input: { name: string; color?: string | null }) =>
+      serverFetch<{ ok: boolean; label: any }>(
+        "/api/whatsapp/conversations/labels",
+        {
+          method: "POST",
+          body: JSON.stringify(input),
+        }
+      ),
   },
-
   contacts: {
     list: (params?: {
       contactGroupId?: string

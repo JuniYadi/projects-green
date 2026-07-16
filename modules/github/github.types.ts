@@ -33,6 +33,9 @@ export type GithubRepositoryListResult = {
 }
 
 export type GithubRepositoryService = {
+  listInstallationsForActor: (
+    actor: GithubActorContext
+  ) => Promise<GithubInstallationRecord[]>
   listRepositoriesForActor: (
     actor: GithubActorContext,
     query: GithubRepositoryListQuery

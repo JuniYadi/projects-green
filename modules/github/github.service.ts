@@ -645,53 +645,60 @@ const createDefaultDependencies = (): GithubDependencies => ({
 
 export const createGithubRepositoryService = (
   dependencies: GithubDependencies = createDefaultDependencies()
-): GithubRepositoryService => ({
-  async listRepositoriesForActor(actor, query) {
-    const installations = await dependencies.listActiveInstallations(actor)
+): GithubRepositoryService => {
+  const listInstallationsForActor = (actor: GithubActorContext) => {
+    return dependencies.listActiveInstallations(actor)
+  }
 
-    if (!installations.length) {
-      return {
-        items: [],
-        nextCursor: null,
+  return {
+    listInstallationsForActor,
+    async listRepositoriesForActor(actor, query) {
+      const installations = await listInstallationsForActor(actor)
+
+      if (!installations.length) {
+        return {
+          items: [],
+          nextCursor: null,
+        }
       }
-    }
 
-    const ownerFilter = normalizeOwnerFilter(query.ownerId)
-    const targetInstallations = ownerFilter
-      ? installations.filter(
-          (inst) =>
-            inst.accountLogin.toLowerCase() === ownerFilter ||
-            String(inst.targetId ?? "") === ownerFilter ||
-            String(inst.githubInstallationId) === ownerFilter
-        )
-      : installations
+      const ownerFilter = normalizeOwnerFilter(query.ownerId)
+      const targetInstallations = ownerFilter
+        ? installations.filter(
+            (inst) =>
+              inst.accountLogin.toLowerCase() === ownerFilter ||
+              String(inst.targetId ?? "") === ownerFilter ||
+              String(inst.githubInstallationId) === ownerFilter
+          )
+        : installations
 
-    if (!targetInstallations.length) {
-      return {
-        items: [],
-        nextCursor: null,
+      if (!targetInstallations.length) {
+        return {
+          items: [],
+          nextCursor: null,
+        }
       }
-    }
 
-    const repositoriesByInstallation = await Promise.all(
-      targetInstallations.map(async (installation) => {
-        const token = await dependencies.createInstallationAccessToken(
-          installation.githubInstallationId
-        )
+      const repositoriesByInstallation = await Promise.all(
+        targetInstallations.map(async (installation) => {
+          const token = await dependencies.createInstallationAccessToken(
+            installation.githubInstallationId
+          )
 
-        return dependencies.listRepositoriesForInstallation(installation, token)
-      })
-    )
+          return dependencies.listRepositoriesForInstallation(installation, token)
+        })
+      )
 
-    const repositories = dedupeRepositories(
-      repositoriesByInstallation.flat()
-    ).sort(comparePushedAtDesc)
+      const repositories = dedupeRepositories(
+        repositoriesByInstallation.flat()
+      ).sort(comparePushedAtDesc)
 
-    const filtered = filterRepositories(repositories, query)
+      const filtered = filterRepositories(repositories, query)
 
-    return paginateRepositories(filtered, query)
-  },
-})
+      return paginateRepositories(filtered, query)
+    },
+  }
+}
 
 export const githubRepositoryService = createGithubRepositoryService()
 
@@ -715,6 +722,9 @@ export const createGithubService = (
     },
     async listRepositoriesForActor(actor, query) {
       return repositoryService.listRepositoriesForActor(actor, query)
+    },
+    async listInstallationsForActor(actor) {
+      return repositoryService.listInstallationsForActor(actor)
     },
   }
 }
