@@ -4,6 +4,7 @@ import { cookies } from "next/headers"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { QueryProvider } from "@/components/query-provider"
 import { localeCookieName } from "@/lib/i18n/config"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { TooltipProvider } from "@/components/ui/tooltip"
@@ -43,9 +44,11 @@ export default async function RootLayout({
     >
       <body suppressHydrationWarning>
         <AuthKitProvider>
+        <QueryProvider>
           <ThemeProvider>
             <TooltipProvider>{children}</TooltipProvider>
           </ThemeProvider>
+        </QueryProvider>
         </AuthKitProvider>
       </body>
     </html>

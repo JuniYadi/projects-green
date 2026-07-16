@@ -2,6 +2,7 @@ import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { render, waitFor, fireEvent } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import * as React from "react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 // ─── Shared mock variables (must be before mock.module) ─────────────────────
 
@@ -109,6 +110,17 @@ function tick(ms = 50) {
   return promise
 }
 
+function renderWithQuery(ui: React.ReactElement) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  return render(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  })
+}
+
 describe("WhatsAppMessagesPage", () => {
   beforeEach(() => {
     mockRouterPush.mockClear()
@@ -127,10 +139,10 @@ describe("WhatsAppMessagesPage", () => {
     mockSendTemplate.mockResolvedValue({ ok: true, messageId: "msg_123", status: "queued" })
   })
 
-  it("renders the page with a New Message button", async () => {
-    const view = render(<WhatsAppMessagesPage />)
+  it("renders the page with a Send Message button", async () => {
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
     expect(view.getByText("Messages")).toBeInTheDocument()
-    expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument()
+    expect(view.getByRole("button", { name: /send message/i })).toBeInTheDocument()
     expect(view.queryByText("Message *")).not.toBeInTheDocument()
     expect(view.queryByText(/interactive message/i)).not.toBeInTheDocument()
     expect(view.queryByText(/reply buttons/i)).not.toBeInTheDocument()
@@ -139,10 +151,10 @@ describe("WhatsAppMessagesPage", () => {
   })
 
   it("opens send dialog and shows 2-column layout", async () => {
-    const view = render(<WhatsAppMessagesPage />)
-    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).not.toBeDisabled() })
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
+    await waitFor(() => { expect(view.getByRole("button", { name: /send message/i })).not.toBeDisabled() })
     await tick(50)
-    fireEvent.click(view.getByRole("button", { name: /new message/i }))
+    fireEvent.click(view.getByRole("button", { name: /send message/i }))
     await waitFor(() => { expect(view.getByRole("heading", { name: "Send Template Message" })).toBeInTheDocument() })
     expect(view.getByText("Phone Number *")).toBeInTheDocument()
     expect(view.queryByText("Device *")).not.toBeInTheDocument()
@@ -156,10 +168,10 @@ describe("WhatsAppMessagesPage", () => {
   })
 
   it("shows send button enabled after filling all fields", async () => {
-    const view = render(<WhatsAppMessagesPage />)
-    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).not.toBeDisabled() })
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
+    await waitFor(() => { expect(view.getByRole("button", { name: /send message/i })).not.toBeDisabled() })
     await tick(100)
-    fireEvent.click(view.getByRole("button", { name: /new message/i }))
+    fireEvent.click(view.getByRole("button", { name: /send message/i }))
     await waitFor(() => { expect(view.getByRole("heading", { name: "Send Template Message" })).toBeInTheDocument() })
     fireEvent.change(view.getByPlaceholderText("+628123456789"), { target: { value: "+6289876543210" } })
     fireEvent.click(view.getAllByText("hello_world")[0])
@@ -172,8 +184,8 @@ describe("WhatsAppMessagesPage", () => {
   })
 
   it("does not render old free-form message fields", async () => {
-    const view = render(<WhatsAppMessagesPage />)
-    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument() })
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
+    await waitFor(() => { expect(view.getByRole("button", { name: /send message/i })).toBeInTheDocument() })
     expect(view.queryByText("Message *")).not.toBeInTheDocument()
     expect(view.queryByText(/interactive message/i)).not.toBeInTheDocument()
     expect(view.queryByText(/reply buttons/i)).not.toBeInTheDocument()
@@ -182,10 +194,10 @@ describe("WhatsAppMessagesPage", () => {
   })
 
   it("accepts Indonesian local phone 085708296482", async () => {
-    const view = render(<WhatsAppMessagesPage />)
-    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).not.toBeDisabled() })
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
+    await waitFor(() => { expect(view.getByRole("button", { name: /send message/i })).not.toBeDisabled() })
     await tick(50)
-    fireEvent.click(view.getByRole("button", { name: /new message/i }))
+    fireEvent.click(view.getByRole("button", { name: /send message/i }))
     await waitFor(() => { expect(view.getByRole("heading", { name: "Send Template Message" })).toBeInTheDocument() })
     await tick(50)
     const phoneInput = view.getByPlaceholderText("+628123456789") as HTMLInputElement
@@ -202,10 +214,10 @@ describe("WhatsAppMessagesPage", () => {
   })
 
   it("collapses template picker after selection and shows Change Template button", async () => {
-    const view = render(<WhatsAppMessagesPage />)
-    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).not.toBeDisabled() })
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
+    await waitFor(() => { expect(view.getByRole("button", { name: /send message/i })).not.toBeDisabled() })
     await tick(50)
-    fireEvent.click(view.getByRole("button", { name: /new message/i }))
+    fireEvent.click(view.getByRole("button", { name: /send message/i }))
     await waitFor(() => { expect(view.getByRole("heading", { name: "Send Template Message" })).toBeInTheDocument() })
     expect(view.getByPlaceholderText("Type to filter templates...")).toBeInTheDocument()
     fireEvent.click(view.getAllByText("hello_world")[0])
@@ -220,18 +232,18 @@ describe("WhatsAppMessagesPage", () => {
 
 
   it("lacks Conversations heading and search has correct aria-label", async () => {
-    const view = render(<WhatsAppMessagesPage />)
-    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument() })
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
+    await waitFor(() => { expect(view.getByRole("button", { name: /send message/i })).toBeInTheDocument() })
     expect(view.queryByText("Conversations")).not.toBeInTheDocument()
     expect(view.getByPlaceholderText("Search phone number...")).toHaveAttribute("aria-label", "Search conversations by phone number")
     view.unmount()
   })
 
   it("shows template preview with filled values when fields are entered", async () => {
-    const view = render(<WhatsAppMessagesPage />)
-    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).not.toBeDisabled() })
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
+    await waitFor(() => { expect(view.getByRole("button", { name: /send message/i })).not.toBeDisabled() })
     await tick(100)
-    fireEvent.click(view.getByRole("button", { name: /new message/i }))
+    fireEvent.click(view.getByRole("button", { name: /send message/i }))
     await waitFor(() => { expect(view.getByRole("heading", { name: "Send Template Message" })).toBeInTheDocument() })
     fireEvent.change(view.getByPlaceholderText("+628123456789"), { target: { value: "+6289876543210" } })
     fireEvent.click(view.getAllByText("hello_world")[0])
@@ -248,8 +260,8 @@ describe("WhatsAppMessagesPage", () => {
     const recentDate = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString()
     mockConversationsList.mockResolvedValueOnce({ ok: true, conversations: [{ id: "conv_tpl", organizationId: "org_1", contactPhone: "+6281111111111", lastMessageAt: recentDate, lastDirection: "OUTBOX", whatsappDeviceId: "device_1", createdAt: recentDate, updatedAt: recentDate, _count: { whatsappMessages: 1 } }] })
     mockConversationsGet.mockResolvedValueOnce({ ok: true, conversation: { id: "conv_tpl", organizationId: "org_1", contactPhone: "+6281111111111", lastMessageAt: recentDate, lastDirection: "OUTBOX", whatsappDeviceId: "device_1", createdAt: recentDate, updatedAt: recentDate, _count: { whatsappMessages: 1 }, whatsappMessages: [{ id: "msg_tpl_1", conversationId: "conv_tpl", direction: "OUTBOX", messageType: "template", body: "Hello Alice, your order is confirmed.", mediaUrl: null, waMessageId: null, metadata: { templateName: "hello_world", templateLanguage: "en", fields: ["Alice"] }, createdAt: recentDate, updatedAt: recentDate }] } })
-    const view = render(<WhatsAppMessagesPage />)
-    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument() })
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
+    await waitFor(() => { expect(view.getByRole("button", { name: /send message/i })).toBeInTheDocument() })
     await tick(100)
     fireEvent.click(view.getByText("+6281111111111"))
     await waitFor(() => { expect(view.queryByText("1 messages")).toBeInTheDocument() })
@@ -260,7 +272,7 @@ describe("WhatsAppMessagesPage", () => {
 
   it("updates the URL when a conversation is selected", async () => {
     mockConversationsList.mockResolvedValueOnce({ ok: true, conversations: [{ id: "conv_1", organizationId: "org_1", contactPhone: "+6281234567890", lastMessageAt: new Date().toISOString(), lastDirection: "OUTBOX", whatsappDeviceId: "device_1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), _count: { whatsappMessages: 1 } }] })
-    const view = render(<WhatsAppMessagesPage />)
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
     await waitFor(() => { expect(view.getByText("+6281234567890")).toBeInTheDocument() })
     await tick(50)
     fireEvent.click(view.getByText("+6281234567890"))
@@ -272,15 +284,15 @@ describe("WhatsAppMessagesPage", () => {
   it("selects a conversation from the phone query parameter", async () => {
     mockSearchParams = new URLSearchParams("phone=6281234567890")
     mockConversationsList.mockResolvedValueOnce({ ok: true, conversations: [{ id: "conv_1", organizationId: "org_1", contactPhone: "+6281234567890", lastMessageAt: new Date().toISOString(), lastDirection: "OUTBOX", whatsappDeviceId: "device_1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), _count: { whatsappMessages: 1 } }] })
-    const view = render(<WhatsAppMessagesPage />)
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
     await tick(50)
     await waitFor(() => { expect(mockConversationsGet).toHaveBeenCalledWith("conv_1") })
     view.unmount()
   })
 
   it("applies bounded-layout CSS classes to thread grid and cards", async () => {
-    const view = render(<WhatsAppMessagesPage />)
-    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument() })
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
+    await waitFor(() => { expect(view.getByRole("button", { name: /send message/i })).toBeInTheDocument() })
     expect(view.container.querySelectorAll(".flex-1").length).toBeGreaterThanOrEqual(1)
     expect(view.container.querySelectorAll(".min-h-0").length).toBeGreaterThanOrEqual(3)
     expect(view.container.querySelector(".min-h-\\[500px\\]")).toBeNull()
@@ -290,13 +302,13 @@ describe("WhatsAppMessagesPage", () => {
   it("sends a template and updates URL when send succeeds", async () => {
     mockConversationsList.mockResolvedValueOnce({ ok: true, conversations: [] })
 
-    const view = render(<WhatsAppMessagesPage />)
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
     const user = userEvent.setup()
     await waitFor(() => { expect(mockConversationsList).toHaveBeenCalledTimes(1) })
     await tick(50)
 
     // Open dialog
-    await user.click(view.getByRole("button", { name: /new message/i }))
+    await user.click(view.getByRole("button", { name: /send message/i }))
     await waitFor(() => { expect(view.getByRole("heading", { name: "Send Template Message" })).toBeInTheDocument() })
 
     // Fill phone
@@ -337,13 +349,13 @@ describe("WhatsAppMessagesPage", () => {
   it("updates URL even when post-send lookup fails", async () => {
     mockConversationsList.mockResolvedValueOnce({ ok: true, conversations: [] })
 
-    const view = render(<WhatsAppMessagesPage />)
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
     const user = userEvent.setup()
     await waitFor(() => { expect(mockConversationsList).toHaveBeenCalledTimes(1) })
     await tick(50)
 
     // Open dialog
-    await user.click(view.getByRole("button", { name: /new message/i }))
+    await user.click(view.getByRole("button", { name: /send message/i }))
     await waitFor(() => { expect(view.getByRole("heading", { name: "Send Template Message" })).toBeInTheDocument() })
 
     // Fill phone

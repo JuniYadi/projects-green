@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   ChatCircle,
@@ -44,7 +45,6 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type { WhatsAppTemplateLanguage } from "@/lib/api/whatsapp-client"
-import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import { useTemplates } from "@/modules/whatsapp/templates/api/templates.hooks"
 import { MessageStatusBadge } from "@/modules/whatsapp/messages/ui/message-status-badge"
 import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
@@ -293,119 +293,60 @@ function MessageBubble({ message }: { message: Message }) {
 // ─── Page Component ──────────────────────────────────────────────────────────
 
 export default function WhatsAppMessagesPage() {
-  // State - conversations
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const [conversations, setConversations] = React.useState<
-    ConversationListItem[]
-  >([])
-  const [conversationsLoading, setConversationsLoading] = React.useState(true)
-  const [conversationsError, setConversationsError] = React.useState<
-    string | null
-  >(null)
-  const [refreshKey, setRefreshKey] = React.useState(0)
-
-  // State - active conversation
-  const [activeConversationId, setActiveConversationId] = React.useState<
-    string | null
-  >(null)
-  const [activeConversation, setActiveConversation] =
-    React.useState<ConversationDetail | null>(null)
-  const [activeLoading, setActiveLoading] = React.useState(false)
 
   // State - filters
   const [searchQuery, setSearchQuery] = React.useState("")
   const [directionFilter, setDirectionFilter] = React.useState("all")
   const [statusFilter, setStatusFilter] = React.useState("all")
 
+  // State - active conversation
+  const [activeConversationId, setActiveConversationId] = React.useState<
+    string | null
+  >(null)
+
   // State - send message
   const [sendDialogOpen, setSendDialogOpen] = React.useState(false)
-  const [devices, setDevices] = React.useState<DeviceListItem[]>([])
   const [sendPhone, setSendPhone] = React.useState("")
   const [sendDeviceId, setSendDeviceId] = React.useState("")
-  const [sending, setSending] = React.useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = React.useState("")
   const [selectedTemplateLanguage, setSelectedTemplateLanguage] = React.useState("")
   const [templateFieldValues, setTemplateFieldValues] = React.useState<Record<number, string>>({})
   const [templateSearchQuery, setTemplateSearchQuery] = React.useState("")
   const [templatePickerOpen, setTemplatePickerOpen] = React.useState(true)
 
+  const queryClient = useQueryClient()
+
+  const { data: conversations = [], isLoading: conversationsLoading, error: conversationsError } = useQuery({
+    queryKey: ["whatsapp", "conversations", { status: statusFilter }],
+    queryFn: () => whatsappClient.conversations.list({ status: statusFilter !== "all" ? statusFilter : undefined }),
+    select: (payload) => payload.ok ? payload.conversations ?? [] : [],
+  })
+
+  const { data: activeConversation = null, isLoading: activeLoading } = useQuery<ConversationDetail | null>({
+    queryKey: ["whatsapp", "conversation", activeConversationId],
+    queryFn: async () => {
+      if (!activeConversationId) return null
+      const payload = await whatsappClient.conversations.get(activeConversationId)
+      return payload.ok ? payload.conversation : null
+    },
+    enabled: Boolean(activeConversationId),
+  })
+
+  const { data: devices = [] } = useQuery({
+    queryKey: ["whatsapp", "devices"],
+    queryFn: async () => {
+      const payload = await whatsappClient.devices.list()
+      return payload.ok ? payload.devices : []
+    },
+  })
+
+
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
 
-  // ── Data fetching ──────────────────────────────────────────────────────
 
-  // Fetch conversations when filters change
-  React.useEffect(() => {
-    let cancelled = false
-
-    React.startTransition(() => {
-      setConversationsLoading(true)
-      setConversationsError(null)
-    })
-
-    whatsappClient.conversations
-      .list({ status: statusFilter !== "all" ? statusFilter : undefined })
-      .then((payload) => {
-        if (cancelled) return
-        React.startTransition(() => {
-          if (payload.ok) {
-            setConversations(payload.conversations ?? [])
-          } else {
-            setConversationsError("Failed to load conversations")
-          }
-          setConversationsLoading(false)
-        })
-      })
-      .catch(() => {
-        if (cancelled) return
-        React.startTransition(() => {
-          setConversationsError("Failed to load conversations")
-          setConversationsLoading(false)
-        })
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [searchQuery, statusFilter, refreshKey])
-
-  // Fetch conversation details when activeConversationId changes
-  React.useEffect(() => {
-    if (!activeConversationId) {
-      return
-    }
-
-    let cancelled = false
-
-    React.startTransition(() => {
-      setActiveLoading(true)
-      setActiveConversation(null)
-    })
-
-    whatsappClient.conversations
-      .get(activeConversationId)
-      .then((payload) => {
-        if (cancelled) return
-        React.startTransition(() => {
-          if (payload.ok) {
-            setActiveConversation(payload.conversation)
-          }
-          setActiveLoading(false)
-        })
-      })
-      .catch(() => {
-        if (cancelled) return
-        React.startTransition(() => {
-          setActiveConversation(null)
-          setActiveLoading(false)
-        })
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [activeConversationId, refreshKey])
 
   const loadConversationForPhone = React.useCallback(
     async (phone: string, conversationsCache: ConversationListItem[]) => {
@@ -446,26 +387,7 @@ export default function WhatsAppMessagesPage() {
     }
   }, [searchParams, conversations, activeConversationId, loadConversationForPhone])
 
-  // Scroll to bottom on new messages
-  React.useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [activeConversation?.whatsappMessages])
 
-  // Fetch devices for send dialog
-  React.useEffect(() => {
-    let cancelled = false
-
-    whatsappClient.devices
-      .list()
-      .then((payload) => {
-        if (!cancelled && payload.ok) setDevices(payload.devices)
-      })
-      .catch(() => {})
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   const hasActiveDevice = React.useMemo(
     () => devices.some((d) => d.status === "ACTIVE"),
@@ -543,6 +465,13 @@ export default function WhatsAppMessagesPage() {
     [activeConversation]
   )
 
+  // Scroll to bottom on new messages
+  React.useEffect(() => {
+    if (orderedMessages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto", block: "end" })
+    }
+  }, [orderedMessages])
+
   // Visible templates after search filter
   const visibleTemplates = React.useMemo(() => {
     if (!templateSearchQuery.trim()) return approvedTemplates
@@ -579,6 +508,41 @@ export default function WhatsAppMessagesPage() {
 
 
 
+  // ── Mutations ──────────────────────────────────────────────────────────
+  const sendMutation = useMutation({
+    mutationFn: whatsappClient.messages.sendTemplate,
+    onSuccess: async (data, variables) => {
+      toast.success("Template message queued for delivery")
+      setSendDialogOpen(false)
+      setSendDeviceId(hasSingleActiveDevice ? activeDevices[0]?.id ?? "" : "")
+      setSelectedTemplateId("")
+      setSelectedTemplateLanguage("")
+      setTemplateFieldValues({})
+      setTemplateSearchQuery("")
+      let sentConversation: ConversationListItem | null = null
+      try {
+        sentConversation = await loadConversationForPhone(variables.phoneNumber, conversations)
+      } catch (lookupError) {
+        console.warn(
+          "[WhatsAppMessagesPage] Sent template but failed to open conversation",
+          { phoneNumber: variables.phoneNumber, error: lookupError }
+        )
+        toast.warning("Template sent, but the chat could not be opened automatically.")
+      }
+      if (sentConversation?.id) {
+        setActiveConversationId(sentConversation.id)
+        await queryClient.invalidateQueries({ queryKey: ["whatsapp", "conversation", sentConversation.id] })
+      }
+      await queryClient.invalidateQueries({ queryKey: ["whatsapp", "conversations"] })
+      const next = new URLSearchParams(searchParams.toString())
+      next.set(PHONE_QUERY_KEY, cleanPhoneForQuery(variables.phoneNumber))
+      router.replace(`${pathname}?${next.toString()}`, { scroll: false })
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to send message")
+    },
+  })
+
   const handleSendMessage = async () => {
     if (!sendDeviceId) {
       toast.error("Please select a device")
@@ -614,55 +578,13 @@ export default function WhatsAppMessagesPage() {
       }
     }
 
-    setSending(true)
-    try {
-      await whatsappClient.messages.sendTemplate({
-        phoneNumber: normalizedPhone,
-        templateId: selectedTemplateId,
-        templateLanguage: selectedTemplateLanguage,
-        fields: placeholderIndexes.map((index) => templateFieldValues[index].trim()),
-        deviceId: sendDeviceId,
-      })
-
-      toast.success("Template message queued for delivery")
-
-      let sentConversation: ConversationListItem | null = null
-      try {
-        sentConversation = await loadConversationForPhone(normalizedPhone, conversations)
-      } catch (lookupError) {
-        console.warn(
-          "[WhatsAppMessagesPage] Sent template but failed to open conversation",
-          { phoneNumber: normalizedPhone, error: lookupError }
-        )
-        toast.warning("Template sent, but the chat could not be opened automatically.")
-      }
-
-      setRefreshKey((key) => key + 1)
-
-      if (sentConversation) {
-        setActiveConversationId(sentConversation.id)
-      } else {
-        console.warn(
-          "[WhatsAppMessagesPage] Sent template but conversation was not found after reload",
-          { phoneNumber: normalizedPhone }
-        )
-      }
-
-      const next = new URLSearchParams(searchParams.toString())
-      next.set(PHONE_QUERY_KEY, cleanPhoneForQuery(normalizedPhone))
-      router.replace(`${pathname}?${next.toString()}`, { scroll: false })
-
-      setSendDialogOpen(false)
-      setSendDeviceId(hasSingleActiveDevice ? activeDevices[0]?.id ?? "" : "")
-      setSelectedTemplateId("")
-      setSelectedTemplateLanguage("")
-      setTemplateFieldValues({})
-      setTemplateSearchQuery("")
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send message")
-    } finally {
-      setSending(false)
-    }
+    sendMutation.mutate({
+      phoneNumber: normalizedPhone,
+      templateId: selectedTemplateId,
+      templateLanguage: selectedTemplateLanguage,
+      fields: placeholderIndexes.map((index) => templateFieldValues[index].trim()),
+      deviceId: sendDeviceId,
+    })
   }
 
   // ─── Render ────────────────────────────────────────────────────────────
@@ -693,8 +615,8 @@ export default function WhatsAppMessagesPage() {
 
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2">
+    <div className="flex flex-1 flex-col min-h-0 gap-6">
+      <div className="flex shrink-0 items-center gap-2">
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
           <p className="text-muted-foreground">
@@ -989,14 +911,14 @@ export default function WhatsAppMessagesPage() {
               <Button
                 onClick={handleSendMessage}
                 disabled={
-                  sending ||
+                  sendMutation.isPending ||
                   activeDevices.length === 0 ||
                   !sendDeviceId ||
                   templatesLoading ||
                   !approvedTemplates.find((t) => t.id === selectedTemplateId)
                 }
               >
-                {sending ? "Sending..." : "Send Template Message"}
+                {sendMutation.isPending ? "Sending..." : "Send Template Message"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1074,11 +996,11 @@ export default function WhatsAppMessagesPage() {
                   className="mb-3 size-10 text-destructive"
                   weight="fill"
                 />
-                <p className="text-sm text-destructive">{conversationsError}</p>
+                <p className="text-sm text-destructive">{conversationsError?.message ?? "Failed to load conversations"}</p>
                 <Button
                   variant="outline"
                   className="mt-3"
-                  onClick={() => setRefreshKey((k) => k + 1)}
+                  onClick={() => queryClient.invalidateQueries({ queryKey: ["whatsapp", "conversations"] })}
                 >
                   Retry
                 </Button>
