@@ -1,4 +1,5 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
+import { Elysia } from "elysia"
 
 // ─── Mocks ──────────────────────────────────────────────────────────────
 
@@ -42,7 +43,6 @@ const mockResolveAuthContext: { current: any } = { current: null }
 const CONSOLE_BASE = "http://localhost/audit"
 
 const buildConsoleApp = () => {
-  const { Elysia } = require("elysia")
   return new Elysia().use(consoleWhatsappAuditRoutes)
 }
 const BASE = "http://localhost/admin/whatsapp/audit"

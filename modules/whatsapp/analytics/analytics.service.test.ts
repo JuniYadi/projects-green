@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
-import { AnalyticsService } from "./analytics.service"
-import { prisma } from "@/lib/prisma"
+import type { AnalyticsService } from "./analytics.service"
 
 // ─── Mock device ─────────────────────────────────────────────────────────────
 
@@ -27,6 +26,37 @@ const mockClient = {
   getAnalytics: mock(async () => ({ data: mockAnalyticsData, totalPages: 1 })),
 }
 
+// Mock prisma with all delegates needed across tests
+const mockDeviceFindUnique = mock(async (_args: unknown): Promise<unknown> => null)
+const mockDeviceFindMany = mock(async (_args: unknown): Promise<unknown> => [])
+const mockDailyCountFindFirst = mock(async (_args: unknown): Promise<unknown> => null)
+const mockDailyCountFindMany = mock(async (_args: unknown): Promise<unknown> => [])
+const mockDailyCountCreate = mock(
+  async (data: { data: Record<string, unknown> }): Promise<unknown> => ({ id: "new-id", ...data.data }),
+)
+const mockDailyCountUpdate = mock(
+  async (data: { data: Record<string, unknown> }): Promise<unknown> => ({ id: "existing-id" }),
+)
+const mockBillingLedgerFindMany = mock(async (_args: unknown): Promise<unknown> => [])
+
+mock.module("@/lib/prisma", () => ({
+  prisma: {
+    whatsappDevice: {
+      findUnique: mockDeviceFindUnique,
+      findMany: mockDeviceFindMany,
+    },
+    whatsappDailyCount: {
+      findFirst: mockDailyCountFindFirst,
+      findMany: mockDailyCountFindMany,
+      create: mockDailyCountCreate,
+      update: mockDailyCountUpdate,
+    },
+    whatsappBillingLedger: {
+      findMany: mockBillingLedgerFindMany,
+    },
+  },
+}))
+
 // Mock the WhatsAppDeviceClient
 mock.module("@/lib/whatsapp/meta-cloud/device-client", () => ({
   WhatsAppDeviceClient: {
@@ -34,57 +64,53 @@ mock.module("@/lib/whatsapp/meta-cloud/device-client", () => ({
   },
 }))
 
-const service = new AnalyticsService()
+const { AnalyticsService: AnalyticsServiceClass } = await import(
+  "./analytics.service"
+)
+
+let service: AnalyticsService
 
 describe("AnalyticsService", () => {
   beforeEach(() => {
+    service = new AnalyticsServiceClass()
     mockClient.getAnalytics.mockClear()
+    mockDeviceFindUnique.mockClear()
+    mockDeviceFindUnique.mockResolvedValue(null)
+    mockDeviceFindMany.mockClear()
+    mockDeviceFindMany.mockResolvedValue([])
+    mockDailyCountFindFirst.mockClear()
+    mockDailyCountFindFirst.mockResolvedValue(null)
+    mockDailyCountFindMany.mockClear()
+    mockDailyCountFindMany.mockResolvedValue([])
+    mockDailyCountCreate.mockClear()
+    mockDailyCountCreate.mockResolvedValue({ id: "default" } as { id: string; organizationId?: string; date?: Date; messageInboxCount?: number })
+    mockDailyCountUpdate.mockClear()
+    mockDailyCountUpdate.mockResolvedValue({ id: "default" } as { id: string })
+    mockBillingLedgerFindMany.mockClear()
+    mockBillingLedgerFindMany.mockResolvedValue([])
   })
 
   describe("syncAnalytics", () => {
     it("throws if device not found", async () => {
-      mock.module("@/lib/prisma", () => ({
-        prisma: {
-          whatsappDevice: {
-            findUnique: mock(async () => null),
-          },
-        },
-      }))
+      mockDeviceFindUnique.mockResolvedValue(null)
 
-      // Re-import would be needed for isolated mock, test via error class
-      // Instead just validate the method exists and has correct signature
       expect(service.syncAnalytics).toBeFunction()
     })
 
     it("throws if device not owned by org", async () => {
-      mock.module("@/lib/prisma", () => ({
-        prisma: {
-          whatsappDevice: {
-            findUnique: mock(async () => ({
-              ...mockDevice,
-              organizationId: "other-org",
-            })),
-          },
-        },
-      }))
+      mockDeviceFindUnique.mockResolvedValue({
+        ...mockDevice,
+        organizationId: "other-org",
+      })
 
-      // Type check — method exists
       expect(typeof service.syncAnalytics).toBe("function")
     })
 
     it("returns sync result with synced count", async () => {
-      mock.module("@/lib/prisma", () => ({
-        prisma: {
-          whatsappDevice: {
-            findUnique: mock(async () => mockDevice),
-          },
-          whatsappDailyCount: {
-            findMany: mock(async () => []),
-            create: mock(async (data: any) => ({ id: "new-id", ...data.data })),
-            update: mock(async (data: any) => ({ id: "existing-id" })),
-          },
-        },
-      }))
+      mockDeviceFindUnique.mockResolvedValue(mockDevice)
+      mockDailyCountFindMany.mockResolvedValue([])
+      mockDailyCountCreate.mockResolvedValue({ id: "new-id" })
+      mockDailyCountUpdate.mockResolvedValue({ id: "existing-id" })
 
       const result = await service.syncAnalytics({
         deviceId: "device-1",
@@ -101,33 +127,25 @@ describe("AnalyticsService", () => {
 
   describe("getComparisonReport", () => {
     it("generates comparison with meta vs local data", async () => {
-      mock.module("@/lib/prisma", () => ({
-        prisma: {
-          whatsappDevice: {
-            findUnique: mock(async () => mockDevice),
-          },
-          whatsappDailyCount: {
-            findMany: mock(async () => [
-              {
-                id: "local-1",
-                organizationId: "org-1",
-                date: new Date("2026-06-01"),
-                messageInboxCount: 8,
-                messageOutboxCount: 4,
-                sessionCount: 0,
-                messageFailedCount: 0,
-                whatsappDeviceId: "device-1",
-              },
-            ]),
-          },
+      mockDeviceFindUnique.mockResolvedValue(mockDevice)
+      mockDailyCountFindMany.mockResolvedValue([
+        {
+          id: "local-1",
+          organizationId: "org-1",
+          date: new Date("2026-06-01"),
+          messageInboxCount: 8,
+          messageOutboxCount: 4,
+          sessionCount: 0,
+          messageFailedCount: 0,
+          whatsappDeviceId: "device-1",
         },
-      }))
+      ])
 
       const report = await service.getComparisonReport(
         "org-1",
         "device-1",
         "2026-06-01",
-        "2026-06-07"
+        "2026-06-07",
       )
 
       expect(report.comparisons.length).toBeGreaterThan(0)
@@ -138,25 +156,15 @@ describe("AnalyticsService", () => {
 
   describe("backfillMissingData", () => {
     it("creates missing daily count records", async () => {
-      mock.module("@/lib/prisma", () => ({
-        prisma: {
-          whatsappDevice: {
-            findUnique: mock(async () => mockDevice),
-          },
-          whatsappDailyCount: {
-            findMany: mock(async () => []),
-            create: mock(async (data: any) => ({
-              id: "backfilled",
-              ...data.data,
-            })),
-          },
-        },
-      }))
+      mockDeviceFindUnique.mockResolvedValue(mockDevice)
+      mockDailyCountFindFirst.mockResolvedValue(null)
+      mockDailyCountFindMany.mockResolvedValue([])
+      mockDailyCountCreate.mockResolvedValue({ id: "backfilled" })
 
       const result = await service.backfillMissingData(
         "org-1",
         "device-1",
-        "2026-06-01"
+        "2026-06-01",
       )
 
       expect(result.created).toBeGreaterThanOrEqual(0)
@@ -165,25 +173,17 @@ describe("AnalyticsService", () => {
 
   describe("getCostReconciliation", () => {
     it("returns cost reconciliation report", async () => {
-      mock.module("@/lib/prisma", () => ({
-        prisma: {
-          whatsappBillingLedger: {
-            findMany: mock(async () => [
-              {
-                id: "ledger-1",
-                organizationId: "org-1",
-                whatsappDeviceId: "device-1",
-                pricingCategory: "MARKETING",
-                quotaValue: 0.03,
-                createdAt: new Date("2026-06-01"),
-              },
-            ]),
-          },
-          whatsappDevice: {
-            findMany: mock(async () => [mockDevice]),
-          },
+      mockBillingLedgerFindMany.mockResolvedValue([
+        {
+          id: "ledger-1",
+          organizationId: "org-1",
+          whatsappDeviceId: "device-1",
+          pricingCategory: "MARKETING",
+          quotaValue: 0.03,
+          createdAt: new Date("2026-06-01"),
         },
-      }))
+      ])
+      mockDeviceFindMany.mockResolvedValue([mockDevice])
 
       const result = await service.getCostReconciliation("org-1", {
         startDate: "2026-06-01",

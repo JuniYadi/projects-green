@@ -27,15 +27,15 @@ This is a Next.js 16 + TypeScript app with feature-oriented modules.
 - `bun run prisma:migrate:dev` / `bun run prisma:generate`: Apply DB migrations and refresh Prisma client.
 - `bun run tinker`: Interactive Prisma REPL — like `php artisan tinker`. Opens a prompt with `prisma`, `p` (alias), `Prisma` namespace, and all model delegates available as globals. Example: `await p.user.findMany({ take: 3 })`. Connected directly to the database (reads `DATABASE_URL`), not the running server.
 
-**3 PILLARS VALIDATION (HARD REQUIREMENT):**
-Must pass before opening a PR. **NOT** per-edit — run only when explicitly instructed to open a PR (saves tokens during local work):
-1. `bun run lint` — 0 errors
-2. `bun run typecheck` — 0 errors
-3. `bun run test` — all tests pass
+**3 PILLARS VALIDATION (CHANGE-SCOPED):**
+Validate your change scope before PR — pre-existing failures outside your change are NOT blockers:
+1. `bun run lint` — fix any new lint errors in your changed files; pre-existing errors elsewhere don't block
+2. `bun run typecheck` — fix any new type errors in your changed files; pre-existing errors elsewhere don't block  
+3. `bun run test` — ensure you haven't broken tests in affected modules; pre-existing failures don't block
 
-Build and coverage are CI-only (handled by `typecheck-build.yml` and `coverage-codecov.yml`).
+Only regressions you introduce must be fixed before merging. Pre-existing issues are team debt, not a per-PR gate.
 
-**NEVER open PR if any pillar fails. Do NOT run these during local development — only when the user asks you to open a PR.**
+Full-project validation runs in CI (`typecheck-build.yml` → typecheck & build, `coverage-codecov.yml` → tests).
 
 ## Coding Style & Naming Conventions
 - TypeScript-first; strict mode is enabled in `tsconfig.json`.
@@ -213,7 +213,7 @@ Mock at the **lowest shared dependency** (infrastructure), not at intermediate s
 
 5. **No duplicate test blocks across files** — if `quota.service.test.ts` already covers `checkQuota`, do not add a `describe("quotaService")` block in `messages.test.ts`. Duplicate coverage causes ordering-sensitive failures and inflates the test count.
 
-6. **Validate with `bun run test:coverage` before every PR** — coverage runs in a single process (same as CI), so it will surface cross-file pollution that `bun test` misses locally.
+6. **Run `bun run test:coverage` if you modified mock setup** — coverage runs single-process (like CI) and surfaces cross-file pollution that `bun test --isolate` misses. Only failures in your change scope are blocking; pre-existing ones aren't.
 
 ## E2E Test Scripts
 

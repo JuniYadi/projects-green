@@ -46,6 +46,6 @@ describe("OpenSearch Index Service", () => {
 
     // Should not throw
     const result = await ensureLogIndex("acme-corp")
-    expect(result).toBe("deploy-logs-acme-corp-2026.06")
+    expect(result).toBe(getLogIndexName("acme-corp"))
   })
 })

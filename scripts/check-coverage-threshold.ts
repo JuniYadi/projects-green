@@ -115,12 +115,14 @@ const main = async () => {
   // Collect test files, excluding directories not counted in coverage
   // to reduce memory pressure on CI runners (single-process coverage mode)
   const testFiles = collectTestFiles()
-
+  const preload = import.meta.dir + "/../test/setup.ts"
   const proc = Bun.spawn(
     [
       "bun",
       "test",
       "--isolate",
+      "--preload",
+      preload,
       "--coverage",
       "--coverage-reporter=text",
       "--coverage-reporter=lcov",

@@ -1,5 +1,6 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { render } from "@testing-library/react"
+import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
 
 // NOTE: Do NOT import `screen` — it is evaluated at module-import time when
 // document.body is still null (Happy DOM). Use render()'s return value instead.
@@ -67,7 +68,7 @@ const mockTemplatesData = [
 ]
 
 const mockUseTemplates = mock(() => ({
-  templates: mockTemplatesData as any,
+  templates: mockTemplatesData as WhatsAppTemplate[],
   loading: false,
   error: null,
   reload: mock(() => {}),
@@ -112,8 +113,8 @@ mock.module("@/lib/i18n/messages", () => ({
 }))
 
 mock.module("@/lib/i18n/pathname", () => ({
-  localizePathname: (opts: any) => `/en${opts.path}`,
-  resolveLocaleOrDefault: (lang: any) => lang || "en",
+  localizePathname: (opts: { pathname: string; locale: string }) => `/en${opts.pathname}`,
+  resolveLocaleOrDefault: (lang: string) => lang || "en",
 }))
 
 import WhatsAppTemplatesPage from "./page"

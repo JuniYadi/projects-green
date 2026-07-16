@@ -106,7 +106,7 @@ const mockAuditLog = mock<() => Promise<void>>(async () => {})
 
 let vpnServerFindManyQueue: unknown[] = []
 let vpnServerFindUniqueValue: unknown = makeServer()
-let vpnServerCreateValue: unknown = makeServer()
+const vpnServerCreateValue: unknown = makeServer()
 let vpnServerUpdateValue: unknown = makeServer()
 let vpnServerDeleteValue: unknown = {}
 
@@ -156,7 +156,6 @@ mock.module("@/lib/audit.service", () => ({
 // ---------------------------------------------------------------------------
 
 const service = new VpnServerService(
-  // @ts-ignore — testing against the mocked module
   undefined as unknown as PrismaClient
 )
 
@@ -311,7 +310,6 @@ describe("createAdminVpnServersRoutes", () => {
       // Override service.create to bypass the prisma dependency chain (assertNameAvailable
       // calls findUnique which depends on vpnServerFindUniqueValue state).
       const svc = new VpnServerService(
-        // @ts-ignore
         undefined as unknown as PrismaClient
       )
       svc.create = mock(async () => makeServer({ id: "srv-new" }))
@@ -394,7 +392,6 @@ describe("createAdminVpnServersRoutes", () => {
 
     it("logs and returns 500 when an unexpected error occurs", async () => {
       const failingService = new VpnServerService(
-        // @ts-ignore
         undefined as unknown as PrismaClient
       )
       failingService.update = mock<() => Promise<never>>(async () => {
@@ -744,7 +741,7 @@ describe("createAdminVpnServersRoutes", () => {
   describe("POST /admin/vpn/servers/:id/test", () => {
     it("runs the connection scan and returns the result", async () => {
       // Fresh mock per test to avoid shared call-index state
-      let scanCallIndex = 0
+      const scanCallIndex = 0
       const scanMock = mock<() => Promise<any>>(async () => ({
         healthy: true, latencyMs: 42, status: "completed",
         startedAt: "2026-01-01T00:00:00Z", completedAt: "2026-01-01T00:00:01Z",

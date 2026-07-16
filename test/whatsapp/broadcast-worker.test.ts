@@ -44,8 +44,11 @@ const campaignUpd = mock(async () => ({})) as any
 const rateFU = mock(async () => null) as any
 const rateUp = mock(async () => ({})) as any
 const convUp = mock(async () => ({ id: "c" })) as any
+const deviceFU = mock(async () => device()) as any
+const dailyCountFU = mock(async () => null) as any
+const hourlyCountFU = mock(async () => null) as any
+const txn = mock(async (ops: unknown) => Array.isArray(ops) ? Promise.all(ops) : null) as any
 const msgCr = mock(async () => ({ id: "m" })) as any
-
 mock.module("bullmq", () => ({ Queue: QueueMock, Worker: WorkerMock }) as any)
 mock.module(
   "@/lib/prisma",
@@ -61,14 +64,23 @@ mock.module(
           findUnique: campaignFU,
           update: campaignUpd,
         },
+        whatsappDevice: { findUnique: deviceFU },
         whatsappBroadcastRateState: {
           findUnique: rateFU,
           upsert: rateUp,
         },
         whatsappConversation: { upsert: convUp },
         whatsappMessage: { create: msgCr },
-        whatsappDailyCount: { upsert: mock(async () => null) },
+        whatsappDailyCount: {
+          findUnique: dailyCountFU,
+          upsert: mock(async () => null),
+        },
+        whatsappHourlyCount: {
+          findUnique: hourlyCountFU,
+          upsert: mock(async () => null),
+        },
         whatsappMonthlyCount: { upsert: mock(async () => null) },
+        $transaction: txn,
         whatsappBillingLedger: { create: mock(async () => null) },
         whatsappQuotaCreditRate: { findUnique: mock(async () => null) },
         whatsappTemplate: { findFirst: mock(async () => null) },
@@ -80,8 +92,7 @@ mock.module(
           upsert: mock(async (args: any) => args.create ?? args.update ?? {}),
         },
       },
-    }) as any
-)
+    }) as any)
 mock.module(
   "@/lib/whatsapp/meta-cloud/device-client",
   () =>
@@ -165,6 +176,10 @@ beforeEach(() => {
     rateUp,
     convUp,
     msgCr,
+    deviceFU,
+    dailyCountFU,
+    hourlyCountFU,
+    txn,
   ]) {
     m.mockClear()
   }
@@ -178,6 +193,10 @@ beforeEach(() => {
   recipientGB.mockResolvedValue([{ status: "SENT", _count: { _all: 1 } }])
   convUp.mockResolvedValue({ id: "c" })
   msgCr.mockResolvedValue({ id: "m" })
+  deviceFU.mockResolvedValue(device())
+  dailyCountFU.mockResolvedValue(null)
+  hourlyCountFU.mockResolvedValue(null)
+  txn.mockClear()
 })
 
 function exec(data: Record<string, string>) {
