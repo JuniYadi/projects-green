@@ -43,6 +43,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
+import type { WhatsAppTemplateLanguage } from "@/lib/api/whatsapp-client"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import { useTemplates } from "@/modules/whatsapp/templates/api/templates.hooks"
 import { MessageStatusBadge } from "@/modules/whatsapp/messages/ui/message-status-badge"
@@ -93,11 +94,11 @@ type Message = {
   createdAt: string
   updatedAt: string
 }
-
 type TemplateMessageMetadata = {
   templateName?: string
   templateLanguage?: string
   fields?: string[]
+  templateLanguageData?: WhatsAppTemplateLanguage
 }
 
 type ConversationDetail = ConversationListItem & {
@@ -222,9 +223,33 @@ function ConversationItem({
 }
 
 // ─── Message Bubble ──────────────────────────────────────────────────────────
-
 function MessageBubble({ message }: { message: Message }) {
   const isInbox = message.direction === "INBOX"
+
+  // Template messages with stored language data render as full preview
+  if (
+    message.messageType === "template" &&
+    message.metadata?.templateLanguageData
+  ) {
+    const meta = message.metadata as TemplateMessageMetadata
+    const values = (meta.fields ?? []).reduce<Record<number, string>>(
+      (acc, val, i) => {
+        acc[i + 1] = val
+        return acc
+      },
+      {}
+    )
+
+    return (
+      <div className="flex justify-end">
+        <WhatsAppTemplatePreview
+          language={meta.templateLanguageData!}
+          values={values}
+          mode="full"
+        />
+      </div>
+    )
+  }
 
   return (
     <TooltipProvider>
@@ -552,22 +577,6 @@ export default function WhatsAppMessagesPage() {
     [pathname, router, searchParams]
   )
 
-  const openTemplateDialogForConversation = React.useCallback(
-    (conversation: ConversationDetail) => {
-      const phone = normalizeIndonesianPhoneNumber(conversation.contactPhone) ?? conversation.contactPhone
-      setSendPhone(phone)
-      if (activeDevices.some((d) => d.id === conversation.whatsappDeviceId)) {
-        setSendDeviceId(conversation.whatsappDeviceId!)
-      }
-      setSelectedTemplateId("")
-      setSelectedTemplateLanguage("")
-      setTemplateFieldValues({})
-      setTemplateSearchQuery("")
-      setTemplatePickerOpen(true)
-      setSendDialogOpen(true)
-    },
-    [activeDevices]
-  )
 
 
   const handleSendMessage = async () => {
@@ -658,10 +667,28 @@ export default function WhatsAppMessagesPage() {
 
   // ─── Render ────────────────────────────────────────────────────────────
   const handleDialogOpenChange = (open: boolean) => {
-    setSendDialogOpen(open)
-    if (open && !selectedTemplateId) {
+    if (open) {
+      // Reset template/language/fields on each open
+      setSelectedTemplateId("")
+      setSelectedTemplateLanguage("")
+      setTemplateFieldValues({})
+      setTemplateSearchQuery("")
       setTemplatePickerOpen(true)
+
+      // Pre-fill phone from ?phone= query parameter
+      const phoneParam = searchParams.get(PHONE_QUERY_KEY)
+      const normalized = phoneParam ? normalizeIndonesianPhoneNumber(phoneParam) : null
+      setSendPhone(normalized ?? "")
+    } else {
+      // Reset all on close; next open re-reads ?phone=
+      setSendPhone("")
+      setSendDeviceId("")
+      setSelectedTemplateId("")
+      setSelectedTemplateLanguage("")
+      setTemplateFieldValues({})
+      setTemplateSearchQuery("")
     }
+    setSendDialogOpen(open)
   }
 
 
@@ -695,12 +722,25 @@ export default function WhatsAppMessagesPage() {
                   {/* Phone Number — top of left column */}
                   <div className="grid gap-2">
                     <Label htmlFor="send-phone">Phone Number *</Label>
-                    <Input
-                      id="send-phone"
-                      placeholder="+628123456789"
-                      value={sendPhone}
-                      onChange={(e) => setSendPhone(e.target.value)}
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="send-phone"
+                        placeholder="+628123456789"
+                        value={sendPhone}
+                        onChange={(e) => setSendPhone(e.target.value)}
+                        className="flex-1"
+                      />
+                      {sendPhone && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSendPhone("")}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Device Selection — hidden when single active device */}

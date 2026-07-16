@@ -108,13 +108,37 @@ export const mapDetectionResultDTO = (
   const ecosystem = dto.primaryFramework?.ecosystem ?? null
   const dockerfileDetected = detectDockerfileInEvidence(dto.evidence)
 
+  // Derive primary/secondary engines from requiredDependencies
+  const appRuntime = dto.requiredDependencies?.find(
+    (d) => d.requiredFor === "app_runtime"
+  )
+  const secondaryRuntime = dto.requiredDependencies?.find(
+    (d) => d.requiredFor !== "app_runtime"
+  )
+
+  // Get versions from enforcedRuntimes (populated by toDetectionResultDTO)
+  const enforcedRuntimes = dto.enforcedRuntimes ?? []
+  const primaryVersion =
+    enforcedRuntimes.find((e) => e.runtimeId === appRuntime?.id)?.version ??
+    null
+  const secondaryVersion =
+    enforcedRuntimes.find(
+      (e) => e.runtimeId === secondaryRuntime?.id
+    )?.version ?? null
+
   return {
     language: mapEcosystemToLanguage(ecosystem),
     framework: frameworkName,
+    frameworkVersion: dto.frameworkVersion ?? null,
     dockerfileDetected,
     buildCommand: deriveBuildCommand(frameworkName),
     confidence: dto.confidence,
     status: mapDecisionStatus(dto.decision?.status),
+    primaryEngine: appRuntime?.id ?? null,
+    primaryEngineVersion: primaryVersion,
+    secondaryEngine: secondaryRuntime?.id ?? null,
+    secondaryEngineVersion: secondaryVersion,
+    defaultPort: dto.defaultPort ?? null,
   }
 }
 

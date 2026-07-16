@@ -28,6 +28,7 @@
     "db:studio": "bun --bun prisma studio",
     "db:status": "bun --bun prisma status",
     "db:pull": "bun --bun prisma db pull --print",
+    "tinker": "bun run scripts/tinker.ts",
     "github:worker": "bun run scripts/github-worker.ts",
     "seed:all": "bun run scripts/seed-runner.ts --all",
     "seed:system": "bun run scripts/seed-runner.ts --system",

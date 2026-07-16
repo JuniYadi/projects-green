@@ -178,7 +178,7 @@ describe("WhatsappBillingService", () => {
       expect(defaultTx.whatsappDevice.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "device_1" },
-          data: { quotaBaseOut: 5000 },
+          data: expect.objectContaining({ quotaBaseOut: 5000 }),
         })
       )
 

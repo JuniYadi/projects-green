@@ -18,8 +18,14 @@ export type StackUpsertInput = {
   branchName: string
   rootDirectory: string
   framework?: string | null
+  frameworkVersion?: string | null
   buildCommand?: string | null
   dockerfileDetected: boolean
+  primaryEngine?: string | null
+  primaryEngineVersion?: string | null
+  secondaryEngine?: string | null
+  secondaryEngineVersion?: string | null
+  defaultPort?: number | null
   resourcePlanId?: string | null
   billingMode?: "PAYG" | "PACKAGE"
   hourlyCost?: string | number | null
@@ -126,6 +132,18 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       throw new Error("STACK_DEPLOY_IN_PROGRESS")
     }
 
+    const buildMetadata: Record<string, unknown> = {}
+    if (input.frameworkVersion != null) buildMetadata.frameworkVersion = input.frameworkVersion
+    if (input.primaryEngine != null) buildMetadata.primaryEngine = input.primaryEngine
+    if (input.primaryEngineVersion != null) buildMetadata.primaryEngineVersion = input.primaryEngineVersion
+    if (input.secondaryEngine != null) buildMetadata.secondaryEngine = input.secondaryEngine
+    if (input.secondaryEngineVersion != null) buildMetadata.secondaryEngineVersion = input.secondaryEngineVersion
+    if (input.defaultPort != null) buildMetadata.defaultPort = input.defaultPort
+
+    // Merge with existing metadataJson on update
+    const existingJson = existing?.metadataJson as Record<string, unknown> | null ?? {}
+    const metadataJson = { ...existingJson, ...buildMetadata } as Prisma.InputJsonValue
+
     const data = {
       organizationId: input.organizationId,
       name: input.name,
@@ -145,6 +163,7 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       customDomain: input.customDomain ?? null,
       subdomain: input.subdomain ?? null,
       envVarsJson,
+      metadataJson: Object.keys(buildMetadata).length > 0 ? metadataJson : undefined,
     }
 
     if (existing) {

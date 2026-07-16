@@ -30,15 +30,21 @@ type StepBuildProps = {
   isDetecting: boolean
   language: string
   framework: string
+  frameworkVersion: string
   buildCommand: string
   useDockerfile: boolean
+  primaryEngine: string
+  primaryEngineVersion: string
+  secondaryEngine: string
+  secondaryEngineVersion: string
+  defaultPort: number
   manualOverrideRequired: boolean
   canProceed: boolean
   onBack: () => void
   onNext: () => void
   onBuildFieldChange: (
-    field: "language" | "framework" | "buildCommand" | "useDockerfile",
-    value: string | boolean
+    field: "language" | "framework" | "frameworkVersion" | "buildCommand" | "useDockerfile" | "primaryEngine" | "primaryEngineVersion" | "secondaryEngine" | "secondaryEngineVersion" | "defaultPort",
+    value: string | boolean | number
   ) => void
 }
 
@@ -51,8 +57,14 @@ export function StepBuild({
   isDetecting,
   language,
   framework,
+  frameworkVersion,
   buildCommand,
   useDockerfile,
+  primaryEngine,
+  primaryEngineVersion,
+  secondaryEngine,
+  secondaryEngineVersion,
+  defaultPort,
   manualOverrideRequired,
   canProceed,
   onBack,
@@ -134,8 +146,39 @@ export function StepBuild({
                 <dt className="font-medium text-foreground">
                   Detected framework
                 </dt>
-                <dd>{detectionResult?.framework ?? "Not detected"}</dd>
+                <dd>
+                  {detectionResult?.framework ?? "Not detected"}
+                  {detectionResult?.frameworkVersion
+                    ? ` v${detectionResult.frameworkVersion}`
+                    : ""}
+                </dd>
               </div>
+              {detectionResult?.primaryEngine ? (
+                <div className="space-y-1">
+                  <dt className="font-medium text-foreground">
+                    Primary engine
+                  </dt>
+                  <dd>
+                    {detectionResult.primaryEngine}
+                    {detectionResult.primaryEngineVersion
+                      ? ` v${detectionResult.primaryEngineVersion}`
+                      : ""}
+                  </dd>
+                </div>
+              ) : null}
+              {detectionResult?.secondaryEngine ? (
+                <div className="space-y-1">
+                  <dt className="font-medium text-foreground">
+                    Secondary engine
+                  </dt>
+                  <dd>
+                    {detectionResult.secondaryEngine}
+                    {detectionResult.secondaryEngineVersion
+                      ? ` v${detectionResult.secondaryEngineVersion}`
+                      : ""}
+                  </dd>
+                </div>
+              ) : null}
               <div className="space-y-1">
                 <dt className="font-medium text-foreground">
                   Detected build command
@@ -148,6 +191,16 @@ export function StepBuild({
                 </dt>
                 <dd>{detectionResult?.dockerfileDetected ? "Yes" : "No"}</dd>
               </div>
+              <div className="space-y-1">
+                <dt className="font-medium text-foreground">
+                  Default port
+                </dt>
+                <dd>
+                  {detectionResult?.defaultPort
+                    ? detectionResult.defaultPort
+                    : "Not detected"}
+                </dd>
+              </div>
             </dl>
           )}
         </div>
@@ -159,7 +212,6 @@ export function StepBuild({
               ? "Manual setup is required before continuing."
               : "Optional: adjust settings if the detection is not exact."}
           </p>
-
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <p className="text-xs font-medium">Language</p>
@@ -213,6 +265,106 @@ export function StepBuild({
                   )
                 })}
               </select>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <p className="text-xs font-medium">Framework version</p>
+              <Input
+                aria-label="Framework version"
+                value={frameworkVersion}
+                placeholder="e.g. 13.x"
+                className="h-8 text-xs"
+                onChange={(event) => {
+                  onBuildFieldChange(
+                    "frameworkVersion",
+                    event.target.value
+                  )
+                }}
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-medium">Default port</p>
+              <Input
+                type="number"
+                aria-label="Default port"
+                value={defaultPort || ""}
+                placeholder="e.g. 3000"
+                className="h-8 text-xs"
+                onChange={(event) => {
+                  onBuildFieldChange(
+                    "defaultPort",
+                    Number(event.target.value)
+                  )
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <p className="text-xs font-medium">Primary engine</p>
+              <Input
+                aria-label="Primary engine"
+                value={primaryEngine}
+                placeholder="e.g. node"
+                className="h-8 text-xs"
+                onChange={(event) => {
+                  onBuildFieldChange(
+                    "primaryEngine",
+                    event.target.value
+                  )
+                }}
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-medium">Engine version</p>
+              <Input
+                aria-label="Primary engine version"
+                value={primaryEngineVersion}
+                placeholder="e.g. 24"
+                className="h-8 text-xs"
+                onChange={(event) => {
+                  onBuildFieldChange(
+                    "primaryEngineVersion",
+                    event.target.value
+                  )
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <p className="text-xs font-medium">Secondary engine</p>
+              <Input
+                aria-label="Secondary engine"
+                value={secondaryEngine}
+                placeholder="e.g. node"
+                className="h-8 text-xs"
+                onChange={(event) => {
+                  onBuildFieldChange(
+                    "secondaryEngine",
+                    event.target.value
+                  )
+                }}
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-medium">Engine version</p>
+              <Input
+                aria-label="Secondary engine version"
+                value={secondaryEngineVersion}
+                placeholder="e.g. 24"
+                className="h-8 text-xs"
+                onChange={(event) => {
+                  onBuildFieldChange(
+                    "secondaryEngineVersion",
+                    event.target.value
+                  )
+                }}
+              />
             </div>
           </div>
 

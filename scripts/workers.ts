@@ -97,6 +97,7 @@ import { WebhookRetryJob } from "@/modules/whatsapp/webhooks/jobs/webhook-retry.
 import { monitorActiveDeployments } from "@/modules/deploy/deploy-monitor.service"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { AppHostingBillingService } from "@/modules/deploy/billing/app-hosting-billing.service"
+import type { WhatsAppPlanResources } from "@/modules/billing/types"
 import { WhatsappBillingService } from "@/modules/whatsapp/billing/whatsapp-billing.service"
 import { VpnRenewalService } from "@/modules/vpn/billing/vpn-renewal.service"
 import {
@@ -585,6 +586,10 @@ const appHostingBillingInterval = setInterval(async () => {
   }
 }, 3_600_000) // 1 hour
 intervals.push(appHostingBillingInterval)
+function extractAllowance(resources: WhatsAppPlanResources | null): number {
+  if (!resources) return 0
+  return resources.quotaOutMonthly ?? resources.quotaOut ?? 0
+}
 
 // ── WhatsApp Monthly Billing (every hour) ───────────────────────────────────
 const whatsappBillingInterval = setInterval(async () => {
@@ -641,11 +646,14 @@ const whatsappBillingInterval = setInterval(async () => {
             continue
           }
 
+          const resources = subscription.plan?.resources as unknown as WhatsAppPlanResources | null
+          const allowance = extractAllowance(resources)
+
           await whatsappBilling.chargeMonthlyBase({
             organizationId: device.organizationId,
             deviceId: device.id,
             amount: basePrice,
-            allowance: 0,
+            allowance,
             period,
           })
 

@@ -38,6 +38,17 @@ const JS_LOCKFILES = [
   "yarn.lock",
 ]
 
+// Default port mapping by framework id — convention-based, not authoritative.
+// Fallback is null so the UI prompts the user for manual entry.
+const DEFAULT_PORT_MAP: Record<string, number> = {
+  nextjs: 3000,
+  react: 3000,
+  laravel: 80,
+  wordpress: 80,
+  django: 8000,
+  flask: 5000,
+}
+
 // --- GitHub API Tool-Calling Detection ---
 
 export type GithubApiDetectionInput = {
@@ -1578,6 +1589,9 @@ export const detectFrameworkFromGithubApi = async (
       ref: input.ref,
       subdir: input.subdir,
     },
+    frameworkVersion,
+    defaultPort: DEFAULT_PORT_MAP[frameworkId] ?? null,
+    enforcedRuntimes,
   }
 }
 

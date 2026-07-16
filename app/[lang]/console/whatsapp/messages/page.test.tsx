@@ -218,34 +218,6 @@ describe("WhatsAppMessagesPage", () => {
     view.unmount()
   })
 
-  it("shows Send Template button when active conversation has no recent INBOX messages", async () => {
-    const oldDate = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString()
-    mockConversationsList.mockResolvedValueOnce({ ok: true, conversations: [{ id: "conv_1", organizationId: "org_1", contactPhone: "+6281234567890", lastMessageAt: oldDate, lastDirection: "OUTBOX", whatsappDeviceId: "device_1", createdAt: oldDate, updatedAt: oldDate, _count: { whatsappMessages: 1 } }] })
-    mockConversationsGet.mockResolvedValueOnce({ ok: true, conversation: { id: "conv_1", organizationId: "org_1", contactPhone: "+6281234567890", lastMessageAt: oldDate, lastDirection: "OUTBOX", whatsappDeviceId: "device_1", createdAt: oldDate, updatedAt: oldDate, _count: { whatsappMessages: 1 }, whatsappMessages: [{ id: "msg_1", conversationId: "conv_1", direction: "OUTBOX", messageType: "template", body: "Hello", mediaUrl: null, waMessageId: null, metadata: null, createdAt: oldDate, updatedAt: oldDate }] } })
-    const view = render(<WhatsAppMessagesPage />)
-    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument() })
-    await tick(100)
-    expect(view.getByText("+6281234567890")).toBeInTheDocument()
-    fireEvent.click(view.getByText("+6281234567890"))
-    await waitFor(() => { expect(view.queryByText("1 messages")).toBeInTheDocument() })
-    await tick(50)
-    expect(view.getByRole("button", { name: "Send Template" })).toBeInTheDocument()
-    view.unmount()
-  })
-
-  it("does not show Send Template button when conversation has recent INBOX messages", async () => {
-    const recentDate = new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
-    mockConversationsList.mockResolvedValueOnce({ ok: true, conversations: [{ id: "conv_2", organizationId: "org_1", contactPhone: "+6289876543210", lastMessageAt: recentDate, lastDirection: "INBOX", whatsappDeviceId: "device_1", createdAt: recentDate, updatedAt: recentDate, _count: { whatsappMessages: 1 } }] })
-    mockConversationsGet.mockResolvedValueOnce({ ok: true, conversation: { id: "conv_2", organizationId: "org_1", contactPhone: "+6289876543210", lastMessageAt: recentDate, lastDirection: "INBOX", whatsappDeviceId: "device_1", createdAt: recentDate, updatedAt: recentDate, _count: { whatsappMessages: 1 }, whatsappMessages: [{ id: "msg_2", conversationId: "conv_2", direction: "INBOX", messageType: "text", body: "Hello there!", mediaUrl: null, waMessageId: null, metadata: null, createdAt: recentDate, updatedAt: recentDate }] } })
-    const view = render(<WhatsAppMessagesPage />)
-    await waitFor(() => { expect(view.getByRole("button", { name: /new message/i })).toBeInTheDocument() })
-    await tick(100)
-    fireEvent.click(view.getByText("+6289876543210"))
-    await waitFor(() => { expect(view.queryByText("1 messages")).toBeInTheDocument() })
-    await tick(50)
-    expect(view.queryByRole("button", { name: "Send Template" })).not.toBeInTheDocument()
-    view.unmount()
-  })
 
   it("lacks Conversations heading and search has correct aria-label", async () => {
     const view = render(<WhatsAppMessagesPage />)

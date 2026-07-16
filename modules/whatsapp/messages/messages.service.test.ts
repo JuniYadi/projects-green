@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { Prisma } from "@prisma/client"
+import type { WhatsAppTemplateLanguage } from "@/lib/api/whatsapp-client"
 
 // ---------------------------------------------------------------------------
 // Mock dependencies at the module level BEFORE any service imports.
@@ -699,6 +700,12 @@ describe("messageService", () => {
   })
 
   describe("sendTemplateMessage", () => {
+    const mockTemplateLanguage = {
+      id: "lang-en",
+      lang: "en",
+      body: "Hello {{1}}",
+    } satisfies WhatsAppTemplateLanguage
+
     it("sends template message via Meta API", async () => {
       await messageService.sendTemplateMessage({
         organizationId: "org-1",
@@ -707,6 +714,7 @@ describe("messageService", () => {
         templateLanguage: "en",
         fields: ["John"],
         renderedBody: "Hello John",
+        templateLanguageData: mockTemplateLanguage,
       })
 
       expect(mockDeviceClient.sendTemplateMessage).toHaveBeenCalledWith({
@@ -725,6 +733,7 @@ describe("messageService", () => {
         templateLanguage: "en",
         fields: ["John"],
         renderedBody: "Hello John",
+        templateLanguageData: mockTemplateLanguage,
       })
 
       expect(mockPrisma.whatsappMessage.create).toHaveBeenCalledWith(
@@ -746,6 +755,7 @@ describe("messageService", () => {
         templateLanguage: "en",
         fields: ["John", "Doe"],
         renderedBody: "Hello John Doe",
+        templateLanguageData: mockTemplateLanguage,
       })
 
       expect(mockPrisma.whatsappMessage.create).toHaveBeenCalledWith(
@@ -755,6 +765,7 @@ describe("messageService", () => {
               templateName: "hello_world",
               templateLanguage: "en",
               fields: ["John", "Doe"],
+              templateLanguageData: mockTemplateLanguage,
             }),
           }),
         })

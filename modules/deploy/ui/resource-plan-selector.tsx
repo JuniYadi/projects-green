@@ -9,18 +9,19 @@ type ResourcePlanSelectorProps = {
   memory?: number
   bufferHours?: number
   hourlyCost?: number
+  recommendedPlanId?: ResourcePlanId | null
   onChange: (value: ResourcePlanId) => void
   onCpuChange?: (value: number) => void
   onMemoryChange?: (value: number) => void
   onBufferHoursChange?: (value: number) => void
 }
-
 export function ResourcePlanSelector({
   selectedPlanId,
   cpu,
   memory,
   bufferHours,
   hourlyCost,
+  recommendedPlanId,
   onChange,
   onCpuChange,
   onMemoryChange,
@@ -31,15 +32,17 @@ export function ResourcePlanSelector({
       <div className="grid gap-3 sm:grid-cols-3">
         {RESOURCE_PLANS.map((plan) => {
           const isSelected = plan.id === selectedPlanId
+          const isRecommended = plan.id === recommendedPlanId
 
           return (
             <label
               key={plan.id}
               className={cn(
-                "block cursor-pointer border p-3",
+                "relative block cursor-pointer border p-3",
                 isSelected
                   ? "border-primary bg-primary/10"
-                  : "border-border bg-background"
+                  : "border-border bg-background",
+                isRecommended && !isSelected && "border-amber-400/60"
               )}
             >
               <input
@@ -53,6 +56,11 @@ export function ResourcePlanSelector({
               <p className="text-xs text-muted-foreground">
                 {plan.description}
               </p>
+              {isRecommended ? (
+                <span className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                  AI recommended
+                </span>
+              ) : null}
             </label>
           )
         })}

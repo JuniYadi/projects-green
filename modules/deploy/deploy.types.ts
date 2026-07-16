@@ -57,10 +57,16 @@ export type DetectionStatus =
 export type DetectionResult = {
   language: string | null
   framework: string | null
+  frameworkVersion?: string | null
   dockerfileDetected: boolean
   buildCommand: string | null
   confidence: number
   status: DetectionStatus
+  primaryEngine?: string | null
+  primaryEngineVersion?: string | null
+  secondaryEngine?: string | null
+  secondaryEngineVersion?: string | null
+  defaultPort?: number | null
 }
 
 export type EnvVar = {
@@ -113,12 +119,17 @@ export type DeploySourceState = {
   branchName: string
   rootDirectory: string
 }
-
 export type DeployBuildState = {
   language: string
   framework: string
+  frameworkVersion?: string
   buildCommand: string
   useDockerfile: boolean
+  primaryEngine?: string
+  primaryEngineVersion?: string
+  secondaryEngine?: string
+  secondaryEngineVersion?: string
+  defaultPort?: number
 }
 
 export type DeployEnvironmentState = {

@@ -164,8 +164,14 @@ export const buildStepSchema = z
   .object({
     language: z.string(),
     framework: z.string(),
+    frameworkVersion: z.string().optional().default(""),
     buildCommand: z.string(),
     useDockerfile: z.boolean(),
+    primaryEngine: z.string().optional().default(""),
+    primaryEngineVersion: z.string().optional().default(""),
+    secondaryEngine: z.string().optional().default(""),
+    secondaryEngineVersion: z.string().optional().default(""),
+    defaultPort: z.number().optional().default(0),
   })
   .superRefine((value, ctx) => {
     const hasManualValues =

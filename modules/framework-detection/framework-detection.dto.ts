@@ -53,6 +53,8 @@ export type DetectionResultDTO = {
   }
   enforcedRuntimes?: Array<{ runtimeId: string; version: string }>
   inspectionLogId?: string
+  frameworkVersion?: string | null
+  defaultPort?: number | null
 }
 
 // --- Mapping Functions ---
@@ -111,6 +113,9 @@ export function toDetectionResultDTO(
     evidence: result.evidence.map(toDetectionEvidenceDTO),
     warnings: result.warnings,
     source: result.source,
+    frameworkVersion: result.frameworkVersion ?? null,
+    defaultPort: result.defaultPort ?? null,
+    enforcedRuntimes: result.enforcedRuntimes,
   }
 }
 

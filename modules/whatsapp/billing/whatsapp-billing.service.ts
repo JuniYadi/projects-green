@@ -84,7 +84,7 @@ export class WhatsappBillingService {
       // (idempotent update: setting to the same value is safe)
       await tx.whatsappDevice.update({
         where: { id: input.deviceId },
-        data: { quotaBaseOut: input.allowance },
+        data: { quotaBaseOut: input.allowance, quotaBase: input.allowance },
       })
 
       return result

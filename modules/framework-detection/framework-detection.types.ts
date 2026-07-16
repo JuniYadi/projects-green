@@ -64,6 +64,9 @@ export type DetectionResult = {
     ref?: string
     subdir?: string
   }
+  frameworkVersion?: string | null
+  defaultPort?: number | null
+  enforcedRuntimes?: Array<{ runtimeId: string; version: string }>
 }
 
 export type FrameworkDetectionInput = {

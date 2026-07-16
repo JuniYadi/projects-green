@@ -125,7 +125,7 @@ export const createDeviceService = (
           rates: input.rates ?? null,
           s3Path: input.s3 ?? null,
           quotaBase: input.quotaBase ?? DEFAULT_QUOTA_BASE,
-          quotaBaseOut: input.quotaBaseOut ?? 0,
+          quotaBaseOut: input.quotaBaseOut ?? input.quotaBase ?? DEFAULT_QUOTA_BASE,
           dailyLimitMessage: input.dailyLimitMessage ?? 0,
           ...(input.balance != null ? { balance: input.balance } : {}),
           ...(input.expiredAt ? { expiredAt: new Date(input.expiredAt) } : {}),
