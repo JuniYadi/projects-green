@@ -115,3 +115,13 @@ Env-var based with `FEATURE_*` prefix, checked via `isFeatureEnabled()` from `li
 - **Prisma Types — Use Generated Only**: never declare manual model types, delegates, or enum aliases. Import from `@prisma/client` instead (resolves via `node_modules/.prisma/client/`). See AGENTS.md for details and examples.
 - **DTO at API Boundary**: every route handler response must go through a DTO (`*.dto.ts` + `toDTO` mapper). Internal service-to-service calls use Prisma types directly. See AGENTS.md for the layer-by-layer breakdown.
 - **3 Pillars**: lint, typecheck, and test MUST pass before any commit/PR
+
+<!-- OPENWIKI:START -->
+
+## OpenWiki
+
+This repository uses OpenWiki for recurring code documentation. Start with `openwiki/quickstart.md`, then follow its links to architecture, workflows, domain concepts, operations, integrations, testing guidance, and source maps.
+
+The scheduled OpenWiki GitHub Actions workflow refreshes the repository wiki. Do not hand-edit generated OpenWiki pages unless explicitly asked; prefer updating source code/docs and letting OpenWiki regenerate.
+
+<!-- OPENWIKI:END -->

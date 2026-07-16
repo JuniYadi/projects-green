@@ -29,6 +29,8 @@ export type WhatsappBroadcastCampaignDTO = Pick<
   | "endedAt"
   | "createdAt"
   | "updatedAt"
+  | "throttleMaxMessages"
+  | "throttlePerMinutes"
 > & {
   recipients?: WhatsappBroadcastRecipientDTO[]
   recipientCount?: number
@@ -79,6 +81,8 @@ export function toWhatsappBroadcastCampaignDTO(
     endedAt: campaign.endedAt,
     createdAt: campaign.createdAt,
     updatedAt: campaign.updatedAt,
+    throttleMaxMessages: campaign.throttleMaxMessages,
+    throttlePerMinutes: campaign.throttlePerMinutes,
     recipients:
       "recipients" in campaign
         ? campaign.recipients.map(toWhatsappBroadcastRecipientDTO)

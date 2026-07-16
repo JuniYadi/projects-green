@@ -7,7 +7,7 @@
  */
 
 import { getPlatformRoleForUser } from "@/lib/platform-role"
-import { resolveOrgRole } from "@/lib/auth/org-role"
+import { resolveOrgRole, type OrgRole } from "@/lib/auth/org-role"
 import { resolveFirstActiveOrganization } from "@/lib/whatsapp/resolvers"
 import {
   getWorkOSSession,
@@ -23,11 +23,48 @@ export type ResolvedAuth = { source: AuthSource } & NonNullable<AuthContext>
 export type ProxyAuthResult = { ok: true; scope: WorkOSScope } | { ok: false }
 
 /**
- * Resolve auth context from proxy-passed `x-workos-*` headers.
- *
- * Returns `{ ok: false }` when the headers are absent or the downstream
- * DB calls fail (logged, never thrown to the client).
+ * Normalize a WorkOS role slug to the internal OrgRole type.
+ * Accepts both unprefixed (owner/admin/member) and user_prefixed forms.
  */
+const normalizeOrgRole = (
+  role: string | null | undefined
+): OrgRole | null => {
+  if (!role) return null
+  const slug = role.toLowerCase()
+  if (slug === "owner" || slug === "user_owner") return "owner"
+  if (slug === "admin" || slug === "user_admin") return "admin"
+  if (slug === "member" || slug === "user_member") return "member"
+  return null
+}
+
+/**
+ * Resolve org role from proxy-passed x-workos-session-role / x-workos-session-roles headers.
+ * Avoids a WorkOS membership API call when headers are present.
+ */
+const resolveOrgRoleFromHeaders = (request: Request): OrgRole | null => {
+  const single = request.headers.get("x-workos-session-role")
+  if (single) {
+    const normalized = normalizeOrgRole(single)
+    if (normalized) return normalized
+  }
+  const raw = request.headers.get("x-workos-session-roles")
+  if (!raw) return null
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      for (const r of parsed) {
+        if (typeof r === "string") {
+          const normalized = normalizeOrgRole(r)
+          if (normalized) return normalized
+        }
+      }
+    }
+  } catch {
+    // malformed JSON — ignore
+  }
+  return null
+}
+
 export const resolveProxyAuth = async (
   request: Request
 ): Promise<ProxyAuthResult> => {
@@ -38,12 +75,22 @@ export const resolveProxyAuth = async (
 
   const userId = request.headers.get("x-workos-user-id") ?? ""
   const email = request.headers.get("x-workos-user-email") ?? null
+  const headerOrganizationId =
+    request.headers.get("x-workos-organization-id")?.trim() || null
 
   try {
     const platformRole = await getPlatformRoleForUser({ id: userId, email })
-    const firstOrg = await resolveFirstActiveOrganization(userId)
+
+    // Prefer the org from the proxy header (which AuthKit resolved during
+    // session refresh) over asking WorkOS again.  Avoids the reported
+    // "Request timeout" from resolveFirstActiveOrganization.
+    const firstOrg = headerOrganizationId
+      ? { organizationId: headerOrganizationId }
+      : await resolveFirstActiveOrganization(userId)
+
     const orgRole = firstOrg
-      ? await resolveOrgRole(userId, firstOrg.organizationId)
+      ? resolveOrgRoleFromHeaders(request) ??
+        (await resolveOrgRole(userId, firstOrg.organizationId))
       : null
 
     console.debug(

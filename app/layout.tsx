@@ -1,18 +1,24 @@
 import { AuthKitProvider } from "@workos-inc/authkit-nextjs/components"
-import { JetBrains_Mono, Space_Mono } from "next/font/google"
+import { Inter, JetBrains_Mono, Space_Mono } from "next/font/google"
 import { cookies } from "next/headers"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { QueryProvider } from "@/components/query-provider"
 import { localeCookieName } from "@/lib/i18n/config"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
-const fontSans = Space_Mono({
+const fontSans = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+})
+
+const fontDisplay = Space_Mono({
   subsets: ["latin"],
   weight: ["400", "700"],
-  variable: "--font-sans",
+  variable: "--font-display",
 })
 
 const jetbrainsMono = JetBrains_Mono({
@@ -34,13 +40,15 @@ export default async function RootLayout({
     <html
       lang={locale}
       suppressHydrationWarning
-      className={cn("antialiased", fontSans.variable, jetbrainsMono.variable)}
+      className={cn("antialiased", fontSans.variable, fontDisplay.variable, jetbrainsMono.variable)}
     >
       <body suppressHydrationWarning>
         <AuthKitProvider>
+        <QueryProvider>
           <ThemeProvider>
             <TooltipProvider>{children}</TooltipProvider>
           </ThemeProvider>
+        </QueryProvider>
         </AuthKitProvider>
       </body>
     </html>

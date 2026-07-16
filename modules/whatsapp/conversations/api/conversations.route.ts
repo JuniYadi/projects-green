@@ -2,6 +2,24 @@ import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 
+
+const DEFAULT_CONVERSATION_LIMIT = 50
+const MAX_CONVERSATION_LIMIT = 100
+
+const parseConversationLimit = (value: unknown): number => {
+  const num = Number(value)
+  if (!Number.isFinite(num)) return DEFAULT_CONVERSATION_LIMIT
+  return Math.min(Math.max(Math.trunc(num), 1), MAX_CONVERSATION_LIMIT)
+}
+
+const toNoOrganization = (set: any) => {
+  set.status = 403
+  return {
+    ok: false,
+    error: "FORBIDDEN",
+    message: "No active organization found.",
+  }
+}
 const conversationBodySchema = t.Object({
   contactPhone: t.String({ minLength: 10, maxLength: 20 } as any),
   whatsappDeviceId: t.Optional(t.Nullable(t.String())),
@@ -22,10 +40,12 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
-      const { contactPhone, status } = query as any
+      if (!whatsappAuth.organizationId) return toNoOrganization(set)
+      const organizationId = whatsappAuth.organizationId
+      const { contactPhone, status, limit } = query as any
 
       const where: any = {
-        organizationId: whatsappAuth.organizationId!,
+        organizationId,
       }
 
       if (contactPhone) {
@@ -43,9 +63,12 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
         }
       }
 
+      const take = parseConversationLimit(limit)
+
       const conversations = await prisma.whatsappConversation.findMany({
         where,
         orderBy: { lastMessageAt: "desc" },
+        take,
         include: {
           _count: {
             select: { whatsappMessages: true },
@@ -72,10 +95,12 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
+      if (!whatsappAuth.organizationId) return toNoOrganization(set)
+      const organizationId = whatsappAuth.organizationId
       const conversation = await prisma.whatsappConversation.findFirst({
         where: {
           id,
-          organizationId: whatsappAuth.organizationId!,
+          organizationId,
         },
         include: {
           _count: {
@@ -116,11 +141,13 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
+      if (!whatsappAuth.organizationId) return toNoOrganization(set)
+      const organizationId = whatsappAuth.organizationId
       try {
         const conversation = await prisma.whatsappConversation.create({
           data: {
             ...body,
-            organizationId: whatsappAuth.organizationId!,
+            organizationId,
           },
         })
 
@@ -159,10 +186,12 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
+      if (!whatsappAuth.organizationId) return toNoOrganization(set)
+      const organizationId = whatsappAuth.organizationId
       const conversation = await prisma.whatsappConversation.findFirst({
         where: {
           id,
-          organizationId: whatsappAuth.organizationId!,
+          organizationId,
         },
       })
 
@@ -181,9 +210,6 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
       })
 
       return { ok: true, conversation: updated }
-    },
-    {
-      body: conversationUpdateSchema,
     }
   )
   .delete(
@@ -202,10 +228,12 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
+      if (!whatsappAuth.organizationId) return toNoOrganization(set)
+      const organizationId = whatsappAuth.organizationId
       const conversation = await prisma.whatsappConversation.findFirst({
         where: {
           id,
-          organizationId: whatsappAuth.organizationId!,
+          organizationId,
         },
       })
 

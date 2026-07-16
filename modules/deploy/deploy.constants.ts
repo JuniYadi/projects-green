@@ -56,8 +56,14 @@ export const DEFAULT_SOURCE_STATE: DeploySourceState = {
 export const DEFAULT_BUILD_STATE: DeployBuildState = {
   language: "",
   framework: "",
+  frameworkVersion: "",
   buildCommand: "",
   useDockerfile: false,
+  primaryEngine: "",
+  primaryEngineVersion: "",
+  secondaryEngine: "",
+  secondaryEngineVersion: "",
+  defaultPort: 0,
 }
 
 export const DEFAULT_ENVIRONMENT_STATE: DeployEnvironmentState = {
@@ -108,8 +114,14 @@ export const DEPLOY_TEMPLATES: Array<{
     build: {
       language: "PHP",
       framework: "WordPress",
+      frameworkVersion: "",
       buildCommand: "",
       useDockerfile: true,
+      primaryEngine: "php",
+      primaryEngineVersion: "",
+      secondaryEngine: "",
+      secondaryEngineVersion: "",
+      defaultPort: 80,
     },
   },
   {
@@ -121,8 +133,14 @@ export const DEPLOY_TEMPLATES: Array<{
     build: {
       language: "Node.js",
       framework: "Ghost",
+      frameworkVersion: "",
       buildCommand: "",
       useDockerfile: true,
+      primaryEngine: "node",
+      primaryEngineVersion: "",
+      secondaryEngine: "",
+      secondaryEngineVersion: "",
+      defaultPort: 2368,
     },
   },
   {
@@ -134,8 +152,14 @@ export const DEPLOY_TEMPLATES: Array<{
     build: {
       language: "Node.js",
       framework: "Strapi",
+      frameworkVersion: "",
       buildCommand: "",
       useDockerfile: true,
+      primaryEngine: "node",
+      primaryEngineVersion: "",
+      secondaryEngine: "",
+      secondaryEngineVersion: "",
+      defaultPort: 1337,
     },
   },
   {
@@ -147,8 +171,14 @@ export const DEPLOY_TEMPLATES: Array<{
     build: {
       language: "Node.js",
       framework: "Directus",
+      frameworkVersion: "",
       buildCommand: "",
       useDockerfile: true,
+      primaryEngine: "node",
+      primaryEngineVersion: "",
+      secondaryEngine: "",
+      secondaryEngineVersion: "",
+      defaultPort: 8055,
     },
   },
   {
@@ -160,8 +190,14 @@ export const DEPLOY_TEMPLATES: Array<{
     build: {
       language: "Node.js",
       framework: "Payload",
+      frameworkVersion: "",
       buildCommand: "",
       useDockerfile: true,
+      primaryEngine: "node",
+      primaryEngineVersion: "",
+      secondaryEngine: "",
+      secondaryEngineVersion: "",
+      defaultPort: 3000,
     },
   },
   {
@@ -173,8 +209,14 @@ export const DEPLOY_TEMPLATES: Array<{
     build: {
       language: "Go",
       framework: "PocketBase",
+      frameworkVersion: "",
       buildCommand: "",
       useDockerfile: true,
+      primaryEngine: "go",
+      primaryEngineVersion: "",
+      secondaryEngine: "",
+      secondaryEngineVersion: "",
+      defaultPort: 8090,
     },
   },
   {
@@ -186,8 +228,14 @@ export const DEPLOY_TEMPLATES: Array<{
     build: {
       language: "Node.js",
       framework: "Umami",
+      frameworkVersion: "",
       buildCommand: "",
       useDockerfile: true,
+      primaryEngine: "node",
+      primaryEngineVersion: "",
+      secondaryEngine: "",
+      secondaryEngineVersion: "",
+      defaultPort: 3000,
     },
   },
   {
@@ -199,8 +247,14 @@ export const DEPLOY_TEMPLATES: Array<{
     build: {
       language: "Elixir",
       framework: "Plausible",
+      frameworkVersion: "",
       buildCommand: "",
       useDockerfile: true,
+      primaryEngine: "elixir",
+      primaryEngineVersion: "",
+      secondaryEngine: "",
+      secondaryEngineVersion: "",
+      defaultPort: 8000,
     },
   },
   {
@@ -212,8 +266,14 @@ export const DEPLOY_TEMPLATES: Array<{
     build: {
       language: "Node.js",
       framework: "n8n",
+      frameworkVersion: "",
       buildCommand: "",
       useDockerfile: true,
+      primaryEngine: "node",
+      primaryEngineVersion: "",
+      secondaryEngine: "",
+      secondaryEngineVersion: "",
+      defaultPort: 5678,
     },
   },
   {
@@ -225,8 +285,14 @@ export const DEPLOY_TEMPLATES: Array<{
     build: {
       language: "Node.js",
       framework: "OpenClaw",
+      frameworkVersion: "",
       buildCommand: "",
       useDockerfile: true,
+      primaryEngine: "node",
+      primaryEngineVersion: "",
+      secondaryEngine: "",
+      secondaryEngineVersion: "",
+      defaultPort: 3000,
     },
   },
 ]

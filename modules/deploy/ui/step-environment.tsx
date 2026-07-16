@@ -50,6 +50,7 @@ type StepEnvironmentProps = {
   sourceType?: DeploySourceType
   buildState?: DeployBuildState
   onEditBuildSettings?: () => void
+  recommendedPlanId?: ResourcePlanId | null
 }
 
 export function StepEnvironment({
@@ -78,6 +79,7 @@ export function StepEnvironment({
   sourceType,
   buildState,
   onEditBuildSettings,
+  recommendedPlanId,
 }: StepEnvironmentProps) {
   const targetDomain = useGeneratedSubdomain
     ? generatedSubdomain
@@ -268,13 +270,13 @@ export function StepEnvironment({
           />
         </div>
 
-        {/* Resource Plan */}
         <div className="space-y-3 rounded-xl border border-border p-4">
           <p className="text-sm font-semibold text-foreground">Resource Plan</p>
           <ResourcePlanSelector
             selectedPlanId={resourcePlanId}
             cpu={cpu}
             memory={memory}
+            recommendedPlanId={recommendedPlanId}
             onChange={onResourcePlanChange}
             onCpuChange={onCpuChange}
             onMemoryChange={onMemoryChange}

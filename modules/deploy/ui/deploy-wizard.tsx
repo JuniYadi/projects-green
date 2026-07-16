@@ -8,6 +8,7 @@ import {
   fetchFrameworkDetection,
   DetectionError,
 } from "@/modules/deploy/deploy-detection.service"
+import { recommendPlan } from "@/modules/deploy/deploy-recommendation"
 import {
   DEPLOY_STEP_QUERY_KEY,
   DEPLOY_TEMPLATES,
@@ -548,8 +549,24 @@ function DeployWizardInner() {
           payload: {
             language: detectionResult.language ?? "",
             framework: detectionResult.framework ?? "",
+            frameworkVersion: detectionResult.frameworkVersion ?? "",
             buildCommand: detectionResult.buildCommand ?? "",
             useDockerfile: detectionResult.dockerfileDetected,
+            primaryEngine: detectionResult.primaryEngine ?? "",
+            primaryEngineVersion: detectionResult.primaryEngineVersion ?? "",
+            secondaryEngine: detectionResult.secondaryEngine ?? "",
+            secondaryEngineVersion: detectionResult.secondaryEngineVersion ?? "",
+            defaultPort: detectionResult.defaultPort ?? 0,
+          },
+        })
+
+        const recommendation = recommendPlan(detectionResult)
+        dispatch({
+          type: "set-environment",
+          payload: {
+            resourcePlanId: recommendation.resourcePlanId,
+            cpu: recommendation.cpu ?? state.environment.cpu,
+            memory: recommendation.memory ?? state.environment.memory,
           },
         })
       } catch (err) {
@@ -594,10 +611,16 @@ function DeployWizardInner() {
       payload: {
         language: template.build.language,
         framework: template.build.framework,
+        frameworkVersion: template.build.frameworkVersion || null,
         dockerfileDetected: template.build.useDockerfile,
         buildCommand: template.build.buildCommand,
         confidence: 100,
         status: "success",
+        primaryEngine: template.build.primaryEngine || null,
+        primaryEngineVersion: template.build.primaryEngineVersion || null,
+        secondaryEngine: template.build.secondaryEngine || null,
+        secondaryEngineVersion: template.build.secondaryEngineVersion || null,
+        defaultPort: template.build.defaultPort || null,
       },
     })
 
@@ -670,8 +693,15 @@ function DeployWizardInner() {
           branchName: state.source.branchName,
           rootDirectory: state.source.rootDirectory || "/",
           framework: state.build.framework || undefined,
+          frameworkVersion: state.build.frameworkVersion || undefined,
           buildCommand: state.build.buildCommand || undefined,
           useDockerfile: state.build.useDockerfile,
+          primaryEngine: state.build.primaryEngine || undefined,
+          primaryEngineVersion: state.build.primaryEngineVersion || undefined,
+          secondaryEngine: state.build.secondaryEngine || undefined,
+          secondaryEngineVersion:
+            state.build.secondaryEngineVersion || undefined,
+          defaultPort: state.build.defaultPort || undefined,
           resourcePlanId: state.environment.resourcePlanId,
           billingMode,
           cpu: state.environment.cpu,
@@ -794,8 +824,14 @@ function DeployWizardInner() {
           isDetecting={isDetecting}
           language={state.build.language}
           framework={state.build.framework}
+          frameworkVersion={state.build.frameworkVersion ?? ""}
           buildCommand={state.build.buildCommand}
           useDockerfile={state.build.useDockerfile}
+          primaryEngine={state.build.primaryEngine ?? ""}
+          primaryEngineVersion={state.build.primaryEngineVersion ?? ""}
+          secondaryEngine={state.build.secondaryEngine ?? ""}
+          secondaryEngineVersion={state.build.secondaryEngineVersion ?? ""}
+          defaultPort={state.build.defaultPort ?? 0}
           manualOverrideRequired={manualOverrideRequired}
           canProceed={buildValid}
           onBack={() => {
@@ -827,6 +863,11 @@ function DeployWizardInner() {
           resourcePlanId={state.environment.resourcePlanId}
           cpu={state.environment.cpu}
           memory={state.environment.memory}
+          recommendedPlanId={
+            state.detectionResult
+              ? recommendPlan(state.detectionResult).resourcePlanId
+              : null
+          }
           hasMissingCustomDomain={hasMissingCustomDomain}
           hasInvalidCustomDomain={hasInvalidCustomDomain}
           validationMessages={environmentValidationMessages}

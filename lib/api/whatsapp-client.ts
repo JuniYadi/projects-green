@@ -280,7 +280,7 @@ export const whatsappClient = {
   },
 
   conversations: {
-    list: (params?: { contactPhone?: string; status?: string }) =>
+    list: (params?: { contactPhone?: string; status?: string; limit?: number }) =>
       serverFetch<{ ok: boolean; conversations: any[] }>(
         "/api/whatsapp/conversations",
         {

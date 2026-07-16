@@ -288,6 +288,7 @@ export type CreateBroadcastInput = {
   templateParams?: Record<string, unknown> | null
   throttleMaxMessages?: number | null
   throttlePerMinutes?: number | null
+  acknowledgeMultiDay?: boolean | null
   whatsappDeviceId?: string | null
   whatsappContactGroupId?: string | null
   recipients: Array<{
@@ -300,6 +301,26 @@ export type CreateBroadcastInput = {
 export type UpdateBroadcastInput = Partial<
   Omit<CreateBroadcastInput, "recipients">
 >
+
+export type DeviceBroadcastCapacity = {
+  dailyLimit: number
+  dailyUsed: number
+  hourlyLimit: number
+  hourlyUsed: number
+  remainingToday: number
+  remainingThisHour: number
+}
+
+export type BroadcastScheduleRecommendation = {
+  throttleMaxMessages: number
+  throttlePerMinutes: number
+  estimatedDurationMinutes: number
+}
+
+export type PreviewBroadcastResult = {
+  capacity: DeviceBroadcastCapacity
+  recommendation: BroadcastScheduleRecommendation
+}
 
 // ─── Webhook Types ────────────────────────────────────────────────────────
 
@@ -800,6 +821,27 @@ export const createWhatsAppClient = () => {
         "Unable to send WhatsApp broadcast."
       )
       return payload.message
+    },
+
+    async previewBroadcastSchedule(input: {
+      whatsappDeviceId: string
+      recipients: Array<{ phoneNumber: string }>
+    }) {
+      const payload = await requestJson<
+        ApiSuccess<PreviewBroadcastResult>
+      >(
+        `${API_BASE}/broadcasts/preview`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(input),
+        },
+        "Unable to preview broadcast schedule."
+      )
+      return {
+        capacity: payload.capacity,
+        recommendation: payload.recommendation,
+      }
     },
 
     // ── Webhooks ────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { messageService } from "../messages.service"
 import { toWhatsappMessageDTO } from "../messages.dto"
+import type { WhatsAppTemplateLanguage } from "@/lib/api/whatsapp-client"
 import { InsufficientQuotaError } from "../quota.service"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
@@ -541,6 +542,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           fields,
           renderedBody,
           billingCategory: template.category ?? undefined,
+          templateLanguageData: language as unknown as WhatsAppTemplateLanguage,
         })
 
         logWhatsappAuditEvent({

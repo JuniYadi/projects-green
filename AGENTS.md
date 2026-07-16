@@ -25,6 +25,7 @@ This is a Next.js 16 + TypeScript app with feature-oriented modules.
 - `bun run test`: Run Bun tests.
 - `bun run test:coverage`: Run tests with text + lcov output in `coverage/`.
 - `bun run prisma:migrate:dev` / `bun run prisma:generate`: Apply DB migrations and refresh Prisma client.
+- `bun run tinker`: Interactive Prisma REPL — like `php artisan tinker`. Opens a prompt with `prisma`, `p` (alias), `Prisma` namespace, and all model delegates available as globals. Example: `await p.user.findMany({ take: 3 })`. Connected directly to the database (reads `DATABASE_URL`), not the running server.
 
 **3 PILLARS VALIDATION (HARD REQUIREMENT):**
 Must pass before opening a PR. **NOT** per-edit — run only when explicitly instructed to open a PR (saves tokens during local work):
@@ -337,3 +338,13 @@ worktrees, and async task orchestration.
 | `team action='recommend'` | Get team/workflow recommendations |
 <!-- PI-CREW:/BLOCK:pi-crew-commands -->
 <!-- PI-CREW:GUIDANCE:END -->
+
+<!-- OPENWIKI:START -->
+
+## OpenWiki
+
+This repository uses OpenWiki for recurring code documentation. Start with `openwiki/quickstart.md`, then follow its links to architecture, workflows, domain concepts, operations, integrations, testing guidance, and source maps.
+
+The scheduled OpenWiki GitHub Actions workflow refreshes the repository wiki. Do not hand-edit generated OpenWiki pages unless explicitly asked; prefer updating source code/docs and letting OpenWiki regenerate.
+
+<!-- OPENWIKI:END -->

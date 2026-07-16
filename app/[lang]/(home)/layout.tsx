@@ -3,5 +3,5 @@ export default function HomeLayout({
 }: {
   children: React.ReactNode
 }) {
-  return <>{children}</>
+  return <div style={{ fontFamily: "var(--font-display)" }}>{children}</div>
 }
