@@ -65,6 +65,7 @@ type GithubRepositoryApiItem = {
 type GithubRepositoriesResponse = {
   ok: boolean
   items: GithubRepositoryApiItem[]
+  owners?: { id: string; name: string; avatarUrl: string | null }[]
   error?: string
 }
 
@@ -271,9 +272,19 @@ function DeployWizardInner() {
           throw new Error("Unable to load repositories from GitHub.")
         }
         const mapped = payload.items.map(mapGithubRepository)
-
         setGithubReconnectRequired(false)
-        setOwnerOptions(toOwnerOptions(mapped))
+
+        if (Array.isArray(payload.owners) && payload.owners.length > 0) {
+          setOwnerOptions(
+            payload.owners.map((owner) => ({
+              id: owner.id,
+              name: owner.name,
+              avatarUrl: owner.avatarUrl ?? "",
+            }))
+          )
+        } else {
+          setOwnerOptions(toOwnerOptions(mapped))
+        }
         setRepositoryById((current) => {
           const next = { ...current }
           for (const repository of mapped) {

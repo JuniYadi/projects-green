@@ -11,6 +11,8 @@ import {
   MagnifyingGlass,
   Phone,
   FunnelSimple,
+  CheckIcon,
+  DotsThreeVertical,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -37,10 +39,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
+import { FilterPills } from "@/components/ui/filter-pills"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
@@ -54,6 +59,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { groupMessagesByDate } from "@/modules/whatsapp/messages/ui/date-group"
+import { MessageDateGroup } from "@/modules/whatsapp/messages/ui/message-date-group"
 import {
   getTemplatePlaceholderIndexes,
   WhatsAppTemplatePreview,
@@ -68,7 +75,6 @@ type StatusHistory = {
   status: DeliveryStatus
   error: string | null
 }
-
 type ConversationListItem = {
   id: string
   organizationId: string
@@ -79,8 +85,9 @@ type ConversationListItem = {
   createdAt: string
   updatedAt: string
   _count: { whatsappMessages: number }
+  conversationLabels?: Array<{ label: { id: string; name: string; color?: string | null } }>
+  internalNotes?: string | null
 }
-
 type Message = {
   id: string
   conversationId: string
@@ -178,10 +185,16 @@ function ConversationItem({
   conversation,
   isActive,
   onClick,
+  onDelete,
+  onNotes,
+  onLabels,
 }: {
   conversation: ConversationListItem
   isActive: boolean
   onClick: () => void
+  onDelete: (id: string) => void
+  onNotes: (conversation: ConversationListItem) => void
+  onLabels: (conversation: ConversationListItem) => void
 }) {
   const DirectionIcon =
     conversation.lastDirection === "INBOX"
@@ -189,38 +202,73 @@ function ConversationItem({
       : ArrowBendUpRight
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex w-full items-center gap-3 border-b px-4 py-3 text-left transition-colors hover:bg-muted/50 ${
+    <div
+      className={`flex w-full items-center gap-2 border-b px-3 py-3 transition-colors hover:bg-muted/50 ${
         isActive ? "bg-muted" : ""
       }`}
     >
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-        <Phone className="size-5 text-primary" weight="fill" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
-          <span className="truncate text-sm font-medium">
-            {formatPhone(conversation.contactPhone)}
-          </span>
-          <span className="shrink-0 text-xs text-muted-foreground">
-            {formatTime(conversation.lastMessageAt)}
-          </span>
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+      >
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+          <Phone className="size-5 text-primary" weight="fill" />
         </div>
-        <div className="mt-0.5 flex items-center gap-1.5">
-          <DirectionIcon className="size-3 text-muted-foreground" />
-          <span className="truncate text-xs text-muted-foreground">
-            {conversation.lastDirection === "INBOX" ? "Received" : "Sent"}
-          </span>
-          {conversation._count.whatsappMessages > 0 && (
-            <Badge variant="secondary" className="ml-auto shrink-0 text-[10px]">
-              {conversation._count.whatsappMessages}
-            </Badge>
-          )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-sm font-medium">
+              {formatPhone(conversation.contactPhone)}
+            </span>
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {formatTime(conversation.lastMessageAt)}
+            </span>
+          </div>
+          <div className="mt-0.5 flex items-center gap-1.5">
+            <DirectionIcon className="size-3 text-muted-foreground" />
+            <span className="truncate text-xs text-muted-foreground">
+              {conversation.lastDirection === "INBOX" ? "Received" : "Sent"}
+            </span>
+            {conversation._count.whatsappMessages > 0 && (
+              <Badge variant="secondary" className="ml-auto shrink-0 text-[10px]">
+                {conversation._count.whatsappMessages}
+              </Badge>
+            )}
+          </div>
         </div>
-      </div>
-    </button>
+      </button>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted focus:outline-none focus:ring-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DotsThreeVertical className="size-5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            onSelect={() => onNotes(conversation)}
+          >
+            <span>Internal Notes</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => onLabels(conversation)}
+          >
+            <span>Add Label</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            onSelect={() => onDelete(conversation.id)}
+          >
+            <span>Delete Chat</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   )
 }
 
@@ -305,6 +353,16 @@ export default function WhatsAppMessagesPage() {
   const [searchQuery, setSearchQuery] = React.useState("")
   const [directionFilter, setDirectionFilter] = React.useState("all")
   const [statusFilter, setStatusFilter] = React.useState("all")
+  // State - label filters
+  const [labelFilterIds, setLabelFilterIds] = React.useState<string[]>([])
+
+  // State - action menu
+  const [selectedConversationId, setSelectedConversationId] = React.useState<string | null>(null)
+  const [notesDialogOpen, setNotesDialogOpen] = React.useState(false)
+  const [notesText, setNotesText] = React.useState("")
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false)
+  const [labelPickerOpen, setLabelPickerOpen] = React.useState(false)
+  const [selectedLabelIds, setSelectedLabelIds] = React.useState<Set<string>>(new Set())
 
   // State - active conversation
   const [activeConversationId, setActiveConversationId] = React.useState<
@@ -356,6 +414,13 @@ export default function WhatsAppMessagesPage() {
     queryFn: async () => {
       const payload = await whatsappClient.devices.list()
       return payload.ok ? payload.devices : []
+    },
+  })
+  const { data: allLabels = [] } = useQuery({
+    queryKey: ["whatsapp", "conversations", "labels"],
+    queryFn: async () => {
+      const payload = await whatsappClient.conversations.getLabels()
+      return payload.ok ? payload.labels : []
     },
   })
 
@@ -476,8 +541,15 @@ export default function WhatsAppMessagesPage() {
       result = result.filter((c) => c.lastDirection === directionFilter)
     }
 
+    if (labelFilterIds.length > 0) {
+      result = result.filter((c) => {
+        const conversationLabelIds = c.conversationLabels?.map((cl: { label: { id: string; name: string; color?: string | null } }) => cl.label.id) ?? []
+        return labelFilterIds.every((fid) => conversationLabelIds.includes(fid))
+      })
+    }
+
     return result
-  }, [conversations, searchQuery, directionFilter])
+  }, [conversations, searchQuery, directionFilter, labelFilterIds])
 
   // Reverse messages to show oldest first (they come desc from API)
   const orderedMessages = React.useMemo(
@@ -513,8 +585,9 @@ export default function WhatsAppMessagesPage() {
     let count = 0
     if (directionFilter !== "all") count++
     if (statusFilter !== "all") count++
+    if (labelFilterIds.length > 0) count++
     return count
-  }, [directionFilter, statusFilter])
+  }, [directionFilter, statusFilter, labelFilterIds])
 
   // ── Handlers ───────────────────────────────────────────────────────────
 
@@ -530,6 +603,23 @@ export default function WhatsAppMessagesPage() {
     },
     [pathname, router, searchParams]
   )
+
+  const handleDeleteConversation = React.useCallback((id: string) => {
+    setSelectedConversationId(id)
+    setDeleteConfirmOpen(true)
+  }, [])
+
+  const handleNotesConversation = React.useCallback((conversation: ConversationListItem) => {
+    setSelectedConversationId(conversation.id)
+    setNotesText(conversation.internalNotes ?? "")
+    setNotesDialogOpen(true)
+  }, [])
+
+  const handleLabelsConversation = React.useCallback((conversation: ConversationListItem) => {
+    setSelectedConversationId(conversation.id)
+    setSelectedLabelIds(new Set(conversation.conversationLabels?.map((cl) => cl.label.id) ?? []))
+    setLabelPickerOpen(true)
+  }, [])
 
   // ── Mutations ──────────────────────────────────────────────────────────
   const sendMutation = useMutation({
@@ -574,6 +664,70 @@ export default function WhatsAppMessagesPage() {
       toast.error(err instanceof Error ? err.message : "Failed to send message")
     },
   })
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => whatsappClient.conversations.delete(id),
+    onSuccess: async () => {
+      toast.success("Chat deleted")
+      if (selectedConversationId === activeConversationId) {
+        setActiveConversationId(null)
+      }
+      await queryClient.invalidateQueries({ queryKey: ["whatsapp", "conversations"] })
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to delete chat")
+    },
+  })
+
+  const saveNotesMutation = useMutation({
+    mutationFn: ({ id, internalNotes }: { id: string; internalNotes: string | null }) =>
+      whatsappClient.conversations.update(id, { internalNotes }),
+    onSuccess: async () => {
+      toast.success("Notes saved")
+      setNotesDialogOpen(false)
+      await queryClient.invalidateQueries({ queryKey: ["whatsapp", "conversations"] })
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to save notes")
+    },
+  })
+
+  const updateLabelsMutation = useMutation({
+    mutationFn: ({ id, labelIds }: { id: string; labelIds: string[] }) =>
+      whatsappClient.conversations.update(id, { labelIds }),
+    onSuccess: async () => {
+      toast.success("Labels updated")
+      setLabelPickerOpen(false)
+      await queryClient.invalidateQueries({ queryKey: ["whatsapp", "conversations"] })
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to update labels")
+    },
+  })
+
+  const handleSaveNotes = React.useCallback(() => {
+    if (!selectedConversationId) return
+    saveNotesMutation.mutate({ id: selectedConversationId, internalNotes: notesText || null })
+  }, [selectedConversationId, notesText, saveNotesMutation])
+
+  const handleConfirmDelete = React.useCallback(() => {
+    if (!selectedConversationId) return
+    deleteMutation.mutate(selectedConversationId)
+    setDeleteConfirmOpen(false)
+  }, [selectedConversationId, deleteMutation])
+
+  const handleToggleLabel = React.useCallback((labelId: string) => {
+    setSelectedLabelIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(labelId)) next.delete(labelId)
+      else next.add(labelId)
+      return next
+    })
+  }, [])
+
+  const handleSaveLabels = React.useCallback(() => {
+    if (!selectedConversationId) return
+    updateLabelsMutation.mutate({ id: selectedConversationId, labelIds: Array.from(selectedLabelIds) })
+  }, [selectedConversationId, selectedLabelIds, updateLabelsMutation])
 
   const handleSendMessage = async () => {
     if (!sendDeviceId) {
@@ -652,7 +806,7 @@ export default function WhatsAppMessagesPage() {
   }
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col gap-6 p-6 pt-0">
+    <main className="flex min-h-0 flex-1 flex-col gap-6">
       <div className="flex shrink-0 items-center gap-2">
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
@@ -1117,9 +1271,40 @@ export default function WhatsAppMessagesPage() {
                       Failed
                     </DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
+                  {allLabels.length > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel>Labels</DropdownMenuLabel>
+                      {allLabels.map((label) => (
+                        <DropdownMenuCheckboxItem
+                          key={label.id}
+                          checked={labelFilterIds.includes(label.id)}
+                          onCheckedChange={() => {
+                            if (labelFilterIds.includes(label.id)) {
+                              setLabelFilterIds((prev) => prev.filter((id) => id !== label.id))
+                            } else {
+                              setLabelFilterIds((prev) => [...prev, label.id])
+                            }
+                          }}
+                        >
+                          {label.name}
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+            {labelFilterIds.length > 0 && (
+              <div className="mt-2">
+                <FilterPills
+                  pills={allLabels
+                    .filter((l) => labelFilterIds.includes(l.id))
+                    .map((l) => ({ id: l.id, label: l.name, color: l.color }))}
+                  onRemove={(id) => setLabelFilterIds((prev) => prev.filter((fid) => fid !== id))}
+                />
+              </div>
+            )}
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -1198,6 +1383,9 @@ export default function WhatsAppMessagesPage() {
                   conversation={conversation}
                   isActive={activeConversationId === conversation.id}
                   onClick={() => handleSelectConversation(conversation)}
+                  onDelete={handleDeleteConversation}
+                  onNotes={handleNotesConversation}
+                  onLabels={handleLabelsConversation}
                 />
               ))}
           </div>
@@ -1282,8 +1470,13 @@ export default function WhatsAppMessagesPage() {
               {/* Messages */}
               {!activeLoading && orderedMessages.length > 0 && (
                 <div className="mt-auto flex flex-col justify-end gap-3">
-                  {orderedMessages.map((message) => (
-                    <MessageBubble key={message.id} message={message} />
+                  {groupMessagesByDate(orderedMessages).map((group) => (
+                    <React.Fragment key={group.label}>
+                      <MessageDateGroup label={group.label} />
+                      {group.messages.map((message) => (
+                        <MessageBubble key={message.id} message={message} />
+                      ))}
+                    </React.Fragment>
                   ))}
                   <div ref={messagesEndRef} />
                 </div>
@@ -1292,6 +1485,122 @@ export default function WhatsAppMessagesPage() {
           </div>
         </div>
       </div>
+      {/* ── Delete Confirmation Dialog ─────────────────────────────────── */}
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Chat</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this conversation? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Internal Notes Dialog ─────────────────────────────────────── */}
+      <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Internal Notes</DialogTitle>
+            <DialogDescription>
+              Add notes about this conversation. Only visible to your team.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Label htmlFor="notes-textarea" className="sr-only">
+              Notes
+            </Label>
+            <textarea
+              id="notes-textarea"
+              className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              placeholder="Add notes about this conversation..."
+              value={notesText}
+              onChange={(e) => setNotesText(e.target.value)}
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setNotesDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveNotes} disabled={saveNotesMutation.isPending}>
+              {saveNotesMutation.isPending ? "Saving..." : "Save Notes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Label Picker Dialog ────────────────────────────────────────── */}
+      <Dialog open={labelPickerOpen} onOpenChange={setLabelPickerOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Labels</DialogTitle>
+            <DialogDescription>
+              Select labels to organize this conversation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1 py-2">
+            {allLabels.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                No labels available. Create labels from the Labels page.
+              </p>
+            ) : (
+              allLabels.map((label) => (
+                <button
+                  key={label.id}
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
+                  onClick={() => handleToggleLabel(label.id)}
+                >
+                  <span
+                    className={`size-4 shrink-0 rounded border ${
+                      selectedLabelIds.has(label.id)
+                        ? "bg-primary"
+                        : "border-muted-foreground/30"
+                    }`}
+                    style={
+                      label.color
+                        ? {
+                            backgroundColor: selectedLabelIds.has(label.id)
+                              ? label.color
+                              : "transparent",
+                            borderColor: label.color,
+                          }
+                        : undefined
+                    }
+                  >
+                    {selectedLabelIds.has(label.id) && (
+                      <span className="flex size-full items-center justify-center text-primary-foreground">
+                        <CheckIcon />
+                      </span>
+                    )}
+                  </span>
+                  <span className="truncate">{label.name}</span>
+                </button>
+              ))
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setLabelPickerOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveLabels} disabled={updateLabelsMutation.isPending}>
+              {updateLabelsMutation.isPending ? "Saving..." : "Save Labels"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   )
 }

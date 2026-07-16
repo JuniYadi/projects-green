@@ -77,7 +77,7 @@ export default function NewWhatsAppBroadcastPage() {
   const [acknowledgeMultiDay, setAcknowledgeMultiDay] = React.useState(false)
 
 
-  const selectedTemplate = templates.find(
+  const selectedTemplate = (templates ?? []).find(
     (template) => template.id === templateId
   )
   const languages = React.useMemo(
@@ -130,9 +130,9 @@ export default function NewWhatsAppBroadcastPage() {
           whatsappClient.listDevices(),
           whatsappClient.listContacts(),
         ])
-        setTemplates(templateItems)
-        setDevices(deviceItems)
-        setContacts(contactItems)
+        setTemplates(Array.isArray(templateItems) ? templateItems : [])
+        setDevices(Array.isArray(deviceItems) ? deviceItems : [])
+        setContacts(Array.isArray(contactItems) ? contactItems : [])
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : "Unable to load form data"

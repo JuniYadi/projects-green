@@ -269,6 +269,27 @@ describe("GET /api/integrations/github/install/callback", () => {
     expect(body.error).toBe("UNAUTHORIZED")
   })
 
+  it("redirects to github=error when withAuth throws an exception", async () => {
+    mockWithAuth.mockImplementation(async () => {
+      throw new Error("session expired")
+    })
+
+    const route =
+      await import("@/app/api/integrations/github/install/callback/route")
+
+    const response = await route.GET(
+      new NextRequest(
+        "http://localhost/api/integrations/github/install/callback?installation_id=123&state=valid"
+      )
+    )
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toBe(
+      "http://localhost/console?github=error"
+    )
+    expect(mockSyncGithubInstallation).not.toHaveBeenCalled()
+  })
+
   it("redirects to github=error when state user does not match current session", async () => {
     mockValidateGithubInstallState.mockImplementation(async () => ({
       workosUserId: "user_999",

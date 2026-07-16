@@ -6,6 +6,11 @@ import {
   GithubIntegrationDisabledError,
   GithubReconnectRequiredError,
 } from "@/modules/github/github.service"
+import type {
+  GithubActorContext,
+  GithubInstallationRecord,
+  GithubRepositoryListResult,
+} from "@/modules/github/github.types"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -71,27 +76,26 @@ export const GET = async (request: NextRequest) => {
       { status: 400 }
     )
   }
-
   const ownerIdRaw = request.nextUrl.searchParams.get("ownerId")
   const ownerId = ownerIdRaw?.trim() || null
   const queryRaw = request.nextUrl.searchParams.get("query")
   const query = queryRaw?.trim() || null
-
-  let result: Awaited<ReturnType<typeof githubService.listRepositoriesForActor>>
+  const actor: GithubActorContext = {
+    userId: auth.user.id,
+    organizationId: auth.organizationId ?? null,
+  }
+  let result: GithubRepositoryListResult
+  let installations: GithubInstallationRecord[] = []
 
   try {
-    result = await githubService.listRepositoriesForActor(
-      {
-        userId: auth.user.id,
-        organizationId: auth.organizationId ?? null,
-      },
-      {
-        limit,
-        cursor: request.nextUrl.searchParams.get("cursor") || undefined,
-        ownerId: ownerId || undefined,
-        query: query || undefined,
-      }
-    )
+    installations = await githubService.listInstallationsForActor(actor)
+
+    result = await githubService.listRepositoriesForActor(actor, {
+      limit,
+      cursor: request.nextUrl.searchParams.get("cursor") || undefined,
+      ownerId: ownerId || undefined,
+      query: query || undefined,
+    })
   } catch (error) {
     if (error instanceof GithubReconnectRequiredError) {
       return NextResponse.json(
@@ -120,6 +124,11 @@ export const GET = async (request: NextRequest) => {
       defaultBranch: item.defaultBranch,
       private: item.private,
       syncedAt: item.pushedAt,
+    })),
+    owners: installations.map((inst) => ({
+      id: inst.accountLogin,
+      name: inst.accountLogin,
+      avatarUrl: null as string | null,
     })),
     nextCursor: result.nextCursor,
   })

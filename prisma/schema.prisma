@@ -1761,9 +1761,36 @@ model WhatsappConversation {
   whatsappMessages WhatsappMessage[]
   whatsappDevice   WhatsappDevice?   @relation(fields: [whatsappDeviceId], references: [id])
   whatsappDeviceId String?
+  internalNotes       String?                           @db.Text
+  conversationLabels  WhatsappConversationLabelOnConversation[]
 
   @@unique([organizationId, contactPhone])
   @@index([organizationId, lastMessageAt])
+}
+
+model WhatsappConversationLabel {
+  id             String                                  @id @default(cuid())
+  organizationId String
+  name           String                                  @db.VarChar(50)
+  color          String?                                 @db.VarChar(7)
+  createdAt      DateTime                                @default(now())
+  updatedAt      DateTime                                @updatedAt
+
+  conversations  WhatsappConversationLabelOnConversation[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model WhatsappConversationLabelOnConversation {
+  conversationId String
+  conversation   WhatsappConversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  labelId        String
+  label          WhatsappConversationLabel @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  createdAt      DateTime               @default(now())
+
+  @@id([conversationId, labelId])
+  @@index([labelId])
 }
 
 model WhatsappMessage {

@@ -359,10 +359,16 @@ export function StepSource({
                       {ownerOptionsError}
                     </p>
                   ) : owners.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">
-                      No accounts found. Please make sure the GitHub App is
-                      installed.
-                    </p>
+                    <div className="flex flex-col gap-1">
+                      <p className="text-xs text-muted-foreground">
+                        No accounts found. Please make sure the GitHub App is
+                        installed.
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        If the app is installed, the account may not have any
+                        repositories accessible yet.
+                      </p>
+                    </div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {owners.map((owner) => {

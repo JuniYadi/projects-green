@@ -164,7 +164,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
   // Loading state
   if (pageState === "loading") {
     return (
-      <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
+      <main className="flex flex-1 flex-col gap-6">
         <Skeleton className="h-4 w-24" />
         <Skeleton className="h-8 w-64" />
         <div className="grid gap-6 md:grid-cols-2">
@@ -198,7 +198,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
   // Error state
   if (pageState === "error" || !device) {
     return (
-      <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
+      <main className="flex flex-1 flex-col gap-6">
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <Phone className="mb-3 size-10 text-muted-foreground" weight="fill" />
           <p className="text-sm text-destructive">

@@ -179,6 +179,29 @@ const installations: GithubInstallationRecord[] = [
 ]
 
 describe("githubRepositoryService", () => {
+  it("returns active installations for actor", async () => {
+    const service = createGithubRepositoryService({
+      async listActiveInstallations(actor) {
+        if (actor.organizationId === "org_1") {
+          return [installations[0]]
+        }
+        return [installations[1]]
+      },
+      async createInstallationAccessToken() {
+        return "token"
+      },
+      async listRepositoriesForInstallation() {
+        return []
+      },
+    })
+
+    const result = await service.listInstallationsForActor({
+      userId: "user_1",
+      organizationId: "org_1",
+    })
+
+    expect(result).toEqual([installations[0]])
+  })
   it("supports filtering and cursor pagination with nextCursor", async () => {
     const service = createGithubRepositoryService({
       async listActiveInstallations() {
