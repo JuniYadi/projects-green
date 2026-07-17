@@ -286,12 +286,19 @@ export type AppMessages = {
           noAccounts: string
           accountLogin: string
           accountType: string
+          targetType: string
+          connected: string
           installedAt: string
+          loading: string
+          loadError: string
         }
         cloudflare: {
           heading: string
+          loading: string
           name: string
+          namePlaceholder: string
           apiToken: string
+          apiTokenPlaceholder: string
           save: string
           saving: string
           delete: string
@@ -300,6 +307,11 @@ export type AppMessages = {
           maskedToken: string
           saved: string
           deleted: string
+          saveError: string
+          deleteError: string
+          loadError: string
+          networkError: string
+          noOrganization: string
           error: string
         }
       }
@@ -390,6 +402,42 @@ export type AppMessages = {
         deployDescription: string
         manage: string
         manageDescription: string
+        credentials: string
+        credentialsDescription: string
+      }
+      credentials: {
+        heading: string
+        description: string
+        github: {
+          heading: string
+          connect: string
+          noAccounts: string
+          accountType: string
+          targetType: string
+          connected: string
+          loading: string
+          loadError: string
+        }
+        cloudflare: {
+          heading: string
+          loading: string
+          name: string
+          namePlaceholder: string
+          apiToken: string
+          apiTokenPlaceholder: string
+          save: string
+          saving: string
+          delete: string
+          deleting: string
+          noCredentials: string
+          saved: string
+          deleted: string
+          saveError: string
+          deleteError: string
+          loadError: string
+          networkError: string
+          noOrganization: string
+        }
       }
     }
     invoices: {

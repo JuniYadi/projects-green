@@ -4,7 +4,7 @@
  * Seeds the Duitku payment gateway and supported bank accounts
  * (BCA, Mandiri, BRI, BNI) for manual bank transfer.
  *
- * Duitku gateway config is managed via the portal UI at `/portal/payments?tab=gateways`.
+ * Duitku gateway config is managed via the portal UI at `/portal/billing/payments?tab=gateways`.
  * This seeder only provides placeholder defaults that get overwritten through the UI.
  */
 

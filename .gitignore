@@ -88,3 +88,6 @@ whatsapp-broadcast-worker
 
 # local file storage (media, uploads)
 /storage/
+.mimocode
+.opencode
+.claude

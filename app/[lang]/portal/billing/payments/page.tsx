@@ -13,7 +13,7 @@ export default function PortalBillingPaymentsPage() {
 			</header>
 
 			<div className="grid gap-4 md:grid-cols-3">
-				<Link href="/portal/payments/confirmations" className="block">
+				<Link href="/portal/billing/payments?tab=confirmations" className="block">
 					<Card className="h-full transition-colors hover:border-primary">
 						<CardHeader className="flex flex-row items-center gap-3">
 							<CheckCircleIcon className="h-8 w-8 text-primary" />
@@ -27,7 +27,7 @@ export default function PortalBillingPaymentsPage() {
 					</Card>
 				</Link>
 
-				<Link href="/portal/payments/gateways" className="block">
+				<Link href="/portal/billing/payments?tab=gateways" className="block">
 					<Card className="h-full transition-colors hover:border-primary">
 						<CardHeader className="flex flex-row items-center gap-3">
 							<CreditCardIcon className="h-8 w-8 text-primary" />
@@ -41,7 +41,7 @@ export default function PortalBillingPaymentsPage() {
 					</Card>
 				</Link>
 
-				<Link href="/portal/payments/bank-accounts" className="block">
+				<Link href="/portal/billing/payments?tab=bank-accounts" className="block">
 					<Card className="h-full transition-colors hover:border-primary">
 						<CardHeader className="flex flex-row items-center gap-3">
 							<Bank className="h-8 w-8 text-primary" />

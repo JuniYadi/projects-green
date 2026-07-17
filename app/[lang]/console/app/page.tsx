@@ -1,7 +1,8 @@
 import Link from "next/link"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { getMessages } from "@/lib/i18n/messages"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 type ApplicationsPageProps = {
   params: Promise<{
@@ -14,27 +15,31 @@ export default async function ApplicationsPage({
 }: ApplicationsPageProps) {
   const { lang } = await params
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
   const items = [
     {
-      title: "Deploy",
-      description: "Configure source, build, and initial release settings.",
+      title: messages.console.app.overview.deploy,
+      description: messages.console.app.overview.deployDescription,
       href: localizePathname({ pathname: "/console/app/deploy", locale }),
     },
     {
-      title: "Manage",
-      description:
-        "Control runtime settings, environment, domains, and scaling behavior.",
+      title: messages.console.app.overview.manage,
+      description: messages.console.app.overview.manageDescription,
       href: localizePathname({ pathname: "/console/app/manage", locale }),
+    },
+    {
+      title: messages.console.app.overview.credentials,
+      description: messages.console.app.overview.credentialsDescription,
+      href: localizePathname({ pathname: "/console/app/credentials", locale }),
     },
   ]
 
   return (
     <>
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Applications</h1>
+        <h1 className="text-2xl font-semibold">{messages.console.app.overview.heading}</h1>
         <p className="text-sm text-muted-foreground">
-          Manage your full application lifecycle from setup to runtime
-          operations.
+          {messages.console.app.overview.description}
         </p>
       </header>
 

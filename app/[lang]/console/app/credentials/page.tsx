@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { GithubLogo, Key, Spinner } from "@phosphor-icons/react"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { useParams } from "next/navigation"
+import { LifecyclePageShell } from "@/modules/deploy/ui/lifecycle-page-shell"
 
 type GithubAccount = {
   id: string
@@ -26,6 +30,10 @@ type CloudflareCredential = {
 }
 
 export default function CredentialsPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+
   const [githubAccounts, setGithubAccounts] = useState<GithubAccount[]>([])
   const [githubLoading, setGithubLoading] = useState(true)
   const [githubError, setGithubError] = useState<string | null>(null)
@@ -46,9 +54,9 @@ export default function CredentialsPage() {
         const res = await fetch("/api/integrations/github/accounts")
         const data = await res.json()
         if (data.ok) setGithubAccounts(data.accounts)
-        else setGithubError(data.error ?? "Failed to load accounts")
+        else setGithubError(data.error ?? messages.console.app.credentials.github.loadError)
       } catch {
-        setGithubError("Network error")
+        setGithubError(messages.console.app.credentials.github.loadError)
       } finally {
         setGithubLoading(false)
       }
@@ -59,16 +67,16 @@ export default function CredentialsPage() {
         const res = await fetch("/api/integrations/cloudflare/dns-token")
         const data = await res.json()
         if (data.ok) setCloudflareCredentials(data.credentials)
-        else if (res.status === 403) setCloudflareError("No organization selected")
-        else setCloudflareError(data.error ?? "Failed to load credentials")
+        else if (res.status === 403) setCloudflareError(messages.console.app.credentials.cloudflare.noOrganization)
+        else setCloudflareError(data.error ?? messages.console.app.credentials.cloudflare.loadError)
       } catch {
-        setCloudflareError("Network error")
+        setCloudflareError(messages.console.app.credentials.cloudflare.networkError)
       } finally {
         setCloudflareLoading(false)
       }
     }
     void Promise.all([loadGithub(), loadCloudflare()])
-  }, [])
+  }, [messages])
 
   const handleCloudflareSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -83,15 +91,15 @@ export default function CredentialsPage() {
       })
       const data = await res.json()
       if (data.ok) {
-        toast.success("DNS token saved")
+        toast.success(messages.console.app.credentials.cloudflare.saved)
         setCfName("")
         setCfToken("")
         setCloudflareCredentials((prev) => [...prev, data.credential])
       } else {
-        toast.error(data.error ?? "Failed to save token")
+        toast.error(data.error ?? messages.console.app.credentials.cloudflare.saveError)
       }
     } catch {
-      toast.error("Network error")
+      toast.error(messages.console.app.credentials.cloudflare.networkError)
     } finally {
       setCfSaving(false)
     }
@@ -105,47 +113,42 @@ export default function CredentialsPage() {
       })
       const data = await res.json()
       if (data.ok) {
-        toast.success("Token deleted")
+        toast.success(messages.console.app.credentials.cloudflare.deleted)
         setCloudflareCredentials((prev) => prev.filter((c) => c.id !== id))
       } else {
-        toast.error(data.error ?? "Failed to delete")
+        toast.error(data.error ?? messages.console.app.credentials.cloudflare.deleteError)
       }
     } catch {
-      toast.error("Network error")
+      toast.error(messages.console.app.credentials.cloudflare.networkError)
     } finally {
       setCfDeleting(null)
     }
   }
 
   return (
-    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Credentials</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage connected integrations and API tokens for your application.
-        </p>
-      </header>
-
+    <LifecyclePageShell
+      title={messages.console.app.credentials.heading}
+      description={messages.console.app.credentials.description}
+    >
       {/* GitHub Accounts */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <GithubLogo className="size-5" weight="duotone" />
-            GitHub
+            {messages.console.app.credentials.github.heading}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {githubLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Spinner className="size-4 animate-spin" />
-              Loading accounts...
+              {messages.console.app.credentials.github.loading}
             </div>
           ) : githubError ? (
             <p className="text-sm text-destructive">{githubError}</p>
           ) : githubAccounts.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No GitHub accounts connected. Connect one to enable repository
-              deployments.
+              {messages.console.app.credentials.github.noAccounts}
             </p>
           ) : (
             <ul className="space-y-2">
@@ -157,7 +160,9 @@ export default function CredentialsPage() {
                   <div className="flex flex-col gap-0.5">
                     <span className="font-medium">{account.accountLogin}</span>
                     <span className="text-xs text-muted-foreground">
-                      {account.accountType} · {account.targetType} · Connected{" "}
+                      {messages.console.app.credentials.github.accountType} ·{" "}
+                      {messages.console.app.credentials.github.targetType} ·{" "}
+                      {messages.console.app.credentials.github.connected}{" "}
                       {new Date(account.installedAt).toLocaleDateString()}
                     </span>
                   </div>
@@ -169,7 +174,7 @@ export default function CredentialsPage() {
           <div>
             <Button variant="outline" size="sm" asChild>
               <a href="/api/integrations/github/install/start?returnTo=/console/app/credentials">
-                Connect GitHub
+                {messages.console.app.credentials.github.connect}
               </a>
             </Button>
           </div>
@@ -181,20 +186,20 @@ export default function CredentialsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Key className="size-5" weight="duotone" />
-            Cloudflare DNS
+            {messages.console.app.credentials.cloudflare.heading}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {cloudflareLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Spinner className="size-4 animate-spin" />
-              Loading credentials...
+              {messages.console.app.credentials.cloudflare.loading}
             </div>
           ) : cloudflareError ? (
             <p className="text-sm text-destructive">{cloudflareError}</p>
           ) : cloudflareCredentials.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No DNS tokens saved yet.
+              {messages.console.app.credentials.cloudflare.noCredentials}
             </p>
           ) : (
             <ul className="space-y-2">
@@ -216,7 +221,9 @@ export default function CredentialsPage() {
                     disabled={cfDeleting === cred.id}
                     className="text-destructive hover:text-destructive"
                   >
-                    {cfDeleting === cred.id ? "Deleting..." : "Delete"}
+                    {cfDeleting === cred.id
+                      ? messages.console.app.credentials.cloudflare.deleting
+                      : messages.console.app.credentials.cloudflare.delete}
                   </Button>
                 </li>
               ))}
@@ -232,11 +239,11 @@ export default function CredentialsPage() {
                 htmlFor="cf-name"
                 className="mb-1 block text-xs font-medium text-muted-foreground"
               >
-                Name
+                {messages.console.app.credentials.cloudflare.name}
               </label>
               <Input
                 id="cf-name"
-                placeholder="e.g. Primary DNS"
+                placeholder={messages.console.app.credentials.cloudflare.namePlaceholder}
                 value={cfName}
                 onChange={(e) => setCfName(e.target.value)}
                 disabled={cfSaving}
@@ -247,12 +254,12 @@ export default function CredentialsPage() {
                 htmlFor="cf-token"
                 className="mb-1 block text-xs font-medium text-muted-foreground"
               >
-                API Token
+                {messages.console.app.credentials.cloudflare.apiToken}
               </label>
               <Input
                 id="cf-token"
                 type="password"
-                placeholder="Cloudflare API token"
+                placeholder={messages.console.app.credentials.cloudflare.apiTokenPlaceholder}
                 value={cfToken}
                 onChange={(e) => setCfToken(e.target.value)}
                 disabled={cfSaving}
@@ -266,15 +273,15 @@ export default function CredentialsPage() {
               {cfSaving ? (
                 <>
                   <Spinner className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  {messages.console.app.credentials.cloudflare.saving}
                 </>
               ) : (
-                "Save token"
+                messages.console.app.credentials.cloudflare.save
               )}
             </Button>
           </form>
         </CardContent>
       </Card>
-    </main>
+    </LifecyclePageShell>
   )
 }
