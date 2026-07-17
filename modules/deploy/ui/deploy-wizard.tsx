@@ -295,7 +295,6 @@ function DeployWizardInner() {
             setRepositorySearch("")
             setRepositoryOptions([])
             setRepositoryOptionsError(null)
-            setRepositoryOptionsLoading(true)
             dispatch({
               type: "set-source",
               payload: {

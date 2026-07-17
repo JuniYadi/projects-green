@@ -16,8 +16,8 @@ export type StackUpsertInput = {
   slug: string
   sourceType: "GITHUB" | "TEMPLATE"
   repositoryConnectionId?: string | null
-  branchName: string
-  rootDirectory: string
+  branchName?: string | null
+  rootDirectory?: string | null
   framework?: string | null
   frameworkVersion?: string | null
   buildCommand?: string | null
@@ -145,15 +145,14 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
     const existingJson = existing?.metadataJson as Record<string, unknown> | null ?? {}
     const metadataJson = { ...existingJson, ...buildMetadata } as Prisma.InputJsonValue
 
-    const isTemplate = input.sourceType === "TEMPLATE"
     const data = {
       organizationId: input.organizationId,
       name: input.name,
       slug: input.slug,
       sourceType: input.sourceType,
       repositoryConnectionId: input.repositoryConnectionId ?? null,
-      branchName: isTemplate && !input.branchName ? "/" : input.branchName,
-      rootDirectory: isTemplate && !input.rootDirectory ? "/" : input.rootDirectory,
+      branchName: input.branchName || undefined,
+      rootDirectory: input.rootDirectory || undefined,
       framework: input.framework ?? null,
       buildCommand: input.buildCommand ?? null,
       dockerfileDetected: input.dockerfileDetected,

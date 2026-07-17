@@ -14,6 +14,7 @@ import {
   createOrUpdateStack,
   triggerDeploy,
 } from "../../deploy-pipeline.service"
+import { DEPLOY_TEMPLATES } from "../../deploy.constants"
 
 /**
  * PGREEN-071 — Console Deploy Journey truth path.
@@ -90,8 +91,17 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
     let slug: string
 
     if (sourceType === "TEMPLATE") {
-      // Template deploys don't need a repository connection.
-      name = body.name || "app"
+      const template = DEPLOY_TEMPLATES.find((t) => t.id === body.templateId)
+      if (!template) {
+        set.status = 422
+        return {
+          ok: false,
+          error: "UNKNOWN_TEMPLATE",
+          message: "Unknown templateId",
+        }
+      }
+      repositoryConnectionId = null
+      name = body.name?.trim() || template.name
       slug = slugify(name)
     } else {
       // Resolve the repository connection for GitHub deploys.
@@ -147,8 +157,8 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         slug,
         sourceType: sourceType === "TEMPLATE" ? "TEMPLATE" : "GITHUB",
         repositoryConnectionId,
-        branchName: body.branchName,
-        rootDirectory: body.rootDirectory || "/",
+        branchName: body.branchName || null,
+        rootDirectory: body.rootDirectory || null,
         framework: body.framework ?? null,
         frameworkVersion: body.frameworkVersion ?? null,
         buildCommand: body.buildCommand ?? null,
@@ -247,7 +257,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       templateId: t.Optional(t.String()),
       repositoryId: t.Optional(t.String()),
       name: t.Optional(t.String()),
-      branchName: t.String(),
+      branchName: t.Optional(t.String()),
       rootDirectory: t.Optional(t.String()),
       framework: t.Optional(t.String()),
       frameworkVersion: t.Optional(t.String()),
