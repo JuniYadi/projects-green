@@ -73,13 +73,12 @@ export default function ConsolePage() {
   const fetchDashboardData = useCallback(async () => {
     const results = await Promise.allSettled([
       eden.api.billing.account.get().then((r) => r.data),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (eden.api as any).usage.get().then((r: any) => r.data),
+      eden.api.billing.usage.get().then((r) => r.data),
       eden.api.billing.invoices
         .get({ $query: { limit: "1" } })
         .then((r) => r.data!),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (eden.api as any).support.tickets
+      (eden.api as any)["support-tickets"]
         .get({ $query: { status: "open" } })
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .then((r: any) => r.data),
