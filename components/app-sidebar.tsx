@@ -472,6 +472,12 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         isActive: path === "/console/app/deploy",
       },
       {
+        title: "Credentials",
+        url: localizePathname({ pathname: "/console/app/credentials", locale }),
+        icon: <ShieldCheckIcon />,
+        isActive: path === "/console/app/credentials",
+      },
+      {
         title: "Manage",
         url: localizePathname({ pathname: "/console/app/manage", locale }),
         icon: <GaugeIcon />,
