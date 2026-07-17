@@ -15,10 +15,14 @@ const getRequiredEnv = (name: string) => {
   return value
 }
 
-const ENCRYPTION_KEY = (() => {
-  const secret = getRequiredEnv("APP_SECRET")
-  return createHash("sha256").update(secret).digest()
-})()
+let _encryptionKey: Buffer | null = null
+function getEncryptionKey(): Buffer {
+  if (!_encryptionKey) {
+    const secret = getRequiredEnv("APP_SECRET")
+    _encryptionKey = createHash("sha256").update(secret).digest()
+  }
+  return _encryptionKey
+}
 
 export type CloudflareDnsCredentialListItem = Pick<
   CloudflareDnsCredential,
@@ -31,7 +35,7 @@ function buildMaskedToken(tokenJson: string): string {
   const parsed = parseEncryptedField(tokenJson)
   if (!parsed) return "cf???…"
   try {
-    const plaintext = decrypt(parsed, ENCRYPTION_KEY)
+    const plaintext = decrypt(parsed, getEncryptionKey())
     const last4 = plaintext.slice(-4)
     return `cf…${last4}`
   } catch {
@@ -65,7 +69,7 @@ export async function upsertCredential({
   const trimmedName = name.trim()
   if (!trimmedName) throw new Error("Credential name cannot be empty")
 
-  const encrypted = encrypt(token, ENCRYPTION_KEY)
+  const encrypted = encrypt(token, getEncryptionKey())
   const tokenJson = serializeEncryptedField(encrypted)
 
   const row = await prisma.cloudflareDnsCredential.upsert({
