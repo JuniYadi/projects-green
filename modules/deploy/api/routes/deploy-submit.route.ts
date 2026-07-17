@@ -84,37 +84,50 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       }
     }
 
-    // Resolve the repository connection so deploys are pinned to a real,
-    // org-accessible private repository (MVP is private-repo first).
-    const rawRepoId = String(body.repositoryId)
-    if (!/^\d+$/.test(rawRepoId)) {
-      set.status = 422
-      return {
-        ok: false,
-        error: "INVALID_REPOSITORY",
-        message: "A valid numeric GitHub repository id is required.",
-      }
-    }
-    const repositoryId = BigInt(rawRepoId)
+    const sourceType = body.sourceType ?? "GITHUB"
+    let repositoryConnectionId: string | null | undefined
+    let name: string
+    let slug: string
 
-    const connection = await prisma.githubRepositoryConnection.findFirst({
-      where: {
-        githubRepositoryId: repositoryId,
-        enabled: true,
-        installation: {
-          organizationId: auth.organizationId,
+    if (sourceType === "TEMPLATE") {
+      // Template deploys don't need a repository connection.
+      name = body.name || "app"
+      slug = slugify(name)
+    } else {
+      // Resolve the repository connection for GitHub deploys.
+      const rawRepoId = String(body.repositoryId)
+      if (!/^\d+$/.test(rawRepoId)) {
+        set.status = 422
+        return {
+          ok: false,
+          error: "INVALID_REPOSITORY",
+          message: "A valid numeric GitHub repository id is required.",
+        }
+      }
+      const repositoryId = BigInt(rawRepoId)
+
+      const connection = await prisma.githubRepositoryConnection.findFirst({
+        where: {
+          githubRepositoryId: repositoryId,
+          enabled: true,
+          installation: {
+            organizationId: auth.organizationId,
+          },
         },
-      },
-    })
+      })
 
-    if (!connection) {
-      set.status = 404
-      return {
-        ok: false,
-        error: "REPOSITORY_NOT_CONNECTED",
-        message:
-          "This repository is not connected. Connect it via the GitHub App first.",
+      if (!connection) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "REPOSITORY_NOT_CONNECTED",
+          message:
+            "This repository is not connected. Connect it via the GitHub App first.",
+        }
       }
+      repositoryConnectionId = connection.id
+      slug = slugify(connection.repoName || body.name || "app")
+      name = connection.repoName || body.name || slug
     }
 
     const resourcePlanId = body.resourcePlanId
@@ -125,16 +138,15 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       memory: body.memory ?? null,
     })
 
-    const slug = slugify(connection.repoName || body.name || "app")
-
     // Persist the stack as the single source of truth before any deploy.
     let stack
     try {
       stack = await createOrUpdateStack({
         organizationId: auth.organizationId,
-        name: connection.repoName || body.name || slug,
+        name,
         slug,
-        repositoryConnectionId: connection.id,
+        sourceType: sourceType === "TEMPLATE" ? "TEMPLATE" : "GITHUB",
+        repositoryConnectionId,
         branchName: body.branchName,
         rootDirectory: body.rootDirectory || "/",
         framework: body.framework ?? null,
@@ -212,9 +224,10 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       }
     }
 
+    const triggerType = sourceType === "TEMPLATE" ? "TEMPLATE" : "MANUAL"
     const result = await triggerDeploy({
       stackId: stack.id,
-      triggerType: "MANUAL",
+      triggerType,
     })
 
     return {
@@ -230,7 +243,9 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
   },
   {
     body: t.Object({
-      repositoryId: t.String(),
+      sourceType: t.Optional(t.Union([t.Literal("GITHUB"), t.Literal("TEMPLATE")])),
+      templateId: t.Optional(t.String()),
+      repositoryId: t.Optional(t.String()),
       name: t.Optional(t.String()),
       branchName: t.String(),
       rootDirectory: t.Optional(t.String()),

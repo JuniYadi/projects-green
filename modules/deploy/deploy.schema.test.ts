@@ -21,6 +21,7 @@ describe("source step validation", () => {
         repositoryId: "repo",
         branchName: "main",
         rootDirectory: "/",
+        appName: "",
       })
     ).toBe(true)
 
@@ -31,6 +32,7 @@ describe("source step validation", () => {
         repositoryId: "repo",
         branchName: "main",
         rootDirectory: "/",
+        appName: "",
       })
     ).toBe(false)
   })
@@ -44,6 +46,7 @@ describe("source step validation", () => {
         repositoryId: "",
         branchName: "",
         rootDirectory: "/",
+        appName: "",
       })
     ).toBe(true)
 
@@ -56,6 +59,7 @@ describe("source step validation", () => {
         repositoryId: "",
         branchName: "",
         rootDirectory: "/",
+        appName: "",
       })
     ).toBe(false)
   })

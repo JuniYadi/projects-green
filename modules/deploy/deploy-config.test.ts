@@ -17,6 +17,7 @@ const validSource: DeploySourceState = {
   repositoryId: "123",
   branchName: "main",
   rootDirectory: "/",
+  appName: "",
 }
 
 const highConfidenceDetection: DetectionResult = {

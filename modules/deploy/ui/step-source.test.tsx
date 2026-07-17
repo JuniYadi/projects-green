@@ -39,6 +39,7 @@ mock.module("@/modules/deploy/deploy.constants", () => {
 import { fireEvent, render, waitFor, act } from "@testing-library/react"
 import { StepSource } from "@/modules/deploy/ui/step-source"
 import type { StepSourceProps } from "@/modules/deploy/ui/step-source"
+import type { ResourcePlanId } from "@/modules/deploy/deploy.types"
 
 const createProps = () => {
   return {
@@ -81,10 +82,15 @@ const createProps = () => {
     selectedRepositoryId: "",
     selectedBranchName: "",
     rootDirectory: "/",
+    appName: "" as string,
+    templateResourcePlanId: "payg" as ResourcePlanId,
     onSourceTypeChange: mock(() => {}),
     onTemplateSelect: mock(() => {}),
     onOwnerSearchChange: mock(() => {}),
     onRepositorySearchChange: mock(() => {}),
+    onAppNameChange: mock(() => {}),
+    onTemplateResourcePlanChange: mock(() => {}),
+    onDeployWithDefaults: mock(() => {}),
     onOwnerSelect: mock(() => {}),
     onRepositorySelect: mock(() => {}),
     onBranchSelect: mock(() => {}),

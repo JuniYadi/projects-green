@@ -26,7 +26,7 @@ const githubRepositories = [
     fullName: "pfn-labs/console-next-app",
     name: "console-next-app",
     owner: "owner-pfn",
-    installationId: 1,
+    installationId: "1",
     defaultBranch: "main",
     private: true,
   },
@@ -35,7 +35,7 @@ const githubRepositories = [
     fullName: "pfn-labs/platform-api",
     name: "platform-api",
     owner: "owner-pfn",
-    installationId: 1,
+    installationId: "1",
     defaultBranch: "master",
     private: true,
   },
@@ -44,7 +44,7 @@ const githubRepositories = [
     fullName: "acme-inc/storefront",
     name: "storefront",
     owner: "owner-acme",
-    installationId: 2,
+    installationId: "2",
     defaultBranch: "main",
     private: false,
   },
@@ -53,7 +53,7 @@ const githubRepositories = [
     fullName: "acme-inc/legacy-worker",
     name: "legacy-worker",
     owner: "owner-acme",
-    installationId: 2,
+    installationId: "2",
     defaultBranch: "main",
     private: true,
   },
@@ -244,9 +244,11 @@ describe("DeployWizard", () => {
       ) {
         const body = requestInit.body
           ? (JSON.parse(requestInit.body as string) as {
+              installationId?: unknown
               repo?: string
             })
           : null
+        expect(typeof body?.installationId).toBe("number")
         const repoName = body?.repo ?? ""
 
         // Return different results per repo
@@ -694,6 +696,7 @@ describe("DeployWizard", () => {
         repositoryId: "repo-console-next",
         branchName: "main",
         rootDirectory: "/",
+        appName: "",
       },
       detectionResult: {
         language: "Node.js",
