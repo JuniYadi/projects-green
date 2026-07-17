@@ -7,7 +7,7 @@
 ```
 modules/deploy/
 ├── api/              → Deploy API routes
-│   ├── routes/       → Submit, rollback, env-var, monitor routes
+│   ├── routes/       → Submit, rollback, env-var, monitor, pipeline routes
 │   └── deploy.route.ts → Main deploy router
 ├── billing/          → Deployment billing integration
 ├── opensearch/       → OpenSearch log aggregation
@@ -18,6 +18,7 @@ modules/deploy/
 │   ├── resource-plan-selector.tsx
 │   └── operate/      → 13 runtime tab components
 ├── *.service.ts      → Core services
+├── deploy-recommendation.ts → AI plan recommendation heuristic
 ├── *.types.ts        → TypeScript types
 ├── *.schema.ts       → Zod validation
 ├── *.constants.ts    → Deployment constants/templates
@@ -34,6 +35,8 @@ User connects GitHub repo → Framework Detection → Stack Creation → Build �
 ### 1. GitHub Repository Connection
 - User installs the GitHub App (`modules/github/`)
 - Repositories are connected via `GithubRepositoryConnection` model
+- The source step in the deploy wizard fetches connected owners, repositories, and branches via Eden Treaty client
+- GitHub accounts are also viewable on the dedicated **Credentials** page (`/console/app/credentials`)
 - Branch selection from connected repos
 
 ### 2. Framework Detection (`modules/framework-detection/`)
@@ -55,9 +58,33 @@ type DeploySourceType = "github" | "template"
 type DeployTemplateId = "wordpress" | "n8n" | "openclaw" | "ghost" | "strapi" | "directus" | "payload" | "pocketbase" | "umami" | "plausible"
 type ResourcePlanId = "starter" | "pro" | "payg"
 type DeployStatus = "idle" | "queued" | "building" | "deploying" | "running" | "failed"
+
+// DetectionResult expanded fields (optional):
+primaryEngine, primaryEngineVersion, secondaryEngine, secondaryEngineVersion, defaultPort
+
+// DeployEnvironmentState expanded:
+billingMode?: "PAYG" | "PACKAGE"
+paygBufferHours?: number
+cpu?: number
+memory?: number
 ```
 
 Key source: `modules/framework-detection/framework-detection.service.ts`, `framework-detection.types.ts`, `modules/deploy/deploy-detection.service.ts`
+
+### 2b. AI Plan Recommendation (`deploy-recommendation.ts`)
+
+After framework detection, the `recommendPlan(detection)` heuristic auto-selects a resource plan and sizing:
+
+| Framework Category | Plan | CPU / Memory |
+|--------------------|------|-------------|
+| **Pro frameworks** (Next.js, Nuxt, Express, Fastify, NestJS, Remix, SvelteKit, Astro, Ghost, Umami, n8n) | `pro` | 500m / 1GiB |
+| **PAYG frameworks** (Laravel, WordPress, Strapi, Directus, Payload, PocketBase, Plausible, OpenClaw) | `payg` | 500–1000m / 1–2GiB (scales with secondary engine) |
+| **Unknown/light frameworks** | `starter` | 100m / 256MiB |
+| **No detection** | `pro` (default) | 500m / 1GiB |
+
+The recommendation is auto-applied in `deploy-wizard.tsx` after detection completes and passed as `recommendedPlanId` to `StepEnvironment`.
+
+Key source: `modules/deploy/deploy-recommendation.ts`, `deploy-recommendation.test.ts`
 
 ### 3. Stack Creation (`deploy-pipeline.service.ts`)
 - Durable `ApplicationStack` record created in database
@@ -78,6 +105,21 @@ The pipeline:
 - **OpenSearch integration** — logs aggregated in OpenSearch for querying
 - **Deploy monitor worker** (`scripts/deploy-monitor-worker.ts`) — polls deployment status every 60s
 
+## Pipeline Config API (`deploy-pipeline.route.ts`)
+
+New Elysia route group exposing deployment pipeline state:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/deploy/pipeline/status/:deployId` | Deploy status including `manifestPushed`, `argocdSynced`, timestamps, `failureReason`, `attempt` |
+| GET | `/deploy/pipeline/events/:deployId` | Deploy event history |
+| GET | `/deploy/pipeline/logs/:deployId` | Deploy logs |
+| GET | `/deploy/pipeline/monitor-stats` | Global monitor stats |
+
+All routes use `withAuth()` + org-scoped authorization checks.
+
+Key source: `modules/deploy/api/routes/deploy-pipeline.route.ts`
+
 ## Billing
 
 - **Resource plan selector** — `starter`, `pro`, `payg` plans
@@ -90,9 +132,9 @@ The pipeline:
 
 The deploy wizard is a multi-step form:
 
-1. **Source** — select GitHub repo or template
+1. **Source** — select GitHub repo (with owner/repository/branch browsing from connected accounts) or template
 2. **Build** — configure framework, build command, root directory
-3. **Environment** — set environment variables, secrets
+3. **Environment** — set environment variables, resource plan (auto-recommended), secrets
 4. **Review & Deploy** — summary and submit
 
 The operate UI (`modules/deploy/ui/operate/`) provides runtime management with 13+ tab components for monitoring running deployments.
@@ -108,6 +150,7 @@ The operate UI (`modules/deploy/ui/operate/`) provides runtime management with 1
 | Service | File | Purpose |
 |---------|------|---------|
 | Detection | `deploy-detection.service.ts` | Framework/language detection with confidence scoring |
+| Recommendation | `deploy-recommendation.ts` | AI plan recommendation heuristic (starter/pro/payg) |
 | Pipeline | `deploy-pipeline.service.ts` | Stack upsert, Jenkins sync |
 | Builder | `deploy-builder.service.ts` | Build context preparation |
 | Helm | `deploy.helm.ts` | Kubernetes Helm chart generation |
@@ -133,3 +176,4 @@ The operate UI (`modules/deploy/ui/operate/`) provides runtime management with 1
 | Various | `/api/deploy/rollback` | Rollback |
 | Various | `/api/deploy/environment` | Environment variable management |
 | Various | `/api/deploy/monitor` | Deployment monitoring |
+| Various | `/api/deploy/pipeline/*` | Pipeline status, events, logs, monitor stats |

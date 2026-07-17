@@ -38,6 +38,7 @@ Request → Next.js Middleware (proxy.ts) → Elysia App Router (/lib/api.ts)
                                            ├── billingRoutes
                                            ├── deployRoutes
                                            ├── githubRoutes
+                                           ├── cloudflareDnsTokenRoutes
                                            ├── supportTicketRoutes
                                            └── ... (25+ route groups total)
 ```
@@ -114,7 +115,7 @@ Key source: `/scripts/workers.ts`
 **PostgreSQL 16** with **pgvector** extension via Prisma ORM.
 
 - Schema: `/prisma/schema.prisma` (~74 KB)
-- Migrations: `/prisma/migrations/` (timestamped)
+- Migrations: `/prisma/migrations/` (consolidated — individual migrations squashed into a single `init` migration in #365)
 - Config: `/prisma.config.ts`
 - Client: `/lib/prisma.ts` (PrismaPg adapter, singleton pattern)
 
