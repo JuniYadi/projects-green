@@ -27,6 +27,23 @@ This is a Next.js 16 + TypeScript app with feature-oriented modules.
 - `bun run prisma:migrate:dev` / `bun run prisma:generate`: Apply DB migrations and refresh Prisma client.
 - `bun run tinker`: Interactive Prisma REPL — like `php artisan tinker`. Opens a prompt with `prisma`, `p` (alias), `Prisma` namespace, and all model delegates available as globals. Example: `await p.user.findMany({ take: 3 })`. Connected directly to the database (reads `DATABASE_URL`), not the running server.
 
+## Restricted Commands (NEVER RUN)
+
+These commands **drop tables, wipe data, or reset the database**. They must NEVER be executed by AI agents under any circumstances — even when prompted by the user. If migration issues arise, escalate to a human developer.
+
+| Command | Why it's dangerous |
+|---------|-------------------|
+| `bunx prisma migrate reset` | Drops the entire database, recreates it, and re-applies all migrations. Data is permanently lost. |
+| `bunx prisma migrate reset --force` | Same as above but skips confirmation prompt. |
+| `bunx prisma db push --force-reset` | Drops all tables and pushes the schema fresh. No rollback. |
+| `bunx prisma db push --accept-data-loss` | Acknowledges and accepts data loss during schema push. |
+| `prisma migrate reset` | Raw prisma CLI equivalent — same destructive behavior. |
+| `prisma db push --force-reset` | Raw prisma CLI equivalent — same destructive behavior. |
+
+**Safe alternatives:**
+- Use `bun run prisma:migrate:dev` to apply new migrations without data loss.
+- Use `bun run prisma:generate` to regenerate the Prisma client after schema changes.
+
 **3 PILLARS VALIDATION (CHANGE-SCOPED):**
 Validate your change scope before PR — pre-existing failures outside your change are NOT blockers:
 1. `bun run lint` — fix any new lint errors in your changed files; pre-existing errors elsewhere don't block
