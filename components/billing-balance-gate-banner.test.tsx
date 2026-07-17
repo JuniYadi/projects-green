@@ -90,14 +90,14 @@ describe("BillingBalanceGateBanner", () => {
 
     expect(actionColumn).toBe(topupLink.parentElement!)
     expect(actionColumn).toHaveClass("flex")
-    expect(actionColumn).toHaveClass("flex-col")
-    expect(actionColumn).toHaveClass("items-end")
-    expect(actionColumn).toHaveClass("gap-3")
+    expect(actionColumn).toHaveClass("flex-row")
+    expect(actionColumn).toHaveClass("items-center")
+    expect(actionColumn).toHaveClass("gap-2")
     expect(actionColumn).toHaveClass("!right-3")
 
     const children = Array.from(actionColumn.children)
-    expect(children.indexOf(dismissButton)).toBeLessThan(
-      children.indexOf(topupLink)
+    expect(children.indexOf(topupLink)).toBeLessThan(
+      children.indexOf(dismissButton)
     )
   })
 })
