@@ -124,6 +124,7 @@ describe("deploy-pipeline.service", () => {
       billingMode: "PAYG",
       hourlyCost: "1.5",
       envVars: [],
+      sourceType: "GITHUB",
     })
 
     expect(mockPrisma.applicationStack.create).toHaveBeenCalled()
@@ -135,7 +136,6 @@ describe("deploy-pipeline.service", () => {
       ...mockStack,
       status: "IDLE",
     })
-
     await createOrUpdateStack({
       organizationId: "org-1",
       name: "test-stack",
@@ -144,6 +144,7 @@ describe("deploy-pipeline.service", () => {
       rootDirectory: "/",
       dockerfileDetected: false,
       envVars: [],
+      sourceType: "GITHUB",
     })
 
     expect(mockPrisma.applicationStack.update).toHaveBeenCalled()
@@ -155,7 +156,6 @@ describe("deploy-pipeline.service", () => {
       ...mockStack,
       status: "DEPLOYING",
     })
-
     await expect(
       createOrUpdateStack({
         organizationId: "org-1",
@@ -165,6 +165,7 @@ describe("deploy-pipeline.service", () => {
         rootDirectory: "/",
         dockerfileDetected: false,
         envVars: [],
+        sourceType: "GITHUB",
       })
     ).rejects.toThrow("STACK_DEPLOY_IN_PROGRESS")
   })

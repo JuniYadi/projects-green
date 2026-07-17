@@ -31,6 +31,7 @@ app/
 │   ├── admin/              → Super admin pages
 │   ├── auth/               → Authentication pages (select-org, etc.)
 │   ├── console/            → Customer console (tenant member)
+│   │   ├── app/            → App management (credentials page)
 │   │   ├── billing/        → Billing pages
 │   │   ├── invoices/       → Invoice pages
 │   │   ├── organization/   → Org settings
@@ -55,7 +56,7 @@ app/
 ├── api/                    → API route catch-all
 │   ├── [[...slugs]]/       → Elysia route handler
 │   ├── auth/               → Auth-specific API routes
-│   └── integrations/       → Third-party integration callbacks
+│   └── integrations/       → Third-party integration callbacks + GitHub accounts listing
 ├── callback/               → WorkOS OAuth callback
 ├── globals.css             → Global Tailwind styles
 ├── layout.tsx              → Root layout
@@ -112,6 +113,7 @@ modules/
 ├── admin/                  → Admin panel routes
 ├── auth/                   → Authentication logic + WhoAmI
 ├── billing/                → Billing engine (core)
+├── cloudflare/             → Cloudflare DNS credential management (encrypted token storage, CRUD API)
 ├── deploy/                 → App hosting deployment
 ├── docs/                   → Documentation + knowledge base
 ├── email-templates/        → Email template API
@@ -139,7 +141,7 @@ prisma/
 ├── schema.prisma           → Full database schema
 └── migrations/             → Migration files
 
-scripts/                    → Workers + admin scripts
+scripts/                    → Workers + admin scripts (preload.ts, run-tests.ts)
 test/                       → Test setup + e2e helpers
 e2e/                        → Playwright specs
 .github/workflows/          → CI/CD pipelines
@@ -170,3 +172,5 @@ e2e/                        → Playwright specs
 | **Encryption** | `lib/encryption.ts` |
 | **Rate limiting** | `lib/rate-limit.ts` |
 | **Audit logging** | `lib/audit.service.ts` |
+| **Integrations API** | `app/api/integrations/` (GitHub accounts, callbacks) |
+| **Credentials UI** | `app/[lang]/console/app/credentials/` (GitHub accounts + Cloudflare DNS tokens) |

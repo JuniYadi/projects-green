@@ -19,8 +19,8 @@ import {
   BookOpenIcon,
   BuildingsIcon,
   CaretLeftIcon,
-  ChartLineIcon,
   CreditCardIcon,
+  ChartLineIcon,
   CrosshairIcon,
   DeviceMobileIcon,
   GaugeIcon,
@@ -42,8 +42,6 @@ import {
   WhatsappLogoIcon,
 } from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
-
-const PAYMENTS_PATH = "/portal/payments"
 
 const getPathnameWithoutSearch = (pathname: string) => pathname.split("?")[0]
 
@@ -472,6 +470,12 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         isActive: path === "/console/app/deploy",
       },
       {
+        title: "Credentials",
+        url: localizePathname({ pathname: "/console/app/credentials", locale }),
+        icon: <ShieldCheckIcon />,
+        isActive: path === "/console/app/credentials",
+      },
+      {
         title: "Manage",
         url: localizePathname({ pathname: "/console/app/manage", locale }),
         icon: <GaugeIcon />,
@@ -792,12 +796,6 @@ const buildPortalProjects = (
     url: localizePathname({ pathname: "/portal/billing", locale }),
     icon: <WalletIcon />,
     isActive: startsWithRoute(pathname, "/portal/billing"),
-  },
-  {
-    name: "Payments",
-    url: localizePathname({ pathname: PAYMENTS_PATH, locale }),
-    icon: <CreditCardIcon />,
-    isActive: startsWithRoute(pathname, PAYMENTS_PATH),
   },
   {
     name: "Invoices",

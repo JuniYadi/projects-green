@@ -56,11 +56,15 @@ sendMessage(options)
   → 10. Upsert contact from message
 ```
 
+On Meta API failure, `restoreAllowance()` compensates the billing balance/quota.
+
 - Send types: `text`, `image`, `document`, `audio`, `location`, `interactive`
 - Template message sending with billing category support
 - Quota credit resolution (`quota-credit.service.ts`)
 - Quota alerts (`quota-alert.service.ts`)
 - Phone number normalization (`phone-number.ts`, `phone-number.test.ts`)
+- **Date-grouped messages** — `date-group.ts` utility (`getDateGroupLabel()` for relative date buckets: Today/Yesterday/7/14/30 Days Ago/Months/Years Ago) + `message-date-group.tsx` React component for sticky date headers in message UI
+- **Hourly rate limiting** — `devices.constants.ts` defines `getHourlyMessageLimit()` (dailyLimit / 24) and `DEFAULT_DAILY_LIMIT_MESSAGE = 1000`. `WhatsappHourlyCount` model tracks per-device hourly message counts (unique: org + device + hour).
 - Key source: `modules/whatsapp/messages/messages.service.ts`
 
 ### Templates (`modules/whatsapp/templates/`)
@@ -84,13 +88,21 @@ sendMessage(options)
 - Addon quota top-ups (consumption order: default → addon → balance)
 - Cost derivation from `BillingAdjustment` records
 - Category-aware billing (different rates for reply, template, etc.)
+- **`restoreAllowance()`** — compensation method called when Meta API calls fail after billing was consumed
 - Monthly billing worker (`scripts/whatsapp-monthly-billing-worker.ts`)
 - Key source: `modules/whatsapp/billing/whatsapp-billing.service.ts`, `whatsapp-billing.service.test.ts`
 
 ### Broadcasts (`modules/whatsapp/broadcasts/`)
 - Broadcast campaign creation and delivery
-- Broadcast worker (`scripts/whatsapp-broadcast-worker.ts`)
-- Queue-based processing with concurrency 4
+- Broadcast worker (`scripts/whatsapp-broadcast-worker.ts`) — BullMQ worker (concurrency 4) with:
+  - **Throttling** — sliding-window rate limiter stored in `whatsappBroadcastRateState`; re-enqueues `throttle` jobs when rate limit hit
+  - **Device limit enforcement** — checks daily + hourly limits before each send; re-enqueues `dispatch` to next midnight/hour when exceeded; atomically increments counters in a transaction *before* sending
+  - **Status updates** — recomputes campaign aggregates (queued/sent/failed) after every dispatch
+- **Broadcast scheduling** (`broadcast-schedule.service.ts`) — three functions:
+  - `getDeviceBroadcastCapacity()` — queries `whatsappDailyCount` and `whatsappHourlyCount` to compute remaining daily/hourly quota
+  - `computeRecommendedSchedule()` — derives throttle rate and estimated duration from recipient count and hourly limit
+  - `validateSchedule()` — enforces throttle ≤ hourly limit and recipients ≤ remaining today (unless `acknowledgeMultiDay` is true)
+- Key source: `modules/whatsapp/broadcasts/broadcast-schedule.service.ts`, `broadcast-schedule.dto.ts`
 
 ### Usage & Analytics
 - **Usage** — `modules/whatsapp/usage/` — message usage tracking, quota progress bars, usage dashboard
@@ -101,7 +113,7 @@ sendMessage(options)
 - **Audit** — Create and console audit log routes for tracking WhatsApp administrative actions
 - **Catalogs** — Multi-product catalog API integration
 - **Contacts** — Contact management and upsert-from-message flow
-- **Conversations** — Conversation tracking
+- **Conversations** — Conversation tracking with **internal notes** (`internalNotes` text field) and **labeling system** (`WhatsappConversationLabel` with many-to-many via junction table). Labels have name + color and are org-scoped. Conversations can be filtered and updated with label IDs and notes via the Elysia route schema (`conversationUpdateSchema`).
 - **Groups** — Group management API
 - **Media** — Media upload/download/delete via Meta API
 - **Rate Limit** — Rate limiting for WhatsApp API calls
@@ -136,11 +148,13 @@ sendMessage(options)
 
 ## Recent Development History
 
-The WhatsApp module has gone through ~4 rounds of iteration (based on recent git history):
+The WhatsApp module has gone through ~6 rounds of iteration (based on recent git history):
 
 1. **#358** — Console UX redesign: template-first messaging, global dashboard, paginated templates
 2. **#360** — Feedback enhancements: categories, quota credits, usage fixes, audit+webhook log pages
 3. **#361** — Issue continuation: template locking, date columns, phone normalization, usage loading
 4. **#363-364** — Polish: dashboard cards, template sync headerUrl fix, addon quota, consumption order
+5. **#365** — Broadcast scheduling, conversation labels & notes, date-grouped messages, hourly rate limiting, billing compensation
+6. **#366** — Test pipeline streamlining: explicit preload, change-scoped validation gates
 
-Key source: Recent git history (commits `6e470aa`, `7c43c7a`, `7c4274a`, `639b04f`, `3aadbe8`)
+Key source: Recent git history (commits `6e470aa`, `7c43c7a`, `7c4274a`, `639b04f`, `3aadbe8`, `cf023e6`, `b0f32db`)

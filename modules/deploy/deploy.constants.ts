@@ -47,6 +47,7 @@ export const DEPLOY_WIZARD_STORAGE_KEY = "pfnapp.console.deploy-wizard.v1"
 
 export const DEFAULT_SOURCE_STATE: DeploySourceState = {
   sourceType: "github",
+  appName: "",
   ownerId: "",
   repositoryId: "",
   branchName: "",

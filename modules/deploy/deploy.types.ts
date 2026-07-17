@@ -113,6 +113,7 @@ export type DeployTimelineItem = {
 
 export type DeploySourceState = {
   sourceType: DeploySourceType
+  appName: string
   templateId?: DeployTemplateId
   ownerId: string
   repositoryId: string

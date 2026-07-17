@@ -12,7 +12,7 @@ export default function PaymentMethodsPage() {
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Link href="/portal/payments/bank-accounts" className="block">
+        <Link href="/portal/billing/payments?tab=bank-accounts" className="block">
           <Card className="h-full transition-colors hover:border-primary/50">
             <CardHeader>
               <CardTitle>Bank Accounts</CardTitle>
@@ -21,7 +21,7 @@ export default function PaymentMethodsPage() {
           </Card>
         </Link>
 
-        <Link href="/portal/payments/currencies" className="block">
+        <Link href="/portal/billing/payments?tab=currencies" className="block">
           <Card className="h-full transition-colors hover:border-primary/50">
             <CardHeader>
               <CardTitle>Currencies</CardTitle>
@@ -30,7 +30,7 @@ export default function PaymentMethodsPage() {
           </Card>
         </Link>
 
-        <Link href="/portal/payments/gateways" className="block">
+        <Link href="/portal/billing/payments?tab=gateways" className="block">
           <Card className="h-full transition-colors hover:border-primary/50">
             <CardHeader>
               <CardTitle>Gateways</CardTitle>

@@ -1,5 +1,6 @@
-import { openapi } from "@elysia/openapi"
 import { Elysia } from "elysia"
+import { openapi } from "@elysia/openapi"
+import { serverTiming } from "@elysia/server-timing"
 import { z } from "zod"
 
 import { adminRoutes } from "@/modules/admin/api/admin.route"
@@ -41,6 +42,7 @@ import { markStartupComplete } from "@/modules/health/health.service"
 import { whatsappRoutes } from "@/modules/whatsapp/whatsapp.module"
 import { whatsappWebhookRoutes } from "@/lib/whatsapp/webhook-routes"
 import { webhookDeadLetterRoutes } from "@/modules/whatsapp/webhooks/api/webhook-dead-letter.route"
+import { cloudflareDnsTokenRoutes } from "@/modules/cloudflare/api/cloudflare-dns.route"
 
 const parseErrorPath = (
   value: string | Array<string | number> | undefined
@@ -97,6 +99,7 @@ const toFieldErrors = (
 }
 
 export const app = new Elysia({ prefix: "/api" })
+  .use(serverTiming())
   .use(openapi({
     documentation: {
       info: {
@@ -169,6 +172,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(webhookDeadLetterRoutes)
   .use(whatsappRoutes)
   .use(wireguardRoutes)
+  .use(cloudflareDnsTokenRoutes)
   .onError(({ code, error, set, request, path }) => {
     if (code === "VALIDATION") {
       set.status = 422
@@ -232,10 +236,12 @@ export const app = new Elysia({ prefix: "/api" })
     return {
       endpoints: [
         { name: "self", href: `${base}/api/health` },
+        { name: "healthz", href: `${base}/api/healthz` },
+        { name: "liveness", href: `${base}/api/healthz/live` },
+        { name: "readiness", href: `${base}/api/healthz/ready` },
+        { name: "liveness (compat)", href: `${base}/api/health/liveness` },
+        { name: "readiness (compat)", href: `${base}/api/health/readiness` },
         { name: "startup", href: `${base}/api/health/startup` },
-        { name: "liveness", href: `${base}/api/health/liveness` },
-        { name: "readiness", href: `${base}/api/health/readiness` },
-        { name: "healthz", href: `${base}/api/health/healthz` },
         { name: "webhooks", href: `${base}/api/health/webhooks` },
       ],
     }

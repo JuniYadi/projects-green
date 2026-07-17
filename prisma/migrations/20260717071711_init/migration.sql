@@ -17,7 +17,7 @@ CREATE TYPE "ApplicationDeployEventType" AS ENUM ('QUEUED', 'BUILD_STARTED', 'MA
 CREATE TYPE "SupportTicketDepartment" AS ENUM ('BILLING', 'TECHNICAL', 'ACCOUNT', 'COMPLIANCE');
 
 -- CreateEnum
-CREATE TYPE "SupportTicketStatus" AS ENUM ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED');
+CREATE TYPE "SupportTicketStatus" AS ENUM ('OPEN', 'IN_PROGRESS', 'WAITING_RESPONSE', 'ON_HOLD', 'RESOLVED', 'CLOSED');
 
 -- CreateEnum
 CREATE TYPE "SupportTicketPriority" AS ENUM ('LOW', 'MEDIUM', 'HIGH');
@@ -59,7 +59,7 @@ CREATE TYPE "BillingRunType" AS ENUM ('RATING', 'INVOICING', 'FINALIZATION', 'RE
 CREATE TYPE "BillingRunStatus" AS ENUM ('PENDING', 'RUNNING', 'SUCCEEDED', 'FAILED');
 
 -- CreateEnum
-CREATE TYPE "BillingAuditAction" AS ENUM ('CREATED', 'UPDATED', 'DELETED', 'RUN_STARTED', 'RUN_FINISHED', 'INVOICE_GENERATED');
+CREATE TYPE "BillingAuditAction" AS ENUM ('CREATED', 'UPDATED', 'DELETED', 'RUN_STARTED', 'RUN_FINISHED', 'INVOICE_GENERATED', 'PAYMENT_CONFIRMED', 'ORDER_CREATED', 'BALANCE_ADJUSTED', 'TOPUP_PERFORMED', 'SUBSCRIPTION_ACTIVATED', 'SUBSCRIPTION_CANCELLED', 'CONTACT_ADDED', 'CONTACT_REMOVED', 'SETTINGS_CHANGED');
 
 -- CreateEnum
 CREATE TYPE "BillingActorType" AS ENUM ('SYSTEM', 'USER', 'WORKER');
@@ -77,7 +77,13 @@ CREATE TYPE "BillingMode" AS ENUM ('PACKAGE', 'PAYG', 'CUSTOM');
 CREATE TYPE "BillingSubscriptionStatus2" AS ENUM ('ACTIVE', 'SUSPENDED', 'CANCELLED');
 
 -- CreateEnum
-CREATE TYPE "VpnProvider" AS ENUM ('OPENVPN');
+CREATE TYPE "BillingCurrency" AS ENUM ('USD', 'IDR');
+
+-- CreateEnum
+CREATE TYPE "BillingContactRole" AS ENUM ('OWNER', 'FINANCE', 'ACCOUNTING', 'GENERAL');
+
+-- CreateEnum
+CREATE TYPE "VpnProvider" AS ENUM ('OPENVPN', 'WIREGUARD');
 
 -- CreateEnum
 CREATE TYPE "VpnRegionCode" AS ENUM ('INDONESIA');
@@ -86,10 +92,31 @@ CREATE TYPE "VpnRegionCode" AS ENUM ('INDONESIA');
 CREATE TYPE "VpnClientStatus" AS ENUM ('ACTIVE', 'REVOKED', 'EXPIRED', 'PROVISIONING_FAILED');
 
 -- CreateEnum
+CREATE TYPE "VpnServerHealth" AS ENUM ('HEALTHY', 'WARNING', 'DOWN', 'UNKNOWN');
+
+-- CreateEnum
 CREATE TYPE "AdjustmentType" AS ENUM ('CREDIT', 'DEBIT');
 
 -- CreateEnum
-CREATE TYPE "WhatsappDeviceStatus" AS ENUM ('ACTIVE', 'NON_ACTIVE');
+CREATE TYPE "VpnProtocol" AS ENUM ('OPENVPN', 'WIREGUARD', 'PROXY');
+
+-- CreateEnum
+CREATE TYPE "VpnSubscriptionStatus" AS ENUM ('ACTIVE', 'SUSPENDED', 'EXPIRED');
+
+-- CreateEnum
+CREATE TYPE "VpnProvisioningStatus" AS ENUM ('PENDING', 'PROVISIONING', 'ACTIVE', 'FAILED', 'REVOKED');
+
+-- CreateEnum
+CREATE TYPE "VpnDeviceStatus" AS ENUM ('ACTIVE', 'SUSPENDED', 'REVOKED');
+
+-- CreateEnum
+CREATE TYPE "VpnPairingMethod" AS ENUM ('SSO', 'QR');
+
+-- CreateEnum
+CREATE TYPE "VpnMobileSessionStatus" AS ENUM ('ACTIVE', 'STALE', 'CLOSED');
+
+-- CreateEnum
+CREATE TYPE "WhatsappDeviceStatus" AS ENUM ('ACTIVE', 'NON_ACTIVE', 'DISCONNECTED', 'UNKNOWN');
 
 -- CreateEnum
 CREATE TYPE "WhatsappContactGroupStatus" AS ENUM ('ACTIVE', 'INACTIVE');
@@ -119,16 +146,22 @@ CREATE TYPE "WhatsappMessageDirection" AS ENUM ('INBOX', 'OUTBOX');
 CREATE TYPE "WhatsappMessageDeliveryStatus" AS ENUM ('SENT', 'DELIVERED', 'READ', 'FAILED');
 
 -- CreateEnum
-CREATE TYPE "WhatsappBillingCategory" AS ENUM ('MARKETING', 'UTILITY', 'AUTHENTICATION', 'SERVICE');
+CREATE TYPE "WhatsappBillingCategory" AS ENUM ('MARKETING', 'UTILITY', 'AUTHENTICATION', 'SERVICE', 'REPLY');
 
 -- CreateEnum
 CREATE TYPE "WhatsappBillingStatus" AS ENUM ('CHARGED_PENDING_VERIFY', 'CONFIRMED', 'REVERTED_FAILED');
 
 -- CreateEnum
-CREATE TYPE "WhatsappLogType" AS ENUM ('INFO', 'ERROR', 'INBOX', 'AUDIT');
+CREATE TYPE "WhatsappApiKeyEnvironment" AS ENUM ('SANDBOX', 'LIVE');
 
 -- CreateEnum
-CREATE TYPE "WhatsappApiKeyEnvironment" AS ENUM ('SANDBOX', 'LIVE');
+CREATE TYPE "WebhookDeliveryStatus" AS ENUM ('PENDING', 'SUCCESS', 'FAILED', 'DEAD_LETTERED');
+
+-- CreateEnum
+CREATE TYPE "EmailLogType" AS ENUM ('TICKET_CREATED', 'TICKET_REPLIED', 'TICKET_CLOSED', 'TICKET_ADMIN_ALERT');
+
+-- CreateEnum
+CREATE TYPE "EmailLogStatus" AS ENUM ('QUEUED', 'SENT', 'FAILED', 'BOUNCED');
 
 -- CreateEnum
 CREATE TYPE "VoucherStatus" AS ENUM ('ACTIVE', 'EXPIRED', 'DEPLETED', 'DISABLED');
@@ -489,6 +522,7 @@ CREATE TABLE "BillingAccount" (
     "organizationId" TEXT NOT NULL,
     "tenantId" TEXT,
     "currency" TEXT NOT NULL DEFAULT 'IDR',
+    "preferredCurrency" "BillingCurrency" NOT NULL DEFAULT 'USD',
     "timezone" TEXT NOT NULL DEFAULT 'UTC',
     "status" "BillingAccountStatus" NOT NULL DEFAULT 'ACTIVE',
     "balance" DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -497,6 +531,23 @@ CREATE TABLE "BillingAccount" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "BillingAccount_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "BillingContact" (
+    "id" TEXT NOT NULL,
+    "billingAccountId" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "name" TEXT,
+    "role" "BillingContactRole" NOT NULL DEFAULT 'GENERAL',
+    "notifyOnInvoice" BOOLEAN NOT NULL DEFAULT true,
+    "notifyOnLowBalance" BOOLEAN NOT NULL DEFAULT true,
+    "notifyOnSupport" BOOLEAN NOT NULL DEFAULT true,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "BillingContact_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -844,6 +895,59 @@ CREATE TABLE "VpnClient" (
 );
 
 -- CreateTable
+CREATE TABLE "VpnRegion" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "countryCode" TEXT NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "VpnRegion_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "VpnSshKey" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "privateKey" TEXT NOT NULL,
+    "fingerprint" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "VpnSshKey_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "VpnServer" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "regionId" TEXT NOT NULL,
+    "hostname" TEXT NOT NULL,
+    "ipAddress" TEXT,
+    "sshPort" INTEGER NOT NULL DEFAULT 22,
+    "sshKeyId" TEXT NOT NULL,
+    "sshUser" TEXT NOT NULL DEFAULT 'root',
+    "hasOpenVpn" BOOLEAN NOT NULL DEFAULT false,
+    "openVpnPort" INTEGER,
+    "hasWireGuard" BOOLEAN NOT NULL DEFAULT false,
+    "wireGuardPort" INTEGER,
+    "wireGuardPublicKey" TEXT,
+    "wireGuardSubnet" TEXT,
+    "hasProxy" BOOLEAN NOT NULL DEFAULT false,
+    "proxyPort" INTEGER,
+    "health" "VpnServerHealth" NOT NULL DEFAULT 'UNKNOWN',
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "latitude" DOUBLE PRECISION,
+    "longitude" DOUBLE PRECISION,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "VpnServer_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "UsageLedger" (
     "id" TEXT NOT NULL,
     "tenantId" TEXT NOT NULL,
@@ -858,15 +962,161 @@ CREATE TABLE "UsageLedger" (
 );
 
 -- CreateTable
+CREATE TABLE "VpnPackage" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "price" DECIMAL(12,2) NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'IDR',
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "VpnPackage_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "VpnPackageServer" (
+    "id" TEXT NOT NULL,
+    "packageId" TEXT NOT NULL,
+    "serverId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "VpnPackageServer_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "VpnSubscription" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "packageId" TEXT NOT NULL,
+    "status" "VpnSubscriptionStatus" NOT NULL DEFAULT 'ACTIVE',
+    "priceLocked" DECIMAL(12,2) NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'IDR',
+    "originalPrice" DECIMAL(12,2),
+    "originalCurrency" TEXT,
+    "exchangeRate" DECIMAL(18,6),
+    "currentPeriodStart" TIMESTAMP(3) NOT NULL,
+    "currentPeriodEnd" TIMESTAMP(3) NOT NULL,
+    "renewalFailedAt" TIMESTAMP(3),
+    "cancelAtPeriodEnd" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "VpnSubscription_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "VpnServerAccount" (
+    "id" TEXT NOT NULL,
+    "subscriptionId" TEXT NOT NULL,
+    "serverId" TEXT NOT NULL,
+    "protocol" "VpnProtocol" NOT NULL,
+    "username" TEXT NOT NULL,
+    "password" TEXT,
+    "configEncrypted" TEXT,
+    "provisioningStatus" "VpnProvisioningStatus" NOT NULL DEFAULT 'PENDING',
+    "failureReason" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "VpnServerAccount_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "VpnMobileDevice" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "subscriptionId" TEXT NOT NULL,
+    "userId" TEXT,
+    "deviceName" TEXT NOT NULL,
+    "deviceFingerprint" TEXT NOT NULL,
+    "platform" TEXT NOT NULL,
+    "osVersion" TEXT,
+    "appVersion" TEXT,
+    "pairedVia" "VpnPairingMethod" NOT NULL,
+    "status" "VpnDeviceStatus" NOT NULL DEFAULT 'ACTIVE',
+    "lastSeenAt" TIMESTAMP(3),
+    "revokedAt" TIMESTAMP(3),
+    "revokedReason" TEXT,
+    "revokedBy" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "VpnMobileDevice_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "VpnMobileSession" (
+    "id" TEXT NOT NULL,
+    "deviceId" TEXT NOT NULL,
+    "subscriptionId" TEXT NOT NULL,
+    "serverAccountId" TEXT NOT NULL,
+    "serverId" TEXT NOT NULL,
+    "status" "VpnMobileSessionStatus" NOT NULL DEFAULT 'ACTIVE',
+    "startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastPingAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "endedAt" TIMESTAMP(3),
+    "txBytes" BIGINT NOT NULL DEFAULT 0,
+    "rxBytes" BIGINT NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "VpnMobileSession_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "VpnPairingToken" (
+    "id" TEXT NOT NULL,
+    "subscriptionId" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "claimedAt" TIMESTAMP(3),
+    "claimedByDevice" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "VpnPairingToken_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "VpnAuditLog" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT,
+    "subscriptionId" TEXT,
+    "serverId" TEXT,
+    "correlationId" TEXT,
+    "message" TEXT,
+    "errorMessage" TEXT,
+    "requestPayload" JSONB,
+    "responsePayload" JSONB,
+    "durationMs" INTEGER,
+    "serverAccountId" TEXT,
+    "deviceId" TEXT,
+    "userId" TEXT,
+    "adminId" TEXT,
+    "action" TEXT NOT NULL,
+    "step" TEXT,
+    "status" TEXT,
+    "details" JSONB,
+    "ip" TEXT,
+    "userAgent" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "VpnAuditLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "WhatsappDevice" (
     "id" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
     "phoneNumber" TEXT NOT NULL,
     "balance" DECIMAL(12,2) NOT NULL DEFAULT 0,
     "quotaBase" DECIMAL(12,2) NOT NULL DEFAULT 1000,
-    "quotaBaseIn" INTEGER NOT NULL DEFAULT 0,
-    "quotaBaseOut" INTEGER NOT NULL DEFAULT 0,
-    "dailyLimitMessage" INTEGER NOT NULL DEFAULT 0,
+    "currentQuotaUsed" DECIMAL(12,2) NOT NULL DEFAULT 0,
+    "quotaBaseOut" DECIMAL(12,2) NOT NULL DEFAULT 0,
+    "addonQuota" DECIMAL(12,2) NOT NULL DEFAULT 0,
+    "addonQuotaTotal" DECIMAL(12,2) NOT NULL DEFAULT 0,
+    "dailyLimitMessage" INTEGER NOT NULL DEFAULT 1000,
     "rates" TEXT,
     "status" "WhatsappDeviceStatus" NOT NULL DEFAULT 'ACTIVE',
     "token" TEXT,
@@ -883,10 +1133,23 @@ CREATE TABLE "WhatsappDevice" (
     "callbackHeaderName" TEXT,
     "callbackHeaderValue" TEXT,
     "expiredAt" TIMESTAMP(3),
+    "lastHeartbeatAt" TIMESTAMP(3),
+    "lastDisconnectedAt" TIMESTAMP(3),
+    "appSecret" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "WhatsappDevice_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "WhatsappQuotaCreditRate" (
+    "category" "WhatsappBillingCategory" NOT NULL,
+    "country" VARCHAR(2) NOT NULL,
+    "quota_credit" DECIMAL(12,2) NOT NULL,
+    "description" VARCHAR(255) NOT NULL,
+
+    CONSTRAINT "WhatsappQuotaCreditRate_pkey" PRIMARY KEY ("category","country")
 );
 
 -- CreateTable
@@ -936,6 +1199,7 @@ CREATE TABLE "WhatsappTemplate" (
     "slug" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
+    "category" "WhatsappBillingCategory",
     "syncStatus" "WhatsappTemplateSyncStatus" NOT NULL DEFAULT 'NOT_SYNCED',
     "metaStatus" "WhatsappTemplateMetaStatus",
     "lastSyncedAt" TIMESTAMP(3),
@@ -1019,8 +1283,30 @@ CREATE TABLE "WhatsappConversation" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "whatsappDeviceId" TEXT,
+    "internalNotes" TEXT,
 
     CONSTRAINT "WhatsappConversation_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "WhatsappConversationLabel" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "name" VARCHAR(50) NOT NULL,
+    "color" VARCHAR(7),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "WhatsappConversationLabel_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "WhatsappConversationLabelOnConversation" (
+    "conversationId" TEXT NOT NULL,
+    "labelId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "WhatsappConversationLabelOnConversation_pkey" PRIMARY KEY ("conversationId","labelId")
 );
 
 -- CreateTable
@@ -1052,6 +1338,24 @@ CREATE TABLE "WhatsappMessageStatus" (
 );
 
 -- CreateTable
+CREATE TABLE "WhatsappMedia" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "deviceId" TEXT NOT NULL,
+    "metaMediaId" TEXT NOT NULL,
+    "mimeType" TEXT NOT NULL,
+    "fileSize" INTEGER NOT NULL,
+    "sha256" TEXT,
+    "storePath" TEXT,
+    "downloadedAt" TIMESTAMP(3),
+    "expiresAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "WhatsappMedia_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "WhatsappDailyCount" (
     "id" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
@@ -1065,6 +1369,19 @@ CREATE TABLE "WhatsappDailyCount" (
     "whatsappDeviceId" TEXT,
 
     CONSTRAINT "WhatsappDailyCount_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "WhatsappHourlyCount" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "hour" TIMESTAMP(0) NOT NULL,
+    "messageOutboxCount" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "whatsappDeviceId" TEXT,
+
+    CONSTRAINT "WhatsappHourlyCount_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -1123,16 +1440,15 @@ CREATE TABLE "WhatsappBillingLedger" (
 );
 
 -- CreateTable
-CREATE TABLE "WhatsappLog" (
+CREATE TABLE "WhatsappApiCall" (
     "id" TEXT NOT NULL,
-    "organizationId" TEXT NOT NULL,
-    "type" "WhatsappLogType" NOT NULL,
-    "message" TEXT NOT NULL,
-    "metadata" JSONB,
+    "organizationId" TEXT,
+    "operation" TEXT NOT NULL,
+    "phoneNumberId" TEXT,
+    "status" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "whatsappDeviceId" TEXT,
 
-    CONSTRAINT "WhatsappLog_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "WhatsappApiCall_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -1187,11 +1503,107 @@ CREATE TABLE "WhatsappWebhook" (
     "whatsappDeviceId" TEXT NOT NULL,
     "webhookUrl" TEXT NOT NULL,
     "verifyToken" TEXT NOT NULL,
+    "authType" TEXT DEFAULT 'none',
+    "authValue" TEXT,
+    "authHeaderName" TEXT,
+    "retryMaxAttempts" INTEGER NOT NULL DEFAULT 3,
+    "retryIntervalMs" INTEGER NOT NULL DEFAULT 5000,
     "active" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "WhatsappWebhook_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "WhatsappWebhookDeliveryLog" (
+    "id" TEXT NOT NULL,
+    "webhookId" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "whatsappDeviceId" TEXT NOT NULL,
+    "eventType" TEXT NOT NULL,
+    "triggerEventId" TEXT,
+    "status" "WebhookDeliveryStatus" NOT NULL DEFAULT 'PENDING',
+    "attempt" INTEGER NOT NULL DEFAULT 1,
+    "maxAttempts" INTEGER NOT NULL DEFAULT 3,
+    "requestUrl" TEXT NOT NULL,
+    "requestHeaders" JSONB,
+    "requestBody" JSONB NOT NULL,
+    "responseStatus" INTEGER,
+    "responseBody" TEXT,
+    "errorMessage" TEXT,
+    "resolvedAt" TIMESTAMP(3),
+    "startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "completedAt" TIMESTAMP(3),
+    "nextRetryAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "WhatsappWebhookDeliveryLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "WhatsappWebhookEvent" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "whatsappDeviceId" TEXT NOT NULL,
+    "eventType" TEXT NOT NULL,
+    "processingStatus" TEXT NOT NULL DEFAULT 'PENDING',
+    "metaPayload" JSONB NOT NULL,
+    "waMessageId" TEXT,
+    "errorMessage" TEXT,
+    "processedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "WhatsappWebhookEvent_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "WhatsappWebhookDeadLetter" (
+    "id" TEXT NOT NULL,
+    "deviceId" TEXT NOT NULL,
+    "eventType" TEXT NOT NULL,
+    "rawPayload" JSONB NOT NULL,
+    "errorMessage" TEXT NOT NULL,
+    "attemptCount" INTEGER NOT NULL DEFAULT 0,
+    "failedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "replayedAt" TIMESTAMP(3),
+    "replayStatus" TEXT,
+    "organizationId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "WhatsappWebhookDeadLetter_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "WhatsappQuotaAlert" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "whatsappDeviceId" TEXT NOT NULL,
+    "threshold" INTEGER NOT NULL,
+    "sentAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "WhatsappQuotaAlert_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "EmailLog" (
+    "id" TEXT NOT NULL,
+    "ticketId" TEXT,
+    "ticketNumber" TEXT,
+    "recipientEmail" TEXT NOT NULL,
+    "type" "EmailLogType" NOT NULL,
+    "subject" TEXT NOT NULL,
+    "status" "EmailLogStatus" NOT NULL DEFAULT 'QUEUED',
+    "errorMessage" TEXT,
+    "attempts" INTEGER NOT NULL DEFAULT 0,
+    "sentAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "EmailLog_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -1241,6 +1653,7 @@ CREATE TABLE "Currency" (
     "ratePerBase" DECIMAL(18,6) NOT NULL DEFAULT 1,
     "minTopup" DECIMAL(18,2) NOT NULL,
     "maxTopup" DECIMAL(18,2) NOT NULL,
+    "minBalanceWarn" DECIMAL(18,2) NOT NULL DEFAULT 0,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1316,6 +1729,80 @@ CREATE TABLE "VoucherClaim" (
     "claimedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "VoucherClaim_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "WhatsappAuditLog" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "deviceId" TEXT,
+    "adminId" TEXT,
+    "correlationId" TEXT,
+    "action" TEXT NOT NULL,
+    "status" TEXT,
+    "message" TEXT,
+    "errorMessage" TEXT,
+    "details" JSONB,
+    "durationMs" INTEGER,
+    "ip" TEXT,
+    "userAgent" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "WhatsappAuditLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "WhatsappCatalog" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "metaCatalogId" TEXT NOT NULL,
+    "deviceId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "WhatsappCatalog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "WhatsappCatalogProduct" (
+    "id" TEXT NOT NULL,
+    "catalogId" TEXT NOT NULL,
+    "productRetailerId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "price" TEXT,
+    "currency" TEXT,
+    "imageUrl" TEXT,
+    "url" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "WhatsappCatalogProduct_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CacheEntry" (
+    "id" TEXT NOT NULL,
+    "key" TEXT NOT NULL,
+    "value" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CacheEntry_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CloudflareDnsCredential" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "tokenJson" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "CloudflareDnsCredential_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -1523,6 +2010,12 @@ CREATE INDEX "SupportTicketAttachmentUploadSession_consumedAt_idx" ON "SupportTi
 CREATE UNIQUE INDEX "BillingAccount_organizationId_key" ON "BillingAccount"("organizationId");
 
 -- CreateIndex
+CREATE INDEX "BillingContact_billingAccountId_idx" ON "BillingContact"("billingAccountId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "BillingContact_billingAccountId_email_key" ON "BillingContact"("billingAccountId", "email");
+
+-- CreateIndex
 CREATE INDEX "BillingSubscription_billingAccountId_status_idx" ON "BillingSubscription"("billingAccountId", "status");
 
 -- CreateIndex
@@ -1679,6 +2172,27 @@ CREATE INDEX "VpnClient_currentPeriodEnd_idx" ON "VpnClient"("currentPeriodEnd")
 CREATE UNIQUE INDEX "VpnClient_provider_clientName_key" ON "VpnClient"("provider", "clientName");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "VpnRegion_slug_key" ON "VpnRegion"("slug");
+
+-- CreateIndex
+CREATE INDEX "VpnRegion_isActive_idx" ON "VpnRegion"("isActive");
+
+-- CreateIndex
+CREATE INDEX "VpnSshKey_fingerprint_idx" ON "VpnSshKey"("fingerprint");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "VpnServer_name_key" ON "VpnServer"("name");
+
+-- CreateIndex
+CREATE INDEX "VpnServer_regionId_idx" ON "VpnServer"("regionId");
+
+-- CreateIndex
+CREATE INDEX "VpnServer_sshKeyId_idx" ON "VpnServer"("sshKeyId");
+
+-- CreateIndex
+CREATE INDEX "VpnServer_isActive_idx" ON "VpnServer"("isActive");
+
+-- CreateIndex
 CREATE INDEX "UsageLedger_tenantId_period_idx" ON "UsageLedger"("tenantId", "period");
 
 -- CreateIndex
@@ -1686,6 +2200,105 @@ CREATE INDEX "UsageLedger_tenantId_category_idx" ON "UsageLedger"("tenantId", "c
 
 -- CreateIndex
 CREATE INDEX "UsageLedger_subscriptionId_idx" ON "UsageLedger"("subscriptionId");
+
+-- CreateIndex
+CREATE INDEX "VpnPackage_isActive_idx" ON "VpnPackage"("isActive");
+
+-- CreateIndex
+CREATE INDEX "VpnPackageServer_packageId_idx" ON "VpnPackageServer"("packageId");
+
+-- CreateIndex
+CREATE INDEX "VpnPackageServer_serverId_idx" ON "VpnPackageServer"("serverId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "VpnPackageServer_packageId_serverId_key" ON "VpnPackageServer"("packageId", "serverId");
+
+-- CreateIndex
+CREATE INDEX "VpnSubscription_organizationId_status_idx" ON "VpnSubscription"("organizationId", "status");
+
+-- CreateIndex
+CREATE INDEX "VpnSubscription_packageId_idx" ON "VpnSubscription"("packageId");
+
+-- CreateIndex
+CREATE INDEX "VpnSubscription_currentPeriodEnd_idx" ON "VpnSubscription"("currentPeriodEnd");
+
+-- CreateIndex
+CREATE INDEX "VpnServerAccount_subscriptionId_idx" ON "VpnServerAccount"("subscriptionId");
+
+-- CreateIndex
+CREATE INDEX "VpnServerAccount_serverId_idx" ON "VpnServerAccount"("serverId");
+
+-- CreateIndex
+CREATE INDEX "VpnServerAccount_provisioningStatus_idx" ON "VpnServerAccount"("provisioningStatus");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "VpnServerAccount_serverId_protocol_username_key" ON "VpnServerAccount"("serverId", "protocol", "username");
+
+-- CreateIndex
+CREATE INDEX "VpnMobileDevice_organizationId_status_idx" ON "VpnMobileDevice"("organizationId", "status");
+
+-- CreateIndex
+CREATE INDEX "VpnMobileDevice_subscriptionId_idx" ON "VpnMobileDevice"("subscriptionId");
+
+-- CreateIndex
+CREATE INDEX "VpnMobileDevice_userId_idx" ON "VpnMobileDevice"("userId");
+
+-- CreateIndex
+CREATE INDEX "VpnMobileDevice_status_idx" ON "VpnMobileDevice"("status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "VpnMobileDevice_subscriptionId_deviceFingerprint_key" ON "VpnMobileDevice"("subscriptionId", "deviceFingerprint");
+
+-- CreateIndex
+CREATE INDEX "VpnMobileSession_deviceId_idx" ON "VpnMobileSession"("deviceId");
+
+-- CreateIndex
+CREATE INDEX "VpnMobileSession_subscriptionId_idx" ON "VpnMobileSession"("subscriptionId");
+
+-- CreateIndex
+CREATE INDEX "VpnMobileSession_serverId_idx" ON "VpnMobileSession"("serverId");
+
+-- CreateIndex
+CREATE INDEX "VpnMobileSession_status_idx" ON "VpnMobileSession"("status");
+
+-- CreateIndex
+CREATE INDEX "VpnMobileSession_startedAt_idx" ON "VpnMobileSession"("startedAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "VpnPairingToken_token_key" ON "VpnPairingToken"("token");
+
+-- CreateIndex
+CREATE INDEX "VpnPairingToken_subscriptionId_idx" ON "VpnPairingToken"("subscriptionId");
+
+-- CreateIndex
+CREATE INDEX "VpnPairingToken_token_idx" ON "VpnPairingToken"("token");
+
+-- CreateIndex
+CREATE INDEX "VpnPairingToken_expiresAt_idx" ON "VpnPairingToken"("expiresAt");
+
+-- CreateIndex
+CREATE INDEX "VpnAuditLog_organizationId_createdAt_idx" ON "VpnAuditLog"("organizationId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "VpnAuditLog_subscriptionId_createdAt_idx" ON "VpnAuditLog"("subscriptionId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "VpnAuditLog_serverId_createdAt_idx" ON "VpnAuditLog"("serverId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "VpnAuditLog_correlationId_idx" ON "VpnAuditLog"("correlationId");
+
+-- CreateIndex
+CREATE INDEX "VpnAuditLog_serverAccountId_createdAt_idx" ON "VpnAuditLog"("serverAccountId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "VpnAuditLog_deviceId_createdAt_idx" ON "VpnAuditLog"("deviceId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "VpnAuditLog_action_createdAt_idx" ON "VpnAuditLog"("action", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "VpnAuditLog_adminId_createdAt_idx" ON "VpnAuditLog"("adminId", "createdAt" DESC);
 
 -- CreateIndex
 CREATE UNIQUE INDEX "WhatsappDevice_phoneNumber_key" ON "WhatsappDevice"("phoneNumber");
@@ -1727,6 +2340,15 @@ CREATE INDEX "WhatsappConversation_organizationId_lastMessageAt_idx" ON "Whatsap
 CREATE UNIQUE INDEX "WhatsappConversation_organizationId_contactPhone_key" ON "WhatsappConversation"("organizationId", "contactPhone");
 
 -- CreateIndex
+CREATE INDEX "WhatsappConversationLabel_organizationId_idx" ON "WhatsappConversationLabel"("organizationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "WhatsappConversationLabel_organizationId_name_key" ON "WhatsappConversationLabel"("organizationId", "name");
+
+-- CreateIndex
+CREATE INDEX "WhatsappConversationLabelOnConversation_labelId_idx" ON "WhatsappConversationLabelOnConversation"("labelId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "WhatsappMessage_waMessageId_key" ON "WhatsappMessage"("waMessageId");
 
 -- CreateIndex
@@ -1736,7 +2358,22 @@ CREATE INDEX "WhatsappMessage_conversationId_createdAt_idx" ON "WhatsappMessage"
 CREATE INDEX "WhatsappMessageStatus_messageId_createdAt_idx" ON "WhatsappMessageStatus"("messageId", "createdAt");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "WhatsappMedia_metaMediaId_key" ON "WhatsappMedia"("metaMediaId");
+
+-- CreateIndex
+CREATE INDEX "WhatsappMedia_organizationId_idx" ON "WhatsappMedia"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "WhatsappMedia_deviceId_idx" ON "WhatsappMedia"("deviceId");
+
+-- CreateIndex
+CREATE INDEX "WhatsappMedia_metaMediaId_idx" ON "WhatsappMedia"("metaMediaId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "WhatsappDailyCount_organizationId_date_whatsappDeviceId_key" ON "WhatsappDailyCount"("organizationId", "date", "whatsappDeviceId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "WhatsappHourlyCount_organizationId_whatsappDeviceId_hour_key" ON "WhatsappHourlyCount"("organizationId", "whatsappDeviceId", "hour");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "WhatsappMonthlyCount_organizationId_year_month_whatsappDevi_key" ON "WhatsappMonthlyCount"("organizationId", "year", "month", "whatsappDeviceId");
@@ -1751,7 +2388,13 @@ CREATE INDEX "WhatsappBillingLedger_organizationId_createdAt_idx" ON "WhatsappBi
 CREATE INDEX "WhatsappBillingLedger_waMessageId_idx" ON "WhatsappBillingLedger"("waMessageId");
 
 -- CreateIndex
-CREATE INDEX "WhatsappLog_organizationId_type_createdAt_idx" ON "WhatsappLog"("organizationId", "type", "createdAt");
+CREATE INDEX "WhatsappApiCall_phoneNumberId_createdAt_idx" ON "WhatsappApiCall"("phoneNumberId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "WhatsappApiCall_createdAt_idx" ON "WhatsappApiCall"("createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "WhatsappApiCall_phoneNumberId_status_createdAt_idx" ON "WhatsappApiCall"("phoneNumberId", "status", "createdAt" DESC);
 
 -- CreateIndex
 CREATE INDEX "WhatsappAttachment_organizationId_createdAt_idx" ON "WhatsappAttachment"("organizationId", "createdAt");
@@ -1773,6 +2416,63 @@ CREATE INDEX "WhatsappWebhook_organizationId_idx" ON "WhatsappWebhook"("organiza
 
 -- CreateIndex
 CREATE INDEX "WhatsappWebhook_whatsappDeviceId_idx" ON "WhatsappWebhook"("whatsappDeviceId");
+
+-- CreateIndex
+CREATE INDEX "WhatsappWebhookDeliveryLog_organizationId_createdAt_idx" ON "WhatsappWebhookDeliveryLog"("organizationId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "WhatsappWebhookDeliveryLog_webhookId_createdAt_idx" ON "WhatsappWebhookDeliveryLog"("webhookId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "WhatsappWebhookDeliveryLog_status_nextRetryAt_idx" ON "WhatsappWebhookDeliveryLog"("status", "nextRetryAt");
+
+-- CreateIndex
+CREATE INDEX "WhatsappWebhookEvent_organizationId_createdAt_idx" ON "WhatsappWebhookEvent"("organizationId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "WhatsappWebhookEvent_whatsappDeviceId_createdAt_idx" ON "WhatsappWebhookEvent"("whatsappDeviceId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "WhatsappWebhookEvent_eventType_createdAt_idx" ON "WhatsappWebhookEvent"("eventType", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "WhatsappWebhookEvent_processingStatus_createdAt_idx" ON "WhatsappWebhookEvent"("processingStatus", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "WhatsappWebhookEvent_waMessageId_idx" ON "WhatsappWebhookEvent"("waMessageId");
+
+-- CreateIndex
+CREATE INDEX "WhatsappWebhookEvent_createdAt_idx" ON "WhatsappWebhookEvent"("createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "WhatsappWebhookDeadLetter_deviceId_failedAt_idx" ON "WhatsappWebhookDeadLetter"("deviceId", "failedAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "WhatsappWebhookDeadLetter_replayStatus_idx" ON "WhatsappWebhookDeadLetter"("replayStatus");
+
+-- CreateIndex
+CREATE INDEX "WhatsappWebhookDeadLetter_organizationId_failedAt_idx" ON "WhatsappWebhookDeadLetter"("organizationId", "failedAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "WhatsappQuotaAlert_organizationId_idx" ON "WhatsappQuotaAlert"("organizationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "WhatsappQuotaAlert_organizationId_whatsappDeviceId_threshol_key" ON "WhatsappQuotaAlert"("organizationId", "whatsappDeviceId", "threshold");
+
+-- CreateIndex
+CREATE INDEX "EmailLog_ticketId_idx" ON "EmailLog"("ticketId");
+
+-- CreateIndex
+CREATE INDEX "EmailLog_ticketNumber_idx" ON "EmailLog"("ticketNumber");
+
+-- CreateIndex
+CREATE INDEX "EmailLog_recipientEmail_idx" ON "EmailLog"("recipientEmail");
+
+-- CreateIndex
+CREATE INDEX "EmailLog_status_idx" ON "EmailLog"("status");
+
+-- CreateIndex
+CREATE INDEX "EmailLog_createdAt_idx" ON "EmailLog"("createdAt" DESC);
 
 -- CreateIndex
 CREATE INDEX "PaymentGateway_type_isActive_idx" ON "PaymentGateway"("type", "isActive");
@@ -1840,6 +2540,42 @@ CREATE INDEX "VoucherClaim_organizationId_idx" ON "VoucherClaim"("organizationId
 -- CreateIndex
 CREATE UNIQUE INDEX "VoucherClaim_voucherId_workosUserId_key" ON "VoucherClaim"("voucherId", "workosUserId");
 
+-- CreateIndex
+CREATE INDEX "WhatsappAuditLog_organizationId_createdAt_idx" ON "WhatsappAuditLog"("organizationId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "WhatsappAuditLog_deviceId_createdAt_idx" ON "WhatsappAuditLog"("deviceId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "WhatsappAuditLog_action_createdAt_idx" ON "WhatsappAuditLog"("action", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "WhatsappAuditLog_adminId_createdAt_idx" ON "WhatsappAuditLog"("adminId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "WhatsappCatalog_organizationId_idx" ON "WhatsappCatalog"("organizationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "WhatsappCatalog_organizationId_metaCatalogId_key" ON "WhatsappCatalog"("organizationId", "metaCatalogId");
+
+-- CreateIndex
+CREATE INDEX "WhatsappCatalogProduct_catalogId_idx" ON "WhatsappCatalogProduct"("catalogId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "WhatsappCatalogProduct_catalogId_productRetailerId_key" ON "WhatsappCatalogProduct"("catalogId", "productRetailerId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CacheEntry_key_key" ON "CacheEntry"("key");
+
+-- CreateIndex
+CREATE INDEX "CacheEntry_key_expiresAt_idx" ON "CacheEntry"("key", "expiresAt");
+
+-- CreateIndex
+CREATE INDEX "CloudflareDnsCredential_organizationId_idx" ON "CloudflareDnsCredential"("organizationId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CloudflareDnsCredential_organizationId_name_key" ON "CloudflareDnsCredential"("organizationId", "name");
+
 -- AddForeignKey
 ALTER TABLE "GithubRepositoryConnection" ADD CONSTRAINT "GithubRepositoryConnection_installationId_fkey" FOREIGN KEY ("installationId") REFERENCES "GithubInstallation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -1863,6 +2599,9 @@ ALTER TABLE "SupportTicketAttachmentUploadSession" ADD CONSTRAINT "SupportTicket
 
 -- AddForeignKey
 ALTER TABLE "SupportTicketAttachmentUploadSession" ADD CONSTRAINT "SupportTicketAttachmentUploadSession_consumedReplyId_fkey" FOREIGN KEY ("consumedReplyId") REFERENCES "SupportTicketReply"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "BillingContact" ADD CONSTRAINT "BillingContact_billingAccountId_fkey" FOREIGN KEY ("billingAccountId") REFERENCES "BillingAccount"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "BillingSubscription" ADD CONSTRAINT "BillingSubscription_billingAccountId_fkey" FOREIGN KEY ("billingAccountId") REFERENCES "BillingAccount"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -1961,7 +2700,43 @@ ALTER TABLE "Subscription" ADD CONSTRAINT "Subscription_pricingId_fkey" FOREIGN 
 ALTER TABLE "VpnClient" ADD CONSTRAINT "VpnClient_subscriptionId_fkey" FOREIGN KEY ("subscriptionId") REFERENCES "Subscription"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "VpnServer" ADD CONSTRAINT "VpnServer_regionId_fkey" FOREIGN KEY ("regionId") REFERENCES "VpnRegion"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "VpnServer" ADD CONSTRAINT "VpnServer_sshKeyId_fkey" FOREIGN KEY ("sshKeyId") REFERENCES "VpnSshKey"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "UsageLedger" ADD CONSTRAINT "UsageLedger_subscriptionId_fkey" FOREIGN KEY ("subscriptionId") REFERENCES "Subscription"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "VpnPackageServer" ADD CONSTRAINT "VpnPackageServer_packageId_fkey" FOREIGN KEY ("packageId") REFERENCES "VpnPackage"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "VpnPackageServer" ADD CONSTRAINT "VpnPackageServer_serverId_fkey" FOREIGN KEY ("serverId") REFERENCES "VpnServer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "VpnServerAccount" ADD CONSTRAINT "VpnServerAccount_subscriptionId_fkey" FOREIGN KEY ("subscriptionId") REFERENCES "VpnSubscription"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "VpnServerAccount" ADD CONSTRAINT "VpnServerAccount_serverId_fkey" FOREIGN KEY ("serverId") REFERENCES "VpnServer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "VpnMobileDevice" ADD CONSTRAINT "VpnMobileDevice_subscriptionId_fkey" FOREIGN KEY ("subscriptionId") REFERENCES "VpnSubscription"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "VpnMobileSession" ADD CONSTRAINT "VpnMobileSession_deviceId_fkey" FOREIGN KEY ("deviceId") REFERENCES "VpnMobileDevice"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "VpnMobileSession" ADD CONSTRAINT "VpnMobileSession_subscriptionId_fkey" FOREIGN KEY ("subscriptionId") REFERENCES "VpnSubscription"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "VpnMobileSession" ADD CONSTRAINT "VpnMobileSession_serverAccountId_fkey" FOREIGN KEY ("serverAccountId") REFERENCES "VpnServerAccount"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "VpnMobileSession" ADD CONSTRAINT "VpnMobileSession_serverId_fkey" FOREIGN KEY ("serverId") REFERENCES "VpnServer"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "VpnPairingToken" ADD CONSTRAINT "VpnPairingToken_subscriptionId_fkey" FOREIGN KEY ("subscriptionId") REFERENCES "VpnSubscription"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "WhatsappContactGroup" ADD CONSTRAINT "WhatsappContactGroup_whatsappDeviceId_fkey" FOREIGN KEY ("whatsappDeviceId") REFERENCES "WhatsappDevice"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -1991,6 +2766,12 @@ ALTER TABLE "WhatsappBroadcastRecipient" ADD CONSTRAINT "WhatsappBroadcastRecipi
 ALTER TABLE "WhatsappConversation" ADD CONSTRAINT "WhatsappConversation_whatsappDeviceId_fkey" FOREIGN KEY ("whatsappDeviceId") REFERENCES "WhatsappDevice"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "WhatsappConversationLabelOnConversation" ADD CONSTRAINT "WhatsappConversationLabelOnConversation_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "WhatsappConversation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "WhatsappConversationLabelOnConversation" ADD CONSTRAINT "WhatsappConversationLabelOnConversation_labelId_fkey" FOREIGN KEY ("labelId") REFERENCES "WhatsappConversationLabel"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "WhatsappMessage" ADD CONSTRAINT "WhatsappMessage_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "WhatsappConversation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -2000,6 +2781,9 @@ ALTER TABLE "WhatsappMessageStatus" ADD CONSTRAINT "WhatsappMessageStatus_messag
 ALTER TABLE "WhatsappDailyCount" ADD CONSTRAINT "WhatsappDailyCount_whatsappDeviceId_fkey" FOREIGN KEY ("whatsappDeviceId") REFERENCES "WhatsappDevice"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "WhatsappHourlyCount" ADD CONSTRAINT "WhatsappHourlyCount_whatsappDeviceId_fkey" FOREIGN KEY ("whatsappDeviceId") REFERENCES "WhatsappDevice"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "WhatsappMonthlyCount" ADD CONSTRAINT "WhatsappMonthlyCount_whatsappDeviceId_fkey" FOREIGN KEY ("whatsappDeviceId") REFERENCES "WhatsappDevice"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -2007,9 +2791,6 @@ ALTER TABLE "WhatsappQuotaSession" ADD CONSTRAINT "WhatsappQuotaSession_whatsapp
 
 -- AddForeignKey
 ALTER TABLE "WhatsappBillingLedger" ADD CONSTRAINT "WhatsappBillingLedger_whatsappDeviceId_fkey" FOREIGN KEY ("whatsappDeviceId") REFERENCES "WhatsappDevice"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "WhatsappLog" ADD CONSTRAINT "WhatsappLog_whatsappDeviceId_fkey" FOREIGN KEY ("whatsappDeviceId") REFERENCES "WhatsappDevice"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "WhatsappAttachment" ADD CONSTRAINT "WhatsappAttachment_whatsappDeviceId_fkey" FOREIGN KEY ("whatsappDeviceId") REFERENCES "WhatsappDevice"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -2024,6 +2805,12 @@ ALTER TABLE "WhatsappBroadcastRateState" ADD CONSTRAINT "WhatsappBroadcastRateSt
 ALTER TABLE "WhatsappWebhook" ADD CONSTRAINT "WhatsappWebhook_whatsappDeviceId_fkey" FOREIGN KEY ("whatsappDeviceId") REFERENCES "WhatsappDevice"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "WhatsappWebhookDeliveryLog" ADD CONSTRAINT "WhatsappWebhookDeliveryLog_webhookId_fkey" FOREIGN KEY ("webhookId") REFERENCES "WhatsappWebhook"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "WhatsappWebhookEvent" ADD CONSTRAINT "WhatsappWebhookEvent_whatsappDeviceId_fkey" FOREIGN KEY ("whatsappDeviceId") REFERENCES "WhatsappDevice"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "BankAccount" ADD CONSTRAINT "BankAccount_gatewayId_fkey" FOREIGN KEY ("gatewayId") REFERENCES "PaymentGateway"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -2034,3 +2821,9 @@ ALTER TABLE "PaymentConfirmation" ADD CONSTRAINT "PaymentConfirmation_bankAccoun
 
 -- AddForeignKey
 ALTER TABLE "VoucherClaim" ADD CONSTRAINT "VoucherClaim_voucherId_fkey" FOREIGN KEY ("voucherId") REFERENCES "Voucher"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "WhatsappCatalog" ADD CONSTRAINT "WhatsappCatalog_deviceId_fkey" FOREIGN KEY ("deviceId") REFERENCES "WhatsappDevice"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "WhatsappCatalogProduct" ADD CONSTRAINT "WhatsappCatalogProduct_catalogId_fkey" FOREIGN KEY ("catalogId") REFERENCES "WhatsappCatalog"("id") ON DELETE CASCADE ON UPDATE CASCADE;

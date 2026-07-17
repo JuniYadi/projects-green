@@ -14,9 +14,10 @@ export type StackUpsertInput = {
   organizationId: string
   name: string
   slug: string
+  sourceType: "GITHUB" | "TEMPLATE"
   repositoryConnectionId?: string | null
-  branchName: string
-  rootDirectory: string
+  branchName?: string | null
+  rootDirectory?: string | null
   framework?: string | null
   frameworkVersion?: string | null
   buildCommand?: string | null
@@ -148,10 +149,10 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       organizationId: input.organizationId,
       name: input.name,
       slug: input.slug,
-      sourceType: "GITHUB" as const,
+      sourceType: input.sourceType,
       repositoryConnectionId: input.repositoryConnectionId ?? null,
-      branchName: input.branchName,
-      rootDirectory: input.rootDirectory,
+      branchName: input.branchName || undefined,
+      rootDirectory: input.rootDirectory || undefined,
       framework: input.framework ?? null,
       buildCommand: input.buildCommand ?? null,
       dockerfileDetected: input.dockerfileDetected,

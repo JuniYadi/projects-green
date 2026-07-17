@@ -17,6 +17,7 @@ import type {
   DeployTemplateId,
   Owner,
   Repository,
+  ResourcePlanId,
 } from "@/modules/deploy/deploy.types"
 import {
   GithubLogo,
@@ -34,7 +35,17 @@ import {
   List,
   CaretLeft,
   CaretRight,
+  RocketLaunchIcon,
 } from "@/components/ui/phosphor-icons"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { ResourcePlanSelector } from "@/modules/deploy/ui/resource-plan-selector"
+import { computeHourlyCost } from "@/modules/deploy/deploy-pricing"
 import {
   SiN8N,
   SiDocker,
@@ -47,7 +58,6 @@ import {
   SiUmami,
   SiPlausibleanalytics,
 } from "react-icons/si"
-
 export type StepSourceProps = {
   sourceType: DeploySourceType
   templateId?: DeployTemplateId
@@ -67,6 +77,8 @@ export type StepSourceProps = {
   selectedRepositoryId: string
   selectedBranchName: string
   rootDirectory: string
+  appName: string
+  templateResourcePlanId: ResourcePlanId
   onSourceTypeChange: (type: DeploySourceType) => void
   onTemplateSelect: (templateId: DeployTemplateId) => void
   onOwnerSearchChange: (value: string) => void
@@ -75,6 +87,9 @@ export type StepSourceProps = {
   onRepositorySelect: (value: string) => void
   onBranchSelect: (value: string) => void
   onRootDirectoryChange: (value: string) => void
+  onAppNameChange: (value: string) => void
+  onTemplateResourcePlanChange: (value: ResourcePlanId) => void
+  onDeployWithDefaults: () => void
   onConnectGithub: () => void
   onCancel: () => void
   onNext: () => void
@@ -175,12 +190,17 @@ export function StepSource({
   selectedRepositoryId,
   selectedBranchName,
   rootDirectory,
+  appName,
+  templateResourcePlanId,
   onSourceTypeChange,
   onTemplateSelect,
   onOwnerSelect,
   onRepositorySelect,
   onBranchSelect,
   onRootDirectoryChange,
+  onAppNameChange,
+  onTemplateResourcePlanChange,
+  onDeployWithDefaults,
   onConnectGithub,
   onCancel,
   onNext,
@@ -222,6 +242,20 @@ export function StepSource({
       repo.name.toLowerCase().includes(repoFilter.toLowerCase())
     )
   }, [repositories, repoFilter])
+
+  const selectedTemplate = useMemo(() => {
+    if (!templateId) return null
+    return DEPLOY_TEMPLATES.find((t) => t.id === templateId) ?? null
+  }, [templateId])
+
+  const packageHourlyCost = useMemo(() => {
+    if (!selectedTemplate) return 0
+    return computeHourlyCost({
+      resourcePlanId: templateResourcePlanId,
+      cpu: selectedTemplate.defaultCpu,
+      memory: selectedTemplate.defaultMemory,
+    })
+  }, [selectedTemplate, templateResourcePlanId])
 
   return (
     <Card className="border border-border bg-card shadow-sm">
@@ -344,66 +378,64 @@ export function StepSource({
 
             {githubConnectionStatus === "connected" && (
               <div className="grid gap-6">
-                {/* 1. Owner Selection */}
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                    Select Account / Organization
-                  </label>
-                  {ownerOptionsLoading ? (
-                    <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                      Loading installations...
-                    </div>
-                  ) : ownerOptionsError ? (
-                    <p className="text-xs text-destructive">
-                      {ownerOptionsError}
-                    </p>
-                  ) : owners.length === 0 ? (
-                    <div className="flex flex-col gap-1">
-                      <p className="text-xs text-muted-foreground">
-                        No accounts found. Please make sure the GitHub App is
-                        installed.
+                {/* 1. Account & Repository Selection Row */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <div className="flex-1 space-y-2">
+                    <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                      GitHub account
+                    </label>
+                    {ownerOptionsLoading ? (
+                      <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        Loading installations...
+                      </div>
+                    ) : ownerOptionsError ? (
+                      <p className="text-xs text-destructive">
+                        {ownerOptionsError}
                       </p>
+                    ) : owners.length === 0 ? (
                       <p className="text-xs text-muted-foreground">
-                        If the app is installed, the account may not have any
-                        repositories accessible yet.
+                        No accounts found. Install the GitHub App first.
                       </p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {owners.map((owner) => {
-                        const isSelected = selectedOwnerId === owner.id
-                        return (
-                          <button
-                            key={owner.id}
-                            type="button"
-                            onClick={() => onOwnerSelect(owner.id)}
-                            className={cn(
-                              "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium shadow-sm transition-all",
-                              isSelected
-                                ? "border-primary bg-primary/5 text-primary ring-1 ring-primary/30"
-                                : "border-border bg-background text-foreground hover:bg-muted/50"
-                            )}
-                          >
-                            <div className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-muted text-[10px] font-bold text-muted-foreground uppercase">
-                              {owner.name.charAt(0)}
-                            </div>
-                            {owner.name}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
+                    ) : (
+                      <div>
+                        <Select
+                          value={selectedOwnerId}
+                          onValueChange={onOwnerSelect}
+                          disabled={owners.length === 1}
+                        >
+                          <SelectTrigger className="w-full text-xs">
+                            <SelectValue placeholder="Select an account" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {owners.map((owner) => (
+                              <SelectItem key={owner.id} value={owner.id} className="text-xs">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-muted text-[10px] font-bold text-muted-foreground uppercase">
+                                    {owner.name.charAt(0)}
+                                  </div>
+                                  {owner.name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {owners.length === 1 && (
+                          <p className="mt-1 text-[10px] text-muted-foreground">
+                            Only one GitHub account connected.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
-                {/* 2. Repository Selection */}
-                {selectedOwnerId && (
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between gap-4">
+                  {/* Repository Search */}
+                  {selectedOwnerId && (
+                    <div className="flex-1 space-y-2">
                       <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                        Select Repository
+                        Search Repository
                       </label>
-                      <div className="relative w-full max-w-xs">
+                      <div className="relative">
                         <MagnifyingGlass className="absolute top-2.5 left-3 h-4 w-4 text-muted-foreground" />
                         <Input
                           placeholder="Filter repositories..."
@@ -413,7 +445,12 @@ export function StepSource({
                         />
                       </div>
                     </div>
+                  )}
+                </div>
 
+                {/* 2. Repository List */}
+                {selectedOwnerId && (
+                  <div className="space-y-2.5">
                     {repositoryOptionsLoading ? (
                       <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed py-4 text-xs text-muted-foreground">
                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -867,6 +904,81 @@ export function StepSource({
                 )}
               </div>
             )}
+
+            {/* Template Configuration */}
+            {sourceType === "template" && (
+              <div className="border-t border-border pt-4">
+                {!templateId ? (
+                  <div className="rounded-xl border border-dashed py-6 text-center text-xs text-muted-foreground">
+                    Select a template above to see package details.
+                  </div>
+                ) : selectedTemplate ? (
+                  <div className="grid gap-6">
+                    {/* Package Details Panel */}
+                    <div className="rounded-xl border border-border bg-muted/20 p-4">
+                      <h4 className="mb-3 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                        Package Details
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4 text-xs sm:grid-cols-4">
+                        <div>
+                          <span className="block text-muted-foreground">Compute</span>
+                          <span className="font-semibold">
+                            {(selectedTemplate.defaultCpu / 1000).toFixed(1)} vCPU /{" "}
+                            {selectedTemplate.defaultMemory >= 1024
+                              ? `${(selectedTemplate.defaultMemory / 1024).toFixed(0)} GB`
+                              : `${selectedTemplate.defaultMemory} MB`}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-muted-foreground">Runtime</span>
+                          <span className="font-semibold">
+                            {selectedTemplate.build.useDockerfile
+                              ? "Docker"
+                              : `${selectedTemplate.build.language}${selectedTemplate.build.framework ? ` / ${selectedTemplate.build.framework}` : ""}`}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-muted-foreground">Default Port</span>
+                          <span className="font-semibold">{selectedTemplate.build.defaultPort ?? "—"}</span>
+                        </div>
+                        <div>
+                          <span className="block text-muted-foreground">Estimated Cost</span>
+                          <span className="font-semibold">${packageHourlyCost.toFixed(4)}/hr</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* App Name */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                        App Name
+                      </label>
+                      <Input
+                        value={appName}
+                        onChange={(e) => onAppNameChange(e.target.value)}
+                        placeholder="my-app-name"
+                        className="h-9 text-xs"
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        Enter a name for your application. It will be used to generate the URL.
+                      </p>
+                    </div>
+
+                    {/* Resource Plan */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                        Resource Plan
+                      </label>
+                      <ResourcePlanSelector
+                        selectedPlanId={templateResourcePlanId}
+                        hourlyCost={packageHourlyCost}
+                        onChange={onTemplateResourcePlanChange}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </CardContent>
@@ -880,15 +992,28 @@ export function StepSource({
         >
           Cancel
         </Button>
-        <Button
-          type="button"
-          onClick={onNext}
-          disabled={!canProceed}
-          className="flex h-9 items-center gap-1 bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
-        >
-          Next Step
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          {sourceType === "template" && templateId && appName.trim() && (
+            <Button
+              type="button"
+              variant="default"
+              onClick={onDeployWithDefaults}
+              className="flex h-9 items-center gap-1 px-4 text-xs font-semibold shadow-sm"
+            >
+              <RocketLaunchIcon className="h-3.5 w-3.5" />
+              Deploy with defaults
+            </Button>
+          )}
+          <Button
+            type="button"
+            onClick={onNext}
+            disabled={!canProceed}
+            className="flex h-9 items-center gap-1 bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+          >
+            Next Step
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
     </Card>
   )

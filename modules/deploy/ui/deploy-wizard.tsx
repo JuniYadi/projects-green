@@ -59,7 +59,7 @@ type GithubRepositoryApiItem = {
   owner: string
   defaultBranch?: string
   private: boolean
-  installationId: number
+  installationId: string
 }
 
 type GithubRepositoriesResponse = {
@@ -96,7 +96,7 @@ const mapGithubRepository = (item: GithubRepositoryApiItem): Repository => {
     name: item.name,
     isPrivate: item.private,
     defaultBranch: item.defaultBranch || undefined,
-    installationId: item.installationId,
+    installationId: Number(item.installationId),
   }
 }
 
@@ -136,6 +136,15 @@ const toGeneratedSubdomain = (repositoryName: string | undefined) => {
     .replace(/-{2,}/g, "-")
 
   return `${slug || "my-app"}.pfn.app`
+}
+const generateAppName = (templateName: string): string => {
+  const slug = templateName
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-")
+  const suffix = Math.random().toString(36).substring(2, 6)
+  return `${slug}-${suffix}`
 }
 
 function DeployWizardInner() {
@@ -275,13 +284,29 @@ function DeployWizardInner() {
         setGithubReconnectRequired(false)
 
         if (Array.isArray(payload.owners) && payload.owners.length > 0) {
-          setOwnerOptions(
-            payload.owners.map((owner) => ({
-              id: owner.id,
-              name: owner.name,
-              avatarUrl: owner.avatarUrl ?? "",
-            }))
-          )
+          const owners = payload.owners.map((owner: { id: string; name: string; avatarUrl: string | null }) => ({
+            id: owner.id,
+            name: owner.name,
+            avatarUrl: owner.avatarUrl ?? "",
+          }))
+          setOwnerOptions(owners)
+          // Auto-select when only one account
+          if (owners.length === 1) {
+            setRepositorySearch("")
+            setRepositoryOptions([])
+            setRepositoryOptionsError(null)
+            dispatch({
+              type: "set-source",
+              payload: {
+                sourceType: "github",
+                ownerId: owners[0].id,
+                repositoryId: "",
+                branchName: "",
+                templateId: undefined,
+              },
+            })
+            dispatch({ type: "set-detection", payload: null })
+          }
         } else {
           setOwnerOptions(toOwnerOptions(mapped))
         }
@@ -309,7 +334,7 @@ function DeployWizardInner() {
     return () => {
       controller.abort()
     }
-  }, [ownerSearch])
+  }, [ownerSearch, dispatch])
 
   useEffect(() => {
     if (!state.source.ownerId) {
@@ -614,6 +639,7 @@ function DeployWizardInner() {
         ownerId: "",
         repositoryId: "",
         branchName: "",
+        appName: generateAppName(template.name),
       },
     })
 
@@ -684,25 +710,21 @@ function DeployWizardInner() {
     navigateStep(nextStep)
   }
 
-  const handleEnvironmentDeploy = async () => {
-    if (isSubmitting) {
-      return
-    }
-
+  const handleDeployWithDefaults = async () => {
+    if (isSubmitting) return
     setIsSubmitting(true)
     setSubmitError(null)
-
-    const billingMode = state.environment.billingMode ?? "PAYG"
 
     try {
       const response = await fetch("/api/deploy/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          repositoryId: state.source.repositoryId,
-          name: selectedRepository?.name,
-          branchName: state.source.branchName,
-          rootDirectory: state.source.rootDirectory || "/",
+          sourceType: "TEMPLATE",
+          templateId: state.source.templateId,
+          name: state.source.appName || "app",
+          branchName: "/",
+          rootDirectory: "/",
           framework: state.build.framework || undefined,
           frameworkVersion: state.build.frameworkVersion || undefined,
           buildCommand: state.build.buildCommand || undefined,
@@ -710,14 +732,88 @@ function DeployWizardInner() {
           primaryEngine: state.build.primaryEngine || undefined,
           primaryEngineVersion: state.build.primaryEngineVersion || undefined,
           secondaryEngine: state.build.secondaryEngine || undefined,
-          secondaryEngineVersion:
-            state.build.secondaryEngineVersion || undefined,
+          secondaryEngineVersion: state.build.secondaryEngineVersion || undefined,
+          defaultPort: state.build.defaultPort || undefined,
+          resourcePlanId: state.environment.resourcePlanId,
+          billingMode: state.environment.billingMode ?? "PAYG",
+          cpu: state.environment.cpu,
+          memory: state.environment.memory,
+          subdomain: `${state.source.appName}.pfn.app`,
+          envVars: [],
+        }),
+      })
+
+      const payload = (await response.json()) as {
+        ok: boolean
+        error?: string
+        message?: string
+        topupUrl?: string
+        data?: { deploymentId: string; status: DeployStatus | string }
+      }
+
+      if (!response.ok || !payload.ok || !payload.data) {
+        setSubmitError(
+          payload.message ??
+            "Unable to start the deployment. Please review your settings and try again."
+        )
+        return
+      }
+
+      dispatch({ type: "set-step", payload: "monitor" })
+      dispatch({
+        type: "start-monitor",
+        payload: { shouldFail: false, failureReason: null },
+      })
+      dispatch({
+        type: "set-monitor",
+        payload: {
+          deployId: payload.data.deploymentId,
+          status: "queued",
+          isActive: true,
+        },
+      })
+    } catch {
+      setSubmitError(
+        "Network error while starting the deployment. Please try again."
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleEnvironmentDeploy = async () => {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+    setSubmitError(null)
+
+    const billingMode = state.environment.billingMode ?? "PAYG"
+    const isTemplate = state.source.sourceType === "template"
+
+    try {
+      const response = await fetch("/api/deploy/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceType: isTemplate ? "TEMPLATE" : "GITHUB",
+          templateId: isTemplate ? state.source.templateId : undefined,
+          repositoryId: isTemplate ? undefined : state.source.repositoryId,
+          name: isTemplate ? state.source.appName || "app" : selectedRepository?.name,
+          branchName: isTemplate ? "/" : state.source.branchName,
+          rootDirectory: isTemplate ? "/" : state.source.rootDirectory || "/",
+          framework: state.build.framework || undefined,
+          frameworkVersion: state.build.frameworkVersion || undefined,
+          buildCommand: state.build.buildCommand || undefined,
+          useDockerfile: state.build.useDockerfile,
+          primaryEngine: state.build.primaryEngine || undefined,
+          primaryEngineVersion: state.build.primaryEngineVersion || undefined,
+          secondaryEngine: state.build.secondaryEngine || undefined,
+          secondaryEngineVersion: state.build.secondaryEngineVersion || undefined,
           defaultPort: state.build.defaultPort || undefined,
           resourcePlanId: state.environment.resourcePlanId,
           billingMode,
           cpu: state.environment.cpu,
           memory: state.environment.memory,
-          paygBufferHours: state.environment.paygBufferHours,
+          paygBufferHours: isTemplate ? undefined : state.environment.paygBufferHours,
           customDomain: state.environment.useGeneratedSubdomain
             ? undefined
             : state.environment.customDomain.trim() || undefined,
@@ -796,6 +892,8 @@ function DeployWizardInner() {
           selectedRepositoryId={state.source.repositoryId}
           selectedBranchName={state.source.branchName}
           rootDirectory={state.source.rootDirectory}
+          appName={state.source.appName}
+          templateResourcePlanId={state.environment.resourcePlanId}
           canProceed={sourceValid}
           isDetecting={isDetecting}
           detectionError={detectionError}
@@ -813,6 +911,24 @@ function DeployWizardInner() {
           onRootDirectoryChange={(rootDirectory) => {
             dispatch({ type: "set-source", payload: { rootDirectory } })
           }}
+          onAppNameChange={(appName) => {
+            dispatch({ type: "set-source", payload: { appName } })
+          }}
+          onTemplateResourcePlanChange={(resourcePlanId) => {
+            const template = DEPLOY_TEMPLATES.find((t) => t.id === state.source.templateId)
+            const updates: Partial<DeployEnvironmentState> = { resourcePlanId }
+            if (template) {
+              if (resourcePlanId === "payg") {
+                updates.cpu = template.defaultCpu
+                updates.memory = template.defaultMemory
+              } else {
+                updates.cpu = 100
+                updates.memory = 256
+              }
+            }
+            dispatch({ type: "set-environment", payload: updates })
+          }}
+          onDeployWithDefaults={handleDeployWithDefaults}
           onConnectGithub={handleConnectGithub}
           onCancel={() => {
             dispatch({ type: "reset" })

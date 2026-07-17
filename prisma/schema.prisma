@@ -2376,3 +2376,16 @@ model CacheEntry {
   @@index([key, expiresAt])
   @@map("CacheEntry")
 }
+
+model CloudflareDnsCredential {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  tokenJson      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("CloudflareDnsCredential")
+}

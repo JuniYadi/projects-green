@@ -18,6 +18,7 @@ const jsonResponse = (body: unknown) =>
 const originalFetch = globalThis.fetch
 const mockFetch = mock((input: string | URL | Request) => {
   const url = input.toString()
+  const method = input instanceof Request ? input.method : "GET"
 
   if (url.includes("/api/billing/account")) {
     return jsonResponse({
@@ -27,7 +28,7 @@ const mockFetch = mock((input: string | URL | Request) => {
     })
   }
 
-  if (url.includes("/api/usage")) {
+  if (url.includes("/api/billing/usage")) {
     return jsonResponse({
       success: true,
       data: { totalSpend: 125000, period: "June 2026" },
@@ -36,6 +37,13 @@ const mockFetch = mock((input: string | URL | Request) => {
 
   if (url.includes("/api/billing/invoices")) {
     return jsonResponse(invoicesPayload)
+  }
+
+  if (url.includes("/api/support-tickets") && method === "GET") {
+    return jsonResponse({
+      ok: true,
+      tickets: [{ id: "ticket_1" }, { id: "ticket_2" }],
+    })
   }
 
   return jsonResponse({

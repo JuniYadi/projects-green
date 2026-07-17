@@ -171,7 +171,7 @@ export function OverviewTab() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Pending Confirmations</CardTitle>
           <Link
-            href="/portal/payments?tab=confirmations"
+            href="/portal/billing/payments?tab=confirmations"
             className="text-sm text-primary hover:underline"
           >
             See All →

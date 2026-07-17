@@ -73,18 +73,7 @@ export function BillingBalanceGateBanner({
           Your balance is {formattedBalance}. Top up before purchasing a package
           or your purchase will be declined.
         </AlertDescription>
-        <AlertAction className="!right-3 flex flex-col items-end gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            onClick={handleDismiss}
-            className="text-destructive/70 hover:bg-destructive/15 hover:text-destructive"
-            aria-label="Dismiss alert"
-            title="Dismiss"
-          >
-            <FiX className="size-3.5" />
-          </Button>
+        <AlertAction className="!right-3 flex flex-row items-center gap-2">
           <Button
             asChild
             variant="default"
@@ -97,6 +86,17 @@ export function BillingBalanceGateBanner({
               <FiArrowUpCircle className="size-4" />
               Top up
             </Link>
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={handleDismiss}
+            className="text-foreground/50 hover:bg-foreground/10 hover:text-foreground"
+            aria-label="Dismiss alert"
+            title="Dismiss"
+          >
+            <FiX className="size-4" />
           </Button>
         </AlertAction>
       </Alert>

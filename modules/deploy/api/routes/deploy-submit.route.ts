@@ -14,6 +14,7 @@ import {
   createOrUpdateStack,
   triggerDeploy,
 } from "../../deploy-pipeline.service"
+import { DEPLOY_TEMPLATES } from "../../deploy.constants"
 
 /**
  * PGREEN-071 — Console Deploy Journey truth path.
@@ -84,37 +85,59 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       }
     }
 
-    // Resolve the repository connection so deploys are pinned to a real,
-    // org-accessible private repository (MVP is private-repo first).
-    const rawRepoId = String(body.repositoryId)
-    if (!/^\d+$/.test(rawRepoId)) {
-      set.status = 422
-      return {
-        ok: false,
-        error: "INVALID_REPOSITORY",
-        message: "A valid numeric GitHub repository id is required.",
-      }
-    }
-    const repositoryId = BigInt(rawRepoId)
+    const sourceType = body.sourceType ?? "GITHUB"
+    let repositoryConnectionId: string | null | undefined
+    let name: string
+    let slug: string
 
-    const connection = await prisma.githubRepositoryConnection.findFirst({
-      where: {
-        githubRepositoryId: repositoryId,
-        enabled: true,
-        installation: {
-          organizationId: auth.organizationId,
+    if (sourceType === "TEMPLATE") {
+      const template = DEPLOY_TEMPLATES.find((t) => t.id === body.templateId)
+      if (!template) {
+        set.status = 422
+        return {
+          ok: false,
+          error: "UNKNOWN_TEMPLATE",
+          message: "Unknown templateId",
+        }
+      }
+      repositoryConnectionId = null
+      name = body.name?.trim() || template.name
+      slug = slugify(name)
+    } else {
+      // Resolve the repository connection for GitHub deploys.
+      const rawRepoId = String(body.repositoryId)
+      if (!/^\d+$/.test(rawRepoId)) {
+        set.status = 422
+        return {
+          ok: false,
+          error: "INVALID_REPOSITORY",
+          message: "A valid numeric GitHub repository id is required.",
+        }
+      }
+      const repositoryId = BigInt(rawRepoId)
+
+      const connection = await prisma.githubRepositoryConnection.findFirst({
+        where: {
+          githubRepositoryId: repositoryId,
+          enabled: true,
+          installation: {
+            organizationId: auth.organizationId,
+          },
         },
-      },
-    })
+      })
 
-    if (!connection) {
-      set.status = 404
-      return {
-        ok: false,
-        error: "REPOSITORY_NOT_CONNECTED",
-        message:
-          "This repository is not connected. Connect it via the GitHub App first.",
+      if (!connection) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "REPOSITORY_NOT_CONNECTED",
+          message:
+            "This repository is not connected. Connect it via the GitHub App first.",
+        }
       }
+      repositoryConnectionId = connection.id
+      slug = slugify(connection.repoName || body.name || "app")
+      name = connection.repoName || body.name || slug
     }
 
     const resourcePlanId = body.resourcePlanId
@@ -125,18 +148,17 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       memory: body.memory ?? null,
     })
 
-    const slug = slugify(connection.repoName || body.name || "app")
-
     // Persist the stack as the single source of truth before any deploy.
     let stack
     try {
       stack = await createOrUpdateStack({
         organizationId: auth.organizationId,
-        name: connection.repoName || body.name || slug,
+        name,
         slug,
-        repositoryConnectionId: connection.id,
-        branchName: body.branchName,
-        rootDirectory: body.rootDirectory || "/",
+        sourceType: sourceType === "TEMPLATE" ? "TEMPLATE" : "GITHUB",
+        repositoryConnectionId,
+        branchName: body.branchName || null,
+        rootDirectory: body.rootDirectory || null,
         framework: body.framework ?? null,
         frameworkVersion: body.frameworkVersion ?? null,
         buildCommand: body.buildCommand ?? null,
@@ -212,9 +234,10 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       }
     }
 
+    const triggerType = sourceType === "TEMPLATE" ? "TEMPLATE" : "MANUAL"
     const result = await triggerDeploy({
       stackId: stack.id,
-      triggerType: "MANUAL",
+      triggerType,
     })
 
     return {
@@ -230,9 +253,11 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
   },
   {
     body: t.Object({
-      repositoryId: t.String(),
+      sourceType: t.Optional(t.Union([t.Literal("GITHUB"), t.Literal("TEMPLATE")])),
+      templateId: t.Optional(t.String()),
+      repositoryId: t.Optional(t.String()),
       name: t.Optional(t.String()),
-      branchName: t.String(),
+      branchName: t.Optional(t.String()),
       rootDirectory: t.Optional(t.String()),
       framework: t.Optional(t.String()),
       frameworkVersion: t.Optional(t.String()),

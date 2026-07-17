@@ -52,12 +52,14 @@
     "create:api-key": "bun run scripts/create-api-key.ts",
     "worker:vpn-renewal": "bun run scripts/vpn-renewal-worker.ts",
     "worker:opensearch-ingest": "bun run scripts/opensearch-ingest-worker.ts",
-    "cleanup:webhook-events": "bun run scripts/cleanup-whatsapp-webhook-events.ts"
+    "cleanup:webhook-events": "bun run scripts/cleanup-whatsapp-webhook-events.ts",
+    "openwiki:update": "bunx openwiki --update && git add openwiki && git commit -m 'feat(openwiki): Update documentation'"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.64",
     "@elysia/eden": "^1.4.10",
     "@elysia/openapi": "^1.4.15",
+    "@elysia/server-timing": "^1.4.1",
     "@faker-js/faker": "^10.4.0",
     "@formatjs/intl-localematcher": "^0.8.8",
     "@openrouter/ai-sdk-provider": "^2.9.0",
@@ -76,6 +78,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "elysia": "^1.4.28",
+    "elysia-healthcheck": "^1.0.0",
     "js-yaml": "^4.1.1",
     "negotiator": "^1.0.0",
     "next": "16.2.6",

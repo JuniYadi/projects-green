@@ -67,7 +67,14 @@ bun run db:migrate:dev      # Apply dev migrations
 bun run db:migrate:deploy   # Apply production migrations
 bun run db:studio           # Open Prisma Studio
 bun run db:status           # Check migration status
+
+# ⚠️ Restricted commands — never run in production without explicit approval
+bun run db:push             # Push schema without migration (dev only)
+bun run db:reset            # ⚠️ Destructive — drops and recreates database
+bun run db:migrate:reset    # ⚠️ Destructive — resets all migrations
 ```
+
+**Migration note**: Migrations have been consolidated into a single `init` migration (`20260717071711_init`) that replaces all prior timestamped migrations. This is a one-time cleanup — new migrations should be created with `bun run db:migrate:dev --name <description>` as before.
 
 ### Testing
 ```bash
@@ -111,7 +118,29 @@ bun run worker:opensearch-ingest     # OpenSearch log ingestion
 2. `bun run typecheck` — 0 errors
 3. `bun run test` — all tests pass
 
-**Do NOT run these during local development** — only when opening a PR. Per `AGENTS.md`.
+**Change-scoped validation gates** — only fix regressions you introduce; pre-existing failures are not PR blockers (per `AGENTS.md`).
+
+### Test Pipeline
+
+The test runner was streamlined (PR #366):
+
+- **`scripts/run-tests.ts`** — Custom test runner that spawns `bun test` with `--isolate` and `--preload scripts/preload.ts`, excludes `**/*.e2e.test.ts` and `e2e/**`
+- **`scripts/preload.ts`** — Explicit Bun `--preload` that imports `test/setup.ts` by absolute path to fix CWD issues in `--isolate` workers
+- **`bunfig.toml`** — No longer contains `[test] preload`; preload is now handled by `run-tests.ts`
+- `bun run test` script changed from `bun test` → `bun run scripts/run-tests.ts`
+
+### Restricted Prisma Commands
+
+Per `AGENTS.md`, these destructive commands must never be run:
+
+| Command | Risk | Safe Alternative |
+|---------|------|------------------|
+| `prisma migrate reset` | Deletes all data | `prisma migrate dev` for schema changes |
+| `prisma db push --force-reset` | Drops all tables | `prisma migrate dev` |
+| `prisma migrate dev --create-only` then manual `--apply` | Unreviewed DDL | Use `prisma migrate dev` normally |
+| `prisma db seed` (in CI) | Overwrites production data | Only in dev environments |
+| `DELETE FROM <table>` (raw SQL) | Data loss | Use application-level soft deletes |
+| `TRUNCATE <table>` | Irreversible data wipe | Never run outside local dev |
 
 ### Coverage Policy
 - **Base threshold** (CI fail): functions ≥80%, lines ≥80%
@@ -133,6 +162,12 @@ Bun's `mock.module` persists across files in single-process mode (CI coverage ru
 - Global setup: `test/setup.ts` (preloaded via `bunfig.toml`)
 - UI tests: Testing Library + Happy DOM
 - E2E: Playwright with per-project auth fixtures
+
+### Test Pipeline
+The test pipeline uses explicit preload (`scripts/preload.ts`) and change-scoped validation gates (`scripts/run-tests.ts`):
+- `bunfig.toml` configures preload for test setup initialization
+- `run-tests.ts` scopes validation gates (lint, typecheck) to changed files for faster local feedback
+- `check-coverage-threshold.ts` validates coverage baselines
 
 ## CI/CD Pipeline
 

@@ -17,7 +17,7 @@ describe("resolveSidebarMenu", () => {
     expect(navMainLabel).toBe("Applications")
 
     // Flat menu structure under applications context
-    expect(navMain.map((item) => item.title)).toEqual(["Deploy", "Manage"])
+    expect(navMain.map((item) => item.title)).toEqual(["Deploy", "Credentials", "Manage"])
     expect(navMain.find((item) => item.title === "Manage")?.isActive).toBe(true)
 
     // Escape hatch in projects
@@ -189,7 +189,7 @@ describe("resolveSidebarMenu", () => {
     ])
     expect(navMain.map((item) => item.title)).not.toContain("Documentation")
 
-    expect(projects.map((project) => project.name)).toContain("Payments")
+    expect(projects.map((project) => project.name)).toContain("Billing")
     expect(projects.map((project) => project.name)).not.toContain(
       "Documentation"
     )
