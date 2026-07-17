@@ -277,6 +277,32 @@ export type AppMessages = {
         description: string
         notDownloaded: string
       }
+      credentials: {
+        heading: string
+        description: string
+        github: {
+          heading: string
+          connect: string
+          noAccounts: string
+          accountLogin: string
+          accountType: string
+          installedAt: string
+        }
+        cloudflare: {
+          heading: string
+          name: string
+          apiToken: string
+          save: string
+          saving: string
+          delete: string
+          deleting: string
+          noCredentials: string
+          maskedToken: string
+          saved: string
+          deleted: string
+          error: string
+        }
+      }
     }
     supportTickets: {
       heading: string
