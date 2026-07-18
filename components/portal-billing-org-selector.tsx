@@ -49,7 +49,7 @@ export function PortalBillingOrgSelector() {
   const currentTab = rawTab && VALID_TABS.includes(rawTab) ? rawTab : "balance"
 
   const handleOrgChange = (orgId: string) => {
-    router.push(`/${locale}/portal/billing/org/${orgId}?tab=${currentTab}`)
+    router.push(`/${locale}/portal/orgs/${orgId}?page=${currentTab}`)
   }
 
   if (loading) {

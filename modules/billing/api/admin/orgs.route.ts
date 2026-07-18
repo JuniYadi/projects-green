@@ -137,7 +137,7 @@ export const createAdminOrgsRoutes = (
       // Query service subscriptions and usage ledgers in bulk
       const orgIds = accounts.map((a) => a.organizationId)
 
-      const [subscriptions, usageLedgers] = await Promise.all([
+      const [subscriptions, usageLedgers, ticketCounts] = await Promise.all([
         prisma.serviceSubscription.findMany({
           where: {
             organizationId: { in: orgIds },
@@ -151,6 +151,14 @@ export const createAdminOrgsRoutes = (
             period: currentPeriod,
           },
           select: { organizationId: true, amountIdr: true },
+        }),
+        prisma.supportTicket.groupBy({
+          by: ["organizationId"],
+          where: {
+            organizationId: { in: orgIds },
+            status: "OPEN",
+          },
+          _count: { id: true },
         }),
       ])
 
@@ -172,6 +180,11 @@ export const createAdminOrgsRoutes = (
         )
       }
 
+      const ticketCountMap = new Map<string, number>()
+      for (const tc of ticketCounts) {
+        ticketCountMap.set(tc.organizationId, tc._count.id)
+      }
+
       const orgMap = await getCachedOrganizations(orgIds)
 
       let orgs = accounts.map((account) => ({
@@ -182,6 +195,7 @@ export const createAdminOrgsRoutes = (
         activeSubscriptions: subCountMap.get(account.organizationId) ?? 0,
         monthlySpend: (spendMap.get(account.organizationId) ?? 0).toFixed(2),
         lastTopUp: null,
+        openTicketCount: ticketCountMap.get(account.organizationId) ?? 0,
       }))
 
       // Post-filter by name when search is not UUID-like

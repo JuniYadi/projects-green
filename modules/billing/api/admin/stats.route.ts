@@ -93,6 +93,8 @@ export const createAdminStatsRoutes = (
         activeOrgs,
         lowBalanceOrgs,
         monthlySpendResult,
+        openInvoices,
+        openTickets,
       ] = await Promise.all([
         prisma.billingAccount.aggregate({
           _sum: { balance: true },
@@ -111,6 +113,12 @@ export const createAdminStatsRoutes = (
           _sum: { amountIdr: true },
           where: { period: currentPeriod },
         }),
+        prisma.billingInvoice.count({
+          where: { status: "OPEN" },
+        }),
+        prisma.supportTicket.count({
+          where: { status: "OPEN" },
+        }),
       ])
 
       return {
@@ -119,6 +127,8 @@ export const createAdminStatsRoutes = (
         activeOrgs,
         totalSpend: monthlySpendResult._sum.amountIdr?.toFixed(2) ?? "0.00",
         lowBalanceOrgs,
+        openInvoices,
+        openTickets,
       }
     } catch (error) {
       console.error("[AdminStats] Error:", error)

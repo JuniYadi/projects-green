@@ -40,7 +40,6 @@ import {
   WalletIcon,
   WhatsappLogoIcon,
 } from "@phosphor-icons/react"
-import { PortalBillingOrgSelector } from "@/components/portal-billing-org-selector"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 
 const getPathnameWithoutSearch = (pathname: string) => pathname.split("?")[0]
@@ -112,6 +111,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
     navMainLabel: "Admin",
     getProjects: (path, locale) => [
       {
+        name: "Organizations",
+        url: localizePathname({
+          pathname: "/portal/admin/organizations",
+          locale,
+        }),
+        icon: <BuildingsIcon />,
+        isActive: startsWithRoute(path, "/portal/admin/organizations"),
+      },
+      {
         name: "Back to Portal",
         url: localizePathname({ pathname: "/portal", locale }),
         icon: <CaretLeftIcon />,
@@ -130,6 +138,33 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
     ],
   },
   {
+    context: "orgs",
+    matches: (path) => startsWithRoute(path, "/portal/orgs"),
+    navMainLabel: "Organizations",
+    getProjects: (path, locale) => [
+      {
+        name: "All Orgs Overview",
+        url: localizePathname({ pathname: "/portal/orgs", locale }),
+        icon: <BuildingsIcon />,
+        isActive:
+          path === localizePathname({ pathname: "/portal/orgs", locale }),
+      },
+      {
+        name: "Back to Portal",
+        url: localizePathname({ pathname: "/portal", locale }),
+        icon: <CaretLeftIcon />,
+      },
+    ],
+    getNavMain: (path, locale) => [
+      {
+        title: "Overview",
+        url: localizePathname({ pathname: "/portal/orgs", locale }),
+        icon: <GaugeIcon />,
+        isActive: path === localizePathname({ pathname: "/portal/orgs", locale }),
+      },
+    ],
+  },
+  {
     context: "billing",
     matches: (path) => startsWithRoute(path, "/portal/billing"),
     navMainLabel: "Billing",
@@ -142,12 +177,17 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
           path === localizePathname({ pathname: "/portal/billing", locale }),
       },
       {
+        name: "Org Overview",
+        url: localizePathname({ pathname: "/portal/orgs", locale }),
+        icon: <BuildingsIcon />,
+        isActive: startsWithRoute(path, "/portal/orgs"),
+      },
+      {
         name: "Back to Portal",
         url: localizePathname({ pathname: "/portal", locale }),
         icon: <CaretLeftIcon />,
       },
     ],
-    getNavHeader: () => <PortalBillingOrgSelector />,
     getNavMain: (path, locale, _tab) => {
       return [
         {
