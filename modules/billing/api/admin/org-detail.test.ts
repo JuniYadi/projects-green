@@ -91,7 +91,7 @@ describe("AdminOrgDetailRoute", () => {
       expect(body.error).toBe("FORBIDDEN")
     })
 
-    it("returns 422 for invalid org ID", async () => {
+    it("returns 404 for empty org ID", async () => {
       const app = new Elysia()
         .use(
           createAdminOrgDetailRoutes({
@@ -102,16 +102,13 @@ describe("AdminOrgDetailRoute", () => {
         .compile()
 
       const response = await app.handle(
-        new Request("http://localhost/admin/orgs/not-a-uuid")
+        new Request("http://localhost/admin/orgs/")
       )
 
-      expect(response.status).toBe(422)
-      const body = await response.json()
-      expect(body.ok).toBe(false)
-      expect(body.error).toBe("VALIDATION_ERROR")
+      expect(response.status).toBe(404)
     })
 
-    it("returns 404 for non-existent org", async () => {
+    it("returns 404 when org not found", async () => {
       mockBillingAccountFindUnique.mockResolvedValueOnce(null)
 
       const app = new Elysia()

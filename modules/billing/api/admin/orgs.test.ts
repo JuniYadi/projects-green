@@ -9,6 +9,7 @@ const mockBillingAccountCount = mock()
 const mockServiceSubscriptionFindMany = mock()
 const mockUsageLedgerFindMany = mock()
 const mockGetCachedOrganizations = mock()
+const mockSupportTicketGroupBy = mock()
 
 const mockPrismaClient = {
   billingAccount: {
@@ -20,6 +21,9 @@ const mockPrismaClient = {
   },
   billingUsageLedger: {
     findMany: mockUsageLedgerFindMany,
+  },
+  supportTicket: {
+    groupBy: mockSupportTicketGroupBy,
   },
 }
 
@@ -109,6 +113,7 @@ describe("AdminOrgsRoute", () => {
         { organizationId: "org-2", amountIdr: new TestDecimal(8000) },
       ])
       mockBillingAccountCount.mockResolvedValueOnce(2)
+      mockSupportTicketGroupBy.mockResolvedValueOnce([])
 
       mockGetCachedOrganizations.mockResolvedValue(
         new Map([
@@ -142,6 +147,8 @@ describe("AdminOrgsRoute", () => {
       expect(body.orgs[1].orgId).toBe("org-2")
       expect(body.orgs[1].activeSubscriptions).toBe(1)
       expect(body.orgs[1].monthlySpend).toBe("8000.00")
+      expect(body.orgs[0].openTicketCount).toBe(0)
+      expect(body.orgs[1].openTicketCount).toBe(0)
       expect(body.pagination.total).toBe(2)
       expect(body.pagination.totalPages).toBe(1)
     })
@@ -151,6 +158,7 @@ describe("AdminOrgsRoute", () => {
       mockServiceSubscriptionFindMany.mockResolvedValueOnce([])
       mockUsageLedgerFindMany.mockResolvedValueOnce([])
       mockBillingAccountCount.mockResolvedValueOnce(0)
+      mockSupportTicketGroupBy.mockResolvedValueOnce([])
 
       const app = new Elysia()
         .use(
@@ -194,6 +202,7 @@ describe("AdminOrgsRoute", () => {
       mockServiceSubscriptionFindMany.mockResolvedValueOnce([])
       mockUsageLedgerFindMany.mockResolvedValueOnce([])
       mockBillingAccountCount.mockResolvedValueOnce(2)
+      mockSupportTicketGroupBy.mockResolvedValueOnce([])
       mockGetCachedOrganizations.mockResolvedValue(
         new Map([
           ["org-1", { id: "org-1", name: "Acme Corporation" }],
@@ -227,6 +236,7 @@ describe("AdminOrgsRoute", () => {
       mockServiceSubscriptionFindMany.mockResolvedValueOnce([])
       mockUsageLedgerFindMany.mockResolvedValueOnce([])
       mockBillingAccountCount.mockResolvedValueOnce(0)
+      mockSupportTicketGroupBy.mockResolvedValueOnce([])
 
       const app = new Elysia()
         .use(
@@ -273,6 +283,7 @@ describe("AdminOrgsRoute", () => {
       mockServiceSubscriptionFindMany.mockResolvedValueOnce([])
       mockUsageLedgerFindMany.mockResolvedValueOnce([])
       mockBillingAccountCount.mockResolvedValueOnce(0)
+      mockSupportTicketGroupBy.mockResolvedValueOnce([])
 
       const app = new Elysia()
         .use(

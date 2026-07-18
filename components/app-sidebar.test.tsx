@@ -16,23 +16,23 @@ describe("resolveSidebarMenu", () => {
 
     expect(navMainLabel).toBe("Applications")
 
-    // Flat menu structure under applications context
-    expect(navMain.map((item) => item.title)).toEqual(["Deploy", "Credentials", "Manage"])
-    expect(navMain.find((item) => item.title === "Manage")?.isActive).toBe(true)
+    expect(navMain.map((item) => item.title)).toEqual(["Deploy", "Overview", "Logs", "Metrics", "Events", "Settings", "Credentials"])
+    // After flattening Manage container, no single item is active for /console/app/manage
+    expect(navMain.every((item) => !item.isActive)).toBe(true)
 
     // Escape hatch in projects
     expect(projects.map((project) => project.name)).toEqual(["Back to Console"])
   })
 
-  it("marks manage active for its routes", () => {
-    const manageMenu = resolveSidebarMenu({
+  it("marks settings active for its routes", () => {
+    const settingsMenu = resolveSidebarMenu({
       surface: "console",
-      pathname: "/console/app/manage/build-logs",
+      pathname: "/console/app/settings",
       locale: "en",
     })
 
     expect(
-      manageMenu.navMain.find((item) => item.title === "Manage")?.isActive
+      settingsMenu.navMain.find((item) => item.title === "Settings")?.isActive
     ).toBe(true)
   })
 
@@ -234,6 +234,7 @@ describe("resolveSidebarMenu", () => {
     ])
     expect(projects.map((project) => project.name)).toEqual([
       "All Orgs Overview",
+      "Org Overview",
       "Back to Portal",
     ])
   })

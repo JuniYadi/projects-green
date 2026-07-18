@@ -2,7 +2,6 @@ import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
 import { TestDecimal } from "@/test/helpers/prisma-mock"
 
-import { createAdminStatsRoutes } from "./stats.route"
 import {
   type MockAuthContext,
   defaultAuth,
@@ -14,6 +13,8 @@ import {
 const mockBillingAccountAggregate = mock()
 const mockBillingAccountCount = mock()
 const mockUsageLedgerAggregate = mock()
+const mockBillingInvoiceCount = mock()
+const mockSupportTicketCount = mock()
 
 const mockPrismaClient = {
   billingAccount: {
@@ -23,11 +24,20 @@ const mockPrismaClient = {
   billingUsageLedger: {
     aggregate: mockUsageLedgerAggregate,
   },
+  billingInvoice: {
+    count: mockBillingInvoiceCount,
+  },
+  supportTicket: {
+    count: mockSupportTicketCount,
+  },
 }
 
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrismaClient,
 }))
+
+// Dynamic import after mock registration
+const { createAdminStatsRoutes } = await import("./stats.route")
 
 describe("AdminStatsRoute", () => {
   beforeEach(() => {
@@ -86,6 +96,8 @@ describe("AdminStatsRoute", () => {
         _sum: { amountIdr: new TestDecimal(25000) },
       })
       mockBillingAccountCount.mockResolvedValueOnce(10).mockResolvedValueOnce(2)
+      mockBillingInvoiceCount.mockResolvedValueOnce(5)
+      mockSupportTicketCount.mockResolvedValueOnce(3)
 
       const app = new Elysia()
         .use(
@@ -107,6 +119,8 @@ describe("AdminStatsRoute", () => {
       expect(body.activeOrgs).toBe(10)
       expect(body.totalSpend).toBe("25000.00")
       expect(body.lowBalanceOrgs).toBe(2)
+      expect(body.openInvoices).toBe(5)
+      expect(body.openTickets).toBe(3)
     })
 
     it("returns zero values when no data", async () => {
@@ -117,6 +131,8 @@ describe("AdminStatsRoute", () => {
         _sum: { amountIdr: null },
       })
       mockBillingAccountCount.mockResolvedValueOnce(0).mockResolvedValueOnce(0)
+      mockBillingInvoiceCount.mockResolvedValueOnce(0)
+      mockSupportTicketCount.mockResolvedValueOnce(0)
 
       const app = new Elysia()
         .use(
@@ -138,6 +154,8 @@ describe("AdminStatsRoute", () => {
       expect(body.activeOrgs).toBe(0)
       expect(body.totalSpend).toBe("0.00")
       expect(body.lowBalanceOrgs).toBe(0)
+      expect(body.openInvoices).toBe(0)
+      expect(body.openTickets).toBe(0)
     })
 
     it("allows access when default isAdmin with super_admin", async () => {
@@ -148,6 +166,8 @@ describe("AdminStatsRoute", () => {
         _sum: { amountIdr: new TestDecimal(0) },
       })
       mockBillingAccountCount.mockResolvedValueOnce(0).mockResolvedValueOnce(0)
+      mockBillingInvoiceCount.mockResolvedValueOnce(0)
+      mockSupportTicketCount.mockResolvedValueOnce(0)
 
       const app = new Elysia()
         .use(

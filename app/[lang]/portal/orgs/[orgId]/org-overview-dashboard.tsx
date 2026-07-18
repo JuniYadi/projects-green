@@ -33,22 +33,14 @@ export function OrgOverviewDashboard({
   orgId,
   defaultPage,
 }: OrgOverviewDashboardProps) {
-  const initialTab: TabValue = TABS.includes(defaultPage as TabValue)
+  const activeTab: TabValue = TABS.includes(defaultPage as TabValue)
     ? (defaultPage as TabValue)
     : "billing"
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [activeTab, setActiveTab] = useState<TabValue>(initialTab)
   const [orgDetail, setOrgDetail] = useState<AdminOrgDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const validTab = TABS.includes(defaultPage as TabValue)
-      ? (defaultPage as TabValue)
-      : "billing"
-    setActiveTab(validTab)
-  }, [orgId, defaultPage])
 
   useEffect(() => {
     getAdminOrgDetail(orgId)
@@ -178,7 +170,6 @@ export function OrgOverviewDashboard({
       <Tabs
         value={activeTab}
         onValueChange={(v) => {
-          setActiveTab(v as TabValue)
           const params = new URLSearchParams(searchParams.toString())
           params.set("page", v)
           router.replace(`?${params.toString()}`, { scroll: false })
