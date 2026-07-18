@@ -33,7 +33,7 @@ const getInvoiceColumns = (lang: string): ColumnDef<InvoiceListItem>[] => {
       ),
       cell: ({ row }) => {
         const invoicePath = localizePathname({
-          pathname: `/portal/invoices/${row.original.id}`,
+          pathname: `/portal/billing/invoices/${row.original.id}`,
           locale,
         })
 
