@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
+import { getCachedOrganizations } from "@/lib/workos-directory"
 import type { PlatformAccessRole } from "@/lib/platform-role"
 
 const listQuerySchema = z.object({
@@ -167,9 +168,11 @@ export const createAdminOrgsRoutes = (
         )
       }
 
+      const orgMap = await getCachedOrganizations(orgIds)
+
       const orgs = accounts.map((account) => ({
         orgId: account.organizationId,
-        orgName: account.organizationId,
+        orgName: orgMap.get(account.organizationId)?.name ?? account.organizationId,
         balance: account.balance.toFixed(2),
         currency: account.currency,
         activeSubscriptions: subCountMap.get(account.organizationId) ?? 0,

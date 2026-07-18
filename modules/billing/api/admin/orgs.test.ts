@@ -1,20 +1,14 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
 import { TestDecimal } from "@/test/helpers/prisma-mock"
-
-import { createAdminOrgsRoutes } from "./orgs.route"
-import {
-  type MockAuthContext,
-  defaultAuth,
-  mockPlatformRole,
-  mockPlatformRoleNone,
-  testIsAdmin,
-} from "@/test/helpers/test-auth"
+import type { MockAuthContext } from "@/test/helpers/test-auth"
+import { defaultAuth, mockPlatformRole, mockPlatformRoleNone, testIsAdmin } from "@/test/helpers/test-auth"
 
 const mockBillingAccountFindMany = mock()
 const mockBillingAccountCount = mock()
 const mockServiceSubscriptionFindMany = mock()
 const mockUsageLedgerFindMany = mock()
+const mockGetCachedOrganizations = mock()
 
 const mockPrismaClient = {
   billingAccount: {
@@ -32,10 +26,17 @@ const mockPrismaClient = {
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrismaClient,
 }))
+mock.module("@/lib/workos-directory", () => ({
+  getCachedOrganization: mock(),
+  getCachedOrganizations: mockGetCachedOrganizations,
+}))
+
+const { createAdminOrgsRoutes } = await import("./orgs.route")
 
 describe("AdminOrgsRoute", () => {
   beforeEach(() => {
     mock.clearAllMocks()
+    mockGetCachedOrganizations.mockResolvedValue(new Map())
   })
 
   testIsAdmin((actor) => {
@@ -109,6 +110,13 @@ describe("AdminOrgsRoute", () => {
       ])
       mockBillingAccountCount.mockResolvedValueOnce(2)
 
+      mockGetCachedOrganizations.mockResolvedValue(
+        new Map([
+          ["org-1", { id: "org-1", name: "Org One" }],
+          ["org-2", { id: "org-2", name: "Org Two" }],
+        ])
+      )
+
       const app = new Elysia()
         .use(
           createAdminOrgsRoutes({
@@ -127,7 +135,7 @@ describe("AdminOrgsRoute", () => {
       expect(body.ok).toBe(true)
       expect(body.orgs).toHaveLength(2)
       expect(body.orgs[0].orgId).toBe("org-1")
-      expect(body.orgs[0].orgName).toBe("org-1")
+      expect(body.orgs[0].orgName).toBe("Org One")
       expect(body.orgs[0].balance).toBe("50000.00")
       expect(body.orgs[0].activeSubscriptions).toBe(2)
       expect(body.orgs[0].monthlySpend).toBe("15000.00")

@@ -5,6 +5,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 import { prisma } from "@/lib/prisma"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import type { PlatformAccessRole } from "@/lib/platform-role"
+import { getCachedOrganization } from "@/lib/workos-directory"
 
 type BillingAuthContext = {
   organizationId?: string | null
@@ -114,6 +115,8 @@ export const createAdminOrgDetailRoutes = (
         return toNotFound(set, "Billing account not found.")
       }
 
+      const cachedOrg = await getCachedOrganization(orgId)
+
       const now = new Date()
       const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
 
@@ -147,7 +150,7 @@ export const createAdminOrgDetailRoutes = (
         ok: true as const,
         org: {
           orgId: account.organizationId,
-          orgName: account.organizationId,
+          orgName: cachedOrg?.name ?? account.organizationId,
           balance: account.balance.toFixed(2),
           currency: account.currency,
           status: account.status,
