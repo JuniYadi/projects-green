@@ -55,7 +55,16 @@ export function OrgBillingDashboard({
   const [activeTab, setActiveTab] = useState<TabValue>(initialTab)
   const [orgDetail, setOrgDetail] = useState<AdminOrgDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+
   const [error, setError] = useState<string | null>(null)
+
+  // Sync tab state when orgId or defaultTab changes
+  useEffect(() => {
+    const validTab = TABS.includes(defaultTab as TabValue)
+      ? (defaultTab as TabValue)
+      : "balance"
+    setActiveTab(validTab)
+  }, [orgId, defaultTab])
 
   useEffect(() => {
     getAdminOrgDetail(orgId)
