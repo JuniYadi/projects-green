@@ -1,223 +1,43 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
-import "@testing-library/jest-dom"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { describe, expect, it, mock } from "bun:test"
 
-const replaceCalls: string[] = []
+// ─── Mock modules before any imports ─────────────────────────────────────────
 
-// ponytail: kept for API compatibility
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const updateQueryFromUrl = (_url: string) => {}
+mock.module("next/navigation", () => ({
+  redirect: mock((url: string) => {
+    throw new Error(`REDIRECT:${url}`)
+  }),
+}))
 
-const sampleApp = {
-  id: "stack-1",
-  name: "console-next-app",
-  slug: "console-next-app",
-  status: "running",
-  framework: "Next.js",
-  branchName: "main",
-  subdomain: "console-next-app.pfn.app",
-  customDomain: null,
-  resourcePlanId: "payg",
-  billingMode: "PAYG",
-  billingState: "ACTIVE",
-  lastDeployedAt: "2026-06-05T10:00:00.000Z",
-  latestDeploymentId: "deploy-1",
-}
+mock.module("@/lib/i18n/pathname", () => ({
+  localizePathname: (opts: { pathname: string; locale: string }) =>
+    `/${opts.locale}${opts.pathname}`,
+  resolveLocaleOrDefault: (lang: string) => lang || "en",
+}))
 
-const sampleDeployment = {
-  id: "deploy-1",
-  status: "running",
-  attempt: 1,
-  manifestPushed: true,
-  argocdSynced: true,
-  failureReason: null,
-  startedAt: null,
-  completedAt: null,
-}
+// ─── Dynamic imports after mocks ─────────────────────────────────────────────
 
-let appsResponse: { ok: boolean; data: unknown[] } = { ok: true, data: [] }
+const { default: ManagePage } = await import(
+  "@/app/[lang]/console/app/manage/page"
+)
 
-const installFetch = () => {
-  globalThis.fetch = mock((input: RequestInfo | URL, init?: RequestInit) => {
-    const requestInit = init
-    const requestUrl =
-      typeof input === "string"
-        ? input
-        : input instanceof URL
-          ? input.toString()
-          : input.url
-
-    // Match on raw URL string to avoid pathname normalization issues
-    // (happy-dom sets window.location.origin to "null", causing eden to
-    // produce URLs like "null//api/..." whose parsed pathname differs)
-    if (requestUrl.includes("/api/deploy/apps/")) {
-      return Promise.resolve(
-        new Response(
-          JSON.stringify({
-            ok: true,
-            data: { stack: sampleApp, latestDeployment: sampleDeployment },
-          }),
-          { status: 200, headers: { "content-type": "application/json" } }
-        )
-      )
+describe("ManagePage redirect", () => {
+  it("redirects /console/app/manage to /console/app", async () => {
+    try {
+      await ManagePage({ params: Promise.resolve({ lang: "en" }) })
+      expect.unreachable("Expected redirect to be thrown")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      expect(message).toContain("REDIRECT:/en/console/app")
     }
+  })
 
-    if (requestUrl.includes("/api/deploy/apps")) {
-      return Promise.resolve(
-        new Response(JSON.stringify(appsResponse), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        })
-      )
+  it("honors the locale parameter", async () => {
+    try {
+      await ManagePage({ params: Promise.resolve({ lang: "id" }) })
+      expect.unreachable("Expected redirect to be thrown")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      expect(message).toContain("REDIRECT:/id/console/app")
     }
-
-    if (requestUrl.includes("/api/deploy/events/")) {
-      return Promise.resolve(
-        new Response(JSON.stringify({ ok: true, data: [], events: [] }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        })
-      )
-    }
-
-    if (requestUrl.includes("/api/deploy/logs/")) {
-      return Promise.resolve(
-        new Response(JSON.stringify({ ok: true, data: [] }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        })
-      )
-    }
-
-    if (
-      requestUrl.includes("/api/framework-detection/github") &&
-      requestInit?.method === "POST"
-    ) {
-      return Promise.resolve(
-        new Response(
-          JSON.stringify({
-            ok: true,
-            primaryFramework: {
-              id: "nextjs",
-              name: "Next.js",
-              ecosystem: "node",
-              confidence: 95,
-              reasons: ["Detected package.json dependencies"],
-            },
-            requiredDependencies: [],
-            alternatives: [],
-            confidence: 95,
-            decision: {
-              status: "success",
-              message: "Detected with high confidence",
-              isLaunchable: true,
-            },
-            evidence: [],
-            warnings: [],
-            source: { repoUrl: "pfn-labs/unknown" },
-          }),
-          {
-            status: 200,
-            headers: { "content-type": "application/json" },
-          }
-        )
-      )
-    }
-
-    return Promise.resolve(new Response("Not found", { status: 404 }))
-  }) as unknown as typeof fetch
-}
-
-const renderPage = async (query = "") => {
-  replaceCalls.splice(0)
-  ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(
-    new URLSearchParams(query)
-  )
-  ;(usePathname as ReturnType<typeof mock>).mockReturnValue(
-    "/console/app/manage"
-  )
-  ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
-    push: mock(),
-    replace: mock((url: string) => {
-      replaceCalls.push(url)
-      updateQueryFromUrl(url)
-    }),
-    prefetch: mock(),
-    back: mock(),
-    refresh: mock(),
-    forward: mock(),
-  })
-
-  const pageModule = await import("@/app/[lang]/console/app/manage/page")
-  return render(<pageModule.default />)
-}
-
-describe("ManagePage", () => {
-  beforeEach(() => {
-    replaceCalls.splice(0)
-    appsResponse = { ok: true, data: [] }
-    installFetch()
-  })
-
-  it("renders the manage page shell", async () => {
-    const view = await renderPage()
-    expect(view.getByText("Manage Application")).toBeInTheDocument()
-    expect(view.queryByText("Deploy Application")).not.toBeInTheDocument()
-  })
-
-  it("shows an honest empty state when there are no apps", async () => {
-    const view = await renderPage()
-    await waitFor(() => {
-      expect(view.getByText("No applications yet")).toBeInTheDocument()
-    })
-  })
-
-  it("renders real app status from the backend", async () => {
-    appsResponse = { ok: true, data: [sampleApp] }
-    const view = await renderPage()
-
-    await waitFor(() => {
-      expect(view.getByText("Deployment status")).toBeInTheDocument()
-    })
-
-    expect(view.getAllByText("console-next-app").length).toBeGreaterThan(0)
-    expect(view.getByText("Visit app")).toBeInTheDocument()
-  })
-
-  it("surfaces an error state with retry when the apps request fails", async () => {
-    appsResponse = { ok: false, data: [] }
-    const view = await renderPage()
-
-    await waitFor(() => {
-      expect(view.getByRole("button", { name: "Retry" })).toBeInTheDocument()
-    })
-  })
-
-  it("does not render the legacy resilience simulator", async () => {
-    appsResponse = { ok: true, data: [sampleApp] }
-    const view = await renderPage()
-
-    await waitFor(() => {
-      expect(view.getByText("Deployment status")).toBeInTheDocument()
-    })
-
-    expect(view.queryByText("Resilience Simulator")).not.toBeInTheDocument()
-    expect(view.queryByText("Operations FAQ")).not.toBeInTheDocument()
-  })
-
-  it("syncs the selected app to the URL", async () => {
-    appsResponse = { ok: true, data: [sampleApp] }
-    await renderPage()
-
-    await waitFor(() => {
-      const calls = (useRouter().replace as ReturnType<typeof mock>).mock.calls
-      expect(
-        calls.some((args: unknown) => {
-          const url = (args as unknown[])[0] as string
-          return url.includes("app=console-next-app")
-        })
-      ).toBe(true)
-    })
   })
 })

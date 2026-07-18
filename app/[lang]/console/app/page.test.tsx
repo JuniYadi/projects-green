@@ -1,7 +1,6 @@
-import { describe, expect, it, mock } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
+import { describe, expect, it, mock, afterEach } from "bun:test"
 
-// ─── Mock functions ─────────────────────────────────────────────────────────
+// ─── Mock modules before any imports ─────────────────────────────────────────
 
 mock.module("next/link", () => ({
   default: ({
@@ -19,26 +18,42 @@ mock.module("next/link", () => ({
   ),
 }))
 
+mock.module("@phosphor-icons/react", () => ({
+  RocketLaunch: (props: Record<string, unknown>) => (
+    <span data-testid="icon-rocket" {...props} />
+  ),
+  ListMagnifyingGlass: (props: Record<string, unknown>) => (
+    <span data-testid="icon-magnifying" {...props} />
+  ),
+  ChartLine: (props: Record<string, unknown>) => (
+    <span data-testid="icon-chart" {...props} />
+  ),
+  ArrowSquareOut: (props: Record<string, unknown>) => (
+    <span data-testid="icon-arrow" {...props} />
+  ),
+}))
+
+mock.module("next/navigation", () => ({
+  useParams: mock(() => ({ lang: "en" })),
+}))
+
 mock.module("@/lib/i18n/messages", () => ({
-  getMessages: () => ({
+  getMessages: mock(() => ({
     console: {
       app: {
         overview: {
           heading: "App Platform",
           description: "Deploy and manage your applications.",
           deploy: "Deploy",
-          deployDescription:
-            "Configure source, build, and initial release settings.",
-          manage: "Manage",
-          manageDescription:
-            "Monitor deployment status, view events, and inspect logs for your apps.",
-          credentials: "Credentials",
-          credentialsDescription:
-            "Manage connected integrations and API tokens for your application.",
+        },
+        manage: {
+          loadingApps: "Loading...",
+          retry: "Retry",
+          noApps: "No applications yet",
         },
       },
     },
-  }),
+  })),
 }))
 
 mock.module("@/lib/i18n/pathname", () => ({
@@ -47,91 +62,116 @@ mock.module("@/lib/i18n/pathname", () => ({
   resolveLocaleOrDefault: (lang: string) => lang || "en",
 }))
 
-// ─── Import after mocks ─────────────────────────────────────────────────────
+mock.module("@/lib/eden", () => ({
+  eden: {
+    api: {
+      deploy: {
+        apps: {
+          get: mock(() =>
+            Promise.resolve({
+              data: {
+                ok: true,
+                data: [
+                  {
+                    id: "1",
+                    name: "test-app",
+                    slug: "test-app",
+                    status: "running",
+                    framework: "Next.js",
+                    branchName: "main",
+                    subdomain: "test.example.com",
+                    customDomain: null,
+                    resourcePlanId: "starter",
+                    billingMode: null,
+                    billingState: "ACTIVE",
+                    lastDeployedAt: "2026-01-01T00:00:00Z",
+                    latestDeploymentId: null,
+                  },
+                ],
+              },
+            })
+          ),
+        },
+      },
+    },
+  },
+}))
 
-import ApplicationsPage from "./page"
+mock.module("@/modules/deploy/deploy.constants", () => ({
+  DEPLOY_STATUS_LABELS: {
+    running: "Running",
+    failed: "Failed",
+    building: "Building",
+    deploying: "Deploying",
+    queued: "Queued",
+    idle: "Not started",
+  },
+}))
 
-describe("ApplicationsPage", () => {
+// ─── Dynamic imports after mocks ─────────────────────────────────────────────
+
+const { render, waitFor, cleanup: rtlCleanup } =
+  await import("@testing-library/react")
+const { default: ApplicationsPage } = await import("./page")
+
+afterEach(() => {
+  rtlCleanup()
+})
+
+describe("ApplicationsPage overview", () => {
   it("renders heading and description from i18n", async () => {
-    const ui = await ApplicationsPage({
-      params: Promise.resolve({ lang: "en" }),
-    })
-    const view = render(ui)
+    const { getByText } = render(<ApplicationsPage />)
 
     await waitFor(() => {
-      expect(view.getByText("App Platform")).toBeInTheDocument()
+      expect(getByText("App Platform")).toBeDefined()
+      expect(getByText("Deploy and manage your applications.")).toBeDefined()
     })
-    expect(
-      view.getByText("Deploy and manage your applications.")
-    ).toBeInTheDocument()
-
-    view.unmount()
   })
 
-  it("renders three cards: Deploy, Manage, and Credentials", async () => {
-    const ui = await ApplicationsPage({
-      params: Promise.resolve({ lang: "en" }),
-    })
-    const view = render(ui)
+  it("renders app name in the table after loading", async () => {
+    const { getByText } = render(<ApplicationsPage />)
 
     await waitFor(() => {
-      expect(view.getByText("Deploy")).toBeInTheDocument()
+      expect(getByText("test-app")).toBeDefined()
     })
-    expect(view.getByText("Manage")).toBeInTheDocument()
-    expect(view.getByText("Credentials")).toBeInTheDocument()
-
-    view.unmount()
   })
 
-  it("links cards to correct routes", async () => {
-    const ui = await ApplicationsPage({
-      params: Promise.resolve({ lang: "en" }),
-    })
-    const view = render(ui)
+  it("renders status badge", async () => {
+    const { getByText } = render(<ApplicationsPage />)
 
     await waitFor(() => {
-      const links = view.getAllByText("Open")
-      expect(links).toHaveLength(3)
+      expect(getByText("Running")).toBeDefined()
     })
-
-    const links = view.getAllByText("Open")
-    expect(links[0].closest("a")?.getAttribute("href")).toBe(
-      "/en/console/app/deploy"
-    )
-    expect(links[1].closest("a")?.getAttribute("href")).toBe(
-      "/en/console/app/manage"
-    )
-    expect(links[2].closest("a")?.getAttribute("href")).toBe(
-      "/en/console/app/credentials"
-    )
-
-    view.unmount()
   })
 
-  it("renders card descriptions from i18n", async () => {
-    const ui = await ApplicationsPage({
-      params: Promise.resolve({ lang: "en" }),
-    })
-    const view = render(ui)
+  it("renders framework and branch", async () => {
+    const { getByText } = render(<ApplicationsPage />)
 
     await waitFor(() => {
-      expect(
-        view.getByText(
-          "Configure source, build, and initial release settings."
-        )
-      ).toBeInTheDocument()
+      expect(getByText("Next.js")).toBeDefined()
+      expect(getByText("main")).toBeDefined()
     })
-    expect(
-      view.getByText(
-        "Monitor deployment status, view events, and inspect logs for your apps."
+  })
+
+  it("renders action links with correct hrefs", async () => {
+    const { getByText } = render(<ApplicationsPage />)
+
+    await waitFor(() => {
+      const logsLink = getByText("Logs").closest("a")
+      const metricsLink = getByText("Metrics").closest("a")
+      const eventsLink = getByText("Events").closest("a")
+      const deployLink = getByText("Deploy").closest("a")
+
+      expect(logsLink?.getAttribute("href")).toBe(
+        "/en/console/app/logs?app=test-app"
       )
-    ).toBeInTheDocument()
-    expect(
-      view.getByText(
-        "Manage connected integrations and API tokens for your application."
+      expect(metricsLink?.getAttribute("href")).toBe(
+        "/en/console/app/metrics?app=test-app"
       )
-    ).toBeInTheDocument()
-
-    view.unmount()
+      expect(eventsLink?.getAttribute("href")).toBe(
+        "/en/console/app/events?app=test-app"
+      )
+      expect(deployLink?.getAttribute("href")).toBe("/en/console/app/deploy")
+    })
   })
 })

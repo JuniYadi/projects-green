@@ -470,6 +470,32 @@ export const idMessages: AppMessages = {
           noOrganization: "Tidak ada organisasi yang dipilih",
         },
       },
+      logs: {
+        heading: "Log Aplikasi",
+        description:
+          "Lihat output log langsung dan riwayat untuk aplikasi Anda.",
+      },
+      metrics: {
+        heading: "Metrik Aplikasi",
+        description: "Pantau metrik CPU, memori, dan jaringan untuk aplikasi Anda.",
+      },
+      events: {
+        heading: "Event Deploy",
+        description: "Lacak riwayat deployment dan event rollout untuk aplikasi Anda.",
+      },
+      settings: {
+        heading: "Pengaturan Aplikasi",
+        description: "Konfigurasi domain, environment, scaling, dan lainnya.",
+        tabs: {
+          general: "Umum",
+          domains: "Domain",
+          env: "Environment",
+          scaling: "Scaling",
+          mounts: "Mount",
+          build: "Build",
+          danger: "Zona Bahaya",
+        },
+      },
     },
     invoices: {
       heading: "Invoice",
@@ -481,6 +507,18 @@ export const idMessages: AppMessages = {
       date: "Tanggal",
       amount: "Jumlah",
       noInvoices: "Tidak ada invoice ditemukan.",
+    },
+  },
+  sidebar: {
+    app: {
+      overview: "Ikhtisar",
+      deploy: "Deploy",
+      logs: "Log",
+      metrics: "Metrik",
+      events: "Event",
+      settings: "Pengaturan",
+      credentials: "Kredensial",
+      detector: "Kontrol Detector",
     },
   },
 }
