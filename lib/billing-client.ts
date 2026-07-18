@@ -1,4 +1,5 @@
 // Billing API client types and fetch helpers
+import { getApiBaseUrl } from "@/lib/eden"
 
 export type BillingAccount = {
   ok: true
@@ -128,7 +129,8 @@ async function fetchBilling<T>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> {
-  const response = await fetch(endpoint, {
+  const baseUrl = getApiBaseUrl()
+  const response = await fetch(`${baseUrl}${endpoint}`, {
     headers: {
       "Content-Type": "application/json",
       ...options?.headers,
