@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
+import { getCachedOrganizations } from "@/lib/workos-directory"
 import type { PlatformAccessRole } from "@/lib/platform-role"
 
 const listQuerySchema = z.object({
@@ -109,7 +110,10 @@ export const createAdminOrgsRoutes = (
         status: "ACTIVE",
       }
       // Note: search by organizationId (UUID) until org name relation is added to BillingAccount
-      if (search) {
+      // UUID-like search → filter at DB level; name search → post-filter
+      const looksLikeUUID =
+        search && /^[0-9a-f-]{8,}/i.test(search)
+      if (search && looksLikeUUID) {
         accountWhere.organizationId = {
           contains: search,
           mode: "insensitive",
@@ -118,12 +122,13 @@ export const createAdminOrgsRoutes = (
 
       const now = new Date()
       const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
-
+      // Name search → fetch all active accounts, post-filter, then paginate
+      // UUID search or no search → Prisma-level filter + pagination
       const [accounts, total] = await Promise.all([
         prisma.billingAccount.findMany({
           where: accountWhere,
-          skip,
-          take: limit,
+          skip: looksLikeUUID || !search ? skip : undefined,
+          take: looksLikeUUID || !search ? limit : undefined,
           orderBy: { balance: "desc" },
         }),
         prisma.billingAccount.count({ where: accountWhere }),
@@ -167,9 +172,11 @@ export const createAdminOrgsRoutes = (
         )
       }
 
-      const orgs = accounts.map((account) => ({
+      const orgMap = await getCachedOrganizations(orgIds)
+
+      let orgs = accounts.map((account) => ({
         orgId: account.organizationId,
-        orgName: account.organizationId,
+        orgName: orgMap.get(account.organizationId)?.name ?? account.organizationId,
         balance: account.balance.toFixed(2),
         currency: account.currency,
         activeSubscriptions: subCountMap.get(account.organizationId) ?? 0,
@@ -177,14 +184,29 @@ export const createAdminOrgsRoutes = (
         lastTopUp: null,
       }))
 
+      // Post-filter by name when search is not UUID-like
+      if (search && !looksLikeUUID) {
+        const term = search.toLowerCase()
+        orgs = orgs.filter((o) =>
+          o.orgName.toLowerCase().includes(term)
+        )
+      }
+
+      const filteredTotal = search && !looksLikeUUID ? orgs.length : total
+
+      // Paginate after name filtering (Prisma skip/take was bypassed)
+      if (search && !looksLikeUUID) {
+        orgs = orgs.slice(skip, skip + limit)
+      }
+
       return {
         ok: true as const,
         orgs,
         pagination: {
           page,
           limit,
-          total,
-          totalPages: Math.ceil(total / limit),
+          total: filteredTotal,
+          totalPages: Math.ceil(filteredTotal / limit),
         },
       }
     } catch (error) {

@@ -1,21 +1,15 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
 import { TestDecimal } from "@/test/helpers/prisma-mock"
-
-import { createAdminOrgDetailRoutes } from "./org-detail.route"
-import {
-  type MockAuthContext,
-  defaultAuth,
-  mockPlatformRole,
-  mockPlatformRoleNone,
-  testIsAdmin,
-} from "@/test/helpers/test-auth"
+import type { MockAuthContext } from "@/test/helpers/test-auth"
+import { defaultAuth, mockPlatformRole, mockPlatformRoleNone, testIsAdmin } from "@/test/helpers/test-auth"
 
 const mockBillingAccountFindUnique = mock()
 const mockServiceSubscriptionFindMany = mock()
 const mockContactFindMany = mock()
 const mockUsageLedgerAggregate = mock()
 const mockInvoiceFindMany = mock()
+const mockGetCachedOrganization = mock()
 
 const mockPrismaClient = {
   billingAccount: {
@@ -38,12 +32,19 @@ const mockPrismaClient = {
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrismaClient,
 }))
+mock.module("@/lib/workos-directory", () => ({
+  getCachedOrganization: mockGetCachedOrganization,
+  getCachedOrganizations: mock(),
+}))
+
+const { createAdminOrgDetailRoutes } = await import("./org-detail.route")
 
 const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000"
 
 describe("AdminOrgDetailRoute", () => {
   beforeEach(() => {
     mock.clearAllMocks()
+    mockGetCachedOrganization.mockResolvedValue(null)
   })
 
   testIsAdmin((actor) => {
@@ -167,6 +168,11 @@ describe("AdminOrgDetailRoute", () => {
         },
       ])
 
+      mockGetCachedOrganization.mockResolvedValue({
+        id: VALID_UUID,
+        name: "Test Organization",
+      })
+
       const app = new Elysia()
         .use(
           createAdminOrgDetailRoutes({
@@ -184,7 +190,7 @@ describe("AdminOrgDetailRoute", () => {
       const body = await response.json()
       expect(body.ok).toBe(true)
       expect(body.org.orgId).toBe(VALID_UUID)
-      expect(body.org.orgName).toBe(VALID_UUID)
+      expect(body.org.orgName).toBe("Test Organization")
       expect(body.org.balance).toBe("50000.00")
       expect(body.org.currency).toBe("IDR")
       expect(body.org.status).toBe("ACTIVE")

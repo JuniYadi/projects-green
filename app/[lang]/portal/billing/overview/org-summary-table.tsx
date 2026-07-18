@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
 import type { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
@@ -21,7 +20,12 @@ const columns: ColumnDef<AdminOrgSummary>[] = [
       <DataTableColumnHeader column={column} title="Organization" />
     ),
     cell: ({ row }) => (
-      <span className="font-medium">{row.original.orgName}</span>
+      <Link
+        href={`/portal/billing/org/${row.original.orgId}`}
+        className="font-medium hover:underline"
+      >
+        {row.original.orgName}
+      </Link>
     ),
   },
   {
@@ -47,7 +51,6 @@ const columns: ColumnDef<AdminOrgSummary>[] = [
 ]
 
 export function OrgSummaryTable() {
-  const params = useParams<{ lang: string }>()
   const [orgs, setOrgs] = useState<AdminOrgSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -96,22 +99,6 @@ export function OrgSummaryTable() {
           searchPlaceholder="Search organizations..."
           emptyMessage="No organizations found."
         />
-        {orgs.length > 0 && (
-          <div className="mt-4 space-y-2">
-            {orgs.map((org) => (
-              <Link
-                key={org.orgId}
-                href={`/${params.lang}/portal/billing/org/${org.orgId}`}
-                className="block rounded-md border p-3 text-sm hover:bg-muted"
-              >
-                <span className="font-medium">{org.orgName}</span>
-                <span className="ml-2 text-muted-foreground">
-                  {formatCurrency(org.balance)} balance
-                </span>
-              </Link>
-            ))}
-          </div>
-        )}
       </CardContent>
     </Card>
   )

@@ -217,7 +217,7 @@ describe("resolveSidebarMenu", () => {
       "WhatsApp",
     ])
   })
-  it("returns portal billing context with Overview as first item for /portal/billing", () => {
+  it("returns portal billing context with org-scoped items for /portal/billing", () => {
     const { navMain, projects, navMainLabel } = resolveSidebarMenu({
       surface: "portal",
       pathname: "/portal/billing",
@@ -228,30 +228,41 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.map((item) => item.title)).toEqual([
       "Overview",
       "Invoices",
-      "Transactions",
-      "Vouchers",
       "Usage",
-      "Payments",
-      "Subscription",
-      "Create Order",
-      "Top Up",
-      "Settings",
-      "Payment Methods",
-      "Contacts",
+      "Subscriptions",
+      "Adjustments",
       "Alerts",
+      "Contacts",
+      "Settings",
+      "Top Up",
+      "Vouchers",
       "Audit Logs",
     ])
-    expect(projects.map((project) => project.name)).toEqual(["Back to Portal"])
+    expect(projects.map((project) => project.name)).toEqual([
+      "All Orgs Overview",
+      "Back to Portal",
+    ])
   })
 
-  it("marks invoices active for its routes in portal billing context", () => {
+  it("marks org-scoped invoices active when on org page with invoices tab", () => {
     const { navMain } = resolveSidebarMenu({
       surface: "portal",
-      pathname: "/portal/billing/invoices",
+      pathname: "/portal/billing/org/org-123",
       locale: "en",
+      tab: "invoices",
     })
     expect(navMain.find((item) => item.title === "Invoices")?.isActive).toBe(true)
     expect(navMain.find((item) => item.title === "Overview")?.isActive).toBe(false)
+  })
+
+  it("marks org-scoped overview active when no tab specified", () => {
+    const { navMain } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/billing/org/org-123",
+      locale: "en",
+    })
+    expect(navMain.find((item) => item.title === "Overview")?.isActive).toBe(true)
+    expect(navMain.find((item) => item.title === "Invoices")?.isActive).toBe(false)
   })
 
   it("includes thunder AI help trigger link for console sidebar secondary links", () => {
