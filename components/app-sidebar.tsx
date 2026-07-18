@@ -148,48 +148,32 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
       },
     ],
     getNavHeader: () => <PortalBillingOrgSelector />,
-    getNavMain: (path, locale, tab) => {
-      const segments = path.split("/")
-      const orgIndex = segments.indexOf("org")
-      const orgId = orgIndex !== -1 ? segments[orgIndex + 1] : null
-      const isOnOrg = startsWithRoute(path, "/portal/billing/org")
-      const activeTab = tab ?? "balance"
-
-      const orgTabs = [
-        { tab: "balance", icon: <GaugeIcon />, title: "Overview" },
-        { tab: "invoices", icon: <ReceiptIcon />, title: "Invoices" },
-        { tab: "usage", icon: <ChartLineIcon />, title: "Usage" },
+    getNavMain: (path, locale, _tab) => {
+      return [
         {
-          tab: "subscriptions",
-          icon: <ShoppingBagOpen />,
-          title: "Subscriptions",
+          title: "Overview",
+          url: localizePathname({ pathname: "/portal/billing", locale }),
+          icon: <GaugeIcon />,
+          isActive: path === "/portal/billing",
         },
         {
-          tab: "adjustments",
-          icon: <ListMagnifyingGlassIcon />,
-          title: "Adjustments",
+          title: "Invoices",
+          url: localizePathname({
+            pathname: "/portal/billing/invoices",
+            locale,
+          }),
+          icon: <ReceiptIcon />,
+          isActive: startsWithRoute(path, "/portal/billing/invoices"),
         },
-        { tab: "alerts", icon: <Lightning />, title: "Alerts" },
-        { tab: "contacts", icon: <BookOpenIcon />, title: "Contacts" },
-        { tab: "settings", icon: <GearSixIcon />, title: "Settings" },
-        { tab: "topup", icon: <CrosshairIcon />, title: "Top Up" },
-      ]
-
-      const orgItems: AppSidebarNavItem[] = orgTabs.map(
-        ({ tab: t, icon, title }) => ({
-          title,
-          url: orgId
-            ? `${localizePathname({
-                pathname: `/portal/billing/org/${orgId}`,
-                locale,
-              })}?tab=${t}`
-            : "#",
-          icon,
-          isActive: isOnOrg && activeTab === t,
-        })
-      )
-
-      const platformItems: AppSidebarNavItem[] = [
+        {
+          title: "Payments",
+          url: localizePathname({
+            pathname: "/portal/billing/payments",
+            locale,
+          }),
+          icon: <WalletIcon />,
+          isActive: startsWithRoute(path, "/portal/billing/payments"),
+        },
         {
           title: "Vouchers",
           url: localizePathname({
@@ -209,8 +193,6 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
           isActive: startsWithRoute(path, "/portal/billing/audit-logs"),
         },
       ]
-
-      return [...orgItems, ...platformItems]
     },
   },
   {
@@ -789,12 +771,6 @@ const buildPortalProjects = (
     url: localizePathname({ pathname: "/portal/billing", locale }),
     icon: <WalletIcon />,
     isActive: startsWithRoute(pathname, "/portal/billing"),
-  },
-  {
-    name: "Invoices",
-    url: localizePathname({ pathname: "/portal/invoices", locale }),
-    icon: <ReceiptIcon />,
-    isActive: startsWithRoute(pathname, "/portal/invoices"),
   },
   {
     name: "Support Tickets",
