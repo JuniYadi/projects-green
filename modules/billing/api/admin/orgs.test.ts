@@ -172,7 +172,57 @@ describe("AdminOrgsRoute", () => {
       expect(body.pagination.total).toBe(0)
     })
 
-    it("supports search parameter", async () => {
+    it("supports search by organization name", async () => {
+      const acmeAccount = {
+        id: "acct-1",
+        organizationId: "org-1",
+        balance: new TestDecimal("100000"),
+        currency: "IDR",
+        status: "ACTIVE" as const,
+        createdAt: new Date("2025-01-01"),
+      }
+      const betaAccount = {
+        id: "acct-2",
+        organizationId: "org-2",
+        balance: new TestDecimal("50000"),
+        currency: "IDR",
+        status: "ACTIVE" as const,
+        createdAt: new Date("2025-02-01"),
+      }
+
+      mockBillingAccountFindMany.mockResolvedValueOnce([acmeAccount, betaAccount])
+      mockServiceSubscriptionFindMany.mockResolvedValueOnce([])
+      mockUsageLedgerFindMany.mockResolvedValueOnce([])
+      mockBillingAccountCount.mockResolvedValueOnce(2)
+      mockGetCachedOrganizations.mockResolvedValue(
+        new Map([
+          ["org-1", { id: "org-1", name: "Acme Corporation" }],
+          ["org-2", { id: "org-2", name: "Beta Industries" }],
+        ])
+      )
+
+      const app = new Elysia()
+        .use(
+          createAdminOrgsRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/orgs?search=acme")
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(body.orgs.length).toBe(1)
+      expect(body.orgs[0].orgName).toBe("Acme Corporation")
+      expect(body.pagination.total).toBe(1)
+    })
+
+    it("supports search by UUID substring", async () => {
       mockBillingAccountFindMany.mockResolvedValueOnce([])
       mockServiceSubscriptionFindMany.mockResolvedValueOnce([])
       mockUsageLedgerFindMany.mockResolvedValueOnce([])
@@ -188,7 +238,9 @@ describe("AdminOrgsRoute", () => {
         .compile()
 
       const response = await app.handle(
-        new Request("http://localhost/admin/orgs?search=acme")
+        new Request(
+          "http://localhost/admin/orgs?search=550e8400-e29b-41d4"
+        )
       )
 
       expect(response.status).toBe(200)
