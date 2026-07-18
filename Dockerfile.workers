@@ -1,28 +1,49 @@
-FROM oven/bun:1-alpine
+# Build stage — compile TS, generate Prisma client
+FROM oven/bun:1-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Install all dependencies (including dev for Prisma CLI + build)
 COPY package.json bun.lock ./
-
-# Install dependencies (workers need full deps)
 RUN bun install --frozen-lockfile
 
-# Copy TypeScript config (needed for @/ path aliases)
+# Copy config for @/ path aliases
 COPY tsconfig.json ./
 
-# Copy Prisma schema and generated client
+# Generate Prisma client (dummy URL — generate never connects to DB)
 COPY prisma ./prisma
 ENV DATABASE_URL=postgresql://localhost:5432/dummy
 RUN bun prisma generate
 
-# Copy source directories needed by workers
+# Bundle app code only — all npm packages stay as runtime imports
+#   --packages=external → keeps bullmq, ioredis, etc. in node_modules
+#   Result: 392 KB bundle, no dependency duplication
 COPY scripts ./scripts
 COPY lib ./lib
 COPY modules ./modules
+RUN bun build ./scripts/workers.ts \
+  --target=bun \
+  --outfile=./dist/workers.js \
+  --packages=external
 
-# Set environment
+# ── Production stage ────────────────────────────────────────────────────────
+FROM oven/bun:1-alpine
+
+WORKDIR /app
+
+# Install production deps (resolves all external imports in the bundle)
+COPY package.json bun.lock ./
+RUN bun install --production --frozen-lockfile
+
+# Copy generated Prisma client from builder (schema-specific types)
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+
+# Copy Prisma schema (needed for runtime introspection / migration status)
+COPY --from=builder /app/prisma ./prisma
+
+# Copy the bundled worker (single JS file, no TS left)
+COPY --from=builder /app/dist/workers.js ./dist/workers.js
+
 ENV NODE_ENV=production
 
-# Unified worker — single process runs ALL workers
-CMD ["bun", "run", "worker:all"]
+CMD ["bun", "run", "dist/workers.js"]
