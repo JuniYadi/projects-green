@@ -23,6 +23,7 @@ import { SettingsTab } from "./tabs/settings-tab"
 type OrgBillingDashboardProps = {
   lang: string
   orgId: string
+  defaultTab?: string
 }
 
 const TABS = [
@@ -37,7 +38,7 @@ const TABS = [
   "settings",
 ] as const
 
-type TabValue = (typeof TABS)[number]
+export type TabValue = (typeof TABS)[number]
 
 function formatCurrency(amount: string): string {
   return `Rp ${Number(amount).toLocaleString("id-ID")}`
@@ -46,8 +47,12 @@ function formatCurrency(amount: string): string {
 export function OrgBillingDashboard({
   lang,
   orgId,
+  defaultTab,
 }: OrgBillingDashboardProps) {
-  const [activeTab, setActiveTab] = useState<TabValue>("balance")
+  const initialTab: TabValue = TABS.includes(defaultTab as TabValue)
+    ? (defaultTab as TabValue)
+    : "balance"
+  const [activeTab, setActiveTab] = useState<TabValue>(initialTab)
   const [orgDetail, setOrgDetail] = useState<AdminOrgDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

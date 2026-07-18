@@ -2,17 +2,28 @@ import { Suspense } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { OrgBillingDashboard } from "./org-billing-dashboard"
 
+export type { TabValue } from "./org-billing-dashboard"
+
 type PageProps = {
   params: Promise<{ lang: string; orgId: string }>
+  searchParams: Promise<{ tab?: string }>
 }
 
-export default async function OrgBillingPage({ params }: PageProps) {
+export default async function OrgBillingPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { lang, orgId } = await params
+  const { tab } = await searchParams
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <Suspense fallback={<OrgBillingSkeleton />}>
-        <OrgBillingDashboard lang={lang} orgId={orgId} />
+        <OrgBillingDashboard
+          lang={lang}
+          orgId={orgId}
+          defaultTab={tab}
+        />
       </Suspense>
     </main>
   )
