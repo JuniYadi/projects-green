@@ -78,7 +78,7 @@ describe("PortalBillingOrgSelector", () => {
     await user.click(option)
 
     expect(router.push).toHaveBeenCalledWith(
-      "/en/portal/billing/org/org-2?tab=invoices"
+      "/en/portal/orgs/org-2?page=invoices"
     )
   })
 })

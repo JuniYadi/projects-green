@@ -471,6 +471,32 @@ export const enMessages: AppMessages = {
           noOrganization: "No organization selected",
         },
       },
+      logs: {
+        heading: "Application Logs",
+        description:
+          "View live and historical log output for your application.",
+      },
+      metrics: {
+        heading: "Application Metrics",
+        description: "Monitor CPU, memory, and network metrics for your application.",
+      },
+      events: {
+        heading: "Deploy Events",
+        description: "Track deployment history and rollout events for your application.",
+      },
+      settings: {
+        heading: "Application Settings",
+        description: "Configure domains, environment, scaling, and more.",
+        tabs: {
+          general: "General",
+          domains: "Domains",
+          env: "Environment",
+          scaling: "Scaling",
+          mounts: "Mounts",
+          build: "Build",
+          danger: "Danger Zone",
+        },
+      },
     },
     invoices: {
       heading: "Invoices",
@@ -482,6 +508,18 @@ export const enMessages: AppMessages = {
       date: "Date",
       amount: "Amount",
       noInvoices: "No invoices found.",
+    },
+  },
+  sidebar: {
+    app: {
+      overview: "Overview",
+      deploy: "Deploy",
+      logs: "Logs",
+      metrics: "Metrics",
+      events: "Events",
+      settings: "Settings",
+      credentials: "Credentials",
+      detector: "Detector Control",
     },
   },
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { ArrowLeftIcon } from "@phosphor-icons/react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -10,61 +11,36 @@ import {
   getAdminOrgDetail,
   type AdminOrgDetail,
 } from "@/lib/billing-client"
-import { BalanceTab } from "./tabs/balance-tab"
-import { TopupTab } from "./tabs/topup-tab"
-import { InvoicesTab } from "./tabs/invoices-tab"
-import { UsageTab } from "./tabs/usage-tab"
-import { SubscriptionsTab } from "./tabs/subscriptions-tab"
-import { AdjustmentsTab } from "./tabs/adjustments-tab"
-import { AlertsTab } from "./tabs/alerts-tab"
-import { ContactsTab } from "./tabs/contacts-tab"
-import { SettingsTab } from "./tabs/settings-tab"
+import { BalanceTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/balance-tab"
+import { UsageTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/usage-tab"
+import { SettingsTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/settings-tab"
 
-type OrgBillingDashboardProps = {
+type OrgOverviewDashboardProps = {
   lang: string
   orgId: string
-  defaultTab?: string
+  defaultPage?: string
 }
 
-const TABS = [
-  "balance",
-  "topup",
-  "invoices",
-  "usage",
-  "subscriptions",
-  "adjustments",
-  "alerts",
-  "contacts",
-  "settings",
-] as const
-
-export type TabValue = (typeof TABS)[number]
+const TABS = ["billing", "usage", "members", "settings"] as const
+type TabValue = (typeof TABS)[number]
 
 function formatCurrency(amount: string): string {
   return `Rp ${Number(amount).toLocaleString("id-ID")}`
 }
 
-export function OrgBillingDashboard({
+export function OrgOverviewDashboard({
   lang,
   orgId,
-  defaultTab,
-}: OrgBillingDashboardProps) {
-  const initialTab: TabValue = TABS.includes(defaultTab as TabValue)
-    ? (defaultTab as TabValue)
-    : "balance"
-  const [activeTab, setActiveTab] = useState<TabValue>(initialTab)
+  defaultPage,
+}: OrgOverviewDashboardProps) {
+  const activeTab: TabValue = TABS.includes(defaultPage as TabValue)
+    ? (defaultPage as TabValue)
+    : "billing"
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [orgDetail, setOrgDetail] = useState<AdminOrgDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-
   const [error, setError] = useState<string | null>(null)
-
-  // Sync tab state when orgId or defaultTab changes
-  useEffect(() => {
-    const validTab = TABS.includes(defaultTab as TabValue)
-      ? (defaultTab as TabValue)
-      : "balance"
-    setActiveTab(validTab)
-  }, [orgId, defaultTab])
 
   useEffect(() => {
     getAdminOrgDetail(orgId)
@@ -91,7 +67,7 @@ export function OrgBillingDashboard({
     return (
       <div className="space-y-4">
         <Link
-          href={`/${lang}/portal/billing`}
+          href={`/${lang}/portal/orgs`}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeftIcon className="h-4 w-4" />
@@ -110,7 +86,7 @@ export function OrgBillingDashboard({
     return (
       <div className="space-y-4">
         <Link
-          href={`/${lang}/portal/billing`}
+          href={`/${lang}/portal/orgs`}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeftIcon className="h-4 w-4" />
@@ -132,7 +108,7 @@ export function OrgBillingDashboard({
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link
-          href={`/${lang}/portal/billing`}
+          href={`/${lang}/portal/orgs`}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeftIcon className="h-4 w-4" />
@@ -193,7 +169,11 @@ export function OrgBillingDashboard({
       {/* Tabs */}
       <Tabs
         value={activeTab}
-        onValueChange={(v) => setActiveTab(v as TabValue)}
+        onValueChange={(v) => {
+          const params = new URLSearchParams(searchParams.toString())
+          params.set("page", v)
+          router.replace(`?${params.toString()}`, { scroll: false })
+        }}
       >
         <TabsList className="flex-wrap">
           {TABS.map((tab) => (
@@ -204,27 +184,30 @@ export function OrgBillingDashboard({
         </TabsList>
 
         <div className="mt-6">
-          {activeTab === "balance" && (
+          {activeTab === "billing" && (
             <BalanceTab
               lang={lang}
               orgId={orgId}
               orgDetail={orgDetail}
             />
           )}
-          {activeTab === "topup" && <TopupTab orgId={orgId} />}
-          {activeTab === "invoices" && (
-            <InvoicesTab orgId={orgId} recentInvoices={org.recentInvoices} />
-          )}
           {activeTab === "usage" && <UsageTab orgId={orgId} />}
-          {activeTab === "subscriptions" && (
-            <SubscriptionsTab orgId={orgId} />
-          )}
-          {activeTab === "adjustments" && (
-            <AdjustmentsTab orgId={orgId} />
-          )}
-          {activeTab === "alerts" && <AlertsTab orgId={orgId} />}
-          {activeTab === "contacts" && (
-            <ContactsTab orgId={orgId} />
+          {activeTab === "members" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Members</CardTitle>
+              </CardHeader>
+              <CardContent className="text-muted-foreground">
+                {/* ponytail: members tab placeholder; add WorkOS-backed member list when needed */}
+                Member management is available in the organization settings.{" "}
+                <Link
+                  href={`/${lang}/portal/settings/members`}
+                  className="underline hover:text-foreground"
+                >
+                  Manage members
+                </Link>
+              </CardContent>
+            </Card>
           )}
           {activeTab === "settings" && <SettingsTab orgId={orgId} />}
         </div>

@@ -431,6 +431,8 @@ export type AdminStats = {
   activeOrgs: number
   totalSpend: string
   lowBalanceOrgs: number
+  openInvoices: number
+  openTickets: number
 }
 
 // ─── Admin Orgs ─────────────────────────────────────────────────────────
@@ -443,6 +445,7 @@ export type AdminOrgSummary = {
   activeSubscriptions: number
   monthlySpend: string
   lastTopUp: string | null
+  openTicketCount: number
 }
 
 export type AdminOrgsResponse = {

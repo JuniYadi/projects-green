@@ -439,6 +439,31 @@ export type AppMessages = {
           noOrganization: string
         }
       }
+      logs: {
+        heading: string
+        description: string
+      }
+      metrics: {
+        heading: string
+        description: string
+      }
+      events: {
+        heading: string
+        description: string
+      }
+      settings: {
+        heading: string
+        description: string
+        tabs: {
+          general: string
+          domains: string
+          env: string
+          scaling: string
+          mounts: string
+          build: string
+          danger: string
+        }
+      }
     }
     invoices: {
       heading: string
@@ -450,6 +475,18 @@ export type AppMessages = {
       date: string
       amount: string
       noInvoices: string
+    }
+  }
+  sidebar: {
+    app: {
+      overview: string
+      deploy: string
+      logs: string
+      metrics: string
+      events: string
+      settings: string
+      credentials: string
+      detector: string
     }
   }
 }

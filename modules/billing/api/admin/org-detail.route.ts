@@ -94,7 +94,7 @@ export const createAdminOrgDetailRoutes = (
       )
     }
 
-    const orgIdResult = z.string().uuid().safeParse(params.orgId)
+    const orgIdResult = z.string().min(1).safeParse(params.orgId)
     if (!orgIdResult.success) {
       set.status = 422
       return {

@@ -40,7 +40,6 @@ import {
   WalletIcon,
   WhatsappLogoIcon,
 } from "@phosphor-icons/react"
-import { PortalBillingOrgSelector } from "@/components/portal-billing-org-selector"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 
 const getPathnameWithoutSearch = (pathname: string) => pathname.split("?")[0]
@@ -112,6 +111,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
     navMainLabel: "Admin",
     getProjects: (path, locale) => [
       {
+        name: "Organizations",
+        url: localizePathname({
+          pathname: "/portal/admin/organizations",
+          locale,
+        }),
+        icon: <BuildingsIcon />,
+        isActive: startsWithRoute(path, "/portal/admin/organizations"),
+      },
+      {
         name: "Back to Portal",
         url: localizePathname({ pathname: "/portal", locale }),
         icon: <CaretLeftIcon />,
@@ -130,6 +138,33 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
     ],
   },
   {
+    context: "orgs",
+    matches: (path) => startsWithRoute(path, "/portal/orgs"),
+    navMainLabel: "Organizations",
+    getProjects: (path, locale) => [
+      {
+        name: "All Orgs Overview",
+        url: localizePathname({ pathname: "/portal/orgs", locale }),
+        icon: <BuildingsIcon />,
+        isActive:
+          path === localizePathname({ pathname: "/portal/orgs", locale }),
+      },
+      {
+        name: "Back to Portal",
+        url: localizePathname({ pathname: "/portal", locale }),
+        icon: <CaretLeftIcon />,
+      },
+    ],
+    getNavMain: (path, locale) => [
+      {
+        title: "Overview",
+        url: localizePathname({ pathname: "/portal/orgs", locale }),
+        icon: <GaugeIcon />,
+        isActive: path === localizePathname({ pathname: "/portal/orgs", locale }),
+      },
+    ],
+  },
+  {
     context: "billing",
     matches: (path) => startsWithRoute(path, "/portal/billing"),
     navMainLabel: "Billing",
@@ -142,54 +177,43 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
           path === localizePathname({ pathname: "/portal/billing", locale }),
       },
       {
+        name: "Org Overview",
+        url: localizePathname({ pathname: "/portal/orgs", locale }),
+        icon: <BuildingsIcon />,
+        isActive: startsWithRoute(path, "/portal/orgs"),
+      },
+      {
         name: "Back to Portal",
         url: localizePathname({ pathname: "/portal", locale }),
         icon: <CaretLeftIcon />,
       },
     ],
-    getNavHeader: () => <PortalBillingOrgSelector />,
-    getNavMain: (path, locale, tab) => {
-      const segments = path.split("/")
-      const orgIndex = segments.indexOf("org")
-      const orgId = orgIndex !== -1 ? segments[orgIndex + 1] : null
-      const isOnOrg = startsWithRoute(path, "/portal/billing/org")
-      const activeTab = tab ?? "balance"
-
-      const orgTabs = [
-        { tab: "balance", icon: <GaugeIcon />, title: "Overview" },
-        { tab: "invoices", icon: <ReceiptIcon />, title: "Invoices" },
-        { tab: "usage", icon: <ChartLineIcon />, title: "Usage" },
+    getNavMain: (path, locale, _tab) => {
+      return [
         {
-          tab: "subscriptions",
-          icon: <ShoppingBagOpen />,
-          title: "Subscriptions",
+          title: "Overview",
+          url: localizePathname({ pathname: "/portal/billing", locale }),
+          icon: <GaugeIcon />,
+          isActive: path === "/portal/billing",
         },
         {
-          tab: "adjustments",
-          icon: <ListMagnifyingGlassIcon />,
-          title: "Adjustments",
+          title: "Invoices",
+          url: localizePathname({
+            pathname: "/portal/billing/invoices",
+            locale,
+          }),
+          icon: <ReceiptIcon />,
+          isActive: startsWithRoute(path, "/portal/billing/invoices"),
         },
-        { tab: "alerts", icon: <Lightning />, title: "Alerts" },
-        { tab: "contacts", icon: <BookOpenIcon />, title: "Contacts" },
-        { tab: "settings", icon: <GearSixIcon />, title: "Settings" },
-        { tab: "topup", icon: <CrosshairIcon />, title: "Top Up" },
-      ]
-
-      const orgItems: AppSidebarNavItem[] = orgTabs.map(
-        ({ tab: t, icon, title }) => ({
-          title,
-          url: orgId
-            ? `${localizePathname({
-                pathname: `/portal/billing/org/${orgId}`,
-                locale,
-              })}?tab=${t}`
-            : "#",
-          icon,
-          isActive: isOnOrg && activeTab === t,
-        })
-      )
-
-      const platformItems: AppSidebarNavItem[] = [
+        {
+          title: "Payments",
+          url: localizePathname({
+            pathname: "/portal/billing/payments",
+            locale,
+          }),
+          icon: <WalletIcon />,
+          isActive: startsWithRoute(path, "/portal/billing/payments"),
+        },
         {
           title: "Vouchers",
           url: localizePathname({
@@ -209,8 +233,6 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
           isActive: startsWithRoute(path, "/portal/billing/audit-logs"),
         },
       ]
-
-      return [...orgItems, ...platformItems]
     },
   },
   {
@@ -312,10 +334,31 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         isActive: path === "/portal/app/deploy",
       },
       {
-        title: "Manage",
-        url: localizePathname({ pathname: "/portal/app/manage", locale }),
+        title: "Overview",
+        url: localizePathname({ pathname: "/portal/app", locale }),
         icon: <GaugeIcon />,
-        isActive: startsWithRoute(path, "/portal/app/manage"),
+        isActive: path === "/portal/app",
+      },
+      {
+        title: "Logs",
+        url: localizePathname({ pathname: "/portal/app/logs", locale }),
+        icon: <ListMagnifyingGlassIcon />,
+        isActive: startsWithRoute(path, "/portal/app/logs"),
+      },
+      {
+        title: "Metrics",
+        url: localizePathname({ pathname: "/portal/app/metrics", locale }),
+        icon: <ChartLineIcon />,
+        isActive: startsWithRoute(path, "/portal/app/metrics"),
+      },
+      {
+        title: "Events",
+        url: localizePathname({
+          pathname: "/portal/app/events/github",
+          locale,
+        }),
+        icon: <ListMagnifyingGlassIcon />,
+        isActive: startsWithRoute(path, "/portal/app/events"),
       },
       {
         title: "Detector Control",
@@ -327,13 +370,10 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         isActive: startsWithRoute(path, "/portal/app/detector"),
       },
       {
-        title: "Events",
-        url: localizePathname({
-          pathname: "/portal/app/events/github",
-          locale,
-        }),
-        icon: <ListMagnifyingGlassIcon />,
-        isActive: startsWithRoute(path, "/portal/app/events"),
+        title: "Settings",
+        url: localizePathname({ pathname: "/portal/app/settings", locale }),
+        icon: <GearSixIcon />,
+        isActive: startsWithRoute(path, "/portal/app/settings"),
       },
     ],
   },
@@ -463,16 +503,40 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         isActive: path === "/console/app/deploy",
       },
       {
+        title: "Overview",
+        url: localizePathname({ pathname: "/console/app", locale }),
+        icon: <GaugeIcon />,
+        isActive: path === "/console/app",
+      },
+      {
+        title: "Logs",
+        url: localizePathname({ pathname: "/console/app/logs", locale }),
+        icon: <ListMagnifyingGlassIcon />,
+        isActive: startsWithRoute(path, "/console/app/logs"),
+      },
+      {
+        title: "Metrics",
+        url: localizePathname({ pathname: "/console/app/metrics", locale }),
+        icon: <ChartLineIcon />,
+        isActive: startsWithRoute(path, "/console/app/metrics"),
+      },
+      {
+        title: "Events",
+        url: localizePathname({ pathname: "/console/app/events", locale }),
+        icon: <ListMagnifyingGlassIcon />,
+        isActive: startsWithRoute(path, "/console/app/events"),
+      },
+      {
+        title: "Settings",
+        url: localizePathname({ pathname: "/console/app/settings", locale }),
+        icon: <GearSixIcon />,
+        isActive: startsWithRoute(path, "/console/app/settings"),
+      },
+      {
         title: "Credentials",
         url: localizePathname({ pathname: "/console/app/credentials", locale }),
         icon: <ShieldCheckIcon />,
         isActive: path === "/console/app/credentials",
-      },
-      {
-        title: "Manage",
-        url: localizePathname({ pathname: "/console/app/manage", locale }),
-        icon: <GaugeIcon />,
-        isActive: startsWithRoute(path, "/console/app/manage"),
       },
     ],
   },
@@ -789,12 +853,6 @@ const buildPortalProjects = (
     url: localizePathname({ pathname: "/portal/billing", locale }),
     icon: <WalletIcon />,
     isActive: startsWithRoute(pathname, "/portal/billing"),
-  },
-  {
-    name: "Invoices",
-    url: localizePathname({ pathname: "/portal/invoices", locale }),
-    icon: <ReceiptIcon />,
-    isActive: startsWithRoute(pathname, "/portal/invoices"),
   },
   {
     name: "Support Tickets",

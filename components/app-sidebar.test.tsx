@@ -16,23 +16,23 @@ describe("resolveSidebarMenu", () => {
 
     expect(navMainLabel).toBe("Applications")
 
-    // Flat menu structure under applications context
-    expect(navMain.map((item) => item.title)).toEqual(["Deploy", "Credentials", "Manage"])
-    expect(navMain.find((item) => item.title === "Manage")?.isActive).toBe(true)
+    expect(navMain.map((item) => item.title)).toEqual(["Deploy", "Overview", "Logs", "Metrics", "Events", "Settings", "Credentials"])
+    // After flattening Manage container, no single item is active for /console/app/manage
+    expect(navMain.every((item) => !item.isActive)).toBe(true)
 
     // Escape hatch in projects
     expect(projects.map((project) => project.name)).toEqual(["Back to Console"])
   })
 
-  it("marks manage active for its routes", () => {
-    const manageMenu = resolveSidebarMenu({
+  it("marks settings active for its routes", () => {
+    const settingsMenu = resolveSidebarMenu({
       surface: "console",
-      pathname: "/console/app/manage/build-logs",
+      pathname: "/console/app/settings",
       locale: "en",
     })
 
     expect(
-      manageMenu.navMain.find((item) => item.title === "Manage")?.isActive
+      settingsMenu.navMain.find((item) => item.title === "Settings")?.isActive
     ).toBe(true)
   })
 
@@ -217,7 +217,7 @@ describe("resolveSidebarMenu", () => {
       "WhatsApp",
     ])
   })
-  it("returns portal billing context with org-scoped items for /portal/billing", () => {
+  it("returns portal billing context with platform items for /portal/billing", () => {
     const { navMain, projects, navMainLabel } = resolveSidebarMenu({
       surface: "portal",
       pathname: "/portal/billing",
@@ -228,41 +228,40 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.map((item) => item.title)).toEqual([
       "Overview",
       "Invoices",
-      "Usage",
-      "Subscriptions",
-      "Adjustments",
-      "Alerts",
-      "Contacts",
-      "Settings",
-      "Top Up",
+      "Payments",
       "Vouchers",
       "Audit Logs",
     ])
     expect(projects.map((project) => project.name)).toEqual([
       "All Orgs Overview",
+      "Org Overview",
       "Back to Portal",
     ])
   })
 
-  it("marks org-scoped invoices active when on org page with invoices tab", () => {
+  it("marks invoices active when on /portal/billing/invoices", () => {
     const { navMain } = resolveSidebarMenu({
       surface: "portal",
-      pathname: "/portal/billing/org/org-123",
+      pathname: "/portal/billing/invoices",
       locale: "en",
-      tab: "invoices",
     })
-    expect(navMain.find((item) => item.title === "Invoices")?.isActive).toBe(true)
-    expect(navMain.find((item) => item.title === "Overview")?.isActive).toBe(false)
+    expect(navMain.find((item) => item.title === "Invoices")?.isActive).toBe(
+      true
+    )
+    expect(navMain.find((item) => item.title === "Overview")?.isActive).toBe(
+      false
+    )
   })
 
-  it("marks org-scoped overview active when no tab specified", () => {
+  it("marks overview active when on /portal/billing", () => {
     const { navMain } = resolveSidebarMenu({
       surface: "portal",
-      pathname: "/portal/billing/org/org-123",
+      pathname: "/portal/billing",
       locale: "en",
     })
-    expect(navMain.find((item) => item.title === "Overview")?.isActive).toBe(true)
-    expect(navMain.find((item) => item.title === "Invoices")?.isActive).toBe(false)
+    expect(navMain.find((item) => item.title === "Overview")?.isActive).toBe(
+      true
+    )
   })
 
   it("includes thunder AI help trigger link for console sidebar secondary links", () => {

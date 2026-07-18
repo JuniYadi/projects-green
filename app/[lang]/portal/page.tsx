@@ -21,12 +21,6 @@ export default async function PortalPage({
         "Create and maintain contextual UI docs for routes and team workflows.",
     },
     {
-      title: "Invoices",
-      href: localizePathname({ pathname: "/portal/invoices", locale }),
-      description:
-        "Review billing records, download receipts, and manage invoice status.",
-    },
-    {
       title: "Support Tickets",
       href: localizePathname({ pathname: "/portal/support-tickets", locale }),
       description:
