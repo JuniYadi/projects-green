@@ -208,7 +208,10 @@ export const createBillingInvoicesRoutes = (
           // Fetch invoice — org-scoped by auth
           const invoice = await prisma.billingInvoice.findUnique({
             where: { id },
-            include: { lines: true },
+            include: {
+              lines: true,
+              paymentConfirmations: { include: { bankAccount: true } },
+            },
           })
 
           if (!invoice) {
@@ -233,6 +236,12 @@ export const createBillingInvoicesRoutes = (
               totalAmountIdr: invoice.totalAmount.toFixed(2),
               currency: invoice.currency,
               lines: invoice.lines.map((line) => formatInvoiceLine(line)),
+              confirmations: invoice.paymentConfirmations.map((pc) => ({
+                id: pc.id,
+                status: String(pc.status),
+                createdAt: pc.createdAt.toISOString(),
+                amount: Number(pc.amount),
+              })),
             },
           }
         } catch (error) {

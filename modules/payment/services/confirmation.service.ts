@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
-import type { PrismaClient } from "@prisma/client"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import Decimal = Prisma.Decimal
 
@@ -9,8 +8,7 @@ export class ConfirmationService {
 
   constructor(billingTransactions?: BillingTransactionService) {
     this.billingTransactions =
-      billingTransactions ??
-      new BillingTransactionService(prisma as unknown as PrismaClient)
+      billingTransactions ?? new BillingTransactionService(prisma)
   }
 
   async create(input: {
@@ -131,20 +129,20 @@ export class ConfirmationService {
         throw new Error("Billing account not found for invoice")
       }
 
-      // Credit balance via BillingTransactionService with transaction-scoped Prisma client
-      const billingTx = new BillingTransactionService(
-        tx as unknown as PrismaClient
+      // Credit balance within the same transaction via the injected service.
+      await this.billingTransactions.creditBalance(
+        {
+          organizationId: invoice.billingAccount.organizationId,
+          amount: new Decimal(amount),
+          currency: invoice.billingAccount.currency,
+          source: "TOPUP",
+          reason: "Manual payment confirmed",
+          idempotencyKey: `manual:${id}`,
+          invoiceId: invoice.id,
+          metadata: { confirmedBy: adminUserId, confirmationId: id },
+        },
+        tx
       )
-      await billingTx.creditBalance({
-        organizationId: invoice.billingAccount.organizationId,
-        amount: new Decimal(amount),
-        currency: invoice.billingAccount.currency,
-        source: "TOPUP",
-        reason: "Manual payment confirmed",
-        idempotencyKey: `manual:${id}`,
-        invoiceId: invoice.id,
-        metadata: { confirmedBy: adminUserId, confirmationId: id },
-      })
 
       // Mark confirmation as approved
       await tx.paymentConfirmation.update({

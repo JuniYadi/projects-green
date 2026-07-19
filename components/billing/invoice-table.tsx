@@ -8,6 +8,7 @@ import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { InvoiceStatusBadge } from "@/components/billing/invoice-status-badge"
 import type { InvoiceListItem } from "@/lib/billing-client"
+import { InvoiceDownloadPdfAction } from "@/modules/invoices/ui/invoice-download-pdf-action"
 
 type InvoiceTableProps = {
   emptyMessage?: string
@@ -131,6 +132,17 @@ export function InvoiceTable({
           <DataTableColumnHeader column={column} title="Status" />
         ),
         cell: ({ row }) => <InvoiceStatusBadge status={row.original.status} />,
+      },
+      {
+        id: "pdf",
+        enableHiding: false,
+        header: () => <span>PDF</span>,
+        cell: ({ row }) => (
+          <InvoiceDownloadPdfAction
+            invoiceId={row.original.id}
+            invoiceNumber={row.original.invoiceNumber}
+          />
+        ),
       },
     ],
     [lang]

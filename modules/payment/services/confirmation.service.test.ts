@@ -219,6 +219,16 @@ describe("ConfirmationService", () => {
 
       expect(result.id).toBe("conf-new")
       expect(mockPaymentConfirmation.create).toHaveBeenCalled()
+      // Security: invoice lookup must be scoped to the caller's organization.
+      expect(mockInvoice.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: "inv-1",
+            status: "OPEN",
+            billingAccount: { organizationId: "org-1" },
+          }),
+        })
+      )
     })
   })
 })

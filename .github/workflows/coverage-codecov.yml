@@ -57,6 +57,12 @@ jobs:
 
       - name: Run tests with coverage
         run: bun run test:coverage --timeout=30000 --max-concurrency=10
+      - name: Run test quality linter
+        # Non-blocking: surfaces AI test anti-patterns as a warning.
+        # Many pre-existing tests trip the heuristic; fixing them is tracked
+        # separately so this does not block otherwise-valid PRs.
+        continue-on-error: true
+        run: bun run test:lint
 
       - name: Verify LCOV output exists
         run: |

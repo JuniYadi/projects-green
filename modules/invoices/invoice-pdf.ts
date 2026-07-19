@@ -1,6 +1,7 @@
 import {
   formatInvoiceCurrency,
   formatInvoiceDate,
+  getInvoiceStatusLabel,
 } from "@/modules/invoices/invoices.helpers"
 import type { InvoiceDetail } from "@/modules/invoices/invoices.types"
 
@@ -23,53 +24,63 @@ const toPdfLines = (
     billingPostCode?: string | null
   } | null
 ) => {
-  const lines = [
-    `Invoice ${invoice.invoiceNumber}`,
-    `Invoice ID: ${invoice.id}`,
-    `Status: ${invoice.status}`,
-    `Issued: ${formatInvoiceDate(invoice.issuedAt)}`,
-    `Due: ${formatInvoiceDate(invoice.dueAt)}`,
-    `Billing period: ${formatInvoiceDate(invoice.periodStart)} - ${formatInvoiceDate(
-      invoice.periodEnd
-    )}`,
-    "",
-    "Di Tagih Kepada (Billed To):",
-    `  ${organization?.billingFullName || organization?.name || "—"}`,
-    `  ${organization?.billingAddress || "—"}`,
-    `  ${[organization?.billingCity, organization?.billingState].filter(Boolean).join(", ") || "—"}`,
-    `  ${[organization?.billingCountry, organization?.billingPostCode].filter(Boolean).join(" ") || "—"}`,
-    "",
-    "Di Bayar Kepada (Paid To):",
-    "  PFNApp Technologies Inc.",
-    "  Sudirman Central Business District (SCBD)",
-    "  Jakarta, DKI Jakarta, Indonesia 12190",
-    "",
-    "Line items",
-  ]
+  const lines: string[] = []
 
-  for (const lineItem of invoice.lineItems.slice(0, 24)) {
-    lines.push(
-      `${lineItem.description} | Qty ${lineItem.quantity} | Unit ${formatInvoiceCurrency(
-        lineItem.unitPrice,
-        lineItem.currency
-      )} | Amount ${formatInvoiceCurrency(lineItem.amount, lineItem.currency)}`
-    )
+  if (organization) {
+    if (organization.name) lines.push(organization.name)
+    const fullName = organization.billingFullName || organization.name
+    if (fullName) lines.push(fullName)
+    if (organization.billingAddress) lines.push(organization.billingAddress)
+    const cityState = [organization.billingCity, organization.billingState]
+      .filter(Boolean)
+      .join(", ")
+    const postCountry = [
+      organization.billingPostCode,
+      organization.billingCountry,
+    ]
+      .filter(Boolean)
+      .join(" ")
+    if (cityState || postCountry)
+      lines.push(`${cityState} ${postCountry}`.trim())
   }
 
   lines.push("")
-  lines.push(
-    `Subtotal: ${formatInvoiceCurrency(invoice.subtotalAmount, invoice.currency)}`
-  )
-  lines.push(
-    `Tax: ${formatInvoiceCurrency(invoice.taxAmount, invoice.currency)}`
-  )
-  lines.push(
-    `Discount: ${formatInvoiceCurrency(invoice.discountAmount, invoice.currency)}`
-  )
-  lines.push(
-    `Total: ${formatInvoiceCurrency(invoice.totalAmount, invoice.currency)}`
-  )
+  lines.push("INVOICE")
+  lines.push("")
+  lines.push(`Invoice Number:   ${invoice.invoiceNumber}`)
+  lines.push(`Status:           ${getInvoiceStatusLabel(invoice.status)}`)
+  lines.push(`Issued:           ${formatInvoiceDate(invoice.issuedAt)}`)
+  lines.push(`Due:             ${formatInvoiceDate(invoice.dueAt)}`)
+  lines.push(`Payment Method:  ${invoice.paymentMethod ?? "-"}`)
 
+  lines.push("")
+  lines.push("LINE ITEMS")
+  lines.push("----------------------------------------")
+  lines.push("Description          Qty   Unit Price   Amount")
+  lines.push("----------------------------------------")
+
+  for (const lineItem of invoice.lineItems.slice(0, 24)) {
+    const desc = (lineItem.description || "").slice(0, 38)
+    const qty = String(lineItem.quantity)
+    const unit = formatInvoiceCurrency(lineItem.unitPrice, lineItem.currency)
+    const amount = formatInvoiceCurrency(lineItem.amount, lineItem.currency)
+    lines.push(
+      `${desc.padEnd(38)}${qty.padStart(5)}   ${unit.padStart(12)}   ${amount.padStart(12)}`
+    )
+  }
+
+  lines.push("----------------------------------------")
+  lines.push("")
+  for (const [label, amount] of [
+    ["Subtotal:", invoice.subtotalAmount],
+    ["Tax:", invoice.taxAmount],
+    ["Discount:", invoice.discountAmount],
+    ["Total:", invoice.totalAmount],
+  ] as const) {
+    lines.push(
+      `${label.padEnd(20)}${formatInvoiceCurrency(amount, invoice.currency)}`
+    )
+  }
   return lines
 }
 

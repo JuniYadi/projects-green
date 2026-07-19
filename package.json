@@ -53,7 +53,15 @@
     "worker:vpn-renewal": "bun run scripts/vpn-renewal-worker.ts",
     "worker:opensearch-ingest": "bun run scripts/opensearch-ingest-worker.ts",
     "cleanup:webhook-events": "bun run scripts/cleanup-whatsapp-webhook-events.ts",
-    "openwiki:update": "bunx openwiki --update && git add openwiki && git commit -m 'feat(openwiki): Update documentation'"
+    "openwiki:update": "bunx openwiki --update && git add openwiki && git commit -m 'feat(openwiki): Update documentation'",
+    "test:lint": "bun run scripts/lint-test-quality.ts",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "bunx prettier --write",
+      "bunx eslint --fix"
+    ]
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.64",
@@ -119,6 +127,8 @@
     "@types/ssh2": "^1.15.5",
     "eslint": "^9.39.4",
     "eslint-config-next": "16.1.7",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.1.0",
     "postcss": "^8",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",

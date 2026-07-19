@@ -143,7 +143,7 @@ describe("ConfirmRoute POST /topup/confirm/:id", () => {
     expect(body.ok).toBe(true)
     expect(body.confirmation.status).toBe("PENDING")
     // Security: route-level invoice lookup must be scoped to the caller's org.
-    const calls = mockBillingInvoiceFindFirst.mock.calls as Array<
+    const calls = mockBillingInvoiceFindFirst.mock.calls as unknown as Array<
       [
         {
           where?: { id?: string; billingAccount?: { organizationId?: string } }

@@ -207,6 +207,25 @@ export default function InvoiceDetailPage() {
   const isTopUp = invoice.type === "TOP_UP"
   const issueDate = invoice.issuedAt ?? invoice.createdAt ?? null
   const dueDate = invoice.dueAt ?? invoice.dueDate ?? null
+  const confirmations =
+    (
+      data as unknown as {
+        confirmations?: Array<{
+          id: string
+          status: string
+          createdAt: string
+          amount: number
+        }>
+      }
+    ).confirmations ?? []
+  const latestConfirmation =
+    confirmations.length > 0 ? confirmations[confirmations.length - 1] : null
+  const activeConfirmation =
+    latestConfirmation &&
+    (latestConfirmation.status === "PENDING" ||
+      latestConfirmation.status === "APPROVED")
+      ? latestConfirmation
+      : null
   const confirmPaymentHref = `/console/billing/payments/confirm?invoiceId=${invoice.id}`
   const defaultPaymentMethod =
     paymentMethods.find((method) => method.isActive && method.isDefault) ??
@@ -279,6 +298,43 @@ export default function InvoiceDetailPage() {
           <Button asChild variant="outline" size="sm" className="ml-auto">
             <Link href="/console/billing/topup">Retry Payment</Link>
           </Button>
+        </div>
+      )}
+      {latestConfirmation && (
+        <div
+          className={`flex items-center gap-3 rounded-lg border p-4 ${
+            latestConfirmation.status === "APPROVED"
+              ? "border-green-500/20 bg-green-500/10"
+              : latestConfirmation.status === "REJECTED"
+                ? "border-red-500/20 bg-red-500/10"
+                : "border-yellow-500/20 bg-yellow-500/10"
+          }`}
+        >
+          <CheckCircleIcon
+            className={`h-5 w-5 ${
+              latestConfirmation.status === "APPROVED"
+                ? "text-green-600 dark:text-green-400"
+                : latestConfirmation.status === "REJECTED"
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-yellow-600 dark:text-yellow-400"
+            }`}
+          />
+          <div>
+            <p
+              className={`font-medium ${
+                latestConfirmation.status === "APPROVED"
+                  ? "text-green-600 dark:text-green-400"
+                  : latestConfirmation.status === "REJECTED"
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-yellow-600 dark:text-yellow-400"
+              }`}
+            >
+              Payment Confirmation — {latestConfirmation.status}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Submitted {formatDate(latestConfirmation.createdAt)}
+            </p>
+          </div>
         </div>
       )}
 
@@ -399,10 +455,12 @@ export default function InvoiceDetailPage() {
                       contact support before transferring this payment.
                     </p>
                   )}
-                  <Button asChild>
+                  <Button asChild disabled={!!activeConfirmation}>
                     <Link href={confirmPaymentHref}>
                       <CheckCircleIcon className="mr-2 h-4 w-4" />
-                      Confirm Payment
+                      {activeConfirmation
+                        ? "Already confirmed — pending review"
+                        : "Confirm Payment"}
                     </Link>
                   </Button>
                 </div>

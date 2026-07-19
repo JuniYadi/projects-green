@@ -83,7 +83,8 @@ export function GatewaysTab() {
     status: "loading",
   })
   const [providers, setProviders] = useState<ProviderOptionDTO[]>([])
-  const [, setProvidersLoading] = useState(true)
+  const [providersError, setProvidersError] = useState<string | null>(null)
+  const [providersLoading, setProvidersLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editingGateway, setEditingGateway] = useState<PaymentGateway | null>(
@@ -214,10 +215,15 @@ export function GatewaysTab() {
     try {
       const { data, error } =
         await eden.api.portal.payments.gateways.providers.get()
-      if (!error) {
+      if (error) {
+        setProvidersError("Failed to load providers")
+        setProviders([])
+      } else {
+        setProvidersError(null)
         setProviders((data as ProviderOptionDTO[]) ?? [])
       }
     } catch {
+      setProvidersError("Failed to load providers")
       setProviders([])
     } finally {
       setProvidersLoading(false)
@@ -433,14 +439,18 @@ export function GatewaysTab() {
                   name="type"
                   value={selectedProvider}
                   onValueChange={setSelectedProvider}
-                  disabled={providers.length === 0}
+                  disabled={providersLoading || providers.length === 0}
                 >
                   <SelectTrigger>
                     <SelectValue
                       placeholder={
-                        providers.length === 0
+                        providersLoading
                           ? "Loading providers..."
-                          : "Select a provider..."
+                          : providersError
+                            ? "Failed to load providers"
+                            : providers.length === 0
+                              ? "No providers available"
+                              : "Select a provider..."
                       }
                     />
                   </SelectTrigger>
@@ -453,6 +463,10 @@ export function GatewaysTab() {
                   </SelectContent>
                 </Select>
               </Label>
+
+              {providersError && (
+                <p className="text-sm text-destructive">{providersError}</p>
+              )}
 
               {currentProvider &&
                 renderConfigFields(currentProvider.configFields)}

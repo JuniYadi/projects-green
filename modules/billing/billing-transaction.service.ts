@@ -71,9 +71,10 @@ export class BillingTransactionService {
    * Idempotent — returns alreadyProcessed=true if the same idempotencyKey exists.
    */
   async creditBalance(
-    input: BalanceMutationInput
+    input: BalanceMutationInput,
+    transactionClient: PrismaClient | TxClient = this.prisma
   ): Promise<BalanceMutationResult> {
-    return this.mutateBalance(input, "CREDIT")
+    return this.mutateBalance(input, "CREDIT", transactionClient)
   }
 
   /**
@@ -170,9 +171,10 @@ export class BillingTransactionService {
 
   private async mutateBalance(
     input: BalanceMutationInput,
-    direction: "CREDIT" | "DEBIT"
+    direction: "CREDIT" | "DEBIT",
+    transactionClient: PrismaClient | TxClient = this.prisma
   ): Promise<BalanceMutationResult> {
-    return this.prisma.$transaction(async (tx) => {
+    const run = async (tx: PrismaClient | TxClient) => {
       const account = await tx.billingAccount.findUnique({
         where: { organizationId: input.organizationId },
       })
@@ -210,7 +212,13 @@ export class BillingTransactionService {
         input.invoiceId,
         input.invoiceLineId
       )
-    })
+    }
+
+    if (transactionClient === this.prisma) {
+      return this.prisma.$transaction(run)
+    }
+
+    return run(transactionClient)
   }
 
   private async executeMutation(
