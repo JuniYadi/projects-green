@@ -1,6 +1,12 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react"
 import { eden } from "@/lib/eden"
 import {
   DropdownMenu,
@@ -79,7 +85,7 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
     })()
   }, [loadData])
 
-  const handleInvite = async (e: React.FormEvent) => {
+  const handleInvite = async (e: FormEvent) => {
     e.preventDefault()
     if (!email) return
 
@@ -108,7 +114,7 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
     }
   }
 
-  const handleAction = React.useCallback(
+  const handleAction = useCallback(
     async (
       edenCall: Promise<{
         data?: { ok?: boolean; message?: string } | null

@@ -42,7 +42,6 @@ const mockEnsureTenantContextAccess = mock(
     _set: MockRouteSet
   ): true | TenantApiError => true
 )
- 
 
 const makeMembership = (
   overrides: Partial<TenantMembershipSummary> = {}

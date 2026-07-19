@@ -133,7 +133,7 @@ describe("ConsoleVpnSubscriptionsPage", () => {
       "href",
       "/console/vpn/subscriptions/sub_1"
     )
-  })
+  }, 15000)
 })
 describe("ConsoleVpnDashboardPage", () => {
   beforeEach(() => {

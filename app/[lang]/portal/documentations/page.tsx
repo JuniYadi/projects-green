@@ -53,7 +53,7 @@ export default function PortalDocumentationsPage() {
     void loadDocs()
   }, [loadDocs])
 
-  const handleDelete = React.useCallback(
+  const handleDelete = useCallback(
     async (doc: DocEntry) => {
       if (
         !window.confirm(

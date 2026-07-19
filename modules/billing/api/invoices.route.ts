@@ -236,7 +236,7 @@ export const createBillingInvoicesRoutes = (
               totalAmountIdr: invoice.totalAmount.toFixed(2),
               currency: invoice.currency,
               lines: invoice.lines.map((line) => formatInvoiceLine(line)),
-              confirmations: invoice.paymentConfirmations.map((pc) => ({
+              confirmations: (invoice.paymentConfirmations ?? []).map((pc) => ({
                 id: pc.id,
                 status: String(pc.status),
                 createdAt: pc.createdAt.toISOString(),

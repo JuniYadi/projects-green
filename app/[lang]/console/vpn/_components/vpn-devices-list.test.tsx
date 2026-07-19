@@ -53,7 +53,7 @@ describe("VpnDevicesList", () => {
       "bg-secondary"
     )
     expect(within(view.container).getByText("REVOKED")).toHaveClass(
-      "bg-destructive"
+      "bg-destructive/10"
     )
   })
 

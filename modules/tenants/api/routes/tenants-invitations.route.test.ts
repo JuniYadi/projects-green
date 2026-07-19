@@ -54,7 +54,7 @@ const mockEnsureTenantContextAccess = mock(
     _set: MockRouteSet
   ): true | TenantApiError => true
 )
- 
+
 const mockListTenantInvitations = mock(async () => [makeInvitation()])
 const mockGetTenantInvitationById = mock(
   async (): Promise<TenantInvitationSummary | null> => makeInvitation()
