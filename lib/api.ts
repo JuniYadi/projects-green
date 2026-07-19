@@ -41,6 +41,7 @@ import { healthRoutes } from "@/modules/health/api/health.route"
 import { markStartupComplete } from "@/modules/health/health.service"
 import { whatsappRoutes } from "@/modules/whatsapp/whatsapp.module"
 import { whatsappWebhookRoutes } from "@/lib/whatsapp/webhook-routes"
+import { credentialsRoutes } from "@/modules/credentials/api/credentials.route"
 import { webhookDeadLetterRoutes } from "@/modules/whatsapp/webhooks/api/webhook-dead-letter.route"
 
 const parseErrorPath = (
@@ -140,6 +141,7 @@ export const app = new Elysia({ prefix: "/api" })
       },
     })
   )
+  .use(credentialsRoutes)
   .use(webhookRoutes)
   .use(docsRoutes)
   .use(docsConsoleRoutes)

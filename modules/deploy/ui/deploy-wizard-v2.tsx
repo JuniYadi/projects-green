@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
-import { Card, CardContent } from "@/components/ui/card"
+import { ArrowLeft, X } from "@/components/ui/phosphor-icons"
+import { Button } from "@/components/ui/button"
 import {
   fetchFrameworkDetection,
   DetectionError,
@@ -25,7 +26,14 @@ import {
   getDefaultBranchName,
   getRepositoryBranches,
 } from "@/modules/deploy/deploy.mock"
-import type { DeployStatus } from "@/modules/deploy/deploy.types"
+import type {
+  DeployEnvironmentState,
+  DeployStatus,
+  DeployStep,
+  DeployTemplateId,
+  Owner,
+  Repository,
+} from "@/modules/deploy/deploy.types"
 import {
   getEnvironmentValidationMessages,
   isValidCustomDomain,
@@ -37,19 +45,12 @@ import {
   useDeployWizardDispatch,
   useDeployWizardState,
 } from "@/modules/deploy/deploy.store"
-import { DeployStepper } from "@/modules/deploy/ui/deploy-stepper"
-import { StepBuild } from "@/modules/deploy/ui/step-build"
-import { StepEnvironment } from "@/modules/deploy/ui/step-environment"
-import { StepMonitor } from "@/modules/deploy/ui/step-monitor"
-import { StepSource } from "@/modules/deploy/ui/step-source"
-import type {
-  Branch,
-  DeployEnvironmentState,
-  DeployStep,
-  DeployTemplateId,
-  Owner,
-  Repository,
-} from "@/modules/deploy/deploy.types"
+import { DeployChatSidebar } from "@/modules/deploy/ui/deploy-chat-sidebar"
+import { DeployTimelineV2 } from "@/modules/deploy/ui/deploy-timeline-v2"
+import { StepBuildV2 } from "@/modules/deploy/ui/step-build-v2"
+import { StepEnvironmentV2 } from "@/modules/deploy/ui/step-environment-v2"
+import { StepMonitorV2 } from "@/modules/deploy/ui/step-monitor-v2"
+import { StepSourceV2 } from "@/modules/deploy/ui/step-source-v2"
 
 type GithubConnectionStatus = "idle" | "connected" | "error"
 
@@ -137,6 +138,7 @@ const toGeneratedSubdomain = (repositoryName: string | undefined) => {
 
   return `${slug || "my-app"}.pfn.app`
 }
+
 const generateAppName = (templateName: string): string => {
   const slug = templateName
     .toLowerCase()
@@ -147,7 +149,12 @@ const generateAppName = (templateName: string): string => {
   return `${slug}-${suffix}`
 }
 
-function DeployWizardInner() {
+type DeployWizardV2Props = {
+  title?: string
+  description?: string
+}
+
+function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -155,6 +162,7 @@ function DeployWizardInner() {
   const state = useDeployWizardState()
   const dispatch = useDeployWizardDispatch()
 
+  const [chatCollapsed, setChatCollapsed] = useState(false)
   const [ownerSearch, setOwnerSearch] = useState("")
   const [repositorySearch, setRepositorySearch] = useState("")
   const [ownerOptions, setOwnerOptions] = useState<Owner[]>([])
@@ -235,7 +243,7 @@ function DeployWizardInner() {
         repoId: state.source.repositoryId,
         name: selectedRepository.defaultBranch,
       },
-    ] satisfies Branch[]
+    ]
   }, [selectedRepository, state.source.repositoryId])
 
   const selectedBranch = useMemo(() => {
@@ -296,7 +304,6 @@ function DeployWizardInner() {
             })
           )
           setOwnerOptions(owners)
-          // Auto-select when only one account
           if (owners.length === 1) {
             setRepositorySearch("")
             setRepositoryOptions(mapped)
@@ -550,7 +557,6 @@ function DeployWizardInner() {
     const branchName =
       defaultBranchFromApi || getDefaultBranchName(repositoryId)
 
-    // Cancel any in-flight detection
     detectionAbortRef.current?.abort()
     const controller = new AbortController()
     detectionAbortRef.current = controller
@@ -621,7 +627,6 @@ function DeployWizardInner() {
             : "Failed to detect framework. You can configure build settings manually."
 
         setDetectionError(message)
-        // detection stays null — user can configure build manually
       } finally {
         if (!controller.signal.aborted) {
           setIsDetecting(false)
@@ -882,7 +887,7 @@ function DeployWizardInner() {
       const visibleRepositories = state.source.ownerId ? repositoryOptions : []
 
       return (
-        <StepSource
+        <StepSourceV2
           sourceType={state.source.sourceType}
           templateId={state.source.templateId}
           githubConnectionStatus={githubConnectionStatus}
@@ -957,7 +962,7 @@ function DeployWizardInner() {
 
     if (state.step === "build") {
       return (
-        <StepBuild
+        <StepBuildV2
           owner={selectedOwner}
           repository={selectedRepository}
           branch={selectedBranch}
@@ -994,7 +999,7 @@ function DeployWizardInner() {
 
     if (state.step === "environment") {
       return (
-        <StepEnvironment
+        <StepEnvironmentV2
           generatedSubdomain={toGeneratedSubdomain(
             selectedRepository?.name || state.source.templateId
           )}
@@ -1066,7 +1071,7 @@ function DeployWizardInner() {
     }
 
     return (
-      <StepMonitor
+      <StepMonitorV2
         deployId={state.monitor.deployId}
         status={state.monitor.status}
         logScope={state.monitor.logScope}
@@ -1086,23 +1091,71 @@ function DeployWizardInner() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <CardContent className="pt-6">
-          <DeployStepper
+    <div className="flex flex-1 flex-col gap-6">
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">
+            {title ?? "Deploy Application"}
+          </h1>
+          {description && (
+            <p className="text-sm text-muted-foreground">{description}</p>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => dispatch({ type: "reset" })}
+          >
+            <ArrowLeft className="mr-1 h-4 w-4" />
+            Back
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => dispatch({ type: "reset" })}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </header>
+
+      <div className="flex flex-1 gap-4">
+        <div className="w-52 shrink-0">
+          <DeployTimelineV2
             currentStep={state.step}
             maxUnlockedStep={maxUnlockedStep}
             sourceType={state.source.sourceType}
             onStepChange={navigateStep}
           />
-        </CardContent>
-      </Card>
+        </div>
 
-      {renderStep()}
+        <div className="min-w-0 flex-1 overflow-y-auto">{renderStep()}</div>
+
+        <DeployChatSidebar
+          context={{
+            step: state.step,
+            sourceType: state.source.sourceType,
+            githubConnected: githubConnectionStatus === "connected",
+            userName: selectedOwner?.name ?? "",
+            framework: state.build.framework,
+            confidence: state.detectionResult
+              ? state.detectionResult.confidence >= 80
+                ? "high"
+                : state.detectionResult.confidence >= 50
+                  ? "medium"
+                  : "low"
+              : null,
+            resourcePlan: state.environment.resourcePlanId,
+          }}
+          isCollapsed={chatCollapsed}
+          onToggleCollapse={() => setChatCollapsed((prev) => !prev)}
+        />
+      </div>
     </div>
   )
 }
 
-export function DeployWizard() {
-  return <DeployWizardInner />
+export function DeployWizardV2({ title, description }: DeployWizardV2Props) {
+  return <DeployWizardV2Inner title={title} description={description} />
 }

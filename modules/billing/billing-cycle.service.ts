@@ -20,6 +20,7 @@ import {
   type SubscriptionBillingResult,
   GRACE_PERIOD_DAYS,
 } from "./billing-cycle.types"
+import { emitBillingAudit } from "@/modules/billing/audit/audit.service"
 
 const IDR_CURRENCY = "IDR"
 const ZERO = new Decimal(0)
@@ -326,6 +327,39 @@ export class BillingCycleService {
         status: "OPEN" as const,
       }
     })
+    // Fire-and-forget billing audit for auto-deducted invoices (uses global prisma, not tx)
+    if (result.status === "PAID") {
+      emitBillingAudit({
+        billingAccountId: subscription.billingAccountId,
+        entityType: "Invoice",
+        entityId: result.invoiceId,
+        action: "PAYMENT_CONFIRMED",
+        context: {
+          subscriptionId: subscription.id,
+          period,
+          totalAmount: result.totalAmount.toFixed(2),
+          currency: IDR_CURRENCY,
+          source: "AUTO_DEDUCTION",
+        },
+      })
+
+      // Also audit previous unpaid invoices that were marked PAID
+      for (const prev of existingOpenInvoices) {
+        emitBillingAudit({
+          billingAccountId: subscription.billingAccountId,
+          entityType: "Invoice",
+          entityId: prev.id,
+          action: "PAYMENT_CONFIRMED",
+          context: {
+            subscriptionId: subscription.id,
+            period,
+            totalAmount: prev.totalAmount.toFixed(2),
+            currency: prev.currency,
+            source: "AUTO_DEDUCTION",
+          },
+        })
+      }
+    }
 
     // After the transaction, send email notifications (fire-and-forget, best-effort).
     // Failed sends do not affect billing — the invoice is already committed.
@@ -470,6 +504,21 @@ export class BillingCycleService {
     console.info(
       `[BillingCycle] Finalized ${result.count} service invoice(s) for period ${periodStart.toISOString().slice(0, 7)}`
     )
+    // Fire-and-forget billing audit for each finalized invoice
+    for (const inv of invoices) {
+      emitBillingAudit({
+        billingAccountId: inv.billingAccountId,
+        entityType: "Invoice",
+        entityId: inv.id,
+        action: "PAYMENT_CONFIRMED",
+        context: {
+          invoiceNumber: inv.invoiceNumber,
+          totalAmount: inv.totalAmount.toFixed(2),
+          currency: inv.currency,
+          source: "FINALIZE_SERVICE_INVOICES",
+        },
+      })
+    }
 
     // Send email notifications for finalized invoices
     // Emails are best-effort delivery. Failed sends do not rollback

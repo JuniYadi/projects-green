@@ -1,4 +1,6 @@
-import { Suspense } from "react"
+"use client"
+
+import { useEffect, useState } from "react"
 import { getAdminAuditLogs, type AdminAuditLogItem } from "@/lib/billing-client"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
@@ -45,90 +47,22 @@ function ActionBadge({ action }: { action: string }) {
   )
 }
 
-async function AuditLogsList() {
-  const { logs, pagination } = await getAdminAuditLogs({ limit: 50 })
+export default function AuditLogsPage() {
+  const [logs, setLogs] = useState<AdminAuditLogItem[]>([])
+  const [pagination, setPagination] = useState<{ total: number }>({ total: 0 })
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  if (logs.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center text-muted-foreground">
-          No audit logs found.
-        </CardContent>
-      </Card>
-    )
-  }
+  useEffect(() => {
+    getAdminAuditLogs({ limit: 50 })
+      .then((data) => {
+        setLogs(data.logs)
+        setPagination(data.pagination)
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setIsLoading(false))
+  }, [])
 
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="pb-0">
-          <CardTitle className="text-base font-medium">
-            Billing Audit Trail ({pagination.total} total)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-4">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="pr-4 pb-2 font-medium">Timestamp</th>
-                  <th className="pr-4 pb-2 font-medium">Entity Type</th>
-                  <th className="pr-4 pb-2 font-medium">Entity ID</th>
-                  <th className="pr-4 pb-2 font-medium">Action</th>
-                  <th className="pr-4 pb-2 font-medium">Actor</th>
-                  <th className="pb-2 font-medium">Context</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((log: AdminAuditLogItem) => (
-                  <tr key={log.id} className="border-b last:border-0">
-                    <td className="py-3 pr-4 font-mono text-xs text-muted-foreground">
-                      {formatDateTime(log.createdAt)}
-                    </td>
-                    <td className="py-3 pr-4">
-                      <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">
-                        {log.entityType}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-4 font-mono text-xs text-muted-foreground">
-                      {log.entityId}
-                    </td>
-                    <td className="py-3 pr-4">
-                      <ActionBadge action={log.action} />
-                    </td>
-                    <td className="py-3 pr-4 text-muted-foreground">
-                      <div className="space-y-0.5">
-                        <div className="text-xs">{log.actorType}</div>
-                        {log.actorId && (
-                          <div className="font-mono text-xs text-muted-foreground/70">
-                            {log.actorId}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3 text-muted-foreground">
-                      {log.contextJson ? (
-                        <pre className="max-w-xs overflow-hidden text-xs text-muted-foreground">
-                          {JSON.stringify(log.contextJson)}
-                        </pre>
-                      ) : (
-                        <span className="text-xs text-muted-foreground/50">
-                          —
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-export default async function AuditLogsPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
@@ -138,9 +72,92 @@ export default async function AuditLogsPage() {
         </p>
       </header>
 
-      <Suspense fallback={<Skeleton className="h-96" />}>
-        <AuditLogsList />
-      </Suspense>
+      {isLoading && <Skeleton className="h-96" />}
+
+      {error && (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            Failed to load audit logs: {error}
+          </CardContent>
+        </Card>
+      )}
+
+      {!isLoading && !error && logs.length === 0 && (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            No audit logs found.
+          </CardContent>
+        </Card>
+      )}
+
+      {!isLoading && !error && logs.length > 0 && (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader className="pb-0">
+              <CardTitle className="text-base font-medium">
+                Billing Audit Trail ({pagination.total} total)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-muted-foreground">
+                      <th className="pr-4 pb-2 font-medium">Timestamp</th>
+                      <th className="pr-4 pb-2 font-medium">Entity Type</th>
+                      <th className="pr-4 pb-2 font-medium">Entity ID</th>
+                      <th className="pr-4 pb-2 font-medium">Action</th>
+                      <th className="pr-4 pb-2 font-medium">Actor</th>
+                      <th className="pb-2 font-medium">Context</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logs.map((log) => (
+                      <tr key={log.id} className="border-b last:border-0">
+                        <td className="py-3 pr-4 font-mono text-xs text-muted-foreground">
+                          {formatDateTime(log.createdAt)}
+                        </td>
+                        <td className="py-3 pr-4">
+                          <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">
+                            {log.entityType}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-4 font-mono text-xs text-muted-foreground">
+                          {log.entityId}
+                        </td>
+                        <td className="py-3 pr-4">
+                          <ActionBadge action={log.action} />
+                        </td>
+                        <td className="py-3 pr-4 text-muted-foreground">
+                          <div className="space-y-0.5">
+                            <div className="text-xs">{log.actorType}</div>
+                            {log.actorId && (
+                              <div className="font-mono text-xs text-muted-foreground/70">
+                                {log.actorId}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 text-muted-foreground">
+                          {log.contextJson ? (
+                            <pre className="max-w-xs overflow-hidden text-xs text-muted-foreground">
+                              {JSON.stringify(log.contextJson)}
+                            </pre>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/50">
+                              —
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </main>
   )
 }

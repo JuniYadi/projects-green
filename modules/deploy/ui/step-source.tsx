@@ -378,16 +378,13 @@ export function StepSource({
 
             {githubConnectionStatus === "connected" && (
               <div className="grid gap-6">
-                {/* 1. Account & Repository Selection Row */}
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                  <div className="flex-1 space-y-2">
-                    <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                      GitHub account
-                    </label>
+                  {/* Account dropdown - left side, compact */}
+                  <div className="w-full shrink-0 space-y-1 sm:w-48">
                     {ownerOptionsLoading ? (
                       <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                        Loading installations...
+                        Loading...
                       </div>
                     ) : ownerOptionsError ? (
                       <p className="text-xs text-destructive">
@@ -404,8 +401,8 @@ export function StepSource({
                           onValueChange={onOwnerSelect}
                           disabled={owners.length === 1}
                         >
-                          <SelectTrigger className="w-full text-xs">
-                            <SelectValue placeholder="Select an account" />
+                          <SelectTrigger className="h-9 w-full text-xs">
+                            <SelectValue placeholder="Select account" />
                           </SelectTrigger>
                           <SelectContent>
                             {owners.map((owner) => (
@@ -433,16 +430,13 @@ export function StepSource({
                     )}
                   </div>
 
-                  {/* Repository Search */}
+                  {/* Repository search - right side, flexible */}
                   {selectedOwnerId && (
-                    <div className="flex-1 space-y-2">
-                      <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                        Search Repository
-                      </label>
+                    <div className="flex-1 space-y-1">
                       <div className="relative">
                         <MagnifyingGlass className="absolute top-2.5 left-3 h-4 w-4 text-muted-foreground" />
                         <Input
-                          placeholder="Filter repositories..."
+                          placeholder="Search repositories..."
                           value={repoFilter}
                           onChange={(e) => setRepoFilter(e.target.value)}
                           className="h-9 pl-9 text-xs"

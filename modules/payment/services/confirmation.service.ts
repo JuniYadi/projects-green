@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import Decimal = Prisma.Decimal
+import { emitBillingAudit } from "@/modules/billing/audit/audit.service"
 
 export class ConfirmationService {
   private billingTransactions: BillingTransactionService
@@ -112,7 +113,7 @@ export class ConfirmationService {
     // Wrap all operations in a single transaction for atomicity.
     // If creditBalance succeeds but the subsequent updates fail, the transaction
     // rolls back entirely — no orphaned credits.
-    return await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const confirmation = await tx.paymentConfirmation.findUnique({
         where: { id },
         include: { invoice: { include: { billingAccount: true } } },
@@ -157,10 +158,10 @@ export class ConfirmationService {
       // Mark invoice as paid
       await tx.billingInvoice.update({
         where: { id: confirmation.invoiceId },
-        data: { status: "PAID" },
+        data: { status: "PAID", paidAt: new Date() },
       })
 
-      // Audit log
+      // Audit log (payment-specific)
       await tx.paymentAuditLog.create({
         data: {
           action: "PAYMENT_APPROVED",
@@ -172,6 +173,7 @@ export class ConfirmationService {
       })
 
       return {
+        billingAccountId: invoice.billingAccountId,
         invoiceId: invoice.id,
         invoiceNumber: invoice.invoiceNumber,
         totalAmount: invoice.totalAmount.toNumber(),
@@ -179,6 +181,23 @@ export class ConfirmationService {
         organizationId: invoice.billingAccount.organizationId,
       }
     })
+
+    // Fire-and-forget billing audit (uses global prisma, not tx)
+    emitBillingAudit({
+      billingAccountId: result.billingAccountId ?? undefined,
+      entityType: "Invoice",
+      entityId: result.invoiceId,
+      action: "PAYMENT_CONFIRMED",
+      actorId: adminUserId,
+      context: {
+        invoiceNumber: result.invoiceNumber,
+        totalAmount: result.totalAmount.toFixed(2),
+        currency: result.currency,
+        confirmationId: id,
+      },
+    })
+
+    return result
   }
 
   async reject(id: string, adminUserId: string, reason: string) {

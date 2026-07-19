@@ -241,7 +241,6 @@ describe("resolveSidebarMenu", () => {
       "Audit Logs",
     ])
     expect(projects.map((project) => project.name)).toEqual([
-      "All Orgs Overview",
       "Org Overview",
       "Back to Portal",
     ])
