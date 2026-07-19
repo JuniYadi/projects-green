@@ -81,13 +81,6 @@ function ChartContainer({
   )
 }
 
-const COLOR_ALLOWLIST_RE =
-  /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$|^rgba?\([\d.,\s%-]+\)$|^hsla?\([\d.,\s%-]+\)$|^transparent$/i
-
-function isValidColor(value: string): boolean {
-  return COLOR_ALLOWLIST_RE.test(value) || CSS.supports("color", value)
-}
-
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(
     ([, config]) => config.theme ?? config.color
@@ -97,25 +90,20 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
-  const escapedId = CSS.escape(id)
-
   return (
     <style
       dangerouslySetInnerHTML={{
         __html: Object.entries(THEMES)
           .map(
             ([theme, prefix]) => `
-${prefix} [data-chart="${escapedId}"] {
+${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ??
       itemConfig.color
-    if (!color || !isValidColor(color)) return null
-    const escapedKey = CSS.escape(key)
-    return `  --color-${escapedKey}: ${color};`
+    return color ? `  --color-${key}: ${color};` : null
   })
-  .filter(Boolean)
   .join("\n")}
 }
 `
@@ -125,13 +113,6 @@ ${colorConfig
     />
   )
 }
-
-/**
- * CSP recommendation: add a Content-Security-Policy header that restricts
- * inline styles, e.g.:
- *   style-src 'self' 'unsafe-inline';
- * This limits the impact of any escaped-value injection in ChartStyle.
- */
 
 const ChartTooltip = RechartsPrimitive.Tooltip
 
@@ -210,17 +191,15 @@ function ChartTooltipContent({
   return (
     <div
       className={cn(
-        "grid min-w-32 items-start gap-1.5 rounded-none border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl",
+        "grid min-w-32 items-start gap-1.5 rounded-xl bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-lg ring-1 ring-foreground/5 dark:ring-foreground/10",
         className
       )}
     >
       {!nestLabel ? tooltipLabel : null}
       <div className="grid gap-1.5">
         {payload
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .filter((item: any) => item.type !== "none")
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .map((item: any, index: number) => {
+          .filter((item) => item.type !== "none")
+          .map((item, index) => {
             const key = `${nameKey ?? item.name ?? item.dataKey ?? "value"}`
             const itemConfig = getPayloadConfigFromPayload(config, item, key)
             const indicatorColor = color ?? item.payload?.fill ?? item.color
@@ -318,10 +297,8 @@ function ChartLegendContent({
       )}
     >
       {payload
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .filter((item: any) => item.type !== "none")
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .map((item: any, index: number) => {
+        .filter((item) => item.type !== "none")
+        .map((item, index) => {
           const key = `${nameKey ?? item.dataKey ?? "value"}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
 
