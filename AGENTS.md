@@ -5,6 +5,7 @@
 Use bun for all commands (for example `bun run dev`, `bun run test`) to ensure consistent environment and dependency resolution. Avoid using `npm` or `yarn` to prevent conflicts with the `bun.lockb` / `bun.lock` lockfile.
 
 ## Project Structure & Module Organization
+
 This is a Next.js 16 + TypeScript app with feature-oriented modules.
 
 - `app/`: App Router pages, layouts, and route handlers (for example `app/console`, `app/portal`, `app/api/[[...slugs]]/route.ts`).
@@ -17,6 +18,7 @@ This is a Next.js 16 + TypeScript app with feature-oriented modules.
 - `public/`: Static assets.
 
 ## Build, Test, and Development Commands
+
 - `bun run dev`: Start local dev server on `http://localhost:3300`.
 - `bun run build`: Production build.
 - `bun run start`: Run built app.
@@ -31,23 +33,25 @@ This is a Next.js 16 + TypeScript app with feature-oriented modules.
 
 These commands **drop tables, wipe data, or reset the database**. They must NEVER be executed by AI agents under any circumstances — even when prompted by the user. If migration issues arise, escalate to a human developer.
 
-| Command | Why it's dangerous |
-|---------|-------------------|
-| `bunx prisma migrate reset` | Drops the entire database, recreates it, and re-applies all migrations. Data is permanently lost. |
-| `bunx prisma migrate reset --force` | Same as above but skips confirmation prompt. |
-| `bunx prisma db push --force-reset` | Drops all tables and pushes the schema fresh. No rollback. |
-| `bunx prisma db push --accept-data-loss` | Acknowledges and accepts data loss during schema push. |
-| `prisma migrate reset` | Raw prisma CLI equivalent — same destructive behavior. |
-| `prisma db push --force-reset` | Raw prisma CLI equivalent — same destructive behavior. |
+| Command                                  | Why it's dangerous                                                                                |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `bunx prisma migrate reset`              | Drops the entire database, recreates it, and re-applies all migrations. Data is permanently lost. |
+| `bunx prisma migrate reset --force`      | Same as above but skips confirmation prompt.                                                      |
+| `bunx prisma db push --force-reset`      | Drops all tables and pushes the schema fresh. No rollback.                                        |
+| `bunx prisma db push --accept-data-loss` | Acknowledges and accepts data loss during schema push.                                            |
+| `prisma migrate reset`                   | Raw prisma CLI equivalent — same destructive behavior.                                            |
+| `prisma db push --force-reset`           | Raw prisma CLI equivalent — same destructive behavior.                                            |
 
 **Safe alternatives:**
+
 - Use `bun run prisma:migrate:dev` to apply new migrations without data loss.
 - Use `bun run prisma:generate` to regenerate the Prisma client after schema changes.
 
 **3 PILLARS VALIDATION (CHANGE-SCOPED):**
 Validate your change scope before PR — pre-existing failures outside your change are NOT blockers:
+
 1. `bun run lint` — fix any new lint errors in your changed files; pre-existing errors elsewhere don't block
-2. `bun run typecheck` — fix any new type errors in your changed files; pre-existing errors elsewhere don't block  
+2. `bun run typecheck` — fix any new type errors in your changed files; pre-existing errors elsewhere don't block
 3. `bun run test` — ensure you haven't broken tests in affected modules; pre-existing failures don't block
 
 Only regressions you introduce must be fixed before merging. Pre-existing issues are team debt, not a per-PR gate.
@@ -55,12 +59,14 @@ Only regressions you introduce must be fixed before merging. Pre-existing issues
 Full-project validation runs in CI (`typecheck-build.yml` → typecheck & build, `coverage-codecov.yml` → tests).
 
 ## Coding Style & Naming Conventions
+
 - TypeScript-first; strict mode is enabled in `tsconfig.json`.
 - Prettier rules: 2-space indent, no semicolons, double quotes, 80-char line width.
 - Use path alias `@/*` for internal imports.
 - Name feature files by concern (`*.service.ts`, `*.route.ts`, `*.policy.ts`) and tests as `*.test.ts` / `*.test.tsx`.
 
 ## Engineering Principles
+
 - DRY (Don't Repeat Yourself): extract shared helpers for repeated setup, fixtures, and assertions (especially in tests) instead of copy-pasting logic across files.
 - KISS (Keep It Simple, Stupid): prefer straightforward implementations and tests with clear intent; avoid over-engineering, unnecessary abstractions, and brittle test scaffolding.
 
@@ -69,6 +75,7 @@ Full-project validation runs in CI (`typecheck-build.yml` → typecheck & build,
 All Prisma types must come from the generated client (`@prisma/client` — resolves via `node_modules/.prisma/client/`). NEVER declare manual types that mirror Prisma models.
 
 ### DO ✅
+
 ```ts
 import { Prisma, PrismaClient } from "@prisma/client"
 import type { PlatformUserRole, InvoiceStatus } from "@prisma/client"
@@ -77,10 +84,13 @@ import type { PlatformUserRole, InvoiceStatus } from "@prisma/client"
 const where: Prisma.InvoiceWhereInput = { status: "OPEN" }
 
 // Direct model access — full type safety
-const record = await prisma.platformUserRole.findFirst({ where: { workosUserId } })
+const record = await prisma.platformUserRole.findFirst({
+  where: { workosUserId },
+})
 ```
 
 ### DON'T ❌
+
 ```ts
 // Manual model type — duplicates Prisma, rots over time
 type InvoiceRecord = { id: string; status: string; totalAmount: number }
@@ -104,13 +114,13 @@ Every API response must go through an explicit DTO. Internal service-to-service 
 
 ### The rule by layer
 
-| Layer | Type | Rule |
-|-------|------|------|
-| Route handler → Client | **DTO** (derived) | **WAJIB** — API contract, security, stability |
-| Service → Service (same module) | Prisma types | ❌ Jangan bikin DTO — boilerplate tanpa value |
-| Service → Service (cross-module) | DTO or Prisma types | ⚠️ DTO disarankan kalo beda domain |
-| Repository/Prisma → Service | Prisma types | ❌ Pakai Prisma langsung — KISS |
-| Serialization / Display | **DTO** (derived) | ✅ Format transform, tanggal, currency |
+| Layer                            | Type                | Rule                                          |
+| -------------------------------- | ------------------- | --------------------------------------------- |
+| Route handler → Client           | **DTO** (derived)   | **WAJIB** — API contract, security, stability |
+| Service → Service (same module)  | Prisma types        | ❌ Jangan bikin DTO — boilerplate tanpa value |
+| Service → Service (cross-module) | DTO or Prisma types | ⚠️ DTO disarankan kalo beda domain            |
+| Repository/Prisma → Service      | Prisma types        | ❌ Pakai Prisma langsung — KISS               |
+| Serialization / Display          | **DTO** (derived)   | ✅ Format transform, tanggal, currency        |
 
 ### Pattern: `*.dto.ts` + `toDTO` helper per module
 
@@ -147,7 +157,7 @@ import { toInvoiceDTO, type InvoiceDTO } from "../invoices.dto"
 
 router.get("/invoices", async (ctx) => {
   const invoices = await invoiceService.list(orgId)
-  return invoices.map(toInvoiceDTO)  // ✅ DTO di boundary
+  return invoices.map(toInvoiceDTO) // ✅ DTO di boundary
 })
 ```
 
@@ -160,11 +170,15 @@ async function calculateTax(
   invoice: Prisma.InvoiceGetPayload<{ include: { lines: true } }>
 ): Promise<Decimal> {
   // ✅ Pakai Prisma types langsung — fully typed
-  return invoice.lines.reduce((sum, line) => sum.add(line.amount), new Decimal(0))
+  return invoice.lines.reduce(
+    (sum, line) => sum.add(line.amount),
+    new Decimal(0)
+  )
 }
 ```
 
 ### Kenapa DTO di boundary?
+
 - **Stable contract** — rename kolom DB gak nge-break API client
 - **Security** — accidental expose `internalNotesJson` gak bakal terjadi
 - **Over-fetching** — Prisma `select` jadi jelas karena DTO yang menentukan
@@ -173,22 +187,38 @@ async function calculateTax(
 ## Fixing Existing Violations
 
 When touching a file with manual Prisma types, refactor them to use generated types. Common refactors:
+
 1. **Manual `foo.service.ts`** → import `PrismaClient` from `@prisma/client`, use generated model names and `Prisma.ModelWhereInput` etc.
 2. **Manual store/delegate** → delete the type, pass `prisma` directly (or use `Pick` on generated `PrismaClient` if mocking is needed)
 3. **Manual enums** → import the enum from `@prisma/client`
 4. **Response from route handler** → create `*.dto.ts` with `Pick<Prisma.ModelGetPayload<{}>, ...>` and a `toDTO` mapper
 
 ## Console Surface Consistency
+
 - Keep all pages under `app/[lang]/console/**` visually consistent with the console overview page structure.
 - Use `main` wrapper class `flex flex-1 flex-col gap-6 p-6 pt-0` for content pages unless a parent layout already provides the same spacing contract.
 - Use shared table primitives and the shared TanStack table pattern for tabular data so sorting, filtering, and column visibility behavior remains consistent between console pages.
 - Avoid one-off page-specific spacing/layout patterns for invoices, support tickets, and other console subpages unless explicitly required by product design.
 
 ## Testing Guidelines
+
 - Test runner: `bun test` (`bunfig.toml` preloads `test/setup.ts`).
 - UI tests use Testing Library with Happy DOM and `@testing-library/jest-dom` matchers.
 - Keep tests close to source files (examples: `modules/docs/docs.service.test.ts`, `components/nav-main.test.tsx`).
 - Add or update tests for new behavior in API routes, tenant policy logic, and rendered UI states.
+
+### Test Quality Rules (enforced in CI)
+
+`scripts/lint-test-quality.ts` runs in CI (`bun run test:lint`, non-blocking
+warning in `coverage-codecov.yml`) to flag common AI-generated test
+anti-patterns. When writing or reviewing tests, check:
+
+1. **Every `it()`/`test()` must have at least one assertion** — `expect(...)`, `assert.*`, etc.
+2. **Assert on behavior, not implementation** — test what the function returns/does, not how it does it internally.
+3. **No empty catch blocks** — if you can't test an error path, skip the test rather than swallowing it.
+4. **Mock sparingly** — mock external dependencies (APIs, DB, filesystem), not internal logic.
+5. **Test edge cases** — empty inputs, null, boundary values, error states. Not just the happy path.
+6. **Mutation test heuristic** — if you change the return value of a function and the test still passes, the test is theater.
 
 ### Bun `mock.module` — Module Cache Rules (CRITICAL)
 
@@ -216,6 +246,7 @@ Mock at the **lowest shared dependency** (infrastructure), not at intermediate s
 2. **One test file owns each module** — the file named `foo.service.test.ts` is the sole owner of `foo.service`'s behaviour. All other test files must treat `foo.service` as a black box controlled via shared infrastructure mocks (e.g., prisma).
 
 3. **`mock.module` calls go at the very top** — place all `mock.module()` calls before any `import` or `await import()` statements so Bun registers them before module evaluation. Pattern:
+
    ```ts
    import { mock } from "bun:test"
    // 1. define mock objects
@@ -236,11 +267,11 @@ Mock at the **lowest shared dependency** (infrastructure), not at intermediate s
 
 Real-use-case scripts that exercise the API auth flows against a running dev server (`bun run dev` on `:3300`). These are NOT unit tests — they require a live server and, for the cookie test, a browser session.
 
-| Script | What it tests | Prerequisites |
-|---|---|---|
-| `bun run test:auth:cookie` | Cookie-based auth (`wos-session`) against `/api/auth/whoami` and `/api/whatsapp/devices` | `bun run dev` running; `WOS_SESSION_COOKIE` env var set (copy from browser DevTools: Application > Cookies > wos-session) |
-| `bun run test:auth:static-key` | Static API key auth (`Authorization: Bearer test_xxx`) against the same endpoints; creates + cleans up a key via Prisma | `bun run dev` running; `DATABASE_URL` + `ORGANIZATION_ID` env vars set |
-| `bun run create:api-key` | Issues a new API key and prints the raw value to stdout once | `DATABASE_URL` env var set |
+| Script                         | What it tests                                                                                                           | Prerequisites                                                                                                             |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `bun run test:auth:cookie`     | Cookie-based auth (`wos-session`) against `/api/auth/whoami` and `/api/whatsapp/devices`                                | `bun run dev` running; `WOS_SESSION_COOKIE` env var set (copy from browser DevTools: Application > Cookies > wos-session) |
+| `bun run test:auth:static-key` | Static API key auth (`Authorization: Bearer test_xxx`) against the same endpoints; creates + cleans up a key via Prisma | `bun run dev` running; `DATABASE_URL` + `ORGANIZATION_ID` env vars set                                                    |
+| `bun run create:api-key`       | Issues a new API key and prints the raw value to stdout once                                                            | `DATABASE_URL` env var set                                                                                                |
 
 **Important:** These scripts hit the real server. They are not suitable for CI until a dev-server harness is added.
 
@@ -258,11 +289,11 @@ The `.auth/` directory is gitignored (each developer generates their own).
 
 ### Project structure
 
-| Project | Pattern | Auth |
-|---------|---------|------|
-| `chromium` | `*.spec.ts` (excl. `console.*`) | Public pages only |
-| `authenticated` | `console.*.spec.ts` | Uses `storageState` from `.auth/user.json` |
-| `auth-setup` | `auth.setup.ts` | Interactive login helper |
+| Project         | Pattern                         | Auth                                       |
+| --------------- | ------------------------------- | ------------------------------------------ |
+| `chromium`      | `*.spec.ts` (excl. `console.*`) | Public pages only                          |
+| `authenticated` | `console.*.spec.ts`             | Uses `storageState` from `.auth/user.json` |
+| `auth-setup`    | `auth.setup.ts`                 | Interactive login helper                   |
 
 ### Naming convention
 
@@ -271,26 +302,28 @@ The `.auth/` directory is gitignored (each developer generates their own).
 
 ### Available commands
 
-| Command | What it runs |
-|---------|-------------|
-| `bun run test:e2e` | All tests (authenticated skipped if no auth file) |
-| `bun run test:e2e:auth` | Auth setup — interactive login (headed) |
-| `bun run test:e2e:authenticated` | Only authenticated tests |
-| `bun run test:e2e:public` | Only public-page tests |
-| `bun run test:e2e:all` | Public + authenticated |
-| `bun run test:e2e:ui` | Playwright UI mode |
+| Command                          | What it runs                                      |
+| -------------------------------- | ------------------------------------------------- |
+| `bun run test:e2e`               | All tests (authenticated skipped if no auth file) |
+| `bun run test:e2e:auth`          | Auth setup — interactive login (headed)           |
+| `bun run test:e2e:authenticated` | Only authenticated tests                          |
+| `bun run test:e2e:public`        | Only public-page tests                            |
+| `bun run test:e2e:all`           | Public + authenticated                            |
+| `bun run test:e2e:ui`            | Playwright UI mode                                |
 
 ### CI behavior
 
 Authenticated tests are **excluded** when the `.auth/user.json` file is absent. The config checks `fs.existsSync(AUTH_FILE)` on load — if the file is missing, the `authenticated` project is omitted entirely. Public-page tests always run.
 
 ## Commit & Pull Request Guidelines
+
 - Follow Conventional Commit style seen in history: `feat: ...`, `fix: ...`, `test: ...`, `chore: ...`, `docs: ...`.
 - Use imperative, scoped summaries (example: `feat: add onboarding flow page`).
 - When opening PRs with GitHub CLI, write the body to a Markdown file and use `gh pr create --body-file <file>` to preserve newlines reliably; avoid inline `--body` for multiline text.
 - PRs should include: problem/solution summary, linked issue (if available), test evidence (`bun run test`, `bun run lint`), and screenshots for UI changes.
 
 ## Kanban Task Authoring Standard
+
 - Every Kanban task prompt must use this exact section order:
   - `Context`
   - `Goal`
@@ -318,7 +351,12 @@ Authenticated tests are **excluded** when the `.auth/user.json` file is absent. 
 All WorkOS user/org name resolution MUST go through `lib/workos-directory.ts`. The auth layer only returns IDs — names require separate WorkOS API calls.
 
 ```ts
-import { getCachedUser, getCachedOrganization, getCachedUsers, getCachedOrganizations } from "@/lib/workos-directory"
+import {
+  getCachedUser,
+  getCachedOrganization,
+  getCachedUsers,
+  getCachedOrganizations,
+} from "@/lib/workos-directory"
 ```
 
 - **Redis-backed** cache, 1h TTL, fire-and-forget seeding
@@ -330,29 +368,34 @@ import { getCachedUser, getCachedOrganization, getCachedUsers, getCachedOrganiza
 **Deprecated:** `lib/cache/workos-cache.service.ts`, `lib/sidebar-session.ts`, `hooks/use-workos-cache.ts` — use `workos-directory` directly.
 
 ## Security & Configuration Tips
+
 - Copy required values from `.env.example`; never commit real secrets.
 - Required integrations include PostgreSQL (`DATABASE_URL`) and WorkOS keys.
 - Run role/bootstrap scripts via `bun run seed:workos-roles` and `bun run grant:super-admin` only in the correct environment.
-<!-- PI-CREW:GUIDANCE:START -->
-<!-- PI-CREW:BLOCK:pi-crew-overview -->
+  <!-- PI-CREW:GUIDANCE:START -->
+  <!-- PI-CREW:BLOCK:pi-crew-overview -->
+
 ## pi-crew
 
 > Managed by **pi-crew v0.6.1** — do not edit this section manually.
 
 pi-crew is a Pi extension for coordinated AI agent teams, workflows,
 worktrees, and async task orchestration.
+
 <!-- PI-CREW:/BLOCK:pi-crew-overview -->
 
 <!-- PI-CREW:BLOCK:pi-crew-commands -->
+
 ### Quick Commands
 
-| Command | Description |
-|---|---|
-| `team action='init'` | Initialize pi-crew for this project |
-| `team action='run'` | Start a team run |
-| `team action='status'` | Check run status |
-| `team action='list'` | List available teams/agents/workflows |
-| `team action='recommend'` | Get team/workflow recommendations |
+| Command                   | Description                           |
+| ------------------------- | ------------------------------------- |
+| `team action='init'`      | Initialize pi-crew for this project   |
+| `team action='run'`       | Start a team run                      |
+| `team action='status'`    | Check run status                      |
+| `team action='list'`      | List available teams/agents/workflows |
+| `team action='recommend'` | Get team/workflow recommendations     |
+
 <!-- PI-CREW:/BLOCK:pi-crew-commands -->
 <!-- PI-CREW:GUIDANCE:END -->
 

@@ -45,7 +45,11 @@ export const createConfirmRoutes = () =>
 
       // Look up invoice to determine correct organizationId
       const invoice = await prisma.billingInvoice.findFirst({
-        where: { id: params.id, status: "OPEN", billingAccount: { organizationId: auth.organizationId } },
+        where: {
+          id: params.id,
+          status: "OPEN",
+          billingAccount: { organizationId: auth.organizationId },
+        },
       })
 
       if (!invoice) {
