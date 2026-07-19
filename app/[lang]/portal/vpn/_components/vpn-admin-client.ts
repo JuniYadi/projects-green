@@ -329,8 +329,8 @@ export async function deleteVpnServer(id: string) {
 }
 
 export async function testVpnServer(id: string, init?: RequestInit) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Eden POST body type doesn't accept RequestInit
   const res = (await eden.api.admin.vpn.servers[id].test.post(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Eden POST body type doesn't accept RequestInit
     init as any
   )) as EdenRes
   return unwrapData<ScanResult>(res)
@@ -355,8 +355,8 @@ export async function listVpnSshKeys() {
 }
 
 export async function createVpnSshKey(body: Record<string, unknown>) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Eden infers strict body types; generic callers pass untyped objects
   const res = (await eden.api.admin.vpn["ssh-keys"].post(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Eden infers strict body types; generic callers pass untyped objects
     body as any
   )) as EdenRes
   throwIfError(res)
@@ -384,8 +384,8 @@ export async function updateVpnPackage(
   id: string,
   body: Record<string, unknown>
 ) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Eden infers strict body types; generic callers pass untyped objects
   const res = (await eden.api.admin.vpn.packages[id].put(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Eden infers strict body types; generic callers pass untyped objects
     body as any
   )) as EdenRes
   throwIfError(res)
