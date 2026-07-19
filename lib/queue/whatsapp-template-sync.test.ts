@@ -8,7 +8,6 @@ import {
 
 // ponytail: params kept for BullMQ add() signature compatibility
 const add = mock(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async (_name: string, _data: unknown, _opts: unknown) =>
     ({ jobId: undefined }) as never
 )

@@ -15,7 +15,6 @@ import type { DeployWizardState } from "@/modules/deploy/deploy.types"
 const replaceCalls: string[] = []
 let deployStatusResponse = "running"
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const updateQueryFromUrl = (_url: string) => {
   // ponytail: kept for API compatibility
 }

@@ -35,7 +35,6 @@ const defaultActor: MockActor = {
 const mockRequireTenantActor = mock(
   async (): Promise<MockActor> => ({ ...defaultActor })
 )
-/* eslint-disable @typescript-eslint/no-unused-vars */
 const mockEnsureTenantContextAccess = mock(
   (
     _orgId: string,
@@ -43,7 +42,7 @@ const mockEnsureTenantContextAccess = mock(
     _set: MockRouteSet
   ): true | TenantApiError => true
 )
-/* eslint-enable @typescript-eslint/no-unused-vars */
+ 
 
 const makeMembership = (
   overrides: Partial<TenantMembershipSummary> = {}

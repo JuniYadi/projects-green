@@ -141,7 +141,6 @@ export abstract class BaseJob {
    * This is the function passed directly to BullMQ Worker.
    * It receives the raw BullMQ Job — access data via `job.data`.
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   static async handle(_job: unknown): Promise<void> {
     throw new Error(`${this.name}.handle() not implemented`)
   }

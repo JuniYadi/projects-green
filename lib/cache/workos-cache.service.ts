@@ -33,7 +33,6 @@ export const workosCacheService = {
     return getCachedOrganization(orgId)
   },
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async invalidateUser(_userId: string): Promise<void> {
     // No-op — Redis cache handles TTL automatically
     console.warn(
@@ -41,7 +40,6 @@ export const workosCacheService = {
     )
   },
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async invalidateOrg(_orgId: string): Promise<void> {
     // No-op — Redis cache handles TTL automatically
     console.warn(
