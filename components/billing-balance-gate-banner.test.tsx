@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, mock } from "bun:test"
+import { describe, it, expect, beforeEach } from "bun:test"
 import { render, fireEvent } from "@testing-library/react"
 import "@testing-library/jest-dom"
 
