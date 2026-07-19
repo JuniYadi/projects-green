@@ -17,11 +17,7 @@ export default async function OrgDetailPage({
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <Suspense fallback={<OrgDetailSkeleton />}>
-        <OrgOverviewDashboard
-          lang={lang}
-          orgId={orgId}
-          defaultPage={page}
-        />
+        <OrgOverviewDashboard lang={lang} orgId={orgId} defaultPage={page} />
       </Suspense>
     </main>
   )

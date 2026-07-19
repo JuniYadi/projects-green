@@ -110,8 +110,11 @@ mock.module("@/modules/deploy/deploy.constants", () => ({
 
 // ─── Dynamic imports after mocks ─────────────────────────────────────────────
 
-const { render, waitFor, cleanup: rtlCleanup } =
-  await import("@testing-library/react")
+const {
+  render,
+  waitFor,
+  cleanup: rtlCleanup,
+} = await import("@testing-library/react")
 const { default: ApplicationsPage } = await import("./page")
 
 afterEach(() => {

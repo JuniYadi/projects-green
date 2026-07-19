@@ -206,7 +206,10 @@ async function notifyInvoiceRecipients(input: {
 
     await Promise.allSettled(recipients.map(input.send))
   } catch (err) {
-    console.error("[AdminInvoiceRoute] Failed to resolve invoice recipients:", err)
+    console.error(
+      "[AdminInvoiceRoute] Failed to resolve invoice recipients:",
+      err
+    )
     // Don't rethrow — callers handle gracefully via their own .catch
   }
 }
@@ -274,7 +277,6 @@ export const createAdminInvoiceRoutes = (
             return toNotFound(set, "Invoice not found.")
           }
 
-
           // Validate status transitions
           const validTransitions: Record<string, string[]> = {
             DRAFT: ["ISSUED", "CANCELLED"],
@@ -317,7 +319,10 @@ export const createAdminInvoiceRoutes = (
                 data: { balance: { increment: invoice.totalAmount } },
               })
             } catch (balErr) {
-              console.error("[AdminInvoiceUpdate] Failed to update balance:", balErr)
+              console.error(
+                "[AdminInvoiceUpdate] Failed to update balance:",
+                balErr
+              )
             }
           }
 

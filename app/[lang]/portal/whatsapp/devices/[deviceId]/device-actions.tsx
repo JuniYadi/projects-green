@@ -56,7 +56,10 @@ export function DeviceActions({
         )
       }
 
-      const health = "health" in (data ?? {}) ? (data as { health?: { ok: boolean; error?: string } }).health : null
+      const health =
+        "health" in (data ?? {})
+          ? (data as { health?: { ok: boolean; error?: string } }).health
+          : null
       if (health?.ok) {
         toast.success("Device is connected and healthy")
       } else {

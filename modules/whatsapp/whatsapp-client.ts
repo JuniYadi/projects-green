@@ -827,9 +827,7 @@ export const createWhatsAppClient = () => {
       whatsappDeviceId: string
       recipients: Array<{ phoneNumber: string }>
     }) {
-      const payload = await requestJson<
-        ApiSuccess<PreviewBroadcastResult>
-      >(
+      const payload = await requestJson<ApiSuccess<PreviewBroadcastResult>>(
         `${API_BASE}/broadcasts/preview`,
         {
           method: "POST",
@@ -1007,7 +1005,9 @@ export const createWhatsAppClient = () => {
     },
 
     async syncCatalog(id: string) {
-      const payload = await requestJson<ApiSuccess<{ data: { synced: number } }>>(
+      const payload = await requestJson<
+        ApiSuccess<{ data: { synced: number } }>
+      >(
         `${API_BASE}/catalogs/${id}/sync`,
         { method: "POST" },
         "Unable to sync WhatsApp catalog."
@@ -1025,7 +1025,9 @@ export const createWhatsAppClient = () => {
     },
 
     async sendCatalogMessage(input: SendCatalogMessageInput) {
-      const payload = await requestJson<ApiSuccess<{ data: { providerMessageId: string } }>>(
+      const payload = await requestJson<
+        ApiSuccess<{ data: { providerMessageId: string } }>
+      >(
         `${API_BASE}/catalogs/send`,
         {
           method: "POST",

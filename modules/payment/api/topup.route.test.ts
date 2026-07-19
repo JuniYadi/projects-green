@@ -83,15 +83,13 @@ const mockPrisma = {
     ),
     update: mock(() => Promise.resolve({})),
   },
-  $transaction: mock(
-    (arg: unknown) => {
-      // ponytail: callback & array both work
-      if (typeof arg === "function") {
-        return Promise.resolve(arg(mockPrisma))
-      }
-      return Promise.resolve()
-    },
-  ),
+  $transaction: mock((arg: unknown) => {
+    // ponytail: callback & array both work
+    if (typeof arg === "function") {
+      return Promise.resolve(arg(mockPrisma))
+    }
+    return Promise.resolve()
+  }),
 }
 
 mock.module("@/lib/prisma", () => ({

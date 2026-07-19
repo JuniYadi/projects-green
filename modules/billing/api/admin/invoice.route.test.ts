@@ -510,14 +510,13 @@ describe("AdminInvoiceRoute", () => {
       }
       mockFindUnique.mockResolvedValue(mockInvoice)
 
-      const app = new Elysia()
-        .use(
-          createAdminInvoiceRoutes({
-            authenticate: async () => defaultAuth as MockAuthContext,
-            getPlatformRole: mockPlatformRole,
-            isAdmin: mockIsAdmin,
-          })
-        )
+      const app = new Elysia().use(
+        createAdminInvoiceRoutes({
+          authenticate: async () => defaultAuth as MockAuthContext,
+          getPlatformRole: mockPlatformRole,
+          isAdmin: mockIsAdmin,
+        })
+      )
       const res = await app.handle(
         new Request("http://localhost/admin/invoices/inv-same", {
           method: "PATCH",
@@ -526,7 +525,7 @@ describe("AdminInvoiceRoute", () => {
         })
       )
       expect(res.status).toBe(422)
-  })
+    })
     it("returns 200 when OPEN→PAID transition succeeds", async () => {
       const mockInvoice = {
         id: "inv-paid",
@@ -544,17 +543,22 @@ describe("AdminInvoiceRoute", () => {
         dueAt: null,
       }
       mockFindUnique.mockResolvedValue(mockInvoice)
-      mockUpdate.mockResolvedValue({ ...mockInvoice, status: "PAID", paidAt: new Date(), issuedAt: null, dueAt: null })
+      mockUpdate.mockResolvedValue({
+        ...mockInvoice,
+        status: "PAID",
+        paidAt: new Date(),
+        issuedAt: null,
+        dueAt: null,
+      })
       mockBalanceUpdate.mockResolvedValue({})
 
-      const app = new Elysia()
-        .use(
-          createAdminInvoiceRoutes({
-            authenticate: async () => defaultAuth as MockAuthContext,
-            getPlatformRole: mockPlatformRole,
-            isAdmin: mockIsAdmin,
-          })
-        )
+      const app = new Elysia().use(
+        createAdminInvoiceRoutes({
+          authenticate: async () => defaultAuth as MockAuthContext,
+          getPlatformRole: mockPlatformRole,
+          isAdmin: mockIsAdmin,
+        })
+      )
       const res = await app.handle(
         new Request("http://localhost/admin/invoices/inv-paid", {
           method: "PATCH",
@@ -589,17 +593,20 @@ describe("AdminInvoiceRoute", () => {
         dueAt: null,
       }
       mockFindUnique.mockResolvedValue(mockInvoice)
-      mockUpdate.mockResolvedValue({ ...mockInvoice, status: "PAID", paidAt: new Date() })
+      mockUpdate.mockResolvedValue({
+        ...mockInvoice,
+        status: "PAID",
+        paidAt: new Date(),
+      })
       mockBalanceUpdate.mockResolvedValue({})
 
-      const app = new Elysia()
-        .use(
-          createAdminInvoiceRoutes({
-            authenticate: async () => defaultAuth as MockAuthContext,
-            getPlatformRole: mockPlatformRole,
-            isAdmin: mockIsAdmin,
-          })
-        )
+      const app = new Elysia().use(
+        createAdminInvoiceRoutes({
+          authenticate: async () => defaultAuth as MockAuthContext,
+          getPlatformRole: mockPlatformRole,
+          isAdmin: mockIsAdmin,
+        })
+      )
       const res = await app.handle(
         new Request("http://localhost/admin/invoices/inv-overdue-paid", {
           method: "PATCH",
@@ -612,5 +619,5 @@ describe("AdminInvoiceRoute", () => {
       expect(body.ok).toBe(true)
       expect(body.invoice.status).toBe("PAID")
     })
-})
+  })
 })

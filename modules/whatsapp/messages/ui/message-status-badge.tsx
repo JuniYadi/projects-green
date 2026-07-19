@@ -25,7 +25,10 @@ interface MessageStatusBadgeProps {
 
 const STATUS_CONFIG: Record<
   DeliveryStatus,
-  { label: string; variant: "secondary" | "outline" | "default" | "destructive" | "success" }
+  {
+    label: string
+    variant: "secondary" | "outline" | "default" | "destructive" | "success"
+  }
 > = {
   SENT: { label: "Sent", variant: "outline" },
   DELIVERED: { label: "Delivered", variant: "default" },
@@ -46,7 +49,9 @@ function StatusIcon({
     case "DELIVERED":
       return <CheckCircle weight="fill" className={className} />
     case "READ":
-      return <CheckCircle weight="fill" className={`${className} text-blue-500`} />
+      return (
+        <CheckCircle weight="fill" className={`${className} text-blue-500`} />
+      )
     case "FAILED":
       return <X weight="bold" className={className} />
     default:
@@ -68,17 +73,15 @@ export function MessageStatusBadge({
   if (!latestStatus) return null
 
   const config = STATUS_CONFIG[latestStatus]
-  const failureReason = latestStatus === "FAILED" ? statusHistory[0]?.error : null
+  const failureReason =
+    latestStatus === "FAILED" ? statusHistory[0]?.error : null
 
   if (failureReason) {
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge
-              variant={config.variant}
-              className="ml-1 gap-1 text-[10px]"
-            >
+            <Badge variant={config.variant} className="ml-1 gap-1 text-[10px]">
               <StatusIcon status={latestStatus} className="size-3" />
               {config.label}
             </Badge>

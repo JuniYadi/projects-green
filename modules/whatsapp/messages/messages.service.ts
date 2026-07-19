@@ -26,9 +26,7 @@ import {
 } from "@/modules/billing/types"
 import { quotaAlertService } from "./quota-alert.service"
 import { upsertWhatsappContactFromMessage } from "@/modules/whatsapp/contacts/contacts.service"
-import {
-  resolveWhatsappQuotaCredit,
-} from "./quota-credit.service"
+import { resolveWhatsappQuotaCredit } from "./quota-credit.service"
 export type SendMessageResult = {
   jobId: string
   messageId: string
@@ -76,7 +74,9 @@ export type SendMessageOptions = {
 
 export type MessageService = {
   sendMessage(options: SendMessageOptions): Promise<SendMessageResult>
-  sendTemplateMessage(options: SendTemplateMessageOptions): Promise<SendMessageResult>
+  sendTemplateMessage(
+    options: SendTemplateMessageOptions
+  ): Promise<SendMessageResult>
   getOrCreateConversation(
     organizationId: string,
     phoneNumber: string,
@@ -246,10 +246,10 @@ export const messageService: MessageService = {
                       payload: (interactivePayload ?? {}) as InteractivePayload,
                     })
                   : await client.sendMessage({
-                    to: phoneNumber,
-                    type,
-                    payload: { link: mediaUrl ?? "", caption },
-                  })
+                      to: phoneNumber,
+                      type,
+                      payload: { link: mediaUrl ?? "", caption },
+                    })
       waMessageId = result.providerMessageId
     } catch (err) {
       console.error("[messageService] Failed to send via Meta API:", err)
@@ -300,16 +300,31 @@ export const messageService: MessageService = {
           await quotaGate.deductMessageQuota(organizationId, device.id, "OUT")
         } catch (error) {
           quotaPending = true
-          console.error("[messageService] Quota deduction failed, enqueuing reconciliation:", error)
-          enqueueQuotaReconciliation(organizationId, device.id, "OUT", jobId, new Date()).catch((err) => {
-            console.error("[messageService] Failed to enqueue quota reconciliation:", err)
+          console.error(
+            "[messageService] Quota deduction failed, enqueuing reconciliation:",
+            error
+          )
+          enqueueQuotaReconciliation(
+            organizationId,
+            device.id,
+            "OUT",
+            jobId,
+            new Date()
+          ).catch((err) => {
+            console.error(
+              "[messageService] Failed to enqueue quota reconciliation:",
+              err
+            )
           })
         }
 
         let messageRateIdr = new Decimal(0)
         try {
           const pricing = await balanceGate.findPricing({
-            planId: subscription.planId, regionId: "GLOBAL", type: "PAYG", billingMode: "PAYG",
+            planId: subscription.planId,
+            regionId: "GLOBAL",
+            type: "PAYG",
+            billingMode: "PAYG",
           })
           messageRateIdr = pricing.unitRateMessage ?? new Decimal(0)
         } catch {
@@ -318,10 +333,18 @@ export const messageService: MessageService = {
 
         const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`
         await usageLedger.recordUsage({
-          organizationId, subscriptionId: subscription.id, period,
+          organizationId,
+          subscriptionId: subscription.id,
+          period,
           entry: {
-            category: USAGE_CATEGORY_WHATSAPP_OUT, amountIdr: messageRateIdr,
-            metadata: { messageId: jobId, direction: "OUT", organizationId, deviceId: device.id },
+            category: USAGE_CATEGORY_WHATSAPP_OUT,
+            amountIdr: messageRateIdr,
+            metadata: {
+              messageId: jobId,
+              direction: "OUT",
+              organizationId,
+              deviceId: device.id,
+            },
           },
         })
 
@@ -335,30 +358,60 @@ export const messageService: MessageService = {
         const quotaBase = Number(device.quotaBase)
         const quotaPercent = quotaBase > 0 ? (currentCost / quotaBase) * 100 : 0
         quotaAlertService
-          .checkAndSendAlerts(organizationId, device.id, quotaPercent, currentCost, quotaBase)
-          .catch((err) => console.error("[messageService] Quota alert failed:", err))
+          .checkAndSendAlerts(
+            organizationId,
+            device.id,
+            quotaPercent,
+            currentCost,
+            quotaBase
+          )
+          .catch((err) =>
+            console.error("[messageService] Quota alert failed:", err)
+          )
       }
     } else {
       // Non-subscription: count messages manually
       if (waMessageId) {
-        const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+        const today = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+        )
         const year = now.getUTCFullYear()
         const month = now.getUTCMonth() + 1
 
         await Promise.all([
           prisma.whatsappDailyCount.upsert({
             where: {
-              organizationId_date_whatsappDeviceId: { organizationId, date: today, whatsappDeviceId: device.id },
+              organizationId_date_whatsappDeviceId: {
+                organizationId,
+                date: today,
+                whatsappDeviceId: device.id,
+              },
             },
             update: { messageOutboxCount: { increment: 1 } },
-            create: { organizationId, date: today, whatsappDeviceId: device.id, messageOutboxCount: 1 },
+            create: {
+              organizationId,
+              date: today,
+              whatsappDeviceId: device.id,
+              messageOutboxCount: 1,
+            },
           }),
           prisma.whatsappMonthlyCount.upsert({
             where: {
-              organizationId_year_month_whatsappDeviceId: { organizationId, year, month, whatsappDeviceId: device.id },
+              organizationId_year_month_whatsappDeviceId: {
+                organizationId,
+                year,
+                month,
+                whatsappDeviceId: device.id,
+              },
             },
             update: { messageOutboxCount: { increment: 1 } },
-            create: { organizationId, year, month, whatsappDeviceId: device.id, messageOutboxCount: 1 },
+            create: {
+              organizationId,
+              year,
+              month,
+              whatsappDeviceId: device.id,
+              messageOutboxCount: 1,
+            },
           }),
         ])
       }
@@ -417,12 +470,24 @@ export const messageService: MessageService = {
     }
   },
   async sendTemplateMessage(options: SendTemplateMessageOptions) {
-    const { organizationId, phoneNumber, deviceId, templateName, templateLanguage, fields, renderedBody, billingCategory, templateLanguageData } = options
+    const {
+      organizationId,
+      phoneNumber,
+      deviceId,
+      templateName,
+      templateLanguage,
+      fields,
+      renderedBody,
+      billingCategory,
+      templateLanguageData,
+    } = options
     const jobId = `wa-job-${randomUUID()}`
 
     // Get device
     const device = deviceId
-      ? await prisma.whatsappDevice.findFirst({ where: { id: deviceId, organizationId } })
+      ? await prisma.whatsappDevice.findFirst({
+          where: { id: deviceId, organizationId },
+        })
       : await prisma.whatsappDevice.findFirst({ where: { organizationId } })
     if (!device) {
       throw new Error("WhatsApp device not found")
@@ -433,7 +498,10 @@ export const messageService: MessageService = {
     const quotaGate = new QuotaGateService(prisma)
     const usageLedger = new UsageLedgerService(prisma)
     const messageCostService = new MessageCostService(prisma)
-    const whatsappBilling = new WhatsappBillingService(prisma, new BillingTransactionService(prisma))
+    const whatsappBilling = new WhatsappBillingService(
+      prisma,
+      new BillingTransactionService(prisma)
+    )
 
     const unitPrice = await messageCostService.estimateMessageCost({
       organizationId,
@@ -449,11 +517,17 @@ export const messageService: MessageService = {
     })
 
     const idempotencyKey = `wa-message:${jobId}:attempt-0`
-    let billingDecision: import("@/modules/whatsapp/billing/whatsapp-billing.service").WhatsappBillingDecision | null = null
+    let billingDecision:
+      | import("@/modules/whatsapp/billing/whatsapp-billing.service").WhatsappBillingDecision
+      | null = null
 
     try {
       billingDecision = await whatsappBilling.consumeAllowanceOrChargeOverage({
-        organizationId, deviceId: device.id, quotaCredit: quotaCredit.quotaCredit, unitPrice, idempotencyKey,
+        organizationId,
+        deviceId: device.id,
+        quotaCredit: quotaCredit.quotaCredit,
+        unitPrice,
+        idempotencyKey,
       })
     } catch (err) {
       if (err instanceof Error && err.message === "INSUFFICIENT_BALANCE") {
@@ -465,7 +539,11 @@ export const messageService: MessageService = {
     // Quota check
     let quotaCheckResult
     try {
-      quotaCheckResult = await quotaGate.checkMessageQuota(organizationId, device.id, "OUT")
+      quotaCheckResult = await quotaGate.checkMessageQuota(
+        organizationId,
+        device.id,
+        "OUT"
+      )
     } catch (error) {
       if (error instanceof SubscriptionNotFoundError) {
         quotaCheckResult = null
@@ -476,12 +554,22 @@ export const messageService: MessageService = {
     }
 
     if (quotaCheckResult && !quotaCheckResult.allowed) {
-      throw new QuotaExceededError(organizationId, device.id, "OUT", quotaCheckResult.monthlyLimit ?? 0, quotaCheckResult.monthlyUsed)
+      throw new QuotaExceededError(
+        organizationId,
+        device.id,
+        "OUT",
+        quotaCheckResult.monthlyLimit ?? 0,
+        quotaCheckResult.monthlyUsed
+      )
     }
 
     // Get subscription
     const subscription = await prisma.serviceSubscription.findFirst({
-      where: { organizationId, package: { code: "WHATSAPP" }, status: "ACTIVE" },
+      where: {
+        organizationId,
+        package: { code: "WHATSAPP" },
+        status: "ACTIVE",
+      },
     })
 
     // Create device client and send template message
@@ -502,12 +590,17 @@ export const messageService: MessageService = {
       })
       waMessageId = result.providerMessageId
     } catch (err) {
-      console.error("[messageService] Failed to send template via Meta API:", err)
+      console.error(
+        "[messageService] Failed to send template via Meta API:",
+        err
+      )
       if (billingDecision?.kind === "ALLOWANCE") {
-        whatsappBilling.restoreAllowance(device.id, {
-          default: billingDecision.defaultConsumed,
-          addon: billingDecision.addonConsumed,
-        }).catch(() => {})
+        whatsappBilling
+          .restoreAllowance(device.id, {
+            default: billingDecision.defaultConsumed,
+            addon: billingDecision.addonConsumed,
+          })
+          .catch(() => {})
       } else if (billingDecision?.kind === "OVERAGE_CHARGED") {
         console.warn(
           "[messageService] Overage charged but Meta API failed. Balance not auto-refunded.",
@@ -523,7 +616,15 @@ export const messageService: MessageService = {
     // Billing ledger — record on success (always, regardless of subscription)
     if (waMessageId) {
       await prisma.whatsappBillingLedger.create({
-        data: { organizationId, waMessageId, phoneNumber, category: quotaCredit.category, quotaKey: device.id, quotaValue: quotaCredit.quotaCredit, whatsappDeviceId: device.id },
+        data: {
+          organizationId,
+          waMessageId,
+          phoneNumber,
+          category: quotaCredit.category,
+          quotaKey: device.id,
+          quotaValue: quotaCredit.quotaCredit,
+          whatsappDeviceId: device.id,
+        },
       })
     }
 
@@ -534,64 +635,134 @@ export const messageService: MessageService = {
           await quotaGate.deductMessageQuota(organizationId, device.id, "OUT")
         } catch (error) {
           quotaPending = true
-          enqueueQuotaReconciliation(organizationId, device.id, "OUT", jobId, new Date()).catch(() => {})
+          enqueueQuotaReconciliation(
+            organizationId,
+            device.id,
+            "OUT",
+            jobId,
+            new Date()
+          ).catch(() => {})
         }
 
         let messageRateIdr = new Decimal(0)
         try {
           const pricing = await balanceGate.findPricing({
-            planId: subscription.planId, regionId: "GLOBAL", type: "PAYG", billingMode: "PAYG",
+            planId: subscription.planId,
+            regionId: "GLOBAL",
+            type: "PAYG",
+            billingMode: "PAYG",
           })
           messageRateIdr = pricing.unitRateMessage ?? new Decimal(0)
         } catch {}
 
         const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`
         await usageLedger.recordUsage({
-          organizationId, subscriptionId: subscription.id, period,
-          entry: { category: USAGE_CATEGORY_WHATSAPP_OUT, amountIdr: messageRateIdr, metadata: { messageId: jobId, direction: "OUT", organizationId, deviceId: device.id } },
+          organizationId,
+          subscriptionId: subscription.id,
+          period,
+          entry: {
+            category: USAGE_CATEGORY_WHATSAPP_OUT,
+            amountIdr: messageRateIdr,
+            metadata: {
+              messageId: jobId,
+              direction: "OUT",
+              organizationId,
+              deviceId: device.id,
+            },
+          },
         })
 
         const updatedDevice = await prisma.whatsappDevice.update({
-          where: { id: device.id }, data: { currentQuotaUsed: { increment: messageRateIdr } }, select: { currentQuotaUsed: true },
+          where: { id: device.id },
+          data: { currentQuotaUsed: { increment: messageRateIdr } },
+          select: { currentQuotaUsed: true },
         })
 
         const currentCost = Number(updatedDevice.currentQuotaUsed)
         const quotaBase = Number(device.quotaBase)
         const quotaPercent = quotaBase > 0 ? (currentCost / quotaBase) * 100 : 0
-        quotaAlertService.checkAndSendAlerts(organizationId, device.id, quotaPercent, currentCost, quotaBase).catch(() => {})
+        quotaAlertService
+          .checkAndSendAlerts(
+            organizationId,
+            device.id,
+            quotaPercent,
+            currentCost,
+            quotaBase
+          )
+          .catch(() => {})
       }
     } else {
       // Non-subscription: count messages manually
       if (waMessageId) {
-        const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+        const today = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+        )
         const year = now.getUTCFullYear()
         const month = now.getUTCMonth() + 1
 
         await Promise.all([
           prisma.whatsappDailyCount.upsert({
-            where: { organizationId_date_whatsappDeviceId: { organizationId, date: today, whatsappDeviceId: device.id } },
+            where: {
+              organizationId_date_whatsappDeviceId: {
+                organizationId,
+                date: today,
+                whatsappDeviceId: device.id,
+              },
+            },
             update: { messageOutboxCount: { increment: 1 } },
-            create: { organizationId, date: today, whatsappDeviceId: device.id, messageOutboxCount: 1 },
+            create: {
+              organizationId,
+              date: today,
+              whatsappDeviceId: device.id,
+              messageOutboxCount: 1,
+            },
           }),
           prisma.whatsappMonthlyCount.upsert({
-            where: { organizationId_year_month_whatsappDeviceId: { organizationId, year, month, whatsappDeviceId: device.id } },
+            where: {
+              organizationId_year_month_whatsappDeviceId: {
+                organizationId,
+                year,
+                month,
+                whatsappDeviceId: device.id,
+              },
+            },
             update: { messageOutboxCount: { increment: 1 } },
-            create: { organizationId, year, month, whatsappDeviceId: device.id, messageOutboxCount: 1 },
+            create: {
+              organizationId,
+              year,
+              month,
+              whatsappDeviceId: device.id,
+              messageOutboxCount: 1,
+            },
           }),
         ])
       }
     }
 
     // Conversation
-    const conversationId = await messageService.getOrCreateConversation(organizationId, phoneNumber, deviceId)
+    const conversationId = await messageService.getOrCreateConversation(
+      organizationId,
+      phoneNumber,
+      deviceId
+    )
 
     // Message record
     const whatsappMessage = await prisma.whatsappMessage.create({
       data: {
-        conversationId, direction: "OUTBOX", messageType: "template",
+        conversationId,
+        direction: "OUTBOX",
+        messageType: "template",
         body: renderedBody ?? null,
         waMessageId,
-        metadata: { jobId, quotaPending, templateName, templateLanguage, fields: fields ?? [], templateLanguageData: templateLanguageData as unknown as Prisma.InputJsonValue },
+        metadata: {
+          jobId,
+          quotaPending,
+          templateName,
+          templateLanguage,
+          fields: fields ?? [],
+          templateLanguageData:
+            templateLanguageData as unknown as Prisma.InputJsonValue,
+        },
       },
     })
     // Upsert contact from this outbound template send
@@ -604,11 +775,27 @@ export const messageService: MessageService = {
 
     // Webhook
     if (waMessageId) {
-      webhookDispatcher.dispatchForDevice(device.id, "message_sent", { message: whatsappMessage, recipient: phoneNumber }, whatsappMessage.id)
-        .catch((err) => console.error(`[messages] dispatch failed for message_sent device=${device.id}`, err))
+      webhookDispatcher
+        .dispatchForDevice(
+          device.id,
+          "message_sent",
+          { message: whatsappMessage, recipient: phoneNumber },
+          whatsappMessage.id
+        )
+        .catch((err) =>
+          console.error(
+            `[messages] dispatch failed for message_sent device=${device.id}`,
+            err
+          )
+        )
     }
 
-    return { jobId, messageId: whatsappMessage.id, waMessageId, status: waMessageId ? "sent" : "queued" }
+    return {
+      jobId,
+      messageId: whatsappMessage.id,
+      waMessageId,
+      status: waMessageId ? "sent" : "queued",
+    }
   },
 
   async getOrCreateConversation(

@@ -35,20 +35,35 @@ export const createAdminBillingContactsRoutes = (
       const auth = await authenticate()
       if (!auth.user) {
         set.status = 401
-        return { ok: false as const, error: "UNAUTHORIZED", message: "You must be signed in." }
+        return {
+          ok: false as const,
+          error: "UNAUTHORIZED",
+          message: "You must be signed in.",
+        }
       }
 
-      const role = await getPlatformRole({ id: auth.user.id, email: auth.user.email })
+      const role = await getPlatformRole({
+        id: auth.user.id,
+        email: auth.user.email,
+      })
       if (role !== "super_admin") {
         set.status = 403
-        return { ok: false as const, error: "FORBIDDEN", message: "Only super administrators can manage billing contacts." }
+        return {
+          ok: false as const,
+          error: "FORBIDDEN",
+          message: "Only super administrators can manage billing contacts.",
+        }
       }
 
       const { orgId } = params as { orgId: string }
       const parsed = z.string().uuid().safeParse(orgId)
       if (!parsed.success) {
         set.status = 422
-        return { ok: false as const, error: "VALIDATION_ERROR", message: "Invalid organization ID." }
+        return {
+          ok: false as const,
+          error: "VALIDATION_ERROR",
+          message: "Invalid organization ID.",
+        }
       }
 
       const account = await prisma.billingAccount.findUnique({
@@ -58,7 +73,11 @@ export const createAdminBillingContactsRoutes = (
 
       if (!account) {
         set.status = 404
-        return { ok: false as const, error: "NOT_FOUND", message: "Billing account not found." }
+        return {
+          ok: false as const,
+          error: "NOT_FOUND",
+          message: "Billing account not found.",
+        }
       }
 
       return {

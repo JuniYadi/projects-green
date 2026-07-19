@@ -10,9 +10,7 @@ import { getPlatformRoleForUser } from "@/lib/platform-role"
 const confirmationService = new ConfirmationService()
 const paymentService = new PaymentService()
 
-const requireConfirmationAuth = async (set: {
-  status?: number | string
-}) => {
+const requireConfirmationAuth = async (set: { status?: number | string }) => {
   const auth = await withAuth()
   if (!auth.user) {
     set.status = 401
@@ -39,8 +37,8 @@ const requireConfirmationAuth = async (set: {
 export const createAdminConfirmationRoutes = () =>
   new Elysia({ prefix: "/confirmations" })
     .get("/", async ({ query, set }) => {
-      const err = await requireConfirmationAuth(set)
-      if (err) return err
+      const result = await requireConfirmationAuth(set)
+      if (!result.ok) return result
 
       const limit = parseInt(query?.limit || "20")
       const offset = parseInt(query?.offset || "0")
@@ -51,8 +49,8 @@ export const createAdminConfirmationRoutes = () =>
     })
 
     .get("/:id", async ({ params, set }) => {
-      const err = await requireConfirmationAuth(set)
-      if (err) return err
+      const result = await requireConfirmationAuth(set)
+      if (!result.ok) return result
 
       const confirmation = await confirmationService.findById(params.id)
       if (!confirmation) {
@@ -70,7 +68,10 @@ export const createAdminConfirmationRoutes = () =>
     .post("/:id/approve", async ({ params, set }) => {
       const result = await requireConfirmationAuth(set)
       if (!result.ok) return result
-      const approved = await confirmationService.approve(params.id, result.user.id)
+      const approved = await confirmationService.approve(
+        params.id,
+        result.user.id
+      )
 
       // Fire-and-forget: send invoice paid email
       paymentService

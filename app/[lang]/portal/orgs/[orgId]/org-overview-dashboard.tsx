@@ -7,10 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  getAdminOrgDetail,
-  type AdminOrgDetail,
-} from "@/lib/billing-client"
+import { getAdminOrgDetail, type AdminOrgDetail } from "@/lib/billing-client"
 import { BalanceTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/balance-tab"
 import { UsageTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/usage-tab"
 import { SettingsTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/settings-tab"
@@ -139,16 +136,12 @@ export function OrgOverviewDashboard({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {org.subscriptions.length}
-            </div>
+            <div className="text-2xl font-bold">{org.subscriptions.length}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Monthly Spend
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Monthly Spend</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -185,11 +178,7 @@ export function OrgOverviewDashboard({
 
         <div className="mt-6">
           {activeTab === "billing" && (
-            <BalanceTab
-              lang={lang}
-              orgId={orgId}
-              orgDetail={orgDetail}
-            />
+            <BalanceTab lang={lang} orgId={orgId} orgDetail={orgDetail} />
           )}
           {activeTab === "usage" && <UsageTab orgId={orgId} />}
           {activeTab === "members" && (

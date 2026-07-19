@@ -1,6 +1,4 @@
-import {
-  VpnServerSshExecutor,
-} from "@/modules/vpn/provisioning/vpn-server-ssh-executor"
+import { VpnServerSshExecutor } from "@/modules/vpn/provisioning/vpn-server-ssh-executor"
 import type { SshTarget } from "./wireguard.types"
 import type { WgPeer } from "./wireguard.types"
 
@@ -31,13 +29,14 @@ function parseWgDump(stdout: string): { serverKey: string; peers: WgPeer[] } {
     // Extract username from comment or use pubkey prefix
     const ip = allowedIps.split(",")[0]?.trim() ?? allowedIps
     const pubkey = parts[0] ?? "unknown"
-    const username = pubkey.substring(0, Math.min(8, pubkey.length))  // pubkey prefix as fallback
+    const username = pubkey.substring(0, Math.min(8, pubkey.length)) // pubkey prefix as fallback
 
     return {
       username,
       ip,
       status: handshakeTs > 0 ? "online" : "offline",
-      handshake: handshakeTs > 0 ? new Date(handshakeTs * 1000).toISOString() : null,
+      handshake:
+        handshakeTs > 0 ? new Date(handshakeTs * 1000).toISOString() : null,
       rx,
       tx,
       endpoint: endpoint || null,
@@ -59,12 +58,14 @@ export class WireGuardSshAdapter {
   private readonly removeScript: string
   private readonly clientDir: string
 
-  constructor(options: {
-    executor?: VpnServerSshExecutor
-    addScript?: string
-    removeScript?: string
-    clientDir?: string
-  } = {}) {
+  constructor(
+    options: {
+      executor?: VpnServerSshExecutor
+      addScript?: string
+      removeScript?: string
+      clientDir?: string
+    } = {}
+  ) {
     this.executor = options.executor ?? new VpnServerSshExecutor()
     this.addScript = options.addScript ?? "/root/wg-add.sh"
     this.removeScript = options.removeScript ?? "/root/wg-remove.sh"
@@ -80,7 +81,10 @@ export class WireGuardSshAdapter {
     return parseWgDump(result.stdout).peers
   }
 
-  async createPeer(target: SshTarget, username: string): Promise<{ config: string }> {
+  async createPeer(
+    target: SshTarget,
+    username: string
+  ): Promise<{ config: string }> {
     const safeName = sanitizeUsername(username)
     await this.executor.execChecked(
       target,

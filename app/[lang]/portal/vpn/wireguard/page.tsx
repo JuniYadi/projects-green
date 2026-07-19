@@ -1,12 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -89,9 +84,7 @@ export default function WireGuardPage() {
     setError(null)
     try {
       // eslint-disable-next-line no-restricted-globals
-      const res = await fetch(
-        "/api/portal/vpn/wireguard/peers"
-      )
+      const res = await fetch("/api/portal/vpn/wireguard/peers")
       if (!res.ok) throw new Error("Failed to fetch peers")
       const body = await res.json()
       if (body?.peers) setPeers(body.peers)
@@ -101,7 +94,7 @@ export default function WireGuardPage() {
     } finally {
       setLoading(false)
     }
-  }, [])  // ponytail: intentional — only fetch on mount
+  }, []) // ponytail: intentional — only fetch on mount
 
   useEffect(() => {
     // ponytail: set-state-in-effect is intentional — fetches once on mount, cascading renders not an issue here
@@ -114,14 +107,11 @@ export default function WireGuardPage() {
     setCreating(true)
     try {
       // eslint-disable-next-line no-restricted-globals
-      const res = await fetch(
-        "/api/portal/vpn/wireguard/peers",
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ username: newUsername.trim() }),
-        }
-      )
+      const res = await fetch("/api/portal/vpn/wireguard/peers", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ username: newUsername.trim() }),
+      })
       if (res.status === 201) {
         const body = await res.json()
         setCreateResult(body)
@@ -129,9 +119,7 @@ export default function WireGuardPage() {
         await fetchPeers()
       } else {
         const body = await res.json().catch(() => null)
-        alert(
-          (body?.error?.message as string) ?? "Failed to create peer"
-        )
+        alert((body?.error?.message as string) ?? "Failed to create peer")
       }
     } catch {
       alert("Failed to create peer")
@@ -177,9 +165,7 @@ export default function WireGuardPage() {
   const handleShowQr = async (username: string) => {
     try {
       // eslint-disable-next-line no-restricted-globals
-      const res = await fetch(
-        `/api/portal/vpn/wireguard/peers/${username}/qr`
-      )
+      const res = await fetch(`/api/portal/vpn/wireguard/peers/${username}/qr`)
       if (!res.ok) throw new Error("Failed")
       const blob = await res.blob()
       setShowQr(URL.createObjectURL(blob))
@@ -192,10 +178,7 @@ export default function WireGuardPage() {
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">WireGuard Peers</h1>
-        <Dialog
-          open={showCreateDialog}
-          onOpenChange={setShowCreateDialog}
-        >
+        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogTrigger asChild>
             <Button>
               <PlusIcon className="mr-2 h-4 w-4" /> Add Peer
@@ -230,8 +213,8 @@ export default function WireGuardPage() {
                       URL.revokeObjectURL(url)
                     }}
                   >
-                    <DownloadSimpleIcon className="mr-2 h-4 w-4" />{" "}
-                    Download .conf
+                    <DownloadSimpleIcon className="mr-2 h-4 w-4" /> Download
+                    .conf
                   </Button>
                   <Button
                     variant="outline"
@@ -280,9 +263,7 @@ export default function WireGuardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">
-            Peers ({peers.length})
-          </CardTitle>
+          <CardTitle className="text-lg">Peers ({peers.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -297,102 +278,89 @@ export default function WireGuardPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading
-                ? Array.from({ length: 3 }).map((_, i) => (
-                    <TableRow key={i}>
-                      {Array.from({ length: 6 }).map((_, j) => (
-                        <TableCell key={j}>
-                          <Skeleton className="h-4 w-20" />
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                : peers.length === 0
-                  ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={6}
-                          className="text-center text-muted-foreground py-8"
-                        >
-                          No peers found
-                        </TableCell>
-                      </TableRow>
-                    )
-                  : peers.map((peer) => (
-                      <TableRow key={peer.username}>
-                        <TableCell className="font-medium">
-                          {peer.username}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {peer.ip}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              peer.status === "online"
-                                ? "default"
-                                : "secondary"
-                            }
-                          >
-                            {peer.status === "online"
-                              ? (
-                                  <>
-                                    <WifiHighIcon className="mr-1 h-3 w-3" />{" "}
-                                    Online
-                                  </>
-                                )
-                              : (
-                                  <>
-                                    <WifiSlashIcon className="mr-1 h-3 w-3" />{" "}
-                                    Offline
-                                  </>
-                                )}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {relativeTime(peer.handshake)}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          ↓ {formatBytes(peer.rx)} / ↑{" "}
-                          {formatBytes(peer.tx)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() =>
-                                handleDownload(peer.username)
-                              }
-                              title="Download config"
-                            >
-                              <DownloadSimpleIcon className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() =>
-                                handleShowQr(peer.username)
-                              }
-                              title="Show QR"
-                            >
-                              <ImageIcon className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() =>
-                                handleDelete(peer.username)
-                              }
-                              title="Remove peer"
-                              className="text-red-500"
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+              {loading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <TableRow key={i}>
+                    {Array.from({ length: 6 }).map((_, j) => (
+                      <TableCell key={j}>
+                        <Skeleton className="h-4 w-20" />
+                      </TableCell>
                     ))}
+                  </TableRow>
+                ))
+              ) : peers.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={6}
+                    className="py-8 text-center text-muted-foreground"
+                  >
+                    No peers found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                peers.map((peer) => (
+                  <TableRow key={peer.username}>
+                    <TableCell className="font-medium">
+                      {peer.username}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {peer.ip}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          peer.status === "online" ? "default" : "secondary"
+                        }
+                      >
+                        {peer.status === "online" ? (
+                          <>
+                            <WifiHighIcon className="mr-1 h-3 w-3" /> Online
+                          </>
+                        ) : (
+                          <>
+                            <WifiSlashIcon className="mr-1 h-3 w-3" /> Offline
+                          </>
+                        )}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {relativeTime(peer.handshake)}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      ↓ {formatBytes(peer.rx)} / ↑ {formatBytes(peer.tx)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleDownload(peer.username)}
+                          title="Download config"
+                        >
+                          <DownloadSimpleIcon className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleShowQr(peer.username)}
+                          title="Show QR"
+                        >
+                          <ImageIcon className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleDelete(peer.username)}
+                          title="Remove peer"
+                          className="text-red-500"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

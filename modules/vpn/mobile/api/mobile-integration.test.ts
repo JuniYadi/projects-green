@@ -219,7 +219,10 @@ const authenticate = mock(async () => ({
 
 const exchangeCode = mock(async (code: string) => {
   if (code === "invalid_code" || code === "expired_code") {
-    throw Object.assign(new Error("Invalid authorization code"), { name: "AuthenticationException", statusCode: 401 })
+    throw Object.assign(new Error("Invalid authorization code"), {
+      name: "AuthenticationException",
+      statusCode: 401,
+    })
   }
   return { user: { id: "user-1" }, organizationId: "org-1" }
 })
@@ -617,18 +620,15 @@ describe("Mobile VPN Integration", () => {
 
       const app = createDeviceApp()
       const res = await app.handle(
-        new Request(
-          `http://localhost/vpn/mobile/devices/missing/replace`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              deviceName: "New iPhone",
-              deviceFingerprint: "fp-replaced",
-              platform: "ios",
-            }),
-          }
-        )
+        new Request(`http://localhost/vpn/mobile/devices/missing/replace`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            deviceName: "New iPhone",
+            deviceFingerprint: "fp-replaced",
+            platform: "ios",
+          }),
+        })
       )
 
       expect(res.status).toBe(404)
@@ -693,7 +693,8 @@ describe("Mobile VPN Integration", () => {
     it("returns 400 when subscription not ACTIVE", async () => {
       mockFindUnique.mockImplementation(
         async (args: { where: { id: string } }) => {
-          if (args?.where?.id === "inactive-sub") return { ...activeSubscription, status: "EXPIRED" }
+          if (args?.where?.id === "inactive-sub")
+            return { ...activeSubscription, status: "EXPIRED" }
           return null
         }
       )
@@ -898,9 +899,7 @@ describe("Mobile VPN Integration", () => {
 
       const app = createPairingApp()
       const res = await app.handle(
-        new Request(
-          "http://localhost/vpn/mobile/pairing/status/some-token"
-        )
+        new Request("http://localhost/vpn/mobile/pairing/status/some-token")
       )
 
       expect(res.status).toBe(200)
@@ -916,9 +915,7 @@ describe("Mobile VPN Integration", () => {
 
       const app = createPairingApp()
       const res = await app.handle(
-        new Request(
-          "http://localhost/vpn/mobile/pairing/status/some-token"
-        )
+        new Request("http://localhost/vpn/mobile/pairing/status/some-token")
       )
 
       expect(res.status).toBe(200)
@@ -934,9 +931,7 @@ describe("Mobile VPN Integration", () => {
 
       const app = createPairingApp()
       const res = await app.handle(
-        new Request(
-          "http://localhost/vpn/mobile/pairing/status/bad-token"
-        )
+        new Request("http://localhost/vpn/mobile/pairing/status/bad-token")
       )
 
       expect(res.status).toBe(200)
@@ -951,9 +946,7 @@ describe("Mobile VPN Integration", () => {
 
       const app = createPairingApp()
       const res = await app.handle(
-        new Request(
-          "http://localhost/vpn/mobile/pairing/status/old-token"
-        )
+        new Request("http://localhost/vpn/mobile/pairing/status/old-token")
       )
 
       expect(res.status).toBe(200)
@@ -968,9 +961,7 @@ describe("Mobile VPN Integration", () => {
 
       const app = createPairingApp()
       const res = await app.handle(
-        new Request(
-          "http://localhost/vpn/mobile/pairing/status/some-token"
-        )
+        new Request("http://localhost/vpn/mobile/pairing/status/some-token")
       )
 
       expect(res.status).toBe(200)
@@ -989,9 +980,7 @@ describe("Mobile VPN Integration", () => {
 
       const app = createPairingApp()
       const res = await app.handle(
-        new Request(
-          "http://localhost/vpn/mobile/pairing/status/some-token"
-        )
+        new Request("http://localhost/vpn/mobile/pairing/status/some-token")
       )
 
       expect(res.status).toBe(401)
@@ -1004,9 +993,7 @@ describe("Mobile VPN Integration", () => {
 
       const app = createPairingApp()
       const res = await app.handle(
-        new Request(
-          "http://localhost/vpn/mobile/pairing/status/some-token"
-        )
+        new Request("http://localhost/vpn/mobile/pairing/status/some-token")
       )
 
       expect(res.status).toBe(500)
@@ -1025,9 +1012,7 @@ describe("Mobile VPN Integration", () => {
 
       const app = createPairingApp()
       const res = await app.handle(
-        new Request(
-          "http://localhost/vpn/mobile/pairing/status/some-token"
-        )
+        new Request("http://localhost/vpn/mobile/pairing/status/some-token")
       )
 
       expect(res.status).toBe(403)

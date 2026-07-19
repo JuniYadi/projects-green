@@ -260,7 +260,8 @@ export const createSupportTicketAttachmentRoutes = (
               url.pathname.startsWith(`/${s3Bucket}/`)
 
             // Virtual-hosted: https://bucket.s3.region.amazonaws.com/key
-            const isVirtualHosted = url.hostname === `${s3Bucket}.${endpointHost}`
+            const isVirtualHosted =
+              url.hostname === `${s3Bucket}.${endpointHost}`
 
             if (!isPathStyle && !isVirtualHosted) {
               console.error(
@@ -271,7 +272,8 @@ export const createSupportTicketAttachmentRoutes = (
               return {
                 ok: false as const,
                 error: "FORBIDDEN" as const,
-                message: "Upload URL does not match configured storage endpoint.",
+                message:
+                  "Upload URL does not match configured storage endpoint.",
               }
             }
           } catch {

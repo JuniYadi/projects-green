@@ -55,7 +55,6 @@ mock.module("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
- 
 globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch
 
 import { render, waitFor } from "@testing-library/react"
@@ -70,9 +69,7 @@ describe("ConsoleWhatsAppWebhookLogsPage", () => {
     const view = render(<ConsoleWhatsAppWebhookLogsPage />)
 
     await waitFor(() => {
-      expect(
-        view.getByRole("heading", { name: "Webhook Logs" })
-      ).toBeTruthy()
+      expect(view.getByRole("heading", { name: "Webhook Logs" })).toBeTruthy()
     })
   })
 

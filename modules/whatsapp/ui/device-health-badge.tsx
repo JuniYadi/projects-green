@@ -38,7 +38,11 @@ export function DeviceHealthBadge({
       ? "destructive"
       : "secondary"
 
-  const label = connected ? "Connected" : disconnected ? "Disconnected" : "Unknown"
+  const label = connected
+    ? "Connected"
+    : disconnected
+      ? "Disconnected"
+      : "Unknown"
 
   const dotColor = connected
     ? "bg-green-500"

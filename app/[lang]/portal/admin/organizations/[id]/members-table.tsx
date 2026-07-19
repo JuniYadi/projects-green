@@ -96,7 +96,8 @@ export function MembersTable({ organizationId }: MembersTableProps) {
     return [
       {
         id: "name",
-        accessorFn: (row) => `${row.firstName ?? ""} ${row.lastName ?? ""}`.trim(),
+        accessorFn: (row) =>
+          `${row.firstName ?? ""} ${row.lastName ?? ""}`.trim(),
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Name" />
         ),

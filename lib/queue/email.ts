@@ -57,29 +57,34 @@ export class EmailJob extends BaseJob {
 
       // Update email log status on success
       if (emailLogId) {
-        await prisma.emailLog.update({
-          where: { id: emailLogId },
-          data: {
-            status: "SENT",
-            sentAt: new Date(),
-          },
-        }).catch((err) => {
-          console.error("[EmailJob] Failed to update email log:", err)
-        })
+        await prisma.emailLog
+          .update({
+            where: { id: emailLogId },
+            data: {
+              status: "SENT",
+              sentAt: new Date(),
+            },
+          })
+          .catch((err) => {
+            console.error("[EmailJob] Failed to update email log:", err)
+          })
       }
     } catch (error) {
       // Update email log status on failure
       if (emailLogId) {
-        await prisma.emailLog.update({
-          where: { id: emailLogId },
-          data: {
-            status: "FAILED",
-            errorMessage: error instanceof Error ? error.message : String(error),
-            attempts: { increment: 1 },
-          },
-        }).catch((err) => {
-          console.error("[EmailJob] Failed to update email log:", err)
-        })
+        await prisma.emailLog
+          .update({
+            where: { id: emailLogId },
+            data: {
+              status: "FAILED",
+              errorMessage:
+                error instanceof Error ? error.message : String(error),
+              attempts: { increment: 1 },
+            },
+          })
+          .catch((err) => {
+            console.error("[EmailJob] Failed to update email log:", err)
+          })
       }
       throw error
     }

@@ -2,12 +2,29 @@ import { z } from "zod"
 
 /** Meta v23.0 vertical enum — 21 values */
 export const VERTICALS = [
-  "OTHER", "AUTO", "BEAUTY", "APPAREL", "EDU", "ENTERTAIN",
-  "EVENT_PLAN", "FINANCE", "GROCERY", "GOVT", "HOTEL", "HEALTH",
-  "NONPROFIT", "PROF_SERVICES", "RETAIL", "TRAVEL", "RESTAURANT",
-  "ALCOHOL", "ONLINE_GAMBLING", "PHYSICAL_GAMBLING", "OTC_DRUGS",
+  "OTHER",
+  "AUTO",
+  "BEAUTY",
+  "APPAREL",
+  "EDU",
+  "ENTERTAIN",
+  "EVENT_PLAN",
+  "FINANCE",
+  "GROCERY",
+  "GOVT",
+  "HOTEL",
+  "HEALTH",
+  "NONPROFIT",
+  "PROF_SERVICES",
+  "RETAIL",
+  "TRAVEL",
+  "RESTAURANT",
+  "ALCOHOL",
+  "ONLINE_GAMBLING",
+  "PHYSICAL_GAMBLING",
+  "OTC_DRUGS",
 ] as const
-export type Vertical = typeof VERTICALS[number]
+export type Vertical = (typeof VERTICALS)[number]
 
 /** Fields that can appear in a Meta business profile. */
 export const businessProfileFieldsSchema = z.object({
@@ -22,11 +39,15 @@ export const businessProfileFieldsSchema = z.object({
 export type BusinessProfileFields = z.infer<typeof businessProfileFieldsSchema>
 
 /** Full profile as returned by Meta (messaging_product is informational). */
-export const whatsappBusinessProfileSchema = businessProfileFieldsSchema.extend({
-  messaging_product: z.literal("whatsapp").optional(),
-  profile_picture_handle: z.string().optional(),
-})
-export type WhatsAppBusinessProfile = z.infer<typeof whatsappBusinessProfileSchema>
+export const whatsappBusinessProfileSchema = businessProfileFieldsSchema.extend(
+  {
+    messaging_product: z.literal("whatsapp").optional(),
+    profile_picture_handle: z.string().optional(),
+  }
+)
+export type WhatsAppBusinessProfile = z.infer<
+  typeof whatsappBusinessProfileSchema
+>
 
 /** Meta GET response shape: { data: [{ business_profile: { ... } }] } */
 export const metaGetBusinessProfileResponseSchema = z.object({
@@ -42,7 +63,9 @@ export const updateBusinessProfileSchema = businessProfileFieldsSchema.extend({
   messaging_product: z.literal("whatsapp").default("whatsapp"),
   profile_picture_handle: z.string().optional(),
 })
-export type UpdateBusinessProfileInput = z.infer<typeof updateBusinessProfileSchema>
+export type UpdateBusinessProfileInput = z.infer<
+  typeof updateBusinessProfileSchema
+>
 
 /** Meta POST update response */
 export const metaUpdateBusinessProfileResponseSchema = z.object({

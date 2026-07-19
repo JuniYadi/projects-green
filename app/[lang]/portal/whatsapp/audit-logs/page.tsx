@@ -38,15 +38,25 @@ export default function PortalWhatsAppAuditLogsPage() {
   const [page, setPage] = React.useState(Number(searchParams.get("page")) || 1)
   const [total, setTotal] = React.useState(0)
   const [totalPages, setTotalPages] = React.useState(0)
-  const [pageState, setPageState] = React.useState<"loading" | "error" | "loaded">("loading")
+  const [pageState, setPageState] = React.useState<
+    "loading" | "error" | "loaded"
+  >("loading")
   const [errorMessage, setErrorMessage] = React.useState("")
 
   // Filters
-  const [filterAction, setFilterAction] = React.useState(searchParams.get("action") ?? "")
-  const [filterStatus, setFilterStatus] = React.useState(searchParams.get("status") ?? "")
-  const [filterDeviceId, setFilterDeviceId] = React.useState(searchParams.get("deviceId") ?? "")
+  const [filterAction, setFilterAction] = React.useState(
+    searchParams.get("action") ?? ""
+  )
+  const [filterStatus, setFilterStatus] = React.useState(
+    searchParams.get("status") ?? ""
+  )
+  const [filterDeviceId, setFilterDeviceId] = React.useState(
+    searchParams.get("deviceId") ?? ""
+  )
   const [filterQ, setFilterQ] = React.useState(searchParams.get("q") ?? "")
-  const [filterFrom, setFilterFrom] = React.useState(searchParams.get("from") ?? "")
+  const [filterFrom, setFilterFrom] = React.useState(
+    searchParams.get("from") ?? ""
+  )
   const [filterTo, setFilterTo] = React.useState(searchParams.get("to") ?? "")
 
   const buildQuery = React.useCallback(() => {
@@ -58,7 +68,15 @@ export default function PortalWhatsAppAuditLogsPage() {
     if (filterFrom) q.from = filterFrom
     if (filterTo) q.to = filterTo
     return q
-  }, [page, filterAction, filterStatus, filterDeviceId, filterQ, filterFrom, filterTo])
+  }, [
+    page,
+    filterAction,
+    filterStatus,
+    filterDeviceId,
+    filterQ,
+    filterFrom,
+    filterTo,
+  ])
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -70,7 +88,7 @@ export default function PortalWhatsAppAuditLogsPage() {
         // ponytail: audit routes aren't in Eden's type system yet — use raw fetch
         // eslint-disable-next-line no-restricted-globals
         const res = await fetch(`/api/whatsapp/admin/whatsapp/audit?${params}`)
-        const result = await res.json() as {
+        const result = (await res.json()) as {
           ok: boolean
           data: AuditLogDTO[]
           pagination: { page: number; total: number; totalPages: number }
@@ -81,14 +99,24 @@ export default function PortalWhatsAppAuditLogsPage() {
         setTotalPages(result.pagination.totalPages)
         setPageState("loaded")
       } catch (err) {
-        setErrorMessage(err instanceof Error ? err.message : "Failed to load audit logs")
+        setErrorMessage(
+          err instanceof Error ? err.message : "Failed to load audit logs"
+        )
         setPageState("error")
       }
     }
     fetchData()
     // ponytail: only re-fetch when page or filters change
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, filterAction, filterStatus, filterDeviceId, filterQ, filterFrom, filterTo])
+  }, [
+    page,
+    filterAction,
+    filterStatus,
+    filterDeviceId,
+    filterQ,
+    filterFrom,
+    filterTo,
+  ])
 
   const handleApplyFilters = () => {
     setPage(1)
@@ -122,7 +150,9 @@ export default function PortalWhatsAppAuditLogsPage() {
       {/* Filter Bar */}
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Action</label>
+          <label className="text-xs font-medium text-muted-foreground">
+            Action
+          </label>
           <select
             className="h-9 rounded-md border px-3 text-sm"
             value={filterAction}
@@ -130,13 +160,17 @@ export default function PortalWhatsAppAuditLogsPage() {
           >
             <option value="">All</option>
             {AUDIT_ACTIONS.map((a) => (
-              <option key={a} value={a}>{a}</option>
+              <option key={a} value={a}>
+                {a}
+              </option>
             ))}
           </select>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Status</label>
+          <label className="text-xs font-medium text-muted-foreground">
+            Status
+          </label>
           <select
             className="h-9 rounded-md border px-3 text-sm"
             value={filterStatus}
@@ -144,13 +178,17 @@ export default function PortalWhatsAppAuditLogsPage() {
           >
             <option value="">All</option>
             {AUDIT_STATUSES.map((s) => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s} value={s}>
+                {s}
+              </option>
             ))}
           </select>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Device ID</label>
+          <label className="text-xs font-medium text-muted-foreground">
+            Device ID
+          </label>
           <Input
             placeholder="deviceId"
             className="h-9 w-40"
@@ -160,7 +198,9 @@ export default function PortalWhatsAppAuditLogsPage() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Search</label>
+          <label className="text-xs font-medium text-muted-foreground">
+            Search
+          </label>
           <Input
             placeholder="message, adminId, deviceId"
             className="h-9 w-48"
@@ -170,7 +210,9 @@ export default function PortalWhatsAppAuditLogsPage() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">From</label>
+          <label className="text-xs font-medium text-muted-foreground">
+            From
+          </label>
           <Input
             type="date"
             className="h-9 w-36"
@@ -180,7 +222,9 @@ export default function PortalWhatsAppAuditLogsPage() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium text-muted-foreground">To</label>
+          <label className="text-xs font-medium text-muted-foreground">
+            To
+          </label>
           <Input
             type="date"
             className="h-9 w-36"
@@ -190,8 +234,12 @@ export default function PortalWhatsAppAuditLogsPage() {
         </div>
 
         <div className="flex gap-2">
-          <Button size="sm" onClick={handleApplyFilters}>Apply</Button>
-          <Button variant="outline" size="sm" onClick={handleResetFilters}>Reset</Button>
+          <Button size="sm" onClick={handleApplyFilters}>
+            Apply
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleResetFilters}>
+            Reset
+          </Button>
         </div>
       </div>
 

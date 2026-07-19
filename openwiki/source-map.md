@@ -31,7 +31,7 @@ app/
 │   ├── admin/              → Super admin pages
 │   ├── auth/               → Authentication pages (select-org, etc.)
 │   ├── console/            → Customer console (tenant member)
-│   │   ├── app/            → App management (credentials page)
+│   │   ├── app/            → App management (credentials, settings, events, logs, metrics)
 │   │   ├── billing/        → Billing pages
 │   │   ├── invoices/       → Invoice pages
 │   │   ├── organization/   → Org settings
@@ -44,10 +44,10 @@ app/
 │   ├── portal/             → Admin portal pages
 │   │   ├── admin/          → Admin org/user management
 │   │   ├── app/            → App hosting management
-│   │   ├── billing/        → Portal billing pages
+│   │   ├── billing/        → Portal billing (payments, invoices, org-scoped overview)
 │   │   ├── documentation/  → Docs viewer
 │   │   ├── invoices/       → Invoice management
-│   │   ├── payments/       → Payment configuration
+│   │   ├── orgs/            → Organization overview (stats, org-scoped dashboards)
 │   │   ├── settings/       → Portal settings
 │   │   ├── support-tickets/→ Ticket management
 │   │   ├── vpn/            → VPN admin pages
@@ -56,6 +56,7 @@ app/
 ├── api/                    → API route catch-all
 │   ├── [[...slugs]]/       → Elysia route handler
 │   ├── auth/               → Auth-specific API routes
+│   ├── app/                → App credential routes (CRUD + revoke)
 │   └── integrations/       → Third-party integration callbacks + GitHub accounts listing
 ├── callback/               → WorkOS OAuth callback
 ├── globals.css             → Global Tailwind styles
@@ -113,7 +114,7 @@ modules/
 ├── admin/                  → Admin panel routes
 ├── auth/                   → Authentication logic + WhoAmI
 ├── billing/                → Billing engine (core)
-├── cloudflare/             → Cloudflare DNS credential management (encrypted token storage, CRUD API)
+├── credentials/            → App credential management (encryption-at-rest, type registry, GitHub/Cloudflare tokens)
 ├── deploy/                 → App hosting deployment
 ├── docs/                   → Documentation + knowledge base
 ├── email-templates/        → Email template API
@@ -173,4 +174,4 @@ e2e/                        → Playwright specs
 | **Rate limiting** | `lib/rate-limit.ts` |
 | **Audit logging** | `lib/audit.service.ts` |
 | **Integrations API** | `app/api/integrations/` (GitHub accounts, callbacks) |
-| **Credentials UI** | `app/[lang]/console/app/credentials/` (GitHub accounts + Cloudflare DNS tokens) |
+| **Credentials** | `modules/credentials/` (encrypted storage, type registry) + `app/api/app/credentials/` (Next.js API routes) + `app/[lang]/console/app/credentials/` (UI) |

@@ -1,6 +1,12 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react"
 import { eden } from "@/lib/eden"
 import {
   DropdownMenu,
@@ -79,7 +85,7 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
     })()
   }, [loadData])
 
-  const handleInvite = async (e: React.FormEvent) => {
+  const handleInvite = async (e: FormEvent) => {
     e.preventDefault()
     if (!email) return
 
@@ -108,102 +114,104 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
     }
   }
 
-  const handleAction = async (
-    edenCall: Promise<{
-      data?: { ok?: boolean; message?: string } | null
-      error?: unknown
-    }>
-  ) => {
-    setError(null)
-    try {
-      const { data: res } = await edenCall
-      if (res?.ok) {
-        void loadData()
-      } else {
-        setError(res?.message || "Action failed")
+  const handleAction = useCallback(
+    async (
+      edenCall: Promise<{
+        data?: { ok?: boolean; message?: string } | null
+        error?: unknown
+      }>
+    ) => {
+      setError(null)
+      try {
+        const { data: res } = await edenCall
+        if (res?.ok) {
+          void loadData()
+        } else {
+          setError(res?.message || "Action failed")
+        }
+      } catch {
+        setError("An unexpected error occurred")
       }
-    } catch {
-      setError("An unexpected error occurred")
-    }
-  }
-  const columns = useMemo<ColumnDef<TenantInvitationSummary>[]>(() => [
-    {
-      accessorKey: "email",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Email" />
-      ),
-      cell: ({ row }) => (
-        <span className="font-medium">{row.original.email}</span>
-      ),
     },
-    {
-      accessorKey: "roleSlug",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Role" />
-      ),
-      cell: ({ row }) => (
-        <span className="capitalize">
-          {row.original.roleSlug || "Member"}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "expiresAt",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Expires" />
-      ),
-      cell: ({ row }) => (
-        <span>
-          {new Date(row.original.expiresAt).toLocaleDateString()}
-        </span>
-      ),
-    },
-    {
-      id: "actions",
-      header: () => null,
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <DotsThreeVerticalIcon className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() =>
-                handleAction(
-                  eden.api.tenants[organizationId].invitations[
-                    row.original.id
-                  ].resend.post()
-                )
-              }
-            >
-              Resend
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              onClick={() => {
-                if (
-                  confirm(
-                    "Are you sure you want to revoke this invitation?"
-                  )
-                ) {
+    [loadData]
+  )
+  const columns = useMemo<ColumnDef<TenantInvitationSummary>[]>(
+    () => [
+      {
+        accessorKey: "email",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Email" />
+        ),
+        cell: ({ row }) => (
+          <span className="font-medium">{row.original.email}</span>
+        ),
+      },
+      {
+        accessorKey: "roleSlug",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Role" />
+        ),
+        cell: ({ row }) => (
+          <span className="capitalize">
+            {row.original.roleSlug || "Member"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "expiresAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Expires" />
+        ),
+        cell: ({ row }) => (
+          <span>{new Date(row.original.expiresAt).toLocaleDateString()}</span>
+        ),
+      },
+      {
+        id: "actions",
+        header: () => null,
+        cell: ({ row }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <DotsThreeVerticalIcon className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() =>
                   handleAction(
                     eden.api.tenants[organizationId].invitations[
                       row.original.id
-                    ].revoke.post()
+                    ].resend.post()
                   )
                 }
-              }}
-            >
-              Revoke
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-      enableHiding: false,
-    },
-  ], [organizationId, handleAction])
+              >
+                Resend
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => {
+                  if (
+                    confirm("Are you sure you want to revoke this invitation?")
+                  ) {
+                    handleAction(
+                      eden.api.tenants[organizationId].invitations[
+                        row.original.id
+                      ].revoke.post()
+                    )
+                  }
+                }}
+              >
+                Revoke
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+        enableHiding: false,
+      },
+    ],
+    [organizationId, handleAction]
+  )
 
   if (isLoading) {
     return (

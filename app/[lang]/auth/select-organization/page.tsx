@@ -2,7 +2,6 @@ import { AuthPageShell } from "@/components/auth-page-shell"
 
 import { SelectOrganizationForm } from "@/components/select-organization-form"
 
-
 type SelectOrganizationPageProps = {
   params: Promise<{
     lang: string
@@ -19,7 +18,7 @@ export default async function SelectOrganizationPage({
   params,
 }: SelectOrganizationPageProps) {
   // ponytail: lang unused but kept for type compliance with Next.js params
-  void await params
+  void (await params)
   const search = await searchParams
   const pendingAuthenticationToken = search?.pendingAuthenticationToken ?? ""
   const email = search?.email

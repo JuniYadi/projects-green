@@ -34,12 +34,17 @@ export type DeviceHealthStatus = "CONNECTED" | "DISCONNECTED" | "UNKNOWN"
 
 export function toDeviceListItem(device: WhatsappDeviceRecord): DeviceListItem {
   const profile =
-    device.whatsappProfile && typeof device.whatsappProfile === "object" && !Array.isArray(device.whatsappProfile)
+    device.whatsappProfile &&
+    typeof device.whatsappProfile === "object" &&
+    !Array.isArray(device.whatsappProfile)
       ? (device.whatsappProfile as Record<string, unknown>)
       : null
-  const profileName = profile && typeof profile.name === "string" && profile.name.trim().length > 0
-    ? profile.name.trim()
-    : null
+  const profileName =
+    profile &&
+    typeof profile.name === "string" &&
+    profile.name.trim().length > 0
+      ? profile.name.trim()
+      : null
 
   return {
     id: device.id,
@@ -67,20 +72,31 @@ export type DeviceHealthInfo = {
   lastDisconnectedAt: string | null
 }
 
-export function toDeviceHealthInfo(device: WhatsappDeviceRecord): DeviceHealthInfo {
+export function toDeviceHealthInfo(
+  device: WhatsappDeviceRecord
+): DeviceHealthInfo {
   const status = device.status as DeviceStatus
   if (status === "DISCONNECTED") {
-    return { status: "DISCONNECTED", lastHeartbeatAt: device.lastHeartbeatAt?.toISOString() ?? null, lastDisconnectedAt: device.lastDisconnectedAt?.toISOString() ?? null }
+    return {
+      status: "DISCONNECTED",
+      lastHeartbeatAt: device.lastHeartbeatAt?.toISOString() ?? null,
+      lastDisconnectedAt: device.lastDisconnectedAt?.toISOString() ?? null,
+    }
   }
   if (status === "ACTIVE" && device.lastHeartbeatAt) {
     const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000)
     return {
-      status: device.lastHeartbeatAt > fifteenMinAgo ? "CONNECTED" : "DISCONNECTED",
+      status:
+        device.lastHeartbeatAt > fifteenMinAgo ? "CONNECTED" : "DISCONNECTED",
       lastHeartbeatAt: device.lastHeartbeatAt.toISOString(),
       lastDisconnectedAt: device.lastDisconnectedAt?.toISOString() ?? null,
     }
   }
-  return { status: "UNKNOWN", lastHeartbeatAt: device.lastHeartbeatAt?.toISOString() ?? null, lastDisconnectedAt: device.lastDisconnectedAt?.toISOString() ?? null }
+  return {
+    status: "UNKNOWN",
+    lastHeartbeatAt: device.lastHeartbeatAt?.toISOString() ?? null,
+    lastDisconnectedAt: device.lastDisconnectedAt?.toISOString() ?? null,
+  }
 }
 
 export function toDeviceDetail(device: WhatsappDeviceRecord): DeviceDetail {

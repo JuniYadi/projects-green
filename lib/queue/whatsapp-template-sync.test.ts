@@ -8,7 +8,6 @@ import {
 
 // ponytail: params kept for BullMQ add() signature compatibility
 const add = mock(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async (_name: string, _data: unknown, _opts: unknown) =>
     ({ jobId: undefined }) as never
 )
@@ -35,8 +34,10 @@ describe("createWhatsAppTemplateSyncQueue", () => {
     expect(add.mock.calls[1][1]).toEqual(data)
 
     // ponytail: third arg is BullMQ job options with optional jobId
-    const firstJobId = (add.mock.calls[0][2] as { jobId?: string } | undefined)?.jobId
-    const secondJobId = (add.mock.calls[1][2] as { jobId?: string } | undefined)?.jobId
+    const firstJobId = (add.mock.calls[0][2] as { jobId?: string } | undefined)
+      ?.jobId
+    const secondJobId = (add.mock.calls[1][2] as { jobId?: string } | undefined)
+      ?.jobId
 
     expect(firstJobId).toStartWith(
       "wa-template-sync_org_1_dev_1_sync-templates_"

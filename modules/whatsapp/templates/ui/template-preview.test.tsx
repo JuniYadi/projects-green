@@ -7,7 +7,7 @@
  */
 
 import { describe, expect, it } from "bun:test"
-import { render, within } from "@testing-library/react"
+import { render } from "@testing-library/react"
 import * as React from "react"
 import {
   getTemplatePlaceholderIndexes,
@@ -34,9 +34,9 @@ describe("getTemplatePlaceholderIndexes", () => {
   })
 
   it("handles whitespace in placeholders", () => {
-    expect(
-      getTemplatePlaceholderIndexes("Hi {{ 1 }}, code {{2}}")
-    ).toEqual([1, 2])
+    expect(getTemplatePlaceholderIndexes("Hi {{ 1 }}, code {{2}}")).toEqual([
+      1, 2,
+    ])
   })
 
   it("returns empty for body without placeholders", () => {
@@ -139,9 +139,7 @@ describe("resolveTemplatePreviewValues", () => {
     const lang: Pick<WhatsAppTemplateLanguage, "body" | "parameters"> = {
       body: "Hi {{1}}",
       parameters: {
-        components: [
-          { type: "BODY", example: { body_text: ["Alice"] } },
-        ],
+        components: [{ type: "BODY", example: { body_text: ["Alice"] } }],
       },
     }
     const result = resolveTemplatePreviewValues(lang)
@@ -222,9 +220,7 @@ describe("WhatsAppTemplatePreview", () => {
       id: "l_empty",
       lang: "en",
     }
-    const { container } = render(
-      <WhatsAppTemplatePreview language={empty} />
-    )
+    const { container } = render(<WhatsAppTemplatePreview language={empty} />)
     expect(container.textContent).toContain("No preview content")
   })
 })

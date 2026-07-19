@@ -9,10 +9,7 @@ import {
   revokeMobileDevice,
   type MobileDeviceEntry,
 } from "@/lib/vpn-mobile-client"
-import {
-  listVpnSubscriptions,
-  type VpnSubscription,
-} from "@/lib/vpn-client"
+import { listVpnSubscriptions, type VpnSubscription } from "@/lib/vpn-client"
 
 import { VpnDevicesList } from "../_components/vpn-devices-list"
 import { VpnPairingQrModal } from "@/modules/vpn/_components/vpn-pairing-qr-modal"

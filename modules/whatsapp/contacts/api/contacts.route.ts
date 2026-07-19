@@ -18,7 +18,6 @@ const contactBodySchema = t.Object({
 })
 const contactUpdateSchema = t.Partial(contactBodySchema)
 
-
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 100
 
@@ -30,7 +29,6 @@ function getPagination(query: Record<string, unknown>) {
   )
   return { page, limit, skip: (page - 1) * limit }
 }
-
 
 export const contactsRoutes = new Elysia({ prefix: "/contacts" })
   .get(
@@ -64,10 +62,20 @@ export const contactsRoutes = new Elysia({ prefix: "/contacts" })
 
       // Enrich with conversation-derived last-message data
       const phoneNumbers = contacts.map((c) => c.phoneNumber)
-      const conversationMap = new Map<string, { lastMessage: string | null; lastMessageAt: Date | null; lastMessageDirection: WhatsappMessageDirection | null }>()
+      const conversationMap = new Map<
+        string,
+        {
+          lastMessage: string | null
+          lastMessageAt: Date | null
+          lastMessageDirection: WhatsappMessageDirection | null
+        }
+      >()
       if (phoneNumbers.length > 0) {
         const conversations = await prisma.whatsappConversation.findMany({
-          where: { organizationId: whatsappAuth.organizationId!, contactPhone: { in: phoneNumbers } },
+          where: {
+            organizationId: whatsappAuth.organizationId!,
+            contactPhone: { in: phoneNumbers },
+          },
           select: {
             contactPhone: true,
             lastMessageAt: true,

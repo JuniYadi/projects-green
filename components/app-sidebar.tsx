@@ -97,10 +97,7 @@ interface SidebarContextConfig {
     locale: AppLocale,
     tab?: string
   ) => AppSidebarNavItem[]
-  getNavHeader?: (
-    pathname: string,
-    locale: AppLocale
-  ) => React.ReactNode
+  getNavHeader?: (pathname: string, locale: AppLocale) => React.ReactNode
   navMainLabel: string
 }
 
@@ -160,7 +157,8 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         title: "Overview",
         url: localizePathname({ pathname: "/portal/orgs", locale }),
         icon: <GaugeIcon />,
-        isActive: path === localizePathname({ pathname: "/portal/orgs", locale }),
+        isActive:
+          path === localizePathname({ pathname: "/portal/orgs", locale }),
       },
     ],
   },
@@ -169,13 +167,6 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
     matches: (path) => startsWithRoute(path, "/portal/billing"),
     navMainLabel: "Billing",
     getProjects: (path, locale) => [
-      {
-        name: "All Orgs Overview",
-        url: localizePathname({ pathname: "/portal/billing", locale }),
-        icon: <GaugeIcon />,
-        isActive:
-          path === localizePathname({ pathname: "/portal/billing", locale }),
-      },
       {
         name: "Org Overview",
         url: localizePathname({ pathname: "/portal/orgs", locale }),
@@ -739,7 +730,6 @@ const getHubMenu = (path: string, locale: AppLocale) => ({
       icon: <GlobeIcon />,
       isActive: startsWithRoute(path, "/console/vpn"),
     },
-
   ],
 })
 
@@ -879,9 +869,7 @@ export const resolveSidebarMenu = ({
   navHeader?: React.ReactNode
 } => {
   if (surface === "portal") {
-    const matchingContext = PORTAL_CONTEXTS.find((cfg) =>
-      cfg.matches(pathname)
-    )
+    const matchingContext = PORTAL_CONTEXTS.find((cfg) => cfg.matches(pathname))
     if (matchingContext) {
       return {
         navMain: matchingContext.getNavMain(pathname, locale, tab),
@@ -905,9 +893,7 @@ export const resolveSidebarMenu = ({
     }
   }
 
-  const matchingContext = CONSOLE_CONTEXTS.find((cfg) =>
-    cfg.matches(pathname)
-  )
+  const matchingContext = CONSOLE_CONTEXTS.find((cfg) => cfg.matches(pathname))
   if (matchingContext) {
     return {
       navMain: matchingContext.getNavMain(pathname, locale),
@@ -949,9 +935,7 @@ export function AppSidebar({
         <NavOrganization organization={organization} />
       </SidebarHeader>
       <SidebarContent>
-        {navHeader && (
-          <div className="px-3 py-2">{navHeader}</div>
-        )}
+        {navHeader && <div className="px-3 py-2">{navHeader}</div>}
         <NavProjects projects={projects} />
         <NavMain items={navMain} label={navMainLabel} />
         <NavSecondary items={navSecondary} className="mt-auto" />

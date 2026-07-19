@@ -55,8 +55,12 @@ class WebhookMetricsCollector {
     const windowStart = now - FAILURE_RATE_WINDOW_MS
 
     // Prune old timestamps
-    this.requestTimestamps = this.requestTimestamps.filter((ts) => ts >= windowStart)
-    this.errorTimestamps = this.errorTimestamps.filter((ts) => ts >= windowStart)
+    this.requestTimestamps = this.requestTimestamps.filter(
+      (ts) => ts >= windowStart
+    )
+    this.errorTimestamps = this.errorTimestamps.filter(
+      (ts) => ts >= windowStart
+    )
 
     const windowRequests = this.requestTimestamps.length
     const windowErrors = this.errorTimestamps.length
@@ -83,8 +87,12 @@ class WebhookMetricsCollector {
     const windowStart = now - FAILURE_RATE_WINDOW_MS
 
     // Prune old timestamps
-    this.requestTimestamps = this.requestTimestamps.filter((ts) => ts >= windowStart)
-    this.errorTimestamps = this.errorTimestamps.filter((ts) => ts >= windowStart)
+    this.requestTimestamps = this.requestTimestamps.filter(
+      (ts) => ts >= windowStart
+    )
+    this.errorTimestamps = this.errorTimestamps.filter(
+      (ts) => ts >= windowStart
+    )
 
     const windowRequests = this.requestTimestamps.length
     const windowErrors = this.errorTimestamps.length

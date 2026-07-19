@@ -106,8 +106,7 @@ export function ConfirmationsTab() {
 
   const fetchConfirmations = useCallback(async () => {
     try {
-      const { data, error } =
-        await eden.api.portal.payments.confirmations.get()
+      const { data, error } = await eden.api.portal.payments.confirmations.get()
 
       if (error) {
         setState({
@@ -139,9 +138,9 @@ export function ConfirmationsTab() {
   ) {
     setPendingActionId(`${action}:${id}`)
     try {
-      const { error } = await eden.api.portal.payments.confirmations[
-        id
-      ][action].post({
+      const { error } = await eden.api.portal.payments.confirmations[id][
+        action
+      ].post({
         action,
         reason:
           action === "reject"

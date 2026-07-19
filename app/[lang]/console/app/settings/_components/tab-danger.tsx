@@ -57,9 +57,7 @@ export function TabDanger({ stack }: TabDangerProps) {
           </h4>
           <p className="mt-1 text-xs text-muted-foreground">
             Permanently delete{" "}
-            <span className="font-semibold text-foreground">
-              {stack.name}
-            </span>{" "}
+            <span className="font-semibold text-foreground">{stack.name}</span>{" "}
             and all associated data including deployments, domains, environment
             variables, and logs. This action cannot be undone.
           </p>
@@ -108,9 +106,7 @@ export function TabDanger({ stack }: TabDangerProps) {
                   disabled={confirmText !== stack.name || isDeleting}
                   onClick={handleDelete}
                 >
-                  {isDeleting
-                    ? "Deleting..."
-                    : `Delete ${stack.name}`}
+                  {isDeleting ? "Deleting..." : `Delete ${stack.name}`}
                 </Button>
               </DialogFooter>
             </DialogContent>

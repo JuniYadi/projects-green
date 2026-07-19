@@ -26,7 +26,11 @@ export class AnalyticsService {
     if (device.organizationId !== input.organizationId) {
       throw new Error("DEVICE_NOT_OWNED")
     }
-    if (!device.tokenEncrypted || !device.whatsappPhoneId || !device.whatsappBusinessAccountId) {
+    if (
+      !device.tokenEncrypted ||
+      !device.whatsappPhoneId ||
+      !device.whatsappBusinessAccountId
+    ) {
       throw new Error("WHATSAPP_DEVICE_NOT_CONFIGURED")
     }
 
@@ -38,7 +42,9 @@ export class AnalyticsService {
     })
 
     const startTs = Math.floor(new Date(input.startDate).getTime() / 1000)
-    const endTs = Math.floor(new Date(input.endDate + "T23:59:59Z").getTime() / 1000)
+    const endTs = Math.floor(
+      new Date(input.endDate + "T23:59:59Z").getTime() / 1000
+    )
     const granularity = input.granularity ?? "DAY"
 
     const result = await client.getAnalytics({
@@ -103,7 +109,10 @@ export class AnalyticsService {
       }
 
       // Check discrepancy against pre-sync values (not post-updated)
-      if (Math.abs(metaInbound - preInbound) / Math.max(metaInbound, 1) > DISCREPANCY_THRESHOLD) {
+      if (
+        Math.abs(metaInbound - preInbound) / Math.max(metaInbound, 1) >
+        DISCREPANCY_THRESHOLD
+      ) {
         discrepancies.push({
           date,
           phoneNumberId: item.phone_number_id,
@@ -115,7 +124,10 @@ export class AnalyticsService {
         })
       }
 
-      if (Math.abs(metaOutbound - preOutbound) / Math.max(metaOutbound, 1) > DISCREPANCY_THRESHOLD) {
+      if (
+        Math.abs(metaOutbound - preOutbound) / Math.max(metaOutbound, 1) >
+        DISCREPANCY_THRESHOLD
+      ) {
         discrepancies.push({
           date,
           phoneNumberId: item.phone_number_id,
@@ -123,7 +135,8 @@ export class AnalyticsService {
           metaValue: metaOutbound,
           localValue: preOutbound,
           delta: metaOutbound - preOutbound,
-          deltaPercent: (metaOutbound - preOutbound) / Math.max(metaOutbound, 1),
+          deltaPercent:
+            (metaOutbound - preOutbound) / Math.max(metaOutbound, 1),
         })
       }
 
@@ -146,8 +159,13 @@ export class AnalyticsService {
       where: { id: deviceId },
     })
     if (!device) throw new Error("WHATSAPP_DEVICE_NOT_FOUND")
-    if (device.organizationId !== organizationId) throw new Error("DEVICE_NOT_OWNED")
-    if (!device.tokenEncrypted || !device.whatsappPhoneId || !device.whatsappBusinessAccountId) {
+    if (device.organizationId !== organizationId)
+      throw new Error("DEVICE_NOT_OWNED")
+    if (
+      !device.tokenEncrypted ||
+      !device.whatsappPhoneId ||
+      !device.whatsappBusinessAccountId
+    ) {
       throw new Error("WHATSAPP_DEVICE_NOT_CONFIGURED")
     }
 
@@ -180,7 +198,7 @@ export class AnalyticsService {
       orderBy: { date: "asc" },
     })
 
-    const localByDate = new Map<string, typeof localRows[0]>()
+    const localByDate = new Map<string, (typeof localRows)[0]>()
     for (const row of localRows) {
       const key = row.date.toISOString().split("T")[0]
       localByDate.set(key, row)
@@ -255,7 +273,11 @@ export class AnalyticsService {
       where: { id: deviceId },
     })
     if (!device) throw new Error("WHATSAPP_DEVICE_NOT_FOUND")
-    if (!device.tokenEncrypted || !device.whatsappPhoneId || !device.whatsappBusinessAccountId) {
+    if (
+      !device.tokenEncrypted ||
+      !device.whatsappPhoneId ||
+      !device.whatsappBusinessAccountId
+    ) {
       throw new Error("WHATSAPP_DEVICE_NOT_CONFIGURED")
     }
 
@@ -355,7 +377,9 @@ export class AnalyticsService {
           })
 
           const startTs = Math.floor(new Date(opts.startDate).getTime() / 1000)
-          const endTs = Math.floor(new Date(opts.endDate + "T23:59:59Z").getTime() / 1000)
+          const endTs = Math.floor(
+            new Date(opts.endDate + "T23:59:59Z").getTime() / 1000
+          )
 
           const metaResult = await client.getAnalytics({
             start: startTs,
@@ -370,12 +394,18 @@ export class AnalyticsService {
 
           for (const item of metaResult.data) {
             const date = item.conversation_start
-              ? new Date(item.conversation_start * 1000).toISOString().split("T")[0]
+              ? new Date(item.conversation_start * 1000)
+                  .toISOString()
+                  .split("T")[0]
               : opts.startDate
 
             const metaCost = item.cost?.amount ?? 0
             const localForDevice = localLedger
-              .filter((l) => l.whatsappDeviceId === device.id && l.pricingCategory === item.conversation_category)
+              .filter(
+                (l) =>
+                  l.whatsappDeviceId === device.id &&
+                  l.pricingCategory === item.conversation_category
+              )
               .reduce((sum, l) => sum + Number(l.quotaValue), 0)
 
             rows.push({

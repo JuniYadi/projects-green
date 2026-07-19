@@ -38,9 +38,8 @@ mock.module("@/lib/encryption", () => ({
   serializeEncryptedField: mock((v: unknown) => JSON.stringify(v)),
 }))
 
-const { createVpnSubscriptionRoutes } = await import(
-  "./vpn-subscriptions.route"
-)
+const { createVpnSubscriptionRoutes } =
+  await import("./vpn-subscriptions.route")
 
 const subscription = {
   id: "sub_1",
@@ -154,7 +153,9 @@ describe("VPN subscription routes", () => {
       )
 
       const response = await app.handle(
-        new Request("http://localhost/vpn/subscriptions/sub_1/servers/sa_1/config")
+        new Request(
+          "http://localhost/vpn/subscriptions/sub_1/servers/sa_1/config"
+        )
       )
       expect(response.status).toBe(200)
       expect(response.headers.get("content-disposition")).toContain(".ovpn")
@@ -176,7 +177,9 @@ describe("VPN subscription routes", () => {
       )
 
       const response = await app.handle(
-        new Request("http://localhost/vpn/subscriptions/sub_1/servers/sa_1/config")
+        new Request(
+          "http://localhost/vpn/subscriptions/sub_1/servers/sa_1/config"
+        )
       )
       expect(response.status).toBe(403)
       const body = await response.json()
@@ -205,7 +208,9 @@ describe("VPN subscription routes", () => {
       )
 
       const response = await app.handle(
-        new Request("http://localhost/vpn/subscriptions/sub_1/servers/sa_1/config")
+        new Request(
+          "http://localhost/vpn/subscriptions/sub_1/servers/sa_1/config"
+        )
       )
       expect(response.status).toBe(403)
       const body = await response.json()
@@ -227,7 +232,9 @@ describe("VPN subscription routes", () => {
       )
 
       const response = await app.handle(
-        new Request("http://localhost/vpn/subscriptions/sub_1/servers/sa_1/config")
+        new Request(
+          "http://localhost/vpn/subscriptions/sub_1/servers/sa_1/config"
+        )
       )
       expect(response.status).toBe(404)
     })
@@ -247,7 +254,9 @@ describe("VPN subscription routes", () => {
       )
 
       const response = await app.handle(
-        new Request("http://localhost/vpn/subscriptions/sub_1/servers/nonexistent/config")
+        new Request(
+          "http://localhost/vpn/subscriptions/sub_1/servers/nonexistent/config"
+        )
       )
       expect(response.status).toBe(404)
     })

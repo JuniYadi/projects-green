@@ -279,10 +279,16 @@ describe("devices routes", () => {
     )
 
     expect(response.status).toBe(405)
-    const payload = (await response.json()) as { ok: boolean; error: string; message: string }
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+      message: string
+    }
     expect(payload.ok).toBe(false)
     expect(payload.error).toBe("METHOD_NOT_ALLOWED")
-    expect(payload.message).toBe("WhatsApp device system fields cannot be updated from the console API. Update the WhatsApp profile instead.")
+    expect(payload.message).toBe(
+      "WhatsApp device system fields cannot be updated from the console API. Update the WhatsApp profile instead."
+    )
     // Ensure the prisma update was never called
     expect(mockUpdate.mock.calls.length).toBe(0)
   })

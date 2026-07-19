@@ -33,9 +33,7 @@ export const RenewalFailedEmail = ({
           will retry the payment automatically over the coming days.
         </Text>
         <Hr style={s.hr} />
-        <Text style={s.footer}>
-          Need help? Contact our support team.
-        </Text>
+        <Text style={s.footer}>Need help? Contact our support team.</Text>
       </Container>
     </Body>
   </Html>

@@ -77,7 +77,6 @@ const mockDeleteTenantMembershipSafely = mock(
 const mockRequireTenantActor = mock(
   async (): Promise<MockActor | TenantApiError> => ({ ...defaultActor })
 )
-/* eslint-disable @typescript-eslint/no-unused-vars */
 const mockEnsureTenantContextAccess = mock(
   (
     _orgId: string,
@@ -85,7 +84,6 @@ const mockEnsureTenantContextAccess = mock(
     _set: MockRouteSet
   ): true | TenantApiError => true
 )
-/* eslint-enable @typescript-eslint/no-unused-vars */
 
 const toContextMismatchError = (set: MockRouteSet): TenantApiError => {
   set.status = 403

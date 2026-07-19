@@ -133,7 +133,7 @@ export function BillingDashboard() {
     }
 
     void loadData()
-  // ponytail: messages is stable (i18n lookup), safe dep
+    // ponytail: messages is stable (i18n lookup), safe dep
   }, [messages.console.billing.failedToLoadBalance])
 
   if (isLoading) {
@@ -254,7 +254,9 @@ export function BillingDashboard() {
       {/* WhatsApp Usage Summary Card */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium">WhatsApp Usage & Costs</CardTitle>
+          <CardTitle className="text-sm font-medium">
+            WhatsApp Usage & Costs
+          </CardTitle>
           <ChatCircle className="size-4 text-muted-foreground" weight="fill" />
         </CardHeader>
         <CardContent className="space-y-2">
@@ -262,9 +264,7 @@ export function BillingDashboard() {
             Track per-device costs, usage forecasts, and quota alerts.
           </p>
           <Button asChild variant="outline" size="sm">
-            <Link href="/console/whatsapp/usage">
-              View WhatsApp Usage
-            </Link>
+            <Link href="/console/whatsapp/usage">View WhatsApp Usage</Link>
           </Button>
         </CardContent>
       </Card>

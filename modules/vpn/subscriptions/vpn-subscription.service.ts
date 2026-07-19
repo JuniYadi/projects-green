@@ -24,7 +24,9 @@ const subscriptionInclude = {
           openVpnPort: true,
           wireGuardPort: true,
           proxyPort: true,
-          region: { select: { id: true, name: true, slug: true, countryCode: true } },
+          region: {
+            select: { id: true, name: true, slug: true, countryCode: true },
+          },
         },
       },
     },
@@ -108,9 +110,7 @@ function enabledProtocols(server: {
  * The DB already tracks organization, server, and protocol, so the remote
  * username only needs a compact org hint plus random uniqueness.
  */
-export function buildAccountUsername(
-  organizationId: string
-): string {
+export function buildAccountUsername(organizationId: string): string {
   const safeOrg = organizationId.replace(/[^A-Za-z0-9]/g, "").toLowerCase()
   const orgHint = safeOrg.slice(-8) || "org"
   const suffix = crypto.randomBytes(3).toString("hex")
@@ -319,9 +319,7 @@ export class VpnSubscriptionService {
       enabledProtocols(entry.server).map((protocol) => ({
         serverId: entry.server.id,
         protocol,
-        username: buildAccountUsername(
-          input.organizationId
-        ),
+        username: buildAccountUsername(input.organizationId),
       }))
     )
 
@@ -439,7 +437,7 @@ export class VpnSubscriptionService {
   async reinstate(
     organizationId: string,
     id: string,
-    reason?: string,
+    reason?: string
   ): Promise<VpnSubscriptionWithAccounts> {
     const existing = await this.prisma.vpnSubscription.findFirst({
       where: { id, organizationId },
@@ -475,7 +473,7 @@ export class VpnSubscriptionService {
   async cancelAtPeriodEnd(
     organizationId: string,
     id: string,
-    reason?: string,
+    reason?: string
   ): Promise<VpnSubscriptionWithAccounts> {
     const existing = await this.prisma.vpnSubscription.findFirst({
       where: { id, organizationId },

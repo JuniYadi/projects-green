@@ -494,7 +494,7 @@ export function InvoiceDetailScreen({
               type="button"
               onClick={() => {
                 router.push(
-                  `/console/billing/payments/confirm?invoiceId=${encodeURIComponent(
+                  `/${lang}/console/billing/payments/confirm?invoiceId=${encodeURIComponent(
                     invoice.id
                   )}&amount=${Math.round(invoice.totalAmount)}`
                 )

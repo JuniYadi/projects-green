@@ -21,7 +21,10 @@ import {
   useSyncTemplate,
   type TemplateFormInput,
 } from "@/modules/whatsapp/templates/api/templates.hooks"
-import { TemplateForm, type LanguageVariant } from "@/modules/whatsapp/templates/ui/template-form"
+import {
+  TemplateForm,
+  type LanguageVariant,
+} from "@/modules/whatsapp/templates/ui/template-form"
 import { TemplateDeleteDialog } from "@/modules/whatsapp/templates/ui/template-delete-dialog"
 import { TemplateDetailView } from "@/modules/whatsapp/templates/ui/template-detail"
 
@@ -46,7 +49,9 @@ export default function PortalTemplateDetailPage() {
   const structureSource =
     template?.languages.find(
       (l) => l.isApproved || l.metaStatus === "APPROVED"
-    ) ?? template?.languages[0] ?? null
+    ) ??
+    template?.languages[0] ??
+    null
   const structureTemplate = structureSource
     ? {
         headerType: structureSource.headerType ?? "NONE",

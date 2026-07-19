@@ -70,7 +70,8 @@ export class WebhookRetryJob extends BaseJob {
         await createDeadLetter({
           deviceId,
           organizationId,
-          eventType: eventType === "message" ? "inbound_message" : "status_update",
+          eventType:
+            eventType === "message" ? "inbound_message" : "status_update",
           payload,
           errorMessage: String(error),
           attemptCount: job.attemptsMade + 1,

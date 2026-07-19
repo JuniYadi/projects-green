@@ -4,10 +4,7 @@ import type {
   AppSidebarOrganization,
   AppSidebarUser,
 } from "@/components/app-sidebar"
-import {
-  getCachedUser,
-  getCachedOrganization,
-} from "@/lib/workos-directory"
+import { getCachedUser, getCachedOrganization } from "@/lib/workos-directory"
 
 const normalizeAvatarUrl = (value: string | null) => {
   if (!value) {
@@ -37,9 +34,7 @@ export const resolveSidebarUser = (user: User): AppSidebarUser => {
  * Resolve a WorkOS user by ID using the centralized directory service.
  * Falls back to the provided user object if the fetch fails.
  */
-export const getLatestWorkOSUser = async (
-  user: User
-): Promise<User> => {
+export const getLatestWorkOSUser = async (user: User): Promise<User> => {
   try {
     const cached = await getCachedUser(user.id)
     if (!cached) return user
@@ -84,11 +79,7 @@ export const resolveSidebarOrganization = async (
       name: org?.name?.trim() ?? null,
     }
   } catch (error) {
-    console.warn(
-      "[sidebar-session] Failed to resolve organization",
-      id,
-      error
-    )
+    console.warn("[sidebar-session] Failed to resolve organization", id, error)
     return {
       id,
       name: null,

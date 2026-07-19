@@ -80,9 +80,7 @@ describe("ConsoleWhatsAppDeviceDetailPage", () => {
   it("loads device profile after the loading render without changing hook order", async () => {
     const { default: ConsoleWhatsAppDeviceDetailPage } = await import("./page")
 
-    const view = render(
-      React.createElement(ConsoleWhatsAppDeviceDetailPage)
-    )
+    const view = render(React.createElement(ConsoleWhatsAppDeviceDetailPage))
 
     await waitFor(() => {
       expect(view.getByText("Loaded profile about text")).toBeTruthy()

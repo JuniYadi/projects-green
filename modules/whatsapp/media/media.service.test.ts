@@ -126,7 +126,13 @@ describe("media.service", () => {
         metaMediaId: "media-1",
         mimeType: "image/jpeg",
         fileSize: 1024,
-        storePath: path.join(tmpDir, "storage", "device-1", "media-1", "photo.jpg"),
+        storePath: path.join(
+          tmpDir,
+          "storage",
+          "device-1",
+          "media-1",
+          "photo.jpg"
+        ),
         downloadedAt: new Date(),
         expiresAt: new Date(),
         createdAt: new Date(),

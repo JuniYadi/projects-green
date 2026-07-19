@@ -146,12 +146,12 @@ function getLast6Months(): { year: number; month: number }[] {
   return months
 }
 
-
 export default function WhatsAppUsagePage() {
   const [state, setState] = React.useState<PageState>("loading")
   const [error, setError] = React.useState("")
   const [overview, setOverview] = React.useState<OverviewData | null>(null)
-  const [costBreakdown, setCostBreakdown] = React.useState<CostBreakdownData | null>(null)
+  const [costBreakdown, setCostBreakdown] =
+    React.useState<CostBreakdownData | null>(null)
   const [dailyCounts, setDailyCounts] = React.useState<DailyCount[]>([])
   const [monthlyCounts, setMonthlyCounts] = React.useState<MonthlyCount[]>([])
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
@@ -167,24 +167,29 @@ export default function WhatsAppUsagePage() {
       try {
         const last6 = getLast6Months()
 
-        const [overviewRes, dailyRes, deviceRes, costBreakdownRes, ...monthlyResults] =
-          await Promise.all([
-            whatsappClient.usage.overview(),
-            whatsappClient.usage.daily({
-              from: dateRange.from,
-              to: dateRange.to,
+        const [
+          overviewRes,
+          dailyRes,
+          deviceRes,
+          costBreakdownRes,
+          ...monthlyResults
+        ] = await Promise.all([
+          whatsappClient.usage.overview(),
+          whatsappClient.usage.daily({
+            from: dateRange.from,
+            to: dateRange.to,
+            deviceId,
+          }),
+          whatsappClient.devices.list(),
+          whatsappClient.usage.costBreakdown({ deviceId }),
+          ...last6.map((m) =>
+            whatsappClient.usage.monthly({
+              year: m.year,
+              month: m.month,
               deviceId,
-            }),
-            whatsappClient.devices.list(),
-            whatsappClient.usage.costBreakdown({ deviceId }),
-            ...last6.map((m) =>
-              whatsappClient.usage.monthly({
-                year: m.year,
-                month: m.month,
-                deviceId,
-              })
-            ),
-          ])
+            })
+          ),
+        ])
 
         if (cancelled) return
 
@@ -245,7 +250,10 @@ export default function WhatsAppUsagePage() {
   )
   const totalCost = costData?.totalAmount ?? 0
   const hasData =
-    totalMessages > 0 || dailyCounts.length > 0 || monthlyCounts.length > 0 || (costBreakdown?.totalCost ?? 0) > 0
+    totalMessages > 0 ||
+    dailyCounts.length > 0 ||
+    monthlyCounts.length > 0 ||
+    (costBreakdown?.totalCost ?? 0) > 0
 
   return (
     <div className="space-y-6">
@@ -287,29 +295,43 @@ export default function WhatsAppUsagePage() {
       )}
 
       {/* Quota Alert Banner */}
-      {state === "loaded" && costBreakdown && costBreakdown.byDevice.some((d) => d.quotaBase > 0 && d.quotaPercent >= 70) && (
-        <div className="flex items-start gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3">
-          <Warning className="mt-0.5 size-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
-          <div className="text-sm text-yellow-600 dark:text-yellow-400">
-            <strong>Quota Warning:</strong> One or more devices are approaching their monthly limit.
-            <span className="ml-1">Review the per-device breakdown below.</span>
+      {state === "loaded" &&
+        costBreakdown &&
+        costBreakdown.byDevice.some(
+          (d) => d.quotaBase > 0 && d.quotaPercent >= 70
+        ) && (
+          <div className="flex items-start gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3">
+            <Warning className="mt-0.5 size-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
+            <div className="text-sm text-yellow-600 dark:text-yellow-400">
+              <strong>Quota Warning:</strong> One or more devices are
+              approaching their monthly limit.
+              <span className="ml-1">
+                Review the per-device breakdown below.
+              </span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Stat Cards — always render card shells, skeletonize only values during loading */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Messages</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Messages
+            </CardTitle>
             <ChartLine className="size-4 text-muted-foreground" weight="fill" />
           </CardHeader>
           <CardContent>
             {state === "loading" ? (
-              <Skeleton className="h-7 w-20" data-testid="usage-value-skeleton" />
+              <Skeleton
+                className="h-7 w-20"
+                data-testid="usage-value-skeleton"
+              />
             ) : (
               <>
-                <div className="text-2xl font-bold">{totalMessages.toLocaleString()}</div>
+                <div className="text-2xl font-bold">
+                  {totalMessages.toLocaleString()}
+                </div>
                 <p className="text-xs text-muted-foreground">This month</p>
               </>
             )}
@@ -319,15 +341,25 @@ export default function WhatsAppUsagePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Inbound Count</CardTitle>
-            <ChatCircle className="size-4 text-muted-foreground" weight="fill" />
+            <ChatCircle
+              className="size-4 text-muted-foreground"
+              weight="fill"
+            />
           </CardHeader>
           <CardContent>
             {state === "loading" ? (
-              <Skeleton className="h-7 w-20" data-testid="usage-value-skeleton" />
+              <Skeleton
+                className="h-7 w-20"
+                data-testid="usage-value-skeleton"
+              />
             ) : (
               <>
-                <div className="text-2xl font-bold">{totalInbound.toLocaleString()}</div>
-                <p className="text-xs text-muted-foreground">Messages received</p>
+                <div className="text-2xl font-bold">
+                  {totalInbound.toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Messages received
+                </p>
               </>
             )}
           </CardContent>
@@ -335,15 +367,25 @@ export default function WhatsAppUsagePage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Outbound Count</CardTitle>
-            <PaperPlaneTilt className="size-4 text-muted-foreground" weight="fill" />
+            <CardTitle className="text-sm font-medium">
+              Outbound Count
+            </CardTitle>
+            <PaperPlaneTilt
+              className="size-4 text-muted-foreground"
+              weight="fill"
+            />
           </CardHeader>
           <CardContent>
             {state === "loading" ? (
-              <Skeleton className="h-7 w-20" data-testid="usage-value-skeleton" />
+              <Skeleton
+                className="h-7 w-20"
+                data-testid="usage-value-skeleton"
+              />
             ) : (
               <>
-                <div className="text-2xl font-bold">{totalOutbound.toLocaleString()}</div>
+                <div className="text-2xl font-bold">
+                  {totalOutbound.toLocaleString()}
+                </div>
                 <p className="text-xs text-muted-foreground">Messages sent</p>
               </>
             )}
@@ -353,15 +395,25 @@ export default function WhatsAppUsagePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
-            <CurrencyDollar className="size-4 text-muted-foreground" weight="fill" />
+            <CurrencyDollar
+              className="size-4 text-muted-foreground"
+              weight="fill"
+            />
           </CardHeader>
           <CardContent>
             {state === "loading" ? (
-              <Skeleton className="h-7 w-20" data-testid="usage-value-skeleton" />
+              <Skeleton
+                className="h-7 w-20"
+                data-testid="usage-value-skeleton"
+              />
             ) : (
               <>
-                <div className="text-2xl font-bold">{formatCurrency(totalCost)}</div>
-                <p className="text-xs text-muted-foreground">{costData?.totalEntries ?? 0} ledger entries</p>
+                <div className="text-2xl font-bold">
+                  {formatCurrency(totalCost)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {costData?.totalEntries ?? 0} ledger entries
+                </p>
               </>
             )}
           </CardContent>
@@ -373,18 +425,34 @@ export default function WhatsAppUsagePage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Monthly Quota Used</CardTitle>
-              <ChartLine className="size-4 text-muted-foreground" weight="fill" />
+              <CardTitle className="text-sm font-medium">
+                Monthly Quota Used
+              </CardTitle>
+              <ChartLine
+                className="size-4 text-muted-foreground"
+                weight="fill"
+              />
             </CardHeader>
             <CardContent>
               {state === "loading" || !costBreakdown ? (
-                <Skeleton className="h-7 w-20" data-testid="usage-value-skeleton" />
+                <Skeleton
+                  className="h-7 w-20"
+                  data-testid="usage-value-skeleton"
+                />
               ) : (
                 <>
                   <div className="text-2xl font-bold">
-                    {costBreakdown.byDevice.reduce((s, d) => s + d.quotaUsed, 0).toLocaleString()} / {costBreakdown.byDevice.reduce((s, d) => s + d.quotaBase + d.addonQuotaTotal, 0).toLocaleString()}
+                    {costBreakdown.byDevice
+                      .reduce((s, d) => s + d.quotaUsed, 0)
+                      .toLocaleString()}{" "}
+                    /{" "}
+                    {costBreakdown.byDevice
+                      .reduce((s, d) => s + d.quotaBase + d.addonQuotaTotal, 0)
+                      .toLocaleString()}
                   </div>
-                  <p className="text-xs text-muted-foreground">Quota credits used this month</p>
+                  <p className="text-xs text-muted-foreground">
+                    Quota credits used this month
+                  </p>
                 </>
               )}
             </CardContent>
@@ -392,18 +460,30 @@ export default function WhatsAppUsagePage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Remaining Quota</CardTitle>
-              <ChatCircle className="size-4 text-muted-foreground" weight="fill" />
+              <CardTitle className="text-sm font-medium">
+                Remaining Quota
+              </CardTitle>
+              <ChatCircle
+                className="size-4 text-muted-foreground"
+                weight="fill"
+              />
             </CardHeader>
             <CardContent>
               {state === "loading" || !costBreakdown ? (
-                <Skeleton className="h-7 w-20" data-testid="usage-value-skeleton" />
+                <Skeleton
+                  className="h-7 w-20"
+                  data-testid="usage-value-skeleton"
+                />
               ) : (
                 <>
                   <div className="text-2xl font-bold">
-                    {costBreakdown.byDevice.reduce((s, d) => s + d.quotaBaseOut + d.addonQuota, 0).toLocaleString()}
+                    {costBreakdown.byDevice
+                      .reduce((s, d) => s + d.quotaBaseOut + d.addonQuota, 0)
+                      .toLocaleString()}
                   </div>
-                  <p className="text-xs text-muted-foreground">Remaining credits this period</p>
+                  <p className="text-xs text-muted-foreground">
+                    Remaining credits this period
+                  </p>
                 </>
               )}
             </CardContent>
@@ -411,16 +491,31 @@ export default function WhatsAppUsagePage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Projected Cost</CardTitle>
-              <CurrencyDollar className="size-4 text-muted-foreground" weight="fill" />
+              <CardTitle className="text-sm font-medium">
+                Projected Cost
+              </CardTitle>
+              <CurrencyDollar
+                className="size-4 text-muted-foreground"
+                weight="fill"
+              />
             </CardHeader>
             <CardContent>
               {state === "loading" || !costBreakdown ? (
-                <Skeleton className="h-7 w-20" data-testid="usage-value-skeleton" />
+                <Skeleton
+                  className="h-7 w-20"
+                  data-testid="usage-value-skeleton"
+                />
               ) : (
                 <>
-                  <div className="text-2xl font-bold">{costBreakdown.projectedCost.toLocaleString("id-ID", { style: "currency", currency: "IDR" }) || "—"}</div>
-                  <p className="text-xs text-muted-foreground">Estimated monthly cost</p>
+                  <div className="text-2xl font-bold">
+                    {costBreakdown.projectedCost.toLocaleString("id-ID", {
+                      style: "currency",
+                      currency: "IDR",
+                    }) || "—"}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Estimated monthly cost
+                  </p>
                 </>
               )}
             </CardContent>
@@ -429,15 +524,27 @@ export default function WhatsAppUsagePage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Balance</CardTitle>
-              <CurrencyDollar className="size-4 text-muted-foreground" weight="fill" />
+              <CurrencyDollar
+                className="size-4 text-muted-foreground"
+                weight="fill"
+              />
             </CardHeader>
             <CardContent>
               {state === "loading" || !costBreakdown ? (
-                <Skeleton className="h-7 w-20" data-testid="usage-value-skeleton" />
+                <Skeleton
+                  className="h-7 w-20"
+                  data-testid="usage-value-skeleton"
+                />
               ) : (
                 <>
-                  <div className="text-2xl font-bold">{costBreakdown.balance !== null ? `Rp${costBreakdown.balance.toLocaleString("id-ID")}` : "—"}</div>
-                  <p className="text-xs text-muted-foreground">Overage balance</p>
+                  <div className="text-2xl font-bold">
+                    {costBreakdown.balance !== null
+                      ? `Rp${costBreakdown.balance.toLocaleString("id-ID")}`
+                      : "—"}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Overage balance
+                  </p>
                 </>
               )}
             </CardContent>
@@ -478,14 +585,18 @@ export default function WhatsAppUsagePage() {
             ) : (
               <div className="space-y-4">
                 {costBreakdown.byDevice.map((dev) => (
-                  <div key={dev.deviceId} className="space-y-2 rounded-lg border p-4">
+                  <div
+                    key={dev.deviceId}
+                    className="space-y-2 rounded-lg border p-4"
+                  >
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium">
                           {dev.phoneNumber ?? dev.deviceId}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {dev.quotaUsed.toLocaleString()} credits used · {dev.messageCount.toLocaleString()} messages
+                          {dev.quotaUsed.toLocaleString()} credits used ·{" "}
+                          {dev.messageCount.toLocaleString()} messages
                         </p>
                       </div>
                       <div className="text-right">
@@ -494,7 +605,11 @@ export default function WhatsAppUsagePage() {
                         </p>
                         {dev.byCategory.length > 0 && (
                           <p className="text-xs text-muted-foreground">
-                            {dev.byCategory.map((c) => c.category.replace("WHATSAPP_MESSAGE_", "")).join(", ")}
+                            {dev.byCategory
+                              .map((c) =>
+                                c.category.replace("WHATSAPP_MESSAGE_", "")
+                              )
+                              .join(", ")}
                           </p>
                         )}
                       </div>

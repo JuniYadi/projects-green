@@ -685,7 +685,10 @@ export const createGithubRepositoryService = (
             installation.githubInstallationId
           )
 
-          return dependencies.listRepositoriesForInstallation(installation, token)
+          return dependencies.listRepositoriesForInstallation(
+            installation,
+            token
+          )
         })
       )
 

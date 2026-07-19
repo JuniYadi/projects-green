@@ -221,7 +221,11 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
     // Ensure phone ID exists
     if (!device.whatsappPhoneId) {
       set.status = 422
-      return { ok: false, error: "VALIDATION_ERROR", message: "Device missing phone ID." }
+      return {
+        ok: false,
+        error: "VALIDATION_ERROR",
+        message: "Device missing phone ID.",
+      }
     }
 
     // Call Meta API to verify device health
@@ -433,7 +437,8 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
       return {
         ok: true,
         signingSecret: newSecret,
-        message: "Signing secret regenerated. Update your webhook configuration.",
+        message:
+          "Signing secret regenerated. Update your webhook configuration.",
       }
     }
   )

@@ -14,9 +14,8 @@ mock.module("@/lib/billing-client", () => ({
 const { render, waitFor } = await import("@testing-library/react")
 const { default: userEvent } = await import("@testing-library/user-event")
 const nav = await import("next/navigation")
-const { PortalBillingOrgSelector } = await import(
-  "./portal-billing-org-selector"
-)
+const { PortalBillingOrgSelector } =
+  await import("./portal-billing-org-selector")
 
 describe("PortalBillingOrgSelector", () => {
   beforeEach(() => {

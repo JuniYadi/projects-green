@@ -1,10 +1,7 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  WalletIcon,
-  WarningIcon,
-} from "@phosphor-icons/react"
+import { WalletIcon, WarningIcon } from "@phosphor-icons/react"
 import type { AdminOrgDetail } from "@/lib/billing-client"
 
 type BalanceTabProps = {
@@ -44,9 +41,7 @@ export function BalanceTab({ orgDetail }: BalanceTabProps) {
           <WalletIcon className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div
-            className={`text-3xl font-bold ${getBalanceColor(org.balance)}`}
-          >
+          <div className={`text-3xl font-bold ${getBalanceColor(org.balance)}`}>
             {formatCurrency(org.balance)}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -61,7 +56,6 @@ export function BalanceTab({ orgDetail }: BalanceTabProps) {
               </p>
             </div>
           )}
-
         </CardContent>
       </Card>
 

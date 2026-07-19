@@ -66,16 +66,20 @@ export default function NewWhatsAppBroadcastPage() {
   const [deviceId, setDeviceId] = React.useState("")
   const [recipientSource, setRecipientSource] =
     React.useState<RecipientSource>("manual")
-  const [selectedContactIds, setSelectedContactIds] = React.useState<Set<string>>(new Set())
+  const [selectedContactIds, setSelectedContactIds] = React.useState<
+    Set<string>
+  >(new Set())
   const [manualRecipients, setManualRecipients] = React.useState("")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const [capacity, setCapacity] = React.useState<DeviceBroadcastCapacity | null>(null)
-  const [recommendation, setRecommendation] = React.useState<BroadcastScheduleRecommendation | null>(null)
-  const [throttleMaxMessages, setThrottleMaxMessages] = React.useState<number>(0)
+  const [capacity, setCapacity] =
+    React.useState<DeviceBroadcastCapacity | null>(null)
+  const [, setRecommendation] =
+    React.useState<BroadcastScheduleRecommendation | null>(null)
+  const [throttleMaxMessages, setThrottleMaxMessages] =
+    React.useState<number>(0)
   const [throttlePerMinutes, setThrottlePerMinutes] = React.useState<number>(60)
   const [showConfirmModal, setShowConfirmModal] = React.useState(false)
   const [acknowledgeMultiDay, setAcknowledgeMultiDay] = React.useState(false)
-
 
   const selectedTemplate = (templates ?? []).find(
     (template) => template.id === templateId
@@ -91,15 +95,14 @@ export default function NewWhatsAppBroadcastPage() {
       .map((c) => c.phoneNumber)
   }, [contacts, selectedContactIds])
 
-  const allContactsSelected = contacts.length > 0 && selectedContactIds.size === contacts.length
+  const allContactsSelected =
+    contacts.length > 0 && selectedContactIds.size === contacts.length
 
   const totalRecipients = React.useMemo(() => {
     return (
-      selectedContactPhones.length +
-      parseRecipients(manualRecipients).length
+      selectedContactPhones.length + parseRecipients(manualRecipients).length
     )
   }, [selectedContactPhones, manualRecipients])
-
 
   const effectiveDeviceId = deviceId || selectedTemplate?.whatsappDeviceId
   const hasScheduleInputs = Boolean(effectiveDeviceId && totalRecipients > 0)
@@ -153,23 +156,28 @@ export default function NewWhatsAppBroadcastPage() {
     }
 
     let cancelled = false
-    whatsappClient.previewBroadcastSchedule({
-      whatsappDeviceId: effectiveDeviceId,
-      recipients: allRecipients,
-    }).then((result) => {
-      if (!cancelled) {
-        setCapacity(result.capacity)
-        setRecommendation(result.recommendation)
-        setThrottleMaxMessages(result.recommendation.throttleMaxMessages)
-        setThrottlePerMinutes(result.recommendation.throttlePerMinutes)
-      }
-    }).catch(() => {
-      if (!cancelled) {
-        setCapacity(null)
-        setRecommendation(null)
-      }
-    })
-    return () => { cancelled = true }
+    whatsappClient
+      .previewBroadcastSchedule({
+        whatsappDeviceId: effectiveDeviceId,
+        recipients: allRecipients,
+      })
+      .then((result) => {
+        if (!cancelled) {
+          setCapacity(result.capacity)
+          setRecommendation(result.recommendation)
+          setThrottleMaxMessages(result.recommendation.throttleMaxMessages)
+          setThrottlePerMinutes(result.recommendation.throttlePerMinutes)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCapacity(null)
+          setRecommendation(null)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
   }, [effectiveDeviceId, manualRecipients, selectedContactPhones])
   const handleTemplateChange = (value: string) => {
     setTemplateId(value)
@@ -332,7 +340,7 @@ export default function NewWhatsAppBroadcastPage() {
                   <Label className="text-sm font-medium">
                     Select contacts{" "}
                     {selectedContactIds.size > 0 && (
-                      <span className="text-muted-foreground font-normal">
+                      <span className="font-normal text-muted-foreground">
                         ({selectedContactIds.size} selected)
                       </span>
                     )}
@@ -347,9 +355,9 @@ export default function NewWhatsAppBroadcastPage() {
                     {allContactsSelected ? "Deselect all" : "Select all"}
                   </Button>
                 </div>
-                <div className="rounded-md border max-h-64 overflow-y-auto">
+                <div className="max-h-64 overflow-y-auto rounded-md border">
                   {contacts.length === 0 ? (
-                    <div className="p-4 text-sm text-muted-foreground text-center">
+                    <div className="p-4 text-center text-sm text-muted-foreground">
                       No contacts available.
                     </div>
                   ) : (
@@ -357,17 +365,17 @@ export default function NewWhatsAppBroadcastPage() {
                       {contacts.map((contact) => (
                         <label
                           key={contact.id}
-                          className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors"
+                          className="flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-muted/50"
                         >
                           <Checkbox
                             checked={selectedContactIds.has(contact.id)}
                             onCheckedChange={() => toggleContact(contact.id)}
                           />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-medium">
                               {contact.name || "Unnamed contact"}
                             </div>
-                            <div className="text-xs text-muted-foreground truncate">
+                            <div className="truncate text-xs text-muted-foreground">
                               {contact.phoneNumber}
                             </div>
                           </div>
@@ -424,8 +432,8 @@ export default function NewWhatsAppBroadcastPage() {
             <CardTitle>Scheduling</CardTitle>
             {capacity ? (
               <CardDescription>
-                Device limit of {capacity.dailyLimit} messages / 24h
-                ({capacity.hourlyLimit}/h). Used {capacity.dailyUsed} today,
+                Device limit of {capacity.dailyLimit} messages / 24h (
+                {capacity.hourlyLimit}/h). Used {capacity.dailyUsed} today,
                 {capacity.hourlyUsed} this hour.
               </CardDescription>
             ) : (
@@ -443,7 +451,9 @@ export default function NewWhatsAppBroadcastPage() {
                       type="number"
                       min={1}
                       value={throttleMaxMessages}
-                      onChange={(e) => setThrottleMaxMessages(Number(e.target.value))}
+                      onChange={(e) =>
+                        setThrottleMaxMessages(Number(e.target.value))
+                      }
                     />
                   </div>
                   <div className="grid gap-2">
@@ -453,20 +463,27 @@ export default function NewWhatsAppBroadcastPage() {
                       type="number"
                       min={1}
                       value={throttlePerMinutes}
-                      onChange={(e) => setThrottlePerMinutes(Number(e.target.value))}
+                      onChange={(e) =>
+                        setThrottlePerMinutes(Number(e.target.value))
+                      }
                     />
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  ~{Math.ceil(
+                  ~
+                  {Math.ceil(
                     (totalRecipients * throttlePerMinutes) /
                       (throttleMaxMessages || 1)
-                  )}m at {Math.round((throttleMaxMessages / throttlePerMinutes) * 60)}/h
+                  )}
+                  m at{" "}
+                  {Math.round((throttleMaxMessages / throttlePerMinutes) * 60)}
+                  /h
                 </p>
                 {totalRecipients > capacity.remainingToday && (
                   <p className="text-sm text-amber-500">
-                    {totalRecipients} recipients exceed {capacity.remainingToday} remaining today —
-                    will span multiple days.
+                    {totalRecipients} recipients exceed{" "}
+                    {capacity.remainingToday} remaining today — will span
+                    multiple days.
                   </p>
                 )}
               </div>
@@ -484,48 +501,60 @@ export default function NewWhatsAppBroadcastPage() {
               Review the schedule before sending.
             </DialogDescription>
           </DialogHeader>
-            <div className="space-y-3 py-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Recipients</span>
-                <span>{totalRecipients}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Daily limit</span>
-                <span>{capacity?.dailyLimit ?? "—"} / day</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Remaining today</span>
-                <span>{capacity?.remainingToday ?? "—"}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Rate</span>
-                <span>{throttleMaxMessages} msg / {throttlePerMinutes}m</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Est. duration</span>
-                <span>~{Math.ceil(
+          <div className="space-y-3 py-4">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Recipients</span>
+              <span>{totalRecipients}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Daily limit</span>
+              <span>{capacity?.dailyLimit ?? "—"} / day</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Remaining today</span>
+              <span>{capacity?.remainingToday ?? "—"}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Rate</span>
+              <span>
+                {throttleMaxMessages} msg / {throttlePerMinutes}m
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Est. duration</span>
+              <span>
+                ~
+                {Math.ceil(
                   (totalRecipients * throttlePerMinutes) /
                     (throttleMaxMessages || 1)
-                )}m</span>
-              </div>
-              {totalRecipients > (capacity?.remainingToday ?? 0) && (
-                <div className="flex items-center gap-2 pt-2">
-                  <Checkbox
-                    id="multiDay"
-                    checked={acknowledgeMultiDay}
-                    onCheckedChange={(v) => setAcknowledgeMultiDay(v === true)}
-                  />
-                  <Label htmlFor="multiDay" className="text-sm text-amber-500">
-                    I understand this broadcast will span multiple days
-                  </Label>
-                </div>
-              )}
+                )}
+                m
+              </span>
             </div>
+            {totalRecipients > (capacity?.remainingToday ?? 0) && (
+              <div className="flex items-center gap-2 pt-2">
+                <Checkbox
+                  id="multiDay"
+                  checked={acknowledgeMultiDay}
+                  onCheckedChange={(v) => setAcknowledgeMultiDay(v === true)}
+                />
+                <Label htmlFor="multiDay" className="text-sm text-amber-500">
+                  I understand this broadcast will span multiple days
+                </Label>
+              </div>
+            )}
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfirmModal(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmModal(false)}
+            >
               Cancel
             </Button>
-            <Button onClick={() => void handleConfirmCreate()} disabled={isSubmitting}>
+            <Button
+              onClick={() => void handleConfirmCreate()}
+              disabled={isSubmitting}
+            >
               {isSubmitting ? "Creating…" : "Confirm & send"}
             </Button>
           </DialogFooter>

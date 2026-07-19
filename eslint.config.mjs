@@ -22,6 +22,19 @@ const eslintConfig = defineConfig([
     ".worktrees/**",
     'coverage/**'
   ]),
+  // Allow intentional underscore-prefixed unused vars/args (tests, route handlers)
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          varsIgnorePattern: "^_",
+          argsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
   // Route-group dirs with parens crash no-html-link-for-pages regex
   {
     rules: {

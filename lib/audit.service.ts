@@ -122,9 +122,11 @@ export async function logAuditEvent(params: AuditEventParams): Promise<void> {
         step: params.step ?? null,
         message: params.message,
         errorMessage: params.errorMessage ?? null,
-        requestPayload: params.requestPayload as Prisma.InputJsonValue ?? Prisma.JsonNull,
-        responsePayload: params.responsePayload as Prisma.InputJsonValue ?? Prisma.JsonNull,
-        details: params.details as Prisma.InputJsonValue ?? Prisma.JsonNull,
+        requestPayload:
+          (params.requestPayload as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+        responsePayload:
+          (params.responsePayload as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+        details: (params.details as Prisma.InputJsonValue) ?? Prisma.JsonNull,
         durationMs: params.durationMs ?? null,
         ip: params.ip ?? null,
         userAgent: params.userAgent ?? null,

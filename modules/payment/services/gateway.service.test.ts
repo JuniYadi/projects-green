@@ -25,7 +25,17 @@ const mockPrisma: Record<string, unknown> = {
     findMany: mock(() => Promise.resolve([])),
     findUnique: mock(() => Promise.resolve(null)),
     findFirst: mock(() => Promise.resolve(null)),
-    create: mock(() => Promise.resolve({ id: "gw_new", name: "", type: "", isActive: true, isDefault: false, supportedCurrencies: [], config: null })),
+    create: mock(() =>
+      Promise.resolve({
+        id: "gw_new",
+        name: "",
+        type: "",
+        isActive: true,
+        isDefault: false,
+        supportedCurrencies: [],
+        config: null,
+      })
+    ),
     update: mock(() => Promise.resolve({})),
     updateMany: mock(() => Promise.resolve({ count: 0 })),
   },
@@ -35,9 +45,8 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
-const { GatewayService } = await import(
-  "@/modules/payment/services/gateway.service"
-)
+const { GatewayService } =
+  await import("@/modules/payment/services/gateway.service")
 
 const mockEncryption = {
   encryptField: (value: string) => `encrypted:${value}`,
@@ -72,15 +81,17 @@ describe("GatewayService", () => {
     pg.findMany.mockResolvedValue([])
     pg.findUnique.mockResolvedValue(null)
     pg.findFirst.mockResolvedValue(null)
-    pg.create.mockImplementation(async (args: { data: Record<string, unknown> }) => ({
-      id: "gw_new",
-      name: args.data.name ?? "",
-      type: args.data.type ?? "",
-      isActive: true,
-      isDefault: (args.data.isDefault as boolean) ?? false,
-      supportedCurrencies: (args.data.supportedCurrencies as string[]) ?? [],
-      config: (args.data.config as string) ?? null,
-    }))
+    pg.create.mockImplementation(
+      async (args: { data: Record<string, unknown> }) => ({
+        id: "gw_new",
+        name: args.data.name ?? "",
+        type: args.data.type ?? "",
+        isActive: true,
+        isDefault: (args.data.isDefault as boolean) ?? false,
+        supportedCurrencies: (args.data.supportedCurrencies as string[]) ?? [],
+        config: (args.data.config as string) ?? null,
+      })
+    )
     pg.update.mockResolvedValue({})
     pg.updateMany.mockResolvedValue({ count: 0 })
 
@@ -155,7 +166,12 @@ describe("GatewayService", () => {
       const result = await service.create({
         name: "Duitku",
         type: "DUITKU",
-        config: { merchantCode: "MC001", apiKey: "key123", sandboxUrl: "", productionUrl: "" },
+        config: {
+          merchantCode: "MC001",
+          apiKey: "key123",
+          sandboxUrl: "",
+          productionUrl: "",
+        },
       })
       expect(result.name).toBe("Duitku")
     })
@@ -164,7 +180,12 @@ describe("GatewayService", () => {
       await service.create({
         name: "Duitku",
         type: "DUITKU",
-        config: { merchantCode: "MC001", apiKey: "key123", sandboxUrl: "", productionUrl: "" },
+        config: {
+          merchantCode: "MC001",
+          apiKey: "key123",
+          sandboxUrl: "",
+          productionUrl: "",
+        },
         isDefault: true,
       })
       expect(pg.updateMany).toHaveBeenCalled()
@@ -174,13 +195,17 @@ describe("GatewayService", () => {
   describe("update", () => {
     it("throws when gateway not found", async () => {
       pg.findUnique.mockResolvedValue(null)
-      await expect(service.update("gw_1", { name: "New Name" })).rejects.toThrow(
-        "Gateway not found"
-      )
+      await expect(
+        service.update("gw_1", { name: "New Name" })
+      ).rejects.toThrow("Gateway not found")
     })
 
     it("un-sets default on other gateways when making this one default", async () => {
-      pg.findUnique.mockResolvedValue({ id: "gw_1", type: "DUITKU", isDefault: false })
+      pg.findUnique.mockResolvedValue({
+        id: "gw_1",
+        type: "DUITKU",
+        isDefault: false,
+      })
       pg.update.mockResolvedValue({ id: "gw_1", isDefault: true })
       await service.update("gw_1", { isDefault: true })
       expect(pg.updateMany).toHaveBeenCalled()

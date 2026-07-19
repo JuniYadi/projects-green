@@ -56,7 +56,9 @@ export default function NewWhatsAppBroadcastPage() {
   const [deviceId, setDeviceId] = React.useState("")
   const [recipientSource, setRecipientSource] =
     React.useState<RecipientSource>("manual")
-  const [selectedContactIds, setSelectedContactIds] = React.useState<Set<string>>(new Set())
+  const [selectedContactIds, setSelectedContactIds] = React.useState<
+    Set<string>
+  >(new Set())
   const [manualRecipients, setManualRecipients] = React.useState("")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
@@ -93,7 +95,8 @@ export default function NewWhatsAppBroadcastPage() {
       .map((c) => c.phoneNumber)
   }, [contacts, selectedContactIds])
 
-  const allContactsSelected = contacts.length > 0 && selectedContactIds.size === contacts.length
+  const allContactsSelected =
+    contacts.length > 0 && selectedContactIds.size === contacts.length
 
   function toggleContact(id: string) {
     setSelectedContactIds((prev) => {
@@ -165,7 +168,6 @@ export default function NewWhatsAppBroadcastPage() {
   }
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
-
       <div>
         <h1 className="text-2xl font-bold tracking-tight">New broadcast</h1>
         <p className="text-muted-foreground">
@@ -261,7 +263,7 @@ export default function NewWhatsAppBroadcastPage() {
                   <Label className="text-sm font-medium">
                     Select contacts{" "}
                     {selectedContactIds.size > 0 && (
-                      <span className="text-muted-foreground font-normal">
+                      <span className="font-normal text-muted-foreground">
                         ({selectedContactIds.size} selected)
                       </span>
                     )}
@@ -276,9 +278,9 @@ export default function NewWhatsAppBroadcastPage() {
                     {allContactsSelected ? "Deselect all" : "Select all"}
                   </Button>
                 </div>
-                <div className="rounded-md border max-h-64 overflow-y-auto">
+                <div className="max-h-64 overflow-y-auto rounded-md border">
                   {contacts.length === 0 ? (
-                    <div className="p-4 text-sm text-muted-foreground text-center">
+                    <div className="p-4 text-center text-sm text-muted-foreground">
                       No contacts available.
                     </div>
                   ) : (
@@ -286,17 +288,17 @@ export default function NewWhatsAppBroadcastPage() {
                       {contacts.map((contact) => (
                         <label
                           key={contact.id}
-                          className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-muted/50 transition-colors"
+                          className="flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-muted/50"
                         >
                           <Checkbox
                             checked={selectedContactIds.has(contact.id)}
                             onCheckedChange={() => toggleContact(contact.id)}
                           />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-medium">
                               {contact.name || "Unnamed contact"}
                             </div>
-                            <div className="text-xs text-muted-foreground truncate">
+                            <div className="truncate text-xs text-muted-foreground">
                               {contact.phoneNumber}
                             </div>
                           </div>

@@ -77,7 +77,8 @@ mock.module("@/lib/i18n/messages", () => ({
 }))
 
 mock.module("@/lib/i18n/pathname", () => ({
-  localizePathname: (opts: { pathname: string; locale: string }) => `/en${opts.pathname}`,
+  localizePathname: (opts: { pathname: string; locale: string }) =>
+    `/en${opts.pathname}`,
   resolveLocaleOrDefault: (lang: string) => lang || "en",
 }))
 

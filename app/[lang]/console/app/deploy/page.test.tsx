@@ -1,9 +1,9 @@
 import { describe, expect, it, mock } from "bun:test"
 import { render } from "@testing-library/react"
 
-mock.module("@/modules/deploy/ui/deploy-wizard", () => {
+mock.module("@/modules/deploy/ui/deploy-wizard-v2", () => {
   return {
-    DeployWizard: () => <div>Deploy Wizard Mock</div>,
+    DeployWizardV2: () => <div>Deploy Wizard Mock</div>,
   }
 })
 

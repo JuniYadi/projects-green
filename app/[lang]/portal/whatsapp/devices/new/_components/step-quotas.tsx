@@ -52,9 +52,7 @@ export function StepQuotas({ data, updateData, errors }: Props) {
             type="number"
             min={0}
             value={data.dailyLimitMessage}
-            onChange={(e) =>
-              updateData({ dailyLimitMessage: e.target.value })
-            }
+            onChange={(e) => updateData({ dailyLimitMessage: e.target.value })}
             placeholder="0"
             aria-invalid={!!errors.dailyLimitMessage}
           />

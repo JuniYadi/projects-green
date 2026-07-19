@@ -16,19 +16,27 @@ test.describe("Org Billing Detail (admin)", () => {
     const firstOrgLink = page.locator("table a").first()
 
     // Skip if no orgs exist in the test environment
-    test.skip(await firstOrgLink.count() === 0, "No orgs available in test environment")
+    test.skip(
+      (await firstOrgLink.count()) === 0,
+      "No orgs available in test environment"
+    )
 
     await firstOrgLink.click()
     await page.waitForURL(/\/portal\/billing\/org\//)
   })
 
-  test("UC-4: org balance and low-balance warning is visible", async ({ page }) => {
-    await expect(page.getByText(/Balance/i).or(page.getByText(/balance/i))).toBeVisible()
+  test("UC-4: org balance and low-balance warning is visible", async ({
+    page,
+  }) => {
+    await expect(
+      page.getByText(/Balance/i).or(page.getByText(/balance/i))
+    ).toBeVisible()
   })
 
   test("UC-5: admin can topup org balance", async ({ page }) => {
     // Navigate to topup tab — tabs are sidebar or nav links within org page
-    const topupTab = page.getByRole("tab", { name: /Top.?up/i })
+    const topupTab = page
+      .getByRole("tab", { name: /Top.?up/i })
       .or(page.getByRole("link", { name: /Top.?up/i }))
     await expect(topupTab).toBeVisible()
 
@@ -37,14 +45,16 @@ test.describe("Org Billing Detail (admin)", () => {
   })
 
   test("UC-6: invoices tab lists org invoices", async ({ page }) => {
-    const invoicesTab = page.getByRole("tab", { name: /Invoices/i })
+    const invoicesTab = page
+      .getByRole("tab", { name: /Invoices/i })
       .or(page.getByRole("link", { name: /Invoices/i }))
     await invoicesTab.click()
     await expect(page).toHaveURL(/\/portal\/billing\/org\/.*invoice/i)
   })
 
   test("UC-7: can issue a DRAFT invoice (action present)", async ({ page }) => {
-    const invoicesTab = page.getByRole("tab", { name: /Invoices/i })
+    const invoicesTab = page
+      .getByRole("tab", { name: /Invoices/i })
       .or(page.getByRole("link", { name: /Invoices/i }))
     await invoicesTab.click()
 
@@ -54,7 +64,8 @@ test.describe("Org Billing Detail (admin)", () => {
   })
 
   test("UC-8: can cancel an invoice (action present)", async ({ page }) => {
-    const invoicesTab = page.getByRole("tab", { name: /Invoices/i })
+    const invoicesTab = page
+      .getByRole("tab", { name: /Invoices/i })
       .or(page.getByRole("link", { name: /Invoices/i }))
     await invoicesTab.click()
 
@@ -63,7 +74,8 @@ test.describe("Org Billing Detail (admin)", () => {
   })
 
   test("UC-10: usage tab shows breakdown and trend", async ({ page }) => {
-    const usageTab = page.getByRole("tab", { name: /Usage/i })
+    const usageTab = page
+      .getByRole("tab", { name: /Usage/i })
       .or(page.getByRole("link", { name: /Usage/i }))
     await usageTab.click()
 
@@ -71,15 +83,19 @@ test.describe("Org Billing Detail (admin)", () => {
   })
 
   test("UC-11: subscriptions tab shows org plans", async ({ page }) => {
-    const subsTab = page.getByRole("tab", { name: /Subscriptions/i })
+    const subsTab = page
+      .getByRole("tab", { name: /Subscriptions/i })
       .or(page.getByRole("link", { name: /Subscriptions/i }))
     await subsTab.click()
 
     await expect(page.getByText(/Subscription|Plan/i)).toBeVisible()
   })
 
-  test("UC-12/13: adjustments tab shows history and create form", async ({ page }) => {
-    const adjTab = page.getByRole("tab", { name: /Adjustments/i })
+  test("UC-12/13: adjustments tab shows history and create form", async ({
+    page,
+  }) => {
+    const adjTab = page
+      .getByRole("tab", { name: /Adjustments/i })
       .or(page.getByRole("link", { name: /Adjustments/i }))
     await adjTab.click()
 
@@ -93,7 +109,8 @@ test.describe("Org Billing Detail (admin)", () => {
   })
 
   test("UC-14: alerts tab shows threshold config", async ({ page }) => {
-    const alertsTab = page.getByRole("tab", { name: /Alerts/i })
+    const alertsTab = page
+      .getByRole("tab", { name: /Alerts/i })
       .or(page.getByRole("link", { name: /Alerts/i }))
     await alertsTab.click()
 
@@ -101,7 +118,8 @@ test.describe("Org Billing Detail (admin)", () => {
   })
 
   test("UC-15: contacts tab is accessible", async ({ page }) => {
-    const contactsTab = page.getByRole("tab", { name: /Contacts/i })
+    const contactsTab = page
+      .getByRole("tab", { name: /Contacts/i })
       .or(page.getByRole("link", { name: /Contacts/i }))
     await contactsTab.click()
 
@@ -109,7 +127,8 @@ test.describe("Org Billing Detail (admin)", () => {
   })
 
   test("UC-16: settings tab shows currency preference", async ({ page }) => {
-    const settingsTab = page.getByRole("tab", { name: /Settings/i })
+    const settingsTab = page
+      .getByRole("tab", { name: /Settings/i })
       .or(page.getByRole("link", { name: /Settings/i }))
     await settingsTab.click()
 

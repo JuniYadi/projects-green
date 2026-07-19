@@ -18,7 +18,9 @@ async function main() {
     console.error("")
     console.error("Optional:")
     console.error("  SMTP_FROM     sender address (defaults to SMTP_USER)")
-    console.error("  SMTP_SECURE   set to 'true' to force TLS (port 465 defaults to true)")
+    console.error(
+      "  SMTP_SECURE   set to 'true' to force TLS (port 465 defaults to true)"
+    )
     process.exit(1)
   }
 

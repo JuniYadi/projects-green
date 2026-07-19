@@ -31,15 +31,21 @@ function log(label: string, data: unknown) {
 }
 
 function checkCreds(): void {
-  if (!process.env.OPENVPN_LIVE_TEST_HOST || !process.env.OPENVPN_LIVE_TEST_USER || !process.env.OPENVPN_LIVE_TEST_KEY) {
-    throw new Error("Skipping: set OPENVPN_LIVE_TEST_HOST, OPENVPN_LIVE_TEST_USER, and OPENVPN_LIVE_TEST_KEY env vars")
+  if (
+    !process.env.OPENVPN_LIVE_TEST_HOST ||
+    !process.env.OPENVPN_LIVE_TEST_USER ||
+    !process.env.OPENVPN_LIVE_TEST_KEY
+  ) {
+    throw new Error(
+      "Skipping: set OPENVPN_LIVE_TEST_HOST, OPENVPN_LIVE_TEST_USER, and OPENVPN_LIVE_TEST_KEY env vars"
+    )
   }
 }
 
 const hasEnv = Boolean(
   process.env.OPENVPN_LIVE_TEST_HOST &&
   process.env.OPENVPN_LIVE_TEST_USER &&
-  process.env.OPENVPN_LIVE_TEST_KEY,
+  process.env.OPENVPN_LIVE_TEST_KEY
 )
 
 describe.skipIf(!hasEnv)("OpenVPN live integration", () => {
@@ -81,8 +87,11 @@ describe.skipIf(!hasEnv)("OpenVPN live integration", () => {
   it("listClients — includes newly created client", async () => {
     checkCreds()
     const clients = await adapter.listClients(target)
-    log("listClients", { total: clients.length, clients: clients.map(c => c.clientName) })
-    expect(clients.some(c => c.clientName === clientName)).toBe(true)
+    log("listClients", {
+      total: clients.length,
+      clients: clients.map((c) => c.clientName),
+    })
+    expect(clients.some((c) => c.clientName === clientName)).toBe(true)
   })
 
   it("healthCheck — openvpn container is running", async () => {
@@ -112,8 +121,11 @@ describe.skipIf(!hasEnv)("OpenVPN live integration", () => {
     let healthy = false
     for (let i = 0; i < 10; i++) {
       const hc = await adapter.healthCheck(target)
-      if (hc.ok) { healthy = true; break }
-      await new Promise(r => setTimeout(r, 2000))
+      if (hc.ok) {
+        healthy = true
+        break
+      }
+      await new Promise((r) => setTimeout(r, 2000))
     }
     expect(healthy).toBe(true)
   })

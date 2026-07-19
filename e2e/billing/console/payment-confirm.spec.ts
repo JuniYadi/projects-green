@@ -23,7 +23,9 @@ test.describe("Payment Confirmation (console)", () => {
 
     // Date picker or date input
     await expect(
-      page.getByLabel(/date|transfer/i).or(page.getByPlaceholder(/date|transfer/i))
+      page
+        .getByLabel(/date|transfer/i)
+        .or(page.getByPlaceholder(/date|transfer/i))
     ).toBeVisible()
   })
 

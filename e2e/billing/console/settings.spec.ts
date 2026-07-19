@@ -16,7 +16,8 @@ test.describe("Billing Settings (console)", () => {
   })
 
   test("UC-18: preferred currency can be selected", async ({ page }) => {
-    const select = page.getByRole("combobox", { name: /currency/i })
+    const select = page
+      .getByRole("combobox", { name: /currency/i })
       .or(page.getByRole("listbox", { name: /currency/i }))
     await expect(select).toBeVisible()
   })

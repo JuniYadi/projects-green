@@ -317,16 +317,17 @@ export class WhatsAppDeviceClient {
     )
   }
 
-  async uploadProfilePicture(
-    file: { data: ArrayBuffer; mimeType: string; fileName: string }
-  ): Promise<{ handle: string }> {
+  async uploadProfilePicture(file: {
+    data: ArrayBuffer
+    mimeType: string
+    fileName: string
+  }): Promise<{ handle: string }> {
     // ponytail: Resumable Upload — single-session for files <16MB.
     // Meta's Resumable Upload API uses a 3-step flow for large files
     // but for profile pictures (typically <5MB) single part upload works.
-    const uploadEndpoint = ENDPOINTS.BUSINESS_PROFILE(this.phoneNumberId).replace(
-      "/whatsapp_business_profile",
-      "/uploads"
-    )
+    const uploadEndpoint = ENDPOINTS.BUSINESS_PROFILE(
+      this.phoneNumberId
+    ).replace("/whatsapp_business_profile", "/uploads")
 
     const formData = new FormData()
     formData.append("file_length", String(file.data.byteLength))

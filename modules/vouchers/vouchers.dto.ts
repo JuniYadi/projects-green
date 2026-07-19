@@ -76,7 +76,10 @@ export function toVoucherDetailDTO(
   enrichments?: {
     targetUserName?: string | null
     targetOrgName?: string | null
-    claimNames?: Map<string, { userName?: string | null; orgName?: string | null }>
+    claimNames?: Map<
+      string,
+      { userName?: string | null; orgName?: string | null }
+    >
   }
 ): VoucherDetailDTO {
   return {

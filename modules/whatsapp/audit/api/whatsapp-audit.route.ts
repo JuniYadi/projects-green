@@ -8,7 +8,10 @@ import {
   type AdminActorContext,
   type RouteSet,
 } from "@/modules/admin/api/admin.guards"
-import { toWhatsappAuditLogDTO, type WhatsappAuditLogDTO } from "./whatsapp-audit.dto"
+import {
+  toWhatsappAuditLogDTO,
+  type WhatsappAuditLogDTO,
+} from "./whatsapp-audit.dto"
 
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 100
@@ -79,9 +82,13 @@ function buildWhere(query: Record<string, unknown>, orgScope?: string) {
   return where
 }
 
-export const createWhatsappAuditRoutes = (deps: {
-  requireSuperAdmin?: (set: RouteSet) => Promise<AdminActorContext | AdminApiError>
-} = {}) => {
+export const createWhatsappAuditRoutes = (
+  deps: {
+    requireSuperAdmin?: (
+      set: RouteSet
+    ) => Promise<AdminActorContext | AdminApiError>
+  } = {}
+) => {
   const guard = deps.requireSuperAdmin ?? requireSuperAdmin
 
   return new Elysia({ prefix: "/admin/whatsapp/audit" })
@@ -113,11 +120,106 @@ export const createWhatsappAuditRoutes = (deps: {
         },
       }
     })
-    .get("/devices/:deviceId", async ({ params: { deviceId }, query, set }: any) => {
-      const actor = await guard(set)
-      if (isAdminError(actor)) return actor
+    .get(
+      "/devices/:deviceId",
+      async ({ params: { deviceId }, query, set }: any) => {
+        const actor = await guard(set)
+        if (isAdminError(actor)) return actor
 
-      // Verify device exists
+        // Verify device exists
+        const device = await prisma.whatsappDevice.findUnique({
+          where: { id: deviceId },
+          select: { id: true, organizationId: true },
+        })
+        if (!device) {
+          set.status = 404
+          return { ok: false, error: "NOT_FOUND", message: "Device not found." }
+        }
+
+        const { page, limit, skip } = getPagination(query as any)
+        const where = buildWhere(query as any, device.organizationId)
+        where.deviceId = deviceId
+
+        const [total, logs] = await Promise.all([
+          prisma.whatsappAuditLog.count({ where }),
+          prisma.whatsappAuditLog.findMany({
+            where,
+            orderBy: { createdAt: "desc" },
+            skip,
+            take: limit,
+          }),
+        ])
+
+        return {
+          ok: true,
+          data: logs.map(toWhatsappAuditLogDTO),
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+          },
+        }
+      }
+    )
+}
+export const consoleWhatsappAuditRoutes = new Elysia({ prefix: "/audit" })
+  .get("/", async ({ request, query, set }: any) => {
+    const auth = await resolveAuthContext(request)
+    if (!auth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
+    if (!auth.organizationId) {
+      set.status = 403
+      return {
+        ok: false,
+        error: "FORBIDDEN",
+        message: "Organization required.",
+      }
+    }
+
+    const { page, limit, skip } = getPagination(query)
+    const where = buildWhere(query, auth.organizationId)
+
+    const [total, logs] = await Promise.all([
+      prisma.whatsappAuditLog.count({ where }),
+      prisma.whatsappAuditLog.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+    ])
+
+    return {
+      ok: true,
+      data: logs.map(toWhatsappAuditLogDTO),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    }
+  })
+  .get(
+    "/devices/:deviceId",
+    async ({ request, params: { deviceId }, query, set }: any) => {
+      const auth = await resolveAuthContext(request)
+      if (!auth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      if (!auth.organizationId) {
+        set.status = 403
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Organization required.",
+        }
+      }
+
       const device = await prisma.whatsappDevice.findUnique({
         where: { id: deviceId },
         select: { id: true, organizationId: true },
@@ -126,9 +228,13 @@ export const createWhatsappAuditRoutes = (deps: {
         set.status = 404
         return { ok: false, error: "NOT_FOUND", message: "Device not found." }
       }
+      if (device.organizationId !== auth.organizationId) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
 
-      const { page, limit, skip } = getPagination(query as any)
-      const where = buildWhere(query as any, device.organizationId)
+      const { page, limit, skip } = getPagination(query)
+      const where = buildWhere(query, auth.organizationId)
       where.deviceId = deviceId
 
       const [total, logs] = await Promise.all([
@@ -151,90 +257,5 @@ export const createWhatsappAuditRoutes = (deps: {
           totalPages: Math.ceil(total / limit),
         },
       }
-    })
-}
-export const consoleWhatsappAuditRoutes = new Elysia({ prefix: "/audit" })
-  .get("/", async ({ request, query, set }: any) => {
-    const auth = await resolveAuthContext(request)
-    if (!auth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
-    if (!auth.organizationId) {
-      set.status = 403
-      return { ok: false, error: "FORBIDDEN", message: "Organization required." }
-    }
-
-    const { page, limit, skip } = getPagination(query)
-    const where = buildWhere(query, auth.organizationId)
-
-    const [total, logs] = await Promise.all([
-      prisma.whatsappAuditLog.count({ where }),
-      prisma.whatsappAuditLog.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-      }),
-    ])
-
-    return {
-      ok: true,
-      data: logs.map(toWhatsappAuditLogDTO),
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    }
-  })
-  .get("/devices/:deviceId", async ({ request, params: { deviceId }, query, set }: any) => {
-    const auth = await resolveAuthContext(request)
-    if (!auth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-    }
-    if (!auth.organizationId) {
-      set.status = 403
-      return { ok: false, error: "FORBIDDEN", message: "Organization required." }
-    }
-
-    const device = await prisma.whatsappDevice.findUnique({
-      where: { id: deviceId },
-      select: { id: true, organizationId: true },
-    })
-    if (!device) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Device not found." }
-    }
-    if (device.organizationId !== auth.organizationId) {
-      set.status = 403
-      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
-    }
-
-    const { page, limit, skip } = getPagination(query)
-    const where = buildWhere(query, auth.organizationId)
-    where.deviceId = deviceId
-
-    const [total, logs] = await Promise.all([
-      prisma.whatsappAuditLog.count({ where }),
-      prisma.whatsappAuditLog.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-      }),
-    ])
-
-    return {
-      ok: true,
-      data: logs.map(toWhatsappAuditLogDTO),
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    }
-  })
+  )

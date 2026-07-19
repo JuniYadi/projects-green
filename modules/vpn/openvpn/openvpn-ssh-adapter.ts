@@ -59,16 +59,18 @@ export class OpenVpnSshAdapter {
   private readonly configDirectory: string
   private readonly dockerComposeFile: string
 
-  constructor(options: {
-    executor?: VpnServerSshExecutor
-    createScript?: string
-    revokeScript?: string
-    removeScript?: string
-    userListScript?: string
-    statusLogPath?: string
-    configDirectory?: string
-    dockerComposeFile?: string
-  } = {}) {
+  constructor(
+    options: {
+      executor?: VpnServerSshExecutor
+      createScript?: string
+      revokeScript?: string
+      removeScript?: string
+      userListScript?: string
+      statusLogPath?: string
+      configDirectory?: string
+      dockerComposeFile?: string
+    } = {}
+  ) {
     this.executor = options.executor ?? new VpnServerSshExecutor()
     this.createScript =
       options.createScript ??
@@ -181,7 +183,10 @@ export class OpenVpnSshAdapter {
   }
 
   async listClients(target: SshTarget): Promise<OpenVpnClientSummary[]> {
-    const script = assertSafeAbsolutePath(this.userListScript, "userlist script")
+    const script = assertSafeAbsolutePath(
+      this.userListScript,
+      "userlist script"
+    )
     const result = await this.executor.execChecked(
       target,
       ["bash", script],
@@ -208,7 +213,10 @@ export class OpenVpnSshAdapter {
       if (/^Total\s+(active|revoked):/i.test(line)) continue
 
       if (/^user aktif(?: sekarang)?(?: \(\d+\))?:/i.test(line)) {
-        const payload = line.replace(/^user aktif(?: sekarang)?(?: \(\d+\))?:\s*/i, "")
+        const payload = line.replace(
+          /^user aktif(?: sekarang)?(?: \(\d+\))?:\s*/i,
+          ""
+        )
         for (const name of payload.split(",").map((value) => value.trim())) {
           const clientName = name.replace(/^[-*+]\s*/, "")
           if (clientName && !/^server cert$/i.test(clientName)) {
@@ -260,14 +268,22 @@ export class OpenVpnSshAdapter {
     }
 
     return Array.from(
-      new Map(users.map((user) => [`${user.status}:${user.clientName}`, user])).values()
+      new Map(
+        users.map((user) => [`${user.status}:${user.clientName}`, user])
+      ).values()
     )
   }
 
   private async listConnectedClients(target: SshTarget) {
     const path = assertSafeAbsolutePath(this.statusLogPath, "status log path")
     const result = await this.executor.exec(target, ["cat", path])
-    const connected = new Map<string, Omit<OpenVpnClientSummary, "clientName" | "status" | "serial" | "expiresAt" | "ipAllocation">>()
+    const connected = new Map<
+      string,
+      Omit<
+        OpenVpnClientSummary,
+        "clientName" | "status" | "serial" | "expiresAt" | "ipAllocation"
+      >
+    >()
 
     if (result.exitCode !== 0) return connected
 
@@ -282,7 +298,9 @@ export class OpenVpnSshAdapter {
         connected: true,
         realAddress: parts[2] || null,
         virtualAddress: parts[3] || null,
-        bytesReceived: Number.isFinite(Number(parts[5])) ? Number(parts[5]) : null,
+        bytesReceived: Number.isFinite(Number(parts[5]))
+          ? Number(parts[5])
+          : null,
         bytesSent: Number.isFinite(Number(parts[6])) ? Number(parts[6]) : null,
         connectedSince: parts[7] || null,
       })
@@ -299,16 +317,27 @@ export class OpenVpnSshAdapter {
     )
   }
 
-  async healthCheck(target: SshTarget): Promise<{ ok: boolean; output: string }> {
-    const result = await this.executor.exec(
-      target,
-      ["docker", "ps", "--filter", "name=openvpn", "--format", "{{.Names}}"]
-    )
+  async healthCheck(
+    target: SshTarget
+  ): Promise<{ ok: boolean; output: string }> {
+    const result = await this.executor.exec(target, [
+      "docker",
+      "ps",
+      "--filter",
+      "name=openvpn",
+      "--format",
+      "{{.Names}}",
+    ])
 
     // docker ps returns container name if running, empty if not
     const output = result.stdout.trim()
     const ok = result.exitCode === 0 && output === "openvpn"
 
-    return { ok, output: ok ? "openvpn container running" : output || "container not running" }
+    return {
+      ok,
+      output: ok
+        ? "openvpn container running"
+        : output || "container not running",
+    }
   }
 }

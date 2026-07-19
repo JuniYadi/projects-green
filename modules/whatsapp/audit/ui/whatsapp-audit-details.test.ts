@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test"
-import { actionTone, extractKnownDetails, extractOtherDetails } from "./whatsapp-audit-details"
+import {
+  actionTone,
+  extractKnownDetails,
+  extractOtherDetails,
+} from "./whatsapp-audit-details"
 
 describe("actionTone", () => {
   it('returns "success" for SYNCED, CREATED, UPDATED, SENT, DELIVERED, IMPORTED actions', () => {

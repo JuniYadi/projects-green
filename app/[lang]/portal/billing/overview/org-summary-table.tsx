@@ -86,8 +86,12 @@ export function OrgSummaryTable({
     }
     fetchAll()
       .catch((err) => setError(err.message))
-      .finally(() => { if (!cancelled) setIsLoading(false) })
-    return () => { cancelled = true }
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [limit])
 
   if (isLoading) {

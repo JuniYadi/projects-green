@@ -47,7 +47,9 @@ const convUp = mock(async () => ({ id: "c" })) as any
 const deviceFU = mock(async () => device()) as any
 const dailyCountFU = mock(async () => null) as any
 const hourlyCountFU = mock(async () => null) as any
-const txn = mock(async (ops: unknown) => Array.isArray(ops) ? Promise.all(ops) : null) as any
+const txn = mock(async (ops: unknown) =>
+  Array.isArray(ops) ? Promise.all(ops) : null
+) as any
 const msgCr = mock(async () => ({ id: "m" })) as any
 mock.module("bullmq", () => ({ Queue: QueueMock, Worker: WorkerMock }) as any)
 mock.module(
@@ -86,13 +88,18 @@ mock.module(
         whatsappTemplate: { findFirst: mock(async () => null) },
         whatsappContactGroup: {
           findFirst: mock(async () => null),
-          create: mock(async () => ({ id: "group_default", organizationId: "org_1", name: "Ungrouped" })),
+          create: mock(async () => ({
+            id: "group_default",
+            organizationId: "org_1",
+            name: "Ungrouped",
+          })),
         },
         whatsappContact: {
           upsert: mock(async (args: any) => args.create ?? args.update ?? {}),
         },
       },
-    }) as any)
+    }) as any
+)
 mock.module(
   "@/lib/whatsapp/meta-cloud/device-client",
   () =>

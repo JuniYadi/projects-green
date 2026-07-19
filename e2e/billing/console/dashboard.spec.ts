@@ -31,7 +31,8 @@ test.describe("Billing Dashboard (console)", () => {
   })
 
   test("UC-2: can navigate to topup sub-page", async ({ page }) => {
-    const link = page.getByRole("link", { name: /Top.?up/i })
+    const link = page
+      .getByRole("link", { name: /Top.?up/i })
       .or(page.getByRole("button", { name: /Top.?up/i }))
       .first()
     await link.click()

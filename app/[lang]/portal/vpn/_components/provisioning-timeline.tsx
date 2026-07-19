@@ -1,4 +1,10 @@
-import { CheckCircle, XCircle, ArrowsClockwise, Circle, Minus } from "@phosphor-icons/react"
+import {
+  CheckCircle,
+  XCircle,
+  ArrowsClockwise,
+  Circle,
+  Minus,
+} from "@phosphor-icons/react"
 import type { VpnServerAccountEntry } from "./vpn-admin-client"
 import { Badge } from "@/components/ui/badge"
 
@@ -78,14 +84,14 @@ export function ProvisioningTimeline({ account, events }: Props) {
         <span>{account.serverName}</span>
         <span className="text-xs">{account.protocol}</span>
       </div>
-      <ol className="relative border-l border-border pl-4 space-y-3">
+      <ol className="relative space-y-3 border-l border-border pl-4">
         {events.map((event, i) => {
           const config = EVENT_CONFIG[event.type]
           const Icon = config.icon
           return (
             <li key={i} className="relative">
               <Icon
-                className={`absolute -left-5 top-0.5 h-4 w-4 ${config.color}`}
+                className={`absolute top-0.5 -left-5 h-4 w-4 ${config.color}`}
                 weight="fill"
               />
               <div className="flex flex-col gap-0.5">
@@ -122,4 +128,3 @@ function getStatusVariant(
       return "secondary"
   }
 }
-

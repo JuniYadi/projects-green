@@ -28,8 +28,9 @@ const mockProduct = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
-const mockCreate = mock(async (args: { data: Record<string, unknown>; include: any }) =>
-  mockCatalog(args.data)
+const mockCreate = mock(
+  async (args: { data: Record<string, unknown>; include: any }) =>
+    mockCatalog(args.data)
 )
 const mockFindFirst = mock(async () => mockCatalog())
 const mockFindMany = mock(async () => [mockCatalog()])
@@ -82,7 +83,9 @@ describe("catalogService", () => {
       const result = await catalogService.findById("cat_1", "org_1")
       expect(result).toBeTruthy()
       expect(mockFindFirst).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: "cat_1", organizationId: "org_1" } })
+        expect.objectContaining({
+          where: { id: "cat_1", organizationId: "org_1" },
+        })
       )
     })
   })
@@ -102,7 +105,9 @@ describe("catalogService", () => {
 
   describe("update", () => {
     it("updates a catalog", async () => {
-      const result = await catalogService.update("cat_1", "org_1", { name: "Updated" })
+      const result = await catalogService.update("cat_1", "org_1", {
+        name: "Updated",
+      })
       expect(result.name).toBe("Updated")
     })
   })
@@ -139,7 +144,11 @@ describe("catalogService", () => {
   describe("syncFromMeta", () => {
     it("returns null if catalog not found", async () => {
       mockFindFirst.mockImplementationOnce(async () => null as any)
-      const result = await catalogService.syncFromMeta("cat_1", "org_1", "token")
+      const result = await catalogService.syncFromMeta(
+        "cat_1",
+        "org_1",
+        "token"
+      )
       expect(result).toBeNull()
     })
   })

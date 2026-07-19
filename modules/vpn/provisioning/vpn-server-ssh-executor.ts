@@ -41,7 +41,12 @@ export function classifySshError(
   }
   // Remote command failed
   if (result.exitCode !== 0) {
-    return { type: "command_failed", host, exitCode: result.exitCode, stderr: result.stderr }
+    return {
+      type: "command_failed",
+      host,
+      exitCode: result.exitCode,
+      stderr: result.stderr,
+    }
   }
   return { type: "unknown", message: result.stderr || "Unknown SSH error" }
 }
@@ -179,8 +184,7 @@ export class VpnServerSshExecutor {
         clearTimeout(timeout)
         finish({
           stdout: "",
-          stderr:
-            err instanceof Error ? err.message : "Failed to start SSH",
+          stderr: err instanceof Error ? err.message : "Failed to start SSH",
           exitCode: 1,
         })
       }

@@ -1,6 +1,12 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState, startTransition } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  startTransition,
+} from "react"
 import { useParams } from "next/navigation"
 
 import { Badge } from "@/components/ui/badge"
@@ -14,10 +20,7 @@ import {
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
-import {
-  getVpnSubscription,
-  type VpnSubscription,
-} from "@/lib/vpn-client"
+import { getVpnSubscription, type VpnSubscription } from "@/lib/vpn-client"
 import {
   listMobileDevices,
   revokeMobileDevice,
@@ -49,7 +52,7 @@ type PageState =
 function maxDevicesFor(subscription: VpnSubscription): number {
   return (
     subscription.serverAccounts.filter(
-      (account) => account.provisioningStatus === "ACTIVE",
+      (account) => account.provisioningStatus === "ACTIVE"
     ).length * 2
   )
 }
@@ -59,7 +62,9 @@ function activeDeviceCount(devices: MobileDeviceEntry[]): number {
 }
 
 function StatusBadge({ subscription }: { subscription: VpnSubscription }) {
-  const status = subscription.cancelAtPeriodEnd ? "CANCELLING" : subscription.status
+  const status = subscription.cancelAtPeriodEnd
+    ? "CANCELLING"
+    : subscription.status
   const variant =
     status === "ACTIVE"
       ? "default"
@@ -69,7 +74,11 @@ function StatusBadge({ subscription }: { subscription: VpnSubscription }) {
           ? "secondary"
           : "destructive"
 
-  return <Badge variant={variant}>{status === "CANCELLING" ? "Cancelling" : status}</Badge>
+  return (
+    <Badge variant={variant}>
+      {status === "CANCELLING" ? "Cancelling" : status}
+    </Badge>
+  )
 }
 
 function InfoCard({
@@ -87,7 +96,11 @@ function InfoCard({
         <CardDescription>{label}</CardDescription>
         <CardTitle className="text-base">{value}</CardTitle>
       </CardHeader>
-      {subValue && <CardContent className="pt-0 text-xs text-muted-foreground">{subValue}</CardContent>}
+      {subValue && (
+        <CardContent className="pt-0 text-xs text-muted-foreground">
+          {subValue}
+        </CardContent>
+      )}
     </Card>
   )
 }
@@ -118,7 +131,9 @@ export default function ConsoleVpnSubscriptionDetailPage() {
   const subscriptionId = params.id
 
   const [state, setState] = useState<PageState>(
-    subscriptionId ? { phase: "loading" } : { phase: "error", message: "Subscription ID is missing." }
+    subscriptionId
+      ? { phase: "loading" }
+      : { phase: "error", message: "Subscription ID is missing." }
   )
 
   const load = useCallback(async () => {
@@ -138,7 +153,10 @@ export default function ConsoleVpnSubscriptionDetailPage() {
       })
     } catch {
       startTransition(() => {
-        setState({ phase: "error", message: "Failed to load subscription details." })
+        setState({
+          phase: "error",
+          message: "Failed to load subscription details.",
+        })
       })
     }
   }, [subscriptionId])
@@ -157,11 +175,13 @@ export default function ConsoleVpnSubscriptionDetailPage() {
         toast.error("Failed to revoke device")
       }
     },
-    [load],
+    [load]
   )
 
   const subscriptionsUrl = useMemo(() => {
-    return params.lang ? `/${params.lang}/console/vpn/subscriptions` : "/console/vpn/subscriptions"
+    return params.lang
+      ? `/${params.lang}/console/vpn/subscriptions`
+      : "/console/vpn/subscriptions"
   }, [params.lang])
 
   if (state.phase === "loading") {
@@ -205,7 +225,9 @@ export default function ConsoleVpnSubscriptionDetailPage() {
       <div className="flex items-start justify-between gap-4">
         <header className="space-y-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold">{subscription.packageName}</h1>
+            <h1 className="text-2xl font-semibold">
+              {subscription.packageName}
+            </h1>
             <StatusBadge subscription={subscription} />
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -248,7 +270,8 @@ export default function ConsoleVpnSubscriptionDetailPage() {
           value={
             subscription.firstPayment ? (
               <>
-                {subscription.firstPayment.amount} {subscription.firstPayment.currency}
+                {subscription.firstPayment.amount}{" "}
+                {subscription.firstPayment.currency}
               </>
             ) : (
               "—"
@@ -260,7 +283,10 @@ export default function ConsoleVpnSubscriptionDetailPage() {
               : undefined
           }
         />
-        <InfoCard label="Renew price" value={subscriptionPriceLabel(subscription)} />
+        <InfoCard
+          label="Renew price"
+          value={subscriptionPriceLabel(subscription)}
+        />
         <InfoCard
           label="Next payment"
           value={formatDate(subscription.currentPeriodEnd)}
@@ -279,7 +305,9 @@ export default function ConsoleVpnSubscriptionDetailPage() {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-heading text-lg font-semibold">Connected devices</h2>
+          <h2 className="font-heading text-lg font-semibold">
+            Connected devices
+          </h2>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <DeviceMobileIcon className="h-4 w-4" />
             {activeDevices} of {maxDevices} active

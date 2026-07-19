@@ -8,10 +8,7 @@ import {
   DeviceNoPhoneIdError,
   ProfileNotFoundError,
 } from "../business-profile.service"
-import {
-  DeviceNotFoundError,
-  DeviceNotOwnedError,
-} from "../devices.schemas"
+import { DeviceNotFoundError, DeviceNotOwnedError } from "../devices.schemas"
 import { resolveDeviceAuth } from "./devices.route"
 
 type RouteSet = { status?: number | string }
@@ -41,11 +38,14 @@ const toConflict = (set: RouteSet, message: string) => {
   return { ok: false, error: "CONFLICT", message }
 }
 
-export const businessProfileRoutes = new Elysia({ prefix: "/devices/:id/profile" })
+export const businessProfileRoutes = new Elysia({
+  prefix: "/devices/:id/profile",
+})
   .get("/", async ({ request, params: { id }, set }: any) => {
     const auth = await resolveDeviceAuth(request)
     if (!auth) return toUnauthorized(set)
-    if (!auth.organizationId) return toBadRequest(set, "Organization context required.")
+    if (!auth.organizationId)
+      return toBadRequest(set, "Organization context required.")
 
     try {
       const profile = await getProfile(id, auth.organizationId)
@@ -61,7 +61,8 @@ export const businessProfileRoutes = new Elysia({ prefix: "/devices/:id/profile"
   .patch("/", async ({ request, params: { id }, body, set }: any) => {
     const auth = await resolveDeviceAuth(request)
     if (!auth) return toUnauthorized(set)
-    if (!auth.organizationId) return toBadRequest(set, "Organization context required.")
+    if (!auth.organizationId)
+      return toBadRequest(set, "Organization context required.")
 
     const parsed = updateBusinessProfileSchema.safeParse(body)
     if (!parsed.success) {

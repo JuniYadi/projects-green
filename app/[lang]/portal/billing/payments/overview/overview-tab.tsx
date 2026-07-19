@@ -47,7 +47,11 @@ export function OverviewTab() {
           eden.api.portal.payments.confirmations.get(),
         ])
 
-      if (gatewaysRes.error || bankAccountsRes.error || confirmationsRes.error) {
+      if (
+        gatewaysRes.error ||
+        bankAccountsRes.error ||
+        confirmationsRes.error
+      ) {
         setState({ status: "error", message: "Failed to load payment data" })
         return
       }

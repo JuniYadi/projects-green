@@ -1,3 +1,4 @@
+import "@/test/setup"
 import { describe, expect, it, mock, beforeEach, afterEach } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
 
@@ -14,41 +15,43 @@ const mockFetch = mock((_input: string | URL | Request) =>
   Promise.resolve(jsonResponse({ ok: false, error: "Not found" }))
 )
 
+const MOCK_CREDENTIALS = [
+  {
+    id: "cred_1",
+    type: "GITHUB_TOKEN",
+    name: "My GitHub Token",
+    metadata: { accountLogin: "test-org" },
+    maskedPreview: "ghp_***…abcd",
+    status: "ACTIVE",
+    createdAt: "2025-01-15T10:00:00Z",
+    updatedAt: "2025-01-15T10:00:00Z",
+  },
+  {
+    id: "cred_2",
+    type: "CLOUDFLARE_API_TOKEN",
+    name: "Production DNS",
+    metadata: { accountName: "Acme Corp" },
+    maskedPreview: "cf…ef01",
+    status: "PENDING",
+    createdAt: "2025-02-20T14:30:00Z",
+    updatedAt: "2025-02-20T14:30:00Z",
+  },
+]
+
 async function defaultFetch(input: string | URL | Request) {
   const url = input.toString()
   const method = input instanceof Request ? input.method : "GET"
 
-  if (url.includes("/api/integrations/github/accounts")) {
-    return jsonResponse({
-      ok: true,
-      accounts: [
-        {
-          id: "gh_1",
-          accountLogin: "test-org",
-          accountType: "Organization",
-          targetType: "installations",
-          installedAt: new Date().toISOString(),
-        },
-      ],
-    })
+  if (url.includes("/api/app/credentials") && method === "GET") {
+    return jsonResponse({ ok: true, credentials: MOCK_CREDENTIALS })
   }
 
-  if (url.includes("/api/integrations/cloudflare/dns-token")) {
-    if (method === "DELETE") {
-      return jsonResponse({ ok: true })
-    }
-    return jsonResponse({
-      ok: true,
-      credentials: [
-        {
-          id: "cf_1",
-          name: "Production DNS",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          maskedToken: "cf...abcd",
-        },
-      ],
-    })
+  if (url.includes("/api/app/credentials") && method === "DELETE") {
+    return jsonResponse({ ok: true })
+  }
+
+  if (url.includes("/api/app/credentials") && method === "POST") {
+    return jsonResponse({ ok: true, credential: MOCK_CREDENTIALS[0] })
   }
 
   return jsonResponse({ ok: false, error: "Not found" })
@@ -70,37 +73,6 @@ mock.module("@/lib/i18n/messages", () => ({
           heading: "Credentials",
           description:
             "Manage connected integrations and API tokens for your application.",
-          github: {
-            heading: "GitHub",
-            connect: "Connect GitHub",
-            noAccounts:
-              "No GitHub accounts connected. Connect one to enable repository deployments.",
-            accountType: "Type",
-            targetType: "Target",
-            connected: "Connected",
-            loading: "Loading accounts\u2026",
-            loadError: "Failed to load accounts",
-          },
-          cloudflare: {
-            heading: "Cloudflare DNS",
-            name: "Name",
-            namePlaceholder: "e.g. Primary DNS",
-            apiToken: "API Token",
-            apiTokenPlaceholder: "Cloudflare API token",
-            save: "Save token",
-            saving: "Saving\u2026",
-            delete: "Delete",
-            deleting: "Deleting\u2026",
-            noCredentials: "No DNS tokens saved yet.",
-            saved: "DNS token saved",
-            deleted: "Token deleted",
-            saveError: "Failed to save token",
-            deleteError: "Failed to delete",
-            loadError: "Failed to load credentials",
-            networkError: "Network error",
-            noOrganization: "No organization selected",
-            loading: "Loading credentials\u2026",
-          },
         },
       },
     },
@@ -143,24 +115,25 @@ describe("CredentialsPage", () => {
     view.unmount()
   })
 
-  it("renders GitHub section with connected account", async () => {
+  it("renders table with credential rows", async () => {
     const view = render(<CredentialsPage />)
 
     await waitFor(() => {
-      expect(view.getByText("test-org")).toBeInTheDocument()
+      expect(view.getByText("My GitHub Token")).toBeInTheDocument()
     })
-    expect(view.getByText("GitHub")).toBeInTheDocument()
+    expect(view.getByText("Production DNS")).toBeInTheDocument()
 
-    view.unmount()
-  })
+    // Type labels
+    expect(view.getByText("GitHub Personal Access Token")).toBeInTheDocument()
+    expect(view.getByText("Cloudflare API Token")).toBeInTheDocument()
 
-  it("renders Cloudflare section with credential", async () => {
-    const view = render(<CredentialsPage />)
+    // Masked previews
+    expect(view.getByText("ghp_***…abcd")).toBeInTheDocument()
+    expect(view.getByText("cf…ef01")).toBeInTheDocument()
 
-    await waitFor(() => {
-      expect(view.getByText("Production DNS")).toBeInTheDocument()
-    })
-    expect(view.getByText("Cloudflare DNS")).toBeInTheDocument()
+    // Status pills
+    expect(view.getByText("ACTIVE")).toBeInTheDocument()
+    expect(view.getByText("PENDING")).toBeInTheDocument()
 
     view.unmount()
   })
@@ -172,37 +145,76 @@ describe("CredentialsPage", () => {
     const view = render(<CredentialsPage />)
 
     await waitFor(() => {
-      expect(view.getByText("Loading accounts\u2026")).toBeInTheDocument()
+      expect(view.getByText("Loading credentials…")).toBeInTheDocument()
     })
 
-    resolve(jsonResponse({ ok: true, accounts: [] }))
+    resolve(jsonResponse({ ok: true, credentials: [] }))
     view.unmount()
   })
 
-  it("renders Connect GitHub button with correct link", async () => {
+  it("type filter shows all 4 credential types", async () => {
     const view = render(<CredentialsPage />)
 
     await waitFor(() => {
-      expect(view.getByText("Connect GitHub")).toBeInTheDocument()
+      expect(view.getByText("My GitHub Token")).toBeInTheDocument()
     })
 
-    const link = view.getByText("Connect GitHub").closest("a")
-    expect(link?.getAttribute("href")).toContain(
-      "/api/integrations/github/install/start"
+    // The Type facet filter should exist
+    expect(view.getByText("Type")).toBeInTheDocument()
+
+    view.unmount()
+  })
+
+  it("status filter shows all 4 status values", async () => {
+    const view = render(<CredentialsPage />)
+
+    await waitFor(() => {
+      expect(view.getByText("My GitHub Token")).toBeInTheDocument()
+    })
+
+    // The Status facet filter should exist
+    expect(view.getByText("Status")).toBeInTheDocument()
+
+    view.unmount()
+  })
+
+  it("empty state message when no credentials", async () => {
+    mockFetch.mockImplementation(() =>
+      Promise.resolve(jsonResponse({ ok: true, credentials: [] }))
     )
 
-    view.unmount()
-  })
-
-  it("renders Cloudflare form fields", async () => {
     const view = render(<CredentialsPage />)
 
     await waitFor(() => {
-      expect(view.getByText("Save token")).toBeInTheDocument()
+      expect(view.getByText("No credentials found.")).toBeInTheDocument()
     })
 
-    expect(view.getByLabelText("Name")).toBeDefined()
-    expect(view.getByLabelText("API Token")).toBeDefined()
+    view.unmount()
+  })
+
+  it("shows error state on fetch failure", async () => {
+    mockFetch.mockImplementation(() =>
+      Promise.resolve(jsonResponse({ ok: false, error: "Server error" }))
+    )
+
+    const view = render(<CredentialsPage />)
+
+    await waitFor(() => {
+      expect(view.getByText("Server error")).toBeInTheDocument()
+    })
+
+    view.unmount()
+  })
+
+  it("renders Add Credential button with correct link", async () => {
+    const view = render(<CredentialsPage />)
+
+    await waitFor(() => {
+      expect(view.getByText("Add Credential")).toBeInTheDocument()
+    })
+
+    const link = view.getByText("Add Credential").closest("a")
+    expect(link?.getAttribute("href")).toContain("/console/app/credentials/new")
 
     view.unmount()
   })

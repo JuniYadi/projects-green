@@ -23,7 +23,11 @@ export function FilterPills({ pills, onRemove, className }: FilterPillsProps) {
           key={pill.id}
           variant="secondary"
           className="flex items-center gap-1 px-2 py-0.5 text-xs"
-          style={pill.color ? { backgroundColor: pill.color + "20", borderColor: pill.color } : undefined}
+          style={
+            pill.color
+              ? { backgroundColor: pill.color + "20", borderColor: pill.color }
+              : undefined
+          }
         >
           {pill.label}
           <button

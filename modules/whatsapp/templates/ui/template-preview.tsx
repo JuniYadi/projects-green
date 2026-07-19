@@ -15,9 +15,7 @@ export type TemplatePreviewValues = Record<number, string>
 
 // ─── Placeholder helpers ─────────────────────────────────────────────────────
 
-export function getTemplatePlaceholderIndexes(
-  body?: string | null
-): number[] {
+export function getTemplatePlaceholderIndexes(body?: string | null): number[] {
   if (!body) return []
   const matches = body.match(/{{\s*(\d+)\s*}}/g)
   if (!matches) return []
@@ -140,9 +138,7 @@ export function resolveTemplatePreviewValues(
   return values
 }
 
-function extractParameterExamples(
-  params: unknown
-): Record<number, string> {
+function extractParameterExamples(params: unknown): Record<number, string> {
   if (!params) return {}
 
   // [{ type: "BODY", text: "Alice" }] — flat component array
@@ -158,7 +154,9 @@ function extractParameterExamples(
 
   // { components: [{ type: "BODY", example: { body_text: [["Alice", "Acme"]] } }] }
   const obj = params as Record<string, unknown>
-  const components = obj.components as Array<Record<string, unknown>> | undefined
+  const components = obj.components as
+    | Array<Record<string, unknown>>
+    | undefined
   if (Array.isArray(components)) {
     const bodyComponent = components.find(
       (c) => (c as Record<string, unknown>).type === "BODY"
@@ -201,7 +199,8 @@ function getButtonLabel(btn: Record<string, unknown>): string {
   if (typeof btn.text === "string" && btn.text) return btn.text
 
   const ctaUrl = btn.cta_url as Record<string, unknown> | undefined
-  if (ctaUrl && typeof ctaUrl.display_text === "string") return ctaUrl.display_text
+  if (ctaUrl && typeof ctaUrl.display_text === "string")
+    return ctaUrl.display_text
 
   const reply = btn.reply as Record<string, unknown> | undefined
   if (reply && typeof reply.title === "string") return reply.title
@@ -254,7 +253,7 @@ export function WhatsAppTemplatePreview({
       <div className={className}>
         <div className="ml-auto max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-sm text-primary-foreground shadow-sm">
           {bodyText && (
-            <div className="whitespace-pre-wrap break-words">{bodyText}</div>
+            <div className="break-words whitespace-pre-wrap">{bodyText}</div>
           )}
         </div>
       </div>
@@ -272,7 +271,8 @@ export function WhatsAppTemplatePreview({
         language.headerType !== "NONE" &&
         !language.headerText ? (
           <div className="mb-1.5 rounded-md border border-primary-foreground/20 bg-primary-foreground/10 px-2 py-3 text-center text-xs font-medium">
-            {language.headerType === "IMAGE" || language.headerType === "VIDEO" ? (
+            {language.headerType === "IMAGE" ||
+            language.headerType === "VIDEO" ? (
               <span>{language.headerType} placeholder</span>
             ) : language.headerType === "DOCUMENT" ? (
               <div>
@@ -291,7 +291,7 @@ export function WhatsAppTemplatePreview({
 
         {/* Body */}
         {bodyText && (
-          <div className="whitespace-pre-wrap break-words">{bodyText}</div>
+          <div className="break-words whitespace-pre-wrap">{bodyText}</div>
         )}
 
         {/* Footer */}

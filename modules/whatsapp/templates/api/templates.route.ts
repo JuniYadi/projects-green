@@ -1,6 +1,10 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
-import type { Prisma, WhatsappBillingCategory, WhatsappTemplateSyncStatus } from "@prisma/client"
+import type {
+  Prisma,
+  WhatsappBillingCategory,
+  WhatsappTemplateSyncStatus,
+} from "@prisma/client"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { requireSuperAdmin } from "@/lib/whatsapp/auth"
 import { enqueueWhatsAppTemplateSync } from "@/lib/queue/whatsapp-template-sync"
@@ -97,15 +101,7 @@ function getPagination(query: Record<string, unknown>) {
 export const templatesRoutes = new Elysia({ prefix: "/templates" })
   .get(
     "/",
-    async ({
-      request,
-      set,
-      query,
-    }: {
-      request: any
-      set: any
-      query: any
-    }) => {
+    async ({ request, set, query }: { request: any; set: any; query: any }) => {
       const whatsappAuth = await resolveAuthContext(request as Request)
       if (!whatsappAuth) {
         set.status = 401
@@ -227,15 +223,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
   )
   .post(
     "/",
-    async ({
-      request,
-      body,
-      set,
-    }: {
-      request: any
-      body: any
-      set: any
-    }) => {
+    async ({ request, body, set }: { request: any; body: any; set: any }) => {
       const whatsappAuth = await resolveAuthContext(request as Request)
       if (!whatsappAuth) {
         set.status = 401
@@ -245,10 +233,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           message: "Auth required.",
         }
       }
-      if (
-        whatsappAuth.type === "workos" &&
-        !whatsappAuth.organizationId
-      ) {
+      if (whatsappAuth.type === "workos" && !whatsappAuth.organizationId) {
         set.status = 400
         return {
           ok: false,
@@ -275,7 +260,14 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         whatsappDeviceId?: string
         organizationId?: string
       }
-      const { languages: rawLanguages, slug, name, description, category, whatsappDeviceId } = bodyObj
+      const {
+        languages: rawLanguages,
+        slug,
+        name,
+        description,
+        category,
+        whatsappDeviceId,
+      } = bodyObj
       const languages = rawLanguages!.map((lang) => ({
         ...lang,
         parameters: lang.parameters as Prisma.InputJsonValue,
@@ -399,22 +391,15 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           return {
             ok: false,
             error: "VALIDATION_ERROR",
-            message:
-              "Approved templates can only add language variants.",
+            message: "Approved templates can only add language variants.",
           }
         }
 
-        const languages = bodyRecord.languages as
-          | UpdateLanguage[]
-          | undefined
+        const languages = bodyRecord.languages as UpdateLanguage[] | undefined
 
         if (languages && languages.length > 0) {
-          const existingLangs = new Set(
-            template.languages.map((l) => l.lang)
-          )
-          const existingIds = new Set(
-            template.languages.map((l) => l.id)
-          )
+          const existingLangs = new Set(template.languages.map((l) => l.lang))
+          const existingIds = new Set(template.languages.map((l) => l.id))
 
           for (const lang of languages) {
             if (lang.id && existingIds.has(lang.id)) {
@@ -440,7 +425,9 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           const structureSource =
             template.languages.find(
               (l) => l.isApproved || l.metaStatus === "APPROVED"
-            ) ?? template.languages[0] ?? null
+            ) ??
+            template.languages[0] ??
+            null
 
           if (!structureSource) {
             set.status = 422
@@ -456,10 +443,8 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
             const mismatch =
               (lang.headerType ?? "NONE") !==
                 (structureSource.headerType ?? "NONE") ||
-              (lang.headerText ?? "") !==
-                (structureSource.headerText ?? "") ||
-              (lang.headerUrl ?? "") !==
-                (structureSource.headerUrl ?? "") ||
+              (lang.headerText ?? "") !== (structureSource.headerText ?? "") ||
+              (lang.headerUrl ?? "") !== (structureSource.headerUrl ?? "") ||
               (lang.body ?? "") !== (structureSource.body ?? "") ||
               (lang.footer ?? "") !== (structureSource.footer ?? "") ||
               JSON.stringify(lang.parameters ?? null) !==
@@ -521,8 +506,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       // ── Unapproved template update ─────────────────────────────────────
       try {
         const hasLanguages =
-          Array.isArray(bodyRecord.languages) &&
-          bodyRecord.languages.length > 0
+          Array.isArray(bodyRecord.languages) && bodyRecord.languages.length > 0
         const updateData = hasLanguages
           ? {
               ...bodyRecord,

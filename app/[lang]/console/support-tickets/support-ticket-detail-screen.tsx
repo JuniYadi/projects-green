@@ -806,8 +806,8 @@ export function SupportTicketDetailScreen({
         <Card className="border-border bg-card text-card-foreground">
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">
-              This ticket is closed. If you have a new issue, please open a
-              new ticket.
+              This ticket is closed. If you have a new issue, please open a new
+              ticket.
             </p>
           </CardContent>
         </Card>
@@ -899,9 +899,10 @@ export function SupportTicketDetailScreen({
                     </span>
                   </div>
                   <p className="text-xs leading-relaxed text-muted-foreground">
-                    Details entered here are encrypted end-to-end and only visible
-                    to engineers assigned to your ticket. Use this section for
-                    passwords, tokens, API keys, or sensitive credentials.
+                    Details entered here are encrypted end-to-end and only
+                    visible to engineers assigned to your ticket. Use this
+                    section for passwords, tokens, API keys, or sensitive
+                    credentials.
                   </p>
                 </div>
                 <div className="grid gap-2">

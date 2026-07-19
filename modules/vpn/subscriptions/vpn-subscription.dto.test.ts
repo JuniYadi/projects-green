@@ -1,6 +1,10 @@
 import { describe, it, expect } from "bun:test"
 
-import { toServerAccountDTO, computeProvisioningSummary, type VpnServerAccountDTO } from "./vpn-subscription.dto"
+import {
+  toServerAccountDTO,
+  computeProvisioningSummary,
+  type VpnServerAccountDTO,
+} from "./vpn-subscription.dto"
 
 const baseAccount = {
   id: "sa-1",
@@ -69,7 +73,10 @@ describe("toServerAccountDTO", () => {
   it("handles missing region gracefully", () => {
     const result = toServerAccountDTO({
       ...baseAccount,
-      server: { ...baseAccount.server, region: null as unknown as typeof baseAccount.server.region },
+      server: {
+        ...baseAccount.server,
+        region: null as unknown as typeof baseAccount.server.region,
+      },
     })
     expect(result.region).toBeNull()
   })
@@ -146,7 +153,13 @@ describe("computeProvisioningSummary", () => {
       account("FAILED"),
       account("ACTIVE"),
     ])
-    expect(summary).toEqual({ active: 2, pending: 0, failed: 1, revoked: 0, total: 3 })
+    expect(summary).toEqual({
+      active: 2,
+      pending: 0,
+      failed: 1,
+      revoked: 0,
+      total: 3,
+    })
   })
 
   it("counts PENDING and PROVISIONING as pending", () => {
@@ -164,11 +177,23 @@ describe("computeProvisioningSummary", () => {
       account("REVOKED"),
       account("ACTIVE"),
     ])
-    expect(summary).toEqual({ active: 1, pending: 0, failed: 0, revoked: 1, total: 2 })
+    expect(summary).toEqual({
+      active: 1,
+      pending: 0,
+      failed: 0,
+      revoked: 1,
+      total: 2,
+    })
   })
 
   it("returns all-zero for empty array", () => {
     const summary = computeProvisioningSummary([])
-    expect(summary).toEqual({ active: 0, pending: 0, failed: 0, revoked: 0, total: 0 })
+    expect(summary).toEqual({
+      active: 0,
+      pending: 0,
+      failed: 0,
+      revoked: 0,
+      total: 0,
+    })
   })
 })

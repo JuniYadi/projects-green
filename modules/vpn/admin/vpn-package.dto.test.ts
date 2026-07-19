@@ -1,8 +1,7 @@
 import { expect, describe, it } from "bun:test"
 
-const { toVpnPackageDTO, serverProtocolLabels } = await import(
-  "./vpn-package.dto"
-)
+const { toVpnPackageDTO, serverProtocolLabels } =
+  await import("./vpn-package.dto")
 
 // Prisma-model shape (hasOpenVpn etc) — used by toVpnServerDTO internally
 function makeRawServer(overrides: Record<string, unknown> = {}) {
@@ -153,7 +152,10 @@ describe("toVpnPackageDTO", () => {
     const pkg = makePackage({
       servers: [
         { id: "ps-1", server: makeRawServer({ id: "srv-1" }) },
-        { id: "ps-2", server: makeRawServer({ id: "srv-2", hasWireGuard: true }) },
+        {
+          id: "ps-2",
+          server: makeRawServer({ id: "srv-2", hasWireGuard: true }),
+        },
       ],
     })
 

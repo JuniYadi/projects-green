@@ -16,7 +16,8 @@ test.describe("Billing Alerts (console)", () => {
   })
 
   test("UC-17: balance alert threshold input is present", async ({ page }) => {
-    const input = page.getByRole("textbox", { name: /balance/i })
+    const input = page
+      .getByRole("textbox", { name: /balance/i })
       .or(page.getByRole("spinbutton", { name: /balance|threshold/i }))
     await expect(input).toBeVisible()
   })

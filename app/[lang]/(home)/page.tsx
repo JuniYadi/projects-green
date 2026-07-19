@@ -31,7 +31,10 @@ export const metadata: Metadata = {
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-background" style={{ fontFamily: "var(--font-display)" }}>
+    <div
+      className="min-h-screen bg-background"
+      style={{ fontFamily: "var(--font-display)" }}
+    >
       <HomeNav />
       <main>
         <HeroSection />

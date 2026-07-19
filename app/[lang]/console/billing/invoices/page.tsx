@@ -74,7 +74,11 @@ export default function InvoicesPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <InvoiceTable invoices={data?.invoices ?? []} lang="en" tableId="console-billing-invoices" />
+          <InvoiceTable
+            invoices={data?.invoices ?? []}
+            lang="en"
+            tableId="console-billing-invoices"
+          />
         </CardContent>
       </Card>
     </main>

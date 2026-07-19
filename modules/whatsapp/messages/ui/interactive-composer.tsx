@@ -201,7 +201,9 @@ function ButtonsEditor({
   onChange: (b: ButtonRow[]) => void
 }) {
   const update = (i: number, field: keyof ButtonRow, value: string) => {
-    const next = buttons.map((b, idx) => (idx === i ? { ...b, [field]: value } : b))
+    const next = buttons.map((b, idx) =>
+      idx === i ? { ...b, [field]: value } : b
+    )
     onChange(next)
   }
   const add = () => {
@@ -209,12 +211,15 @@ function ButtonsEditor({
       onChange([...buttons, { id: "", title: "" }])
   }
   const remove = (i: number) => {
-    if (buttons.length > META.BUTTON_MIN) onChange(buttons.filter((_, idx) => idx !== i))
+    if (buttons.length > META.BUTTON_MIN)
+      onChange(buttons.filter((_, idx) => idx !== i))
   }
 
   return (
     <div className="space-y-3">
-      <Label>Reply Buttons ({buttons.length}/{META.BUTTON_MAX})</Label>
+      <Label>
+        Reply Buttons ({buttons.length}/{META.BUTTON_MAX})
+      </Label>
       {buttons.map((b, i) => (
         <div key={i} className="flex items-start gap-2">
           <div className="grid flex-1 grid-cols-2 gap-2">
@@ -265,7 +270,9 @@ function CtaUrlEditor({
   onChange: (b: CtaUrlRow[]) => void
 }) {
   const update = (i: number, field: keyof CtaUrlRow, value: string) => {
-    const next = buttons.map((b, idx) => (idx === i ? { ...b, [field]: value } : b))
+    const next = buttons.map((b, idx) =>
+      idx === i ? { ...b, [field]: value } : b
+    )
     onChange(next)
   }
   const add = () => {
@@ -278,7 +285,9 @@ function CtaUrlEditor({
 
   return (
     <div className="space-y-3">
-      <Label>CTA URL Buttons ({buttons.length}/{META.BUTTON_MAX})</Label>
+      <Label>
+        CTA URL Buttons ({buttons.length}/{META.BUTTON_MAX})
+      </Label>
       {buttons.map((b, i) => (
         <div key={i} className="flex items-start gap-2">
           <div className="grid flex-1 grid-cols-2 gap-2">
@@ -336,7 +345,10 @@ function SectionEditor({
   }
   const removeRow = (ri: number) => {
     if (section.rows.length > META.ROW_MIN)
-      onChange({ ...section, rows: section.rows.filter((_, idx) => idx !== ri) })
+      onChange({
+        ...section,
+        rows: section.rows.filter((_, idx) => idx !== ri),
+      })
   }
 
   return (
@@ -438,7 +450,9 @@ function ListEditor({
         </p>
       </div>
       <div className="space-y-3">
-        <Label>Sections ({sections.length}/{META.SECTION_MAX})</Label>
+        <Label>
+          Sections ({sections.length}/{META.SECTION_MAX})
+        </Label>
         {sections.map((s, i) => (
           <SectionEditor
             key={i}
@@ -500,10 +514,7 @@ export function InteractiveComposer({
   const [phoneNumber, setPhoneNumber] = React.useState("")
   const [deviceId, setDeviceId] = React.useState("")
 
-  const payload = React.useMemo(
-    () => buildPayload(mode, state),
-    [mode, state]
-  )
+  const payload = React.useMemo(() => buildPayload(mode, state), [mode, state])
 
   const validationError = React.useMemo(() => {
     if (!state.bodyText.trim()) return "Body text is required"
@@ -541,7 +552,11 @@ export function InteractiveComposer({
 
     setSending(true)
     try {
-      await onSend({ phoneNumber: phoneNumber.trim(), deviceId: deviceId || undefined, interactive: payload })
+      await onSend({
+        phoneNumber: phoneNumber.trim(),
+        deviceId: deviceId || undefined,
+        interactive: payload,
+      })
       toast.success(`Interactive message queued for delivery`)
       setOpen(false)
       resetForm()
@@ -560,7 +575,7 @@ export function InteractiveComposer({
           Interactive Message
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Send Interactive Message</DialogTitle>
           <DialogDescription>
@@ -570,10 +585,7 @@ export function InteractiveComposer({
 
         <div className="space-y-4 py-4">
           {/* Mode selector */}
-          <Tabs
-            value={mode}
-            onValueChange={(v) => setMode(v as ComposerMode)}
-          >
+          <Tabs value={mode} onValueChange={(v) => setMode(v as ComposerMode)}>
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="buttons">Reply Buttons</TabsTrigger>
               <TabsTrigger value="list">List</TabsTrigger>
@@ -668,7 +680,11 @@ export function InteractiveComposer({
                   >
                     <option value="">Auto-select device</option>
                     {devices.map((d) => (
-                      <option key={d.id} value={d.id} disabled={d.status !== "ACTIVE"}>
+                      <option
+                        key={d.id}
+                        value={d.id}
+                        disabled={d.status !== "ACTIVE"}
+                      >
                         {d.phoneNumber} {d.status !== "ACTIVE" && "(inactive)"}
                       </option>
                     ))}
@@ -706,7 +722,9 @@ export function InteractiveComposer({
             Cancel
           </Button>
           <Button onClick={handleSend} disabled={sending || !!validationError}>
-            {sending ? "Sending..." : `Send ${mode === "buttons" ? "Buttons" : mode === "list" ? "List" : "CTA URL"}`}
+            {sending
+              ? "Sending..."
+              : `Send ${mode === "buttons" ? "Buttons" : mode === "list" ? "List" : "CTA URL"}`}
           </Button>
         </DialogFooter>
       </DialogContent>

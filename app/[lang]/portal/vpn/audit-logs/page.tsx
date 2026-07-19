@@ -6,9 +6,8 @@ export default async function VpnAuditLogsPage() {
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Audit Logs</h1>
         <p className="text-sm text-muted-foreground">
-          Track every VPN provisioning step, revocation, configuration
-          download, and admin action. Expand any row to inspect the full
-          detail payload.
+          Track every VPN provisioning step, revocation, configuration download,
+          and admin action. Expand any row to inspect the full detail payload.
         </p>
       </header>
       <AuditLogsTable />

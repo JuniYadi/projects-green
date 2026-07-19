@@ -36,7 +36,10 @@ export function MetaStatusBadge({ status }: { status?: string | null }) {
   }
 
   if (!status) return null
-  const { label, className } = config[status] ?? { label: status, className: "text-gray-500 bg-gray-50 dark:bg-gray-900/20" }
+  const { label, className } = config[status] ?? {
+    label: status,
+    className: "text-gray-500 bg-gray-50 dark:bg-gray-900/20",
+  }
 
   return (
     <span
@@ -190,7 +193,9 @@ export function TemplateList({
               <button
                 type="button"
                 className="text-left font-medium hover:underline"
-                onClick={() => onSelectTemplate?.(template) ?? onSelect?.(template.id)}
+                onClick={() =>
+                  onSelectTemplate?.(template) ?? onSelect?.(template.id)
+                }
               >
                 {template.name}
               </button>

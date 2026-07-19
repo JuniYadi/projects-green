@@ -96,7 +96,8 @@ function formatDuration(ms: unknown): string | null {
 function stringify(value: unknown): string {
   if (value === null || value === undefined) return ""
   if (typeof value === "string") return value
-  if (typeof value === "number" || typeof value === "boolean") return String(value)
+  if (typeof value === "number" || typeof value === "boolean")
+    return String(value)
   try {
     return JSON.stringify(value)
   } catch {
@@ -130,22 +131,28 @@ export function extractAuditDetails(input: {
   const rows: AuditDetailRow[] = []
   const other: AuditDetailRow[] = []
 
-  const details = input.details && typeof input.details === "object" ? input.details : {}
+  const details =
+    input.details && typeof input.details === "object" ? input.details : {}
   const seenKeys = new Set<string>()
 
   // 1. Top-level columns that are useful in the expanded panel. We emit them
   //    only when the same key isn't already present in `details` (details
   //    wins because it is the more specific payload written by the pipeline).
-  const columnFallbacks: Array<{ key: string; label: string; value: unknown }> = [
-    { key: "step", label: "Step", value: input.step },
-    { key: "status", label: "Status", value: input.status },
-    { key: "serverAccountId", label: "Server account", value: input.serverAccountId },
-    { key: "deviceId", label: "Device", value: input.deviceId },
-    { key: "userId", label: "User", value: input.userId },
-    { key: "adminId", label: "Admin", value: input.adminId },
-    { key: "ip", label: "IP", value: input.ip },
-    { key: "userAgent", label: "User-Agent", value: input.userAgent },
-  ]
+  const columnFallbacks: Array<{ key: string; label: string; value: unknown }> =
+    [
+      { key: "step", label: "Step", value: input.step },
+      { key: "status", label: "Status", value: input.status },
+      {
+        key: "serverAccountId",
+        label: "Server account",
+        value: input.serverAccountId,
+      },
+      { key: "deviceId", label: "Device", value: input.deviceId },
+      { key: "userId", label: "User", value: input.userId },
+      { key: "adminId", label: "Admin", value: input.adminId },
+      { key: "ip", label: "IP", value: input.ip },
+      { key: "userAgent", label: "User-Agent", value: input.userAgent },
+    ]
 
   for (const { key, label, value } of columnFallbacks) {
     if (value === null || value === undefined || value === "") continue
@@ -204,7 +211,10 @@ function pushRow(
     label,
     value: rendered,
     tone:
-      key === "status" || key === "error" || key === "failureReason" || key === "reason"
+      key === "status" ||
+      key === "error" ||
+      key === "failureReason" ||
+      key === "reason"
         ? toneFromValue(rendered)
         : "neutral",
   })
@@ -227,13 +237,21 @@ function humanizeKey(key: string): string {
 /** Map an audit `action` to a display badge tone. */
 export function actionTone(action: string): AuditDetailRow["tone"] {
   const a = action.toUpperCase()
-  if (a.includes("SUCCESS") || a === "REGISTERED" || a === "CONFIG_DOWNLOADED") {
+  if (
+    a.includes("SUCCESS") ||
+    a === "REGISTERED" ||
+    a === "CONFIG_DOWNLOADED"
+  ) {
     return "success"
   }
   if (a.includes("FAILED") || a === "REVOKED") {
     return "danger"
   }
-  if (a.includes("RETRIED") || a.includes("PROVISIONING_STARTED") || a === "PROVISIONING_STEP") {
+  if (
+    a.includes("RETRIED") ||
+    a.includes("PROVISIONING_STARTED") ||
+    a === "PROVISIONING_STEP"
+  ) {
     return "warning"
   }
   return "neutral"

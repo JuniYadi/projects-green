@@ -26,7 +26,11 @@ export default async function PortalOrgsPage() {
       </Suspense>
 
       <Suspense fallback={<Skeleton className="h-96" />}>
-        <OrgSummaryTable linkPrefix="/portal/orgs" linkSuffix="?page=billing" limit={100} />
+        <OrgSummaryTable
+          linkPrefix="/portal/orgs"
+          linkSuffix="?page=billing"
+          limit={100}
+        />
       </Suspense>
     </main>
   )

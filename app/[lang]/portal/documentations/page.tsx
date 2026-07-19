@@ -53,28 +53,31 @@ export default function PortalDocumentationsPage() {
     void loadDocs()
   }, [loadDocs])
 
-  const handleDelete = async (doc: DocEntry) => {
-    if (
-      !window.confirm(
-        `Are you sure you want to delete "${doc.title}"? This action cannot be undone.`
+  const handleDelete = useCallback(
+    async (doc: DocEntry) => {
+      if (
+        !window.confirm(
+          `Are you sure you want to delete "${doc.title}"? This action cannot be undone.`
+        )
       )
-    )
-      return
-    setIsDeleting(true)
-    try {
-      const { data: res } = await eden.api.docs[doc.id].delete()
-      if (res?.ok) {
-        setDocs((prev) => prev.filter((d) => d.id !== doc.id))
-        if (selectedDoc?.id === doc.id) setSelectedDoc(null)
-      } else {
-        setError(res?.message || "Failed to delete")
+        return
+      setIsDeleting(true)
+      try {
+        const { data: res } = await eden.api.docs[doc.id].delete()
+        if (res?.ok) {
+          setDocs((prev) => prev.filter((d) => d.id !== doc.id))
+          if (selectedDoc?.id === doc.id) setSelectedDoc(null)
+        } else {
+          setError(res?.message || "Failed to delete")
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred")
+      } finally {
+        setIsDeleting(false)
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
-    } finally {
-      setIsDeleting(false)
-    }
-  }
+    },
+    [selectedDoc]
+  )
 
   const filteredDocs = docs.filter(
     (doc) =>
@@ -83,64 +86,65 @@ export default function PortalDocumentationsPage() {
       doc.path.toLowerCase().includes(search.toLowerCase())
   )
 
-  const columns = useMemo<ColumnDef<DocEntry>[]>(() => [
-    {
-      accessorKey: "title",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Title" />
-      ),
-      cell: ({ row }) => (
-        <span
-          className={`font-medium ${selectedDoc?.id === row.original.id ? "bg-muted" : ""} cursor-pointer hover:bg-muted/50`}
-          onClick={() => setSelectedDoc(row.original)}
-        >
-          {row.original.title}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "path",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Path" />
-      ),
-      cell: ({ row }) => (
-        <span className="text-muted-foreground">
-          {row.original.path}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "updatedAt",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Updated" />
-      ),
-      cell: ({ row }) => (
-        <span className="text-muted-foreground">
-          {row.original.updatedAt}
-        </span>
-      ),
-    },
-    {
-      id: "actions",
-      header: () => null,
-      cell: ({ row }) => (
-        <Button
-          aria-label={`Delete ${row.original.title}`}
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-destructive"
-          disabled={isDeleting}
-          onClick={(e) => {
-            e.stopPropagation()
-            void handleDelete(row.original)
-          }}
-        >
-          <TrashIcon className="h-4 w-4" />
-        </Button>
-      ),
-      enableHiding: false,
-    },
-  ], [isDeleting, handleDelete, selectedDoc])
+  const columns = useMemo<ColumnDef<DocEntry>[]>(
+    () => [
+      {
+        accessorKey: "title",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Title" />
+        ),
+        cell: ({ row }) => (
+          <span
+            className={`font-medium ${selectedDoc?.id === row.original.id ? "bg-muted" : ""} cursor-pointer hover:bg-muted/50`}
+            onClick={() => setSelectedDoc(row.original)}
+          >
+            {row.original.title}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "path",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Path" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-muted-foreground">{row.original.path}</span>
+        ),
+      },
+      {
+        accessorKey: "updatedAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Updated" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-muted-foreground">
+            {row.original.updatedAt}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        header: () => null,
+        cell: ({ row }) => (
+          <Button
+            aria-label={`Delete ${row.original.title}`}
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-destructive"
+            disabled={isDeleting}
+            onClick={(e) => {
+              e.stopPropagation()
+              void handleDelete(row.original)
+            }}
+          >
+            <TrashIcon className="h-4 w-4" />
+          </Button>
+        ),
+        enableHiding: false,
+      },
+    ],
+    [isDeleting, handleDelete, selectedDoc]
+  )
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -172,14 +176,14 @@ export default function PortalDocumentationsPage() {
             <Skeleton className="h-12 w-full" />
           </div>
         ) : (
-        <DataTable
-          tableId="portal-documentations"
-          columns={columns}
-          data={filteredDocs}
-          searchPlaceholder="Search by title or path..."
-          searchableColumns={["title", "path"]}
-          defaultColumnVisibility={{}}
-        />
+          <DataTable
+            tableId="portal-documentations"
+            columns={columns}
+            data={filteredDocs}
+            searchPlaceholder="Search by title or path..."
+            searchableColumns={["title", "path"]}
+            defaultColumnVisibility={{}}
+          />
         )}
       </section>
 

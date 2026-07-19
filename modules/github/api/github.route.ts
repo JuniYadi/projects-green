@@ -15,7 +15,12 @@ import {
   issueGithubInstallState,
   validateGithubInstallState,
 } from "@/modules/github/github-install-state"
-import { getGithubInstallUrl, fetchGithubInstallationDetails, fetchGithubInstallationRepositories, syncGithubInstallation } from "@/modules/github/github.service"
+import {
+  getGithubInstallUrl,
+  fetchGithubInstallationDetails,
+  fetchGithubInstallationRepositories,
+  syncGithubInstallation,
+} from "@/modules/github/github.service"
 
 const repositoriesQuerySchema = z.object({
   ownerId: z.string().trim().min(1).optional(),
@@ -219,10 +224,12 @@ export const createGithubRoutes = (
 
         try {
           // Fetch installation details from GitHub API
-          const installation = await fetchGithubInstallationDetails(installationId)
+          const installation =
+            await fetchGithubInstallationDetails(installationId)
 
           // Fetch all repositories for this installation
-          const repositories = await fetchGithubInstallationRepositories(installationId)
+          const repositories =
+            await fetchGithubInstallationRepositories(installationId)
 
           // Sync to DB
           await syncGithubInstallation({

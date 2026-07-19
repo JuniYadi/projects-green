@@ -15,6 +15,7 @@ import type {
 } from "@/modules/invoices/invoices.types"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { Prisma } from "@prisma/client"
+import { emitBillingAudit } from "@/modules/billing/audit/audit.service"
 
 export class InvoiceNotFoundError extends Error {
   constructor(invoiceId: string) {
@@ -334,6 +335,22 @@ export const createInvoiceService = (
             },
           },
         })
+      })
+
+      // Fire-and-forget billing audit (uses global prisma, not tx)
+      emitBillingAudit({
+        billingAccountId: invoice.billingAccountId ?? undefined,
+        entityType: "Invoice",
+        entityId: invoiceId,
+        action: "PAYMENT_CONFIRMED",
+        actorId: adminUserId,
+        context: {
+          invoiceNumber: invoice.invoiceNumber,
+          totalAmount: toNumber(invoice.totalAmount).toFixed(2),
+          currency: invoice.currency,
+          paymentMethod: paymentMethod ?? null,
+          referenceNumber: referenceNumber ?? null,
+        },
       })
 
       // Re-fetch and return updated invoice

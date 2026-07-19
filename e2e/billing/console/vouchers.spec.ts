@@ -12,8 +12,11 @@ test.describe("Vouchers (console)", () => {
     await page.goto("/en/console/billing/vouchers")
   })
 
-  test("UC-14: redeem voucher input and button are visible", async ({ page }) => {
-    const input = page.getByPlaceholder(/code|voucher/i)
+  test("UC-14: redeem voucher input and button are visible", async ({
+    page,
+  }) => {
+    const input = page
+      .getByPlaceholder(/code|voucher/i)
       .or(page.getByRole("textbox", { name: /code|voucher/i }))
     await expect(input).toBeVisible()
 

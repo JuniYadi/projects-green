@@ -35,12 +35,13 @@ type DeviceStatusBadgeProps = {
 }
 
 function DeviceStatusBadge({ status, messages }: DeviceStatusBadgeProps) {
-  const variant: Record<DeviceStatus, "success" | "secondary" | "destructive"> = {
-    ACTIVE: "success",
-    NON_ACTIVE: "secondary",
-    DISCONNECTED: "destructive",
-    UNKNOWN: "secondary",
-  }
+  const variant: Record<DeviceStatus, "success" | "secondary" | "destructive"> =
+    {
+      ACTIVE: "success",
+      NON_ACTIVE: "secondary",
+      DISCONNECTED: "destructive",
+      UNKNOWN: "secondary",
+    }
 
   const label: Record<DeviceStatus, string> = {
     ACTIVE: messages.console.whatsapp.devices.active,
@@ -106,8 +107,8 @@ export default function WhatsAppDevicesPage() {
     ;(async () => {
       await loadDevices()
     })()
-  // ponytail: loadDevices is stable, only run on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // ponytail: loadDevices is stable, only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ── Columns ───────────────────────────────────────────────────────────────
@@ -149,10 +150,7 @@ export default function WhatsAppDevicesPage() {
         <DataTableColumnHeader column={column} title="Status" />
       ),
       cell: ({ row }) => (
-        <DeviceStatusBadge
-          status={row.original.status}
-          messages={messages}
-        />
+        <DeviceStatusBadge status={row.original.status} messages={messages} />
       ),
     },
     {
@@ -280,9 +278,18 @@ export default function WhatsAppDevicesPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col items-center justify-center py-8 text-center" role="alert">
-              <p className="text-sm font-medium text-destructive">{errorMessage}</p>
-              <Button variant="outline" className="mt-4" onClick={() => void loadDevices()}>
+            <div
+              className="flex flex-col items-center justify-center py-8 text-center"
+              role="alert"
+            >
+              <p className="text-sm font-medium text-destructive">
+                {errorMessage}
+              </p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => void loadDevices()}
+              >
                 Retry
               </Button>
             </div>

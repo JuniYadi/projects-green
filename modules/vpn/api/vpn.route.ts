@@ -72,8 +72,7 @@ const defaultAuthenticate = async (): Promise<VpnAuthContext> => withAuth()
 const defaultBilling = (): VpnBillingLike =>
   new VpnBillingService(prisma, new BillingTransactionService(prisma))
 
-const defaultOpenVpn = (): OpenVpnLike =>
-  new OpenVpnSshAdapter()
+const defaultOpenVpn = (): OpenVpnLike => new OpenVpnSshAdapter()
 
 const defaultVpnClients = (): VpnClientServiceLike =>
   new VpnClientService(prisma)

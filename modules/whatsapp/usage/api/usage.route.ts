@@ -132,13 +132,20 @@ export const usageRoutes = new Elysia({ prefix: "/usage" })
       const whatsappAuth = await resolveAuthContext(request)
       if (!whatsappAuth) return toUnauthorized(set)
 
-      const { period, deviceId } = query as { period?: string; deviceId?: string }
+      const { period, deviceId } = query as {
+        period?: string
+        deviceId?: string
+      }
       const targetPeriod = period ?? getCurrentPeriod()
 
       // Validate period format YYYY-MM
       if (period && !/^\d{4}-\d{2}$/.test(period)) {
         set.status = 422
-        return { ok: false, error: "VALIDATION_ERROR", message: "period query param must use YYYY-MM." }
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message: "period query param must use YYYY-MM.",
+        }
       }
 
       const breakdown = await whatsappUsageService.getCostBreakdown(

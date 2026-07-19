@@ -94,7 +94,8 @@ describe("DeviceCreateWizard", () => {
     render(<DeviceCreateWizard locale="en" />)
 
     await waitFor(() => {
-      const calls = (globalThis.fetch as unknown as ReturnType<typeof mock>).mock.calls
+      const calls = (globalThis.fetch as unknown as ReturnType<typeof mock>)
+        .mock.calls
       const orgCall = calls.find((call) => {
         const path =
           typeof call[0] === "string"
@@ -112,7 +113,9 @@ describe("DeviceCreateWizard", () => {
     const view = render(<DeviceCreateWizard locale="en" />)
 
     // "Organization & Phone" appears in both nav and step heading
-    expect(view.getAllByText("Organization & Phone").length).toBeGreaterThanOrEqual(1)
+    expect(
+      view.getAllByText("Organization & Phone").length
+    ).toBeGreaterThanOrEqual(1)
     expect(view.getByText("Phone Number")).toBeTruthy()
   })
 
@@ -149,7 +152,9 @@ describe("DeviceCreateWizard", () => {
     const view = render(<DeviceCreateWizard locale="en" />)
 
     // Nav buttons show step names (some may appear in both nav + step heading)
-    expect(view.getAllByText("Organization & Phone").length).toBeGreaterThanOrEqual(1)
+    expect(
+      view.getAllByText("Organization & Phone").length
+    ).toBeGreaterThanOrEqual(1)
     expect(view.getByText("WhatsApp Business IDs")).toBeTruthy()
     expect(view.getByText("Quotas & Limits")).toBeTruthy()
     expect(view.getByText("Profile & Features")).toBeTruthy()

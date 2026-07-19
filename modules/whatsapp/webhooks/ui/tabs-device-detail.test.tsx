@@ -54,9 +54,8 @@ describe("TabsDeviceDetail", () => {
     // singleton, which captures getApiBaseUrl() at import time.  Loading the
     // module after beforeEach has set the Happy DOM URL ensures the eden
     // client is constructed with the browser origin base URL.
-    const { TabsDeviceDetail } = await import(
-      "@/modules/whatsapp/webhooks/ui/tabs-device-detail"
-    )
+    const { TabsDeviceDetail } =
+      await import("@/modules/whatsapp/webhooks/ui/tabs-device-detail")
 
     render(
       React.createElement(TabsDeviceDetail, {

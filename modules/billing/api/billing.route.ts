@@ -97,7 +97,12 @@ export const createBillingRoutes = (deps: Partial<BillingRouteDeps> = {}) => {
         }
 
         if (!auth.organizationId) {
-          return toError(set, 403, "NO_ORGANIZATION", "No active organization found.")
+          return toError(
+            set,
+            403,
+            "NO_ORGANIZATION",
+            "No active organization found."
+          )
         }
 
         try {
@@ -117,7 +122,12 @@ export const createBillingRoutes = (deps: Partial<BillingRouteDeps> = {}) => {
           return { ok: true as const, count }
         } catch (err) {
           console.error("[Billing] GET /contacts/count error:", err)
-          return toError(set, 500, "INTERNAL_ERROR", "Unable to check contacts.")
+          return toError(
+            set,
+            500,
+            "INTERNAL_ERROR",
+            "Unable to check contacts."
+          )
         }
       })
 

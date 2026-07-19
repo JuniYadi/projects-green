@@ -120,7 +120,11 @@ function ColumnHeader({
   column,
   title,
 }: {
-  column: { getIsSorted: () => false | "asc" | "desc"; toggleSorting: (asc: boolean) => void; getCanHide: () => boolean }
+  column: {
+    getIsSorted: () => false | "asc" | "desc"
+    toggleSorting: (asc: boolean) => void
+    getCanHide: () => boolean
+  }
   title: string
 }) {
   if (!column.getCanHide()) {
@@ -152,9 +156,7 @@ function getColumns(): ColumnDef<VpnSubscriptionItem>[] {
   return [
     {
       accessorKey: "id",
-      header: ({ column }) => (
-        <ColumnHeader column={column} title="ID" />
-      ),
+      header: ({ column }) => <ColumnHeader column={column} title="ID" />,
       cell: ({ row }) => (
         <span className="font-mono text-xs text-foreground">
           {row.original.id.slice(0, 8)}...
@@ -167,25 +169,21 @@ function getColumns(): ColumnDef<VpnSubscriptionItem>[] {
         <ColumnHeader column={column} title="Organization" />
       ),
       cell: ({ row }) => (
-        <span className="font-medium text-sm">
+        <span className="text-sm font-medium">
           {row.original.organizationName ?? row.original.organizationId}
         </span>
       ),
     },
     {
       accessorKey: "packageName",
-      header: ({ column }) => (
-        <ColumnHeader column={column} title="Package" />
-      ),
+      header: ({ column }) => <ColumnHeader column={column} title="Package" />,
       cell: ({ row }) => (
         <span className="text-sm">{row.original.packageName}</span>
       ),
     },
     {
       accessorKey: "status",
-      header: ({ column }) => (
-        <ColumnHeader column={column} title="Status" />
-      ),
+      header: ({ column }) => <ColumnHeader column={column} title="Status" />,
       cell: ({ row }) => (
         <Badge variant={STATUS_VARIANT[row.original.status]}>
           {row.original.status}
@@ -195,9 +193,7 @@ function getColumns(): ColumnDef<VpnSubscriptionItem>[] {
     },
     {
       accessorKey: "deviceCount",
-      header: ({ column }) => (
-        <ColumnHeader column={column} title="Devices" />
-      ),
+      header: ({ column }) => <ColumnHeader column={column} title="Devices" />,
       cell: ({ row }) => (
         <a
           href={`/portal/vpn/devices?subscriptionId=${row.original.id}`}
@@ -211,9 +207,7 @@ function getColumns(): ColumnDef<VpnSubscriptionItem>[] {
     },
     {
       accessorKey: "priceLocked",
-      header: ({ column }) => (
-        <ColumnHeader column={column} title="Price" />
-      ),
+      header: ({ column }) => <ColumnHeader column={column} title="Price" />,
       cell: ({ row }) => (
         <span className="text-sm font-medium">
           {formatCurrency(row.original.priceLocked, row.original.currency)}
@@ -254,9 +248,7 @@ function getColumns(): ColumnDef<VpnSubscriptionItem>[] {
     },
     {
       accessorKey: "createdAt",
-      header: ({ column }) => (
-        <ColumnHeader column={column} title="Created" />
-      ),
+      header: ({ column }) => <ColumnHeader column={column} title="Created" />,
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
           {formatDate(row.original.createdAt)}
@@ -304,8 +296,9 @@ export function SubscriptionsTable() {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "createdAt", desc: true },
   ])
-  const [columnVisibility, setColumnVisibility] =
-    usePersistedColumnVisibility("portal-vpn-subscriptions")
+  const [columnVisibility, setColumnVisibility] = usePersistedColumnVisibility(
+    "portal-vpn-subscriptions"
+  )
 
   const fetchSubs = useCallback(async (filters: VpnAdminSubscriptionsQuery) => {
     setLoading(true)
@@ -323,20 +316,33 @@ export function SubscriptionsTable() {
 
   // Debounce search, fire immediately for everything else
   useEffect(() => {
-    const timer = setTimeout(() => {
-      const query: VpnAdminSubscriptionsQuery = { page }
-      if (orgFilter !== "all") query.orgId = orgFilter
-      if (pkgFilter !== "all") query.packageId = pkgFilter
-      if (statusFilter !== "all") query.status = statusFilter as "ACTIVE" | "SUSPENDED" | "EXPIRED"
-      if (dateFrom) query.periodStartFrom = dateFrom
-      if (dateTo) query.periodStartTo = dateTo
-      if (searchQuery.trim()) query.q = searchQuery.trim()
+    const timer = setTimeout(
+      () => {
+        const query: VpnAdminSubscriptionsQuery = { page }
+        if (orgFilter !== "all") query.orgId = orgFilter
+        if (pkgFilter !== "all") query.packageId = pkgFilter
+        if (statusFilter !== "all")
+          query.status = statusFilter as "ACTIVE" | "SUSPENDED" | "EXPIRED"
+        if (dateFrom) query.periodStartFrom = dateFrom
+        if (dateTo) query.periodStartTo = dateTo
+        if (searchQuery.trim()) query.q = searchQuery.trim()
 
-      fetchSubs(query)
-    }, searchQuery ? 300 : 0)
+        fetchSubs(query)
+      },
+      searchQuery ? 300 : 0
+    )
 
     return () => clearTimeout(timer)
-  }, [orgFilter, pkgFilter, statusFilter, dateFrom, dateTo, searchQuery, page, fetchSubs])
+  }, [
+    orgFilter,
+    pkgFilter,
+    statusFilter,
+    dateFrom,
+    dateTo,
+    searchQuery,
+    page,
+    fetchSubs,
+  ])
 
   // Reset to page 1 when any filter changes
   useEffect(() => {
@@ -379,10 +385,17 @@ export function SubscriptionsTable() {
   }
 
   // Extract unique org/package names from current data for dropdown options
-  const orgOptions = useMemo(() => extractUnique(subs, (s) => s.organizationName), [subs])
-  const pkgOptions = useMemo(() => extractUnique(subs, (s) => s.packageName), [subs])
+  const orgOptions = useMemo(
+    () => extractUnique(subs, (s) => s.organizationName),
+    [subs]
+  )
+  const pkgOptions = useMemo(
+    () => extractUnique(subs, (s) => s.packageName),
+    [subs]
+  )
 
-  const start = subs.length === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1
+  const start =
+    subs.length === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1
   const end = Math.min(pagination.page * pagination.limit, pagination.total)
 
   if (loading && subs.length === 0) {
@@ -538,7 +551,9 @@ export function SubscriptionsTable() {
                 <TableRow
                   key={row.id}
                   className="cursor-pointer"
-                  onClick={() => router.push(`/portal/vpn/subscriptions/${row.original.id}`)}
+                  onClick={() =>
+                    router.push(`/portal/vpn/subscriptions/${row.original.id}`)
+                  }
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>

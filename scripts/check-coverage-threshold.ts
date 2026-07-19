@@ -175,7 +175,6 @@ const main = async () => {
   if (exitCode !== 0) {
     process.exit(exitCode)
   }
-
 }
 
 if (import.meta.main) {

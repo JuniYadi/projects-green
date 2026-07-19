@@ -378,16 +378,13 @@ export function StepSource({
 
             {githubConnectionStatus === "connected" && (
               <div className="grid gap-6">
-                {/* 1. Account & Repository Selection Row */}
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                  <div className="flex-1 space-y-2">
-                    <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                      GitHub account
-                    </label>
+                  {/* Account dropdown - left side, compact */}
+                  <div className="w-full shrink-0 space-y-1 sm:w-48">
                     {ownerOptionsLoading ? (
                       <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                        Loading installations...
+                        Loading...
                       </div>
                     ) : ownerOptionsError ? (
                       <p className="text-xs text-destructive">
@@ -404,12 +401,16 @@ export function StepSource({
                           onValueChange={onOwnerSelect}
                           disabled={owners.length === 1}
                         >
-                          <SelectTrigger className="w-full text-xs">
-                            <SelectValue placeholder="Select an account" />
+                          <SelectTrigger className="h-9 w-full text-xs">
+                            <SelectValue placeholder="Select account" />
                           </SelectTrigger>
                           <SelectContent>
                             {owners.map((owner) => (
-                              <SelectItem key={owner.id} value={owner.id} className="text-xs">
+                              <SelectItem
+                                key={owner.id}
+                                value={owner.id}
+                                className="text-xs"
+                              >
                                 <div className="flex items-center gap-2">
                                   <div className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-muted text-[10px] font-bold text-muted-foreground uppercase">
                                     {owner.name.charAt(0)}
@@ -429,16 +430,13 @@ export function StepSource({
                     )}
                   </div>
 
-                  {/* Repository Search */}
+                  {/* Repository search - right side, flexible */}
                   {selectedOwnerId && (
-                    <div className="flex-1 space-y-2">
-                      <label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                        Search Repository
-                      </label>
+                    <div className="flex-1 space-y-1">
                       <div className="relative">
                         <MagnifyingGlass className="absolute top-2.5 left-3 h-4 w-4 text-muted-foreground" />
                         <Input
-                          placeholder="Filter repositories..."
+                          placeholder="Search repositories..."
                           value={repoFilter}
                           onChange={(e) => setRepoFilter(e.target.value)}
                           className="h-9 pl-9 text-xs"
@@ -921,16 +919,21 @@ export function StepSource({
                       </h4>
                       <div className="grid grid-cols-2 gap-4 text-xs sm:grid-cols-4">
                         <div>
-                          <span className="block text-muted-foreground">Compute</span>
+                          <span className="block text-muted-foreground">
+                            Compute
+                          </span>
                           <span className="font-semibold">
-                            {(selectedTemplate.defaultCpu / 1000).toFixed(1)} vCPU /{" "}
+                            {(selectedTemplate.defaultCpu / 1000).toFixed(1)}{" "}
+                            vCPU /{" "}
                             {selectedTemplate.defaultMemory >= 1024
                               ? `${(selectedTemplate.defaultMemory / 1024).toFixed(0)} GB`
                               : `${selectedTemplate.defaultMemory} MB`}
                           </span>
                         </div>
                         <div>
-                          <span className="block text-muted-foreground">Runtime</span>
+                          <span className="block text-muted-foreground">
+                            Runtime
+                          </span>
                           <span className="font-semibold">
                             {selectedTemplate.build.useDockerfile
                               ? "Docker"
@@ -938,12 +941,20 @@ export function StepSource({
                           </span>
                         </div>
                         <div>
-                          <span className="block text-muted-foreground">Default Port</span>
-                          <span className="font-semibold">{selectedTemplate.build.defaultPort ?? "—"}</span>
+                          <span className="block text-muted-foreground">
+                            Default Port
+                          </span>
+                          <span className="font-semibold">
+                            {selectedTemplate.build.defaultPort ?? "—"}
+                          </span>
                         </div>
                         <div>
-                          <span className="block text-muted-foreground">Estimated Cost</span>
-                          <span className="font-semibold">${packageHourlyCost.toFixed(4)}/hr</span>
+                          <span className="block text-muted-foreground">
+                            Estimated Cost
+                          </span>
+                          <span className="font-semibold">
+                            ${packageHourlyCost.toFixed(4)}/hr
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -960,7 +971,8 @@ export function StepSource({
                         className="h-9 text-xs"
                       />
                       <p className="text-[10px] text-muted-foreground">
-                        Enter a name for your application. It will be used to generate the URL.
+                        Enter a name for your application. It will be used to
+                        generate the URL.
                       </p>
                     </div>
 

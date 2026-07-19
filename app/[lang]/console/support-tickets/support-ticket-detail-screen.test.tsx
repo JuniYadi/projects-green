@@ -314,14 +314,9 @@ describe("SupportTicketDetailScreen", () => {
 
   describe("Closed Ticket", () => {
     it("renders closed notice and warning when ticket status is closed", async () => {
-      const closedThread = createClosedThread(
-        "ticket_closed",
-        "TCK-3003"
-      )
+      const closedThread = createClosedThread("ticket_closed", "TCK-3003")
 
-      fetchMock.mockImplementationOnce(async () =>
-        jsonResponse(closedThread)
-      )
+      fetchMock.mockImplementationOnce(async () => jsonResponse(closedThread))
 
       const view = render(
         <SupportTicketDetailScreen ticketId="ticket_closed" />
@@ -347,9 +342,7 @@ describe("SupportTicketDetailScreen", () => {
 
       // Reply section is not rendered
       expect(view.queryByText("Reply")).toBeNull()
-      expect(
-        view.queryByRole("button", { name: "Send Reply" })
-      ).toBeNull()
+      expect(view.queryByRole("button", { name: "Send Reply" })).toBeNull()
 
       // Close button shows "Closed" and is disabled
       const closeButton = view.getByRole("button", { name: "Closed" })
@@ -358,9 +351,8 @@ describe("SupportTicketDetailScreen", () => {
 
     it("shows closed UI after closing a ticket via close button", async () => {
       const confirmSpy = mock(() => true)
-      ;(
-        window as unknown as { confirm: typeof confirm }
-      ).confirm = confirmSpy as unknown as typeof confirm
+      ;(window as unknown as { confirm: typeof confirm }).confirm =
+        confirmSpy as unknown as typeof confirm
 
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
       await waitFor(() =>

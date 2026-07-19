@@ -3,7 +3,6 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 
-
 const DEFAULT_CONVERSATION_LIMIT = 50
 const MAX_CONVERSATION_LIMIT = 100
 
@@ -91,33 +90,22 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
     }
   )
   // ── Conversation Labels ───────────────────────────────────────────────
-  .get(
-    "/labels",
-    async ({ request, set }: { request: any; set: any }) => {
-      const whatsappAuth = await resolveAuthContext(request)
-      if (!whatsappAuth) {
-        set.status = 401
-        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-      }
-      if (!whatsappAuth.organizationId) return toNoOrganization(set)
-      const labels = await prisma.whatsappConversationLabel.findMany({
-        where: { organizationId: whatsappAuth.organizationId },
-        orderBy: { name: "asc" },
-      })
-      return { ok: true, labels }
+  .get("/labels", async ({ request, set }: { request: any; set: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
-  )
+    if (!whatsappAuth.organizationId) return toNoOrganization(set)
+    const labels = await prisma.whatsappConversationLabel.findMany({
+      where: { organizationId: whatsappAuth.organizationId },
+      orderBy: { name: "asc" },
+    })
+    return { ok: true, labels }
+  })
   .post(
     "/labels",
-    async ({
-      request,
-      body,
-      set,
-    }: {
-      request: any
-      body: any
-      set: any
-    }) => {
+    async ({ request, body, set }: { request: any; body: any; set: any }) => {
       const whatsappAuth = await resolveAuthContext(request)
       if (!whatsappAuth) {
         set.status = 401
@@ -151,9 +139,10 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
         throw error
       }
     },
-  {
-    body: labelBodySchema,
-  })
+    {
+      body: labelBodySchema,
+    }
+  )
   .get(
     "/:id",
     async ({
@@ -186,10 +175,7 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
             take: 50,
             include: {
               statusHistory: {
-                orderBy: [
-                  { timestamp: "desc" },
-                  { createdAt: "desc" },
-                ],
+                orderBy: [{ timestamp: "desc" }, { createdAt: "desc" }],
               },
             },
           },
@@ -308,7 +294,8 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
           return {
             ok: false,
             error: "INVALID_LABELS",
-            message: "One or more label IDs do not belong to this organization.",
+            message:
+              "One or more label IDs do not belong to this organization.",
           }
         }
       }

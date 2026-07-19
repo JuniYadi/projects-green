@@ -330,7 +330,9 @@ export function VpnPairingQrModal({
 
         {(state.phase === "expired" || state.phase === "error") && (
           <div className="flex justify-center">
-            <Button onClick={() => generate(selectedSubscriptionId ?? undefined)}>
+            <Button
+              onClick={() => generate(selectedSubscriptionId ?? undefined)}
+            >
               Regenerate
             </Button>
           </div>

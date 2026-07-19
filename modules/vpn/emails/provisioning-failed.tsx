@@ -29,8 +29,8 @@ export const ProvisioningFailedEmail = ({
           subscription for {organizationName}.
         </Text>
         <Text style={s.text}>
-          Our team has been notified and will investigate. If the issue persists,
-          please reach out to support for assistance.
+          Our team has been notified and will investigate. If the issue
+          persists, please reach out to support for assistance.
         </Text>
         <Hr style={s.hr} />
         <Text style={s.footer}>

@@ -406,7 +406,12 @@ describe("PaymentService", () => {
         organizationId: "org-123",
         currency: "IDR",
         contacts: [
-          { id: "c1", email: "billing@example.com", isActive: true, notifyOnInvoice: true },
+          {
+            id: "c1",
+            email: "billing@example.com",
+            isActive: true,
+            notifyOnInvoice: true,
+          },
         ],
       })
 
@@ -426,7 +431,10 @@ describe("PaymentService", () => {
       )
 
       expect(mockEmailService.sendInvoicePaid).toHaveBeenCalledWith(
-        expect.objectContaining({ invoiceNumber: "TOP-ABC123", status: "paid" }),
+        expect.objectContaining({
+          invoiceNumber: "TOP-ABC123",
+          status: "paid",
+        }),
         "billing@example.com"
       )
     })

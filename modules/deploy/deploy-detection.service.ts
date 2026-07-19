@@ -122,9 +122,8 @@ export const mapDetectionResultDTO = (
     enforcedRuntimes.find((e) => e.runtimeId === appRuntime?.id)?.version ??
     null
   const secondaryVersion =
-    enforcedRuntimes.find(
-      (e) => e.runtimeId === secondaryRuntime?.id
-    )?.version ?? null
+    enforcedRuntimes.find((e) => e.runtimeId === secondaryRuntime?.id)
+      ?.version ?? null
 
   return {
     language: mapEcosystemToLanguage(ecosystem),

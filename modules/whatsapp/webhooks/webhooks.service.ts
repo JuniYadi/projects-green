@@ -103,16 +103,16 @@ export async function processInboundMessage(
     },
   })
 
-    // Upsert contact from this inbound message — mark isWhatsapp: true
-    await upsertWhatsappContactFromMessage({
-      organizationId,
-      phoneNumber: from,
-      whatsappDeviceId: deviceId,
-      messageAt: whatsappMessage.createdAt,
-      isWhatsapp: true,
-      waId: from,
-      markChecked: true,
-    })
+  // Upsert contact from this inbound message — mark isWhatsapp: true
+  await upsertWhatsappContactFromMessage({
+    organizationId,
+    phoneNumber: from,
+    whatsappDeviceId: deviceId,
+    messageAt: whatsappMessage.createdAt,
+    isWhatsapp: true,
+    waId: from,
+    markChecked: true,
+  })
 
   // Increment daily + monthly inbox counters
   const now = new Date()
@@ -181,17 +181,24 @@ export async function processInboundMessage(
     downloadAndSave(deviceId, organizationId, mediaId)
       .then((record) => {
         // Update the message metadata with media reference
-        const existingMeta = (whatsappMessage.metadata as Record<string, unknown>) ?? {}
+        const existingMeta =
+          (whatsappMessage.metadata as Record<string, unknown>) ?? {}
         existingMeta.whatsappMediaId = record.id
         existingMeta.mediaDownloaded = true
 
         prisma.whatsappMessage
           .update({
             where: { id: whatsappMessage.id },
-            data: { metadata: existingMeta as Prisma.InputJsonValue, mediaUrl: `__stored:${record.id}` },
+            data: {
+              metadata: existingMeta as Prisma.InputJsonValue,
+              mediaUrl: `__stored:${record.id}`,
+            },
           })
           .catch((err: unknown) =>
-            console.error(`[webhooks] failed to update message with media ref: ${whatsappMessage.id}`, err)
+            console.error(
+              `[webhooks] failed to update message with media ref: ${whatsappMessage.id}`,
+              err
+            )
           )
 
         return record
@@ -214,7 +221,9 @@ export async function processInboundMessage(
 /**
  * Extract text body from a message payload depending on type.
  */
-export function extractMessageBody(payload: ParsedMessagePayload): string | null {
+export function extractMessageBody(
+  payload: ParsedMessagePayload
+): string | null {
   const msgType = payload.type
 
   if (msgType === "text" && payload.text?.body) {

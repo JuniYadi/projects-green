@@ -117,9 +117,7 @@ beforeEach(() => {
   mockDeleteTenantOrganization.mockImplementation(async () => undefined)
   mockGetBootstrapCreatorRoleSlug.mockImplementation(() => "user_owner")
   mockListTenantBootstrapMembershipsForUser.mockImplementation(
-    async (): Promise<TenantBootstrapMembership[]> => [
-      makeMembership(),
-    ]
+    async (): Promise<TenantBootstrapMembership[]> => [makeMembership()]
   )
 })
 

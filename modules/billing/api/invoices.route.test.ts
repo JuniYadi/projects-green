@@ -3,11 +3,10 @@ import { Elysia } from "elysia"
 import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
 import { MockAuthContext } from "@/test/helpers/test-auth"
 
-import { createBillingInvoicesRoutes } from "./invoices.route"
-
-const mockFindUnique = mock()
 const mockFindMany = mock()
+const mockFindUnique = mock()
 const mockFindFirst = mock()
+const mockBillingInvoiceFindUnique = mock()
 
 const mockPrismaClient = {
   billingAccount: {
@@ -16,12 +15,16 @@ const mockPrismaClient = {
   billingInvoice: {
     findMany: mockFindMany,
     findFirst: mockFindFirst,
+    findUnique: mockBillingInvoiceFindUnique,
   },
 }
 
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrismaClient,
 }))
+
+// Dynamic import after mock registration so the mock is in place before the route module loads
+const { createBillingInvoicesRoutes } = await import("./invoices.route")
 
 describe("InvoicesRoute", () => {
   beforeEach(() => {
@@ -234,38 +237,8 @@ describe("InvoicesRoute", () => {
       expect(response.status).toBe(403)
     })
 
-    it("returns 404 when billing account not found", async () => {
-      mockFindUnique.mockResolvedValueOnce(null)
-
-      const app = new Elysia()
-        .use(
-          createBillingInvoicesRoutes({
-            authenticate: async () =>
-              ({
-                user: { id: "user-1" },
-                organizationId: "org-1",
-              }) as MockAuthContext,
-          })
-        )
-        .compile()
-
-      const response = await app.handle(
-        new Request("http://localhost/invoices/inv-1", {
-          method: "GET",
-        })
-      )
-
-      expect(response.status).toBe(404)
-      const body = await response.json()
-      expect(body.error).toBe("NOT_FOUND")
-    })
-
     it("returns 404 when invoice not found", async () => {
-      mockFindUnique.mockResolvedValueOnce({
-        id: "acc-1",
-        organizationId: "org-1",
-      })
-      mockFindFirst.mockResolvedValueOnce(null)
+      mockBillingInvoiceFindUnique.mockResolvedValueOnce(null)
 
       const app = new Elysia()
         .use(
@@ -291,11 +264,7 @@ describe("InvoicesRoute", () => {
     })
 
     it("returns 200 with invoice detail", async () => {
-      mockFindUnique.mockResolvedValueOnce({
-        id: "acc-1",
-        organizationId: "org-1",
-      })
-      mockFindFirst.mockResolvedValueOnce({
+      mockBillingInvoiceFindUnique.mockResolvedValueOnce({
         id: "inv-1",
         invoiceNumber: "INV-2026-001",
         status: "PENDING",
@@ -350,7 +319,9 @@ describe("InvoicesRoute", () => {
     })
 
     it("returns 500 on database error for detail", async () => {
-      mockFindUnique.mockRejectedValueOnce(new Error("Database error"))
+      mockBillingInvoiceFindUnique.mockRejectedValueOnce(
+        new Error("Database error")
+      )
 
       const app = new Elysia()
         .use(

@@ -133,9 +133,7 @@ describe("GET /admin/vpn/audit", () => {
 
   it("applies action filter via the `action` query param", async () => {
     const app = buildApp()
-    await app.handle(
-      new Request(BASE + "/?action=PROVISIONING_FAILED")
-    )
+    await app.handle(new Request(BASE + "/?action=PROVISIONING_FAILED"))
 
     const where = mockPrisma.vpnAuditLog.findMany.mock.calls[0][0].where
     expect(where.action).toBe("PROVISIONING_FAILED")
@@ -172,9 +170,7 @@ describe("GET /admin/vpn/audit", () => {
   it("applies date range filter via from/to", async () => {
     const app = buildApp()
     await app.handle(
-      new Request(
-        BASE + "/?from=2026-06-01T00:00:00Z&to=2026-06-30T23:59:59Z"
-      )
+      new Request(BASE + "/?from=2026-06-01T00:00:00Z&to=2026-06-30T23:59:59Z")
     )
 
     const where = mockPrisma.vpnAuditLog.findMany.mock.calls[0][0].where
@@ -187,9 +183,7 @@ describe("GET /admin/vpn/audit", () => {
     mockPrisma.vpnAuditLog.count.mockResolvedValue(120)
 
     const app = buildApp()
-    const res = await app.handle(
-      new Request(BASE + "/?page=3&limit=50")
-    )
+    const res = await app.handle(new Request(BASE + "/?page=3&limit=50"))
     const body = await res.json()
 
     expect(body.pagination).toEqual({
@@ -252,7 +246,17 @@ describe("GET /admin/vpn/audit/accounts/:saId (unchanged behaviour)", () => {
     expect(body.data).toHaveLength(1)
     // The per-account route uses the lean DTO (includes new audit columns)
     expect(Object.keys(body.data[0]).sort()).toEqual(
-      ["action", "createdAt", "details", "durationMs", "errorMessage", "id", "message", "status", "step"].sort()
+      [
+        "action",
+        "createdAt",
+        "details",
+        "durationMs",
+        "errorMessage",
+        "id",
+        "message",
+        "status",
+        "step",
+      ].sort()
     )
   })
 })

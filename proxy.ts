@@ -117,9 +117,14 @@ export default async function proxy(request: NextRequest) {
       if (session.user.email) {
         requestHeaders.set("x-workos-user-email", session.user.email)
       }
-      const sessionWithOrg = session as typeof session & { organizationId?: string | null }
+      const sessionWithOrg = session as typeof session & {
+        organizationId?: string | null
+      }
       if (sessionWithOrg.organizationId) {
-        requestHeaders.set("x-workos-organization-id", sessionWithOrg.organizationId)
+        requestHeaders.set(
+          "x-workos-organization-id",
+          sessionWithOrg.organizationId
+        )
       }
       if (session.role) {
         requestHeaders.set("x-workos-session-role", session.role)

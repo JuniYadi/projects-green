@@ -33,10 +33,7 @@ export type SyncSummary = {
  * have yet.
  */
 export class VpnServerSyncService {
-  async sync(
-    serverId: string,
-    correlationId: string
-  ): Promise<SyncSummary> {
+  async sync(serverId: string, correlationId: string): Promise<SyncSummary> {
     try {
       const server = await prisma.vpnServer.findUniqueOrThrow({
         where: { id: serverId },
@@ -95,7 +92,8 @@ export class VpnServerSyncService {
       for (const subscription of subscriptions) {
         totalSubscriptionsChecked++
 
-        const existingProtocols = accountsBySub.get(subscription.id) ?? new Set()
+        const existingProtocols =
+          accountsBySub.get(subscription.id) ?? new Set()
         const missing = enabled.filter((p) => !existingProtocols.has(p))
 
         if (missing.length === 0) {
@@ -108,15 +106,16 @@ export class VpnServerSyncService {
             action: "SYNC_PROTOCOLS_ACCOUNT_SKIPPED",
             status: "OK",
             message: `Subscription ${subscription.id} already has all protocols (${enabled.join(", ")})`,
-            details: { enabledProtocols: enabled, existingProtocols: [...existingProtocols] },
+            details: {
+              enabledProtocols: enabled,
+              existingProtocols: [...existingProtocols],
+            },
           })
           continue
         }
 
         for (const protocol of missing) {
-          const username = buildAccountUsername(
-            subscription.organizationId
-          )
+          const username = buildAccountUsername(subscription.organizationId)
 
           const account = await prisma.vpnServerAccount.create({
             data: {

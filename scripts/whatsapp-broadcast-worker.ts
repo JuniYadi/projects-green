@@ -1,5 +1,4 @@
 import { Prisma, WhatsappBillingCategory } from "@prisma/client"
-import Decimal = Prisma.Decimal
 import { Queue, Worker, type Job } from "bullmq"
 import { randomUUID } from "crypto"
 
@@ -13,7 +12,10 @@ import {
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import { upsertWhatsappContactFromMessage } from "@/modules/whatsapp/contacts/contacts.service"
 import { resolveWhatsappQuotaCredit } from "@/modules/whatsapp/messages/quota-credit.service"
-import { getHourlyMessageLimit, DEFAULT_DAILY_LIMIT_MESSAGE } from "@/modules/whatsapp/devices/devices.constants"
+import {
+  getHourlyMessageLimit,
+  DEFAULT_DAILY_LIMIT_MESSAGE,
+} from "@/modules/whatsapp/devices/devices.constants"
 
 const redisConnection = getWhatsAppBroadcastRedisConnection()
 const broadcastQueue = new Queue<WhatsAppBroadcastJobData>(
@@ -188,8 +190,17 @@ async function enforceDeviceLimit(data: WhatsAppBroadcastJobData) {
   const hourlyLimit = getHourlyMessageLimit(dailyLimit)
 
   const now = new Date()
-  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
-  const hourStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours()))
+  const today = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  )
+  const hourStart = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      now.getUTCHours()
+    )
+  )
 
   const deviceId = campaign.whatsappDeviceId
   const orgId = campaign.organizationId
@@ -221,14 +232,23 @@ async function enforceDeviceLimit(data: WhatsAppBroadcastJobData) {
   const hourlyUsed = hourlyCount?.messageOutboxCount ?? 0
 
   if (dailyUsed + 1 > dailyLimit) {
-    const nextMidnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
+    const nextMidnight = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+    )
     const delay = Math.max(nextMidnight.getTime() - now.getTime(), 1_000)
     await enqueueBroadcastJob({ ...data, method: "dispatch" }, delay)
     return false
   }
 
   if (hourlyUsed + 1 > hourlyLimit) {
-    const nextHour = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours() + 1))
+    const nextHour = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        now.getUTCHours() + 1
+      )
+    )
     const delay = Math.max(nextHour.getTime() - now.getTime(), 1_000)
     await enqueueBroadcastJob({ ...data, method: "dispatch" }, delay)
     return false
@@ -311,10 +331,10 @@ async function dispatchBroadcast(
       }
     }
 
-      const canSendDevice = await enforceDeviceLimit(data)
-      if (!canSendDevice) {
-        return
-      }
+    const canSendDevice = await enforceDeviceLimit(data)
+    if (!canSendDevice) {
+      return
+    }
 
     const client = await WhatsAppDeviceClient.fromDevice({
       accessToken: device.tokenEncrypted,
@@ -401,7 +421,6 @@ async function dispatchBroadcast(
       // Non-critical
     }
 
-
     const _now = new Date()
     const _year = _now.getUTCFullYear()
     const _month = _now.getUTCMonth() + 1
@@ -410,7 +429,9 @@ async function dispatchBroadcast(
       campaign.whatsappDeviceId ?? `org-${campaign.organizationId}`
 
     // Resolve quota credit: use template category or default to UTILITY
-    const resolvedCategory = (templateCategory as WhatsappBillingCategory) ?? WhatsappBillingCategory.UTILITY
+    const resolvedCategory =
+      (templateCategory as WhatsappBillingCategory) ??
+      WhatsappBillingCategory.UTILITY
     const quotaCredit = await resolveWhatsappQuotaCredit({
       category: resolvedCategory,
       phoneNumber: recipient.phoneNumber,

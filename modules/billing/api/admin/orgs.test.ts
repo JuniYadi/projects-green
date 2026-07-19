@@ -2,7 +2,12 @@ import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
 import { TestDecimal } from "@/test/helpers/prisma-mock"
 import type { MockAuthContext } from "@/test/helpers/test-auth"
-import { defaultAuth, mockPlatformRole, mockPlatformRoleNone, testIsAdmin } from "@/test/helpers/test-auth"
+import {
+  defaultAuth,
+  mockPlatformRole,
+  mockPlatformRoleNone,
+  testIsAdmin,
+} from "@/test/helpers/test-auth"
 
 const mockBillingAccountFindMany = mock()
 const mockBillingAccountCount = mock()
@@ -198,7 +203,10 @@ describe("AdminOrgsRoute", () => {
         createdAt: new Date("2025-02-01"),
       }
 
-      mockBillingAccountFindMany.mockResolvedValueOnce([acmeAccount, betaAccount])
+      mockBillingAccountFindMany.mockResolvedValueOnce([
+        acmeAccount,
+        betaAccount,
+      ])
       mockServiceSubscriptionFindMany.mockResolvedValueOnce([])
       mockUsageLedgerFindMany.mockResolvedValueOnce([])
       mockBillingAccountCount.mockResolvedValueOnce(2)
@@ -248,9 +256,7 @@ describe("AdminOrgsRoute", () => {
         .compile()
 
       const response = await app.handle(
-        new Request(
-          "http://localhost/admin/orgs?search=550e8400-e29b-41d4"
-        )
+        new Request("http://localhost/admin/orgs?search=550e8400-e29b-41d4")
       )
 
       expect(response.status).toBe(200)

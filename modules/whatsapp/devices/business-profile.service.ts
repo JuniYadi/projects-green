@@ -6,10 +6,7 @@ import {
   type BusinessProfileFields,
   type UpdateBusinessProfileInput,
 } from "@/lib/whatsapp/meta-cloud/types/business-profile"
-import {
-  DeviceNotFoundError,
-  DeviceNotOwnedError,
-} from "./devices.schemas"
+import { DeviceNotFoundError, DeviceNotOwnedError } from "./devices.schemas"
 
 export class DeviceNoPhoneIdError extends Error {
   readonly code = "DEVICE_NO_PHONE_ID" as const
@@ -27,10 +24,7 @@ export class ProfileNotFoundError extends Error {
   }
 }
 
-async function getDeviceById(
-  deviceId: string,
-  organizationId?: string
-) {
+async function getDeviceById(deviceId: string, organizationId?: string) {
   const device = await prisma.whatsappDevice.findUnique({
     where: { id: deviceId },
   })
@@ -41,9 +35,10 @@ async function getDeviceById(
   return device
 }
 
-function requirePhoneId(
-  device: { whatsappPhoneId: string | null; whatsappBusinessAccountId: string | null }
-): string {
+function requirePhoneId(device: {
+  whatsappPhoneId: string | null
+  whatsappBusinessAccountId: string | null
+}): string {
   if (!device.whatsappPhoneId) throw new DeviceNoPhoneIdError()
   return device.whatsappPhoneId
 }

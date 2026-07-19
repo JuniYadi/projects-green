@@ -1,10 +1,22 @@
 import { describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
+import type { BankAccountResponse } from "@/modules/payment/types/payment.types"
 
 // Ensure default deps don't pick up leaked mocks from other files
 mock.module("@workos-inc/authkit-nextjs", () => ({
   withAuth: mock(async () => ({ user: null })),
   getWorkOS: () => ({}),
+}))
+
+const mockGetActiveAccounts = mock<() => Promise<BankAccountResponse[]>>(
+  async () => []
+)
+mock.module("@/modules/payment/services/bank-account.service", () => ({
+  BankAccountService: mock(function (this: {
+    getActiveAccounts: typeof mockGetActiveAccounts
+  }) {
+    this.getActiveAccounts = mockGetActiveAccounts
+  }),
 }))
 
 import { createInvoicesRoutes } from "@/modules/invoices/api/invoices.route"
@@ -297,6 +309,39 @@ describe("invoices routes", () => {
     )
 
     expect(response.status).toBe(500)
+  })
+  it("returns PDF with bank accounts for MANUAL_BANK invoice", async () => {
+    const service = createService()
+    service.getInvoiceDetail = mock(async () => ({
+      ...invoiceDetail,
+      paymentMethod: "MANUAL_BANK" as const,
+    }))
+
+    mockGetActiveAccounts.mockResolvedValue([
+      {
+        id: "ba_1",
+        bankCode: "BCA",
+        bankName: "Bank Central Asia",
+        accountName: "PFNApp Technologies",
+        accountNumber: "1234567890",
+        currency: "USD",
+        supportedCurrencies: ["USD"],
+        swiftCode: null,
+        bankAddress: null,
+        isActive: true,
+        isDefault: true,
+      },
+    ])
+
+    const app = createApp({ service })
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/pdf")
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("content-type")).toBe("application/pdf")
+    const bytes = await response.arrayBuffer()
+    expect(bytes.byteLength).toBeGreaterThan(200)
   })
 
   it("returns validation envelope for invalid invoice id params", async () => {

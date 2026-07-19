@@ -52,3 +52,9 @@ export function parseEncryptedField(
 export function serializeEncryptedField(data: EncryptedData): string {
   return JSON.stringify(data)
 }
+
+export function getEncryptionKey(): Buffer {
+  const secret = process.env.ENCRYPTION_KEY ?? process.env.APP_SECRET
+  if (!secret) throw new Error("Missing ENCRYPTION_KEY or APP_SECRET env var")
+  return crypto.createHash("sha256").update(secret).digest()
+}

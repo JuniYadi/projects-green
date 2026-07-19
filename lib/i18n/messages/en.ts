@@ -478,11 +478,13 @@ export const enMessages: AppMessages = {
       },
       metrics: {
         heading: "Application Metrics",
-        description: "Monitor CPU, memory, and network metrics for your application.",
+        description:
+          "Monitor CPU, memory, and network metrics for your application.",
       },
       events: {
         heading: "Deploy Events",
-        description: "Track deployment history and rollout events for your application.",
+        description:
+          "Track deployment history and rollout events for your application.",
       },
       settings: {
         heading: "Application Settings",

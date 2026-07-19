@@ -28,13 +28,9 @@ import {
   AuditLogTable,
   type AuditLogDTO,
 } from "@/modules/whatsapp/audit/ui/whatsapp-audit-table"
-import {
-  TemplateList,
-} from "@/modules/whatsapp/templates/ui/template-list"
+import { TemplateList } from "@/modules/whatsapp/templates/ui/template-list"
 import { useTemplates } from "@/modules/whatsapp/templates/api/templates.hooks"
-import {
-  DeliveryLogTable,
-} from "@/modules/whatsapp/webhooks/ui/delivery-log-table"
+import { DeliveryLogTable } from "@/modules/whatsapp/webhooks/ui/delivery-log-table"
 import type { WebhookDeliveryLogDTO } from "@/modules/whatsapp/webhooks/webhook-dispatcher.service"
 import {
   Table,
@@ -245,8 +241,7 @@ export function TabsDeviceDetail({
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="templates">
-            Templates{" "}
-            <TemplateCountBadge deviceId={device.id} />
+            Templates <TemplateCountBadge deviceId={device.id} />
           </TabsTrigger>
           <TabsTrigger value="webhook-log">Webhook Log</TabsTrigger>
           <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
@@ -290,11 +285,15 @@ export function TabsDeviceDetail({
             <CardHeader>
               <CardTitle>Outgoing Webhooks</CardTitle>
               <CardDescription>
-                Outgoing webhook configurations and delivery logs for this device.
+                Outgoing webhook configurations and delivery logs for this
+                device.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <WebhooksTab deviceId={device.id} organizationId={device.organizationId} />
+              <WebhooksTab
+                deviceId={device.id}
+                organizationId={device.organizationId}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -303,9 +302,7 @@ export function TabsDeviceDetail({
           <Card>
             <CardHeader>
               <CardTitle>Audit Logs</CardTitle>
-              <CardDescription>
-                Admin actions for this device.
-              </CardDescription>
+              <CardDescription>Admin actions for this device.</CardDescription>
             </CardHeader>
             <CardContent>
               <AuditLogTabContent deviceId={device.id} />
@@ -328,13 +325,31 @@ function WebhooksTab({
 }) {
   type WebhooksTabState =
     | { type: "loading" }
-    | { type: "loaded"; webhooks: Array<{ id: string; webhookUrl: string; authType: string | null; active: boolean }> }
+    | {
+        type: "loaded"
+        webhooks: Array<{
+          id: string
+          webhookUrl: string
+          authType: string | null
+          active: boolean
+        }>
+      }
     | { type: "error"; error: string }
 
-  const [state, setState] = React.useState<WebhooksTabState>({ type: "loading" })
-  const [deliveryLogs, setDeliveryLogs] = React.useState<WebhookDeliveryLogDTO[]>([])
-  const [deliveryMeta, setDeliveryMeta] = React.useState({ total: 0, page: 1, totalPages: 0 })
-  const [selectedWebhookId, setSelectedWebhookId] = React.useState<string | null>(null)
+  const [state, setState] = React.useState<WebhooksTabState>({
+    type: "loading",
+  })
+  const [deliveryLogs, setDeliveryLogs] = React.useState<
+    WebhookDeliveryLogDTO[]
+  >([])
+  const [deliveryMeta, setDeliveryMeta] = React.useState({
+    total: 0,
+    page: 1,
+    totalPages: 0,
+  })
+  const [selectedWebhookId, setSelectedWebhookId] = React.useState<
+    string | null
+  >(null)
   const [deliveryPage, setDeliveryPage] = React.useState(1)
 
   const fetchWebhooks = React.useCallback(async () => {
@@ -344,22 +359,38 @@ function WebhooksTab({
         $query: { deviceId, organizationId },
       })
       if (error) throw new Error(error.message ?? "Failed to load webhooks")
-      const result = data as unknown as { data: Array<{ id: string; webhookUrl: string; authType: string | null; active: boolean }> }
+      const result = data as unknown as {
+        data: Array<{
+          id: string
+          webhookUrl: string
+          authType: string | null
+          active: boolean
+        }>
+      }
       setState({ type: "loaded", webhooks: result.data })
     } catch (err) {
-      setState({ type: "error", error: err instanceof Error ? err.message : "Unknown error" })
+      setState({
+        type: "error",
+        error: err instanceof Error ? err.message : "Unknown error",
+      })
     }
   }, [deviceId, organizationId])
 
   const fetchDeliveries = React.useCallback(
     async (webhookId: string, page: number) => {
       try {
-        const { data, error } = await eden.api.whatsapp.webhooks[webhookId].deliveries.get({
+        const { data, error } = await eden.api.whatsapp.webhooks[
+          webhookId
+        ].deliveries.get({
           $query: { page: String(page), limit: "10" },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any -- eden types don't support dynamic params
         } as any)
         if (error) throw new Error(error.message ?? "Failed to load deliveries")
-        const result = data as unknown as { ok: boolean; data: WebhookDeliveryLogDTO[]; meta: { total: number; page: number; totalPages: number } }
+        const result = data as unknown as {
+          ok: boolean
+          data: WebhookDeliveryLogDTO[]
+          meta: { total: number; page: number; totalPages: number }
+        }
         setDeliveryLogs(result.data)
         setDeliveryMeta(result.meta)
       } catch {
@@ -375,7 +406,9 @@ function WebhooksTab({
       if (cancelled) return
       await fetchWebhooks()
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [fetchWebhooks])
 
   React.useEffect(() => {
@@ -384,13 +417,17 @@ function WebhooksTab({
       if (cancelled || !selectedWebhookId) return
       await fetchDeliveries(selectedWebhookId, deliveryPage)
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [selectedWebhookId, deliveryPage, fetchDeliveries])
 
   const handleResend = async (deliveryLogId: string) => {
     if (!selectedWebhookId) return
     try {
-      await eden.api.whatsapp.webhooks[selectedWebhookId].deliveries[deliveryLogId].resend.post()
+      await eden.api.whatsapp.webhooks[selectedWebhookId].deliveries[
+        deliveryLogId
+      ].resend.post()
       void fetchDeliveries(selectedWebhookId, deliveryPage)
     } catch {
       // silent
@@ -398,7 +435,9 @@ function WebhooksTab({
   }
 
   if (state.type === "loading") {
-    return <p className="py-4 text-sm text-muted-foreground">Loading webhooks…</p>
+    return (
+      <p className="py-4 text-sm text-muted-foreground">Loading webhooks…</p>
+    )
   }
 
   if (state.type === "error") {
@@ -520,16 +559,22 @@ function TemplateCountBadge({ deviceId }: { deviceId: string }) {
         if (!cancelled) setState({ status: "error" })
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [deviceId])
 
   if (state.status === "loading") {
-    return <span className="ml-1 inline-block size-3 animate-pulse rounded-full bg-muted-foreground/30 align-middle" />
+    return (
+      <span className="ml-1 inline-block size-3 animate-pulse rounded-full bg-muted-foreground/30 align-middle" />
+    )
   }
   if (state.status === "error") {
     return <span className="ml-1 text-xs text-muted-foreground">(?)</span>
   }
-  return <span className="ml-1 text-xs text-muted-foreground">({state.count})</span>
+  return (
+    <span className="ml-1 text-xs text-muted-foreground">({state.count})</span>
+  )
 }
 
 function TemplateTabContent({ deviceId }: { deviceId: string }) {
@@ -564,7 +609,7 @@ function AuditLogTabContent({ deviceId }: { deviceId: string }) {
       const res = await fetch(
         `/api/whatsapp/audit/devices/${deviceId}?page=${page}&limit=50`
       )
-      const result = await res.json() as {
+      const result = (await res.json()) as {
         ok: boolean
         data: AuditLogDTO[]
         pagination: { page: number; total: number; totalPages: number }
@@ -575,7 +620,9 @@ function AuditLogTabContent({ deviceId }: { deviceId: string }) {
       setTotalPages(result.pagination.totalPages)
       setPageState("loaded")
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Failed to load audit logs")
+      setErrorMessage(
+        err instanceof Error ? err.message : "Failed to load audit logs"
+      )
       setPageState("error")
     }
   }, [deviceId, page])
@@ -587,7 +634,9 @@ function AuditLogTabContent({ deviceId }: { deviceId: string }) {
   }, [fetchLogs])
 
   const handleRetry = fetchLogs
-  const handlePageChange = (newPage: number) => { setPage(newPage) }
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage)
+  }
 
   return (
     <AuditLogTable

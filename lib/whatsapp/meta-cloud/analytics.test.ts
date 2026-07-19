@@ -100,7 +100,10 @@ describe("WhatsAppDeviceClient.getAnalytics", () => {
       metric_types: "CONVERSATION",
     })
 
-    const [, endpoint] = mockRequest.mock.calls[0] as unknown as [string, string]
+    const [, endpoint] = mockRequest.mock.calls[0] as unknown as [
+      string,
+      string,
+    ]
     expect(endpoint).toContain("metric_types=CONVERSATION")
   })
 
@@ -113,7 +116,10 @@ describe("WhatsAppDeviceClient.getAnalytics", () => {
       phone_numbers: ["123", "456"],
     })
 
-    const [, endpoint] = mockRequest.mock.calls[0] as unknown as [string, string]
+    const [, endpoint] = mockRequest.mock.calls[0] as unknown as [
+      string,
+      string,
+    ]
     expect(endpoint).toContain("phone_numbers=123%2C456")
   })
 

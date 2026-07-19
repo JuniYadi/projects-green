@@ -22,7 +22,9 @@ const SYNC_STATUS_OPTIONS = [
   { value: "NOT_IN_META", label: "Not In Meta" },
 ] as const
 
-export function TemplatesPageClient({ isSuperAdmin }: TemplatesPageClientProps) {
+export function TemplatesPageClient({
+  isSuperAdmin,
+}: TemplatesPageClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -123,7 +125,12 @@ export function TemplatesPageClient({ isSuperAdmin }: TemplatesPageClientProps) 
     router.push(window.location.pathname, { scroll: false })
   }
 
-  const hasFilters = !!(organizationId || whatsappDeviceId || syncStatus || sort !== "desc")
+  const hasFilters = !!(
+    organizationId ||
+    whatsappDeviceId ||
+    syncStatus ||
+    sort !== "desc"
+  )
 
   // ── Navigation on select ────────────────────────────────────────────
 
@@ -151,7 +158,9 @@ export function TemplatesPageClient({ isSuperAdmin }: TemplatesPageClientProps) 
               <select
                 className="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs"
                 value={organizationId ?? ""}
-                onChange={(e) => setParam("organizationId", e.target.value || undefined)}
+                onChange={(e) =>
+                  setParam("organizationId", e.target.value || undefined)
+                }
                 disabled={orgsLoading}
                 aria-label="Filter by organization"
               >
@@ -177,7 +186,9 @@ export function TemplatesPageClient({ isSuperAdmin }: TemplatesPageClientProps) 
             <select
               className="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs"
               value={whatsappDeviceId ?? ""}
-              onChange={(e) => setParam("whatsappDeviceId", e.target.value || undefined)}
+              onChange={(e) =>
+                setParam("whatsappDeviceId", e.target.value || undefined)
+              }
               disabled={devicesLoading}
               aria-label="Filter by device"
             >
@@ -189,7 +200,8 @@ export function TemplatesPageClient({ isSuperAdmin }: TemplatesPageClientProps) 
               ) : (
                 devices.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.phoneNumber}{d.name ? ` — ${d.name}` : ""}
+                    {d.phoneNumber}
+                    {d.name ? ` — ${d.name}` : ""}
                   </option>
                 ))
               )}
@@ -202,7 +214,9 @@ export function TemplatesPageClient({ isSuperAdmin }: TemplatesPageClientProps) 
             <select
               className="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-xs"
               value={syncStatus ?? ""}
-              onChange={(e) => setParam("syncStatus", e.target.value || undefined)}
+              onChange={(e) =>
+                setParam("syncStatus", e.target.value || undefined)
+              }
               aria-label="Filter by sync status"
             >
               {SYNC_STATUS_OPTIONS.map((opt) => (
@@ -228,13 +242,20 @@ export function TemplatesPageClient({ isSuperAdmin }: TemplatesPageClientProps) 
               ) : (
                 <ArrowUp className="size-4" weight="bold" />
               )}
-              <span className="ml-1.5">{sort === "desc" ? "Newest" : "Oldest"}</span>
+              <span className="ml-1.5">
+                {sort === "desc" ? "Newest" : "Oldest"}
+              </span>
             </Button>
           </div>
 
           {/* Clear filters */}
           {hasFilters && (
-            <Button variant="ghost" size="sm" className="h-9" onClick={clearFilters}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9"
+              onClick={clearFilters}
+            >
               Clear Filters
             </Button>
           )}

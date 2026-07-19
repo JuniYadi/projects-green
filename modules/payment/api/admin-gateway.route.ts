@@ -3,7 +3,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 
 import { GatewayService } from "../services/gateway.service"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
-import { listProviders } from "../providers/registry"
+import { listProviders } from "../providers"
 
 const gatewayService = new GatewayService()
 

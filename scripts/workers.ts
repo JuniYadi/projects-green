@@ -646,7 +646,8 @@ const whatsappBillingInterval = setInterval(async () => {
             continue
           }
 
-          const resources = subscription.plan?.resources as unknown as WhatsAppPlanResources | null
+          const resources = subscription.plan
+            ?.resources as unknown as WhatsAppPlanResources | null
           const allowance = extractAllowance(resources)
 
           await whatsappBilling.chargeMonthlyBase({
@@ -695,9 +696,8 @@ const whatsappAnalyticsInterval = setInterval(async () => {
 
     for (const device of activeDevices) {
       try {
-        const { analyticsService } = await import(
-          "@/modules/whatsapp/analytics/analytics.service"
-        )
+        const { analyticsService } =
+          await import("@/modules/whatsapp/analytics/analytics.service")
         const result = await analyticsService.syncAnalytics({
           deviceId: device.id,
           organizationId: device.organizationId,
@@ -713,10 +713,7 @@ const whatsappAnalyticsInterval = setInterval(async () => {
         }
       } catch (error) {
         errors++
-        console.error(
-          `[whatsapp-analytics] device=${device.id} error:`,
-          error
-        )
+        console.error(`[whatsapp-analytics] device=${device.id} error:`, error)
       }
     }
 

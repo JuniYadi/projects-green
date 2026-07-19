@@ -41,9 +41,7 @@ export function TabGeneral({ stack, lastDeployedAt }: TabGeneralProps) {
             <dt className="text-xs tracking-wide text-muted-foreground uppercase">
               Framework
             </dt>
-            <dd className="font-medium">
-              {stack.framework ?? "Not detected"}
-            </dd>
+            <dd className="font-medium">{stack.framework ?? "Not detected"}</dd>
           </div>
           <div className="space-y-1">
             <dt className="text-xs tracking-wide text-muted-foreground uppercase">
@@ -55,9 +53,7 @@ export function TabGeneral({ stack, lastDeployedAt }: TabGeneralProps) {
             <dt className="text-xs tracking-wide text-muted-foreground uppercase">
               Resource Plan
             </dt>
-            <dd className="font-medium">
-              {stack.resourcePlanId ?? "Default"}
-            </dd>
+            <dd className="font-medium">{stack.resourcePlanId ?? "Default"}</dd>
           </div>
           <div className="space-y-1">
             <dt className="text-xs tracking-wide text-muted-foreground uppercase">

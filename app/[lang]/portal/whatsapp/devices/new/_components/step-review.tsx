@@ -64,11 +64,7 @@ export function StepReview({ data, goToStep }: Props) {
         <Field label="Phone Number" value={data.phoneNumber} />
       </ReviewSection>
 
-      <ReviewSection
-        title="WhatsApp Business IDs"
-        step={1}
-        goToStep={goToStep}
-      >
+      <ReviewSection title="WhatsApp Business IDs" step={1} goToStep={goToStep}>
         <Field
           label="Business Account ID"
           value={data.whatsappBusinessAccountId}
@@ -80,7 +76,10 @@ export function StepReview({ data, goToStep }: Props) {
       </ReviewSection>
 
       <ReviewSection title="Quotas & Limits" step={2} goToStep={goToStep}>
-        <Field label="Quota Base" value={data.quotaBase || `${DEFAULT_QUOTA_BASE} (default)`} />
+        <Field
+          label="Quota Base"
+          value={data.quotaBase || `${DEFAULT_QUOTA_BASE} (default)`}
+        />
         <Field label="Quota Base Out" value={data.quotaBaseOut || "0"} />
         <Field
           label="Daily Message Limit"
@@ -105,9 +104,7 @@ export function StepReview({ data, goToStep }: Props) {
         )}
         {featureEntries.length > 0 && (
           <div className="mt-2">
-            <p className="mb-1 text-xs text-muted-foreground">
-              Feature Flags:
-            </p>
+            <p className="mb-1 text-xs text-muted-foreground">Feature Flags:</p>
             {featureEntries.map(([k, v]) => (
               <Field key={k} label={k} value={String(v)} />
             ))}

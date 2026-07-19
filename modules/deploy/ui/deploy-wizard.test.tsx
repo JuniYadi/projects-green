@@ -15,7 +15,6 @@ import type { DeployWizardState } from "@/modules/deploy/deploy.types"
 const replaceCalls: string[] = []
 let deployStatusResponse = "running"
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const updateQueryFromUrl = (_url: string) => {
   // ponytail: kept for API compatibility
 }
@@ -744,34 +743,30 @@ describe("DeployWizard", () => {
   })
   it("renders owner from API owners when repos are empty", async () => {
     const originalFetch = globalThis.fetch
-    globalThis.fetch = mock(
-      (input: RequestInfo | URL, _init?: RequestInit) => {
-        const requestUrl =
-          typeof input === "string"
-            ? input
-            : input instanceof URL
-              ? input.toString()
-              : input.url
-        const url = new URL(requestUrl, "http://localhost")
+    globalThis.fetch = mock((input: RequestInfo | URL, _init?: RequestInit) => {
+      const requestUrl =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url
+      const url = new URL(requestUrl, "http://localhost")
 
-        if (url.pathname !== "/api/integrations/github/repositories") {
-          return Promise.resolve(new Response("Not found", { status: 404 }))
-        }
-
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              ok: true,
-              items: [],
-              owners: [
-                { id: "my-account", name: "my-account", avatarUrl: null },
-              ],
-            }),
-            { status: 200, headers: { "content-type": "application/json" } }
-          )
-        )
+      if (url.pathname !== "/api/integrations/github/repositories") {
+        return Promise.resolve(new Response("Not found", { status: 404 }))
       }
-    ) as unknown as typeof fetch
+
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            items: [],
+            owners: [{ id: "my-account", name: "my-account", avatarUrl: null }],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        )
+      )
+    }) as unknown as typeof fetch
 
     const view = await renderWizard()
 

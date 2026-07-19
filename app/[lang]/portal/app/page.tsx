@@ -90,7 +90,12 @@ export default function PortalApplicationsPage() {
           role="alert"
         >
           <span>{error}</span>
-          <Button type="button" variant="outline" size="sm" onClick={handleRetry}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleRetry}
+          >
             Retry
           </Button>
         </div>
@@ -174,7 +179,7 @@ export default function PortalApplicationsPage() {
                       <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                         {app.branchName}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
                         {app.lastDeployedAt
                           ? new Date(app.lastDeployedAt).toLocaleDateString()
                           : "Never"}

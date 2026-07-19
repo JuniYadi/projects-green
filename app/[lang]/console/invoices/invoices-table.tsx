@@ -20,6 +20,7 @@ import type {
   InvoiceListItem,
 } from "@/modules/invoices/invoices.types"
 import { InvoiceStatusPill } from "@/modules/invoices/ui/invoice-status-pill"
+import { InvoiceDownloadPdfAction } from "@/modules/invoices/ui/invoice-download-pdf-action"
 
 const getInvoiceColumns = (lang: string): ColumnDef<InvoiceListItem>[] => {
   const locale = resolveLocaleOrDefault(lang)
@@ -80,6 +81,17 @@ const getInvoiceColumns = (lang: string): ColumnDef<InvoiceListItem>[] => {
         <DataTableColumnHeader column={column} title="Status" />
       ),
       cell: ({ row }) => <InvoiceStatusPill status={row.original.status} />,
+    },
+    {
+      id: "pdf",
+      enableHiding: false,
+      header: () => <span>PDF</span>,
+      cell: ({ row }) => (
+        <InvoiceDownloadPdfAction
+          invoiceId={row.original.id}
+          invoiceNumber={row.original.invoiceNumber}
+        />
+      ),
     },
   ]
 }

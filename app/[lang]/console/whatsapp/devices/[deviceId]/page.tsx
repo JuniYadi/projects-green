@@ -41,7 +41,6 @@ import { toast } from "sonner"
 import {
   VERTICALS,
   type Vertical,
-  type UpdateBusinessProfileInput,
 } from "@/lib/whatsapp/meta-cloud/types/business-profile"
 type PageState = "loading" | "error" | "loaded"
 type ProfileFormState = {
@@ -84,7 +83,6 @@ const toProfileForm = (
   }
 }
 
-
 const formatDate = (date: string | null) => {
   if (!date) return "N/A"
   return new Intl.DateTimeFormat("id-ID", {
@@ -123,9 +121,8 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
   const [errorMessage, setErrorMessage] = React.useState("")
   const [profileDialogOpen, setProfileDialogOpen] = React.useState(false)
   const [profileSubmitting, setProfileSubmitting] = React.useState(false)
-  const [profileForm, setProfileForm] = React.useState<ProfileFormState>(
-    EMPTY_PROFILE_FORM
-  )
+  const [profileForm, setProfileForm] =
+    React.useState<ProfileFormState>(EMPTY_PROFILE_FORM)
 
   const loadDevice = React.useCallback(async () => {
     if (!deviceId) {
@@ -144,7 +141,9 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       }
       setDevice(response.device)
       setProfileForm(
-        toProfileForm(response.device.whatsappProfile as Record<string, unknown> | null)
+        toProfileForm(
+          response.device.whatsappProfile as Record<string, unknown> | null
+        )
       )
       setPageState("loaded")
     } catch (err) {
@@ -347,9 +346,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       setProfileDialogOpen(false)
       toast("WhatsApp profile updated")
     } catch (err) {
-      toast(
-        err instanceof Error ? err.message : "Failed to update profile"
-      )
+      toast(err instanceof Error ? err.message : "Failed to update profile")
     } finally {
       setProfileSubmitting(false)
     }
@@ -481,10 +478,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
           </div>
         </div>
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => setProfileDialogOpen(false)}
-          >
+          <Button variant="outline" onClick={() => setProfileDialogOpen(false)}>
             Cancel
           </Button>
           <Button onClick={handleSaveProfile} disabled={profileSubmitting}>

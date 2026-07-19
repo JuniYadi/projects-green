@@ -6,7 +6,6 @@ import {
   ChatCircle,
   PaperPlaneTilt,
   ChartLine,
-  CheckCircle,
   Warning,
 } from "@phosphor-icons/react"
 import Link from "next/link"
@@ -53,24 +52,6 @@ type ConversationListItem = {
   createdAt: string
   updatedAt: string
   _count: { whatsappMessages: number }
-}
-
-function DeviceStatusBadge({ status }: { status: string }) {
-  if (status === "ACTIVE") {
-    return (
-      <Badge variant="success">
-        <CheckCircle className="mr-1 size-3" weight="fill" />
-        Connected
-      </Badge>
-    )
-  }
-
-  return (
-    <Badge variant="warning">
-      <Warning className="mr-1 size-3" weight="fill" />
-      Disconnected
-    </Badge>
-  )
 }
 
 function WebhookAlertBadge({ rate }: { rate: number }) {
@@ -124,7 +105,9 @@ export default function WhatsAppDashboardPage() {
   const [errorMessage, setErrorMessage] = React.useState("")
   const [accessDenied, setAccessDenied] =
     React.useState<AccessDeniedInfo | null>(null)
-  const [webhookStats, setWebhookStats] = React.useState<WebhookStats | null>(null)
+  const [webhookStats, setWebhookStats] = React.useState<WebhookStats | null>(
+    null
+  )
   const [broadcastTotal, setBroadcastTotal] = React.useState(0)
   const [overview, setOverview] = React.useState<{
     month: { messageInboxCount: number; messageOutboxCount: number }[]
@@ -135,7 +118,12 @@ export default function WhatsAppDashboardPage() {
 
     const run = async () => {
       try {
-        const [deviceResponse, conversationResponse, webhookResponse, overviewResponse] = await Promise.all([
+        const [
+          deviceResponse,
+          conversationResponse,
+          webhookResponse,
+          overviewResponse,
+        ] = await Promise.all([
           whatsappClient.devices.list(),
           whatsappClient.conversations.list(),
           whatsappClient.webhooks.stats().catch(() => null),
@@ -150,7 +138,11 @@ export default function WhatsAppDashboardPage() {
           setWebhookStats(webhookResponse.data)
         }
         if (overviewResponse?.ok) {
-          setOverview(overviewResponse as { month: { messageInboxCount: number; messageOutboxCount: number }[] })
+          setOverview(
+            overviewResponse as {
+              month: { messageInboxCount: number; messageOutboxCount: number }[]
+            }
+          )
         }
         // Try broadcasts summary if available
         try {
@@ -215,8 +207,10 @@ export default function WhatsAppDashboardPage() {
     return loadData()
   }, [loadData])
 
-  const messageInTotal = overview?.month?.reduce((sum, m) => sum + m.messageInboxCount, 0) ?? 0
-  const messageOutTotal = overview?.month?.reduce((sum, m) => sum + m.messageOutboxCount, 0) ?? 0
+  const messageInTotal =
+    overview?.month?.reduce((sum, m) => sum + m.messageInboxCount, 0) ?? 0
+  const messageOutTotal =
+    overview?.month?.reduce((sum, m) => sum + m.messageOutboxCount, 0) ?? 0
 
   const recentConversations = React.useMemo(
     () => conversations.slice(0, 5),
@@ -292,9 +286,7 @@ export default function WhatsAppDashboardPage() {
                     />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
-                      {devices.length}
-                    </div>
+                    <div className="text-2xl font-bold">{devices.length}</div>
                     <p className="text-xs text-muted-foreground">
                       Connected devices
                     </p>
@@ -315,9 +307,7 @@ export default function WhatsAppDashboardPage() {
                     <div className="text-2xl font-bold">
                       {messageInTotal.toLocaleString()}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      This month
-                    </p>
+                    <p className="text-xs text-muted-foreground">This month</p>
                   </CardContent>
                 </Card>
 
@@ -335,9 +325,7 @@ export default function WhatsAppDashboardPage() {
                     <div className="text-2xl font-bold">
                       {messageOutTotal.toLocaleString()}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      This month
-                    </p>
+                    <p className="text-xs text-muted-foreground">This month</p>
                   </CardContent>
                 </Card>
 
@@ -352,9 +340,7 @@ export default function WhatsAppDashboardPage() {
                     />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">
-                      {broadcastTotal}
-                    </div>
+                    <div className="text-2xl font-bold">{broadcastTotal}</div>
                     <p className="text-xs text-muted-foreground">
                       Total campaigns
                     </p>
@@ -364,9 +350,14 @@ export default function WhatsAppDashboardPage() {
             )}
           </div>
 
-
           {/* Operational Health Card */}
-          <Card className={webhookStats && webhookStats.failureRate > 5 ? "border-destructive" : undefined}>
+          <Card
+            className={
+              webhookStats && webhookStats.failureRate > 5
+                ? "border-destructive"
+                : undefined
+            }
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Operational Health
@@ -396,7 +387,9 @@ export default function WhatsAppDashboardPage() {
                     ? `${webhookStats.failedEvents}/${webhookStats.totalEvents} failed (1h)`
                     : "No webhook data"}
                 </p>
-                {webhookStats && <WebhookAlertBadge rate={webhookStats.failureRate} />}
+                {webhookStats && (
+                  <WebhookAlertBadge rate={webhookStats.failureRate} />
+                )}
               </div>
             </CardContent>
           </Card>

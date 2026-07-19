@@ -102,7 +102,9 @@ export function createJenkinsPushDispatcher() {
   }) => {
     const commitSha = (payload.payload.after as string) || ""
     const shortSha = commitSha.length >= 7 ? commitSha.slice(0, 7) : commitSha
-    const repo = payload.payload.repository as Record<string, unknown> | undefined
+    const repo = payload.payload.repository as
+      | Record<string, unknown>
+      | undefined
 
     // Find all ApplicationStack records for this connection + branch
     const stacks = await prisma.applicationStack.findMany({
@@ -153,6 +155,11 @@ export function createJenkinsPushDispatcher() {
       }
     }
 
-    return { jobId: triggered > 0 ? `${repo?.name ?? "unknown"}/${shortSha || "unknown"}` : null }
+    return {
+      jobId:
+        triggered > 0
+          ? `${repo?.name ?? "unknown"}/${shortSha || "unknown"}`
+          : null,
+    }
   }
 }

@@ -317,7 +317,12 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       const normalizedPhone = normalizeIndonesianPhoneNumber(body.phoneNumber)
       if (!normalizedPhone) {
         set.status = 422
-        return { ok: false, error: "VALIDATION_ERROR", message: "Phone number must be in E.164 format or Indonesian local format." }
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message:
+            "Phone number must be in E.164 format or Indonesian local format.",
+        }
       }
 
       const validationError = validateSendBody(body)
@@ -365,7 +370,11 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           adminId: (whatsappAuth as any).userId,
           message: `Message sent to ${normalizedPhone}`,
           status: "OK",
-          details: { waMessageId: result.waMessageId, phoneNumber: normalizedPhone, type: type ?? "text" },
+          details: {
+            waMessageId: result.waMessageId,
+            phoneNumber: normalizedPhone,
+            type: type ?? "text",
+          },
         })
 
         return {
@@ -375,7 +384,6 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           waMessageId: result.waMessageId,
           status: result.status,
         }
-
       } catch (error) {
         // Handle billing-related errors with appropriate HTTP status codes
         logWhatsappAuditEvent({
@@ -423,7 +431,8 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         // Handle "NO_BILLING_ACCOUNT" / "BILLING_ACCOUNT_NOT_FOUND" — org has no billing setup
         if (
           error instanceof Error &&
-          (error.message === "NO_BILLING_ACCOUNT" || error.message === "BILLING_ACCOUNT_NOT_FOUND")
+          (error.message === "NO_BILLING_ACCOUNT" ||
+            error.message === "BILLING_ACCOUNT_NOT_FOUND")
         ) {
           set.status = 400
           return {
@@ -466,17 +475,22 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       const normalizedPhone = normalizeIndonesianPhoneNumber(body.phoneNumber)
       if (!normalizedPhone) {
         set.status = 422
-        return { ok: false, error: "VALIDATION_ERROR", message: "Phone number must be in E.164 format or Indonesian local format." }
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message:
+            "Phone number must be in E.164 format or Indonesian local format.",
+        }
       }
 
-
-      const { phoneNumber, templateId, templateLanguage, fields, deviceId } = body as {
-        phoneNumber: string
-        templateId: string
-        templateLanguage: string
-        fields?: string[]
-        deviceId: string
-      }
+      const { phoneNumber, templateId, templateLanguage, fields, deviceId } =
+        body as {
+          phoneNumber: string
+          templateId: string
+          templateLanguage: string
+          fields?: string[]
+          deviceId: string
+        }
 
       // Load template and verify ownership
       const template = await prisma.whatsappTemplate.findFirst({
@@ -492,18 +506,32 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       // Validate device is provided and matches template
       if (!deviceId) {
         set.status = 422
-        return { ok: false, error: "VALIDATION_ERROR", message: "Device is required." }
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message: "Device is required.",
+        }
       }
       if (template.whatsappDeviceId !== deviceId) {
         set.status = 422
-        return { ok: false, error: "VALIDATION_ERROR", message: "Template is not available for the selected device." }
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message: "Template is not available for the selected device.",
+        }
       }
 
       // Find the requested language
-      const language = template.languages.find((l) => l.lang === templateLanguage)
+      const language = template.languages.find(
+        (l) => l.lang === templateLanguage
+      )
       if (!language) {
         set.status = 422
-        return { ok: false, error: "VALIDATION_ERROR", message: "Template language not found." }
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message: "Template language not found.",
+        }
       }
 
       // Extract placeholders from body and validate required fields
@@ -519,7 +547,11 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       for (const index of indexes) {
         if (!fields || !fields[index - 1]?.trim()) {
           set.status = 422
-          return { ok: false, error: "VALIDATION_ERROR", message: `Template field {{${index}}} is required.` }
+          return {
+            ok: false,
+            error: "VALIDATION_ERROR",
+            message: `Template field {{${index}}} is required.`,
+          }
         }
       }
 
@@ -529,7 +561,10 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         for (let i = 0; i < indexes.length; i++) {
           const idx = indexes[i]
           const val = fields[i] ?? ""
-          renderedBody = renderedBody.replace(new RegExp(`{{\\s*${idx}\\s*}}`, "g"), val)
+          renderedBody = renderedBody.replace(
+            new RegExp(`{{\\s*${idx}\\s*}}`, "g"),
+            val
+          )
         }
       }
       try {
@@ -552,7 +587,12 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           adminId: (whatsappAuth as any).userId,
           message: `Template message sent to ${normalizedPhone}`,
           status: "OK",
-          details: { waMessageId: result.waMessageId, phoneNumber: normalizedPhone, templateName: template.name, templateLanguage },
+          details: {
+            waMessageId: result.waMessageId,
+            phoneNumber: normalizedPhone,
+            templateName: template.name,
+            templateLanguage,
+          },
         })
 
         return {
@@ -607,7 +647,8 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         // Handle "NO_BILLING_ACCOUNT" / "BILLING_ACCOUNT_NOT_FOUND" — org has no billing setup
         if (
           error instanceof Error &&
-          (error.message === "NO_BILLING_ACCOUNT" || error.message === "BILLING_ACCOUNT_NOT_FOUND")
+          (error.message === "NO_BILLING_ACCOUNT" ||
+            error.message === "BILLING_ACCOUNT_NOT_FOUND")
         ) {
           set.status = 400
           return {
@@ -650,9 +691,13 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       const normalizedPhone = normalizeIndonesianPhoneNumber(body.phoneNumber)
       if (!normalizedPhone) {
         set.status = 422
-        return { ok: false, error: "VALIDATION_ERROR", message: "Phone number must be in E.164 format or Indonesian local format." }
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message:
+            "Phone number must be in E.164 format or Indonesian local format.",
+        }
       }
-
 
       const { deviceId, interactive } = body as {
         deviceId?: string
@@ -675,7 +720,11 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           adminId: (whatsappAuth as any).userId,
           message: `Interactive message sent to ${normalizedPhone}`,
           status: "OK",
-          details: { waMessageId: result.waMessageId, phoneNumber: normalizedPhone, interactiveType: interactive.type },
+          details: {
+            waMessageId: result.waMessageId,
+            phoneNumber: normalizedPhone,
+            interactiveType: interactive.type,
+          },
         })
 
         return {

@@ -19,9 +19,7 @@ import {
   useTemplates,
   useSyncTemplate,
 } from "@/modules/whatsapp/templates/api/templates.hooks"
-import {
-  TemplateList,
-} from "@/modules/whatsapp/templates/ui/template-list"
+import { TemplateList } from "@/modules/whatsapp/templates/ui/template-list"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
@@ -84,7 +82,13 @@ export default function ConsoleTemplatesPage() {
     (t) => t.syncStatus === "NOT_SYNCED"
   ).length
 
-  function StatusDot({ label, className }: { label: string; className: string }) {
+  function StatusDot({
+    label,
+    className,
+  }: {
+    label: string
+    className: string
+  }) {
     return (
       <span className="inline-flex items-center gap-1.5">
         <span className={`size-2 rounded-full ${className}`} />
@@ -92,7 +96,6 @@ export default function ConsoleTemplatesPage() {
       </span>
     )
   }
-
 
   const columns: ColumnDef<WhatsAppTemplate>[] = [
     {
@@ -103,7 +106,9 @@ export default function ConsoleTemplatesPage() {
           <Button
             variant="ghost"
             className="h-auto p-0 font-medium hover:underline"
-            onClick={() => router.push(`${templatesBasePath}/${row.original.id}`)}
+            onClick={() =>
+              router.push(`${templatesBasePath}/${row.original.id}`)
+            }
           >
             {row.original.name}
           </Button>
@@ -136,7 +141,12 @@ export default function ConsoleTemplatesPage() {
           FAILED: "bg-red-500",
           NOT_IN_META: "bg-amber-500",
         }
-        return <StatusDot label={status} className={dotClass[status] ?? "bg-muted-foreground"} />
+        return (
+          <StatusDot
+            label={status}
+            className={dotClass[status] ?? "bg-muted-foreground"}
+          />
+        )
       },
     },
     {
@@ -147,13 +157,19 @@ export default function ConsoleTemplatesPage() {
       ),
       cell: ({ row }) => {
         const status = row.original.metaStatus ?? "UNKNOWN"
-        if (status === "UNKNOWN") return <span className="text-muted-foreground">—</span>
+        if (status === "UNKNOWN")
+          return <span className="text-muted-foreground">—</span>
         const dotClass: Record<string, string> = {
           APPROVED: "bg-emerald-500",
           PENDING: "bg-amber-500",
           REJECTED: "bg-red-500",
         }
-        return <StatusDot label={status} className={dotClass[status] ?? "bg-muted-foreground"} />
+        return (
+          <StatusDot
+            label={status}
+            className={dotClass[status] ?? "bg-muted-foreground"}
+          />
+        )
       },
     },
     {
@@ -177,23 +193,23 @@ export default function ConsoleTemplatesPage() {
         <DataTableColumnHeader column={column} title="Device" />
       ),
       cell: ({ row }) =>
-        row.original.whatsappDeviceId ? row.original.whatsappDeviceId : "Any device",
+        row.original.whatsappDeviceId
+          ? row.original.whatsappDeviceId
+          : "Any device",
     },
     {
       accessorKey: "createdAt",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Creation Date" />
       ),
-      cell: ({ row }) =>
-        new Date(row.original.createdAt).toLocaleString(),
+      cell: ({ row }) => new Date(row.original.createdAt).toLocaleString(),
     },
     {
       accessorKey: "updatedAt",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Last Updated Date" />
       ),
-      cell: ({ row }) =>
-        new Date(row.original.updatedAt).toLocaleString(),
+      cell: ({ row }) => new Date(row.original.updatedAt).toLocaleString(),
     },
     {
       id: "actions",
@@ -302,7 +318,11 @@ export default function ConsoleTemplatesPage() {
               ]}
               initialSorting={[{ id: "createdAt", desc: true }]}
               pageSize={10}
-              defaultColumnVisibility={{ whatsappDeviceId: false, createdAt: false, languages: false }}
+              defaultColumnVisibility={{
+                whatsappDeviceId: false,
+                createdAt: false,
+                languages: false,
+              }}
               facetFilters={[
                 {
                   columnId: "syncStatus",

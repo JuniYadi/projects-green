@@ -48,14 +48,12 @@ describe("VpnDevicesList", () => {
       />
     )
 
-    expect(within(view.container).getByText("ACTIVE")).toHaveClass(
-      "bg-primary"
-    )
+    expect(within(view.container).getByText("ACTIVE")).toHaveClass("bg-primary")
     expect(within(view.container).getByText("SUSPENDED")).toHaveClass(
       "bg-secondary"
     )
     expect(within(view.container).getByText("REVOKED")).toHaveClass(
-      "bg-destructive"
+      "bg-destructive/10"
     )
   })
 
@@ -99,7 +97,9 @@ describe("VpnDevicesList", () => {
       <VpnDevicesList devices={devices} onRevoke={onRevoke} revoking={null} />
     )
 
-    const input = within(view.container).getByPlaceholderText("Search devices...")
+    const input = within(view.container).getByPlaceholderText(
+      "Search devices..."
+    )
     await userEvent.type(input, "iPhone")
 
     await waitFor(() => {
@@ -138,9 +138,7 @@ describe("VpnDevicesList", () => {
       const rows = within(view.container).getAllByRole("row")
       expect(rows.length).toBe(2)
       expect(within(view.container).getByText("Active Phone")).toBeTruthy()
-      expect(
-        within(view.container).queryByText("Suspended Phone")
-      ).toBeNull()
+      expect(within(view.container).queryByText("Suspended Phone")).toBeNull()
       expect(within(view.container).queryByText("Revoked Phone")).toBeNull()
     })
 
@@ -152,9 +150,7 @@ describe("VpnDevicesList", () => {
       expect(rows.length).toBe(2)
       expect(within(view.container).getByText("Revoked Phone")).toBeTruthy()
       expect(within(view.container).queryByText("Active Phone")).toBeNull()
-      expect(
-        within(view.container).queryByText("Suspended Phone")
-      ).toBeNull()
+      expect(within(view.container).queryByText("Suspended Phone")).toBeNull()
     })
   })
 })

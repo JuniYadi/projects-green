@@ -381,7 +381,9 @@ describe("SupportTicketRepository", () => {
 
       await repository.deleteUploadSession("session_1")
 
-      expect(mockSessionDelete).toHaveBeenCalledWith({ where: { id: "session_1" } })
+      expect(mockSessionDelete).toHaveBeenCalledWith({
+        where: { id: "session_1" },
+      })
     })
   })
 

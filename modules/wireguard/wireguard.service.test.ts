@@ -4,9 +4,13 @@ import { expect, describe, it, beforeEach, mock } from "bun:test"
 // ── Mocks (leaf dependencies only) ──────────────────────────────────────
 
 const mockAdapter = {
-  listPeers: mock<(...args: any[]) => Promise<any[]>>(() => Promise.resolve([])),
+  listPeers: mock<(...args: any[]) => Promise<any[]>>(() =>
+    Promise.resolve([])
+  ),
   createPeer: mock<(...args: any[]) => Promise<any>>(() =>
-    Promise.resolve({ config: "[Interface]\nAddress = 10.0.0.2/32\nPrivateKey = test" })
+    Promise.resolve({
+      config: "[Interface]\nAddress = 10.0.0.2/32\nPrivateKey = test",
+    })
   ),
   removePeer: mock<(...args: any[]) => Promise<void>>(() => Promise.resolve()),
   fetchConfig: mock<(...args: any[]) => Promise<string>>(() =>
@@ -32,7 +36,9 @@ mock.module("qrcode", () => ({
   toDataURL: mockQrToDataURL,
 }))
 
-const mockEncryptVpnConfig = mock<(config: string) => string>((c: string) => `enc:${c}`)
+const mockEncryptVpnConfig = mock<(config: string) => string>(
+  (c: string) => `enc:${c}`
+)
 const mockDecryptVpnConfig = mock<(config: string) => string>((c: string) =>
   c.startsWith("enc:") ? c.slice(4) : c
 )
@@ -60,7 +66,10 @@ function makePrisma(): Record<string, Record<string, ReturnType<typeof mock>>> {
     vpnClient: { findMany, findUnique, create, updateMany },
   }
 
-  return prisma as unknown as Record<string, Record<string, ReturnType<typeof mock>>>
+  return prisma as unknown as Record<
+    string,
+    Record<string, ReturnType<typeof mock>>
+  >
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────
@@ -80,7 +89,9 @@ describe("WireGuardService", () => {
 
     // Restore default implementations after reset
     mockAdapter.createPeer.mockImplementation(() =>
-      Promise.resolve({ config: "[Interface]\nAddress = 10.0.0.2/32\nPrivateKey = test" })
+      Promise.resolve({
+        config: "[Interface]\nAddress = 10.0.0.2/32\nPrivateKey = test",
+      })
     )
     mockQrToDataURL.mockImplementation(() =>
       Promise.resolve("data:image/png;base64,qrcode")
@@ -170,7 +181,15 @@ describe("WireGuardService", () => {
       })
 
       mockAdapter.listPeers.mockResolvedValue([
-        { username: "wg-peer-abc", ip: "10.0.0.3", status: "offline", handshake: null, rx: 0, tx: 0, endpoint: null },
+        {
+          username: "wg-peer-abc",
+          ip: "10.0.0.3",
+          status: "offline",
+          handshake: null,
+          rx: 0,
+          tx: 0,
+          endpoint: null,
+        },
       ])
 
       prisma.vpnClient.findMany.mockResolvedValue([])
@@ -272,7 +291,9 @@ describe("WireGuardService", () => {
       })
       prisma.vpnClient.findUnique.mockResolvedValue(null)
 
-      mockAdapter.fetchConfig.mockResolvedValue("[Interface]\nPrivateKey = server-fetched")
+      mockAdapter.fetchConfig.mockResolvedValue(
+        "[Interface]\nPrivateKey = server-fetched"
+      )
 
       const service = new WireGuardService(prisma as any)
 

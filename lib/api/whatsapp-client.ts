@@ -79,10 +79,7 @@ async function serverFetch<T>(
     params?: Record<string, string | number | boolean | undefined>
   }
 ): Promise<T> {
-  const url = new URL(
-    path,
-    getApiBaseUrl()
-  )
+  const url = new URL(path, getApiBaseUrl())
   if (options?.params) {
     for (const [k, v] of Object.entries(options.params)) {
       if (v !== undefined) url.searchParams.set(k, String(v))
@@ -280,7 +277,11 @@ export const whatsappClient = {
   },
 
   conversations: {
-    list: (params?: { contactPhone?: string; status?: string; limit?: number }) =>
+    list: (params?: {
+      contactPhone?: string
+      status?: string
+      limit?: number
+    }) =>
       serverFetch<{ ok: boolean; conversations: any[] }>(
         "/api/whatsapp/conversations",
         {
@@ -390,7 +391,9 @@ export const whatsappClient = {
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.message ?? `Upload failed with status ${res.status}`)
+        throw new Error(
+          body.message ?? `Upload failed with status ${res.status}`
+        )
       }
       return res.json() as Promise<{ ok: boolean; media: any }>
     },
@@ -487,13 +490,20 @@ export const whatsappClient = {
     get: (id: string) =>
       serverFetch<{ ok: boolean; data: any }>(`/api/whatsapp/catalogs/${id}`),
 
-    create: (input: { name: string; metaCatalogId: string; deviceId?: string }) =>
+    create: (input: {
+      name: string
+      metaCatalogId: string
+      deviceId?: string
+    }) =>
       serverFetch<{ ok: boolean; data: any }>("/api/whatsapp/catalogs", {
         method: "POST",
         body: JSON.stringify(input),
       }),
 
-    update: (id: string, input: { name?: string; metaCatalogId?: string; deviceId?: string | null }) =>
+    update: (
+      id: string,
+      input: { name?: string; metaCatalogId?: string; deviceId?: string | null }
+    ) =>
       serverFetch<{ ok: boolean; data: any }>(`/api/whatsapp/catalogs/${id}`, {
         method: "PATCH",
         body: JSON.stringify(input),

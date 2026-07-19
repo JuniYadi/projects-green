@@ -1,5 +1,5 @@
 import { AuthKitProvider } from "@workos-inc/authkit-nextjs/components"
-import { Inter, JetBrains_Mono, Space_Mono } from "next/font/google"
+import { JetBrains_Mono, Space_Mono, Roboto } from "next/font/google"
 import { cookies } from "next/headers"
 
 import "./globals.css"
@@ -10,10 +10,12 @@ import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
-const fontSans = Inter({
+const jetbrainsMonoHeading = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-sans",
+  variable: "--font-heading",
 })
+
+const roboto = Roboto({ subsets: ["latin"], variable: "--font-sans" })
 
 const fontDisplay = Space_Mono({
   subsets: ["latin"],
@@ -40,15 +42,22 @@ export default async function RootLayout({
     <html
       lang={locale}
       suppressHydrationWarning
-      className={cn("antialiased", fontSans.variable, fontDisplay.variable, jetbrainsMono.variable)}
+      className={cn(
+        "antialiased",
+        fontDisplay.variable,
+        jetbrainsMono.variable,
+        "font-sans",
+        roboto.variable,
+        jetbrainsMonoHeading.variable
+      )}
     >
       <body suppressHydrationWarning>
         <AuthKitProvider>
-        <QueryProvider>
-          <ThemeProvider>
-            <TooltipProvider>{children}</TooltipProvider>
-          </ThemeProvider>
-        </QueryProvider>
+          <QueryProvider>
+            <ThemeProvider>
+              <TooltipProvider>{children}</TooltipProvider>
+            </ThemeProvider>
+          </QueryProvider>
         </AuthKitProvider>
       </body>
     </html>

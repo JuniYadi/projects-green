@@ -32,16 +32,12 @@ const mockPrismaFindUnique = mock(
     return null
   }
 )
-const mockPrismaUpsert = mock(
-  async (): Promise<Record<string, unknown>> => {
-    return {}
-  }
-)
-const mockPrismaDelete = mock(
-  async (): Promise<Record<string, unknown>> => {
-    return {}
-  }
-)
+const mockPrismaUpsert = mock(async (): Promise<Record<string, unknown>> => {
+  return {}
+})
+const mockPrismaDelete = mock(async (): Promise<Record<string, unknown>> => {
+  return {}
+})
 
 // ---------------------------------------------------------------------------
 // Register mocks before any imports

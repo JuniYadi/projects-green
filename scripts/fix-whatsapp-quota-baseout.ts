@@ -22,7 +22,12 @@ const currentPeriod = (() => {
   const now = new Date()
   const y = now.getUTCFullYear()
   const m = String(now.getUTCMonth() + 1).padStart(2, "0")
-  return { year: y, month: now.getUTCMonth() + 1, period: `${y}-${m}`, periodStart: new Date(`${y}-${m}-01`) }
+  return {
+    year: y,
+    month: now.getUTCMonth() + 1,
+    period: `${y}-${m}`,
+    periodStart: new Date(`${y}-${m}-01`),
+  }
 })()
 
 async function main() {
@@ -34,10 +39,18 @@ async function main() {
       quotaBase: { gt: 0 },
       quotaBaseOut: { lte: 0 },
     },
-    select: { id: true, phoneNumber: true, organizationId: true, quotaBase: true, quotaBaseOut: true },
+    select: {
+      id: true,
+      phoneNumber: true,
+      organizationId: true,
+      quotaBase: true,
+      quotaBaseOut: true,
+    },
   })
 
-  console.info(`[fix-wa-quota] Found ${devices.length} device(s) with quotaBaseOut <= 0`)
+  console.info(
+    `[fix-wa-quota] Found ${devices.length} device(s) with quotaBaseOut <= 0`
+  )
 
   let fixed = 0
   let skipped = 0
@@ -59,7 +72,9 @@ async function main() {
 
     if (newQuotaBaseOut === 0 && consumed > 0) {
       // All quota legitimately consumed — no fix needed
-      console.info(`  [skip]  ${device.phoneNumber}: fully consumed (quotaBase=${device.quotaBase}, consumed=${consumed})`)
+      console.info(
+        `  [skip]  ${device.phoneNumber}: fully consumed (quotaBase=${device.quotaBase}, consumed=${consumed})`
+      )
       skipped++
       continue
     }
@@ -74,11 +89,15 @@ async function main() {
       data: { quotaBaseOut: newQuotaBaseOut },
     })
 
-    console.info(`  [fix]   ${device.phoneNumber}: quotaBaseOut ${device.quotaBaseOut} → ${newQuotaBaseOut} (consumed=${consumed})`)
+    console.info(
+      `  [fix]   ${device.phoneNumber}: quotaBaseOut ${device.quotaBaseOut} → ${newQuotaBaseOut} (consumed=${consumed})`
+    )
     fixed++
   }
 
-  console.info(`[fix-wa-quota] Fixed: ${fixed}, Skipped: ${skipped}, Total: ${devices.length}`)
+  console.info(
+    `[fix-wa-quota] Fixed: ${fixed}, Skipped: ${skipped}, Total: ${devices.length}`
+  )
 }
 
 main()

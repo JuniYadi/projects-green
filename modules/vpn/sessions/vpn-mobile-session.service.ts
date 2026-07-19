@@ -1,4 +1,8 @@
-import type { Prisma, PrismaClient, VpnMobileSessionStatus } from "@prisma/client"
+import type {
+  Prisma,
+  PrismaClient,
+  VpnMobileSessionStatus,
+} from "@prisma/client"
 
 import { prisma as defaultPrisma } from "@/lib/prisma"
 
@@ -75,10 +79,7 @@ export class VpnMobileSessionService {
    * Idempotent: if already CLOSED, accumulates txBytes/rxBytes (deltas)
    * but keeps endedAt unchanged.
    */
-  async close(
-    id: string,
-    traffic?: { txBytes?: number; rxBytes?: number }
-  ) {
+  async close(id: string, traffic?: { txBytes?: number; rxBytes?: number }) {
     const existing = await this.prisma.vpnMobileSession.findUnique({
       where: { id },
       select: { status: true, txBytes: true, rxBytes: true },
@@ -149,7 +150,10 @@ export class VpnMobileSessionService {
       where,
       take,
       ...(cursor
-        ? { cursor: { startedAt: new Date(cursor.startedAt), id: cursor.id }, skip: 1 }
+        ? {
+            cursor: { startedAt: new Date(cursor.startedAt), id: cursor.id },
+            skip: 1,
+          }
         : {}),
       orderBy: [{ startedAt: "desc" }, { id: "desc" }],
       include: {

@@ -4,7 +4,10 @@ import { useEffect, useState } from "react"
 import { X } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { type VpnServerAccountEntry, getVpnProvisioningAudit } from "./vpn-admin-client"
+import {
+  type VpnServerAccountEntry,
+  getVpnProvisioningAudit,
+} from "./vpn-admin-client"
 import { ProvisioningTimeline, type AuditEvent } from "./provisioning-timeline"
 
 type Props = {

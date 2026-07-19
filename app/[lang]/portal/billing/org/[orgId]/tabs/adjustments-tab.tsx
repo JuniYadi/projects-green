@@ -7,10 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { PlusIcon } from "@phosphor-icons/react"
 import { AdjustmentTable } from "@/components/billing/admin/adjustment-table"
 import { AdjustmentForm } from "@/components/billing/admin/adjustment-form"
-import {
-  getAdminAdjustments,
-  type AdminAdjustment,
-} from "@/lib/billing-client"
+import { getAdminAdjustments, type AdminAdjustment } from "@/lib/billing-client"
 
 type AdjustmentsTabProps = {
   orgId: string
@@ -56,10 +53,7 @@ export function AdjustmentsTab({ orgId }: AdjustmentsTabProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <CardTitle className="text-base font-medium">Adjustments</CardTitle>
-        <Button
-          size="sm"
-          onClick={() => setFormOpen(true)}
-        >
+        <Button size="sm" onClick={() => setFormOpen(true)}>
           <PlusIcon className="mr-1 h-4 w-4" />
           New Adjustment
         </Button>

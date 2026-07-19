@@ -86,6 +86,6 @@ bun run dev
 - **Support Tickets module** — documented briefly in quickstart but deserves a dedicated domain page (status workflow, encryption, email notifications, PIC tracking). Deferred to keep scope focused on the four main product areas.
 - **OpenSearch integration** — used for deploy log aggregation; architecture and query patterns not yet documented in detail.
 - **GitHub App integration** — installation flow and webhook processing are documented in `/openwiki/source-map.md` and `/openwiki/domain/deploy.md`; dedicated page may still be useful for deep webhook/event retention details.
-- **Cloudflare DNS credentials** — `modules/cloudflare/` provides encrypted credential storage and API routes; documented in source-map and architecture overview.
+- **Cloudflare DNS credentials** — Cloudflare credential types are now part of `modules/credentials/` (type registry pattern); dedicated documentation deferred.
 - **Vouchers module** — voucher code generation and redemption; not yet documented.
 - **Knowledge Docs / AI Chat** — embedded knowledge base with AI-powered chat; architecture not yet documented.

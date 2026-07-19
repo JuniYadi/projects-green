@@ -26,9 +26,7 @@ export type ProxyAuthResult = { ok: true; scope: WorkOSScope } | { ok: false }
  * Normalize a WorkOS role slug to the internal OrgRole type.
  * Accepts both unprefixed (owner/admin/member) and user_prefixed forms.
  */
-const normalizeOrgRole = (
-  role: string | null | undefined
-): OrgRole | null => {
+const normalizeOrgRole = (role: string | null | undefined): OrgRole | null => {
   if (!role) return null
   const slug = role.toLowerCase()
   if (slug === "owner" || slug === "user_owner") return "owner"
@@ -89,8 +87,8 @@ export const resolveProxyAuth = async (
       : await resolveFirstActiveOrganization(userId)
 
     const orgRole = firstOrg
-      ? resolveOrgRoleFromHeaders(request) ??
-        (await resolveOrgRole(userId, firstOrg.organizationId))
+      ? (resolveOrgRoleFromHeaders(request) ??
+        (await resolveOrgRole(userId, firstOrg.organizationId)))
       : null
 
     console.debug(

@@ -128,7 +128,9 @@ export type InteractiveListPayload = {
   }
 }
 
-export type InteractivePayload = InteractiveButtonPayload | InteractiveListPayload
+export type InteractivePayload =
+  | InteractiveButtonPayload
+  | InteractiveListPayload
 
 export type SendInteractivePayload = InteractivePayload
 

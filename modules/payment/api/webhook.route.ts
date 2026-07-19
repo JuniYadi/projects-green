@@ -80,9 +80,8 @@ export const createWebhookRoutes = () =>
             merchantOrderId
           )
 
-          const paidInvoice = await paymentService.markInvoiceAsPaid(
-            merchantOrderId
-          )
+          const paidInvoice =
+            await paymentService.markInvoiceAsPaid(merchantOrderId)
 
           // Fire-and-forget: send invoice paid email
           paymentService

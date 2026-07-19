@@ -73,11 +73,10 @@ describe("resolveVpnMonthlyPrice with CurrencyService", () => {
   it("uses dynamic rate from CurrencyService when provided", async () => {
     // Mock CurrencyService.getRate: returns dynamic rate for IDR
     const mockCurrency = {
-      convert: mock(
-        async () => new Prisma.Decimal("1.25")
-      ),
-      getRate: mock(async (code: string) =>
-        new Prisma.Decimal(code === "USD" ? "1" : "20000")
+      convert: mock(async () => new Prisma.Decimal("1.25")),
+      getRate: mock(
+        async (code: string) =>
+          new Prisma.Decimal(code === "USD" ? "1" : "20000")
       ),
     }
 

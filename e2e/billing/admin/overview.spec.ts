@@ -33,12 +33,15 @@ test.describe("Portal Billing Overview (admin)", () => {
     await expect(orgTable).toBeVisible()
 
     // Search input exists
-    const searchInput = page.getByPlaceholder(/search/i)
+    const searchInput = page
+      .getByPlaceholder(/search/i)
       .or(page.getByRole("textbox", { name: /search/i }))
     await expect(searchInput).toBeVisible()
   })
 
-  test("UC-3: clicking org row navigates to org billing detail", async ({ page }) => {
+  test("UC-3: clicking org row navigates to org billing detail", async ({
+    page,
+  }) => {
     // Click the first org link/row in the table
     const firstOrgLink = page.locator("table a").first()
     await expect(firstOrgLink).toBeVisible()

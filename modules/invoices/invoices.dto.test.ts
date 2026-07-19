@@ -7,9 +7,7 @@ import {
 import type { InvoiceDetailRecord } from "@/modules/invoices/invoices.repository"
 
 const makeConfirmation = (
-  overrides: Partial<
-    InvoiceDetailRecord["paymentConfirmations"][number]
-  > = {}
+  overrides: Partial<InvoiceDetailRecord["paymentConfirmations"][number]> = {}
 ): InvoiceDetailRecord["paymentConfirmations"][number] => ({
   id: "pc_1",
   invoiceId: "inv_1",
@@ -342,8 +340,7 @@ describe("toPaymentInfoDTO", () => {
 
     expect(
       dto?.timeline.filter(
-        (e) =>
-          e.type === "payment_approved" || e.type === "payment_rejected"
+        (e) => e.type === "payment_approved" || e.type === "payment_rejected"
       )
     ).toHaveLength(0)
   })

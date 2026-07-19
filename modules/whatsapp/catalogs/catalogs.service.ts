@@ -70,7 +70,11 @@ export const catalogService = {
   },
 
   // ponytail: manual sync only; add webhook listener if real-time needed
-  async syncFromMeta(catalogId: string, organizationId: string, accessToken: string) {
+  async syncFromMeta(
+    catalogId: string,
+    organizationId: string,
+    accessToken: string
+  ) {
     const catalog = await prisma.whatsappCatalog.findFirst({
       where: { id: catalogId, organizationId },
     })
@@ -86,13 +90,17 @@ export const catalogService = {
     let after: string | undefined
     let synced = 0
     while (true) {
-      const url = after ? `${baseUrl}?${params}&after=${after}` : `${baseUrl}?${params}`
+      const url = after
+        ? `${baseUrl}?${params}&after=${after}`
+        : `${baseUrl}?${params}`
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${accessToken}` },
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        throw new Error(`Meta API error: ${err.error?.message ?? res.statusText}`)
+        throw new Error(
+          `Meta API error: ${err.error?.message ?? res.statusText}`
+        )
       }
       const data = await res.json()
 

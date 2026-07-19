@@ -16,7 +16,15 @@ describe("resolveSidebarMenu", () => {
 
     expect(navMainLabel).toBe("Applications")
 
-    expect(navMain.map((item) => item.title)).toEqual(["Deploy", "Overview", "Logs", "Metrics", "Events", "Settings", "Credentials"])
+    expect(navMain.map((item) => item.title)).toEqual([
+      "Deploy",
+      "Overview",
+      "Logs",
+      "Metrics",
+      "Events",
+      "Settings",
+      "Credentials",
+    ])
     // After flattening Manage container, no single item is active for /console/app/manage
     expect(navMain.every((item) => !item.isActive)).toBe(true)
 
@@ -233,7 +241,6 @@ describe("resolveSidebarMenu", () => {
       "Audit Logs",
     ])
     expect(projects.map((project) => project.name)).toEqual([
-      "All Orgs Overview",
       "Org Overview",
       "Back to Portal",
     ])
@@ -401,9 +408,9 @@ describe("resolveSidebarMenu", () => {
       locale: "en",
     })
 
-    expect(
-      navMain.find((item) => item.title === "Audit Logs")?.isActive
-    ).toBe(true)
+    expect(navMain.find((item) => item.title === "Audit Logs")?.isActive).toBe(
+      true
+    )
   })
 
   it("includes order package in console vpn context", () => {

@@ -35,9 +35,7 @@ export const RenewalSuccessEmail = ({
           action.
         </Text>
         <Hr style={s.hr} />
-        <Text style={s.footer}>
-          Thank you for being a valued customer.
-        </Text>
+        <Text style={s.footer}>Thank you for being a valued customer.</Text>
       </Container>
     </Body>
   </Html>

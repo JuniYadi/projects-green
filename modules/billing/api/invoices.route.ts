@@ -205,24 +205,12 @@ export const createBillingInvoicesRoutes = (
         const { id } = parsed.data
 
         try {
-          // Get billing account for organization
-          const account = await prisma.billingAccount.findUnique({
-            where: { organizationId: auth.organizationId },
-            select: { id: true },
-          })
-
-          if (!account) {
-            return toNotFound(set, "Billing account not found.")
-          }
-
-          // Fetch invoice
-          const invoice = await prisma.billingInvoice.findFirst({
-            where: {
-              id,
-              billingAccountId: account.id,
-            },
+          // Fetch invoice — org-scoped by auth
+          const invoice = await prisma.billingInvoice.findUnique({
+            where: { id },
             include: {
               lines: true,
+              paymentConfirmations: { include: { bankAccount: true } },
             },
           })
 
@@ -248,6 +236,12 @@ export const createBillingInvoicesRoutes = (
               totalAmountIdr: invoice.totalAmount.toFixed(2),
               currency: invoice.currency,
               lines: invoice.lines.map((line) => formatInvoiceLine(line)),
+              confirmations: (invoice.paymentConfirmations ?? []).map((pc) => ({
+                id: pc.id,
+                status: String(pc.status),
+                createdAt: pc.createdAt.toISOString(),
+                amount: Number(pc.amount),
+              })),
             },
           }
         } catch (error) {

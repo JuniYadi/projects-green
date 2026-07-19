@@ -19,8 +19,8 @@ export function SettingsTab({ orgId }: SettingsTabProps) {
       <CardContent>
         <div className="rounded-lg border border-dashed p-8 text-center">
           <p className="text-sm text-muted-foreground">
-            Billing settings for this organization will be available here
-            once the admin settings configuration is implemented.
+            Billing settings for this organization will be available here once
+            the admin settings configuration is implemented.
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
             Organization ID: {orgId}

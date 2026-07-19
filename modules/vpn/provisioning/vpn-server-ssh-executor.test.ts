@@ -1,22 +1,20 @@
 import { describe, expect, it } from "bun:test"
 
 import type { SshCommandResult } from "./vpn-server-ssh-executor"
-import {
-  classifySshError,
-  formatSshError,
-} from "./vpn-server-ssh-executor"
+import { classifySshError, formatSshError } from "./vpn-server-ssh-executor"
 
 const host = "vpn.example.com"
 
-function result(
-  overrides: Partial<SshCommandResult> = {}
-): SshCommandResult {
+function result(overrides: Partial<SshCommandResult> = {}): SshCommandResult {
   return { stdout: "", stderr: "", exitCode: 0, ...overrides }
 }
 
 describe("classifySshError", () => {
   it("classifies SSH timeout", () => {
-    const error = classifySshError(result({ stderr: "SSH exec timed out" }), host)
+    const error = classifySshError(
+      result({ stderr: "SSH exec timed out" }),
+      host
+    )
     expect(error.type).toBe("timeout")
   })
 
@@ -30,7 +28,9 @@ describe("classifySshError", () => {
 
   it("classifies auth failure with 'auth fail'", () => {
     const error = classifySshError(
-      result({ stderr: "Permission denied (publickey,keyboard-interactive). auth fail" }),
+      result({
+        stderr: "Permission denied (publickey,keyboard-interactive). auth fail",
+      }),
       host
     )
     expect(error.type).toBe("auth_failure")
@@ -77,10 +77,7 @@ describe("classifySshError", () => {
 
 describe("formatSshError", () => {
   it("formats timeout error", () => {
-    const msg = formatSshError(
-      { type: "timeout", host },
-      "deploy config"
-    )
+    const msg = formatSshError({ type: "timeout", host }, "deploy config")
     expect(msg).toContain(host)
     expect(msg).toContain("deploy config")
     expect(msg).toContain("timed out")

@@ -69,8 +69,7 @@ const TONE_BADGE: Record<AuditDetailRow["tone"], string> = {
   success: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
   warning: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
   danger: "bg-red-500/15 text-red-700 dark:text-red-400",
-  neutral:
-    "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+  neutral: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
 }
 
 function formatDateTime(dateStr: string) {
@@ -174,7 +173,10 @@ function getColumns(
         const action = row.original.action
         const tone = actionTone(action)
         return (
-          <Badge variant="outline" className={`border-transparent ${TONE_BADGE[tone]}`}>
+          <Badge
+            variant="outline"
+            className={`border-transparent ${TONE_BADGE[tone]}`}
+          >
             {action}
           </Badge>
         )
@@ -193,11 +195,7 @@ function getColumns(
         if (!status)
           return <span className="text-xs text-muted-foreground">—</span>
         const tone = actionTone(
-          status === "OK"
-            ? "SUCCESS"
-            : status === "FAILED"
-              ? "FAILED"
-              : status
+          status === "OK" ? "SUCCESS" : status === "FAILED" ? "FAILED" : status
         )
         return (
           <Badge
@@ -227,9 +225,7 @@ function getColumns(
             ? r.details.step
             : null)
         return step ? (
-          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-            {step}
-          </code>
+          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{step}</code>
         ) : (
           <span className="text-xs text-muted-foreground">—</span>
         )
@@ -349,17 +345,17 @@ function ExpandedDetails({ item }: { item: VpnAuditLogListItem }) {
       <div className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
         {allRows.map((row, idx) => (
           <div key={`${row.label}-${idx}`} className="flex gap-2 text-sm">
-            <span className="w-36 shrink-0 text-muted-foreground">{row.label}</span>
+            <span className="w-36 shrink-0 text-muted-foreground">
+              {row.label}
+            </span>
             <span
-              className={`min-w-0 break-words font-medium ${
+              className={`min-w-0 font-medium break-words ${
                 row.tone === "neutral"
                   ? ""
                   : TONE_BADGE[row.tone].replace(/text-\S+/, "").trim()
               }`}
               style={
-                row.tone === "neutral"
-                  ? undefined
-                  : { color: "currentColor" }
+                row.tone === "neutral" ? undefined : { color: "currentColor" }
               }
             >
               <span className={TONE_BADGE[row.tone]}>{row.value}</span>
@@ -584,7 +580,9 @@ export function AuditLogsTable() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-muted-foreground">From</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              From
+            </label>
             <Input
               type="date"
               value={from}
@@ -594,7 +592,9 @@ export function AuditLogsTable() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-muted-foreground">To</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              To
+            </label>
             <Input
               type="date"
               value={to}
@@ -610,12 +610,7 @@ export function AuditLogsTable() {
             <Button variant="outline" size="sm" onClick={resetFilters}>
               Reset
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={reload}
-              title="Reload"
-            >
+            <Button variant="outline" size="sm" onClick={reload} title="Reload">
               <ArrowsDownUpIcon className="h-3.5 w-3.5 rotate-90" />
               <span className="sr-only">Reload</span>
             </Button>

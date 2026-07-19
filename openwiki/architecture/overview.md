@@ -38,8 +38,7 @@ Request → Next.js Middleware (proxy.ts) → Elysia App Router (/lib/api.ts)
                                            ├── billingRoutes
                                            ├── deployRoutes
                                            ├── githubRoutes
-                                           ├── cloudflareDnsTokenRoutes
-                                           ├── supportTicketRoutes
+                                            ├── supportTicketRoutes
                                            └── ... (25+ route groups total)
 ```
 

@@ -80,9 +80,7 @@ function makeScanResult(overrides: Partial<ScanResult> = {}): ScanResult {
 // ── Module-level mocks (hoisted by Bun) ───────────────────────────────────────
 
 const mockListVpnServers = mock<
-  (
-    ..._args: any[]
-  ) => Promise<{
+  (..._args: any[]) => Promise<{
     data: VpnServerItem[]
     pagination: {
       page: number
@@ -96,9 +94,7 @@ const mockListVpnServers = mock<
   pagination: { page: 1, limit: 25, total: 0, totalPages: 0 },
 }))
 const mockListVpnRegions = mock<
-  (
-    ..._args: any[]
-  ) => Promise<{
+  (..._args: any[]) => Promise<{
     data: VpnRegionItem[]
     pagination: {
       page: number
@@ -112,9 +108,7 @@ const mockListVpnRegions = mock<
   pagination: { page: 1, limit: 25, total: 0, totalPages: 0 },
 }))
 const mockListVpnSshKeys = mock<
-  (
-    ..._args: any[]
-  ) => Promise<{
+  (..._args: any[]) => Promise<{
     data: VpnSshKeyItem[]
     pagination: {
       page: number

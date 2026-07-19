@@ -11,7 +11,12 @@ export class WireGuardService {
     private readonly adapter: WireGuardSshAdapter = new WireGuardSshAdapter()
   ) {}
 
-  async resolveServer(): Promise<{ target: SshTarget; server: Prisma.VpnServerGetPayload<{ include: { sshKey: { select: { privateKey: true } } } }> }> {
+  async resolveServer(): Promise<{
+    target: SshTarget
+    server: Prisma.VpnServerGetPayload<{
+      include: { sshKey: { select: { privateKey: true } } }
+    }>
+  }> {
     const server = await this.prisma.vpnServer.findFirst({
       where: { hasWireGuard: true, isActive: true },
       include: { sshKey: { select: { privateKey: true } } },
@@ -58,10 +63,14 @@ export class WireGuardService {
 
     // Check duplicate
     const existing = await this.prisma.vpnClient.findUnique({
-      where: { provider_clientName: { provider: "WIREGUARD", clientName: username } },
+      where: {
+        provider_clientName: { provider: "WIREGUARD", clientName: username },
+      },
     })
     if (existing) {
-      const err = new Error("WireGuard peer already exists") as Error & { statusCode: number }
+      const err = new Error("WireGuard peer already exists") as Error & {
+        statusCode: number
+      }
       err.statusCode = 409
       throw err
     }
@@ -73,7 +82,10 @@ export class WireGuardService {
     const ip = ipMatch?.[1] ?? ""
 
     // Generate QR
-    const qrBase64 = await QRCode.toDataURL(config, { type: "image/png", width: 400 })
+    const qrBase64 = await QRCode.toDataURL(config, {
+      type: "image/png",
+      width: 400,
+    })
 
     // Store in VpnClient
     const encryptedConfig = encryptVpnConfig(config)
@@ -106,7 +118,9 @@ export class WireGuardService {
 
   async getConfig(username: string): Promise<string> {
     const client = await this.prisma.vpnClient.findUnique({
-      where: { provider_clientName: { provider: "WIREGUARD", clientName: username } },
+      where: {
+        provider_clientName: { provider: "WIREGUARD", clientName: username },
+      },
     })
     if (client?.encryptedConfig) {
       return decryptVpnConfig(client.encryptedConfig)

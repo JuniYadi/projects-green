@@ -16,7 +16,9 @@ test.describe("Top-Up (console)", () => {
   })
 
   test("UC-3: manual bank transfer option is shown", async ({ page }) => {
-    await expect(page.getByText(/Bank Transfer/i).or(page.getByText(/Transfer/i))).toBeVisible()
+    await expect(
+      page.getByText(/Bank Transfer/i).or(page.getByText(/Transfer/i))
+    ).toBeVisible()
   })
 
   test("UC-3: virtual account option is shown", async ({ page }) => {

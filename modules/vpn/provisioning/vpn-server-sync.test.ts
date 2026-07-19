@@ -25,19 +25,21 @@ const mockPrisma = {
     findMany: mock(),
   },
   vpnAuditLog: {
-    create: mock().mockImplementation(async ({ data }: { data: Record<string, unknown> }) => {
-      const details = (data.details as Record<string, unknown>) ?? null
-      mockAuditLogs.push({
-        action: data.action as string,
-        serverId: data.serverId as string | null,
-        subscriptionId: data.subscriptionId as string | null,
-        organizationId: data.organizationId as string | null,
-        status: data.status as string | null,
-        message: data.message as string | null,
-        details,
-      })
-      return { id: "log_" + Date.now(), ...data }
-    }),
+    create: mock().mockImplementation(
+      async ({ data }: { data: Record<string, unknown> }) => {
+        const details = (data.details as Record<string, unknown>) ?? null
+        mockAuditLogs.push({
+          action: data.action as string,
+          serverId: data.serverId as string | null,
+          subscriptionId: data.subscriptionId as string | null,
+          organizationId: data.organizationId as string | null,
+          status: data.status as string | null,
+          message: data.message as string | null,
+          details,
+        })
+        return { id: "log_" + Date.now(), ...data }
+      }
+    ),
   },
 }
 

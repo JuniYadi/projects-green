@@ -54,7 +54,11 @@ export default function CatalogsPage() {
   const [catalogs, setCatalogs] = React.useState<Catalog[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [createOpen, setCreateOpen] = React.useState(false)
-  const [createForm, setCreateForm] = React.useState({ name: "", metaCatalogId: "", deviceId: "" })
+  const [createForm, setCreateForm] = React.useState({
+    name: "",
+    metaCatalogId: "",
+    deviceId: "",
+  })
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
   const loadCatalogs = React.useCallback(async () => {
@@ -62,14 +66,18 @@ export default function CatalogsPage() {
       const res = await whatsappClient.catalogs.list()
       setCatalogs(res.data ?? [])
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to load catalogs")
+      toast.error(
+        err instanceof Error ? err.message : "Failed to load catalogs"
+      )
     } finally {
       setIsLoading(false)
     }
   }, [])
 
   React.useEffect(() => {
-    ;(async () => { await loadCatalogs() })()
+    ;(async () => {
+      await loadCatalogs()
+    })()
   }, [loadCatalogs])
 
   const handleCreate = async () => {
@@ -79,7 +87,8 @@ export default function CatalogsPage() {
     }
     setIsSubmitting(true)
     try {
-      const input: { name: string; metaCatalogId: string; deviceId?: string } = { name: createForm.name, metaCatalogId: createForm.metaCatalogId }
+      const input: { name: string; metaCatalogId: string; deviceId?: string } =
+        { name: createForm.name, metaCatalogId: createForm.metaCatalogId }
       if (createForm.deviceId) input.deviceId = createForm.deviceId
       await whatsappClient.catalogs.create(input)
       toast.success("Catalog created.")
@@ -87,7 +96,9 @@ export default function CatalogsPage() {
       setCreateForm({ name: "", metaCatalogId: "", deviceId: "" })
       await loadCatalogs()
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to create catalog.")
+      toast.error(
+        err instanceof Error ? err.message : "Failed to create catalog."
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -99,7 +110,9 @@ export default function CatalogsPage() {
       toast.success("Catalog deleted.")
       await loadCatalogs()
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete catalog.")
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete catalog."
+      )
     }
   }
 
@@ -108,8 +121,9 @@ export default function CatalogsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Catalogs</h1>
-          <p className="text-muted-foreground text-sm">
-            Manage your Facebook Catalogs and sync products from Commerce Manager.
+          <p className="text-sm text-muted-foreground">
+            Manage your Facebook Catalogs and sync products from Commerce
+            Manager.
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
@@ -121,7 +135,9 @@ export default function CatalogsPage() {
       <Card>
         <CardHeader>
           <CardTitle>All Catalogs</CardTitle>
-          <CardDescription>{catalogs.length} catalog{catalogs.length !== 1 ? "s" : ""}</CardDescription>
+          <CardDescription>
+            {catalogs.length} catalog{catalogs.length !== 1 ? "s" : ""}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -133,23 +149,29 @@ export default function CatalogsPage() {
           ) : catalogs.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-12 text-center">
               <ShoppingBagOpen className="size-12 text-muted-foreground/40" />
-              <p className="text-muted-foreground text-sm">No catalogs yet.</p>
+              <p className="text-sm text-muted-foreground">No catalogs yet.</p>
             </div>
           ) : (
             <div className="divide-y">
               {catalogs.map((cat) => (
                 <div
                   key={cat.id}
-                  className="flex items-center justify-between py-3 cursor-pointer hover:bg-muted/40 px-2 -mx-2 rounded-sm"
-                  onClick={() => router.push(`/${locale}/portal/whatsapp/catalogs/${cat.id}`)}
+                  className="-mx-2 flex cursor-pointer items-center justify-between rounded-sm px-2 py-3 hover:bg-muted/40"
+                  onClick={() =>
+                    router.push(`/${locale}/portal/whatsapp/catalogs/${cat.id}`)
+                  }
                 >
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <span className="font-medium truncate">{cat.name}</span>
-                    <span className="text-muted-foreground text-xs truncate">
-                      Meta ID: {cat.metaCatalogId} &middot; {cat.productCount ?? 0} products
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span className="truncate font-medium">{cat.name}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      Meta ID: {cat.metaCatalogId} &middot;{" "}
+                      {cat.productCount ?? 0} products
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className="flex shrink-0 items-center gap-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Badge variant="secondary" className="text-xs">
                       {cat.productCount ?? 0} products
                     </Badge>
@@ -160,7 +182,13 @@ export default function CatalogsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => router.push(`/${locale}/portal/whatsapp/catalogs/${cat.id}`)}>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            router.push(
+                              `/${locale}/portal/whatsapp/catalogs/${cat.id}`
+                            )
+                          }
+                        >
                           View Products
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -191,19 +219,45 @@ export default function CatalogsPage() {
           <div className="space-y-4">
             <div>
               <Label htmlFor="name">Catalog Name</Label>
-              <Input id="name" value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} placeholder="My Store Catalog" />
+              <Input
+                id="name"
+                value={createForm.name}
+                onChange={(e) =>
+                  setCreateForm((f) => ({ ...f, name: e.target.value }))
+                }
+                placeholder="My Store Catalog"
+              />
             </div>
             <div>
               <Label htmlFor="metaCatalogId">Meta Catalog ID</Label>
-              <Input id="metaCatalogId" value={createForm.metaCatalogId} onChange={(e) => setCreateForm((f) => ({ ...f, metaCatalogId: e.target.value }))} placeholder="123456789" />
+              <Input
+                id="metaCatalogId"
+                value={createForm.metaCatalogId}
+                onChange={(e) =>
+                  setCreateForm((f) => ({
+                    ...f,
+                    metaCatalogId: e.target.value,
+                  }))
+                }
+                placeholder="123456789"
+              />
             </div>
             <div>
               <Label htmlFor="deviceId">Device ID (optional)</Label>
-              <Input id="deviceId" value={createForm.deviceId} onChange={(e) => setCreateForm((f) => ({ ...f, deviceId: e.target.value }))} placeholder="Leave empty to use default device" />
+              <Input
+                id="deviceId"
+                value={createForm.deviceId}
+                onChange={(e) =>
+                  setCreateForm((f) => ({ ...f, deviceId: e.target.value }))
+                }
+                placeholder="Leave empty to use default device"
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>
+              Cancel
+            </Button>
             <Button onClick={handleCreate} disabled={isSubmitting}>
               {isSubmitting ? "Creating..." : "Create Catalog"}
             </Button>

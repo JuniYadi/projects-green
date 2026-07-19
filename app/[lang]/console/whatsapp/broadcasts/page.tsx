@@ -64,33 +64,39 @@ export default function WhatsAppBroadcastsPage() {
     })()
   }, [loadBroadcasts])
 
-  const handleSend = async (broadcast: Broadcast) => {
-    try {
-      const message = await whatsappClient.sendBroadcast(broadcast.id)
-      toast.success(message)
-      await loadBroadcasts()
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unable to send broadcast"
-      )
-    }
-  }
+  const handleSend = React.useCallback(
+    async (broadcast: Broadcast) => {
+      try {
+        const message = await whatsappClient.sendBroadcast(broadcast.id)
+        toast.success(message)
+        await loadBroadcasts()
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Unable to send broadcast"
+        )
+      }
+    },
+    [loadBroadcasts]
+  )
 
-  const handleDelete = async (broadcast: Broadcast) => {
-    if (!window.confirm(`Delete broadcast ${broadcast.templateName}?`)) {
-      return
-    }
+  const handleDelete = React.useCallback(
+    async (broadcast: Broadcast) => {
+      if (!window.confirm(`Delete broadcast ${broadcast.templateName}?`)) {
+        return
+      }
 
-    try {
-      await whatsappClient.deleteBroadcast(broadcast.id)
-      toast.success("Broadcast deleted")
-      await loadBroadcasts()
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unable to delete broadcast"
-      )
-    }
-  }
+      try {
+        await whatsappClient.deleteBroadcast(broadcast.id)
+        toast.success("Broadcast deleted")
+        await loadBroadcasts()
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Unable to delete broadcast"
+        )
+      }
+    },
+    [loadBroadcasts]
+  )
 
   const columns = React.useMemo<ColumnDef<Broadcast>[]>(() => {
     return [

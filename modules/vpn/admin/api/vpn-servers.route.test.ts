@@ -2,7 +2,10 @@ import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
 import type { PrismaClient } from "@prisma/client"
 
-import { createAdminVpnServersRoutes, TEST_RATE_LIMIT_MS } from "./vpn-servers.route"
+import {
+  createAdminVpnServersRoutes,
+  TEST_RATE_LIMIT_MS,
+} from "./vpn-servers.route"
 import { VpnServerService } from "../vpn-server.service"
 import type { VpnServerScanner, ScanResult } from "../vpn-connection-scanner"
 
@@ -63,7 +66,11 @@ interface SshResult {
 let sshResponses: SshResult[] = []
 let sshCallIndex = 0
 const mockSshExecutorExec = mock<() => Promise<SshResult>>(async () => {
-  const result = sshResponses[sshCallIndex] ?? { stdout: "", stderr: "", exitCode: 0 }
+  const result = sshResponses[sshCallIndex] ?? {
+    stdout: "",
+    stderr: "",
+    exitCode: 0,
+  }
   sshCallIndex++
   return result
 })
@@ -155,9 +162,7 @@ mock.module("@/lib/audit.service", () => ({
 // real @/lib/prisma module is bypassed entirely.
 // ---------------------------------------------------------------------------
 
-const service = new VpnServerService(
-  undefined as unknown as PrismaClient
-)
+const service = new VpnServerService(undefined as unknown as PrismaClient)
 
 // ---------------------------------------------------------------------------
 // Guards
@@ -182,10 +187,12 @@ const forbiddenGuard = async (set: { status?: number | string }) => {
 // App factory
 // ---------------------------------------------------------------------------
 
-function createApp(deps: {
-  now?: () => number
-  scanConnection?: VpnServerScanner
-} = {}) {
+function createApp(
+  deps: {
+    now?: () => number
+    scanConnection?: VpnServerScanner
+  } = {}
+) {
   return new Elysia().use(
     createAdminVpnServersRoutes({
       requireSuperAdmin: allowedGuard,
@@ -220,10 +227,15 @@ describe("createAdminVpnServersRoutes", () => {
 
   describe("GET /admin/vpn/servers", () => {
     it("returns a list of servers", async () => {
-      vpnServerFindManyQueue.push(makeServer(), makeServer({ id: "srv-2", name: "SG-01" }))
+      vpnServerFindManyQueue.push(
+        makeServer(),
+        makeServer({ id: "srv-2", name: "SG-01" })
+      )
       const app = createApp().compile()
 
-      const res = await app.handle(new Request("http://localhost/admin/vpn/servers"))
+      const res = await app.handle(
+        new Request("http://localhost/admin/vpn/servers")
+      )
       expect(res.status).toBe(200)
       const body = await res.json()
       expect(body.ok).toBe(true)
@@ -235,12 +247,22 @@ describe("createAdminVpnServersRoutes", () => {
         makeServer({
           id: "srv-jkt",
           regionId: "reg-jakarta",
-          region: { id: "reg-jakarta", name: "Jakarta", slug: "jakarta", countryCode: "id" },
+          region: {
+            id: "reg-jakarta",
+            name: "Jakarta",
+            slug: "jakarta",
+            countryCode: "id",
+          },
         }),
         makeServer({
           id: "srv-sg",
           regionId: "reg-singapore",
-          region: { id: "reg-singapore", name: "Singapore", slug: "singapore", countryCode: "sg" },
+          region: {
+            id: "reg-singapore",
+            name: "Singapore",
+            slug: "singapore",
+            countryCode: "sg",
+          },
         })
       )
       const app = createApp().compile()
@@ -250,7 +272,11 @@ describe("createAdminVpnServersRoutes", () => {
       )
       expect(res.status).toBe(200)
       const body = await res.json()
-      expect(body.data.some((s: { region?: { id: string } }) => s.region?.id === "reg-jakarta")).toBe(true)
+      expect(
+        body.data.some(
+          (s: { region?: { id: string } }) => s.region?.id === "reg-jakarta"
+        )
+      ).toBe(true)
     })
 
     it("filters servers by search query param", async () => {
@@ -258,7 +284,12 @@ describe("createAdminVpnServersRoutes", () => {
         makeServer({
           id: "srv-1",
           hostname: "vpn-id-01.example.net",
-          region: { id: "reg-1", name: "Indonesia", slug: "indonesia", countryCode: "id" },
+          region: {
+            id: "reg-1",
+            name: "Indonesia",
+            slug: "indonesia",
+            countryCode: "id",
+          },
         })
       )
       const app = createApp().compile()
@@ -269,7 +300,11 @@ describe("createAdminVpnServersRoutes", () => {
       )
       expect(res.status).toBe(200)
       const body = await res.json()
-      expect(body.data.some((s: { hostname: string }) => s.hostname.includes("vpn-id-01"))).toBe(true)
+      expect(
+        body.data.some((s: { hostname: string }) =>
+          s.hostname.includes("vpn-id-01")
+        )
+      ).toBe(true)
     })
 
     it("returns 403 when the actor is not a super admin", async () => {
@@ -282,7 +317,9 @@ describe("createAdminVpnServersRoutes", () => {
         )
         .compile()
 
-      const res = await app.handle(new Request("http://localhost/admin/vpn/servers"))
+      const res = await app.handle(
+        new Request("http://localhost/admin/vpn/servers")
+      )
       expect(res.status).toBe(403)
       const body = await res.json()
       expect(body.ok).toBe(false)
@@ -309,17 +346,17 @@ describe("createAdminVpnServersRoutes", () => {
     it("creates a server and returns 201", async () => {
       // Override service.create to bypass the prisma dependency chain (assertNameAvailable
       // calls findUnique which depends on vpnServerFindUniqueValue state).
-      const svc = new VpnServerService(
-        undefined as unknown as PrismaClient
-      )
+      const svc = new VpnServerService(undefined as unknown as PrismaClient)
       svc.create = mock(async () => makeServer({ id: "srv-new" }))
 
-      const app = new Elysia().use(
-        createAdminVpnServersRoutes({
-          requireSuperAdmin: allowedGuard,
-          service: svc,
-        })
-      ).compile()
+      const app = new Elysia()
+        .use(
+          createAdminVpnServersRoutes({
+            requireSuperAdmin: allowedGuard,
+            service: svc,
+          })
+        )
+        .compile()
 
       const res = await app.handle(
         new Request("http://localhost/admin/vpn/servers", {
@@ -361,7 +398,10 @@ describe("createAdminVpnServersRoutes", () => {
 
   describe("PUT /admin/vpn/servers/:id", () => {
     it("updates a server with latitude and longitude", async () => {
-      vpnServerUpdateValue = makeServer({ latitude: -6.2088, longitude: 106.8456 })
+      vpnServerUpdateValue = makeServer({
+        latitude: -6.2088,
+        longitude: 106.8456,
+      })
       const app = createApp().compile()
 
       const res = await app.handle(
@@ -398,12 +438,14 @@ describe("createAdminVpnServersRoutes", () => {
         throw new Error("DATABASE_COLUMN_MISSING")
       })
 
-      const app = new Elysia().use(
-        createAdminVpnServersRoutes({
-          requireSuperAdmin: allowedGuard,
-          service: failingService,
-        })
-      ).compile()
+      const app = new Elysia()
+        .use(
+          createAdminVpnServersRoutes({
+            requireSuperAdmin: allowedGuard,
+            service: failingService,
+          })
+        )
+        .compile()
 
       const res = await app.handle(
         new Request("http://localhost/admin/vpn/servers/srv-1", {
@@ -554,29 +596,59 @@ describe("createAdminVpnServersRoutes", () => {
         { stdout: "up 5 hours", stderr: "", exitCode: 0 },
         {
           stdout: JSON.stringify({
-            interfaces: [{
-              traffic: {
-                day: [{ date: { year: 2026, month: 7, day: 1 }, rx: 1_000_000, tx: 500_000, total: 1_500_000 }],
+            interfaces: [
+              {
+                traffic: {
+                  day: [
+                    {
+                      date: { year: 2026, month: 7, day: 1 },
+                      rx: 1_000_000,
+                      tx: 500_000,
+                      total: 1_500_000,
+                    },
+                  ],
+                },
               },
-            }],
+            ],
           }),
           stderr: "",
           exitCode: 0,
         },
         {
           stdout: JSON.stringify({
-            interfaces: [{
-              traffic: {
-                month: [{ date: { year: 2026, month: 7 }, rx: 10_000_000, tx: 5_000_000, total: 15_000_000 }],
+            interfaces: [
+              {
+                traffic: {
+                  month: [
+                    {
+                      date: { year: 2026, month: 7 },
+                      rx: 10_000_000,
+                      tx: 5_000_000,
+                      total: 15_000_000,
+                    },
+                  ],
+                },
               },
-            }],
+            ],
           }),
           stderr: "",
           exitCode: 0,
         },
-        { stdout: "PID COMMAND %CPU %MEM\n123 nginx 1.2 0.5", stderr: "", exitCode: 0 },
-        { stdout: "PID COMMAND %CPU %MEM\n456 python 0.8 1.2", stderr: "", exitCode: 0 },
-        { stdout: "8\ncpu  1000 200 300 400 500 600 700", stderr: "", exitCode: 0 },
+        {
+          stdout: "PID COMMAND %CPU %MEM\n123 nginx 1.2 0.5",
+          stderr: "",
+          exitCode: 0,
+        },
+        {
+          stdout: "PID COMMAND %CPU %MEM\n456 python 0.8 1.2",
+          stderr: "",
+          exitCode: 0,
+        },
+        {
+          stdout: "8\ncpu  1000 200 300 400 500 600 700",
+          stderr: "",
+          exitCode: 0,
+        },
         { stdout: "Mem: 16000000 8000000 8000000", stderr: "", exitCode: 0 },
       ]
 
@@ -604,9 +676,13 @@ describe("createAdminVpnServersRoutes", () => {
     })
 
     it("gracefully handles null exec results when SSH commands fail", async () => {
-      sshResponses = Array(7).fill(null).map(() => ({
-        stdout: "", stderr: "SSH error", exitCode: 1,
-      }))
+      sshResponses = Array(7)
+        .fill(null)
+        .map(() => ({
+          stdout: "",
+          stderr: "SSH error",
+          exitCode: 1,
+        }))
 
       const app = createApp().compile()
 
@@ -653,8 +729,16 @@ describe("createAdminVpnServersRoutes", () => {
 
     it("returns a list of OpenVPN users from the SSH adapter", async () => {
       const mockUsers = [
-        { commonName: "user-1", realAddress: "1.2.3.4:51901", connectedSince: 1700000000 },
-        { commonName: "user-2", realAddress: "5.6.7.8:51902", connectedSince: 1700001000 },
+        {
+          commonName: "user-1",
+          realAddress: "1.2.3.4:51901",
+          connectedSince: 1700000000,
+        },
+        {
+          commonName: "user-2",
+          realAddress: "5.6.7.8:51902",
+          connectedSince: 1700001000,
+        },
       ]
       openVpnResponses = [mockUsers as unknown as ScanResult[]]
 
@@ -743,9 +827,13 @@ describe("createAdminVpnServersRoutes", () => {
       // Fresh mock per test to avoid shared call-index state
       const scanCallIndex = 0
       const scanMock = mock<() => Promise<any>>(async () => ({
-        healthy: true, latencyMs: 42, status: "completed",
-        startedAt: "2026-01-01T00:00:00Z", completedAt: "2026-01-01T00:00:01Z",
-        results: [], summary: { passed: 1, failed: 0, total: 1 },
+        healthy: true,
+        latencyMs: 42,
+        status: "completed",
+        startedAt: "2026-01-01T00:00:00Z",
+        completedAt: "2026-01-01T00:00:01Z",
+        results: [],
+        summary: { passed: 1, failed: 0, total: 1 },
       }))
 
       const app = createApp({
@@ -772,9 +860,13 @@ describe("createAdminVpnServersRoutes", () => {
       const scanMock = mock<() => Promise<any>>(async () => {
         scanCallIndex++
         return {
-          healthy: true, latencyMs: 10, status: "completed",
-          startedAt: "2026-01-01T00:00:00Z", completedAt: "2026-01-01T00:00:01Z",
-          results: [], summary: { passed: 1, failed: 0, total: 1 },
+          healthy: true,
+          latencyMs: 10,
+          status: "completed",
+          startedAt: "2026-01-01T00:00:00Z",
+          completedAt: "2026-01-01T00:00:01Z",
+          results: [],
+          summary: { passed: 1, failed: 0, total: 1 },
         }
       })
 
@@ -784,7 +876,9 @@ describe("createAdminVpnServersRoutes", () => {
       }).compile()
 
       const res1 = await app.handle(
-        new Request("http://localhost/admin/vpn/servers/srv-1/test", { method: "POST" })
+        new Request("http://localhost/admin/vpn/servers/srv-1/test", {
+          method: "POST",
+        })
       )
       expect(res1.status).toBe(200)
 
@@ -792,7 +886,9 @@ describe("createAdminVpnServersRoutes", () => {
       nowValue = 1_000_000 + TEST_RATE_LIMIT_MS - 1
 
       const res2 = await app.handle(
-        new Request("http://localhost/admin/vpn/servers/srv-1/test", { method: "POST" })
+        new Request("http://localhost/admin/vpn/servers/srv-1/test", {
+          method: "POST",
+        })
       )
 
       expect(res2.status).toBe(429)
@@ -808,9 +904,13 @@ describe("createAdminVpnServersRoutes", () => {
       const scanMock = mock<() => Promise<any>>(async () => {
         scanCallIndex++
         return {
-          healthy: true, latencyMs: scanCallIndex, status: "completed",
-          startedAt: "2026-01-01T00:00:00Z", completedAt: "2026-01-01T00:00:01Z",
-          results: [], summary: { passed: 1, failed: 0, total: 1 },
+          healthy: true,
+          latencyMs: scanCallIndex,
+          status: "completed",
+          startedAt: "2026-01-01T00:00:00Z",
+          completedAt: "2026-01-01T00:00:01Z",
+          results: [],
+          summary: { passed: 1, failed: 0, total: 1 },
         }
       })
 
@@ -820,7 +920,9 @@ describe("createAdminVpnServersRoutes", () => {
       }).compile()
 
       const res1 = await app.handle(
-        new Request("http://localhost/admin/vpn/servers/srv-1/test", { method: "POST" })
+        new Request("http://localhost/admin/vpn/servers/srv-1/test", {
+          method: "POST",
+        })
       )
       expect(res1.status).toBe(200)
 
@@ -828,7 +930,9 @@ describe("createAdminVpnServersRoutes", () => {
       nowValue = 1_000_000 + TEST_RATE_LIMIT_MS + 1
 
       const res2 = await app.handle(
-        new Request("http://localhost/admin/vpn/servers/srv-1/test", { method: "POST" })
+        new Request("http://localhost/admin/vpn/servers/srv-1/test", {
+          method: "POST",
+        })
       )
       expect(res2.status).toBe(200)
     })

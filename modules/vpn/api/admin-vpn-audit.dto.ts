@@ -6,8 +6,15 @@ import type { VpnAuditLog } from "@prisma/client"
  */
 export type VpnAuditLogDTO = Pick<
   VpnAuditLog,
-  | "id" | "action" | "status" | "message" | "errorMessage"
-  | "step" | "details" | "durationMs" | "createdAt"
+  | "id"
+  | "action"
+  | "status"
+  | "message"
+  | "errorMessage"
+  | "step"
+  | "details"
+  | "durationMs"
+  | "createdAt"
 >
 
 export const toAuditLogDTO = (log: VpnAuditLog): VpnAuditLogDTO => ({

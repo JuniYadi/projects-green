@@ -82,7 +82,11 @@ function createTestApp() {
 
 describe("catalogs routes", () => {
   beforeEach(() => {
-    setMockAuthContext({ organizationId: "org_1", userId: "user_1", orgRole: "admin" })
+    setMockAuthContext({
+      organizationId: "org_1",
+      userId: "user_1",
+      orgRole: "admin",
+    })
     mockCreate.mockClear()
     mockFindFirst.mockClear()
     mockFindMany.mockClear()
@@ -105,7 +109,16 @@ describe("catalogs routes", () => {
 
     it("lists catalogs", async () => {
       mockFindMany.mockImplementationOnce(async () => [
-        { id: "cat_1", organizationId: "org_1", name: "Test", metaCatalogId: "m1", deviceId: null, createdAt: new Date(), updatedAt: new Date(), _count: { products: 3 } },
+        {
+          id: "cat_1",
+          organizationId: "org_1",
+          name: "Test",
+          metaCatalogId: "m1",
+          deviceId: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          _count: { products: 3 },
+        },
       ])
       const app = createTestApp()
       const res = await app.handle(new Request("http://localhost/catalogs"))
@@ -122,7 +135,10 @@ describe("catalogs routes", () => {
         new Request("http://localhost/catalogs", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ name: "My Catalog", metaCatalogId: "meta_123" }),
+          body: JSON.stringify({
+            name: "My Catalog",
+            metaCatalogId: "meta_123",
+          }),
         })
       )
       const body = await res.json()
@@ -146,10 +162,13 @@ describe("catalogs routes", () => {
   describe("GET /:catalogId/products", () => {
     it("returns products for a catalog", async () => {
       mockFindFirst.mockImplementationOnce(async () => ({
-        id: "cat_1", organizationId: "org_1",
+        id: "cat_1",
+        organizationId: "org_1",
       }))
       const app = createTestApp()
-      const res = await app.handle(new Request("http://localhost/catalogs/cat_1/products"))
+      const res = await app.handle(
+        new Request("http://localhost/catalogs/cat_1/products")
+      )
       const body = await res.json()
       expect(body.ok).toBe(true)
       expect(body.data).toEqual([])
@@ -157,7 +176,9 @@ describe("catalogs routes", () => {
 
     it("returns 404 if catalog not found", async () => {
       const app = createTestApp()
-      const res = await app.handle(new Request("http://localhost/catalogs/nonexistent/products"))
+      const res = await app.handle(
+        new Request("http://localhost/catalogs/nonexistent/products")
+      )
       expect(res.status).toBe(404)
     })
   })
@@ -165,7 +186,8 @@ describe("catalogs routes", () => {
   describe("DELETE /:id", () => {
     it("deletes a catalog", async () => {
       mockFindFirst.mockImplementationOnce(async () => ({
-        id: "cat_1", organizationId: "org_1",
+        id: "cat_1",
+        organizationId: "org_1",
       }))
       const app = createTestApp()
       const res = await app.handle(

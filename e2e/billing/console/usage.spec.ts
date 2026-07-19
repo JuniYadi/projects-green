@@ -22,7 +22,8 @@ test.describe("Usage (console)", () => {
   })
 
   test("UC-11: CSV export button is present", async ({ page }) => {
-    const exportBtn = page.getByRole("button", { name: /Export|CSV/i })
+    const exportBtn = page
+      .getByRole("button", { name: /Export|CSV/i })
       .or(page.getByRole("link", { name: /Export|CSV/i }))
     await expect(exportBtn).toBeVisible()
   })

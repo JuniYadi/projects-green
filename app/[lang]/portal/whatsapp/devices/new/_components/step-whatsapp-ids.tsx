@@ -69,9 +69,7 @@ export function StepWhatsappIds({ data, updateData, errors }: Props) {
           onChange={(e) => updateData({ whatsappVersion: e.target.value })}
           placeholder="v24.0"
         />
-        <p className="text-xs text-muted-foreground">
-          Default: v24.0
-        </p>
+        <p className="text-xs text-muted-foreground">Default: v24.0</p>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="callback">Callback URL</Label>

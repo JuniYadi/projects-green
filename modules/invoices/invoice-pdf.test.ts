@@ -32,13 +32,44 @@ const invoice: InvoiceDetail = {
 }
 
 describe("invoice PDF", () => {
-  it("generates non-empty PDF bytes with expected header", () => {
-    const bytes = buildInvoicePdfBytes(invoice)
-    const text = new TextDecoder().decode(bytes)
+  it("generates a valid PDF buffer", async () => {
+    const buffer = await buildInvoicePdfBytes(invoice)
 
-    expect(bytes.length).toBeGreaterThan(200)
-    expect(text.startsWith("%PDF-1.4")).toBe(true)
-    expect(text.includes("INV-2026-0001")).toBe(true)
-    expect(text.includes("Line items")).toBe(true)
+    expect(Buffer.isBuffer(buffer)).toBe(true)
+    expect(buffer.byteLength).toBeGreaterThan(200)
+    expect(buffer.subarray(0, 5).toString("latin1")).toBe("%PDF-")
+  })
+
+  it("generates valid PDF with bank accounts for MANUAL_BANK", async () => {
+    const manualBankInvoice: InvoiceDetail = {
+      ...invoice,
+      paymentMethod: "MANUAL_BANK",
+    }
+    const bankAccounts = [
+      {
+        bankName: "Bank Central Asia",
+        bankCode: "BCA",
+        accountName: "PFNApp Technologies",
+        accountNumber: "1234567890",
+        swiftCode: null,
+      },
+    ]
+    const buffer = await buildInvoicePdfBytes(
+      manualBankInvoice,
+      null,
+      bankAccounts
+    )
+    expect(Buffer.isBuffer(buffer)).toBe(true)
+    expect(buffer.byteLength).toBeGreaterThan(200)
+  })
+
+  it("generates valid PDF for each status ribbon", async () => {
+    const statuses = ["open", "paid", "canceled", "draft"] as const
+    for (const status of statuses) {
+      const statusInvoice: InvoiceDetail = { ...invoice, status }
+      const buffer = await buildInvoicePdfBytes(statusInvoice)
+      expect(Buffer.isBuffer(buffer)).toBe(true)
+      expect(buffer.byteLength).toBeGreaterThan(200)
+    }
   })
 })

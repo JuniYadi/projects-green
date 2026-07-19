@@ -41,8 +41,8 @@ import { healthRoutes } from "@/modules/health/api/health.route"
 import { markStartupComplete } from "@/modules/health/health.service"
 import { whatsappRoutes } from "@/modules/whatsapp/whatsapp.module"
 import { whatsappWebhookRoutes } from "@/lib/whatsapp/webhook-routes"
+import { credentialsRoutes } from "@/modules/credentials/api/credentials.route"
 import { webhookDeadLetterRoutes } from "@/modules/whatsapp/webhooks/api/webhook-dead-letter.route"
-import { cloudflareDnsTokenRoutes } from "@/modules/cloudflare/api/cloudflare-dns.route"
 
 const parseErrorPath = (
   value: string | Array<string | number> | undefined
@@ -100,45 +100,48 @@ const toFieldErrors = (
 
 export const app = new Elysia({ prefix: "/api" })
   .use(serverTiming())
-  .use(openapi({
-    documentation: {
-      info: {
-        title: "PFNApp API Documentation",
-        version: "1.0.0",
-      },
-      tags: [
-        {
-          name: "VPN Mobile Auth",
-          description: "Device authentication and session token exchange",
+  .use(
+    openapi({
+      documentation: {
+        info: {
+          title: "PFNApp API Documentation",
+          version: "1.0.0",
         },
-        {
-          name: "VPN Mobile Pairing",
-          description: "QR-code pairing flow",
-        },
-        {
-          name: "VPN Mobile Profiles",
-          description: "VPN profile listing and config download",
-        },
-        {
-          name: "VPN Mobile Devices",
-          description: "Device management",
-        },
-        {
-          name: "VPN Mobile Sessions",
-          description: "Active session tracking and heartbeats",
-        },
-      ],
-      components: {
-        securitySchemes: {
-          bearerAuth: {
-            type: "http",
-            scheme: "bearer",
-            bearerFormat: "JWT",
+        tags: [
+          {
+            name: "VPN Mobile Auth",
+            description: "Device authentication and session token exchange",
+          },
+          {
+            name: "VPN Mobile Pairing",
+            description: "QR-code pairing flow",
+          },
+          {
+            name: "VPN Mobile Profiles",
+            description: "VPN profile listing and config download",
+          },
+          {
+            name: "VPN Mobile Devices",
+            description: "Device management",
+          },
+          {
+            name: "VPN Mobile Sessions",
+            description: "Active session tracking and heartbeats",
+          },
+        ],
+        components: {
+          securitySchemes: {
+            bearerAuth: {
+              type: "http",
+              scheme: "bearer",
+              bearerFormat: "JWT",
+            },
           },
         },
       },
-    },
-  }))
+    })
+  )
+  .use(credentialsRoutes)
   .use(webhookRoutes)
   .use(docsRoutes)
   .use(docsConsoleRoutes)
@@ -172,7 +175,6 @@ export const app = new Elysia({ prefix: "/api" })
   .use(webhookDeadLetterRoutes)
   .use(whatsappRoutes)
   .use(wireguardRoutes)
-  .use(cloudflareDnsTokenRoutes)
   .onError(({ code, error, set, request, path }) => {
     if (code === "VALIDATION") {
       set.status = 422
@@ -201,9 +203,7 @@ export const app = new Elysia({ prefix: "/api" })
     const errorTag = detailCode ? ` [${detailCode}]` : ""
 
     // Visible banner so errors are impossible to miss in development.
-    console.log(
-      `\n⚠️  API ERROR — ${request.method} ${path}${errorTag}\n`
-    )
+    console.log(`\n⚠️  API ERROR — ${request.method} ${path}${errorTag}\n`)
 
     // Always log with a grep-friendly prefix so errors are easy to find.
     console.error(

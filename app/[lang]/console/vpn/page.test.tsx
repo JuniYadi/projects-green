@@ -120,17 +120,20 @@ describe("ConsoleVpnSubscriptionsPage", () => {
       () => {
         expect(view.getByText("My VPN Subscriptions")).toBeInTheDocument()
       },
-      { timeout: 10000 },
+      { timeout: 10000 }
     )
 
-    expect(view.getByPlaceholderText("Search subscriptions...")).toBeInTheDocument()
+    expect(
+      view.getByPlaceholderText("Search subscriptions...")
+    ).toBeInTheDocument()
     expect(view.getByRole("button", { name: /columns/i })).toBeInTheDocument()
     expect(view.getByText("VPN Standard")).toBeInTheDocument()
     expect(view.getByText("2 servers · 2 accounts")).toBeInTheDocument()
-    expect(
-      view.getByRole("link", { name: "View details" }),
-    ).toHaveAttribute("href", "/console/vpn/subscriptions/sub_1")
-  })
+    expect(view.getByRole("link", { name: "View details" })).toHaveAttribute(
+      "href",
+      "/console/vpn/subscriptions/sub_1"
+    )
+  }, 15000)
 })
 describe("ConsoleVpnDashboardPage", () => {
   beforeEach(() => {

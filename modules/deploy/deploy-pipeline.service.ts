@@ -134,16 +134,25 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
     }
 
     const buildMetadata: Record<string, unknown> = {}
-    if (input.frameworkVersion != null) buildMetadata.frameworkVersion = input.frameworkVersion
-    if (input.primaryEngine != null) buildMetadata.primaryEngine = input.primaryEngine
-    if (input.primaryEngineVersion != null) buildMetadata.primaryEngineVersion = input.primaryEngineVersion
-    if (input.secondaryEngine != null) buildMetadata.secondaryEngine = input.secondaryEngine
-    if (input.secondaryEngineVersion != null) buildMetadata.secondaryEngineVersion = input.secondaryEngineVersion
+    if (input.frameworkVersion != null)
+      buildMetadata.frameworkVersion = input.frameworkVersion
+    if (input.primaryEngine != null)
+      buildMetadata.primaryEngine = input.primaryEngine
+    if (input.primaryEngineVersion != null)
+      buildMetadata.primaryEngineVersion = input.primaryEngineVersion
+    if (input.secondaryEngine != null)
+      buildMetadata.secondaryEngine = input.secondaryEngine
+    if (input.secondaryEngineVersion != null)
+      buildMetadata.secondaryEngineVersion = input.secondaryEngineVersion
     if (input.defaultPort != null) buildMetadata.defaultPort = input.defaultPort
 
     // Merge with existing metadataJson on update
-    const existingJson = existing?.metadataJson as Record<string, unknown> | null ?? {}
-    const metadataJson = { ...existingJson, ...buildMetadata } as Prisma.InputJsonValue
+    const existingJson =
+      (existing?.metadataJson as Record<string, unknown> | null) ?? {}
+    const metadataJson = {
+      ...existingJson,
+      ...buildMetadata,
+    } as Prisma.InputJsonValue
 
     const data = {
       organizationId: input.organizationId,
@@ -164,7 +173,10 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       customDomain: input.customDomain ?? null,
       subdomain: input.subdomain ?? null,
       envVarsJson,
-      metadataJson: Object.keys(buildMetadata).length > 0 ? metadataJson : (existingJson as Prisma.InputJsonValue),
+      metadataJson:
+        Object.keys(buildMetadata).length > 0
+          ? metadataJson
+          : (existingJson as Prisma.InputJsonValue),
     }
 
     if (existing) {

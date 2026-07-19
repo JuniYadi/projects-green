@@ -125,51 +125,56 @@ export function OrganizationsTable() {
     }
   }
 
-  const columns = useMemo<ColumnDef<Organization>[]>(() => [
-    {
-      accessorKey: "name",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Organization" />
-      ),
-      cell: ({ row }) => (
-        <span
-          className="cursor-pointer font-medium hover:bg-muted/50"
-          onClick={() => router.push(`/portal/admin/organizations/${row.original.id}`)}
-        >
-          {row.original.name}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "id",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="ID" />
-      ),
-      cell: ({ row }) => (
-        <span className="font-mono text-xs text-muted-foreground">
-          {row.original.id}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "memberCount",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Members" />
-      ),
-      cell: ({ row }) => (
-        <span>{memberCounts[row.original.id] ?? "..."}</span>
-      ),
-    },
-    {
-      accessorKey: "createdAt",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Created" />
-      ),
-      cell: ({ row }) => (
-        <span>{new Date(row.original.createdAt).toLocaleDateString()}</span>
-      ),
-    },
-  ], [router, memberCounts])
+  const columns = useMemo<ColumnDef<Organization>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Organization" />
+        ),
+        cell: ({ row }) => (
+          <span
+            className="cursor-pointer font-medium hover:bg-muted/50"
+            onClick={() =>
+              router.push(`/portal/admin/organizations/${row.original.id}`)
+            }
+          >
+            {row.original.name}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "id",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="ID" />
+        ),
+        cell: ({ row }) => (
+          <span className="font-mono text-xs text-muted-foreground">
+            {row.original.id}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "memberCount",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Members" />
+        ),
+        cell: ({ row }) => (
+          <span>{memberCounts[row.original.id] ?? "..."}</span>
+        ),
+      },
+      {
+        accessorKey: "createdAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Created" />
+        ),
+        cell: ({ row }) => (
+          <span>{new Date(row.original.createdAt).toLocaleDateString()}</span>
+        ),
+      },
+    ],
+    [router, memberCounts]
+  )
 
   if (isLoading && organizations.length === 0) {
     return (

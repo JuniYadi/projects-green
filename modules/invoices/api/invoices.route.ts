@@ -1,10 +1,6 @@
 import { Elysia } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { z } from "zod"
-
-import { fieldErrorMapFromIssues } from "@/lib/validation"
-import type { PlatformAccessRole } from "@/lib/platform-role"
-import { buildInvoicePdfBytes } from "@/modules/invoices/invoice-pdf"
 import {
   canManageInvoiceCancellation,
   canManageInvoiceNotifications,
@@ -34,7 +30,13 @@ import {
   resolveInvoiceEmailRecipients,
   type BillingEmailRecipient,
 } from "@/modules/billing/email-recipients"
-import { getPlatformRoleForUser } from "@/lib/platform-role"
+import {
+  getPlatformRoleForUser,
+  type PlatformAccessRole,
+} from "@/lib/platform-role"
+import { fieldErrorMapFromIssues } from "@/lib/validation"
+import { buildInvoicePdfBytes } from "@/modules/invoices/invoice-pdf"
+import { BankAccountService } from "@/modules/payment/services/bank-account.service"
 import { prisma } from "@/lib/prisma"
 import { getTenantOrganizationById } from "@/modules/tenants/services/tenant-workos.service"
 
@@ -393,8 +395,33 @@ export const createInvoicesRoutes = (
           : null
 
         const org = orgId ? await getTenantOrganizationById(orgId) : null
+        let bankAccounts: Array<{
+          bankName: string
+          bankCode: string
+          accountName: string
+          accountNumber: string
+          swiftCode?: string | null
+        }> = []
 
-        const bytes = buildInvoicePdfBytes(
+        if (invoice.paymentMethod === "MANUAL_BANK") {
+          try {
+            const bankAccountService = new BankAccountService()
+            const accounts = await bankAccountService.getActiveAccounts(
+              invoice.currency
+            )
+            bankAccounts = accounts.map((a) => ({
+              bankName: a.bankName,
+              bankCode: a.bankCode,
+              accountName: a.accountName,
+              accountNumber: a.accountNumber,
+              swiftCode: a.swiftCode,
+            }))
+          } catch {
+            // Non-blocking: PDF renders without payment details
+          }
+        }
+
+        const buffer = await buildInvoicePdfBytes(
           invoice,
           org
             ? {
@@ -406,11 +433,18 @@ export const createInvoicesRoutes = (
                 billingCountry: org.metadata?.billing_country ?? null,
                 billingPostCode: org.metadata?.billing_post_code ?? null,
               }
-            : null
+            : null,
+          bankAccounts
         )
-        const body = new Blob([new Uint8Array(bytes).buffer], {
-          type: "application/pdf",
-        })
+        const body = new Blob(
+          [
+            buffer.buffer.slice(
+              buffer.byteOffset,
+              buffer.byteOffset + buffer.byteLength
+            ) as ArrayBuffer,
+          ],
+          { type: "application/pdf" }
+        )
 
         return new Response(body, {
           status: 200,
