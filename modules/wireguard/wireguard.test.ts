@@ -16,7 +16,6 @@ const mockWireGuardSshAdapter = {
   createPeer: mockCreatePeer,
   removePeer: mockRemovePeer,
   fetchConfig: mockFetchConfig,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   validatePeer: (_target: unknown, _username: string): Promise<boolean> =>
     Promise.resolve(false),
 }

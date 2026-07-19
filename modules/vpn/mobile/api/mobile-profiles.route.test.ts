@@ -104,19 +104,6 @@ const DEVICE_ID = "dev-1"
 const ACCOUNT_ID = "account-1"
 const NOW = new Date("2026-06-16T12:00:00Z")
 
-const activeSubscription = {
-  id: SUBSCRIPTION_ID,
-  organizationId: "org-1",
-  packageId: "pkg-1",
-  status: "ACTIVE",
-  currentPeriodStart: new Date("2026-06-01T00:00:00Z"),
-  currentPeriodEnd: new Date("2026-06-30T23:59:59Z"),
-  renewalFailedAt: null,
-  cancelAtPeriodEnd: false,
-  createdAt: new Date("2026-06-01T00:00:00Z"),
-  updatedAt: new Date("2026-06-01T00:00:00Z"),
-}
-
 const activeDevice = {
   id: DEVICE_ID,
   organizationId: "org-1",

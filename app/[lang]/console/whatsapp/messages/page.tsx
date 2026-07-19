@@ -150,20 +150,6 @@ function formatLocalDateTime(iso: string | null | undefined): string {
     return ""
   }
 }
-function isReplyWindowClosed(conversation: ConversationDetail | null): boolean {
-  if (!conversation) return false
-  const inboxMessages = conversation.whatsappMessages.filter(
-    (m) => m.direction === "INBOX"
-  )
-  if (inboxMessages.length === 0) return true
-  const newestInbox = inboxMessages.reduce((latest, m) =>
-    new Date(m.createdAt) > new Date(latest.createdAt) ? m : latest
-  )
-  return (
-    Date.now() - new Date(newestInbox.createdAt).getTime() >=
-    24 * 60 * 60 * 1000
-  )
-}
 
 const PHONE_QUERY_KEY = "phone"
 
@@ -565,11 +551,6 @@ export default function WhatsAppMessagesPage() {
   const orderedMessages = React.useMemo(
     () => (activeConversation?.whatsappMessages ?? []).slice().reverse(),
     [activeConversation?.whatsappMessages]
-  )
-
-  const replyWindowClosed = React.useMemo(
-    () => isReplyWindowClosed(activeConversation),
-    [activeConversation]
   )
 
   // Scroll to bottom on new messages

@@ -53,28 +53,31 @@ export default function PortalDocumentationsPage() {
     void loadDocs()
   }, [loadDocs])
 
-  const handleDelete = async (doc: DocEntry) => {
-    if (
-      !window.confirm(
-        `Are you sure you want to delete "${doc.title}"? This action cannot be undone.`
+  const handleDelete = React.useCallback(
+    async (doc: DocEntry) => {
+      if (
+        !window.confirm(
+          `Are you sure you want to delete "${doc.title}"? This action cannot be undone.`
+        )
       )
-    )
-      return
-    setIsDeleting(true)
-    try {
-      const { data: res } = await eden.api.docs[doc.id].delete()
-      if (res?.ok) {
-        setDocs((prev) => prev.filter((d) => d.id !== doc.id))
-        if (selectedDoc?.id === doc.id) setSelectedDoc(null)
-      } else {
-        setError(res?.message || "Failed to delete")
+        return
+      setIsDeleting(true)
+      try {
+        const { data: res } = await eden.api.docs[doc.id].delete()
+        if (res?.ok) {
+          setDocs((prev) => prev.filter((d) => d.id !== doc.id))
+          if (selectedDoc?.id === doc.id) setSelectedDoc(null)
+        } else {
+          setError(res?.message || "Failed to delete")
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred")
+      } finally {
+        setIsDeleting(false)
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
-    } finally {
-      setIsDeleting(false)
-    }
-  }
+    },
+    [selectedDoc]
+  )
 
   const filteredDocs = docs.filter(
     (doc) =>

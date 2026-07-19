@@ -73,7 +73,7 @@ export default function NewWhatsAppBroadcastPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [capacity, setCapacity] =
     React.useState<DeviceBroadcastCapacity | null>(null)
-  const [recommendation, setRecommendation] =
+  const [, setRecommendation] =
     React.useState<BroadcastScheduleRecommendation | null>(null)
   const [throttleMaxMessages, setThrottleMaxMessages] =
     React.useState<number>(0)

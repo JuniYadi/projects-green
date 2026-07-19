@@ -82,8 +82,6 @@ export function TemplateForm({
   initialData,
   submitting,
   onSubmit,
-  mode = "create",
-  approvedTemplateLocked = false,
   lockedVariantIds = [],
   structureTemplate = null,
 }: TemplateFormProps) {

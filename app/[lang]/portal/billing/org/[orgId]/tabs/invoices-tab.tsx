@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -58,40 +58,42 @@ export function InvoicesTab({ orgId, recentInvoices }: InvoicesTabProps) {
     }
   }, [orgId, recentInvoices])
 
-  async function handleStatusChange(
-    invoiceId: string,
-    targetStatus: "ISSUED" | "CANCELLED"
-  ) {
-    setActionLoading(invoiceId)
-    try {
-      const { data } = await eden.api.billing.admin.invoices[invoiceId].patch({
-        status: targetStatus,
-      } as never)
-
-      if (!data?.ok) {
-        throw new Error(
-          (data as { message?: string })?.message ||
-            `Failed to ${targetStatus.toLowerCase()} invoice`
+  const handleStatusChange = useCallback(
+    async (invoiceId: string, targetStatus: "ISSUED" | "CANCELLED") => {
+      setActionLoading(invoiceId)
+      try {
+        const { data } = await eden.api.billing.admin.invoices[invoiceId].patch(
+          {
+            status: targetStatus,
+          } as never
         )
+
+        if (!data?.ok) {
+          throw new Error(
+            (data as { message?: string })?.message ||
+              `Failed to ${targetStatus.toLowerCase()} invoice`
+          )
+        }
+
+        toast.success(
+          `Invoice ${targetStatus === "ISSUED" ? "issued" : "cancelled"} successfully`
+        )
+        router.refresh()
+
+        setInvoices((prev) =>
+          prev.map((inv) =>
+            inv.id === invoiceId ? { ...inv, status: targetStatus } : inv
+          )
+        )
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Action failed"
+        toast.error(message)
+      } finally {
+        setActionLoading(null)
       }
-
-      toast.success(
-        `Invoice ${targetStatus === "ISSUED" ? "issued" : "cancelled"} successfully`
-      )
-      router.refresh()
-
-      setInvoices((prev) =>
-        prev.map((inv) =>
-          inv.id === invoiceId ? { ...inv, status: targetStatus } : inv
-        )
-      )
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Action failed"
-      toast.error(message)
-    } finally {
-      setActionLoading(null)
-    }
-  }
+    },
+    [router]
+  )
   const invoiceColumns = useMemo<ColumnDef<AdminInvoiceListItem>[]>(
     () => [
       {

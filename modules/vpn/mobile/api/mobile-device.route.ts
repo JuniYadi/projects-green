@@ -68,13 +68,6 @@ const notFound = (set: RouteSet) => {
 export const createMobileDeviceRoutes = (deps: Deps = {}) => {
   const authenticate = deps.authenticate ?? (() => withAuth())
   const deviceService = deps.deviceService ?? vpnMobileDeviceService
-  const errorResponse = t.Object({
-    error: t.Object({
-      code: t.String(),
-      message: t.String(),
-      details: t.Object({}, { additionalProperties: true }),
-    }),
-  })
 
   const resolveOrg = async (set: RouteSet) => {
     const auth = await authenticate()

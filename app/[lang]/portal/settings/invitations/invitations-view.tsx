@@ -108,24 +108,27 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
     }
   }
 
-  const handleAction = async (
-    edenCall: Promise<{
-      data?: { ok?: boolean; message?: string } | null
-      error?: unknown
-    }>
-  ) => {
-    setError(null)
-    try {
-      const { data: res } = await edenCall
-      if (res?.ok) {
-        void loadData()
-      } else {
-        setError(res?.message || "Action failed")
+  const handleAction = React.useCallback(
+    async (
+      edenCall: Promise<{
+        data?: { ok?: boolean; message?: string } | null
+        error?: unknown
+      }>
+    ) => {
+      setError(null)
+      try {
+        const { data: res } = await edenCall
+        if (res?.ok) {
+          void loadData()
+        } else {
+          setError(res?.message || "Action failed")
+        }
+      } catch {
+        setError("An unexpected error occurred")
       }
-    } catch {
-      setError("An unexpected error occurred")
-    }
-  }
+    },
+    [loadData]
+  )
   const columns = useMemo<ColumnDef<TenantInvitationSummary>[]>(
     () => [
       {

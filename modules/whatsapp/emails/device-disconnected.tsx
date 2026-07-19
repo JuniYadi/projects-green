@@ -16,7 +16,6 @@ interface DeviceDisconnectedEmailProps {
   orgName: string
   lastHeartbeatAt: string
   disconnectedAt: string
-  dashboardUrl: string
 }
 
 export const DeviceDisconnectedEmail = ({
@@ -25,7 +24,6 @@ export const DeviceDisconnectedEmail = ({
   orgName,
   lastHeartbeatAt,
   disconnectedAt,
-  dashboardUrl,
 }: DeviceDisconnectedEmailProps) => {
   return (
     <Html>

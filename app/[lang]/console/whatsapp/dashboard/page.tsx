@@ -6,7 +6,6 @@ import {
   ChatCircle,
   PaperPlaneTilt,
   ChartLine,
-  CheckCircle,
   Warning,
 } from "@phosphor-icons/react"
 import Link from "next/link"
@@ -53,24 +52,6 @@ type ConversationListItem = {
   createdAt: string
   updatedAt: string
   _count: { whatsappMessages: number }
-}
-
-function DeviceStatusBadge({ status }: { status: string }) {
-  if (status === "ACTIVE") {
-    return (
-      <Badge variant="success">
-        <CheckCircle className="mr-1 size-3" weight="fill" />
-        Connected
-      </Badge>
-    )
-  }
-
-  return (
-    <Badge variant="warning">
-      <Warning className="mr-1 size-3" weight="fill" />
-      Disconnected
-    </Badge>
-  )
 }
 
 function WebhookAlertBadge({ rate }: { rate: number }) {

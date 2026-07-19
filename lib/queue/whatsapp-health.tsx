@@ -9,7 +9,6 @@
  */
 
 import { render } from "@react-email/components"
-import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { BaseJob } from "@/lib/queue/base-job"
 import { sendEmail } from "@/lib/queue/email"
@@ -35,11 +34,6 @@ export type WhatsAppHealthJobData = {
 
 function missKey(deviceId: string) {
   return `whatsapp:health:miss:${deviceId}`
-}
-
-async function getMissCount(deviceId: string): Promise<number> {
-  const raw = await redis.get(missKey(deviceId))
-  return raw ? parseInt(raw, 10) : 0
 }
 
 async function incrementMissCount(deviceId: string): Promise<number> {
@@ -154,7 +148,6 @@ async function sendDisconnectEmail(
         orgName={org.name}
         lastHeartbeatAt={device.lastHeartbeatAt?.toISOString() ?? "Unknown"}
         disconnectedAt={new Date().toISOString()}
-        dashboardUrl={`${process.env.NEXT_PUBLIC_APP_URL ?? "https://app.example.com"}/portal/whatsapp/devices`}
       />
     )
 

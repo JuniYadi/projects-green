@@ -41,7 +41,6 @@ import { toast } from "sonner"
 import {
   VERTICALS,
   type Vertical,
-  type UpdateBusinessProfileInput,
 } from "@/lib/whatsapp/meta-cloud/types/business-profile"
 type PageState = "loading" | "error" | "loaded"
 type ProfileFormState = {

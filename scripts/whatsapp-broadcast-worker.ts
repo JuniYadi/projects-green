@@ -1,5 +1,4 @@
 import { Prisma, WhatsappBillingCategory } from "@prisma/client"
-import Decimal = Prisma.Decimal
 import { Queue, Worker, type Job } from "bullmq"
 import { randomUUID } from "crypto"
 
