@@ -86,6 +86,31 @@ bun run test:e2e           # Playwright e2e tests
 bun run test:e2e:ui        # Playwright with UI mode
 ```
 
+### Code Quality CI (`.github/workflows/lint.yml`)
+
+Two CI jobs run on PRs and pushes to `main`:
+
+1. **`lint`** -- ESLint check (10 min timeout, Prisma client generated first)
+2. **`format`** -- Prettier check (`bunx prettier --check "**/*.{ts,tsx}"`, 5 min timeout)
+
+Both jobs skip when the actor is `github-actions[bot]` to avoid CI loops from bot commits.
+
+### Pre-commit Hook (`.husky/pre-commit`)
+
+A Husky pre-commit hook enforces formatting before commits land.
+
+### Test Quality Scanner (`scripts/lint-test-quality.ts`)
+
+A custom AST-lite scanner that flags common AI-generated test anti-patterns:
+
+- `no-assertion` -- `it()` callbacks with no assertions
+- `assert-not-null` -- Weak `.not.toBe(null)` (prefer `toBeDefined()`)
+- `swallow-error` -- Empty `catch` blocks
+- `mock-everything` -- Heavy `mock.module` usage
+- `snapshot-only` -- Inline snapshots as the only assertion
+
+Exits with code 1 if issues found, blocking the merge.
+
 ### Seeds
 ```bash
 bun run seed:all           # Seed everything

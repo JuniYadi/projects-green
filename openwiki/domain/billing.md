@@ -65,6 +65,11 @@ Client-side API wrapper: `/lib/billing-client.ts` (20 KB)
 - Organization billing account management
 - Top-up and balance adjustment operations
 
+### Payment Confirmation (`modules/payment/services/confirmation.service.ts`)
+- Manual bank-transfer payment confirmation workflow (create → pending → approve/reject)
+- **Org isolation enforced** — `create()` queries the invoice via `billingAccount: { organizationId }`, preventing cross-org confirmation submissions
+- `approve()` wraps balance credit + confirmation status + invoice status + audit log in a `prisma.$transaction` with an idempotency key (`manual:${id}`)
+
 ## Admin Billing CRUD (`modules/billing/api/admin/`)
 
 The admin section provides full CRUD for:
@@ -110,23 +115,17 @@ Key source: `modules/whatsapp/messages/messages.service.ts` (lines ~119-180)
 
 ## Portal Pages (`app/[lang]/portal/billing/`)
 
-The portal has an extensive billing UI (added in `312482e`):
+The portal billing UI was restructured in #369 — standalone pages (subscription, topup, transactions, usage, payment-methods, alerts, contacts, settings) were removed and consolidated. Payments are now routed under `/portal/billing/payments/`.
 
-| Page | Route |
-|------|-------|
-| Subscription | `/portal/billing/subscription` |
-| Create Subscription | `/portal/billing/subscription/create` |
-| Top Up | `/portal/billing/topup` |
-| Invoices | `/portal/billing/invoices` |
-| Invoice Detail | `/portal/billing/invoices/[id]` |
-| Transactions | `/portal/billing/transactions` |
-| Usage | `/portal/billing/usage` |
-| Payment Methods | `/portal/billing/payment-methods` |
-| Payments | `/portal/billing/payments` |
-| Billing Alerts | `/portal/billing/alerts` |
-| Audit Logs | `/portal/billing/audit-logs` |
-| Contacts | `/portal/billing/contacts` |
-| Settings | `/portal/billing/settings` |
+| Page | Route | Notes |
+|------|-------|-------|
+| Payments Overview | `/portal/billing/payments` | Tabbed: overview, bank-accounts, confirmations, currencies, gateways |
+| Invoices | `/portal/billing/invoices` | Invoice list + detail |
+| Audit Logs | `/portal/billing/audit-logs` | Billing audit trail |
+| Org Overview | `/portal/orgs` | Platform-wide org stats (shared component with billing overview) |
+| Org Detail | `/portal/orgs/[orgId]` | Org-scoped billing dashboard (replaces old `/portal/billing/org/[orgId]`) |
+
+The **Portal Billing Org Selector** (`components/portal-billing-org-selector.tsx`) provides a dropdown to switch between organizations in the billing portal, navigating to `/portal/orgs/{orgId}?page={tab}`.
 
 ## Email Integration
 
