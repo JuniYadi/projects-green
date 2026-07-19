@@ -42,7 +42,6 @@ import { markStartupComplete } from "@/modules/health/health.service"
 import { whatsappRoutes } from "@/modules/whatsapp/whatsapp.module"
 import { whatsappWebhookRoutes } from "@/lib/whatsapp/webhook-routes"
 import { webhookDeadLetterRoutes } from "@/modules/whatsapp/webhooks/api/webhook-dead-letter.route"
-import { cloudflareDnsTokenRoutes } from "@/modules/cloudflare/api/cloudflare-dns.route"
 
 const parseErrorPath = (
   value: string | Array<string | number> | undefined
@@ -172,7 +171,6 @@ export const app = new Elysia({ prefix: "/api" })
   .use(webhookDeadLetterRoutes)
   .use(whatsappRoutes)
   .use(wireguardRoutes)
-  .use(cloudflareDnsTokenRoutes)
   .onError(({ code, error, set, request, path }) => {
     if (code === "VALIDATION") {
       set.status = 422

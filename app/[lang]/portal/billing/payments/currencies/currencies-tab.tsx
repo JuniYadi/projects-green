@@ -30,11 +30,10 @@ interface Currency {
   isActive: boolean
   sortOrder: number
 }
-
 type CurrenciesRequestState =
   | { status: "loading" }
   | { status: "success"; data: Currency[] }
-  | { status: "error"; message: string }
+  | { status: "error"; message: string; fieldErrors?: Record<string, string[]> }
 
 export function CurrenciesTab() {
   const [state, setState] = useState<CurrenciesRequestState>({
@@ -43,6 +42,10 @@ export function CurrenciesTab() {
   const [isCreating, setIsCreating] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editing, setEditing] = useState<Currency | null>(null)
+  const [submitError, setSubmitError] = useState<{
+    message: string
+    fieldErrors?: Record<string, string[]>
+  } | null>(null)
 
   const currencyColumns = useMemo<ColumnDef<Currency>[]>(
     () => [
@@ -122,7 +125,10 @@ export function CurrenciesTab() {
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => setEditing(row.original)}
+              onClick={() => {
+                setSubmitError(null)
+                setEditing(row.original)
+              }}
             >
               Edit
             </Button>
@@ -168,6 +174,7 @@ export function CurrenciesTab() {
     isBaseRow: boolean
   ) {
     setIsSubmitting(true)
+    setSubmitError(null)
     try {
       const body = {
         ...(method === "POST"
@@ -191,17 +198,22 @@ export function CurrenciesTab() {
         )(body as never)
       }
       if (res.error) {
-        const errVal = (res.error as { value?: { message?: string } })?.value
-        setState({
-          status: "error",
+        const errVal = (
+          res.error as {
+            value?: { message?: string; fieldErrors?: Record<string, string[]> }
+          }
+        )?.value
+        setSubmitError({
           message: errVal?.message || "Failed to save currency",
+          fieldErrors: errVal?.fieldErrors,
         })
         return false
       }
+      setSubmitError(null)
       await fetchCurrencies()
       return true
     } catch {
-      setState({ status: "error", message: "Failed to save currency" })
+      setSubmitError({ message: "Failed to save currency" })
       return false
     } finally {
       setIsSubmitting(false)
@@ -306,20 +318,36 @@ export function CurrenciesTab() {
             </p>
           </div>
           {!editing && !isCreating && (
-            <Button type="button" size="sm" onClick={() => setIsCreating(true)}>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                setSubmitError(null)
+                setIsCreating(true)
+              }}
+            >
               Add Currency
             </Button>
           )}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {submitError && (
+          <div className="rounded-md border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+            {submitError.message}
+          </div>
+        )}
         {isCreating && (
           <CurrencyForm
             onSubmit={handleCreate}
             isSubmitting={isSubmitting}
-            onCancel={() => setIsCreating(false)}
+            onCancel={() => {
+              setSubmitError(null)
+              setIsCreating(false)
+            }}
             submitLabel="Create currency"
             withCode
+            fieldErrors={submitError?.fieldErrors}
           />
         )}
 
@@ -327,9 +355,13 @@ export function CurrenciesTab() {
           <CurrencyForm
             onSubmit={handleUpdate}
             isSubmitting={isSubmitting}
-            onCancel={() => setEditing(null)}
+            onCancel={() => {
+              setSubmitError(null)
+              setEditing(null)
+            }}
             submitLabel="Save currency"
             current={editing}
+            fieldErrors={submitError?.fieldErrors}
           />
         )}
 
@@ -367,6 +399,7 @@ function CurrencyForm({
   submitLabel,
   current,
   withCode,
+  fieldErrors,
 }: {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   isSubmitting: boolean
@@ -374,6 +407,7 @@ function CurrencyForm({
   submitLabel: string
   current?: Currency
   withCode?: boolean
+  fieldErrors?: Record<string, string[]>
 }) {
   return (
     <form className="rounded-lg border bg-muted/20 p-4" onSubmit={onSubmit}>
@@ -382,6 +416,9 @@ function CurrencyForm({
           <label className="space-y-2 text-sm font-medium">
             <span>Code (ISO 4217)</span>
             <Input name="code" placeholder="USD" required />
+            {fieldErrors?.code && (
+              <p className="text-xs text-destructive">{fieldErrors.code[0]}</p>
+            )}
           </label>
         )}
         <label className="space-y-2 text-sm font-medium">
@@ -392,6 +429,9 @@ function CurrencyForm({
             placeholder="US Dollar"
             required
           />
+          {fieldErrors?.name && (
+            <p className="text-xs text-destructive">{fieldErrors.name[0]}</p>
+          )}
         </label>
         <label className="space-y-2 text-sm font-medium">
           <span>Symbol</span>
@@ -401,6 +441,9 @@ function CurrencyForm({
             placeholder="$"
             required
           />
+          {fieldErrors?.symbol && (
+            <p className="text-xs text-destructive">{fieldErrors.symbol[0]}</p>
+          )}
         </label>
         <label className="space-y-2 text-sm font-medium">
           <span>Rate per base unit</span>
@@ -412,6 +455,11 @@ function CurrencyForm({
             defaultValue={current?.ratePerBase}
             placeholder="18000"
           />
+          {fieldErrors?.ratePerBase && (
+            <p className="text-xs text-destructive">
+              {fieldErrors.ratePerBase[0]}
+            </p>
+          )}
         </label>
         <label className="space-y-2 text-sm font-medium">
           <span>Min top-up</span>
@@ -423,6 +471,11 @@ function CurrencyForm({
             defaultValue={current?.minTopup}
             required
           />
+          {fieldErrors?.minTopup && (
+            <p className="text-xs text-destructive">
+              {fieldErrors.minTopup[0]}
+            </p>
+          )}
         </label>
         <label className="space-y-2 text-sm font-medium">
           <span>Max top-up</span>
@@ -434,6 +487,11 @@ function CurrencyForm({
             defaultValue={current?.maxTopup}
             required
           />
+          {fieldErrors?.maxTopup && (
+            <p className="text-xs text-destructive">
+              {fieldErrors.maxTopup[0]}
+            </p>
+          )}
         </label>
         <label className="flex items-center gap-2 text-sm font-medium md:col-span-2">
           <input

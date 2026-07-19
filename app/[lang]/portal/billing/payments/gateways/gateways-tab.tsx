@@ -192,8 +192,7 @@ export function GatewaysTab() {
 
   const fetchGateways = useCallback(async () => {
     try {
-      const { data, error } =
-        await eden.api.portal.payments.gateways.get()
+      const { data, error } = await eden.api.portal.payments.gateways.get()
 
       if (error) {
         setState({
@@ -434,9 +433,16 @@ export function GatewaysTab() {
                   name="type"
                   value={selectedProvider}
                   onValueChange={setSelectedProvider}
+                  disabled={providers.length === 0}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a provider..." />
+                    <SelectValue
+                      placeholder={
+                        providers.length === 0
+                          ? "Loading providers..."
+                          : "Select a provider..."
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {providers.map((provider) => (

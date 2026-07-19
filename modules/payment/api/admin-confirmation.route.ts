@@ -39,8 +39,8 @@ const requireConfirmationAuth = async (set: {
 export const createAdminConfirmationRoutes = () =>
   new Elysia({ prefix: "/confirmations" })
     .get("/", async ({ query, set }) => {
-      const err = await requireConfirmationAuth(set)
-      if (err) return err
+      const result = await requireConfirmationAuth(set)
+      if (!result.ok) return result
 
       const limit = parseInt(query?.limit || "20")
       const offset = parseInt(query?.offset || "0")
@@ -51,8 +51,8 @@ export const createAdminConfirmationRoutes = () =>
     })
 
     .get("/:id", async ({ params, set }) => {
-      const err = await requireConfirmationAuth(set)
-      if (err) return err
+      const result = await requireConfirmationAuth(set)
+      if (!result.ok) return result
 
       const confirmation = await confirmationService.findById(params.id)
       if (!confirmation) {

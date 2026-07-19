@@ -37,6 +37,20 @@ export class ConfirmationService {
       throw new Error("Invoice not found or not open")
     }
 
+    // Reject if a PENDING or APPROVED confirmation already exists for this invoice
+    const existing = await prisma.paymentConfirmation.findFirst({
+      where: {
+        invoiceId,
+        status: { in: ["PENDING", "APPROVED"] },
+      },
+    })
+    if (existing) {
+      if (existing.status === "PENDING") {
+        throw new Error("CONFIRMATION_ALREADY_EXISTS_PENDING")
+      }
+      throw new Error("CONFIRMATION_INVOICE_ALREADY_PAID")
+    }
+
     const confirmation = await prisma.paymentConfirmation.create({
       data: {
         invoiceId,

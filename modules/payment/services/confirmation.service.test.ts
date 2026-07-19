@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, mock } from "bun:test"
 type MockVal = Record<string, any> | null
 
 const mockPaymentConfirmation = {
+  findFirst: mock((): Promise<MockVal> => Promise.resolve(null)),
   findUnique: mock((): Promise<MockVal> => Promise.resolve(null)),
   findMany: mock(() => Promise.resolve([])),
   create: mock(() => Promise.resolve({})),
@@ -11,7 +12,7 @@ const mockPaymentConfirmation = {
 }
 
 const mockInvoice = {
-  findFirst: mock(() => Promise.resolve(null)),
+  findFirst: mock((): Promise<MockVal> => Promise.resolve(null)),
   update: mock(() => Promise.resolve({})),
 }
 
@@ -58,17 +59,23 @@ describe("ConfirmationService", () => {
   let service: InstanceType<typeof ConfirmationService>
 
   function resetMocks() {
-    mockPaymentConfirmation.findUnique.mockReset()
-    mockPaymentConfirmation.update.mockReset()
-    mockInvoice.update.mockReset()
-    mockAuditLog.create.mockReset()
+    mockPaymentConfirmation.findFirst.mockClear()
+    mockPaymentConfirmation.findUnique.mockClear()
+    mockPaymentConfirmation.create.mockClear()
+    mockPaymentConfirmation.update.mockClear()
+    mockInvoice.findFirst.mockClear()
+    mockInvoice.update.mockClear()
+    mockBillingAccount.findUnique.mockClear()
+    mockAuditLog.create.mockClear()
   }
 
   beforeEach(() => {
-    service = new ConfirmationService()
     resetMocks()
+    mockInvoice.findFirst.mockResolvedValue(null)
+    mockPaymentConfirmation.findFirst.mockResolvedValue(null)
+    mockPaymentConfirmation.create.mockResolvedValue({ id: "conf-1", status: "PENDING", createdAt: new Date() })
+    service = new ConfirmationService()
   })
-
   describe("approve", () => {
     it("approves and returns invoice details for email dispatch", async () => {
       mockPaymentConfirmation.findUnique.mockResolvedValueOnce({
@@ -122,6 +129,87 @@ describe("ConfirmationService", () => {
       await expect(service.approve("conf-123", "admin-1")).rejects.toThrow(
         "Confirmation already processed"
       )
+    })
+  })
+  describe("create", () => {
+    it("throws when pending confirmation already exists", async () => {
+      mockInvoice.findFirst.mockResolvedValueOnce({
+        id: "inv-1",
+        status: "OPEN",
+        totalAmount: { toNumber: () => 100000 },
+      })
+      mockPaymentConfirmation.findFirst.mockResolvedValueOnce({
+        id: "conf-existing",
+        status: "PENDING",
+        invoiceId: "inv-1",
+      })
+
+      await expect(
+        service.create({
+          invoiceId: "inv-1",
+          organizationId: "org-1",
+          data: {
+            bankAccountId: "ba-1",
+            amount: 100000,
+            paymentDateTime: new Date(),
+          },
+        })
+      ).rejects.toThrow("CONFIRMATION_ALREADY_EXISTS_PENDING")
+    })
+
+    it("throws when invoice already paid (APPROVED confirmation)", async () => {
+      mockInvoice.findFirst.mockResolvedValueOnce({
+        id: "inv-1",
+        status: "OPEN",
+        totalAmount: { toNumber: () => 100000 },
+      })
+      mockPaymentConfirmation.findFirst.mockResolvedValueOnce({
+        id: "conf-approved",
+        status: "APPROVED",
+        invoiceId: "inv-1",
+      })
+
+      await expect(
+        service.create({
+          invoiceId: "inv-1",
+          organizationId: "org-1",
+          data: {
+            bankAccountId: "ba-1",
+            amount: 100000,
+            paymentDateTime: new Date(),
+          },
+        })
+      ).rejects.toThrow("CONFIRMATION_INVOICE_ALREADY_PAID")
+    })
+
+    it("creates confirmation when no duplicate exists", async () => {
+      mockInvoice.findFirst.mockResolvedValueOnce({
+        id: "inv-1",
+        status: "OPEN",
+        totalAmount: { toNumber: () => 100000 },
+      })
+      mockPaymentConfirmation.findFirst.mockResolvedValueOnce(null)
+      mockPaymentConfirmation.create.mockResolvedValueOnce({
+        id: "conf-new",
+        status: "PENDING",
+        invoiceId: "inv-1",
+        bankAccountId: "ba-1",
+        amount: 100000,
+        paymentDateTime: new Date(),
+      })
+
+      const result = await service.create({
+        invoiceId: "inv-1",
+        organizationId: "org-1",
+        data: {
+          bankAccountId: "ba-1",
+          amount: 100000,
+          paymentDateTime: new Date(),
+        },
+      })
+
+      expect(result.id).toBe("conf-new")
+      expect(mockPaymentConfirmation.create).toHaveBeenCalled()
     })
   })
 })

@@ -82,14 +82,28 @@ export const createConfirmRoutes = () =>
           },
         }
       } catch (error) {
+        const msg = error instanceof Error ? error.message : "Failed to create confirmation"
+        if (msg === "CONFIRMATION_ALREADY_EXISTS_PENDING") {
+          set.status = 409
+          return {
+            ok: false,
+            error: "DUPLICATE_CONFIRMATION",
+            message: "A pending payment confirmation already exists for this invoice.",
+          }
+        }
+        if (msg === "CONFIRMATION_INVOICE_ALREADY_PAID") {
+          set.status = 409
+          return {
+            ok: false,
+            error: "INVOICE_ALREADY_PAID",
+            message: "This invoice has already been paid.",
+          }
+        }
         set.status = 400
         return {
           ok: false,
           error: "CREATE_FAILED",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Failed to create confirmation",
+          message: msg,
         }
       }
     }

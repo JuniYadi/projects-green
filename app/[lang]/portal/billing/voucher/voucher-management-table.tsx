@@ -197,97 +197,124 @@ export function VoucherManagementTable() {
   const totalPages = Math.ceil(total / PAGE_SIZE)
   const currentPage = Math.floor(offset / PAGE_SIZE) + 1
 
-  const voucherColumns = useMemo<ColumnDef<VoucherItem>[]>(() => [
-    {
-      accessorKey: "code",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Code" />
-      ),
-      cell: ({ row }) => (
-        <span className="flex items-center gap-1.5 font-mono text-xs font-medium">
-          <span
-            className="cursor-pointer hover:bg-muted/50"
-            onClick={() => router.push(`/portal/billing/voucher/${row.original.id}`)}
-          >
-            {row.original.code}
+  const voucherColumns = useMemo<ColumnDef<VoucherItem>[]>(
+    () => [
+      {
+        accessorKey: "code",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Code" />
+        ),
+        cell: ({ row }) => (
+          <span className="flex items-center gap-1.5 font-mono text-xs font-medium">
+            <span
+              className="cursor-pointer hover:bg-muted/50"
+              onClick={() =>
+                router.push(`/portal/billing/voucher/${row.original.id}`)
+              }
+            >
+              {row.original.code}
+            </span>
+            <button
+              onClick={(e) => copyCode(row.original.code, e)}
+              className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              title="Copy to clipboard"
+            >
+              <CopySimpleIcon className="h-3.5 w-3.5" />
+            </button>
           </span>
-          <button
-            onClick={(e) => copyCode(row.original.code, e)}
-            className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-            title="Copy to clipboard"
+        ),
+      },
+      {
+        accessorKey: "status",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Status" />
+        ),
+        cell: ({ row }) => (
+          <Badge
+            variant="secondary"
+            className={STATUS_COLORS[row.original.status] ?? ""}
           >
-            <CopySimpleIcon className="h-3.5 w-3.5" />
-          </button>
-        </span>
-      ),
-    },
-    {
-      accessorKey: "status",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
-      ),
-      cell: ({ row }) => (
-        <Badge variant="secondary" className={STATUS_COLORS[row.original.status] ?? ""}>
-          {row.original.status}
-        </Badge>
-      ),
-    },
-    {
-      accessorKey: "amount",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Amount" />
-      ),
-      cell: ({ row }) => (
-        <span>{row.original.currency} {Number(row.original.amount).toLocaleString()}</span>
-      ),
-    },
-    {
-      accessorKey: "claimedCount",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Claims" />
-      ),
-      cell: ({ row }) => (
-        <span>{row.original.claimedCount}/{row.original.maxClaims}</span>
-      ),
-    },
-    {
-      accessorKey: "expiresAt",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Expires At" />
-      ),
-      cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">
-          {new Date(row.original.expiresAt).toLocaleDateString()}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "targetWorkosUserId",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Target" />
-      ),
-      cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">
-          {row.original.targetWorkosUserId
-            ? "Specific user"
-            : row.original.targetOrganizationId
-              ? "Specific org"
-              : "Anyone"}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "createdAt",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Created" />
-      ),
-      cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">
-          {new Date(row.original.createdAt).toLocaleDateString()}
-        </span>
-      ),
-    },
-  ], [copyCode, router])
+            {row.original.status}
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: "amount",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Amount" />
+        ),
+        cell: ({ row }) => (
+          <span>
+            {row.original.currency}{" "}
+            {Number(row.original.amount).toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "claimedCount",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Claims" />
+        ),
+        cell: ({ row }) => (
+          <span>
+            {row.original.claimedCount}/{row.original.maxClaims}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "expiresAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Expires At" />
+        ),
+        cell: ({ row }) => {
+          const expired = new Date(row.original.expiresAt) < new Date()
+          if (expired) {
+            const usageLabel =
+              row.original.maxClaims === 0
+                ? `${row.original.claimedCount} used (unlimited)`
+                : `${row.original.claimedCount}/${row.original.maxClaims} used`
+            return (
+              <span className="text-xs text-muted-foreground">
+                Expired · {usageLabel}
+              </span>
+            )
+          }
+          return (
+            <span className="text-xs text-muted-foreground">
+              {new Date(row.original.expiresAt).toLocaleDateString()}
+            </span>
+          )
+        },
+      },
+      {
+        accessorKey: "targetWorkosUserId",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Target" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">
+            {row.original.targetWorkosUserId
+              ? "Specific user"
+              : row.original.targetOrganizationId
+                ? "Specific org"
+                : "Anyone"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "createdAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Created" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">
+            {new Date(row.original.createdAt).toLocaleDateString()}
+          </span>
+        ),
+      },
+    ],
+    [copyCode, router]
+  )
 
   if (isLoading && vouchers.length === 0) {
     return (

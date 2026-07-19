@@ -20,6 +20,20 @@ enum AuthPlatformRole {
   @@map("PlatformRole")
 }
 
+enum AppCredentialType {
+  GITHUB_APP
+  GITHUB_TOKEN
+  CLOUDFLARE_API_TOKEN
+  CLOUDFLARE_LEGACY_TOKEN
+}
+
+enum AppCredentialStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+  PENDING
+}
+
 model User {
   id        String   @id @default(cuid())
   name      String
@@ -2377,15 +2391,19 @@ model CacheEntry {
   @@map("CacheEntry")
 }
 
-model CloudflareDnsCredential {
-  id             String   @id @default(cuid())
+model AppCredential {
+  id             String              @id @default(cuid())
   organizationId String
+  type           AppCredentialType
   name           String
-  tokenJson      String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  metadata       Json
+  encryptedJSON  String
+  maskedPreview  String
+  status         AppCredentialStatus @default(ACTIVE)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
 
-  @@unique([organizationId, name])
+  @@unique([organizationId, type, name])
   @@index([organizationId])
-  @@map("CloudflareDnsCredential")
+  @@index([organizationId, type])
 }
