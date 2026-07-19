@@ -18,7 +18,8 @@ test.describe("Transactions (console)", () => {
   })
 
   test("UC-12: status filter controls are present", async ({ page }) => {
-    const filter = page.getByRole("combobox", { name: /status/i })
+    const filter = page
+      .getByRole("combobox", { name: /status/i })
       .or(page.getByRole("listbox", { name: /status/i }))
       .or(page.getByText(/ALL|OPEN|PAID|VOID/i))
     await expect(filter).toBeVisible()

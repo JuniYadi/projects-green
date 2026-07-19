@@ -76,7 +76,10 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
     try {
       const { data, error } = await eden.api.whatsapp.devices.get()
       if (error) throw new Error(String(error))
-      const result = data as unknown as { ok: boolean; devices: DeviceListItem[] }
+      const result = data as unknown as {
+        ok: boolean
+        devices: DeviceListItem[]
+      }
       setDevices(result.devices)
     } catch (err) {
       console.error("Failed to load devices:", err)
@@ -165,8 +168,7 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-bold tracking-tight">Webhook Logs</h1>
         <p className="text-muted-foreground">
-          View and inspect incoming WhatsApp webhook events across your
-          devices.
+          View and inspect incoming WhatsApp webhook events across your devices.
         </p>
       </div>
 
@@ -187,9 +189,7 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Event Log</CardTitle>
-          <CardDescription>
-            Webhook events for your devices.
-          </CardDescription>
+          <CardDescription>Webhook events for your devices.</CardDescription>
         </CardHeader>
         <CardContent>
           {!devices.length && pageState !== "error" ? (

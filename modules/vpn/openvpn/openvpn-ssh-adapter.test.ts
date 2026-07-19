@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 
-import type { SshCommandResult, SshTarget } from "@/modules/vpn/provisioning/vpn-server-ssh-executor"
+import type {
+  SshCommandResult,
+  SshTarget,
+} from "@/modules/vpn/provisioning/vpn-server-ssh-executor"
 import { VpnServerSshExecutor } from "@/modules/vpn/provisioning/vpn-server-ssh-executor"
 
 import {
@@ -15,9 +18,14 @@ const target: SshTarget = {
   encryptedPrivateKey: "fake-encrypted-key",
 }
 
-const mockExecChecked = mock<
-  (target: SshTarget, args: string[], label?: string) => Promise<SshCommandResult>
->()
+const mockExecChecked =
+  mock<
+    (
+      target: SshTarget,
+      args: string[],
+      label?: string
+    ) => Promise<SshCommandResult>
+  >()
 
 const mockExecInternal = mock()
 
@@ -50,10 +58,13 @@ describe("OpenVpnSshAdapter", () => {
     mockExecInternal.mockClear()
   })
   it("composes create, fetch, revoke, and health via executor", async () => {
-    mockExecChecked.mockImplementation(async (_target: SshTarget, args: string[]) => {
-      if (args[0] === "cat") return { stdout: "client config", stderr: "", exitCode: 0 }
-      return { stdout: "ok", stderr: "", exitCode: 0 }
-    })
+    mockExecChecked.mockImplementation(
+      async (_target: SshTarget, args: string[]) => {
+        if (args[0] === "cat")
+          return { stdout: "client config", stderr: "", exitCode: 0 }
+        return { stdout: "ok", stderr: "", exitCode: 0 }
+      }
+    )
     mockExecInternal.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 })
 
     const adapter = new OpenVpnSshAdapter({
@@ -68,28 +79,40 @@ describe("OpenVpnSshAdapter", () => {
     await adapter.healthCheck(target)
 
     expect(mockExecChecked).toHaveBeenNthCalledWith(
-      1, target,
+      1,
+      target,
       ["bash", "/root/genclient.sh", "org_abc123_sub_456"],
       "create OpenVPN client"
     )
     expect(mockExecChecked).toHaveBeenNthCalledWith(
-      2, target,
+      2,
+      target,
       ["cat", "/root/openvpn/clients/org_abc123_sub_456.ovpn"],
       "fetch OpenVPN config"
     )
     expect(mockExecChecked).toHaveBeenNthCalledWith(
-      3, target,
+      3,
+      target,
       ["bash", "/root/revoke.sh", "org_abc123_sub_456"],
       "revoke OpenVPN client"
     )
     expect(mockExecChecked).toHaveBeenNthCalledWith(
-      4, target,
+      4,
+      target,
       ["bash", "/root/rmcert.sh", "org_abc123_sub_456"],
       "remove OpenVPN client certificate"
     )
     expect(mockExecChecked).toHaveBeenNthCalledWith(
-      5, target,
-      ["docker", "compose", "-f", "/root/openvpn/docker-compose.yaml", "restart", "openvpn"],
+      5,
+      target,
+      [
+        "docker",
+        "compose",
+        "-f",
+        "/root/openvpn/docker-compose.yaml",
+        "restart",
+        "openvpn",
+      ],
       "restart OpenVPN server"
     )
     // healthCheck calls exec (not execChecked) — covered by dedicated healthCheck tests below
@@ -97,7 +120,11 @@ describe("OpenVpnSshAdapter", () => {
 
   it("healthCheck returns ok=true when openvpn container is running", async () => {
     // healthCheck uses exec, not execChecked — no need to mock execChecked here
-    mockExecInternal.mockResolvedValue({ stdout: "openvpn", stderr: "", exitCode: 0 })
+    mockExecInternal.mockResolvedValue({
+      stdout: "openvpn",
+      stderr: "",
+      exitCode: 0,
+    })
 
     const adapter = new OpenVpnSshAdapter({
       executor: mockExecutor as unknown as VpnServerSshExecutor,
@@ -124,7 +151,8 @@ describe("OpenVpnSshAdapter", () => {
 
   it("lists OpenVPN users via root userlist script", async () => {
     mockExecChecked.mockResolvedValue({
-      stdout: "User aktif sekarang (3): juniyadi, orgabc-123456, + server cert\n",
+      stdout:
+        "User aktif sekarang (3): juniyadi, orgabc-123456, + server cert\n",
       stderr: "",
       exitCode: 0,
     })
@@ -307,8 +335,8 @@ describe("OpenVpnSshAdapter", () => {
       executor: mockExecutor as unknown as VpnServerSshExecutor,
     })
 
-    await expect(adapter.createClient(target, "org_abc123_sub_456")).rejects.toThrow(
-      "OpenVPN profile not found"
-    )
+    await expect(
+      adapter.createClient(target, "org_abc123_sub_456")
+    ).rejects.toThrow("OpenVPN profile not found")
   })
 })

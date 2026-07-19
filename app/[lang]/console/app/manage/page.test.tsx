@@ -16,9 +16,8 @@ mock.module("@/lib/i18n/pathname", () => ({
 
 // ─── Dynamic imports after mocks ─────────────────────────────────────────────
 
-const { default: ManagePage } = await import(
-  "@/app/[lang]/console/app/manage/page"
-)
+const { default: ManagePage } =
+  await import("@/app/[lang]/console/app/manage/page")
 
 describe("ManagePage redirect", () => {
   it("redirects /console/app/manage to /console/app", async () => {

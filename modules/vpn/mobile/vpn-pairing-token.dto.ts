@@ -15,7 +15,12 @@ type SubscriptionRow = Prisma.VpnSubscriptionGetPayload<{}>
 type ServerAccountRow = Prisma.VpnServerAccountGetPayload<{
   include: {
     server: {
-      select: { name: true; hostname: true; ipAddress: true; region: { select: { name: true } } }
+      select: {
+        name: true
+        hostname: true
+        ipAddress: true
+        region: { select: { name: true } }
+      }
     }
   }
 }>

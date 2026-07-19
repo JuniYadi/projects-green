@@ -93,8 +93,10 @@ export function DataTable<TData>({
   const [sorting, setSorting] = React.useState<SortingState>(initialSorting)
   const [columnFilters, setColumnFilters] =
     React.useState<ColumnFiltersState>(initialColumnFilters)
-  const [columnVisibility, setColumnVisibility] =
-    usePersistedColumnVisibility(tableId, defaultColumnVisibility)
+  const [columnVisibility, setColumnVisibility] = usePersistedColumnVisibility(
+    tableId,
+    defaultColumnVisibility
+  )
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: pageSize ?? 10,
@@ -106,7 +108,6 @@ export function DataTable<TData>({
       setPagination((prev) => ({ ...prev, pageIndex: 0 }))
     }
   }, [globalFilter, columnFilters, pageSize])
-
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({

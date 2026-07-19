@@ -45,7 +45,7 @@ export const createConfirmRoutes = () =>
 
       // Look up invoice to determine correct organizationId
       const invoice = await prisma.billingInvoice.findFirst({
-        where: { id: params.id, status: "OPEN" },
+        where: { id: params.id, status: "OPEN", billingAccount: { organizationId: auth.organizationId } },
       })
 
       if (!invoice) {
@@ -82,13 +82,17 @@ export const createConfirmRoutes = () =>
           },
         }
       } catch (error) {
-        const msg = error instanceof Error ? error.message : "Failed to create confirmation"
+        const msg =
+          error instanceof Error
+            ? error.message
+            : "Failed to create confirmation"
         if (msg === "CONFIRMATION_ALREADY_EXISTS_PENDING") {
           set.status = 409
           return {
             ok: false,
             error: "DUPLICATE_CONFIRMATION",
-            message: "A pending payment confirmation already exists for this invoice.",
+            message:
+              "A pending payment confirmation already exists for this invoice.",
           }
         }
         if (msg === "CONFIRMATION_INVOICE_ALREADY_PAID") {

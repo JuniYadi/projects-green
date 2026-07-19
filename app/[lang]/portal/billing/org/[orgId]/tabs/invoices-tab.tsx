@@ -43,7 +43,9 @@ export function InvoicesTab({ orgId, recentInvoices }: InvoicesTabProps) {
   const [invoices, setInvoices] = useState<AdminInvoiceListItem[]>(
     recentInvoices ? (recentInvoices as AdminInvoiceListItem[]) : []
   )
-  const [isLoading, setIsLoading] = useState(!recentInvoices || recentInvoices.length === 0)
+  const [isLoading, setIsLoading] = useState(
+    !recentInvoices || recentInvoices.length === 0
+  )
   const [error, setError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
@@ -62,9 +64,9 @@ export function InvoicesTab({ orgId, recentInvoices }: InvoicesTabProps) {
   ) {
     setActionLoading(invoiceId)
     try {
-      const { data } = await eden.api.billing.admin
-        .invoices[invoiceId]
-        .patch({ status: targetStatus } as never)
+      const { data } = await eden.api.billing.admin.invoices[invoiceId].patch({
+        status: targetStatus,
+      } as never)
 
       if (!data?.ok) {
         throw new Error(
@@ -84,101 +86,96 @@ export function InvoicesTab({ orgId, recentInvoices }: InvoicesTabProps) {
         )
       )
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Action failed"
+      const message = err instanceof Error ? err.message : "Action failed"
       toast.error(message)
     } finally {
       setActionLoading(null)
     }
   }
-  const invoiceColumns = useMemo<ColumnDef<AdminInvoiceListItem>[]>(() => [
-    {
-      accessorKey: "invoiceNumber",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Invoice #" />
-      ),
-      cell: ({ row }) => (
-        <span className="font-medium">{row.original.invoiceNumber}</span>
-      ),
-    },
-    {
-      accessorKey: "issuedAt",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Issued" />
-      ),
-      cell: ({ row }) => (
-        <span className="text-muted-foreground">
-          {formatDate(row.original.issuedAt ?? row.original.createdAt)}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "dueAt",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Due" />
-      ),
-      cell: ({ row }) => (
-        <span className="text-muted-foreground">
-          {formatDate(row.original.dueAt)}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "totalAmountIdr",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Amount" />
-      ),
-      cell: ({ row }) => (
-        <span className="font-medium">
-          {formatCurrency(row.original.totalAmountIdr)}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "status",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
-      ),
-      cell: ({ row }) => (
-        <InvoiceStatusBadge status={row.original.status} />
-      ),
-    },
-    {
-      id: "actions",
-      header: () => <span className="sr-only">Actions</span>,
-      cell: ({ row }) => (
-        <div className="flex items-center justify-end gap-1">
-          {row.original.status === "DRAFT" && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={actionLoading === row.original.id}
-              onClick={() =>
-                handleStatusChange(row.original.id, "ISSUED")
-              }
-            >
-              {actionLoading === row.original.id ? "..." : "Issue"}
-            </Button>
-          )}
-          {(row.original.status === "DRAFT" ||
-            row.original.status === "ISSUED") && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={actionLoading === row.original.id}
-              onClick={() =>
-                handleStatusChange(row.original.id, "CANCELLED")
-              }
-            >
-              {actionLoading === row.original.id ? "..." : "Cancel"}
-            </Button>
-          )}
-        </div>
-      ),
-      enableHiding: false,
-    },
-  ], [actionLoading, handleStatusChange])
-
+  const invoiceColumns = useMemo<ColumnDef<AdminInvoiceListItem>[]>(
+    () => [
+      {
+        accessorKey: "invoiceNumber",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Invoice #" />
+        ),
+        cell: ({ row }) => (
+          <span className="font-medium">{row.original.invoiceNumber}</span>
+        ),
+      },
+      {
+        accessorKey: "issuedAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Issued" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-muted-foreground">
+            {formatDate(row.original.issuedAt ?? row.original.createdAt)}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "dueAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Due" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-muted-foreground">
+            {formatDate(row.original.dueAt)}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "totalAmountIdr",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Amount" />
+        ),
+        cell: ({ row }) => (
+          <span className="font-medium">
+            {formatCurrency(row.original.totalAmountIdr)}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "status",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Status" />
+        ),
+        cell: ({ row }) => <InvoiceStatusBadge status={row.original.status} />,
+      },
+      {
+        id: "actions",
+        header: () => <span className="sr-only">Actions</span>,
+        cell: ({ row }) => (
+          <div className="flex items-center justify-end gap-1">
+            {row.original.status === "DRAFT" && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={actionLoading === row.original.id}
+                onClick={() => handleStatusChange(row.original.id, "ISSUED")}
+              >
+                {actionLoading === row.original.id ? "..." : "Issue"}
+              </Button>
+            )}
+            {(row.original.status === "DRAFT" ||
+              row.original.status === "ISSUED") && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={actionLoading === row.original.id}
+                onClick={() => handleStatusChange(row.original.id, "CANCELLED")}
+              >
+                {actionLoading === row.original.id ? "..." : "Cancel"}
+              </Button>
+            )}
+          </div>
+        ),
+        enableHiding: false,
+      },
+    ],
+    [actionLoading, handleStatusChange]
+  )
 
   if (isLoading) {
     return <Skeleton className="h-64" />

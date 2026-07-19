@@ -48,7 +48,6 @@ mock.module("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
- 
 globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch
 
 import { render } from "@testing-library/react"

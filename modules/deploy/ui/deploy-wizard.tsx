@@ -284,11 +284,17 @@ function DeployWizardInner() {
         setGithubReconnectRequired(false)
 
         if (Array.isArray(payload.owners) && payload.owners.length > 0) {
-          const owners = payload.owners.map((owner: { id: string; name: string; avatarUrl: string | null }) => ({
-            id: owner.id,
-            name: owner.name,
-            avatarUrl: owner.avatarUrl ?? "",
-          }))
+          const owners = payload.owners.map(
+            (owner: {
+              id: string
+              name: string
+              avatarUrl: string | null
+            }) => ({
+              id: owner.id,
+              name: owner.name,
+              avatarUrl: owner.avatarUrl ?? "",
+            })
+          )
           setOwnerOptions(owners)
           // Auto-select when only one account
           if (owners.length === 1) {
@@ -591,7 +597,8 @@ function DeployWizardInner() {
             primaryEngine: detectionResult.primaryEngine ?? "",
             primaryEngineVersion: detectionResult.primaryEngineVersion ?? "",
             secondaryEngine: detectionResult.secondaryEngine ?? "",
-            secondaryEngineVersion: detectionResult.secondaryEngineVersion ?? "",
+            secondaryEngineVersion:
+              detectionResult.secondaryEngineVersion ?? "",
             defaultPort: detectionResult.defaultPort ?? 0,
           },
         })
@@ -732,7 +739,8 @@ function DeployWizardInner() {
           primaryEngine: state.build.primaryEngine || undefined,
           primaryEngineVersion: state.build.primaryEngineVersion || undefined,
           secondaryEngine: state.build.secondaryEngine || undefined,
-          secondaryEngineVersion: state.build.secondaryEngineVersion || undefined,
+          secondaryEngineVersion:
+            state.build.secondaryEngineVersion || undefined,
           defaultPort: state.build.defaultPort || undefined,
           resourcePlanId: state.environment.resourcePlanId,
           billingMode: state.environment.billingMode ?? "PAYG",
@@ -797,7 +805,9 @@ function DeployWizardInner() {
           sourceType: isTemplate ? "TEMPLATE" : "GITHUB",
           templateId: isTemplate ? state.source.templateId : undefined,
           repositoryId: isTemplate ? undefined : state.source.repositoryId,
-          name: isTemplate ? state.source.appName || "app" : selectedRepository?.name,
+          name: isTemplate
+            ? state.source.appName || "app"
+            : selectedRepository?.name,
           branchName: isTemplate ? "/" : state.source.branchName,
           rootDirectory: isTemplate ? "/" : state.source.rootDirectory || "/",
           framework: state.build.framework || undefined,
@@ -807,13 +817,16 @@ function DeployWizardInner() {
           primaryEngine: state.build.primaryEngine || undefined,
           primaryEngineVersion: state.build.primaryEngineVersion || undefined,
           secondaryEngine: state.build.secondaryEngine || undefined,
-          secondaryEngineVersion: state.build.secondaryEngineVersion || undefined,
+          secondaryEngineVersion:
+            state.build.secondaryEngineVersion || undefined,
           defaultPort: state.build.defaultPort || undefined,
           resourcePlanId: state.environment.resourcePlanId,
           billingMode,
           cpu: state.environment.cpu,
           memory: state.environment.memory,
-          paygBufferHours: isTemplate ? undefined : state.environment.paygBufferHours,
+          paygBufferHours: isTemplate
+            ? undefined
+            : state.environment.paygBufferHours,
           customDomain: state.environment.useGeneratedSubdomain
             ? undefined
             : state.environment.customDomain.trim() || undefined,
@@ -915,7 +928,9 @@ function DeployWizardInner() {
             dispatch({ type: "set-source", payload: { appName } })
           }}
           onTemplateResourcePlanChange={(resourcePlanId) => {
-            const template = DEPLOY_TEMPLATES.find((t) => t.id === state.source.templateId)
+            const template = DEPLOY_TEMPLATES.find(
+              (t) => t.id === state.source.templateId
+            )
             const updates: Partial<DeployEnvironmentState> = { resourcePlanId }
             if (template) {
               if (resourcePlanId === "payg") {

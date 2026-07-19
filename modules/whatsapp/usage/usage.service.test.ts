@@ -221,7 +221,9 @@ describe("WhatsappUsageService", () => {
 
   describe("getCostSummary", () => {
     it("returns total amount from billing adjustments with WHATSAPP source", async () => {
-      mockFindUniqueBillingAccount.mockImplementation(async () => ({ id: "ba-1" }))
+      mockFindUniqueBillingAccount.mockImplementation(async () => ({
+        id: "ba-1",
+      }))
       mockFindManyAdjustments.mockImplementation(async () => [
         makeAdjustmentRow({ id: "adj-1", amount: new Decimal(500) }),
         makeAdjustmentRow({ id: "adj-2", amount: new Decimal(300) }),
@@ -233,10 +235,16 @@ describe("WhatsappUsageService", () => {
     })
 
     it("filters adjustments without WHATSAPP source", async () => {
-      mockFindUniqueBillingAccount.mockImplementation(async () => ({ id: "ba-1" }))
+      mockFindUniqueBillingAccount.mockImplementation(async () => ({
+        id: "ba-1",
+      }))
       mockFindManyAdjustments.mockImplementation(async () => [
         makeAdjustmentRow({ id: "adj-1", amount: new Decimal(500) }),
-        makeAdjustmentRow({ id: "adj-2", amount: new Decimal(200), metadataJson: { source: "APP_HOSTING" } }),
+        makeAdjustmentRow({
+          id: "adj-2",
+          amount: new Decimal(200),
+          metadataJson: { source: "APP_HOSTING" },
+        }),
       ])
       const result = await service.getCostSummary("org-1", "2026-06")
       expect(result.totalAmount).toBe(500)
@@ -394,14 +402,32 @@ describe("WhatsappUsageService", () => {
         currency: "IDR",
       }))
       mockFindManyAdjustments.mockImplementation(async () => [
-        makeAdjustmentRow({ id: "adj-1", amount: new Decimal(500), metadataJson: { source: "WHATSAPP", deviceId: "dev-1" } }),
-        makeAdjustmentRow({ id: "adj-2", amount: new Decimal(300), metadataJson: { source: "WHATSAPP", deviceId: "dev-1" } }),
+        makeAdjustmentRow({
+          id: "adj-1",
+          amount: new Decimal(500),
+          metadataJson: { source: "WHATSAPP", deviceId: "dev-1" },
+        }),
+        makeAdjustmentRow({
+          id: "adj-2",
+          amount: new Decimal(300),
+          metadataJson: { source: "WHATSAPP", deviceId: "dev-1" },
+        }),
       ])
 
       // Message count and category from WhatsappBillingLedger
       mockFindManyWhatsappLedger.mockImplementation(async () => [
-        makeWhatsappLedgerRow({ id: "wa-1", whatsappDeviceId: "dev-1", category: "UTILITY", quotaValue: new Decimal(1) }),
-        makeWhatsappLedgerRow({ id: "wa-2", whatsappDeviceId: "dev-1", category: "UTILITY", quotaValue: new Decimal(1) }),
+        makeWhatsappLedgerRow({
+          id: "wa-1",
+          whatsappDeviceId: "dev-1",
+          category: "UTILITY",
+          quotaValue: new Decimal(1),
+        }),
+        makeWhatsappLedgerRow({
+          id: "wa-2",
+          whatsappDeviceId: "dev-1",
+          category: "UTILITY",
+          quotaValue: new Decimal(1),
+        }),
       ])
 
       const result = await service.getCostBreakdown("org-1", "2026-06")
@@ -442,6 +468,5 @@ describe("WhatsappUsageService", () => {
       expect(result.byDevice[0].quotaUsed).toBe(0)
       expect(result.balance).toBeNull()
     })
-
   })
 })

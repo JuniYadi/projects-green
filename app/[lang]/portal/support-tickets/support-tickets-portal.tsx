@@ -67,7 +67,10 @@ const getSupportTicketColumns = (lang: string): ColumnDef<SupportTicket>[] => {
         <DataTableColumnHeader column={column} title="Requester" />
       ),
       cell: ({ row }) => (
-        <span className="text-xs">{row.original.requesterName || `User (${row.original.requesterWorkosUserId.slice(-4)})`}</span>
+        <span className="text-xs">
+          {row.original.requesterName ||
+            `User (${row.original.requesterWorkosUserId.slice(-4)})`}
+        </span>
       ),
     },
     {

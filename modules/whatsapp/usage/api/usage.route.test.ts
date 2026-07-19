@@ -200,7 +200,9 @@ describe("Usage Routes", () => {
       mockFindManyDevices.mockImplementation(async () => [
         { id: "dev-1", phoneNumber: "6281234567890" },
       ])
-      mockFindUniqueBillingAccount.mockImplementation(async () => ({ id: "ba-1" }))
+      mockFindUniqueBillingAccount.mockImplementation(async () => ({
+        id: "ba-1",
+      }))
       mockFindManyAdjustments.mockImplementation(async () => [
         makeAdjustmentRow({ amount: new Decimal(500) }),
       ])
@@ -292,7 +294,9 @@ describe("Usage Routes", () => {
 
   describe("GET /usage/cost", () => {
     it("returns cost breakdown for period", async () => {
-      mockFindUniqueBillingAccount.mockImplementation(async () => ({ id: "ba-1" }))
+      mockFindUniqueBillingAccount.mockImplementation(async () => ({
+        id: "ba-1",
+      }))
       mockFindManyAdjustments.mockImplementation(async () => [
         makeAdjustmentRow({ id: "adj-1", amount: new Decimal(500) }),
         makeAdjustmentRow({ id: "adj-2", amount: new Decimal(300) }),
@@ -378,8 +382,16 @@ describe("Usage Routes", () => {
 
       // Message count from WhatsappBillingLedger
       mockFindManyWhatsappLedger.mockImplementation(async () => [
-        makeWhatsappLedgerRow({ id: "wa-1", whatsappDeviceId: "dev-1", category: "UTILITY" }),
-        makeWhatsappLedgerRow({ id: "wa-2", whatsappDeviceId: "dev-1", category: "UTILITY" }),
+        makeWhatsappLedgerRow({
+          id: "wa-1",
+          whatsappDeviceId: "dev-1",
+          category: "UTILITY",
+        }),
+        makeWhatsappLedgerRow({
+          id: "wa-2",
+          whatsappDeviceId: "dev-1",
+          category: "UTILITY",
+        }),
       ])
 
       const app = createTestApp()

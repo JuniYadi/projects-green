@@ -72,7 +72,11 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
 
       if (!whatsappAuth.organizationId) {
         set.status = 403
-        return { ok: false, error: "FORBIDDEN", message: "Organization required." }
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Organization required.",
+        }
       }
 
       const page = Math.max(Number(query.page) || 1, 1)
@@ -210,12 +214,14 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
         deviceId: t.String(),
         webhookUrl: t.String(),
         verifyToken: t.Optional(t.String()),
-        authType: t.Optional(t.Union([
-          t.Literal("bearer"),
-          t.Literal("basic"),
-          t.Literal("custom-header"),
-          t.Literal("none"),
-        ])),
+        authType: t.Optional(
+          t.Union([
+            t.Literal("bearer"),
+            t.Literal("basic"),
+            t.Literal("custom-header"),
+            t.Literal("none"),
+          ])
+        ),
         authValue: t.Optional(t.String()),
         authHeaderName: t.Optional(t.String()),
         retryMaxAttempts: t.Optional(t.Number()),
@@ -364,18 +370,21 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
 
-      const deliveryLog =
-        await prisma.whatsappWebhookDeliveryLog.findUnique({
-          where: { id: params.deliveryId },
-          select: {
-            webhookId: true,
-            organizationId: true,
-          },
-        })
+      const deliveryLog = await prisma.whatsappWebhookDeliveryLog.findUnique({
+        where: { id: params.deliveryId },
+        select: {
+          webhookId: true,
+          organizationId: true,
+        },
+      })
 
       if (!deliveryLog || deliveryLog.webhookId !== params.id) {
         set.status = 404
-        return { ok: false, error: "NOT_FOUND", message: "Delivery log not found." }
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Delivery log not found.",
+        }
       }
 
       if (
@@ -392,42 +401,38 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
   )
 
   // POST /:id/test — send a test ping (org-scoped)
-  .post(
-    "/:id/test",
-    async ({ request, params, set }: any) => {
-      const whatsappAuth = await resolveAuthContext(request)
-      if (!whatsappAuth) {
-        set.status = 401
-        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-      }
-
-      const webhook = await prisma.whatsappWebhook.findUnique({
-        where: { id: params.id },
-        select: { organizationId: true },
-      })
-
-      if (!webhook) {
-        set.status = 404
-        return { ok: false, error: "NOT_FOUND", message: "Webhook not found." }
-      }
-
-      if (
-        (whatsappAuth as any).platformRole !== "super_admin" &&
-        webhook.organizationId !== whatsappAuth.organizationId
-      ) {
-        set.status = 403
-        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
-      }
-
-      await webhookDispatcher.dispatch(
-        params.id,
-        "test",
-        { test: true, timestamp: new Date().toISOString() }
-      )
-
-      return { ok: true, message: "Test webhook enqueued." }
+  .post("/:id/test", async ({ request, params, set }: any) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
-  )
+
+    const webhook = await prisma.whatsappWebhook.findUnique({
+      where: { id: params.id },
+      select: { organizationId: true },
+    })
+
+    if (!webhook) {
+      set.status = 404
+      return { ok: false, error: "NOT_FOUND", message: "Webhook not found." }
+    }
+
+    if (
+      (whatsappAuth as any).platformRole !== "super_admin" &&
+      webhook.organizationId !== whatsappAuth.organizationId
+    ) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+    }
+
+    await webhookDispatcher.dispatch(params.id, "test", {
+      test: true,
+      timestamp: new Date().toISOString(),
+    })
+
+    return { ok: true, message: "Test webhook enqueued." }
+  })
 
   // GET /:id/verify — Meta webhook verification endpoint
   .get(
@@ -548,7 +553,11 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
 
       if (!isValid) {
         set.status = 401
-        return { ok: false, error: "UNAUTHORIZED", message: "Invalid signature" }
+        return {
+          ok: false,
+          error: "UNAUTHORIZED",
+          message: "Invalid signature",
+        }
       }
 
       // Determine event type from payload structure
@@ -563,7 +572,8 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
       )
 
       // Map event type to job event type
-      const jobEventType = eventType === "inbound_message" ? "message" : "statuses"
+      const jobEventType =
+        eventType === "inbound_message" ? "message" : "statuses"
 
       // Enqueue for retry processing
       await WebhookRetryJob.dispatch({

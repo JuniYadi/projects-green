@@ -10,9 +10,7 @@ import { getPlatformRoleForUser } from "@/lib/platform-role"
 const confirmationService = new ConfirmationService()
 const paymentService = new PaymentService()
 
-const requireConfirmationAuth = async (set: {
-  status?: number | string
-}) => {
+const requireConfirmationAuth = async (set: { status?: number | string }) => {
   const auth = await withAuth()
   if (!auth.user) {
     set.status = 401
@@ -70,7 +68,10 @@ export const createAdminConfirmationRoutes = () =>
     .post("/:id/approve", async ({ params, set }) => {
       const result = await requireConfirmationAuth(set)
       if (!result.ok) return result
-      const approved = await confirmationService.approve(params.id, result.user.id)
+      const approved = await confirmationService.approve(
+        params.id,
+        result.user.id
+      )
 
       // Fire-and-forget: send invoice paid email
       paymentService

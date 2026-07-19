@@ -21,7 +21,9 @@ test.describe("Invoices (console)", () => {
     await expect(table).toBeVisible()
   })
 
-  test("UC-5: clicking invoice shows detail with line items", async ({ page }) => {
+  test("UC-5: clicking invoice shows detail with line items", async ({
+    page,
+  }) => {
     const firstLink = page.locator("table a").first()
     await expect(firstLink).toBeVisible()
 
@@ -30,7 +32,9 @@ test.describe("Invoices (console)", () => {
     await expect(page.getByText(/Invoice|INV-/i)).toBeVisible()
   })
 
-  test("UC-6: pay with balance button is present on invoice detail", async ({ page }) => {
+  test("UC-6: pay with balance button is present on invoice detail", async ({
+    page,
+  }) => {
     const firstLink = page.locator("table a").first()
     await firstLink.click()
     await page.waitForURL(/\/console\/billing\/invoices\/[^/]+$/)

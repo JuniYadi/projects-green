@@ -50,7 +50,10 @@ async function syncCycle() {
       }
     } catch (error) {
       errors++
-      console.error(`[whatsapp-analytics-worker] device=${device.id} error:`, error)
+      console.error(
+        `[whatsapp-analytics-worker] device=${device.id} error:`,
+        error
+      )
     }
   }
 

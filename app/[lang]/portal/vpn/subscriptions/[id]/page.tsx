@@ -642,13 +642,19 @@ export default function SubscriptionDetailPage() {
         <CardContent className="space-y-3">
           <div className="flex items-center gap-2">
             <Badge variant="outline">ID</Badge>
-            <span className="font-mono text-sm text-muted-foreground" title={subscription.id}>
-              {subscription.id.length > 28 ? `${subscription.id.slice(0, 28)}…` : subscription.id}
+            <span
+              className="font-mono text-sm text-muted-foreground"
+              title={subscription.id}
+            >
+              {subscription.id.length > 28
+                ? `${subscription.id.slice(0, 28)}…`
+                : subscription.id}
             </span>
             <CopyButton text={subscription.id} />
           </div>
           <p className="text-sm text-muted-foreground">
-            Scan the QR code or enter this ID in the mobile app to pair a device.
+            Scan the QR code or enter this ID in the mobile app to pair a
+            device.
           </p>
           <Button
             variant="outline"

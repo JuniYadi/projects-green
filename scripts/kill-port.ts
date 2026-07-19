@@ -11,15 +11,26 @@ if (!port) {
 async function findPids(port: string): Promise<string[]> {
   let raw = ""
   if (process.platform === "darwin") {
-    raw = (await $`lsof -ti tcp:${port} -sTCP:LISTEN`.quiet().nothrow()).text().trim()
+    raw = (await $`lsof -ti tcp:${port} -sTCP:LISTEN`.quiet().nothrow())
+      .text()
+      .trim()
   } else {
-    raw = (await $`lsof -ti tcp:${port} -sTCP:LISTEN`.quiet().nothrow()).text().trim()
+    raw = (await $`lsof -ti tcp:${port} -sTCP:LISTEN`.quiet().nothrow())
+      .text()
+      .trim()
     if (!raw) {
       const out = (await $`ss -tlnpH sport = :${port}`.quiet().nothrow()).text()
-      raw = [...out.matchAll(/pid=(\d+)/g)].map(m => m[1]).join("\n")
+      raw = [...out.matchAll(/pid=(\d+)/g)].map((m) => m[1]).join("\n")
     }
   }
-  return [...new Set(raw.split("\n").map(s => s.trim()).filter(Boolean))]
+  return [
+    ...new Set(
+      raw
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    ),
+  ]
 }
 
 const pids = await findPids(port)

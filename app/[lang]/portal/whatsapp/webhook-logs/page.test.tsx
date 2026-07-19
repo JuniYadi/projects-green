@@ -65,9 +65,7 @@ describe("PortalWhatsAppWebhookLogsPage", () => {
     const view = render(<Page />)
 
     await waitFor(() => {
-      expect(
-        view.getByRole("heading", { name: "Webhook Logs" })
-      ).toBeTruthy()
+      expect(view.getByRole("heading", { name: "Webhook Logs" })).toBeTruthy()
     })
   })
 
@@ -83,16 +81,14 @@ describe("PortalWhatsAppWebhookLogsPage", () => {
 
   it("shows error state when API call fails", async () => {
     // Simulate network error for events endpoint
-    mockFetch.mockImplementation(
-      (input: string | Request) => {
-        const url = typeof input === "string" ? input : input.url
-        const pathname = new URL(url, "http://localhost:3300").pathname
-        if (pathname.startsWith("/api/whatsapp/devices")) {
-          return Promise.resolve(mockDevicesResponse())
-        }
-        return Promise.reject(new Error("Failed to load webhook events"))
+    mockFetch.mockImplementation((input: string | Request) => {
+      const url = typeof input === "string" ? input : input.url
+      const pathname = new URL(url, "http://localhost:3300").pathname
+      if (pathname.startsWith("/api/whatsapp/devices")) {
+        return Promise.resolve(mockDevicesResponse())
       }
-    )
+      return Promise.reject(new Error("Failed to load webhook events"))
+    })
 
     const { default: Page } = await import("./page")
     const view = render(<Page />)

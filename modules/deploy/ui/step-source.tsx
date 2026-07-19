@@ -409,7 +409,11 @@ export function StepSource({
                           </SelectTrigger>
                           <SelectContent>
                             {owners.map((owner) => (
-                              <SelectItem key={owner.id} value={owner.id} className="text-xs">
+                              <SelectItem
+                                key={owner.id}
+                                value={owner.id}
+                                className="text-xs"
+                              >
                                 <div className="flex items-center gap-2">
                                   <div className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-muted text-[10px] font-bold text-muted-foreground uppercase">
                                     {owner.name.charAt(0)}
@@ -921,16 +925,21 @@ export function StepSource({
                       </h4>
                       <div className="grid grid-cols-2 gap-4 text-xs sm:grid-cols-4">
                         <div>
-                          <span className="block text-muted-foreground">Compute</span>
+                          <span className="block text-muted-foreground">
+                            Compute
+                          </span>
                           <span className="font-semibold">
-                            {(selectedTemplate.defaultCpu / 1000).toFixed(1)} vCPU /{" "}
+                            {(selectedTemplate.defaultCpu / 1000).toFixed(1)}{" "}
+                            vCPU /{" "}
                             {selectedTemplate.defaultMemory >= 1024
                               ? `${(selectedTemplate.defaultMemory / 1024).toFixed(0)} GB`
                               : `${selectedTemplate.defaultMemory} MB`}
                           </span>
                         </div>
                         <div>
-                          <span className="block text-muted-foreground">Runtime</span>
+                          <span className="block text-muted-foreground">
+                            Runtime
+                          </span>
                           <span className="font-semibold">
                             {selectedTemplate.build.useDockerfile
                               ? "Docker"
@@ -938,12 +947,20 @@ export function StepSource({
                           </span>
                         </div>
                         <div>
-                          <span className="block text-muted-foreground">Default Port</span>
-                          <span className="font-semibold">{selectedTemplate.build.defaultPort ?? "—"}</span>
+                          <span className="block text-muted-foreground">
+                            Default Port
+                          </span>
+                          <span className="font-semibold">
+                            {selectedTemplate.build.defaultPort ?? "—"}
+                          </span>
                         </div>
                         <div>
-                          <span className="block text-muted-foreground">Estimated Cost</span>
-                          <span className="font-semibold">${packageHourlyCost.toFixed(4)}/hr</span>
+                          <span className="block text-muted-foreground">
+                            Estimated Cost
+                          </span>
+                          <span className="font-semibold">
+                            ${packageHourlyCost.toFixed(4)}/hr
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -960,7 +977,8 @@ export function StepSource({
                         className="h-9 text-xs"
                       />
                       <p className="text-[10px] text-muted-foreground">
-                        Enter a name for your application. It will be used to generate the URL.
+                        Enter a name for your application. It will be used to
+                        generate the URL.
                       </p>
                     </div>
 

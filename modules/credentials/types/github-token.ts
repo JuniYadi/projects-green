@@ -2,8 +2,8 @@ import { z } from "zod"
 
 export const githubTokenMetadataSchema = z.object({
   accountLogin: z.string().min(1),
-  scopes:       z.array(z.string()).default([]),
-  tokenType:    z.enum(["fine_grained", "classic"]).optional(),
+  scopes: z.array(z.string()).default([]),
+  tokenType: z.enum(["fine_grained", "classic"]).optional(),
 })
 export type GithubTokenMetadata = z.infer<typeof githubTokenMetadataSchema>
 
@@ -18,10 +18,10 @@ export const GithubTokenDef = {
   icon: "GithubLogo",
   metadataFields: [
     { key: "accountLogin", label: "Account", primary: true },
-    { key: "scopes",       label: "Scopes" },
+    { key: "scopes", label: "Scopes" },
   ] as const,
   metadataSchema: githubTokenMetadataSchema,
-  secretsSchema:  githubTokenSecretsSchema,
+  secretsSchema: githubTokenSecretsSchema,
   buildMaskedPreview(secrets: GithubTokenSecrets): string {
     return `ghp_***…${secrets.token.slice(-4)}`
   },

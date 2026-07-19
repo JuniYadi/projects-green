@@ -11,8 +11,16 @@ import { getCredentialTypeDef } from "@/modules/credentials/credential-type-regi
 export const runtime = "nodejs"
 
 function requireOrg(auth: Awaited<ReturnType<typeof withAuth>>) {
-  if (!auth.user) return NextResponse.json({ ok: false, error: "UNAUTHORIZED" }, { status: 401 })
-  if (!auth.organizationId) return NextResponse.json({ ok: false, error: "FORBIDDEN", message: "No organization selected" }, { status: 403 })
+  if (!auth.user)
+    return NextResponse.json(
+      { ok: false, error: "UNAUTHORIZED" },
+      { status: 401 }
+    )
+  if (!auth.organizationId)
+    return NextResponse.json(
+      { ok: false, error: "FORBIDDEN", message: "No organization selected" },
+      { status: 403 }
+    )
   return auth.organizationId
 }
 
@@ -27,10 +35,7 @@ export const PATCH = async (
   const { id } = await params
   const existingType = await getCredentialType(orgId, id)
   if (!existingType) {
-    return NextResponse.json(
-      { ok: false, error: "NOT_FOUND" },
-      { status: 404 }
-    )
+    return NextResponse.json({ ok: false, error: "NOT_FOUND" }, { status: 404 })
   }
 
   const def = getCredentialTypeDef(existingType)

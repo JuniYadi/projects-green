@@ -34,9 +34,17 @@ type AccountWithServer = Prisma.VpnServerAccountGetPayload<
 export type ProvisioningAdapters = {
   openVpn?: Pick<
     OpenVpnSshAdapter,
-    "createClient" | "fetchConfig" | "validateClient" | "revokeClient" | "removeClient" | "restartServer"
+    | "createClient"
+    | "fetchConfig"
+    | "validateClient"
+    | "revokeClient"
+    | "removeClient"
+    | "restartServer"
   >
-  wireGuard?: Pick<WireGuardSshAdapter, "createPeer" | "validatePeer" | "revokePeer">
+  wireGuard?: Pick<
+    WireGuardSshAdapter,
+    "createPeer" | "validatePeer" | "revokePeer"
+  >
   proxy?: Pick<ProxySshAdapter, "createUser" | "validateUser">
 }
 
@@ -73,8 +81,7 @@ export class VpnProvisioningService {
     adapters: ProvisioningAdapters = {}
   ) {
     this.prisma = prisma
-    this.openVpn =
-      adapters.openVpn ?? new OpenVpnSshAdapter()
+    this.openVpn = adapters.openVpn ?? new OpenVpnSshAdapter()
     this.wireGuard = adapters.wireGuard ?? new WireGuardSshAdapter()
     this.proxy = adapters.proxy ?? new ProxySshAdapter()
     this.emailService = vpnEmailService
@@ -105,11 +112,7 @@ export class VpnProvisioningService {
     const target = this.toSshTarget(account)
 
     try {
-      const data = await this.runProtocol(
-        account,
-        target,
-        serverAccountId,
-      )
+      const data = await this.runProtocol(account, target, serverAccountId)
       await this.prisma.vpnServerAccount.update({
         where: { id: serverAccountId },
         data: {
@@ -178,12 +181,22 @@ export class VpnProvisioningService {
       )
 
       // ponytail: verify peer was actually removed — matches OpenVPN pattern
-      await this.withStep(serverAccountId, account, "verifying_revocation", async () => {
-        const validation = await this.wireGuard.validatePeer(target, account.username)
-        if (validation.exists) {
-          throw new Error(`WireGuard peer "${account.username}" still exists after revoke`)
+      await this.withStep(
+        serverAccountId,
+        account,
+        "verifying_revocation",
+        async () => {
+          const validation = await this.wireGuard.validatePeer(
+            target,
+            account.username
+          )
+          if (validation.exists) {
+            throw new Error(
+              `WireGuard peer "${account.username}" still exists after revoke`
+            )
+          }
         }
-      })
+      )
 
       await this.prisma.vpnServerAccount.update({
         where: { id: serverAccountId },
@@ -213,15 +226,25 @@ export class VpnProvisioningService {
       this.openVpn.removeClient(target, account.username)
     )
     // Verify the user no longer exists on the server after revoke
-    await this.withStep(serverAccountId, account, "verifying_revocation", async () => {
-      const validation = await this.openVpn.validateClient(target, account.username)
-      if (validation.exists) {
-        throw new Error(`Client "${account.username}" still exists on server after revoke`)
+    await this.withStep(
+      serverAccountId,
+      account,
+      "verifying_revocation",
+      async () => {
+        const validation = await this.openVpn.validateClient(
+          target,
+          account.username
+        )
+        if (validation.exists) {
+          throw new Error(
+            `Client "${account.username}" still exists on server after revoke`
+          )
+        }
       }
-    })
+    )
     // Restart OpenVPN to drop the active connection immediately
     await this.withStep(serverAccountId, account, "restarting_openvpn", () =>
-      this.openVpn.restartServer(target),
+      this.openVpn.restartServer(target)
     )
 
     await this.prisma.vpnServerAccount.update({
@@ -260,7 +283,9 @@ export class VpnProvisioningService {
       serverId: account.serverId,
       subscriptionId: account.subscriptionId,
       organizationId: account.subscription.organizationId,
-      action: result.exists ? "REMOTE_ACCOUNT_VALIDATED" : "REMOTE_ACCOUNT_MISSING",
+      action: result.exists
+        ? "REMOTE_ACCOUNT_VALIDATED"
+        : "REMOTE_ACCOUNT_MISSING",
       status: result.exists ? "OK" : "FAILED",
       message: result.exists
         ? `Remote account "${account.username}" exists on ${account.server.hostname}`
@@ -297,28 +322,37 @@ export class VpnProvisioningService {
   private async runProtocol(
     account: AccountWithServer,
     target: SshTarget,
-    serverAccountId: string,
+    serverAccountId: string
   ): Promise<Prisma.VpnServerAccountUpdateInput> {
     switch (account.protocol) {
       case "OPENVPN": {
         await this.withStep(serverAccountId, account, "creating_client", () =>
-          this.openVpn.createClient(target, account.username),
+          this.openVpn.createClient(target, account.username)
         )
-        const config = await this.withStep(serverAccountId, account, "fetching_config", () =>
-          this.openVpn.fetchConfig(target, account.username),
+        const config = await this.withStep(
+          serverAccountId,
+          account,
+          "fetching_config",
+          () => this.openVpn.fetchConfig(target, account.username)
         )
         const encrypted = encryptVpnConfig(config)
         return { configEncrypted: encrypted }
       }
       case "WIREGUARD": {
-        const { config } = await this.withStep(serverAccountId, account, "creating_peer", () =>
-          this.wireGuard.createPeer(target, account.username),
+        const { config } = await this.withStep(
+          serverAccountId,
+          account,
+          "creating_peer",
+          () => this.wireGuard.createPeer(target, account.username)
         )
         return { configEncrypted: encryptVpnConfig(config) }
       }
       case "PROXY": {
-        const { password } = await this.withStep(serverAccountId, account, "creating_user", () =>
-          this.proxy.createUser(target, account.username),
+        const { password } = await this.withStep(
+          serverAccountId,
+          account,
+          "creating_user",
+          () => this.proxy.createUser(target, account.username)
         )
         return { password: encryptProxyPassword(password) }
       }
@@ -354,7 +388,7 @@ export class VpnProvisioningService {
     serverAccountId: string,
     account: AccountWithServer,
     step: string,
-    fn: () => T | Promise<T>,
+    fn: () => T | Promise<T>
   ): Promise<T> {
     const start = performance.now()
 
@@ -368,7 +402,9 @@ export class VpnProvisioningService {
       step,
       message: `Step "${step}" started for account ${serverAccountId}`,
     })
-    console.info(`[vpn-provisioning] step=${step} account=${serverAccountId} started`)
+    console.info(
+      `[vpn-provisioning] step=${step} account=${serverAccountId} started`
+    )
 
     try {
       const result = await fn()
@@ -384,12 +420,13 @@ export class VpnProvisioningService {
         message: `Step "${step}" completed for account ${serverAccountId}`,
         durationMs,
       })
-      console.info(`[vpn-provisioning] step=${step} account=${serverAccountId} ok`)
+      console.info(
+        `[vpn-provisioning] step=${step} account=${serverAccountId} ok`
+      )
       return result
     } catch (error) {
       const durationMs = Math.round(performance.now() - start)
-      const message =
-        error instanceof Error ? error.message : "Unknown error"
+      const message = error instanceof Error ? error.message : "Unknown error"
       await logAuditEvent({
         serverAccountId,
         serverId: account.serverId,

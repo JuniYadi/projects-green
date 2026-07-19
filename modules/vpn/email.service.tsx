@@ -21,7 +21,9 @@ import { SubscriptionCancelledEmail } from "./emails/subscription-cancelled"
  */
 
 export class VpnEmailService {
-  private readonly orgEmailCache = new LRUCache<string, string[] | null>({ max: 1000 })
+  private readonly orgEmailCache = new LRUCache<string, string[] | null>({
+    max: 1000,
+  })
 
   async sendSubscriptionCreated(organizationId: string, packageName?: string) {
     const recipients = await this.resolveRecipients(organizationId)
@@ -99,9 +101,7 @@ export class VpnEmailService {
     const recipients = await this.resolveRecipients(organizationId)
     if (!recipients.length) return
 
-    const html = await render(
-      <RenewalFailedEmail packageName={packageName} />
-    )
+    const html = await render(<RenewalFailedEmail packageName={packageName} />)
     for (const { email } of recipients) {
       await sendEmail({
         to: email,

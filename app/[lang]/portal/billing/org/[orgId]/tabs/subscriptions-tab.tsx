@@ -60,7 +60,5 @@ export function SubscriptionsTab({ orgId }: SubscriptionsTabProps) {
     currentPeriodEnd: sub.currentPeriodEnd,
   }))
 
-  return (
-    <SubscriptionManager subscriptions={mappedSubscriptions} />
-  )
+  return <SubscriptionManager subscriptions={mappedSubscriptions} />
 }

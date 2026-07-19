@@ -30,10 +30,14 @@ type HealthBreakdown = {
   unknown: number
 }
 
-function computeHealth(device: DeviceListItem): "connected" | "disconnected" | "unknown" {
+function computeHealth(
+  device: DeviceListItem
+): "connected" | "disconnected" | "unknown" {
   if (device.lastHeartbeatAt) {
     const fifteenMinAgo = Date.now() - 15 * 60 * 1000
-    return new Date(device.lastHeartbeatAt).getTime() > fifteenMinAgo ? "connected" : "disconnected"
+    return new Date(device.lastHeartbeatAt).getTime() > fifteenMinAgo
+      ? "connected"
+      : "disconnected"
   }
   return device.status === "DISCONNECTED" ? "disconnected" : "unknown"
 }
@@ -60,7 +64,9 @@ export default function PortalWhatsAppDashboardPage() {
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
 
   const health = React.useMemo<HealthBreakdown>(() => {
-    let connected = 0, disconnected = 0, unknown = 0
+    let connected = 0,
+      disconnected = 0,
+      unknown = 0
     for (const d of devices) {
       const h = computeHealth(d)
       if (h === "connected") connected++
@@ -259,9 +265,12 @@ export default function PortalWhatsAppDashboardPage() {
                   {health.connected} Connected
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {health.disconnected > 0 && `${health.disconnected} Disconnected · `}
+                  {health.disconnected > 0 &&
+                    `${health.disconnected} Disconnected · `}
                   {health.unknown > 0 && `${health.unknown} Unknown`}
-                  {health.disconnected === 0 && health.unknown === 0 && "All devices healthy"}
+                  {health.disconnected === 0 &&
+                    health.unknown === 0 &&
+                    "All devices healthy"}
                 </p>
               </CardContent>
             </Card>

@@ -31,7 +31,6 @@ export default function ConsoleVpnSubscriptionsPage() {
     load()
   }, [load])
 
-
   if (state.phase === "loading") {
     return (
       <>

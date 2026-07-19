@@ -59,7 +59,8 @@ const ctx: Record<string, unknown> = {
 }
 const ctxKeys = Object.keys(ctx)
 
-const stmtRe = /^\s*(const|let|var|if|for|while|do|switch|function|class|return|try|throw|import|export)\b/
+const stmtRe =
+  /^\s*(const|let|var|if|for|while|do|switch|function|class|return|try|throw|import|export)\b/
 
 function compile(input: string): string {
   const args = ctxKeys.join(",")

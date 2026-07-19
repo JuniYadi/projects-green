@@ -20,7 +20,7 @@ function renderAsync(ui: React.ReactElement) {
 }
 
 const serverAccount = (
-  overrides: Partial<VpnServerAccount> = {},
+  overrides: Partial<VpnServerAccount> = {}
 ): VpnServerAccount => ({
   id: "sa-1",
   serverId: "srv-1",
@@ -41,7 +41,7 @@ const serverAccount = (
 })
 
 const subscription = (
-  overrides: Partial<VpnSubscription> = {},
+  overrides: Partial<VpnSubscription> = {}
 ): VpnSubscription => ({
   id: "sub-1",
   organizationId: "org-1",
@@ -56,7 +56,13 @@ const subscription = (
   originalCurrency: "IDR",
   exchangeRate: null,
   deviceCount: 0,
-  provisioningSummary: { active: 2, pending: 0, failed: 0, revoked: 0, total: 2 },
+  provisioningSummary: {
+    active: 2,
+    pending: 0,
+    failed: 0,
+    revoked: 0,
+    total: 2,
+  },
   cancelAtPeriodEnd: false,
   firstPayment: null,
   serverAccounts: [
@@ -106,7 +112,7 @@ beforeEach(() => {
 describe("VpnMyServices", () => {
   it("renders subscription table with package name and status", () => {
     const view = renderAsync(
-      <VpnMyServices subscriptions={[subscription()]} onChanged={() => {}} />,
+      <VpnMyServices subscriptions={[subscription()]} onChanged={() => {}} />
     )
 
     expect(view.getByText("Pro VPN - SG Standard")).toBeInTheDocument()
@@ -119,7 +125,7 @@ describe("VpnMyServices", () => {
       <VpnMyServices
         subscriptions={[manyServerSubscription(10)]}
         onChanged={() => {}}
-      />,
+      />
     )
 
     expect(within(view.container).getAllByRole("row").length).toBe(2)
@@ -127,7 +133,10 @@ describe("VpnMyServices", () => {
     expect(view.getByText("10 servers · 10 accounts")).toBeInTheDocument()
 
     const detailsLink = view.getByRole("link", { name: "View details" })
-    expect(detailsLink).toHaveAttribute("href", "/console/vpn/subscriptions/sub-1")
+    expect(detailsLink).toHaveAttribute(
+      "href",
+      "/console/vpn/subscriptions/sub-1"
+    )
   })
 
   it("groups server accounts by serverId in the detail component", () => {
@@ -156,27 +165,31 @@ describe("VpnMyServices", () => {
   })
 
   it("shows protocol labels for each account in the detail component", () => {
-    const view = render(<VpnServerAccountsDetail subscription={subscription()} />)
+    const view = render(
+      <VpnServerAccountsDetail subscription={subscription()} />
+    )
     expect(view.getByText("OVPN")).toBeInTheDocument()
     expect(view.getByText("WG")).toBeInTheDocument()
   })
 
   it("shows port numbers per protocol in the detail component", () => {
-    const view = render(<VpnServerAccountsDetail subscription={subscription()} />)
+    const view = render(
+      <VpnServerAccountsDetail subscription={subscription()} />
+    )
     expect(view.getByText(":1194")).toBeInTheDocument()
     expect(view.getByText(":51820")).toBeInTheDocument()
   })
 
   it("shows failure reason for FAILED protocols in the detail component", () => {
-    const view = render(<VpnServerAccountsDetail subscription={subscription()} />)
-    expect(
-      view.getByText("SSH key mismatch on server"),
-    ).toBeInTheDocument()
+    const view = render(
+      <VpnServerAccountsDetail subscription={subscription()} />
+    )
+    expect(view.getByText("SSH key mismatch on server")).toBeInTheDocument()
   })
 
   it("shows region name in the table summary", () => {
     const view = renderAsync(
-      <VpnMyServices subscriptions={[subscription()]} onChanged={() => {}} />,
+      <VpnMyServices subscriptions={[subscription()]} onChanged={() => {}} />
     )
 
     expect(view.getAllByText("Singapore").length).toBeGreaterThan(0)
@@ -184,7 +197,7 @@ describe("VpnMyServices", () => {
 
   it("shows cancel in the actions menu for ACTIVE subscription", async () => {
     const view = renderAsync(
-      <VpnMyServices subscriptions={[subscription()]} onChanged={() => {}} />,
+      <VpnMyServices subscriptions={[subscription()]} onChanged={() => {}} />
     )
 
     await userEvent.click(view.getByRole("button", { name: "Actions" }))
@@ -196,11 +209,13 @@ describe("VpnMyServices", () => {
       <VpnMyServices
         subscriptions={[subscription({ cancelAtPeriodEnd: true })]}
         onChanged={() => {}}
-      />,
+      />
     )
 
     await userEvent.click(view.getByRole("button", { name: "Actions" }))
-    expect(view.getByRole("menuitem", { name: "Reinstate" })).toBeInTheDocument()
+    expect(
+      view.getByRole("menuitem", { name: "Reinstate" })
+    ).toBeInTheDocument()
   })
 
   it("disables cancel menu item for non-ACTIVE subscriptions", async () => {
@@ -208,13 +223,13 @@ describe("VpnMyServices", () => {
       <VpnMyServices
         subscriptions={[subscription({ status: "SUSPENDED" })]}
         onChanged={() => {}}
-      />,
+      />
     )
 
     await userEvent.click(view.getByRole("button", { name: "Actions" }))
     expect(view.getByRole("menuitem", { name: "Cancel" })).toHaveAttribute(
       "aria-disabled",
-      "true",
+      "true"
     )
   })
 
@@ -252,12 +267,12 @@ describe("VpnMyServices", () => {
           }),
         ]}
         onChanged={() => {}}
-      />,
+      />
     )
 
     await userEvent.type(
       view.getByPlaceholderText("Search subscriptions..."),
-      "Enterprise",
+      "Enterprise"
     )
 
     await waitFor(() => {
@@ -287,7 +302,7 @@ describe("VpnMyServices", () => {
           }),
         ]}
         onChanged={() => {}}
-      />,
+      />
     )
 
     const regionSelect = within(view.container).getAllByRole("combobox")[1]

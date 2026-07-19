@@ -53,9 +53,7 @@ async function fetchMobile<T>(url: string, options?: RequestInit): Promise<T> {
   // Try JSON first; fall back to text for non-JSON error responses.
   const contentType = response.headers.get("content-type") ?? ""
   const isJson = contentType.includes("application/json")
-  const data = isJson
-    ? ((await response.json()) as T | ApiError)
-    : null
+  const data = isJson ? ((await response.json()) as T | ApiError) : null
 
   if (!response.ok) {
     let message: string

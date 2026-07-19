@@ -141,7 +141,10 @@ export default function WhatsAppContactsPage() {
   const [parsedContacts, setParsedContacts] = React.useState<
     Array<{ phone: string; name: string; email: string; group: string }>
   >([])
-  const [importProgress, setImportProgress] = React.useState({ current: 0, total: 0 })
+  const [importProgress, setImportProgress] = React.useState({
+    current: 0,
+    total: 0,
+  })
   const [isImporting, setIsImporting] = React.useState(false)
 
   // ── Data fetching ───────────────────────────────────────────────────────
@@ -293,7 +296,12 @@ export default function WhatsAppContactsPage() {
     const emailIdx = header.indexOf("email")
     const groupIdx = header.indexOf("group")
     if (phoneIdx === -1) return []
-    const rows: Array<{ phone: string; name: string; email: string; group: string }> = []
+    const rows: Array<{
+      phone: string
+      name: string
+      email: string
+      group: string
+    }> = []
     for (let i = 1; i < lines.length; i++) {
       const cols = lines[i].split(",").map((c) => c.trim())
       const phone = cols[phoneIdx] ?? ""
@@ -363,10 +371,14 @@ export default function WhatsAppContactsPage() {
     setImportDialogOpen(false)
     setParsedContacts([])
     if (successCount > 0) {
-      toast.success(`Imported ${successCount} contact${successCount !== 1 ? "s" : ""}`)
+      toast.success(
+        `Imported ${successCount} contact${successCount !== 1 ? "s" : ""}`
+      )
     }
     if (errorCount > 0) {
-      toast.error(`${errorCount} contact${errorCount !== 1 ? "s" : ""} failed to import`)
+      toast.error(
+        `${errorCount} contact${errorCount !== 1 ? "s" : ""} failed to import`
+      )
     }
     void loadContacts()
   }
@@ -902,8 +914,8 @@ export default function WhatsAppContactsPage() {
           <DialogHeader>
             <DialogTitle>Import Contacts from CSV</DialogTitle>
             <DialogDescription>
-              Upload a CSV file with columns: phone, name, email, group (optional).
-              The first row must be a header row.
+              Upload a CSV file with columns: phone, name, email, group
+              (optional). The first row must be a header row.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -929,16 +941,25 @@ export default function WhatsAppContactsPage() {
             {parsedContacts.length > 0 && (
               <div className="grid gap-2">
                 <Label>
-                  Preview ({parsedContacts.length} contact{parsedContacts.length !== 1 ? "s" : ""})
+                  Preview ({parsedContacts.length} contact
+                  {parsedContacts.length !== 1 ? "s" : ""})
                 </Label>
                 <div className="max-h-64 overflow-auto rounded-md border">
                   <table className="w-full text-xs">
-                    <thead className="bg-muted sticky top-0">
+                    <thead className="sticky top-0 bg-muted">
                       <tr>
-                        <th className="px-2 py-1.5 text-left font-medium">Phone</th>
-                        <th className="px-2 py-1.5 text-left font-medium">Name</th>
-                        <th className="px-2 py-1.5 text-left font-medium">Email</th>
-                        <th className="px-2 py-1.5 text-left font-medium">Group</th>
+                        <th className="px-2 py-1.5 text-left font-medium">
+                          Phone
+                        </th>
+                        <th className="px-2 py-1.5 text-left font-medium">
+                          Name
+                        </th>
+                        <th className="px-2 py-1.5 text-left font-medium">
+                          Email
+                        </th>
+                        <th className="px-2 py-1.5 text-left font-medium">
+                          Group
+                        </th>
                       </tr>
                     </thead>
                     <tbody>

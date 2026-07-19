@@ -2,10 +2,7 @@ import { Elysia } from "elysia"
 import { z } from "zod"
 
 import { adminAuthGuard } from "@/modules/admin/api/admin.guards"
-import {
-  EMAIL_TEMPLATES,
-  renderEmailTemplate,
-} from "@/lib/email-templates"
+import { EMAIL_TEMPLATES, renderEmailTemplate } from "@/lib/email-templates"
 
 const paramsSchema = z.object({ id: z.string().trim().min(1) })
 

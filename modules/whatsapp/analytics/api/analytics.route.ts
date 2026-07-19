@@ -106,7 +106,11 @@ export const analyticsRoutes = new Elysia({ prefix: "/analytics" })
         return { ok: true, ...result }
       } catch (err: any) {
         set.status = 400
-        return { ok: false, error: "RECONCILIATION_FAILED", message: err.message }
+        return {
+          ok: false,
+          error: "RECONCILIATION_FAILED",
+          message: err.message,
+        }
       }
     }
   )

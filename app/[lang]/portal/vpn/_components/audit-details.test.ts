@@ -1,9 +1,6 @@
 import { describe, expect, it } from "bun:test"
 
-import {
-  actionTone,
-  extractAuditDetails,
-} from "./audit-details"
+import { actionTone, extractAuditDetails } from "./audit-details"
 
 describe("extractAuditDetails", () => {
   it("returns empty rows when details is null and no columns are populated", () => {
@@ -53,13 +50,7 @@ describe("extractAuditDetails", () => {
       },
     })
     const labels = rows.map((r) => r.label)
-    expect(labels).toEqual([
-      "Server",
-      "Protocol",
-      "Host",
-      "Port",
-      "Duration",
-    ])
+    expect(labels).toEqual(["Server", "Protocol", "Host", "Port", "Duration"])
     const duration = rows.find((r) => r.label === "Duration")
     expect(duration?.value).toBe("1.2s")
   })

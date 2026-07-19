@@ -253,7 +253,9 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
   },
   {
     body: t.Object({
-      sourceType: t.Optional(t.Union([t.Literal("GITHUB"), t.Literal("TEMPLATE")])),
+      sourceType: t.Optional(
+        t.Union([t.Literal("GITHUB"), t.Literal("TEMPLATE")])
+      ),
       templateId: t.Optional(t.String()),
       repositoryId: t.Optional(t.String()),
       name: t.Optional(t.String()),

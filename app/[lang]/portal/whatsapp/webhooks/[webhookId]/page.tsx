@@ -109,7 +109,9 @@ export default async function PortalWebhookDetailPage({
                 Auth Type
               </dt>
               <dd className="mt-1 text-sm">
-                {AUTH_LABELS[webhook.authType ?? ""] ?? webhook.authType ?? "None"}
+                {AUTH_LABELS[webhook.authType ?? ""] ??
+                  webhook.authType ??
+                  "None"}
               </dd>
             </div>
             <div>
@@ -122,17 +124,13 @@ export default async function PortalWebhookDetailPage({
               <dt className="text-xs font-medium text-muted-foreground">
                 Retry Interval
               </dt>
-              <dd className="mt-1 text-sm">
-                {webhook.retryIntervalMs}ms
-              </dd>
+              <dd className="mt-1 text-sm">{webhook.retryIntervalMs}ms</dd>
             </div>
             <div>
               <dt className="text-xs font-medium text-muted-foreground">
                 Created
               </dt>
-              <dd className="mt-1 text-sm">
-                {formatDate(webhook.createdAt)}
-              </dd>
+              <dd className="mt-1 text-sm">{formatDate(webhook.createdAt)}</dd>
             </div>
           </dl>
         </CardContent>

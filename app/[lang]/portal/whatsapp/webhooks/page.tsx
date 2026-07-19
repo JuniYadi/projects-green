@@ -68,7 +68,9 @@ export default async function PortalWebhooksPage({
   })
 
   const isSuperAdmin = platformRole === "super_admin"
-  const accessWhere = isSuperAdmin ? {} : { organizationId: auth.organizationId }
+  const accessWhere = isSuperAdmin
+    ? {}
+    : { organizationId: auth.organizationId }
   const selectedOrganizationId =
     organizationId && organizationId !== "all" ? organizationId : undefined
   const filterWhere = selectedOrganizationId
@@ -169,21 +171,21 @@ export default async function PortalWebhooksPage({
                           {organizations.get(wh.organizationId)?.name ??
                             wh.organizationId}
                         </TableCell>
-                        <TableCell className="text-sm font-mono">
+                        <TableCell className="font-mono text-sm">
                           {wh.whatsappDevice?.phoneNumber ?? "—"}
                         </TableCell>
-                        <TableCell className="max-w-[200px] truncate text-sm font-mono">
+                        <TableCell className="max-w-[200px] truncate font-mono text-sm">
                           {truncateUrl(wh.webhookUrl)}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {AUTH_LABELS[wh.authType ?? ""] ?? wh.authType ?? "None"}
+                            {AUTH_LABELS[wh.authType ?? ""] ??
+                              wh.authType ??
+                              "None"}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant={wh.active ? "success" : "secondary"}
-                          >
+                          <Badge variant={wh.active ? "success" : "secondary"}>
                             {wh.active ? "Active" : "Inactive"}
                           </Badge>
                         </TableCell>
@@ -192,9 +194,7 @@ export default async function PortalWebhooksPage({
                         </TableCell>
                         <TableCell>
                           <Button variant="outline" size="sm" asChild>
-                            <Link
-                              href={`/portal/whatsapp/webhooks/${wh.id}`}
-                            >
+                            <Link href={`/portal/whatsapp/webhooks/${wh.id}`}>
                               Detail
                             </Link>
                           </Button>

@@ -363,10 +363,11 @@ describe("messagesRoutes", () => {
       expect(res.status).toBe(422)
       const body = await res.json()
       expect(body.error).toBe("VALIDATION_ERROR")
-      expect(body.message).toBe("Phone number must be in E.164 format or Indonesian local format.")
+      expect(body.message).toBe(
+        "Phone number must be in E.164 format or Indonesian local format."
+      )
     })
   })
-
 
   describe("POST /messages/send-interactive", () => {
     it("returns 200 on successful button interactive send", async () => {
@@ -437,7 +438,13 @@ describe("messagesRoutes", () => {
               body: { text: "Visit our website" },
               action: {
                 buttons: [
-                  { type: "cta_url", cta_url: { url: "https://example.com", display_text: "Open Website" } },
+                  {
+                    type: "cta_url",
+                    cta_url: {
+                      url: "https://example.com",
+                      display_text: "Open Website",
+                    },
+                  },
                 ],
               },
             },
@@ -463,7 +470,10 @@ describe("messagesRoutes", () => {
               body: { text: "Visit our website" },
               action: {
                 buttons: [
-                  { type: "cta_url", cta_url: { display_text: "Open Website" } },
+                  {
+                    type: "cta_url",
+                    cta_url: { display_text: "Open Website" },
+                  },
                 ],
               },
             },
@@ -527,9 +537,7 @@ describe("messagesRoutes", () => {
               type: "button",
               body: { text: "test" },
               action: {
-                buttons: [
-                  { type: "reply", reply: { id: "b1", title: "OK" } },
-                ],
+                buttons: [{ type: "reply", reply: { id: "b1", title: "OK" } }],
               },
             },
           }),
@@ -553,9 +561,7 @@ describe("messagesRoutes", () => {
               type: "button",
               body: { text: "test" },
               action: {
-                buttons: [
-                  { type: "reply", reply: { id: "b1", title: "OK" } },
-                ],
+                buttons: [{ type: "reply", reply: { id: "b1", title: "OK" } }],
               },
             },
           }),
@@ -566,7 +572,9 @@ describe("messagesRoutes", () => {
       expect(res.status).toBe(422)
       const body = await res.json()
       expect(body.error).toBe("VALIDATION_ERROR")
-      expect(body.message).toBe("Phone number must be in E.164 format or Indonesian local format.")
+      expect(body.message).toBe(
+        "Phone number must be in E.164 format or Indonesian local format."
+      )
     })
   })
 
@@ -598,7 +606,9 @@ describe("messagesRoutes", () => {
     }
 
     it("sends template message successfully with deviceId", async () => {
-      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(mockTemplate as any)
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(
+        mockTemplate as any
+      )
 
       const app = createTestApp()
       const res = await app.handle(
@@ -621,7 +631,9 @@ describe("messagesRoutes", () => {
       expect(body.messageId).toBe("mock-id")
       expect(body.status).toBe("sent")
       expect(mockPrisma.whatsappTemplate.findFirst).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining({ id: "tpl-1" }) })
+        expect.objectContaining({
+          where: expect.objectContaining({ id: "tpl-1" }),
+        })
       )
       expect(mockMessageService.sendTemplateMessage).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -654,9 +666,10 @@ describe("messagesRoutes", () => {
       expect(res.status).toBe(422)
     })
 
-
     it("returns 422 when template does not match device", async () => {
-      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(mockTemplate as any)
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(
+        mockTemplate as any
+      )
 
       const app = createTestApp()
       const res = await app.handle(
@@ -676,9 +689,10 @@ describe("messagesRoutes", () => {
       expect(res.status).toBe(422)
       const body = await res.json()
       expect(body.error).toBe("VALIDATION_ERROR")
-      expect(body.message).toBe("Template is not available for the selected device.")
+      expect(body.message).toBe(
+        "Template is not available for the selected device."
+      )
     })
-
 
     it("returns 404 for non-existent template", async () => {
       mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(null as any)
@@ -702,7 +716,6 @@ describe("messagesRoutes", () => {
       const body = await res.json()
       expect(body.error).toBe("NOT_FOUND")
     })
-
 
     it("returns 422 for non-existent language", async () => {
       mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce({
@@ -737,7 +750,9 @@ describe("messagesRoutes", () => {
     })
 
     it("returns 422 for missing required field", async () => {
-      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(mockTemplate as any)
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(
+        mockTemplate as any
+      )
 
       const app = createTestApp()
       const res = await app.handle(
@@ -761,7 +776,9 @@ describe("messagesRoutes", () => {
     })
 
     it("normalizes Indonesian local phone number to E.164", async () => {
-      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(mockTemplate as any)
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(
+        mockTemplate as any
+      )
 
       const app = createTestApp()
       const res = await app.handle(
@@ -787,7 +804,9 @@ describe("messagesRoutes", () => {
     })
 
     it("returns 422 with invalid phone number", async () => {
-      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(mockTemplate as any)
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(
+        mockTemplate as any
+      )
 
       const app = createTestApp()
       const res = await app.handle(
@@ -807,7 +826,9 @@ describe("messagesRoutes", () => {
       expect(res.status).toBe(422)
       const body = await res.json()
       expect(body.error).toBe("VALIDATION_ERROR")
-      expect(body.message).toBe("Phone number must be in E.164 format or Indonesian local format.")
+      expect(body.message).toBe(
+        "Phone number must be in E.164 format or Indonesian local format."
+      )
     })
   })
 

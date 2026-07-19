@@ -12,7 +12,12 @@ export const DEFAULT_QUOTA_BASE = 1000
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
-export const deviceStatusEnum = z.enum(["ACTIVE", "NON_ACTIVE", "DISCONNECTED", "UNKNOWN"])
+export const deviceStatusEnum = z.enum([
+  "ACTIVE",
+  "NON_ACTIVE",
+  "DISCONNECTED",
+  "UNKNOWN",
+])
 export type DeviceStatus = z.infer<typeof deviceStatusEnum>
 
 export const deviceEnvironmentEnum = z.enum(["SANDBOX", "LIVE"])
@@ -191,7 +196,10 @@ export type DeviceService = {
   updateLastHeartbeat: (deviceId: string) => Promise<void>
   markDisconnected: (deviceId: string) => Promise<void>
   markActive: (deviceId: string) => Promise<void>
-  regenerateSigningSecret: (id: string, organizationId: string | null) => Promise<string>
+  regenerateSigningSecret: (
+    id: string,
+    organizationId: string | null
+  ) => Promise<string>
   topUpAddonQuota: (
     id: string,
     amount: number,

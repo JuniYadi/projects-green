@@ -22,54 +22,59 @@ type MockTemplate = {
   languages: Record<string, unknown>[]
 }
 
-const mockTemplateCreate = mock(async (): Promise<MockTemplate> => ({
-  id: "tpl-1",
-  slug: "hello_world",
-  name: "Hello World",
-  description: "A greeting template",
-  organizationId: "org-1",
-  whatsappDeviceId: null,
-  syncStatus: "NOT_SYNCED",
-  metaStatus: null,
-  lastSyncedAt: null,
-  category: "UTILITY",
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  languages: [],
-}))
+const mockTemplateCreate = mock(
+  async (): Promise<MockTemplate> => ({
+    id: "tpl-1",
+    slug: "hello_world",
+    name: "Hello World",
+    description: "A greeting template",
+    organizationId: "org-1",
+    whatsappDeviceId: null,
+    syncStatus: "NOT_SYNCED",
+    metaStatus: null,
+    lastSyncedAt: null,
+    category: "UTILITY",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    languages: [],
+  })
+)
 
-const mockTemplateUpdate = mock(async (): Promise<MockTemplate> => ({
-  id: "tpl-1",
-  slug: "hello_world",
-  name: "Hello World Updated",
-  description: "Updated description",
-  organizationId: "org-1",
-  whatsappDeviceId: null,
-  syncStatus: "NOT_SYNCED",
-  metaStatus: null,
-  lastSyncedAt: null,
-  category: "MARKETING",
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  languages: [],
-}))
+const mockTemplateUpdate = mock(
+  async (): Promise<MockTemplate> => ({
+    id: "tpl-1",
+    slug: "hello_world",
+    name: "Hello World Updated",
+    description: "Updated description",
+    organizationId: "org-1",
+    whatsappDeviceId: null,
+    syncStatus: "NOT_SYNCED",
+    metaStatus: null,
+    lastSyncedAt: null,
+    category: "MARKETING",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    languages: [],
+  })
+)
 
-const mockTemplateFindUnique = mock(async (): Promise<MockTemplate> => ({
-  id: "tpl-1",
-  slug: "hello_world",
-  name: "Hello World",
-  description: "A greeting template",
-  organizationId: "org-1",
-  whatsappDeviceId: null,
-  syncStatus: "NOT_SYNCED",
-  metaStatus: null,
-  lastSyncedAt: null,
-  category: "UTILITY",
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  languages: [],
-}))
-
+const mockTemplateFindUnique = mock(
+  async (): Promise<MockTemplate> => ({
+    id: "tpl-1",
+    slug: "hello_world",
+    name: "Hello World",
+    description: "A greeting template",
+    organizationId: "org-1",
+    whatsappDeviceId: null,
+    syncStatus: "NOT_SYNCED",
+    metaStatus: null,
+    lastSyncedAt: null,
+    category: "UTILITY",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    languages: [],
+  })
+)
 
 const mockLogAudit = mock(async () => {})
 
@@ -347,7 +352,9 @@ describe("templatesRoutes", () => {
 
     describe("approved template restrictions", () => {
       it("rejects core field update on approved template", async () => {
-        mockTemplateFindUnique.mockImplementation(async () => approvedTemplate())
+        mockTemplateFindUnique.mockImplementation(async () =>
+          approvedTemplate()
+        )
 
         const app = createTestApp()
         const body = { name: "Trying to rename" }
@@ -363,11 +370,15 @@ describe("templatesRoutes", () => {
         expect(res.status).toBe(422)
         const json = await res.json()
         expect(json.error).toBe("VALIDATION_ERROR")
-        expect(json.message).toBe("Approved templates can only add language variants.")
+        expect(json.message).toBe(
+          "Approved templates can only add language variants."
+        )
       })
 
       it("rejects editing existing language on approved template", async () => {
-        mockTemplateFindUnique.mockImplementation(async () => approvedTemplate())
+        mockTemplateFindUnique.mockImplementation(async () =>
+          approvedTemplate()
+        )
 
         const app = createTestApp()
         const body = {
@@ -393,11 +404,15 @@ describe("templatesRoutes", () => {
         expect(res.status).toBe(422)
         const json = await res.json()
         expect(json.error).toBe("VALIDATION_ERROR")
-        expect(json.message).toBe("Approved template language variants cannot be edited.")
+        expect(json.message).toBe(
+          "Approved template language variants cannot be edited."
+        )
       })
 
       it("rejects adding duplicate language to approved template", async () => {
-        mockTemplateFindUnique.mockImplementation(async () => approvedTemplate())
+        mockTemplateFindUnique.mockImplementation(async () =>
+          approvedTemplate()
+        )
 
         const app = createTestApp()
         const body = {
@@ -422,7 +437,9 @@ describe("templatesRoutes", () => {
         expect(res.status).toBe(422)
         const json = await res.json()
         expect(json.error).toBe("VALIDATION_ERROR")
-        expect(json.message).toBe("Approved template language variants cannot be edited.")
+        expect(json.message).toBe(
+          "Approved template language variants cannot be edited."
+        )
       })
 
       it("rejects structure mismatch on new language for approved template", async () => {
@@ -454,7 +471,9 @@ describe("templatesRoutes", () => {
         expect(res.status).toBe(422)
         const json = await res.json()
         expect(json.error).toBe("VALIDATION_ERROR")
-        expect(json.message).toBe("New language variants must match the approved template structure.")
+        expect(json.message).toBe(
+          "New language variants must match the approved template structure."
+        )
       })
 
       it("accepts new language variant with matching structure on approved template", async () => {

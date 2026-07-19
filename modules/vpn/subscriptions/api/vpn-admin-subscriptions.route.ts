@@ -205,9 +205,7 @@ export const createAdminVpnSubscriptionsRoutes = (deps: Deps = {}) => {
         if (!sub || !account) return notFound(set)
 
         const previousUsername = account.username
-        const username = buildAccountUsername(
-          sub.organizationId
-        )
+        const username = buildAccountUsername(sub.organizationId)
 
         await prisma.vpnServerAccount.update({
           where: { id: account.id },

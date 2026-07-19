@@ -72,10 +72,7 @@ const STEPS = [
 
 const e164PhoneRegex = /^\+[1-9]\d{1,14}$/
 
-function validateStep(
-  step: number,
-  data: WizardData
-): Record<string, string> {
+function validateStep(step: number, data: WizardData): Record<string, string> {
   const errors: Record<string, string> = {}
 
   if (step === 0) {
@@ -177,7 +174,9 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
 
       const validated = adminCreateDeviceSchema.parse(payload)
       // ponytail: Eden type mismatch with Elysia body — `as never` is codebase convention here
-      const { data: body } = await eden.api.admin.devices.post(validated as never)
+      const { data: body } = await eden.api.admin.devices.post(
+        validated as never
+      )
 
       if (!body?.ok) {
         const errBody = body as ApiValidationError
@@ -257,11 +256,7 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
       updateData={updateData}
       errors={errors}
     />,
-    <StepReview
-      key="review"
-      data={data}
-      goToStep={handleStepClick}
-    />,
+    <StepReview key="review" data={data} goToStep={handleStepClick} />,
   ]
 
   return (
@@ -274,12 +269,12 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
             type="button"
             onClick={() => handleStepClick(i)}
             disabled={i > step}
-            className={`flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
               i === step
                 ? "bg-primary text-primary-foreground"
                 : i < step
-                  ? "bg-primary/10 text-primary cursor-pointer hover:bg-primary/20"
-                  : "bg-muted text-muted-foreground cursor-not-allowed"
+                  ? "cursor-pointer bg-primary/10 text-primary hover:bg-primary/20"
+                  : "cursor-not-allowed bg-muted text-muted-foreground"
             }`}
           >
             <span className="flex size-5 items-center justify-center rounded-full bg-current/10 text-[10px] font-bold">
@@ -297,11 +292,7 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
 
       {/* Navigation */}
       <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          onClick={handleBack}
-          disabled={step === 0}
-        >
+        <Button variant="outline" onClick={handleBack} disabled={step === 0}>
           Previous
         </Button>
         {step < STEPS.length - 1 ? (

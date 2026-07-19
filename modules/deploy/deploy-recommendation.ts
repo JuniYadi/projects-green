@@ -1,4 +1,7 @@
-import type { DetectionResult, ResourcePlanId } from "@/modules/deploy/deploy.types"
+import type {
+  DetectionResult,
+  ResourcePlanId,
+} from "@/modules/deploy/deploy.types"
 
 export type PlanRecommendation = {
   resourcePlanId: ResourcePlanId

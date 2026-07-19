@@ -103,30 +103,33 @@ export function MembersList({ organizationId }: MembersListProps) {
     (authorization?.allowedActions as TenantAction[]) || []
   )
 
-  const columns = useMemo<ColumnDef<TenantMembershipSummary>[]>(() => [
-    {
-      id: "member",
-      accessorKey: "displayName",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Member" />
-      ),
-      cell: ({ row }) => (
-        <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={row.original.avatarUrl ?? undefined} />
-            <AvatarFallback>
-              {toMemberInitials(row.original.displayName)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col">
-            <span className="text-xs text-muted-foreground">
-              {row.original.email}
-            </span>
+  const columns = useMemo<ColumnDef<TenantMembershipSummary>[]>(
+    () => [
+      {
+        id: "member",
+        accessorKey: "displayName",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Member" />
+        ),
+        cell: ({ row }) => (
+          <div className="flex items-center gap-3">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={row.original.avatarUrl ?? undefined} />
+              <AvatarFallback>
+                {toMemberInitials(row.original.displayName)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col">
+              <span className="text-xs text-muted-foreground">
+                {row.original.email}
+              </span>
+            </div>
           </div>
-        </div>
-      ),
-    },
-  ], [organizationId, allowedActions, pendingActionId, handleAction])
+        ),
+      },
+    ],
+    [organizationId, allowedActions, pendingActionId, handleAction]
+  )
 
   if (isLoading) {
     return (

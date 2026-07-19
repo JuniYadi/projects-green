@@ -42,11 +42,7 @@ function KeyValueEditor({
       {entries.map(([k, v]) => (
         <div key={k} className="flex items-center gap-2">
           <Input value={k} readOnly className="flex-1 bg-muted" />
-          <Input
-            value={String(v)}
-            readOnly
-            className="flex-1 bg-muted"
-          />
+          <Input value={String(v)} readOnly className="flex-1 bg-muted" />
           <Button
             type="button"
             variant="ghost"
@@ -223,9 +219,7 @@ export function StepProfile({ data, updateData, errors }: Props) {
           placeholder="s3://bucket/path"
           aria-invalid={!!errors.s3}
         />
-        {errors.s3 && (
-          <p className="text-xs text-destructive">{errors.s3}</p>
-        )}
+        {errors.s3 && <p className="text-xs text-destructive">{errors.s3}</p>}
       </div>
 
       {/* Token */}

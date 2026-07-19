@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, expect, it, mock, afterEach } from "bun:test"
-import { render, fireEvent, waitFor, act, cleanup } from "@testing-library/react"
+import {
+  render,
+  fireEvent,
+  waitFor,
+  act,
+  cleanup,
+} from "@testing-library/react"
 import type {
   PairingGenerateResponse,
   PairingStatusResponse,
@@ -22,7 +28,7 @@ const mockGeneratePairingToken = mock<
       pairingToken: "token-abc123",
       expiresAt: "2099-12-31T23:59:59.000Z",
       qrPayload: "test-payload",
-    }) as PairingGenerateResponse,
+    }) as PairingGenerateResponse
 )
 
 const mockGetPairingStatus = mock<
@@ -31,12 +37,12 @@ const mockGetPairingStatus = mock<
   async () =>
     ({
       status: "valid",
-    }) as PairingStatusResponse,
+    }) as PairingStatusResponse
 )
 
 const mockQrToDataURL = mock<(text: string, opts?: object) => Promise<string>>(
   async () =>
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
 )
 
 // ── Global interval swap ─────────────────────────────────────────────────────
@@ -44,10 +50,12 @@ const mockQrToDataURL = mock<(text: string, opts?: object) => Promise<string>>(
 // is imported, so the component captures our mocks instead of the real functions.
 const intervalRegistry: Array<{ fn: () => void; ms: number }> = []
 
-const mockSetInterval = mock<(handler: any, ms?: number) => number>((fn, ms) => {
-  intervalRegistry.push({ fn: fn as () => void, ms: ms ?? 1000 })
-  return intervalRegistry.length
-})
+const mockSetInterval = mock<(handler: any, ms?: number) => number>(
+  (fn, ms) => {
+    intervalRegistry.push({ fn: fn as () => void, ms: ms ?? 1000 })
+    return intervalRegistry.length
+  }
+)
 
 const mockClearInterval = mock<(id: number) => void>(() => {})
 ;(globalThis.setInterval as any) = mockSetInterval
@@ -149,7 +157,7 @@ describe("VpnPairingQrModal", () => {
             pairingToken: "token-abc123",
             expiresAt: "2099-12-31T23:59:59.000Z",
             qrPayload: "test-payload",
-          }) as PairingGenerateResponse,
+          }) as PairingGenerateResponse
       )
     })
 
@@ -162,7 +170,7 @@ describe("VpnPairingQrModal", () => {
 
       await waitFor(() => {
         expect(document.body.textContent).toContain(
-          "Failed to generate pairing code",
+          "Failed to generate pairing code"
         )
       })
 
@@ -172,7 +180,7 @@ describe("VpnPairingQrModal", () => {
             pairingToken: "token-abc123",
             expiresAt: "2099-12-31T23:59:59.000Z",
             qrPayload: "test-payload",
-          }) as PairingGenerateResponse,
+          }) as PairingGenerateResponse
       )
     })
   })
@@ -194,12 +202,12 @@ describe("VpnPairingQrModal", () => {
 
       await waitFor(() => {
         expect(document.body.textContent).toContain(
-          "Select the subscription you want to pair a device to",
+          "Select the subscription you want to pair a device to"
         )
       })
 
       const continueBtn = Array.from(document.querySelectorAll("button")).find(
-        (b) => b.textContent === "Continue",
+        (b) => b.textContent === "Continue"
       )
       expect(continueBtn).not.toBeUndefined()
       expect(continueBtn).toBeDisabled()
@@ -210,7 +218,7 @@ describe("VpnPairingQrModal", () => {
 
       await waitFor(() => {
         expect(document.body.textContent).toContain(
-          "Select the subscription you want to pair a device to",
+          "Select the subscription you want to pair a device to"
         )
       })
 
@@ -223,14 +231,14 @@ describe("VpnPairingQrModal", () => {
       })
 
       const proItem = Array.from(
-        document.querySelectorAll("[role='option']"),
+        document.querySelectorAll("[role='option']")
       ).find((opt) => opt.textContent === "VPN Pro")
       expect(proItem).not.toBeNull()
       fireEvent.click(proItem!)
 
       await waitFor(() => {
         const btn = Array.from(document.querySelectorAll("button")).find(
-          (b) => b.textContent === "Continue",
+          (b) => b.textContent === "Continue"
         )
         expect(btn).not.toBeDisabled()
       })
@@ -241,7 +249,7 @@ describe("VpnPairingQrModal", () => {
 
       await waitFor(() => {
         expect(document.body.textContent).toContain(
-          "Select the subscription you want to pair a device to",
+          "Select the subscription you want to pair a device to"
         )
       })
 
@@ -253,20 +261,20 @@ describe("VpnPairingQrModal", () => {
       })
 
       const entItem = Array.from(
-        document.querySelectorAll("[role='option']"),
+        document.querySelectorAll("[role='option']")
       ).find((opt) => opt.textContent === "VPN Enterprise")
       expect(entItem).not.toBeNull()
       fireEvent.click(entItem!)
 
       await waitFor(() => {
         const btn = Array.from(document.querySelectorAll("button")).find(
-          (b) => b.textContent === "Continue",
+          (b) => b.textContent === "Continue"
         )
         expect(btn).not.toBeDisabled()
       })
 
       const continueBtn = Array.from(document.querySelectorAll("button")).find(
-        (b) => b.textContent === "Continue",
+        (b) => b.textContent === "Continue"
       )!
       fireEvent.click(continueBtn)
 
@@ -282,7 +290,7 @@ describe("VpnPairingQrModal", () => {
 
       await waitFor(() => {
         expect(
-          document.querySelector('img[alt*="Scan with mobile app"]'),
+          document.querySelector('img[alt*="Scan with mobile app"]')
         ).not.toBeNull()
       })
 
@@ -294,7 +302,7 @@ describe("VpnPairingQrModal", () => {
 
       await waitFor(() => {
         expect(
-          document.querySelector('img[alt*="Scan with mobile app"]'),
+          document.querySelector('img[alt*="Scan with mobile app"]')
         ).not.toBeNull()
       })
 
@@ -309,7 +317,7 @@ describe("VpnPairingQrModal", () => {
 
       await waitFor(() => {
         expect(
-          document.querySelector('img[alt*="Scan with mobile app"]'),
+          document.querySelector('img[alt*="Scan with mobile app"]')
         ).not.toBeNull()
       })
 
@@ -325,15 +333,15 @@ describe("VpnPairingQrModal", () => {
 
       await waitFor(() => {
         expect(
-          document.querySelector('img[alt*="Scan with mobile app"]'),
+          document.querySelector('img[alt*="Scan with mobile app"]')
         ).not.toBeNull()
       })
 
       await tickIntervals(1000, 300)
 
-      const regenerateBtn = Array.from(document.querySelectorAll("button")).find(
-        (b) => b.textContent === "Regenerate",
-      )
+      const regenerateBtn = Array.from(
+        document.querySelectorAll("button")
+      ).find((b) => b.textContent === "Regenerate")
       expect(regenerateBtn).not.toBeUndefined()
     })
   })
@@ -344,14 +352,14 @@ describe("VpnPairingQrModal", () => {
         async (): Promise<PairingStatusResponse> => ({
           status: "claimed",
           claimedAt: "2099-12-31T12:00:00.000Z",
-        }),
+        })
       )
 
       render(<VpnPairingQrModal {...defaultProps} open={true} />)
 
       await waitFor(() => {
         expect(
-          document.querySelector('img[alt*="Scan with mobile app"]'),
+          document.querySelector('img[alt*="Scan with mobile app"]')
         ).not.toBeNull()
       })
 
@@ -360,7 +368,7 @@ describe("VpnPairingQrModal", () => {
       expect(document.body.textContent).toContain("Device paired successfully")
 
       mockGetPairingStatus.mockImplementation(
-        async () => ({ status: "valid" }) as PairingStatusResponse,
+        async () => ({ status: "valid" }) as PairingStatusResponse
       )
     })
 
@@ -370,20 +378,16 @@ describe("VpnPairingQrModal", () => {
       mockGetPairingStatus.mockImplementation(
         async (): Promise<PairingStatusResponse> => ({
           status: "claimed",
-        }),
+        })
       )
 
       render(
-        <VpnPairingQrModal
-          {...defaultProps}
-          open={true}
-          onPaired={onPaired}
-        />,
+        <VpnPairingQrModal {...defaultProps} open={true} onPaired={onPaired} />
       )
 
       await waitFor(() => {
         expect(
-          document.querySelector('img[alt*="Scan with mobile app"]'),
+          document.querySelector('img[alt*="Scan with mobile app"]')
         ).not.toBeNull()
       })
 
@@ -392,7 +396,7 @@ describe("VpnPairingQrModal", () => {
       expect(onPaired).toHaveBeenCalled()
 
       mockGetPairingStatus.mockImplementation(
-        async () => ({ status: "valid" }) as PairingStatusResponse,
+        async () => ({ status: "valid" }) as PairingStatusResponse
       )
     })
 
@@ -401,25 +405,23 @@ describe("VpnPairingQrModal", () => {
         async (): Promise<PairingStatusResponse> => ({
           status: "error",
           message: "Server error during polling",
-        }),
+        })
       )
 
       render(<VpnPairingQrModal {...defaultProps} open={true} />)
 
       await waitFor(() => {
         expect(
-          document.querySelector('img[alt*="Scan with mobile app"]'),
+          document.querySelector('img[alt*="Scan with mobile app"]')
         ).not.toBeNull()
       })
 
       await tickIntervals(3000, 1)
 
-      expect(document.body.textContent).toContain(
-        "Server error during polling",
-      )
+      expect(document.body.textContent).toContain("Server error during polling")
 
       mockGetPairingStatus.mockImplementation(
-        async () => ({ status: "valid" }) as PairingStatusResponse,
+        async () => ({ status: "valid" }) as PairingStatusResponse
       )
     })
 
@@ -428,26 +430,26 @@ describe("VpnPairingQrModal", () => {
         async (): Promise<PairingStatusResponse> => ({
           status: "error",
           message: "Polling error",
-        }),
+        })
       )
 
       render(<VpnPairingQrModal {...defaultProps} open={true} />)
 
       await waitFor(() => {
         expect(
-          document.querySelector('img[alt*="Scan with mobile app"]'),
+          document.querySelector('img[alt*="Scan with mobile app"]')
         ).not.toBeNull()
       })
 
       await tickIntervals(3000, 1)
 
-      const regenerateBtn = Array.from(document.querySelectorAll("button")).find(
-        (b) => b.textContent === "Regenerate",
-      )
+      const regenerateBtn = Array.from(
+        document.querySelectorAll("button")
+      ).find((b) => b.textContent === "Regenerate")
       expect(regenerateBtn).not.toBeUndefined()
 
       mockGetPairingStatus.mockImplementation(
-        async () => ({ status: "valid" }) as PairingStatusResponse,
+        async () => ({ status: "valid" }) as PairingStatusResponse
       )
     })
 
@@ -456,7 +458,7 @@ describe("VpnPairingQrModal", () => {
 
       await waitFor(() => {
         expect(
-          document.querySelector('img[alt*="Scan with mobile app"]'),
+          document.querySelector('img[alt*="Scan with mobile app"]')
         ).not.toBeNull()
       })
 
@@ -479,7 +481,7 @@ describe("VpnPairingQrModal", () => {
 
       await waitFor(() => {
         expect(
-          document.querySelector('img[alt*="Scan with mobile app"]'),
+          document.querySelector('img[alt*="Scan with mobile app"]')
         ).not.toBeNull()
       })
 
@@ -495,12 +497,12 @@ describe("VpnPairingQrModal", () => {
             pairingToken: "new-token-xyz",
             expiresAt: "2099-12-31T23:59:59.000Z",
             qrPayload: "new-payload",
-          }) as PairingGenerateResponse,
+          }) as PairingGenerateResponse
       )
 
-      const regenerateBtn = Array.from(document.querySelectorAll("button")).find(
-        (b) => b.textContent === "Regenerate",
-      )!
+      const regenerateBtn = Array.from(
+        document.querySelectorAll("button")
+      ).find((b) => b.textContent === "Regenerate")!
       fireEvent.click(regenerateBtn)
 
       await waitFor(() => {
@@ -514,7 +516,7 @@ describe("VpnPairingQrModal", () => {
             pairingToken: "token-abc123",
             expiresAt: "2099-12-31T23:59:59.000Z",
             qrPayload: "test-payload",
-          }) as PairingGenerateResponse,
+          }) as PairingGenerateResponse
       )
     })
   })

@@ -43,7 +43,17 @@ type StepBuildProps = {
   onBack: () => void
   onNext: () => void
   onBuildFieldChange: (
-    field: "language" | "framework" | "frameworkVersion" | "buildCommand" | "useDockerfile" | "primaryEngine" | "primaryEngineVersion" | "secondaryEngine" | "secondaryEngineVersion" | "defaultPort",
+    field:
+      | "language"
+      | "framework"
+      | "frameworkVersion"
+      | "buildCommand"
+      | "useDockerfile"
+      | "primaryEngine"
+      | "primaryEngineVersion"
+      | "secondaryEngine"
+      | "secondaryEngineVersion"
+      | "defaultPort",
     value: string | boolean | number
   ) => void
 }
@@ -192,9 +202,7 @@ export function StepBuild({
                 <dd>{detectionResult?.dockerfileDetected ? "Yes" : "No"}</dd>
               </div>
               <div className="space-y-1">
-                <dt className="font-medium text-foreground">
-                  Default port
-                </dt>
+                <dt className="font-medium text-foreground">Default port</dt>
                 <dd>
                   {detectionResult?.defaultPort
                     ? detectionResult.defaultPort
@@ -277,10 +285,7 @@ export function StepBuild({
                 placeholder="e.g. 13.x"
                 className="h-8 text-xs"
                 onChange={(event) => {
-                  onBuildFieldChange(
-                    "frameworkVersion",
-                    event.target.value
-                  )
+                  onBuildFieldChange("frameworkVersion", event.target.value)
                 }}
               />
             </div>
@@ -293,10 +298,7 @@ export function StepBuild({
                 placeholder="e.g. 3000"
                 className="h-8 text-xs"
                 onChange={(event) => {
-                  onBuildFieldChange(
-                    "defaultPort",
-                    Number(event.target.value)
-                  )
+                  onBuildFieldChange("defaultPort", Number(event.target.value))
                 }}
               />
             </div>
@@ -311,10 +313,7 @@ export function StepBuild({
                 placeholder="e.g. node"
                 className="h-8 text-xs"
                 onChange={(event) => {
-                  onBuildFieldChange(
-                    "primaryEngine",
-                    event.target.value
-                  )
+                  onBuildFieldChange("primaryEngine", event.target.value)
                 }}
               />
             </div>
@@ -326,10 +325,7 @@ export function StepBuild({
                 placeholder="e.g. 24"
                 className="h-8 text-xs"
                 onChange={(event) => {
-                  onBuildFieldChange(
-                    "primaryEngineVersion",
-                    event.target.value
-                  )
+                  onBuildFieldChange("primaryEngineVersion", event.target.value)
                 }}
               />
             </div>
@@ -344,10 +340,7 @@ export function StepBuild({
                 placeholder="e.g. node"
                 className="h-8 text-xs"
                 onChange={(event) => {
-                  onBuildFieldChange(
-                    "secondaryEngine",
-                    event.target.value
-                  )
+                  onBuildFieldChange("secondaryEngine", event.target.value)
                 }}
               />
             </div>

@@ -33,8 +33,12 @@ export function signSessionJwt(claims: {
 }): string {
   const secret = getSecret()
   const header = { alg: "HS256", typ: "JWT" }
-  const headerSegment = Buffer.from(JSON.stringify(header)).toString("base64url")
-  const payloadSegment = Buffer.from(JSON.stringify(claims)).toString("base64url")
+  const headerSegment = Buffer.from(JSON.stringify(header)).toString(
+    "base64url"
+  )
+  const payloadSegment = Buffer.from(JSON.stringify(claims)).toString(
+    "base64url"
+  )
   const signingInput = `${headerSegment}.${payloadSegment}`
   const signature = crypto
     .createHmac("sha256", secret)

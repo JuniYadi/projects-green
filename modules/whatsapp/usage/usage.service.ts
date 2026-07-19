@@ -110,7 +110,9 @@ export class WhatsappUsageService {
                 Number(period.split("-")[1]) === 12
                   ? Number(period.split("-")[0]) + 1
                   : Number(period.split("-")[0]),
-                Number(period.split("-")[1]) === 12 ? 0 : Number(period.split("-")[1]),
+                Number(period.split("-")[1]) === 12
+                  ? 0
+                  : Number(period.split("-")[1]),
                 1
               ),
             },
@@ -251,7 +253,8 @@ export class WhatsappUsageService {
     const [year, month] = period.split("-").map(Number)
     const daysInMonth = new Date(year, month, 0).getDate()
     const today = now.getUTCDate()
-    const isCurrentPeriod = year === now.getUTCFullYear() && month === now.getUTCMonth() + 1
+    const isCurrentPeriod =
+      year === now.getUTCFullYear() && month === now.getUTCMonth() + 1
     const daysElapsed = isCurrentPeriod ? today : daysInMonth
     const daysRemaining = Math.max(0, daysInMonth - daysElapsed)
 
@@ -260,7 +263,14 @@ export class WhatsappUsageService {
       : { organizationId }
     const devices = await prisma.whatsappDevice.findMany({
       where: deviceWhere,
-      select: { id: true, phoneNumber: true, quotaBase: true, quotaBaseOut: true, addonQuota: true, addonQuotaTotal: true },
+      select: {
+        id: true,
+        phoneNumber: true,
+        quotaBase: true,
+        quotaBaseOut: true,
+        addonQuota: true,
+        addonQuotaTotal: true,
+      },
     })
 
     // ── Cost source: BillingAdjustment with source=WHATSAPP ─────────────
@@ -345,9 +355,11 @@ export class WhatsappUsageService {
       const quotaBaseOut = toNum(dev.quotaBaseOut)
       const addonQuota = toNum(dev.addonQuota)
       const addonQuotaTotal = toNum(dev.addonQuotaTotal)
-      const quotaUsed = (quotaBase - quotaBaseOut) + (addonQuotaTotal - addonQuota)
+      const quotaUsed =
+        quotaBase - quotaBaseOut + (addonQuotaTotal - addonQuota)
       const totalQuota = quotaBase + addonQuotaTotal
-      const quotaPercent = totalQuota > 0 ? Math.min(100, (quotaUsed / totalQuota) * 100) : 0
+      const quotaPercent =
+        totalQuota > 0 ? Math.min(100, (quotaUsed / totalQuota) * 100) : 0
       return {
         deviceId: dev.id,
         phoneNumber: dev.phoneNumber,
@@ -357,7 +369,10 @@ export class WhatsappUsageService {
           count: data.count,
           totalCost: data.total,
         })),
-        messageCount: Array.from(catMap.values()).reduce((sum, c) => sum + c.count, 0),
+        messageCount: Array.from(catMap.values()).reduce(
+          (sum, c) => sum + c.count,
+          0
+        ),
         quotaBase,
         quotaBaseOut,
         addonQuota,

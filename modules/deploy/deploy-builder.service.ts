@@ -39,7 +39,7 @@ export async function processQueuedDeployment(deploymentId: string) {
           type: "BUILD_STARTED",
           message: `Build started for ${stack.name}`,
         },
-        tx,
+        tx
       )
       await recordDeployLog(
         {
@@ -48,7 +48,7 @@ export async function processQueuedDeployment(deploymentId: string) {
           status: "BUILDING",
           message: "Build worker picked up deployment.",
         },
-        tx,
+        tx
       )
 
       // Step 2: Sync Jenkins pipeline if stack has a repo connection
@@ -61,7 +61,9 @@ export async function processQueuedDeployment(deploymentId: string) {
         if (connection) {
           try {
             await syncJenkinsPipeline({
-              installationId: Number(connection.installation.githubInstallationId),
+              installationId: Number(
+                connection.installation.githubInstallationId
+              ),
               owner: connection.ownerLogin,
               repo: connection.repoName,
               slug: stack.slug,
@@ -84,10 +86,13 @@ export async function processQueuedDeployment(deploymentId: string) {
                 status: "BUILD_TRIGGERED",
                 message: `Jenkins build triggered for ${stack.slug}`,
               },
-              tx,
+              tx
             )
           } catch (err) {
-            console.error(`[deploy-builder] Jenkins sync failed for ${stack.slug}:`, err)
+            console.error(
+              `[deploy-builder] Jenkins sync failed for ${stack.slug}:`,
+              err
+            )
             // Non-fatal — continue; Jenkins webhook will update status
           }
         }
@@ -97,7 +102,12 @@ export async function processQueuedDeployment(deploymentId: string) {
       // in prod, wait for Jenkins webhook callback. For now we generate manifests
       // immediately so the GitOps repo has the config ready.)
       const envVars =
-        (stack.envVarsJson as Array<{ key: string; value: string; type?: string; scope?: string }>) ?? []
+        (stack.envVarsJson as Array<{
+          key: string
+          value: string
+          type?: string
+          scope?: string
+        }>) ?? []
 
       const plainEnv: Record<string, string> = {}
       const secretEnv: Record<string, string> = {}
@@ -124,7 +134,13 @@ export async function processQueuedDeployment(deploymentId: string) {
 
       const manifest = builder.build()
       const manifestYaml = manifest.resources
-        .map((r) => jsYaml.dump(r as Record<string, unknown>, { indent: 2, lineWidth: -1, noRefs: true }))
+        .map((r) =>
+          jsYaml.dump(r as Record<string, unknown>, {
+            indent: 2,
+            lineWidth: -1,
+            noRefs: true,
+          })
+        )
         .join("---\n")
 
       try {
@@ -137,7 +153,7 @@ export async function processQueuedDeployment(deploymentId: string) {
               path: `services-yaml/${stack.slug}/deployment.yml`,
               content: manifestYaml,
             },
-          ],
+          ]
         )
 
         await tx.applicationDeployment.update({
@@ -153,7 +169,7 @@ export async function processQueuedDeployment(deploymentId: string) {
             type: "MANIFEST_PUSHED",
             message: `Manifests pushed for ${stack.name}`,
           },
-          tx,
+          tx
         )
         await recordDeployLog(
           {
@@ -162,10 +178,13 @@ export async function processQueuedDeployment(deploymentId: string) {
             status: "MANIFEST_PUSHED",
             message: "Helm manifests pushed to GitOps repo.",
           },
-          tx,
+          tx
         )
       } catch (err) {
-        console.error(`[deploy-builder] Manifest push failed for ${stack.slug}:`, err)
+        console.error(
+          `[deploy-builder] Manifest push failed for ${stack.slug}:`,
+          err
+        )
         // Non-fatal; manifest push may fail if GitOps repo isn't configured
         await recordDeployLog(
           {
@@ -174,7 +193,7 @@ export async function processQueuedDeployment(deploymentId: string) {
             status: "MANIFEST_PUSH_FAILED",
             message: `Failed to push manifests: ${err instanceof Error ? err.message : "Unknown error"}`,
           },
-          tx,
+          tx
         )
       }
 
@@ -185,7 +204,7 @@ export async function processQueuedDeployment(deploymentId: string) {
           type: "ARGOCD_SYNC_STARTED",
           message: `ArgoCD sync started for ${stack.name}`,
         },
-        tx,
+        tx
       )
       await recordDeployLog(
         {
@@ -194,7 +213,7 @@ export async function processQueuedDeployment(deploymentId: string) {
           status: "ARGOCD_SYNC_STARTED",
           message: "Waiting for ArgoCD to sync manifests.",
         },
-        tx,
+        tx
       )
 
       // Mark as synced (ArgoCD auto-syncs; polling would happen in a future iteration)
@@ -211,7 +230,7 @@ export async function processQueuedDeployment(deploymentId: string) {
           type: "ARGOCD_SYNCED",
           message: `ArgoCD synced for ${stack.name}`,
         },
-        tx,
+        tx
       )
 
       // Step 5: Mark as RUNNING
@@ -236,7 +255,7 @@ export async function processQueuedDeployment(deploymentId: string) {
           type: "DEPLOY_COMPLETED",
           message: `Deployment completed for ${stack.name}`,
         },
-        tx,
+        tx
       )
       await recordDeployLog(
         {
@@ -245,7 +264,7 @@ export async function processQueuedDeployment(deploymentId: string) {
           status: "RUNNING",
           message: "Application is running.",
         },
-        tx,
+        tx
       )
     })
 

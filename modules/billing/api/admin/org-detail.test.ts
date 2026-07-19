@@ -2,7 +2,12 @@ import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
 import { TestDecimal } from "@/test/helpers/prisma-mock"
 import type { MockAuthContext } from "@/test/helpers/test-auth"
-import { defaultAuth, mockPlatformRole, mockPlatformRoleNone, testIsAdmin } from "@/test/helpers/test-auth"
+import {
+  defaultAuth,
+  mockPlatformRole,
+  mockPlatformRoleNone,
+  testIsAdmin,
+} from "@/test/helpers/test-auth"
 
 const mockBillingAccountFindUnique = mock()
 const mockServiceSubscriptionFindMany = mock()

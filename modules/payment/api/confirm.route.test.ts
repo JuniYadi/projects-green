@@ -21,8 +21,12 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
 
 type MockVal = Record<string, unknown> | null
 
-const mockBillingInvoiceFindFirst = mock((): Promise<MockVal> => Promise.resolve(null))
-const mockPaymentConfirmationFindFirst = mock((): Promise<MockVal> => Promise.resolve(null))
+const mockBillingInvoiceFindFirst = mock(
+  (): Promise<MockVal> => Promise.resolve(null)
+)
+const mockPaymentConfirmationFindFirst = mock(
+  (): Promise<MockVal> => Promise.resolve(null)
+)
 const mockPaymentConfirmationCreate = mock(() => Promise.resolve({}))
 
 const mockPrisma = {
@@ -138,6 +142,20 @@ describe("ConfirmRoute POST /topup/confirm/:id", () => {
     const body = await res.json()
     expect(body.ok).toBe(true)
     expect(body.confirmation.status).toBe("PENDING")
+    // Security: route-level invoice lookup must be scoped to the caller's org.
+    const calls = mockBillingInvoiceFindFirst.mock.calls as Array<
+      [
+        {
+          where?: { id?: string; billingAccount?: { organizationId?: string } }
+        },
+      ]
+    >
+    const orgScopedCall = calls.find(
+      (call) =>
+        call[0]?.where?.billingAccount?.organizationId === "org-1" &&
+        call[0]?.where?.id === "inv-1"
+    )
+    expect(orgScopedCall).toBeDefined()
   })
 
   it("returns 401 when no organization", async () => {

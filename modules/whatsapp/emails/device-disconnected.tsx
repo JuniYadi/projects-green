@@ -38,8 +38,8 @@ export const DeviceDisconnectedEmail = ({
           <Heading style={styles.heading}>WhatsApp Device Disconnected</Heading>
 
           <Text style={styles.intro}>
-            A WhatsApp device under <strong>{orgName}</strong> has gone
-            offline and is no longer responding to health checks.
+            A WhatsApp device under <strong>{orgName}</strong> has gone offline
+            and is no longer responding to health checks.
           </Text>
 
           <Section style={styles.deviceInfo}>
@@ -68,8 +68,8 @@ export const DeviceDisconnectedEmail = ({
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            This is an automated alert from your WhatsApp monitoring system.
-            You can manage device health from the dashboard.
+            This is an automated alert from your WhatsApp monitoring system. You
+            can manage device health from the dashboard.
           </Text>
         </Container>
       </Body>

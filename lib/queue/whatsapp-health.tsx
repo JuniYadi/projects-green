@@ -48,7 +48,7 @@ async function incrementMissCount(deviceId: string): Promise<number> {
   pipeline.incr(key)
   pipeline.expire(key, MISS_TTL_SECONDS)
   const results = await pipeline.exec()
-  return results?.[0]?.[1] as number ?? 1
+  return (results?.[0]?.[1] as number) ?? 1
 }
 
 async function clearMissCount(deviceId: string): Promise<void> {
@@ -84,9 +84,8 @@ export async function checkDeviceHealth(params: {
 
   try {
     const { decryptWhatsAppToken } = await import("@/lib/whatsapp/crypto")
-    const { MetaCloudHttpClient } = await import(
-      "@/lib/whatsapp/meta-cloud/client"
-    )
+    const { MetaCloudHttpClient } =
+      await import("@/lib/whatsapp/meta-cloud/client")
     const { ENDPOINTS } = await import("@/lib/whatsapp/meta-cloud/endpoints")
 
     if (!device.tokenEncrypted) {
@@ -114,7 +113,10 @@ export async function checkDeviceHealth(params: {
   }
 }
 
-async function sendDisconnectEmail(deviceId: string, orgId: string): Promise<void> {
+async function sendDisconnectEmail(
+  deviceId: string,
+  orgId: string
+): Promise<void> {
   try {
     const device = await prisma.whatsappDevice.findUnique({
       where: { id: deviceId },
@@ -129,9 +131,11 @@ async function sendDisconnectEmail(deviceId: string, orgId: string): Promise<voi
     const workos = createWorkOS({ apiKey: process.env.WORKOS_API_KEY ?? "" })
 
     const org = await workos.organizations.getOrganization(orgId)
-    const memberships = await workos.userManagement.listOrganizationMemberships({
-      organizationId: orgId,
-    })
+    const memberships = await workos.userManagement.listOrganizationMemberships(
+      {
+        organizationId: orgId,
+      }
+    )
 
     const users = await Promise.all(
       memberships.data.map((m) => workos.userManagement.getUser(m.userId))
@@ -234,7 +238,9 @@ async function runHeartbeatCycle(): Promise<void> {
     await WhatsAppHealthJob.enqueue({ deviceId: device.id })
   }
 
-  console.info(`[whatsapp-health] cycle: enqueued ${devices.length} device checks`)
+  console.info(
+    `[whatsapp-health] cycle: enqueued ${devices.length} device checks`
+  )
 }
 
 // ── BullMQ Job Class ──────────────────────────────────────────────────────────

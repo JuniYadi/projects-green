@@ -21,14 +21,17 @@ import { test as setup, expect } from "@playwright/test"
 
 const AUTH_FILE = ".auth/admin.json"
 
-setup("authenticate as admin via WorkOS OAuth (manual login)", async ({ page }) => {
-  await page.goto("/en/login")
+setup(
+  "authenticate as admin via WorkOS OAuth (manual login)",
+  async ({ page }) => {
+    await page.goto("/en/login")
 
-  // Wait for the user to complete the OAuth flow and land on a console page.
-  await page.waitForURL("**/console/**", { timeout: 120_000 })
-  await expect(page).toHaveURL(/\/console\//)
+    // Wait for the user to complete the OAuth flow and land on a console page.
+    await page.waitForURL("**/console/**", { timeout: 120_000 })
+    await expect(page).toHaveURL(/\/console\//)
 
-  await page.context().storageState({ path: AUTH_FILE })
+    await page.context().storageState({ path: AUTH_FILE })
 
-  console.log(`\n  ✅ Admin auth state saved to ${AUTH_FILE}\n`)
-})
+    console.log(`\n  ✅ Admin auth state saved to ${AUTH_FILE}\n`)
+  }
+)

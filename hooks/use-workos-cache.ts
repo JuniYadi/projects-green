@@ -1,8 +1,5 @@
 import { cache } from "react"
-import {
-  getCachedUser,
-  getCachedOrganization,
-} from "@/lib/workos-directory"
+import { getCachedUser, getCachedOrganization } from "@/lib/workos-directory"
 import type {
   WorkOSDirectoryUser,
   WorkOSDirectoryOrg,

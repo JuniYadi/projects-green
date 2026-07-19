@@ -164,8 +164,7 @@ export function expiryStatus(record: {
   downloadedAt: Date | null
 }): ExpiryStatus {
   if (!record.downloadedAt || !record.expiresAt) return "red"
-  const daysLeft =
-    (record.expiresAt.getTime() - Date.now()) / 86_400_000
+  const daysLeft = (record.expiresAt.getTime() - Date.now()) / 86_400_000
   if (daysLeft > 5) return "green"
   if (daysLeft > 0) return "yellow"
   return "red"
@@ -189,10 +188,7 @@ export function getStoragePath(
   return null
 }
 
-export async function listMedia(
-  organizationId: string,
-  deviceId?: string
-) {
+export async function listMedia(organizationId: string, deviceId?: string) {
   const where: Record<string, unknown> = { organizationId }
   if (deviceId) where.deviceId = deviceId
 

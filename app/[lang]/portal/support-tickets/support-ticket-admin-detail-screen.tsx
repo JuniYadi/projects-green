@@ -199,7 +199,9 @@ export function SupportTicketAdminDetailScreen({
   const [priority, setPriority] = useState<SupportTicketPriority>("medium")
   const [service, setService] = useState<SupportTicketService | "none">("none")
   const [status, setStatus] = useState<SupportTicketStatus>("open")
-  const [assignedAgentWorkosUserId, setAssignedAgentWorkosUserId] = useState<string | null>(null)
+  const [assignedAgentWorkosUserId, setAssignedAgentWorkosUserId] = useState<
+    string | null
+  >(null)
   const [isUpdatingMetadata, setIsUpdatingMetadata] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -335,7 +337,9 @@ export function SupportTicketAdminDetailScreen({
         setPriority(nextThread.ticket.priority)
         setService(nextThread.ticket.service || "none")
         setStatus(nextThread.ticket.status)
-        setAssignedAgentWorkosUserId(nextThread.ticket.assignedAgentWorkosUserId)
+        setAssignedAgentWorkosUserId(
+          nextThread.ticket.assignedAgentWorkosUserId
+        )
       }
     } catch (error) {
       if (requestSequenceRef.current === requestId) {
@@ -729,23 +733,26 @@ export function SupportTicketAdminDetailScreen({
                       </span>
                     )}
                   </p>
-                  {thread.users && thread.users[ticket.requesterWorkosUserId] && (
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Requester:{" "}
-                      <span className="font-semibold text-foreground">
-                        {thread.users[ticket.requesterWorkosUserId].name}
-                      </span>
-                    </p>
-                  )}
-                  {ticket.assignedAgentWorkosUserId && thread.users && thread.users[ticket.assignedAgentWorkosUserId] && (
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      PIC:{" "}
-                      <span className="inline-flex items-center gap-1 font-semibold text-foreground">
-                        <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
-                        {thread.users[ticket.assignedAgentWorkosUserId].name}
-                      </span>
-                    </p>
-                  )}
+                  {thread.users &&
+                    thread.users[ticket.requesterWorkosUserId] && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Requester:{" "}
+                        <span className="font-semibold text-foreground">
+                          {thread.users[ticket.requesterWorkosUserId].name}
+                        </span>
+                      </p>
+                    )}
+                  {ticket.assignedAgentWorkosUserId &&
+                    thread.users &&
+                    thread.users[ticket.assignedAgentWorkosUserId] && (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        PIC:{" "}
+                        <span className="inline-flex items-center gap-1 font-semibold text-foreground">
+                          <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
+                          {thread.users[ticket.assignedAgentWorkosUserId].name}
+                        </span>
+                      </p>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                   {!isClosed && (
@@ -758,13 +765,13 @@ export function SupportTicketAdminDetailScreen({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {SUPPORT_TICKET_STATUS_TRANSITIONS[ticket.status]?.map(
-                            (status: SupportTicketStatus) => (
-                              <SelectItem key={status} value={status}>
-                                {SUPPORT_TICKET_STATUS_LABELS[status]}
-                              </SelectItem>
-                            )
-                          )}
+                          {SUPPORT_TICKET_STATUS_TRANSITIONS[
+                            ticket.status
+                          ]?.map((status: SupportTicketStatus) => (
+                            <SelectItem key={status} value={status}>
+                              {SUPPORT_TICKET_STATUS_LABELS[status]}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <Button
@@ -1378,7 +1385,9 @@ export function SupportTicketAdminDetailScreen({
                 <Select
                   value={effectivePIC ?? "none"}
                   onValueChange={(nextValue) =>
-                    setAssignedAgentWorkosUserId(nextValue === "none" ? null : nextValue)
+                    setAssignedAgentWorkosUserId(
+                      nextValue === "none" ? null : nextValue
+                    )
                   }
                   disabled={isUpdatingMetadata}
                 >
@@ -1395,16 +1404,17 @@ export function SupportTicketAdminDetailScreen({
                     >
                       Unassigned
                     </SelectItem>
-                    {thread.users && Object.entries(thread.users).map(([userId, user]) => (
-                      <SelectItem
-                        key={userId}
-                        value={userId}
-                        className="text-foreground hover:bg-muted"
-                      >
-                        {user.name}
-                        {user.isStaff && " (Staff)"}
-                      </SelectItem>
-                    ))}
+                    {thread.users &&
+                      Object.entries(thread.users).map(([userId, user]) => (
+                        <SelectItem
+                          key={userId}
+                          value={userId}
+                          className="text-foreground hover:bg-muted"
+                        >
+                          {user.name}
+                          {user.isStaff && " (Staff)"}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>

@@ -6,31 +6,27 @@ import {
   CloudflareLegacyTokenDef,
   type CloudflareLegacyTokenSecrets,
 } from "./types/cloudflare-legacy-token"
-import {
-  GithubAppDef,
-  type GithubAppSecrets,
-} from "./types/github-app"
-import {
-  GithubTokenDef,
-  type GithubTokenSecrets,
-} from "./types/github-token"
-import type { AppCredentialType }   from "@prisma/client"
-import type { z }                   from "zod"
+import { GithubAppDef, type GithubAppSecrets } from "./types/github-app"
+import { GithubTokenDef, type GithubTokenSecrets } from "./types/github-token"
+import type { AppCredentialType } from "@prisma/client"
+import type { z } from "zod"
 
 export const credentialTypeRegistry = {
-  CLOUDFLARE_API_TOKEN:    CloudflareApiTokenDef,
+  CLOUDFLARE_API_TOKEN: CloudflareApiTokenDef,
   CLOUDFLARE_LEGACY_TOKEN: CloudflareLegacyTokenDef,
-  GITHUB_APP:              GithubAppDef,
-  GITHUB_TOKEN:            GithubTokenDef,
+  GITHUB_APP: GithubAppDef,
+  GITHUB_TOKEN: GithubTokenDef,
 } as const
 
 export type CredentialTypeKey = keyof typeof credentialTypeRegistry
 
-export type CredentialMetadata<T extends AppCredentialType> =
-  z.infer<(typeof credentialTypeRegistry)[T]["metadataSchema"]>
+export type CredentialMetadata<T extends AppCredentialType> = z.infer<
+  (typeof credentialTypeRegistry)[T]["metadataSchema"]
+>
 
-export type CredentialSecrets<T extends AppCredentialType> =
-  z.infer<(typeof credentialTypeRegistry)[T]["secretsSchema"]>
+export type CredentialSecrets<T extends AppCredentialType> = z.infer<
+  (typeof credentialTypeRegistry)[T]["secretsSchema"]
+>
 export type AnyCredentialSecrets =
   | CloudflareApiTokenSecrets
   | CloudflareLegacyTokenSecrets
@@ -58,13 +54,9 @@ export function buildMaskedPreview(
         secrets as CloudflareLegacyTokenSecrets
       )
     case "GITHUB_APP":
-      return GithubAppDef.buildMaskedPreview(
-        secrets as GithubAppSecrets
-      )
+      return GithubAppDef.buildMaskedPreview(secrets as GithubAppSecrets)
     case "GITHUB_TOKEN":
-      return GithubTokenDef.buildMaskedPreview(
-        secrets as GithubTokenSecrets
-      )
+      return GithubTokenDef.buildMaskedPreview(secrets as GithubTokenSecrets)
     default:
       throw new Error(`Unknown credential type: ${type}`)
   }

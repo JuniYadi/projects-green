@@ -20,7 +20,10 @@ import { webhooksRoutes } from "@/modules/whatsapp/webhooks/api/webhooks.route"
 import { usersRoutes } from "@/modules/whatsapp/users/api/users.route"
 import { usageRoutes } from "@/modules/whatsapp/usage/api/usage.route"
 import { rateLimitRoutes } from "@/modules/whatsapp/rate-limit/api/rate-limit.route"
-import { createWhatsappAuditRoutes, consoleWhatsappAuditRoutes } from "@/modules/whatsapp/audit/api/whatsapp-audit.route"
+import {
+  createWhatsappAuditRoutes,
+  consoleWhatsappAuditRoutes,
+} from "@/modules/whatsapp/audit/api/whatsapp-audit.route"
 import { mediaRoutes } from "@/modules/whatsapp/media/api/media.route"
 import { catalogsRoutes } from "@/modules/whatsapp/catalogs/api/catalogs.route"
 import { analyticsRoutes } from "@/modules/whatsapp/analytics/api/analytics.route"

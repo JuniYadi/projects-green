@@ -28,7 +28,9 @@ const mockBillingTransactionService = {
 
 // Create a separate mock for $transaction
 const mockTransaction = mock()
-mockTransaction.mockImplementation((cb: (...args: unknown[]) => unknown) => cb(defaultTx))
+mockTransaction.mockImplementation((cb: (...args: unknown[]) => unknown) =>
+  cb(defaultTx)
+)
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -123,7 +125,10 @@ describe("WhatsappBillingService", () => {
     defaultTx.billingAccount.findUnique.mockClear()
     defaultTx.whatsappDevice.update.mockClear()
 
-    const MockTxService = mockBillingTransactionService as unknown as ConstructorParameters<typeof WhatsappBillingService>[1]
+    const MockTxService =
+      mockBillingTransactionService as unknown as ConstructorParameters<
+        typeof WhatsappBillingService
+      >[1]
     service = new WhatsappBillingService(
       mockPrisma as unknown as PrismaClient,
       MockTxService
@@ -178,7 +183,10 @@ describe("WhatsappBillingService", () => {
       expect(defaultTx.whatsappDevice.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "device_1" },
-          data: expect.objectContaining({ quotaBaseOut: 5000, quotaBase: 5000 }),
+          data: expect.objectContaining({
+            quotaBaseOut: 5000,
+            quotaBase: 5000,
+          }),
         })
       )
 
@@ -283,7 +291,9 @@ describe("WhatsappBillingService", () => {
           data: { quotaBaseOut: { decrement: decimal("3") } },
         })
       )
-      expect(mockBillingTransactionService.debitServiceBalance).not.toHaveBeenCalled()
+      expect(
+        mockBillingTransactionService.debitServiceBalance
+      ).not.toHaveBeenCalled()
       expect(defaultTx.billingAccount.findUnique).not.toHaveBeenCalled()
     })
 
@@ -316,7 +326,9 @@ describe("WhatsappBillingService", () => {
           },
         })
       )
-      expect(mockBillingTransactionService.debitServiceBalance).not.toHaveBeenCalled()
+      expect(
+        mockBillingTransactionService.debitServiceBalance
+      ).not.toHaveBeenCalled()
     })
 
     it("charges overage from balance when default + addon is exhausted", async () => {
@@ -361,7 +373,9 @@ describe("WhatsappBillingService", () => {
           }),
         })
       )
-      expect(mockBillingTransactionService.debitServiceBalance).toHaveBeenCalledWith(
+      expect(
+        mockBillingTransactionService.debitServiceBalance
+      ).toHaveBeenCalledWith(
         expect.objectContaining({ organizationId: "org_1" }),
         defaultTx
       )
@@ -433,7 +447,9 @@ describe("WhatsappBillingService", () => {
 
       // Verify NO state mutation happened
       expect(defaultTx.whatsappDevice.update).not.toHaveBeenCalled()
-      expect(mockBillingTransactionService.debitServiceBalance).not.toHaveBeenCalled()
+      expect(
+        mockBillingTransactionService.debitServiceBalance
+      ).not.toHaveBeenCalled()
     })
 
     it("rejects overage send when balance is insufficient", async () => {
@@ -498,7 +514,10 @@ describe("WhatsappBillingService", () => {
         addonQuota: decimal("103"),
       })
 
-      await service.restoreAllowance("device_1", { default: decimal("2"), addon: decimal("3") })
+      await service.restoreAllowance("device_1", {
+        default: decimal("2"),
+        addon: decimal("3"),
+      })
 
       expect(mockPrisma.whatsappDevice.update).toHaveBeenCalledWith({
         where: { id: "device_1" },

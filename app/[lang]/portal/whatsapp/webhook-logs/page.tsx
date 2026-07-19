@@ -52,7 +52,6 @@ function makeDeviceLabel(device: DeviceListItem): string {
 // ─── Page Component ───────────────────────────────────────────────────────────
 
 export default function PortalWhatsAppWebhookLogsPage() {
-
   // Device list (for filter dropdown)
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
 
@@ -77,7 +76,10 @@ export default function PortalWhatsAppWebhookLogsPage() {
     try {
       const { data, error } = await eden.api.whatsapp.devices.get()
       if (error) throw new Error(String(error))
-      const result = data as unknown as { ok: boolean; devices: DeviceListItem[] }
+      const result = data as unknown as {
+        ok: boolean
+        devices: DeviceListItem[]
+      }
       setDevices(result.devices)
     } catch (err) {
       console.error("Failed to load devices:", err)
@@ -187,9 +189,7 @@ export default function PortalWhatsAppWebhookLogsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Event Log</CardTitle>
-          <CardDescription>
-            Webhook events for all devices
-          </CardDescription>
+          <CardDescription>Webhook events for all devices</CardDescription>
         </CardHeader>
         <CardContent>
           {!devices.length && pageState !== "error" ? (

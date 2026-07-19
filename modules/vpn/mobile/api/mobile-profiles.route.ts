@@ -265,7 +265,11 @@ export const createMobileProfilesRoutes = () => {
             action: "CONFIG_DOWNLOADED",
             status: "OK",
             message: `VPN config downloaded for profile ${account.id} (${account.protocol})`,
-            details: { profileId: account.id, protocol: account.protocol, format },
+            details: {
+              profileId: account.id,
+              protocol: account.protocol,
+              format,
+            },
             ip: getClientIp(request),
             userAgent: request.headers.get("user-agent"),
           }).catch(() => {})
@@ -276,7 +280,8 @@ export const createMobileProfilesRoutes = () => {
           detail: {
             tags: ["VPN Mobile Profiles"],
             summary: "Download VPN config file",
-            description: "Download a decrypted VPN configuration file by profile ID.",
+            description:
+              "Download a decrypted VPN configuration file by profile ID.",
             security: [{ bearerAuth: [] }],
           },
           response: {
@@ -313,7 +318,8 @@ export const createMobileProfilesRoutes = () => {
           detail: {
             tags: ["VPN Mobile Profiles"],
             summary: "Send heartbeat",
-            description: "Send a periodic heartbeat from the mobile app to update lastSeenAt timestamp.",
+            description:
+              "Send a periodic heartbeat from the mobile app to update lastSeenAt timestamp.",
             security: [{ bearerAuth: [] }],
           },
           body: t.Object({}),

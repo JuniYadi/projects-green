@@ -123,10 +123,7 @@ export const createAdminAuditLogRoutes = (
           // Check admin access — only super_admin can view audit logs
           const actor = await resolveActor(auth, getPlatformRole)
           if (!isAdmin(actor)) {
-            return toForbidden(
-              set,
-              "Only administrators can view audit logs."
-            )
+            return toForbidden(set, "Only administrators can view audit logs.")
           }
 
           // Only super_admin can view audit logs

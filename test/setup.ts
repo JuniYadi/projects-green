@@ -8,13 +8,27 @@ import * as matchers from "@testing-library/jest-dom/matchers"
 mock.module("ioredis", () => ({
   default: class MockRedis {
     status = "end"
-    get() { return Promise.resolve(null) }
-    set() { return Promise.resolve("OK") }
-    del() { return Promise.resolve(1) }
-    exists() { return Promise.resolve(0) }
-    expire() { return Promise.resolve(1) }
-    on() { return this }
-    quit() { return Promise.resolve("OK") }
+    get() {
+      return Promise.resolve(null)
+    }
+    set() {
+      return Promise.resolve("OK")
+    }
+    del() {
+      return Promise.resolve(1)
+    }
+    exists() {
+      return Promise.resolve(0)
+    }
+    expire() {
+      return Promise.resolve(1)
+    }
+    on() {
+      return this
+    }
+    quit() {
+      return Promise.resolve("OK")
+    }
     disconnect() {}
     connect() {}
   },
@@ -53,9 +67,17 @@ mock.module("react-icons/si", () => {
 mock.module("@workos-inc/node", () => {
   class MockWorkOSException extends Error {
     constructor(
-      props?: string | { message?: string; code?: string; requestID?: string; path?: string; errors?: unknown[] },
+      props?:
+        | string
+        | {
+            message?: string
+            code?: string
+            requestID?: string
+            path?: string
+            errors?: unknown[]
+          },
       _statusCode?: number,
-      _requestID?: string,
+      _requestID?: string
     ) {
       if (typeof props === "string") {
         super(props)
@@ -77,7 +99,11 @@ mock.module("@workos-inc/node", () => {
     AuthenticationException: class AuthenticationException extends MockWorkOSException {
       data: unknown
       constructor(statusCode: number, data: unknown, requestID: string) {
-        super(typeof data === "object" && data !== null && "message" in data ? (data as { message: string }).message : "auth error")
+        super(
+          typeof data === "object" && data !== null && "message" in data
+            ? (data as { message: string }).message
+            : "auth error"
+        )
         this.data = data
       }
     },
@@ -139,19 +165,23 @@ configure({ asyncUtilTimeout: 5000 })
 ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
 
 if (!window.matchMedia) {
-  Object.defineProperty(window as unknown as Record<string, unknown>, "matchMedia", {
-    writable: true,
-    value: (query: string) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addListener: () => {},
-      removeListener: () => {},
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      dispatchEvent: () => false,
-    }),
-  })
+  Object.defineProperty(
+    window as unknown as Record<string, unknown>,
+    "matchMedia",
+    {
+      writable: true,
+      value: (query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }),
+    }
+  )
 }
 
 // Note: Prisma mocking is done in individual test files using mock.module()

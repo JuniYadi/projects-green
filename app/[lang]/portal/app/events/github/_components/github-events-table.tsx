@@ -137,118 +137,119 @@ export function GithubEventsTable() {
   }, [])
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  const columns = useMemo<ColumnDef<GithubEventRow>[]>(() => [
-    {
-      accessorKey: "receivedAt",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Received" />
-      ),
-      cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">
-          {new Date(row.original.receivedAt).toLocaleString()}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "eventName",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Event" />
-      ),
-      cell: ({ row }) => (
-        <span className="text-xs font-medium">
-          {row.original.eventName}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "repositoryFullName",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Repository" />
-      ),
-      cell: ({ row }) => (
-        <span className="text-xs">{row.original.repositoryFullName}</span>
-      ),
-    },
-    {
-      accessorKey: "branch",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Branch" />
-      ),
-      cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">
-          {row.original.branch}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "commitSha",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Commit SHA" />
-      ),
-      cell: ({ row }) => (
-        <span className="font-mono text-xs text-muted-foreground">
-          {truncate(row.original.commitSha, 8)}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "commitMessage",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Message" />
-      ),
-      cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">
-          {truncate(row.original.commitMessage, 40)}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "senderLogin",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Sender" />
-      ),
-      cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground">
-          {row.original.senderLogin}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "processStatus",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
-      ),
-      cell: ({ row }) => (
-        <div className="space-y-1">
-          <span
-            className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_BADGE[row.original.processStatus ?? ""] ?? "bg-gray-100 text-gray-800"}`}
-          >
-            {row.original.processStatus}
+  const columns = useMemo<ColumnDef<GithubEventRow>[]>(
+    () => [
+      {
+        accessorKey: "receivedAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Received" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">
+            {new Date(row.original.receivedAt).toLocaleString()}
           </span>
-          {row.original.ignoreReason ? (
-            <div className="text-xs text-muted-foreground">
-              {row.original.ignoreReason}
-            </div>
-          ) : null}
-        </div>
-      ),
-    },
-    {
-      id: "actions",
-      header: () => null,
-      cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 px-2 text-xs"
-          onClick={() => void handleViewJson(row.original)}
-        >
-          JSON
-        </Button>
-      ),
-      enableHiding: false,
-    },
-  ], [handleViewJson])
+        ),
+      },
+      {
+        accessorKey: "eventName",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Event" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-xs font-medium">{row.original.eventName}</span>
+        ),
+      },
+      {
+        accessorKey: "repositoryFullName",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Repository" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-xs">{row.original.repositoryFullName}</span>
+        ),
+      },
+      {
+        accessorKey: "branch",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Branch" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">
+            {row.original.branch}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "commitSha",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Commit SHA" />
+        ),
+        cell: ({ row }) => (
+          <span className="font-mono text-xs text-muted-foreground">
+            {truncate(row.original.commitSha, 8)}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "commitMessage",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Message" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">
+            {truncate(row.original.commitMessage, 40)}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "senderLogin",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Sender" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">
+            {row.original.senderLogin}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "processStatus",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Status" />
+        ),
+        cell: ({ row }) => (
+          <div className="space-y-1">
+            <span
+              className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_BADGE[row.original.processStatus ?? ""] ?? "bg-gray-100 text-gray-800"}`}
+            >
+              {row.original.processStatus}
+            </span>
+            {row.original.ignoreReason ? (
+              <div className="text-xs text-muted-foreground">
+                {row.original.ignoreReason}
+              </div>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        id: "actions",
+        header: () => null,
+        cell: ({ row }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={() => void handleViewJson(row.original)}
+          >
+            JSON
+          </Button>
+        ),
+        enableHiding: false,
+      },
+    ],
+    [handleViewJson]
+  )
 
   return (
     <>
@@ -342,7 +343,11 @@ export function GithubEventsTable() {
               columns={columns}
               data={events}
               searchPlaceholder="Search events..."
-              searchableColumns={["eventName", "repositoryFullName", "senderLogin"]}
+              searchableColumns={[
+                "eventName",
+                "repositoryFullName",
+                "senderLogin",
+              ]}
               defaultColumnVisibility={{
                 branch: false,
                 commitSha: false,

@@ -2,18 +2,35 @@ import { Prisma } from "@prisma/client"
 
 export type WhatsappCatalogDTO = Pick<
   Prisma.WhatsappCatalogGetPayload<Prisma.WhatsappCatalogDefaultArgs>,
-  "id" | "organizationId" | "name" | "metaCatalogId" | "deviceId" | "createdAt" | "updatedAt"
+  | "id"
+  | "organizationId"
+  | "name"
+  | "metaCatalogId"
+  | "deviceId"
+  | "createdAt"
+  | "updatedAt"
 > & {
   productCount?: number
 }
 
 export type WhatsappCatalogProductDTO = Pick<
   Prisma.WhatsappCatalogProductGetPayload<Prisma.WhatsappCatalogProductDefaultArgs>,
-  "id" | "catalogId" | "productRetailerId" | "name" | "description" | "price" | "currency" | "imageUrl" | "url" | "createdAt"
+  | "id"
+  | "catalogId"
+  | "productRetailerId"
+  | "name"
+  | "description"
+  | "price"
+  | "currency"
+  | "imageUrl"
+  | "url"
+  | "createdAt"
 >
 
 export function toWhatsappCatalogDTO(
-  catalog: Prisma.WhatsappCatalogGetPayload<Prisma.WhatsappCatalogDefaultArgs> & { _count?: { products: number } }
+  catalog: Prisma.WhatsappCatalogGetPayload<Prisma.WhatsappCatalogDefaultArgs> & {
+    _count?: { products: number }
+  }
 ): WhatsappCatalogDTO {
   return {
     id: catalog.id,

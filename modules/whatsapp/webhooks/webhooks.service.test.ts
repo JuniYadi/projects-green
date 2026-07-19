@@ -18,8 +18,12 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
-const { createWebhookEvent, recordProcessingResult, listWebhookEvents, extractMessageBody } =
-  await import("./webhooks.service")
+const {
+  createWebhookEvent,
+  recordProcessingResult,
+  listWebhookEvents,
+  extractMessageBody,
+} = await import("./webhooks.service")
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -455,7 +459,11 @@ describe("extractMessageBody", () => {
       type: "interactive",
       interactive: {
         type: "list_reply",
-        list_reply: { id: "svc_k8s", title: "Kubernetes Setup", description: "K8s setup" },
+        list_reply: {
+          id: "svc_k8s",
+          title: "Kubernetes Setup",
+          description: "K8s setup",
+        },
       },
     })
     expect(result).toBe("Kubernetes Setup")

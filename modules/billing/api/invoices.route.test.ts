@@ -319,7 +319,9 @@ describe("InvoicesRoute", () => {
     })
 
     it("returns 500 on database error for detail", async () => {
-      mockBillingInvoiceFindUnique.mockRejectedValueOnce(new Error("Database error"))
+      mockBillingInvoiceFindUnique.mockRejectedValueOnce(
+        new Error("Database error")
+      )
 
       const app = new Elysia()
         .use(

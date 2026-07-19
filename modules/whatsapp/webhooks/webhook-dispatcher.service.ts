@@ -28,7 +28,8 @@ export type WebhookDeliveryLogDTO = Pick<
   | "createdAt"
 >
 
-export type WebhookDeliveryLogDetailDTO = Prisma.WhatsappWebhookDeliveryLogGetPayload<GetPayloadInput>
+export type WebhookDeliveryLogDetailDTO =
+  Prisma.WhatsappWebhookDeliveryLogGetPayload<GetPayloadInput>
 
 export function toDeliveryLogDTO(
   log: Prisma.WhatsappWebhookDeliveryLogGetPayload<GetPayloadInput>
@@ -188,10 +189,9 @@ export const webhookDispatcher = {
    * Resend a failed or dead-lettered delivery.
    */
   async resendDelivery(deliveryLogId: string): Promise<void> {
-    const deliveryLog =
-      await prisma.whatsappWebhookDeliveryLog.findUnique({
-        where: { id: deliveryLogId },
-      })
+    const deliveryLog = await prisma.whatsappWebhookDeliveryLog.findUnique({
+      where: { id: deliveryLogId },
+    })
 
     if (!deliveryLog) {
       throw new Error(`Delivery log not found: ${deliveryLogId}`)

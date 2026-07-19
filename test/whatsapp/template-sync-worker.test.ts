@@ -56,9 +56,8 @@ mock.module("@/modules/whatsapp/audit/whatsapp-audit.service", () => ({
   logWhatsappAuditEvent: logWhatsappAuditEventMock,
 }))
 
-const { syncTemplates, syncTemplateStatus } = await import(
-  "@/scripts/whatsapp-template-sync-worker"
-)
+const { syncTemplates, syncTemplateStatus } =
+  await import("@/scripts/whatsapp-template-sync-worker")
 
 beforeEach(() => {
   workerOnMock.mockClear()
@@ -159,7 +158,10 @@ describe("whatsapp-template-sync-worker", () => {
 
     // Audit assertions — STARTED then SYNCED
     expect(logWhatsappAuditEventMock).toHaveBeenCalledWith(
-      expect.objectContaining({ action: "TEMPLATE_SYNC_STARTED", status: "STARTED" })
+      expect.objectContaining({
+        action: "TEMPLATE_SYNC_STARTED",
+        status: "STARTED",
+      })
     )
     expect(logWhatsappAuditEventMock).toHaveBeenCalledWith(
       expect.objectContaining({ action: "TEMPLATE_SYNCED", status: "OK" })
@@ -214,7 +216,10 @@ describe("whatsapp-template-sync-worker", () => {
 
     // Audit — STARTED then SYNCED for sync-status
     expect(logWhatsappAuditEventMock).toHaveBeenCalledWith(
-      expect.objectContaining({ action: "TEMPLATE_SYNC_STARTED", status: "STARTED" })
+      expect.objectContaining({
+        action: "TEMPLATE_SYNC_STARTED",
+        status: "STARTED",
+      })
     )
     expect(logWhatsappAuditEventMock).toHaveBeenCalledWith(
       expect.objectContaining({ action: "TEMPLATE_SYNCED", status: "OK" })
@@ -226,7 +231,11 @@ describe("whatsapp-template-sync-worker", () => {
     listTemplatesPageMock.mockResolvedValue({
       data: [
         { name: "fail", components: [] },
-        { name: "ok", language: "en", components: [{ type: "BODY", text: "ok" }] },
+        {
+          name: "ok",
+          language: "en",
+          components: [{ type: "BODY", text: "ok" }],
+        },
       ],
     })
     mockPrisma.whatsappTemplate.findFirst
@@ -245,13 +254,17 @@ describe("whatsapp-template-sync-worker", () => {
     ).rejects.toThrow("partially failed")
 
     // Verify audit event ordering: STARTED must come before FAILED
-    const auditCalls = logWhatsappAuditEventMock.mock.calls as Array<[Record<string, unknown>]>
+    const auditCalls = logWhatsappAuditEventMock.mock.calls as Array<
+      [Record<string, unknown>]
+    >
     expect(auditCalls.length).toBeGreaterThanOrEqual(2)
     const startedIdx = auditCalls.findIndex(
-      (call) => (call[0] as Record<string, unknown>)?.action === "TEMPLATE_SYNC_STARTED"
+      (call) =>
+        (call[0] as Record<string, unknown>)?.action === "TEMPLATE_SYNC_STARTED"
     )
     const failedIdx = auditCalls.findIndex(
-      (call) => (call[0] as Record<string, unknown>)?.action === "TEMPLATE_SYNC_FAILED"
+      (call) =>
+        (call[0] as Record<string, unknown>)?.action === "TEMPLATE_SYNC_FAILED"
     )
     expect(startedIdx).toBeLessThan(failedIdx)
     expect(auditCalls[failedIdx][0] as Record<string, unknown>).toMatchObject({

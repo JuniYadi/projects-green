@@ -1,11 +1,7 @@
 "use client"
 
 import * as React from "react"
-import {
-  CaretDown,
-  CaretRight,
-  WarningCircle,
-} from "@phosphor-icons/react"
+import { CaretDown, CaretRight, WarningCircle } from "@phosphor-icons/react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -55,16 +51,24 @@ export type AuditLogTableProps = {
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-function actionVariant(tone: ActionTone): "success" | "destructive" | "warning" | "default" {
+function actionVariant(
+  tone: ActionTone
+): "success" | "destructive" | "warning" | "default" {
   switch (tone) {
-    case "success": return "success"
-    case "danger": return "destructive"
-    case "warning": return "warning"
-    default: return "default"
+    case "success":
+      return "success"
+    case "danger":
+      return "destructive"
+    case "warning":
+      return "warning"
+    default:
+      return "default"
   }
 }
 
-function statusVariant(status: string | null): "success" | "destructive" | "warning" | "default" {
+function statusVariant(
+  status: string | null
+): "success" | "destructive" | "warning" | "default" {
   if (status === "OK") return "success"
   if (status === "FAILED") return "destructive"
   if (status === "STARTED" || status === "PENDING") return "warning"
@@ -111,13 +115,27 @@ export function AuditLogTable({
             <TableBody>
               {Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell><Skeleton className="size-4" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-36" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-28 rounded-full" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                  <TableCell>
+                    <Skeleton className="size-4" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-36" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-28 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-48" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-12" />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -178,9 +196,7 @@ export function AuditLogTable({
                 <React.Fragment key={log.id}>
                   <TableRow
                     className="cursor-pointer"
-                    onClick={() =>
-                      setExpandedRowId(isExpanded ? null : log.id)
-                    }
+                    onClick={() => setExpandedRowId(isExpanded ? null : log.id)}
                   >
                     <TableCell>
                       <Button
@@ -215,7 +231,7 @@ export function AuditLogTable({
                     <TableCell className="max-w-xs truncate text-sm">
                       {log.message ?? "—"}
                     </TableCell>
-                    <TableCell className="text-xs font-mono">
+                    <TableCell className="font-mono text-xs">
                       {log.adminId ? log.adminId.slice(0, 8) : "—"}
                     </TableCell>
                     <TableCell className="text-xs">
@@ -283,7 +299,8 @@ export function AuditLogTable({
       {pagination && pagination.totalPages > 1 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
-            Page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
+            Page {pagination.page} of {pagination.totalPages} (
+            {pagination.total} total)
           </span>
           <div className="flex gap-2">
             <Button

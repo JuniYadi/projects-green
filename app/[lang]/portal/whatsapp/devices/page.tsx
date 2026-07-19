@@ -4,7 +4,10 @@ import Link from "next/link"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { prisma } from "@/lib/prisma"
-import { toDeviceListItem, toDeviceHealthInfo } from "@/modules/whatsapp/devices/devices.dto"
+import {
+  toDeviceListItem,
+  toDeviceHealthInfo,
+} from "@/modules/whatsapp/devices/devices.dto"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import { getCachedOrganizations } from "@/lib/workos-directory"
 import {
@@ -89,7 +92,9 @@ export default async function PortalWhatsAppDevicesPage({
     (isSuperAdmin || requestedOrganizationId === auth.organizationId)
       ? requestedOrganizationId
       : undefined
-  const accessWhere = isSuperAdmin ? {} : { organizationId: auth.organizationId }
+  const accessWhere = isSuperAdmin
+    ? {}
+    : { organizationId: auth.organizationId }
 
   const [organizationRows, deviceRecords] = await Promise.all([
     prisma.whatsappDevice.findMany({

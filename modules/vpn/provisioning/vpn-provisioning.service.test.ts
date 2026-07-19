@@ -1,10 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import type { PrismaClient } from "@prisma/client"
 
-type PrismaLike = Pick<
-  PrismaClient,
-  "vpnServerAccount" | "vpnServer"
->
+type PrismaLike = Pick<PrismaClient, "vpnServerAccount" | "vpnServer">
 
 const mockAuditLogs: Array<{
   action: string
@@ -90,7 +87,10 @@ const account = {
     hostname: "vpn.example.com",
     ipAddress: null,
     sshUser: "root",
-    sshKey: { privateKey: "-----BEGIN RSA PRIVATE KEY-----\nfake\n-----END RSA PRIVATE KEY-----" },
+    sshKey: {
+      privateKey:
+        "-----BEGIN RSA PRIVATE KEY-----\nfake\n-----END RSA PRIVATE KEY-----",
+    },
   },
   subscription: {
     organizationId: "org_1",
@@ -187,9 +187,7 @@ describe("VpnProvisioningService audit logging", () => {
     const started = mockAuditLogs.find(
       (l) => l.action === "PROVISIONING_STARTED"
     )
-    const failed = mockAuditLogs.find(
-      (l) => l.action === "PROVISIONING_FAILED"
-    )
+    const failed = mockAuditLogs.find((l) => l.action === "PROVISIONING_FAILED")
 
     expect(started).toBeDefined()
     expect(failed).toBeDefined()
@@ -224,9 +222,7 @@ describe("VpnProvisioningService audit logging", () => {
       "DNS resolution failed"
     )
 
-    const failed = mockAuditLogs.find(
-      (l) => l.action === "PROVISIONING_FAILED"
-    )
+    const failed = mockAuditLogs.find((l) => l.action === "PROVISIONING_FAILED")
     expect(failed?.errorMessage).toBe("DNS resolution failed")
   })
 })
@@ -267,9 +263,7 @@ describe("VpnProvisioningService step logging", () => {
   })
 
   it("records last step as FAILED when SSH fails", async () => {
-    mockOpenVpn.createClient.mockRejectedValue(
-      new Error("Connection timeout")
-    )
+    mockOpenVpn.createClient.mockRejectedValue(new Error("Connection timeout"))
 
     await expect(service.provisionAccount(ACCOUNT_ID)).rejects.toThrow(
       "Connection timeout"
@@ -392,7 +386,10 @@ describe("VpnProvisioningService removeRemoteAccount", () => {
     expect(mockOpenVpn.validateClient).toHaveBeenCalled()
     expect(mockOpenVpn.restartServer).toHaveBeenCalled()
     expect(mockPrisma.vpnServerAccount.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: ACCOUNT_ID }, data: expect.objectContaining({ provisioningStatus: "REVOKED" }) })
+      expect.objectContaining({
+        where: { id: ACCOUNT_ID },
+        data: expect.objectContaining({ provisioningStatus: "REVOKED" }),
+      })
     )
   })
 
@@ -440,7 +437,9 @@ describe("VpnProvisioningService removeRemoteAccount", () => {
   })
 
   it("throws and does NOT update DB to REVOKED when SSH revoke fails", async () => {
-    mockOpenVpn.revokeClient.mockRejectedValue(new Error("SSH connection refused"))
+    mockOpenVpn.revokeClient.mockRejectedValue(
+      new Error("SSH connection refused")
+    )
 
     await expect(service.removeRemoteAccount(ACCOUNT_ID)).rejects.toThrow(
       "SSH connection refused"
@@ -454,7 +453,7 @@ describe("VpnProvisioningService removeRemoteAccount", () => {
   it("throws when client still exists on server after revoke", async () => {
     // Default validateClient returns exists=true — the verify step catches it
     await expect(service.removeRemoteAccount(ACCOUNT_ID)).rejects.toThrow(
-      'still exists on server after revoke'
+      "still exists on server after revoke"
     )
 
     // DB should NOT be updated to REVOKED if verify fails

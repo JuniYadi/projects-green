@@ -7,7 +7,8 @@ mock.module("@/lib/whatsapp/crypto", () => ({
   decryptWhatsAppToken: mock(async (token: string) => token),
 }))
 
-const { WhatsAppDeviceClient } = await import("@/lib/whatsapp/meta-cloud/device-client")
+const { WhatsAppDeviceClient } =
+  await import("@/lib/whatsapp/meta-cloud/device-client")
 
 const TEST_ACCESS_TOKEN = "test-token"
 const PHONE_ID = "phone-1"
@@ -29,11 +30,12 @@ describe("WhatsAppDeviceClient business profile", () => {
   })
 
   it("getBusinessProfile returns null when data array is empty", async () => {
-    globalThis.fetch = mock(async () =>
-      new Response(JSON.stringify({ data: [] }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      })
+    globalThis.fetch = mock(
+      async () =>
+        new Response(JSON.stringify({ data: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
     ) as unknown as typeof globalThis.fetch
 
     const client = createClient()
@@ -49,14 +51,15 @@ describe("WhatsAppDeviceClient business profile", () => {
       vertical: "PROF_SERVICES",
     }
 
-    globalThis.fetch = mock(async () =>
-      new Response(
-        JSON.stringify({ data: [{ business_profile: profileData }] }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }
-      )
+    globalThis.fetch = mock(
+      async () =>
+        new Response(
+          JSON.stringify({ data: [{ business_profile: profileData }] }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
     ) as unknown as typeof globalThis.fetch
 
     const client = createClient()
@@ -90,11 +93,12 @@ describe("WhatsAppDeviceClient business profile", () => {
   })
 
   it("updateBusinessProfile returns success false when Meta says so", async () => {
-    globalThis.fetch = mock(async () =>
-      new Response(JSON.stringify({ success: false }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      })
+    globalThis.fetch = mock(
+      async () =>
+        new Response(JSON.stringify({ success: false }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
     ) as unknown as typeof globalThis.fetch
 
     const client = createClient()

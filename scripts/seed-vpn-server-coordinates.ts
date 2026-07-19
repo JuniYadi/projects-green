@@ -40,7 +40,9 @@ async function main() {
   for (const server of servers) {
     const coords = COORDS_BY_REGION_SLUG[server.region.slug]
     if (!coords) {
-      console.log(`  SKIP  ${server.name} — unknown region slug "${server.region.slug}"`)
+      console.log(
+        `  SKIP  ${server.name} — unknown region slug "${server.region.slug}"`
+      )
       skipped++
       continue
     }

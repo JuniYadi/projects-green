@@ -439,9 +439,15 @@ export const createSupportTicketService = (
 
         // Auto-transition status based on reply
         if (!reply.isInternalNote) {
-          const staffRoles = actor.isSuperAdmin || actor.canManageTickets || isAssignedAgent(actor, ticket)
+          const staffRoles =
+            actor.isSuperAdmin ||
+            actor.canManageTickets ||
+            isAssignedAgent(actor, ticket)
           const nextStatus = autoTransitionStatus(ticket.status, !!staffRoles)
-          if (nextStatus && isSupportTicketStatusTransitionAllowed(ticket.status, nextStatus)) {
+          if (
+            nextStatus &&
+            isSupportTicketStatusTransitionAllowed(ticket.status, nextStatus)
+          ) {
             const now = new Date()
             const timestamps = toTransitionTimestamps(ticket, nextStatus, now)
             await repository.updateTicketStatus({

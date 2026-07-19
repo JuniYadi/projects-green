@@ -127,7 +127,9 @@ describe("ConfirmPaymentDialog", () => {
     fireEvent.click(view.getByText("Reject"))
 
     expect(view.getByText("Reject Payment")).toBeTruthy()
-    expect(view.getByRole("textbox", { name: /rejection reason/i })).toBeTruthy()
+    expect(
+      view.getByRole("textbox", { name: /rejection reason/i })
+    ).toBeTruthy()
     expect(view.getByText("Back")).toBeTruthy()
     expect(view.getByText("Confirm Reject")).toBeTruthy()
   })

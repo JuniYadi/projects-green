@@ -1,4 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  spyOn,
+} from "bun:test"
 import type { AnalyticsService } from "./analytics.service"
 
 // ─── Mock device ─────────────────────────────────────────────────────────────
@@ -27,17 +35,30 @@ const mockClient = {
 }
 
 // Mock prisma with all delegates needed across tests
-const mockDeviceFindUnique = mock(async (_args: unknown): Promise<unknown> => null)
+const mockDeviceFindUnique = mock(
+  async (_args: unknown): Promise<unknown> => null
+)
 const mockDeviceFindMany = mock(async (_args: unknown): Promise<unknown> => [])
-const mockDailyCountFindFirst = mock(async (_args: unknown): Promise<unknown> => null)
-const mockDailyCountFindMany = mock(async (_args: unknown): Promise<unknown> => [])
+const mockDailyCountFindFirst = mock(
+  async (_args: unknown): Promise<unknown> => null
+)
+const mockDailyCountFindMany = mock(
+  async (_args: unknown): Promise<unknown> => []
+)
 const mockDailyCountCreate = mock(
-  async (data: { data: Record<string, unknown> }): Promise<unknown> => ({ id: "new-id", ...data.data }),
+  async (data: { data: Record<string, unknown> }): Promise<unknown> => ({
+    id: "new-id",
+    ...data.data,
+  })
 )
 const mockDailyCountUpdate = mock(
-  async (data: { data: Record<string, unknown> }): Promise<unknown> => ({ id: "existing-id" }),
+  async (data: { data: Record<string, unknown> }): Promise<unknown> => ({
+    id: "existing-id",
+  })
 )
-const mockBillingLedgerFindMany = mock(async (_args: unknown): Promise<unknown> => [])
+const mockBillingLedgerFindMany = mock(
+  async (_args: unknown): Promise<unknown> => []
+)
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -64,9 +85,8 @@ mock.module("@/lib/whatsapp/meta-cloud/device-client", () => ({
   },
 }))
 
-const { AnalyticsService: AnalyticsServiceClass } = await import(
-  "./analytics.service"
-)
+const { AnalyticsService: AnalyticsServiceClass } =
+  await import("./analytics.service")
 
 let service: AnalyticsService
 
@@ -83,7 +103,12 @@ describe("AnalyticsService", () => {
     mockDailyCountFindMany.mockClear()
     mockDailyCountFindMany.mockResolvedValue([])
     mockDailyCountCreate.mockClear()
-    mockDailyCountCreate.mockResolvedValue({ id: "default" } as { id: string; organizationId?: string; date?: Date; messageInboxCount?: number })
+    mockDailyCountCreate.mockResolvedValue({ id: "default" } as {
+      id: string
+      organizationId?: string
+      date?: Date
+      messageInboxCount?: number
+    })
     mockDailyCountUpdate.mockClear()
     mockDailyCountUpdate.mockResolvedValue({ id: "default" } as { id: string })
     mockBillingLedgerFindMany.mockClear()
@@ -145,7 +170,7 @@ describe("AnalyticsService", () => {
         "org-1",
         "device-1",
         "2026-06-01",
-        "2026-06-07",
+        "2026-06-07"
       )
 
       expect(report.comparisons.length).toBeGreaterThan(0)
@@ -164,7 +189,7 @@ describe("AnalyticsService", () => {
       const result = await service.backfillMissingData(
         "org-1",
         "device-1",
-        "2026-06-01",
+        "2026-06-01"
       )
 
       expect(result.created).toBeGreaterThanOrEqual(0)

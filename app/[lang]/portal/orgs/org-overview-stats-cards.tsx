@@ -97,8 +97,7 @@ export function OrgOverviewStatsCards() {
             <div className="text-2xl font-bold">{card.value}</div>
           </CardContent>
         </Card>
-      ))
-      }
+      ))}
     </div>
   )
 }

@@ -25,13 +25,10 @@ export function usePersistedColumnVisibility(
 
   const setAndPersist = useCallback(
     (
-      updater:
-        | VisibilityState
-        | ((prev: VisibilityState) => VisibilityState)
+      updater: VisibilityState | ((prev: VisibilityState) => VisibilityState)
     ) => {
       setColumnVisibility((prev) => {
-        const next =
-          typeof updater === "function" ? updater(prev) : updater
+        const next = typeof updater === "function" ? updater(prev) : updater
         if (key && typeof window !== "undefined") {
           localStorage.setItem(key, JSON.stringify(next))
         }

@@ -14,16 +14,10 @@ mock.module("ioredis", () => {
           this.status = "ready"
         }),
         get: mock(async (key: string) => store.get(key) ?? null),
-        set: mock(
-          async (
-            key: string,
-            value: string,
-            ...args: string[]
-          ) => {
-            store.set(key, value)
-            return "OK"
-          }
-        ),
+        set: mock(async (key: string, value: string, ...args: string[]) => {
+          store.set(key, value)
+          return "OK"
+        }),
         del: mock(async (...keys: string[]) => {
           let count = 0
           for (const key of keys) {
@@ -31,22 +25,26 @@ mock.module("ioredis", () => {
           }
           return count
         }),
-        scan: mock(async (
-          cursor: string,
-          _type?: string,
-          pattern?: string,
-          _countCmd?: string,
-          _count?: number
-        ) => {
-          // Support both: scan(cursor, "MATCH", pattern, "COUNT", count)
-          // and scan(cursor, "0", "MATCH", pattern, ...)
-          const keys = [...store.keys()]
-          const matched =
-            pattern === "*"
-              ? keys
-              : keys.filter((k) => k.startsWith(pattern?.replaceAll("*", "") ?? ""))
-          return ["0", matched]
-        }),
+        scan: mock(
+          async (
+            cursor: string,
+            _type?: string,
+            pattern?: string,
+            _countCmd?: string,
+            _count?: number
+          ) => {
+            // Support both: scan(cursor, "MATCH", pattern, "COUNT", count)
+            // and scan(cursor, "0", "MATCH", pattern, ...)
+            const keys = [...store.keys()]
+            const matched =
+              pattern === "*"
+                ? keys
+                : keys.filter((k) =>
+                    k.startsWith(pattern?.replaceAll("*", "") ?? "")
+                  )
+            return ["0", matched]
+          }
+        ),
         on: mock(() => {}),
       }
     },

@@ -19,8 +19,8 @@ export function AlertsTab({ orgId }: AlertsTabProps) {
       <CardContent>
         <div className="rounded-lg border border-dashed p-8 text-center">
           <p className="text-sm text-muted-foreground">
-            Alert preferences for this organization will be available here
-            once the admin alerts configuration is implemented.
+            Alert preferences for this organization will be available here once
+            the admin alerts configuration is implemented.
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
             Organization ID: {orgId}

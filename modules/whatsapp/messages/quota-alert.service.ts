@@ -70,7 +70,8 @@ export const quotaAlertService: QuotaAlertService = {
     })
     const sentThresholds = new Set(existingAlerts.map((a) => a.threshold))
     const crossedThresholds = QUOTA_THRESHOLDS.filter(
-      (threshold) => currentPercent >= threshold && !sentThresholds.has(threshold)
+      (threshold) =>
+        currentPercent >= threshold && !sentThresholds.has(threshold)
     )
 
     await Promise.allSettled(
@@ -112,7 +113,15 @@ type QuotaEmailParams = {
 }
 
 async function sendQuotaEmail(params: QuotaEmailParams): Promise<void> {
-  const { to, orgName, devicePhone, threshold, currentPercent, currentCost, quotaBase } = params
+  const {
+    to,
+    orgName,
+    devicePhone,
+    threshold,
+    currentPercent,
+    currentCost,
+    quotaBase,
+  } = params
 
   const subject =
     threshold === 100
@@ -131,7 +140,7 @@ async function sendQuotaEmail(params: QuotaEmailParams): Promise<void> {
     .alert-warning { background: #fef3cd; border: 1px solid #ffc107; }
     .alert-danger { background: #f8d7da; border: 1px solid #dc3545; }
     .progress-bar { height: 20px; background: #e9ecef; border-radius: 4px; overflow: hidden; margin: 16px 0; }
-    .progress-fill { height: 100%; background: ${threshold === 100 ? '#dc3545' : threshold >= 80 ? '#ffc107' : '#28a745'}; }
+    .progress-fill { height: 100%; background: ${threshold === 100 ? "#dc3545" : threshold >= 80 ? "#ffc107" : "#28a745"}; }
     .footer { color: #6c757d; font-size: 12px; margin-top: 24px; }
   </style>
 </head>
@@ -141,8 +150,8 @@ async function sendQuotaEmail(params: QuotaEmailParams): Promise<void> {
     <p>Hello,</p>
     <p>Your WhatsApp usage for <strong>${orgName}</strong> (Device: ${devicePhone}) has reached <strong>${currentPercent}%</strong> of the monthly quota.</p>
 
-    <div class="alert ${threshold === 100 ? 'alert-danger' : 'alert-warning'}">
-      <p><strong>${threshold === 100 ? '⚠️ QUOTA EXHAUSTED' : `⚠️ ${threshold}% Quota Reached`}</strong></p>
+    <div class="alert ${threshold === 100 ? "alert-danger" : "alert-warning"}">
+      <p><strong>${threshold === 100 ? "⚠️ QUOTA EXHAUSTED" : `⚠️ ${threshold}% Quota Reached`}</strong></p>
       <ul>
         <li>Current usage: ${formatCurrency(currentCost)}</li>
         <li>Quota base: ${formatCurrency(Number(quotaBase))}</li>
@@ -150,17 +159,21 @@ async function sendQuotaEmail(params: QuotaEmailParams): Promise<void> {
       </ul>
     </div>
 
-    ${threshold === 100 ? `
+    ${
+      threshold === 100
+        ? `
     <p><strong>⚡ Action Required:</strong> Messages will stop sending once your balance is exhausted. Please top up your balance immediately to avoid service interruption.</p>
-    ` : `
+    `
+        : `
     <p>Consider topping up your balance or reviewing usage patterns to avoid unexpected costs.</p>
-    `}
+    `
+    }
 
     <div class="progress-bar">
       <div class="progress-fill" style="width: ${Math.min(currentPercent, 100)}%"></div>
     </div>
 
-    <p>View usage details: <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.example.com'}/console/whatsapp/usage">WhatsApp Usage Dashboard</a></p>
+    <p>View usage details: <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://app.example.com"}/console/whatsapp/usage">WhatsApp Usage Dashboard</a></p>
 
     <div class="footer">
       <p>This is an automated alert from your billing system.</p>

@@ -1,12 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useParams } from "next/navigation"
 import {
   ArrowRightIcon,

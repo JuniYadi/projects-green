@@ -38,7 +38,9 @@ describe("TemplateForm", () => {
       // We verify by submitting without changes
       await user.click(screen.getByRole("button", { name: /save template/i }))
       expect(submittedData).not.toBeNull()
-      expect((submittedData as unknown as Record<string, unknown>).category).toBe("UTILITY")
+      expect(
+        (submittedData as unknown as Record<string, unknown>).category
+      ).toBe("UTILITY")
     })
 
     it("renders category select with MARKETING option", async () => {
@@ -61,7 +63,9 @@ describe("TemplateForm", () => {
       await user.click(marketingOption)
 
       await user.click(screen.getByRole("button", { name: /save template/i }))
-      expect((submittedData as unknown as Record<string, unknown>).category).toBe("MARKETING")
+      expect(
+        (submittedData as unknown as Record<string, unknown>).category
+      ).toBe("MARKETING")
     })
 
     it("renders category select with AUTHENTICATION option", async () => {
@@ -84,7 +88,9 @@ describe("TemplateForm", () => {
       await user.click(authOption)
 
       await user.click(screen.getByRole("button", { name: /save template/i }))
-      expect((submittedData as unknown as Record<string, unknown>).category).toBe("AUTHENTICATION")
+      expect(
+        (submittedData as unknown as Record<string, unknown>).category
+      ).toBe("AUTHENTICATION")
     })
 
     it("initializes category from initialData when editing", async () => {
@@ -109,7 +115,9 @@ describe("TemplateForm", () => {
 
       // Submit without changing category
       await user.click(screen.getByRole("button", { name: /save template/i }))
-      expect((submittedData as unknown as Record<string, unknown>).category).toBe("MARKETING")
+      expect(
+        (submittedData as unknown as Record<string, unknown>).category
+      ).toBe("MARKETING")
     })
 
     it("defaults to UTILITY when initialData.category is null", async () => {
@@ -133,7 +141,9 @@ describe("TemplateForm", () => {
       )
 
       await user.click(screen.getByRole("button", { name: /save template/i }))
-      expect((submittedData as unknown as Record<string, unknown>).category).toBe("UTILITY")
+      expect(
+        (submittedData as unknown as Record<string, unknown>).category
+      ).toBe("UTILITY")
     })
 
     it("submits category along with other fields", async () => {
@@ -163,9 +173,15 @@ describe("TemplateForm", () => {
       await user.click(screen.getByRole("button", { name: /save template/i }))
 
       expect(submittedData).not.toBeNull()
-      expect((submittedData as unknown as Record<string, unknown>).name).toBe("My Template")
-      expect((submittedData as unknown as Record<string, unknown>).slug).toBe("my_template")
-      expect((submittedData as unknown as Record<string, unknown>).category).toBe("AUTHENTICATION")
+      expect((submittedData as unknown as Record<string, unknown>).name).toBe(
+        "My Template"
+      )
+      expect((submittedData as unknown as Record<string, unknown>).slug).toBe(
+        "my_template"
+      )
+      expect(
+        (submittedData as unknown as Record<string, unknown>).category
+      ).toBe("AUTHENTICATION")
     })
   })
 
@@ -295,9 +311,9 @@ describe("TemplateForm", () => {
       await user.click(screen.getByRole("button", { name: /add variant/i }))
 
       // Fill body for the new variant (only lang is editable)
-      const bodyTextarea = screen.getAllByRole("textbox").find(
-        (t) => t.id?.includes("body")
-      ) as HTMLTextAreaElement
+      const bodyTextarea = screen
+        .getAllByRole("textbox")
+        .find((t) => t.id?.includes("body")) as HTMLTextAreaElement
       expect(bodyTextarea).toBeDefined()
 
       // Submit
@@ -340,8 +356,12 @@ describe("TemplateForm", () => {
       expect(submittedData).not.toBeNull()
       const submitted = submittedData as unknown as Record<string, unknown>
       // Should use initialData values for core fields
-      expect((submitted as Record<string, unknown>).name).toBe("Approved Template")
-      expect((submitted as Record<string, unknown>).slug).toBe("approved_template")
+      expect((submitted as Record<string, unknown>).name).toBe(
+        "Approved Template"
+      )
+      expect((submitted as Record<string, unknown>).slug).toBe(
+        "approved_template"
+      )
     })
   })
 })

@@ -197,8 +197,6 @@ export function LogViewer() {
   const limit = 20
   const [refreshKey] = useState(0)
 
-
-
   useEffect(() => {
     const abortController = new AbortController()
 

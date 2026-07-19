@@ -37,9 +37,8 @@ mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
 // ── Import route after mocks ────────────────────────────
 
-const { createAdminConfirmationRoutes } = await import(
-  "./admin-confirmation.route"
-)
+const { createAdminConfirmationRoutes } =
+  await import("./admin-confirmation.route")
 function app() {
   return new Elysia().use(createAdminConfirmationRoutes()).compile()
 }

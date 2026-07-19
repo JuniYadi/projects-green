@@ -9,10 +9,7 @@
  * See AGENTS.md for the centralized WorkOS directory pattern.
  */
 
-import {
-  getCachedUser,
-  getCachedOrganization,
-} from "@/lib/workos-directory"
+import { getCachedUser, getCachedOrganization } from "@/lib/workos-directory"
 import type {
   WorkOSDirectoryUser,
   WorkOSDirectoryOrg,
@@ -26,16 +23,12 @@ export type CachedOrg = WorkOSDirectoryOrg
  * @deprecated Use getCachedUser from "@/lib/workos-directory" instead.
  */
 export const workosCacheService = {
-  async getUser(
-    userId: string | null | undefined
-  ): Promise<CachedUser | null> {
+  async getUser(userId: string | null | undefined): Promise<CachedUser | null> {
     if (!userId) return null
     return getCachedUser(userId)
   },
 
-  async getOrg(
-    orgId: string | null | undefined
-  ): Promise<CachedOrg | null> {
+  async getOrg(orgId: string | null | undefined): Promise<CachedOrg | null> {
     if (!orgId) return null
     return getCachedOrganization(orgId)
   },

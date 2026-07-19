@@ -48,7 +48,6 @@ type VoucherClaimDTO = {
   orgName?: string | null
 }
 
-
 const STATUS_COLORS: Record<VoucherStatus, string> = {
   ACTIVE:
     "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",

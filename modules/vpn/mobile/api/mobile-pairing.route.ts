@@ -135,7 +135,7 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
     } catch (error) {
       console.error(
         "[AUTH ERROR] withAuth threw — middleware header mismatch?",
-        error instanceof Error ? error.stack ?? error.message : String(error)
+        error instanceof Error ? (error.stack ?? error.message) : String(error)
       )
       set.status = 500
       return {
@@ -230,7 +230,8 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
           detail: {
             tags: ["VPN Mobile Pairing"],
             summary: "Generate QR pairing token",
-            description: "Generate a short-lived JWT-based QR pairing token for mobile device pairing. Requires Bearer auth (user must own the subscription or be org admin).",
+            description:
+              "Generate a short-lived JWT-based QR pairing token for mobile device pairing. Requires Bearer auth (user must own the subscription or be org admin).",
             security: [{ bearerAuth: [] }],
           },
           body: t.Object({
@@ -238,7 +239,6 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
           }),
         }
       )
-
 
       /**
        * Claim a QR pairing token from the mobile app.
@@ -287,7 +287,8 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
               return {
                 error: {
                   code: "INTERNAL_ERROR" as const,
-                  message: "Organization not found after claiming pairing token.",
+                  message:
+                    "Organization not found after claiming pairing token.",
                   details: {},
                 },
               }
@@ -317,7 +318,11 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
               action: "DEVICE_REGISTERED",
               status: "OK",
               message: "Device paired via QR code",
-              details: { pairedVia: "QR", deviceName: body.deviceName, platform: body.platform },
+              details: {
+                pairedVia: "QR",
+                deviceName: body.deviceName,
+                platform: body.platform,
+              },
               ip: getClientIp(request),
               userAgent: request.headers.get("user-agent"),
             }).catch(() => {})
@@ -386,8 +391,10 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
                 action: "AUTH_MOBILE_CLAIM",
                 status: "FAILED",
                 message: "Device limit reached during pairing claim",
-                subscriptionId: (err as VpnMobileDeviceLimitError).subscriptionId,
-                organizationId: (err as VpnMobileDeviceLimitError).organizationId,
+                subscriptionId: (err as VpnMobileDeviceLimitError)
+                  .subscriptionId,
+                organizationId: (err as VpnMobileDeviceLimitError)
+                  .organizationId,
                 ip: getClientIp(request),
                 userAgent: request.headers.get("user-agent"),
               }).catch(() => {})
@@ -407,7 +414,8 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
           detail: {
             tags: ["VPN Mobile Pairing"],
             summary: "Claim pairing token from mobile app",
-            description: "Claim a QR pairing token from the mobile app. The pairing token itself acts as the authorization credential.",
+            description:
+              "Claim a QR pairing token from the mobile app. The pairing token itself acts as the authorization credential.",
           },
           body: t.Object({
             pairingToken: t.String({ minLength: 1 }),
@@ -451,41 +459,45 @@ export const createMobilePairingRoutes = (deps: Deps = {}) => {
        * Check pairing token status (used by portal QR UI for polling).
        * Auth: Bearer (admin or subscription owner).
        */
-      .get("/vpn/mobile/pairing/status/:token", async ({ params, set }) => {
-        const ctx = await resolveAuth(set)
-        if ("error" in ctx) return ctx
+      .get(
+        "/vpn/mobile/pairing/status/:token",
+        async ({ params, set }) => {
+          const ctx = await resolveAuth(set)
+          if ("error" in ctx) return ctx
 
-        try {
-          const result = await pairingService.getStatus(params.token)
-          return result
-        } catch (error) {
-          const err = error as Error & { name?: string }
-          // Invalid or expired tokens are expected during polling — return
-          // a safe status instead of 500 so the modal can react.
-          if (
-            err.name === "VpnPairingTokenInvalidError" ||
-            err.name === "VpnPairingTokenExpiredError"
-          ) {
-            return { status: "expired" as const }
+          try {
+            const result = await pairingService.getStatus(params.token)
+            return result
+          } catch (error) {
+            const err = error as Error & { name?: string }
+            // Invalid or expired tokens are expected during polling — return
+            // a safe status instead of 500 so the modal can react.
+            if (
+              err.name === "VpnPairingTokenInvalidError" ||
+              err.name === "VpnPairingTokenExpiredError"
+            ) {
+              return { status: "expired" as const }
+            }
+            // Log unexpected errors for debugging and return a distinct
+            // status so the UI can differentiate between "token expired" and
+            // "service unavailable" instead of silently masking incidents.
+            console.error(
+              "[PAIRING STATUS] unexpected error:",
+              err.name,
+              err.message
+            )
+            return { status: "error" as const, message: err.message }
           }
-          // Log unexpected errors for debugging and return a distinct
-          // status so the UI can differentiate between "token expired" and
-          // "service unavailable" instead of silently masking incidents.
-          console.error(
-            "[PAIRING STATUS] unexpected error:",
-            err.name,
-            err.message
-          )
-          return { status: "error" as const, message: err.message }
-        }
-      },
-      {
-        detail: {
-          tags: ["VPN Mobile Pairing"],
-          summary: "Poll pairing token status",
-          description: "Check the current status of a QR pairing token for the portal QR polling UI.",
         },
-      })
+        {
+          detail: {
+            tags: ["VPN Mobile Pairing"],
+            summary: "Poll pairing token status",
+            description:
+              "Check the current status of a QR pairing token for the portal QR polling UI.",
+          },
+        }
+      )
   )
 }
 

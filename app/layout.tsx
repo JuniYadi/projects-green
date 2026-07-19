@@ -40,15 +40,20 @@ export default async function RootLayout({
     <html
       lang={locale}
       suppressHydrationWarning
-      className={cn("antialiased", fontSans.variable, fontDisplay.variable, jetbrainsMono.variable)}
+      className={cn(
+        "antialiased",
+        fontSans.variable,
+        fontDisplay.variable,
+        jetbrainsMono.variable
+      )}
     >
       <body suppressHydrationWarning>
         <AuthKitProvider>
-        <QueryProvider>
-          <ThemeProvider>
-            <TooltipProvider>{children}</TooltipProvider>
-          </ThemeProvider>
-        </QueryProvider>
+          <QueryProvider>
+            <ThemeProvider>
+              <TooltipProvider>{children}</TooltipProvider>
+            </ThemeProvider>
+          </QueryProvider>
         </AuthKitProvider>
       </body>
     </html>

@@ -146,7 +146,8 @@ const fakeDeviceServiceMocks = {
   findBySubscription: mock(async () => []),
 }
 
-const fakeDeviceService = fakeDeviceServiceMocks as unknown as VpnMobileDeviceService
+const fakeDeviceService =
+  fakeDeviceServiceMocks as unknown as VpnMobileDeviceService
 
 const authenticate = mock(async () => ({
   user: { id: "user-1" },
@@ -165,7 +166,9 @@ const exchangeCode = mock(async (code: string) => {
   return { user: { id: "user-1" }, organizationId: "org-1" }
 })
 
-function createAuthApp(deps: Partial<Parameters<typeof createMobileAuthRoutes>[0]> = {}) {
+function createAuthApp(
+  deps: Partial<Parameters<typeof createMobileAuthRoutes>[0]> = {}
+) {
   return new Elysia().use(
     createMobileAuthRoutes({
       authenticate,

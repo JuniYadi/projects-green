@@ -34,9 +34,7 @@ export const SubscriptionSuspendedEmail = ({
           permanently expired.
         </Text>
         <Hr style={s.hr} />
-        <Text style={s.footer}>
-          Need help? Contact our support team.
-        </Text>
+        <Text style={s.footer}>Need help? Contact our support team.</Text>
       </Container>
     </Body>
   </Html>

@@ -25,13 +25,16 @@ test.describe("Voucher Management (admin)", () => {
     await expect(table).toBeVisible()
 
     // Search input for prefix
-    const searchInput = page.getByPlaceholder(/search|prefix/i)
+    const searchInput = page
+      .getByPlaceholder(/search|prefix/i)
       .or(page.getByRole("textbox", { name: /search|prefix/i }))
       .or(page.locator('input[placeholder*="prefix" i]'))
     await expect(searchInput).toBeVisible()
   })
 
-  test("UC-18: create voucher dialog opens and has required fields", async ({ page }) => {
+  test("UC-18: create voucher dialog opens and has required fields", async ({
+    page,
+  }) => {
     // Open create dialog
     const createBtn = page.getByRole("button", { name: /Create|New/i })
     await expect(createBtn).toBeVisible()
@@ -41,7 +44,9 @@ test.describe("Voucher Management (admin)", () => {
     await expect(page.getByRole("dialog")).toBeVisible()
 
     // Key fields
-    await expect(page.getByText(/Prefix|Amount|Currency|Max Claims|Expires/i)).toBeVisible()
+    await expect(
+      page.getByText(/Prefix|Amount|Currency|Max Claims|Expires/i)
+    ).toBeVisible()
   })
 
   test("UC-19: clicking a voucher navigates to detail", async ({ page }) => {
@@ -53,7 +58,9 @@ test.describe("Voucher Management (admin)", () => {
     await expect(page).toHaveURL(/\/portal\/billing\/voucher\//)
   })
 
-  test("UC-20 and UC-21: voucher detail shows info and claims", async ({ page }) => {
+  test("UC-20 and UC-21: voucher detail shows info and claims", async ({
+    page,
+  }) => {
     // Navigate to a voucher detail
     await page.goto("/en/portal/billing/voucher")
     const firstLink = page.locator("table a").first()

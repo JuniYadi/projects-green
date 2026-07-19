@@ -171,9 +171,11 @@ function MessageBubble({ message }: { message: Message }) {
             </span>
           )}
         </p>
-        <div className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${
-          isInbox ? "text-muted-foreground" : "text-primary-foreground/70"
-        }`}>
+        <div
+          className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${
+            isInbox ? "text-muted-foreground" : "text-primary-foreground/70"
+          }`}
+        >
           <span>{formatTime(message.createdAt)}</span>
           <MessageStatusBadge
             statusHistory={message.statusHistory}
@@ -478,7 +480,13 @@ export default function WhatsAppMessagesPage() {
             })
             if (!result.ok) throw new Error("Failed to send")
           }}
-          devices={devices as Array<{ id: string; phoneNumber: string; status: string }>}
+          devices={
+            devices as Array<{
+              id: string
+              phoneNumber: string
+              status: string
+            }>
+          }
         />
       </div>
 
@@ -510,10 +518,7 @@ export default function WhatsAppMessagesPage() {
                   <SelectItem value="OUTBOX">Outbox</SelectItem>
                 </SelectContent>
               </Select>
-              <Select
-                value={statusFilter}
-                onValueChange={setStatusFilter}
-              >
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>

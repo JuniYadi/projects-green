@@ -44,7 +44,9 @@ describe("recommendPlan", () => {
 
   it("recommends PAYG 1000/2048 for PAYG framework with secondaryEngine", () => {
     expect(
-      recommendPlan(detection({ framework: "laravel", secondaryEngine: "mysql" }))
+      recommendPlan(
+        detection({ framework: "laravel", secondaryEngine: "mysql" })
+      )
     ).toEqual({
       resourcePlanId: "payg",
       cpu: 1000,

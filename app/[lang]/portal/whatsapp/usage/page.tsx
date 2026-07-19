@@ -160,7 +160,8 @@ export default function PortalWhatsAppUsagePage() {
   const [state, setState] = React.useState<PageState>("loading")
   const [error, setError] = React.useState("")
   const [overview, setOverview] = React.useState<OverviewData | null>(null)
-  const [costBreakdown, setCostBreakdown] = React.useState<CostBreakdownData | null>(null)
+  const [costBreakdown, setCostBreakdown] =
+    React.useState<CostBreakdownData | null>(null)
   const [dailyCounts, setDailyCounts] = React.useState<DailyCount[]>([])
   const [monthlyCounts, setMonthlyCounts] = React.useState<MonthlyCount[]>([])
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
@@ -176,24 +177,29 @@ export default function PortalWhatsAppUsagePage() {
       try {
         const last6 = getLast6Months()
 
-        const [overviewRes, dailyRes, deviceRes, costBreakdownRes, ...monthlyResults] =
-          await Promise.all([
-            whatsappClient.usage.overview(),
-            whatsappClient.usage.daily({
-              from: dateRange.from,
-              to: dateRange.to,
+        const [
+          overviewRes,
+          dailyRes,
+          deviceRes,
+          costBreakdownRes,
+          ...monthlyResults
+        ] = await Promise.all([
+          whatsappClient.usage.overview(),
+          whatsappClient.usage.daily({
+            from: dateRange.from,
+            to: dateRange.to,
+            deviceId,
+          }),
+          whatsappClient.devices.list(),
+          whatsappClient.usage.costBreakdown({ deviceId }),
+          ...last6.map((m) =>
+            whatsappClient.usage.monthly({
+              year: m.year,
+              month: m.month,
               deviceId,
-            }),
-            whatsappClient.devices.list(),
-            whatsappClient.usage.costBreakdown({ deviceId }),
-            ...last6.map((m) =>
-              whatsappClient.usage.monthly({
-                year: m.year,
-                month: m.month,
-                deviceId,
-              })
-            ),
-          ])
+            })
+          ),
+        ])
 
         if (cancelled) return
 
@@ -297,15 +303,22 @@ export default function PortalWhatsAppUsagePage() {
       )}
 
       {/* Quota Alert Banner */}
-      {state === "loaded" && costBreakdown && costBreakdown.byDevice.some((d) => d.quotaBase > 0 && d.quotaPercent >= 70) && (
-        <div className="flex items-start gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3">
-          <Warning className="mt-0.5 size-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
-          <div className="text-sm text-yellow-600 dark:text-yellow-400">
-            <strong>Quota Warning:</strong> One or more devices are approaching their monthly limit.
-            <a href="/portal/whatsapp/usage" className="ml-1 underline">View details</a>
+      {state === "loaded" &&
+        costBreakdown &&
+        costBreakdown.byDevice.some(
+          (d) => d.quotaBase > 0 && d.quotaPercent >= 70
+        ) && (
+          <div className="flex items-start gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3">
+            <Warning className="mt-0.5 size-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
+            <div className="text-sm text-yellow-600 dark:text-yellow-400">
+              <strong>Quota Warning:</strong> One or more devices are
+              approaching their monthly limit.
+              <a href="/portal/whatsapp/usage" className="ml-1 underline">
+                View details
+              </a>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Stat Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -425,7 +438,10 @@ export default function PortalWhatsAppUsagePage() {
             ) : (
               <div className="space-y-4">
                 {costBreakdown.byDevice.map((dev) => (
-                  <div key={dev.deviceId} className="space-y-2 rounded-lg border p-4">
+                  <div
+                    key={dev.deviceId}
+                    className="space-y-2 rounded-lg border p-4"
+                  >
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium">
@@ -441,7 +457,11 @@ export default function PortalWhatsAppUsagePage() {
                         </p>
                         {dev.byCategory.length > 0 && (
                           <p className="text-xs text-muted-foreground">
-                            {dev.byCategory.map((c) => c.category.replace("WHATSAPP_MESSAGE_", "")).join(", ")}
+                            {dev.byCategory
+                              .map((c) =>
+                                c.category.replace("WHATSAPP_MESSAGE_", "")
+                              )
+                              .join(", ")}
                           </p>
                         )}
                       </div>

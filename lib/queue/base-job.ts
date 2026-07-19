@@ -29,10 +29,7 @@
  */
 
 import { Worker, Queue, type JobsOptions } from "bullmq"
-import {
-  getQueue,
-  getQueueRuntimeConfig,
-} from "@/lib/queue/queue-config"
+import { getQueue, getQueueRuntimeConfig } from "@/lib/queue/queue-config"
 
 // ── Default Configuration ───────────────────────────────────────────────────
 

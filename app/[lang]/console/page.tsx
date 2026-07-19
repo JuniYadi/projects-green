@@ -167,7 +167,7 @@ export default function ConsolePage() {
         }),
       },
     ])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locale]) // ponytail: messages is stable i18n object, not needed in deps
 
   useEffect(() => {

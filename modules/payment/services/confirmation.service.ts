@@ -27,10 +27,14 @@ export class ConfirmationService {
       notes?: string
     }
   }) {
-    const { invoiceId, data } = input
+    const { invoiceId, organizationId, data } = input
 
     const invoice = await prisma.billingInvoice.findFirst({
-      where: { id: invoiceId, status: "OPEN" },
+      where: {
+        id: invoiceId,
+        status: "OPEN",
+        billingAccount: { organizationId },
+      },
     })
 
     if (!invoice) {

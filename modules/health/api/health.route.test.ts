@@ -13,9 +13,7 @@ mock.module("@/lib/redis", () => ({
 }))
 
 const { healthRoutes } = await import("./health.route")
-const { markStartupComplete } = await import(
-  "@/modules/health/health.service"
-)
+const { markStartupComplete } = await import("@/modules/health/health.service")
 
 const BASE = "http://localhost"
 
@@ -29,9 +27,7 @@ beforeEach(() => {
 describe("healthRoutes", () => {
   describe("GET /healthz (overall)", () => {
     it("returns healthy with uptime", async () => {
-      const res = await healthRoutes.handle(
-        new Request(`${BASE}/healthz`)
-      )
+      const res = await healthRoutes.handle(new Request(`${BASE}/healthz`))
       const body = await res.json()
 
       expect(res.status).toBe(200)
@@ -42,9 +38,7 @@ describe("healthRoutes", () => {
 
   describe("GET /healthz/live (liveness)", () => {
     it("returns healthy with app check", async () => {
-      const res = await healthRoutes.handle(
-        new Request(`${BASE}/healthz/live`)
-      )
+      const res = await healthRoutes.handle(new Request(`${BASE}/healthz/live`))
       const body = await res.json()
 
       expect(res.status).toBe(200)

@@ -59,7 +59,11 @@ export function AuthPageShell({
             </span>
           </div>
           <h1 className="text-4xl leading-tight font-bold tracking-tight text-white xl:text-5xl">
-            Access your <span className="bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent">PFNApp</span> workspace
+            Access your{" "}
+            <span className="bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent">
+              PFNApp
+            </span>{" "}
+            workspace
           </h1>
           <p className="mt-6 max-w-xl text-base leading-relaxed text-white/55">
             {panelDescription}
@@ -83,7 +87,12 @@ export function AuthPageShell({
         </section>
 
         <section className="w-full lg:justify-self-end">
-          <Card className={cn("w-full border-white/10 bg-card/95 py-0 text-card-foreground shadow-2xl shadow-black/30 backdrop-blur", className)}>
+          <Card
+            className={cn(
+              "w-full border-white/10 bg-card/95 py-0 text-card-foreground shadow-2xl shadow-black/30 backdrop-blur",
+              className
+            )}
+          >
             <CardContent className="p-6 md:p-8">
               <Link
                 href="/"

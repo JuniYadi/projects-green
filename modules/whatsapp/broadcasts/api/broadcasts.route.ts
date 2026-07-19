@@ -13,7 +13,10 @@ import {
   computeRecommendedSchedule,
   validateSchedule,
 } from "../broadcast-schedule.service"
-import { toDeviceBroadcastCapacityDTO, toBroadcastScheduleRecommendationDTO } from "../broadcast-schedule.dto"
+import {
+  toDeviceBroadcastCapacityDTO,
+  toBroadcastScheduleRecommendationDTO,
+} from "../broadcast-schedule.dto"
 
 const E164_REGEX = /^[+]?[1-9]\d{6,14}$/
 const broadcastRecipientSchema = t.Object({
@@ -53,7 +56,6 @@ function getPagination(query: Record<string, unknown>) {
   )
   return { page, limit, skip: (page - 1) * limit }
 }
-
 
 export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
   .get(
@@ -184,7 +186,10 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
           return {
             ok: false,
             error: "VALIDATION_ERROR",
-            message: error instanceof Error ? error.message : "Schedule validation failed",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Schedule validation failed",
           }
         }
       }

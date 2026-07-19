@@ -9,10 +9,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import { Bar, BarChart, XAxis, YAxis } from "recharts"
-import {
-  CurrencyDollarIcon,
-  LightningIcon,
-} from "@phosphor-icons/react"
+import { CurrencyDollarIcon, LightningIcon } from "@phosphor-icons/react"
 import { getAdminUsage } from "@/lib/billing-client"
 import type { ChartConfig } from "@/components/ui/chart"
 
@@ -33,7 +30,12 @@ function formatCurrency(amount: number): string {
 
 export function UsageTab({ orgId }: UsageTabProps) {
   const [breakdown, setBreakdown] = useState<
-    { category: string; quantity: number; totalCost: number; percentage: number }[]
+    {
+      category: string
+      quantity: number
+      totalCost: number
+      percentage: number
+    }[]
   >([])
   const [trend, setTrend] = useState<{ date: string; amount: number }[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -95,9 +97,7 @@ export function UsageTab({ orgId }: UsageTabProps) {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Events
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Total Events</CardTitle>
             <LightningIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -109,30 +109,23 @@ export function UsageTab({ orgId }: UsageTabProps) {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Services Used
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Services Used</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{breakdown.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Active categories
-            </p>
+            <p className="text-xs text-muted-foreground">Active categories</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Daily Average
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Daily Average</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {formatCurrency(
                 trend.length > 0
                   ? Math.round(
-                      trend.reduce((sum, d) => sum + d.amount, 0) /
-                        trend.length
+                      trend.reduce((sum, d) => sum + d.amount, 0) / trend.length
                     )
                   : 0
               )}

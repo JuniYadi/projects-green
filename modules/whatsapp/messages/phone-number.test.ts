@@ -18,22 +18,32 @@ describe("e164PhoneRegex", () => {
 
 describe("normalizeIndonesianPhoneNumber", () => {
   it('converts "08" prefix to +62', () => {
-    expect(normalizeIndonesianPhoneNumber("085708296482")).toBe("+6285708296482")
+    expect(normalizeIndonesianPhoneNumber("085708296482")).toBe(
+      "+6285708296482"
+    )
   })
 
   it('converts "62" prefix to +62', () => {
-    expect(normalizeIndonesianPhoneNumber("6285708296482")).toBe("+6285708296482")
+    expect(normalizeIndonesianPhoneNumber("6285708296482")).toBe(
+      "+6285708296482"
+    )
   })
 
   it("preserves already-normalized E.164", () => {
-    expect(normalizeIndonesianPhoneNumber("+6285708296482")).toBe("+6285708296482")
+    expect(normalizeIndonesianPhoneNumber("+6285708296482")).toBe(
+      "+6285708296482"
+    )
   })
   it("strips formatting characters from +1 numbers", () => {
-    expect(normalizeIndonesianPhoneNumber("+1 415-555-0100")).toBe("+14155550100")
+    expect(normalizeIndonesianPhoneNumber("+1 415-555-0100")).toBe(
+      "+14155550100"
+    )
   })
 
   it("strips whitespace", () => {
-    expect(normalizeIndonesianPhoneNumber("  085708296482  ")).toBe("+6285708296482")
+    expect(normalizeIndonesianPhoneNumber("  085708296482  ")).toBe(
+      "+6285708296482"
+    )
   })
 
   it("returns null for non-numeric input", () => {

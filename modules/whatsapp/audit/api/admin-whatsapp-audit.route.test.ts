@@ -15,7 +15,10 @@ const mockPrisma = {
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
-import { createWhatsappAuditRoutes, consoleWhatsappAuditRoutes } from "./whatsapp-audit.route"
+import {
+  createWhatsappAuditRoutes,
+  consoleWhatsappAuditRoutes,
+} from "./whatsapp-audit.route"
 import { type AdminActorContext } from "@/modules/admin/api/admin.guards"
 
 const okAdmin: AdminActorContext = {
@@ -26,7 +29,6 @@ const okAdmin: AdminActorContext = {
 
 const buildApp = (guardImpl: any = async () => okAdmin) =>
   createWhatsappAuditRoutes({ requireSuperAdmin: guardImpl })
-
 
 // ─── Console audit route helpers ─────────────────────────────────────────--
 
@@ -123,14 +125,19 @@ describe("Admin WhatsApp Audit Routes", () => {
 
       const app = buildApp()
       const res = await app.handle(new Request(`${BASE}/`))
-      const body = await res.json() as any
+      const body = (await res.json()) as any
 
       expect(res.status).toBe(200)
       expect(body.ok).toBe(true)
       expect(body.data).toHaveLength(1)
       expect(body.data[0].id).toBe("log_1")
       expect(body.data[0].action).toBe("TEMPLATE_SYNC_REQUESTED")
-      expect(body.pagination).toEqual({ page: 1, limit: 20, total: 1, totalPages: 1 })
+      expect(body.pagination).toEqual({
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+      })
     })
 
     it("returns empty list when no entries", async () => {
@@ -139,7 +146,7 @@ describe("Admin WhatsApp Audit Routes", () => {
 
       const app = buildApp()
       const res = await app.handle(new Request(`${BASE}/`))
-      const body = await res.json() as any
+      const body = (await res.json()) as any
 
       expect(body.ok).toBe(true)
       expect(body.data).toEqual([])
@@ -154,7 +161,7 @@ describe("Admin WhatsApp Audit Routes", () => {
       const res = await app.handle(
         new Request(`${BASE}/?action=TEMPLATE_SYNC_REQUESTED`)
       )
-      const body = await res.json() as any
+      const body = (await res.json()) as any
 
       expect(body.ok).toBe(true)
       expect(body.data).toHaveLength(1)
@@ -166,7 +173,7 @@ describe("Admin WhatsApp Audit Routes", () => {
 
       const app = buildApp()
       const res = await app.handle(new Request(`${BASE}/?status=OK`))
-      const body = await res.json() as any
+      const body = (await res.json()) as any
 
       expect(body.ok).toBe(true)
     })
@@ -179,7 +186,7 @@ describe("Admin WhatsApp Audit Routes", () => {
       const res = await app.handle(
         new Request(`${BASE}/?from=2026-06-01&to=2026-06-30`)
       )
-      const body = await res.json() as any
+      const body = (await res.json()) as any
 
       expect(body.ok).toBe(true)
     })
@@ -190,7 +197,7 @@ describe("Admin WhatsApp Audit Routes", () => {
 
       const app = buildApp()
       const res = await app.handle(new Request(`${BASE}/?q=sync`))
-      const body = await res.json() as any
+      const body = (await res.json()) as any
 
       expect(body.ok).toBe(true)
     })
@@ -221,7 +228,7 @@ describe("Admin WhatsApp Audit Routes", () => {
 
       const app = buildApp()
       const res = await app.handle(new Request(`${BASE}/devices/dev-1`))
-      const body = await res.json() as any
+      const body = (await res.json()) as any
 
       expect(res.status).toBe(200)
       expect(body.ok).toBe(true)
@@ -285,7 +292,7 @@ describe("Console WhatsApp Audit Routes", () => {
 
       const app = buildConsoleApp()
       const res = await app.handle(new Request(`${CONSOLE_BASE}/`))
-      const body = await res.json() as any
+      const body = (await res.json()) as any
 
       expect(res.status).toBe(200)
       expect(body.ok).toBe(true)
@@ -305,7 +312,9 @@ describe("Console WhatsApp Audit Routes", () => {
       mockPrisma.whatsappDevice.findUnique.mockResolvedValue(null)
 
       const app = buildConsoleApp()
-      const res = await app.handle(new Request(`${CONSOLE_BASE}/devices/nonexistent`))
+      const res = await app.handle(
+        new Request(`${CONSOLE_BASE}/devices/nonexistent`)
+      )
       const body = await res.json()
 
       expect(res.status).toBe(404)
@@ -319,7 +328,9 @@ describe("Console WhatsApp Audit Routes", () => {
       })
 
       const app = buildConsoleApp()
-      const res = await app.handle(new Request(`${CONSOLE_BASE}/devices/dev-other`))
+      const res = await app.handle(
+        new Request(`${CONSOLE_BASE}/devices/dev-other`)
+      )
       const body = await res.json()
 
       expect(res.status).toBe(403)
@@ -336,7 +347,7 @@ describe("Console WhatsApp Audit Routes", () => {
 
       const app = buildConsoleApp()
       const res = await app.handle(new Request(`${CONSOLE_BASE}/devices/dev-1`))
-      const body = await res.json() as any
+      const body = (await res.json()) as any
 
       expect(res.status).toBe(200)
       expect(body.ok).toBe(true)

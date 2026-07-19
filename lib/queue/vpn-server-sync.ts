@@ -19,13 +19,21 @@ export class VpnServerSyncJob extends BaseJob {
   static readonly workerConcurrency = 1
   static readonly attempts = 3
 
-  static async dispatch(serverId: string, correlationId?: string): Promise<boolean> {
+  static async dispatch(
+    serverId: string,
+    correlationId?: string
+  ): Promise<boolean> {
     const jobId = `vpn-sync-${serverId}`
 
     // Check if a non-terminal job already exists
     const existingJob = await this.getQueue().getJob(jobId)
-    if (existingJob && !["completed", "failed", "delayed"].includes(await existingJob.getState())) {
-      console.info(`[vpn-server-sync] job=${jobId} already pending, skipping dispatch`)
+    if (
+      existingJob &&
+      !["completed", "failed", "delayed"].includes(await existingJob.getState())
+    ) {
+      console.info(
+        `[vpn-server-sync] job=${jobId} already pending, skipping dispatch`
+      )
       return false
     }
 
@@ -44,7 +52,10 @@ export class VpnServerSyncJob extends BaseJob {
     await job.log(`Sync protocols for server ${serverId} started`)
 
     try {
-      await vpnServerSyncService.sync(serverId, correlationId ?? job.id ?? "unknown")
+      await vpnServerSyncService.sync(
+        serverId,
+        correlationId ?? job.id ?? "unknown"
+      )
       await job.log(`Sync protocols for server ${serverId} completed`)
       console.info(
         `[vpn-server-sync] handle job=${job.id ?? "unknown"} server=${serverId} completed`

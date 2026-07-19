@@ -117,8 +117,8 @@ export function TopupFormEnhanced({
   // Report initial config to parent.
   useEffect(() => {
     onConfigChange?.(currencyConfig)
-  // ponytail: intentional — only report initial config to parent on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // ponytail: intentional — only report initial config to parent on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -169,8 +169,8 @@ export function TopupFormEnhanced({
     return () => {
       cancelled = true
     }
-  // ponytail: onConfigChange is a callback from parent — adding it would cause re-fetch on every render
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // ponytail: onConfigChange is a callback from parent — adding it would cause re-fetch on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currency])
 
   useEffect(() => {

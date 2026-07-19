@@ -7,7 +7,10 @@ import { prisma } from "@/lib/prisma"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import type { PlatformAccessRole } from "@/lib/platform-role"
-import { adminSubscriptionUpdateSchema, adminSubscriptionCreateSchema } from "../billing.schemas"
+import {
+  adminSubscriptionUpdateSchema,
+  adminSubscriptionCreateSchema,
+} from "../billing.schemas"
 import { emitBillingAudit } from "@/modules/billing/audit/audit.service"
 
 type BillingAuthContext = {
@@ -293,7 +296,8 @@ export const createAdminSubscriptionRoutes = (
             return {
               ok: false as const,
               error: "CONFLICT" as const,
-              message: "An active subscription already exists for this package and plan.",
+              message:
+                "An active subscription already exists for this package and plan.",
             }
           }
 
@@ -308,7 +312,8 @@ export const createAdminSubscriptionRoutes = (
               status: "ACTIVE",
               currentPeriodStart,
               currentPeriodEnd,
-              allocatedConfig: (allocatedConfig ?? null) as Prisma.InputJsonValue,
+              allocatedConfig: (allocatedConfig ??
+                null) as Prisma.InputJsonValue,
               metadata: (metadata ?? null) as Prisma.InputJsonValue,
             },
           })

@@ -30,9 +30,9 @@ export async function createCredential<T extends AppCredentialType>({
   const def = getCredentialTypeDef(type)
 
   const parsedMetadata = def.metadataSchema.parse(metadata)
-  const parsedSecrets  = def.secretsSchema.parse(secrets)
+  const parsedSecrets = def.secretsSchema.parse(secrets)
 
-  const encrypted     = encrypt(JSON.stringify(parsedSecrets), getEncryptionKey())
+  const encrypted = encrypt(JSON.stringify(parsedSecrets), getEncryptionKey())
   const maskedPreview = buildMaskedPreview(type, parsedSecrets)
   return prisma.appCredential.create({
     data: {
@@ -44,9 +44,14 @@ export async function createCredential<T extends AppCredentialType>({
       maskedPreview,
     },
     select: {
-      id: true, type: true, name: true,
-      metadata: true, maskedPreview: true,
-      status: true, createdAt: true, updatedAt: true,
+      id: true,
+      type: true,
+      name: true,
+      metadata: true,
+      maskedPreview: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
     },
   })
 }
@@ -61,9 +66,14 @@ export async function listCredentials(
     where: { organizationId, ...(type ? { type } : {}) },
     orderBy: { createdAt: "asc" },
     select: {
-      id: true, type: true, name: true,
-      metadata: true, maskedPreview: true,
-      status: true, createdAt: true, updatedAt: true,
+      id: true,
+      type: true,
+      name: true,
+      metadata: true,
+      maskedPreview: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
     },
   })
 }
@@ -92,9 +102,9 @@ export async function updateCredential(
   organizationId: string,
   credentialId: string,
   patch: {
-    name?:     string
+    name?: string
     metadata?: unknown
-    secrets?:  unknown
+    secrets?: unknown
   }
 ) {
   const existing = await prisma.appCredential.findFirst({
@@ -111,18 +121,23 @@ export async function updateCredential(
   }
   if (patch.secrets) {
     const parsedSecrets = def.secretsSchema.parse(patch.secrets)
-    const encrypted     = encrypt(JSON.stringify(parsedSecrets), getEncryptionKey())
-    updateData.encryptedJSON  = serializeEncryptedField(encrypted)
-    updateData.maskedPreview  = buildMaskedPreview(existing.type, parsedSecrets)
+    const encrypted = encrypt(JSON.stringify(parsedSecrets), getEncryptionKey())
+    updateData.encryptedJSON = serializeEncryptedField(encrypted)
+    updateData.maskedPreview = buildMaskedPreview(existing.type, parsedSecrets)
   }
 
   return prisma.appCredential.update({
     where: { id: credentialId },
     data: updateData,
     select: {
-      id: true, type: true, name: true,
-      metadata: true, maskedPreview: true,
-      status: true, createdAt: true, updatedAt: true,
+      id: true,
+      type: true,
+      name: true,
+      metadata: true,
+      maskedPreview: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
     },
   })
 }

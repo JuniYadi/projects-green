@@ -59,7 +59,6 @@ export function BillingBalanceGateBanner({
     }
   }
 
-
   if (!mounted || dismissed) return null
 
   return (

@@ -185,15 +185,14 @@ export class VpnMobileDeviceService {
 
     // If the target fingerprint already exists, reactivate/refresh it and
     // just revoke the old one. This prevents duplicates.
-    const existingByFingerprint =
-      await this.prisma.vpnMobileDevice.findUnique({
-        where: {
-          subscriptionId_deviceFingerprint: {
-            subscriptionId: input.subscriptionId,
-            deviceFingerprint: input.deviceFingerprint,
-          },
+    const existingByFingerprint = await this.prisma.vpnMobileDevice.findUnique({
+      where: {
+        subscriptionId_deviceFingerprint: {
+          subscriptionId: input.subscriptionId,
+          deviceFingerprint: input.deviceFingerprint,
         },
-      })
+      },
+    })
 
     if (existingByFingerprint && existingByFingerprint.id !== old.id) {
       if (existingByFingerprint.status !== "ACTIVE") {

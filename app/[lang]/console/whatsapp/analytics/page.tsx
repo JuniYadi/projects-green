@@ -72,13 +72,21 @@ function formatNumber(n: number): string {
 function deltaBadge(deltaPercent: number) {
   const abs = Math.abs(deltaPercent)
   if (abs <= 0.05) return { label: "OK", variant: "secondary" as const }
-  if (deltaPercent > 0) return { label: `+${(deltaPercent * 100).toFixed(1)}%`, variant: "destructive" as const }
-  return { label: `${(deltaPercent * 100).toFixed(1)}%`, variant: "warning" as const }
+  if (deltaPercent > 0)
+    return {
+      label: `+${(deltaPercent * 100).toFixed(1)}%`,
+      variant: "destructive" as const,
+    }
+  return {
+    label: `${(deltaPercent * 100).toFixed(1)}%`,
+    variant: "warning" as const,
+  }
 }
 
 function deltaBadgeCost(delta: number) {
   if (delta === 0) return { label: "Match", variant: "secondary" as const }
-  if (delta > 0) return { label: `+${delta.toFixed(4)}`, variant: "destructive" as const }
+  if (delta > 0)
+    return { label: `+${delta.toFixed(4)}`, variant: "destructive" as const }
   return { label: `${delta.toFixed(4)}`, variant: "warning" as const }
 }
 
@@ -97,15 +105,20 @@ export default function WhatsAppAnalyticsPage() {
   )
 
   const [syncResult, setSyncResult] = React.useState<SyncResult | null>(null)
-  const [reportResult, setReportResult] = React.useState<ReportResult | null>(null)
+  const [reportResult, setReportResult] = React.useState<ReportResult | null>(
+    null
+  )
   const [costResult, setCostResult] = React.useState<CostResult | null>(null)
 
   // Load devices on mount
   React.useEffect(() => {
-    whatsappClient.devices.list().then((res) => {
-      setDevices(res.devices)
-      if (res.devices.length > 0) setSelectedDevice(res.devices[0].id)
-    }).catch(() => {})
+    whatsappClient.devices
+      .list()
+      .then((res) => {
+        setDevices(res.devices)
+        if (res.devices.length > 0) setSelectedDevice(res.devices[0].id)
+      })
+      .catch(() => {})
   }, [])
 
   const handleSync = async () => {
@@ -237,17 +250,29 @@ export default function WhatsAppAnalyticsPage() {
       <div className="flex gap-2">
         {tab === "comparison" && (
           <>
-            <Button onClick={handleSync} disabled={state === "loading" || !selectedDevice}>
-              <ArrowsClockwise className={`mr-1 size-4 ${state === "loading" ? "animate-spin" : ""}`} />
+            <Button
+              onClick={handleSync}
+              disabled={state === "loading" || !selectedDevice}
+            >
+              <ArrowsClockwise
+                className={`mr-1 size-4 ${state === "loading" ? "animate-spin" : ""}`}
+              />
               Sync from Meta
             </Button>
-            <Button variant="outline" onClick={handleReport} disabled={state === "loading" || !selectedDevice}>
+            <Button
+              variant="outline"
+              onClick={handleReport}
+              disabled={state === "loading" || !selectedDevice}
+            >
               Generate Report
             </Button>
           </>
         )}
         {tab === "cost" && (
-          <Button onClick={handleCostReconciliation} disabled={state === "loading" || !selectedDevice}>
+          <Button
+            onClick={handleCostReconciliation}
+            disabled={state === "loading" || !selectedDevice}
+          >
             <WarningCircle className="mr-1 size-4" />
             Run Reconciliation
           </Button>
@@ -256,7 +281,9 @@ export default function WhatsAppAnalyticsPage() {
 
       {state === "error" && (
         <Card className="border-destructive">
-          <CardContent className="py-4 text-sm text-destructive">{error}</CardContent>
+          <CardContent className="py-4 text-sm text-destructive">
+            {error}
+          </CardContent>
         </Card>
       )}
 
@@ -296,28 +323,56 @@ export default function WhatsAppAnalyticsPage() {
                 Comparison Report ({reportResult.from} to {reportResult.to})
               </CardTitle>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>Meta: <strong>{formatNumber(reportResult.summary.totalMeta)}</strong></span>
-                <span>Local: <strong>{formatNumber(reportResult.summary.totalLocal)}</strong></span>
-                <span>Delta: <strong className={reportResult.summary.totalDelta !== 0 ? "text-destructive" : ""}>
-                  {formatNumber(reportResult.summary.totalDelta)}
-                </strong></span>
-                <span>Discrepant rows: <strong>{reportResult.summary.rowsWithDiscrepancy}</strong></span>
+                <span>
+                  Meta:{" "}
+                  <strong>
+                    {formatNumber(reportResult.summary.totalMeta)}
+                  </strong>
+                </span>
+                <span>
+                  Local:{" "}
+                  <strong>
+                    {formatNumber(reportResult.summary.totalLocal)}
+                  </strong>
+                </span>
+                <span>
+                  Delta:{" "}
+                  <strong
+                    className={
+                      reportResult.summary.totalDelta !== 0
+                        ? "text-destructive"
+                        : ""
+                    }
+                  >
+                    {formatNumber(reportResult.summary.totalDelta)}
+                  </strong>
+                </span>
+                <span>
+                  Discrepant rows:{" "}
+                  <strong>{reportResult.summary.rowsWithDiscrepancy}</strong>
+                </span>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             {reportResult.comparisons.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">No data for the selected range.</p>
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                No data for the selected range.
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b text-muted-foreground">
-                      <th className="pb-2 pr-4 font-medium">Date</th>
-                      <th className="pb-2 pr-4 font-medium">Metric</th>
-                      <th className="pb-2 pr-4 font-medium text-right">Meta</th>
-                      <th className="pb-2 pr-4 font-medium text-right">Local</th>
-                      <th className="pb-2 pr-4 font-medium text-right">Delta</th>
+                      <th className="pr-4 pb-2 font-medium">Date</th>
+                      <th className="pr-4 pb-2 font-medium">Metric</th>
+                      <th className="pr-4 pb-2 text-right font-medium">Meta</th>
+                      <th className="pr-4 pb-2 text-right font-medium">
+                        Local
+                      </th>
+                      <th className="pr-4 pb-2 text-right font-medium">
+                        Delta
+                      </th>
                       <th className="pb-2 font-medium">Status</th>
                     </tr>
                   </thead>
@@ -328,9 +383,16 @@ export default function WhatsAppAnalyticsPage() {
                         <tr key={i} className="border-b last:border-0">
                           <td className="py-2 pr-4">{row.date}</td>
                           <td className="py-2 pr-4 capitalize">{row.metric}</td>
-                          <td className="py-2 pr-4 text-right">{formatNumber(row.metaValue)}</td>
-                          <td className="py-2 pr-4 text-right">{formatNumber(row.localValue)}</td>
-                          <td className="py-2 pr-4 text-right">{row.delta > 0 ? "+" : ""}{formatNumber(row.delta)}</td>
+                          <td className="py-2 pr-4 text-right">
+                            {formatNumber(row.metaValue)}
+                          </td>
+                          <td className="py-2 pr-4 text-right">
+                            {formatNumber(row.localValue)}
+                          </td>
+                          <td className="py-2 pr-4 text-right">
+                            {row.delta > 0 ? "+" : ""}
+                            {formatNumber(row.delta)}
+                          </td>
                           <td className="py-2">
                             <Badge variant={badge.variant}>{badge.label}</Badge>
                           </td>
@@ -352,27 +414,46 @@ export default function WhatsAppAnalyticsPage() {
             <div className="flex items-center justify-between">
               <CardTitle>Cost Reconciliation</CardTitle>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>Meta: <strong>{costResult.totalMetaCost.toFixed(4)}</strong></span>
-                <span>Local: <strong>{costResult.totalLocalCost.toFixed(4)}</strong></span>
-                <span>Delta: <strong className={costResult.totalDelta !== 0 ? "text-destructive" : ""}>
-                  {costResult.totalDelta.toFixed(4)}
-                </strong></span>
+                <span>
+                  Meta: <strong>{costResult.totalMetaCost.toFixed(4)}</strong>
+                </span>
+                <span>
+                  Local: <strong>{costResult.totalLocalCost.toFixed(4)}</strong>
+                </span>
+                <span>
+                  Delta:{" "}
+                  <strong
+                    className={
+                      costResult.totalDelta !== 0 ? "text-destructive" : ""
+                    }
+                  >
+                    {costResult.totalDelta.toFixed(4)}
+                  </strong>
+                </span>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             {costResult.rows.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">No cost data for the selected range.</p>
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                No cost data for the selected range.
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b text-muted-foreground">
-                      <th className="pb-2 pr-4 font-medium">Date</th>
-                      <th className="pb-2 pr-4 font-medium">Category</th>
-                      <th className="pb-2 pr-4 font-medium text-right">Meta Cost</th>
-                      <th className="pb-2 pr-4 font-medium text-right">Local Cost</th>
-                      <th className="pb-2 pr-4 font-medium text-right">Delta</th>
+                      <th className="pr-4 pb-2 font-medium">Date</th>
+                      <th className="pr-4 pb-2 font-medium">Category</th>
+                      <th className="pr-4 pb-2 text-right font-medium">
+                        Meta Cost
+                      </th>
+                      <th className="pr-4 pb-2 text-right font-medium">
+                        Local Cost
+                      </th>
+                      <th className="pr-4 pb-2 text-right font-medium">
+                        Delta
+                      </th>
                       <th className="pb-2 font-medium">Status</th>
                     </tr>
                   </thead>
@@ -382,13 +463,24 @@ export default function WhatsAppAnalyticsPage() {
                       return (
                         <tr key={i} className="border-b last:border-0">
                           <td className="py-2 pr-4">{row.date}</td>
-                          <td className="py-2 pr-4">{row.conversationCategory ?? "N/A"}</td>
-                          <td className="py-2 pr-4 text-right font-mono">{row.metaCost.toFixed(4)}</td>
-                          <td className="py-2 pr-4 text-right font-mono">{row.localCost.toFixed(4)}</td>
-                          <td className="py-2 pr-4 text-right font-mono">{row.delta > 0 ? "+" : ""}{row.delta.toFixed(4)}</td>
+                          <td className="py-2 pr-4">
+                            {row.conversationCategory ?? "N/A"}
+                          </td>
+                          <td className="py-2 pr-4 text-right font-mono">
+                            {row.metaCost.toFixed(4)}
+                          </td>
+                          <td className="py-2 pr-4 text-right font-mono">
+                            {row.localCost.toFixed(4)}
+                          </td>
+                          <td className="py-2 pr-4 text-right font-mono">
+                            {row.delta > 0 ? "+" : ""}
+                            {row.delta.toFixed(4)}
+                          </td>
                           <td className="py-2">
                             <Badge variant={badge.variant}>{badge.label}</Badge>
-                            <span className="ml-1 text-xs text-muted-foreground">{row.currency}</span>
+                            <span className="ml-1 text-xs text-muted-foreground">
+                              {row.currency}
+                            </span>
                           </td>
                         </tr>
                       )
@@ -405,10 +497,14 @@ export default function WhatsAppAnalyticsPage() {
       {state === "idle" && (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <ChartLine className="mb-4 size-12 text-muted-foreground" weight="fill" />
+            <ChartLine
+              className="mb-4 size-12 text-muted-foreground"
+              weight="fill"
+            />
             <h3 className="mb-1 text-lg font-medium">No data loaded</h3>
             <p className="max-w-md text-sm text-muted-foreground">
-              Select a device and date range, then sync from Meta or generate a report.
+              Select a device and date range, then sync from Meta or generate a
+              report.
             </p>
           </CardContent>
         </Card>

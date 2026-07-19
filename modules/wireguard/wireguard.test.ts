@@ -3,10 +3,13 @@ import type { WgPeer } from "./wireguard.types"
 
 // ─── Mock SSH adapter ────────────────────────────────────────────────────
 
-const mockCreatePeer = mock<(target: unknown, username: string) => Promise<{ config: string }>>()
+const mockCreatePeer =
+  mock<(target: unknown, username: string) => Promise<{ config: string }>>()
 const mockListPeers = mock<(target: unknown) => Promise<WgPeer[]>>()
-const mockRemovePeer = mock<(target: unknown, username: string) => Promise<void>>()
-const mockFetchConfig = mock<(target: unknown, username: string) => Promise<string>>()
+const mockRemovePeer =
+  mock<(target: unknown, username: string) => Promise<void>>()
+const mockFetchConfig =
+  mock<(target: unknown, username: string) => Promise<string>>()
 
 const mockWireGuardSshAdapter = {
   listPeers: mockListPeers,
@@ -14,7 +17,8 @@ const mockWireGuardSshAdapter = {
   removePeer: mockRemovePeer,
   fetchConfig: mockFetchConfig,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  validatePeer: (_target: unknown, _username: string): Promise<boolean> => Promise.resolve(false),
+  validatePeer: (_target: unknown, _username: string): Promise<boolean> =>
+    Promise.resolve(false),
 }
 
 // ─── Mock Prisma ─────────────────────────────────────────────────────────
@@ -98,7 +102,10 @@ describe("WireGuardService", () => {
       updatedAt: new Date(),
     })
 
-    const service = new WireGuardService(mockPrisma as never, mockWireGuardSshAdapter as never)
+    const service = new WireGuardService(
+      mockPrisma as never,
+      mockWireGuardSshAdapter as never
+    )
     const result = await service.createPeer("test-peer", "org-1")
 
     expect(result.username).toBe("test-peer")
@@ -111,10 +118,18 @@ describe("WireGuardService", () => {
     const { WireGuardService } = await import("./wireguard.service")
 
     mockPrisma.vpnServer.findFirst.mockResolvedValue(MOCK_SERVER)
-    mockPrisma.vpnClient.findUnique.mockResolvedValue({ id: "existing", clientName: "dup-peer" })
+    mockPrisma.vpnClient.findUnique.mockResolvedValue({
+      id: "existing",
+      clientName: "dup-peer",
+    })
 
-    const service = new WireGuardService(mockPrisma as never, mockWireGuardSshAdapter as never)
-    await expect(service.createPeer("dup-peer", "org-1")).rejects.toThrow("already exists")
+    const service = new WireGuardService(
+      mockPrisma as never,
+      mockWireGuardSshAdapter as never
+    )
+    await expect(service.createPeer("dup-peer", "org-1")).rejects.toThrow(
+      "already exists"
+    )
   })
 
   it("lists peers from wg dump", async () => {
@@ -122,12 +137,31 @@ describe("WireGuardService", () => {
 
     mockPrisma.vpnServer.findFirst.mockResolvedValue(MOCK_SERVER)
     mockListPeers.mockResolvedValue([
-      { username: "peer1", ip: "10.0.0.2", status: "offline", handshake: null, rx: 0, tx: 0, endpoint: null },
-      { username: "peer2", ip: "10.0.0.3", status: "online", handshake: "2026-06-22T12:00:00.000Z", rx: 1024000, tx: 2048000, endpoint: "10.0.0.2:51820" },
+      {
+        username: "peer1",
+        ip: "10.0.0.2",
+        status: "offline",
+        handshake: null,
+        rx: 0,
+        tx: 0,
+        endpoint: null,
+      },
+      {
+        username: "peer2",
+        ip: "10.0.0.3",
+        status: "online",
+        handshake: "2026-06-22T12:00:00.000Z",
+        rx: 1024000,
+        tx: 2048000,
+        endpoint: "10.0.0.2:51820",
+      },
     ])
     mockPrisma.vpnClient.findMany.mockResolvedValue([])
 
-    const service = new WireGuardService(mockPrisma as never, mockWireGuardSshAdapter as never)
+    const service = new WireGuardService(
+      mockPrisma as never,
+      mockWireGuardSshAdapter as never
+    )
     const peers = await service.listPeers()
 
     expect(peers).toHaveLength(2)

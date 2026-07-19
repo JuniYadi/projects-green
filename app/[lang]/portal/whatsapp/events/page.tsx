@@ -62,7 +62,6 @@ function makeDeviceLabel(device: DeviceListItem): string {
 // ─── Page Component ───────────────────────────────────────────────────────────
 
 export default function PortalWhatsAppWebhookEventsPage() {
-
   // Device list
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
   const [selectedDeviceId, setSelectedDeviceId] = React.useState<string>("")

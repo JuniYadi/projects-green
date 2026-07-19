@@ -9,7 +9,8 @@ import {
 } from "@/modules/vpn/vpn-crypto"
 
 // ponytail: valid 32-byte hex key for AES-256-GCM
-const TEST_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+const TEST_KEY =
+  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 describe("vpn-crypto", () => {
   const originalKey = process.env.ENCRYPTION_KEY
@@ -30,7 +31,8 @@ describe("vpn-crypto", () => {
 
   describe("encryptVpnConfig / decryptVpnConfig", () => {
     it("round-trips an OVPN config string", () => {
-      const plaintext = "client\ndev tun\nproto udp\nremote vpn.example.com 1194"
+      const plaintext =
+        "client\ndev tun\nproto udp\nremote vpn.example.com 1194"
       const encrypted = encryptVpnConfig(plaintext)
 
       expect(typeof encrypted).toBe("string")

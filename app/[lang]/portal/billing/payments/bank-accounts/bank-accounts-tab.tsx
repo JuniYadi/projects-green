@@ -206,9 +206,9 @@ export function BankAccountsTab() {
         swiftCode: String(formData.get("swiftCode") || "") || null,
         bankAddress: String(formData.get("bankAddress") || "") || null,
       }
-      const { error } = await eden.api.portal.payments[
-        "bank-accounts"
-      ].post(body as never)
+      const { error } = await eden.api.portal.payments["bank-accounts"].post(
+        body as never
+      )
 
       if (error) {
         setState({

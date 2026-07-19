@@ -93,7 +93,12 @@ export default function ApplicationsPage() {
           role="alert"
         >
           <span>{error}</span>
-          <Button type="button" variant="outline" size="sm" onClick={handleRetry}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleRetry}
+          >
             {messages.console.app.manage.retry}
           </Button>
         </div>
@@ -135,18 +140,21 @@ export default function ApplicationsPage() {
               </thead>
               <tbody>
                 {apps.map((app) => {
-                  const logsHref = localizePathname({
-                    pathname: "/console/app/logs",
-                    locale,
-                  }) + `?app=${app.slug}`
-                  const metricsHref = localizePathname({
-                    pathname: "/console/app/metrics",
-                    locale,
-                  }) + `?app=${app.slug}`
-                  const eventsHref = localizePathname({
-                    pathname: "/console/app/events",
-                    locale,
-                  }) + `?app=${app.slug}`
+                  const logsHref =
+                    localizePathname({
+                      pathname: "/console/app/logs",
+                      locale,
+                    }) + `?app=${app.slug}`
+                  const metricsHref =
+                    localizePathname({
+                      pathname: "/console/app/metrics",
+                      locale,
+                    }) + `?app=${app.slug}`
+                  const eventsHref =
+                    localizePathname({
+                      pathname: "/console/app/events",
+                      locale,
+                    }) + `?app=${app.slug}`
                   const deployHref = localizePathname({
                     pathname: "/console/app/deploy",
                     locale,
@@ -188,7 +196,7 @@ export default function ApplicationsPage() {
                       <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                         {app.branchName}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
                         {app.lastDeployedAt
                           ? new Date(app.lastDeployedAt).toLocaleDateString()
                           : "Never"}

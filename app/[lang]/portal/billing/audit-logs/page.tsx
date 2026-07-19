@@ -28,7 +28,8 @@ function ActionBadge({ action }: { action: string }) {
     ORDER_CREATED: "bg-cyan-500/10 text-cyan-600 border-cyan-500/20",
     BALANCE_ADJUSTED: "bg-amber-500/10 text-amber-600 border-amber-500/20",
     TOPUP_PERFORMED: "bg-teal-500/10 text-teal-600 border-teal-500/20",
-    SUBSCRIPTION_ACTIVATED: "bg-green-500/10 text-green-600 border-green-500/20",
+    SUBSCRIPTION_ACTIVATED:
+      "bg-green-500/10 text-green-600 border-green-500/20",
     SUBSCRIPTION_CANCELLED: "bg-red-500/10 text-red-600 border-red-500/20",
     CONTACT_ADDED: "bg-blue-500/10 text-blue-600 border-blue-500/20",
     CONTACT_REMOVED: "bg-orange-500/10 text-orange-600 border-orange-500/20",
@@ -70,11 +71,11 @@ async function AuditLogsList() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 pr-4 font-medium">Timestamp</th>
-                  <th className="pb-2 pr-4 font-medium">Entity Type</th>
-                  <th className="pb-2 pr-4 font-medium">Entity ID</th>
-                  <th className="pb-2 pr-4 font-medium">Action</th>
-                  <th className="pb-2 pr-4 font-medium">Actor</th>
+                  <th className="pr-4 pb-2 font-medium">Timestamp</th>
+                  <th className="pr-4 pb-2 font-medium">Entity Type</th>
+                  <th className="pr-4 pb-2 font-medium">Entity ID</th>
+                  <th className="pr-4 pb-2 font-medium">Action</th>
+                  <th className="pr-4 pb-2 font-medium">Actor</th>
                   <th className="pb-2 font-medium">Context</th>
                 </tr>
               </thead>
@@ -111,7 +112,9 @@ async function AuditLogsList() {
                           {JSON.stringify(log.contextJson)}
                         </pre>
                       ) : (
-                        <span className="text-xs text-muted-foreground/50">—</span>
+                        <span className="text-xs text-muted-foreground/50">
+                          —
+                        </span>
                       )}
                     </td>
                   </tr>

@@ -38,7 +38,9 @@ export default function CredentialsPage() {
   const [githubLoading, setGithubLoading] = useState(true)
   const [githubError, setGithubError] = useState<string | null>(null)
 
-  const [cloudflareCredentials, setCloudflareCredentials] = useState<CloudflareCredential[]>([])
+  const [cloudflareCredentials, setCloudflareCredentials] = useState<
+    CloudflareCredential[]
+  >([])
   const [cloudflareLoading, setCloudflareLoading] = useState(true)
   const [cloudflareError, setCloudflareError] = useState<string | null>(null)
 
@@ -54,7 +56,10 @@ export default function CredentialsPage() {
         const res = await fetch("/api/integrations/github/accounts")
         const data = await res.json()
         if (data.ok) setGithubAccounts(data.accounts)
-        else setGithubError(data.error ?? messages.console.app.credentials.github.loadError)
+        else
+          setGithubError(
+            data.error ?? messages.console.app.credentials.github.loadError
+          )
       } catch {
         setGithubError(messages.console.app.credentials.github.loadError)
       } finally {
@@ -67,10 +72,18 @@ export default function CredentialsPage() {
         const res = await fetch("/api/integrations/cloudflare/dns-token")
         const data = await res.json()
         if (data.ok) setCloudflareCredentials(data.credentials)
-        else if (res.status === 403) setCloudflareError(messages.console.app.credentials.cloudflare.noOrganization)
-        else setCloudflareError(data.error ?? messages.console.app.credentials.cloudflare.loadError)
+        else if (res.status === 403)
+          setCloudflareError(
+            messages.console.app.credentials.cloudflare.noOrganization
+          )
+        else
+          setCloudflareError(
+            data.error ?? messages.console.app.credentials.cloudflare.loadError
+          )
       } catch {
-        setCloudflareError(messages.console.app.credentials.cloudflare.networkError)
+        setCloudflareError(
+          messages.console.app.credentials.cloudflare.networkError
+        )
       } finally {
         setCloudflareLoading(false)
       }
@@ -96,7 +109,9 @@ export default function CredentialsPage() {
         setCfToken("")
         setCloudflareCredentials((prev) => [...prev, data.credential])
       } else {
-        toast.error(data.error ?? messages.console.app.credentials.cloudflare.saveError)
+        toast.error(
+          data.error ?? messages.console.app.credentials.cloudflare.saveError
+        )
       }
     } catch {
       toast.error(messages.console.app.credentials.cloudflare.networkError)
@@ -108,15 +123,20 @@ export default function CredentialsPage() {
   const handleDelete = async (id: string) => {
     setCfDeleting(id)
     try {
-      const res = await fetch(`/api/integrations/cloudflare/dns-token?id=${id}`, {
-        method: "DELETE",
-      })
+      const res = await fetch(
+        `/api/integrations/cloudflare/dns-token?id=${id}`,
+        {
+          method: "DELETE",
+        }
+      )
       const data = await res.json()
       if (data.ok) {
         toast.success(messages.console.app.credentials.cloudflare.deleted)
         setCloudflareCredentials((prev) => prev.filter((c) => c.id !== id))
       } else {
-        toast.error(data.error ?? messages.console.app.credentials.cloudflare.deleteError)
+        toast.error(
+          data.error ?? messages.console.app.credentials.cloudflare.deleteError
+        )
       }
     } catch {
       toast.error(messages.console.app.credentials.cloudflare.networkError)
@@ -243,7 +263,9 @@ export default function CredentialsPage() {
               </label>
               <Input
                 id="cf-name"
-                placeholder={messages.console.app.credentials.cloudflare.namePlaceholder}
+                placeholder={
+                  messages.console.app.credentials.cloudflare.namePlaceholder
+                }
                 value={cfName}
                 onChange={(e) => setCfName(e.target.value)}
                 disabled={cfSaving}
@@ -259,7 +281,10 @@ export default function CredentialsPage() {
               <Input
                 id="cf-token"
                 type="password"
-                placeholder={messages.console.app.credentials.cloudflare.apiTokenPlaceholder}
+                placeholder={
+                  messages.console.app.credentials.cloudflare
+                    .apiTokenPlaceholder
+                }
                 value={cfToken}
                 onChange={(e) => setCfToken(e.target.value)}
                 disabled={cfSaving}

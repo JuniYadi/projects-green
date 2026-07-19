@@ -46,7 +46,9 @@ function mockPaymentFetch(overrides?: {
         return new Response(
           JSON.stringify(
             overrides?.confirmations ?? [
-              { id: "conf-1" }, { id: "conf-2" }, { id: "conf-3" },
+              { id: "conf-1" },
+              { id: "conf-2" },
+              { id: "conf-3" },
             ]
           ),
           { status: 200 }

@@ -115,13 +115,16 @@ export default function WhatsAppMediaPage() {
   const messages = getMessages(locale)
   const heading = messages.console.whatsapp.media?.heading ?? "Media Library"
   const description =
-    messages.console.whatsapp.media?.description ?? "Manage uploaded and received media files."
+    messages.console.whatsapp.media?.description ??
+    "Manage uploaded and received media files."
 
   const [media, setMedia] = React.useState<MediaRecord[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
   const [uploading, setUploading] = React.useState(false)
-  const [deleteDialog, setDeleteDialog] = React.useState<MediaRecord | null>(null)
+  const [deleteDialog, setDeleteDialog] = React.useState<MediaRecord | null>(
+    null
+  )
   const [isDeleting, setIsDeleting] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
 
@@ -143,7 +146,7 @@ export default function WhatsAppMediaPage() {
   React.useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadMedia()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const filteredMedia = React.useMemo(() => {
@@ -173,9 +176,7 @@ export default function WhatsAppMediaPage() {
       toast.success("Media uploaded successfully.")
       void loadMedia()
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Upload failed."
-      )
+      toast.error(error instanceof Error ? error.message : "Upload failed.")
     } finally {
       setUploading(false)
       e.target.value = ""
@@ -191,9 +192,7 @@ export default function WhatsAppMediaPage() {
       setDeleteDialog(null)
       void loadMedia()
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Delete failed."
-      )
+      toast.error(error instanceof Error ? error.message : "Delete failed.")
     } finally {
       setIsDeleting(false)
     }
@@ -221,10 +220,7 @@ export default function WhatsAppMediaPage() {
               onChange={(e) => void handleUpload(e)}
               disabled={uploading}
             />
-            <Button
-              asChild
-              disabled={uploading}
-            >
+            <Button asChild disabled={uploading}>
               <label htmlFor="media-upload-input" className="cursor-pointer">
                 <Upload weight="bold" className="mr-2 size-4" />
                 {uploading ? "Uploading..." : "Upload"}
@@ -267,7 +263,10 @@ export default function WhatsAppMediaPage() {
           {/* Error */}
           {!isLoading && errorMessage && (
             <div className="flex flex-col items-center justify-center py-8 text-center">
-              <XCircle className="mb-3 size-10 text-destructive" weight="fill" />
+              <XCircle
+                className="mb-3 size-10 text-destructive"
+                weight="fill"
+              />
               <p className="text-sm text-destructive">{errorMessage}</p>
               <Button
                 variant="outline"
@@ -286,15 +285,16 @@ export default function WhatsAppMediaPage() {
               {/* eslint-disable-next-line jsx-a11y/alt-text */}
               <Image className="mb-3 size-10 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                {searchQuery ? "No media matches your search." : "No media yet."}
+                {searchQuery
+                  ? "No media matches your search."
+                  : "No media yet."}
               </p>
               {!searchQuery && (
-                <Button
-                  variant="outline"
-                  className="mt-3"
-                  asChild
-                >
-                  <label htmlFor="media-upload-input" className="cursor-pointer">
+                <Button variant="outline" className="mt-3" asChild>
+                  <label
+                    htmlFor="media-upload-input"
+                    className="cursor-pointer"
+                  >
                     <Upload className="mr-2 size-4" />
                     Upload your first file
                   </label>
@@ -340,7 +340,9 @@ export default function WhatsAppMediaPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
                           <a
-                            href={whatsappClient.media.downloadUrl(item.metaMediaId)}
+                            href={whatsappClient.media.downloadUrl(
+                              item.metaMediaId
+                            )}
                             download
                           >
                             <Download className="mr-2 size-4" />
@@ -376,8 +378,9 @@ export default function WhatsAppMediaPage() {
           <DialogHeader>
             <DialogTitle>Delete Media</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this media file? It will be removed
-              from both Meta and local storage. This action cannot be undone.
+              Are you sure you want to delete this media file? It will be
+              removed from both Meta and local storage. This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

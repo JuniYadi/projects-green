@@ -34,51 +34,49 @@ export function EmailsView() {
   const categories = Array.from(new Set(templates.map((t) => t.category)))
 
   return (
-    <div className="flex gap-6 h-[calc(100vh-220px)]">
+    <div className="flex h-[calc(100vh-220px)] gap-6">
       {/* Left: template list */}
-      <aside className="w-56 shrink-0 rounded-lg border bg-card overflow-y-auto">
-        <div className="p-2 space-y-4">
-          {loadingList ? (
-            Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-9 w-full rounded-md" />
-            ))
-          ) : (
-            categories.map((category) => (
-              <div key={category}>
-                <p className="px-2 pb-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  {category}
-                </p>
-                {templates
-                  .filter((t) => t.category === category)
-                  .map((tpl) => (
-                    <button
-                      key={tpl.id}
-                      onClick={() => setSelected(tpl)}
-                      className={cn(
-                        "w-full text-left rounded-md px-3 py-2 text-sm transition-colors",
-                        "hover:bg-accent hover:text-accent-foreground",
-                        selected?.id === tpl.id &&
-                          "bg-accent text-accent-foreground font-medium"
-                      )}
-                    >
-                      {tpl.name}
-                    </button>
-                  ))}
-              </div>
-            ))
-          )}
+      <aside className="w-56 shrink-0 overflow-y-auto rounded-lg border bg-card">
+        <div className="space-y-4 p-2">
+          {loadingList
+            ? Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-9 w-full rounded-md" />
+              ))
+            : categories.map((category) => (
+                <div key={category}>
+                  <p className="px-2 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                    {category}
+                  </p>
+                  {templates
+                    .filter((t) => t.category === category)
+                    .map((tpl) => (
+                      <button
+                        key={tpl.id}
+                        onClick={() => setSelected(tpl)}
+                        className={cn(
+                          "w-full rounded-md px-3 py-2 text-left text-sm transition-colors",
+                          "hover:bg-accent hover:text-accent-foreground",
+                          selected?.id === tpl.id &&
+                            "bg-accent font-medium text-accent-foreground"
+                        )}
+                      >
+                        {tpl.name}
+                      </button>
+                    ))}
+                </div>
+              ))}
         </div>
       </aside>
 
       {/* Right: metadata + preview */}
-      <div className="flex flex-1 flex-col gap-3 min-w-0">
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
         {selected && (
-          <div className="rounded-lg border bg-card p-4 space-y-1">
+          <div className="space-y-1 rounded-lg border bg-card p-4">
             <div className="flex items-center gap-2">
               <span className="font-medium">{selected.name}</span>
               <Badge variant="secondary">{selected.category}</Badge>
             </div>
-            <p className="text-sm text-muted-foreground truncate">
+            <p className="truncate text-sm text-muted-foreground">
               <span className="font-medium">Subject:</span> {selected.subject}
             </p>
             <p className="text-sm text-muted-foreground">
@@ -87,12 +85,12 @@ export function EmailsView() {
           </div>
         )}
 
-        <div className="flex-1 rounded-lg border overflow-hidden bg-white">
+        <div className="flex-1 overflow-hidden rounded-lg border bg-white">
           {selected ? (
             <iframe
               key={selected.id}
               src={previewUrl(selected.id)}
-              className="w-full h-full border-0"
+              className="h-full w-full border-0"
               title={`Preview: ${selected.name}`}
               sandbox="allow-same-origin"
             />

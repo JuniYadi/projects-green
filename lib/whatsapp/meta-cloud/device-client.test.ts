@@ -155,8 +155,7 @@ describe("WhatsAppDeviceClient catalog methods", () => {
 
       const [, , , payload] = mockRequest.mock.calls[0] as any[]
       expect(
-        payload.interactive.action.parameters
-          .thumbnail_product_retailer_id
+        payload.interactive.action.parameters.thumbnail_product_retailer_id
       ).toBe("SKU-001")
     })
 

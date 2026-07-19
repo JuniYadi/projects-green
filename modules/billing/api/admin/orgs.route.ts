@@ -111,8 +111,7 @@ export const createAdminOrgsRoutes = (
       }
       // Note: search by organizationId (UUID) until org name relation is added to BillingAccount
       // UUID-like search → filter at DB level; name search → post-filter
-      const looksLikeUUID =
-        search && /^[0-9a-f-]{8,}/i.test(search)
+      const looksLikeUUID = search && /^[0-9a-f-]{8,}/i.test(search)
       if (search && looksLikeUUID) {
         accountWhere.organizationId = {
           contains: search,
@@ -189,7 +188,8 @@ export const createAdminOrgsRoutes = (
 
       let orgs = accounts.map((account) => ({
         orgId: account.organizationId,
-        orgName: orgMap.get(account.organizationId)?.name ?? account.organizationId,
+        orgName:
+          orgMap.get(account.organizationId)?.name ?? account.organizationId,
         balance: account.balance.toFixed(2),
         currency: account.currency,
         activeSubscriptions: subCountMap.get(account.organizationId) ?? 0,
@@ -201,9 +201,7 @@ export const createAdminOrgsRoutes = (
       // Post-filter by name when search is not UUID-like
       if (search && !looksLikeUUID) {
         const term = search.toLowerCase()
-        orgs = orgs.filter((o) =>
-          o.orgName.toLowerCase().includes(term)
-        )
+        orgs = orgs.filter((o) => o.orgName.toLowerCase().includes(term))
       }
 
       const filteredTotal = search && !looksLikeUUID ? orgs.length : total

@@ -429,7 +429,9 @@ export function BillingContactsList({ orgId }: BillingContactsListProps) {
   return (
     <>
       <DataTable
-        tableId={orgId ? `billing-contacts-${orgId}` : "console-billing-contacts"}
+        tableId={
+          orgId ? `billing-contacts-${orgId}` : "console-billing-contacts"
+        }
         columns={columns}
         data={contacts}
         searchableColumns={["email", "name"]}

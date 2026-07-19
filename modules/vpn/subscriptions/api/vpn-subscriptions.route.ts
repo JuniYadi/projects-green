@@ -84,14 +84,16 @@ async function resolvePackageNames(packageIds: string[]) {
   return new Map(packages.map((pkg) => [pkg.id, pkg.name]))
 }
 
-function jsonObject(value: Prisma.JsonValue | null): Record<string, unknown> | null {
+function jsonObject(
+  value: Prisma.JsonValue | null
+): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null
   return value as Record<string, unknown>
 }
 
 async function resolveFirstPayments(
   organizationId: string,
-  subscriptionIds: string[],
+  subscriptionIds: string[]
 ): Promise<Map<string, VpnSubscriptionPaymentDTO>> {
   const ids = new Set(subscriptionIds)
   if (ids.size === 0) return new Map()
@@ -154,7 +156,7 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
       )
       const firstPayments = await resolveFirstPayments(
         ctx.organizationId,
-        subs.map((sub) => sub.id),
+        subs.map((sub) => sub.id)
       )
       return {
         ok: true as const,
@@ -163,7 +165,7 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
             sub,
             null,
             packageNames.get(sub.packageId) ?? null,
-            { billing: { firstPayment: firstPayments.get(sub.id) ?? null } },
+            { billing: { firstPayment: firstPayments.get(sub.id) ?? null } }
           )
         ),
       }
@@ -177,14 +179,16 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
       )
       if (!sub) return notFound(set)
       const packageNames = await resolvePackageNames([sub.packageId])
-      const firstPayments = await resolveFirstPayments(ctx.organizationId, [sub.id])
+      const firstPayments = await resolveFirstPayments(ctx.organizationId, [
+        sub.id,
+      ])
       return {
         ok: true as const,
         data: toVpnSubscriptionDTO(
           sub,
           null,
           packageNames.get(sub.packageId) ?? null,
-          { billing: { firstPayment: firstPayments.get(sub.id) ?? null } },
+          { billing: { firstPayment: firstPayments.get(sub.id) ?? null } }
         ),
       }
     })
@@ -345,7 +349,7 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
           const sub = await service.cancelAtPeriodEnd(
             ctx.organizationId,
             params.id,
-            (body as { reason?: string } | undefined)?.reason,
+            (body as { reason?: string } | undefined)?.reason
           )
           const packageNames = await resolvePackageNames([sub.packageId])
           return {
@@ -374,10 +378,8 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
         }
       },
       {
-        body: t.Optional(
-          t.Object({ reason: t.Optional(t.String()) }),
-        ),
-      },
+        body: t.Optional(t.Object({ reason: t.Optional(t.String()) })),
+      }
     )
     .post(
       "/vpn/subscriptions/:id/reinstate",
@@ -388,7 +390,7 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
           const sub = await service.reinstate(
             ctx.organizationId,
             params.id,
-            (body as { reason?: string } | undefined)?.reason,
+            (body as { reason?: string } | undefined)?.reason
           )
           const packageNames = await resolvePackageNames([sub.packageId])
           return {
@@ -396,7 +398,7 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
             data: toVpnSubscriptionDTO(
               sub,
               null,
-              packageNames.get(sub.packageId) ?? null,
+              packageNames.get(sub.packageId) ?? null
             ),
           }
         } catch (error) {
@@ -406,22 +408,19 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
             "[VPN SUBSCRIPTION] reinstate error:",
             error instanceof Error
               ? (error.stack ?? error.message)
-              : String(error),
+              : String(error)
           )
           set.status = 500
           return {
             ok: false as const,
             error: "INTERNAL_ERROR" as const,
-            message:
-              "Something went wrong while reinstating the subscription.",
+            message: "Something went wrong while reinstating the subscription.",
           }
         }
       },
       {
-        body: t.Optional(
-          t.Object({ reason: t.Optional(t.String()) }),
-        ),
-      },
+        body: t.Optional(t.Object({ reason: t.Optional(t.String()) })),
+      }
     )
 }
 

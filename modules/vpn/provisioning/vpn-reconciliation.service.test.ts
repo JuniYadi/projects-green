@@ -16,7 +16,8 @@ const mockPrisma = {
     create: mock().mockImplementation(async ({ data }) => {
       mockAuditLogs.push({
         action: data.action as string,
-        serverAccountId: (data.details as Record<string, unknown>)?.serverAccountId as string,
+        serverAccountId: (data.details as Record<string, unknown>)
+          ?.serverAccountId as string,
         details: (data.details as Record<string, unknown>) ?? null,
       })
       return { id: "log_" + Date.now(), ...data }
@@ -35,7 +36,8 @@ mock.module("@/lib/queue/vpn-provisioning", () => ({
   VpnProvisioningJob: mockVpnProvisioningJob,
 }))
 
-const { VpnReconciliationService } = await import("./vpn-reconciliation.service")
+const { VpnReconciliationService } =
+  await import("./vpn-reconciliation.service")
 
 const OLD_PENDING_ACCOUNT = {
   id: "acc_old",

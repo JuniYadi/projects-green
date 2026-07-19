@@ -25,9 +25,7 @@ describe("usePersistedColumnVisibility", () => {
     act(() => {
       result.current[1]({ name: false })
     })
-    const stored = JSON.parse(
-      localStorage.getItem(STORAGE_KEY) ?? "{}"
-    )
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}")
     expect(stored).toEqual({ name: false })
   })
 

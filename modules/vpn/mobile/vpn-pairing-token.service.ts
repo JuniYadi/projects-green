@@ -251,9 +251,7 @@ export class VpnPairingTokenService {
    * 3. Upsert VpnMobileDevice via VpnMobileDeviceService.create.
    * 4. Return { deviceId, subscriptionId, organizationId }.
    */
-  async claim(
-    input: PairingClaimInput
-  ): Promise<{
+  async claim(input: PairingClaimInput): Promise<{
     deviceId: string
     subscriptionId: string
     organizationId: string

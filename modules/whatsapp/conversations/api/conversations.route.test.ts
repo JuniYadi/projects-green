@@ -51,9 +51,7 @@ describe("conversations routes", () => {
     }
 
     const app = createTestApp()
-    const res = await app.handle(
-      new Request("http://localhost/conversations")
-    )
+    const res = await app.handle(new Request("http://localhost/conversations"))
 
     expect(res.status).toBe(403)
     const body = await res.json()
@@ -69,9 +67,7 @@ describe("conversations routes", () => {
     mockAuth.current = null
 
     const app = createTestApp()
-    const res = await app.handle(
-      new Request("http://localhost/conversations")
-    )
+    const res = await app.handle(new Request("http://localhost/conversations"))
 
     expect(res.status).toBe(401)
   })
@@ -117,9 +113,7 @@ describe("conversations routes", () => {
     })
 
     const app = createTestApp()
-    const res = await app.handle(
-      new Request("http://localhost/conversations")
-    )
+    const res = await app.handle(new Request("http://localhost/conversations"))
 
     expect(res.status).toBe(200)
     expect(mockFindMany).toHaveBeenCalledTimes(1)

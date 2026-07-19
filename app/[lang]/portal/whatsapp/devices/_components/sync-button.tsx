@@ -13,10 +13,15 @@ export function SyncButton({ deviceId }: { deviceId: string }) {
     setLoading(true)
     try {
       const res = await whatsappClient.devices.syncTemplates(deviceId)
-      if (!res.ok) throw new Error((res as { message?: string })?.message || "Failed to sync")
+      if (!res.ok)
+        throw new Error(
+          (res as { message?: string })?.message || "Failed to sync"
+        )
       toast.success(res.message)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to sync templates")
+      toast.error(
+        error instanceof Error ? error.message : "Failed to sync templates"
+      )
     } finally {
       setLoading(false)
     }

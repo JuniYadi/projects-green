@@ -186,7 +186,9 @@ function ConfigCell({
     return <span className="text-xs text-muted-foreground">Revoked</span>
   }
   if (subStatus !== "ACTIVE") {
-    return <span className="text-xs text-muted-foreground">Renew to download</span>
+    return (
+      <span className="text-xs text-muted-foreground">Renew to download</span>
+    )
   }
   if (account.protocol === "PROXY") {
     return (
@@ -213,13 +215,9 @@ type ProtocolIconProps = {
 
 function ProtocolIcon({ protocol }: ProtocolIconProps) {
   const label =
-    protocol === "OPENVPN"
-      ? "OVPN"
-      : protocol === "WIREGUARD"
-        ? "WG"
-        : "Proxy"
+    protocol === "OPENVPN" ? "OVPN" : protocol === "WIREGUARD" ? "WG" : "Proxy"
   return (
-    <span className="inline-flex items-center justify-center rounded bg-muted px-1.5 py-0.5 text-[11px] font-semibold uppercase text-muted-foreground">
+    <span className="inline-flex items-center justify-center rounded bg-muted px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground uppercase">
       {label}
     </span>
   )
@@ -243,7 +241,11 @@ function ProtocolControl({
             :{account.port}
           </span>
         )}
-        <ConfigCell subscriptionId={subscriptionId} account={account} subStatus={subStatus} />
+        <ConfigCell
+          subscriptionId={subscriptionId}
+          account={account}
+          subStatus={subStatus}
+        />
         <Badge
           variant={PROVISIONING_VARIANT[account.provisioningStatus]}
           className="ml-auto"
@@ -252,9 +254,7 @@ function ProtocolControl({
         </Badge>
       </div>
       {account.provisioningStatus === "FAILED" && account.failureReason && (
-        <p className="mt-1 text-xs text-destructive">
-          {account.failureReason}
-        </p>
+        <p className="mt-1 text-xs text-destructive">{account.failureReason}</p>
       )}
     </div>
   )
@@ -326,7 +326,7 @@ function regionFilterValue(sub: VpnSubscription): string {
     ...new Set(
       sub.serverAccounts
         .map((account) => account.region?.slug)
-        .filter((slug): slug is string => Boolean(slug)),
+        .filter((slug): slug is string => Boolean(slug))
     ),
   ].join("|")
 }
@@ -358,7 +358,7 @@ function uniqueRegionNames(sub: VpnSubscription): string[] {
     ...new Set(
       sub.serverAccounts
         .map((account) => account.region?.name)
-        .filter((name): name is string => Boolean(name)),
+        .filter((name): name is string => Boolean(name))
     ),
   ]
 }
@@ -370,7 +370,8 @@ function RegionSummary({ sub }: { sub: VpnSubscription }) {
 
   return (
     <p className="max-w-[220px] truncate text-xs text-muted-foreground">
-      {visible}{more}
+      {visible}
+      {more}
     </p>
   )
 }
@@ -380,7 +381,9 @@ function SubscriptionStatusBadge({ sub }: { sub: VpnSubscription }) {
 
   return (
     <Badge
-      variant={status === "CANCELLING" ? "secondary" : STATUS_VARIANT[sub.status]}
+      variant={
+        status === "CANCELLING" ? "secondary" : STATUS_VARIANT[sub.status]
+      }
     >
       {status === "CANCELLING" ? "Cancelling" : sub.status}
     </Badge>
@@ -396,8 +399,9 @@ function ServerSummaryCell({
 }) {
   const groups = groupByServer(sub.serverAccounts)
   const maxDevices =
-    sub.serverAccounts.filter((account) => account.provisioningStatus === "ACTIVE")
-      .length * 2
+    sub.serverAccounts.filter(
+      (account) => account.provisioningStatus === "ACTIVE"
+    ).length * 2
 
   return (
     <div className="min-w-[220px] space-y-1">
@@ -454,19 +458,15 @@ export function VpnServerAccountsDetail({
 
 export function VpnMyServices({ subscriptions, onChanged }: Props) {
   const [cancelling, setCancelling] = useState<string | null>(null)
-  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(
-    null,
-  )
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null)
   const [confirmCancelTexts, setConfirmCancelTexts] = useState<
     Record<string, string>
   >({})
-  const [cancelReasons, setCancelReasons] = useState<
-    Record<string, string>
-  >({})
+  const [cancelReasons, setCancelReasons] = useState<Record<string, string>>({})
   const [reinstating, setReinstating] = useState<string | null>(null)
-  const [reinstateDialogId, setReinstateDialogId] = useState<
-    string | null
-  >(null)
+  const [reinstateDialogId, setReinstateDialogId] = useState<string | null>(
+    null
+  )
   const [reinstateReasons, setReinstateReasons] = useState<
     Record<string, string>
   >({})
@@ -513,7 +513,7 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
         if (account.region) {
           regions.set(
             account.region.slug,
-            `${account.region.name} (${account.region.countryCode})`,
+            `${account.region.name} (${account.region.countryCode})`
           )
         }
       }
@@ -583,7 +583,12 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
           return (
             <div className="min-w-[200px] space-y-1">
               <div className="font-medium">{sub.packageName}</div>
-              <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs">
+              <Button
+                asChild
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-xs"
+              >
                 <Link href={`/console/vpn/subscriptions/${sub.id}`}>
                   View details
                 </Link>
@@ -649,7 +654,9 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
           if (!payment) return <span className="text-muted-foreground">—</span>
           return (
             <div className="space-y-1 text-sm">
-              <div>{payment.amount} {payment.currency}</div>
+              <div>
+                {payment.amount} {payment.currency}
+              </div>
               {payment.paidAt && (
                 <div className="text-xs text-muted-foreground">
                   {formatDate(payment.paidAt)}
@@ -677,7 +684,9 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
           <div className="space-y-1 text-sm">
             <div>{formatDate(row.original.currentPeriodEnd)}</div>
             {row.original.cancelAtPeriodEnd && (
-              <div className="text-xs text-muted-foreground">Cancels after this date</div>
+              <div className="text-xs text-muted-foreground">
+                Cancels after this date
+              </div>
             )}
           </div>
         ),
@@ -690,7 +699,7 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
           const subDevices = devicesBySub[sub.id] ?? []
           const maxDevices =
             sub.serverAccounts.filter(
-              (account) => account.provisioningStatus === "ACTIVE",
+              (account) => account.provisioningStatus === "ACTIVE"
             ).length * 2
 
           return (
@@ -731,7 +740,9 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                   ) : (
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
-                      disabled={cancelling === sub.id || sub.status !== "ACTIVE"}
+                      disabled={
+                        cancelling === sub.id || sub.status !== "ACTIVE"
+                      }
                       onClick={() => {
                         setConfirmCancelId(sub.id)
                         setConfirmCancelTexts((prev) => ({
@@ -752,9 +763,9 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
             </div>
           )
         },
-      }
+      },
     ],
-    [devicesBySub, cancelling, reinstating],
+    [devicesBySub, cancelling, reinstating]
   )
 
   return (
@@ -787,7 +798,6 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
         ]}
         emptyMessage="No VPN subscriptions found."
       />
-
 
       {/* Pair modal */}
       <VpnPairingQrModal
@@ -960,8 +970,8 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                       </p>
                       <p className="mt-1">
                         Normal billing will resume after{" "}
-                        <strong>{formatDate(sub.currentPeriodEnd)}</strong>,
-                        and your subscription will continue as usual.
+                        <strong>{formatDate(sub.currentPeriodEnd)}</strong>, and
+                        your subscription will continue as usual.
                       </p>
                     </div>
                   </DialogDescription>

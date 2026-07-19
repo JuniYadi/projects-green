@@ -46,7 +46,9 @@ export class VpnProvisioningJob extends BaseJob {
       )
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
-      await job.log(`Provisioning account ${serverAccountId} failed: ${message}`)
+      await job.log(
+        `Provisioning account ${serverAccountId} failed: ${message}`
+      )
       console.error(
         `[vpn-provisioning] handle job=${job.id ?? "unknown"} account=${serverAccountId} failed: ${message}`
       )

@@ -110,12 +110,14 @@ export function SupportTicketCreateScreen({
       const ext = file.name.split(".").pop()?.toLowerCase() ?? ""
 
       if (file.size > S3_ATTACHMENT_MAX_SIZE_BYTES) {
-        newErrors[file.name] = `"${file.name}" exceeds ${formatBytes(S3_ATTACHMENT_MAX_SIZE_BYTES)} limit.`
+        newErrors[file.name] =
+          `"${file.name}" exceeds ${formatBytes(S3_ATTACHMENT_MAX_SIZE_BYTES)} limit.`
         continue
       }
 
       if (!S3_ATTACHMENT_ALLOWED_EXTENSIONS.includes(ext)) {
-        newErrors[file.name] = `"${file.name}" is not supported. Supported: ${S3_ATTACHMENT_ALLOWED_EXTENSIONS.join(", ")}`
+        newErrors[file.name] =
+          `"${file.name}" is not supported. Supported: ${S3_ATTACHMENT_ALLOWED_EXTENSIONS.join(", ")}`
         continue
       }
 
@@ -124,7 +126,8 @@ export function SupportTicketCreateScreen({
         file.type !== "" &&
         !S3_ATTACHMENT_ALLOWED_MIME_TYPES.includes(file.type)
       ) {
-        newErrors[file.name] = `"${file.name}" is not supported. Supported: ${S3_ATTACHMENT_ALLOWED_EXTENSIONS.join(", ")}`
+        newErrors[file.name] =
+          `"${file.name}" is not supported. Supported: ${S3_ATTACHMENT_ALLOWED_EXTENSIONS.join(", ")}`
         continue
       }
 
@@ -133,7 +136,8 @@ export function SupportTicketCreateScreen({
         ext &&
         !EXTENSION_MIME_ALLOWLIST[ext]?.includes(file.type)
       ) {
-        newErrors[file.name] = `"${file.name}" is not supported. Supported: ${S3_ATTACHMENT_ALLOWED_EXTENSIONS.join(", ")}`
+        newErrors[file.name] =
+          `"${file.name}" is not supported. Supported: ${S3_ATTACHMENT_ALLOWED_EXTENSIONS.join(", ")}`
         continue
       }
 

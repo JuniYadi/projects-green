@@ -73,10 +73,7 @@ export function PortalBillingOrgSelector() {
   const selectedName = orgs.find((o) => o.orgId === currentOrgId)?.orgName
 
   return (
-    <Select
-      value={currentOrgId ?? "__none__"}
-      onValueChange={handleOrgChange}
-    >
+    <Select value={currentOrgId ?? "__none__"} onValueChange={handleOrgChange}>
       <SelectTrigger className="h-8 w-full gap-2 [&>span]:flex [&>span]:items-center [&>span]:gap-2 [&>span]:truncate">
         <BuildingsIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
         <SelectValue placeholder="Select organization">

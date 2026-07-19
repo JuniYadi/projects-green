@@ -28,7 +28,14 @@ export type WgPeerDTO = WgPeer
 type VpnServerPayload = Prisma.VpnServerGetPayload<{}>
 export type WireGuardServerDTO = Pick<
   VpnServerPayload,
-  "id" | "hostname" | "ipAddress" | "wireGuardPort" | "wireGuardPublicKey" | "wireGuardSubnet" | "sshPort" | "sshUser"
+  | "id"
+  | "hostname"
+  | "ipAddress"
+  | "wireGuardPort"
+  | "wireGuardPublicKey"
+  | "wireGuardSubnet"
+  | "sshPort"
+  | "sshUser"
 >
 
 export type SshTarget = {

@@ -241,7 +241,8 @@ describe("support ticket routes", () => {
 
     expect(response.status).toBe(201)
     expect(mockSendTicketReplyAlertToStaff).toHaveBeenCalledTimes(2)
-    const calls = mockSendTicketReplyAlertToStaff.mock.calls as unknown as Array<
+    const calls = mockSendTicketReplyAlertToStaff.mock
+      .calls as unknown as Array<
       [SupportTicket, SupportTicketReply, string, string]
     >
     expect(calls[0]![0].id).toBe("ticket_1")

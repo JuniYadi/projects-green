@@ -361,7 +361,6 @@ export function DeviceEditForm({
             />
           </div>
 
-
           <div className="grid gap-2">
             <Label htmlFor="quotaBaseOut">Quota Base Out</Label>
             <Input

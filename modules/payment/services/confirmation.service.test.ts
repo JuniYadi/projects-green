@@ -32,24 +32,26 @@ mock.module("@/lib/prisma", () => ({
     billingAccount: mockBillingAccount,
     paymentAuditLog: mockAuditLog,
     $transaction: mock(
-      (
-        fn: (tx: Record<string, unknown>) => Promise<unknown>
-      ) => fn({
-      paymentConfirmation: mockPaymentConfirmation,
-      billingInvoice: mockInvoice,
-      paymentAuditLog: mockAuditLog,
-    })),
+      (fn: (tx: Record<string, unknown>) => Promise<unknown>) =>
+        fn({
+          paymentConfirmation: mockPaymentConfirmation,
+          billingInvoice: mockInvoice,
+          paymentAuditLog: mockAuditLog,
+        })
+    ),
   },
 }))
 
 // Mock BillingTransactionService
 mock.module("@/modules/billing/billing-transaction.service", () => ({
   BillingTransactionService: mock(() => ({
-    creditBalance: mock(() => Promise.resolve({
-      billingAccountId: "ba-123",
-      adjustmentId: "adj-1",
-      alreadyProcessed: false,
-    })),
+    creditBalance: mock(() =>
+      Promise.resolve({
+        billingAccountId: "ba-123",
+        adjustmentId: "adj-1",
+        alreadyProcessed: false,
+      })
+    ),
   })),
 }))
 
@@ -73,7 +75,11 @@ describe("ConfirmationService", () => {
     resetMocks()
     mockInvoice.findFirst.mockResolvedValue(null)
     mockPaymentConfirmation.findFirst.mockResolvedValue(null)
-    mockPaymentConfirmation.create.mockResolvedValue({ id: "conf-1", status: "PENDING", createdAt: new Date() })
+    mockPaymentConfirmation.create.mockResolvedValue({
+      id: "conf-1",
+      status: "PENDING",
+      createdAt: new Date(),
+    })
     service = new ConfirmationService()
   })
   describe("approve", () => {
@@ -94,7 +100,10 @@ describe("ConfirmationService", () => {
         },
       })
 
-      mockInvoice.update.mockResolvedValueOnce({ id: "inv-123", status: "PAID" })
+      mockInvoice.update.mockResolvedValueOnce({
+        id: "inv-123",
+        status: "PAID",
+      })
       mockAuditLog.create.mockResolvedValueOnce({})
 
       const result = await service.approve("conf-123", "admin-1")

@@ -37,9 +37,9 @@ export function ConfirmPaymentButton({
     setIsPending(true)
 
     try {
-      const { data } = await eden.api.billing.admin.invoices[invoiceId].patch(
-        { status: "PAID" } as never
-      )
+      const { data } = await eden.api.billing.admin.invoices[invoiceId].patch({
+        status: "PAID",
+      } as never)
 
       if (!data) {
         throw new Error("No response from server")

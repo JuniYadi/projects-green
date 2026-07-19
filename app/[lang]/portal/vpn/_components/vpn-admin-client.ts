@@ -295,16 +295,16 @@ export async function getVpnServer(id: string) {
 }
 
 export async function listOpenVpnUsers(serverId: string) {
-  const res = (
-    await eden.api.admin.vpn.servers[serverId]["openvpn-users"].get()
-  ) as EdenRes
+  const res = (await eden.api.admin.vpn.servers[serverId][
+    "openvpn-users"
+  ].get()) as EdenRes
   return unwrapData<OpenVpnUserItem[]>(res)
 }
 
 export async function getVpnServerMetrics(serverId: string) {
-  const res = (
-    await eden.api.admin.vpn.servers[serverId].metrics.get()
-  ) as EdenRes
+  const res = (await eden.api.admin.vpn.servers[
+    serverId
+  ].metrics.get()) as EdenRes
   return unwrapData<VpnServerMetrics>(res)
 }
 
@@ -330,7 +330,9 @@ export async function deleteVpnServer(id: string) {
 
 export async function testVpnServer(id: string, init?: RequestInit) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Eden POST body type doesn't accept RequestInit
-  const res = (await eden.api.admin.vpn.servers[id].test.post(init as any)) as EdenRes
+  const res = (await eden.api.admin.vpn.servers[id].test.post(
+    init as any
+  )) as EdenRes
   return unwrapData<ScanResult>(res)
 }
 
@@ -354,7 +356,9 @@ export async function listVpnSshKeys() {
 
 export async function createVpnSshKey(body: Record<string, unknown>) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Eden infers strict body types; generic callers pass untyped objects
-  const res = (await eden.api.admin.vpn["ssh-keys"].post(body as any)) as EdenRes
+  const res = (await eden.api.admin.vpn["ssh-keys"].post(
+    body as any
+  )) as EdenRes
   throwIfError(res)
 }
 
@@ -381,7 +385,9 @@ export async function updateVpnPackage(
   body: Record<string, unknown>
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Eden infers strict body types; generic callers pass untyped objects
-  const res = (await eden.api.admin.vpn.packages[id].put(body as any)) as EdenRes
+  const res = (await eden.api.admin.vpn.packages[id].put(
+    body as any
+  )) as EdenRes
   throwIfError(res)
 }
 
@@ -410,7 +416,9 @@ export type PaginationMeta = {
   totalPages: number
 }
 
-export async function listVpnAdminSubscriptions(query: VpnAdminSubscriptionsQuery = {}) {
+export async function listVpnAdminSubscriptions(
+  query: VpnAdminSubscriptionsQuery = {}
+) {
   const $query: Record<string, string> = {}
   for (const [key, value] of Object.entries(query)) {
     if (value !== undefined && value !== null && value !== "") {
@@ -418,7 +426,9 @@ export async function listVpnAdminSubscriptions(query: VpnAdminSubscriptionsQuer
     }
   }
 
-  const res = (await eden.api.admin.vpn.subscriptions.get({ $query })) as EdenRes
+  const res = (await eden.api.admin.vpn.subscriptions.get({
+    $query,
+  })) as EdenRes
   throwIfError(res)
 
   const body = res.data as
@@ -428,7 +438,12 @@ export async function listVpnAdminSubscriptions(query: VpnAdminSubscriptionsQuer
   if (Array.isArray(body)) {
     return {
       data: body,
-      pagination: { page: 1, limit: body.length, total: body.length, totalPages: 1 },
+      pagination: {
+        page: 1,
+        limit: body.length,
+        total: body.length,
+        totalPages: 1,
+      },
     }
   }
 
@@ -446,50 +461,38 @@ export type VpnAccountValidationResult = {
   message: string
 }
 
-export async function retryVpnServerAccount(
-  subId: string,
-  saId: string
-) {
-  const res = (
-    await eden.api.admin.vpn.subscriptions[subId].servers[saId].retry.post()
-  ) as EdenRes
+export async function retryVpnServerAccount(subId: string, saId: string) {
+  const res = (await eden.api.admin.vpn.subscriptions[subId].servers[
+    saId
+  ].retry.post()) as EdenRes
   throwIfError(res)
 }
 
-export async function validateVpnServerAccount(
-  subId: string,
-  saId: string
-) {
-  const res = (
-    await eden.api.admin.vpn.subscriptions[subId].servers[saId].validate.post()
-  ) as EdenRes
+export async function validateVpnServerAccount(subId: string, saId: string) {
+  const res = (await eden.api.admin.vpn.subscriptions[subId].servers[
+    saId
+  ].validate.post()) as EdenRes
   return unwrapData<VpnAccountValidationResult>(res)
 }
 
-export async function recreateVpnServerAccount(
-  subId: string,
-  saId: string
-) {
-  const res = (
-    await eden.api.admin.vpn.subscriptions[subId].servers[saId].recreate.post()
-  ) as EdenRes
+export async function recreateVpnServerAccount(subId: string, saId: string) {
+  const res = (await eden.api.admin.vpn.subscriptions[subId].servers[
+    saId
+  ].recreate.post()) as EdenRes
   throwIfError(res)
 }
 
-export async function revokeVpnServerAccount(
-  subId: string,
-  saId: string
-) {
-  const res = (
-    await eden.api.admin.vpn.subscriptions[subId].servers[saId].revoke.post()
-  ) as EdenRes
+export async function revokeVpnServerAccount(subId: string, saId: string) {
+  const res = (await eden.api.admin.vpn.subscriptions[subId].servers[
+    saId
+  ].revoke.post()) as EdenRes
   throwIfError(res)
 }
 
 export async function retryAllVpnServerAccounts(subId: string) {
-  const res = (
-    await eden.api.admin.vpn.subscriptions[subId]["retry-all"].post()
-  ) as EdenRes
+  const res = (await eden.api.admin.vpn.subscriptions[subId][
+    "retry-all"
+  ].post()) as EdenRes
   throwIfError(res)
 }
 
@@ -577,7 +580,12 @@ export async function listVpnAuditLogs(query: AuditLogQuery = {}) {
   if (Array.isArray(body)) {
     return {
       data: body,
-      pagination: { page: 1, limit: body.length, total: body.length, totalPages: 1 },
+      pagination: {
+        page: 1,
+        limit: body.length,
+        total: body.length,
+        totalPages: 1,
+      },
     }
   }
 
@@ -602,12 +610,10 @@ type AdminDeviceEntry = {
   revokedReason: string | null
 }
 
-export async function listVpnMobileAdminDevices(
-  query: Record<string, string>
-) {
-  const res = (
-    await eden.api.vpn.mobile.admin.devices.get({ $query: query })
-  ) as EdenRes
+export async function listVpnMobileAdminDevices(query: Record<string, string>) {
+  const res = (await eden.api.vpn.mobile.admin.devices.get({
+    $query: query,
+  })) as EdenRes
   return unwrapData<{
     devices: AdminDeviceEntry[]
     total: number
@@ -620,8 +626,8 @@ export async function revokeVpnMobileDevice(
   id: string,
   body?: Record<string, unknown>
 ) {
-  const res = (
-    await eden.api.vpn.mobile.admin.devices[id].delete(body ?? {})
-  ) as EdenRes
+  const res = (await eden.api.vpn.mobile.admin.devices[id].delete(
+    body ?? {}
+  )) as EdenRes
   throwIfError(res)
 }

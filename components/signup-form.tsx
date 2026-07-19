@@ -19,7 +19,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { signupSchema, type SignupInput } from "@/lib/validation"
 
-
 const toErrorMessages = (errors: unknown[]) => {
   return errors.flatMap((error) => {
     if (typeof error === "string") {

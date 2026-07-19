@@ -7,10 +7,7 @@ import type { ColumnDef } from "@tanstack/react-table"
 
 // Mock the persisted visibility hook before importing DataTable
 mock.module("@/hooks/use-persisted-column-visibility", () => ({
-  usePersistedColumnVisibility: () => [
-    {},
-    mock(() => {}),
-  ],
+  usePersistedColumnVisibility: () => [{}, mock(() => {})],
 }))
 
 import { DataTable } from "./data-table"
@@ -42,7 +39,9 @@ const columns: ColumnDef<Item>[] = [
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => (
-      <span data-testid={`status-${row.original.id}`}>{row.original.status}</span>
+      <span data-testid={`status-${row.original.id}`}>
+        {row.original.status}
+      </span>
     ),
   },
   {
@@ -60,13 +59,13 @@ describe("DataTable pagination", () => {
     it("shows exactly pageSize rows on the first page", () => {
       const { container } = render(
         <DataTable
-            columns={columns}
-            data={items}
-            tableId={TABLE_ID}
-            pageSize={10}
-            searchableColumns={["name"]}
-            searchPlaceholder="Search..."
-          />
+          columns={columns}
+          data={items}
+          tableId={TABLE_ID}
+          pageSize={10}
+          searchableColumns={["name"]}
+          searchPlaceholder="Search..."
+        />
       )
 
       const tbody = container.querySelector("tbody")!
@@ -77,13 +76,13 @@ describe("DataTable pagination", () => {
     it("shows the pagination footer with correct summary text", () => {
       const { getByText } = render(
         <DataTable
-            columns={columns}
-            data={items}
-            tableId={TABLE_ID}
-            pageSize={10}
-            searchableColumns={["name"]}
-            searchPlaceholder="Search..."
-          />
+          columns={columns}
+          data={items}
+          tableId={TABLE_ID}
+          pageSize={10}
+          searchableColumns={["name"]}
+          searchPlaceholder="Search..."
+        />
       )
 
       expect(getByText(/^Showing 1-10 of 25 results$/)).toBeDefined()
@@ -103,13 +102,13 @@ describe("DataTable pagination", () => {
     it("navigates to the next page when Next is clicked", () => {
       const { getByText } = render(
         <DataTable
-            columns={columns}
-            data={items}
-            tableId={TABLE_ID}
-            pageSize={10}
-            searchableColumns={["name"]}
-            searchPlaceholder="Search..."
-          />
+          columns={columns}
+          data={items}
+          tableId={TABLE_ID}
+          pageSize={10}
+          searchableColumns={["name"]}
+          searchPlaceholder="Search..."
+        />
       )
 
       const nextButtons = () =>
@@ -131,13 +130,13 @@ describe("DataTable pagination", () => {
     it("shows the last page correctly", () => {
       const { getByText } = render(
         <DataTable
-            columns={columns}
-            data={items}
-            tableId={TABLE_ID}
-            pageSize={10}
-            searchableColumns={["name"]}
-            searchPlaceholder="Search..."
-          />
+          columns={columns}
+          data={items}
+          tableId={TABLE_ID}
+          pageSize={10}
+          searchableColumns={["name"]}
+          searchPlaceholder="Search..."
+        />
       )
 
       const nextButtons = () =>
@@ -183,23 +182,23 @@ describe("DataTable pagination", () => {
     it("resets to page 1 when column filters change", () => {
       const { getByText, getByRole } = render(
         <DataTable
-            columns={columns}
-            data={items}
-            tableId={TABLE_ID}
-            pageSize={10}
-            searchableColumns={["name"]}
-            searchPlaceholder="Search..."
-            facetFilters={[
-              {
-                columnId: "status",
-                label: "Status",
-                options: [
-                  { value: "active", label: "Active" },
-                  { value: "inactive", label: "Inactive" },
-                ],
-              },
-            ]}
-          />
+          columns={columns}
+          data={items}
+          tableId={TABLE_ID}
+          pageSize={10}
+          searchableColumns={["name"]}
+          searchPlaceholder="Search..."
+          facetFilters={[
+            {
+              columnId: "status",
+              label: "Status",
+              options: [
+                { value: "active", label: "Active" },
+                { value: "inactive", label: "Inactive" },
+              ],
+            },
+          ]}
+        />
       )
 
       const nextButtons = () =>
@@ -232,12 +231,12 @@ describe("DataTable pagination", () => {
     it("renders all rows without pagination controls", () => {
       const { container, queryByText } = render(
         <DataTable
-            columns={columns}
-            data={items}
-            tableId="no-pagination-table"
-            searchableColumns={["name"]}
-            searchPlaceholder="Search..."
-          />
+          columns={columns}
+          data={items}
+          tableId="no-pagination-table"
+          searchableColumns={["name"]}
+          searchPlaceholder="Search..."
+        />
       )
 
       const tbody = container.querySelector("tbody")!
@@ -267,14 +266,14 @@ describe("DataTable pagination", () => {
     it("shows empty message in table body and hides pagination footer", () => {
       const { getByText, queryByText } = render(
         <DataTable
-            columns={columns}
-            data={[]}
-            tableId="empty-table"
-            pageSize={10}
-            emptyMessage="No items found."
-            searchableColumns={["name"]}
-            searchPlaceholder="Search..."
-          />
+          columns={columns}
+          data={[]}
+          tableId="empty-table"
+          pageSize={10}
+          emptyMessage="No items found."
+          searchableColumns={["name"]}
+          searchPlaceholder="Search..."
+        />
       )
 
       // Empty message shown in table body
@@ -288,13 +287,13 @@ describe("DataTable pagination", () => {
     it("hides pagination controls when data fits on one page", () => {
       const { queryByText } = render(
         <DataTable
-            columns={columns}
-            data={makeItems(5)}
-            tableId="single-page-table"
-            pageSize={10}
-            searchableColumns={["name"]}
-            searchPlaceholder="Search..."
-          />
+          columns={columns}
+          data={makeItems(5)}
+          tableId="single-page-table"
+          pageSize={10}
+          searchableColumns={["name"]}
+          searchPlaceholder="Search..."
+        />
       )
 
       // 5 items < pageSize(10), pageCount = ceil(5/10) = 1, so 1 > 1 is false → hidden

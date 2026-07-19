@@ -27,11 +27,7 @@ mock.module("@workos-inc/authkit-nextjs/components", () => {
   }
 })
 
-import {
-  useRouter,
-  usePathname,
-  useSearchParams,
-} from "next/navigation"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 
 describe("NavUser", () => {
   afterEach(() => {

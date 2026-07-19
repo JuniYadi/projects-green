@@ -6,7 +6,22 @@ export type BillingAuditParams = {
   billingRunId?: string
   entityType: string
   entityId: string
-  action: "CREATED" | "UPDATED" | "DELETED" | "RUN_STARTED" | "RUN_FINISHED" | "INVOICE_GENERATED" | "PAYMENT_CONFIRMED" | "ORDER_CREATED" | "BALANCE_ADJUSTED" | "TOPUP_PERFORMED" | "SUBSCRIPTION_ACTIVATED" | "SUBSCRIPTION_CANCELLED" | "CONTACT_ADDED" | "CONTACT_REMOVED" | "SETTINGS_CHANGED"
+  action:
+    | "CREATED"
+    | "UPDATED"
+    | "DELETED"
+    | "RUN_STARTED"
+    | "RUN_FINISHED"
+    | "INVOICE_GENERATED"
+    | "PAYMENT_CONFIRMED"
+    | "ORDER_CREATED"
+    | "BALANCE_ADJUSTED"
+    | "TOPUP_PERFORMED"
+    | "SUBSCRIPTION_ACTIVATED"
+    | "SUBSCRIPTION_CANCELLED"
+    | "CONTACT_ADDED"
+    | "CONTACT_REMOVED"
+    | "SETTINGS_CHANGED"
   actorId?: string
   context?: Record<string, unknown>
 }

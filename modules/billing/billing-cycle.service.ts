@@ -365,7 +365,10 @@ export class BillingCycleService {
           }
         })
         .catch((err) => {
-          console.error("[BillingCycle] Failed to resolve invoice recipients:", err)
+          console.error(
+            "[BillingCycle] Failed to resolve invoice recipients:",
+            err
+          )
         })
     }
 

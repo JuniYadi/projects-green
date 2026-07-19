@@ -101,10 +101,9 @@ export function useTemplates(filters?: TemplateFilters) {
       if (deviceId) query.whatsappDeviceId = deviceId
       if (syncStatus) query.syncStatus = syncStatus
       if (sort) query.sort = sort
-      const { data, error: edenError } =
-        await eden.api.whatsapp.templates.get({
-          $query: query,
-        })
+      const { data, error: edenError } = await eden.api.whatsapp.templates.get({
+        $query: query,
+      })
       if (edenError)
         throw new Error(edenError.message ?? "Failed to load templates.")
       const result = data as unknown as TemplatesListResponse
@@ -117,12 +116,16 @@ export function useTemplates(filters?: TemplateFilters) {
   }, [enabled, orgId, deviceId, syncStatus, sort])
 
   if (!enabled) {
-    return { templates: [], loading: false, error: null, reload: async () => {} }
+    return {
+      templates: [],
+      loading: false,
+      error: null,
+      reload: async () => {},
+    }
   }
 
   return { templates, loading, error, reload }
 }
-
 
 export function useTemplate(id: string) {
   const [template, setTemplate] = React.useState<WhatsAppTemplate | null>(null)

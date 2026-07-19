@@ -154,7 +154,11 @@ const serverAccount = {
 
 const sessionAuth = {
   ok: true as const,
-  mobileAuth: { deviceId: DEVICE_ID, userId: "user-1", subscriptionId: SUBSCRIPTION_ID },
+  mobileAuth: {
+    deviceId: DEVICE_ID,
+    userId: "user-1",
+    subscriptionId: SUBSCRIPTION_ID,
+  },
 }
 
 // session401: throws with status=401 so onError can restore the 401 response.
@@ -169,7 +173,10 @@ const session401 = {
   error: session401Body.error,
 }
 Object.defineProperty(session401, "status", { value: 401, enumerable: false })
-Object.defineProperty(session401, "body", { value: session401Body, enumerable: false })
+Object.defineProperty(session401, "body", {
+  value: session401Body,
+  enumerable: false,
+})
 
 function createProfilesApp() {
   return new Elysia()
@@ -230,7 +237,9 @@ describe("MobileProfilesRoute — GET /vpn/mobile/profiles", () => {
     })
 
     const app = createProfilesApp()
-    const res = await app.handle(new Request("http://localhost/vpn/mobile/profiles"))
+    const res = await app.handle(
+      new Request("http://localhost/vpn/mobile/profiles")
+    )
 
     expect(res.status).toBe(401)
     const body = await res.json()
@@ -253,7 +262,9 @@ describe("MobileProfilesRoute — GET /vpn/mobile/profiles", () => {
     })
 
     const app = createProfilesApp()
-    const res = await app.handle(new Request("http://localhost/vpn/mobile/profiles"))
+    const res = await app.handle(
+      new Request("http://localhost/vpn/mobile/profiles")
+    )
 
     expect(res.status).toBe(403)
     const body = await res.json()
@@ -273,7 +284,9 @@ describe("MobileProfilesRoute — GET /vpn/mobile/profiles", () => {
     })
 
     const app = createProfilesApp()
-    const res = await app.handle(new Request("http://localhost/vpn/mobile/profiles"))
+    const res = await app.handle(
+      new Request("http://localhost/vpn/mobile/profiles")
+    )
 
     expect(res.status).toBe(403)
     const body = await res.json()
@@ -287,11 +300,16 @@ describe("MobileProfilesRoute — GET /vpn/mobile/profiles", () => {
       status: "ACTIVE",
       subscriptionId: SUBSCRIPTION_ID,
     })
-    mockFindUnique.mockResolvedValueOnce({ id: SUBSCRIPTION_ID, status: "ACTIVE" })
+    mockFindUnique.mockResolvedValueOnce({
+      id: SUBSCRIPTION_ID,
+      status: "ACTIVE",
+    })
     mockFindMany.mockResolvedValueOnce([])
 
     const app = createProfilesApp()
-    const res = await app.handle(new Request("http://localhost/vpn/mobile/profiles"))
+    const res = await app.handle(
+      new Request("http://localhost/vpn/mobile/profiles")
+    )
 
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -305,11 +323,16 @@ describe("MobileProfilesRoute — GET /vpn/mobile/profiles", () => {
       status: "ACTIVE",
       subscriptionId: SUBSCRIPTION_ID,
     })
-    mockFindUnique.mockResolvedValueOnce({ id: SUBSCRIPTION_ID, status: "ACTIVE" })
+    mockFindUnique.mockResolvedValueOnce({
+      id: SUBSCRIPTION_ID,
+      status: "ACTIVE",
+    })
     mockFindMany.mockResolvedValueOnce([serverAccount])
 
     const app = createProfilesApp()
-    const res = await app.handle(new Request("http://localhost/vpn/mobile/profiles"))
+    const res = await app.handle(
+      new Request("http://localhost/vpn/mobile/profiles")
+    )
 
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -340,7 +363,9 @@ describe("MobileProfilesRoute — GET /vpn/mobile/profiles", () => {
     mockFindMany.mockResolvedValueOnce([serverAccount])
 
     const app = createProfilesApp()
-    const res = await app.handle(new Request("http://localhost/vpn/mobile/profiles"))
+    const res = await app.handle(
+      new Request("http://localhost/vpn/mobile/profiles")
+    )
 
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -390,7 +415,10 @@ describe("MobileProfilesRoute — GET /vpn/mobile/profiles/:profileId/config", (
       status: "ACTIVE",
       subscriptionId: SUBSCRIPTION_ID,
     })
-    mockFindUnique.mockResolvedValueOnce({ id: SUBSCRIPTION_ID, status: "ACTIVE" })
+    mockFindUnique.mockResolvedValueOnce({
+      id: SUBSCRIPTION_ID,
+      status: "ACTIVE",
+    })
     mockFindUnique.mockResolvedValueOnce(null) // account not found
 
     const app = createProfilesApp()
@@ -410,7 +438,10 @@ describe("MobileProfilesRoute — GET /vpn/mobile/profiles/:profileId/config", (
       status: "ACTIVE",
       subscriptionId: SUBSCRIPTION_ID,
     })
-    mockFindUnique.mockResolvedValueOnce({ id: SUBSCRIPTION_ID, status: "ACTIVE" })
+    mockFindUnique.mockResolvedValueOnce({
+      id: SUBSCRIPTION_ID,
+      status: "ACTIVE",
+    })
     mockFindUnique.mockResolvedValueOnce({
       id: ACCOUNT_ID,
       subscriptionId: "other-sub",
@@ -435,7 +466,10 @@ describe("MobileProfilesRoute — GET /vpn/mobile/profiles/:profileId/config", (
       status: "ACTIVE",
       subscriptionId: SUBSCRIPTION_ID,
     })
-    mockFindUnique.mockResolvedValueOnce({ id: SUBSCRIPTION_ID, status: "ACTIVE" })
+    mockFindUnique.mockResolvedValueOnce({
+      id: SUBSCRIPTION_ID,
+      status: "ACTIVE",
+    })
     mockFindUnique.mockResolvedValueOnce({
       id: ACCOUNT_ID,
       subscriptionId: SUBSCRIPTION_ID,
@@ -460,7 +494,10 @@ describe("MobileProfilesRoute — GET /vpn/mobile/profiles/:profileId/config", (
       status: "ACTIVE",
       subscriptionId: SUBSCRIPTION_ID,
     })
-    mockFindUnique.mockResolvedValueOnce({ id: SUBSCRIPTION_ID, status: "ACTIVE" })
+    mockFindUnique.mockResolvedValueOnce({
+      id: SUBSCRIPTION_ID,
+      status: "ACTIVE",
+    })
     mockFindUnique.mockResolvedValueOnce({
       id: ACCOUNT_ID,
       subscriptionId: SUBSCRIPTION_ID,
@@ -488,7 +525,10 @@ describe("MobileProfilesRoute — GET /vpn/mobile/profiles/:profileId/config", (
       status: "ACTIVE",
       subscriptionId: SUBSCRIPTION_ID,
     })
-    mockFindUnique.mockResolvedValueOnce({ id: SUBSCRIPTION_ID, status: "ACTIVE" })
+    mockFindUnique.mockResolvedValueOnce({
+      id: SUBSCRIPTION_ID,
+      status: "ACTIVE",
+    })
     mockFindUnique.mockResolvedValueOnce({
       id: ACCOUNT_ID,
       subscriptionId: SUBSCRIPTION_ID,
@@ -516,7 +556,10 @@ describe("MobileProfilesRoute — GET /vpn/mobile/profiles/:profileId/config", (
       status: "ACTIVE",
       subscriptionId: SUBSCRIPTION_ID,
     })
-    mockFindUnique.mockResolvedValueOnce({ id: SUBSCRIPTION_ID, status: "ACTIVE" })
+    mockFindUnique.mockResolvedValueOnce({
+      id: SUBSCRIPTION_ID,
+      status: "ACTIVE",
+    })
     mockFindUnique.mockResolvedValueOnce({
       id: ACCOUNT_ID,
       subscriptionId: SUBSCRIPTION_ID,
@@ -542,7 +585,10 @@ describe("MobileProfilesRoute — GET /vpn/mobile/profiles/:profileId/config", (
       status: "ACTIVE",
       subscriptionId: SUBSCRIPTION_ID,
     })
-    mockFindUnique.mockResolvedValueOnce({ id: SUBSCRIPTION_ID, status: "ACTIVE" })
+    mockFindUnique.mockResolvedValueOnce({
+      id: SUBSCRIPTION_ID,
+      status: "ACTIVE",
+    })
     mockFindUnique.mockResolvedValueOnce({
       id: ACCOUNT_ID,
       subscriptionId: SUBSCRIPTION_ID,
@@ -568,7 +614,10 @@ describe("MobileProfilesRoute — GET /vpn/mobile/profiles/:profileId/config", (
       status: "ACTIVE",
       subscriptionId: SUBSCRIPTION_ID,
     })
-    mockFindUnique.mockResolvedValueOnce({ id: SUBSCRIPTION_ID, status: "ACTIVE" })
+    mockFindUnique.mockResolvedValueOnce({
+      id: SUBSCRIPTION_ID,
+      status: "ACTIVE",
+    })
     mockFindUnique.mockResolvedValueOnce({
       id: ACCOUNT_ID,
       subscriptionId: SUBSCRIPTION_ID,

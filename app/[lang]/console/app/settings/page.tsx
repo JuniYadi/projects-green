@@ -129,13 +129,13 @@ export default function SettingsPage() {
     staging: [],
     prod: [],
   })
-  const [mounts, setMounts] = useState<
-    Record<K8sEnvironmentId, VolumeMount[]>
-  >({
-    dev: [],
-    staging: [],
-    prod: [],
-  })
+  const [mounts, setMounts] = useState<Record<K8sEnvironmentId, VolumeMount[]>>(
+    {
+      dev: [],
+      staging: [],
+      prod: [],
+    }
+  )
   const [replicas, setReplicas] = useState(1)
 
   useEffect(() => {
@@ -383,19 +383,19 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-1.5 border-b border-border pb-3">
-                  {(
-                    Object.entries(TAB_LABELS) as [SettingsTab, string][]
-                  ).map(([tab, label]) => (
-                    <Button
-                      key={tab}
-                      type="button"
-                      variant={activeTab === tab ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setActiveTab(tab)}
-                    >
-                      {label}
-                    </Button>
-                  ))}
+                  {(Object.entries(TAB_LABELS) as [SettingsTab, string][]).map(
+                    ([tab, label]) => (
+                      <Button
+                        key={tab}
+                        type="button"
+                        variant={activeTab === tab ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setActiveTab(tab)}
+                      >
+                        {label}
+                      </Button>
+                    )
+                  )}
                 </div>
 
                 {renderTabContent()}

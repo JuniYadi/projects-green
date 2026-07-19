@@ -13,7 +13,9 @@ type SubscriptionPayload = Prisma.VpnSubscriptionGetPayload<{
             openVpnPort: true
             wireGuardPort: true
             proxyPort: true
-            region: { select: { id: true; name: true; slug: true; countryCode: true } }
+            region: {
+              select: { id: true; name: true; slug: true; countryCode: true }
+            }
           }
         }
       }
@@ -41,7 +43,7 @@ export function toVpnSubscriptionPaymentDTO(
   payment: Pick<
     BillingAdjustmentPayload,
     "id" | "amount" | "currency" | "appliedAt" | "reason"
-  >,
+  >
 ): VpnSubscriptionPaymentDTO {
   return {
     id: payment.id,
@@ -114,7 +116,9 @@ export type VpnSubscriptionDTO = {
   updatedAt: string
 }
 
-export function toServerAccountDTO(account: ServerAccount): VpnServerAccountDTO {
+export function toServerAccountDTO(
+  account: ServerAccount
+): VpnServerAccountDTO {
   // ponytail: port is protocol-specific, simple ternary
   const port =
     account.protocol === "OPENVPN"
@@ -184,7 +188,7 @@ export function toVpnSubscriptionDTO(
   subscription: SubscriptionPayload,
   orgName: string | null = null,
   packageName: string | null = null,
-  options: VpnSubscriptionDTOOptions = {},
+  options: VpnSubscriptionDTOOptions = {}
 ): VpnSubscriptionDTO {
   const accounts = subscription.serverAccounts.map(toServerAccountDTO)
   return {
@@ -220,7 +224,7 @@ export function toVpnSubscriptionListDTO(
   subscription: SubscriptionPayload,
   orgName: string | null = null,
   packageName: string | null = null,
-  options: VpnSubscriptionDTOOptions = {},
+  options: VpnSubscriptionDTOOptions = {}
 ): VpnSubscriptionListDTO {
   const accounts = subscription.serverAccounts.map(toServerAccountDTO)
   return {

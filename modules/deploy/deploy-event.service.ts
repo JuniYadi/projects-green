@@ -10,7 +10,7 @@ export async function recordDeployEvent(
     message?: string
     metadata?: Record<string, unknown>
   },
-  db: PrismaClient = prisma,
+  db: PrismaClient = prisma
 ) {
   return db.applicationDeployEvent.create({
     data: {
@@ -29,7 +29,7 @@ export async function recordDeployLog(
     status: string
     message: string
   },
-  db: PrismaClient = prisma,
+  db: PrismaClient = prisma
 ) {
   return db.applicationDeploymentLog.create({
     data: {

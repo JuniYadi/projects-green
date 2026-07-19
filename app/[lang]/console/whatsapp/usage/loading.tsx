@@ -12,7 +12,9 @@ export default function WhatsAppUsageLoading() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Messages</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Messages
+            </CardTitle>
             <Skeleton className="size-4" />
           </CardHeader>
           <CardContent>
@@ -30,7 +32,9 @@ export default function WhatsAppUsageLoading() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Outbound Count</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Outbound Count
+            </CardTitle>
             <Skeleton className="size-4" />
           </CardHeader>
           <CardContent>
@@ -51,7 +55,9 @@ export default function WhatsAppUsageLoading() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Quota Used</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Monthly Quota Used
+            </CardTitle>
             <Skeleton className="size-4" />
           </CardHeader>
           <CardContent>
@@ -60,7 +66,9 @@ export default function WhatsAppUsageLoading() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Remaining Quota</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Remaining Quota
+            </CardTitle>
             <Skeleton className="size-4" />
           </CardHeader>
           <CardContent>
@@ -69,7 +77,9 @@ export default function WhatsAppUsageLoading() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Projected Cost</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Projected Cost
+            </CardTitle>
             <Skeleton className="size-4" />
           </CardHeader>
           <CardContent>

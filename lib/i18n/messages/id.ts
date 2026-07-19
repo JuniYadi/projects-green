@@ -477,11 +477,13 @@ export const idMessages: AppMessages = {
       },
       metrics: {
         heading: "Metrik Aplikasi",
-        description: "Pantau metrik CPU, memori, dan jaringan untuk aplikasi Anda.",
+        description:
+          "Pantau metrik CPU, memori, dan jaringan untuk aplikasi Anda.",
       },
       events: {
         heading: "Event Deploy",
-        description: "Lacak riwayat deployment dan event rollout untuk aplikasi Anda.",
+        description:
+          "Lacak riwayat deployment dan event rollout untuk aplikasi Anda.",
       },
       settings: {
         heading: "Pengaturan Aplikasi",

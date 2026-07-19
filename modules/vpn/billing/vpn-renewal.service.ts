@@ -196,7 +196,12 @@ export class VpnRenewalService {
    * Day 0-2 → retry, Day 3-6 → suspend, Day 7+ → expire.
    */
   private async applyGrace(
-    subscription: { id: string; organizationId: string; renewalFailedAt: Date | null; serverAccounts?: Array<{ id: string }> },
+    subscription: {
+      id: string
+      organizationId: string
+      renewalFailedAt: Date | null
+      serverAccounts?: Array<{ id: string }>
+    },
     now: Date,
     result: VpnRenewalResult
   ): Promise<void> {

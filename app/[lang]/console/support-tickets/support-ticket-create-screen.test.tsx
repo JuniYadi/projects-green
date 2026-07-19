@@ -278,9 +278,7 @@ describe("SupportTicketCreateScreen", () => {
     })
     attachFiles(view, [mdFile])
 
-    expect(
-      view.getByText(/README\.md.*not supported/i)
-    ).toBeInTheDocument()
+    expect(view.getByText(/README\.md.*not supported/i)).toBeInTheDocument()
     expect(view.queryByText("README.md")).toBeNull()
   })
 
@@ -292,9 +290,7 @@ describe("SupportTicketCreateScreen", () => {
     })
     attachFiles(view, [bigFile])
 
-    expect(
-      view.getByText(/big\.pdf.*10 MB limit/i)
-    ).toBeInTheDocument()
+    expect(view.getByText(/big\.pdf.*10 MB limit/i)).toBeInTheDocument()
     expect(view.queryByText("big.pdf")).toBeNull()
   })
 

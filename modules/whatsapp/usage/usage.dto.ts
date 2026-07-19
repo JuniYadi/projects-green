@@ -68,11 +68,11 @@ export type DeviceCostBreakdownDTO = {
   totalCost: number
   byCategory: CategoryBreakdownDTO[]
   messageCount: number
-  quotaBase: number          // default monthly quota
-  quotaBaseOut: number       // default remaining
-  addonQuota: number         // addon remaining
-  addonQuotaTotal: number    // addon purchased
-  quotaUsed: number          // default used + addon used
+  quotaBase: number // default monthly quota
+  quotaBaseOut: number // default remaining
+  addonQuota: number // addon remaining
+  addonQuotaTotal: number // addon purchased
+  quotaUsed: number // default used + addon used
   quotaPercent: number
 }
 

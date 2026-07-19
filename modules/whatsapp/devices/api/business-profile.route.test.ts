@@ -63,8 +63,10 @@ mock.module("@/lib/whatsapp/crypto", () => ({
 }))
 
 // Must import after mocks
-const { devicesRoutes } = await import("@/modules/whatsapp/devices/api/devices.route")
-const { businessProfileRoutes } = await import("@/modules/whatsapp/devices/api/business-profile.route")
+const { devicesRoutes } =
+  await import("@/modules/whatsapp/devices/api/devices.route")
+const { businessProfileRoutes } =
+  await import("@/modules/whatsapp/devices/api/business-profile.route")
 
 let profileMockData: Record<string, unknown> | null = {
   about: "We provide DevOps services",
@@ -114,11 +116,13 @@ describe("business profile routes", () => {
       websites: ["https://example.com"],
     }
     // Set up device to exist by default
-    ;(prisma.whatsappDevice.findUnique as ReturnType<typeof mock>).mockImplementation(
-      async () => createMockDevice()
-    )
-    ;(prisma.whatsappDevice.update as ReturnType<typeof mock>).mockImplementation(
-      async () => createMockDevice({ whatsappProfile: profileMockData })
+    ;(
+      prisma.whatsappDevice.findUnique as ReturnType<typeof mock>
+    ).mockImplementation(async () => createMockDevice())
+    ;(
+      prisma.whatsappDevice.update as ReturnType<typeof mock>
+    ).mockImplementation(async () =>
+      createMockDevice({ whatsappProfile: profileMockData })
     )
   })
 
@@ -140,9 +144,9 @@ describe("business profile routes", () => {
   })
 
   it("GET returns 404 when device not found", async () => {
-    ;(prisma.whatsappDevice.findUnique as ReturnType<typeof mock>).mockImplementation(
-      async () => null
-    )
+    ;(
+      prisma.whatsappDevice.findUnique as ReturnType<typeof mock>
+    ).mockImplementation(async () => null)
 
     const app = createTestApp()
     const res = await app.handle(
@@ -192,9 +196,9 @@ describe("business profile routes", () => {
   })
 
   it("PATCH returns 404 when device not found", async () => {
-    ;(prisma.whatsappDevice.findUnique as ReturnType<typeof mock>).mockImplementation(
-      async () => null
-    )
+    ;(
+      prisma.whatsappDevice.findUnique as ReturnType<typeof mock>
+    ).mockImplementation(async () => null)
 
     const app = createTestApp()
     const res = await app.handle(

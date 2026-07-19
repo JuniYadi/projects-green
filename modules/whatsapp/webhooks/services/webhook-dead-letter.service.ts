@@ -66,7 +66,16 @@ type PaginatedDeadLetters = {
 export async function listDeadLetters(
   filter: DeadLetterFilter
 ): Promise<PaginatedDeadLetters> {
-  const { organizationId, deviceId, eventType, replayStatus, from, to, page = 1, limit = 20 } = filter
+  const {
+    organizationId,
+    deviceId,
+    eventType,
+    replayStatus,
+    from,
+    to,
+    page = 1,
+    limit = 20,
+  } = filter
 
   const where: Record<string, unknown> = {}
   if (organizationId) where.organizationId = organizationId
@@ -135,9 +144,10 @@ export async function replayDeadLetter(id: string): Promise<void> {
 
   try {
     // Map "inbound_message"/"status_update" to "message"/"statuses"
-    const jobEventType = deadLetter.eventType === "inbound_message"
-      ? "message"
-      : "statuses" as const
+    const jobEventType =
+      deadLetter.eventType === "inbound_message"
+        ? "message"
+        : ("statuses" as const)
     await WebhookRetryJob.dispatch({
       eventId: `replay-${id}-${Date.now()}`,
       eventType: jobEventType,

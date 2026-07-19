@@ -66,7 +66,10 @@ function ReplayStatusBadge({ status }: { status: string | null }) {
   }
 }
 
-function getColumns(lang: string, onReplay: (id: string) => void): ColumnDef<DeadLetter>[] {
+function getColumns(
+  lang: string,
+  onReplay: (id: string) => void
+): ColumnDef<DeadLetter>[] {
   const locale = lang || "en"
 
   return [
@@ -122,7 +125,9 @@ function getColumns(lang: string, onReplay: (id: string) => void): ColumnDef<Dea
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Status" />
       ),
-      cell: ({ row }) => <ReplayStatusBadge status={row.original.replayStatus} />,
+      cell: ({ row }) => (
+        <ReplayStatusBadge status={row.original.replayStatus} />
+      ),
     },
     {
       id: "actions",
@@ -195,7 +200,9 @@ export default function WebhookDeadLetterPage({
 
   const handleReplay = async (id: string) => {
     try {
-      const response = await eden.api.whatsapp.webhooks["dead-letter"][id].replay.post({})
+      const response = await eden.api.whatsapp.webhooks["dead-letter"][
+        id
+      ].replay.post({})
 
       if (response.status === 200) {
         toast.success("Replay enqueued")

@@ -15,7 +15,11 @@ import type {
 const basePayment: PaymentInfoDTO = {
   method: "VA",
   gateway: { id: "gw_1", name: "Duitku", type: "payment_gateway" },
-  reference: { vaNumber: "1234567890", paymentUrl: null, gatewayReference: null },
+  reference: {
+    vaNumber: "1234567890",
+    paymentUrl: null,
+    gatewayReference: null,
+  },
   confirmations: [],
   timeline: [],
 }

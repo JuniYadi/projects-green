@@ -106,12 +106,14 @@ export class WhatsappBillingService {
       })
       if (!device) throw new Error("WHATSAPP_DEVICE_NOT_FOUND")
 
-      const defaultRemaining = device.quotaBaseOut instanceof Prisma.Decimal
-        ? device.quotaBaseOut
-        : new Prisma.Decimal(Number(device.quotaBaseOut ?? 0))
-      const addonRemaining = device.addonQuota instanceof Prisma.Decimal
-        ? device.addonQuota
-        : new Prisma.Decimal(Number(device.addonQuota ?? 0))
+      const defaultRemaining =
+        device.quotaBaseOut instanceof Prisma.Decimal
+          ? device.quotaBaseOut
+          : new Prisma.Decimal(Number(device.quotaBaseOut ?? 0))
+      const addonRemaining =
+        device.addonQuota instanceof Prisma.Decimal
+          ? device.addonQuota
+          : new Prisma.Decimal(Number(device.addonQuota ?? 0))
       const credit = input.quotaCredit
 
       // Case 1: Default allowance covers the full credit
@@ -215,15 +217,24 @@ export class WhatsappBillingService {
    */
   async restoreAllowance(
     deviceId: string,
-    amounts: { default?: Prisma.Decimal | number; addon?: Prisma.Decimal | number }
+    amounts: {
+      default?: Prisma.Decimal | number
+      addon?: Prisma.Decimal | number
+    }
   ): Promise<void> {
     const data: Record<string, unknown> = {}
     if (amounts.default !== undefined) {
-      const credit = typeof amounts.default === "number" ? new Prisma.Decimal(amounts.default) : amounts.default
+      const credit =
+        typeof amounts.default === "number"
+          ? new Prisma.Decimal(amounts.default)
+          : amounts.default
       data.quotaBaseOut = { increment: credit }
     }
     if (amounts.addon !== undefined) {
-      const credit = typeof amounts.addon === "number" ? new Prisma.Decimal(amounts.addon) : amounts.addon
+      const credit =
+        typeof amounts.addon === "number"
+          ? new Prisma.Decimal(amounts.addon)
+          : amounts.addon
       data.addonQuota = { increment: credit }
     }
     if (Object.keys(data).length > 0) {

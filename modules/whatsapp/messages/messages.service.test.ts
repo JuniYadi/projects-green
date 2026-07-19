@@ -95,7 +95,11 @@ const mockPrisma = {
   },
   whatsappContactGroup: {
     findFirst: mock(async () => null),
-    create: mock(async () => ({ id: "group_default", organizationId: "tenant-1", name: "Ungrouped" })),
+    create: mock(async () => ({
+      id: "group_default",
+      organizationId: "tenant-1",
+      name: "Ungrouped",
+    })),
   },
   whatsappContact: {
     upsert: mock(async (args: any) => args.create ?? args.update ?? {}),
@@ -329,7 +333,6 @@ describe("messageService", () => {
     mockTx.billingInvoice.update.mockResolvedValue({ id: "inv-1" } as any)
     mockTx.billingInvoiceLine.create.mockResolvedValue({ id: "line-1" } as any)
 
-
     mockDeviceClient.sendMessage.mockResolvedValue({
       providerMessageId: "wa-msg-123",
     })
@@ -549,7 +552,6 @@ describe("messageService", () => {
       expect(result).toHaveProperty("jobId")
     })
 
-
     // ── WhatsApp Billing Integration Tests ────────────────────────────────
 
     it("sends message within allowance (no balance change)", async () => {
@@ -661,7 +663,6 @@ describe("messageService", () => {
       console.warn = origWarn
     })
 
-
     it("sends interactive message type to Meta API", async () => {
       mockPrisma.whatsappDevice.findFirst.mockResolvedValueOnce({
         id: "device-1",
@@ -670,7 +671,9 @@ describe("messageService", () => {
         whatsappBusinessAccountId: "waba-1",
         organizationId: "org-1",
       } as any)
-      mockPrisma.serviceSubscription.findFirst.mockResolvedValueOnce(null as any)
+      mockPrisma.serviceSubscription.findFirst.mockResolvedValueOnce(
+        null as any
+      )
       mockPrisma.whatsappConversation.findFirst.mockResolvedValueOnce({
         id: "conv-1",
       } as any)
@@ -682,7 +685,9 @@ describe("messageService", () => {
         interactivePayload: {
           type: "button",
           body: { text: "Hello" },
-          action: { buttons: [{ type: "reply", reply: { id: "b1", title: "OK" } }] },
+          action: {
+            buttons: [{ type: "reply", reply: { id: "b1", title: "OK" } }],
+          },
         },
       })
 
@@ -693,7 +698,9 @@ describe("messageService", () => {
         payload: {
           type: "button",
           body: { text: "Hello" },
-          action: { buttons: [{ type: "reply", reply: { id: "b1", title: "OK" } }] },
+          action: {
+            buttons: [{ type: "reply", reply: { id: "b1", title: "OK" } }],
+          },
         },
       })
     })

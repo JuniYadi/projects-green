@@ -263,9 +263,7 @@ describe("GET /api/integrations/github/repositories", () => {
         query: "api",
       }
     )
-    expect(body.owners).toEqual([
-      { id: "acme", name: "acme", avatarUrl: null },
-    ])
+    expect(body.owners).toEqual([{ id: "acme", name: "acme", avatarUrl: null }])
     expect(mockListInstallationsForActor).toHaveBeenCalledWith({
       userId: "user_123",
       organizationId: "org_123",

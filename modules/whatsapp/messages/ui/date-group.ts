@@ -1,4 +1,7 @@
-export function getDateGroupLabel(date: Date): { label: string; sortKey: number } {
+export function getDateGroupLabel(date: Date): {
+  label: string
+  sortKey: number
+} {
   const now = new Date()
   const msgDate = date
   // Normalize both to start of local day so "yesterday 23:59" isn't "Today" at 00:01
@@ -29,9 +32,9 @@ export function getDateGroupLabel(date: Date): { label: string; sortKey: number 
   }
 }
 
-export function groupMessagesByDate<
-  T extends { createdAt: string | Date },
->(messages: T[]): Array<{ label: string; messages: T[] }> {
+export function groupMessagesByDate<T extends { createdAt: string | Date }>(
+  messages: T[]
+): Array<{ label: string; messages: T[] }> {
   const groups = new Map<string, T[]>()
 
   for (const msg of messages) {

@@ -99,40 +99,45 @@ export const createMobileDeviceRoutes = (deps: Deps = {}) => {
        * List devices paired to current user's subscriptions.
        * Auth: Bearer (session token — user or admin).
        */
-      .get("/vpn/mobile/devices", async ({ set }) => {
-        const ctx = await resolveOrg(set)
-        if ("error" in ctx) return ctx.error
+      .get(
+        "/vpn/mobile/devices",
+        async ({ set }) => {
+          const ctx = await resolveOrg(set)
+          if ("error" in ctx) return ctx.error
 
-        const devices = await prisma.vpnMobileDevice.findMany({
-          where: { organizationId: ctx.organizationId },
-          orderBy: { createdAt: "desc" },
-        })
+          const devices = await prisma.vpnMobileDevice.findMany({
+            where: { organizationId: ctx.organizationId },
+            orderBy: { createdAt: "desc" },
+          })
 
-        return {
-          devices: devices.map((device) => ({
-            id: device.id,
-            deviceName: device.deviceName,
-            platform: device.platform,
-            osVersion: device.osVersion,
-            subscriptionId: device.subscriptionId,
-            subscriptionName: null,
-            subscriptionStatus: null,
-            status: device.status,
-            pairedVia: device.pairedVia,
-            lastSeenAt: device.lastSeenAt?.toISOString() ?? null,
-            pairedAt: device.createdAt.toISOString(),
-            revokedAt: device.revokedAt?.toISOString() ?? null,
-            revokedReason: device.revokedReason,
-          })),
-        }
-      }, {
-        detail: {
-          tags: ["VPN Mobile Devices"],
-          summary: "List paired devices",
-          description: "List all devices paired to the current user's subscriptions.",
-          security: [{ bearerAuth: [] }],
+          return {
+            devices: devices.map((device) => ({
+              id: device.id,
+              deviceName: device.deviceName,
+              platform: device.platform,
+              osVersion: device.osVersion,
+              subscriptionId: device.subscriptionId,
+              subscriptionName: null,
+              subscriptionStatus: null,
+              status: device.status,
+              pairedVia: device.pairedVia,
+              lastSeenAt: device.lastSeenAt?.toISOString() ?? null,
+              pairedAt: device.createdAt.toISOString(),
+              revokedAt: device.revokedAt?.toISOString() ?? null,
+              revokedReason: device.revokedReason,
+            })),
+          }
         },
-      })
+        {
+          detail: {
+            tags: ["VPN Mobile Devices"],
+            summary: "List paired devices",
+            description:
+              "List all devices paired to the current user's subscriptions.",
+            security: [{ bearerAuth: [] }],
+          },
+        }
+      )
 
       /**
        * Revoke a specific device.
@@ -143,7 +148,7 @@ export const createMobileDeviceRoutes = (deps: Deps = {}) => {
         "/vpn/mobile/devices/:deviceId",
         async ({ request, params, set }) => {
           const ctx = await resolveOrg(set)
-        if ("error" in ctx) return ctx.error
+          if ("error" in ctx) return ctx.error
 
           // Fetch the device to check ownership.
           const device = await prisma.vpnMobileDevice.findUnique({
@@ -204,7 +209,8 @@ export const createMobileDeviceRoutes = (deps: Deps = {}) => {
           detail: {
             tags: ["VPN Mobile Devices"],
             summary: "Revoke a device",
-            description: "Revoke a paired device by device ID. User can revoke their own device; admin can revoke any device in their org.",
+            description:
+              "Revoke a paired device by device ID. User can revoke their own device; admin can revoke any device in their org.",
             security: [{ bearerAuth: [] }],
           },
         }
@@ -222,7 +228,7 @@ export const createMobileDeviceRoutes = (deps: Deps = {}) => {
         "/vpn/mobile/devices/:deviceId/replace",
         async ({ request, params, body, set }) => {
           const ctx = await resolveOrg(set)
-        if ("error" in ctx) return ctx.error
+          if ("error" in ctx) return ctx.error
 
           // Fetch device to check ownership and subscription.
           const device = await prisma.vpnMobileDevice.findUnique({
@@ -325,7 +331,8 @@ export const createMobileDeviceRoutes = (deps: Deps = {}) => {
           detail: {
             tags: ["VPN Mobile Devices"],
             summary: "Replace device with new fingerprint",
-            description: "Replace an active device with a new fingerprint. Use case: app reinstall, lost phone, or new device without manually revoking and re-pairing. The old device is revoked with reason REPLACED_BY_NEW_DEVICE.",
+            description:
+              "Replace an active device with a new fingerprint. Use case: app reinstall, lost phone, or new device without manually revoking and re-pairing. The old device is revoked with reason REPLACED_BY_NEW_DEVICE.",
             security: [{ bearerAuth: [] }],
           },
           body: t.Object({
@@ -346,7 +353,7 @@ export const createMobileDeviceRoutes = (deps: Deps = {}) => {
         "/vpn/mobile/devices/:deviceId",
         async ({ params, body, set }) => {
           const ctx = await resolveOrg(set)
-        if ("error" in ctx) return ctx.error
+          if ("error" in ctx) return ctx.error
 
           // Fetch device to check ownership.
           const device = await prisma.vpnMobileDevice.findUnique({
@@ -386,7 +393,8 @@ export const createMobileDeviceRoutes = (deps: Deps = {}) => {
           detail: {
             tags: ["VPN Mobile Devices"],
             summary: "Update device name",
-            description: "Update the display name of a paired device. Only the device owner or org admin can rename.",
+            description:
+              "Update the display name of a paired device. Only the device owner or org admin can rename.",
             security: [{ bearerAuth: [] }],
           },
           body: t.Object({

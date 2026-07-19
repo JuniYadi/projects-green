@@ -1595,7 +1595,11 @@ describe("supportTicketService", () => {
       })
 
       const thread = await service.getTicketThread({
-        actor: { isSuperAdmin: true, organizationId: "org_1", workosUserId: "admin" },
+        actor: {
+          isSuperAdmin: true,
+          organizationId: "org_1",
+          workosUserId: "admin",
+        },
         ticketId: "ticket_1",
       })
 
@@ -1607,48 +1611,117 @@ describe("supportTicketService", () => {
     }
 
     it("staff reply to open → transitions to in_progress", async () => {
-      await testAutoTransition("open", { canManageTickets: true, organizationId: "org_1", workosUserId: "user_agent" }, "in_progress")
+      await testAutoTransition(
+        "open",
+        {
+          canManageTickets: true,
+          organizationId: "org_1",
+          workosUserId: "user_agent",
+        },
+        "in_progress"
+      )
     })
 
     it("staff reply to waiting_response → transitions to in_progress", async () => {
-      await testAutoTransition("waiting_response", { canManageTickets: true, organizationId: "org_1", workosUserId: "user_agent" }, "in_progress")
+      await testAutoTransition(
+        "waiting_response",
+        {
+          canManageTickets: true,
+          organizationId: "org_1",
+          workosUserId: "user_agent",
+        },
+        "in_progress"
+      )
     })
 
     it("non-staff reply to in_progress → transitions to waiting_response", async () => {
-      await testAutoTransition("in_progress", { organizationId: "org_1", workosUserId: "user_requester" }, "waiting_response")
+      await testAutoTransition(
+        "in_progress",
+        { organizationId: "org_1", workosUserId: "user_requester" },
+        "waiting_response"
+      )
     })
 
     it("non-staff reply to open → no transition", async () => {
-      await testAutoTransition("open", { organizationId: "org_1", workosUserId: "user_requester" }, null)
+      await testAutoTransition(
+        "open",
+        { organizationId: "org_1", workosUserId: "user_requester" },
+        null
+      )
     })
 
     it("non-staff reply to waiting_response → no transition", async () => {
-      await testAutoTransition("waiting_response", { organizationId: "org_1", workosUserId: "user_requester" }, null)
+      await testAutoTransition(
+        "waiting_response",
+        { organizationId: "org_1", workosUserId: "user_requester" },
+        null
+      )
     })
 
     it("non-staff reply to on_hold → no transition", async () => {
-      await testAutoTransition("on_hold", { organizationId: "org_1", workosUserId: "user_requester" }, null)
+      await testAutoTransition(
+        "on_hold",
+        { organizationId: "org_1", workosUserId: "user_requester" },
+        null
+      )
     })
 
     it("staff reply to on_hold → no transition", async () => {
-      await testAutoTransition("on_hold", { canManageTickets: true, organizationId: "org_1", workosUserId: "user_agent" }, null)
+      await testAutoTransition(
+        "on_hold",
+        {
+          canManageTickets: true,
+          organizationId: "org_1",
+          workosUserId: "user_agent",
+        },
+        null
+      )
     })
 
     it("staff reply to resolved → no transition", async () => {
-      await testAutoTransition("resolved", { canManageTickets: true, organizationId: "org_1", workosUserId: "user_agent" }, null)
+      await testAutoTransition(
+        "resolved",
+        {
+          canManageTickets: true,
+          organizationId: "org_1",
+          workosUserId: "user_agent",
+        },
+        null
+      )
     })
 
     it("staff reply to closed → no transition", async () => {
-      await testAutoTransition("closed", { canManageTickets: true, organizationId: "org_1", workosUserId: "user_agent" }, null)
+      await testAutoTransition(
+        "closed",
+        {
+          canManageTickets: true,
+          organizationId: "org_1",
+          workosUserId: "user_agent",
+        },
+        null
+      )
     })
 
     it("internal note never triggers auto-transition", async () => {
-      await testAutoTransition("open", { canManageTickets: true, organizationId: "org_1", workosUserId: "user_agent" }, null, true)
+      await testAutoTransition(
+        "open",
+        {
+          canManageTickets: true,
+          organizationId: "org_1",
+          workosUserId: "user_agent",
+        },
+        null,
+        true
+      )
     })
 
     it("assigned agent reply to open → transitions to in_progress via isAssignedAgent", async () => {
       const { repository, tickets } = createRepositoryStub()
-      tickets.set("ticket_1", { ...baseTicket, status: "open", assignedAgentWorkosUserId: "user_assigned_agent" })
+      tickets.set("ticket_1", {
+        ...baseTicket,
+        status: "open",
+        assignedAgentWorkosUserId: "user_assigned_agent",
+      })
 
       const service = createSupportTicketService({
         contentCipher: identityCipher,
@@ -1665,7 +1738,11 @@ describe("supportTicketService", () => {
       })
 
       const thread = await service.getTicketThread({
-        actor: { isSuperAdmin: true, organizationId: "org_1", workosUserId: "admin" },
+        actor: {
+          isSuperAdmin: true,
+          organizationId: "org_1",
+          workosUserId: "admin",
+        },
         ticketId: "ticket_1",
       })
 
@@ -1683,7 +1760,11 @@ describe("supportTicketService", () => {
 
       // staff replying to in_progress — should stay in_progress (open→in_progress doesn't apply)
       await service.addReply({
-        actor: { canManageTickets: true, organizationId: "org_1", workosUserId: "user_agent" },
+        actor: {
+          canManageTickets: true,
+          organizationId: "org_1",
+          workosUserId: "user_agent",
+        },
         reply: {
           ticketId: "ticket_1",
           authorWorkosUserId: "user_agent",
@@ -1692,7 +1773,11 @@ describe("supportTicketService", () => {
       })
 
       const thread = await service.getTicketThread({
-        actor: { isSuperAdmin: true, organizationId: "org_1", workosUserId: "admin" },
+        actor: {
+          isSuperAdmin: true,
+          organizationId: "org_1",
+          workosUserId: "admin",
+        },
         ticketId: "ticket_1",
       })
 

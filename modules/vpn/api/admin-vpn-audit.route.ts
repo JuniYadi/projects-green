@@ -38,9 +38,11 @@ const ACTION_FILTER_VALUES = [
 
 const STATUS_FILTER_VALUES = ["OK", "FAILED"] as const
 
-export const createAdminVpnAuditRoutes = (deps: {
-  requireSuperAdmin?: typeof requireSuperAdmin
-} = {}) => {
+export const createAdminVpnAuditRoutes = (
+  deps: {
+    requireSuperAdmin?: typeof requireSuperAdmin
+  } = {}
+) => {
   const guard = deps.requireSuperAdmin ?? requireSuperAdmin
 
   return new Elysia({ prefix: "/admin/vpn/audit" })
@@ -107,7 +109,10 @@ export const createAdminVpnAuditRoutes = (deps: {
               },
             },
           ]
-          where.OR = [...((where.OR as unknown[] | undefined) ?? []), ...qClauses]
+          where.OR = [
+            ...((where.OR as unknown[] | undefined) ?? []),
+            ...qClauses,
+          ]
         }
 
         if (query.from || query.to) {
@@ -207,7 +212,9 @@ export const createAdminVpnAuditRoutes = (deps: {
         query: t.Object({
           page: t.Optional(t.Numeric({ minimum: 1 })),
           limit: t.Optional(t.Numeric({ minimum: 1, maximum: 100 })),
-          type: t.Optional(t.Union([t.Literal("steps"), t.Literal("audit"), t.Literal("all")])),
+          type: t.Optional(
+            t.Union([t.Literal("steps"), t.Literal("audit"), t.Literal("all")])
+          ),
         }),
       }
     )
