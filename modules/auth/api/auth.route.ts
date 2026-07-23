@@ -33,12 +33,17 @@ const magicRequestSchema = z.object({
   email: z.email("Please enter a valid email address"),
 })
 
+const magicCodeSchema = z
+  .string()
+  .trim()
+  .regex(
+    /^\d{6}$/,
+    "Please enter the 6-digit verification code from your email."
+  )
+
 const magicVerifySchema = z.object({
   email: z.email("Please enter a valid email address"),
-  code: z
-    .string()
-    .trim()
-    .min(1, "Please enter the verification code from your email."),
+  code: magicCodeSchema,
 })
 
 const emailVerificationCompleteSchema = z.object({
