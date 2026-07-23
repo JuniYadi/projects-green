@@ -1,27 +1,57 @@
-import { beforeEach, describe, expect, it } from "bun:test"
-import { cleanup, render } from "@testing-library/react"
+import { beforeEach, describe, expect, it, mock } from "bun:test"
+import type { ReactNode } from "react"
 
-import LoginPage from "@/app/[lang]/login/page"
+let capturedLoginFormProps: {
+  nextPath?: string
+  errorMessage?: string
+} | null = null
+
+mock.module("@/components/auth-page-shell", () => ({
+  AuthPageShell: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
+}))
+
+mock.module("@/components/login-form", () => ({
+  LoginForm: (props: { nextPath?: string; errorMessage?: string }) => {
+    capturedLoginFormProps = props
+    return <div data-testid="login-form" />
+  },
+}))
+
+const { render } = await import("@testing-library/react")
+const { default: LoginPage } = await import("./page")
 
 describe("LoginPage", () => {
   beforeEach(() => {
-    cleanup()
+    capturedLoginFormProps = null
   })
 
-  it("renders branded shell, error message, and no Acme Inc", async () => {
-    const params = Promise.resolve({ lang: "en" })
-    const searchParams = Promise.resolve({
-      next: "/console",
-      error: "Access denied",
+  it("defaults Indonesian login to the localized console", async () => {
+    const ui = await LoginPage({
+      params: Promise.resolve({ lang: "id" }),
+      searchParams: Promise.resolve({}),
     })
 
-    const jsx = await LoginPage({ params, searchParams })
-    const screen = render(jsx)
+    render(ui)
 
-    expect(screen.getByText("Welcome back")).toBeInTheDocument()
-    expect(screen.getByText("PFNApp")).toBeInTheDocument()
-    expect(screen.getByText("Access denied")).toBeInTheDocument()
+    expect(capturedLoginFormProps?.nextPath).toBe("/id/console")
+  })
 
-    expect(screen.queryByText("Acme Inc.")).not.toBeInTheDocument()
+  it("preserves an explicit safe next path and error message", async () => {
+    const ui = await LoginPage({
+      params: Promise.resolve({ lang: "id" }),
+      searchParams: Promise.resolve({
+        next: "/id/portal",
+        error: "Authentication failed",
+      }),
+    })
+
+    render(ui)
+
+    expect(capturedLoginFormProps).toEqual({
+      nextPath: "/id/portal",
+      errorMessage: "Authentication failed",
+    })
   })
 })
