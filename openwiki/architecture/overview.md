@@ -9,7 +9,7 @@ projects-green follows a **multi-tenant SaaS** model with two distinct user area
 
 ### Role Model
 
-Authentication is handled by **WorkOS AuthKit**, which provides OAuth, magic codes, password, and email verification. Two layers of authorization:
+Authentication is handled by **WorkOS AuthKit**, which provides OAuth (Google, GitHub) and magic code (6-digit email verification) as primary login methods. Two layers of authorization:
 
 1. **Platform role** — stored in the `PlatformUserRole` table in PostgreSQL. Values: `NONE` | `SUPER_ADMIN`. Grants cross-tenant access.
 2. **Tenant role** — managed via WorkOS organization memberships. Values: `owner` | `admin` | `member`. Scoped to a single tenant.
@@ -68,12 +68,26 @@ Browser → proxy.ts middleware
   └── public paths → pass through
 ```
 
+### Login & Signup UX
+
+The login form (`components/login-form.tsx`) is a two-step flow:
+
+1. **Email / OAuth entry** — OAuth buttons (Google, GitHub) redirect to `/login/start?provider=...`, or the user enters an email and clicks "Send login code" which calls `POST /auth/magic/request`
+2. **6-digit code verification** — User enters the code from email, submitted to `POST /auth/magic/verify` with Zod validation (`/^\d{6}$/`)
+
+OAuth buttons route through `/login/start`, which generates a WorkOS-hosted auth URL and returns a 302 redirect. On success, `window.location.assign` navigates to the target path.
+
+**Signup is centralized under the login entrypoint.** The `/signup` page server-side redirects to `/login/start?intent=signup`. The `/signup/start` route rewrites to `/login/start?intent=signup`. All auth initiation (login and signup) goes through the same `/login/start` route.
+
+**Post-login redirect:** Login defaults to `/console`. The `?next=` query param overrides this (with open-redirect guards via `getSafeNext()`).
+
 Key points:
 - `/api` and `/callback` paths skip locale routing but still run authkit for session cookie refresh
 - The middleware injects WorkOS session info into request headers for Elysia routes to consume
 - Unauthenticated API calls (curl with API keys) return `{ session: null }` from authkit — Elysia plugins handle API-key auth
+- Magic code validation uses the same Zod schema (`/^\d{6}$/`) on both client and server (`modules/auth/api/auth.route.ts`)
 
-Key source: `/proxy.ts`
+Key source: `/proxy.ts`, `/app/[lang]/login/page.tsx`, `/app/[lang]/login/start/route.ts`, `/components/login-form.tsx`, `/modules/auth/api/auth.route.ts`
 
 ---
 

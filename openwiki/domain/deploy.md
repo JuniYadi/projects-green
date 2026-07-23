@@ -12,9 +12,17 @@ modules/deploy/
 ├── billing/          → Deployment billing integration
 ├── opensearch/       → OpenSearch log aggregation
 ├── ui/               → Deploy wizard UI
-│   ├── deploy-wizard.tsx
+│   ├── deploy-wizard.tsx       → Original wizard
+│   ├── deploy-wizard-v2.tsx    → Alternative UI (3-column layout with timeline + chat)
+│   ├── deploy-chat-sidebar.tsx → Contextual assistant panel (step-specific hints)
+│   ├── deploy-timeline-v2.tsx  → Vertical step timeline for v2
 │   ├── step-build.tsx
+│   ├── step-build-v2.tsx       → V2 variant
 │   ├── step-environment.tsx
+│   ├── step-environment-v2.tsx → V2 variant
+│   ├── step-source.tsx
+│   ├── step-source-v2.tsx      → V2 variant
+│   ├── step-monitor-v2.tsx     → New v2-only step
 │   ├── resource-plan-selector.tsx
 │   └── operate/      → 13 runtime tab components
 ├── *.service.ts      → Core services
@@ -138,6 +146,8 @@ The deploy wizard is a multi-step form:
 4. **Review & Deploy** — summary and submit
 
 The operate UI (`modules/deploy/ui/operate/`) provides runtime management with 13+ tab components for monitoring running deployments.
+
+A **v2 wizard** (`deploy-wizard-v2.tsx`) coexists with the original, sharing the same state machine, validation, and step logic but using a different layout: a vertical timeline sidebar (`DeployTimelineV2`), a collapsible chat sidebar (`DeployChatSidebar`) with step-specific contextual hints, and v2 step components. The chat sidebar provides info/tip/warning/success bubbles based on the current step, source type, and framework detection confidence.
 
 ## Jenkins Integration
 
