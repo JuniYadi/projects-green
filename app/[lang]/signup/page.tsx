@@ -1,8 +1,8 @@
-import { SignupForm } from "@/components/signup-form"
+import { redirect } from "next/navigation"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 const getSafeNext = (next: string | undefined, fallbackPath: string) => {
-  if (!next || !next.startsWith("/")) {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) {
     return fallbackPath
   }
 
@@ -25,16 +25,11 @@ export default async function SignupPage({
   const { lang } = await params
   const locale = resolveLocaleOrDefault(lang)
   const search = await searchParams
+  const startPath = localizePathname({ pathname: "/login/start", locale })
   const next = getSafeNext(
     search?.next,
-    localizePathname({ pathname: "/", locale })
+    localizePathname({ pathname: "/console", locale })
   )
-
-  return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10">
-      <div className="w-full max-w-md lg:max-w-lg">
-        <SignupForm nextPath={next} />
-      </div>
-    </div>
-  )
+  const redirectParams = new URLSearchParams({ intent: "signup", next })
+  redirect(`${startPath}?${redirectParams.toString()}`)
 }

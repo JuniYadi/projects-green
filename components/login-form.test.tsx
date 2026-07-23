@@ -69,6 +69,16 @@ describe("LoginForm", () => {
     ).toBeDefined()
   })
 
+  it("starts account creation through WorkOS", () => {
+    const view = render(<LoginForm nextPath="/console" />)
+    const link = view.getByRole("link", { name: "Create one with WorkOS" })
+
+    expect(link.getAttribute("href")).toBe(
+      "/login/start?intent=signup&next=%2Fconsole"
+    )
+    expect(view.queryByRole("link", { name: "Sign up" })).toBeNull()
+  })
+
   it("focuses the verification code step and resets back to SSO", async () => {
     const user = userEvent.setup()
     const view = render(<LoginForm nextPath="/console" />)

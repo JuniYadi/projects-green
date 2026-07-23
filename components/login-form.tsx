@@ -58,7 +58,7 @@ export function LoginForm({
   const encodedNext = encodeURIComponent(nextPath)
   const signInWithGooglePath = `/login/start?next=${encodedNext}&provider=google`
   const signInWithGithubPath = `/login/start?next=${encodedNext}&provider=github`
-  const signUpPath = `/signup?next=${encodedNext}`
+  const createAccountPath = `/login/start?intent=signup&next=${encodedNext}`
 
   const [email, setEmail] = useState("")
   const [codeDigits, setCodeDigits] = useState(createEmptyCodeDigits)
@@ -445,7 +445,8 @@ export function LoginForm({
               </Button>
             ) : null}
             <FieldDescription className="text-center">
-              Don&apos;t have an account? <a href={signUpPath}>Sign up</a>
+              Need an account?{" "}
+              <a href={createAccountPath}>Create one with WorkOS</a>
             </FieldDescription>
           </Field>
         </FieldGroup>

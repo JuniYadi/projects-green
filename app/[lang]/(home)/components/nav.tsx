@@ -120,7 +120,7 @@ export function HomeNav() {
             Sign in
           </Link>
           <Link
-            href="/signup"
+            href="/login/start?intent=signup"
             className="rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-500 px-5 py-2 text-sm font-medium text-white shadow-lg shadow-emerald-500/20 transition-all hover:scale-105 hover:from-emerald-400 hover:to-cyan-400 hover:shadow-emerald-500/40"
           >
             Get started free
@@ -179,7 +179,7 @@ export function HomeNav() {
               Sign in
             </Link>
             <Link
-              href="/signup"
+              href="/login/start?intent=signup"
               className="rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-500 py-2.5 text-center text-sm font-medium text-white"
             >
               Get started free

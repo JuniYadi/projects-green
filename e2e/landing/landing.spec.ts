@@ -27,17 +27,19 @@ test.describe("Landing Page (/)", () => {
   })
 
   test("navbar has Sign in button linking to /login", async ({ page }) => {
-    const link = page.locator('header nav a[href="/login"]')
+    const link = page
+      .getByRole("link", { name: "Sign in", exact: true })
+      .first()
     await expect(link).toBeVisible()
-    await expect(link).toHaveText("Sign in")
+    await expect(link).toHaveAttribute("href", "/login")
   })
 
-  test("navbar has Get started free CTA linking to /signup", async ({
-    page,
-  }) => {
-    const link = page.locator('header nav a[href="/signup"]').first()
+  test("navbar starts WorkOS signup", async ({ page }) => {
+    const link = page
+      .getByRole("link", { name: "Get started free", exact: true })
+      .first()
     await expect(link).toBeVisible()
-    await expect(link).toHaveText("Get started free")
+    await expect(link).toHaveAttribute("href", "/login/start?intent=signup")
   })
 
   test("hero section renders with heading and subtext", async ({ page }) => {
@@ -116,9 +118,12 @@ test.describe("Landing Page (/)", () => {
     ).toBeVisible()
   })
 
-  test("pricing Pro plan has correct trial link", async ({ page }) => {
+  test("pricing Pro plan starts WorkOS signup", async ({ page }) => {
     const trialLink = page.locator("#pricing-cta-pro")
-    await expect(trialLink).toHaveAttribute("href", "/signup?plan=pro")
+    await expect(trialLink).toHaveAttribute(
+      "href",
+      "/login/start?intent=signup"
+    )
   })
 
   test("pricing toggles between Monthly and Yearly", async ({ page }) => {
@@ -162,12 +167,15 @@ test.describe("Landing Page (/)", () => {
     ).toBeVisible()
   })
 
-  test("CTA section has Start building for free link", async ({ page }) => {
+  test("CTA section starts WorkOS signup", async ({ page }) => {
     const startFree = page
       .getByRole("link", { name: /Get started free/i })
       .last()
     await expect(startFree).toBeVisible()
-    await expect(startFree).toHaveAttribute("href", "/signup")
+    await expect(startFree).toHaveAttribute(
+      "href",
+      "/login/start?intent=signup"
+    )
   })
 
   test("footer sections are present", async ({ page }) => {
@@ -236,13 +244,20 @@ test.describe("Landing Page — Navigation", () => {
 
   test("Sign in link has correct href", async ({ page }) => {
     await page.goto("/en")
-    const signIn = page.locator('header nav a[href="/login"]')
+    const signIn = page
+      .getByRole("link", { name: "Sign in", exact: true })
+      .first()
     await expect(signIn).toHaveAttribute("href", "/login")
   })
 
-  test("Get started free navigates to /signup", async ({ page }) => {
+  test("Get started free has the WorkOS signup href", async ({ page }) => {
     await page.goto("/en")
-    await page.locator('header nav a[href="/signup"]').first().click()
-    await page.waitForURL("**/signup**")
+    const getStarted = page
+      .getByRole("link", { name: "Get started free", exact: true })
+      .first()
+    await expect(getStarted).toHaveAttribute(
+      "href",
+      "/login/start?intent=signup"
+    )
   })
 })

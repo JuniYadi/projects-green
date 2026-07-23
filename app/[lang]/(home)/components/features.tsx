@@ -148,7 +148,7 @@ export function FeaturesSection() {
             </p>
           </div>
           <Link
-            href="/signup"
+            href="/login/start?intent=signup"
             id="features-cta-signup"
             className="group inline-flex items-center gap-2 rounded-xl bg-primary px-7 py-3 font-semibold whitespace-nowrap text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/40"
           >

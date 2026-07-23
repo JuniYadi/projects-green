@@ -54,4 +54,14 @@ describe("LoginPage", () => {
       errorMessage: "Authentication failed",
     })
   })
+  it("rejects a protocol-relative next path", async () => {
+    const ui = await LoginPage({
+      params: Promise.resolve({ lang: "id" }),
+      searchParams: Promise.resolve({ next: "//evil.test" }),
+    })
+
+    render(ui)
+
+    expect(capturedLoginFormProps?.nextPath).toBe("/id/console")
+  })
 })
