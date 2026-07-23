@@ -177,7 +177,7 @@ describe("authRoutes", () => {
         },
         body: JSON.stringify({
           email: "user@example.com",
-          code: "bad",
+          code: "000000",
         }),
       })
     )
@@ -191,6 +191,49 @@ describe("authRoutes", () => {
     expect(body.ok).toBe(false)
     expect(body.error).toBe("INVALID_CREDENTIALS")
     expect(body.message).toBe("Invalid or expired verification code.")
+  })
+
+  it("returns 422 for non-6-digit magic verify code before service", async () => {
+    let verifyCalled = false
+    const app = new Elysia().use(
+      createAuthRoutes({
+        async requestMagicCode() {
+          throw new Error("not used")
+        },
+        async verifyMagicCode() {
+          verifyCalled = true
+          return new Response(JSON.stringify({ ok: true }), { status: 200 })
+        },
+        async completeEmailVerification() {
+          throw new Error("not used")
+        },
+        async completeOrganizationSelection() {
+          throw new Error("not used")
+        },
+        async signup() {
+          throw new Error("not used")
+        },
+        async login() {
+          throw new Error("not used")
+        },
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/auth/magic/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: "user@example.com",
+          code: "12345a",
+        }),
+      })
+    )
+
+    expect(response.status).toBe(422)
+    expect(verifyCalled).toBe(false)
   })
 
   it("returns 401 for invalid email verification completion", async () => {
