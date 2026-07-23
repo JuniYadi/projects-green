@@ -29,7 +29,7 @@ export default async function LoginPage({
   const search = await searchParams
   const next = getSafeNext(
     search?.next,
-    localizePathname({ pathname: "/", locale })
+    localizePathname({ pathname: "/console", locale })
   )
 
   return (
