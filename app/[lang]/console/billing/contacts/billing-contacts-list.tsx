@@ -38,6 +38,7 @@ import {
   Bell,
   Headset,
   Spinner,
+  Sparkle,
 } from "@phosphor-icons/react"
 import {
   getBillingAccount,
@@ -195,6 +196,18 @@ export function BillingContactsList() {
   }, [fetchAccount])
 
   const contacts = useMemo(() => account?.contacts ?? [], [account])
+
+  // First-time UX hint: when the server has only the auto-seeded OWNER
+  // contact (created by getOrCreateAccountWithContacts on first access),
+  // surface a one-time card so the user understands where the row came from
+  // and is nudged to add finance/accounting contacts.
+  const showOwnerHint = useMemo(
+    () =>
+      contacts.length === 1 &&
+      contacts[0]?.role === "OWNER" &&
+      contacts[0]?.isActive === true,
+    [contacts]
+  )
 
   const handleToggleNotification = useCallback(
     async (
@@ -420,6 +433,25 @@ export function BillingContactsList() {
 
   return (
     <>
+      {showOwnerHint ? (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm"
+        >
+          <Sparkle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <div className="space-y-1">
+            <p className="font-medium text-foreground">
+              You&rsquo;ve been added as the OWNER contact
+            </p>
+            <p className="text-muted-foreground">
+              We pre-filled your address so billing notifications never get
+              lost. Add your finance or accounting team below to keep them in
+              the loop on invoices and low balance alerts.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <DataTable
         tableId="console-billing-contacts"
         columns={columns}
