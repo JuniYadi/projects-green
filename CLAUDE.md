@@ -120,8 +120,8 @@ Env-var based with `FEATURE_*` prefix, checked via `isFeatureEnabled()` from `li
 
 ## Obsidian Vault (Documentation Source)
 
-All project documentation lives in the Obsidian vault at `C:\Users\Juni Yadi\Documents\Obsidian\PFNApp\`. The vault is the single source of truth for feature tracking, architecture, domain docs, and product requirements. Use the `obsidian-vault` skill (`.agents/skills/obsidian-vault/`) to interact with it.
+All project documentation lives in the Obsidian vault (local path — each developer configures their own vault location). The vault is the single source of truth for feature tracking, architecture, domain docs, and product requirements.
 
-Key paths: `Product/` (feature inventory, readiness, MVP), `Features/` (per-workflow docs), `Domains/` (billing, deploy, vpn, whatsapp), `Process/` (audit loop). Feature audit: `scripts/audit-features.ts` → `audits/feature-audit.json` → vault notes.
+Key paths: `Product/` (feature inventory, readiness, MVP), `Features/` (per-workflow docs), `Domains/` (billing, deploy, vpn, whatsapp), `Process/` (audit loop).
 
 <!-- OBSIDIAN-VAULT:END -->

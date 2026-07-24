@@ -403,7 +403,7 @@ worktrees, and async task orchestration.
 
 ## Obsidian Vault (Documentation Source)
 
-All project documentation lives in the Obsidian vault at `C:\Users\Juni Yadi\Documents\Obsidian\PFNApp\`. The vault is the **single source of truth** for feature tracking, architecture, domain docs, and product requirements.
+All project documentation lives in the Obsidian vault at `C:\Users\Juni Yadi\Documents\Obsidian\PFNApp\` (local path — each developer configures their own vault location). The vault is the **single source of truth** for feature tracking, architecture, domain docs, and product requirements.
 
 ### Vault structure (Projects Green)
 
@@ -434,5 +434,7 @@ All project documentation lives in the Obsidian vault at `C:\Users\Juni Yadi\Doc
 ### Working with vault docs from the repo
 
 Use the `obsidian-vault` skill (`.agents/skills/obsidian-vault/`) to search, create, and manage notes. The vault path is `/mnt/c/Users/Juni Yadi/Documents/Obsidian/PFNApp/` from WSL.
+
+**Note:** The `obsidian-vault` skill and audit scripts (`scripts/audit-features.ts`, `scripts/verify-feature-docs.ts`) are local developer tools — not yet committed to the repo. Add them in a follow-up PR when ready to share.
 
 <!-- OBSIDIAN-VAULT:END -->
