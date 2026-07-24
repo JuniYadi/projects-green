@@ -418,9 +418,9 @@ All project documentation lives in the Obsidian vault at `C:\Users\Juni Yadi\Doc
 
 ### Feature tracking workflow
 
-1. **Audit script** (`scripts/audit-features.ts`) scans code → writes `audits/feature-audit.json`
+1. **Audit script** scans code → writes `audits/feature-audit.json`
 2. **Vault notes** reference the audit JSON as evidence (`evidencePath` frontmatter)
-3. **Feature Inventory** (`Product/Projects Green - Feature Inventory.md`) lists all 241 features with status
+3. **Feature Inventory** (`Product/Projects Green - Feature Inventory.md`) lists all features with status
 4. **Readiness** (`Product/Projects Green - Readiness.md`) summarizes module-level coverage
 5. **Feature Audit Loop** (`Process/Feature Audit Loop.md`) documents the drift-detection process
 
@@ -433,8 +433,6 @@ All project documentation lives in the Obsidian vault at `C:\Users\Juni Yadi\Doc
 
 ### Working with vault docs from the repo
 
-Use the `obsidian-vault` skill (`.agents/skills/obsidian-vault/`) to search, create, and manage notes. The vault path is `/mnt/c/Users/Juni Yadi/Documents/Obsidian/PFNApp/` from WSL.
-
-**Note:** The `obsidian-vault` skill and audit scripts (`scripts/audit-features.ts`, `scripts/verify-feature-docs.ts`) are local developer tools — not yet committed to the repo. Add them in a follow-up PR when ready to share.
+Vault interactions (search, create, manage notes) are done through local tooling configured per-developer. The vault path varies by environment (e.g. `/mnt/c/Users/<user>/Documents/Obsidian/PFNApp/` from WSL on Windows).
 
 <!-- OBSIDIAN-VAULT:END -->
