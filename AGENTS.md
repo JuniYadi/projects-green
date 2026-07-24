@@ -399,12 +399,40 @@ worktrees, and async task orchestration.
 <!-- PI-CREW:/BLOCK:pi-crew-commands -->
 <!-- PI-CREW:GUIDANCE:END -->
 
-<!-- OPENWIKI:START -->
+<!-- OBSIDIAN-VAULT:START -->
 
-## OpenWiki
+## Obsidian Vault (Documentation Source)
 
-This repository uses OpenWiki for recurring code documentation. Start with `openwiki/quickstart.md`, then follow its links to architecture, workflows, domain concepts, operations, integrations, testing guidance, and source maps.
+All project documentation lives in the Obsidian vault at `C:\Users\Juni Yadi\Documents\Obsidian\PFNApp\`. The vault is the **single source of truth** for feature tracking, architecture, domain docs, and product requirements.
 
-The scheduled OpenWiki GitHub Actions workflow refreshes the repository wiki. Do not hand-edit generated OpenWiki pages unless explicitly asked; prefer updating source code/docs and letting OpenWiki regenerate.
+### Vault structure (Projects Green)
 
-<!-- OPENWIKI:END -->
+| Path | Purpose |
+|------|---------|
+| `Projects Green/Product/` | Feature Inventory, Readiness, MVP, Product Requirements |
+| `Projects Green/Features/` | Per-workflow feature docs (UI → API → service) |
+| `Projects Green/Domains/` | Domain docs (Billing, Deploy, VPN, WhatsApp) |
+| `Projects Green/Strategy/` | Strategy notes (App Hosting, VPN, WhatsApp) |
+| `Projects Green/Process/` | Process docs (Feature Audit Loop) |
+| `Projects Green/*.md` | Architecture, Source Map, Overview, Setup Guide, Runbook |
+
+### Feature tracking workflow
+
+1. **Audit script** (`scripts/audit-features.ts`) scans code → writes `audits/feature-audit.json`
+2. **Vault notes** reference the audit JSON as evidence (`evidencePath` frontmatter)
+3. **Feature Inventory** (`Product/Projects Green - Feature Inventory.md`) lists all 241 features with status
+4. **Readiness** (`Product/Projects Green - Readiness.md`) summarizes module-level coverage
+5. **Feature Audit Loop** (`Process/Feature Audit Loop.md`) documents the drift-detection process
+
+### Hard rules
+
+- **Vault is authoritative.** When vault docs disagree with code, the vault is the spec — code must catch up.
+- **Every feature row needs evidence.** A claim with no `evidence:` line in `feature-audit.json` is a hole, not a feature.
+- **14-day staleness clock.** `lastVerified` older than 14 days → the note is stale. Re-run the audit or annotate manually.
+- **Do not duplicate.** Domain docs live in the vault, not in the repo. The repo has code; the vault has knowledge.
+
+### Working with vault docs from the repo
+
+Use the `obsidian-vault` skill (`.agents/skills/obsidian-vault/`) to search, create, and manage notes. The vault path is `/mnt/c/Users/Juni Yadi/Documents/Obsidian/PFNApp/` from WSL.
+
+<!-- OBSIDIAN-VAULT:END -->

@@ -53,8 +53,9 @@
     "worker:vpn-renewal": "bun run scripts/vpn-renewal-worker.ts",
     "worker:opensearch-ingest": "bun run scripts/opensearch-ingest-worker.ts",
     "cleanup:webhook-events": "bun run scripts/cleanup-whatsapp-webhook-events.ts",
-    "openwiki:update": "bunx openwiki --update && git add openwiki && git commit -m 'feat(openwiki): Update documentation'",
     "test:lint": "bun run scripts/lint-test-quality.ts",
+    "audit:features": "bun run scripts/audit-features.ts",
+    "verify:feature-docs": "bun run scripts/verify-feature-docs.ts",
     "prepare": "husky"
   },
   "lint-staged": {

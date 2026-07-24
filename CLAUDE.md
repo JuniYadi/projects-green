@@ -116,12 +116,12 @@ Env-var based with `FEATURE_*` prefix, checked via `isFeatureEnabled()` from `li
 - **DTO at API Boundary**: every route handler response must go through a DTO (`*.dto.ts` + `toDTO` mapper). Internal service-to-service calls use Prisma types directly. See AGENTS.md for the layer-by-layer breakdown.
 - **3 Pillars**: lint, typecheck, and test MUST pass before any commit/PR
 
-<!-- OPENWIKI:START -->
+<!-- OBSIDIAN-VAULT:START -->
 
-## OpenWiki
+## Obsidian Vault (Documentation Source)
 
-This repository uses OpenWiki for recurring code documentation. Start with `openwiki/quickstart.md`, then follow its links to architecture, workflows, domain concepts, operations, integrations, testing guidance, and source maps.
+All project documentation lives in the Obsidian vault at `C:\Users\Juni Yadi\Documents\Obsidian\PFNApp\`. The vault is the single source of truth for feature tracking, architecture, domain docs, and product requirements. Use the `obsidian-vault` skill (`.agents/skills/obsidian-vault/`) to interact with it.
 
-The scheduled OpenWiki GitHub Actions workflow refreshes the repository wiki. Do not hand-edit generated OpenWiki pages unless explicitly asked; prefer updating source code/docs and letting OpenWiki regenerate.
+Key paths: `Product/` (feature inventory, readiness, MVP), `Features/` (per-workflow docs), `Domains/` (billing, deploy, vpn, whatsapp), `Process/` (audit loop). Feature audit: `scripts/audit-features.ts` → `audits/feature-audit.json` → vault notes.
 
-<!-- OPENWIKI:END -->
+<!-- OBSIDIAN-VAULT:END -->
