@@ -71,7 +71,7 @@ export default function PortalApplicationsPage() {
   const handleRetry = () => setRetry((v) => v + 1)
 
   return (
-    <>
+    <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">App Hosting Admin</h1>
         <p className="text-sm text-muted-foreground">
@@ -220,6 +220,6 @@ export default function PortalApplicationsPage() {
           </div>
         </div>
       )}
-    </>
+    </main>
   )
 }

@@ -69,7 +69,7 @@ export function CTASection() {
 
         <div className="flex flex-col justify-center gap-4 sm:flex-row">
           <Link
-            href="/signup"
+            href="/login/start?intent=signup"
             id="cta-final-signup"
             className="group inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-2xl shadow-primary/30 transition-all hover:scale-105 hover:bg-primary/90 hover:shadow-primary/50"
           >

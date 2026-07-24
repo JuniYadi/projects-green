@@ -175,7 +175,7 @@ export function HeroSection() {
           {/* CTA buttons */}
           <div className="mb-16 flex flex-col gap-4 sm:flex-row">
             <Link
-              href="/signup"
+              href="/login/start?intent=signup"
               id="hero-cta-signup"
               className="group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 px-7 py-3.5 font-semibold text-white shadow-xl shadow-emerald-500/25 transition-all hover:scale-105 hover:from-emerald-400 hover:to-cyan-400 hover:shadow-emerald-500/40"
             >

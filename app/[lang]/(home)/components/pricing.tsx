@@ -12,7 +12,7 @@ const plans = [
     yearlyPrice: 0,
     description: "Perfect for side projects and personal experiments.",
     cta: "Start free",
-    ctaHref: "/signup",
+    ctaHref: "/login/start?intent=signup",
     ctaStyle: "border",
     highlight: false,
     features: [
@@ -34,7 +34,7 @@ const plans = [
     yearlyPrice: 23,
     description: "For startups and growing teams building real products.",
     cta: "Start 14-day trial",
-    ctaHref: "/signup?plan=pro",
+    ctaHref: "/login/start?intent=signup",
     ctaStyle: "primary",
     highlight: true,
     features: [
@@ -56,7 +56,7 @@ const plans = [
     yearlyPrice: 79,
     description: "Advanced features and dedicated support for scaling teams.",
     cta: "Start 14-day trial",
-    ctaHref: "/signup?plan=team",
+    ctaHref: "/login/start?intent=signup",
     ctaStyle: "border",
     highlight: false,
     features: [

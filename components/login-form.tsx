@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { eden } from "@/lib/eden"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
@@ -26,12 +26,22 @@ type ApiErrorPayload = {
   fieldErrors?: Record<string, string[]>
 }
 
+const VERIFICATION_CODE_LENGTH = 6
+const VERIFICATION_CODE_ERROR =
+  "Please enter the 6-digit verification code from your email."
+const VERIFICATION_CODE_INDEXES = Array.from(
+  { length: VERIFICATION_CODE_LENGTH },
+  (_, index) => index
+)
+const createEmptyCodeDigits = () =>
+  Array.from({ length: VERIFICATION_CODE_LENGTH }, () => "")
+
 const emailSchema = z.email("Please enter a valid email address")
 
 const codeSchema = z
   .string()
   .trim()
-  .min(1, "Please enter the verification code from your email.")
+  .regex(/^\d{6}$/, VERIFICATION_CODE_ERROR)
 
 type LoginFormProps = React.ComponentProps<"div"> & {
   nextPath?: string
@@ -46,13 +56,14 @@ export function LoginForm({
 }: LoginFormProps) {
   const router = useRouter()
   const encodedNext = encodeURIComponent(nextPath)
-  const signInWithApplePath = `/login/start?next=${encodedNext}&provider=apple`
   const signInWithGooglePath = `/login/start?next=${encodedNext}&provider=google`
   const signInWithGithubPath = `/login/start?next=${encodedNext}&provider=github`
-  const signUpPath = `/signup?next=${encodedNext}`
+  const createAccountPath = `/login/start?intent=signup&next=${encodedNext}`
 
   const [email, setEmail] = useState("")
-  const [code, setCode] = useState("")
+  const [codeDigits, setCodeDigits] = useState(createEmptyCodeDigits)
+  const codeInputRefs = useRef<Array<HTMLInputElement | null>>([])
+  const code = codeDigits.join("")
   const [isCodeStep, setIsCodeStep] = useState(false)
   const [isRequestingCode, setIsRequestingCode] = useState(false)
   const [isVerifyingCode, setIsVerifyingCode] = useState(false)
@@ -72,6 +83,78 @@ export function LoginForm({
       delete next[fieldName]
       return next
     })
+  }
+
+  const clearCodeFeedback = () => {
+    clearServerFieldError("code")
+    setSubmitError(null)
+    setSubmitSuccess(null)
+  }
+
+  const focusCodeInput = (index: number) => {
+    codeInputRefs.current[index]?.focus()
+  }
+
+  useEffect(() => {
+    if (isCodeStep) {
+      codeInputRefs.current[0]?.focus()
+    }
+  }, [isCodeStep])
+
+  const setCodeDigit = (index: number, rawValue: string) => {
+    clearCodeFeedback()
+    const digit = rawValue.replace(/\D/g, "").slice(-1)
+
+    setCodeDigits((previous) => {
+      const next = [...previous]
+      next[index] = digit
+      return next
+    })
+
+    if (digit && index < VERIFICATION_CODE_LENGTH - 1) {
+      focusCodeInput(index + 1)
+    }
+  }
+
+  const setCodeDigitRange = (startIndex: number, rawValue: string) => {
+    clearCodeFeedback()
+    const digits = rawValue
+      .replace(/\D/g, "")
+      .slice(0, VERIFICATION_CODE_LENGTH - startIndex)
+      .split("")
+
+    if (digits.length === 0) {
+      return
+    }
+
+    setCodeDigits((previous) => {
+      const next = [...previous]
+      digits.forEach((digit, offset) => {
+        next[startIndex + offset] = digit
+      })
+      return next
+    })
+
+    focusCodeInput(
+      Math.min(startIndex + digits.length, VERIFICATION_CODE_LENGTH - 1)
+    )
+  }
+
+  const handleCodeKeyDown = (
+    index: number,
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (event.key !== "Backspace" || codeDigits[index] || index === 0) {
+      return
+    }
+
+    event.preventDefault()
+    setCodeDigits((previous) => {
+      const next = [...previous]
+      next[index - 1] = ""
+      return next
+    })
+    focusCodeInput(index - 1)
   }
 
   const requestMagicCode = async () => {
@@ -169,7 +252,7 @@ export function LoginForm({
       }
 
       setSubmitSuccess("Login successful.")
-      router.push(nextPath)
+      window.location.assign(nextPath)
     } catch {
       setSubmitError("Network error. Please try again.")
     } finally {
@@ -213,91 +296,117 @@ export function LoginForm({
             </p>
           ) : null}
 
-          <Field>
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => router.push(signInWithApplePath)}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path
-                  d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"
-                  fill="currentColor"
-                />
-              </svg>
-              Login with Apple
-            </Button>
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => router.push(signInWithGooglePath)}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path
-                  d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
-                  fill="currentColor"
-                />
-              </svg>
-              Login with Google
-            </Button>
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => router.push(signInWithGithubPath)}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path
-                  d="M12 0C5.37 0 0 5.37 0 12a12 12 0 008.2 11.39c.6.11.82-.26.82-.58 0-.29-.01-1.05-.02-2.06-3.34.73-4.04-1.61-4.04-1.61-.55-1.38-1.33-1.75-1.33-1.75-1.09-.74.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.48.99.1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.34-5.47-5.94 0-1.31.47-2.39 1.24-3.23-.12-.3-.54-1.52.12-3.16 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 016 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.64.24 2.86.12 3.16.77.84 1.24 1.92 1.24 3.23 0 4.61-2.8 5.63-5.48 5.93.43.37.81 1.1.81 2.22 0 1.6-.02 2.89-.02 3.28 0 .32.22.7.83.58A12 12 0 0024 12c0-6.63-5.37-12-12-12z"
-                  fill="currentColor"
-                />
-              </svg>
-              Login with GitHub
-            </Button>
-          </Field>
-          <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
-            Or continue with email code
-          </FieldSeparator>
+          {!isCodeStep ? (
+            <>
+              <Field>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    type="button"
+                    aria-label="Login with Google"
+                    className="w-full min-w-0 gap-2 px-2"
+                    onClick={() => router.push(signInWithGooglePath)}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                      <path
+                        d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                    Google
+                  </Button>
+                  <Button
+                    variant="outline"
+                    type="button"
+                    aria-label="Login with GitHub"
+                    className="w-full min-w-0 gap-2 px-2"
+                    onClick={() => router.push(signInWithGithubPath)}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                      <path
+                        d="M12 0C5.37 0 0 5.37 0 12a12 12 0 008.2 11.39c.6.11.82-.26.82-.58 0-.29-.01-1.05-.02-2.06-3.34.73-4.04-1.61-4.04-1.61-.55-1.38-1.33-1.75-1.33-1.75-1.09-.74.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.48.99.1-.78.42-1.3.76-1.6-2.67-.3-5.47-1.34-5.47-5.94 0-1.31.47-2.39 1.24-3.23-.12-.3-.54-1.52.12-3.16 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 016 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.64.24 2.86.12 3.16.77.84 1.24 1.92 1.24 3.23 0 4.61-2.8 5.63-5.48 5.93.43.37.81 1.1.81 2.22 0 1.6-.02 2.89-.02 3.28 0 .32.22.7.83.58A12 12 0 0024 12c0-6.63-5.37-12-12-12z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                    GitHub
+                  </Button>
+                </div>
+              </Field>
+              <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
+                Or continue with email code
+              </FieldSeparator>
 
-          <Field data-invalid={emailErrors.length > 0 ? "true" : "false"}>
-            <FieldLabel htmlFor="email">Email</FieldLabel>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              value={email}
-              placeholder="m@example.com"
-              aria-invalid={emailErrors.length > 0}
-              onChange={(event) => {
-                clearServerFieldError("email")
-                setSubmitError(null)
-                setSubmitSuccess(null)
-                setEmail(event.target.value)
-              }}
-            />
-            {emailErrors.length > 0 ? (
-              <FieldError
-                errors={emailErrors.map((message) => ({ message }))}
-              />
-            ) : null}
-          </Field>
+              <Field data-invalid={emailErrors.length > 0 ? "true" : "false"}>
+                <FieldLabel htmlFor="email">Email</FieldLabel>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={email}
+                  placeholder="m@example.com"
+                  aria-invalid={emailErrors.length > 0}
+                  onChange={(event) => {
+                    clearServerFieldError("email")
+                    setSubmitError(null)
+                    setSubmitSuccess(null)
+                    setEmail(event.target.value)
+                  }}
+                />
+                {emailErrors.length > 0 ? (
+                  <FieldError
+                    errors={emailErrors.map((message) => ({ message }))}
+                  />
+                ) : null}
+              </Field>
+            </>
+          ) : null}
 
           {isCodeStep ? (
-            <Field data-invalid={codeErrors.length > 0 ? "true" : "false"}>
-              <FieldLabel htmlFor="code">Verification code</FieldLabel>
-              <Input
-                id="code"
-                name="code"
-                type="text"
-                value={code}
-                placeholder="Enter the code from your email"
-                aria-invalid={codeErrors.length > 0}
-                onChange={(event) => {
-                  clearServerFieldError("code")
-                  setSubmitError(null)
-                  setSubmitSuccess(null)
-                  setCode(event.target.value)
-                }}
-              />
+            <Field
+              data-invalid={codeErrors.length > 0 ? "true" : "false"}
+              className="items-center text-center"
+            >
+              <FieldLabel htmlFor="code" className="text-base">
+                Enter verification code
+              </FieldLabel>
+              <FieldDescription className="text-center">
+                Check {email} for the 6-digit code.
+              </FieldDescription>
+              <div
+                className="flex justify-center gap-2"
+                aria-label="Verification code"
+              >
+                {VERIFICATION_CODE_INDEXES.map((index) => (
+                  <Input
+                    key={index}
+                    ref={(element) => {
+                      codeInputRefs.current[index] = element
+                    }}
+                    id={index === 0 ? "code" : `code-${index + 1}`}
+                    name={index === 0 ? "code" : undefined}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete={index === 0 ? "one-time-code" : undefined}
+                    pattern="[0-9]*"
+                    maxLength={1}
+                    value={codeDigits[index] ?? ""}
+                    aria-label={`Verification code digit ${index + 1}`}
+                    aria-invalid={codeErrors.length > 0}
+                    className="h-12 w-11 text-center text-lg font-semibold sm:w-12"
+                    onChange={(event) =>
+                      setCodeDigit(index, event.target.value)
+                    }
+                    onPaste={(event) => {
+                      event.preventDefault()
+                      setCodeDigitRange(
+                        index,
+                        event.clipboardData.getData("text")
+                      )
+                    }}
+                    onKeyDown={(event) => handleCodeKeyDown(index, event)}
+                  />
+                ))}
+              </div>
               {codeErrors.length > 0 ? (
                 <FieldError
                   errors={codeErrors.map((message) => ({ message }))}
@@ -325,18 +434,19 @@ export function LoginForm({
                 variant="ghost"
                 className="w-full"
                 onClick={() => {
-                  setCode("")
+                  setCodeDigits(createEmptyCodeDigits())
                   setIsCodeStep(false)
                   setServerFieldErrors({})
                   setSubmitError(null)
                   setSubmitSuccess(null)
                 }}
               >
-                Use another email
+                Back to SSO or email
               </Button>
             ) : null}
             <FieldDescription className="text-center">
-              Don&apos;t have an account? <a href={signUpPath}>Sign up</a>
+              Need an account?{" "}
+              <a href={createAccountPath}>Create one with WorkOS</a>
             </FieldDescription>
           </Field>
         </FieldGroup>

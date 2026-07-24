@@ -3,7 +3,7 @@ import { LoginForm } from "@/components/login-form"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 const getSafeNext = (next: string | undefined, fallbackPath: string) => {
-  if (!next || !next.startsWith("/")) {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) {
     return fallbackPath
   }
 
@@ -29,14 +29,14 @@ export default async function LoginPage({
   const search = await searchParams
   const next = getSafeNext(
     search?.next,
-    localizePathname({ pathname: "/", locale })
+    localizePathname({ pathname: "/console", locale })
   )
 
   return (
     <AuthPageShell
       badge="Console access"
-      panelTitle="Welcome back"
-      panelDescription="Sign in to manage deployments, billing, support tickets, VPN services, and WhatsApp operations from the PFNApp console."
+      panelTitle="Continue to PFNApp"
+      panelDescription="Sign in to manage the PFNApp console, or create a WorkOS account from this page if you are new."
     >
       <LoginForm nextPath={next} errorMessage={search?.error} />
     </AuthPageShell>
