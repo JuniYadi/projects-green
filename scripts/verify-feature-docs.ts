@@ -1,6 +1,7 @@
-// Verifies that every Obsidian Feature doc in
-// /mnt/c/Users/Juni Yadi/Documents/Obsidian/PFNApp/Projects Green/Features/
-// has an Evidence section whose repo-relative paths actually exist on disk.
+// Verifies that every Obsidian Feature doc in the vault's Features/
+// directory has an Evidence section whose repo-relative paths actually
+// exist on disk. Override the vault root with PFN_VAULT_ROOT when running
+// outside the default WSL mount (e.g. CI or a different machine).
 //
 // ponytail: scoped to Features/ docs only. Run after audit:features or
 // on PRs that touch modules/, app/, or lib/ to surface stale documentation
@@ -10,8 +11,11 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs"
 import { resolve } from "node:path"
 
 const REPO_ROOT = resolve(import.meta.dir, "..")
-const VAULT_FEATURES_DIR =
+const DEFAULT_VAULT_FEATURES_DIR =
   "/mnt/c/Users/Juni Yadi/Documents/Obsidian/PFNApp/Projects Green/Features"
+const VAULT_FEATURES_DIR = process.env.PFN_VAULT_ROOT
+  ? resolve(process.env.PFN_VAULT_ROOT, "Features")
+  : DEFAULT_VAULT_FEATURES_DIR
 const INDEX_FILE = "Projects Green - Features Index.md"
 
 type Finding = {
