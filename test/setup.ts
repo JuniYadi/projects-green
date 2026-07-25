@@ -125,7 +125,17 @@ mock.module("@workos-inc/node", () => {
       }
     },
     RateLimitExceededException: class RateLimitExceededException extends MockWorkOSException {},
-    OauthException: class OauthException extends MockWorkOSException {},
+    OauthException: class OauthException extends MockWorkOSException {
+      constructor(
+        public status: number,
+        public requestID: string,
+        public error: string | undefined,
+        public errorDescription: string | undefined,
+        public rawData: unknown
+      ) {
+        super(errorDescription || error)
+      }
+    },
     SignatureVerificationException: class SignatureVerificationException extends MockWorkOSException {},
     NoApiKeyProvidedException: class NoApiKeyProvidedException extends MockWorkOSException {},
     isAuthenticationErrorData: mock(() => false),

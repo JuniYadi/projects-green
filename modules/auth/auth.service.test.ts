@@ -293,7 +293,7 @@ describe("authService", () => {
       ).rejects.toThrow("Failed to create session.")
     })
 
-    it("throws InvalidAuthCredentialsError for BadRequestException", async () => {
+    it("extracts safe message from BadRequestException", async () => {
       const { BadRequestException } = await import("@workos-inc/node")
       mockAuthenticateWithMagicAuth.mockImplementation(async () => {
         throw new BadRequestException({
@@ -310,7 +310,7 @@ describe("authService", () => {
           code: "000000",
           requestUrl: "http://localhost",
         })
-      ).rejects.toThrow(InvalidAuthCredentialsError)
+      ).rejects.toThrow("Invalid one-time code")
     })
 
     it("uses safe WorkOS message for GenericServerException 400", async () => {
@@ -349,6 +349,27 @@ describe("authService", () => {
         InvalidAuthCredentialsError
       )
       await expect(promise).rejects.toThrow(GenericServerException)
+    })
+
+    it("uses errorDescription for OauthException", async () => {
+      const { OauthException } = await import("@workos-inc/node")
+      mockAuthenticateWithMagicAuth.mockImplementation(async () => {
+        throw new OauthException(
+          400,
+          "req_1",
+          "invalid_request",
+          "The magic code has expired.",
+          {}
+        )
+      })
+
+      await expect(
+        authService.verifyMagicCode({
+          email: "user@example.com",
+          code: "000000",
+          requestUrl: "http://localhost",
+        })
+      ).rejects.toThrow("The magic code has expired.")
     })
   })
 
