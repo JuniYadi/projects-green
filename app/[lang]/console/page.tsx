@@ -85,9 +85,12 @@ export default function ConsolePage() {
         .then((r: any) => r.data),
     ])
 
-    const accountOk = results[0].status === "fulfilled" && results[0].value?.ok
+    const account =
+      results[0].status === "fulfilled" && results[0].value?.ok
+        ? results[0].value
+        : null
     const accountCurrency: string =
-      (accountOk && results[0].value.currency) ||
+      account?.currency ||
       (results[2].status === "fulfilled" &&
         results[2].value?.ok &&
         results[2].value.invoices?.[0]?.currency) ||
@@ -97,7 +100,7 @@ export default function ConsolePage() {
       {
         title: messages.console.overview.currentBalance,
         icon: <WalletIcon />,
-        value: accountOk ? results[0].value.formattedBalance : null,
+        value: account?.formattedBalance ?? null,
         subtitle:
           results[0].status === "fulfilled" && results[0].value?.ok
             ? `Account age: ${results[0].value.accountAge}`
@@ -112,7 +115,7 @@ export default function ConsolePage() {
         value:
           results[1].status === "fulfilled" && results[1].value?.success
             ? formatBillingMoney(
-                results[1].value.data.totalSpend,
+                Number(results[1].value.data.totalSpend),
                 accountCurrency
               )
             : null,
