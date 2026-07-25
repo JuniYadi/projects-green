@@ -136,6 +136,22 @@ describe("ConsolePage", () => {
     })
   })
 
+  it("uses invoice currency when the account request fails", async () => {
+    accountPayload = {
+      ok: false,
+      currency: "",
+      formattedBalance: "",
+      accountAge: "",
+    }
+    const { default: ConsolePage } = await import("./page")
+    const { container } = render(<ConsolePage />)
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("USD 125,000.00")
+      expect(container.textContent).toContain("USD 75,000.00")
+    })
+  })
+
   it("links Last Invoice to the latest invoice detail and Open Tickets to filtered list", async () => {
     const { default: ConsolePage } = await import("./page")
     const { container } = render(<ConsolePage />)
