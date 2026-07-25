@@ -38,6 +38,7 @@ export type InvoiceLineItem = {
   quantity: string
   unitPriceIdr: string
   amountIdr: string
+  currency: string
   category?: string
   metadata?: Record<string, unknown>
 }
@@ -55,6 +56,9 @@ export type InvoiceListItem = {
   dueDate?: string | null
   periodStart: string
   periodEnd: string
+  subtotalAmountIdr?: string
+  taxAmountIdr?: string
+  discountAmountIdr?: string
   totalAmountIdr: string
   currency: string
   lines: InvoiceLineItem[]

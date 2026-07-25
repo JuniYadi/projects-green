@@ -29,6 +29,7 @@ import {
   XCircleIcon,
 } from "@phosphor-icons/react"
 import { InvoiceDownloadPdfAction } from "@/modules/invoices/ui/invoice-download-pdf-action"
+import { formatInvoiceCurrency } from "@/modules/invoices/invoices.helpers"
 import {
   InvoiceGroupedLines,
   InvoiceFlatLine,
@@ -98,15 +99,6 @@ export default function InvoiceDetailPage() {
       controller.abort()
     }
   }, [invoiceId])
-
-  function formatCurrency(amountIdr: string, currency: string): string {
-    const amount = Number.parseFloat(amountIdr)
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: currency || "IDR",
-      minimumFractionDigits: 0,
-    }).format(amount)
-  }
 
   function formatDate(dateStr: string | null | undefined): string {
     if (!dateStr) return "N/A"
@@ -207,6 +199,12 @@ export default function InvoiceDetailPage() {
   const isTopUp = invoice.type === "TOP_UP"
   const issueDate = invoice.issuedAt ?? invoice.createdAt ?? null
   const dueDate = invoice.dueAt ?? invoice.dueDate ?? null
+  const invoiceCurrency = invoice.currency || account?.currency || "USD"
+  const formatInvoiceAmount = (amount: string | null | undefined) =>
+    formatInvoiceCurrency(Number(amount ?? 0), invoiceCurrency)
+  const subtotalAmount = invoice.subtotalAmountIdr ?? invoice.totalAmountIdr
+  const taxAmount = invoice.taxAmountIdr ?? "0"
+  const discountAmount = invoice.discountAmountIdr ?? "0"
   const confirmations =
     (
       data as unknown as {
@@ -379,11 +377,15 @@ export default function InvoiceDetailPage() {
             </h3>
             {invoice.type === "TOP_UP" ? (
               <div className="rounded-lg border">
-                <InvoiceFlatLine lines={invoice.lines} />
+                <InvoiceFlatLine
+                  lines={invoice.lines}
+                  currency={invoiceCurrency}
+                />
               </div>
             ) : (
               <InvoiceGroupedLines
                 lines={invoice.lines}
+                currency={invoiceCurrency}
                 periodLabel={
                   formatPeriodDate(invoice.periodStart) +
                   " — " +
@@ -393,20 +395,23 @@ export default function InvoiceDetailPage() {
             )}
           </div>
 
-          {/* Total */}
           <div className="flex justify-end">
             <div className="w-64 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span>
-                  {formatCurrency(invoice.totalAmountIdr, invoice.currency)}
-                </span>
+                <span>{formatInvoiceAmount(subtotalAmount)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Tax</span>
+                <span>{formatInvoiceAmount(taxAmount)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Discount</span>
+                <span>{formatInvoiceAmount(discountAmount)}</span>
               </div>
               <div className="flex justify-between border-t pt-2 font-semibold">
                 <span>Total</span>
-                <span>
-                  {formatCurrency(invoice.totalAmountIdr, invoice.currency)}
-                </span>
+                <span>{formatInvoiceAmount(invoice.totalAmountIdr)}</span>
               </div>
             </div>
           </div>
@@ -420,7 +425,7 @@ export default function InvoiceDetailPage() {
                   <p className="text-sm text-muted-foreground">
                     Transfer the exact total amount{" "}
                     <span className="font-medium text-foreground">
-                      {formatCurrency(invoice.totalAmountIdr, invoice.currency)}
+                      {formatInvoiceAmount(invoice.totalAmountIdr)}
                     </span>{" "}
                     to the destination bank account, then confirm your payment.
                   </p>
@@ -558,7 +563,10 @@ export default function InvoiceDetailPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Gap Amount</span>
                   <span className="font-medium">
-                    {formatCurrency(String(topupResult.gapAmount), "IDR")}
+                    {formatInvoiceCurrency(
+                      Number(topupResult.gapAmount ?? 0),
+                      account?.currency || invoiceCurrency
+                    )}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">

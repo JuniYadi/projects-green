@@ -10,6 +10,7 @@ import {
   CaretRightIcon,
 } from "@phosphor-icons/react"
 import type { InvoiceLineItem } from "@/lib/billing-client"
+import { formatInvoiceCurrency } from "@/modules/invoices/invoices.helpers"
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 
@@ -35,13 +36,13 @@ const CATEGORY_META: Record<
   other: { label: "Other", icon: <DotsThreeIcon className="h-4 w-4" /> },
 }
 
-function formatCurrency(amount: string): string {
-  const num = Number.parseFloat(amount)
-  if (Number.isNaN(num)) return amount
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-  }).format(num)
+const toMoneyNumber = (amount: string): number => {
+  const value = Number.parseFloat(amount)
+  return Number.isFinite(value) ? value : 0
+}
+
+function formatLineAmount(amountIdr: string, currency: string): string {
+  return formatInvoiceCurrency(toMoneyNumber(amountIdr), currency)
 }
 
 function getCategory(item: InvoiceLineItem): Category {
@@ -79,15 +80,17 @@ function GroupSection({
   icon,
   items,
   defaultOpen,
+  currency,
 }: {
   label: string
   icon: React.ReactNode
   items: InvoiceLineItem[]
   defaultOpen: boolean
+  currency: string
 }) {
   const [open, setOpen] = useState(defaultOpen)
   const subtotal = items.reduce(
-    (sum, item) => sum + Number.parseFloat(item.amountIdr),
+    (sum, item) => sum + toMoneyNumber(item.amountIdr),
     0
   )
 
@@ -110,7 +113,7 @@ function GroupSection({
           <span className="text-muted-foreground">({items.length})</span>
         </div>
         <span className="font-semibold">
-          {formatCurrency(subtotal.toFixed(2))}
+          {formatInvoiceCurrency(subtotal, currency)}
         </span>
       </button>
 
@@ -148,7 +151,10 @@ function GroupSection({
                       {Number.parseFloat(item.quantity).toLocaleString("id-ID")}
                     </td>
                     <td className="px-4 py-2.5 text-right text-sm font-medium">
-                      {formatCurrency(item.amountIdr)}
+                      {formatLineAmount(
+                        item.amountIdr,
+                        item.currency || currency
+                      )}
                     </td>
                   </tr>
                 )
@@ -165,11 +171,13 @@ function GroupSection({
 
 type InvoiceGroupedLinesProps = {
   lines: InvoiceLineItem[]
+  currency: string
   periodLabel?: string
 }
 
 export function InvoiceGroupedLines({
   lines,
+  currency,
   periodLabel,
 }: InvoiceGroupedLinesProps) {
   const grouped = groupLines(lines)
@@ -194,6 +202,7 @@ export function InvoiceGroupedLines({
             icon={data.icon}
             items={data.items}
             defaultOpen={cat === defaultOpen}
+            currency={currency}
           />
         ))}
       </div>
@@ -203,7 +212,13 @@ export function InvoiceGroupedLines({
 
 // ─── Flat (TOP_UP) Display ─────────────────────────────────────────────
 
-export function InvoiceFlatLine({ lines }: { lines: InvoiceLineItem[] }) {
+export function InvoiceFlatLine({
+  lines,
+  currency,
+}: {
+  lines: InvoiceLineItem[]
+  currency: string
+}) {
   return (
     <table className="w-full">
       <thead>
@@ -223,7 +238,7 @@ export function InvoiceFlatLine({ lines }: { lines: InvoiceLineItem[] }) {
               {Number.parseFloat(line.quantity).toLocaleString("id-ID")}
             </td>
             <td className="px-4 py-3 text-right text-sm font-medium">
-              {formatCurrency(line.amountIdr)}
+              {formatLineAmount(line.amountIdr, line.currency || currency)}
             </td>
           </tr>
         ))}

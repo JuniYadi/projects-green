@@ -124,6 +124,9 @@ describe("InvoicesRoute", () => {
           createdAt: new Date("2026-05-01"),
           periodStart: new Date("2026-05-01"),
           periodEnd: new Date("2026-05-31"),
+          subtotalAmount: new Decimal("299000"),
+          taxAmount: new Decimal("0"),
+          discountAmount: new Decimal("0"),
           totalAmount: new Decimal("299000"),
           currency: "IDR",
           lines: [
@@ -132,6 +135,7 @@ describe("InvoicesRoute", () => {
               quantity: new Decimal("1"),
               unitPrice: new Decimal("299000"),
               amount: new Decimal("299000"),
+              currency: "IDR",
             },
           ],
         },
@@ -277,14 +281,18 @@ describe("InvoicesRoute", () => {
         createdAt: new Date("2026-05-01"),
         periodStart: new Date("2026-05-01"),
         periodEnd: new Date("2026-05-31"),
-        totalAmount: new Decimal("299000"),
-        currency: "IDR",
+        subtotalAmount: new Decimal("100.00"),
+        taxAmount: new Decimal("10.00"),
+        discountAmount: new Decimal("5.00"),
+        totalAmount: new Decimal("105.00"),
+        currency: "USD",
         lines: [
           {
             description: "WhatsApp Standard Plan",
             quantity: new Decimal("1"),
-            unitPrice: new Decimal("299000"),
-            amount: new Decimal("299000"),
+            unitPrice: new Decimal("100.00"),
+            amount: new Decimal("100.00"),
+            currency: "USD",
           },
         ],
       })
@@ -314,7 +322,16 @@ describe("InvoicesRoute", () => {
         id: "inv-1",
         invoiceNumber: "INV-2026-001",
         status: "PENDING",
-        totalAmountIdr: "299000.00",
+        subtotalAmountIdr: "100.00",
+        taxAmountIdr: "10.00",
+        discountAmountIdr: "5.00",
+        totalAmountIdr: "105.00",
+        currency: "USD",
+      })
+      expect(body.invoice.lines[0]).toMatchObject({
+        unitPriceIdr: "100.00",
+        amountIdr: "100.00",
+        currency: "USD",
       })
     })
 
