@@ -292,6 +292,64 @@ describe("authService", () => {
         })
       ).rejects.toThrow("Failed to create session.")
     })
+
+    it("throws InvalidAuthCredentialsError for BadRequestException", async () => {
+      const { BadRequestException } = await import("@workos-inc/node")
+      mockAuthenticateWithMagicAuth.mockImplementation(async () => {
+        throw new BadRequestException({
+          message: "Invalid one-time code",
+          code: "invalid_code",
+          errors: [],
+          requestID: "req_1",
+        })
+      })
+
+      await expect(
+        authService.verifyMagicCode({
+          email: "user@example.com",
+          code: "000000",
+          requestUrl: "http://localhost",
+        })
+      ).rejects.toThrow(InvalidAuthCredentialsError)
+    })
+
+    it("uses safe WorkOS message for GenericServerException 400", async () => {
+      const { GenericServerException } = await import("@workos-inc/node")
+      mockAuthenticateWithMagicAuth.mockImplementation(async () => {
+        throw new GenericServerException(
+          400,
+          "Invalid one-time code",
+          {},
+          "req_1"
+        )
+      })
+
+      await expect(
+        authService.verifyMagicCode({
+          email: "user@example.com",
+          code: "000000",
+          requestUrl: "http://localhost",
+        })
+      ).rejects.toThrow("Invalid one-time code")
+    })
+
+    it("propagates GenericServerException 500 as non-credential error", async () => {
+      const { GenericServerException } = await import("@workos-inc/node")
+      mockAuthenticateWithMagicAuth.mockImplementation(async () => {
+        throw new GenericServerException(500, "boom", {}, "req_1")
+      })
+
+      const promise = authService.verifyMagicCode({
+        email: "user@example.com",
+        code: "000000",
+        requestUrl: "http://localhost",
+      })
+
+      await expect(promise).rejects.not.toBeInstanceOf(
+        InvalidAuthCredentialsError
+      )
+      await expect(promise).rejects.toThrow(GenericServerException)
+    })
   })
 
   describe("completeEmailVerification", () => {
