@@ -292,6 +292,85 @@ describe("authService", () => {
         })
       ).rejects.toThrow("Failed to create session.")
     })
+
+    it("extracts safe message from BadRequestException", async () => {
+      const { BadRequestException } = await import("@workos-inc/node")
+      mockAuthenticateWithMagicAuth.mockImplementation(async () => {
+        throw new BadRequestException({
+          message: "Invalid one-time code",
+          code: "invalid_code",
+          errors: [],
+          requestID: "req_1",
+        })
+      })
+
+      await expect(
+        authService.verifyMagicCode({
+          email: "user@example.com",
+          code: "000000",
+          requestUrl: "http://localhost",
+        })
+      ).rejects.toThrow("Invalid one-time code")
+    })
+
+    it("uses safe WorkOS message for GenericServerException 400", async () => {
+      const { GenericServerException } = await import("@workos-inc/node")
+      mockAuthenticateWithMagicAuth.mockImplementation(async () => {
+        throw new GenericServerException(
+          400,
+          "Invalid one-time code",
+          {},
+          "req_1"
+        )
+      })
+
+      await expect(
+        authService.verifyMagicCode({
+          email: "user@example.com",
+          code: "000000",
+          requestUrl: "http://localhost",
+        })
+      ).rejects.toThrow("Invalid one-time code")
+    })
+
+    it("propagates GenericServerException 500 as non-credential error", async () => {
+      const { GenericServerException } = await import("@workos-inc/node")
+      mockAuthenticateWithMagicAuth.mockImplementation(async () => {
+        throw new GenericServerException(500, "boom", {}, "req_1")
+      })
+
+      const promise = authService.verifyMagicCode({
+        email: "user@example.com",
+        code: "000000",
+        requestUrl: "http://localhost",
+      })
+
+      await expect(promise).rejects.not.toBeInstanceOf(
+        InvalidAuthCredentialsError
+      )
+      await expect(promise).rejects.toThrow(GenericServerException)
+    })
+
+    it("uses errorDescription for OauthException", async () => {
+      const { OauthException } = await import("@workos-inc/node")
+      mockAuthenticateWithMagicAuth.mockImplementation(async () => {
+        throw new OauthException(
+          400,
+          "req_1",
+          "invalid_request",
+          "The magic code has expired.",
+          {}
+        )
+      })
+
+      await expect(
+        authService.verifyMagicCode({
+          email: "user@example.com",
+          code: "000000",
+          requestUrl: "http://localhost",
+        })
+      ).rejects.toThrow("The magic code has expired.")
+    })
   })
 
   describe("completeEmailVerification", () => {

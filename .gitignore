@@ -93,3 +93,6 @@ whatsapp-broadcast-worker
 .claude
 research/
 temp/
+
+# Machine-local Obsidian vault path for agents/scripts
+.obsidian.json

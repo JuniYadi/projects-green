@@ -12,6 +12,7 @@
     "serve": "local-to-pub --port 3300 --uri pgreen",
     "test": "bun run scripts/run-tests.ts",
     "test:coverage": "bun run scripts/check-coverage-threshold.ts",
+    "test:changed": "bun run scripts/run-changed-tests.ts",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",

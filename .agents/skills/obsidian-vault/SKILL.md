@@ -7,7 +7,9 @@ description: Search, create, and manage notes in the Obsidian vault with wikilin
 
 ## Vault location
 
-`/mnt/c/Users/Juni Yadi/Documents/Obsidian/PFNApp/`
+Read repo-root `.obsidian.json` for `directory` and `entry`. Use `directory`
+for all vault operations; do not hardcode machine paths. In the examples
+below, `VAULT` is the `.obsidian.json` `directory` value.
 
 **Your Obsidian vault at PFNApp.** Organized in subdirectories by topic. Use Title Case for note names. Index notes aggregate related topics (e.g., `Work Index.md`, `Coding Index.md`, `Research Index.md`). Use directories to keep structure clean (`Index/`, `Projects Green/Domains/`, etc.). All [[wikilinks]] resolve regardless of directory depth.
 
@@ -21,10 +23,10 @@ description: Search, create, and manage notes in the Obsidian vault with wikilin
 
 ```bash
 # Search by filename
-find "/mnt/c/Users/Juni Yadi/Documents/Obsidian/PFNApp/" -name "*.md" | grep -i "keyword"
+find "$VAULT" -name "*.md" | grep -i "keyword"
 
 # Search by content
-grep -rl "keyword" "/mnt/c/Users/Juni Yadi/Documents/Obsidian/PFNApp/" --include="*.md"
+grep -rl "keyword" "$VAULT" --include="*.md"
 ```
 
 Or use Grep/Glob tools directly on the vault path.
@@ -38,11 +40,11 @@ Or use Grep/Glob tools directly on the vault path.
 
 ### Find related notes
 ```bash
-grep -rl "\\[\\[Note Title\\]\\]" "/mnt/c/Users/Juni Yadi/Documents/Obsidian/PFNApp/"
+grep -rl "\\[\\[Note Title\\]\\]" "$VAULT"
 ```
 
 ### Find index notes
 
 ```bash
-find "/mnt/c/Users/Juni Yadi/Documents/Obsidian/PFNApp/" -name "*Index*"
+find "$VAULT" -name "*Index*"
 ```

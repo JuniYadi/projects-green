@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { eden } from "@/lib/eden"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
-import { XCircleIcon } from "@phosphor-icons/react"
+import { CheckCircleIcon, XCircleIcon } from "@phosphor-icons/react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -19,11 +19,41 @@ import {
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-type ApiErrorPayload = {
-  ok?: false
-  error?: string
-  message?: string
-  fieldErrors?: Record<string, string[]>
+const extractApiError = (
+  candidate: unknown,
+  fallback: string
+): { message: string; fieldErrors: Record<string, string[]> } | null => {
+  if (!candidate || typeof candidate !== "object") return null
+  const message =
+    "message" in candidate && typeof candidate.message === "string"
+      ? candidate.message
+      : fallback
+  const rawFieldErrors =
+    "fieldErrors" in candidate ? candidate.fieldErrors : undefined
+  const fieldErrors =
+    rawFieldErrors && typeof rawFieldErrors === "object"
+      ? (rawFieldErrors as Record<string, string[]>)
+      : {}
+  return { message, fieldErrors }
+}
+
+const getApiError = (
+  result: { data: unknown; error?: unknown },
+  fallback: string
+): { message: string; fieldErrors: Record<string, string[]> } => {
+  const fromData = extractApiError(result.data, fallback)
+  if (fromData) return fromData
+
+  const errorValue =
+    result.error && typeof result.error === "object" && "value" in result.error
+      ? result.error.value
+      : undefined
+  return (
+    extractApiError(errorValue, fallback) ?? {
+      message: fallback,
+      fieldErrors: {},
+    }
+  )
 }
 
 const VERIFICATION_CODE_LENGTH = 6
@@ -175,24 +205,23 @@ export function LoginForm({
     setIsRequestingCode(true)
 
     try {
-      const { data: payload } = await eden.api.auth.magic.request.post({
+      const { data: payload, error } = await eden.api.auth.magic.request.post({
         email: emailResult.data,
       })
 
       if (!payload) {
-        setServerFieldErrors(
-          (payload as ApiErrorPayload | null)?.fieldErrors ?? {}
+        const { message, fieldErrors } = getApiError(
+          { data: payload, error },
+          "Failed to send verification code. Please try again."
         )
-        setSubmitError(
-          (payload as ApiErrorPayload | null)?.message ??
-            "Failed to send verification code. Please try again."
-        )
+        setServerFieldErrors(fieldErrors)
+        setSubmitError(message)
         return
       }
 
       setIsCodeStep(true)
       setSubmitSuccess(
-        payload?.message ??
+        payload.message ??
           "If this email is registered, we sent a verification code."
       )
     } catch {
@@ -234,20 +263,18 @@ export function LoginForm({
     setIsVerifyingCode(true)
 
     try {
-      const { data: payload } = await eden.api.auth.magic.verify.post({
+      const { data: payload, error } = await eden.api.auth.magic.verify.post({
         email: emailResult.data ?? email,
         code: codeResult.data ?? code,
       })
 
       if (!payload || !payload.ok) {
-        setServerFieldErrors(
-          (payload as { fieldErrors?: Record<string, string[]> })
-            ?.fieldErrors ?? {}
+        const { message, fieldErrors } = getApiError(
+          { data: payload, error },
+          "Unable to sign in right now."
         )
-        setSubmitError(
-          (payload as { message?: string })?.message ??
-            "Invalid or expired code. Please try again."
-        )
+        setServerFieldErrors(fieldErrors)
+        setSubmitError(message)
         return
       }
 
@@ -286,14 +313,16 @@ export function LoginForm({
             </Alert>
           ) : null}
           {submitError ? (
-            <p className="text-xs text-destructive" role="alert">
-              {submitError}
-            </p>
+            <Alert variant="destructive">
+              <XCircleIcon className="size-4 shrink-0" />
+              <AlertDescription>{submitError}</AlertDescription>
+            </Alert>
           ) : null}
           {!submitError && submitSuccess ? (
-            <p className="text-xs text-emerald-600" role="status">
-              {submitSuccess}
-            </p>
+            <Alert variant="default">
+              <CheckCircleIcon className="size-4 shrink-0" />
+              <AlertDescription>{submitSuccess}</AlertDescription>
+            </Alert>
           ) : null}
 
           {!isCodeStep ? (

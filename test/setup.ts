@@ -112,9 +112,30 @@ mock.module("@workos-inc/node", () => {
     BadRequestException: class BadRequestException extends MockWorkOSException {},
     // Stubs for remaining exports (unused in tests)
     ApiKeyRequiredException: class ApiKeyRequiredException extends MockWorkOSException {},
-    GenericServerException: class GenericServerException extends MockWorkOSException {},
+    GenericServerException: class GenericServerException extends MockWorkOSException {
+      status: number
+      constructor(
+        status: number,
+        message: string,
+        _rawData?: unknown,
+        _requestID?: string
+      ) {
+        super(message)
+        this.status = status
+      }
+    },
     RateLimitExceededException: class RateLimitExceededException extends MockWorkOSException {},
-    OauthException: class OauthException extends MockWorkOSException {},
+    OauthException: class OauthException extends MockWorkOSException {
+      constructor(
+        public status: number,
+        public requestID: string,
+        public error: string | undefined,
+        public errorDescription: string | undefined,
+        public rawData: unknown
+      ) {
+        super(errorDescription || error)
+      }
+    },
     SignatureVerificationException: class SignatureVerificationException extends MockWorkOSException {},
     NoApiKeyProvidedException: class NoApiKeyProvidedException extends MockWorkOSException {},
     isAuthenticationErrorData: mock(() => false),

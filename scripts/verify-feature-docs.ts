@@ -1,7 +1,7 @@
-// Verifies that every Obsidian Feature doc in the vault's Features/
-// directory has an Evidence section whose repo-relative paths actually
-// exist on disk. Override the vault root with PFN_VAULT_ROOT when running
-// outside the default WSL mount (e.g. CI or a different machine).
+// Verifies that every Obsidian Feature doc in the configured vault has an
+// Evidence section whose repo-relative paths actually exist on disk. The
+// vault root is the folder containing Welcome.md, read from .obsidian.json
+// or overridden with PFN_VAULT_ROOT.
 //
 // ponytail: scoped to Features/ docs only. Run after audit:features or
 // on PRs that touch modules/, app/, or lib/ to surface stale documentation
@@ -11,11 +11,39 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs"
 import { resolve } from "node:path"
 
 const REPO_ROOT = resolve(import.meta.dir, "..")
-const DEFAULT_VAULT_FEATURES_DIR =
-  "/mnt/c/Users/Juni Yadi/Documents/Obsidian/PFNApp/Projects Green/Features"
-const VAULT_FEATURES_DIR = process.env.PFN_VAULT_ROOT
-  ? resolve(process.env.PFN_VAULT_ROOT, "Features")
-  : DEFAULT_VAULT_FEATURES_DIR
+const VAULT_CONFIG_PATH = resolve(REPO_ROOT, ".obsidian.json")
+
+const resolveVaultRoot = (): string | undefined => {
+  if (process.env.PFN_VAULT_ROOT?.trim()) {
+    return process.env.PFN_VAULT_ROOT
+  }
+
+  if (!existsSync(VAULT_CONFIG_PATH)) {
+    console.error(
+      "Missing vault config. Copy .obsidian.json.example to .obsidian.json " +
+        "or set PFN_VAULT_ROOT."
+    )
+    return undefined
+  }
+
+  try {
+    const config: unknown = JSON.parse(readFileSync(VAULT_CONFIG_PATH, "utf8"))
+    if (
+      typeof config !== "object" ||
+      config === null ||
+      !("directory" in config) ||
+      typeof config.directory !== "string"
+    ) {
+      throw new Error('"directory" must be a string')
+    }
+    return config.directory
+  } catch (error) {
+    console.error(
+      `Invalid .obsidian.json: ${error instanceof Error ? error.message : error}`
+    )
+    return undefined
+  }
+}
 const INDEX_FILE = "Projects Green - Features Index.md"
 
 type Finding = {
@@ -127,11 +155,18 @@ const verifyPaths = (files: string[]): Finding[] => {
 }
 
 const main = (): number => {
-  if (!existsSync(VAULT_FEATURES_DIR)) {
-    console.error(`Vault not found at ${VAULT_FEATURES_DIR}`)
+  const vaultRoot = resolveVaultRoot()
+  if (!vaultRoot) return 2
+
+  const vaultFeaturesDir = resolve(
+    vaultRoot,
+    "Projects/Projects Green/Features"
+  )
+  if (!existsSync(vaultFeaturesDir)) {
+    console.error(`Vault not found at ${vaultFeaturesDir}`)
     return 2
   }
-  const files = walk(VAULT_FEATURES_DIR)
+  const files = walk(vaultFeaturesDir)
   const findings = [...findFilesWithoutSection(files), ...verifyPaths(files)]
 
   if (findings.length === 0) {
@@ -147,4 +182,4 @@ const main = (): number => {
   return 1
 }
 
-main()
+process.exitCode = main()

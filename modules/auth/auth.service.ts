@@ -1,8 +1,11 @@
 import { getWorkOS } from "@workos-inc/authkit-nextjs"
 import {
   AuthenticationException,
+  BadRequestException,
   ConflictException,
+  GenericServerException,
   NotFoundException,
+  OauthException,
   UnauthorizedException,
   UnprocessableEntityException,
 } from "@workos-inc/node"
@@ -124,6 +127,34 @@ const ensureSealedSession = (sealedSession?: string | null) => {
   return sealedSession
 }
 
+const isSafeAuthUserMessage = (message: unknown): message is string => {
+  if (typeof message !== "string") return false
+  const trimmed = message.trim()
+  if (!trimmed || trimmed.length > 160 || /[\r\n]/.test(trimmed)) return false
+  if (
+    /(exception|stack|requestid|econn|fetch failed|internal server)/i.test(
+      trimmed
+    )
+  ) {
+    return false
+  }
+  return true
+}
+
+const toInvalidMagicCodeError = (error: unknown) => {
+  const candidate =
+    error instanceof OauthException
+      ? error.errorDescription || error.error
+      : error instanceof Error
+        ? error.message
+        : undefined
+  return new InvalidAuthCredentialsError(
+    isSafeAuthUserMessage(candidate)
+      ? candidate.trim()
+      : "Invalid or expired verification code."
+  )
+}
+
 export type AuthService = {
   requestMagicCode(input: { email: string }): Promise<void>
   verifyMagicCode(input: {
@@ -198,11 +229,15 @@ export const authService: AuthService = {
       if (
         error instanceof UnauthorizedException ||
         error instanceof AuthenticationException ||
-        error instanceof NotFoundException
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException ||
+        error instanceof OauthException ||
+        (error instanceof GenericServerException &&
+          typeof error.status === "number" &&
+          error.status >= 400 &&
+          error.status < 500)
       ) {
-        throw new InvalidAuthCredentialsError(
-          "Invalid or expired verification code."
-        )
+        throw toInvalidMagicCodeError(error)
       }
 
       if (error instanceof UnprocessableEntityException) {
