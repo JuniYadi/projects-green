@@ -22,6 +22,7 @@ import { getWorkOS } from "@workos-inc/authkit-nextjs"
 import { ensureBillingAccountForOrg } from "@/modules/billing/billing-account.service"
 import { MINIMUM_BALANCE_WARN_IDR } from "@/modules/billing/constants"
 import { BillingBalanceGateBanner } from "@/components/billing-balance-gate-banner"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 
 const ONBOARDING_PATH = "/onboarding/organization"
 
@@ -78,12 +79,11 @@ export default async function ConsoleLayout({
     if (account.balance.lt(MINIMUM_BALANCE_WARN_IDR)) {
       // Single source of truth: `currency` (see CURRENCY-FIX-STRATEGY).
       const currency = account.currency
-      const numberLocale = currency === "USD" ? "en-US" : "id-ID"
       balanceGate = {
-        formattedBalance: `${currency} ${Number(account.balance).toLocaleString(
-          numberLocale,
-          { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-        )}`,
+        formattedBalance: formatBillingMoney(
+          account.balance.toFixed(2),
+          currency
+        ),
         isZero: account.balance.lte(0),
       }
     }
