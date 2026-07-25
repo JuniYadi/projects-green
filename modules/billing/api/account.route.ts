@@ -1,10 +1,10 @@
 import { Elysia } from "elysia"
 import { withAuth, getWorkOS } from "@workos-inc/authkit-nextjs"
 import type { Organization } from "@workos-inc/node"
-import { Prisma } from "@prisma/client"
 
 import { MINIMUM_BALANCE_WARN_IDR } from "../constants"
 import { ensureBillingAccountForOrg } from "../billing-account.service"
+import { formatBillingMoney } from "../format-money"
 
 type BillingAuthContext = {
   organizationId?: string | null
@@ -57,12 +57,6 @@ const toServerError = (set: RouteSet, message: string) => {
   }
 }
 
-function formatBalance(amount: Prisma.Decimal, currency: string): string {
-  const num = Number(amount)
-  const locale = currency === "USD" ? "en-US" : "id-ID"
-  return `${currency} ${num.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
-
 function daysSince(date: Date): string {
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
@@ -111,7 +105,7 @@ export const createBillingAccountRoutes = (
         organizationId: account.organizationId,
         currency,
         balanceIdr: balance.toFixed(2),
-        formattedBalance: formatBalance(balance, currency),
+        formattedBalance: formatBillingMoney(balance.toFixed(2), currency),
         isAboveWarn,
         isPositive,
         accountAge,

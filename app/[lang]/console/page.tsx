@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 import {
   WalletIcon,
   CurrencyCircleDollarIcon,
@@ -84,14 +85,22 @@ export default function ConsolePage() {
         .then((r: any) => r.data),
     ])
 
+    const account =
+      results[0].status === "fulfilled" && results[0].value?.ok
+        ? results[0].value
+        : null
+    const accountCurrency: string =
+      account?.currency ||
+      (results[2].status === "fulfilled" &&
+        results[2].value?.ok &&
+        results[2].value.invoices?.[0]?.currency) ||
+      "IDR"
+
     setCards([
       {
         title: messages.console.overview.currentBalance,
         icon: <WalletIcon />,
-        value:
-          results[0].status === "fulfilled" && results[0].value?.ok
-            ? results[0].value.formattedBalance
-            : null,
+        value: account?.formattedBalance ?? null,
         subtitle:
           results[0].status === "fulfilled" && results[0].value?.ok
             ? `Account age: ${results[0].value.accountAge}`
@@ -105,7 +114,10 @@ export default function ConsolePage() {
         icon: <CurrencyCircleDollarIcon />,
         value:
           results[1].status === "fulfilled" && results[1].value?.success
-            ? `IDR ${Number(results[1].value.data.totalSpend).toLocaleString("id-ID")}`
+            ? formatBillingMoney(
+                Number(results[1].value.data.totalSpend),
+                accountCurrency
+              )
             : null,
         subtitle:
           results[1].status === "fulfilled" && results[1].value?.success
@@ -122,7 +134,10 @@ export default function ConsolePage() {
           results[2].status === "fulfilled" &&
           results[2].value?.ok &&
           results[2].value.invoices?.length > 0
-            ? `IDR ${results[2].value.invoices[0].totalAmountIdr}`
+            ? formatBillingMoney(
+                results[2].value.invoices[0].totalAmountIdr,
+                results[2].value.invoices[0].currency ?? accountCurrency
+              )
             : results[2].status === "fulfilled" && results[2].value?.ok
               ? messages.console.overview.noInvoicesYet
               : null,

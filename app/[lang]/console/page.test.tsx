@@ -1,12 +1,31 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
 
+let accountPayload = {
+  ok: true,
+  currency: "USD",
+  formattedBalance: "USD 250.00",
+  accountAge: "3 months",
+}
+
 let invoicesPayload: {
   ok: boolean
-  invoices: Array<{ id?: string; totalAmountIdr: number; status: string }>
+  invoices: Array<{
+    id?: string
+    totalAmountIdr: number
+    currency?: string
+    status: string
+  }>
 } = {
   ok: true,
-  invoices: [{ id: "inv_1", totalAmountIdr: 75000, status: "PAID" }],
+  invoices: [
+    {
+      id: "inv_1",
+      totalAmountIdr: 75000,
+      currency: "USD",
+      status: "PAID",
+    },
+  ],
 }
 
 const jsonResponse = (body: unknown) =>
@@ -21,11 +40,7 @@ const mockFetch = mock((input: string | URL | Request) => {
   const method = input instanceof Request ? input.method : "GET"
 
   if (url.includes("/api/billing/account")) {
-    return jsonResponse({
-      ok: true,
-      formattedBalance: "IDR 250,000",
-      accountAge: "3 months",
-    })
+    return jsonResponse(accountPayload)
   }
 
   if (url.includes("/api/billing/usage")) {
@@ -56,9 +71,22 @@ describe("ConsolePage", () => {
   beforeEach(() => {
     globalThis.fetch = mockFetch as unknown as typeof fetch
     mockFetch.mockClear()
+    accountPayload = {
+      ok: true,
+      currency: "USD",
+      formattedBalance: "USD 250.00",
+      accountAge: "3 months",
+    }
     invoicesPayload = {
       ok: true,
-      invoices: [{ id: "inv_1", totalAmountIdr: 75000, status: "PAID" }],
+      invoices: [
+        {
+          id: "inv_1",
+          totalAmountIdr: 75000,
+          currency: "USD",
+          status: "PAID",
+        },
+      ],
     }
   })
 
@@ -79,13 +107,48 @@ describe("ConsolePage", () => {
     expect(container.textContent).toContain("Open Tickets")
 
     await waitFor(() => {
-      expect(container.textContent).toContain("IDR 250,000")
+      expect(container.textContent).toContain("USD 250.00")
       expect(container.textContent).toContain("Account age: 3 months")
-      expect(container.textContent).toContain("IDR 125.000")
+      expect(container.textContent).toContain("USD 125,000.00")
       expect(container.textContent).toContain("Period: June 2026")
-      expect(container.textContent).toContain("IDR 75000")
+      expect(container.textContent).toContain("USD 75,000.00")
+      expect(container.textContent).not.toMatch(/IDR (125|75)/)
       expect(container.textContent).toContain("Status: PAID")
       expect(container.textContent).toContain("2")
+    })
+  })
+
+  it("formats every money card for an IDR organization", async () => {
+    accountPayload = {
+      ok: true,
+      currency: "IDR",
+      formattedBalance: "IDR 250.000,00",
+      accountAge: "3 months",
+    }
+    invoicesPayload.invoices[0].currency = "IDR"
+    const { default: ConsolePage } = await import("./page")
+    const { container } = render(<ConsolePage />)
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("IDR 250.000,00")
+      expect(container.textContent).toContain("IDR 125.000,00")
+      expect(container.textContent).toContain("IDR 75.000,00")
+    })
+  })
+
+  it("uses invoice currency when the account request fails", async () => {
+    accountPayload = {
+      ok: false,
+      currency: "",
+      formattedBalance: "",
+      accountAge: "",
+    }
+    const { default: ConsolePage } = await import("./page")
+    const { container } = render(<ConsolePage />)
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("USD 125,000.00")
+      expect(container.textContent).toContain("USD 75,000.00")
     })
   })
 
