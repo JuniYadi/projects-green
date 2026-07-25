@@ -2,10 +2,12 @@ import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test"
 
 // ── Mock eden client (leaf infrastructure) ──────────────────────────────
 const mockRequestMagicCode = mock(
-  (): Promise<{ data: unknown }> => Promise.resolve({ data: null })
+  (): Promise<{ data: unknown; error?: unknown }> =>
+    Promise.resolve({ data: null })
 )
 const mockVerifyMagicCode = mock(
-  (): Promise<{ data: unknown }> => Promise.resolve({ data: null })
+  (): Promise<{ data: unknown; error?: unknown }> =>
+    Promise.resolve({ data: null })
 )
 
 mock.module("@/lib/eden", () => ({
@@ -194,5 +196,60 @@ describe("LoginForm", () => {
       ).toBeDefined()
     })
     expect(mockVerifyMagicCode).not.toHaveBeenCalled()
+  })
+
+  it("shows the real error message in a destructive alert on wrong OTP", async () => {
+    const user = userEvent.setup()
+    mockVerifyMagicCode.mockResolvedValue({
+      data: null,
+      error: {
+        status: 401,
+        value: {
+          ok: false,
+          error: "INVALID_CREDENTIALS",
+          message: "Invalid or expired verification code.",
+        },
+      },
+    })
+    const view = render(<LoginForm nextPath="/console" />)
+
+    await user.type(view.getByLabelText("Email"), "user@example.com")
+    await user.click(view.getByRole("button", { name: "Send login code" }))
+
+    await waitFor(() => {
+      expect(view.getByLabelText("Verification code digit 1")).toBeDefined()
+    })
+
+    for (let index = 0; index < 6; index++) {
+      await user.type(
+        view.getByLabelText(`Verification code digit ${index + 1}`),
+        "0"
+      )
+    }
+
+    await user.click(view.getByRole("button", { name: "Verify and login" }))
+
+    await waitFor(() => {
+      expect(
+        view.getByText("Invalid or expired verification code.")
+      ).toBeDefined()
+    })
+    expect(view.getByRole("alert")).toBeDefined()
+    expect(view.queryByText("Unable to sign in right now.")).toBeNull()
+  })
+
+  it("shows the code-request success message in an alert", async () => {
+    const user = userEvent.setup()
+    const view = render(<LoginForm nextPath="/console" />)
+
+    await user.type(view.getByLabelText("Email"), "user@example.com")
+    await user.click(view.getByRole("button", { name: "Send login code" }))
+
+    await waitFor(() => {
+      const alert = view.getByRole("alert")
+      expect(alert.textContent).toContain(
+        "If this email is registered, we sent a verification code."
+      )
+    })
   })
 })
