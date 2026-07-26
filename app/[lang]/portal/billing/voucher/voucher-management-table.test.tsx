@@ -11,10 +11,7 @@ mock.module("next/navigation", () => ({
 
 // ── Mock phosphor icons used by the table tree ──────────────────────────
 function IconStub(props: Record<string, unknown>) {
-  return React.createElement("span", {
-    "data-testid": "phosphor-icon",
-    ...props,
-  })
+  return React.createElement("span", props)
 }
 
 mock.module("@phosphor-icons/react", () => ({
@@ -72,13 +69,17 @@ const mockListGet = mock(
     })
 )
 
+const mockCreatePost = mock(
+  (): Promise<unknown> => Promise.resolve({ data: { ok: true } })
+)
+
 mock.module("@/lib/eden", () => ({
   eden: {
     api: {
       vouchers: {
         portal: {
           get: mockListGet,
-          post: mock(async () => ({ data: { ok: true } })),
+          post: mockCreatePost,
         },
       },
     },
@@ -87,7 +88,8 @@ mock.module("@/lib/eden", () => ({
 
 // Imports after mocks so the component sees the stubbed modules.
 // Static imports cannot run after mock.module in bun's loader.
-const { cleanup, render, waitFor } = await import("@testing-library/react")
+const { cleanup, fireEvent, render, waitFor } =
+  await import("@testing-library/react")
 const { default: userEvent } = await import("@testing-library/user-event")
 const { VoucherManagementTable } = await import("./voucher-management-table")
 
@@ -105,6 +107,7 @@ async function renderTable() {
 describe("VoucherManagementTable", () => {
   beforeEach(() => {
     mockListGet.mockClear()
+    mockCreatePost.mockClear()
     routerPushMock.mockClear()
     mockListGet.mockResolvedValue({
       data: {
@@ -113,6 +116,7 @@ describe("VoucherManagementTable", () => {
         total: sampleVouchers.length,
       },
     })
+    mockCreatePost.mockResolvedValue({ data: { ok: true } })
   })
 
   afterEach(() => {
@@ -164,5 +168,107 @@ describe("VoucherManagementTable", () => {
     expect(callArg?.$query?.prefix).toBeUndefined()
     expect(callArg?.$query?.limit).toBe("20")
     expect(callArg?.$query?.offset).toBe("0")
+  })
+
+  it.serial("renders fieldErrors under matching form inputs", async () => {
+    const user = userEvent.setup()
+    mockCreatePost.mockResolvedValue({
+      data: {
+        ok: false,
+        message: "Validation failed",
+        fieldErrors: {
+          prefix: ["Prefix must be uppercase letters only"],
+          amount: ["amount must be positive"],
+        },
+      },
+    })
+
+    const view = await renderTable()
+
+    await user.click(view.getByRole("button", { name: /create voucher/i }))
+
+    fireEvent.change(view.getByLabelText(/amount/i), {
+      target: { value: "10000" },
+    })
+    fireEvent.change(view.getByLabelText(/expires at/i), {
+      target: { value: "2099-12-31T23:59" },
+    })
+
+    await user.click(view.getByRole("button", { name: /^create$/i }))
+
+    await waitFor(() => {
+      expect(
+        view.getByText("Prefix must be uppercase letters only")
+      ).toBeTruthy()
+      expect(view.getByText("amount must be positive")).toBeTruthy()
+    })
+
+    // Top-level banner stays hidden when fieldErrors are present
+    expect(view.queryByText("Validation failed")).toBeNull()
+    expect(view.queryByText("Failed to create voucher")).toBeNull()
+  })
+
+  it.serial(
+    "shows top-level createError when no fieldErrors returned",
+    async () => {
+      const user = userEvent.setup()
+      mockCreatePost.mockResolvedValue({
+        data: {
+          ok: false,
+          message: "Only administrators can create vouchers",
+        },
+      })
+
+      const view = await renderTable()
+
+      await user.click(view.getByRole("button", { name: /create voucher/i }))
+
+      fireEvent.change(view.getByLabelText(/amount/i), {
+        target: { value: "10000" },
+      })
+      fireEvent.change(view.getByLabelText(/expires at/i), {
+        target: { value: "2099-12-31T23:59" },
+      })
+
+      await user.click(view.getByRole("button", { name: /^create$/i }))
+
+      await waitFor(() => {
+        expect(
+          view.getByText("Only administrators can create vouchers")
+        ).toBeTruthy()
+      })
+    }
+  )
+
+  it.serial("clears field error when user edits the field", async () => {
+    const user = userEvent.setup()
+    mockCreatePost.mockResolvedValue({
+      data: {
+        ok: false,
+        fieldErrors: { prefix: ["Invalid prefix format"] },
+      },
+    })
+
+    const view = await renderTable()
+
+    await user.click(view.getByRole("button", { name: /create voucher/i }))
+
+    fireEvent.change(view.getByLabelText(/amount/i), {
+      target: { value: "10000" },
+    })
+    fireEvent.change(view.getByLabelText(/expires at/i), {
+      target: { value: "2099-12-31T23:59" },
+    })
+    await user.click(view.getByRole("button", { name: /^create$/i }))
+
+    await waitFor(() => {
+      expect(view.getByText("Invalid prefix format")).toBeTruthy()
+    })
+
+    await user.type(view.getByLabelText(/prefix/i), "WELCOME")
+
+    await waitFor(() => {
+      expect(view.queryByText("Invalid prefix format")).toBeNull()
+    })
   })
 })
