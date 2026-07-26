@@ -120,9 +120,15 @@ export type PaymentMethod = {
   bankName: string
   accountName: string
   accountNumber: string
+  supportedCurrencies?: string[]
   isActive: boolean
   isDefault: boolean
 }
+
+export const getPaymentMethodCurrencies = (method: PaymentMethod): string[] =>
+  method.supportedCurrencies && method.supportedCurrencies.length > 0
+    ? method.supportedCurrencies
+    : []
 
 export type PaymentMethodsResponse = {
   ok: true
