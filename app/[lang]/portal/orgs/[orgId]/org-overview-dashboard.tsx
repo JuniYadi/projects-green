@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { ArrowLeftIcon } from "@phosphor-icons/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,6 +10,7 @@ import { getAdminOrgDetail, type AdminOrgDetail } from "@/lib/billing-client"
 import { BalanceTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/balance-tab"
 import { UsageTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/usage-tab"
 import { SettingsTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/settings-tab"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 
 type OrgOverviewDashboardProps = {
   lang: string
@@ -20,10 +20,6 @@ type OrgOverviewDashboardProps = {
 
 const TABS = ["billing", "usage", "members", "settings"] as const
 type TabValue = (typeof TABS)[number]
-
-function formatCurrency(amount: string): string {
-  return `Rp ${Number(amount).toLocaleString("id-ID")}`
-}
 
 export function OrgOverviewDashboard({
   lang,
@@ -67,7 +63,6 @@ export function OrgOverviewDashboard({
           href={`/${lang}/portal/orgs`}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeftIcon className="h-4 w-4" />
           Back to Overview
         </Link>
         <Card>
@@ -86,7 +81,6 @@ export function OrgOverviewDashboard({
           href={`/${lang}/portal/orgs`}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeftIcon className="h-4 w-4" />
           Back to Overview
         </Link>
         <Card>
@@ -108,7 +102,6 @@ export function OrgOverviewDashboard({
           href={`/${lang}/portal/orgs`}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeftIcon className="h-4 w-4" />
           Back to Overview
         </Link>
         <div>
@@ -125,7 +118,7 @@ export function OrgOverviewDashboard({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(org.balance)}
+              {formatBillingMoney(org.balance, org.currency)}
             </div>
           </CardContent>
         </Card>
@@ -145,7 +138,7 @@ export function OrgOverviewDashboard({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(org.monthlySpend)}
+              {formatBillingMoney(org.monthlySpend, org.currency)}
             </div>
           </CardContent>
         </Card>

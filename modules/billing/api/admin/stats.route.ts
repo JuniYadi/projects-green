@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import type { PlatformAccessRole } from "@/lib/platform-role"
+import { MINIMUM_BALANCE_WARN_IDR } from "@/modules/billing/constants"
 
 type BillingAuthContext = {
   organizationId?: string | null
@@ -20,7 +21,7 @@ type RouteSet = {
 type AdminStatsRouteDeps = {
   authenticate: () => Promise<BillingAuthContext>
   getPlatformRole: (input: {
-    id?: string | null
+    id: string
     email?: string | null
   }) => Promise<PlatformAccessRole>
 }
@@ -34,8 +35,7 @@ const toUnauthorized = (set: RouteSet) => {
   set.status = 401
   return {
     ok: false as const,
-    error: "UNAUTHORIZED" as const,
-    message: "You must be signed in to view platform stats.",
+    error: "UNAUTHORIZED",
   }
 }
 
@@ -43,7 +43,7 @@ const toForbidden = (set: RouteSet, message: string) => {
   set.status = 403
   return {
     ok: false as const,
-    error: "FORBIDDEN" as const,
+    error: "FORBIDDEN",
     message,
   }
 }
@@ -52,7 +52,7 @@ const toServerError = (set: RouteSet, message: string) => {
   set.status = 500
   return {
     ok: false as const,
-    error: "INTERNAL_SERVER_ERROR" as const,
+    error: "INTERNAL_SERVER_ERROR",
     message,
   }
 }
@@ -106,7 +106,8 @@ export const createAdminStatsRoutes = (
         prisma.billingAccount.count({
           where: {
             status: "ACTIVE",
-            balance: { lt: new Prisma.Decimal(10000) },
+            // IDR threshold; add per-currency thresholds before treating USD accounts as low-balance.
+            balance: { lt: new Prisma.Decimal(MINIMUM_BALANCE_WARN_IDR) },
           },
         }),
         prisma.billingUsageLedger.aggregate({

@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select"
 import { ResourceSlider } from "@/components/billing/admin/resource-slider"
 import type { SubscriptionItem } from "@/lib/billing-client"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 
 type SubscriptionManagerProps = {
   subscriptions: SubscriptionItem[]
@@ -197,10 +198,7 @@ function SubscriptionCard({
           </div>
           {subscription.monthlyRateIdr && (
             <span className="text-sm text-muted-foreground">
-              {Number.parseFloat(subscription.monthlyRateIdr).toLocaleString(
-                "id-ID",
-                { style: "currency", currency: "IDR", minimumFractionDigits: 0 }
-              )}
+              {formatBillingMoney(subscription.monthlyRateIdr, "IDR")}
               /mo
             </span>
           )}

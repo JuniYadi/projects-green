@@ -12,6 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getAdminUsage, type AdminUsageTrend } from "@/lib/billing-client"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 
 export function PlatformUsageTrend() {
   const [trend, setTrend] = useState<AdminUsageTrend[]>([])
@@ -72,12 +73,12 @@ export function PlatformUsageTrend() {
               />
               <YAxis
                 tickFormatter={(value: number) =>
-                  `Rp ${(value / 1000).toFixed(0)}k`
+                  `IDR ${(value / 1000).toFixed(0)}k`
                 }
               />
               <Tooltip
                 formatter={(value: number) => [
-                  `Rp ${value.toLocaleString("id-ID")}`,
+                  formatBillingMoney(value, "IDR"),
                   "Cost",
                 ]}
               />

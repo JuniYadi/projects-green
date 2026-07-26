@@ -3,15 +3,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { WalletIcon, WarningIcon } from "@phosphor-icons/react"
 import type { AdminOrgDetail } from "@/lib/billing-client"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 
 type BalanceTabProps = {
   orgId: string
   lang?: string
   orgDetail: AdminOrgDetail
-}
-
-function formatCurrency(amount: string): string {
-  return `Rp ${Number(amount).toLocaleString("id-ID")}`
 }
 
 function formatDate(dateStr: string): string {
@@ -42,7 +39,7 @@ export function BalanceTab({ orgDetail }: BalanceTabProps) {
         </CardHeader>
         <CardContent>
           <div className={`text-3xl font-bold ${getBalanceColor(org.balance)}`}>
-            {formatCurrency(org.balance)}
+            {formatBillingMoney(org.balance, org.currency)}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             Currency: {org.currency} | Status: {org.status}
@@ -86,7 +83,7 @@ export function BalanceTab({ orgDetail }: BalanceTabProps) {
                   </div>
                   <div className="text-right">
                     <p className="font-medium">
-                      {formatCurrency(invoice.totalAmountIdr)}
+                      {formatBillingMoney(invoice.totalAmountIdr, org.currency)}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {invoice.status}

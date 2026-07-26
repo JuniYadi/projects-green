@@ -12,6 +12,7 @@ import { Bar, BarChart, XAxis, YAxis } from "recharts"
 import { CurrencyDollarIcon, LightningIcon } from "@phosphor-icons/react"
 import { getAdminUsage } from "@/lib/billing-client"
 import type { ChartConfig } from "@/components/ui/chart"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 
 type UsageTabProps = {
   orgId: string
@@ -20,13 +21,9 @@ type UsageTabProps = {
 const chartConfig = {
   cost: {
     label: "Cost",
-    color: "var(--chart-1)",
+    color: "var(--primary)",
   },
 } satisfies ChartConfig
-
-function formatCurrency(amount: number): string {
-  return `Rp ${amount.toLocaleString("id-ID")}`
-}
 
 export function UsageTab({ orgId }: UsageTabProps) {
   const [breakdown, setBreakdown] = useState<
@@ -42,13 +39,22 @@ export function UsageTab({ orgId }: UsageTabProps) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let cancelled = false
     getAdminUsage({ orgId, days: 30 })
       .then((res) => {
+        if (cancelled) return
         setBreakdown(res.data.breakdown)
         setTrend(res.data.trend)
       })
-      .catch((err) => setError(err.message))
-      .finally(() => setIsLoading(false))
+      .catch((err) => {
+        if (!cancelled) setError(err.message)
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [orgId])
 
   if (isLoading) {
@@ -90,7 +96,7 @@ export function UsageTab({ orgId }: UsageTabProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(totalCost)}
+              {formatBillingMoney(totalCost, "IDR")}
             </div>
             <p className="text-xs text-muted-foreground">Last 30 days</p>
           </CardContent>
@@ -122,12 +128,13 @@ export function UsageTab({ orgId }: UsageTabProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(
+              {formatBillingMoney(
                 trend.length > 0
                   ? Math.round(
                       trend.reduce((sum, d) => sum + d.amount, 0) / trend.length
                     )
-                  : 0
+                  : 0,
+                "IDR"
               )}
             </div>
             <p className="text-xs text-muted-foreground">Last 30 days</p>
@@ -157,7 +164,7 @@ export function UsageTab({ orgId }: UsageTabProps) {
                     </div>
                     <div className="text-right">
                       <span className="font-medium">
-                        {formatCurrency(item.totalCost)}
+                        {formatBillingMoney(item.totalCost, "IDR")}
                       </span>
                       <span className="ml-2 text-xs text-muted-foreground">
                         {item.percentage.toFixed(1)}%
@@ -204,7 +211,7 @@ export function UsageTab({ orgId }: UsageTabProps) {
                 />
                 <YAxis
                   tickFormatter={(value: number) =>
-                    `Rp ${(value / 1000).toFixed(0)}k`
+                    `IDR ${(value / 1000).toFixed(0)}k`
                   }
                   tickLine={false}
                   axisLine={false}
@@ -213,7 +220,7 @@ export function UsageTab({ orgId }: UsageTabProps) {
                   content={
                     <ChartTooltipContent
                       formatter={(value: number) => [
-                        formatCurrency(value),
+                        formatBillingMoney(value, "IDR"),
                         "Cost",
                       ]}
                       labelFormatter={(label: string) =>

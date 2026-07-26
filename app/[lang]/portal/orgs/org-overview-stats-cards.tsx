@@ -53,10 +53,6 @@ export function OrgOverviewStatsCards() {
 
   if (!stats) return null
 
-  function fmtCurrency(amount: string): string {
-    return `Rp ${Number(amount).toLocaleString("id-ID")}`
-  }
-
   const cards = [
     {
       title: "Total Orgs",
@@ -65,7 +61,8 @@ export function OrgOverviewStatsCards() {
     },
     {
       title: "Total Balance",
-      value: fmtCurrency(stats.totalBalance),
+      value: "Mixed currencies",
+      description: "View organization rows for per-currency balances",
       icon: WalletIcon,
     },
     {
@@ -95,6 +92,11 @@ export function OrgOverviewStatsCards() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{card.value}</div>
+            {card.description && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {card.description}
+              </p>
+            )}
           </CardContent>
         </Card>
       ))}

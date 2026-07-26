@@ -10,6 +10,7 @@ import {
   WarningIcon,
 } from "@phosphor-icons/react"
 import { getAdminStats, type AdminStats } from "@/lib/billing-client"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 
 export function PlatformStatsCards() {
   const [stats, setStats] = useState<AdminStats | null>(null)
@@ -56,7 +57,8 @@ export function PlatformStatsCards() {
   const cards = [
     {
       title: "Total Balance",
-      value: `Rp ${Number(stats.totalBalance).toLocaleString("id-ID")}`,
+      value: "Mixed currencies",
+      description: "View organization rows for per-currency balances",
       icon: WalletIcon,
     },
     {
@@ -66,7 +68,7 @@ export function PlatformStatsCards() {
     },
     {
       title: "Total Spend (Month)",
-      value: `Rp ${Number(stats.totalSpend).toLocaleString("id-ID")}`,
+      value: formatBillingMoney(stats.totalSpend, "IDR"),
       icon: ChartLineUpIcon,
     },
     {
@@ -93,6 +95,11 @@ export function PlatformStatsCards() {
             >
               {card.value}
             </div>
+            {card.description && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {card.description}
+              </p>
+            )}
           </CardContent>
         </Card>
       ))}
