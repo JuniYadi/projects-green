@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { looksLikeCredential } from "@/lib/credential-patterns"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
@@ -56,6 +58,10 @@ export function SupportTicketCreateScreen({
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [credentialWarning, setCredentialWarning] = useState<{
+    field: "subject" | "body" | "secureForm"
+    patterns: string[]
+  } | null>(null)
 
   const [department, setDepartment] =
     useState<SupportTicketDepartment>("technical")
@@ -219,6 +225,14 @@ export function SupportTicketCreateScreen({
     const subject = subjectRef.current?.value || ""
     const description = descriptionRef.current?.value || ""
     const secureForm = secureFormRef.current?.value || ""
+    const checkCredential = (value: string, field: "body" | "secureForm") => {
+      const match = looksLikeCredential(value)
+      if (match.match) {
+        setCredentialWarning({ field, patterns: match.patterns })
+        return true
+      }
+      return false
+    }
 
     if (!subject.trim()) {
       setErrorMessage(messages.console.supportTickets.subjectRequired)
@@ -469,6 +483,20 @@ export function SupportTicketCreateScreen({
                 </p>
               </CardContent>
             </Card>
+          ) : null}
+          {credentialWarning ? (
+            <Alert
+              variant="default"
+              data-testid="ticket-credential-warning"
+              role="status"
+            >
+              <AlertTitle>Possible credential detected</AlertTitle>
+              <AlertDescription>
+                The {credentialWarning.field} looks like a credential (
+                {credentialWarning.patterns.join(", ")}). Move it to the Secure
+                details (encrypted) tab.
+              </AlertDescription>
+            </Alert>
           ) : null}
 
           <Card className="border-border bg-card text-card-foreground">
