@@ -52,12 +52,45 @@ export const DEFAULT_INVOICE_SORT: {
   sortDir: "desc",
 }
 
-export const getInvoiceStatusLabel = (status: InvoiceStatus): string => {
-  return INVOICE_STATUS_META[status].label
+const FALLBACK_TONE_CLASS_NAME =
+  "border-slate-500/20 bg-slate-500/10 text-slate-600"
+const FALLBACK_STATUS_META: InvoiceStatusMeta = {
+  label: "Unknown",
+  toneClassName: FALLBACK_TONE_CLASS_NAME,
 }
 
-export const getInvoiceStatusToneClass = (status: InvoiceStatus): string => {
-  return INVOICE_STATUS_META[status].toneClassName
+export const getInvoiceStatusLabel = (
+  status: InvoiceStatus | string
+): string => {
+  const meta = (INVOICE_STATUS_META as Record<string, InvoiceStatusMeta>)[
+    status
+  ]
+  if (!meta) {
+    if (typeof console !== "undefined") {
+      console.warn(
+        `[invoices] No metadata for invoice status "${String(status)}"; falling back to neutral tone.`
+      )
+    }
+    return FALLBACK_STATUS_META.label
+  }
+  return meta.label
+}
+
+export const getInvoiceStatusToneClass = (
+  status: InvoiceStatus | string
+): string => {
+  const meta = (INVOICE_STATUS_META as Record<string, InvoiceStatusMeta>)[
+    status
+  ]
+  if (!meta) {
+    if (typeof console !== "undefined") {
+      console.warn(
+        `[invoices] No tone class for invoice status "${String(status)}"; falling back to neutral.`
+      )
+    }
+    return FALLBACK_TONE_CLASS_NAME
+  }
+  return meta.toneClassName
 }
 
 export const formatInvoiceCurrency = (
