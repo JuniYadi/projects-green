@@ -367,7 +367,10 @@ export type SupportTicketRepository = {
     status: SupportTicketStatus
     ticketId: string
   }): Promise<SupportTicket>
-  listAllTickets(input: { limit?: number }): Promise<SupportTicket[]>
+  listAllTickets(input: {
+    limit?: number
+    organizationId?: string
+  }): Promise<SupportTicket[]>
   updateTicket(input: {
     ticketId: string
     data: {
@@ -624,6 +627,9 @@ export const supportTicketRepository: SupportTicketRepository = {
   },
   async listAllTickets(input) {
     const rows = await prisma.supportTicket.findMany({
+      where: input.organizationId
+        ? { organizationId: input.organizationId }
+        : undefined,
       orderBy: {
         createdAt: "desc",
       },

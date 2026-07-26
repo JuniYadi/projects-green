@@ -183,6 +183,26 @@ describe("SupportTicketRepository", () => {
         expect.objectContaining({ take: 5 })
       )
     })
+
+    it("scopes to organizationId when provided", async () => {
+      mockFindMany.mockResolvedValue([])
+      await repository.listAllTickets({ organizationId: "org_2", limit: 5 })
+      expect(mockFindMany).toHaveBeenCalledWith({
+        where: { organizationId: "org_2" },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      })
+    })
+
+    it("scopes to organizationId with default limit", async () => {
+      mockFindMany.mockResolvedValue([])
+      await repository.listAllTickets({ organizationId: "org_2" })
+      expect(mockFindMany).toHaveBeenCalledWith({
+        where: { organizationId: "org_2" },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      })
+    })
   })
 
   // ─── deleteTicket ──────────────────────────────────────────────────

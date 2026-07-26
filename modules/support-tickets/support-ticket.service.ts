@@ -83,6 +83,7 @@ export type SupportTicketService = {
   listAllTickets(input: {
     actor: SupportTicketActorContext
     limit?: number
+    organizationId?: string
   }): Promise<SupportTicket[]>
   updateTicket(input: {
     actor: SupportTicketActorContext
@@ -477,6 +478,7 @@ export const createSupportTicketService = (
 
       const tickets = await repository.listAllTickets({
         limit: input.limit,
+        organizationId: input.organizationId,
       })
 
       try {

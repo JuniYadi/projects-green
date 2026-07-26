@@ -22,9 +22,60 @@ const mockGetAdminUsage = mock(async () => ({
   data: { breakdown: [], trend: [] },
 }))
 
+const mockGetAdminInvoices = mock(async () => ({
+  ok: true,
+  invoices: [],
+  pagination: { page: 1, limit: 50, total: 0, totalPages: 1 },
+}))
+
+const mockGetAdminSubscriptions = mock(async () => ({
+  ok: true,
+  subscriptions: [],
+  pagination: { page: 1, limit: 50, total: 0, totalPages: 1 },
+}))
+
+const mockGetAdminAdjustments = mock(async () => ({
+  ok: true,
+  adjustments: [],
+  pagination: { page: 1, limit: 50, total: 0, totalPages: 1 },
+}))
+
+const mockListAdminTickets = mock<
+  (params?: { organizationId?: string }) => Promise<unknown[]>
+>(async () => [])
+
+const mockGetOrganizationMembers = mock(async () => ({ data: [] }))
+const mockGetOrganizationInvitations = mock(async () => ({ data: [] }))
+
 mock.module("@/lib/billing-client", () => ({
   getAdminOrgDetail: mockGetAdminOrgDetail,
   getAdminUsage: mockGetAdminUsage,
+  getAdminInvoices: mockGetAdminInvoices,
+  getAdminSubscriptions: mockGetAdminSubscriptions,
+  getAdminAdjustments: mockGetAdminAdjustments,
+}))
+
+mock.module("@/modules/support-tickets/api/support-tickets.client", () => ({
+  createSupportTicketsClient: () => ({
+    listAdminTickets: mockListAdminTickets,
+  }),
+}))
+
+mock.module("@/lib/eden", () => ({
+  eden: {
+    api: {
+      admin: {
+        organizations: (orgId: string) => ({
+          members: {
+            get: () => mockGetOrganizationMembers(),
+            invitations: {
+              get: () => mockGetOrganizationInvitations(),
+            },
+          },
+        }),
+      },
+    },
+  },
 }))
 
 const { OrgOverviewDashboard } = await import("./org-overview-dashboard")
@@ -36,14 +87,22 @@ const makeOrg = (overrides: Record<string, any> = {}) => ({
   currency: "USD",
   status: "ACTIVE",
   createdAt: "2024-01-01T00:00:00.000Z",
-  subscriptions: [],
-  contacts: 0,
+  subscriptions: [
+    {
+      id: "sub_1",
+      packageCode: "starter",
+      planCode: "monthly",
+      status: "ACTIVE",
+      billingMode: "monthly",
+    },
+  ],
+  contacts: 1,
   monthlySpend: "10.50",
   recentInvoices: [],
   ...overrides,
 })
 
-describe("OrgOverviewDashboard currency + tabs", () => {
+describe("OrgOverviewDashboard", () => {
   beforeEach(() => {
     mock.clearAllMocks()
   })
@@ -58,10 +117,55 @@ describe("OrgOverviewDashboard currency + tabs", () => {
       <OrgOverviewDashboard lang="en" orgId="org_usd" defaultPage="billing" />
     )
 
-    // Wait for the org name to appear in the header (rendered after fetch)
     await waitFor(() => expect(view.getByText("USD Org")).toBeTruthy())
-    // Balance appears in the summary card and BalanceTab — both must use USD
     expect(view.getAllByText("USD 125.00").length).toBeGreaterThan(0)
     expect(view.container.innerHTML).not.toContain("Rp 125")
+  })
+
+  it("shows the full tab set and never shows Settings, Back to Overview, or duplicate Balance", async () => {
+    mockGetAdminOrgDetail.mockResolvedValueOnce({
+      ok: true,
+      org: makeOrg(),
+    })
+
+    const view = render(
+      <OrgOverviewDashboard lang="en" orgId="org_usd" defaultPage="billing" />
+    )
+
+    await waitFor(() => expect(view.getByText("USD Org")).toBeTruthy())
+
+    for (const label of [
+      "Billing",
+      "Invoices",
+      "Usage",
+      "Subscriptions",
+      "Adjustments",
+      "Members",
+      "Support Tickets",
+    ]) {
+      expect(view.getByRole("tab", { name: label })).toBeTruthy()
+    }
+
+    // No Settings tab
+    expect(view.queryByRole("tab", { name: "Settings" })).toBeNull()
+    // No "Back to Overview" link
+    expect(view.queryByText("Back to Overview")).toBeNull()
+  })
+
+  it("passes the selected orgId to the support-tickets listAdminTickets client", async () => {
+    mockGetAdminOrgDetail.mockResolvedValueOnce({
+      ok: true,
+      org: makeOrg(),
+    })
+
+    render(
+      <OrgOverviewDashboard lang="en" orgId="org_usd" defaultPage="support" />
+    )
+
+    await waitFor(() =>
+      expect(mockListAdminTickets).toHaveBeenCalledWith({
+        organizationId: "org_usd",
+      })
+    )
   })
 })

@@ -600,6 +600,47 @@ describe("support ticket routes", () => {
     })
   })
 
+  it("super admin can filter /support-tickets/admin by organizationId", async () => {
+    let receivedOrganizationId: string | undefined
+    let receivedActorOrganizationId: string | undefined
+    const app = createAdminApp(
+      {
+        async listAllTickets(input) {
+          receivedOrganizationId = input.organizationId
+          receivedActorOrganizationId = input.actor.organizationId
+          return [
+            { ...baseTicket, id: "t1", organizationId: "org_custom" },
+            { ...baseTicket, id: "t2", organizationId: "org_custom" },
+          ]
+        },
+      },
+      "super_admin"
+    )
+
+    const response = await app.handle(
+      new Request(
+        "http://localhost/support-tickets/admin?organizationId=org_custom",
+        {
+          method: "GET",
+        }
+      )
+    )
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.ok).toBe(true)
+    expect(body.tickets).toHaveLength(2)
+    expect(
+      body.tickets.every(
+        (t: { organizationId: string }) => t.organizationId === "org_custom"
+      )
+    ).toBe(true)
+    expect(receivedOrganizationId).toBe("org_custom")
+    // super_admin actor still has its auth tenant id; the filter is the
+    // explicit organizationId param, not the actor's tenant.
+    expect(receivedActorOrganizationId).toBe("org_1")
+  })
+
   it("creates ticket for custom organization as admin", async () => {
     let createdWithOrg = ""
     const app = createAdminApp(
