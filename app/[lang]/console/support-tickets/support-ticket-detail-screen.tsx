@@ -453,6 +453,9 @@ export function SupportTicketDetailScreen({
           ticket: closedTicket,
         }
       })
+      // router.refresh() retriggers the loadThread useEffect, which re-fetches
+      // the thread so the server-side secureForm wipes propagate to the
+      // SecureDetailsViewer DOM.
       router.refresh()
     } catch (error) {
       setErrorMessage(
