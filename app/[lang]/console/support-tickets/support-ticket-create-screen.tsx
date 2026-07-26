@@ -322,12 +322,27 @@ export function SupportTicketCreateScreen({
                 <Input
                   id="ticket-subject"
                   ref={subjectRef}
+                  maxLength={255}
+                  onInput={(event) => {
+                    const counter = document.getElementById(
+                      "ticket-subject-counter"
+                    )
+                    if (counter) {
+                      counter.textContent = `${event.currentTarget.value.length} / 255`
+                    }
+                  }}
                   placeholder={
                     messages.console.supportTickets.subjectPlaceholder
                   }
                   disabled={isSubmitting}
                   className="border-border bg-background/50 text-foreground focus-visible:ring-primary/50"
                 />
+                <p
+                  id="ticket-subject-counter"
+                  className="text-xs text-muted-foreground"
+                >
+                  0 / 255
+                </p>
               </div>
 
               {/* Tabbed Editor Container */}
