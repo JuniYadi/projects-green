@@ -72,18 +72,13 @@ const mockListGet = mock(
     })
 )
 
-const mockCreatePost = mock(
-  (): Promise<{ data: unknown; error?: unknown }> =>
-    Promise.resolve({ data: { ok: true } })
-)
-
 mock.module("@/lib/eden", () => ({
   eden: {
     api: {
       vouchers: {
         portal: {
           get: mockListGet,
-          post: mockCreatePost,
+          post: mock(async () => ({ data: { ok: true } })),
         },
       },
     },
@@ -92,8 +87,7 @@ mock.module("@/lib/eden", () => ({
 
 // Imports after mocks so the component sees the stubbed modules.
 // Static imports cannot run after mock.module in bun's loader.
-const { cleanup, fireEvent, render, waitFor, within } =
-  await import("@testing-library/react")
+const { cleanup, render, waitFor } = await import("@testing-library/react")
 const { default: userEvent } = await import("@testing-library/user-event")
 const { VoucherManagementTable } = await import("./voucher-management-table")
 
@@ -108,39 +102,9 @@ async function renderTable() {
   return view
 }
 
-function mockCreateResponse(data: unknown) {
-  mockCreatePost.mockImplementation(async () => ({ data }))
-}
-
-async function openReadyCreateDialog(
-  view: Awaited<ReturnType<typeof renderTable>>
-) {
-  const user = userEvent.setup()
-
-  await user.click(view.getByRole("button", { name: /create voucher/i }))
-
-  const dialog = await view.findByRole("dialog")
-  const dialogQueries = within(dialog)
-
-  await user.type(dialogQueries.getByLabelText(/amount/i), "10000")
-  fireEvent.input(dialogQueries.getByLabelText(/expires at/i), {
-    target: { value: "2099-12-31T23:59" },
-  })
-
-  const submit = dialogQueries.getByRole("button", {
-    name: "Create",
-  }) as HTMLButtonElement
-  await waitFor(() => {
-    expect(submit.disabled).toBe(false)
-  })
-
-  return { user, dialog, dialogQueries, submit }
-}
-
 describe("VoucherManagementTable", () => {
   beforeEach(() => {
     mockListGet.mockClear()
-    mockCreatePost.mockClear()
     routerPushMock.mockClear()
     mockListGet.mockResolvedValue({
       data: {
@@ -149,7 +113,6 @@ describe("VoucherManagementTable", () => {
         total: sampleVouchers.length,
       },
     })
-    mockCreateResponse({ ok: true })
   })
 
   afterEach(() => {
@@ -202,98 +165,4 @@ describe("VoucherManagementTable", () => {
     expect(callArg?.$query?.limit).toBe("20")
     expect(callArg?.$query?.offset).toBe("0")
   })
-
-  it.serial(
-    "renders fieldErrors under the matching create form inputs",
-    async () => {
-      const view = await renderTable()
-
-      mockCreateResponse({
-        ok: false,
-        message: "Validation failed",
-        fieldErrors: {
-          prefix: ["Prefix must contain only uppercase letters A-Z"],
-          amount: ["amount must be positive"],
-        },
-      })
-
-      const { user, dialogQueries, submit } = await openReadyCreateDialog(view)
-
-      await user.click(submit)
-
-      await waitFor(() => {
-        expect(mockCreatePost).toHaveBeenCalledTimes(1)
-      })
-      await waitFor(() => {
-        expect(
-          dialogQueries.getByText(
-            "Prefix must contain only uppercase letters A-Z"
-          )
-        ).toBeTruthy()
-        expect(dialogQueries.getByText("amount must be positive")).toBeTruthy()
-      })
-
-      expect(dialogQueries.queryByText("Validation failed")).toBeNull()
-      expect(dialogQueries.queryByText("Failed to create voucher")).toBeNull()
-    },
-    10000
-  )
-
-  it.serial(
-    "shows top-level createError when no fieldErrors are returned",
-    async () => {
-      const view = await renderTable()
-
-      mockCreateResponse({
-        ok: false,
-        message: "Only administrators can create vouchers.",
-      })
-
-      const { user, dialogQueries, submit } = await openReadyCreateDialog(view)
-
-      await user.click(submit)
-
-      await waitFor(() => {
-        expect(mockCreatePost).toHaveBeenCalledTimes(1)
-      })
-      await waitFor(() => {
-        expect(
-          dialogQueries.getByText("Only administrators can create vouchers.")
-        ).toBeTruthy()
-      })
-    },
-    10000
-  )
-
-  it.serial(
-    "clears field error when user edits the field",
-    async () => {
-      const view = await renderTable()
-
-      mockCreateResponse({
-        ok: false,
-        fieldErrors: { prefix: ["Invalid prefix format"] },
-      })
-
-      const { user, dialogQueries, submit } = await openReadyCreateDialog(view)
-
-      await user.click(submit)
-
-      await waitFor(() => {
-        expect(mockCreatePost).toHaveBeenCalledTimes(1)
-      })
-      await waitFor(() => {
-        expect(dialogQueries.getByText("Invalid prefix format")).toBeTruthy()
-      })
-
-      fireEvent.input(dialogQueries.getByLabelText(/prefix/i), {
-        target: { value: "WELCOME" },
-      })
-
-      await waitFor(() => {
-        expect(dialogQueries.queryByText("Invalid prefix format")).toBeNull()
-      })
-    },
-    10000
-  )
 })

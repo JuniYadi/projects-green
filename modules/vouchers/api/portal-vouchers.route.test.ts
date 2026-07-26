@@ -173,6 +173,14 @@ describe("Portal Voucher Routes", () => {
       )
 
       expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("VALIDATION_ERROR")
+      expect(typeof body.message).toBe("string")
+      expect(body.message.length).toBeGreaterThan(0)
+      expect(Object.keys(body.fieldErrors)).toContain("amount")
+      expect(Object.keys(body.fieldErrors)).toContain("maxClaims")
+      expect(Object.keys(body.fieldErrors)).toContain("expiresAt")
     })
 
     it("rejects non-positive maxClaims", async () => {
@@ -189,6 +197,10 @@ describe("Portal Voucher Routes", () => {
       )
 
       expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.ok).toBe(false)
+      expect(Array.isArray(body.fieldErrors.maxClaims)).toBe(true)
+      expect(body.fieldErrors.maxClaims.length).toBeGreaterThan(0)
     })
   })
 
