@@ -122,12 +122,11 @@ async function openReadyCreateDialog(
   const dialog = await view.findByRole("dialog")
   const dialogQueries = within(dialog)
 
-  fireEvent.input(dialogQueries.getByLabelText(/amount/i), {
-    target: { value: "10000" },
-  })
-  fireEvent.input(dialogQueries.getByLabelText(/expires at/i), {
-    target: { value: "2099-12-31T23:59" },
-  })
+  await user.type(dialogQueries.getByLabelText(/amount/i), "10000")
+  await user.type(
+    dialogQueries.getByLabelText(/expires at/i),
+    "2099-12-31T23:59"
+  )
 
   const submit = dialogQueries.getByRole("button", {
     name: "Create",
