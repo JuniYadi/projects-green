@@ -6,7 +6,6 @@ import { MockAuthContext } from "@/test/helpers/test-auth"
 const mockFindMany = mock()
 const mockFindUnique = mock()
 const mockFindFirst = mock()
-const mockBillingInvoiceFindUnique = mock()
 
 const mockPrismaClient = {
   billingAccount: {
@@ -15,7 +14,6 @@ const mockPrismaClient = {
   billingInvoice: {
     findMany: mockFindMany,
     findFirst: mockFindFirst,
-    findUnique: mockBillingInvoiceFindUnique,
   },
 }
 
@@ -241,8 +239,74 @@ describe("InvoicesRoute", () => {
       expect(response.status).toBe(403)
     })
 
+    it("returns 404 when no billing account exists for the organization", async () => {
+      mockFindUnique.mockResolvedValueOnce(null)
+
+      const app = new Elysia()
+        .use(
+          createBillingInvoicesRoutes({
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv-1", {
+          method: "GET",
+        })
+      )
+
+      expect(response.status).toBe(404)
+      const body = await response.json()
+      expect(body.error).toBe("NOT_FOUND")
+      expect(mockFindFirst).not.toHaveBeenCalled()
+    })
+
+    it("returns 404 when invoice does not belong to the organization", async () => {
+      mockFindUnique.mockResolvedValueOnce({
+        id: "acc-1",
+        organizationId: "org-1",
+      })
+      mockFindFirst.mockResolvedValueOnce(null)
+
+      const app = new Elysia()
+        .use(
+          createBillingInvoicesRoutes({
+            authenticate: async () =>
+              ({
+                user: { id: "user-1" },
+                organizationId: "org-1",
+              }) as MockAuthContext,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/invoices/inv-foreign", {
+          method: "GET",
+        })
+      )
+
+      expect(response.status).toBe(404)
+      const body = await response.json()
+      expect(body.error).toBe("NOT_FOUND")
+      expect(mockFindFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "inv-foreign", billingAccountId: "acc-1" },
+        })
+      )
+    })
+
     it("returns 404 when invoice not found", async () => {
-      mockBillingInvoiceFindUnique.mockResolvedValueOnce(null)
+      mockFindUnique.mockResolvedValueOnce({
+        id: "acc-1",
+        organizationId: "org-1",
+      })
+      mockFindFirst.mockResolvedValueOnce(null)
 
       const app = new Elysia()
         .use(
@@ -268,7 +332,11 @@ describe("InvoicesRoute", () => {
     })
 
     it("returns 200 with invoice detail", async () => {
-      mockBillingInvoiceFindUnique.mockResolvedValueOnce({
+      mockFindUnique.mockResolvedValueOnce({
+        id: "acc-1",
+        organizationId: "org-1",
+      })
+      mockFindFirst.mockResolvedValueOnce({
         id: "inv-1",
         invoiceNumber: "INV-2026-001",
         status: "PENDING",
@@ -336,9 +404,11 @@ describe("InvoicesRoute", () => {
     })
 
     it("returns 500 on database error for detail", async () => {
-      mockBillingInvoiceFindUnique.mockRejectedValueOnce(
-        new Error("Database error")
-      )
+      mockFindUnique.mockResolvedValueOnce({
+        id: "acc-1",
+        organizationId: "org-1",
+      })
+      mockFindFirst.mockRejectedValueOnce(new Error("Database error"))
 
       const app = new Elysia()
         .use(

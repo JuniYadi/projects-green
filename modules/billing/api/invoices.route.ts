@@ -211,9 +211,19 @@ export const createBillingInvoicesRoutes = (
         const { id } = parsed.data
 
         try {
-          // Fetch invoice — org-scoped by auth
-          const invoice = await prisma.billingInvoice.findUnique({
-            where: { id },
+          // Look up billing account for the caller's organization
+          const account = await prisma.billingAccount.findUnique({
+            where: { organizationId: auth.organizationId },
+            select: { id: true },
+          })
+
+          if (!account) {
+            return toNotFound(set, "Invoice not found.")
+          }
+
+          // Fetch invoice scoped to the caller's billing account
+          const invoice = await prisma.billingInvoice.findFirst({
+            where: { id, billingAccountId: account.id },
             include: {
               lines: true,
               paymentConfirmations: { include: { bankAccount: true } },

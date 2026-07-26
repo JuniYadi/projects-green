@@ -1,7 +1,7 @@
 import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { useParams } from "next/navigation"
-import { render, waitFor } from "@testing-library/react"
+import { fireEvent, render, waitFor } from "@testing-library/react"
 
 import InvoiceDetailPage from "./page"
 
@@ -305,6 +305,76 @@ describe("Billing InvoiceDetailPage", () => {
     await waitFor(() => {
       expect(view.getAllByText("$105.00").length).toBeGreaterThan(0)
       expect(view.queryByText(/IDR/)).not.toBeInTheDocument()
+    })
+  })
+
+  it("formats top-up gap amount with the account currency", async () => {
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.includes("/api/billing/invoices/")) {
+        return jsonResponse(
+          invoicePayload({
+            type: "SUBSCRIPTION",
+            paymentMethod: "BANK_TRANSFER",
+            currency: "IDR",
+            subtotalAmountIdr: "100000.00",
+            taxAmountIdr: "0.00",
+            discountAmountIdr: "0.00",
+            totalAmountIdr: "100000.00",
+            lines: [
+              {
+                description: "Service",
+                quantity: "1.00",
+                amountIdr: "100000.00",
+                unitPriceIdr: "100000.00",
+                currency: "IDR",
+              },
+            ],
+          })
+        )
+      }
+
+      if (url.includes("/api/billing/account")) {
+        return jsonResponse(accountPayload("USD"))
+      }
+
+      if (url.includes("/api/payments/bank-accounts")) {
+        return jsonResponse({ ok: true, accounts: [] })
+      }
+
+      if (url.includes("/api/payments/invoice/topup-and-pay")) {
+        return jsonResponse({
+          ok: true,
+          message: "Top-up required",
+          topupRequired: true,
+          gapAmount: 42.5,
+          topupInvoiceId: "topup-1",
+          topupInvoiceNumber: "TOP-1",
+        })
+      }
+
+      return jsonResponse({ ok: false, message: "Unhandled" }, 500)
+    }) as unknown as typeof fetch
+
+    const view = render(<InvoiceDetailPage />)
+
+    await waitFor(() => {
+      expect(
+        view.getByRole("button", { name: /Top Up \+ Pay/ })
+      ).toBeInTheDocument()
+    })
+
+    fireEvent.click(view.getByRole("button", { name: /Top Up \+ Pay/ }))
+
+    await waitFor(() => {
+      expect(view.getByText("Gap Amount")).toBeInTheDocument()
+    })
+
+    await waitFor(() => {
+      expect(view.getByText("$42.50")).toBeInTheDocument()
+      expect(view.getByText("TOP-1")).toBeInTheDocument()
+      expect(view.queryByText(/IDR\s*42\.50/)).not.toBeInTheDocument()
     })
   })
 })
