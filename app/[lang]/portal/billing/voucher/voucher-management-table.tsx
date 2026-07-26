@@ -203,14 +203,9 @@ export function VoucherManagementTable() {
             }
           | null
           | undefined
-        if (err?.fieldErrors && Object.keys(err.fieldErrors).length > 0) {
-          setFieldErrors(err.fieldErrors)
-          setCreateError(null)
-        } else {
-          const failure = resolveCreateFailureState(err)
-          setFieldErrors(failure.fieldErrors)
-          setCreateError(failure.createError)
-        }
+        const failure = resolveCreateFailureState(err)
+        setFieldErrors(failure.fieldErrors)
+        setCreateError(failure.createError)
       }
     } catch (err) {
       setCreateError(resolveCreateExceptionMessage(err))
