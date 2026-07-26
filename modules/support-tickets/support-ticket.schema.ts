@@ -48,7 +48,11 @@ export const createSupportTicketInputSchema = z.object({
     .min(1, "requesterWorkosUserId is required."),
   secureForm: z.string().trim().min(1).nullable().optional(),
   service: supportTicketServiceSchema.nullable().optional(),
-  subject: z.string().trim().min(3, "Subject must be at least 3 characters."),
+  subject: z
+    .string()
+    .trim()
+    .min(3, "Subject must be at least 3 characters.")
+    .max(255, "Subject must be 255 characters or fewer."),
   uploadSessionIds: z.array(z.string().trim().min(1)).default([]).optional(),
 })
 

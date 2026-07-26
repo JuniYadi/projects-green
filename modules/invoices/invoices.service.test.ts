@@ -131,6 +131,7 @@ describe("invoice service", () => {
 
   it("maps all Prisma status values to app status", () => {
     expect(toInvoiceStatus("DRAFT")).toBe("draft")
+    expect(toInvoiceStatus("ISSUED")).toBe("open")
     expect(toInvoiceStatus("OPEN")).toBe("open")
     expect(toInvoiceStatus("PAID")).toBe("paid")
     expect(toInvoiceStatus("VOID")).toBe("canceled")

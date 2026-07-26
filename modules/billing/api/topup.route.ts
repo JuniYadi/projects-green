@@ -6,9 +6,9 @@ import Decimal = Prisma.Decimal
 import { prisma } from "@/lib/prisma"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
 import { topupSchema } from "./billing.schemas"
+import { emitBillingAudit } from "@/modules/billing/audit/audit.service"
 
 const MAX_BALANCE = new Decimal("999999999.99")
-
 type BillingAuthContext = {
   organizationId?: string | null
   role?: string | null
@@ -137,6 +137,24 @@ export const createBillingTopupRoutes = (
         ])
 
         return { updatedAccount, adjustment }
+      })
+
+      // Audit logging (fire-and-forget; emitBillingAudit already swallows errors)
+      emitBillingAudit({
+        billingAccountId: result.updatedAccount.id,
+        entityType: "BillingAccount",
+        entityId: result.updatedAccount.id,
+        action: "TOPUP_PERFORMED",
+        actorId: auth.user.id,
+        context: {
+          orgId,
+          amountIdr: amount.toString(),
+          adjustmentId: result.adjustment.id,
+          newBalanceIdr: result.updatedAccount.balance.toFixed(2),
+          paymentMethod,
+          referenceId: referenceId ?? null,
+          source: "PORTAL_TOPUP",
+        },
       })
 
       return {

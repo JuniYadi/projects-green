@@ -5,6 +5,7 @@ import {
   formatInvoiceCurrency,
   formatInvoiceDate,
   getInvoiceStatusLabel,
+  getInvoiceStatusToneClass,
   INVOICE_STATUS_FILTER_OPTIONS,
 } from "@/modules/invoices/invoices.helpers"
 
@@ -31,5 +32,34 @@ describe("invoice helpers", () => {
       "May 21, 2026"
     )
     expect(formatInvoiceDate(null, "en-US")).toBe("-")
+  })
+  it("returns a fallback label, tone, and warning for unknown status", () => {
+    const originalWarn = console.warn
+    const calls: unknown[][] = []
+    console.warn = (...args: unknown[]) => {
+      calls.push(args)
+    }
+    try {
+      expect(getInvoiceStatusLabel("ISSUED_RAW")).toBe("Unknown")
+      expect(getInvoiceStatusToneClass("ISSUED_RAW")).toBe(
+        "border-slate-500/20 bg-slate-500/10 text-slate-600"
+      )
+      expect(calls.length).toBeGreaterThan(0)
+    } finally {
+      console.warn = originalWarn
+    }
+  })
+
+  it("returns defined metadata for every known status", () => {
+    for (const status of [
+      "draft",
+      "open",
+      "paid",
+      "canceled",
+      "uncollectible",
+    ]) {
+      expect(getInvoiceStatusLabel(status as never)).not.toBe("Unknown")
+      expect(getInvoiceStatusToneClass(status as never)).toContain("border-")
+    }
   })
 })

@@ -62,6 +62,7 @@ export type InvoiceService = {
 const PRISMA_TO_APP_INVOICE_STATUS: Record<PrismaInvoiceStatus, InvoiceStatus> =
   {
     DRAFT: "draft",
+    ISSUED: "open",
     OPEN: "open",
     PAID: "paid",
     VOID: "canceled",
@@ -402,4 +403,10 @@ export const createInvoiceService = (
     },
   }
 }
-type PrismaInvoiceStatus = "DRAFT" | "OPEN" | "PAID" | "VOID" | "UNCOLLECTIBLE"
+type PrismaInvoiceStatus =
+  | "DRAFT"
+  | "ISSUED"
+  | "OPEN"
+  | "PAID"
+  | "VOID"
+  | "UNCOLLECTIBLE"

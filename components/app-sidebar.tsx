@@ -166,13 +166,7 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
     context: "billing",
     matches: (path) => startsWithRoute(path, "/portal/billing"),
     navMainLabel: "Billing",
-    getProjects: (path, locale) => [
-      {
-        name: "Org Overview",
-        url: localizePathname({ pathname: "/portal/orgs", locale }),
-        icon: <BuildingsIcon />,
-        isActive: startsWithRoute(path, "/portal/orgs"),
-      },
+    getProjects: (_path, locale) => [
       {
         name: "Back to Portal",
         url: localizePathname({ pathname: "/portal", locale }),
@@ -186,6 +180,12 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
           url: localizePathname({ pathname: "/portal/billing", locale }),
           icon: <GaugeIcon />,
           isActive: path === "/portal/billing",
+        },
+        {
+          title: "Org Overview",
+          url: localizePathname({ pathname: "/portal/orgs", locale }),
+          icon: <BuildingsIcon />,
+          isActive: startsWithRoute(path, "/portal/orgs"),
         },
         {
           title: "Invoices",

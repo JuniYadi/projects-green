@@ -160,18 +160,6 @@ export function OverviewTab() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p className="text-muted-foreground">
-            Use the tabs above to manage payment gateways, bank accounts, and
-            manual payment confirmations.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Pending Confirmations</CardTitle>
           <Link

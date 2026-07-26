@@ -226,9 +226,23 @@ export default function InvoiceDetailPage() {
       : null
   const confirmPaymentHref = `/console/billing/payments/confirm?invoiceId=${invoice.id}`
   const defaultPaymentMethod =
-    paymentMethods.find((method) => method.isActive && method.isDefault) ??
-    paymentMethods.find((method) => method.isActive) ??
+    paymentMethods.find(
+      (method) =>
+        method.isActive &&
+        method.isDefault &&
+        ((method.supportedCurrencies ?? []).length === 0 ||
+          (method.supportedCurrencies ?? []).includes(invoiceCurrency))
+    ) ??
+    paymentMethods.find(
+      (method) =>
+        method.isActive &&
+        ((method.supportedCurrencies ?? []).length === 0 ||
+          (method.supportedCurrencies ?? []).includes(invoiceCurrency))
+    ) ??
     null
+  const finalConfirmHref = defaultPaymentMethod
+    ? `${confirmPaymentHref}&paymentMethodId=${defaultPaymentMethod.id}`
+    : confirmPaymentHref
   const isManualPayment =
     invoice.paymentMethod === "MANUAL_BANK" ||
     invoice.paymentMethod === "manual_bank_transfer"
@@ -461,7 +475,7 @@ export default function InvoiceDetailPage() {
                     </p>
                   )}
                   <Button asChild disabled={!!activeConfirmation}>
-                    <Link href={confirmPaymentHref}>
+                    <Link href={finalConfirmHref}>
                       <CheckCircleIcon className="mr-2 h-4 w-4" />
                       {activeConfirmation
                         ? "Already confirmed — pending review"

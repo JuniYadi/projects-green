@@ -235,15 +235,13 @@ describe("resolveSidebarMenu", () => {
     expect(navMainLabel).toBe("Billing")
     expect(navMain.map((item) => item.title)).toEqual([
       "Overview",
+      "Org Overview",
       "Invoices",
       "Payments",
       "Vouchers",
       "Audit Logs",
     ])
-    expect(projects.map((project) => project.name)).toEqual([
-      "Org Overview",
-      "Back to Portal",
-    ])
+    expect(projects.map((project) => project.name)).toEqual(["Back to Portal"])
   })
 
   it("marks invoices active when on /portal/billing/invoices", () => {

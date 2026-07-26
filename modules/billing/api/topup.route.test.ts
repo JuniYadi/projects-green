@@ -4,6 +4,10 @@ import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
 import { MockAuthContext } from "@/test/helpers/test-auth"
 import { createBillingTopupRoutes } from "./topup.route"
 
+const mockEmitBillingAudit = mock()
+mock.module("@/modules/billing/audit/audit.service", () => ({
+  emitBillingAudit: (...args: unknown[]) => mockEmitBillingAudit(...args),
+}))
 const mockFindUnique = mock()
 const mockUpdate = mock()
 const mockCreate = mock()
@@ -305,6 +309,7 @@ describe("TopupRoute", () => {
       const body = await response.json()
       expect(body.ok).toBe(false)
       expect(body.error).toBe("BALANCE_LIMIT_EXCEEDED")
+      expect(mockEmitBillingAudit).not.toHaveBeenCalled()
     })
 
     it("returns 500 for generic database error", async () => {
@@ -395,7 +400,6 @@ describe("TopupRoute", () => {
           }),
         })
       )
-
       expect(response.status).toBe(200)
       const body = await response.json()
       expect(body.ok).toBe(true)
@@ -403,6 +407,24 @@ describe("TopupRoute", () => {
       expect(body.newBalanceIdr).toBe("100000.00")
       expect(body.amountIdr).toBe("50000")
       expect(body.type).toBe("CREDIT")
+      expect(mockEmitBillingAudit).toHaveBeenCalledTimes(1)
+      const auditArgs = mockEmitBillingAudit.mock.calls[0]?.[0] as {
+        action: string
+        actorId: string
+        billingAccountId: string
+        entityType: string
+        entityId: string
+        context: Record<string, unknown>
+      }
+      expect(auditArgs.action).toBe("TOPUP_PERFORMED")
+      expect(auditArgs.actorId).toBe("user-1")
+      expect(auditArgs.billingAccountId).toBe("acc-1")
+      expect(auditArgs.entityType).toBe("BillingAccount")
+      expect(auditArgs.entityId).toBe("acc-1")
+      expect(auditArgs.context.source).toBe("PORTAL_TOPUP")
+      expect(auditArgs.context.adjustmentId).toBe("adj-1")
+      expect(auditArgs.context.paymentMethod).toBe("manual_bank_transfer")
+      expect(auditArgs.context.referenceId).toBe("TRF-12345")
     })
   })
 
