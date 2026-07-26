@@ -127,33 +127,39 @@ describe("VoucherManagementTable", () => {
     cleanup()
   })
 
-  it("renders a single DataTable search input and no duplicate prefix search", async () => {
-    const view = await renderTable()
+  it.serial(
+    "renders a single DataTable search input and no duplicate prefix search",
+    async () => {
+      const view = await renderTable()
 
-    const searchInputs = view.getAllByPlaceholderText("Search vouchers...")
-    expect(searchInputs).toHaveLength(1)
-    expect(
-      view.queryByPlaceholderText("Search vouchers by prefix...")
-    ).toBeNull()
-  })
+      const searchInputs = view.getAllByPlaceholderText("Search vouchers...")
+      expect(searchInputs).toHaveLength(1)
+      expect(
+        view.queryByPlaceholderText("Search vouchers by prefix...")
+      ).toBeNull()
+    }
+  )
 
-  it("filters the voucher list via the DataTable search input", async () => {
-    const user = userEvent.setup()
-    const view = await renderTable()
+  it.serial(
+    "filters the voucher list via the DataTable search input",
+    async () => {
+      const user = userEvent.setup()
+      const view = await renderTable()
 
-    expect(view.getByText("WELCOME-ABC123")).toBeTruthy()
-    expect(view.getByText("PROMO-XYZ789")).toBeTruthy()
-
-    const search = view.getByPlaceholderText("Search vouchers...")
-    await user.type(search, "PROMO")
-
-    await waitFor(() => {
-      expect(view.queryByText("WELCOME-ABC123")).toBeNull()
+      expect(view.getByText("WELCOME-ABC123")).toBeTruthy()
       expect(view.getByText("PROMO-XYZ789")).toBeTruthy()
-    })
-  })
 
-  it("does not send prefix as a list query param", async () => {
+      const search = view.getByPlaceholderText("Search vouchers...")
+      await user.type(search, "PROMO")
+
+      await waitFor(() => {
+        expect(view.queryByText("WELCOME-ABC123")).toBeNull()
+        expect(view.getByText("PROMO-XYZ789")).toBeTruthy()
+      })
+    }
+  )
+
+  it.serial("does not send prefix as a list query param", async () => {
     await renderTable()
 
     expect(mockListGet).toHaveBeenCalled()
@@ -168,73 +174,79 @@ describe("VoucherManagementTable", () => {
     expect(callArg?.$query?.offset).toBe("0")
   })
 
-  it("renders fieldErrors under the matching create form inputs", async () => {
-    const user = userEvent.setup()
-    mockCreatePost.mockResolvedValue({
-      data: {
-        ok: false,
-        message: "Validation failed",
-        fieldErrors: {
-          prefix: ["Prefix must contain only uppercase letters A-Z"],
-          amount: ["amount must be positive"],
+  it.serial(
+    "renders fieldErrors under the matching create form inputs",
+    async () => {
+      const user = userEvent.setup()
+      mockCreatePost.mockResolvedValue({
+        data: {
+          ok: false,
+          message: "Validation failed",
+          fieldErrors: {
+            prefix: ["Prefix must contain only uppercase letters A-Z"],
+            amount: ["amount must be positive"],
+          },
         },
-      },
-    })
+      })
 
-    const view = await renderTable()
+      const view = await renderTable()
 
-    await user.click(view.getByRole("button", { name: /create voucher/i }))
+      await user.click(view.getByRole("button", { name: /create voucher/i }))
 
-    fireEvent.change(view.getByLabelText(/amount/i), {
-      target: { value: "10000" },
-    })
-    fireEvent.change(view.getByLabelText(/expires at/i), {
-      target: { value: "2099-12-31T23:59" },
-    })
+      fireEvent.change(view.getByLabelText(/amount/i), {
+        target: { value: "10000" },
+      })
+      fireEvent.change(view.getByLabelText(/expires at/i), {
+        target: { value: "2099-12-31T23:59" },
+      })
 
-    await user.click(view.getByRole("button", { name: /^create$/i }))
+      await user.click(view.getByRole("button", { name: /^create$/i }))
 
-    await waitFor(() => {
-      expect(
-        view.getByText("Prefix must contain only uppercase letters A-Z")
-      ).toBeTruthy()
-      expect(view.getByText("amount must be positive")).toBeTruthy()
-    })
+      await waitFor(() => {
+        expect(
+          view.getByText("Prefix must contain only uppercase letters A-Z")
+        ).toBeTruthy()
+        expect(view.getByText("amount must be positive")).toBeTruthy()
+      })
 
-    // Top-level banner stays hidden when fieldErrors are present
-    expect(view.queryByText("Validation failed")).toBeNull()
-    expect(view.queryByText("Failed to create voucher")).toBeNull()
-  })
+      // Top-level banner stays hidden when fieldErrors are present
+      expect(view.queryByText("Validation failed")).toBeNull()
+      expect(view.queryByText("Failed to create voucher")).toBeNull()
+    }
+  )
 
-  it("shows top-level createError when no fieldErrors are returned", async () => {
-    const user = userEvent.setup()
-    mockCreatePost.mockResolvedValue({
-      data: {
-        ok: false,
-        message: "Only administrators can create vouchers.",
-      },
-    })
+  it.serial(
+    "shows top-level createError when no fieldErrors are returned",
+    async () => {
+      const user = userEvent.setup()
+      mockCreatePost.mockResolvedValue({
+        data: {
+          ok: false,
+          message: "Only administrators can create vouchers.",
+        },
+      })
 
-    const view = await renderTable()
+      const view = await renderTable()
 
-    await user.click(view.getByRole("button", { name: /create voucher/i }))
+      await user.click(view.getByRole("button", { name: /create voucher/i }))
 
-    fireEvent.change(view.getByLabelText(/amount/i), {
-      target: { value: "10000" },
-    })
-    fireEvent.change(view.getByLabelText(/expires at/i), {
-      target: { value: "2099-12-31T23:59" },
-    })
+      fireEvent.change(view.getByLabelText(/amount/i), {
+        target: { value: "10000" },
+      })
+      fireEvent.change(view.getByLabelText(/expires at/i), {
+        target: { value: "2099-12-31T23:59" },
+      })
 
-    await user.click(view.getByRole("button", { name: /^create$/i }))
+      await user.click(view.getByRole("button", { name: /^create$/i }))
 
-    await waitFor(() => {
-      expect(
-        view.getByText("Only administrators can create vouchers.")
-      ).toBeTruthy()
-    })
-  })
-  it("clears field error when user edits the field", async () => {
+      await waitFor(() => {
+        expect(
+          view.getByText("Only administrators can create vouchers.")
+        ).toBeTruthy()
+      })
+    }
+  )
+  it.serial("clears field error when user edits the field", async () => {
     const user = userEvent.setup()
     mockCreatePost.mockResolvedValue({
       data: {
