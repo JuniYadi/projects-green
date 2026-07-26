@@ -92,7 +92,7 @@ mock.module("@/lib/eden", () => ({
 
 // Imports after mocks so the component sees the stubbed modules.
 // Static imports cannot run after mock.module in bun's loader.
-const { cleanup, fireEvent, render, waitFor } =
+const { cleanup, fireEvent, render, waitFor, within } =
   await import("@testing-library/react")
 const { default: userEvent } = await import("@testing-library/user-event")
 const { VoucherManagementTable } = await import("./voucher-management-table")
@@ -108,6 +108,37 @@ async function renderTable() {
   return view
 }
 
+function mockCreateResponse(data: unknown) {
+  mockCreatePost.mockImplementation(async () => ({ data }))
+}
+
+async function openReadyCreateDialog(
+  view: Awaited<ReturnType<typeof renderTable>>
+) {
+  const user = userEvent.setup()
+
+  await user.click(view.getByRole("button", { name: /create voucher/i }))
+
+  const dialog = await view.findByRole("dialog")
+  const dialogQueries = within(dialog)
+
+  fireEvent.input(dialogQueries.getByLabelText(/amount/i), {
+    target: { value: "10000" },
+  })
+  fireEvent.input(dialogQueries.getByLabelText(/expires at/i), {
+    target: { value: "2099-12-31T23:59" },
+  })
+
+  const submit = dialogQueries.getByRole("button", {
+    name: "Create",
+  }) as HTMLButtonElement
+  await waitFor(() => {
+    expect(submit.disabled).toBe(false)
+  })
+
+  return { user, dialog, dialogQueries, submit }
+}
+
 describe("VoucherManagementTable", () => {
   beforeEach(() => {
     mockListGet.mockClear()
@@ -120,7 +151,7 @@ describe("VoucherManagementTable", () => {
         total: sampleVouchers.length,
       },
     })
-    mockCreatePost.mockResolvedValue({ data: { ok: true } })
+    mockCreateResponse({ ok: true })
   })
 
   afterEach(() => {
@@ -177,103 +208,88 @@ describe("VoucherManagementTable", () => {
   it.serial(
     "renders fieldErrors under the matching create form inputs",
     async () => {
-      const user = userEvent.setup()
-      mockCreatePost.mockResolvedValue({
-        data: {
-          ok: false,
-          message: "Validation failed",
-          fieldErrors: {
-            prefix: ["Prefix must contain only uppercase letters A-Z"],
-            amount: ["amount must be positive"],
-          },
+      const view = await renderTable()
+
+      mockCreateResponse({
+        ok: false,
+        message: "Validation failed",
+        fieldErrors: {
+          prefix: ["Prefix must contain only uppercase letters A-Z"],
+          amount: ["amount must be positive"],
         },
       })
 
-      const view = await renderTable()
+      const { user, dialogQueries, submit } = await openReadyCreateDialog(view)
 
-      await user.click(view.getByRole("button", { name: /create voucher/i }))
-
-      fireEvent.change(view.getByLabelText(/amount/i), {
-        target: { value: "10000" },
-      })
-      fireEvent.change(view.getByLabelText(/expires at/i), {
-        target: { value: "2099-12-31T23:59" },
-      })
-
-      await user.click(view.getByRole("button", { name: /^create$/i }))
+      await user.click(submit)
 
       await waitFor(() => {
+        expect(mockCreatePost).toHaveBeenCalledTimes(1)
+      })
+      await waitFor(() => {
         expect(
-          view.getByText("Prefix must contain only uppercase letters A-Z")
+          dialogQueries.getByText(
+            "Prefix must contain only uppercase letters A-Z"
+          )
         ).toBeTruthy()
-        expect(view.getByText("amount must be positive")).toBeTruthy()
+        expect(dialogQueries.getByText("amount must be positive")).toBeTruthy()
       })
 
-      // Top-level banner stays hidden when fieldErrors are present
-      expect(view.queryByText("Validation failed")).toBeNull()
-      expect(view.queryByText("Failed to create voucher")).toBeNull()
+      expect(dialogQueries.queryByText("Validation failed")).toBeNull()
+      expect(dialogQueries.queryByText("Failed to create voucher")).toBeNull()
     }
   )
 
   it.serial(
     "shows top-level createError when no fieldErrors are returned",
     async () => {
-      const user = userEvent.setup()
-      mockCreatePost.mockResolvedValue({
-        data: {
-          ok: false,
-          message: "Only administrators can create vouchers.",
-        },
-      })
-
       const view = await renderTable()
 
-      await user.click(view.getByRole("button", { name: /create voucher/i }))
-
-      fireEvent.change(view.getByLabelText(/amount/i), {
-        target: { value: "10000" },
-      })
-      fireEvent.change(view.getByLabelText(/expires at/i), {
-        target: { value: "2099-12-31T23:59" },
+      mockCreateResponse({
+        ok: false,
+        message: "Only administrators can create vouchers.",
       })
 
-      await user.click(view.getByRole("button", { name: /^create$/i }))
+      const { user, dialogQueries, submit } = await openReadyCreateDialog(view)
+
+      await user.click(submit)
 
       await waitFor(() => {
+        expect(mockCreatePost).toHaveBeenCalledTimes(1)
+      })
+      await waitFor(() => {
         expect(
-          view.getByText("Only administrators can create vouchers.")
+          dialogQueries.getByText("Only administrators can create vouchers.")
         ).toBeTruthy()
       })
     }
   )
-  it.serial("clears field error when user edits the field", async () => {
-    const user = userEvent.setup()
-    mockCreatePost.mockResolvedValue({
-      data: {
-        ok: false,
-        fieldErrors: { prefix: ["Invalid prefix format"] },
-      },
-    })
 
+  it.serial("clears field error when user edits the field", async () => {
     const view = await renderTable()
 
-    await user.click(view.getByRole("button", { name: /create voucher/i }))
-    fireEvent.change(view.getByLabelText(/amount/i), {
-      target: { value: "10000" },
+    mockCreateResponse({
+      ok: false,
+      fieldErrors: { prefix: ["Invalid prefix format"] },
     })
-    fireEvent.change(view.getByLabelText(/expires at/i), {
-      target: { value: "2099-12-31T23:59" },
-    })
-    await user.click(view.getByRole("button", { name: /^create$/i }))
+
+    const { user, dialogQueries, submit } = await openReadyCreateDialog(view)
+
+    await user.click(submit)
 
     await waitFor(() => {
-      expect(view.getByText("Invalid prefix format")).toBeTruthy()
+      expect(mockCreatePost).toHaveBeenCalledTimes(1)
+    })
+    await waitFor(() => {
+      expect(dialogQueries.getByText("Invalid prefix format")).toBeTruthy()
     })
 
-    await user.type(view.getByLabelText(/prefix/i), "WELCOME")
+    fireEvent.input(dialogQueries.getByLabelText(/prefix/i), {
+      target: { value: "WELCOME" },
+    })
 
     await waitFor(() => {
-      expect(view.queryByText("Invalid prefix format")).toBeNull()
+      expect(dialogQueries.queryByText("Invalid prefix format")).toBeNull()
     })
   })
 })
