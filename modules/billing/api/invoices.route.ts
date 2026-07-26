@@ -71,6 +71,7 @@ type InvoiceLineResponse = {
   quantity: string
   unitPriceIdr: string
   amountIdr: string
+  currency: string
   category?: string
   metadata?: Record<string, unknown>
 }
@@ -90,6 +91,7 @@ function formatInvoiceLine(line: {
   quantity: Decimal
   unitPrice: Decimal
   amount: Decimal
+  currency: string
   description: string
   metadataJson?: Prisma.JsonValue
 }): InvoiceLineResponse {
@@ -105,6 +107,7 @@ function formatInvoiceLine(line: {
     quantity: line.quantity.toFixed(2),
     unitPriceIdr: line.unitPrice.toFixed(2),
     amountIdr: line.amount.toFixed(2),
+    currency: line.currency,
     category: (metadata.category as string) ?? undefined,
     metadata,
   }
@@ -165,6 +168,9 @@ export const createBillingInvoicesRoutes = (
             dueDate: inv.dueDate?.toISOString() ?? null,
             periodStart: inv.periodStart.toISOString(),
             periodEnd: inv.periodEnd.toISOString(),
+            subtotalAmountIdr: inv.subtotalAmount.toFixed(2),
+            taxAmountIdr: inv.taxAmount.toFixed(2),
+            discountAmountIdr: inv.discountAmount.toFixed(2),
             totalAmountIdr: inv.totalAmount.toFixed(2),
             currency: inv.currency,
             lines: inv.lines.map((line) => formatInvoiceLine(line)),
@@ -205,9 +211,19 @@ export const createBillingInvoicesRoutes = (
         const { id } = parsed.data
 
         try {
-          // Fetch invoice — org-scoped by auth
-          const invoice = await prisma.billingInvoice.findUnique({
-            where: { id },
+          // Look up billing account for the caller's organization
+          const account = await prisma.billingAccount.findUnique({
+            where: { organizationId: auth.organizationId },
+            select: { id: true },
+          })
+
+          if (!account) {
+            return toNotFound(set, "Invoice not found.")
+          }
+
+          // Fetch invoice scoped to the caller's billing account
+          const invoice = await prisma.billingInvoice.findFirst({
+            where: { id, billingAccountId: account.id },
             include: {
               lines: true,
               paymentConfirmations: { include: { bankAccount: true } },
@@ -233,6 +249,9 @@ export const createBillingInvoicesRoutes = (
               dueDate: invoice.dueDate?.toISOString() ?? null,
               periodStart: invoice.periodStart.toISOString(),
               periodEnd: invoice.periodEnd.toISOString(),
+              subtotalAmountIdr: invoice.subtotalAmount.toFixed(2),
+              taxAmountIdr: invoice.taxAmount.toFixed(2),
+              discountAmountIdr: invoice.discountAmount.toFixed(2),
               totalAmountIdr: invoice.totalAmount.toFixed(2),
               currency: invoice.currency,
               lines: invoice.lines.map((line) => formatInvoiceLine(line)),
