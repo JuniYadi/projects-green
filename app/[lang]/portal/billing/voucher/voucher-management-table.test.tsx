@@ -88,8 +88,7 @@ mock.module("@/lib/eden", () => ({
 
 // Imports after mocks so the component sees the stubbed modules.
 // Static imports cannot run after mock.module in bun's loader.
-const { cleanup, fireEvent, render, waitFor } =
-  await import("@testing-library/react")
+const { cleanup, render, waitFor } = await import("@testing-library/react")
 const { default: userEvent } = await import("@testing-library/user-event")
 const { VoucherManagementTable } = await import("./voucher-management-table")
 
@@ -187,12 +186,10 @@ describe("VoucherManagementTable", () => {
 
     await user.click(view.getByRole("button", { name: /create voucher/i }))
 
-    fireEvent.change(view.getByLabelText(/amount/i), {
-      target: { value: "10000" },
-    })
-    fireEvent.change(view.getByLabelText(/expires at/i), {
-      target: { value: "2099-12-31T23:59" },
-    })
+    await user.click(view.getByLabelText(/amount/i))
+    await user.paste("10000")
+    await user.click(view.getByLabelText(/expires at/i))
+    await user.paste("2099-12-31T23:59")
 
     await user.click(view.getByRole("button", { name: /^create$/i }))
 
@@ -223,12 +220,10 @@ describe("VoucherManagementTable", () => {
 
       await user.click(view.getByRole("button", { name: /create voucher/i }))
 
-      fireEvent.change(view.getByLabelText(/amount/i), {
-        target: { value: "10000" },
-      })
-      fireEvent.change(view.getByLabelText(/expires at/i), {
-        target: { value: "2099-12-31T23:59" },
-      })
+      await user.click(view.getByLabelText(/amount/i))
+      await user.paste("10000")
+      await user.click(view.getByLabelText(/expires at/i))
+      await user.paste("2099-12-31T23:59")
 
       await user.click(view.getByRole("button", { name: /^create$/i }))
 
@@ -253,19 +248,18 @@ describe("VoucherManagementTable", () => {
 
     await user.click(view.getByRole("button", { name: /create voucher/i }))
 
-    fireEvent.change(view.getByLabelText(/amount/i), {
-      target: { value: "10000" },
-    })
-    fireEvent.change(view.getByLabelText(/expires at/i), {
-      target: { value: "2099-12-31T23:59" },
-    })
+    await user.click(view.getByLabelText(/amount/i))
+    await user.paste("10000")
+    await user.click(view.getByLabelText(/expires at/i))
+    await user.paste("2099-12-31T23:59")
     await user.click(view.getByRole("button", { name: /^create$/i }))
 
     await waitFor(() => {
       expect(view.getByText("Invalid prefix format")).toBeTruthy()
     })
 
-    await user.type(view.getByLabelText(/prefix/i), "WELCOME")
+    await user.click(view.getByLabelText(/prefix/i))
+    await user.paste("WELCOME")
 
     await waitFor(() => {
       expect(view.queryByText("Invalid prefix format")).toBeNull()
