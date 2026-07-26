@@ -234,4 +234,34 @@ describe("VoucherManagementTable", () => {
       ).toBeTruthy()
     })
   })
+  it("clears field error when user edits the field", async () => {
+    const user = userEvent.setup()
+    mockCreatePost.mockResolvedValue({
+      data: {
+        ok: false,
+        fieldErrors: { prefix: ["Invalid prefix format"] },
+      },
+    })
+
+    const view = await renderTable()
+
+    await user.click(view.getByRole("button", { name: /create voucher/i }))
+    fireEvent.change(view.getByLabelText(/amount/i), {
+      target: { value: "10000" },
+    })
+    fireEvent.change(view.getByLabelText(/expires at/i), {
+      target: { value: "2099-12-31T23:59" },
+    })
+    await user.click(view.getByRole("button", { name: /^create$/i }))
+
+    await waitFor(() => {
+      expect(view.getByText("Invalid prefix format")).toBeTruthy()
+    })
+
+    await user.type(view.getByLabelText(/prefix/i), "WELCOME")
+
+    await waitFor(() => {
+      expect(view.queryByText("Invalid prefix format")).toBeNull()
+    })
+  })
 })
