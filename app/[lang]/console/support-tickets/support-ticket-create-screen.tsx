@@ -290,266 +290,8 @@ export function SupportTicketCreateScreen({
       )}
 
       <div className="grid w-full grid-cols-1 items-start gap-6 lg:grid-cols-3">
-        {/* Left Column: Form Fields (Main Details & Secure Form) */}
+        {/* Left Column: Categorization + Submit */}
         <div className="space-y-6 lg:col-span-2">
-          {errorMessage ? (
-            <Card className="border-destructive/30 bg-destructive/10">
-              <CardContent className="pt-6">
-                <p
-                  className="text-sm font-medium text-destructive"
-                  role="alert"
-                >
-                  {errorMessage}
-                </p>
-              </CardContent>
-            </Card>
-          ) : null}
-
-          <Card className="border-border bg-card text-card-foreground">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold text-foreground">
-                {messages.console.supportTickets.ticketDetails}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-2">
-                <Label
-                  htmlFor="ticket-subject"
-                  className="text-xs font-semibold text-muted-foreground"
-                >
-                  {messages.console.supportTickets.subject}
-                </Label>
-                <Input
-                  id="ticket-subject"
-                  ref={subjectRef}
-                  maxLength={255}
-                  onInput={(event) => {
-                    const counter = document.getElementById(
-                      "ticket-subject-counter"
-                    )
-                    if (counter) {
-                      counter.textContent = `${event.currentTarget.value.length} / 255`
-                    }
-                  }}
-                  placeholder={
-                    messages.console.supportTickets.subjectPlaceholder
-                  }
-                  disabled={isSubmitting}
-                  className="border-border bg-background/50 text-foreground focus-visible:ring-primary/50"
-                />
-                <p
-                  id="ticket-subject-counter"
-                  className="text-xs text-muted-foreground"
-                >
-                  0 / 255
-                </p>
-              </div>
-
-              {/* Tabbed Editor Container */}
-              <div className="space-y-4 pt-2">
-                {/* Tabs list */}
-                <div className="flex border-b border-border">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("message")}
-                    className={`-mb-[1px] border-b-2 px-4 py-2 text-sm font-medium transition-all ${
-                      activeTab === "message"
-                        ? "border-primary font-semibold text-foreground"
-                        : "border-transparent text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {messages.console.supportTickets.generalMessage}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("secure")}
-                    className={`-mb-[1px] flex items-center gap-1.5 border-b-2 px-4 py-2 text-sm font-medium transition-all ${
-                      activeTab === "secure"
-                        ? "border-yellow-500 font-semibold text-yellow-500"
-                        : "border-transparent text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <span className="relative flex h-2 w-2">
-                      {activeTab === "secure" && (
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400 opacity-75"></span>
-                      )}
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-500"></span>
-                    </span>
-                    {messages.console.supportTickets.secureDetails}
-                  </button>
-                </div>
-
-                {/* General Message Tab */}
-                <div
-                  data-testid="message-tab-content"
-                  className={activeTab === "message" ? "space-y-2" : "hidden"}
-                >
-                  <Label
-                    htmlFor="ticket-description"
-                    className="text-xs font-semibold text-muted-foreground"
-                  >
-                    {messages.console.supportTickets.messageOptional}
-                  </Label>
-                  <MarkdownEditor
-                    id="ticket-description"
-                    ref={descriptionRef}
-                    rows={6}
-                    placeholder={
-                      messages.console.supportTickets.messagePlaceholder
-                    }
-                    disabled={isSubmitting}
-                  />
-                </div>
-
-                {/* Secure Details Tab */}
-                <div
-                  data-testid="secure-tab-content"
-                  className={activeTab === "secure" ? "space-y-4" : "hidden"}
-                >
-                  <div className="space-y-2 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.02] p-4">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center justify-center rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-semibold text-yellow-500">
-                        {messages.console.supportTickets.encrypted}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs font-medium text-yellow-500/90">
-                        <svg
-                          className="h-3.5 w-3.5 text-yellow-500"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2.5"
-                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                          ></path>
-                        </svg>
-                        {messages.console.supportTickets.endToEndSecure}
-                      </span>
-                    </div>
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                      {messages.console.supportTickets.secureDescription}
-                    </p>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="ticket-secure-form" className="sr-only">
-                      {messages.console.supportTickets.secureDetailsOptional}
-                    </Label>
-                    <MarkdownEditor
-                      id="ticket-secure-form"
-                      ref={secureFormRef}
-                      rows={6}
-                      placeholder={
-                        messages.console.supportTickets.securePlaceholder
-                      }
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div className="my-4 border-t border-border" />
-
-              {/* Attachments Section */}
-              <div className="space-y-4">
-                <div className="flex flex-col gap-2">
-                  <Label
-                    htmlFor="ticket-files"
-                    className="text-xs font-semibold text-muted-foreground"
-                  >
-                    {messages.console.supportTickets.attachmentsOptional}
-                  </Label>
-                  <Input
-                    id="ticket-files"
-                    type="file"
-                    multiple
-                    accept={ACCEPT_MIME_STRING}
-                    onChange={handleFileChange}
-                    disabled={isSubmitting}
-                    className="cursor-pointer border-border bg-background/50 text-foreground file:rounded-md file:border-0 file:bg-primary/10 file:text-foreground"
-                  />
-                  {Object.keys(validationErrors).length > 0 && (
-                    <div className="space-y-1">
-                      {Object.entries(validationErrors).map(
-                        ([fileName, message]) => (
-                          <p
-                            key={fileName}
-                            className="text-sm text-destructive"
-                          >
-                            {message}
-                          </p>
-                        )
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {files.length > 0 && (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {files.map((item, idx) => {
-                      const isImage = item.file.type.startsWith("image/")
-                      return (
-                        <div
-                          key={idx}
-                          className="group relative flex items-center gap-3 rounded-lg border border-border bg-card/50 p-2"
-                        >
-                          {isImage && item.previewUrl ? (
-                            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded border border-border bg-muted">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={item.previewUrl}
-                                alt={item.file.name}
-                                className="h-full w-full object-cover"
-                              />
-                            </div>
-                          ) : (
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-border bg-muted text-muted-foreground">
-                              <svg
-                                className="h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                                xmlns="http://www.w3.org/2000/svg"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2"
-                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                />
-                              </svg>
-                            </div>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-medium text-foreground">
-                              {item.file.name}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {formatBytes(item.file.size)}
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveFile(idx)}
-                            className="absolute -top-1.5 -right-1.5 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-[10px] text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:bg-muted hover:text-foreground focus:opacity-100"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right Column: Settings, Attachments, Actions */}
-        <div className="space-y-6">
           <Card className="border-border bg-card text-card-foreground">
             <CardHeader>
               <CardTitle className="text-base font-semibold text-foreground">
@@ -710,6 +452,259 @@ export function SupportTicketCreateScreen({
               >
                 {messages.console.supportTickets.cancel}
               </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column: Ticket Details (subject, description, secure, attachments) */}
+        <div className="space-y-6 lg:col-span-1">
+          {errorMessage ? (
+            <Card className="border-destructive/30 bg-destructive/10">
+              <CardContent className="pt-6">
+                <p
+                  className="text-sm font-medium text-destructive"
+                  role="alert"
+                >
+                  {errorMessage}
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <Card className="border-border bg-card text-card-foreground">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold text-foreground">
+                {messages.console.supportTickets.ticketDetails}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-2">
+                <Label
+                  htmlFor="ticket-subject"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
+                  {messages.console.supportTickets.subject}
+                </Label>
+                <Input
+                  id="ticket-subject"
+                  ref={subjectRef}
+                  maxLength={255}
+                  onInput={(event) => {
+                    const counter = document.getElementById(
+                      "ticket-subject-counter"
+                    )
+                    if (counter) {
+                      counter.textContent = `${event.currentTarget.value.length} / 255`
+                    }
+                  }}
+                  placeholder={
+                    messages.console.supportTickets.subjectPlaceholder
+                  }
+                  disabled={isSubmitting}
+                  className="border-border bg-background/50 text-foreground focus-visible:ring-primary/50"
+                />
+                <p
+                  id="ticket-subject-counter"
+                  className="text-xs text-muted-foreground"
+                >
+                  0 / 255
+                </p>
+              </div>
+
+              {/* Tabbed Editor Container */}
+              <div className="space-y-4 pt-2">
+                <div className="flex border-b border-border">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("message")}
+                    className={`-mb-[1px] border-b-2 px-4 py-2 text-sm font-medium transition-all ${
+                      activeTab === "message"
+                        ? "border-primary font-semibold text-foreground"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {messages.console.supportTickets.generalMessage}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("secure")}
+                    className={`-mb-[1px] flex items-center gap-1.5 border-b-2 px-4 py-2 text-sm font-medium transition-all ${
+                      activeTab === "secure"
+                        ? "border-yellow-500 font-semibold text-yellow-500"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span className="relative flex h-2 w-2">
+                      {activeTab === "secure" && (
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400 opacity-75"></span>
+                      )}
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-500"></span>
+                    </span>
+                    {messages.console.supportTickets.secureDetails}
+                  </button>
+                </div>
+
+                <div
+                  data-testid="message-tab-content"
+                  className={activeTab === "message" ? "space-y-2" : "hidden"}
+                >
+                  <Label
+                    htmlFor="ticket-description"
+                    className="text-xs font-semibold text-muted-foreground"
+                  >
+                    {messages.console.supportTickets.messageOptional}
+                  </Label>
+                  <MarkdownEditor
+                    id="ticket-description"
+                    ref={descriptionRef}
+                    rows={6}
+                    placeholder={
+                      messages.console.supportTickets.messagePlaceholder
+                    }
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div
+                  data-testid="secure-tab-content"
+                  className={activeTab === "secure" ? "space-y-4" : "hidden"}
+                >
+                  <div className="space-y-2 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.02] p-4">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center justify-center rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-semibold text-yellow-500">
+                        {messages.console.supportTickets.encrypted}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs font-medium text-yellow-500/90">
+                        <svg
+                          className="h-3.5 w-3.5 text-yellow-500"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2.5"
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                          ></path>
+                        </svg>
+                        {messages.console.supportTickets.endToEndSecure}
+                      </span>
+                    </div>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {messages.console.supportTickets.secureDescription}
+                    </p>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="ticket-secure-form" className="sr-only">
+                      {messages.console.supportTickets.secureDetailsOptional}
+                    </Label>
+                    <MarkdownEditor
+                      id="ticket-secure-form"
+                      ref={secureFormRef}
+                      rows={6}
+                      placeholder={
+                        messages.console.supportTickets.securePlaceholder
+                      }
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="my-4 border-t border-border" />
+
+              <div className="space-y-4">
+                <div className="flex flex-col gap-2">
+                  <Label
+                    htmlFor="ticket-files"
+                    className="text-xs font-semibold text-muted-foreground"
+                  >
+                    {messages.console.supportTickets.attachmentsOptional}
+                  </Label>
+                  <Input
+                    id="ticket-files"
+                    type="file"
+                    multiple
+                    accept={ACCEPT_MIME_STRING}
+                    onChange={handleFileChange}
+                    disabled={isSubmitting}
+                    className="cursor-pointer border-border bg-background/50 text-foreground file:rounded-md file:border-0 file:bg-primary/10 file:text-foreground"
+                  />
+                  {Object.keys(validationErrors).length > 0 && (
+                    <div className="space-y-1">
+                      {Object.entries(validationErrors).map(
+                        ([fileName, message]) => (
+                          <p
+                            key={fileName}
+                            className="text-sm text-destructive"
+                          >
+                            {message}
+                          </p>
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {files.length > 0 && (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {files.map((item, idx) => {
+                      const isImage = item.file.type.startsWith("image/")
+                      return (
+                        <div
+                          key={idx}
+                          className="group relative flex items-center gap-3 rounded-lg border border-border bg-card/50 p-2"
+                        >
+                          {isImage && item.previewUrl ? (
+                            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded border border-border bg-muted">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={item.previewUrl}
+                                alt={item.file.name}
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-border bg-muted text-muted-foreground">
+                              <svg
+                                className="h-5 w-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                />
+                              </svg>
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-medium text-foreground">
+                              {item.file.name}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {formatBytes(item.file.size)}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFile(idx)}
+                            className="absolute -top-1.5 -right-1.5 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-[10px] text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:bg-muted hover:text-foreground focus:opacity-100"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
