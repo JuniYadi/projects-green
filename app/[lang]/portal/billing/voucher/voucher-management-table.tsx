@@ -34,6 +34,11 @@ import {
   CopySimpleIcon,
 } from "@phosphor-icons/react"
 import type { VoucherStatus } from "@prisma/client"
+import {
+  clearFieldError,
+  resolveCreateExceptionMessage,
+  resolveCreateFailureState,
+} from "@/app/[lang]/portal/billing/voucher/voucher-create-errors"
 
 type VoucherItem = {
   id: string
@@ -139,12 +144,7 @@ export function VoucherManagementTable() {
 
   function updateCreateField(field: keyof typeof createForm, value: string) {
     setCreateForm((prev) => ({ ...prev, [field]: value }))
-    setFieldErrors((prev) => {
-      if (!(field in prev)) return prev
-      const next = { ...prev }
-      delete next[field]
-      return next
-    })
+    setFieldErrors((prev) => clearFieldError(prev, field))
   }
 
   function handleDialogOpenChange(open: boolean) {
@@ -207,13 +207,13 @@ export function VoucherManagementTable() {
           setFieldErrors(err.fieldErrors)
           setCreateError(null)
         } else {
-          setCreateError(err?.message || "Failed to create voucher")
+          const failure = resolveCreateFailureState(err)
+          setFieldErrors(failure.fieldErrors)
+          setCreateError(failure.createError)
         }
       }
     } catch (err) {
-      setCreateError(
-        err instanceof Error ? err.message : "An unexpected error occurred"
-      )
+      setCreateError(resolveCreateExceptionMessage(err))
     } finally {
       setIsCreating(false)
     }
