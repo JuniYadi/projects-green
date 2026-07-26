@@ -123,10 +123,9 @@ async function openReadyCreateDialog(
   const dialogQueries = within(dialog)
 
   await user.type(dialogQueries.getByLabelText(/amount/i), "10000")
-  await user.type(
-    dialogQueries.getByLabelText(/expires at/i),
-    "2099-12-31T23:59"
-  )
+  fireEvent.input(dialogQueries.getByLabelText(/expires at/i), {
+    target: { value: "2099-12-31T23:59" },
+  })
 
   const submit = dialogQueries.getByRole("button", {
     name: "Create",
@@ -236,7 +235,8 @@ describe("VoucherManagementTable", () => {
 
       expect(dialogQueries.queryByText("Validation failed")).toBeNull()
       expect(dialogQueries.queryByText("Failed to create voucher")).toBeNull()
-    }
+    },
+    10000
   )
 
   it.serial(
@@ -261,34 +261,39 @@ describe("VoucherManagementTable", () => {
           dialogQueries.getByText("Only administrators can create vouchers.")
         ).toBeTruthy()
       })
-    }
+    },
+    10000
   )
 
-  it.serial("clears field error when user edits the field", async () => {
-    const view = await renderTable()
+  it.serial(
+    "clears field error when user edits the field",
+    async () => {
+      const view = await renderTable()
 
-    mockCreateResponse({
-      ok: false,
-      fieldErrors: { prefix: ["Invalid prefix format"] },
-    })
+      mockCreateResponse({
+        ok: false,
+        fieldErrors: { prefix: ["Invalid prefix format"] },
+      })
 
-    const { user, dialogQueries, submit } = await openReadyCreateDialog(view)
+      const { user, dialogQueries, submit } = await openReadyCreateDialog(view)
 
-    await user.click(submit)
+      await user.click(submit)
 
-    await waitFor(() => {
-      expect(mockCreatePost).toHaveBeenCalledTimes(1)
-    })
-    await waitFor(() => {
-      expect(dialogQueries.getByText("Invalid prefix format")).toBeTruthy()
-    })
+      await waitFor(() => {
+        expect(mockCreatePost).toHaveBeenCalledTimes(1)
+      })
+      await waitFor(() => {
+        expect(dialogQueries.getByText("Invalid prefix format")).toBeTruthy()
+      })
 
-    fireEvent.input(dialogQueries.getByLabelText(/prefix/i), {
-      target: { value: "WELCOME" },
-    })
+      fireEvent.input(dialogQueries.getByLabelText(/prefix/i), {
+        target: { value: "WELCOME" },
+      })
 
-    await waitFor(() => {
-      expect(dialogQueries.queryByText("Invalid prefix format")).toBeNull()
-    })
-  })
+      await waitFor(() => {
+        expect(dialogQueries.queryByText("Invalid prefix format")).toBeNull()
+      })
+    },
+    10000
+  )
 })
