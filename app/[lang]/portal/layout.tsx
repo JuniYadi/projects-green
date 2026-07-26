@@ -13,6 +13,7 @@ import {
 } from "@/lib/sidebar-session"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { ThunderAiHelpDrawer } from "@/modules/docs/ui/thunder-ai-help-drawer"
+import { BillingSetupBannerClient } from "@/components/billing/setup-status/billing-setup-banner"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { redirect } from "next/navigation"
 import { getPlatformAccessForUser } from "@/lib/platform-role"
@@ -86,6 +87,9 @@ export default async function PortalLayout({
             <ThunderAiHelpDrawer />
           </div>
         </header>
+        <div className="px-6 pt-6">
+          <BillingSetupBannerClient locale={locale} />
+        </div>
         {children}
       </SidebarInset>
     </SidebarProvider>

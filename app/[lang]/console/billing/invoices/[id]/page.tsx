@@ -226,8 +226,19 @@ export default function InvoiceDetailPage() {
       : null
   const confirmPaymentHref = `/console/billing/payments/confirm?invoiceId=${invoice.id}`
   const defaultPaymentMethod =
-    paymentMethods.find((method) => method.isActive && method.isDefault) ??
-    paymentMethods.find((method) => method.isActive) ??
+    paymentMethods.find(
+      (method) =>
+        method.isActive &&
+        method.isDefault &&
+        ((method.supportedCurrencies ?? []).length === 0 ||
+          (method.supportedCurrencies ?? []).includes(invoiceCurrency))
+    ) ??
+    paymentMethods.find(
+      (method) =>
+        method.isActive &&
+        ((method.supportedCurrencies ?? []).length === 0 ||
+          (method.supportedCurrencies ?? []).includes(invoiceCurrency))
+    ) ??
     null
   const finalConfirmHref = defaultPaymentMethod
     ? `${confirmPaymentHref}&paymentMethodId=${defaultPaymentMethod.id}`
