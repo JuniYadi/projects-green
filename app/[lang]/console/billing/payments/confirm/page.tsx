@@ -34,6 +34,7 @@ interface BankAccount {
   accountName: string
   isActive: boolean
   isDefault: boolean
+  supportedCurrencies?: string[]
 }
 
 type FormState = "idle" | "submitting" | "success" | "error"
@@ -144,7 +145,9 @@ function ConfirmationPageContent() {
         setBankAccounts((data as { data?: BankAccount[] }).data || [])
         const bankAccountsData = (data as { data: BankAccount[] }).data
         if (bankAccountsData?.length > 0) {
-          const preselected = searchParams.get("bankAccountId")
+          const preselected =
+            searchParams.get("paymentMethodId") ??
+            searchParams.get("bankAccountId")
           if (
             preselected &&
             bankAccountsData.some((b) => b.id === preselected)
