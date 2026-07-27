@@ -17,9 +17,16 @@ import { SUPPORT_TICKET_STATUS_LABELS } from "../support-ticket.types"
 
 interface TicketCreatedEmailProps {
   ticket: SupportTicket
+  organization?: {
+    organizationId: string
+    organizationName: string | null
+  }
 }
 
-export const TicketCreatedEmail = ({ ticket }: TicketCreatedEmailProps) => {
+export const TicketCreatedEmail = ({
+  ticket,
+  organization,
+}: TicketCreatedEmailProps) => {
   const ticketUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3300"}/console/support-tickets/${ticket.id}`
 
   return (
@@ -59,6 +66,13 @@ export const TicketCreatedEmail = ({ ticket }: TicketCreatedEmailProps) => {
             {ticket.service && (
               <Text style={styles.meta}>
                 <strong>Service:</strong> {ticket.service}
+              </Text>
+            )}
+            {organization && (
+              <Text style={styles.meta}>
+                <strong>Organization:</strong>{" "}
+                {organization.organizationName ?? "Unknown organization"} (
+                {organization.organizationId})
               </Text>
             )}
           </Section>
@@ -136,7 +150,7 @@ const styles = {
     margin: "24px 0",
   },
   button: {
-    backgroundColor: "#5469d4",
+    backgroundColor: "#3b82f6",
     borderRadius: "4px",
     color: "#ffffff",
     fontSize: "16px",

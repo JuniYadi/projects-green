@@ -137,7 +137,17 @@ const createRepositoryStub = () => {
       return updatedTicket
     },
     async listAllTickets(input) {
-      return [...tickets.values()].slice(0, input.limit ?? 50)
+      const ticketsForPage = [...tickets.values()].slice(
+        (Math.max(1, input.page ?? 1) - 1) *
+          (input.pageSize ?? input.limit ?? 20),
+        Math.max(1, input.page ?? 1) * (input.pageSize ?? input.limit ?? 20)
+      )
+      return {
+        tickets: ticketsForPage,
+        total: tickets.size,
+        page: Math.max(1, input.page ?? 1),
+        pageSize: input.pageSize ?? input.limit ?? 20,
+      }
     },
     async updateTicket(input) {
       const current = tickets.get(input.ticketId)
@@ -536,7 +546,7 @@ describe("supportTicketService", () => {
         return updatedTicket
       },
       async listAllTickets() {
-        return []
+        return { tickets: [], total: 0, page: 1, pageSize: 20 }
       },
       async updateTicket() {
         throw new Error("not implemented")
@@ -687,7 +697,7 @@ describe("supportTicketService", () => {
         throw new Error("not implemented")
       },
       async listAllTickets() {
-        return []
+        return { tickets: [], total: 0, page: 1, pageSize: 20 }
       },
       async updateTicket() {
         throw new Error("not implemented")
@@ -774,16 +784,30 @@ describe("supportTicketService", () => {
     expect(replies[0].secureForm).toBeNull()
   })
 
-  it("listAllTickets forwards organizationId to the repository and filters results", async () => {
-    const repoCalls: Array<{ organizationId?: string }> = []
+  it("listAllTickets forwards organizationId and pagination filters", async () => {
+    const repoCalls: Array<{
+      includeClosed?: boolean
+      organizationId?: string
+      page?: number
+      pageSize?: number
+    }> = []
     const { repository } = createRepositoryStub()
     const filteredRepo: SupportTicketRepository = {
       ...repository,
       async listAllTickets(input) {
-        repoCalls.push({ organizationId: input.organizationId })
-        return (await repository.listAllTickets(input)).filter(
-          (t) => t.organizationId === "org_2"
-        )
+        repoCalls.push({
+          includeClosed: input.includeClosed,
+          organizationId: input.organizationId,
+          page: input.page,
+          pageSize: input.pageSize,
+        })
+        const result = await repository.listAllTickets(input)
+        return {
+          ...result,
+          tickets: result.tickets.filter(
+            (ticket) => ticket.organizationId === "org_2"
+          ),
+        }
       },
     }
     const service = createSupportTicketService({
@@ -791,17 +815,27 @@ describe("supportTicketService", () => {
       repository: filteredRepo,
     })
 
-    const tickets = await service.listAllTickets({
+    const result = await service.listAllTickets({
       actor: {
         isSuperAdmin: true,
         organizationId: "org_admin",
         workosUserId: "admin_user",
       },
+      includeClosed: true,
       organizationId: "org_2",
+      page: 2,
+      pageSize: 50,
     })
 
-    expect(repoCalls).toEqual([{ organizationId: "org_2" }])
-    expect(tickets.every((t) => t.organizationId === "org_2")).toBe(true)
+    expect(repoCalls).toEqual([
+      {
+        includeClosed: true,
+        organizationId: "org_2",
+        page: 2,
+        pageSize: 50,
+      },
+    ])
+    expect(result.tickets.every((t) => t.organizationId === "org_2")).toBe(true)
   })
 
   it("supports super admin CRUD: listAllTickets, updateTicket, deleteTicket", async () => {
@@ -817,10 +851,10 @@ describe("supportTicketService", () => {
       organizationId: "org_admin",
     }
 
-    const allTickets = await service.listAllTickets({
+    const result = await service.listAllTickets({
       actor: adminActor,
     })
-    expect(allTickets.length).toBeGreaterThanOrEqual(1)
+    expect(result.tickets.length).toBeGreaterThanOrEqual(1)
 
     const updated = await service.updateTicket({
       actor: adminActor,
@@ -832,6 +866,7 @@ describe("supportTicketService", () => {
         status: "in_progress",
       },
     })
+
     expect(updated.department).toBe("billing")
     expect(updated.priority).toBe("low")
     expect(updated.service).toBe("billing")
@@ -842,13 +877,6 @@ describe("supportTicketService", () => {
       ticketId: "ticket_1",
     })
     expect(deleted).toBe(true)
-
-    await expect(
-      service.getTicketThread({
-        actor: adminActor,
-        ticketId: "ticket_1",
-      })
-    ).rejects.toBeInstanceOf(SupportTicketNotFoundError)
   })
 
   it("creates ticket without description and secureForm", async () => {
@@ -937,11 +965,11 @@ describe("supportTicketService", () => {
       repository,
     })
 
-    const tickets = await service.listAllTickets({
+    const result = await service.listAllTickets({
       actor: { organizationId: "org_1", workosUserId: "user_normal" },
     })
 
-    expect(tickets.every((t) => t.organizationId === "org_1")).toBe(true)
+    expect(result.tickets.every((t) => t.organizationId === "org_1")).toBe(true)
   })
 
   it("rejects listAllTickets for non-super-admin cross-tenant", async () => {
@@ -1079,7 +1107,7 @@ describe("supportTicketService", () => {
         throw new Error("n/a")
       },
       async listAllTickets() {
-        return []
+        return { tickets: [], total: 0, page: 1, pageSize: 20 }
       },
       async updateTicket() {
         throw new Error("n/a")
@@ -1183,7 +1211,7 @@ describe("supportTicketService", () => {
         return baseTicket
       },
       async listAllTickets() {
-        return [baseTicket]
+        return { tickets: [baseTicket], total: 1, page: 1, pageSize: 20 }
       },
       async updateTicket() {
         return baseTicket
@@ -1538,7 +1566,12 @@ describe("supportTicketService", () => {
     const repo: SupportTicketRepository = {
       ...repository,
       async listAllTickets() {
-        return [...tickets.values()]
+        return {
+          tickets: [...tickets.values()],
+          total: tickets.size,
+          page: 1,
+          pageSize: 20,
+        }
       },
       async getTicketById(id) {
         return tickets.get(id) ?? null

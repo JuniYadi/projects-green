@@ -34,7 +34,11 @@ export function TicketTableSkeleton({ rows = 5 }: TicketTableSkeletonProps) {
 
       {/* Table rows */}
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4 px-1 py-3">
+        <div
+          key={i}
+          className="flex items-center gap-4 px-1 py-3"
+          data-testid="ticket-table-skeleton-row"
+        >
           {COLUMNS.map((col) => (
             <Skeleton key={col.label} className={`h-4 ${col.width}`} />
           ))}

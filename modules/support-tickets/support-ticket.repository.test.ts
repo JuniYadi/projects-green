@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, mock } from "bun:test"
 const mockFindUnique = mock()
 const mockFindMany = mock()
 const mockCreate = mock()
+const mockCount = mock()
 const mockUpdate = mock()
 const mockDelete = mock()
 const mockUpdateMany = mock()
@@ -66,6 +67,7 @@ mock.module("@/lib/prisma", () => ({
     supportTicket: {
       findUnique: mockFindUnique,
       findMany: mockFindMany,
+      count: mockCount,
       create: mockCreate,
       update: mockUpdate,
       delete: mockDelete,
@@ -98,6 +100,7 @@ describe("SupportTicketRepository", () => {
   beforeEach(() => {
     mockFindUnique.mockReset()
     mockFindMany.mockReset()
+    mockCount.mockReset()
     mockCreate.mockReset()
     mockUpdate.mockReset()
     mockDelete.mockReset()
@@ -166,42 +169,83 @@ describe("SupportTicketRepository", () => {
 
   // ─── listAllTickets ────────────────────────────────────────────────
   describe("listAllTickets", () => {
-    it("returns all mapped tickets with default limit", async () => {
+    it("returns paginated active tickets and total by default", async () => {
       mockFindMany.mockResolvedValue([basePrismaTicket])
-      const result = await repository.listAllTickets({})
-      expect(result).toHaveLength(1)
-      expect(mockFindMany).toHaveBeenCalledWith({
-        orderBy: { createdAt: "desc" },
-        take: 50,
-      })
-    })
+      mockCount.mockResolvedValue(3)
 
-    it("applies custom limit", async () => {
+      const result = await repository.listAllTickets({})
+
+      expect(result).toEqual({
+        tickets: [expect.objectContaining({ id: "ticket_1" })],
+        total: 3,
+        page: 1,
+        pageSize: 20,
+      })
+      const where = { status: { not: "CLOSED" } }
+      expect(mockFindMany).toHaveBeenCalledWith({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: 0,
+        take: 20,
+      })
+      expect(mockCount).toHaveBeenCalledWith({ where })
+    })
+    it("uses limit as backward-compatible page size when pageSize is absent", async () => {
       mockFindMany.mockResolvedValue([])
-      await repository.listAllTickets({ limit: 5 })
+      mockCount.mockResolvedValue(0)
+
+      const result = await repository.listAllTickets({ limit: 5 })
+
+      expect(result).toEqual({ tickets: [], total: 0, page: 1, pageSize: 5 })
       expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({ take: 5 })
       )
     })
 
-    it("scopes to organizationId when provided", async () => {
+    it("applies organization, page, pageSize, and limit bounds", async () => {
       mockFindMany.mockResolvedValue([])
-      await repository.listAllTickets({ organizationId: "org_2", limit: 5 })
+      mockCount.mockResolvedValue(0)
+
+      const result = await repository.listAllTickets({
+        organizationId: "org_2",
+        page: 2,
+        pageSize: 5,
+      })
+
+      expect(result).toEqual({ tickets: [], total: 0, page: 2, pageSize: 5 })
+      const where = {
+        organizationId: "org_2",
+        status: { not: "CLOSED" },
+      }
       expect(mockFindMany).toHaveBeenCalledWith({
-        where: { organizationId: "org_2" },
+        where,
         orderBy: { createdAt: "desc" },
+        skip: 5,
         take: 5,
       })
+      expect(mockCount).toHaveBeenCalledWith({ where })
     })
 
-    it("scopes to organizationId with default limit", async () => {
+    it("does not filter closed tickets when includeClosed is true", async () => {
       mockFindMany.mockResolvedValue([])
-      await repository.listAllTickets({ organizationId: "org_2" })
-      expect(mockFindMany).toHaveBeenCalledWith({
-        where: { organizationId: "org_2" },
-        orderBy: { createdAt: "desc" },
-        take: 50,
+      mockCount.mockResolvedValue(7)
+
+      const result = await repository.listAllTickets({
+        includeClosed: true,
+        limit: 5,
+        page: 0,
+        pageSize: 200,
       })
+
+      expect(result).toEqual({ tickets: [], total: 7, page: 1, pageSize: 100 })
+      const where = {}
+      expect(mockFindMany).toHaveBeenCalledWith({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: 0,
+        take: 100,
+      })
+      expect(mockCount).toHaveBeenCalledWith({ where })
     })
   })
 

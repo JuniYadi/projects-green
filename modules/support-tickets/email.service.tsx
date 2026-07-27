@@ -47,36 +47,59 @@ async function createEmailLog(
   }
 }
 
+export type TicketOrganizationEmailContext = {
+  organizationId: string
+  organizationName: string | null
+  organizationUrl?: string
+}
+
+export type TicketReplyEmailContext = {
+  authorName: string
+  authorRole: "Requester" | "Support Admin"
+  hasSecureDetails: boolean
+  repliedAt: Date
+}
+
 export type EmailService = {
   sendTicketCreated(
     ticket: SupportTicket,
-    requesterEmail: string
+    requesterEmail: string,
+    organization?: TicketOrganizationEmailContext
   ): Promise<void>
   sendTicketReplied(
     ticket: SupportTicket,
     reply: SupportTicketReply,
-    requesterEmail: string
+    requesterEmail: string,
+    replyContext?: TicketReplyEmailContext
   ): Promise<void>
   sendTicketClosed(ticket: SupportTicket, requesterEmail: string): Promise<void>
   sendNewTicketAlertToStaff(
     ticket: SupportTicket,
     adminEmail: string,
     requesterName?: string,
-    requesterEmail?: string
+    requesterEmail?: string,
+    organization?: TicketOrganizationEmailContext
   ): Promise<void>
   sendTicketReplyAlertToStaff(
     ticket: SupportTicket,
     reply: SupportTicketReply,
     adminEmail: string,
-    requesterEmail?: string
+    requesterEmail?: string,
+    replyContext?: TicketReplyEmailContext
   ): Promise<void>
 }
 
 // ponytail: no more nodemailer transporter — queue worker handles SMTP
 export const createEmailService = (): EmailService => ({
-  async sendTicketCreated(ticket: SupportTicket, requesterEmail: string) {
+  async sendTicketCreated(
+    ticket: SupportTicket,
+    requesterEmail: string,
+    organization?: TicketOrganizationEmailContext
+  ) {
     try {
-      const html = await render(<TicketCreatedEmail ticket={ticket} />)
+      const html = await render(
+        <TicketCreatedEmail ticket={ticket} organization={organization} />
+      )
       const subject = `Your support ticket #${ticket.ticketNumber} has been created`
       const emailLogId = await createEmailLog(
         ticket.id,
@@ -105,11 +128,16 @@ export const createEmailService = (): EmailService => ({
   async sendTicketReplied(
     ticket: SupportTicket,
     reply: SupportTicketReply,
-    requesterEmail: string
+    requesterEmail: string,
+    replyContext?: TicketReplyEmailContext
   ) {
     try {
       const html = await render(
-        <TicketRepliedEmail ticket={ticket} reply={reply} />
+        <TicketRepliedEmail
+          ticket={ticket}
+          reply={reply}
+          replyContext={replyContext}
+        />
       )
       const subject = `Re: Support ticket #${ticket.ticketNumber} - ${ticket.subject}`
       const emailLogId = await createEmailLog(
@@ -168,7 +196,8 @@ export const createEmailService = (): EmailService => ({
     ticket: SupportTicket,
     adminEmail: string,
     requesterName?: string,
-    requesterEmail?: string
+    requesterEmail?: string,
+    organization?: TicketOrganizationEmailContext
   ) {
     try {
       const html = await render(
@@ -176,6 +205,7 @@ export const createEmailService = (): EmailService => ({
           ticket={ticket}
           requesterName={requesterName}
           requesterEmail={requesterEmail}
+          organization={organization}
         />
       )
       const subject = `[Action Required] New support ticket #${ticket.ticketNumber} - ${ticket.subject}`
@@ -207,7 +237,8 @@ export const createEmailService = (): EmailService => ({
     ticket: SupportTicket,
     reply: SupportTicketReply,
     adminEmail: string,
-    requesterEmail?: string
+    requesterEmail?: string,
+    replyContext?: TicketReplyEmailContext
   ) {
     try {
       const html = await render(
@@ -216,6 +247,7 @@ export const createEmailService = (): EmailService => ({
           requesterEmail={requesterEmail}
           variant="reply"
           reply={reply}
+          replyContext={replyContext}
         />
       )
       const subject = `[Action Required] New reply on support ticket #${ticket.ticketNumber} - ${ticket.subject}`

@@ -305,9 +305,9 @@ export function SupportTicketCreateScreen({
         </div>
       )}
 
-      <div className="grid w-full grid-cols-1 items-start gap-6 lg:grid-cols-3">
+      <div className="grid w-full grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_4fr]">
         {/* Left Column: Categorization + Submit */}
-        <div className="space-y-6 lg:col-span-2">
+        <div className="space-y-6">
           <Card className="border-border bg-card text-card-foreground">
             <CardHeader>
               <CardTitle className="text-base font-semibold text-foreground">
@@ -473,7 +473,7 @@ export function SupportTicketCreateScreen({
         </div>
 
         {/* Right Column: Ticket Details (subject, description, secure, attachments) */}
-        <div className="space-y-6 lg:col-span-1">
+        <div className="space-y-6">
           {errorMessage ? (
             <Card className="border-destructive/30 bg-destructive/10">
               <CardContent className="pt-6">

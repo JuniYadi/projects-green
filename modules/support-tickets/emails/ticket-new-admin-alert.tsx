@@ -20,6 +20,17 @@ interface TicketNewAdminAlertEmailProps {
   requesterEmail?: string
   variant?: "created" | "reply"
   reply?: SupportTicketReply
+  organization?: {
+    organizationId: string
+    organizationName: string | null
+    organizationUrl?: string
+  }
+  replyContext?: {
+    authorName: string
+    authorRole: "Requester" | "Support Admin"
+    hasSecureDetails: boolean
+    repliedAt: Date
+  }
 }
 
 export const TicketNewAdminAlertEmail = ({
@@ -28,9 +39,19 @@ export const TicketNewAdminAlertEmail = ({
   requesterEmail,
   variant = "created",
   reply,
+  organization,
+  replyContext,
 }: TicketNewAdminAlertEmailProps) => {
   const ticketUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3300"}/portal/support-tickets/${ticket.id}`
   const isReply = variant === "reply"
+
+  const formattedRepliedAt = replyContext
+    ? new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "UTC",
+      }).format(replyContext.repliedAt)
+    : null
 
   return (
     <Html>
@@ -85,9 +106,33 @@ export const TicketNewAdminAlertEmail = ({
                 <strong>Email:</strong> {requesterEmail}
               </Text>
             )}
+            {organization && (
+              <Text style={styles.meta}>
+                <strong>Organization:</strong>{" "}
+                {organization.organizationName ?? "Unknown organization"} (
+                {organization.organizationId})
+              </Text>
+            )}
           </Section>
 
-          {isReply && reply ? (
+          {isReply && reply && replyContext ? (
+            <Section style={styles.description}>
+              <Text style={styles.descriptionLabel}>
+                <strong>Re: {ticket.subject}</strong>
+              </Text>
+              <Text style={styles.descriptionText}>
+                Replied by {replyContext.authorName} ({replyContext.authorRole})
+                {" · "}
+                {formattedRepliedAt}
+              </Text>
+              <Text style={styles.descriptionText}>{reply.body}</Text>
+              {replyContext.hasSecureDetails && (
+                <Text style={styles.descriptionText}>
+                  Secure details attached (encrypted). Open the ticket to view.
+                </Text>
+              )}
+            </Section>
+          ) : isReply && reply ? (
             <Section style={styles.description}>
               <Text style={styles.descriptionLabel}>
                 <strong>Latest reply:</strong>
@@ -110,6 +155,19 @@ export const TicketNewAdminAlertEmail = ({
               View & Respond to Ticket
             </Button>
           </Section>
+
+          {organization?.organizationUrl && (
+            <>
+              <Section style={styles.actions}>
+                <Button
+                  href={organization.organizationUrl}
+                  style={styles.button}
+                >
+                  Open Organization
+                </Button>
+              </Section>
+            </>
+          )}
 
           <Hr style={styles.divider} />
 

@@ -22,13 +22,13 @@ import {
   resolveTenantRoleFromClaims,
   hasScopedSuperAdminClaim,
 } from "@/modules/tenants/tenant-policy"
+import { listTenantMemberships } from "@/modules/tenants/services/tenant-workos.service"
 import {
   createEmailService,
   type EmailService,
 } from "@/modules/support-tickets/email.service"
 import { SECURE_ONLY_REPLY_BODY } from "@/modules/support-tickets/support-ticket.types"
-import { getCachedUsers } from "@/lib/workos-directory"
-import { prisma } from "@/lib/prisma"
+import { getCachedOrganizations, getCachedUsers } from "@/lib/workos-directory"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 
 type SupportTicketAuthContext = {
@@ -44,8 +44,12 @@ type SupportTicketAuthContext = {
 type RouteSet = {
   status?: number | string
 }
-
-type SupportEmailRecipient = { email: string }
+type SupportEmailRecipient = {
+  email: string
+  name?: string | null
+  role?: "owner" | "admin"
+  workosUserId?: string | null
+}
 
 type SupportTicketRouteDependencies = {
   authenticate: () => Promise<SupportTicketAuthContext>
@@ -78,39 +82,82 @@ function defaultSupportRecipient(): SupportEmailRecipient {
   }
 }
 
-async function resolveConfiguredSupportRecipients(
-  organizationId: string
-): Promise<SupportEmailRecipient[]> {
-  const account = await prisma.billingAccount.findUnique({
-    where: { organizationId },
-    include: {
-      contacts: { where: { isActive: true, notifyOnSupport: true } },
-    },
-  })
-
-  const recipients = account?.contacts.map((contact) => ({
-    email: contact.email,
-  })) ?? [defaultSupportRecipient()]
-
-  const fallback = defaultSupportRecipient()
-  if (!recipients.some((recipient) => recipient.email === fallback.email)) {
-    recipients.push(fallback)
-  }
-
-  return recipients
+export function normalizeEmail(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase()
 }
 
-async function notifySupportRecipients(input: {
-  dependencies: SupportTicketRouteDependencies
-  organizationId: string
-  send: (recipient: SupportEmailRecipient) => Promise<void>
-}) {
-  const resolver =
-    input.dependencies.resolveSupportRecipients ??
-    (async () => [defaultSupportRecipient()])
-  const recipients = await resolver(input.organizationId)
+export function dedupeRecipients(
+  recipients: SupportEmailRecipient[]
+): SupportEmailRecipient[] {
+  const seen = new Set<string>()
+  return recipients.filter((recipient) => {
+    const key = normalizeEmail(recipient.email)
+    if (!key || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
 
-  await Promise.allSettled(recipients.map(input.send))
+export function excludeRecipient(
+  recipients: SupportEmailRecipient[],
+  input: { workosUserId?: string; email?: string }
+): SupportEmailRecipient[] {
+  const excludeUserId = input.workosUserId ?? ""
+  const excludeEmail = normalizeEmail(input.email)
+  return recipients.filter(
+    (recipient) =>
+      recipient.workosUserId !== excludeUserId &&
+      normalizeEmail(recipient.email) !== excludeEmail
+  )
+}
+
+async function resolveSupportRecipientsByOrgMembership(
+  organizationId: string
+): Promise<SupportEmailRecipient[]> {
+  try {
+    const memberships = await listTenantMemberships(organizationId)
+    const recipients: SupportEmailRecipient[] = []
+    for (const membership of memberships) {
+      if (
+        membership.status === "active" &&
+        (membership.role === "owner" || membership.role === "admin") &&
+        membership.email
+      ) {
+        recipients.push({
+          email: membership.email,
+          name: membership.displayName,
+          role: membership.role,
+          workosUserId: membership.userId,
+        })
+      }
+    }
+    return dedupeRecipients(recipients)
+  } catch {
+    return [defaultSupportRecipient()]
+  }
+}
+
+function getBaseUrl(): string {
+  return (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3300").replace(
+    /\/+$/,
+    ""
+  )
+}
+
+async function getTicketOrganizationContext(ticket: {
+  organizationId: string
+}): Promise<{
+  organizationId: string
+  organizationName: string | null
+  organizationUrl: string
+}> {
+  const org = await getCachedOrganizations([ticket.organizationId])
+  const base = getBaseUrl()
+  return {
+    organizationId: ticket.organizationId,
+    organizationName: org.get(ticket.organizationId)?.name ?? null,
+    organizationUrl: `${base}/en/portal/orgs/${ticket.organizationId}`,
+  }
 }
 
 const createDefaultDependencies = (): SupportTicketRouteDependencies => ({
@@ -118,7 +165,7 @@ const createDefaultDependencies = (): SupportTicketRouteDependencies => ({
   getPlatformRole: getPlatformRoleForUser,
   service: createSupportTicketService(),
   emailService: createEmailService(),
-  resolveSupportRecipients: resolveConfiguredSupportRecipients,
+  resolveSupportRecipients: resolveSupportRecipientsByOrgMembership,
 })
 
 const toUnauthorized = (set: RouteSet) => {
@@ -315,6 +362,12 @@ const supportTicketAdminCreateBodySchema = z.object({
 
 const supportTicketAdminListQuerySchema = z.object({
   organizationId: z.string().trim().min(1).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  includeClosed: z
+    .enum(["1", "true"])
+    .optional()
+    .transform((value) => Boolean(value)),
 })
 
 const supportTicketAdminUpdateBodySchema = z.object({
@@ -364,9 +417,19 @@ export const createSupportTicketRoutes = (
 
           set.status = 201
 
+          const organizationContext = await getTicketOrganizationContext(ticket)
+          const ticketForEmail = {
+            ...ticket,
+            organizationName: organizationContext.organizationName,
+          }
+
           if (requesterEmail) {
             dependencies.emailService
-              .sendTicketCreated(ticket, requesterEmail)
+              .sendTicketCreated(
+                ticketForEmail,
+                requesterEmail,
+                organizationContext
+              )
               .catch((err) => {
                 console.error(
                   "[Support Ticket] Failed to send ticket created email:",
@@ -380,22 +443,33 @@ export const createSupportTicketRoutes = (
             )
           }
 
-          notifySupportRecipients({
-            dependencies,
-            organizationId: actor.organizationId,
-            send: (recipient) =>
-              dependencies.emailService.sendNewTicketAlertToStaff(
-                ticket,
-                recipient.email,
-                undefined,
-                requesterEmail
-              ),
-          }).catch((err) => {
-            console.error(
-              "[Support Ticket] Failed to send admin ticket alert email:",
-              err
+          const adminRecipients = await (
+            dependencies.resolveSupportRecipients ??
+            resolveSupportRecipientsByOrgMembership
+          )(actor.organizationId)
+          const filteredAdminRecipients = excludeRecipient(
+            dedupeRecipients(adminRecipients),
+            { workosUserId: actor.workosUserId, email: requesterEmail }
+          )
+
+          await Promise.allSettled(
+            filteredAdminRecipients.map((recipient) =>
+              dependencies.emailService
+                .sendNewTicketAlertToStaff(
+                  ticketForEmail,
+                  recipient.email,
+                  undefined,
+                  requesterEmail,
+                  organizationContext
+                )
+                .catch((err) => {
+                  console.error(
+                    "[Support Ticket] Failed to send admin ticket alert email:",
+                    err
+                  )
+                })
             )
-          })
+          )
 
           return {
             ok: true as const,
@@ -563,82 +637,101 @@ export const createSupportTicketRoutes = (
     )
     .post(
       "/:ticketId/replies",
-      createRouteHandler(
-        dependencies,
-        async ({ actor, body, params, requesterEmail, set }) => {
-          const parsedParams = supportTicketIdParamsSchema.parse(params)
-          const payload = supportTicketReplyBodySchema.parse(body)
+      createRouteHandler(dependencies, async ({ actor, body, params, set }) => {
+        const parsedParams = supportTicketIdParamsSchema.parse(params)
+        const payload = supportTicketReplyBodySchema.parse(body)
 
-          const thread = await dependencies.service.getTicketThread({
-            actor,
+        const thread = await dependencies.service.getTicketThread({
+          actor,
+          ticketId: parsedParams.ticketId,
+        })
+        const reply = await dependencies.service.addReply({
+          actor,
+          reply: {
             ticketId: parsedParams.ticketId,
-          })
-          const reply = await dependencies.service.addReply({
-            actor,
-            reply: {
-              ticketId: parsedParams.ticketId,
-              authorWorkosUserId: actor.workosUserId,
-              body: payload.body || SECURE_ONLY_REPLY_BODY,
-              secureForm: payload.secureForm,
-              isInternalNote: payload.isInternalNote,
-              uploadSessionIds: payload.uploadSessionIds,
-            },
-          })
+            authorWorkosUserId: actor.workosUserId,
+            body: payload.body || SECURE_ONLY_REPLY_BODY,
+            secureForm: payload.secureForm,
+            isInternalNote: payload.isInternalNote,
+            uploadSessionIds: payload.uploadSessionIds,
+          },
+        })
 
-          set.status = 201
+        set.status = 201
 
-          if (!payload.isInternalNote) {
-            if (thread.ticket.requesterWorkosUserId !== actor.workosUserId) {
-              resolveRequesterEmail(thread.ticket.requesterWorkosUserId)
-                .then((requesterEmail) => {
-                  if (requesterEmail) {
-                    dependencies.emailService
-                      .sendTicketReplied(thread.ticket, reply, requesterEmail)
-                      .catch((err) => {
-                        console.error(
-                          "[Support Ticket] Failed to send ticket replied email:",
-                          err
-                        )
-                      })
-                  } else {
-                    console.warn(
-                      "[Support Ticket] Could not resolve requester email for reply notification:",
-                      thread.ticket.id
-                    )
-                  }
-                })
-                .catch((err) => {
-                  console.error(
-                    "[Support Ticket] Failed to resolve requester email for reply notification:",
-                    err
-                  )
-                })
-            } else {
-              notifySupportRecipients({
-                dependencies,
-                organizationId: actor.organizationId,
-                send: (recipient) =>
-                  dependencies.emailService.sendTicketReplyAlertToStaff(
-                    thread.ticket,
-                    reply,
-                    recipient.email,
-                    requesterEmail
-                  ),
-              }).catch((err) => {
+        const authorUser = await getCachedUsers([actor.workosUserId]).catch(
+          () => new Map()
+        )
+        const authorProfile = authorUser.get(actor.workosUserId)
+        const replyContext = {
+          authorName: authorProfile?.name ?? actor.workosUserId,
+          authorRole:
+            actor.isSuperAdmin || actor.canManageTickets
+              ? ("Support Admin" as const)
+              : ("Requester" as const),
+          hasSecureDetails: Boolean(reply.secureForm),
+          repliedAt: reply.createdAt,
+        }
+
+        if (!payload.isInternalNote) {
+          const resolvedRequesterEmail =
+            thread.ticket.requesterWorkosUserId !== actor.workosUserId
+              ? await resolveRequesterEmail(thread.ticket.requesterWorkosUserId)
+              : null
+
+          if (resolvedRequesterEmail) {
+            dependencies.emailService
+              .sendTicketReplied(
+                thread.ticket,
+                reply,
+                resolvedRequesterEmail,
+                replyContext
+              )
+              .catch((err) => {
                 console.error(
-                  "[Support Ticket] Failed to send admin ticket reply alert email:",
+                  "[Support Ticket] Failed to send ticket replied email:",
                   err
                 )
               })
-            }
           }
 
-          return {
-            ok: true as const,
-            reply,
-          }
+          const adminRecipients = await (
+            dependencies.resolveSupportRecipients ??
+            resolveSupportRecipientsByOrgMembership
+          )(thread.ticket.organizationId)
+          const filteredAdminRecipients = excludeRecipient(
+            dedupeRecipients(adminRecipients),
+            {
+              workosUserId: actor.workosUserId,
+              email: resolvedRequesterEmail ?? undefined,
+            }
+          )
+
+          await Promise.allSettled(
+            filteredAdminRecipients.map((recipient) =>
+              dependencies.emailService
+                .sendTicketReplyAlertToStaff(
+                  thread.ticket,
+                  reply,
+                  recipient.email,
+                  resolvedRequesterEmail ?? undefined,
+                  replyContext
+                )
+                .catch((err) => {
+                  console.error(
+                    "[Support Ticket] Failed to send admin ticket reply alert email:",
+                    err
+                  )
+                })
+            )
+          )
         }
-      ),
+
+        return {
+          ok: true as const,
+          reply,
+        }
+      }),
       {
         params: supportTicketIdParamsSchema,
         body: supportTicketReplyBodySchema,
@@ -777,27 +870,42 @@ export const createSupportTicketRoutes = (
         }
 
         const parsedQuery = supportTicketAdminListQuerySchema.parse(query)
-        const tickets = await dependencies.service.listAllTickets({
+        const result = await dependencies.service.listAllTickets({
           actor,
+          includeClosed: parsedQuery.includeClosed,
           organizationId: parsedQuery.organizationId,
+          page: parsedQuery.page,
+          pageSize: parsedQuery.pageSize,
         })
+        const tickets = result.tickets
 
-        // Resolve requester names for display
+        // Resolve requester and organization names for display
         const requesterIds = [
           ...new Set(
             tickets.map((t) => t.requesterWorkosUserId).filter(Boolean)
           ),
         ]
-        const users = await getCachedUsers(requesterIds)
+        const organizationIds = [
+          ...new Set(tickets.map((ticket) => ticket.organizationId)),
+        ]
+        const [users, organizations] = await Promise.all([
+          getCachedUsers(requesterIds),
+          getCachedOrganizations(organizationIds),
+        ])
 
         const enrichedTickets = tickets.map((ticket) => ({
           ...ticket,
           requesterName: users.get(ticket.requesterWorkosUserId)?.name ?? null,
+          organizationName:
+            organizations.get(ticket.organizationId)?.name ?? null,
         }))
 
         return {
           ok: true as const,
           tickets: enrichedTickets,
+          total: result.total,
+          page: result.page,
+          pageSize: result.pageSize,
         }
       })
     )

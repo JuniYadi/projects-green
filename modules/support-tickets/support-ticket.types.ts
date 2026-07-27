@@ -126,6 +126,13 @@ export type SupportTicket = SupportTicketOwnership & {
   requesterName?: string | null
 }
 
+export type SupportTicketListResult = {
+  tickets: SupportTicket[]
+  total: number
+  page: number
+  pageSize: number
+}
+
 export type SupportTicketReply = {
   attachmentMetadata: SupportTicketAttachmentMetadata[]
   authorWorkosUserId: string

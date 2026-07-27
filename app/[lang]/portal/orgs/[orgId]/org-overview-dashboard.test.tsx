@@ -7,6 +7,8 @@ const mockReplace = mock()
 mock.module("next/navigation", () => ({
   useRouter: () => ({ replace: mockReplace }),
   useParams: () => ({ lang: "en" }),
+  usePathname: () => "/en/portal/orgs/org_usd",
+  useSearchParams: () => new URLSearchParams(),
 }))
 
 const mockGetAdminOrgDetail = mock<(orgId: string) => Promise<any>>(
@@ -38,9 +40,12 @@ const mockGetAdminAdjustments = mock(async () => ({
   pagination: { page: 1, limit: 50, total: 0, totalPages: 1 },
 }))
 
-const mockListAdminTickets = mock<
-  (params?: { organizationId?: string }) => Promise<unknown[]>
->(async () => [])
+const mockListAdminTickets = mock(async () => ({
+  tickets: [],
+  total: 0,
+  page: 1,
+  pageSize: 20,
+}))
 
 const mockGetOrganizationMembers = mock(async () => ({ data: [] }))
 const mockGetOrganizationInvitations = mock(async () => ({ data: [] }))
@@ -162,7 +167,10 @@ describe("OrgOverviewDashboard", () => {
 
     await waitFor(() =>
       expect(mockListAdminTickets).toHaveBeenCalledWith({
+        includeClosed: false,
         organizationId: "org_usd",
+        page: 1,
+        pageSize: 20,
       })
     )
   })
