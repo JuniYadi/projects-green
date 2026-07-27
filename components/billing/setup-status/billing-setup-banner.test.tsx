@@ -25,7 +25,10 @@ mock.module("@/lib/eden", () => ({
       portal: {
         payments: {
           gateways: {
-            get: () => Promise.resolve(mockGateways),
+            get: () =>
+              mockGateways === null
+                ? Promise.reject(new Error("boom"))
+                : Promise.resolve(mockGateways),
           },
           "bank-accounts": {
             get: () => Promise.resolve(mockBankAccounts),
@@ -151,5 +154,15 @@ describe("BillingSetupBannerClient", () => {
     expect(links[0].className).toContain("focus-visible:ring-2")
     expect(links[0].className).toContain("focus-visible:ring-ring")
     expect(links[0].className).toContain("focus-visible:ring-offset-2")
+  })
+  it("renders nothing (no crash) when a prerequisite API throws", async () => {
+    // Setting mockGateways to null makes the eden mock's get() return a rejected promise,
+    // which drives useBillingSetupStatus's .catch() branch.
+    mockGateways = null as unknown as { status: number; data: unknown[] }
+
+    const view = render(<BillingSetupBannerClient locale="en" />)
+    await waitFor(() => {
+      expect(view.queryByTestId("billing-setup-banner")).toBeNull()
+    })
   })
 })
