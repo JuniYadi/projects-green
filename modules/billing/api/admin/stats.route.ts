@@ -21,7 +21,7 @@ type RouteSet = {
 type AdminStatsRouteDeps = {
   authenticate: () => Promise<BillingAuthContext>
   getPlatformRole: (input: {
-    id: string
+    id?: string | null
     email?: string | null
   }) => Promise<PlatformAccessRole>
 }

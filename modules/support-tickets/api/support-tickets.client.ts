@@ -235,12 +235,10 @@ export const createSupportTicketsClient = () => {
       return payload.attachment
     },
     async listAdminTickets(params?: { organizationId?: string }) {
-      const search = new URLSearchParams()
-      if (params?.organizationId) {
-        search.set("organizationId", params.organizationId)
-      }
-      const qs = search.toString()
-      const path = `/api/support-tickets/admin${qs ? `?${qs}` : ""}`
+      const qs = params?.organizationId
+        ? `?organizationId=${encodeURIComponent(params.organizationId)}`
+        : ""
+      const path = `/api/support-tickets/admin${qs}`
       const payload = await requestJson<{
         ok: true
         tickets: SupportTicket[]

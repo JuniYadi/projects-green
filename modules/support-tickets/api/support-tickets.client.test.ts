@@ -233,7 +233,7 @@ describe("support tickets client", () => {
     await client.listAdminTickets({ organizationId: "org custom/id" })
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/support-tickets/admin?organizationId=org+custom%2Fid",
+      "/api/support-tickets/admin?organizationId=org%20custom%2Fid",
       undefined
     )
   })
