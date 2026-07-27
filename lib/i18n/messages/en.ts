@@ -393,6 +393,11 @@ export const enMessages: AppMessages = {
       securePlaceholder:
         "Sensitive credentials, configurations, or secrets only",
       attachmentsOptional: "Attachments (optional)",
+      showSecureDetails: "Show secure details",
+      hideSecureDetails: "Hide secure details",
+      possibleCredentialTitle: "Possible credential detected",
+      possibleCredentialBody:
+        "Looks like a credential. Move it to Secure details.",
       categorization: "Categorization",
       serviceOptional: "Service (optional)",
       selectDepartment: "Select department",

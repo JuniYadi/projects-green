@@ -338,4 +338,26 @@ describe("SupportTicketCreateScreen", () => {
     expect(view.getByText("report.pdf")).toBeTruthy()
     expect(view.getAllByRole("button", { name: "✕" }).length).toBe(2)
   })
+
+  it("shows credential warning when subject contains password=secret", async () => {
+    const view = renderScreen()
+    await waitFor(() => {
+      expect(
+        view.getByPlaceholderText("Describe your issue")
+      ).toBeInTheDocument()
+    })
+
+    const subjectInput = view.getByPlaceholderText(
+      "Describe your issue"
+    ) as HTMLInputElement
+    subjectInput.value = "password=secret"
+    fireEvent.input(subjectInput)
+
+    await waitFor(() => {
+      expect(view.getByTestId("ticket-credential-warning")).toBeInTheDocument()
+    })
+    expect(view.getByTestId("ticket-credential-warning")).toHaveTextContent(
+      "Possible credential detected"
+    )
+  })
 })

@@ -1381,4 +1381,57 @@ describe("support ticket routes", () => {
       ticket: { status: "closed" },
     })
   })
+  it("accepts secure-only reply with empty body and normalizes to SECURE_ONLY_REPLY_BODY", async () => {
+    let capturedBody = ""
+    let capturedSecureForm = ""
+    const app = createApp({
+      async getTicketThread() {
+        return { ticket: baseTicket, replies: [] }
+      },
+      async addReply(input: {
+        actor: unknown
+        reply: { body: string; secureForm?: string | null }
+      }) {
+        capturedBody = input.reply.body
+        capturedSecureForm = String(input.reply.secureForm ?? "")
+        return {
+          id: "reply_secure",
+          ticketId: "ticket_1",
+          authorWorkosUserId: "user_1",
+          body: "details on secure message",
+          secureForm: "secret",
+          isInternalNote: false,
+          attachmentMetadata: [],
+          createdAt: new Date("2026-05-21T02:00:00.000Z"),
+          updatedAt: new Date("2026-05-21T02:00:00.000Z"),
+        }
+      },
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/ticket_1/replies", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ body: "", secureForm: "secret" }),
+      })
+    )
+
+    expect(response.status).toBe(201)
+    expect(capturedBody).toBe("details on secure message")
+    expect(capturedSecureForm).toBe("secret")
+  })
+
+  it("rejects reply with both empty body and empty secureForm", async () => {
+    const app = createApp({})
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/ticket_1/replies", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ body: "", secureForm: "" }),
+      })
+    )
+
+    expect(response.status).toBeGreaterThanOrEqual(400)
+  })
 })

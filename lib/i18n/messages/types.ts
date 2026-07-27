@@ -368,6 +368,10 @@ export type AppMessages = {
       secureDescription: string
       secureDetailsOptional: string
       securePlaceholder: string
+      showSecureDetails: string
+      hideSecureDetails: string
+      possibleCredentialTitle: string
+      possibleCredentialBody: string
       attachmentsOptional: string
       categorization: string
       serviceOptional: string

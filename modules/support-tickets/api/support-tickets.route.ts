@@ -26,6 +26,7 @@ import {
   createEmailService,
   type EmailService,
 } from "@/modules/support-tickets/email.service"
+import { SECURE_ONLY_REPLY_BODY } from "@/modules/support-tickets/support-ticket.types"
 import { getCachedUsers } from "@/lib/workos-directory"
 import { prisma } from "@/lib/prisma"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
@@ -285,12 +286,17 @@ const supportTicketCreateBodySchema = z.object({
   uploadSessionIds: z.array(z.string().trim().min(1)).default([]).optional(),
 })
 
-const supportTicketReplyBodySchema = z.object({
-  body: z.string().trim().min(1),
-  secureForm: z.string().trim().min(1).nullable().optional(),
-  isInternalNote: z.boolean().default(false).optional(),
-  uploadSessionIds: z.array(z.string().trim().min(1)).default([]).optional(),
-})
+const supportTicketReplyBodySchema = z
+  .object({
+    body: z.string().trim().default(""),
+    secureForm: z.string().trim().min(1).nullable().optional(),
+    isInternalNote: z.boolean().default(false).optional(),
+    uploadSessionIds: z.array(z.string().trim().min(1)).default([]).optional(),
+  })
+  .refine((value) => value.body || value.secureForm, {
+    message: "Reply message or secure details is required.",
+    path: ["body"],
+  })
 
 const supportTicketIdParamsSchema = z.object({
   ticketId: z.string().trim().min(1),
@@ -567,13 +573,12 @@ export const createSupportTicketRoutes = (
             actor,
             ticketId: parsedParams.ticketId,
           })
-
           const reply = await dependencies.service.addReply({
             actor,
             reply: {
               ticketId: parsedParams.ticketId,
               authorWorkosUserId: actor.workosUserId,
-              body: payload.body,
+              body: payload.body || SECURE_ONLY_REPLY_BODY,
               secureForm: payload.secureForm,
               isInternalNote: payload.isInternalNote,
               uploadSessionIds: payload.uploadSessionIds,

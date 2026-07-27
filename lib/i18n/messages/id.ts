@@ -392,6 +392,11 @@ export const idMessages: AppMessages = {
       secureDetailsOptional: "Detail Aman (opsional)",
       securePlaceholder: "Kredensial sensitif, konfigurasi, atau rahasia saja",
       attachmentsOptional: "Lampiran (opsional)",
+      showSecureDetails: "Tampilkan detail aman",
+      hideSecureDetails: "Sembunyikan detail aman",
+      possibleCredentialTitle: "Kemungkinan kredensial terdeteksi",
+      possibleCredentialBody:
+        "Sepertinya kredensial. Pindahkan ke Detail aman.",
       categorization: "Kategorisasi",
       serviceOptional: "Layanan (opsional)",
       selectDepartment: "Pilih departemen",
