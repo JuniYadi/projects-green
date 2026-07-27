@@ -13,6 +13,7 @@ type MarkdownEditorProps = {
   className?: string
   rows?: number
   defaultValue?: string
+  onInput?: React.FormEventHandler<HTMLTextAreaElement>
 }
 
 export const MarkdownEditor = React.forwardRef<
@@ -20,7 +21,15 @@ export const MarkdownEditor = React.forwardRef<
   MarkdownEditorProps
 >(
   (
-    { id, placeholder, disabled, className, rows = 5, defaultValue = "" },
+    {
+      id,
+      placeholder,
+      disabled,
+      className,
+      rows = 5,
+      defaultValue = "",
+      onInput,
+    },
     forwardedRef
   ) => {
     const localRef = useRef<HTMLTextAreaElement>(null)
@@ -240,6 +249,7 @@ export const MarkdownEditor = React.forwardRef<
               placeholder={placeholder}
               disabled={disabled}
               defaultValue={defaultValue}
+              onInput={onInput}
               className={`min-h-[120px] w-full resize-y rounded-none border-0 bg-transparent p-3 text-white ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 ${className}`}
             />
           </div>

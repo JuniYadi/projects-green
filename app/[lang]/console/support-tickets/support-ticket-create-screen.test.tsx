@@ -149,7 +149,6 @@ describe("SupportTicketCreateScreen", () => {
     expect(view.getByLabelText("Service (optional)")).toBeTruthy()
     expect(view.getByLabelText("Priority")).toBeTruthy()
     expect(view.getByLabelText("Message (optional)")).toBeTruthy()
-    expect(view.getByLabelText("Secure Details (optional)")).toBeTruthy()
     expect(view.getByLabelText("Attachments (optional)")).toBeTruthy()
     expect(view.getByRole("button", { name: "Submit Ticket" })).toBeTruthy()
     expect(view.getByRole("button", { name: "Cancel" })).toBeTruthy()
@@ -217,29 +216,23 @@ describe("SupportTicketCreateScreen", () => {
 
     const textareas = view.container.querySelectorAll("textarea")
     const descriptionTextarea = textareas[0]
-    const secureTextarea = textareas[1]
 
     descriptionTextarea.value = "General info content"
+
+    // Secure textarea starts hidden behind disclosure — expand it
+    fireEvent.click(view.getByRole("button", { name: /show secure details/i }))
+
+    const secureContent = view.getByTestId("secure-tab-content")
+    expect(secureContent).toBeInTheDocument()
+
+    const allTextareas = view.container.querySelectorAll("textarea")
+    const secureTextarea = allTextareas[1]
+    expect(secureTextarea).toBeTruthy()
     secureTextarea.value = "Super secret tokens"
-
-    const messageTabContent = view.getByTestId("message-tab-content")
-    const secureTabContent = view.getByTestId("secure-tab-content")
-
-    expect(messageTabContent.className).not.toContain("hidden")
-    expect(secureTabContent.className).toContain("hidden")
-
-    const secureTabButton = view.getByRole("button", {
-      name: /secure details/i,
-    })
-    fireEvent.click(secureTabButton)
-
-    expect(messageTabContent.className).toContain("hidden")
-    expect(secureTabContent.className).not.toContain("hidden")
 
     expect(descriptionTextarea.value).toBe("General info content")
     expect(secureTextarea.value).toBe("Super secret tokens")
   })
-
   it("renders image previews and document icons for attachments", async () => {
     const view = renderScreen()
 
@@ -337,5 +330,27 @@ describe("SupportTicketCreateScreen", () => {
     expect(view.getByText("screenshot.png")).toBeTruthy()
     expect(view.getByText("report.pdf")).toBeTruthy()
     expect(view.getAllByRole("button", { name: "✕" }).length).toBe(2)
+  })
+
+  it("shows credential warning when subject contains password=secret", async () => {
+    const view = renderScreen()
+    await waitFor(() => {
+      expect(
+        view.getByPlaceholderText("Describe your issue")
+      ).toBeInTheDocument()
+    })
+
+    const subjectInput = view.getByPlaceholderText(
+      "Describe your issue"
+    ) as HTMLInputElement
+    subjectInput.value = "password=secret"
+    fireEvent.input(subjectInput)
+
+    await waitFor(() => {
+      expect(view.getByTestId("ticket-credential-warning")).toBeInTheDocument()
+    })
+    expect(view.getByTestId("ticket-credential-warning")).toHaveTextContent(
+      "Possible credential detected"
+    )
   })
 })

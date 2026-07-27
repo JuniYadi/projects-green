@@ -4,13 +4,16 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { looksLikeCredential } from "@/lib/credential-patterns"
 import { createSupportTicketsClient } from "@/modules/support-tickets/api/support-tickets.client"
 
 import { SupportTicketDetailSkeleton } from "@/modules/support-tickets/ui/support-ticket-detail-skeleton"
 import {
+  SECURE_ONLY_REPLY_BODY,
   SUPPORT_TICKET_DEPARTMENT_LABELS,
   SUPPORT_TICKET_PRIORITY_LABELS,
   SUPPORT_TICKET_SERVICE_LABELS,
@@ -169,7 +172,14 @@ export function SupportTicketDetailScreen({
   const [files, setFiles] = useState<FileWithPreview[]>([])
   const [isSubmittingReply, setIsSubmittingReply] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
-  const [activeTab, setActiveTab] = useState<"message" | "secure">("message")
+  const [showSecureComposer, setShowSecureComposer] = useState(false)
+  const [credentialWarning, setCredentialWarning] = useState<{
+    field: "message" | "secureForm"
+    patterns: string[]
+  } | null>(null)
+  const [secureSavedMessage, setSecureSavedMessage] = useState<string | null>(
+    null
+  )
   const [activePreview, setActivePreview] =
     useState<SupportTicketAttachmentMetadata | null>(null)
   const [isLoadingPreview, setIsLoadingPreview] = useState(false)
@@ -327,6 +337,16 @@ export function SupportTicketDetailScreen({
     return `${total} repl${total === 1 ? "y" : "ies"}`
   }, [thread?.replies.length])
 
+  const updateCredentialWarning = (
+    value: string,
+    field: "message" | "secureForm"
+  ) => {
+    const match = looksLikeCredential(value)
+    setCredentialWarning(
+      match.match ? { field, patterns: match.patterns } : null
+    )
+  }
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(event.target.files ?? [])
     const nextFiles = selected.map((file) => ({
@@ -387,26 +407,37 @@ export function SupportTicketDetailScreen({
   const submitReply = async () => {
     const replyBody = replyBodyRef.current?.value || ""
     const replySecureForm = replySecureFormRef.current?.value || ""
+    const hasSecure = Boolean(replySecureForm.trim())
 
-    if (!replyBody.trim()) {
-      setErrorMessage("Reply message is required.")
+    if (!replyBody.trim() && !hasSecure) {
+      setErrorMessage("Reply message or secure details is required.")
       return
     }
 
+    setSecureSavedMessage(null)
     setIsSubmittingReply(true)
     setErrorMessage(null)
 
     try {
       const uploadSessionIds = await uploadReplyFiles()
+      const bodyToSend = replyBody.trim() || SECURE_ONLY_REPLY_BODY
       await apiClient.addReply({
         ticketId,
-        body: replyBody.trim(),
-        secureForm: replySecureForm.trim() ? replySecureForm.trim() : null,
+        body: bodyToSend,
+        secureForm: hasSecure ? replySecureForm.trim() : null,
         uploadSessionIds,
       })
 
       if (replyBodyRef.current) replyBodyRef.current.value = ""
       if (replySecureFormRef.current) replySecureFormRef.current.value = ""
+      setShowSecureComposer(false)
+      setCredentialWarning(null)
+
+      if (hasSecure) {
+        setSecureSavedMessage(
+          `Secure details saved (encrypted). The plain message will read: '${SECURE_ONLY_REPLY_BODY}'.`
+        )
+      }
 
       files.forEach((f) => {
         if (f.previewUrl) {
@@ -443,20 +474,30 @@ export function SupportTicketDetailScreen({
 
     try {
       const closedTicket = await apiClient.closeTicket(ticket.id)
-      setThread((current) => {
-        if (!current) {
-          return current
-        }
-
-        return {
-          ...current,
-          ticket: closedTicket,
-        }
-      })
-      // router.refresh() retriggers the loadThread useEffect, which re-fetches
-      // the thread so the server-side secureForm wipes propagate to the
-      // SecureDetailsViewer DOM.
-      router.refresh()
+      setSecureSavedMessage(null)
+      setShowSecureComposer(false)
+      setCredentialWarning(null)
+      try {
+        const refreshedThread = await apiClient.getTicketThread(ticket.id)
+        setThread(refreshedThread)
+      } catch {
+        setThread((current) =>
+          current
+            ? {
+                ...current,
+                ticket: {
+                  ...closedTicket,
+                  secureForm: null,
+                },
+                replies: current.replies.map((reply) => ({
+                  ...reply,
+                  secureForm: null,
+                })),
+              }
+            : current
+        )
+        router.refresh()
+      }
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -553,7 +594,7 @@ export function SupportTicketDetailScreen({
       )}
 
       <Card className="border-border bg-card text-card-foreground">
-        <CardHeader className="pb-3">
+        <CardContent className="space-y-6 pt-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <h2
               className="font-heading text-base font-semibold"
@@ -580,8 +621,7 @@ export function SupportTicketDetailScreen({
               </Button>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-5">
+
           <dl className="grid gap-4 border-b border-border/50 pb-4 text-sm sm:grid-cols-2 md:grid-cols-4">
             <div>
               <dt className="text-xs font-semibold text-muted-foreground">
@@ -692,175 +732,133 @@ export function SupportTicketDetailScreen({
               </div>
             </div>
           ) : null}
-        </CardContent>
-      </Card>
 
-      <Card className="border-border bg-card text-card-foreground">
-        <CardHeader className="border-b border-border/50 pb-3">
-          <div className="flex items-center justify-between">
-            <h3
-              className="font-heading text-base font-semibold"
-              data-slot="card-title"
-            >
-              Thread
-            </h3>
-            <p className="text-xs font-medium text-muted-foreground">
-              {replyCountLabel}
-            </p>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-5">
-          {thread.replies.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground italic">
-              No replies yet.
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {thread.replies.map((reply) => {
-                const author = thread.users?.[reply.authorWorkosUserId] || {
-                  name: `User (${reply.authorWorkosUserId.slice(-4)})`,
-                  avatarUrl: null,
-                  isStaff: false,
-                }
-                const initials = resolveInitials(author.name)
-                const cardClasses = author.isStaff
-                  ? "rounded-lg border border-primary/30 border-l-4 border-l-primary bg-primary/[0.05] dark:bg-primary/[0.02] p-4 space-y-3 relative overflow-hidden shadow-xs"
-                  : "rounded-lg border border-border bg-muted/20 dark:bg-muted/10 p-4 space-y-3 relative overflow-hidden"
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-border/50 pb-2">
+              <h3 className="font-heading text-base font-semibold">Thread</h3>
+              <p className="text-xs font-medium text-muted-foreground">
+                {replyCountLabel}
+              </p>
+            </div>
+            {thread.replies.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground italic">
+                No replies yet.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {thread.replies.map((reply) => {
+                  const author = thread.users?.[reply.authorWorkosUserId] || {
+                    name: `User (${reply.authorWorkosUserId.slice(-4)})`,
+                    avatarUrl: null,
+                    isStaff: false,
+                  }
+                  const initials = resolveInitials(author.name)
 
-                return (
-                  <article key={reply.id} className={cardClasses}>
-                    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border/30 pb-2">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8 rounded-full border border-border bg-muted">
-                          {author.avatarUrl ? (
-                            <AvatarImage
-                              src={author.avatarUrl}
-                              alt={author.name}
-                            />
-                          ) : null}
-                          <AvatarFallback className="rounded-full text-xs font-semibold">
-                            {initials}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="grid gap-0.5">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm leading-none font-semibold text-foreground">
+                  let cardClasses =
+                    "rounded-lg border p-4 space-y-3 relative overflow-hidden"
+                  if (reply.isInternalNote) {
+                    cardClasses +=
+                      " border-yellow-500/30 border-l-4 border-l-yellow-500 bg-yellow-500/[0.05] dark:bg-yellow-500/[0.02]"
+                  } else if (author.isStaff) {
+                    cardClasses +=
+                      " border-primary/30 border-l-4 border-l-primary bg-primary/[0.05] dark:bg-primary/[0.02] shadow-xs"
+                  } else {
+                    cardClasses += " border-border bg-muted/20 dark:bg-muted/10"
+                  }
+
+                  return (
+                    <article key={reply.id} className={cardClasses}>
+                      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border/30 pb-2">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8 rounded-full border border-border bg-muted">
+                            {author.avatarUrl ? (
+                              <AvatarImage
+                                src={author.avatarUrl}
+                                alt={author.name}
+                              />
+                            ) : null}
+                            <AvatarFallback className="rounded-full text-xs font-semibold">
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="grid gap-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm leading-none font-semibold text-foreground">
+                                {author.name}
+                              </span>
+                              {reply.isInternalNote ? (
+                                <span className="rounded border border-yellow-500/30 bg-yellow-500/20 px-1.5 py-0.5 text-[10px] font-bold text-yellow-600 uppercase dark:text-yellow-400">
+                                  Internal Note
+                                </span>
+                              ) : author.isStaff ? (
+                                <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                                  Support Team
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground dark:bg-muted/30">
+                                  Customer
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-muted-foreground">
                               {author.name}
                             </span>
-                            {author.isStaff ? (
-                              <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                                Support Team
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground dark:bg-muted/30">
-                                Customer
-                              </span>
-                            )}
                           </div>
                         </div>
+                        <time className="self-center text-[11px] font-medium text-muted-foreground">
+                          {new Date(reply.createdAt).toLocaleString()}
+                        </time>
                       </div>
-                      <time className="self-center text-[11px] font-medium text-muted-foreground">
-                        {new Date(reply.createdAt).toLocaleString()}
-                      </time>
-                    </div>
-                    {reply.bodyHtml ? (
-                      <div
-                        className="space-y-3 pt-1 text-sm leading-relaxed text-foreground [&_a]:text-primary [&_a]:underline [&_code]:rounded [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-semibold [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-muted/50 [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5"
-                        dangerouslySetInnerHTML={{ __html: reply.bodyHtml }}
-                      />
-                    ) : (
-                      <p className="pt-1 text-sm leading-relaxed whitespace-pre-wrap text-foreground">
-                        {reply.body}
-                      </p>
-                    )}
-
-                    {reply.secureForm ? (
-                      <SecureDetailsViewer
-                        content={reply.secureForm}
-                        label="Secure details"
-                      />
-                    ) : null}
-
-                    {reply.attachmentMetadata.length > 0 ? (
-                      <div className="space-y-1.5 pt-2">
-                        <p className="text-[10px] font-semibold text-muted-foreground">
-                          Attachments
+                      {reply.bodyHtml ? (
+                        <div
+                          className="space-y-3 pt-1 text-sm leading-relaxed text-foreground [&_a]:text-primary [&_a]:underline [&_code]:rounded [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_h1]:text-lg [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-semibold [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-muted/50 [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5"
+                          dangerouslySetInnerHTML={{ __html: reply.bodyHtml }}
+                        />
+                      ) : (
+                        <p className="pt-1 text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+                          {reply.body}
                         </p>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          {reply.attachmentMetadata.map((attachment) => (
-                            <AttachmentItem
-                              key={attachment.id}
-                              attachment={attachment}
-                              onPreview={handleAttachmentClick}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                  </article>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                      )}
 
-      {isClosed ? (
-        <Card className="border-border bg-card text-card-foreground">
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">
+                      {reply.secureForm ? (
+                        <SecureDetailsViewer
+                          content={reply.secureForm}
+                          label="Secure details"
+                        />
+                      ) : null}
+
+                      {reply.attachmentMetadata.length > 0 ? (
+                        <div className="space-y-1.5 pt-2">
+                          <p className="text-[10px] font-semibold text-muted-foreground">
+                            Attachments
+                          </p>
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            {reply.attachmentMetadata.map((attachment) => (
+                              <AttachmentItem
+                                key={attachment.id}
+                                attachment={attachment}
+                                onPreview={handleAttachmentClick}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {isClosed ? (
+            <div className="rounded-lg border border-border/50 bg-muted/30 p-4 text-sm text-muted-foreground">
               This ticket is closed. If you have a new issue, please open a new
               ticket.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="border-border bg-card text-card-foreground">
-          <CardHeader className="border-b border-border/50 pb-3">
-            <h3
-              className="font-heading text-base font-semibold"
-              data-slot="card-title"
-            >
-              Reply
-            </h3>
-          </CardHeader>
-          <CardContent className="space-y-6 pt-5">
-            {/* Tabbed Editor Container */}
-            <div className="space-y-4">
-              {/* Tabs list */}
-              <div className="flex border-b border-border">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("message")}
-                  className={`-mb-[1px] border-b-2 px-4 py-2 text-sm font-medium transition-all ${
-                    activeTab === "message"
-                      ? "border-primary font-semibold text-foreground"
-                      : "border-transparent text-muted-foreground hover:text-foreground disabled:opacity-50"
-                  }`}
-                >
-                  General Message
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("secure")}
-                  className={`-mb-[1px] flex items-center gap-1.5 border-b-2 px-4 py-2 text-sm font-medium transition-all ${
-                    activeTab === "secure"
-                      ? "border-yellow-500 font-semibold text-yellow-500"
-                      : "border-transparent text-muted-foreground hover:text-foreground disabled:opacity-50"
-                  }`}
-                >
-                  <span className="relative flex h-2 w-2">
-                    {activeTab === "secure" && (
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400 opacity-75"></span>
-                    )}
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-500"></span>
-                  </span>
-                  Secure details
-                </button>
-              </div>
-
-              {/* General Message Tab */}
-              <div className={activeTab === "message" ? "space-y-2" : "hidden"}>
+            </div>
+          ) : (
+            <div className="space-y-4 border-t border-border/50 pt-5">
+              <h3 className="font-heading text-base font-semibold">Reply</h3>
+              <div className="space-y-2">
                 <Label
                   htmlFor="reply-body"
                   className="text-xs font-semibold text-muted-foreground"
@@ -873,148 +871,169 @@ export function SupportTicketDetailScreen({
                   rows={4}
                   placeholder="Write your reply"
                   disabled={isSubmittingReply}
+                  onInput={(event) =>
+                    updateCredentialWarning(
+                      event.currentTarget.value,
+                      "message"
+                    )
+                  }
                 />
               </div>
 
-              {/* Secure Details Tab */}
-              <div className={activeTab === "secure" ? "space-y-4" : "hidden"}>
-                <div className="space-y-2 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.02] p-4">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center justify-center rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-semibold text-yellow-500">
-                      Encrypted
+              <div className="grid gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.02] p-4">
+                <button
+                  type="button"
+                  onClick={() => setShowSecureComposer((prev) => !prev)}
+                  className="flex items-center justify-between gap-2 text-left text-sm font-medium text-yellow-500"
+                  aria-expanded={showSecureComposer}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-500" />
                     </span>
-                    <span className="flex items-center gap-1 text-xs font-medium text-yellow-500/90">
-                      <svg
-                        className="h-3.5 w-3.5 text-yellow-500"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2.5"
-                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                        ></path>
-                      </svg>
-                      End-to-End Secure Channel
-                    </span>
-                  </div>
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    Details entered here are encrypted end-to-end and only
-                    visible to engineers assigned to your ticket. Use this
-                    section for passwords, tokens, API keys, or sensitive
-                    credentials.
-                  </p>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="reply-secure-form" className="sr-only">
-                    Secure Form (encrypted)
+                    Secure details (encrypted)
+                  </span>
+                  <span className="text-xs font-semibold underline-offset-2 hover:underline">
+                    {showSecureComposer
+                      ? "Hide secure details"
+                      : "Show secure details"}
+                  </span>
+                </button>
+                {showSecureComposer ? (
+                  <>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Details entered here are encrypted end-to-end and only
+                      visible to engineers assigned to your ticket. Use this
+                      section for passwords, tokens, API keys, or sensitive
+                      credentials.
+                    </p>
+                    <Label htmlFor="reply-secure-form" className="sr-only">
+                      Secure Form (encrypted)
+                    </Label>
+                    <MarkdownEditor
+                      id="reply-secure-form"
+                      ref={replySecureFormRef}
+                      rows={4}
+                      placeholder="Sensitive credentials, configurations, or secrets only"
+                      disabled={isSubmittingReply}
+                      onInput={(event) =>
+                        updateCredentialWarning(
+                          event.currentTarget.value,
+                          "secureForm"
+                        )
+                      }
+                    />
+                  </>
+                ) : null}
+              </div>
+
+              {credentialWarning ? (
+                <Alert variant="destructive" data-testid="credential-warning">
+                  <AlertTitle>Possible credential detected</AlertTitle>
+                  <AlertDescription>
+                    Looks like a credential. Move it to Secure details.{" "}
+                    {credentialWarning.patterns.join(", ")}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+
+              {secureSavedMessage ? (
+                <Alert data-testid="secure-saved-message">
+                  <AlertTitle>{secureSavedMessage}</AlertTitle>
+                </Alert>
+              ) : null}
+
+              <div className="my-4 border-t border-border" />
+
+              <div className="space-y-4">
+                <div className="flex flex-col gap-2">
+                  <Label
+                    htmlFor="reply-files"
+                    className="text-xs font-semibold text-muted-foreground"
+                  >
+                    Attachments (optional)
                   </Label>
-                  <MarkdownEditor
-                    id="reply-secure-form"
-                    ref={replySecureFormRef}
-                    rows={4}
-                    placeholder="Sensitive credentials, configurations, or secrets only"
+                  <Input
+                    id="reply-files"
+                    type="file"
+                    multiple
+                    onChange={handleFileChange}
                     disabled={isSubmittingReply}
+                    className="cursor-pointer border-border bg-background/50 text-foreground file:rounded-md file:border-0 file:bg-primary/10 file:text-foreground"
                   />
                 </div>
-              </div>
-            </div>
 
-            {/* Divider */}
-            <div className="my-4 border-t border-border" />
-
-            {/* Attachments Section */}
-            <div className="space-y-4">
-              <div className="flex flex-col gap-2">
-                <Label
-                  htmlFor="reply-files"
-                  className="text-xs font-semibold text-muted-foreground"
-                >
-                  Attachments (optional)
-                </Label>
-                <Input
-                  id="reply-files"
-                  type="file"
-                  multiple
-                  onChange={handleFileChange}
-                  disabled={isSubmittingReply}
-                  className="cursor-pointer border-border bg-background/50 text-foreground file:rounded-md file:border-0 file:bg-primary/10 file:text-foreground"
-                />
-              </div>
-
-              {files.length > 0 && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {files.map((item, idx) => {
-                    const isImage = item.file.type.startsWith("image/")
-                    return (
-                      <div
-                        key={idx}
-                        className="group relative flex items-center gap-3 rounded-lg border border-border bg-card/50 p-2"
-                      >
-                        {isImage && item.previewUrl ? (
-                          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded border border-border bg-muted">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={item.previewUrl}
-                              alt={item.file.name}
-                              className="h-full w-full object-cover"
-                            />
-                          </div>
-                        ) : (
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-border bg-muted text-muted-foreground">
-                            <svg
-                              className="h-5 w-5"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                              xmlns="http://www.w3.org/2000/svg"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                              />
-                            </svg>
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-medium text-foreground">
-                            {item.file.name}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {formatBytes(item.file.size)}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFile(idx)}
-                          className="absolute -top-1.5 -right-1.5 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-[10px] text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:bg-muted hover:text-foreground focus:opacity-100"
+                {files.length > 0 && (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {files.map((item, idx) => {
+                      const isImage = item.file.type.startsWith("image/")
+                      return (
+                        <div
+                          key={idx}
+                          className="group relative flex items-center gap-3 rounded-lg border border-border bg-card/50 p-2"
                         >
-                          ✕
-                        </button>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+                          {isImage && item.previewUrl ? (
+                            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded border border-border bg-muted">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={item.previewUrl}
+                                alt={item.file.name}
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-border bg-muted text-muted-foreground">
+                              <svg
+                                className="h-5 w-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                />
+                              </svg>
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-medium text-foreground">
+                              {item.file.name}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {formatBytes(item.file.size)}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFile(idx)}
+                            className="absolute -top-1.5 -right-1.5 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-[10px] text-muted-foreground opacity-0 transition-all group-hover:opacity-100 hover:bg-muted hover:text-foreground focus:opacity-100"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
 
-            <div className="flex justify-end pt-2">
-              <Button
-                type="button"
-                onClick={submitReply}
-                disabled={isSubmittingReply}
-              >
-                {isSubmittingReply ? "Sending..." : "Send Reply"}
-              </Button>
+              <div className="flex justify-end pt-2">
+                <Button
+                  type="button"
+                  onClick={submitReply}
+                  disabled={isSubmittingReply}
+                >
+                  {isSubmittingReply ? "Sending..." : "Send Reply"}
+                </Button>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {activePreview && (
         <div
@@ -1120,7 +1139,7 @@ export function SupportTicketDetailScreen({
                             strokeLinejoin="round"
                             strokeWidth="2"
                             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                          ></path>
+                          />
                         </svg>
                       </div>
                       <div>

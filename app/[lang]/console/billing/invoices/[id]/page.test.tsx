@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event"
 import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { useParams } from "next/navigation"
@@ -375,6 +376,226 @@ describe("Billing InvoiceDetailPage", () => {
       expect(view.getByText("$42.50")).toBeInTheDocument()
       expect(view.getByText("TOP-1")).toBeInTheDocument()
       expect(view.queryByText(/IDR\s*42\.50/)).not.toBeInTheDocument()
+    })
+  })
+
+  it("renders payment method selector with default USD-compatible method and confirm link", async () => {
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.includes("/api/billing/invoices/")) {
+        return jsonResponse(
+          invoicePayload({
+            currency: "USD",
+            subtotalAmountIdr: "100.00",
+            taxAmountIdr: "0.00",
+            discountAmountIdr: "0.00",
+            totalAmountIdr: "100.00",
+            lines: [
+              {
+                description: "Top-up balance",
+                quantity: "1.00",
+                amountIdr: "100.00",
+                unitPriceIdr: "100.00",
+                currency: "USD",
+              },
+            ],
+          })
+        )
+      }
+
+      if (url.includes("/api/billing/account")) {
+        return jsonResponse(accountPayload("USD"))
+      }
+
+      if (url.includes("/api/payments/bank-accounts")) {
+        return jsonResponse({
+          ok: true,
+          accounts: [
+            {
+              id: "bank-1",
+              bankCode: "BCA",
+              bankName: "Bank Central Asia",
+              accountName: "PFN",
+              accountNumber: "1234567890",
+              isActive: true,
+              isDefault: true,
+              supportedCurrencies: ["USD", "IDR"],
+            },
+            {
+              id: "bank-2",
+              bankCode: "BRI",
+              bankName: "Bank Rakyat Indonesia",
+              accountName: "PFN2",
+              accountNumber: "9876543210",
+              isActive: true,
+              isDefault: false,
+              supportedCurrencies: ["USD"],
+            },
+          ],
+        })
+      }
+
+      return jsonResponse({ ok: false, message: "Unhandled" }, 500)
+    }) as unknown as typeof fetch
+
+    const view = render(<InvoiceDetailPage />)
+
+    await waitFor(() =>
+      expect(view.getByText("Bank Central Asia")).toBeInTheDocument()
+    )
+
+    expect(view.getByText("1234567890")).toBeInTheDocument()
+    const confirmLink = view.getByRole("link", { name: /confirm payment/i })
+    expect(confirmLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("paymentMethodId=bank-1")
+    )
+  })
+
+  it("changing selector updates displayed account and link href", async () => {
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.includes("/api/billing/invoices/")) {
+        return jsonResponse(
+          invoicePayload({
+            currency: "USD",
+            subtotalAmountIdr: "100.00",
+            taxAmountIdr: "0.00",
+            discountAmountIdr: "0.00",
+            totalAmountIdr: "100.00",
+            lines: [
+              {
+                description: "Top-up balance",
+                quantity: "1.00",
+                amountIdr: "100.00",
+                unitPriceIdr: "100.00",
+                currency: "USD",
+              },
+            ],
+          })
+        )
+      }
+
+      if (url.includes("/api/billing/account")) {
+        return jsonResponse(accountPayload("USD"))
+      }
+
+      if (url.includes("/api/payments/bank-accounts")) {
+        return jsonResponse({
+          ok: true,
+          accounts: [
+            {
+              id: "bank-1",
+              bankCode: "BCA",
+              bankName: "Bank Central Asia",
+              accountName: "PFN",
+              accountNumber: "1234567890",
+              isActive: true,
+              isDefault: true,
+              supportedCurrencies: ["USD", "IDR"],
+            },
+            {
+              id: "bank-2",
+              bankCode: "BRI",
+              bankName: "Bank Rakyat Indonesia",
+              accountName: "PFN2",
+              accountNumber: "9876543210",
+              isActive: true,
+              isDefault: false,
+              supportedCurrencies: ["USD"],
+            },
+          ],
+        })
+      }
+
+      return jsonResponse({ ok: false, message: "Unhandled" }, 500)
+    }) as unknown as typeof fetch
+
+    const view = render(<InvoiceDetailPage />)
+
+    await waitFor(() =>
+      expect(view.getByText("Bank Central Asia")).toBeInTheDocument()
+    )
+
+    const combobox = view.getByRole("combobox", { name: /payment method/i })
+    await userEvent.click(combobox)
+    await userEvent.click(
+      view.getByRole("option", { name: "Bank Rakyat Indonesia — 9876543210" })
+    )
+
+    await waitFor(() => {
+      expect(view.getByText("9876543210")).toBeInTheDocument()
+      const confirmLink = view.getByRole("link", { name: /confirm payment/i })
+      expect(confirmLink).toHaveAttribute(
+        "href",
+        expect.stringContaining("paymentMethodId=bank-2")
+      )
+    })
+  })
+
+  it("shows empty state and no confirm link when no compatible method", async () => {
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.includes("/api/billing/invoices/")) {
+        return jsonResponse(
+          invoicePayload({
+            currency: "USD",
+            subtotalAmountIdr: "100.00",
+            taxAmountIdr: "0.00",
+            discountAmountIdr: "0.00",
+            totalAmountIdr: "100.00",
+            lines: [
+              {
+                description: "Top-up balance",
+                quantity: "1.00",
+                amountIdr: "100.00",
+                unitPriceIdr: "100.00",
+                currency: "USD",
+              },
+            ],
+          })
+        )
+      }
+
+      if (url.includes("/api/billing/account")) {
+        return jsonResponse(accountPayload("USD"))
+      }
+
+      if (url.includes("/api/payments/bank-accounts")) {
+        return jsonResponse({
+          ok: true,
+          accounts: [
+            {
+              id: "bank-idr",
+              bankCode: "MANDIRI",
+              bankName: "Bank Mandiri",
+              accountName: "PFN",
+              accountNumber: "5555555555",
+              isActive: true,
+              isDefault: true,
+              supportedCurrencies: ["IDR"],
+            },
+          ],
+        })
+      }
+
+      return jsonResponse({ ok: false, message: "Unhandled" }, 500)
+    }) as unknown as typeof fetch
+
+    const view = render(<InvoiceDetailPage />)
+
+    await waitFor(() => {
+      expect(
+        view.getByText(
+          "No active payment method supports USD. Contact support before transferring this payment."
+        )
+      ).toBeInTheDocument()
+      expect(
+        view.queryByRole("link", { name: /confirm payment/i })
+      ).not.toBeInTheDocument()
     })
   })
 })

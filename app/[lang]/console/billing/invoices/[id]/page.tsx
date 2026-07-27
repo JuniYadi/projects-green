@@ -7,6 +7,14 @@ import { useParams, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { InvoiceStatusBadge } from "@/components/billing/invoice-status-badge"
 import {
   getInvoice,
@@ -63,6 +71,7 @@ export default function InvoiceDetailPage() {
   } | null>(null)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState("")
 
   useEffect(() => {
     let cancelled = false
@@ -99,6 +108,31 @@ export default function InvoiceDetailPage() {
       controller.abort()
     }
   }, [invoiceId])
+  useEffect(() => {
+    if (!data?.invoice || !account) return
+
+    const invoiceCurrency = data.invoice.currency || account.currency || "USD"
+    const methods = paymentMethods.filter(
+      (m) =>
+        m.isActive &&
+        ((m.supportedCurrencies ?? []).length === 0 ||
+          (m.supportedCurrencies ?? []).includes(invoiceCurrency))
+    )
+    const defaultMethod = methods.find((m) => m.isDefault) ?? methods[0]
+
+    if (
+      defaultMethod &&
+      (!selectedPaymentMethodId ||
+        !methods.some((m) => m.id === selectedPaymentMethodId))
+    ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedPaymentMethodId(defaultMethod.id)
+    }
+    // selectedPaymentMethodId is intentionally omitted: this effect only
+    // syncs the default selection when payment methods first load. Including
+    // it in deps would cause an infinite update loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentMethods])
 
   function formatDate(dateStr: string | null | undefined): string {
     if (!dateStr) return "N/A"
@@ -224,24 +258,24 @@ export default function InvoiceDetailPage() {
       latestConfirmation.status === "APPROVED")
       ? latestConfirmation
       : null
-  const confirmPaymentHref = `/console/billing/payments/confirm?invoiceId=${invoice.id}`
+  const supportsInvoiceCurrency = (method: PaymentMethod) => {
+    const supported = method.supportedCurrencies ?? []
+    return supported.length === 0 || supported.includes(invoiceCurrency)
+  }
+  const currencyCompatibleMethods = paymentMethods.filter(
+    (method) => method.isActive && supportsInvoiceCurrency(method)
+  )
   const defaultPaymentMethod =
-    paymentMethods.find(
-      (method) =>
-        method.isActive &&
-        method.isDefault &&
-        ((method.supportedCurrencies ?? []).length === 0 ||
-          (method.supportedCurrencies ?? []).includes(invoiceCurrency))
-    ) ??
-    paymentMethods.find(
-      (method) =>
-        method.isActive &&
-        ((method.supportedCurrencies ?? []).length === 0 ||
-          (method.supportedCurrencies ?? []).includes(invoiceCurrency))
-    ) ??
+    currencyCompatibleMethods.find((method) => method.isDefault) ??
+    currencyCompatibleMethods[0] ??
     null
-  const finalConfirmHref = defaultPaymentMethod
-    ? `${confirmPaymentHref}&paymentMethodId=${defaultPaymentMethod.id}`
+  const selectedPaymentMethod =
+    currencyCompatibleMethods.find(
+      (method) => method.id === selectedPaymentMethodId
+    ) ?? defaultPaymentMethod
+  const confirmPaymentHref = `/console/billing/payments/confirm?invoiceId=${invoice.id}`
+  const finalConfirmHref = selectedPaymentMethod
+    ? `${confirmPaymentHref}&paymentMethodId=${selectedPaymentMethod.id}`
     : confirmPaymentHref
   const isManualPayment =
     invoice.paymentMethod === "MANUAL_BANK" ||
@@ -443,45 +477,83 @@ export default function InvoiceDetailPage() {
                     </span>{" "}
                     to the destination bank account, then confirm your payment.
                   </p>
-                  {defaultPaymentMethod ? (
-                    <div className="grid gap-2 rounded-lg border bg-muted/40 p-3 text-sm">
-                      <div className="flex justify-between gap-4">
-                        <span className="text-muted-foreground">Bank</span>
-                        <span className="font-medium">
-                          {defaultPaymentMethod.bankName}
-                        </span>
+                  {currencyCompatibleMethods.length > 0 ? (
+                    <div className="space-y-3">
+                      <div className="grid gap-2">
+                        <Label
+                          htmlFor="payment-method"
+                          className="text-xs font-semibold text-muted-foreground"
+                        >
+                          Payment method
+                        </Label>
+                        <Select
+                          value={selectedPaymentMethod?.id ?? ""}
+                          onValueChange={(value) =>
+                            setSelectedPaymentMethodId(value)
+                          }
+                        >
+                          <SelectTrigger
+                            id="payment-method"
+                            className="border-border bg-background/50 text-foreground"
+                          >
+                            <SelectValue placeholder="Select payment method" />
+                          </SelectTrigger>
+                          <SelectContent className="border-border bg-popover">
+                            {currencyCompatibleMethods.map((method) => (
+                              <SelectItem
+                                key={method.id}
+                                value={method.id}
+                                className="text-foreground hover:bg-muted"
+                              >
+                                {method.bankName} — {method.accountNumber}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div className="flex justify-between gap-4">
-                        <span className="text-muted-foreground">
-                          Account Number
-                        </span>
-                        <span className="font-medium">
-                          {defaultPaymentMethod.accountNumber}
-                        </span>
-                      </div>
-                      <div className="flex justify-between gap-4">
-                        <span className="text-muted-foreground">
-                          Account Name
-                        </span>
-                        <span className="font-medium">
-                          {defaultPaymentMethod.accountName}
-                        </span>
-                      </div>
+                      {selectedPaymentMethod ? (
+                        <div className="grid gap-2 rounded-lg border bg-muted/40 p-3 text-sm">
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">Bank</span>
+                            <span className="font-medium">
+                              {selectedPaymentMethod.bankName}
+                            </span>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">
+                              Account Number
+                            </span>
+                            <span className="font-medium">
+                              {selectedPaymentMethod.accountNumber}
+                            </span>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">
+                              Account Name
+                            </span>
+                            <span className="font-medium">
+                              {selectedPaymentMethod.accountName}
+                            </span>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   ) : (
                     <p className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-sm text-yellow-700 dark:text-yellow-300">
-                      Bank account details are not available right now. Please
-                      contact support before transferring this payment.
+                      No active payment method supports {invoiceCurrency}.
+                      Contact support before transferring this payment.
                     </p>
                   )}
-                  <Button asChild disabled={!!activeConfirmation}>
-                    <Link href={finalConfirmHref}>
-                      <CheckCircleIcon className="mr-2 h-4 w-4" />
-                      {activeConfirmation
-                        ? "Already confirmed — pending review"
-                        : "Confirm Payment"}
-                    </Link>
-                  </Button>
+                  {currencyCompatibleMethods.length > 0 ? (
+                    <Button asChild disabled={!!activeConfirmation}>
+                      <Link href={finalConfirmHref}>
+                        <CheckCircleIcon className="mr-2 h-4 w-4" />
+                        {activeConfirmation
+                          ? "Already confirmed — pending review"
+                          : "Confirm Payment"}
+                      </Link>
+                    </Button>
+                  ) : null}
                 </div>
               ) : isGatewayPayment ? (
                 <div className="space-y-3">

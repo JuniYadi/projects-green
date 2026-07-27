@@ -71,7 +71,7 @@ export function SupportTicketCreateScreen({
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
   >({})
-  const [activeTab, setActiveTab] = useState<"message" | "secure">("message")
+  const [showSecureComposer, setShowSecureComposer] = useState(false)
 
   const subjectRef = useRef<HTMLInputElement>(null)
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
@@ -106,6 +106,16 @@ export function SupportTicketCreateScreen({
       window.removeEventListener("beforeunload", handleBeforeUnload)
     }
   }, [isSubmitting])
+
+  const updateCredentialWarning = (
+    value: string,
+    field: "subject" | "body" | "secureForm"
+  ) => {
+    const match = looksLikeCredential(value)
+    setCredentialWarning(
+      match.match ? { field, patterns: match.patterns } : null
+    )
+  }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(event.target.files ?? [])
@@ -225,14 +235,6 @@ export function SupportTicketCreateScreen({
     const subject = subjectRef.current?.value || ""
     const description = descriptionRef.current?.value || ""
     const secureForm = secureFormRef.current?.value || ""
-    const checkCredential = (value: string, field: "body" | "secureForm") => {
-      const match = looksLikeCredential(value)
-      if (match.match) {
-        setCredentialWarning({ field, patterns: match.patterns })
-        return true
-      }
-      return false
-    }
 
     if (!subject.trim()) {
       setErrorMessage(messages.console.supportTickets.subjectRequired)
@@ -518,12 +520,14 @@ export function SupportTicketCreateScreen({
                   ref={subjectRef}
                   maxLength={255}
                   onInput={(event) => {
+                    const value = event.currentTarget.value
                     const counter = document.getElementById(
                       "ticket-subject-counter"
                     )
                     if (counter) {
-                      counter.textContent = `${event.currentTarget.value.length} / 255`
+                      counter.textContent = `${value.length} / 255`
                     }
+                    updateCredentialWarning(value, "subject")
                   }}
                   placeholder={
                     messages.console.supportTickets.subjectPlaceholder
@@ -539,43 +543,9 @@ export function SupportTicketCreateScreen({
                 </p>
               </div>
 
-              {/* Tabbed Editor Container */}
+              {/* Editor Container */}
               <div className="space-y-4 pt-2">
-                <div className="flex border-b border-border">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("message")}
-                    className={`-mb-[1px] border-b-2 px-4 py-2 text-sm font-medium transition-all ${
-                      activeTab === "message"
-                        ? "border-primary font-semibold text-foreground"
-                        : "border-transparent text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {messages.console.supportTickets.generalMessage}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("secure")}
-                    className={`-mb-[1px] flex items-center gap-1.5 border-b-2 px-4 py-2 text-sm font-medium transition-all ${
-                      activeTab === "secure"
-                        ? "border-yellow-500 font-semibold text-yellow-500"
-                        : "border-transparent text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <span className="relative flex h-2 w-2">
-                      {activeTab === "secure" && (
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400 opacity-75"></span>
-                      )}
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-500"></span>
-                    </span>
-                    {messages.console.supportTickets.secureDetails}
-                  </button>
-                </div>
-
-                <div
-                  data-testid="message-tab-content"
-                  className={activeTab === "message" ? "space-y-2" : "hidden"}
-                >
+                <div data-testid="message-tab-content" className="space-y-2">
                   <Label
                     htmlFor="ticket-description"
                     className="text-xs font-semibold text-muted-foreground"
@@ -590,55 +560,69 @@ export function SupportTicketCreateScreen({
                       messages.console.supportTickets.messagePlaceholder
                     }
                     disabled={isSubmitting}
+                    onInput={(event) =>
+                      updateCredentialWarning(event.currentTarget.value, "body")
+                    }
                   />
                 </div>
 
-                <div
-                  data-testid="secure-tab-content"
-                  className={activeTab === "secure" ? "space-y-4" : "hidden"}
-                >
-                  <div className="space-y-2 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.02] p-4">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center justify-center rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-semibold text-yellow-500">
-                        {messages.console.supportTickets.encrypted}
+                <div className="grid gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.02] p-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowSecureComposer((prev) => !prev)}
+                    className="flex items-center justify-between gap-2 text-left text-sm font-medium text-yellow-500"
+                    aria-expanded={showSecureComposer}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="relative flex h-2 w-2">
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-500" />
                       </span>
-                      <span className="flex items-center gap-1 text-xs font-medium text-yellow-500/90">
-                        <svg
-                          className="h-3.5 w-3.5 text-yellow-500"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2.5"
-                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                          ></path>
-                        </svg>
-                        {messages.console.supportTickets.endToEndSecure}
-                      </span>
+                      {messages.console.supportTickets.secureDetails}
+                    </span>
+                    <span className="text-xs font-semibold underline-offset-2 hover:underline">
+                      {showSecureComposer
+                        ? messages.console.supportTickets.hideSecureDetails
+                        : messages.console.supportTickets.showSecureDetails}
+                    </span>
+                  </button>
+                  {showSecureComposer ? (
+                    <div data-testid="secure-tab-content" className="space-y-2">
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        {messages.console.supportTickets.secureDescription}
+                      </p>
+                      <Label htmlFor="ticket-secure-form" className="sr-only">
+                        {messages.console.supportTickets.secureDetailsOptional}
+                      </Label>
+                      <MarkdownEditor
+                        id="ticket-secure-form"
+                        ref={secureFormRef}
+                        rows={6}
+                        placeholder={
+                          messages.console.supportTickets.securePlaceholder
+                        }
+                        disabled={isSubmitting}
+                        onInput={(event) =>
+                          updateCredentialWarning(
+                            event.currentTarget.value,
+                            "secureForm"
+                          )
+                        }
+                      />
                     </div>
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                      {messages.console.supportTickets.secureDescription}
-                    </p>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="ticket-secure-form" className="sr-only">
-                      {messages.console.supportTickets.secureDetailsOptional}
-                    </Label>
-                    <MarkdownEditor
-                      id="ticket-secure-form"
-                      ref={secureFormRef}
-                      rows={6}
-                      placeholder={
-                        messages.console.supportTickets.securePlaceholder
-                      }
-                      disabled={isSubmitting}
-                    />
-                  </div>
+                  ) : null}
                 </div>
+
+                {credentialWarning ? (
+                  <Alert variant="destructive" data-testid="credential-warning">
+                    <AlertTitle>
+                      {messages.console.supportTickets.possibleCredentialTitle}
+                    </AlertTitle>
+                    <AlertDescription>
+                      {messages.console.supportTickets.possibleCredentialBody}{" "}
+                      {credentialWarning.patterns.join(", ")}
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
               </div>
 
               <div className="my-4 border-t border-border" />

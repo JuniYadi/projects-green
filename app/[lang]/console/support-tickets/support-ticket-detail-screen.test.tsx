@@ -172,13 +172,19 @@ const createClosedThread = (
 })
 
 describe("SupportTicketDetailScreen", () => {
+  let isTicketClosed = false
+
   beforeEach(() => {
+    isTicketClosed = false
     fetchMock.mockReset()
     fetchMock.mockImplementation(async (input, init) => {
       const url = String(input)
       const method = init?.method ?? "GET"
 
       if (method === "GET" && url === "/api/support-tickets/ticket_1") {
+        if (isTicketClosed) {
+          return jsonResponse(createClosedThread("ticket_1", "TCK-1001"))
+        }
         return jsonResponse(createThread("ticket_1", "TCK-1001"))
       }
 
@@ -197,6 +203,7 @@ describe("SupportTicketDetailScreen", () => {
       }
 
       if (method === "POST" && url === "/api/support-tickets/ticket_1/close") {
+        isTicketClosed = true
         return jsonResponse({
           ok: true,
           ticket: {
@@ -253,7 +260,7 @@ describe("SupportTicketDetailScreen", () => {
 
     await waitFor(() => {
       expect(view.getByRole("alert")).toHaveTextContent(
-        "Reply message is required."
+        "Reply message or secure details is required."
       )
     })
   })
@@ -738,7 +745,9 @@ describe("SupportTicketDetailScreen", () => {
 
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
       await waitFor(() =>
-        expect(view.getByText("Staff Member")).toBeInTheDocument()
+        expect(view.getAllByText("Staff Member").length).toBeGreaterThanOrEqual(
+          1
+        )
       )
 
       expect(view.getByText("Support Team")).toBeInTheDocument()
@@ -766,7 +775,7 @@ describe("SupportTicketDetailScreen", () => {
 
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
       await waitFor(() =>
-        expect(view.getByText("John Doe")).toBeInTheDocument()
+        expect(view.getAllByText("John Doe").length).toBeGreaterThanOrEqual(1)
       )
 
       expect(view.getByText("Customer")).toBeInTheDocument()
@@ -800,11 +809,204 @@ describe("SupportTicketDetailScreen", () => {
 
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
       await waitFor(() =>
-        expect(view.getByText("Agent Smith")).toBeInTheDocument()
+        expect(view.getAllByText("Agent Smith").length).toBeGreaterThanOrEqual(
+          1
+        )
       )
 
       expect(view.getByText("Support Team")).toBeInTheDocument()
       expect(view.getByText("Customer")).toBeInTheDocument()
+    })
+  })
+
+  describe("Secure details UX", () => {
+    it("allows secure-only reply with empty body and posts SECURE_ONLY_REPLY_BODY placeholder", async () => {
+      const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
+      await waitFor(() =>
+        expect(
+          view.getByRole("heading", { name: "TCK-1001" })
+        ).toBeInTheDocument()
+      )
+
+      // Expand the secure composer
+      fireEvent.click(
+        view.getByRole("button", { name: /show secure details/i })
+      )
+
+      // Type only into the secure field
+      const secureTextarea = view.getByPlaceholderText(
+        "Sensitive credentials, configurations, or secrets only"
+      ) as HTMLTextAreaElement
+      secureTextarea.value = "secret-token"
+      fireEvent.input(secureTextarea)
+
+      fireEvent.click(view.getByRole("button", { name: "Send Reply" }))
+
+      await waitFor(() => {
+        const replyCall = fetchMock.mock.calls.find(([url, init]) => {
+          return (
+            String(url) === "/api/support-tickets/ticket_1/replies" &&
+            init?.method === "POST"
+          )
+        })
+        expect(replyCall).toBeDefined()
+        const body = JSON.parse(replyCall![1]!.body as string)
+        expect(body.body).toBe("details on secure message")
+        expect(body.secureForm).toBe("secret-token")
+      })
+    })
+
+    it("shows credential warning for password=secret in visible message", async () => {
+      const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
+      await waitFor(() =>
+        expect(
+          view.getByRole("heading", { name: "TCK-1001" })
+        ).toBeInTheDocument()
+      )
+
+      const textarea = view.getByPlaceholderText(
+        "Write your reply"
+      ) as HTMLTextAreaElement
+      textarea.value = "password=secret"
+      fireEvent.input(textarea)
+
+      await waitFor(() => {
+        expect(view.getByTestId("credential-warning")).toBeInTheDocument()
+      })
+      expect(view.getByTestId("credential-warning")).toHaveTextContent(
+        "Possible credential detected"
+      )
+    })
+
+    it("no General Message or Secure details tabs in the composer", async () => {
+      const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
+      await waitFor(() =>
+        expect(
+          view.getByRole("heading", { name: "TCK-1001" })
+        ).toBeInTheDocument()
+      )
+
+      expect(view.queryByRole("button", { name: "General Message" })).toBeNull()
+      expect(view.queryByRole("button", { name: "Secure details" })).toBeNull()
+    })
+
+    it("after close, no Show secure details buttons remain if thread returned secureForm null", async () => {
+      // Thread with secureForm on ticket and reply
+      const threadWithSecure = {
+        ok: true,
+        thread: {
+          ticket: {
+            id: "ticket_1",
+            ticketNumber: "TCK-1001",
+            organizationId: "org_1",
+            requesterWorkosUserId: "user_1",
+            assignedAgentWorkosUserId: null,
+            department: "technical",
+            priority: "medium",
+            service: "deploy",
+            status: "open",
+            subject: "Deployment issue",
+            description: "Pipeline failed",
+            descriptionHtml: null,
+            secureForm: "top-secret",
+            attachmentMetadata: [],
+            createdAt: "2026-05-21T00:00:00.000Z",
+            updatedAt: "2026-05-21T00:00:00.000Z",
+            resolvedAt: null,
+            closedAt: null,
+          },
+          replies: [
+            {
+              id: "reply_1",
+              authorWorkosUserId: "user_1",
+              body: "Please check",
+              isInternalNote: false,
+              secureForm: "reply-secret",
+              attachmentMetadata: [],
+            },
+          ],
+          users: undefined,
+        },
+      }
+
+      let fetchCount = 0
+      fetchMock.mockImplementation(async (input, init) => {
+        fetchCount++
+        const url = String(input)
+        const method = init?.method ?? "GET"
+
+        // Close call
+        if (
+          method === "POST" &&
+          url === "/api/support-tickets/ticket_1/close"
+        ) {
+          return jsonResponse({
+            ok: true,
+            ticket: {
+              ...threadWithSecure.thread.ticket,
+              status: "closed",
+              secureForm: null,
+              closedAt: "2026-05-21T03:00:00.000Z",
+            },
+          })
+        }
+
+        // GET thread - first call returns secureForm, refetch returns null
+        if (method === "GET" && url === "/api/support-tickets/ticket_1") {
+          if (fetchCount <= 1) {
+            return jsonResponse(threadWithSecure)
+          }
+          // Refetch after close: secureForm is now null everywhere
+          return jsonResponse({
+            ok: true,
+            thread: {
+              ticket: {
+                ...threadWithSecure.thread.ticket,
+                status: "closed",
+                secureForm: null,
+                closedAt: "2026-05-21T03:00:00.000Z",
+              },
+              replies: [
+                {
+                  id: "reply_1",
+                  authorWorkosUserId: "user_1",
+                  body: "Please check",
+                  isInternalNote: false,
+                  secureForm: null,
+                  attachmentMetadata: [],
+                },
+              ],
+              users: threadWithSecure.thread.users,
+            },
+          })
+        }
+
+        return jsonResponse({ ok: false, message: "Unhandled" }, 500)
+      })
+
+      const confirmSpy = mock(() => true)
+      ;(window as unknown as { confirm: typeof confirm }).confirm =
+        confirmSpy as unknown as typeof confirm
+
+      const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
+      await waitFor(() =>
+        expect(
+          view.getByRole("heading", { name: "TCK-1001" })
+        ).toBeInTheDocument()
+      )
+
+      // Before close: "Show secure details" buttons exist for ticket and reply
+      expect(
+        view.getAllByRole("button", { name: /show secure details/i }).length
+      ).toBeGreaterThanOrEqual(1)
+
+      fireEvent.click(view.getByRole("button", { name: "Close Ticket" }))
+
+      await waitFor(() => {
+        expect(
+          view.queryAllByRole("button", { name: /show secure details/i }).length
+        ).toBe(0)
+      })
     })
   })
 })

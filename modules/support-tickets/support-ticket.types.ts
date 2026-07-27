@@ -1,3 +1,5 @@
+export const SECURE_ONLY_REPLY_BODY = "details on secure message"
+
 export const SUPPORT_TICKET_DEPARTMENTS = [
   "billing",
   "technical",
