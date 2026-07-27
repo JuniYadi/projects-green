@@ -235,14 +235,6 @@ export function SupportTicketCreateScreen({
     const subject = subjectRef.current?.value || ""
     const description = descriptionRef.current?.value || ""
     const secureForm = secureFormRef.current?.value || ""
-    const checkCredential = (value: string, field: "body" | "secureForm") => {
-      const match = looksLikeCredential(value)
-      if (match.match) {
-        setCredentialWarning({ field, patterns: match.patterns })
-        return true
-      }
-      return false
-    }
 
     if (!subject.trim()) {
       setErrorMessage(messages.console.supportTickets.subjectRequired)

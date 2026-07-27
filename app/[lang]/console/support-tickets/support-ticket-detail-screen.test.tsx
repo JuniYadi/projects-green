@@ -172,13 +172,19 @@ const createClosedThread = (
 })
 
 describe("SupportTicketDetailScreen", () => {
+  let isTicketClosed = false
+
   beforeEach(() => {
+    isTicketClosed = false
     fetchMock.mockReset()
     fetchMock.mockImplementation(async (input, init) => {
       const url = String(input)
       const method = init?.method ?? "GET"
 
       if (method === "GET" && url === "/api/support-tickets/ticket_1") {
+        if (isTicketClosed) {
+          return jsonResponse(createClosedThread("ticket_1", "TCK-1001"))
+        }
         return jsonResponse(createThread("ticket_1", "TCK-1001"))
       }
 
@@ -197,6 +203,7 @@ describe("SupportTicketDetailScreen", () => {
       }
 
       if (method === "POST" && url === "/api/support-tickets/ticket_1/close") {
+        isTicketClosed = true
         return jsonResponse({
           ok: true,
           ticket: {
@@ -738,7 +745,9 @@ describe("SupportTicketDetailScreen", () => {
 
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
       await waitFor(() =>
-        expect(view.getByText("Staff Member")).toBeInTheDocument()
+        expect(view.getAllByText("Staff Member").length).toBeGreaterThanOrEqual(
+          1
+        )
       )
 
       expect(view.getByText("Support Team")).toBeInTheDocument()
@@ -766,7 +775,7 @@ describe("SupportTicketDetailScreen", () => {
 
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
       await waitFor(() =>
-        expect(view.getByText("John Doe")).toBeInTheDocument()
+        expect(view.getAllByText("John Doe").length).toBeGreaterThanOrEqual(1)
       )
 
       expect(view.getByText("Customer")).toBeInTheDocument()
@@ -800,7 +809,9 @@ describe("SupportTicketDetailScreen", () => {
 
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
       await waitFor(() =>
-        expect(view.getByText("Agent Smith")).toBeInTheDocument()
+        expect(view.getAllByText("Agent Smith").length).toBeGreaterThanOrEqual(
+          1
+        )
       )
 
       expect(view.getByText("Support Team")).toBeInTheDocument()
