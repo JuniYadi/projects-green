@@ -28,13 +28,17 @@ import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import type { ColumnDef } from "@tanstack/react-table"
 import {
-  MagnifyingGlassIcon,
   PlusIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
   CopySimpleIcon,
 } from "@phosphor-icons/react"
 import type { VoucherStatus } from "@prisma/client"
+import {
+  clearFieldError,
+  resolveCreateExceptionMessage,
+  resolveCreateFailureState,
+} from "@/app/[lang]/portal/billing/voucher/voucher-create-errors"
 
 type VoucherItem = {
   id: string
@@ -69,7 +73,6 @@ export function VoucherManagementTable() {
   const [vouchers, setVouchers] = useState<VoucherItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [search, setSearch] = useState("")
   const [offset, setOffset] = useState(0)
   const [total, setTotal] = useState(0)
 
@@ -86,6 +89,7 @@ export function VoucherManagementTable() {
   })
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
 
   const fetchData = useCallback(async () => {
     setIsLoading(true)
@@ -94,7 +98,6 @@ export function VoucherManagementTable() {
       const searchParams = new URLSearchParams()
       searchParams.set("limit", String(PAGE_SIZE))
       searchParams.set("offset", String(offset))
-      if (search) searchParams.set("prefix", search)
 
       const { data } = await eden.api.vouchers.portal.get({
         $query: Object.fromEntries(searchParams.entries()),
@@ -117,17 +120,12 @@ export function VoucherManagementTable() {
     } finally {
       setIsLoading(false)
     }
-  }, [offset, search])
+  }, [offset])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchData()
   }, [fetchData])
-
-  function handleSearch(value: string) {
-    setSearch(value)
-    setOffset(0)
-  }
 
   const copyCode = useCallback((code: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -144,9 +142,23 @@ export function VoucherManagementTable() {
     setOffset(offset + PAGE_SIZE)
   }
 
+  function updateCreateField(field: keyof typeof createForm, value: string) {
+    setCreateForm((prev) => ({ ...prev, [field]: value }))
+    setFieldErrors((prev) => clearFieldError(prev, field))
+  }
+
+  function handleDialogOpenChange(open: boolean) {
+    setDialogOpen(open)
+    if (!open) {
+      setCreateError(null)
+      setFieldErrors({})
+    }
+  }
+
   async function handleCreate() {
     setIsCreating(true)
     setCreateError(null)
+    setFieldErrors({})
 
     try {
       const payload: Record<string, unknown> = {
@@ -179,16 +191,24 @@ export function VoucherManagementTable() {
           targetWorkosUserId: "",
           targetOrganizationId: "",
         })
+        setFieldErrors({})
         // Reload the list from first page
         setOffset(0)
         void fetchData()
       } else {
-        setCreateError(data?.message || "Failed to create voucher")
+        const err = data as
+          | {
+              message?: string
+              fieldErrors?: Record<string, string[]>
+            }
+          | null
+          | undefined
+        const failure = resolveCreateFailureState(err)
+        setFieldErrors(failure.fieldErrors)
+        setCreateError(failure.createError)
       }
     } catch (err) {
-      setCreateError(
-        err instanceof Error ? err.message : "An unexpected error occurred"
-      )
+      setCreateError(resolveCreateExceptionMessage(err))
     } finally {
       setIsCreating(false)
     }
@@ -334,18 +354,8 @@ export function VoucherManagementTable() {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <div className="relative max-w-sm flex-1">
-          <MagnifyingGlassIcon className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search vouchers by prefix..."
-            value={search}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <div className="flex items-center justify-end">
+        <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
           <DialogTrigger asChild>
             <Button>
               <PlusIcon className="mr-2 h-4 w-4" />
@@ -366,124 +376,168 @@ export function VoucherManagementTable() {
                 <Label htmlFor="prefix" className="text-right">
                   Prefix
                 </Label>
-                <Input
-                  id="prefix"
-                  value={createForm.prefix}
-                  onChange={(e) =>
-                    setCreateForm({
-                      ...createForm,
-                      prefix: e.target.value.toUpperCase(),
-                    })
-                  }
-                  placeholder="e.g. WELCOME"
-                  className="col-span-3 uppercase"
-                />
+                <div className="col-span-3 space-y-1">
+                  <Input
+                    id="prefix"
+                    value={createForm.prefix}
+                    onChange={(e) =>
+                      updateCreateField("prefix", e.target.value.toUpperCase())
+                    }
+                    placeholder="e.g. WELCOME"
+                    className="uppercase"
+                    aria-invalid={Boolean(fieldErrors.prefix)}
+                  />
+                  {fieldErrors.prefix?.[0] && (
+                    <p className="text-xs text-destructive">
+                      {fieldErrors.prefix[0]}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="amount" className="text-right">
                   Amount *
                 </Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={createForm.amount}
-                  onChange={(e) =>
-                    setCreateForm({ ...createForm, amount: e.target.value })
-                  }
-                  placeholder="e.g. 50000"
-                  className="col-span-3"
-                />
+                <div className="col-span-3 space-y-1">
+                  <Input
+                    id="amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={createForm.amount}
+                    onChange={(e) =>
+                      updateCreateField("amount", e.target.value)
+                    }
+                    placeholder="e.g. 50000"
+                    aria-invalid={Boolean(fieldErrors.amount)}
+                  />
+                  {fieldErrors.amount?.[0] && (
+                    <p className="text-xs text-destructive">
+                      {fieldErrors.amount[0]}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="currency" className="text-right">
                   Currency
                 </Label>
-                <Select
-                  value={createForm.currency}
-                  onValueChange={(val) =>
-                    setCreateForm({ ...createForm, currency: val })
-                  }
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select currency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="IDR">IDR - Indonesian Rupiah</SelectItem>
-                    <SelectItem value="USD">USD - US Dollar</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="col-span-3 space-y-1">
+                  <Select
+                    value={createForm.currency}
+                    onValueChange={(val) => updateCreateField("currency", val)}
+                  >
+                    <SelectTrigger
+                      id="currency"
+                      className="w-full"
+                      aria-invalid={Boolean(fieldErrors.currency)}
+                    >
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="IDR">
+                        IDR - Indonesian Rupiah
+                      </SelectItem>
+                      <SelectItem value="USD">USD - US Dollar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {fieldErrors.currency?.[0] && (
+                    <p className="text-xs text-destructive">
+                      {fieldErrors.currency[0]}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="maxClaims" className="text-right">
                   Max Claims
                 </Label>
-                <Input
-                  id="maxClaims"
-                  type="number"
-                  min="1"
-                  value={createForm.maxClaims}
-                  onChange={(e) =>
-                    setCreateForm({ ...createForm, maxClaims: e.target.value })
-                  }
-                  placeholder="1"
-                  className="col-span-3"
-                />
+                <div className="col-span-3 space-y-1">
+                  <Input
+                    id="maxClaims"
+                    type="number"
+                    min="1"
+                    value={createForm.maxClaims}
+                    onChange={(e) =>
+                      updateCreateField("maxClaims", e.target.value)
+                    }
+                    aria-invalid={Boolean(fieldErrors.maxClaims)}
+                  />
+                  {fieldErrors.maxClaims?.[0] && (
+                    <p className="text-xs text-destructive">
+                      {fieldErrors.maxClaims[0]}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="expiresAt" className="text-right">
                   Expires At *
                 </Label>
-                <Input
-                  id="expiresAt"
-                  type="datetime-local"
-                  value={createForm.expiresAt}
-                  onChange={(e) =>
-                    setCreateForm({ ...createForm, expiresAt: e.target.value })
-                  }
-                  className="col-span-3"
-                />
+                <div className="col-span-3 space-y-1">
+                  <Input
+                    id="expiresAt"
+                    type="datetime-local"
+                    value={createForm.expiresAt}
+                    onChange={(e) =>
+                      updateCreateField("expiresAt", e.target.value)
+                    }
+                    aria-invalid={Boolean(fieldErrors.expiresAt)}
+                  />
+                  {fieldErrors.expiresAt?.[0] && (
+                    <p className="text-xs text-destructive">
+                      {fieldErrors.expiresAt[0]}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="targetWorkosUserId" className="text-right">
+                <Label htmlFor="targetUser" className="text-right">
                   Target User ID
                 </Label>
-                <Input
-                  id="targetWorkosUserId"
-                  value={createForm.targetWorkosUserId}
-                  onChange={(e) =>
-                    setCreateForm({
-                      ...createForm,
-                      targetWorkosUserId: e.target.value,
-                    })
-                  }
-                  placeholder="Leave empty for any user"
-                  className="col-span-3"
-                />
+                <div className="col-span-3 space-y-1">
+                  <Input
+                    id="targetUser"
+                    value={createForm.targetWorkosUserId}
+                    onChange={(e) =>
+                      updateCreateField("targetWorkosUserId", e.target.value)
+                    }
+                    placeholder="Leave empty for any user"
+                    aria-invalid={Boolean(fieldErrors.targetWorkosUserId)}
+                  />
+                  {fieldErrors.targetWorkosUserId?.[0] && (
+                    <p className="text-xs text-destructive">
+                      {fieldErrors.targetWorkosUserId[0]}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="targetOrganizationId" className="text-right">
+                <Label htmlFor="targetOrg" className="text-right">
                   Target Org ID
                 </Label>
-                <Input
-                  id="targetOrganizationId"
-                  value={createForm.targetOrganizationId}
-                  onChange={(e) =>
-                    setCreateForm({
-                      ...createForm,
-                      targetOrganizationId: e.target.value,
-                    })
-                  }
-                  placeholder="Leave empty for any org"
-                  className="col-span-3"
-                />
+                <div className="col-span-3 space-y-1">
+                  <Input
+                    id="targetOrg"
+                    value={createForm.targetOrganizationId}
+                    onChange={(e) =>
+                      updateCreateField("targetOrganizationId", e.target.value)
+                    }
+                    placeholder="Leave empty for any org"
+                    aria-invalid={Boolean(fieldErrors.targetOrganizationId)}
+                  />
+                  {fieldErrors.targetOrganizationId?.[0] && (
+                    <p className="text-xs text-destructive">
+                      {fieldErrors.targetOrganizationId[0]}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -496,7 +550,7 @@ export function VoucherManagementTable() {
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setDialogOpen(false)}
+                onClick={() => handleDialogOpenChange(false)}
                 disabled={isCreating}
               >
                 Cancel
