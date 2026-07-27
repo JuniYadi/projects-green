@@ -230,6 +230,7 @@ const createRouteHandler = (
     }
     body: unknown
     params: Record<string, unknown>
+    query: Record<string, unknown>
     requesterEmail: string | undefined
     set: RouteSet
   }) => Promise<unknown>
@@ -237,9 +238,10 @@ const createRouteHandler = (
   return async (context: {
     body: unknown
     params: Record<string, unknown>
+    query?: Record<string, unknown>
     set: RouteSet
   }) => {
-    const { body, params, set } = context
+    const { body, params, query = {}, set } = context
     const auth = await dependencies.authenticate()
 
     if (!auth.user) {
@@ -252,6 +254,7 @@ const createRouteHandler = (
         actor,
         body,
         params,
+        query,
         requesterEmail: auth.user.email ?? undefined,
         set,
       })
@@ -302,6 +305,10 @@ const supportTicketAdminCreateBodySchema = z.object({
   description: z.string().trim().min(1).nullable().optional(),
   secureForm: z.string().trim().min(1).nullable().optional(),
   uploadSessionIds: z.array(z.string().trim().min(1)).default([]).optional(),
+})
+
+const supportTicketAdminListQuerySchema = z.object({
+  organizationId: z.string().trim().min(1).optional(),
 })
 
 const supportTicketAdminUpdateBodySchema = z.object({
@@ -754,7 +761,7 @@ export const createSupportTicketRoutes = (
     )
     .get(
       "/admin",
-      createRouteHandler(dependencies, async ({ actor, set }) => {
+      createRouteHandler(dependencies, async ({ actor, query, set }) => {
         if (!actor.isSuperAdmin) {
           set.status = 403
           return {
@@ -764,8 +771,10 @@ export const createSupportTicketRoutes = (
           }
         }
 
+        const parsedQuery = supportTicketAdminListQuerySchema.parse(query)
         const tickets = await dependencies.service.listAllTickets({
           actor,
+          organizationId: parsedQuery.organizationId,
         })
 
         // Resolve requester names for display

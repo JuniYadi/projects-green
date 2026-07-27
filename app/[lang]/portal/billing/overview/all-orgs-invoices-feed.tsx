@@ -10,6 +10,7 @@ import {
   getAdminInvoices,
   type AdminInvoiceListItem,
 } from "@/lib/billing-client"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("id-ID", {
@@ -17,10 +18,6 @@ function formatDate(dateStr: string): string {
     month: "short",
     year: "numeric",
   })
-}
-
-function formatCurrency(amount: string): string {
-  return `Rp ${Number(amount).toLocaleString("id-ID")}`
 }
 
 export function AllOrgsInvoicesFeed() {
@@ -90,7 +87,10 @@ export function AllOrgsInvoicesFeed() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-medium">
-                    {formatCurrency(invoice.totalAmountIdr)}
+                    {formatBillingMoney(
+                      invoice.totalAmountIdr,
+                      invoice.currency
+                    )}
                   </span>
                   <InvoiceStatusBadge status={invoice.status} />
                 </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import type { ColumnDef } from "@tanstack/react-table"
+import type { Column, ColumnDef } from "@tanstack/react-table"
 import Link from "next/link"
 
 import { DataTable } from "@/components/data-table"
@@ -23,12 +23,17 @@ import {
 
 type SupportTicketsPortalProps = {
   lang: string
+  organizationId?: string
 }
 
 const apiClient = createSupportTicketsClient()
 
-const getSupportTicketColumns = (lang: string): ColumnDef<SupportTicket>[] => {
+const getSupportTicketColumns = (
+  lang: string,
+  options?: { hideOrganization?: boolean }
+): ColumnDef<SupportTicket>[] => {
   const locale = resolveLocaleOrDefault(lang)
+  const hideOrganization = options?.hideOrganization ?? false
 
   return [
     {
@@ -52,15 +57,25 @@ const getSupportTicketColumns = (lang: string): ColumnDef<SupportTicket>[] => {
         )
       },
     },
-    {
-      accessorKey: "organizationId",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Organization" />
-      ),
-      cell: ({ row }) => (
-        <span className="font-mono text-xs">{row.original.organizationId}</span>
-      ),
-    },
+    ...(!hideOrganization
+      ? [
+          {
+            accessorKey: "organizationId",
+            header: ({
+              column,
+            }: {
+              column: Column<SupportTicket, unknown>
+            }) => (
+              <DataTableColumnHeader column={column} title="Organization" />
+            ),
+            cell: ({ row }: { row: { original: SupportTicket } }) => (
+              <span className="font-mono text-xs">
+                {row.original.organizationId}
+              </span>
+            ),
+          },
+        ]
+      : []),
     {
       accessorKey: "requesterWorkosUserId",
       header: ({ column }) => (
@@ -114,39 +129,51 @@ const getSupportTicketColumns = (lang: string): ColumnDef<SupportTicket>[] => {
   ]
 }
 
-export function SupportTicketsPortal({ lang }: SupportTicketsPortalProps) {
-  const columns = useMemo(() => getSupportTicketColumns(lang), [lang])
+export function SupportTicketsPortal({
+  lang,
+  organizationId,
+}: SupportTicketsPortalProps) {
+  const columns = useMemo(
+    () =>
+      getSupportTicketColumns(lang, {
+        hideOrganization: Boolean(organizationId),
+      }),
+    [lang, organizationId]
+  )
   const [tickets, setTickets] = useState<SupportTicket[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const loadTickets = async () => {
-    setIsLoading(true)
-    setErrorMessage(null)
-
-    try {
-      const items = await apiClient.listAdminTickets()
-      setTickets(items)
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Unable to load support tickets."
-      )
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void loadTickets()
-    }, 0)
+    let cancelled = false
 
-    return () => {
-      window.clearTimeout(timeoutId)
+    const loadTickets = async () => {
+      setIsLoading(true)
+      setErrorMessage(null)
+      try {
+        const items = await apiClient.listAdminTickets(
+          organizationId ? { organizationId } : undefined
+        )
+        if (cancelled) return
+        setTickets(items)
+      } catch (error) {
+        if (cancelled) return
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Unable to load support tickets."
+        )
+      } finally {
+        if (cancelled) return
+        setIsLoading(false)
+      }
     }
-  }, [])
+
+    void loadTickets()
+    return () => {
+      cancelled = true
+    }
+  }, [organizationId])
 
   const locale = resolveLocaleOrDefault(lang)
   const createPath = localizePathname({

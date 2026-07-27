@@ -3,15 +3,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { WalletIcon, WarningIcon } from "@phosphor-icons/react"
 import type { AdminOrgDetail } from "@/lib/billing-client"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 
 type BalanceTabProps = {
   orgId: string
   lang?: string
   orgDetail: AdminOrgDetail
-}
-
-function formatCurrency(amount: string): string {
-  return `Rp ${Number(amount).toLocaleString("id-ID")}`
 }
 
 function formatDate(dateStr: string): string {
@@ -22,10 +19,18 @@ function formatDate(dateStr: string): string {
   }).format(new Date(dateStr))
 }
 
-function getBalanceColor(balance: string): string {
+const LOW_BALANCE_THRESHOLDS: Record<string, { warn: number; danger: number }> =
+  {
+    IDR: { warn: 10_000, danger: 1_000 },
+    USD: { warn: 5, danger: 1 },
+  }
+
+function getBalanceColor(balance: string, currency: string): string {
   const value = Number.parseFloat(balance)
-  if (value >= 10_000) return "text-green-600 dark:text-green-400"
-  if (value >= 1_000) return "text-yellow-600 dark:text-yellow-400"
+  const thresholds =
+    LOW_BALANCE_THRESHOLDS[currency] ?? LOW_BALANCE_THRESHOLDS.IDR
+  if (value >= thresholds.warn) return "text-green-600 dark:text-green-400"
+  if (value >= thresholds.danger) return "text-yellow-600 dark:text-yellow-400"
   return "text-red-600 dark:text-red-400"
 }
 
@@ -41,14 +46,18 @@ export function BalanceTab({ orgDetail }: BalanceTabProps) {
           <WalletIcon className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className={`text-3xl font-bold ${getBalanceColor(org.balance)}`}>
-            {formatCurrency(org.balance)}
+          <div
+            className={`text-3xl font-bold ${getBalanceColor(org.balance, org.currency)}`}
+          >
+            {formatBillingMoney(org.balance, org.currency)}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             Currency: {org.currency} | Status: {org.status}
           </p>
 
-          {Number(org.balance) < 1000 && (
+          {Number(org.balance) <
+            (LOW_BALANCE_THRESHOLDS[org.currency] ?? LOW_BALANCE_THRESHOLDS.IDR)
+              .danger && (
             <div className="mt-4 flex items-start gap-2 rounded-md border border-yellow-500/20 bg-yellow-500/10 p-3">
               <WarningIcon className="h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
               <p className="text-sm text-yellow-600 dark:text-yellow-400">
@@ -86,7 +95,7 @@ export function BalanceTab({ orgDetail }: BalanceTabProps) {
                   </div>
                   <div className="text-right">
                     <p className="font-medium">
-                      {formatCurrency(invoice.totalAmountIdr)}
+                      {formatBillingMoney(invoice.totalAmountIdr, org.currency)}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {invoice.status}

@@ -13,6 +13,7 @@ import { eden } from "@/lib/eden"
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import type { ColumnDef } from "@tanstack/react-table"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 
 type InvoicesTabProps = {
   orgId: string
@@ -21,12 +22,9 @@ type InvoicesTabProps = {
     invoiceNumber: string
     status: string
     totalAmountIdr: string
+    currency: string
     createdAt: string
   }>
-}
-
-function formatCurrency(amountIdr: string): string {
-  return `Rp ${Number(amountIdr).toLocaleString("id-ID")}`
 }
 
 function formatDate(dateStr: string | null): string {
@@ -50,11 +48,20 @@ export function InvoicesTab({ orgId, recentInvoices }: InvoicesTabProps) {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!recentInvoices || recentInvoices.length === 0) {
-      getAdminInvoices({ organizationId: orgId })
-        .then((res) => setInvoices(res.invoices))
-        .catch((err) => setError(err.message))
-        .finally(() => setIsLoading(false))
+    if (recentInvoices && recentInvoices.length > 0) return
+    let cancelled = false
+    getAdminInvoices({ organizationId: orgId, limit: 50 })
+      .then((res) => {
+        if (!cancelled) setInvoices(res.invoices)
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message)
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+    return () => {
+      cancelled = true
     }
   }, [orgId, recentInvoices])
 
@@ -134,7 +141,10 @@ export function InvoicesTab({ orgId, recentInvoices }: InvoicesTabProps) {
         ),
         cell: ({ row }) => (
           <span className="font-medium">
-            {formatCurrency(row.original.totalAmountIdr)}
+            {formatBillingMoney(
+              row.original.totalAmountIdr,
+              row.original.currency
+            )}
           </span>
         ),
       },

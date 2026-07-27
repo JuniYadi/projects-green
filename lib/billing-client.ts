@@ -494,6 +494,7 @@ export type AdminOrgDetail = {
       invoiceNumber: string
       status: string
       totalAmountIdr: string
+      currency: string
       createdAt: string
     }[]
   }

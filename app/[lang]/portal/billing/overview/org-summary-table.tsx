@@ -8,10 +8,7 @@ import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getAdminOrgs, type AdminOrgSummary } from "@/lib/billing-client"
-
-function formatCurrency(amount: string): string {
-  return `Rp ${Number(amount).toLocaleString("id-ID")}`
-}
+import { formatBillingMoney } from "@/modules/billing/format-money"
 
 function makeColumns(
   linkPrefix: string,
@@ -38,7 +35,8 @@ function makeColumns(
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Balance" />
       ),
-      cell: ({ row }) => formatCurrency(row.original.balance),
+      cell: ({ row }) =>
+        formatBillingMoney(row.original.balance, row.original.currency),
     },
     {
       accessorKey: "activeSubscriptions",
@@ -51,7 +49,8 @@ function makeColumns(
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Monthly Spend" />
       ),
-      cell: ({ row }) => formatCurrency(row.original.monthlySpend),
+      cell: ({ row }) =>
+        formatBillingMoney(row.original.monthlySpend, row.original.currency),
     },
   ]
 }
@@ -122,14 +121,13 @@ export function OrgSummaryTable({
       <CardHeader>
         <CardTitle>Organizations</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-0">
         <DataTable
           tableId="portal-billing-org-summary"
           columns={makeColumns(linkPrefix, linkSuffix)}
           data={orgs}
-          searchableColumns={["orgName"]}
           searchPlaceholder="Search organizations..."
-          emptyMessage="No organizations found."
+          searchableColumns={["orgName"]}
         />
       </CardContent>
     </Card>

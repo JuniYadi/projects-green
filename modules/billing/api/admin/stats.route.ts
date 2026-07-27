@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import type { PlatformAccessRole } from "@/lib/platform-role"
+import { MINIMUM_BALANCE_WARN_IDR } from "@/modules/billing/constants"
 
 type BillingAuthContext = {
   organizationId?: string | null
@@ -24,6 +25,10 @@ type AdminStatsRouteDeps = {
     email?: string | null
   }) => Promise<PlatformAccessRole>
 }
+const MINIMUM_BALANCE_WARN_BY_CURRENCY: Record<string, number> = {
+  IDR: MINIMUM_BALANCE_WARN_IDR,
+  USD: 5,
+}
 
 const defaultDeps: AdminStatsRouteDeps = {
   authenticate: () => withAuth(),
@@ -34,8 +39,7 @@ const toUnauthorized = (set: RouteSet) => {
   set.status = 401
   return {
     ok: false as const,
-    error: "UNAUTHORIZED" as const,
-    message: "You must be signed in to view platform stats.",
+    error: "UNAUTHORIZED",
   }
 }
 
@@ -43,7 +47,7 @@ const toForbidden = (set: RouteSet, message: string) => {
   set.status = 403
   return {
     ok: false as const,
-    error: "FORBIDDEN" as const,
+    error: "FORBIDDEN",
     message,
   }
 }
@@ -52,7 +56,7 @@ const toServerError = (set: RouteSet, message: string) => {
   set.status = 500
   return {
     ok: false as const,
-    error: "INTERNAL_SERVER_ERROR" as const,
+    error: "INTERNAL_SERVER_ERROR",
     message,
   }
 }
@@ -106,7 +110,12 @@ export const createAdminStatsRoutes = (
         prisma.billingAccount.count({
           where: {
             status: "ACTIVE",
-            balance: { lt: new Prisma.Decimal(10000) },
+            OR: Object.entries(MINIMUM_BALANCE_WARN_BY_CURRENCY).map(
+              ([currency, threshold]) => ({
+                currency,
+                balance: { lt: new Prisma.Decimal(threshold) },
+              })
+            ),
           },
         }),
         prisma.billingUsageLedger.aggregate({

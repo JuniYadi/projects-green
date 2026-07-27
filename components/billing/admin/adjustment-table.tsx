@@ -6,20 +6,11 @@ import { type ColumnDef } from "@tanstack/react-table"
 import { cn } from "@/lib/utils"
 import { DataTable } from "@/components/data-table"
 import type { AdminAdjustment } from "@/lib/billing-client"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 
 type AdjustmentTableProps = {
   adjustments: AdminAdjustment[]
   isLoading?: boolean
-}
-
-function formatCurrency(amountIdr: string): string {
-  const amount = Number.parseFloat(amountIdr)
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
-    signDisplay: "never",
-  }).format(Math.abs(amount))
 }
 
 function formatDate(dateStr: string): string {
@@ -49,9 +40,20 @@ function AdjustmentTypeBadge({ type }: { type: string }) {
   )
 }
 
-function AmountCell({ amountIdr, type }: { amountIdr: string; type: string }) {
+function AmountCell({
+  amountIdr,
+  currency,
+  type,
+}: {
+  amountIdr: string
+  currency: string
+  type: string
+}) {
   const isCredit = type === "CREDIT"
-  const formattedAmount = formatCurrency(amountIdr)
+  const formattedAmount = formatBillingMoney(
+    Math.abs(Number(amountIdr)),
+    currency
+  )
 
   return (
     <span
@@ -91,6 +93,7 @@ export function AdjustmentTable({ adjustments }: AdjustmentTableProps) {
         cell: ({ row }) => (
           <AmountCell
             amountIdr={row.original.amountIdr}
+            currency={row.original.currency}
             type={row.original.type}
           />
         ),

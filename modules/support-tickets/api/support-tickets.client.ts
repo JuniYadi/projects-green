@@ -234,15 +234,15 @@ export const createSupportTicketsClient = () => {
 
       return payload.attachment
     },
-    async listAdminTickets() {
+    async listAdminTickets(params?: { organizationId?: string }) {
+      const qs = params?.organizationId
+        ? `?organizationId=${encodeURIComponent(params.organizationId)}`
+        : ""
+      const path = `/api/support-tickets/admin${qs}`
       const payload = await requestJson<{
         ok: true
         tickets: SupportTicket[]
-      }>(
-        "/api/support-tickets/admin",
-        undefined,
-        "Unable to load support tickets."
-      )
+      }>(path, undefined, "Unable to load support tickets.")
 
       return payload.tickets
     },

@@ -1,16 +1,18 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
-import { ArrowLeftIcon } from "@phosphor-icons/react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getAdminOrgDetail, type AdminOrgDetail } from "@/lib/billing-client"
 import { BalanceTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/balance-tab"
+import { InvoicesTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/invoices-tab"
 import { UsageTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/usage-tab"
-import { SettingsTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/settings-tab"
+import { SubscriptionsTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/subscriptions-tab"
+import { AdjustmentsTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/adjustments-tab"
+import { MembersTable } from "@/app/[lang]/portal/admin/organizations/[id]/members-table"
+import { SupportTicketsPortal } from "@/app/[lang]/portal/support-tickets/support-tickets-portal"
 
 type OrgOverviewDashboardProps = {
   lang: string
@@ -18,32 +20,49 @@ type OrgOverviewDashboardProps = {
   defaultPage?: string
 }
 
-const TABS = ["billing", "usage", "members", "settings"] as const
-type TabValue = (typeof TABS)[number]
+const TABS = [
+  { key: "billing", label: "Billing" },
+  { key: "invoices", label: "Invoices" },
+  { key: "usage", label: "Usage" },
+  { key: "subscriptions", label: "Subscriptions" },
+  { key: "adjustments", label: "Adjustments" },
+  { key: "members", label: "Members" },
+  { key: "support", label: "Support Tickets" },
+] as const
 
-function formatCurrency(amount: string): string {
-  return `Rp ${Number(amount).toLocaleString("id-ID")}`
-}
+type TabKey = (typeof TABS)[number]["key"]
 
 export function OrgOverviewDashboard({
   lang,
   orgId,
   defaultPage,
 }: OrgOverviewDashboardProps) {
-  const activeTab: TabValue = TABS.includes(defaultPage as TabValue)
-    ? (defaultPage as TabValue)
-    : "billing"
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [orgDetail, setOrgDetail] = useState<AdminOrgDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const validKeys = TABS.map((t) => t.key)
+
+  const activeTab: TabKey = (
+    validKeys.includes(defaultPage as TabKey) ? defaultPage : "billing"
+  ) as TabKey
+
   useEffect(() => {
+    let cancelled = false
     getAdminOrgDetail(orgId)
-      .then(setOrgDetail)
-      .catch((err) => setError(err.message))
-      .finally(() => setIsLoading(false))
+      .then((detail) => {
+        if (!cancelled) setOrgDetail(detail)
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message)
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [orgId])
 
   if (isLoading) {
@@ -62,39 +81,21 @@ export function OrgOverviewDashboard({
 
   if (error) {
     return (
-      <div className="space-y-4">
-        <Link
-          href={`/${lang}/portal/orgs`}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeftIcon className="h-4 w-4" />
-          Back to Overview
-        </Link>
-        <Card>
-          <CardContent className="py-6 text-center text-destructive">
-            Failed to load organization: {error}
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardContent className="py-6 text-center text-destructive">
+          Failed to load organization: {error}
+        </CardContent>
+      </Card>
     )
   }
 
   if (!orgDetail) {
     return (
-      <div className="space-y-4">
-        <Link
-          href={`/${lang}/portal/orgs`}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeftIcon className="h-4 w-4" />
-          Back to Overview
-        </Link>
-        <Card>
-          <CardContent className="py-6 text-center text-muted-foreground">
-            Organization not found.
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardContent className="py-6 text-center text-muted-foreground">
+          Organization not found.
+        </CardContent>
+      </Card>
     )
   }
 
@@ -102,76 +103,25 @@ export function OrgOverviewDashboard({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link
-          href={`/${lang}/portal/orgs`}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeftIcon className="h-4 w-4" />
-          Back to Overview
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold">{org.orgName}</h1>
-          <p className="text-sm text-muted-foreground">{org.orgId}</p>
-        </div>
-      </div>
-
-      {/* Summary cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Balance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(org.balance)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Active Subscriptions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{org.subscriptions.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Spend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(org.monthlySpend)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Contacts</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{org.contacts}</div>
-          </CardContent>
-        </Card>
+      {/* Compact header (no balance — BalanceTab owns that) */}
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold">{org.orgName}</h1>
+        <p className="text-sm text-muted-foreground">
+          {org.orgId} · {org.status} · {org.currency}
+        </p>
       </div>
 
       {/* Tabs */}
       <Tabs
         value={activeTab}
         onValueChange={(v) => {
-          const params = new URLSearchParams(searchParams.toString())
-          params.set("page", v)
-          router.replace(`?${params.toString()}`, { scroll: false })
+          router.replace(`?page=${v}`, { scroll: false })
         }}
       >
         <TabsList className="flex-wrap">
           {TABS.map((tab) => (
-            <TabsTrigger key={tab} value={tab} className="capitalize">
-              {tab}
+            <TabsTrigger key={tab.key} value={tab.key}>
+              {tab.label}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -180,25 +130,14 @@ export function OrgOverviewDashboard({
           {activeTab === "billing" && (
             <BalanceTab lang={lang} orgId={orgId} orgDetail={orgDetail} />
           )}
+          {activeTab === "invoices" && <InvoicesTab orgId={orgId} />}
           {activeTab === "usage" && <UsageTab orgId={orgId} />}
-          {activeTab === "members" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Members</CardTitle>
-              </CardHeader>
-              <CardContent className="text-muted-foreground">
-                {/* ponytail: members tab placeholder; add WorkOS-backed member list when needed */}
-                Member management is available in the organization settings.{" "}
-                <Link
-                  href={`/${lang}/portal/settings/members`}
-                  className="underline hover:text-foreground"
-                >
-                  Manage members
-                </Link>
-              </CardContent>
-            </Card>
+          {activeTab === "subscriptions" && <SubscriptionsTab orgId={orgId} />}
+          {activeTab === "adjustments" && <AdjustmentsTab orgId={orgId} />}
+          {activeTab === "members" && <MembersTable organizationId={orgId} />}
+          {activeTab === "support" && (
+            <SupportTicketsPortal lang={lang} organizationId={orgId} />
           )}
-          {activeTab === "settings" && <SettingsTab orgId={orgId} />}
         </div>
       </Tabs>
     </div>
