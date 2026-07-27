@@ -81,5 +81,7 @@ describe("OrgSummaryTable currency formatting", () => {
     // USD rows must not be labelled as IDR/Rp
     const html = view.container.innerHTML
     expect(html).not.toContain("Rp 125")
+
+    expect(view.getByText("Organizations")).toBeTruthy()
   })
 })

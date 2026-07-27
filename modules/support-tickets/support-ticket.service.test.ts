@@ -930,18 +930,46 @@ describe("supportTicketService", () => {
     expect(result.closedAt).toBeNull()
   })
 
-  it("rejects listAllTickets for non-super-admin", async () => {
+  it("scopes listAllTickets by actor org for non-super-admin", async () => {
     const { repository } = createRepositoryStub()
     const service = createSupportTicketService({
       contentCipher: identityCipher,
       repository,
     })
 
+    const tickets = await service.listAllTickets({
+      actor: { organizationId: "org_1", workosUserId: "user_normal" },
+    })
+
+    expect(tickets.every((t) => t.organizationId === "org_1")).toBe(true)
+  })
+
+  it("rejects listAllTickets for non-super-admin cross-tenant", async () => {
+    const listCalls: Array<unknown> = []
+    const { repository } = createRepositoryStub()
+    const wrappedRepository: SupportTicketRepository = {
+      ...repository,
+      listAllTickets(input) {
+        listCalls.push(input)
+        return repository.listAllTickets(input)
+      },
+    }
+    const service = createSupportTicketService({
+      contentCipher: identityCipher,
+      repository: wrappedRepository,
+    })
+
     await expect(
       service.listAllTickets({
-        actor: { organizationId: "org_1", workosUserId: "user_normal" },
+        actor: {
+          isSuperAdmin: false,
+          organizationId: "org_1",
+          workosUserId: "user_1",
+        },
+        organizationId: "org_2",
       })
     ).rejects.toBeInstanceOf(SupportTicketAccessDeniedError)
+    expect(listCalls).toHaveLength(0)
   })
 
   it("rejects updateTicket for non-super-admin", async () => {

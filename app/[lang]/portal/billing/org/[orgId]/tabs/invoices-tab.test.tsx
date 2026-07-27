@@ -72,4 +72,27 @@ describe("InvoicesTab currency formatting", () => {
     expect(view.getByText("USD 42.75")).toBeTruthy()
     expect(view.container.innerHTML).not.toContain("Rp 42")
   })
+
+  it("renders seeded invoices with currency and skips the fetch", () => {
+    const view = render(
+      <InvoicesTab
+        orgId="org_usd"
+        recentInvoices={[
+          {
+            id: "inv-seed",
+            invoiceNumber: "INV-SEED",
+            status: "ISSUED",
+            totalAmountIdr: "12.34",
+            currency: "USD",
+            createdAt: "2024-01-01T00:00:00.000Z",
+          },
+        ]}
+      />
+    )
+
+    expect(view.getByText("INV-SEED")).toBeTruthy()
+    expect(view.getByText("USD 12.34")).toBeTruthy()
+    expect(mockGetAdminInvoices).not.toHaveBeenCalled()
+    expect(view.container.innerHTML).not.toContain("undefined")
+  })
 })

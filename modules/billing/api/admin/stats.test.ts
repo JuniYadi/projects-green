@@ -9,6 +9,7 @@ import {
   mockPlatformRoleNone,
   testIsAdmin,
 } from "@/test/helpers/test-auth"
+import { MINIMUM_BALANCE_WARN_IDR } from "@/modules/billing/constants"
 
 const mockBillingAccountAggregate = mock()
 const mockBillingAccountCount = mock()
@@ -210,6 +211,52 @@ describe("AdminStatsRoute", () => {
       )
 
       expect(response.status).toBe(403)
+    })
+
+    it("scopes low-balance query by currency thresholds", async () => {
+      mockBillingAccountAggregate.mockResolvedValueOnce({
+        _sum: { balance: new TestDecimal(0) },
+      })
+      mockUsageLedgerAggregate.mockResolvedValueOnce({
+        _sum: { amountIdr: new TestDecimal(0) },
+      })
+      mockBillingAccountCount
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(0)
+        .mockResolvedValueOnce(0)
+      mockBillingInvoiceCount.mockResolvedValueOnce(0)
+      mockSupportTicketCount.mockResolvedValueOnce(0)
+
+      const app = new Elysia()
+        .use(
+          createAdminStatsRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/stats")
+      )
+
+      expect(response.status).toBe(200)
+
+      type WhereClause = {
+        where?: { status?: string; OR?: Array<Record<string, unknown>> }
+      }
+      const lowBalanceArgs = mockBillingAccountCount.mock.calls[1]?.[0] as
+        | WhereClause
+        | undefined
+      expect(lowBalanceArgs?.where?.status).toBe("ACTIVE")
+      const orClauses = lowBalanceArgs?.where?.OR
+      const toNumber = (d: unknown) =>
+        (d as { toNumber: () => number }).toNumber()
+      expect(orClauses?.map((c) => c.currency)).toEqual(["IDR", "USD"])
+      expect(toNumber((orClauses?.[0]?.balance as { lt: unknown }).lt)).toBe(
+        MINIMUM_BALANCE_WARN_IDR
+      )
+      expect(toNumber((orClauses?.[1]?.balance as { lt: unknown }).lt)).toBe(5)
     })
 
     it("returns 500 on database error", async () => {

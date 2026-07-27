@@ -25,6 +25,10 @@ type AdminStatsRouteDeps = {
     email?: string | null
   }) => Promise<PlatformAccessRole>
 }
+const MINIMUM_BALANCE_WARN_BY_CURRENCY: Record<string, number> = {
+  IDR: MINIMUM_BALANCE_WARN_IDR,
+  USD: 5,
+}
 
 const defaultDeps: AdminStatsRouteDeps = {
   authenticate: () => withAuth(),
@@ -106,8 +110,12 @@ export const createAdminStatsRoutes = (
         prisma.billingAccount.count({
           where: {
             status: "ACTIVE",
-            // IDR threshold; add per-currency thresholds before treating USD accounts as low-balance.
-            balance: { lt: new Prisma.Decimal(MINIMUM_BALANCE_WARN_IDR) },
+            OR: Object.entries(MINIMUM_BALANCE_WARN_BY_CURRENCY).map(
+              ([currency, threshold]) => ({
+                currency,
+                balance: { lt: new Prisma.Decimal(threshold) },
+              })
+            ),
           },
         }),
         prisma.billingUsageLedger.aggregate({

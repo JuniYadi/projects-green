@@ -48,6 +48,12 @@ export class SupportTicketAccessDeniedError extends Error {
     super(`You do not have permission to ${action} this support ticket.`)
     this.name = "SupportTicketAccessDeniedError"
   }
+
+  static forMessage(message: string): SupportTicketAccessDeniedError {
+    const error = new SupportTicketAccessDeniedError("perform this action")
+    error.message = message
+    return error
+  }
 }
 
 export class SupportTicketContentUnavailableError extends Error {
@@ -472,13 +478,22 @@ export const createSupportTicketService = (
     },
     async listAllTickets(input) {
       const actor = supportTicketActorContextSchema.parse(input.actor)
+      let organizationId = input.organizationId
       if (!actor.isSuperAdmin) {
-        throw new SupportTicketAccessDeniedError("list all")
+        if (
+          input.organizationId &&
+          input.organizationId !== actor.organizationId
+        ) {
+          throw SupportTicketAccessDeniedError.forMessage(
+            "Cannot list tickets for a different organization."
+          )
+        }
+        organizationId = actor.organizationId
       }
 
       const tickets = await repository.listAllTickets({
         limit: input.limit,
-        organizationId: input.organizationId,
+        organizationId,
       })
 
       try {

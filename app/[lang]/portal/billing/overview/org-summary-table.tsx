@@ -5,7 +5,7 @@ import Link from "next/link"
 import type { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getAdminOrgs, type AdminOrgSummary } from "@/lib/billing-client"
 import { formatBillingMoney } from "@/modules/billing/format-money"
@@ -118,6 +118,9 @@ export function OrgSummaryTable({
 
   return (
     <Card>
+      <CardHeader>
+        <CardTitle>Organizations</CardTitle>
+      </CardHeader>
       <CardContent className="p-0">
         <DataTable
           tableId="portal-billing-org-summary"

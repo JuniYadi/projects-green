@@ -224,6 +224,20 @@ describe("support tickets client", () => {
     )
   })
 
+  it("encodes organizationId for listAdminTickets", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ ok: true, tickets: [ticketFixture] })
+    )
+    const client = createSupportTicketsClient()
+
+    await client.listAdminTickets({ organizationId: "org custom/id" })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/support-tickets/admin?organizationId=org+custom%2Fid",
+      undefined
+    )
+  })
+
   it("throws error on admin tickets failure", async () => {
     fetchMock.mockResolvedValueOnce(
       new Response("upstream error", { status: 500 })

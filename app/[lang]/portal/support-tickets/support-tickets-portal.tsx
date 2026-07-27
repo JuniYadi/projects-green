@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import type { ColumnDef } from "@tanstack/react-table"
+import type { Column, ColumnDef } from "@tanstack/react-table"
 import Link from "next/link"
 
 import { DataTable } from "@/components/data-table"
@@ -64,10 +64,7 @@ const getSupportTicketColumns = (
             header: ({
               column,
             }: {
-              column: import("@tanstack/react-table").Column<
-                SupportTicket,
-                unknown
-              >
+              column: Column<SupportTicket, unknown>
             }) => (
               <DataTableColumnHeader column={column} title="Organization" />
             ),
@@ -147,33 +144,34 @@ export function SupportTicketsPortal({
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const loadTickets = async () => {
-    setIsLoading(true)
-    setErrorMessage(null)
-
-    try {
-      const items = await apiClient.listAdminTickets(
-        organizationId ? { organizationId } : undefined
-      )
-      setTickets(items)
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Unable to load support tickets."
-      )
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      void loadTickets()
-    }, 0)
+    let cancelled = false
 
+    const loadTickets = async () => {
+      setIsLoading(true)
+      setErrorMessage(null)
+      try {
+        const items = await apiClient.listAdminTickets(
+          organizationId ? { organizationId } : undefined
+        )
+        if (cancelled) return
+        setTickets(items)
+      } catch (error) {
+        if (cancelled) return
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Unable to load support tickets."
+        )
+      } finally {
+        if (cancelled) return
+        setIsLoading(false)
+      }
+    }
+
+    void loadTickets()
     return () => {
-      window.clearTimeout(timeoutId)
+      cancelled = true
     }
   }, [organizationId])
 

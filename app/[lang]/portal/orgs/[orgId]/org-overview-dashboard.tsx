@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -38,12 +38,12 @@ export function OrgOverviewDashboard({
   defaultPage,
 }: OrgOverviewDashboardProps) {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [orgDetail, setOrgDetail] = useState<AdminOrgDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const validKeys = TABS.map((t) => t.key)
+
   const activeTab: TabKey = (
     validKeys.includes(defaultPage as TabKey) ? defaultPage : "billing"
   ) as TabKey
@@ -115,9 +115,7 @@ export function OrgOverviewDashboard({
       <Tabs
         value={activeTab}
         onValueChange={(v) => {
-          const params = new URLSearchParams(searchParams.toString())
-          params.set("page", v)
-          router.replace(`?${params.toString()}`, { scroll: false })
+          router.replace(`?page=${v}`, { scroll: false })
         }}
       >
         <TabsList className="flex-wrap">

@@ -169,6 +169,7 @@ export const createAdminOrgDetailRoutes = (
             invoiceNumber: inv.invoiceNumber,
             status: inv.status,
             totalAmountIdr: inv.totalAmount.toFixed(2),
+            currency: inv.currency,
             createdAt: inv.createdAt.toISOString(),
           })),
         },

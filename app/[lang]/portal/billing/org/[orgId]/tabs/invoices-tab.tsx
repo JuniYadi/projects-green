@@ -22,6 +22,7 @@ type InvoicesTabProps = {
     invoiceNumber: string
     status: string
     totalAmountIdr: string
+    currency: string
     createdAt: string
   }>
 }

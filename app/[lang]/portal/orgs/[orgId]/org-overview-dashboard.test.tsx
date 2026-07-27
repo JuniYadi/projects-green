@@ -3,11 +3,9 @@ import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
 
 const mockReplace = mock()
-const mockSearchParamsToString = mock(() => "")
 
 mock.module("next/navigation", () => ({
   useRouter: () => ({ replace: mockReplace }),
-  useSearchParams: () => ({ toString: mockSearchParamsToString }),
   useParams: () => ({ lang: "en" }),
 }))
 
@@ -65,7 +63,7 @@ mock.module("@/lib/eden", () => ({
   eden: {
     api: {
       admin: {
-        organizations: (orgId: string) => ({
+        organizations: (_orgId: string) => ({
           members: {
             get: () => mockGetOrganizationMembers(),
             invitations: {
@@ -167,5 +165,45 @@ describe("OrgOverviewDashboard", () => {
         organizationId: "org_usd",
       })
     )
+  })
+
+  it("renders error state when getAdminOrgDetail rejects", async () => {
+    mockGetAdminOrgDetail.mockRejectedValueOnce(new Error("Network error"))
+
+    const view = render(
+      <OrgOverviewDashboard lang="en" orgId="org_usd" defaultPage="billing" />
+    )
+
+    await waitFor(() =>
+      expect(
+        view.getByText("Failed to load organization: Network error")
+      ).toBeTruthy()
+    )
+  })
+
+  it("renders not-found state when org detail resolves to null", async () => {
+    mockGetAdminOrgDetail.mockResolvedValueOnce(null as unknown as never)
+
+    const view = render(
+      <OrgOverviewDashboard lang="en" orgId="org_usd" defaultPage="billing" />
+    )
+
+    await waitFor(() =>
+      expect(view.getByText("Organization not found.")).toBeTruthy()
+    )
+  })
+
+  it("falls back to Billing tab when defaultPage is invalid", async () => {
+    mockGetAdminOrgDetail.mockResolvedValueOnce({
+      ok: true,
+      org: makeOrg(),
+    })
+
+    const view = render(
+      <OrgOverviewDashboard lang="en" orgId="org_usd" defaultPage="nope" />
+    )
+
+    await waitFor(() => expect(view.getByText("USD Org")).toBeTruthy())
+    expect(view.getByText("USD 125.00")).toBeTruthy()
   })
 })
