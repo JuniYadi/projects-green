@@ -5,6 +5,7 @@ import { z } from "zod"
 import { createSupportTicketAttachmentStorage } from "@/modules/support-tickets/support-ticket-attachment.storage"
 
 import { fieldErrorMapFromIssues } from "@/lib/validation"
+import { getEmailBaseUrl } from "@/lib/email-url"
 import {
   createSupportTicketService,
   SupportTicketAccessDeniedError,
@@ -137,13 +138,6 @@ async function resolveSupportRecipientsByOrgMembership(
   }
 }
 
-function getBaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3300").replace(
-    /\/+$/,
-    ""
-  )
-}
-
 async function getTicketOrganizationContext(ticket: {
   organizationId: string
 }): Promise<{
@@ -152,7 +146,7 @@ async function getTicketOrganizationContext(ticket: {
   organizationUrl: string
 }> {
   const org = await getCachedOrganizations([ticket.organizationId])
-  const base = getBaseUrl()
+  const base = getEmailBaseUrl()
   return {
     organizationId: ticket.organizationId,
     organizationName: org.get(ticket.organizationId)?.name ?? null,

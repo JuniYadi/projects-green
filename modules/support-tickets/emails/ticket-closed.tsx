@@ -10,6 +10,7 @@ import {
   Section,
   Text,
 } from "@react-email/components"
+import { getEmailBaseUrl } from "@/lib/email-url"
 import type { SupportTicket } from "../support-ticket.types"
 import { SUPPORT_TICKET_STATUS_LABELS } from "../support-ticket.types"
 
@@ -18,7 +19,7 @@ interface TicketClosedEmailProps {
 }
 
 export const TicketClosedEmail = ({ ticket }: TicketClosedEmailProps) => {
-  const ticketUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3300"}/console/support-tickets/${ticket.id}`
+  const ticketUrl = `${getEmailBaseUrl()}/console/support-tickets/${ticket.id}`
   const statusLabel = SUPPORT_TICKET_STATUS_LABELS[ticket.status]
   const isResolved = ticket.status === "resolved"
 

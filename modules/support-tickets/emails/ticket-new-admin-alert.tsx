@@ -10,6 +10,7 @@ import {
   Section,
   Text,
 } from "@react-email/components"
+import { getEmailBaseUrl } from "@/lib/email-url"
 import type { SupportTicket, SupportTicketReply } from "../support-ticket.types"
 import { SUPPORT_TICKET_DEPARTMENT_LABELS } from "../support-ticket.types"
 import { SUPPORT_TICKET_PRIORITY_LABELS } from "../support-ticket.types"
@@ -42,7 +43,7 @@ export const TicketNewAdminAlertEmail = ({
   organization,
   replyContext,
 }: TicketNewAdminAlertEmailProps) => {
-  const ticketUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3300"}/portal/support-tickets/${ticket.id}`
+  const ticketUrl = `${getEmailBaseUrl()}/portal/support-tickets/${ticket.id}`
   const isReply = variant === "reply"
 
   const formattedRepliedAt = replyContext

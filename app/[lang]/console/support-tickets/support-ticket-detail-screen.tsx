@@ -600,16 +600,13 @@ export function SupportTicketDetailScreen({
               className="font-heading text-base font-semibold"
               data-slot="card-title"
             >
-              {ticket.ticketNumber}
+              {ticket.ticketNumber} - {ticket.subject}
             </h2>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-muted-foreground">
-                Status: {SUPPORT_TICKET_STATUS_LABELS[ticket.status]}
-              </span>
               <Button
                 type="button"
                 size="sm"
-                variant="outline"
+                variant={isClosed ? "outline" : "destructive"}
                 disabled={isClosed || isClosing}
                 onClick={closeTicket}
               >
@@ -622,42 +619,14 @@ export function SupportTicketDetailScreen({
             </div>
           </div>
 
-          <dl className="grid gap-4 border-b border-border/50 pb-4 text-sm sm:grid-cols-2 md:grid-cols-4">
-            <div>
-              <dt className="text-xs font-semibold text-muted-foreground">
-                Subject
-              </dt>
-              <dd className="mt-0.5 font-medium text-foreground">
-                {ticket.subject}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold text-muted-foreground">
-                Department
-              </dt>
-              <dd className="mt-0.5 text-foreground">
-                {SUPPORT_TICKET_DEPARTMENT_LABELS[ticket.department]}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold text-muted-foreground">
-                Priority
-              </dt>
-              <dd className="mt-0.5 text-foreground capitalize">
-                {SUPPORT_TICKET_PRIORITY_LABELS[ticket.priority]}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold text-muted-foreground">
-                Service
-              </dt>
-              <dd className="mt-0.5 text-foreground">
-                {ticket.service
-                  ? SUPPORT_TICKET_SERVICE_LABELS[ticket.service]
-                  : "-"}
-              </dd>
-            </div>
-          </dl>
+          <p className="border-b border-border/50 pb-4 text-sm text-muted-foreground">
+            {SUPPORT_TICKET_DEPARTMENT_LABELS[ticket.department]} -{" "}
+            {SUPPORT_TICKET_PRIORITY_LABELS[ticket.priority]} -{" "}
+            {SUPPORT_TICKET_STATUS_LABELS[ticket.status]} -{" "}
+            {ticket.service
+              ? SUPPORT_TICKET_SERVICE_LABELS[ticket.service]
+              : "-"}
+          </p>
 
           {ticket.organizationMetadata &&
             Object.keys(ticket.organizationMetadata).length > 0 && (
