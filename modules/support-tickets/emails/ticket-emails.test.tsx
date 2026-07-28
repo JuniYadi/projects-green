@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { TicketCreatedEmail } from "./ticket-created"
 import { TicketNewAdminAlertEmail } from "./ticket-new-admin-alert"
 import { TicketRepliedEmail } from "./ticket-replied"
+import { TicketClosedEmail } from "./ticket-closed"
 
 const baseTicket = {
   id: "ticket_1",
@@ -249,6 +250,28 @@ describe("ticket email links use APP_URL", () => {
     const html = render(<TicketNewAdminAlertEmail ticket={baseTicket} />)
     expect(html).toContain(
       "https://app.example.com/portal/support-tickets/ticket_1"
+    )
+    expect(html).not.toContain("localhost")
+  })
+
+  it("replied email ticket link uses APP_URL", () => {
+    process.env.APP_URL = "https://app.example.com"
+    const html = render(
+      <TicketRepliedEmail ticket={baseTicket} reply={baseReply} />
+    )
+    expect(html).toContain(
+      "https://app.example.com/console/support-tickets/ticket_1"
+    )
+    expect(html).not.toContain("localhost")
+  })
+
+  it("closed email ticket link uses APP_URL", () => {
+    process.env.APP_URL = "https://app.example.com"
+    const html = render(
+      <TicketClosedEmail ticket={{ ...baseTicket, status: "closed" }} />
+    )
+    expect(html).toContain(
+      "https://app.example.com/console/support-tickets/ticket_1"
     )
     expect(html).not.toContain("localhost")
   })
