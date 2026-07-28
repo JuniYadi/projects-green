@@ -9,5 +9,5 @@ export function getEmailBaseUrl(): string {
     process.env.APP_URL?.trim() ||
     process.env.NEXT_PUBLIC_APP_URL?.trim() ||
     "http://localhost:3300"
-  )
+  ).replace(/\/+$/, "")
 }

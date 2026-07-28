@@ -40,6 +40,11 @@ describe("getEmailBaseUrl", () => {
     expect(getEmailBaseUrl()).toBe("https://public.example.com")
   })
 
+  it("strips trailing slashes", () => {
+    process.env.APP_URL = "https://app.example.com//"
+    expect(getEmailBaseUrl()).toBe("https://app.example.com")
+  })
+
   it("falls back to the local dev default when both are unset", () => {
     expect(getEmailBaseUrl()).toBe("http://localhost:3300")
   })

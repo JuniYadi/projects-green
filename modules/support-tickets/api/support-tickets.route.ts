@@ -138,10 +138,6 @@ async function resolveSupportRecipientsByOrgMembership(
   }
 }
 
-function getBaseUrl(): string {
-  return getEmailBaseUrl().replace(/\/+$/, "")
-}
-
 async function getTicketOrganizationContext(ticket: {
   organizationId: string
 }): Promise<{
@@ -150,7 +146,7 @@ async function getTicketOrganizationContext(ticket: {
   organizationUrl: string
 }> {
   const org = await getCachedOrganizations([ticket.organizationId])
-  const base = getBaseUrl()
+  const base = getEmailBaseUrl()
   return {
     organizationId: ticket.organizationId,
     organizationName: org.get(ticket.organizationId)?.name ?? null,
