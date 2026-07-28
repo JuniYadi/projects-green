@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 import { renderToStaticMarkup } from "react-dom/server"
-import { InvoiceCancelledEmail } from "./invoice-cancelled"
-import { InvoiceCreatedEmail } from "./invoice-created"
-import { InvoiceOverdueEmail } from "./invoice-overdue"
-import { InvoicePaidEmail } from "./invoice-paid"
-import { PaymentReminderEmail } from "./payment-reminder"
+import { InvoiceCancelledEmail } from "./emails/invoice-cancelled"
+import { InvoiceCreatedEmail } from "./emails/invoice-created"
+import { InvoiceOverdueEmail } from "./emails/invoice-overdue"
+import { InvoicePaidEmail } from "./emails/invoice-paid"
+import { PaymentReminderEmail } from "./emails/payment-reminder"
 
 const baseProps = {
   invoiceNumber: "INV-1001",

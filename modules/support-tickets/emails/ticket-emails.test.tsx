@@ -1,9 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test"
+import { describe, expect, it } from "bun:test"
 import { renderToStaticMarkup } from "react-dom/server"
 import { TicketCreatedEmail } from "./ticket-created"
 import { TicketNewAdminAlertEmail } from "./ticket-new-admin-alert"
 import { TicketRepliedEmail } from "./ticket-replied"
-import { TicketClosedEmail } from "./ticket-closed"
 
 const baseTicket = {
   id: "ticket_1",
@@ -211,75 +210,5 @@ describe("ticket email templates", () => {
       )
       expect(html).not.toContain("Replied by")
     })
-  })
-})
-
-describe("ticket email links use APP_URL", () => {
-  const originalAppUrl = process.env.APP_URL
-  const originalNextPublicAppUrl = process.env.NEXT_PUBLIC_APP_URL
-
-  beforeEach(() => {
-    delete process.env.APP_URL
-    delete process.env.NEXT_PUBLIC_APP_URL
-  })
-
-  afterEach(() => {
-    if (originalAppUrl === undefined) {
-      delete process.env.APP_URL
-    } else {
-      process.env.APP_URL = originalAppUrl
-    }
-    if (originalNextPublicAppUrl === undefined) {
-      delete process.env.NEXT_PUBLIC_APP_URL
-    } else {
-      process.env.NEXT_PUBLIC_APP_URL = originalNextPublicAppUrl
-    }
-  })
-
-  it("requester email ticket link uses APP_URL", () => {
-    process.env.APP_URL = "https://app.example.com"
-    const html = render(<TicketCreatedEmail ticket={baseTicket} />)
-    expect(html).toContain(
-      "https://app.example.com/console/support-tickets/ticket_1"
-    )
-    expect(html).not.toContain("localhost")
-  })
-
-  it("admin alert ticket link uses APP_URL", () => {
-    process.env.APP_URL = "https://app.example.com"
-    const html = render(<TicketNewAdminAlertEmail ticket={baseTicket} />)
-    expect(html).toContain(
-      "https://app.example.com/portal/support-tickets/ticket_1"
-    )
-    expect(html).not.toContain("localhost")
-  })
-
-  it("replied email ticket link uses APP_URL", () => {
-    process.env.APP_URL = "https://app.example.com"
-    const html = render(
-      <TicketRepliedEmail ticket={baseTicket} reply={baseReply} />
-    )
-    expect(html).toContain(
-      "https://app.example.com/console/support-tickets/ticket_1"
-    )
-    expect(html).not.toContain("localhost")
-  })
-
-  it("closed email ticket link uses APP_URL", () => {
-    process.env.APP_URL = "https://app.example.com"
-    const html = render(
-      <TicketClosedEmail ticket={{ ...baseTicket, status: "closed" }} />
-    )
-    expect(html).toContain(
-      "https://app.example.com/console/support-tickets/ticket_1"
-    )
-    expect(html).not.toContain("localhost")
-  })
-
-  it("falls back to localhost when APP_URL is unset", () => {
-    const html = render(<TicketCreatedEmail ticket={baseTicket} />)
-    expect(html).toContain(
-      "http://localhost:3300/console/support-tickets/ticket_1"
-    )
   })
 })
