@@ -20,6 +20,7 @@ import type {
   SupportTicketAttachmentUploadSession,
   SupportTicketAttachmentUploadTarget,
   SupportTicketDepartment,
+  SupportTicketListResult,
   SupportTicketPriority,
   SupportTicketService as SupportTicketServiceCategory,
   SupportTicketStatus,
@@ -368,9 +369,12 @@ export type SupportTicketRepository = {
     ticketId: string
   }): Promise<SupportTicket>
   listAllTickets(input: {
+    includeClosed?: boolean
     limit?: number
     organizationId?: string
-  }): Promise<SupportTicket[]>
+    page?: number
+    pageSize?: number
+  }): Promise<SupportTicketListResult>
   updateTicket(input: {
     ticketId: string
     data: {
@@ -626,17 +630,31 @@ export const supportTicketRepository: SupportTicketRepository = {
     return mapTicketRecord(ticket)
   },
   async listAllTickets(input) {
-    const rows = await prisma.supportTicket.findMany({
-      where: input.organizationId
-        ? { organizationId: input.organizationId }
-        : undefined,
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: input.limit ?? 50,
-    })
+    const page = Math.max(1, input.page ?? 1)
+    const pageSize = Math.min(
+      100,
+      Math.max(1, input.pageSize ?? input.limit ?? 20)
+    )
+    const where: Prisma.SupportTicketWhereInput = {}
 
-    return rows.map(mapTicketRecord)
+    if (input.organizationId) {
+      where.organizationId = input.organizationId
+    }
+    if (input.includeClosed !== true) {
+      where.status = { not: "CLOSED" }
+    }
+
+    const [rows, total] = await Promise.all([
+      prisma.supportTicket.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.supportTicket.count({ where }),
+    ])
+
+    return { tickets: rows.map(mapTicketRecord), total, page, pageSize }
   },
   async updateTicket(input) {
     const updateData: Prisma.SupportTicketUpdateInput = {}

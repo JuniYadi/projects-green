@@ -204,36 +204,54 @@ describe("support tickets client", () => {
     ).rejects.toThrow("Attachment upload failed.")
   })
 
-  it("lists admin tickets", async () => {
+  it("lists admin tickets with pagination metadata", async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
         ok: true,
         tickets: [ticketFixture, { ...ticketFixture, id: "ticket_2" }],
+        total: 42,
+        page: 1,
+        pageSize: 20,
       })
     )
     const client = createSupportTicketsClient()
 
-    const tickets = await client.listAdminTickets()
+    const result = await client.listAdminTickets()
 
-    expect(tickets).toHaveLength(2)
-    expect(tickets[0]?.id).toBe("ticket_1")
-    expect(tickets[1]?.id).toBe("ticket_2")
+    expect(result.tickets.map((ticket) => ticket.id)).toEqual([
+      "ticket_1",
+      "ticket_2",
+    ])
+    expect(result.total).toBe(42)
+    expect(result.page).toBe(1)
+    expect(result.pageSize).toBe(20)
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/support-tickets/admin",
       undefined
     )
   })
 
-  it("encodes organizationId for listAdminTickets", async () => {
+  it("encodes listAdminTickets params with URLSearchParams", async () => {
     fetchMock.mockResolvedValueOnce(
-      jsonResponse({ ok: true, tickets: [ticketFixture] })
+      jsonResponse({
+        ok: true,
+        tickets: [ticketFixture],
+        total: 1,
+        page: 2,
+        pageSize: 50,
+      })
     )
     const client = createSupportTicketsClient()
 
-    await client.listAdminTickets({ organizationId: "org custom/id" })
+    await client.listAdminTickets({
+      includeClosed: true,
+      organizationId: "org custom/id",
+      page: 2,
+      pageSize: 50,
+    })
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/support-tickets/admin?organizationId=org%20custom%2Fid",
+      "/api/support-tickets/admin?organizationId=org+custom%2Fid&page=2&pageSize=50&includeClosed=1",
       undefined
     )
   })

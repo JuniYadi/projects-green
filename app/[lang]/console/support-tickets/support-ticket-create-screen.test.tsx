@@ -153,6 +153,17 @@ describe("SupportTicketCreateScreen", () => {
     expect(view.getByRole("button", { name: "Submit Ticket" })).toBeTruthy()
     expect(view.getByRole("button", { name: "Cancel" })).toBeTruthy()
   })
+  it("uses a one-to-four desktop column ratio", () => {
+    const view = render(<SupportTicketCreateScreen lang="en" />)
+    const wrapper = view.container.querySelector(
+      ".lg\\:grid-cols-\\[1fr_4fr\\]"
+    )
+
+    expect(wrapper).not.toBeNull()
+    expect(wrapper).toHaveClass("grid", "grid-cols-1", "lg:grid-cols-[1fr_4fr]")
+    expect(wrapper).toHaveTextContent("Categorization")
+    expect(wrapper).toHaveTextContent("Ticket Details")
+  })
 
   it("requires subject and displays error", async () => {
     const view = renderScreen()

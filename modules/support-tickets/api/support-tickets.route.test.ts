@@ -49,6 +49,36 @@ mock.module("@workos-inc/authkit-nextjs", () => {
   }
 })
 
+mock.module("@/lib/workos-directory", () => ({
+  getCachedUsers: mock(async () => new Map()),
+  getCachedOrganizations: mock(
+    async (ids: string[]) =>
+      new Map(
+        ids.map((id) => [
+          id,
+          { id, name: id === "org_1" ? "Org One" : null, slug: id },
+        ])
+      )
+  ),
+}))
+
+const mockListTenantMemberships = mock<
+  () => Promise<
+    Array<{
+      userId: string
+      email: string
+      displayName: string
+      role: string
+      status: string
+      workosUserId: string
+    }>
+  >
+>(async () => [])
+
+mock.module("@/modules/tenants/services/tenant-workos.service", () => ({
+  listTenantMemberships: mockListTenantMemberships,
+}))
+
 import { createSupportTicketRoutes } from "@/modules/support-tickets/api/support-tickets.route"
 import {
   SupportTicketAccessDeniedError,
@@ -243,12 +273,12 @@ describe("support ticket routes", () => {
     expect(mockSendTicketReplyAlertToStaff).toHaveBeenCalledTimes(2)
     const calls = mockSendTicketReplyAlertToStaff.mock
       .calls as unknown as Array<
-      [SupportTicket, SupportTicketReply, string, string]
+      [SupportTicket, SupportTicketReply, string, string | undefined]
     >
     expect(calls[0]![0].id).toBe("ticket_1")
     expect(calls[0]![1].id).toBe("reply_2")
     expect(calls[0]![2]).toBe("admin1@example.com")
-    expect(calls[0]![3]).toBe("user@example.com")
+    expect(calls[0]![3]).toBeUndefined()
     expect(calls[1]![2]).toBe("admin2@example.com")
   })
 
@@ -547,7 +577,12 @@ describe("support ticket routes", () => {
             return baseTicket
           },
           async listAllTickets() {
-            return [baseTicket]
+            return {
+              tickets: [baseTicket],
+              total: 1,
+              page: 1,
+              pageSize: 20,
+            }
           },
           async updateTicket() {
             return baseTicket
@@ -599,6 +634,62 @@ describe("support ticket routes", () => {
       tickets: [{ id: "ticket_1" }],
     })
   })
+  it("returns admin list pagination metadata and organization name", async () => {
+    const app = createAdminApp(
+      {
+        async listAllTickets(input) {
+          return {
+            tickets: [{ ...baseTicket, organizationId: "org_1" }],
+            total: 7,
+            page: input.page ?? 1,
+            pageSize: input.pageSize ?? 20,
+          }
+        },
+      },
+      "super_admin"
+    )
+
+    const response = await app.handle(
+      new Request(
+        "http://localhost/support-tickets/admin?page=2&pageSize=20&includeClosed=1",
+        { method: "GET" }
+      )
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      ok: true,
+      total: 7,
+      page: 2,
+      pageSize: 20,
+      tickets: [{ organizationName: "Org One" }],
+    })
+  })
+
+  it("returns null organizationName when directory lookup misses", async () => {
+    const app = createAdminApp(
+      {
+        async listAllTickets() {
+          return {
+            tickets: [{ ...baseTicket, organizationId: "org_missing" }],
+            total: 1,
+            page: 1,
+            pageSize: 20,
+          }
+        },
+      },
+      "super_admin"
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/support-tickets/admin", { method: "GET" })
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      tickets: [{ organizationName: null }],
+    })
+  })
 
   it("super admin can filter /support-tickets/admin by organizationId", async () => {
     let receivedOrganizationId: string | undefined
@@ -608,10 +699,15 @@ describe("support ticket routes", () => {
         async listAllTickets(input) {
           receivedOrganizationId = input.organizationId
           receivedActorOrganizationId = input.actor.organizationId
-          return [
-            { ...baseTicket, id: "t1", organizationId: "org_custom" },
-            { ...baseTicket, id: "t2", organizationId: "org_custom" },
-          ]
+          return {
+            tickets: [
+              { ...baseTicket, id: "t1", organizationId: "org_custom" },
+              { ...baseTicket, id: "t2", organizationId: "org_custom" },
+            ],
+            total: 2,
+            page: input.page ?? 1,
+            pageSize: input.pageSize ?? 20,
+          }
         },
       },
       "super_admin"
@@ -853,7 +949,12 @@ describe("support ticket routes", () => {
             return baseTicket
           },
           async listAllTickets() {
-            return [baseTicket]
+            return {
+              tickets: [baseTicket],
+              total: 1,
+              page: 1,
+              pageSize: 20,
+            }
           },
           async updateTicket() {
             return baseTicket
@@ -1285,6 +1386,7 @@ describe("support ticket routes", () => {
           },
         }),
         getPlatformRole: async () => "none",
+        resolveSupportRecipients: async () => [],
         service: {
           async listTickets() {
             return []
@@ -1433,5 +1535,174 @@ describe("support ticket routes", () => {
     )
 
     expect(response.status).toBeGreaterThanOrEqual(400)
+  })
+})
+
+import {
+  normalizeEmail,
+  dedupeRecipients,
+  excludeRecipient,
+} from "@/modules/support-tickets/api/support-tickets.route"
+
+describe("route helper functions", () => {
+  it("normalizeEmail trims and lowercases", () => {
+    expect(normalizeEmail("  Alice@Example.COM  ")).toBe("alice@example.com")
+    expect(normalizeEmail(null)).toBe("")
+    expect(normalizeEmail(undefined)).toBe("")
+    expect(normalizeEmail("")).toBe("")
+  })
+
+  it("dedupeRecipients removes duplicate normalized emails", () => {
+    const result = dedupeRecipients([
+      { email: "alice@example.com", name: "Alice", role: "owner" },
+      { email: "ALICE@example.com", name: "Alice2", role: "admin" },
+      { email: "", name: "Empty", role: "admin" },
+      { email: "bob@example.com", name: "Bob", role: "admin" },
+    ])
+    expect(result).toHaveLength(2)
+    expect(result[0]!.email).toBe("alice@example.com")
+    expect(result[1]!.email).toBe("bob@example.com")
+  })
+
+  it("excludeRecipient filters by workosUserId and email", () => {
+    const recipients = [
+      {
+        email: "alice@example.com",
+        workosUserId: "u1",
+        name: "A",
+        role: "owner" as const,
+      },
+      {
+        email: "bob@example.com",
+        workosUserId: "u2",
+        name: "B",
+        role: "admin" as const,
+      },
+      {
+        email: "carol@example.com",
+        workosUserId: "u3",
+        name: "C",
+        role: "admin" as const,
+      },
+    ]
+    const result = excludeRecipient(recipients, {
+      workosUserId: "u1",
+      email: "carol@example.com",
+    })
+    expect(result).toHaveLength(1)
+    expect(result[0]!.email).toBe("bob@example.com")
+  })
+
+  it("excludeRecipient handles missing exclusion criteria", () => {
+    const recipients = [
+      {
+        email: "a@example.com",
+        workosUserId: "u1",
+        name: "A",
+        role: "owner" as const,
+      },
+      {
+        email: "b@example.com",
+        workosUserId: "u2",
+        name: "B",
+        role: "admin" as const,
+      },
+    ]
+    const result = excludeRecipient(recipients, {})
+    expect(result).toHaveLength(2)
+  })
+  it("resolves recipients via WorkOS listTenantMemberships", async () => {
+    mockListTenantMemberships.mockReset()
+    mockListTenantMemberships.mockResolvedValueOnce([
+      {
+        userId: "u1",
+        email: "owner@example.com",
+        displayName: "Owner",
+        role: "owner",
+        status: "active",
+        workosUserId: "u1",
+      },
+      {
+        userId: "u2",
+        email: "admin@example.com",
+        displayName: "Admin",
+        role: "admin",
+        status: "active",
+        workosUserId: "u2",
+      },
+    ])
+    const mockSendStaff = mock(async () => {})
+    const app = new Elysia().use(
+      createSupportTicketRoutes({
+        authenticate: async () => ({
+          organizationId: "org_1",
+          role: "member",
+          roles: ["member"],
+          user: { id: "u2", email: "admin@example.com" },
+        }),
+        getPlatformRole: async () => "none",
+        service: {
+          async listTickets() {
+            return []
+          },
+          async createTicket() {
+            return baseTicket
+          },
+          async getTicketThread() {
+            return { ticket: baseTicket, replies: [] }
+          },
+          async addReply() {
+            return {
+              id: "r1",
+              ticketId: "t1",
+              authorWorkosUserId: "u2",
+              body: "x",
+              secureForm: null,
+              isInternalNote: false,
+              attachmentMetadata: [],
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }
+          },
+          async transitionStatus() {
+            return baseTicket
+          },
+          async listAllTickets() {
+            return { tickets: [], total: 0, page: 1, pageSize: 20 }
+          },
+          async updateTicket() {
+            return baseTicket
+          },
+          async deleteTicket() {
+            return true
+          },
+        } as SupportTicketService,
+        emailService: {
+          async sendTicketCreated() {},
+          async sendTicketReplied() {},
+          async sendTicketClosed() {},
+          sendNewTicketAlertToStaff: mockSendStaff,
+          sendTicketReplyAlertToStaff: mock(async () => {}),
+        },
+      })
+    )
+
+    const res = await app.handle(
+      new Request("http://localhost/support-tickets", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          subject: "Test",
+          department: "technical",
+          priority: "high",
+        }),
+      })
+    )
+    expect(res.status).toBe(201)
+    expect(mockSendStaff).toHaveBeenCalledTimes(1)
+    expect((mockSendStaff.mock.calls[0] as unknown[])[1]).toBe(
+      "owner@example.com"
+    )
+    mockListTenantMemberships.mockReset()
   })
 })

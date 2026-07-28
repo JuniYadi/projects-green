@@ -234,17 +234,42 @@ export const createSupportTicketsClient = () => {
 
       return payload.attachment
     },
-    async listAdminTickets(params?: { organizationId?: string }) {
-      const qs = params?.organizationId
-        ? `?organizationId=${encodeURIComponent(params.organizationId)}`
-        : ""
-      const path = `/api/support-tickets/admin${qs}`
+    async listAdminTickets(params?: {
+      includeClosed?: boolean
+      organizationId?: string
+      page?: number
+      pageSize?: number
+    }) {
+      const searchParams = new URLSearchParams()
+      if (params?.organizationId) {
+        searchParams.set("organizationId", params.organizationId)
+      }
+      if (params?.page !== undefined) {
+        searchParams.set("page", String(params.page))
+      }
+      if (params?.pageSize !== undefined) {
+        searchParams.set("pageSize", String(params.pageSize))
+      }
+      if (params?.includeClosed) {
+        searchParams.set("includeClosed", "1")
+      }
+
+      const query = searchParams.toString()
+      const path = `/api/support-tickets/admin${query ? `?${query}` : ""}`
       const payload = await requestJson<{
         ok: true
         tickets: SupportTicket[]
+        total: number
+        page: number
+        pageSize: number
       }>(path, undefined, "Unable to load support tickets.")
 
-      return payload.tickets
+      return {
+        tickets: payload.tickets,
+        total: payload.total,
+        page: payload.page,
+        pageSize: payload.pageSize,
+      }
     },
     async createAdminTicket(input: {
       organizationId: string

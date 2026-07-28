@@ -16,13 +16,28 @@ import { SUPPORT_TICKET_STATUS_LABELS } from "../support-ticket.types"
 interface TicketRepliedEmailProps {
   ticket: SupportTicket
   reply: SupportTicketReply
+  replyContext?: {
+    authorName: string
+    authorRole: "Requester" | "Support Admin"
+    hasSecureDetails: boolean
+    repliedAt: Date
+  }
 }
 
 export const TicketRepliedEmail = ({
   ticket,
   reply,
+  replyContext,
 }: TicketRepliedEmailProps) => {
   const ticketUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3300"}/console/support-tickets/${ticket.id}`
+
+  const formattedRepliedAt = replyContext
+    ? new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "UTC",
+      }).format(replyContext.repliedAt)
+    : null
 
   return (
     <Html>
@@ -32,13 +47,18 @@ export const TicketRepliedEmail = ({
       </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          <Heading style={styles.heading}>
-            Re: Support Ticket #{ticket.ticketNumber}
-          </Heading>
+          <Heading style={styles.heading}>Re: {ticket.subject}</Heading>
 
-          <Text style={styles.intro}>
-            A member of our support team has replied to your ticket.
-          </Text>
+          {replyContext ? (
+            <Text style={styles.intro}>
+              Replied by {replyContext.authorName} ({replyContext.authorRole}) ·{" "}
+              {formattedRepliedAt}
+            </Text>
+          ) : (
+            <Text style={styles.intro}>
+              A member of our support team has replied to your ticket.
+            </Text>
+          )}
 
           <Section style={styles.ticketInfo}>
             <Heading as="h3" style={styles.ticketSubject}>
@@ -52,8 +72,12 @@ export const TicketRepliedEmail = ({
           </Section>
 
           <Section style={styles.replyPreview}>
-            <Text style={styles.replyLabel}>Reply:</Text>
             <Text style={styles.replyBody}>{reply.body}</Text>
+            {replyContext?.hasSecureDetails && (
+              <Text style={styles.replyBody}>
+                Secure details attached (encrypted). Open the ticket to view.
+              </Text>
+            )}
           </Section>
 
           <Hr style={styles.divider} />
@@ -120,23 +144,21 @@ const styles = {
     margin: "8px 0",
   },
   replyPreview: {
-    backgroundColor: "#ffffff",
-    border: "1px solid #e6ebf1",
+    backgroundColor: "#f6f9fc",
     borderRadius: "6px",
-    padding: "24px",
-    margin: "0 0 24px 0",
+    padding: "16px",
+    marginBottom: "24px",
   },
   replyLabel: {
-    color: "#8898aa",
-    fontSize: "12px",
+    color: "#1a1a1a",
+    fontSize: "14px",
     fontWeight: "600" as const,
-    textTransform: "uppercase" as const,
     margin: "0 0 8px 0",
   },
   replyBody: {
-    color: "#1a1a1a",
-    fontSize: "16px",
-    lineHeight: "24px",
+    color: "#525f7f",
+    fontSize: "14px",
+    lineHeight: "20px",
     margin: "0",
     whiteSpace: "pre-wrap" as const,
   },
@@ -150,7 +172,7 @@ const styles = {
     margin: "24px 0",
   },
   button: {
-    backgroundColor: "#5469d4",
+    backgroundColor: "#3b82f6",
     borderRadius: "4px",
     color: "#ffffff",
     fontSize: "16px",

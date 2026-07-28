@@ -29,6 +29,7 @@ import type {
   SupportTicket,
   SupportTicketActorContext,
   SupportTicketAttachmentUploadSession,
+  SupportTicketListResult,
   SupportTicketStatus,
   SupportTicketThread,
   SupportTicketDepartment,
@@ -88,9 +89,12 @@ export type SupportTicketService = {
   }): Promise<SupportTicketAttachmentUploadSession | null>
   listAllTickets(input: {
     actor: SupportTicketActorContext
+    includeClosed?: boolean
     limit?: number
     organizationId?: string
-  }): Promise<SupportTicket[]>
+    page?: number
+    pageSize?: number
+  }): Promise<SupportTicketListResult>
   updateTicket(input: {
     actor: SupportTicketActorContext
     ticketId: string
@@ -491,15 +495,21 @@ export const createSupportTicketService = (
         organizationId = actor.organizationId
       }
 
-      const tickets = await repository.listAllTickets({
+      const result = await repository.listAllTickets({
+        includeClosed: input.includeClosed,
         limit: input.limit,
         organizationId,
+        page: input.page,
+        pageSize: input.pageSize,
       })
 
       try {
-        return tickets.map((ticket) =>
-          decryptTicketContent(contentCipher, ticket)
-        )
+        return {
+          ...result,
+          tickets: result.tickets.map((ticket) =>
+            decryptTicketContent(contentCipher, ticket)
+          ),
+        }
       } catch (error) {
         throw toSafeContentError(error)
       }

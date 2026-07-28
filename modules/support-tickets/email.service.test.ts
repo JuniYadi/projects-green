@@ -67,8 +67,12 @@ describe("emailService", () => {
   let originalEnv: NodeJS.ProcessEnv
 
   beforeEach(async () => {
-    mockSendEmail.mockClear()
-    mockRender.mockClear()
+    mockSendEmail.mockReset()
+    mockSendEmail.mockImplementation(async () => {})
+    mockRender.mockReset()
+    mockRender.mockImplementation(
+      async () => "<html><body>Test Email</body></html>"
+    )
 
     originalEnv = { ...process.env, NODE_ENV: "test" }
     process.env.NEXT_PUBLIC_APP_URL = "http://localhost:3300"
@@ -186,6 +190,71 @@ describe("emailService", () => {
       await expect(
         emailService.sendTicketCreated(mockTicket, "user@example.com")
       ).rejects.toThrow("Failed to send ticket created notification")
+    })
+  })
+  describe("sendTicketCreated with organization", () => {
+    it("forwards organization context", async () => {
+      await emailService.sendTicketCreated(mockTicket, "user@example.com", {
+        organizationId: "org_1",
+        organizationName: "Acme Corp",
+      })
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ to: "user@example.com" })
+      )
+    })
+  })
+
+  describe("sendNewTicketAlertToStaff with organization", () => {
+    it("forwards organization context", async () => {
+      await emailService.sendNewTicketAlertToStaff(
+        mockTicket,
+        "admin@example.com",
+        "Requester",
+        "req@example.com",
+        { organizationId: "org_1", organizationName: "Acme" }
+      )
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ to: "admin@example.com" })
+      )
+    })
+  })
+
+  describe("sendTicketReplied with replyContext", () => {
+    it("forwards reply context", async () => {
+      await emailService.sendTicketReplied(
+        mockTicket,
+        mockReply,
+        "user@example.com",
+        {
+          authorName: "Staff",
+          authorRole: "Support Admin",
+          hasSecureDetails: false,
+          repliedAt: new Date(),
+        }
+      )
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ to: "user@example.com" })
+      )
+    })
+  })
+
+  describe("sendTicketReplyAlertToStaff with replyContext", () => {
+    it("forwards reply context", async () => {
+      await emailService.sendTicketReplyAlertToStaff(
+        mockTicket,
+        mockReply,
+        "admin@example.com",
+        "req@example.com",
+        {
+          authorName: "Staff",
+          authorRole: "Support Admin",
+          hasSecureDetails: true,
+          repliedAt: new Date(),
+        }
+      )
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ to: "admin@example.com" })
+      )
     })
   })
 })
