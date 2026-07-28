@@ -7,6 +7,7 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer"
 
+import { getEmailBaseUrl } from "@/lib/email-url"
 import {
   formatInvoiceCurrency,
   formatInvoiceDate,
@@ -368,7 +369,7 @@ const InvoiceFooter = () => {
     hour12: false,
     timeZone: "UTC",
   })
-  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3300"
+  const siteUrl = getEmailBaseUrl()
 
   return (
     <View style={styles.footerSection}>

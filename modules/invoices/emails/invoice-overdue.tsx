@@ -10,6 +10,7 @@ import {
   Section,
   Text,
 } from "@react-email/components"
+import { getEmailBaseUrl } from "@/lib/email-url"
 
 interface InvoiceOverdueEmailProps {
   invoiceNumber: string
@@ -27,7 +28,7 @@ export const InvoiceOverdueEmail = ({
   amount,
   dueAt,
 }: InvoiceOverdueEmailProps) => {
-  const invoiceUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3300"}/console/invoices/${invoiceNumber}`
+  const invoiceUrl = `${getEmailBaseUrl()}/console/invoices/${invoiceNumber}`
 
   return (
     <Html>

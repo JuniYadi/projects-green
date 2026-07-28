@@ -10,6 +10,7 @@ import {
   Section,
   Text,
 } from "@react-email/components"
+import { getEmailBaseUrl } from "@/lib/email-url"
 import type { SupportTicket, SupportTicketReply } from "../support-ticket.types"
 import { SUPPORT_TICKET_STATUS_LABELS } from "../support-ticket.types"
 
@@ -29,7 +30,7 @@ export const TicketRepliedEmail = ({
   reply,
   replyContext,
 }: TicketRepliedEmailProps) => {
-  const ticketUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3300"}/console/support-tickets/${ticket.id}`
+  const ticketUrl = `${getEmailBaseUrl()}/console/support-tickets/${ticket.id}`
 
   const formattedRepliedAt = replyContext
     ? new Intl.DateTimeFormat("en-US", {

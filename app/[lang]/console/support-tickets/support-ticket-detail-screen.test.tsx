@@ -229,10 +229,40 @@ describe("SupportTicketDetailScreen", () => {
     ).toBeInTheDocument()
     await waitFor(() =>
       expect(
-        view.getByRole("heading", { name: "TCK-1001" })
+        view.getByRole("heading", { name: /TCK-1001/ })
       ).toBeInTheDocument()
     )
     expect(view.getByText("No replies yet.")).toBeInTheDocument()
+  })
+
+  it("renders a compact header with combined title and metadata line", async () => {
+    const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
+    await waitFor(() =>
+      expect(
+        view.getByRole("heading", { name: "TCK-1001 - Deployment issue" })
+      ).toBeInTheDocument()
+    )
+    expect(
+      view.getByText("Technical - Medium - Open - Deploy")
+    ).toBeInTheDocument()
+
+    const closeButton = view.getByRole("button", { name: "Close Ticket" })
+    expect(closeButton).toBeEnabled()
+    expect(closeButton.className).toContain("text-destructive")
+  })
+
+  it("disables and mutes the close button for closed tickets", async () => {
+    isTicketClosed = true
+    const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
+    await waitFor(() =>
+      expect(
+        view.getByRole("heading", { name: /TCK-1001/ })
+      ).toBeInTheDocument()
+    )
+
+    const closeButton = view.getByRole("button", { name: "Closed" })
+    expect(closeButton).toBeDisabled()
+    expect(closeButton.className).not.toContain("text-destructive")
   })
 
   it("shows error alert when loading the thread fails", async () => {
@@ -252,7 +282,7 @@ describe("SupportTicketDetailScreen", () => {
     const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
     await waitFor(() =>
       expect(
-        view.getByRole("heading", { name: "TCK-1001" })
+        view.getByRole("heading", { name: /TCK-1001/ })
       ).toBeInTheDocument()
     )
 
@@ -273,7 +303,7 @@ describe("SupportTicketDetailScreen", () => {
     const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
     await waitFor(() =>
       expect(
-        view.getByRole("heading", { name: "TCK-1001" })
+        view.getByRole("heading", { name: /TCK-1001/ })
       ).toBeInTheDocument()
     )
 
@@ -308,14 +338,14 @@ describe("SupportTicketDetailScreen", () => {
 
     await waitFor(() =>
       expect(
-        view.getByRole("heading", { name: "TCK-2002" })
+        view.getByRole("heading", { name: /TCK-2002/ })
       ).toBeInTheDocument()
     )
 
     oldRequest.resolve(jsonResponse(createThread("ticket_1", "TCK-1001")))
 
     await waitFor(() =>
-      expect(view.queryByRole("heading", { name: "TCK-1001" })).toBeNull()
+      expect(view.queryByRole("heading", { name: /TCK-1001/ })).toBeNull()
     )
   })
 
@@ -331,7 +361,7 @@ describe("SupportTicketDetailScreen", () => {
 
       await waitFor(() =>
         expect(
-          view.getByRole("heading", { name: "TCK-3003" })
+          view.getByRole("heading", { name: /TCK-3003/ })
         ).toBeInTheDocument()
       )
 
@@ -364,7 +394,7 @@ describe("SupportTicketDetailScreen", () => {
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
       await waitFor(() =>
         expect(
-          view.getByRole("heading", { name: "TCK-1001" })
+          view.getByRole("heading", { name: /TCK-1001/ })
         ).toBeInTheDocument()
       )
 
@@ -824,7 +854,7 @@ describe("SupportTicketDetailScreen", () => {
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
       await waitFor(() =>
         expect(
-          view.getByRole("heading", { name: "TCK-1001" })
+          view.getByRole("heading", { name: /TCK-1001/ })
         ).toBeInTheDocument()
       )
 
@@ -860,7 +890,7 @@ describe("SupportTicketDetailScreen", () => {
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
       await waitFor(() =>
         expect(
-          view.getByRole("heading", { name: "TCK-1001" })
+          view.getByRole("heading", { name: /TCK-1001/ })
         ).toBeInTheDocument()
       )
 
@@ -882,7 +912,7 @@ describe("SupportTicketDetailScreen", () => {
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
       await waitFor(() =>
         expect(
-          view.getByRole("heading", { name: "TCK-1001" })
+          view.getByRole("heading", { name: /TCK-1001/ })
         ).toBeInTheDocument()
       )
 
@@ -991,7 +1021,7 @@ describe("SupportTicketDetailScreen", () => {
       const view = render(<SupportTicketDetailScreen ticketId="ticket_1" />)
       await waitFor(() =>
         expect(
-          view.getByRole("heading", { name: "TCK-1001" })
+          view.getByRole("heading", { name: /TCK-1001/ })
         ).toBeInTheDocument()
       )
 

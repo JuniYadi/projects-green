@@ -5,6 +5,7 @@ import { z } from "zod"
 import { createSupportTicketAttachmentStorage } from "@/modules/support-tickets/support-ticket-attachment.storage"
 
 import { fieldErrorMapFromIssues } from "@/lib/validation"
+import { getEmailBaseUrl } from "@/lib/email-url"
 import {
   createSupportTicketService,
   SupportTicketAccessDeniedError,
@@ -138,10 +139,7 @@ async function resolveSupportRecipientsByOrgMembership(
 }
 
 function getBaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3300").replace(
-    /\/+$/,
-    ""
-  )
+  return getEmailBaseUrl().replace(/\/+$/, "")
 }
 
 async function getTicketOrganizationContext(ticket: {
