@@ -1,0 +1,1 @@
+ALTER TYPE "ApplicationDeployEventType" ADD VALUE 'IMAGE_TAG_RECEIVED';

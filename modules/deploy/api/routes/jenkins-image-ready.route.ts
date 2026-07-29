@@ -35,7 +35,7 @@ export const deployJenkinsImageReadyRoutes = new Elysia({
       }
     }
 
-    if (expectedToken && body.token !== expectedToken) {
+    if (!expectedToken || body.token !== expectedToken) {
       set.status = 401
       return { ok: false, error: "UNAUTHORIZED" }
     }

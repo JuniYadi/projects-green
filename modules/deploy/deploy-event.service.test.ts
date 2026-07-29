@@ -4,6 +4,7 @@ const mockPrisma = {
   applicationDeployEvent: {
     create: mock(() => Promise.resolve({ id: "evt-1", type: "QUEUED" })),
     findMany: mock(() => Promise.resolve([])),
+    upsert: mock(() => Promise.resolve({ id: "evt-1", type: "QUEUED" })),
   },
   applicationDeploymentLog: {
     create: mock(() => Promise.resolve({ id: "log-1" })),
@@ -15,13 +16,19 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
-const { recordDeployEvent, recordDeployLog, getDeployEvents, getDeployLogs } =
-  await import("./deploy-event.service")
+const {
+  recordDeployEvent,
+  recordDeployEventOnce,
+  recordDeployLog,
+  getDeployEvents,
+  getDeployLogs,
+} = await import("./deploy-event.service")
 
 describe("deploy-event.service", () => {
   beforeEach(() => {
     mockPrisma.applicationDeployEvent.create.mockClear()
     mockPrisma.applicationDeployEvent.findMany.mockClear()
+    mockPrisma.applicationDeployEvent.upsert.mockClear()
     mockPrisma.applicationDeploymentLog.create.mockClear()
     mockPrisma.applicationDeploymentLog.findMany.mockClear()
   })
@@ -42,6 +49,33 @@ describe("deploy-event.service", () => {
         metadataJson: null,
       },
     })
+  })
+
+  it("recordDeployEventOnce upserts by deploymentId+type", async () => {
+    const result = await recordDeployEventOnce({
+      deploymentId: "dep-1",
+      type: "QUEUED",
+      message: "Test upsert",
+    })
+    expect(result).toBeDefined()
+    expect(mockPrisma.applicationDeployEvent.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          deploymentId_type: {
+            deploymentId: "dep-1",
+            type: "QUEUED",
+          },
+        },
+        create: expect.objectContaining({
+          deploymentId: "dep-1",
+          type: "QUEUED",
+          message: "Test upsert",
+        }),
+        update: expect.objectContaining({
+          message: "Test upsert",
+        }),
+      })
+    )
   })
 
   it("recordDeployLog creates log", async () => {

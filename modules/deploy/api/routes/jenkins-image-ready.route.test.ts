@@ -113,4 +113,18 @@ describe("POST /deploy/jenkins-image-ready", () => {
     expect(mockHandle).toHaveBeenCalledTimes(1)
     delete process.env.JENKINS_WEBHOOK_TOKEN
   })
+
+  it("returns 401 when cluster integration throws and env token is unset", async () => {
+    resolveCluster.mockRejectedValueOnce(new Error("No integration configured"))
+    delete process.env.JENKINS_WEBHOOK_TOKEN
+    const res = await post({
+      slug: "app-metacard-prod",
+      imageTag: "187",
+      token: "anything",
+    })
+    expect(res.status).toBe(401)
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body).toEqual({ ok: false, error: "UNAUTHORIZED" })
+    expect(mockHandle).not.toHaveBeenCalled()
+  })
 })

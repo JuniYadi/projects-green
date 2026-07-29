@@ -24,12 +24,23 @@ type KubePod = {
   }
 }
 
+type KubeEvent = {
+  involvedObject?: { name?: string }
+  message?: string
+  lastTimestamp?: string
+  eventTime?: string
+}
+
+type BunFetchInit = RequestInit & {
+  tls?: { ca?: string[] }
+}
+
 const countReadyContainers = (
   pod: KubePod
 ): { readyContainers: number; totalContainers: number } => {
   const statuses = pod.status?.containerStatuses ?? []
   return {
-    readyContainers: statuses.filter((s) => s.ready === true).length,
+    readyContainers: statuses.filter((s) => s.ready).length,
     totalContainers: statuses.length,
   }
 }
@@ -42,42 +53,20 @@ const sumRestartCount = (pod: KubePod): number => {
   )
 }
 
-const fetchWarningEvents = async (
-  config: KubeconfigClusterConfig,
-  namespace: string,
-  podName: string
-): Promise<string | null> => {
-  if (!config.apiServerUrl || !config.serviceAccountToken) return null
-  const baseUrl = config.apiServerUrl.replace(/\/$/, "")
-  const url = `${baseUrl}/api/v1/namespaces/${encodeURIComponent(
-    namespace
-  )}/events?fieldSelector=${encodeURIComponent(
-    `involvedObject.name=${podName},type=Warning`
-  )}`
-  try {
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${config.serviceAccountToken}`,
-        Accept: "application/json",
-      },
-    })
-    if (!res.ok) return null
-    const body = (await res.json()) as {
-      items?: Array<{
-        type?: string
-        message?: string
-        lastTimestamp?: string
-      }>
-    }
-    const items = body.items ?? []
-    items.sort((a, b) =>
-      (b.lastTimestamp ?? "").localeCompare(a.lastTimestamp ?? "")
-    )
-    const latest = items[0]
-    return latest?.message ?? null
-  } catch {
-    return null
+const fetchKubeJson = async <T>(
+  url: string,
+  config: KubeconfigClusterConfig
+): Promise<T | null> => {
+  const init: BunFetchInit = {
+    headers: {
+      Authorization: `Bearer ${config.serviceAccountToken}`,
+      Accept: "application/json",
+    },
+    ...(config.caCertificate ? { tls: { ca: [config.caCertificate] } } : {}),
   }
+  const res = await fetch(url, init)
+  if (!res.ok) return null
+  return (await res.json()) as T
 }
 
 export async function getDeploymentPods(
@@ -115,40 +104,66 @@ export async function getDeploymentPods(
   )
 
   const baseUrl = kubeConfig.apiServerUrl.replace(/\/$/, "")
-  const url = `${baseUrl}/api/v1/namespaces/${encodeURIComponent(
+  const podsUrl = `${baseUrl}/api/v1/namespaces/${encodeURIComponent(
     namespace
   )}/pods?labelSelector=${encodeURIComponent(labelSelector)}`
 
-  let body: { items?: KubePod[] }
+  let body: { items?: KubePod[] } = { items: [] }
   try {
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${kubeConfig.serviceAccountToken}`,
-        Accept: "application/json",
-      },
-    })
-    if (!res.ok) return []
-    body = (await res.json()) as { items?: KubePod[] }
+    const result = await fetchKubeJson<{ items?: KubePod[] }>(
+      podsUrl,
+      kubeConfig
+    )
+    if (!result) return []
+    body = result
   } catch {
     return []
   }
 
   const pods = body.items ?? []
   const result: DeployPodDTO[] = []
+
+  // Fetch all warning events for the namespace once
+  const eventsUrl = `${baseUrl}/api/v1/namespaces/${encodeURIComponent(
+    namespace
+  )}/events?fieldSelector=${encodeURIComponent("type=Warning")}`
+  let warningEvents: KubeEvent[] = []
+  try {
+    const eventBody = await fetchKubeJson<{ items?: KubeEvent[] }>(
+      eventsUrl,
+      kubeConfig
+    )
+    warningEvents = eventBody?.items ?? []
+  } catch {
+    // events API error → pods still returned with null warnings
+  }
+
+  // Group warnings by involvedObject.name
+  const warningByPod = new Map<string, string | null>()
+  const eventTime = (event: KubeEvent) =>
+    Date.parse(event.lastTimestamp ?? event.eventTime ?? "") || 0
+  for (const event of warningEvents) {
+    const podName = event.involvedObject?.name
+    if (!podName) continue
+    const existing = warningByPod.get(podName)
+    if (
+      !existing ||
+      eventTime(event) > eventTime(JSON.parse(existing) as KubeEvent)
+    ) {
+      warningByPod.set(podName, event.message ?? null)
+    }
+  }
+
   for (const pod of pods) {
     const counts = countReadyContainers(pod)
-    const warningEvent = await fetchWarningEvents(
-      kubeConfig,
-      namespace,
-      pod.metadata?.name ?? ""
-    )
+    const podName = pod.metadata?.name ?? ""
     result.push({
-      name: pod.metadata?.name ?? "",
+      name: podName,
       phase: pod.status?.phase ?? null,
       readyContainers: counts.readyContainers,
       totalContainers: counts.totalContainers,
       restartCount: sumRestartCount(pod),
-      latestWarningEvent: warningEvent,
+      latestWarningEvent: warningByPod.get(podName) ?? null,
     })
   }
   return result

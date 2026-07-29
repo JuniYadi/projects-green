@@ -1,11 +1,24 @@
 import {
   decrypt,
+  deriveEncryptionKey,
   encrypt,
-  getEncryptionKey,
   parseEncryptedField,
   serializeEncryptedField,
 } from "@/lib/encryption"
 import { prisma } from "@/lib/prisma"
+
+const CLUSTER_INTEGRATION_KEY_SALT = "app-hosting-cluster-integration"
+const CLUSTER_INTEGRATION_KEY_INFO_PREFIX = "app-hosting-integration-v"
+
+const getClusterIntegrationEncryptionKey = (keyVersion = 1): Buffer => {
+  const secret = process.env.ENCRYPTION_KEY
+  if (!secret) throw new Error("Missing ENCRYPTION_KEY env var")
+  return deriveEncryptionKey({
+    secret,
+    salt: CLUSTER_INTEGRATION_KEY_SALT,
+    info: `${CLUSTER_INTEGRATION_KEY_INFO_PREFIX}${keyVersion}`,
+  })
+}
 
 export type AppHostingClusterSummary = {
   id: string
@@ -69,21 +82,29 @@ export type ClusterIntegrationConfigMap = {
   KUBECONFIG: KubeconfigClusterConfig
 }
 
-export async function encryptClusterIntegrationSecrets(
-  secrets: Record<string, unknown>
-): Promise<string> {
+export function encryptClusterIntegrationSecrets(
+  secrets: Record<string, unknown>,
+  keyVersion = 1
+): string {
   const plaintext = JSON.stringify(secrets)
-  const encrypted = encrypt(plaintext, getEncryptionKey())
+  const encrypted = encrypt(
+    plaintext,
+    getClusterIntegrationEncryptionKey(keyVersion)
+  )
   return serializeEncryptedField(encrypted)
 }
 
-export async function decryptClusterIntegrationSecrets(
-  ciphertext: string | null
-): Promise<Record<string, unknown>> {
+export function decryptClusterIntegrationSecrets(
+  ciphertext: string | null,
+  keyVersion = 1
+): Record<string, unknown> {
   if (!ciphertext) return {}
   const parsed = parseEncryptedField(ciphertext)
   if (!parsed) throw new Error("Invalid cluster integration encrypted payload")
-  const plaintext = decrypt(parsed, getEncryptionKey())
+  const plaintext = decrypt(
+    parsed,
+    getClusterIntegrationEncryptionKey(keyVersion)
+  )
   try {
     const result = JSON.parse(plaintext)
     if (result && typeof result === "object" && !Array.isArray(result)) {
@@ -307,8 +328,9 @@ export async function resolveClusterIntegration<
     integration.metaJson && typeof integration.metaJson === "object"
       ? (integration.metaJson as Record<string, unknown>)
       : {}
-  const secrets = await decryptClusterIntegrationSecrets(
-    integration.secretCiphertext
+  const secrets = decryptClusterIntegrationSecrets(
+    integration.secretCiphertext,
+    integration.keyVersion
   )
   return buildTypedConfig(type, meta, secrets)
 }

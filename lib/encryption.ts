@@ -58,3 +58,19 @@ export function getEncryptionKey(): Buffer {
   if (!secret) throw new Error("Missing ENCRYPTION_KEY or APP_SECRET env var")
   return crypto.createHash("sha256").update(secret).digest()
 }
+
+export function deriveEncryptionKey(params: {
+  secret: string
+  salt: string
+  info: string
+}): Buffer {
+  return Buffer.from(
+    crypto.hkdfSync(
+      "sha256",
+      Buffer.from(params.secret),
+      Buffer.from(params.salt),
+      Buffer.from(params.info),
+      32
+    )
+  )
+}

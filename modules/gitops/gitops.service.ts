@@ -8,6 +8,7 @@ export interface GitFile {
 export class GitOpsRepositoryService {
   private repoBaseUrl: string
   private pat: string | undefined
+  private branch: string
 
   constructor(config?: {
     repoBaseUrl?: string
@@ -19,6 +20,7 @@ export class GitOpsRepositoryService {
       process.env.GITOPS_REPO_BASE_URL ??
       "https://api.github.com"
     this.pat = config?.pat ?? process.env.GITOPS_REPO_PAT
+    this.branch = config?.branch ?? "main"
   }
 
   /**
@@ -36,7 +38,7 @@ export class GitOpsRepositoryService {
     deletePaths: string[] = [],
     branchOverride?: string
   ): Promise<{ sha: string }> {
-    const branch = branchOverride ?? "main" // Default branch
+    const branch = branchOverride ?? this.branch
 
     // Use PAT if available, otherwise we'd need an installation ID.
     // For now, we assume GITOPS_REPO_PAT is configured or logic uses installationToken.

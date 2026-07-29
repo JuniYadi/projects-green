@@ -6,7 +6,6 @@ const LINE_THRESHOLD = 85
 const EXCLUDED_DIR_PATTERNS = [
   "whatsapp",
   "e2e/",
-  "modules/deploy/",
   // Email templates — React components rendered by mailer, not unit-testable
   "emails/",
   // SSH / infra adapters — require real SSH/network connections

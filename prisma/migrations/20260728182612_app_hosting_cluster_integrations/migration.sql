@@ -4,22 +4,6 @@ CREATE TYPE "AppHostingClusterStatus" AS ENUM ('PLANNED', 'ACTIVE', 'DEPRECATED'
 -- CreateEnum
 CREATE TYPE "AppHostingClusterIntegrationType" AS ENUM ('JENKINS', 'GITOPS', 'REGISTRY', 'ARGOCD', 'KUBECONFIG', 'OPENSEARCH', 'PROMETHEUS');
 
--- AlterEnum
--- This migration adds more than one value to an enum.
--- With PostgreSQL versions 11 and earlier, this is not possible
--- in a single migration. This can be worked around by creating
--- multiple migrations, each migration adding only one value to
--- the enum.
-
-
-ALTER TYPE "ApplicationDeployEventType" ADD VALUE 'JENKINS_JOB_TRIGGERED';
-ALTER TYPE "ApplicationDeployEventType" ADD VALUE 'JENKINS_BUILD_QUEUED';
-ALTER TYPE "ApplicationDeployEventType" ADD VALUE 'JENKINS_BUILD_RUNNING';
-ALTER TYPE "ApplicationDeployEventType" ADD VALUE 'JENKINS_BUILD_COMPLETED';
-ALTER TYPE "ApplicationDeployEventType" ADD VALUE 'IMAGE_TAG_RECEIVED';
-ALTER TYPE "ApplicationDeployEventType" ADD VALUE 'GITOPS_COMMIT_CREATED';
-ALTER TYPE "ApplicationDeployEventType" ADD VALUE 'POD_READY';
-
 -- AlterTable
 ALTER TABLE "ApplicationStack" ADD COLUMN     "clusterId" TEXT;
 
@@ -45,6 +29,7 @@ CREATE TABLE "AppHostingClusterIntegration" (
     "type" "AppHostingClusterIntegrationType" NOT NULL,
     "metaJson" JSONB NOT NULL DEFAULT '{}',
     "secretCiphertext" TEXT,
+    "keyVersion" INTEGER NOT NULL DEFAULT 1,
     "secretPreview" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -76,6 +61,9 @@ CREATE UNIQUE INDEX "AppHostingClusterIntegration_clusterId_type_key" ON "AppHos
 
 -- CreateIndex
 CREATE INDEX "ApplicationStack_clusterId_idx" ON "ApplicationStack"("clusterId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "DeployEvent_deploymentId_type_key" ON "DeployEvent"("deploymentId", "type");
 
 -- AddForeignKey
 ALTER TABLE "ApplicationStack" ADD CONSTRAINT "ApplicationStack_clusterId_fkey" FOREIGN KEY ("clusterId") REFERENCES "AppHostingCluster"("id") ON DELETE SET NULL ON UPDATE CASCADE;

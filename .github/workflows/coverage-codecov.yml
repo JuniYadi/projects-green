@@ -72,10 +72,9 @@ jobs:
 
       - name: Filter lcov for CodeCov
         run: |
-          # Remove whatsapp, test, and deploy files from lcov.info before upload
+          # Remove whatsapp and test files from lcov.info before upload
           grep -v "^SF:.*/whatsapp/" coverage/lcov.info | \
-          grep -v "^SF:.*/test/" | \
-          grep -v "^SF:.*/modules/deploy/" > coverage/lcov.filtered.info
+          grep -v "^SF:.*/test/" > coverage/lcov.filtered.info
           echo "Filtered $(wc -l < coverage/lcov.filtered.info) lines from lcov"
           ls -lh coverage/lcov.filtered.info
 

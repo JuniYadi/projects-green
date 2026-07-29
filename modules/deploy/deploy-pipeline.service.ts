@@ -117,7 +117,12 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
 
   const envVarsJson = (input.envVars ?? []) as Prisma.InputJsonValue
 
-  const defaultClusterId = await resolveDefaultAppHostingClusterId()
+  let defaultClusterId: string | null = null
+  try {
+    defaultClusterId = await resolveDefaultAppHostingClusterId()
+  } catch {
+    defaultClusterId = null
+  }
 
   const stack = await prisma.$transaction(async (tx) => {
     const existing = await tx.applicationStack.findUnique({

@@ -1,6 +1,9 @@
 import { Elysia, t } from "elysia"
 import { prisma } from "@/lib/prisma"
-import { recordDeployEvent, recordDeployLog } from "../../deploy-event.service"
+import {
+  recordDeployEventOnce,
+  recordDeployLog,
+} from "../../deploy-event.service"
 
 /**
  * POST /api/deploy/jenkins-webhook
@@ -18,7 +21,7 @@ export const deployJenkinsWebhookRoutes = new Elysia({
   async ({ body, set }) => {
     const token = process.env.JENKINS_WEBHOOK_TOKEN
     // ponytail: simple token check; add HMAC if needed later
-    if (token && body.token !== token) {
+    if (!token || body.token !== token) {
       set.status = 401
       return { ok: false, error: "UNAUTHORIZED" }
     }
@@ -49,7 +52,7 @@ export const deployJenkinsWebhookRoutes = new Elysia({
 
         if (deployment) {
           if (phase === "QUEUED") {
-            await recordDeployEvent({
+            await recordDeployEventOnce({
               deploymentId: deployment.id,
               type: "JENKINS_BUILD_QUEUED",
               message: `Jenkins build queued for ${slug}`,
@@ -62,14 +65,14 @@ export const deployJenkinsWebhookRoutes = new Elysia({
                 data: { status: "BUILDING" },
               })
             }
-            await recordDeployEvent({
+            await recordDeployEventOnce({
               deploymentId: deployment.id,
               type: "JENKINS_BUILD_RUNNING",
               message: `Jenkins build running for ${slug}`,
               metadata: buildNumber !== undefined ? { buildNumber } : {},
             })
           } else if (phase === "COMPLETED") {
-            await recordDeployEvent({
+            await recordDeployEventOnce({
               deploymentId: deployment.id,
               type: "JENKINS_BUILD_COMPLETED",
               message: `Jenkins build completed for ${slug}`,
@@ -121,7 +124,7 @@ export const deployJenkinsWebhookRoutes = new Elysia({
     if (buildStatus === "SUCCESS") {
       // Do NOT mark RUNNING here. ArgoCD owns the RUNNING transition after
       // the image-ready webhook commits Helm values and sync completes.
-      await recordDeployEvent({
+      await recordDeployEventOnce({
         deploymentId: deployment.id,
         type: "JENKINS_BUILD_COMPLETED",
         message: `Jenkins build succeeded for ${slug}`,
@@ -151,7 +154,7 @@ export const deployJenkinsWebhookRoutes = new Elysia({
             attempt: newAttempt,
           },
         })
-        await recordDeployEvent({
+        await recordDeployEventOnce({
           deploymentId: deployment.id,
           type: "JENKINS_BUILD_COMPLETED",
           message: `Jenkins build failed for ${slug} (attempt ${attempt}/3)`,
@@ -181,7 +184,7 @@ export const deployJenkinsWebhookRoutes = new Elysia({
           where: { id: stack.id },
           data: { lastDeployStatus: "FAILED" },
         })
-        await recordDeployEvent({
+        await recordDeployEventOnce({
           deploymentId: deployment.id,
           type: "DEPLOY_FAILED",
           message: `Build failed after ${attempt} attempts`,

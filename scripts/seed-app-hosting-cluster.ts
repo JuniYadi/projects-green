@@ -180,12 +180,16 @@ const main = async () => {
       continue
     }
     const cleanedSecrets = stripEmptySecrets(spec.secrets)
-    const ciphertext = await encryptClusterIntegrationSecrets(cleanedSecrets)
     const preview = maskClusterIntegrationSecret(cleanedSecrets)
 
     const existing = await prisma.appHostingClusterIntegration.findUnique({
       where: { clusterId_type: { clusterId: cluster.id, type: spec.type } },
     })
+
+    const ciphertext = encryptClusterIntegrationSecrets(
+      cleanedSecrets,
+      existing?.keyVersion ?? 1
+    )
 
     if (existing) {
       await prisma.appHostingClusterIntegration.update({

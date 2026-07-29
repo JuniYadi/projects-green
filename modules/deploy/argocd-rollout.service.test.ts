@@ -1,14 +1,29 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 
 const mockPrisma = {
+  $transaction: mock(async (fn: (tx: unknown) => unknown) => fn(mockTx)),
   applicationDeployment: {
     findUnique: mock(async () => ({
       id: "deploy-1",
       stackId: "stack-1",
       status: "DEPLOYING",
       argocdSynced: false,
+      completedAt: null,
       stack: { id: "stack-1", slug: "app-test" },
     })),
+    update: mock(async () => ({})),
+  },
+  applicationStack: {
+    update: mock(async () => ({})),
+  },
+  applicationDeployEvent: {
+    findFirst: mock(async () => null),
+    create: mock(async () => ({ id: "event-1" })),
+  },
+}
+
+const mockTx = {
+  applicationDeployment: {
     update: mock(async () => ({})),
   },
   applicationStack: {
@@ -25,6 +40,7 @@ const recordEvent = mock(async (..._args: unknown[]) => undefined)
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 mock.module("./deploy-event.service", () => ({
   recordDeployEvent: recordEvent,
+  recordDeployEventOnce: recordEvent,
   recordDeployLog: mock(async () => undefined),
 }))
 mock.module("@/modules/deploy/cluster-integration.service", () => ({
@@ -75,6 +91,7 @@ describe("argocd-rollout.service", () => {
       stackId: "stack-1",
       status: "DEPLOYING",
       argocdSynced: false,
+      completedAt: null,
       stack: { id: "stack-1", slug: "app-test" },
     })
     mockPrisma.applicationDeployment.update.mockReset()

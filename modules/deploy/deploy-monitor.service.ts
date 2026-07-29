@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
-import { recordDeployEvent, recordDeployLog } from "./deploy-event.service"
+import { recordDeployEventOnce, recordDeployLog } from "./deploy-event.service"
 import { processQueuedDeployment } from "./deploy-builder.service"
+import { pollDeploymentRollout } from "./argocd-rollout.service"
 
 const BATCH_SIZE = 10
 
@@ -51,7 +52,7 @@ export async function monitorActiveDeployments() {
           },
         })
 
-        await recordDeployEvent({
+        await recordDeployEventOnce({
           deploymentId: deployment.id,
           type: "DEPLOY_FAILED",
           message: `Monitor detected failure: ${reason}`,
@@ -93,10 +94,19 @@ async function checkDeploymentStatus(deployment: {
     }
   }
 
-  // In production, this would:
-  // 1. Check GitHub repo for manifest push status
-  // 2. Poll ArgoCD API for sync status
-  // 3. Check container readiness in K8s
+  // Wire ArgoCD polling for DEPLOYING deployments
+  if (deployment.status === "DEPLOYING") {
+    const rollout = await pollDeploymentRollout(deployment.id)
+    if (rollout.status) {
+      return {
+        deploymentId: deployment.id,
+        status: rollout.completed ? "RUNNING" : deployment.status,
+        manifestPushed: deployment.manifestPushed,
+        argocdSynced:
+          deployment.argocdSynced || rollout.status.syncStatus === "Synced",
+      }
+    }
+  }
 
   // Simplified logic for now
   if (!deployment.manifestPushed) {

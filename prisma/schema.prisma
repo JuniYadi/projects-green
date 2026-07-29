@@ -331,6 +331,7 @@ model ApplicationDeployEvent {
   @@index([type])
   @@index([createdAt(sort: Desc)])
   @@map("DeployEvent")
+  @@unique([deploymentId, type])
 }
 
 model ApplicationDeploymentLog {
@@ -2460,6 +2461,7 @@ model AppHostingClusterIntegration {
   secretCiphertext String?
   secretPreview    String?
   isActive         Boolean                          @default(true)
+  keyVersion        Int                              @default(1)
   createdAt        DateTime                         @default(now())
   updatedAt        DateTime                         @updatedAt
 

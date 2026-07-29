@@ -27,6 +27,7 @@ const mockPrisma = {
   },
   applicationDeployEvent: {
     create: txCreate,
+    upsert: txCreate,
   },
   applicationDeploymentLog: {
     create: mock(async () => ({})),
@@ -54,6 +55,7 @@ const mockTx = {
   },
   applicationDeployEvent: {
     create: txCreate,
+    upsert: txCreate,
   },
   applicationDeploymentLog: {
     create: mock(async () => ({})),
@@ -144,8 +146,12 @@ describe("processQueuedDeployment", () => {
     expect(triggerJenkinsJobMock).toHaveBeenCalledTimes(1)
     const eventTypes = txCreate.mock.calls
       .map((c) => {
-        const arg = c[0] as { data?: { type?: string }; type?: string }
-        return arg.data?.type ?? arg.type
+        const arg = c[0] as {
+          create?: { type?: string }
+          data?: { type?: string }
+          type?: string
+        }
+        return arg.create?.type ?? arg.data?.type ?? arg.type
       })
       .filter((t): t is string => Boolean(t))
     expect(eventTypes).toContain("JENKINS_JOB_TRIGGERED")

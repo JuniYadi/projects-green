@@ -173,6 +173,7 @@ describe("pod-status.service", () => {
           items: [
             {
               type: "Warning",
+              involvedObject: { name: "pod-a" },
               message: "Backoff restarting failed container",
               lastTimestamp: "2026-06-05T10:00:00.000Z",
             },

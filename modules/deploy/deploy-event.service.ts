@@ -22,6 +22,35 @@ export async function recordDeployEvent(
   })
 }
 
+export async function recordDeployEventOnce(
+  params: {
+    deploymentId: string
+    type: ApplicationDeployEventType
+    message?: string
+    metadata?: Record<string, unknown>
+  },
+  db: PrismaClient = prisma
+) {
+  return db.applicationDeployEvent.upsert({
+    where: {
+      deploymentId_type: {
+        deploymentId: params.deploymentId,
+        type: params.type,
+      },
+    },
+    create: {
+      deploymentId: params.deploymentId,
+      type: params.type,
+      message: params.message ?? null,
+      metadataJson: (params.metadata as Prisma.InputJsonValue) ?? null,
+    },
+    update: {
+      message: params.message ?? null,
+      metadataJson: (params.metadata as Prisma.InputJsonValue) ?? null,
+    },
+  })
+}
+
 export async function recordDeployLog(
   params: {
     deploymentId: string

@@ -16,12 +16,10 @@ export type HelmValuesInput = {
   domain?: string | null
 }
 
-const omitUndefined = <T extends Record<string, unknown>>(obj: T): T => {
-  for (const key of Object.keys(obj)) {
-    if (obj[key] === undefined) delete obj[key]
-  }
-  return obj
-}
+const omitUndefined = <T extends Record<string, unknown>>(obj: T): T =>
+  Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== undefined)
+  ) as T
 
 export function buildHelmValues(
   input: HelmValuesInput

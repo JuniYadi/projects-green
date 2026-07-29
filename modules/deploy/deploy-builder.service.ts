@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { recordDeployEvent, recordDeployLog } from "./deploy-event.service"
+import { recordDeployEventOnce, recordDeployLog } from "./deploy-event.service"
 import { syncJenkinsPipeline } from "@/modules/jenkins/jenkins-sync.service"
 import {
   triggerJenkinsJob,
@@ -70,7 +70,7 @@ export async function processQueuedDeployment(deploymentId: string) {
         where: { id: stack.id },
         data: { status: "BUILDING" },
       })
-      await recordDeployEvent(
+      await recordDeployEventOnce(
         {
           deploymentId: deployment.id,
           type: "BUILD_STARTED",
@@ -131,7 +131,7 @@ export async function processQueuedDeployment(deploymentId: string) {
               jenkinsApiConfig
             )
 
-            await recordDeployEvent(
+            await recordDeployEventOnce(
               {
                 deploymentId: deployment.id,
                 type: "JENKINS_JOB_TRIGGERED",
@@ -234,7 +234,7 @@ export async function processQueuedDeployment(deploymentId: string) {
               manifestPushedAt: new Date(),
             },
           })
-          await recordDeployEvent(
+          await recordDeployEventOnce(
             {
               deploymentId: deployment.id,
               type: "MANIFEST_PUSHED",
@@ -269,7 +269,7 @@ export async function processQueuedDeployment(deploymentId: string) {
         }
 
         // Step 4: Mark as ARGOCD_SYNCED (ArgoCD auto-syncs from GitOps repo)
-        await recordDeployEvent(
+        await recordDeployEventOnce(
           {
             deploymentId: deployment.id,
             type: "ARGOCD_SYNC_STARTED",
@@ -295,7 +295,7 @@ export async function processQueuedDeployment(deploymentId: string) {
             argocdSyncedAt: new Date(),
           },
         })
-        await recordDeployEvent(
+        await recordDeployEventOnce(
           {
             deploymentId: deployment.id,
             type: "ARGOCD_SYNCED",
@@ -320,7 +320,7 @@ export async function processQueuedDeployment(deploymentId: string) {
             lastDeployedAt: new Date(),
           },
         })
-        await recordDeployEvent(
+        await recordDeployEventOnce(
           {
             deploymentId: deployment.id,
             type: "DEPLOY_COMPLETED",
@@ -338,7 +338,7 @@ export async function processQueuedDeployment(deploymentId: string) {
           tx
         )
       } else {
-        await recordDeployEvent(
+        await recordDeployEventOnce(
           {
             deploymentId: deployment.id,
             type: "ARGOCD_SYNC_STARTED",
@@ -375,7 +375,7 @@ export async function processQueuedDeployment(deploymentId: string) {
       where: { id: stack.id },
       data: { lastDeployStatus: "FAILED" },
     })
-    await recordDeployEvent({
+    await recordDeployEventOnce({
       deploymentId: deployment.id,
       type: "DEPLOY_FAILED",
       message: `Deployment failed: ${reason}`,

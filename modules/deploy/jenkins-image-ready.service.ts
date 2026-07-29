@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { resolveClusterIntegration } from "@/modules/deploy/cluster-integration.service"
 import { buildHelmValues } from "./helm-values.builder"
 import { GitOpsRepositoryService } from "@/modules/gitops/gitops.service"
+import { recordDeployEventOnce } from "./deploy-event.service"
 
 export type JenkinsImageReadyInput = {
   slug: string
@@ -48,7 +49,6 @@ const findActiveDeployment = async (
     orderBy: { createdAt: "desc" },
   })
 }
-
 export async function handleJenkinsImageReady(
   input: JenkinsImageReadyInput
 ): Promise<JenkinsImageReadyResult> {
@@ -66,35 +66,6 @@ export async function handleJenkinsImageReady(
 
   const deployment = await findActiveDeployment(stack.id, input)
   if (!deployment) return empty
-
-  const existingImageTagEvent = await prisma.applicationDeployEvent.findFirst({
-    where: {
-      deploymentId: deployment.id,
-      type: "IMAGE_TAG_RECEIVED",
-    },
-    orderBy: { createdAt: "desc" },
-  })
-
-  const previousTag =
-    existingImageTagEvent &&
-    typeof existingImageTagEvent.metadataJson === "object" &&
-    existingImageTagEvent.metadataJson &&
-    "imageTag" in
-      (existingImageTagEvent.metadataJson as Record<string, unknown>)
-      ? String(
-          (existingImageTagEvent.metadataJson as Record<string, unknown>)
-            .imageTag
-        )
-      : null
-
-  if (previousTag === input.imageTag && deployment.manifestPushed) {
-    return {
-      ok: true,
-      deploymentId: deployment.id,
-      gitopsCommitSha: null,
-      idempotent: true,
-    }
-  }
 
   const gitopsConfig = await resolveClusterIntegration(
     deployment.stackId,
@@ -121,7 +92,7 @@ export async function handleJenkinsImageReady(
     imageRepository,
     imageTag: input.imageTag,
     env: envVars,
-    replicas: stack.cpu ? 1 : 1,
+    replicas: 1,
     cpu: stack.cpu,
     memory: stack.memory,
     domain: stack.customDomain ?? null,
@@ -143,13 +114,70 @@ export async function handleJenkinsImageReady(
     branch: gitopsConfig.branch,
   })
 
-  const result = await gitops.commitFiles(
-    gitopsConfig.repo,
-    `Deploy ${stack.slug} image ${input.imageTag}`,
-    [{ path: filePath, content: valuesYaml }]
-  )
+  return prisma.$transaction(async (tx) => {
+    const lockKey = `jenkins-image-ready:${deployment.id}`
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`
 
-  await prisma.$transaction(async (tx) => {
+    const locked = await tx.applicationDeployment.findUnique({
+      where: { id: deployment.id },
+    })
+    if (!locked) return empty
+
+    const existingImageTagEvent = await tx.applicationDeployEvent.findUnique({
+      where: {
+        deploymentId_type: {
+          deploymentId: deployment.id,
+          type: "IMAGE_TAG_RECEIVED" as any,
+        },
+      },
+    })
+
+    const previousTag =
+      existingImageTagEvent &&
+      typeof existingImageTagEvent.metadataJson === "object" &&
+      existingImageTagEvent.metadataJson &&
+      "imageTag" in
+        (existingImageTagEvent.metadataJson as Record<string, unknown>)
+        ? String(
+            (existingImageTagEvent.metadataJson as Record<string, unknown>)
+              .imageTag
+          )
+        : null
+
+    if (previousTag === input.imageTag && locked.manifestPushed) {
+      const priorShaEvent = await tx.applicationDeployEvent.findUnique({
+        where: {
+          deploymentId_type: {
+            deploymentId: deployment.id,
+            type: "GITOPS_COMMIT_CREATED" as any,
+          },
+        },
+      })
+      const priorSha =
+        priorShaEvent &&
+        typeof priorShaEvent.metadataJson === "object" &&
+        priorShaEvent.metadataJson &&
+        "gitopsCommitSha" in
+          (priorShaEvent.metadataJson as Record<string, unknown>)
+          ? String(
+              (priorShaEvent.metadataJson as Record<string, unknown>)
+                .gitopsCommitSha
+            )
+          : null
+      return {
+        ok: true,
+        deploymentId: deployment.id,
+        gitopsCommitSha: priorSha,
+        idempotent: true,
+      }
+    }
+
+    const result = await gitops.commitFiles(
+      gitopsConfig.repo,
+      `Deploy ${stack.slug} image ${input.imageTag}`,
+      [{ path: filePath, content: valuesYaml }]
+    )
+
     await tx.applicationDeployment.update({
       where: { id: deployment.id },
       data: {
@@ -160,65 +188,61 @@ export async function handleJenkinsImageReady(
       },
     })
 
-    await tx.applicationDeployEvent.create({
-      data: {
+    await recordDeployEventOnce(
+      {
         deploymentId: deployment.id,
-        type: "IMAGE_TAG_RECEIVED",
+        type: "IMAGE_TAG_RECEIVED" as any,
         message: `Image tag ${input.imageTag} received for ${stack.slug}`,
-        metadataJson: {
+        metadata: {
           imageTag: input.imageTag,
           commitSha: input.commitSha ?? null,
           buildNumber: input.buildNumber ?? null,
         },
       },
-    })
+      tx
+    )
 
-    await tx.applicationDeployEvent.create({
-      data: {
+    await recordDeployEventOnce(
+      {
         deploymentId: deployment.id,
-        type: "GITOPS_COMMIT_CREATED",
+        type: "GITOPS_COMMIT_CREATED" as any,
         message: `Helm values committed for ${stack.slug}`,
-        metadataJson: {
+        metadata: {
           gitopsCommitSha: result.sha,
           imageTag: input.imageTag,
         },
       },
-    })
+      tx
+    )
 
-    await tx.applicationDeployEvent.create({
-      data: {
+    await recordDeployEventOnce(
+      {
         deploymentId: deployment.id,
-        type: "MANIFEST_PUSHED",
+        type: "MANIFEST_PUSHED" as any,
         message: `Manifest pushed for ${stack.slug}`,
-        metadataJson: {
+        metadata: {
           imageTag: input.imageTag,
           gitopsCommitSha: result.sha,
         },
       },
-    })
+      tx
+    )
 
-    const existingSyncStarted = await tx.applicationDeployEvent.findFirst({
-      where: {
+    await recordDeployEventOnce(
+      {
         deploymentId: deployment.id,
-        type: "ARGOCD_SYNC_STARTED",
+        type: "ARGOCD_SYNC_STARTED" as any,
+        message: `ArgoCD sync started for ${stack.slug}`,
+        metadata: { imageTag: input.imageTag },
       },
-    })
-    if (!existingSyncStarted) {
-      await tx.applicationDeployEvent.create({
-        data: {
-          deploymentId: deployment.id,
-          type: "ARGOCD_SYNC_STARTED",
-          message: `ArgoCD sync started for ${stack.slug}`,
-          metadataJson: { imageTag: input.imageTag },
-        },
-      })
+      tx
+    )
+
+    return {
+      ok: true,
+      deploymentId: deployment.id,
+      gitopsCommitSha: result.sha,
+      idempotent: false,
     }
   })
-
-  return {
-    ok: true,
-    deploymentId: deployment.id,
-    gitopsCommitSha: result.sha,
-    idempotent: false,
-  }
 }

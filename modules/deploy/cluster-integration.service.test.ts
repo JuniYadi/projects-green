@@ -45,22 +45,22 @@ describe("cluster-integration.service", () => {
     }
   })
 
-  it("encrypts then decrypts integration secrets", async () => {
+  it("encrypts then decrypts integration secrets", () => {
     const secrets = { apiToken: "abcd1234efgh5678", username: "user" }
-    const ciphertext = await encryptClusterIntegrationSecrets(secrets)
+    const ciphertext = encryptClusterIntegrationSecrets(secrets)
     expect(typeof ciphertext).toBe("string")
     expect(ciphertext).not.toContain("abcd1234efgh5678")
-    const decrypted = await decryptClusterIntegrationSecrets(ciphertext)
+    const decrypted = decryptClusterIntegrationSecrets(ciphertext)
     expect(decrypted).toEqual(secrets)
   })
 
-  it("decrypts null ciphertext to empty object", async () => {
-    const decrypted = await decryptClusterIntegrationSecrets(null)
+  it("decrypts null ciphertext to empty object", () => {
+    const decrypted = decryptClusterIntegrationSecrets(null)
     expect(decrypted).toEqual({})
   })
 
-  it("throws on invalid encrypted payload", async () => {
-    expect(decryptClusterIntegrationSecrets("not-json")).rejects.toThrow(
+  it("throws on invalid encrypted payload", () => {
+    expect(() => decryptClusterIntegrationSecrets("not-json")).toThrow(
       "Invalid cluster integration encrypted payload"
     )
   })
@@ -168,7 +168,7 @@ describe("cluster-integration.service", () => {
     mockPrisma.appHostingCluster.findMany.mockResolvedValue([
       { id: "cluster-1", code: "sgp", name: "SG", region: "Singapore" },
     ])
-    const ciphertext = await encryptClusterIntegrationSecrets({
+    const ciphertext = encryptClusterIntegrationSecrets({
       username: "jenkins-user",
       apiToken: "abcdefghijklmnop1234",
       webhookToken: "whk-abcdefghij1234",
@@ -200,7 +200,7 @@ describe("cluster-integration.service", () => {
     mockPrisma.appHostingCluster.findMany.mockResolvedValue([
       { id: "cluster-1", code: "sgp", name: "SG", region: "Singapore" },
     ])
-    const ciphertext = await encryptClusterIntegrationSecrets({
+    const ciphertext = encryptClusterIntegrationSecrets({
       pat: "ghp_abcdefghijklmnop1234",
     })
     mockPrisma.appHostingClusterIntegration.findFirst.mockResolvedValue({
@@ -252,7 +252,7 @@ describe("cluster-integration.service", () => {
     mockPrisma.appHostingCluster.findMany.mockResolvedValue([
       { id: "cluster-1", code: "sgp", name: "SG", region: "Singapore" },
     ])
-    const ciphertext = await encryptClusterIntegrationSecrets({
+    const ciphertext = encryptClusterIntegrationSecrets({
       token: "argo-abcdefghijklmnop1234",
     })
     mockPrisma.appHostingClusterIntegration.findFirst.mockResolvedValue({
@@ -280,7 +280,7 @@ describe("cluster-integration.service", () => {
     mockPrisma.appHostingCluster.findMany.mockResolvedValue([
       { id: "cluster-1", code: "sgp", name: "SG", region: "Singapore" },
     ])
-    const ciphertext = await encryptClusterIntegrationSecrets({
+    const ciphertext = encryptClusterIntegrationSecrets({
       apiServerUrl: "https://k8s.example.com",
       serviceAccountToken: "sa-token-abcdefghijklmnop1234",
     })
@@ -313,5 +313,20 @@ describe("cluster-integration.service", () => {
     expect(resolveClusterIntegration("stack-1", "JENKINS")).rejects.toThrow(
       "Missing JENKINS integration for App Hosting cluster sgp"
     )
+  })
+
+  it("decrypting with a different key version throws", () => {
+    const ciphertext = encryptClusterIntegrationSecrets(
+      { token: "test-key" },
+      1
+    )
+    expect(() => decryptClusterIntegrationSecrets(ciphertext, 2)).toThrow()
+  })
+
+  it("throws when ENCRYPTION_KEY is missing for cluster integration encryption", () => {
+    delete process.env.ENCRYPTION_KEY
+    expect(() =>
+      encryptClusterIntegrationSecrets({ token: "test-key" })
+    ).toThrow("Missing ENCRYPTION_KEY env var")
   })
 })
