@@ -12,6 +12,7 @@ import {
 import { MINIMUM_BALANCE_WARN_IDR } from "@/modules/billing/constants"
 
 const mockBillingAccountAggregate = mock()
+const mockBillingAccountGroupBy = mock()
 const mockBillingAccountCount = mock()
 const mockUsageLedgerAggregate = mock()
 const mockBillingInvoiceCount = mock()
@@ -20,6 +21,7 @@ const mockSupportTicketCount = mock()
 const mockPrismaClient = {
   billingAccount: {
     aggregate: mockBillingAccountAggregate,
+    groupBy: mockBillingAccountGroupBy,
     count: mockBillingAccountCount,
   },
   billingUsageLedger: {
@@ -90,9 +92,10 @@ describe("AdminStatsRoute", () => {
     })
 
     it("returns correct stats for super_admin", async () => {
-      mockBillingAccountAggregate.mockResolvedValueOnce({
-        _sum: { balance: new TestDecimal(50000) },
-      })
+      mockBillingAccountGroupBy.mockResolvedValueOnce([
+        { currency: "IDR", _sum: { balance: new TestDecimal(50000) } },
+        { currency: "USD", _sum: { balance: new TestDecimal(25) } },
+      ])
       mockUsageLedgerAggregate.mockResolvedValueOnce({
         _sum: { amountIdr: new TestDecimal(25000) },
       })
@@ -116,7 +119,8 @@ describe("AdminStatsRoute", () => {
       expect(response.status).toBe(200)
       const body = await response.json()
       expect(body.ok).toBe(true)
-      expect(body.totalBalance).toBe("50000.00")
+      expect(body.totalBalances).toEqual({ IDR: "50000.00", USD: "25.00" })
+      expect("totalBalance" in body).toBe(false)
       expect(body.activeOrgs).toBe(10)
       expect(body.totalSpend).toBe("25000.00")
       expect(body.lowBalanceOrgs).toBe(2)
@@ -125,9 +129,7 @@ describe("AdminStatsRoute", () => {
     })
 
     it("returns zero values when no data", async () => {
-      mockBillingAccountAggregate.mockResolvedValueOnce({
-        _sum: { balance: null },
-      })
+      mockBillingAccountGroupBy.mockResolvedValueOnce([])
       mockUsageLedgerAggregate.mockResolvedValueOnce({
         _sum: { amountIdr: null },
       })
@@ -151,7 +153,8 @@ describe("AdminStatsRoute", () => {
       expect(response.status).toBe(200)
       const body = await response.json()
       expect(body.ok).toBe(true)
-      expect(body.totalBalance).toBe("0.00")
+      expect(body.totalBalances).toEqual({ IDR: "0.00", USD: "0.00" })
+      expect("totalBalance" in body).toBe(false)
       expect(body.activeOrgs).toBe(0)
       expect(body.totalSpend).toBe("0.00")
       expect(body.lowBalanceOrgs).toBe(0)
@@ -160,9 +163,7 @@ describe("AdminStatsRoute", () => {
     })
 
     it("allows access when default isAdmin with super_admin", async () => {
-      mockBillingAccountAggregate.mockResolvedValueOnce({
-        _sum: { balance: new TestDecimal(0) },
-      })
+      mockBillingAccountGroupBy.mockResolvedValueOnce([])
       mockUsageLedgerAggregate.mockResolvedValueOnce({
         _sum: { amountIdr: new TestDecimal(0) },
       })
@@ -214,9 +215,7 @@ describe("AdminStatsRoute", () => {
     })
 
     it("scopes low-balance query by currency thresholds", async () => {
-      mockBillingAccountAggregate.mockResolvedValueOnce({
-        _sum: { balance: new TestDecimal(0) },
-      })
+      mockBillingAccountGroupBy.mockResolvedValueOnce([])
       mockUsageLedgerAggregate.mockResolvedValueOnce({
         _sum: { amountIdr: new TestDecimal(0) },
       })
@@ -260,7 +259,7 @@ describe("AdminStatsRoute", () => {
     })
 
     it("returns 500 on database error", async () => {
-      mockBillingAccountAggregate.mockRejectedValueOnce(
+      mockBillingAccountGroupBy.mockRejectedValueOnce(
         new Error("Database error")
       )
 
@@ -281,6 +280,35 @@ describe("AdminStatsRoute", () => {
       const body = await response.json()
       expect(body.ok).toBe(false)
       expect(body.error).toBe("INTERNAL_SERVER_ERROR")
+    })
+
+    it("returns single-currency fallback for USD only", async () => {
+      mockBillingAccountGroupBy.mockResolvedValueOnce([
+        { currency: "USD", _sum: { balance: new TestDecimal(25) } },
+      ])
+      mockUsageLedgerAggregate.mockResolvedValueOnce({
+        _sum: { amountIdr: new TestDecimal(0) },
+      })
+      mockBillingAccountCount.mockResolvedValueOnce(1).mockResolvedValueOnce(0)
+      mockBillingInvoiceCount.mockResolvedValueOnce(0)
+      mockSupportTicketCount.mockResolvedValueOnce(0)
+
+      const app = new Elysia()
+        .use(
+          createAdminStatsRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/stats")
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.totalBalances).toEqual({ IDR: "0.00", USD: "25.00" })
     })
   })
 })
