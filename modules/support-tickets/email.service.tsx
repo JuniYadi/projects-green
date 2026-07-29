@@ -86,8 +86,6 @@ export const createEmailService = (): EmailService => ({
         to: requesterEmail,
         subject,
         html,
-        ticketId: ticket.id,
-        ticketNumber: ticket.ticketNumber,
         emailLogId: emailLogId ?? undefined,
       })
     } catch (error) {
@@ -129,8 +127,6 @@ export const createEmailService = (): EmailService => ({
         to: requesterEmail,
         subject,
         html,
-        ticketId: ticket.id,
-        ticketNumber: ticket.ticketNumber,
         emailLogId: emailLogId ?? undefined,
       })
     } catch (error) {
@@ -161,8 +157,6 @@ export const createEmailService = (): EmailService => ({
         to: requesterEmail,
         subject,
         html,
-        ticketId: ticket.id,
-        ticketNumber: ticket.ticketNumber,
         emailLogId: emailLogId ?? undefined,
       })
     } catch (error) {
@@ -206,8 +200,6 @@ export const createEmailService = (): EmailService => ({
         to: adminEmail,
         subject,
         html,
-        ticketId: ticket.id,
-        ticketNumber: ticket.ticketNumber,
         emailLogId: emailLogId ?? undefined,
       })
     } catch (error) {
@@ -252,8 +244,6 @@ export const createEmailService = (): EmailService => ({
         to: adminEmail,
         subject,
         html,
-        ticketId: ticket.id,
-        ticketNumber: ticket.ticketNumber,
         emailLogId: emailLogId ?? undefined,
       })
     } catch (error) {

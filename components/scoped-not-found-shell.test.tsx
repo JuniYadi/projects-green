@@ -40,17 +40,13 @@ describe("ScopedNotFoundShell", () => {
     expect(returnLink).toHaveAttribute("href", "/en/console")
   })
 
-  it("go back button calls router.back when history.length > 1", () => {
-    // Simulate history.length > 1 so router.back() is called instead of push
-    Object.defineProperty(window, "history", {
-      value: { ...window.history, length: 2 },
-      writable: true,
-    })
+  it("go back button navigates to fallback path via push", () => {
     const { getByRole } = render(
       <ScopedNotFoundShell surface="portal" fallbackPath="/portal" />
     )
 
     getByRole("button", { name: "Go back" }).click()
-    expect(mockRouter.back).toHaveBeenCalled()
+    expect(mockRouter.push).toHaveBeenCalledWith("/en/portal")
+    expect(mockRouter.back).not.toHaveBeenCalled()
   })
 })

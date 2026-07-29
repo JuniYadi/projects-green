@@ -20,14 +20,7 @@ export type EmailJobData = {
   subject: string
   html: string
   from?: string
-  ticketId?: string
-  ticketNumber?: string
   emailLogId?: string
-  organizationId?: string
-  relatedEntityType?: string
-  relatedEntityId?: string
-  bodyHtml?: string
-  providerMessageId?: string
 }
 
 export class EmailJob extends BaseJob {
