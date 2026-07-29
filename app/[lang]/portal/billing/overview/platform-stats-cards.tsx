@@ -57,8 +57,12 @@ export function PlatformStatsCards() {
   const cards = [
     {
       title: "Total Balance",
-      value: "Mixed currencies",
-      description: "View organization rows for per-currency balances",
+      value: (
+        <div className="space-y-1 text-base leading-tight">
+          <div>{formatBillingMoney(stats.totalBalances.IDR, "IDR")}</div>
+          <div>{formatBillingMoney(stats.totalBalances.USD, "USD")}</div>
+        </div>
+      ),
       icon: WalletIcon,
     },
     {
@@ -95,11 +99,6 @@ export function PlatformStatsCards() {
             >
               {card.value}
             </div>
-            {card.description && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                {card.description}
-              </p>
-            )}
           </CardContent>
         </Card>
       ))}

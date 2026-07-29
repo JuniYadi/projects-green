@@ -39,7 +39,6 @@ import { buildInvoicePdfBytes } from "@/modules/invoices/invoice-pdf"
 import { BankAccountService } from "@/modules/payment/services/bank-account.service"
 import { prisma } from "@/lib/prisma"
 import { getTenantOrganizationById } from "@/modules/tenants/services/tenant-workos.service"
-
 const listQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),
   status: z
@@ -509,7 +508,8 @@ export const createInvoicesRoutes = (
           send: (recipient) =>
             dependencies.emailService.sendInvoiceCancelled(
               invoice,
-              recipient.email
+              recipient.email,
+              auth.organizationId ?? undefined
             ),
         }).catch((err) => {
           console.error(
@@ -587,9 +587,8 @@ export const createInvoicesRoutes = (
           organizationId: auth.organizationId,
           invoiceId: parsedParams.data.invoiceId,
         })
-
         dependencies.emailService
-          .sendInvoiceCreated(invoice, recipientEmail)
+          .sendInvoiceCreated(invoice, recipientEmail, auth.organizationId)
           .catch((err) => {
             console.error(
               "[Invoices] Failed to send invoice created email:",
@@ -664,7 +663,7 @@ export const createInvoicesRoutes = (
         })
 
         dependencies.emailService
-          .sendInvoicePaid(invoice, recipientEmail)
+          .sendInvoicePaid(invoice, recipientEmail, auth.organizationId)
           .catch((err) => {
             console.error("[Invoices] Failed to send invoice paid email:", err)
           })
@@ -736,7 +735,7 @@ export const createInvoicesRoutes = (
         })
 
         dependencies.emailService
-          .sendPaymentReminder(invoice, recipientEmail)
+          .sendPaymentReminder(invoice, recipientEmail, auth.organizationId)
           .catch((err) => {
             console.error(
               "[Invoices] Failed to send payment reminder email:",
@@ -811,7 +810,7 @@ export const createInvoicesRoutes = (
         })
 
         dependencies.emailService
-          .sendInvoiceOverdue(invoice, recipientEmail)
+          .sendInvoiceOverdue(invoice, recipientEmail, auth.organizationId)
           .catch((err) => {
             console.error(
               "[Invoices] Failed to send invoice overdue email:",
@@ -887,7 +886,12 @@ export const createInvoicesRoutes = (
         })
 
         dependencies.emailService
-          .sendInvoiceCancelled(invoice, recipientEmail, reason)
+          .sendInvoiceCancelled(
+            invoice,
+            recipientEmail,
+            reason,
+            auth.organizationId
+          )
           .catch((err) => {
             console.error(
               "[Invoices] Failed to send invoice cancelled email:",
@@ -955,7 +959,11 @@ export const createInvoicesRoutes = (
           invoice,
           fallbackEmail: auth.user.email,
           send: (recipient) =>
-            dependencies.emailService.sendInvoicePaid(invoice, recipient.email),
+            dependencies.emailService.sendInvoicePaid(
+              invoice,
+              recipient.email,
+              auth.organizationId ?? undefined
+            ),
         }).catch((err) => {
           console.error("[Invoices] Failed to send invoice paid email:", err)
         })

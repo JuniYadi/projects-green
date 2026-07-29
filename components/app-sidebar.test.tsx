@@ -429,4 +429,27 @@ describe("resolveSidebarMenu", () => {
       navMain.find((item) => item.title === "Order Package")?.isActive
     ).toBe(true)
   })
+  it("returns one portal orgs link and keeps detail active", () => {
+    const { navMain, projects, navMainLabel } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/orgs/org-1",
+      locale: "en",
+    })
+
+    expect(navMainLabel).toBe("Organizations")
+
+    // Only "Back to Portal" remains in projects
+    expect(projects.map((project) => project.name)).toEqual(["Back to Portal"])
+
+    // Exactly one URL equals "/en/portal/orgs" across both lists
+    const allUrls = [
+      ...projects.map((p) => p.url),
+      ...navMain.map((i) => i.url),
+    ]
+    expect(allUrls.filter((url) => url === "/en/portal/orgs")).toHaveLength(1)
+
+    // Overview nav item is active for detail route
+    const overviewItem = navMain.find((item) => item.title === "Overview")
+    expect(overviewItem?.isActive).toBe(true)
+  })
 })

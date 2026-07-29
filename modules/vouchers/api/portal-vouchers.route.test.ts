@@ -118,6 +118,25 @@ describe("Portal Voucher Routes", () => {
       expect(body.ok).toBe(true)
       expect(body.total).toBe(1)
     })
+
+    it("passes organizationId to listVouchers when provided in query", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.service.listVouchers = mock(async () => ({
+        vouchers: [],
+        total: 0,
+      }))
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal?organizationId=org_1")
+      )
+
+      expect(res.status).toBe(200)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const listVouchersArgs = (deps.service.listVouchers as any).mock
+        .calls[0]?.[0]
+      expect(listVouchersArgs?.organizationId).toBe("org_1")
+    })
   })
 
   describe("POST /vouchers/portal", () => {

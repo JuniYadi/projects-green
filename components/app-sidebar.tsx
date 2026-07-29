@@ -140,13 +140,6 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
     navMainLabel: "Organizations",
     getProjects: (path, locale) => [
       {
-        name: "All Orgs Overview",
-        url: localizePathname({ pathname: "/portal/orgs", locale }),
-        icon: <BuildingsIcon />,
-        isActive:
-          path === localizePathname({ pathname: "/portal/orgs", locale }),
-      },
-      {
         name: "Back to Portal",
         url: localizePathname({ pathname: "/portal", locale }),
         icon: <CaretLeftIcon />,
@@ -157,8 +150,7 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         title: "Overview",
         url: localizePathname({ pathname: "/portal/orgs", locale }),
         icon: <GaugeIcon />,
-        isActive:
-          path === localizePathname({ pathname: "/portal/orgs", locale }),
+        isActive: startsWithRoute(path, "/portal/orgs"),
       },
     ],
   },
@@ -798,10 +790,14 @@ const buildNavSecondary = (input: {
   surface: AppSidebarSurface
   currentPathname: string
 }) => {
+  const locale =
+    getLocaleFromPathname(input.currentPathname).locale ?? defaultLocale
+
   const items: {
     title: string
     url: string
     icon: React.ReactNode
+    isActive?: boolean
   }[] = [
     {
       title: "Support",
@@ -821,6 +817,32 @@ const buildNavSecondary = (input: {
       url: `${input.currentPathname}?kb=1`,
       icon: <Lightning />,
     })
+  }
+
+  if (input.surface === "portal") {
+    const pathWithoutSearch = getPathnameWithoutSearch(input.currentPathname)
+    items.push(
+      {
+        title: "Settings",
+        url: localizePathname({
+          pathname: "/portal/settings/members",
+          locale,
+        }),
+        icon: <GearSixIcon />,
+        isActive:
+          pathWithoutSearch.startsWith("/portal/settings") &&
+          !pathWithoutSearch.startsWith("/portal/settings/emails"),
+      },
+      {
+        title: "Email Templates",
+        url: localizePathname({
+          pathname: "/portal/settings/emails",
+          locale,
+        }),
+        icon: <TicketIcon />,
+        isActive: pathWithoutSearch.startsWith("/portal/settings/emails"),
+      }
+    )
   }
 
   return items

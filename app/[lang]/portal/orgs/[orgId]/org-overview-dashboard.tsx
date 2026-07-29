@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getAdminOrgDetail, type AdminOrgDetail } from "@/lib/billing-client"
 import { BalanceTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/balance-tab"
-import { InvoicesTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/invoices-tab"
+import { OverviewTab } from "./overview-tab"
 import { UsageTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/usage-tab"
 import { SubscriptionsTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/subscriptions-tab"
 import { AdjustmentsTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/adjustments-tab"
@@ -21,6 +21,7 @@ type OrgOverviewDashboardProps = {
 }
 
 const TABS = [
+  { key: "overview", label: "Overview" },
   { key: "billing", label: "Billing" },
   { key: "invoices", label: "Invoices" },
   { key: "usage", label: "Usage" },
@@ -45,7 +46,7 @@ export function OrgOverviewDashboard({
   const validKeys = TABS.map((t) => t.key)
 
   const activeTab: TabKey = (
-    validKeys.includes(defaultPage as TabKey) ? defaultPage : "billing"
+    validKeys.includes(defaultPage as TabKey) ? defaultPage : "overview"
   ) as TabKey
 
   useEffect(() => {
@@ -127,10 +128,12 @@ export function OrgOverviewDashboard({
         </TabsList>
 
         <div className="mt-6">
+          {activeTab === "overview" && (
+            <OverviewTab _lang={lang} orgId={orgId} orgDetail={orgDetail} />
+          )}
           {activeTab === "billing" && (
             <BalanceTab lang={lang} orgId={orgId} orgDetail={orgDetail} />
           )}
-          {activeTab === "invoices" && <InvoicesTab orgId={orgId} />}
           {activeTab === "usage" && <UsageTab orgId={orgId} />}
           {activeTab === "subscriptions" && <SubscriptionsTab orgId={orgId} />}
           {activeTab === "adjustments" && <AdjustmentsTab orgId={orgId} />}

@@ -59,6 +59,9 @@ mock.module("@/lib/prisma", () => ({
     billingAccount: {
       findUnique: mockFindUnique,
     },
+    paymentCurrency: {
+      findUnique: mock(async () => ({ minBalanceWarn: new Decimal(10_000) })),
+    },
   },
 }))
 

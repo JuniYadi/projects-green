@@ -520,7 +520,8 @@ describe("invoices routes", () => {
       expect(payload.message).toContain("created notification sent")
       expect(mockEmailService.sendInvoiceCreated).toHaveBeenCalledWith(
         invoiceDetail,
-        "test@example.com"
+        "test@example.com",
+        "org_1"
       )
     })
 
@@ -635,7 +636,8 @@ describe("invoices routes", () => {
       expect(mockEmailService.sendInvoiceCancelled).toHaveBeenCalledWith(
         invoiceDetail,
         "test@example.com",
-        "Customer requested"
+        "Customer requested",
+        "org_1"
       )
     })
 
@@ -1152,11 +1154,13 @@ describe("invoices routes", () => {
     expect(mockSendInvoiceCancelled).toHaveBeenCalledTimes(2)
     expect(mockSendInvoiceCancelled).toHaveBeenCalledWith(
       expect.objectContaining({ id: "inv_1" }),
-      "billing1@example.com"
+      "billing1@example.com",
+      "org_1"
     )
     expect(mockSendInvoiceCancelled).toHaveBeenCalledWith(
       expect.objectContaining({ id: "inv_1" }),
-      "billing2@example.com"
+      "billing2@example.com",
+      "org_1"
     )
   })
 
@@ -1196,7 +1200,8 @@ describe("invoices routes", () => {
     expect(mockSendInvoicePaid).toHaveBeenCalledTimes(1)
     expect(mockSendInvoicePaid).toHaveBeenCalledWith(
       expect.objectContaining({ id: "inv_1" }),
-      "owner@example.com"
+      "owner@example.com",
+      "org_1"
     )
   })
 })

@@ -10,6 +10,7 @@ import {
   LifebuoyIcon,
 } from "@phosphor-icons/react"
 import { getAdminStats, type AdminStats } from "@/lib/billing-client"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 
 export function OrgOverviewStatsCards() {
   const [stats, setStats] = useState<AdminStats | null>(null)
@@ -61,8 +62,12 @@ export function OrgOverviewStatsCards() {
     },
     {
       title: "Total Balance",
-      value: "Mixed currencies",
-      description: "View organization rows for per-currency balances",
+      value: (
+        <div className="space-y-1 text-base leading-tight">
+          <div>{formatBillingMoney(stats.totalBalances.IDR, "IDR")}</div>
+          <div>{formatBillingMoney(stats.totalBalances.USD, "USD")}</div>
+        </div>
+      ),
       icon: WalletIcon,
     },
     {
@@ -92,11 +97,6 @@ export function OrgOverviewStatsCards() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{card.value}</div>
-            {card.description && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                {card.description}
-              </p>
-            )}
           </CardContent>
         </Card>
       ))}

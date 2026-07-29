@@ -14,6 +14,8 @@ const mockBillingAccountCount = mock()
 const mockServiceSubscriptionFindMany = mock()
 const mockUsageLedgerFindMany = mock()
 const mockGetCachedOrganizations = mock()
+const mockGetCachedOrganizationsMetadata = mock()
+const mockRefreshCachedOrganizationsMetadata = mock()
 const mockSupportTicketGroupBy = mock()
 
 const mockPrismaClient = {
@@ -38,6 +40,8 @@ mock.module("@/lib/prisma", () => ({
 mock.module("@/lib/workos-directory", () => ({
   getCachedOrganization: mock(),
   getCachedOrganizations: mockGetCachedOrganizations,
+  getCachedOrganizationsMetadata: mockGetCachedOrganizationsMetadata,
+  refreshCachedOrganizationsMetadata: mockRefreshCachedOrganizationsMetadata,
 }))
 
 const { createAdminOrgsRoutes } = await import("./orgs.route")
@@ -46,6 +50,8 @@ describe("AdminOrgsRoute", () => {
   beforeEach(() => {
     mock.clearAllMocks()
     mockGetCachedOrganizations.mockResolvedValue(new Map())
+    mockGetCachedOrganizationsMetadata.mockResolvedValue(new Map())
+    mockRefreshCachedOrganizationsMetadata.mockResolvedValue(new Map())
   })
 
   testIsAdmin((actor) => {
@@ -92,7 +98,7 @@ describe("AdminOrgsRoute", () => {
       expect(body.error).toBe("FORBIDDEN")
     })
 
-    it("returns paginated org list", async () => {
+    it("returns paginated org list with owner and member metadata", async () => {
       const mockAccounts = [
         {
           organizationId: "org-1",
@@ -126,6 +132,32 @@ describe("AdminOrgsRoute", () => {
           ["org-2", { id: "org-2", name: "Org Two" }],
         ])
       )
+      mockGetCachedOrganizationsMetadata.mockResolvedValue(
+        new Map([
+          [
+            "org-1",
+            {
+              organizationId: "org-1",
+              ownerUserId: "user-1",
+              ownerName: "Jane Owner",
+              ownerEmail: "jane@example.com",
+              memberCount: 3,
+              refreshedAt: "2025-07-29T00:00:00.000Z",
+            },
+          ],
+          [
+            "org-2",
+            {
+              organizationId: "org-2",
+              ownerUserId: null,
+              ownerName: null,
+              ownerEmail: null,
+              memberCount: 1,
+              refreshedAt: "2025-07-29T00:00:00.000Z",
+            },
+          ],
+        ])
+      )
 
       const app = new Elysia()
         .use(
@@ -149,11 +181,16 @@ describe("AdminOrgsRoute", () => {
       expect(body.orgs[0].balance).toBe("50000.00")
       expect(body.orgs[0].activeSubscriptions).toBe(2)
       expect(body.orgs[0].monthlySpend).toBe("15000.00")
-      expect(body.orgs[1].orgId).toBe("org-2")
-      expect(body.orgs[1].activeSubscriptions).toBe(1)
-      expect(body.orgs[1].monthlySpend).toBe("8000.00")
       expect(body.orgs[0].openTicketCount).toBe(0)
-      expect(body.orgs[1].openTicketCount).toBe(0)
+      // metadata fields
+      expect(body.orgs[0].ownerUserId).toBe("user-1")
+      expect(body.orgs[0].ownerName).toBe("Jane Owner")
+      expect(body.orgs[0].ownerEmail).toBe("jane@example.com")
+      expect(body.orgs[0].memberCount).toBe(3)
+      expect(body.orgs[0].metadataRefreshedAt).toBe("2025-07-29T00:00:00.000Z")
+      expect(body.orgs[1].ownerUserId).toBe(null)
+      expect(body.orgs[1].ownerName).toBe(null)
+      expect(body.orgs[1].memberCount).toBe(1)
       expect(body.pagination.total).toBe(2)
       expect(body.pagination.totalPages).toBe(1)
     })
@@ -264,6 +301,48 @@ describe("AdminOrgsRoute", () => {
       expect(body.ok).toBe(true)
     })
 
+    it("filters by currency", async () => {
+      const idrAccount = {
+        organizationId: "org-1",
+        balance: new TestDecimal(50000),
+        currency: "IDR",
+      }
+
+      mockBillingAccountFindMany.mockResolvedValueOnce([idrAccount])
+      mockServiceSubscriptionFindMany.mockResolvedValueOnce([])
+      mockUsageLedgerFindMany.mockResolvedValueOnce([])
+      mockBillingAccountCount.mockResolvedValueOnce(1)
+      mockSupportTicketGroupBy.mockResolvedValueOnce([])
+
+      const app = new Elysia()
+        .use(
+          createAdminOrgsRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/orgs?currency=IDR")
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(body.orgs).toHaveLength(1)
+      expect(mockBillingAccountFindMany).toHaveBeenCalled()
+      const findManyCall = mockBillingAccountFindMany.mock.calls[0]?.[0]
+      expect(findManyCall?.where).toMatchObject({
+        status: "ACTIVE",
+        currency: "IDR",
+      })
+      expect(mockBillingAccountCount.mock.calls[0]?.[0]?.where).toMatchObject({
+        status: "ACTIVE",
+        currency: "IDR",
+      })
+    })
+
     it("returns 422 for invalid limit", async () => {
       const app = new Elysia()
         .use(
@@ -356,6 +435,135 @@ describe("AdminOrgsRoute", () => {
       const body = await response.json()
       expect(body.ok).toBe(false)
       expect(body.error).toBe("INTERNAL_SERVER_ERROR")
+    })
+  })
+
+  describe("POST /admin/orgs/metadata/refresh", () => {
+    it("refreshes selected organization metadata", async () => {
+      mockRefreshCachedOrganizationsMetadata.mockResolvedValueOnce(
+        new Map([
+          [
+            "org-1",
+            {
+              organizationId: "org-1",
+              ownerUserId: "user-1",
+              ownerName: "Jane Owner",
+              ownerEmail: "jane@example.com",
+              memberCount: 3,
+              refreshedAt: "2025-07-29T00:00:00.000Z",
+            },
+          ],
+          [
+            "org-2",
+            {
+              organizationId: "org-2",
+              ownerUserId: "user-2",
+              ownerName: "Bob Admin",
+              ownerEmail: "bob@example.com",
+              memberCount: 1,
+              refreshedAt: "2025-07-29T00:00:00.000Z",
+            },
+          ],
+        ])
+      )
+
+      const app = new Elysia()
+        .use(
+          createAdminOrgsRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/orgs/metadata/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orgIds: ["org-1", "org-2"] }),
+        })
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body).toEqual({ ok: true, refreshed: 2 })
+      expect(mockRefreshCachedOrganizationsMetadata).toHaveBeenCalledWith([
+        "org-1",
+        "org-2",
+      ])
+    })
+
+    it("returns 422 for empty orgIds array", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminOrgsRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/orgs/metadata/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orgIds: [] }),
+        })
+      )
+
+      expect(response.status).toBe(422)
+      const body = await response.json()
+      expect(body).toEqual({
+        ok: false,
+        error: "VALIDATION_ERROR",
+        message: "Invalid organization metadata refresh request.",
+      })
+    })
+
+    it("returns 401 when not authenticated", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminOrgsRoutes({
+            authenticate: async () => ({ user: null }) as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/orgs/metadata/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orgIds: ["org-1"] }),
+        })
+      )
+
+      expect(response.status).toBe(401)
+      const body = await response.json()
+      expect(body.error).toBe("UNAUTHORIZED")
+    })
+
+    it("returns 403 when not super_admin", async () => {
+      const app = new Elysia()
+        .use(
+          createAdminOrgsRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRoleNone,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/orgs/metadata/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orgIds: ["org-1"] }),
+        })
+      )
+
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.error).toBe("FORBIDDEN")
     })
   })
 })

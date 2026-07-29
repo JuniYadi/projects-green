@@ -437,7 +437,7 @@ export async function getAdminSubscriptions(params?: {
 
 export type AdminStats = {
   ok: true
-  totalBalance: string
+  totalBalances: Record<"IDR" | "USD", string>
   activeOrgs: number
   totalSpend: string
   lowBalanceOrgs: number
@@ -456,6 +456,11 @@ export type AdminOrgSummary = {
   monthlySpend: string
   lastTopUp: string | null
   openTicketCount: number
+  ownerUserId: string | null
+  ownerName: string | null
+  ownerEmail: string | null
+  memberCount: number
+  metadataRefreshedAt: string | null
 }
 
 export type AdminOrgsResponse = {
@@ -516,7 +521,7 @@ export type AdminTopupResponse = {
   type: "CREDIT"
 }
 
-// ─── Admin Stats ────────────────────────────────────────────────────────
+// ─── Admin Stats ───────────────────────────────────────────────────────
 
 export async function getAdminStats(): Promise<AdminStats> {
   return fetchBilling<AdminStats>("/api/billing/admin/stats")
@@ -528,14 +533,28 @@ export async function getAdminOrgs(params?: {
   page?: number
   limit?: number
   search?: string
+  currency?: string
 }): Promise<AdminOrgsResponse> {
   const searchParams = new URLSearchParams()
   if (params?.page) searchParams.set("page", String(params.page))
   if (params?.limit) searchParams.set("limit", String(params.limit))
   if (params?.search) searchParams.set("search", params.search)
+  if (params?.currency) searchParams.set("currency", params.currency)
   const qs = searchParams.toString()
   return fetchBilling<AdminOrgsResponse>(
     `/api/billing/admin/orgs${qs ? `?${qs}` : ""}`
+  )
+}
+
+export async function refreshAdminOrgMetadata(params: {
+  orgIds: string[]
+}): Promise<{ ok: true; refreshed: number }> {
+  return fetchBilling<{ ok: true; refreshed: number }>(
+    "/api/billing/admin/orgs/metadata/refresh",
+    {
+      method: "POST",
+      body: JSON.stringify(params),
+    }
   )
 }
 

@@ -2,9 +2,9 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 import { redirect } from "next/navigation"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { getPlatformAccessForUser } from "@/lib/platform-role"
-import { EmailsView } from "./emails-view"
+import { DeliveryLogsView } from "./delivery-logs-view"
 
-export default async function EmailTemplatesPage({
+export default async function DeliveryLogsPage({
   params,
 }: Readonly<{
   params: Promise<{ lang: string }>
@@ -18,27 +18,22 @@ export default async function EmailTemplatesPage({
     email: auth.user.email,
   })
 
+  if (platformAccess.role !== "super_admin") {
+    redirect(localizePathname({ pathname: "/portal", locale }))
+  }
   if (!platformAccess.exists) {
     redirect(localizePathname({ pathname: "/portal", locale }))
   }
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
-      <header className="flex items-center justify-between space-y-1">
-        <div>
-          <h1 className="text-2xl font-semibold">Email Templates</h1>
-          <p className="text-sm text-muted-foreground">
-            Preview all transactional email templates sent by the platform.
-          </p>
-        </div>
-        <a
-          href={`/${lang}/portal/settings/emails/delivery-logs`}
-          className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
-        >
-          Delivery Logs
-        </a>
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold">Email Delivery Logs</h1>
+        <p className="text-sm text-muted-foreground">
+          View delivery status and rendered previews of transactional emails.
+        </p>
       </header>
-      <EmailsView />
+      <DeliveryLogsView />
     </main>
   )
 }

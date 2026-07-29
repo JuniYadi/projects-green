@@ -303,6 +303,32 @@ describe("tenantsOrganizationRoutes", () => {
     })
     expect(body.organization.name).toBe("Acme Labs")
   })
+  it("blocks organization update for actors without manage_tenant", async () => {
+    mockCanManageTenant.mockImplementation((): boolean => false)
+
+    const app = await createApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/tenants/org_1/organization/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: "Acme Labs" }),
+      })
+    )
+    const body = (await response.json()) as {
+      ok: boolean
+      error: string
+      policyCode: string
+    }
+
+    expect(response.status).toBe(403)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("FORBIDDEN")
+    expect(body.policyCode).toBe("TENANT_MANAGE_REQUIRED")
+    expect(mockUpdateTenantOrganization).not.toHaveBeenCalled()
+  })
 
   it("returns 422 when update payload has no editable fields", async () => {
     const app = await createApp()

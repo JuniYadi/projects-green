@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "bun:test"
 import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
 import type { Organization } from "@workos-inc/node"
+import { MINIMUM_BALANCE_WARN_IDR } from "@/modules/billing/constants"
 
 import { createBillingAccountRoutes } from "./account.route"
 import {
@@ -12,6 +13,7 @@ import {
 describe("GET /account - JIT upsert", () => {
   const mockEnsureBillingAccountForOrg = vi.fn()
   const mockGetOrganizationAction = vi.fn()
+  const mockGetWarnThresholdForCurrency = vi.fn()
 
   const mockAuth = {
     user: { id: "user-1", email: "test@example.com" },
@@ -25,10 +27,14 @@ describe("GET /account - JIT upsert", () => {
       getOrganizationAction: mockGetOrganizationAction as (
         orgId: string
       ) => Promise<Organization>,
+      getWarnThresholdForCurrency: mockGetWarnThresholdForCurrency,
     })
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetWarnThresholdForCurrency.mockResolvedValue(
+      new Decimal(MINIMUM_BALANCE_WARN_IDR)
+    )
   })
 
   it("calls ensureBillingAccountForOrg when accessing account", async () => {
@@ -288,6 +294,51 @@ describe("GET /account - JIT upsert", () => {
     expect(response.status).toBe(200)
     const body = await response.json()
     expect(body.accountAge).toBe("3 days")
+  })
+  it("reports USD 25 as above the USD warn threshold", async () => {
+    const mockAccount = {
+      id: "acc-usd-1",
+      organizationId: "org_usd",
+      balance: new Decimal(25),
+      currency: "USD",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+    mockGetWarnThresholdForCurrency.mockResolvedValueOnce(new Decimal(5))
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.currency).toBe("USD")
+    expect(body.formattedBalance).toBe("USD 25.00")
+    expect(body.isAboveWarn).toBe(true)
+    expect(body.isPositive).toBe(true)
+  })
+
+  it("reports IDR 5000 as below the IDR warn threshold", async () => {
+    const mockAccount = {
+      id: "acc-idr-1",
+      organizationId: "org_idr",
+      balance: new Decimal(5000),
+      currency: "IDR",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    mockEnsureBillingAccountForOrg.mockResolvedValue(mockAccount)
+    mockGetWarnThresholdForCurrency.mockResolvedValueOnce(new Decimal(10_000))
+
+    const app = createRoute()
+    const response = await app.handle(new Request("http://localhost/account"))
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.currency).toBe("IDR")
+    expect(body.isAboveWarn).toBe(false)
   })
 })
 

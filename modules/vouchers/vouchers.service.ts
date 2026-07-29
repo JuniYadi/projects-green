@@ -40,6 +40,7 @@ type ListVouchersParams = {
   prefix?: string
   limit?: number
   offset?: number
+  organizationId?: string
 }
 
 type RedeemParams = {
@@ -54,7 +55,6 @@ export class VoucherService {
   constructor(private prisma: PrismaClient) {}
 
   // ─── Portal: list vouchers ──────────────────────────────────────────────────
-
   async listVouchers(params: ListVouchersParams = {}) {
     const where: Prisma.VoucherWhereInput = {}
 
@@ -63,6 +63,12 @@ export class VoucherService {
     }
     if (params.prefix) {
       where.prefix = params.prefix
+    }
+    if (params.organizationId) {
+      where.OR = [
+        { targetOrganizationId: params.organizationId },
+        { claims: { some: { organizationId: params.organizationId } } },
+      ]
     }
 
     const [vouchers, total] = await Promise.all([

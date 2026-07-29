@@ -2,6 +2,7 @@ import { render } from "@react-email/components"
 
 import LRUCache from "lru-cache"
 
+import { createEmailLog } from "@/lib/email-log"
 import { sendEmail } from "@/lib/queue/email"
 
 import { SubscriptionCreatedEmail } from "./emails/subscription-created"
@@ -24,7 +25,6 @@ export class VpnEmailService {
   private readonly orgEmailCache = new LRUCache<string, string[] | null>({
     max: 1000,
   })
-
   async sendSubscriptionCreated(organizationId: string, packageName?: string) {
     const recipients = await this.resolveRecipients(organizationId)
     if (!recipients.length) return
@@ -32,16 +32,26 @@ export class VpnEmailService {
     const html = await render(
       <SubscriptionCreatedEmail packageName={packageName} />
     )
+    const subject = "Your VPN subscription is being provisioned"
     for (const { email } of recipients) {
+      const emailLogId = await createEmailLog({
+        recipientEmail: email,
+        type: "VPN_SUBSCRIPTION_CREATED",
+        subject,
+        bodyHtml: html,
+        organizationId,
+        relatedEntityType: "vpn_subscription",
+        relatedEntityId: organizationId,
+      })
       await sendEmail({
         to: email,
-        subject: "Your VPN subscription is being provisioned",
+        subject,
         html,
+        emailLogId: emailLogId ?? undefined,
       })
     }
     this.markRecipientsResolved(organizationId, recipients)
   }
-
   async sendProvisioningSuccess(organizationId: string, packageName?: string) {
     const recipients = await this.resolveRecipients(organizationId)
     if (!recipients.length) return
@@ -49,16 +59,26 @@ export class VpnEmailService {
     const html = await render(
       <ProvisioningSuccessEmail packageName={packageName} />
     )
+    const subject = "Your VPN account is ready"
     for (const { email } of recipients) {
+      const emailLogId = await createEmailLog({
+        recipientEmail: email,
+        type: "VPN_PROVISIONING_SUCCESS",
+        subject,
+        bodyHtml: html,
+        organizationId,
+        relatedEntityType: "vpn_subscription",
+        relatedEntityId: organizationId,
+      })
       await sendEmail({
         to: email,
-        subject: "Your VPN account is ready",
+        subject,
         html,
+        emailLogId: emailLogId ?? undefined,
       })
     }
     this.markRecipientsResolved(organizationId, recipients)
   }
-
   async sendProvisioningFailed(organizationId: string, packageName?: string) {
     const recipients = await this.resolveRecipients(organizationId)
     if (!recipients.length) return
@@ -66,16 +86,26 @@ export class VpnEmailService {
     const html = await render(
       <ProvisioningFailedEmail packageName={packageName} />
     )
+    const subject = "VPN provisioning failed — contact support"
     for (const { email } of recipients) {
+      const emailLogId = await createEmailLog({
+        recipientEmail: email,
+        type: "VPN_PROVISIONING_FAILED",
+        subject,
+        bodyHtml: html,
+        organizationId,
+        relatedEntityType: "vpn_subscription",
+        relatedEntityId: organizationId,
+      })
       await sendEmail({
         to: email,
-        subject: "VPN provisioning failed — contact support",
+        subject,
         html,
+        emailLogId: emailLogId ?? undefined,
       })
     }
     this.markRecipientsResolved(organizationId, recipients)
   }
-
   async sendRenewalSuccess(
     organizationId: string,
     packageName?: string,
@@ -87,31 +117,51 @@ export class VpnEmailService {
     const html = await render(
       <RenewalSuccessEmail packageName={packageName} period={period} />
     )
+    const subject = "VPN subscription renewed"
     for (const { email } of recipients) {
+      const emailLogId = await createEmailLog({
+        recipientEmail: email,
+        type: "VPN_RENEWAL_SUCCESS",
+        subject,
+        bodyHtml: html,
+        organizationId,
+        relatedEntityType: "vpn_subscription",
+        relatedEntityId: organizationId,
+      })
       await sendEmail({
         to: email,
-        subject: "VPN subscription renewed",
+        subject,
         html,
+        emailLogId: emailLogId ?? undefined,
       })
     }
     this.markRecipientsResolved(organizationId, recipients)
   }
-
   async sendRenewalFailed(organizationId: string, packageName?: string) {
     const recipients = await this.resolveRecipients(organizationId)
     if (!recipients.length) return
 
     const html = await render(<RenewalFailedEmail packageName={packageName} />)
+    const subject = "VPN renewal payment failed — please top up"
     for (const { email } of recipients) {
+      const emailLogId = await createEmailLog({
+        recipientEmail: email,
+        type: "VPN_RENEWAL_FAILED",
+        subject,
+        bodyHtml: html,
+        organizationId,
+        relatedEntityType: "vpn_subscription",
+        relatedEntityId: organizationId,
+      })
       await sendEmail({
         to: email,
-        subject: "VPN renewal payment failed — please top up",
+        subject,
         html,
+        emailLogId: emailLogId ?? undefined,
       })
     }
     this.markRecipientsResolved(organizationId, recipients)
   }
-
   async sendSubscriptionSuspended(
     organizationId: string,
     packageName?: string
@@ -122,11 +172,22 @@ export class VpnEmailService {
     const html = await render(
       <SubscriptionSuspendedEmail packageName={packageName} />
     )
+    const subject = "VPN subscription suspended due to payment overdue"
     for (const { email } of recipients) {
+      const emailLogId = await createEmailLog({
+        recipientEmail: email,
+        type: "VPN_SUBSCRIPTION_SUSPENDED",
+        subject,
+        bodyHtml: html,
+        organizationId,
+        relatedEntityType: "vpn_subscription",
+        relatedEntityId: organizationId,
+      })
       await sendEmail({
         to: email,
-        subject: "VPN subscription suspended due to payment overdue",
+        subject,
         html,
+        emailLogId: emailLogId ?? undefined,
       })
     }
     this.markRecipientsResolved(organizationId, recipients)
@@ -139,11 +200,22 @@ export class VpnEmailService {
     const html = await render(
       <SubscriptionExpiredEmail packageName={packageName} />
     )
+    const subject = "VPN subscription expired"
     for (const { email } of recipients) {
+      const emailLogId = await createEmailLog({
+        recipientEmail: email,
+        type: "VPN_SUBSCRIPTION_EXPIRED",
+        subject,
+        bodyHtml: html,
+        organizationId,
+        relatedEntityType: "vpn_subscription",
+        relatedEntityId: organizationId,
+      })
       await sendEmail({
         to: email,
-        subject: "VPN subscription expired",
+        subject,
         html,
+        emailLogId: emailLogId ?? undefined,
       })
     }
     this.markRecipientsResolved(organizationId, recipients)
@@ -163,11 +235,22 @@ export class VpnEmailService {
         periodEnd={periodEnd}
       />
     )
+    const subject = "VPN subscription will be cancelled at period end"
     for (const { email } of recipients) {
+      const emailLogId = await createEmailLog({
+        recipientEmail: email,
+        type: "VPN_SUBSCRIPTION_CANCELLED",
+        subject,
+        bodyHtml: html,
+        organizationId,
+        relatedEntityType: "vpn_subscription",
+        relatedEntityId: organizationId,
+      })
       await sendEmail({
         to: email,
-        subject: "VPN subscription will be cancelled at period end",
+        subject,
         html,
+        emailLogId: emailLogId ?? undefined,
       })
     }
     this.markRecipientsResolved(organizationId, recipients)

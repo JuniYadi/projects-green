@@ -180,8 +180,13 @@ export const createPortalVoucherRoutes = (
           }
         }
 
+        const parsedData = { ...parsed.data }
+        if (actor.platformRole !== "super_admin" && auth.organizationId) {
+          parsedData.organizationId = auth.organizationId
+        }
+
         try {
-          const { vouchers, total } = await service.listVouchers(parsed.data)
+          const { vouchers, total } = await service.listVouchers(parsedData)
 
           return {
             ok: true as const,

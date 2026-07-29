@@ -61,6 +61,12 @@ const toServerError = (set: RouteSet, message: string) => {
   }
 }
 
+const BALANCE_CURRENCIES = ["IDR", "USD"] as const
+type BalanceCurrency = (typeof BALANCE_CURRENCIES)[number]
+const emptyTotalBalances = (): Record<BalanceCurrency, string> => ({
+  IDR: "0.00",
+  USD: "0.00",
+})
 export const createAdminStatsRoutes = (
   deps: Partial<AdminStatsRouteDeps> = {}
 ) => {
@@ -93,16 +99,20 @@ export const createAdminStatsRoutes = (
       const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
 
       const [
-        totalBalanceResult,
+        totalBalanceRows,
         activeOrgs,
         lowBalanceOrgs,
         monthlySpendResult,
         openInvoices,
         openTickets,
       ] = await Promise.all([
-        prisma.billingAccount.aggregate({
+        prisma.billingAccount.groupBy({
+          by: ["currency"],
+          where: {
+            status: "ACTIVE",
+            currency: { in: BALANCE_CURRENCIES as unknown as string[] },
+          },
           _sum: { balance: true },
-          where: { status: "ACTIVE" },
         }),
         prisma.billingAccount.count({
           where: { status: "ACTIVE" },
@@ -130,9 +140,17 @@ export const createAdminStatsRoutes = (
         }),
       ])
 
+      const totalBalances = emptyTotalBalances()
+      for (const row of totalBalanceRows) {
+        if (row.currency in totalBalances) {
+          totalBalances[row.currency as BalanceCurrency] =
+            row._sum.balance?.toFixed(2) ?? "0.00"
+        }
+      }
+
       return {
         ok: true as const,
-        totalBalance: totalBalanceResult._sum.balance?.toFixed(2) ?? "0.00",
+        totalBalances,
         activeOrgs,
         totalSpend: monthlySpendResult._sum.amountIdr?.toFixed(2) ?? "0.00",
         lowBalanceOrgs,

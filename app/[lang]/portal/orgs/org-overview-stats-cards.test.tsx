@@ -15,11 +15,11 @@ mock.module("@/lib/billing-client", () => ({
   getAdminStats: mockGetAdminStats,
 }))
 
-const { PlatformStatsCards } = await import("./platform-stats-cards")
+const { OrgOverviewStatsCards } = await import("./org-overview-stats-cards")
 
-describe("PlatformStatsCards", () => {
+describe("OrgOverviewStatsCards", () => {
   it("renders IDR and USD total balances without Mixed currencies", async () => {
-    const view = render(<PlatformStatsCards />)
+    const view = render(<OrgOverviewStatsCards />)
 
     expect(await view.findByText("IDR 50.000,00")).toBeTruthy()
     expect(view.getByText("USD 25.00")).toBeTruthy()

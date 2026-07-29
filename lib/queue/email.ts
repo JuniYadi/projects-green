@@ -20,8 +20,6 @@ export type EmailJobData = {
   subject: string
   html: string
   from?: string
-  ticketId?: string
-  ticketNumber?: string
   emailLogId?: string
 }
 
@@ -32,7 +30,8 @@ export class EmailJob extends BaseJob {
   static readonly backoff = { type: "fixed" as const, delay: 10_000 }
 
   static async handle(job: { data: EmailJobData }): Promise<void> {
-    const { to, subject, html, from, emailLogId } = job.data
+    const { to, subject, html, from } = job.data
+    const emailLogId = job.data.emailLogId
     const transporter = createTransporter()
     const fromAddress = from ?? process.env.EMAIL_FROM ?? "noreply@yourapp.com"
 
@@ -48,7 +47,7 @@ export class EmailJob extends BaseJob {
     }
 
     try {
-      await transporter.sendMail({
+      const info = await transporter.sendMail({
         from: fromAddress,
         to,
         subject,
@@ -63,6 +62,11 @@ export class EmailJob extends BaseJob {
             data: {
               status: "SENT",
               sentAt: new Date(),
+              providerMessageId:
+                typeof info.messageId === "string" ? info.messageId : null,
+              attempts: {
+                increment: 1,
+              },
             },
           })
           .catch((err) => {
@@ -107,7 +111,7 @@ function createTransporter(): Transporter {
  * Enqueue an email for async delivery.
  * Throws if the enqueue fails so callers can handle the error.
  */
-export async function sendEmail(data: EmailJobData): Promise<string> {
+export async function sendEmail(data: EmailJobData): Promise<string | null> {
   await EmailJob.enqueue(data)
-  return data.emailLogId ?? ""
+  return data.emailLogId ?? null
 }
