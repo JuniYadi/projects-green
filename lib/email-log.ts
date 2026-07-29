@@ -21,7 +21,10 @@ export function redactEmailHtml(html: string): string {
     const flags = entry.pattern.flags.includes("g")
       ? entry.pattern.flags
       : `${entry.pattern.flags}g`
-    const regex = new RegExp(entry.pattern.source, flags)
+    const regex =
+      entry.id === "password-assignment"
+        ? new RegExp("(?:password|passwd|pwd)\\s*[:=]\\s*[^\\s<>]+", flags)
+        : new RegExp(entry.pattern.source, flags)
     result = result.replace(regex, "[redacted]")
   }
   return result
