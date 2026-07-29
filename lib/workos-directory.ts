@@ -185,3 +185,114 @@ export async function getCachedOrganizations(
 
   return results
 }
+// ─── Organization metadata (owner + member count) ───────────────────────────
+
+type WorkOSDirectoryMembership = {
+  userId: string
+  status?: string | null
+  role?: { slug?: string | null } | null
+  user?: {
+    email?: string | null
+    firstName?: string | null
+    lastName?: string | null
+  } | null
+}
+
+export type WorkOSOrgMetadata = {
+  organizationId: string
+  ownerUserId: string | null
+  ownerName: string | null
+  ownerEmail: string | null
+  memberCount: number
+  refreshedAt: string
+}
+
+const orgMetadataCacheKey = (orgId: string) => `workos:org-meta:${orgId}`
+
+const isOwnerMembership = (membership: WorkOSDirectoryMembership) =>
+  ["user_owner", "owner"].includes(membership.role?.slug ?? "")
+
+const toDisplayName = (membership: WorkOSDirectoryMembership) =>
+  [membership.user?.firstName, membership.user?.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim() ||
+  membership.user?.email?.trim() ||
+  membership.userId
+
+export async function getCachedOrganizationMetadata(
+  workosOrgId: string
+): Promise<WorkOSOrgMetadata | null> {
+  if (!workosOrgId) return null
+
+  const cacheKey = orgMetadataCacheKey(workosOrgId)
+
+  // 1. Try cache
+  const cached = await tryCacheGet<WorkOSOrgMetadata>(cacheKey)
+  if (cached) return cached
+
+  // 2. Fetch from WorkOS
+  try {
+    const workos = getWorkOS()
+    const result = await workos.userManagement.listOrganizationMemberships({
+      organizationId: workosOrgId,
+    })
+
+    const memberships = result.data as WorkOSDirectoryMembership[]
+    const ownerMembership = memberships.find(isOwnerMembership) ?? null
+
+    const metadata: WorkOSOrgMetadata = {
+      organizationId: workosOrgId,
+      ownerUserId: ownerMembership?.userId ?? null,
+      ownerName: ownerMembership ? toDisplayName(ownerMembership) : null,
+      ownerEmail: ownerMembership?.user?.email?.trim() ?? null,
+      memberCount: memberships.length,
+      refreshedAt: new Date().toISOString(),
+    }
+
+    // 3. Seed cache
+    tryCacheSet(cacheKey, metadata)
+
+    return metadata
+  } catch (err) {
+    console.warn(
+      "[workos-directory] Failed to fetch org metadata %s: %s",
+      workosOrgId,
+      err instanceof Error ? err.message : "Unknown error"
+    )
+    return null
+  }
+}
+
+export async function getCachedOrganizationsMetadata(
+  ids: string[]
+): Promise<Map<string, WorkOSOrgMetadata>> {
+  const unique = [...new Set(ids.filter(Boolean))]
+  const results = new Map<string, WorkOSOrgMetadata>()
+
+  await Promise.all(
+    unique.map(async (id) => {
+      const meta = await getCachedOrganizationMetadata(id)
+      if (meta) results.set(id, meta)
+    })
+  )
+
+  return results
+}
+
+export async function refreshCachedOrganizationsMetadata(
+  ids: string[]
+): Promise<Map<string, WorkOSOrgMetadata>> {
+  const unique = [...new Set(ids.filter(Boolean))]
+  if (!unique.length) return new Map()
+
+  if (redis) {
+    try {
+      await redis.del(...unique.map(orgMetadataCacheKey))
+    } catch {
+      // non-fatal: continue even if delete fails
+    }
+  }
+
+  return getCachedOrganizationsMetadata(unique)
+}
