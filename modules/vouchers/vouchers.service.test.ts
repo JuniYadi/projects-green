@@ -107,6 +107,31 @@ describe("VoucherService", () => {
       const where = (findMany.mock.calls[0] as any)?.[0]?.where
       expect(where?.status).toBe("ACTIVE")
     })
+
+    it("filters by organizationId using OR filter on targetOrganizationId and claims", async () => {
+      const prisma = createMockPrisma()
+      const findMany = mock(() => [] as never[])
+      const count = mock(() => 0)
+      prisma.voucher.findMany = findMany as never
+      prisma.voucher.count = count as never
+
+      const service = new VoucherService(prisma as PrismaClient)
+      await service.listVouchers({ organizationId: "org_1" })
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const findManyWhere = (findMany.mock.calls[0] as any)?.[0]?.where
+      expect(findManyWhere?.OR).toEqual([
+        { targetOrganizationId: "org_1" },
+        { claims: { some: { organizationId: "org_1" } } },
+      ])
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const countWhere = (count.mock.calls[0] as any)?.[0]?.where
+      expect(countWhere?.OR).toEqual([
+        { targetOrganizationId: "org_1" },
+        { claims: { some: { organizationId: "org_1" } } },
+      ])
+    })
   })
 
   // ─── getVoucherById ───────────────────────────────────────────────────
