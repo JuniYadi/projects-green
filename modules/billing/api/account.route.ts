@@ -2,7 +2,9 @@ import { Elysia } from "elysia"
 import { withAuth, getWorkOS } from "@workos-inc/authkit-nextjs"
 import type { Organization } from "@workos-inc/node"
 
-import { MINIMUM_BALANCE_WARN_IDR } from "../constants"
+import { Prisma } from "@prisma/client"
+import { prisma } from "@/lib/prisma"
+import { getWarnThresholdForCurrency as resolveWarnThresholdForCurrency } from "../balance-gate.service"
 import { ensureBillingAccountForOrg } from "../billing-account.service"
 import { formatBillingMoney } from "../format-money"
 
@@ -17,6 +19,7 @@ type BillingAccountRouteDeps = {
   authenticate: () => Promise<BillingAuthContext>
   ensureBillingAccountForOrg: typeof ensureBillingAccountForOrg
   getOrganizationAction: (orgId: string) => Promise<Organization>
+  getWarnThresholdForCurrency: (currencyCode: string) => Promise<Prisma.Decimal>
 }
 
 type RouteSet = {
@@ -28,6 +31,8 @@ const defaultDeps: BillingAccountRouteDeps = {
   ensureBillingAccountForOrg,
   getOrganizationAction: async (orgId: string) =>
     getWorkOS().organizations.getOrganization(orgId),
+  getWarnThresholdForCurrency: (currencyCode) =>
+    resolveWarnThresholdForCurrency(prisma, currencyCode),
 }
 
 const toUnauthorized = (set: RouteSet) => {
@@ -69,7 +74,12 @@ function daysSince(date: Date): string {
 export const createBillingAccountRoutes = (
   deps: Partial<BillingAccountRouteDeps> = {}
 ) => {
-  const { authenticate, ensureBillingAccountForOrg, getOrganizationAction } = {
+  const {
+    authenticate,
+    ensureBillingAccountForOrg,
+    getOrganizationAction,
+    getWarnThresholdForCurrency,
+  } = {
     ...defaultDeps,
     ...deps,
   }
@@ -97,7 +107,8 @@ export const createBillingAccountRoutes = (
       // display. `preferredCurrency` is deprecated (see CURRENCY-FIX-STRATEGY).
       const currency = account.currency
       const isPositive = balance.gt(0)
-      const isAboveWarn = balance.gte(MINIMUM_BALANCE_WARN_IDR)
+      const warnThreshold = await getWarnThresholdForCurrency(currency)
+      const isAboveWarn = balance.gte(warnThreshold)
       const accountAge = daysSince(account.createdAt)
 
       return {
