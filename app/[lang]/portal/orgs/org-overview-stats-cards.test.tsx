@@ -8,7 +8,7 @@ const mockGetAdminStats = mock(async () => ({
   totalSpend: "1000.00",
   lowBalanceOrgs: 0,
   openInvoices: 1,
-  openTickets: 1,
+  openTickets: 0,
 }))
 
 mock.module("@/lib/billing-client", () => ({
