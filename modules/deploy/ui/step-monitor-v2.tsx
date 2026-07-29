@@ -1,5 +1,5 @@
 import { DEPLOY_STATUS_LABELS } from "@/modules/deploy/deploy.constants"
-import { DeployTimeline } from "@/modules/deploy/ui/deploy-timeline"
+import { DeployStepTimeline } from "@/modules/deploy/ui/deploy-timeline"
 import { LogsPanel } from "@/modules/deploy/ui/logs-panel"
 import { ResultPanel } from "@/modules/deploy/ui/result-panel"
 import type {
@@ -59,7 +59,11 @@ export function StepMonitorV2({
 
       <section className="space-y-2">
         <h3 className="text-sm font-medium">Status timeline</h3>
-        <DeployTimeline deployId={deployId} status={status} />
+        <DeployStepTimeline
+          deployId={deployId}
+          status={status}
+          onRetry={onRetry}
+        />
       </section>
 
       <section className="space-y-2">

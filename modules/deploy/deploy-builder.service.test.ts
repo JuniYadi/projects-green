@@ -72,11 +72,12 @@ mock.module("@/modules/jenkins/jenkins.service", () => ({
 mock.module("@/modules/jenkins/jenkins-sync.service", () => ({
   syncJenkinsPipeline: syncJenkinsPipelineMock,
 }))
+const commitFilesMock = mock(async (..._args: unknown[]) => ({
+  sha: "gitops-sha-1",
+}))
 mock.module("@/modules/gitops/gitops.service", () => ({
   GitOpsRepositoryService: class {
-    async commitFiles() {
-      return { sha: "gitops-sha-1" }
-    }
+    commitFiles = commitFilesMock
   },
 }))
 mock.module("@/modules/deploy/cluster-integration.service", () => ({
@@ -102,6 +103,16 @@ mock.module("@/modules/deploy/cluster-integration.service", () => ({
         pullSecretName: null,
       }
     }
+    if (type === "GITOPS") {
+      return {
+        repo: "pfnapp/sgp-argocd-prod",
+        branch: "main",
+        basePath: "",
+        pat: "gitops-pat",
+        authorName: null,
+        authorEmail: null,
+      }
+    }
     throw new Error("missing " + type)
   }),
   resolveDefaultAppHostingClusterId: mock(async () => "cluster-sgp"),
@@ -115,7 +126,7 @@ describe("processQueuedDeployment", () => {
   beforeEach(() => {
     txCreate.mockClear()
     triggerJenkinsJobMock.mockClear()
-    syncJenkinsPipelineMock.mockClear()
+    commitFilesMock.mockClear()
     mockPrisma.applicationDeployment.findUnique.mockReset()
     mockPrisma.applicationDeployment.findUnique.mockResolvedValue(
       defaultDeployment
@@ -167,6 +178,53 @@ describe("processQueuedDeployment", () => {
   it("returns RUNNING status when eager fallback flag is true", async () => {
     process.env.APP_HOSTING_EAGER_DEPLOY_FALLBACK = "true"
     const result = await processQueuedDeployment("deploy-1")
+    expect(result.status).toBe("RUNNING")
+  })
+
+  it("commits manifests via GitOps cluster integration repo", async () => {
+    process.env.APP_HOSTING_EAGER_DEPLOY_FALLBACK = "true"
+    await processQueuedDeployment("deploy-1")
+    expect(commitFilesMock).toHaveBeenCalledTimes(1)
+    const repoArg = commitFilesMock.mock.calls[0]?.[0]
+    expect(repoArg).toBe("pfnapp/sgp-argocd-prod")
+  })
+
+  it("skips GitOps commit when cluster integration missing", async () => {
+    process.env.APP_HOSTING_EAGER_DEPLOY_FALLBACK = "true"
+    const { resolveClusterIntegration } =
+      await import("@/modules/deploy/cluster-integration.service")
+    const resolver = resolveClusterIntegration as unknown as {
+      mockImplementation: (
+        fn: (id: string, type: string) => Promise<unknown>
+      ) => void
+    }
+    resolver.mockImplementation(async (_id, type) => {
+      if (type === "GITOPS") throw new Error("no cluster")
+      if (type === "JENKINS") {
+        return {
+          baseUrl: "https://jenkins.example.com",
+          username: "user",
+          apiToken: "token",
+          webhookToken: "whk-token",
+          dslOwner: "pfnapp",
+          dslRepo: "Jenkins",
+          gitCredentialId: "github-token",
+          sharedLibraryName: null,
+          sharedLibraryBranch: null,
+        }
+      }
+      if (type === "REGISTRY") {
+        return {
+          host: "registry-apac.pfnapp.com",
+          namespace: null,
+          pushCredentialId: null,
+          pullSecretName: null,
+        }
+      }
+      throw new Error("missing " + type)
+    })
+    const result = await processQueuedDeployment("deploy-1")
+    expect(commitFilesMock).not.toHaveBeenCalled()
     expect(result.status).toBe("RUNNING")
   })
 })
