@@ -107,7 +107,14 @@ export function DeliveryLogsView() {
     let cancelled = false
     async function fetchLogs() {
       setIsLoading(true)
-      const query: Record<string, string | number> = {
+      const query: {
+        page: number
+        limit: number
+        status?: string
+        type?: string
+        recipient?: string
+        organizationId?: string
+      } = {
         page,
         limit: PAGE_SIZE,
       }
@@ -121,8 +128,8 @@ export function DeliveryLogsView() {
         setLogs([])
         setTotal(0)
       } else {
-        setLogs(res.data.data)
-        setTotal(res.data.pagination.total)
+        setLogs(res.data.data ?? [])
+        setTotal(res.data.pagination?.total ?? 0)
       }
       setIsLoading(false)
     }
