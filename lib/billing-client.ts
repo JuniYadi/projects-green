@@ -437,7 +437,7 @@ export async function getAdminSubscriptions(params?: {
 
 export type AdminStats = {
   ok: true
-  totalBalance: string
+  totalBalances: Record<"IDR" | "USD", string>
   activeOrgs: number
   totalSpend: string
   lowBalanceOrgs: number
