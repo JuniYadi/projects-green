@@ -1,11 +1,13 @@
 import { render } from "@react-email/components"
 
+import { createEmailLog } from "@/lib/email-log"
+import { sendEmail } from "@/lib/queue/email"
+
 import { InvoiceCreatedEmail } from "./emails/invoice-created"
 import { PaymentReminderEmail } from "./emails/payment-reminder"
 import { InvoicePaidEmail } from "./emails/invoice-paid"
 import { InvoiceOverdueEmail } from "./emails/invoice-overdue"
 import { InvoiceCancelledEmail } from "./emails/invoice-cancelled"
-import { sendEmail } from "@/lib/queue/email"
 import type {
   InvoiceDetail,
   InvoiceListItem,
@@ -88,18 +90,28 @@ export const getInvoiceEmailData = (
   }
 }
 
-// ponytail: no more nodemailer transporter — queue worker handles SMTP
 export const createInvoiceEmailService = (): InvoiceEmailService => ({
   async sendInvoiceCreated(invoice, recipientEmail) {
     try {
       const html = await render(
         <InvoiceCreatedEmail {...getInvoiceEmailData(invoice)} />
       )
+      const subject = `Invoice ${invoice.invoiceNumber} - Payment Due ${invoice.dueAt}`
+      const emailLogId = await createEmailLog({
+        recipientEmail,
+        type: "INVOICE_CREATED",
+        subject,
+        bodyHtml: html,
+        organizationId: null,
+        relatedEntityType: "invoice",
+        relatedEntityId: invoice.id,
+      })
 
       await sendEmail({
         to: recipientEmail,
-        subject: `Invoice ${invoice.invoiceNumber} - Payment Due ${invoice.dueAt}`,
+        subject,
         html,
+        emailLogId: emailLogId ?? undefined,
       })
     } catch (error) {
       console.error("Failed to send invoice created email:", error)
@@ -114,11 +126,23 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
       const html = await render(
         <PaymentReminderEmail {...getInvoiceEmailData(invoice)} />
       )
+      const subject = `Reminder: Invoice ${invoice.invoiceNumber} Due Soon`
+      const emailLogId = await createEmailLog({
+        recipientEmail,
+        type: "INVOICE_PAYMENT_REMINDER",
+        subject,
+        bodyHtml: html,
+        organizationId:
+          "organizationId" in invoice ? (invoice.organizationId ?? null) : null,
+        relatedEntityType: "invoice",
+        relatedEntityId: invoice.id,
+      })
 
       await sendEmail({
         to: recipientEmail,
-        subject: `Reminder: Invoice ${invoice.invoiceNumber} Due Soon`,
+        subject,
         html,
+        emailLogId: emailLogId ?? undefined,
       })
     } catch (error) {
       console.error("Failed to send payment reminder email:", error)
@@ -127,17 +151,28 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
       )
     }
   },
-
   async sendInvoicePaid(invoice, recipientEmail) {
     try {
       const html = await render(
         <InvoicePaidEmail {...getInvoiceEmailData(invoice)} />
       )
+      const subject = `Payment Received - Invoice ${invoice.invoiceNumber}`
+      const emailLogId = await createEmailLog({
+        recipientEmail,
+        type: "INVOICE_PAID",
+        subject,
+        bodyHtml: html,
+        organizationId:
+          "organizationId" in invoice ? (invoice.organizationId ?? null) : null,
+        relatedEntityType: "invoice",
+        relatedEntityId: invoice.id,
+      })
 
       await sendEmail({
         to: recipientEmail,
-        subject: `Payment Received - Invoice ${invoice.invoiceNumber}`,
+        subject,
         html,
+        emailLogId: emailLogId ?? undefined,
       })
     } catch (error) {
       console.error("Failed to send invoice paid email:", error)
@@ -146,17 +181,28 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
       )
     }
   },
-
   async sendInvoiceOverdue(invoice, recipientEmail) {
     try {
       const html = await render(
         <InvoiceOverdueEmail {...getInvoiceEmailData(invoice)} />
       )
+      const subject = `OVERDUE: Invoice ${invoice.invoiceNumber} Payment Required`
+      const emailLogId = await createEmailLog({
+        recipientEmail,
+        type: "INVOICE_OVERDUE",
+        subject,
+        bodyHtml: html,
+        organizationId:
+          "organizationId" in invoice ? (invoice.organizationId ?? null) : null,
+        relatedEntityType: "invoice",
+        relatedEntityId: invoice.id,
+      })
 
       await sendEmail({
         to: recipientEmail,
-        subject: `OVERDUE: Invoice ${invoice.invoiceNumber} Payment Required`,
+        subject,
         html,
+        emailLogId: emailLogId ?? undefined,
       })
     } catch (error) {
       console.error("Failed to send invoice overdue email:", error)
@@ -165,7 +211,6 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
       )
     }
   },
-
   async sendInvoiceCancelled(invoice, recipientEmail, reason) {
     try {
       const html = await render(
@@ -174,11 +219,23 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
           reason={reason}
         />
       )
+      const subject = `Invoice ${invoice.invoiceNumber} Has Been Cancelled`
+      const emailLogId = await createEmailLog({
+        recipientEmail,
+        type: "INVOICE_CANCELLED",
+        subject,
+        bodyHtml: html,
+        organizationId:
+          "organizationId" in invoice ? (invoice.organizationId ?? null) : null,
+        relatedEntityType: "invoice",
+        relatedEntityId: invoice.id,
+      })
 
       await sendEmail({
         to: recipientEmail,
-        subject: `Invoice ${invoice.invoiceNumber} Has Been Cancelled`,
+        subject,
         html,
+        emailLogId: emailLogId ?? undefined,
       })
     } catch (error) {
       console.error("Failed to send invoice cancelled email:", error)

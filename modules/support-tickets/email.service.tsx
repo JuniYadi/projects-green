@@ -1,5 +1,6 @@
 import { render } from "@react-email/components"
 
+import { createEmailLog } from "@/lib/email-log"
 import { TicketCreatedEmail } from "./emails/ticket-created"
 import { TicketRepliedEmail } from "./emails/ticket-replied"
 import { TicketClosedEmail } from "./emails/ticket-closed"
@@ -7,43 +8,11 @@ import { TicketNewAdminAlertEmail } from "./emails/ticket-new-admin-alert"
 import type { SupportTicket, SupportTicketReply } from "./support-ticket.types"
 import { SUPPORT_TICKET_STATUS_LABELS } from "./support-ticket.types"
 import { sendEmail } from "@/lib/queue/email"
-import { prisma } from "@/lib/prisma"
 
 export class EmailServiceError extends Error {
   constructor(message: string) {
     super(message)
     this.name = "EmailServiceError"
-  }
-}
-
-type EmailLogType =
-  | "TICKET_CREATED"
-  | "TICKET_REPLIED"
-  | "TICKET_CLOSED"
-  | "TICKET_ADMIN_ALERT"
-
-async function createEmailLog(
-  ticketId: string | null,
-  ticketNumber: string | null,
-  recipientEmail: string,
-  type: EmailLogType,
-  subject: string
-) {
-  try {
-    const log = await prisma.emailLog.create({
-      data: {
-        ticketId,
-        ticketNumber,
-        recipientEmail,
-        type,
-        subject,
-        status: "QUEUED",
-      },
-    })
-    return log.id
-  } catch (err) {
-    console.error("[EmailService] Failed to create email log:", err)
-    return null
   }
 }
 
@@ -101,13 +70,17 @@ export const createEmailService = (): EmailService => ({
         <TicketCreatedEmail ticket={ticket} organization={organization} />
       )
       const subject = `Your support ticket #${ticket.ticketNumber} has been created`
-      const emailLogId = await createEmailLog(
-        ticket.id,
-        ticket.ticketNumber,
-        requesterEmail,
-        "TICKET_CREATED",
-        subject
-      )
+      const emailLogId = await createEmailLog({
+        recipientEmail: requesterEmail,
+        type: "TICKET_CREATED",
+        subject,
+        bodyHtml: html,
+        ticketId: ticket.id,
+        ticketNumber: ticket.ticketNumber,
+        organizationId: ticket.organizationId,
+        relatedEntityType: "support_ticket",
+        relatedEntityId: ticket.id,
+      })
 
       await sendEmail({
         to: requesterEmail,
@@ -140,13 +113,17 @@ export const createEmailService = (): EmailService => ({
         />
       )
       const subject = `Re: Support ticket #${ticket.ticketNumber} - ${ticket.subject}`
-      const emailLogId = await createEmailLog(
-        ticket.id,
-        ticket.ticketNumber,
-        requesterEmail,
-        "TICKET_REPLIED",
-        subject
-      )
+      const emailLogId = await createEmailLog({
+        recipientEmail: requesterEmail,
+        type: "TICKET_REPLIED",
+        subject,
+        bodyHtml: html,
+        ticketId: ticket.id,
+        ticketNumber: ticket.ticketNumber,
+        organizationId: ticket.organizationId,
+        relatedEntityType: "support_ticket",
+        relatedEntityId: ticket.id,
+      })
 
       await sendEmail({
         to: requesterEmail,
@@ -168,13 +145,17 @@ export const createEmailService = (): EmailService => ({
     try {
       const html = await render(<TicketClosedEmail ticket={ticket} />)
       const subject = `Support ticket #${ticket.ticketNumber} has been ${SUPPORT_TICKET_STATUS_LABELS[ticket.status].toLowerCase()}`
-      const emailLogId = await createEmailLog(
-        ticket.id,
-        ticket.ticketNumber,
-        requesterEmail,
-        "TICKET_CLOSED",
-        subject
-      )
+      const emailLogId = await createEmailLog({
+        recipientEmail: requesterEmail,
+        type: "TICKET_CLOSED",
+        subject,
+        bodyHtml: html,
+        ticketId: ticket.id,
+        ticketNumber: ticket.ticketNumber,
+        organizationId: ticket.organizationId,
+        relatedEntityType: "support_ticket",
+        relatedEntityId: ticket.id,
+      })
 
       await sendEmail({
         to: requesterEmail,
@@ -209,13 +190,17 @@ export const createEmailService = (): EmailService => ({
         />
       )
       const subject = `[Action Required] New support ticket #${ticket.ticketNumber} - ${ticket.subject}`
-      const emailLogId = await createEmailLog(
-        ticket.id,
-        ticket.ticketNumber,
-        adminEmail,
-        "TICKET_ADMIN_ALERT",
-        subject
-      )
+      const emailLogId = await createEmailLog({
+        recipientEmail: adminEmail,
+        type: "TICKET_ADMIN_ALERT",
+        subject,
+        bodyHtml: html,
+        ticketId: ticket.id,
+        ticketNumber: ticket.ticketNumber,
+        organizationId: ticket.organizationId,
+        relatedEntityType: "support_ticket",
+        relatedEntityId: ticket.id,
+      })
 
       await sendEmail({
         to: adminEmail,
@@ -251,13 +236,17 @@ export const createEmailService = (): EmailService => ({
         />
       )
       const subject = `[Action Required] New reply on support ticket #${ticket.ticketNumber} - ${ticket.subject}`
-      const emailLogId = await createEmailLog(
-        ticket.id,
-        ticket.ticketNumber,
-        adminEmail,
-        "TICKET_ADMIN_ALERT",
-        subject
-      )
+      const emailLogId = await createEmailLog({
+        recipientEmail: adminEmail,
+        type: "TICKET_ADMIN_ALERT",
+        subject,
+        bodyHtml: html,
+        ticketId: ticket.id,
+        ticketNumber: ticket.ticketNumber,
+        organizationId: ticket.organizationId,
+        relatedEntityType: "support_ticket",
+        relatedEntityId: ticket.id,
+      })
 
       await sendEmail({
         to: adminEmail,
