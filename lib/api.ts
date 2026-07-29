@@ -5,7 +5,7 @@ import { z } from "zod"
 
 import { adminRoutes } from "@/modules/admin/api/admin.route"
 import { emailTemplateRoutes } from "@/modules/email-templates/api/email-templates.route"
-import { authRoutes } from "@/modules/auth/api/auth.route"
+import { emailLogRoutes } from "@/modules/email-templates/api/email-logs.route"
 import { authWhoamiRoute } from "@/modules/auth/api/auth-whoami.route"
 import { billingRoutes } from "@/modules/billing/api"
 import { docsConsoleRoutes } from "@/modules/docs/api/docs-console.route"
@@ -162,6 +162,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(userPaymentRoutes)
   .use(adminRoutes)
   .use(emailTemplateRoutes)
+  .use(emailLogRoutes)
   .use(usersRoutes)
   .use(vpnRoutes)
   .use(mobileVpnRoutes)
