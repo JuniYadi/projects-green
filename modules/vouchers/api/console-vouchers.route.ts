@@ -14,6 +14,7 @@ import {
   VoucherAlreadyClaimedError,
   VoucherTargetUserMismatchError,
   VoucherTargetOrgMismatchError,
+  BillingCurrencyMismatchError,
 } from "../vouchers.errors"
 
 type VoucherAuthContext = {
@@ -106,6 +107,15 @@ const toErrorResponse = (set: RouteSet, error: unknown) => {
     return {
       ok: false as const,
       error: "VOUCHER_ALREADY_CLAIMED" as const,
+      message: error.message,
+    }
+  }
+
+  if (error instanceof BillingCurrencyMismatchError) {
+    set.status = 400
+    return {
+      ok: false as const,
+      error: "BILLING_CURRENCY_MISMATCH" as const,
       message: error.message,
     }
   }
