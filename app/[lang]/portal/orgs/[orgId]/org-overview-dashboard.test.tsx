@@ -49,7 +49,32 @@ const mockListAdminTickets = mock(async () => ({
 
 const mockGetOrganizationMembers = mock(async () => ({ data: [] }))
 const mockGetOrganizationInvitations = mock(async () => ({ data: [] }))
-
+const mockVouchersPortalGet = mock(
+  async (): Promise<{
+    ok: true
+    data: Array<{
+      id: string
+      code: string
+      prefix: string | null
+      status: string
+      maxClaims: number
+      claimedCount: number
+      expiresAt: string
+      amount: string
+      currency: string
+      targetWorkosUserId: string | null
+      targetOrganizationId: string | null
+      createdByWorkosUserId: string
+      createdAt: string
+      updatedAt: string
+    }>
+    total: number
+  }> => ({
+    ok: true,
+    data: [],
+    total: 0,
+  })
+)
 mock.module("@/lib/billing-client", () => ({
   getAdminOrgDetail: mockGetAdminOrgDetail,
   getAdminUsage: mockGetAdminUsage,
@@ -76,6 +101,11 @@ mock.module("@/lib/eden", () => ({
             },
           },
         }),
+      },
+      vouchers: {
+        portal: {
+          get: () => mockVouchersPortalGet(),
+        },
       },
     },
   },
@@ -138,6 +168,7 @@ describe("OrgOverviewDashboard", () => {
     await waitFor(() => expect(view.getByText("USD Org")).toBeTruthy())
 
     for (const label of [
+      "Overview",
       "Billing",
       "Invoices",
       "Usage",
@@ -201,7 +232,7 @@ describe("OrgOverviewDashboard", () => {
     )
   })
 
-  it("falls back to Billing tab when defaultPage is invalid", async () => {
+  it("falls back to Overview tab when defaultPage is invalid", async () => {
     mockGetAdminOrgDetail.mockResolvedValueOnce({
       ok: true,
       org: makeOrg(),
@@ -212,6 +243,26 @@ describe("OrgOverviewDashboard", () => {
     )
 
     await waitFor(() => expect(view.getByText("USD Org")).toBeTruthy())
+    // Overview tab is active (default fallback), Balance is in summary cards
     expect(view.getByText("USD 125.00")).toBeTruthy()
+  })
+  it("renders Overview tab with summary cards when no defaultPage", async () => {
+    mockGetAdminOrgDetail.mockResolvedValueOnce({
+      ok: true,
+      org: makeOrg(),
+    })
+    mockVouchersPortalGet.mockResolvedValueOnce({
+      ok: true,
+      data: [],
+      total: 0,
+    })
+
+    const view = render(<OrgOverviewDashboard lang="en" orgId="org_usd" />)
+
+    await waitFor(() => expect(view.getByText("USD Org")).toBeTruthy())
+    // Overview tab content rendered (default)
+    expect(view.getByText("Balance")).toBeTruthy()
+    expect(view.getByText("Active Products")).toBeTruthy()
+    expect(view.getByText("Voucher Generation Logs")).toBeTruthy()
   })
 })
