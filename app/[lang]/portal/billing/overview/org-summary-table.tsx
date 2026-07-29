@@ -220,6 +220,7 @@ export function OrgSummaryTable({
             <SelectContent>
               <SelectItem value="all">All currencies</SelectItem>
               <SelectItem value="IDR">IDR</SelectItem>
+              <SelectItem value="USD">USD</SelectItem>
             </SelectContent>
           </Select>
           <Button

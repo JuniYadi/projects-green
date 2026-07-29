@@ -18,6 +18,9 @@ export default async function DeliveryLogsPage({
     email: auth.user.email,
   })
 
+  if (platformAccess.role !== "super_admin") {
+    redirect(localizePathname({ pathname: "/portal", locale }))
+  }
   if (!platformAccess.exists) {
     redirect(localizePathname({ pathname: "/portal", locale }))
   }

@@ -23,11 +23,7 @@ export function ScopedNotFoundShell({
   })
 
   const handleGoBack = () => {
-    if (window.history.length > 1) {
-      router.back()
-    } else {
-      router.push(fallbackHref)
-    }
+    router.push(fallbackHref)
   }
 
   return (

@@ -71,6 +71,9 @@ export class EmailJob extends BaseJob {
               sentAt: new Date(),
               providerMessageId:
                 typeof info.messageId === "string" ? info.messageId : null,
+              attempts: {
+                increment: 1,
+              },
             },
           })
           .catch((err) => {
@@ -115,7 +118,7 @@ function createTransporter(): Transporter {
  * Enqueue an email for async delivery.
  * Throws if the enqueue fails so callers can handle the error.
  */
-export async function sendEmail(data: EmailJobData): Promise<string> {
+export async function sendEmail(data: EmailJobData): Promise<string | null> {
   await EmailJob.enqueue(data)
-  return data.emailLogId ?? ""
+  return data.emailLogId ?? null
 }

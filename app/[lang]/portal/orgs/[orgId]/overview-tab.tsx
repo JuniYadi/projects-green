@@ -80,7 +80,7 @@ export function OverviewTab({ _lang, orgId, orgDetail }: OverviewTabProps) {
     },
     {
       title: "Monthly Spend",
-      value: formatBillingMoney(org.monthlySpend, "IDR"),
+      value: formatBillingMoney(org.monthlySpend, org.currency),
       icon: WalletIcon,
     },
   ]

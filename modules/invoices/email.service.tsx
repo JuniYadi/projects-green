@@ -24,24 +24,29 @@ export class InvoiceEmailServiceError extends Error {
 export type InvoiceEmailService = {
   sendInvoiceCreated(
     invoice: InvoiceListItem | InvoiceDetail,
-    recipientEmail: string
+    recipientEmail: string,
+    organizationId?: string
   ): Promise<void>
   sendPaymentReminder(
     invoice: InvoiceListItem | InvoiceDetail,
-    recipientEmail: string
+    recipientEmail: string,
+    organizationId?: string
   ): Promise<void>
   sendInvoicePaid(
     invoice: InvoiceListItem | InvoiceDetail,
-    recipientEmail: string
+    recipientEmail: string,
+    organizationId?: string
   ): Promise<void>
   sendInvoiceOverdue(
     invoice: InvoiceListItem | InvoiceDetail,
-    recipientEmail: string
+    recipientEmail: string,
+    organizationId?: string
   ): Promise<void>
   sendInvoiceCancelled(
     invoice: InvoiceListItem | InvoiceDetail,
     recipientEmail: string,
-    reason?: string
+    reason?: string,
+    organizationId?: string
   ): Promise<void>
 }
 
@@ -91,7 +96,7 @@ export const getInvoiceEmailData = (
 }
 
 export const createInvoiceEmailService = (): InvoiceEmailService => ({
-  async sendInvoiceCreated(invoice, recipientEmail) {
+  async sendInvoiceCreated(invoice, recipientEmail, organizationId) {
     try {
       const html = await render(
         <InvoiceCreatedEmail {...getInvoiceEmailData(invoice)} />
@@ -102,7 +107,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
         type: "INVOICE_CREATED",
         subject,
         bodyHtml: html,
-        organizationId: null,
+        organizationId,
         relatedEntityType: "invoice",
         relatedEntityId: invoice.id,
       })
@@ -121,7 +126,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
     }
   },
 
-  async sendPaymentReminder(invoice, recipientEmail) {
+  async sendPaymentReminder(invoice, recipientEmail, organizationId) {
     try {
       const html = await render(
         <PaymentReminderEmail {...getInvoiceEmailData(invoice)} />
@@ -132,7 +137,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
         type: "INVOICE_PAYMENT_REMINDER",
         subject,
         bodyHtml: html,
-        organizationId: null,
+        organizationId,
         relatedEntityType: "invoice",
         relatedEntityId: invoice.id,
       })
@@ -150,7 +155,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
       )
     }
   },
-  async sendInvoicePaid(invoice, recipientEmail) {
+  async sendInvoicePaid(invoice, recipientEmail, organizationId) {
     try {
       const html = await render(
         <InvoicePaidEmail {...getInvoiceEmailData(invoice)} />
@@ -161,7 +166,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
         type: "INVOICE_PAID",
         subject,
         bodyHtml: html,
-        organizationId: null,
+        organizationId,
         relatedEntityType: "invoice",
         relatedEntityId: invoice.id,
       })
@@ -179,7 +184,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
       )
     }
   },
-  async sendInvoiceOverdue(invoice, recipientEmail) {
+  async sendInvoiceOverdue(invoice, recipientEmail, organizationId) {
     try {
       const html = await render(
         <InvoiceOverdueEmail {...getInvoiceEmailData(invoice)} />
@@ -190,7 +195,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
         type: "INVOICE_OVERDUE",
         subject,
         bodyHtml: html,
-        organizationId: null,
+        organizationId,
         relatedEntityType: "invoice",
         relatedEntityId: invoice.id,
       })
@@ -208,7 +213,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
       )
     }
   },
-  async sendInvoiceCancelled(invoice, recipientEmail, reason) {
+  async sendInvoiceCancelled(invoice, recipientEmail, reason, organizationId) {
     try {
       const html = await render(
         <InvoiceCancelledEmail
@@ -222,7 +227,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
         type: "INVOICE_CANCELLED",
         subject,
         bodyHtml: html,
-        organizationId: null,
+        organizationId,
         relatedEntityType: "invoice",
         relatedEntityId: invoice.id,
       })
