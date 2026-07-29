@@ -1,0 +1,28 @@
+import { describe, expect, it, mock } from "bun:test"
+import { render } from "@testing-library/react"
+
+const mockGetAdminStats = mock(async () => ({
+  ok: true as const,
+  totalBalances: { IDR: "50000.00", USD: "25.00" },
+  activeOrgs: 2,
+  totalSpend: "1000.00",
+  lowBalanceOrgs: 0,
+  openInvoices: 1,
+  openTickets: 1,
+}))
+
+mock.module("@/lib/billing-client", () => ({
+  getAdminStats: mockGetAdminStats,
+}))
+
+const { OrgOverviewStatsCards } = await import("./org-overview-stats-cards")
+
+describe("OrgOverviewStatsCards", () => {
+  it("renders IDR and USD total balances without Mixed currencies", async () => {
+    const view = render(<OrgOverviewStatsCards />)
+
+    expect(await view.findByText("IDR 50.000,00")).toBeTruthy()
+    expect(view.getByText("USD 25.00")).toBeTruthy()
+    expect(view.queryByText("Mixed currencies")).toBeNull()
+  })
+})
