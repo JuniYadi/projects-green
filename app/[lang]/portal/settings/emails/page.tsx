@@ -24,11 +24,19 @@ export default async function EmailTemplatesPage({
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Email Templates</h1>
-        <p className="text-sm text-muted-foreground">
-          Preview all transactional email templates sent by the platform.
-        </p>
+      <header className="flex items-center justify-between space-y-1">
+        <div>
+          <h1 className="text-2xl font-semibold">Email Templates</h1>
+          <p className="text-sm text-muted-foreground">
+            Preview all transactional email templates sent by the platform.
+          </p>
+        </div>
+        <a
+          href={`/${lang}/portal/settings/emails/delivery-logs`}
+          className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+        >
+          Delivery Logs
+        </a>
       </header>
       <EmailsView />
     </main>
