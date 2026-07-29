@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
+import { fireEvent, render, waitFor } from "@testing-library/react"
 
 import { DeployStepTimeline } from "./deploy-timeline"
 
@@ -76,6 +76,15 @@ describe("DeployStepTimeline", () => {
     )
     const active = view.container.querySelector('[aria-current="step"]')
     expect(active).not.toBeNull()
+  })
+  it("announces timeline updates politely", () => {
+    globalThis.fetch = mockFetch()
+
+    const view = render(
+      <DeployStepTimeline deployId="deploy-1" status="building" />
+    )
+    const list = view.getByRole("list", { name: "Deployment step timeline" })
+    expect(list.getAttribute("aria-live")).toBe("polite")
   })
 
   it("marks active step failed and later steps skipped when failed", async () => {
@@ -194,6 +203,53 @@ describe("DeployStepTimeline", () => {
     })
     await waitFor(() => {
       expect(view.getByText("Building image")).toBeInTheDocument()
+    })
+  })
+  it("clears a previous logs error when another step opens", async () => {
+    let logsCallCount = 0
+    globalThis.fetch = mockFetch((url) => {
+      if (url.includes("/status/")) {
+        return {
+          status: "queued",
+          failureReason: null,
+          startedAt: null,
+          completedAt: null,
+        }
+      }
+      if (url.includes("/logs/")) {
+        logsCallCount++
+        if (logsCallCount === 1) throw new Error("fetch failed")
+        return [
+          {
+            id: "log-2",
+            scope: "build",
+            status: "BUILDING",
+            message: "Step 2 log",
+          },
+        ]
+      }
+      return []
+    })
+
+    const view = render(
+      <DeployStepTimeline deployId="deploy-1" status="queued" />
+    )
+
+    const triggers = view.getAllByRole("button")
+
+    // Open first step — logs fetch fails via throw
+    fireEvent.click(triggers[0]!)
+    await waitFor(() => {
+      expect(view.getByText("Failed to load logs")).toBeInTheDocument()
+    })
+
+    // Open second step — clears the error and fetches successfully
+    fireEvent.click(triggers[1]!)
+    await waitFor(() => {
+      expect(view.queryByText("Failed to load logs")).not.toBeInTheDocument()
+    })
+    await waitFor(() => {
+      expect(view.getByText("Step 2 log")).toBeInTheDocument()
     })
   })
 

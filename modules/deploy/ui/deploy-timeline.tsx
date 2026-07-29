@@ -261,6 +261,7 @@ export function DeployStepTimeline({
   const handleStepToggle = (stepId: string, open: boolean) => {
     if (open) {
       setOpenStep(stepId)
+      setLogsError(null)
       if (!stepLogs[stepId]) void fetchStepLogs(stepId)
     } else {
       setOpenStep(null)
@@ -280,7 +281,11 @@ export function DeployStepTimeline({
 
   return (
     <div className="space-y-3">
-      <ol className="space-y-2" aria-label="Deployment step timeline">
+      <ol
+        className="space-y-2"
+        aria-label="Deployment step timeline"
+        aria-live="polite"
+      >
         {steps.map((step, idx) => {
           const uiState = stepUiState(idx, activeIndex, effectiveStatus)
           const ev = eventByType[step.id]
