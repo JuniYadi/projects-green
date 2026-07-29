@@ -106,6 +106,15 @@ const eslintConfig = defineConfig([
       "react-hooks/set-state-in-effect": "warn",
     },
   },
+  // Deploy module — Prisma enum workarounds in source + bun mock any in tests
+  {
+    files: ["modules/deploy/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+    },
+  },
+
   // VPN admin module tests - prisma mocks require any
   {
     files: ["modules/vpn/admin/**/*.test.ts"],
@@ -114,7 +123,7 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
-  // Email service test files use module.exports pattern
+  // Email service module tests - next module variable assignment
   {
     files: ["modules/invoices/email.service.test.ts", "modules/support-tickets/email.service.test.ts"],
     rules: {

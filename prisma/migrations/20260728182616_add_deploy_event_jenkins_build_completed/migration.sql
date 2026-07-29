@@ -1,0 +1,1 @@
+ALTER TYPE "ApplicationDeployEventType" ADD VALUE 'JENKINS_BUILD_COMPLETED';

@@ -50,7 +50,7 @@ const mockPrisma = {
     })),
   },
   applicationStack: {
-    findUnique: mock(async () => null),
+    findUnique: mock(async () => ({ ...stackRecord, clusterId: null })),
     findUniqueOrThrow: mock(async () => ({ ...stackRecord })),
     create: mock(async () => ({ ...stackRecord })),
     update: mock(async () => ({ ...stackRecord })),
@@ -64,6 +64,26 @@ const mockPrisma = {
   },
   applicationDeploymentLog: {
     create: mock(async () => ({ id: "log-1" })),
+  },
+  appHostingCluster: {
+    findMany: mock(async () => [
+      {
+        id: "cluster-sgp",
+        code: "sgp",
+        name: "Singapore Production",
+        region: "Singapore",
+        status: "ACTIVE",
+        isDefault: true,
+      },
+    ]),
+    findUnique: mock(async () => ({
+      id: "cluster-sgp",
+      code: "sgp",
+      name: "Singapore Production",
+      region: "Singapore",
+      status: "ACTIVE",
+      isDefault: true,
+    })),
   },
 }
 
@@ -111,7 +131,10 @@ const resetPrisma = () => {
     balance: new Prisma.Decimal("100.00"),
   } as never)
   mockPrisma.applicationStack.findUnique.mockClear()
-  mockPrisma.applicationStack.findUnique.mockResolvedValue(null as never)
+  mockPrisma.applicationStack.findUnique.mockResolvedValue({
+    ...stackRecord,
+    clusterId: null,
+  } as never)
   mockPrisma.applicationStack.findUniqueOrThrow.mockClear()
   mockPrisma.applicationStack.findUniqueOrThrow.mockResolvedValue({
     ...stackRecord,
@@ -133,6 +156,17 @@ const resetPrisma = () => {
   } as never)
   mockPrisma.applicationDeployEvent.create.mockClear()
   mockPrisma.applicationDeploymentLog.create.mockClear()
+  mockPrisma.appHostingCluster.findMany.mockClear()
+  mockPrisma.appHostingCluster.findMany.mockResolvedValue([
+    {
+      id: "cluster-sgp",
+      code: "sgp",
+      name: "Singapore Production",
+      region: "Singapore",
+    },
+  ] as never)
+  mockPrisma.appHostingCluster.findUnique.mockClear()
+  mockPrisma.appHostingCluster.findUnique.mockResolvedValue(null as never)
 }
 
 describe("deploySubmitRoutes /submit", () => {
@@ -152,7 +186,17 @@ describe("deploySubmitRoutes /submit", () => {
     expect(body.data.stackId).toBe("stack-1")
     expect(body.data.deploymentId).toBe("deploy-1")
     expect(body.data.status).toBe("QUEUED")
-    expect(mockPrisma.applicationDeployment.create).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalled()
+  })
+
+  it("fails with 409 when no active default cluster is configured", async () => {
+    mockPrisma.appHostingCluster.findMany.mockResolvedValue([] as never)
+    mockPrisma.appHostingCluster.findUnique.mockResolvedValue(null as never)
+    const res = await submit(validBody)
+    expect(res.status).toBe(409)
+    const body = (await res.json()) as { error: string }
+    expect(body.error).toBe("APP_HOSTING_CLUSTER_NOT_CONFIGURED")
+    expect(mockPrisma.applicationDeployment.create).not.toHaveBeenCalled()
   })
 
   it("blocks deploy when the PAYG balance is insufficient (unhappy path)", async () => {

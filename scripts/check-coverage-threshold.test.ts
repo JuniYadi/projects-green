@@ -23,9 +23,9 @@ All files | 95 | 75
 `)
 
     expect(summary).toEqual({
-      functionCoverage: 95,
-      lineCoverage: 75,
-      fileCount: 2,
+      functionCoverage: 190 / 3,
+      lineCoverage: 150 / 3,
+      fileCount: 3,
     })
   })
 })

@@ -6,9 +6,22 @@ export interface GitFile {
 }
 
 export class GitOpsRepositoryService {
-  private repoBaseUrl =
-    process.env.GITOPS_REPO_BASE_URL || "https://api.github.com"
-  private pat = process.env.GITOPS_REPO_PAT
+  private repoBaseUrl: string
+  private pat: string | undefined
+  private branch: string
+
+  constructor(config?: {
+    repoBaseUrl?: string
+    pat?: string
+    branch?: string
+  }) {
+    this.repoBaseUrl =
+      config?.repoBaseUrl ??
+      process.env.GITOPS_REPO_BASE_URL ??
+      "https://api.github.com"
+    this.pat = config?.pat ?? process.env.GITOPS_REPO_PAT
+    this.branch = config?.branch ?? "main"
+  }
 
   /**
    * Commit multiple files to a repository in a single atomic operation using Trees API.
@@ -16,14 +29,16 @@ export class GitOpsRepositoryService {
    * @param message Commit message
    * @param files Files to create or update
    * @param deletePaths Paths to delete
+   * @param branchOverride Optional branch override
    */
   async commitFiles(
     repo: string,
     message: string,
     files: GitFile[],
-    deletePaths: string[] = []
+    deletePaths: string[] = [],
+    branchOverride?: string
   ): Promise<{ sha: string }> {
-    const branch = "main" // Default branch
+    const branch = branchOverride ?? this.branch
 
     // Use PAT if available, otherwise we'd need an installation ID.
     // For now, we assume GITOPS_REPO_PAT is configured or logic uses installationToken.

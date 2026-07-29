@@ -97,30 +97,126 @@ describe("deploy-monitor.dto", () => {
     it("labels known event types and preserves order", () => {
       const createdAt = new Date("2026-06-05T10:00:00.000Z")
       const events = toDeployEventDTOs([
-        { id: "e1", type: "QUEUED", message: null, createdAt },
+        {
+          id: "e1",
+          type: "QUEUED",
+          message: null,
+          metadataJson: null,
+          createdAt,
+        },
         {
           id: "e2",
           type: "DEPLOY_FAILED" as const,
           message: "lockfile",
+          metadataJson: null,
           createdAt,
         },
-        { id: "e3", type: "CUSTOM" as unknown as any, message: "x", createdAt }, // eslint-disable-line @typescript-eslint/no-explicit-any
+        {
+          id: "e3",
+          type: "IMAGE_TAG_RECEIVED" as const,
+          message: null,
+          metadataJson: { imageTag: "187" },
+          createdAt,
+        },
+        {
+          id: "e4",
+          type: "CUSTOM" as unknown as never,
+          message: "x",
+          metadataJson: null,
+          createdAt,
+        },
       ])
 
       expect(events[0]?.label).toBe("Queued")
       expect(events[1]?.label).toBe("Deploy failed")
       expect(events[1]?.message).toBe("lockfile")
-      expect(events[2]?.label).toBe("CUSTOM")
+      expect(events[2]?.label).toBe("Image tag received")
+      expect(events[2]?.metadataJson).toEqual({ imageTag: "187" })
+      expect(events[3]?.label).toBe("CUSTOM")
       expect(events[0]?.createdAt).toBe(createdAt.toISOString())
+    })
+
+    it("labels all new Jenkins and image events", () => {
+      const createdAt = new Date("2026-06-05T10:00:00.000Z")
+      const labels = toDeployEventDTOs([
+        {
+          id: "j1",
+          type: "JENKINS_JOB_TRIGGERED",
+          message: null,
+          metadataJson: null,
+          createdAt,
+        },
+        {
+          id: "j2",
+          type: "JENKINS_BUILD_QUEUED",
+          message: null,
+          metadataJson: null,
+          createdAt,
+        },
+        {
+          id: "j3",
+          type: "JENKINS_BUILD_RUNNING",
+          message: null,
+          metadataJson: null,
+          createdAt,
+        },
+        {
+          id: "j4",
+          type: "JENKINS_BUILD_COMPLETED",
+          message: null,
+          metadataJson: null,
+          createdAt,
+        },
+        {
+          id: "i1",
+          type: "IMAGE_TAG_RECEIVED",
+          message: null,
+          metadataJson: null,
+          createdAt,
+        },
+        {
+          id: "g1",
+          type: "GITOPS_COMMIT_CREATED",
+          message: null,
+          metadataJson: null,
+          createdAt,
+        },
+        {
+          id: "p1",
+          type: "POD_READY",
+          message: null,
+          metadataJson: null,
+          createdAt,
+        },
+      ]).map((e) => e.label)
+      expect(labels).toEqual([
+        "Jenkins job triggered",
+        "Jenkins build queued",
+        "Jenkins build running",
+        "Jenkins build completed",
+        "Image tag received",
+        "GitOps commit created",
+        "Pods ready",
+      ])
     })
   })
 
   describe("buildDeployTimelineItems", () => {
-    it("returns the canonical ordered phases", () => {
+    it("returns the 13 canonical ordered steps", () => {
       expect(buildDeployTimelineItems().map((item) => item.id)).toEqual([
-        "prep",
-        "build",
-        "deploy",
+        "queued",
+        "monitor-wait",
+        "monitor-picked-up",
+        "jenkins-triggered",
+        "jenkins-queued",
+        "jenkins-running",
+        "image-pushed",
+        "image-tag-received",
+        "gitops-committed",
+        "argocd-sync-started",
+        "argocd-synced",
+        "pods-ready",
+        "live",
       ])
     })
   })

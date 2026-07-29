@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { resolveDefaultAppHostingClusterId } from "@/modules/deploy/cluster-integration.service"
 import { syncJenkinsPipeline } from "@/modules/jenkins/jenkins-sync.service"
 
 /**
@@ -116,6 +117,13 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
 
   const envVarsJson = (input.envVars ?? []) as Prisma.InputJsonValue
 
+  let defaultClusterId: string | null = null
+  try {
+    defaultClusterId = await resolveDefaultAppHostingClusterId()
+  } catch {
+    defaultClusterId = null
+  }
+
   const stack = await prisma.$transaction(async (tx) => {
     const existing = await tx.applicationStack.findUnique({
       where: {
@@ -166,6 +174,7 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       buildCommand: input.buildCommand ?? null,
       dockerfileDetected: input.dockerfileDetected,
       resourcePlanId: input.resourcePlanId ?? null,
+      clusterId: existing?.clusterId ?? defaultClusterId,
       billingMode: input.billingMode ?? "PAYG",
       hourlyCost,
       cpu: input.cpu ?? null,

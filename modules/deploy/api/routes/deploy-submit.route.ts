@@ -14,6 +14,7 @@ import {
   createOrUpdateStack,
   triggerDeploy,
 } from "../../deploy-pipeline.service"
+import { resolveAppHostingClusterForStack } from "../../cluster-integration.service"
 import { DEPLOY_TEMPLATES } from "../../deploy.constants"
 
 /**
@@ -234,12 +235,30 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       }
     }
 
+    // Gate: fail before queueing if no default cluster is configured
+    try {
+      await resolveAppHostingClusterForStack(stack.id)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error"
+      if (
+        message.includes("No active default App Hosting cluster") ||
+        message.includes("Multiple active default App Hosting clusters")
+      ) {
+        set.status = 409
+        return {
+          ok: false,
+          error: "APP_HOSTING_CLUSTER_NOT_CONFIGURED",
+          message,
+        }
+      }
+      throw error
+    }
+
     const triggerType = sourceType === "TEMPLATE" ? "TEMPLATE" : "MANUAL"
     const result = await triggerDeploy({
       stackId: stack.id,
       triggerType,
     })
-
     return {
       ok: true,
       data: {

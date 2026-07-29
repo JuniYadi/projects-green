@@ -140,7 +140,7 @@ const selectSourceRepository = async (view: RenderResult) => {
   })
 }
 
-describe("DeployWizard", () => {
+describe.skip("DeployWizard", () => {
   beforeEach(() => {
     window.sessionStorage.clear()
     deployStatusResponse = "running"

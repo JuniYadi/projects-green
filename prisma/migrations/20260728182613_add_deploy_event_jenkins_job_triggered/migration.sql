@@ -1,0 +1,1 @@
+ALTER TYPE "ApplicationDeployEventType" ADD VALUE 'JENKINS_JOB_TRIGGERED';

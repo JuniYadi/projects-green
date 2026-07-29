@@ -83,9 +83,59 @@ const normalizeLogStatus = (status: string): Exclude<DeployStatus, "idle"> => {
  */
 export const buildDeployTimelineItems = (): DeployTimelineItem[] => {
   return [
-    { id: "prep", label: "Preparing", status: "queued" },
-    { id: "build", label: "Building", status: "building" },
-    { id: "deploy", label: "Deploying", status: "deploying" },
+    { id: "queued", label: "Queued", status: "queued" },
+    {
+      id: "monitor-wait",
+      label: "Waiting for monitor",
+      status: "queued",
+    },
+    {
+      id: "monitor-picked-up",
+      label: "Monitor picked up",
+      status: "building",
+    },
+    {
+      id: "jenkins-triggered",
+      label: "Jenkins job triggered",
+      status: "building",
+    },
+    {
+      id: "jenkins-queued",
+      label: "Jenkins build queued",
+      status: "building",
+    },
+    {
+      id: "jenkins-running",
+      label: "Jenkins building",
+      status: "building",
+    },
+    {
+      id: "image-pushed",
+      label: "Image pushed to registry",
+      status: "building",
+    },
+    {
+      id: "image-tag-received",
+      label: "Image tag received",
+      status: "deploying",
+    },
+    {
+      id: "gitops-committed",
+      label: "Helm values committed",
+      status: "deploying",
+    },
+    {
+      id: "argocd-sync-started",
+      label: "ArgoCD sync started",
+      status: "deploying",
+    },
+    {
+      id: "argocd-synced",
+      label: "ArgoCD synced",
+      status: "deploying",
+    },
+    { id: "pods-ready", label: "Pods ready", status: "running" },
+    { id: "live", label: "Live", status: "running" },
   ]
 }
 
@@ -142,12 +192,19 @@ export const toDeployLogLines = (
  * chronological order. Used where the UI wants the real event stream
  * rather than the canonical phase scaffold.
  */
-const DEPLOY_EVENT_LABELS: Record<string, string> = {
+export const DEPLOY_EVENT_LABELS: Record<string, string> = {
   QUEUED: "Queued",
   BUILD_STARTED: "Build started",
+  JENKINS_JOB_TRIGGERED: "Jenkins job triggered",
+  JENKINS_BUILD_QUEUED: "Jenkins build queued",
+  JENKINS_BUILD_RUNNING: "Jenkins build running",
+  JENKINS_BUILD_COMPLETED: "Jenkins build completed",
+  IMAGE_TAG_RECEIVED: "Image tag received",
+  GITOPS_COMMIT_CREATED: "GitOps commit created",
   MANIFEST_PUSHED: "Manifest pushed",
   ARGOCD_SYNC_STARTED: "Sync started",
   ARGOCD_SYNCED: "Synced",
+  POD_READY: "Pods ready",
   DEPLOY_COMPLETED: "Deploy completed",
   DEPLOY_FAILED: "Deploy failed",
   ROLLBACK_STARTED: "Rollback started",
@@ -159,12 +216,16 @@ export type DeployEventDTO = {
   type: string
   label: string
   message: string | null
+  metadataJson: unknown
   createdAt: string
 }
 
 export const toDeployEventDTOs = (
   events: Array<
-    Pick<ApplicationDeployEvent, "id" | "type" | "message" | "createdAt">
+    Pick<
+      ApplicationDeployEvent,
+      "id" | "type" | "message" | "metadataJson" | "createdAt"
+    >
   >
 ): DeployEventDTO[] => {
   return events.map((event) => ({
@@ -172,6 +233,7 @@ export const toDeployEventDTOs = (
     type: event.type,
     label: DEPLOY_EVENT_LABELS[event.type] ?? event.type,
     message: event.message ?? null,
+    metadataJson: event.metadataJson ?? null,
     createdAt: event.createdAt.toISOString(),
   }))
 }

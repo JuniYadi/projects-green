@@ -18,23 +18,50 @@ const JENKINS_URL = process.env.JENKINS_URL ?? ""
 const JENKINS_USERNAME = process.env.JENKINS_USERNAME ?? ""
 const JENKINS_API_TOKEN = process.env.JENKINS_API_TOKEN ?? ""
 
-function getAuthHeader(): string {
+export type JenkinsApiConfig = {
+  baseUrl: string
+  username: string
+  apiToken: string
+}
+
+function resolveConfig(config?: JenkinsApiConfig): {
+  baseUrl: string
+  username: string
+  apiToken: string
+} {
+  if (config) return config
+  if (!JENKINS_URL) {
+    throw new Error("JENKINS_URL is not defined")
+  }
   if (!JENKINS_USERNAME || !JENKINS_API_TOKEN) {
     throw new Error("Jenkins credentials not configured")
   }
-  return `Basic ${Buffer.from(`${JENKINS_USERNAME}:${JENKINS_API_TOKEN}`).toString("base64")}`
+  return {
+    baseUrl: JENKINS_URL,
+    username: JENKINS_USERNAME,
+    apiToken: JENKINS_API_TOKEN,
+  }
+}
+
+function getAuthHeader(config: { username: string; apiToken: string }): string {
+  if (!config.username || !config.apiToken) {
+    throw new Error("Jenkins credentials not configured")
+  }
+  return `Basic ${Buffer.from(`${config.username}:${config.apiToken}`).toString("base64")}`
 }
 
 export async function jenkinsApiFetch(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  config?: JenkinsApiConfig
 ): Promise<unknown> {
-  if (!JENKINS_URL) {
+  const resolved = resolveConfig(config)
+  if (!resolved.baseUrl) {
     throw new Error("JENKINS_URL is not defined")
   }
 
-  const url = `${JENKINS_URL.replace(/\/$/, "")}/${path.replace(/^\//, "")}`
-  const authHeader = getAuthHeader()
+  const url = `${resolved.baseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`
+  const authHeader = getAuthHeader(resolved)
 
   const headers = new Headers(
     options.headers as Record<string, string> | undefined
@@ -94,7 +121,8 @@ export async function getCsrfCrumb(): Promise<{
 
 export async function buildWithParameters(
   jobName: string,
-  parameters: Record<string, string | boolean | number>
+  parameters: Record<string, string | boolean | number> = {},
+  config?: JenkinsApiConfig
 ): Promise<void> {
   const crumb = await getCsrfCrumb()
   const headers: Record<string, string> = {}
@@ -108,9 +136,13 @@ export async function buildWithParameters(
     formData.append(key, String(value))
   }
 
-  await jenkinsApiFetch(`job/${jobName}/buildWithParameters`, {
-    method: "POST",
-    headers,
-    body: formData,
-  })
+  await jenkinsApiFetch(
+    `job/${jobName}/buildWithParameters`,
+    {
+      method: "POST",
+      headers,
+      body: formData,
+    },
+    config
+  )
 }

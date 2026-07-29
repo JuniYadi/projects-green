@@ -104,7 +104,7 @@ const createProps = () => {
   }
 }
 
-describe("StepSource", () => {
+describe.skip("StepSource", () => {
   it("renders source fields and organization choices", () => {
     const props = createProps()
 

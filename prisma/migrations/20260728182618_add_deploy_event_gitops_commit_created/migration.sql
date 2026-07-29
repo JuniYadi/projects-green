@@ -1,0 +1,1 @@
+ALTER TYPE "ApplicationDeployEventType" ADD VALUE 'GITOPS_COMMIT_CREATED';

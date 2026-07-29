@@ -84,9 +84,8 @@ export const monitoringRoutes = new Elysia({ prefix: "/deploy" })
         return { ok: false, error: "FORBIDDEN", message: "Access denied" }
       }
 
-      // The deploy timeline renders canonical phases (Preparing → Building →
-      // Deploying) with progress driven by the real deployment status, while
-      // the raw event stream remains available for detail surfaces.
+      // The deploy timeline renders canonical phases with progress driven by
+      // real deployment status, while raw events stay available for details.
       const events = await getDeployEvents(params.deployId)
       return {
         ok: true,
