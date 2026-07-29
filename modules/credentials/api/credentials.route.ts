@@ -22,8 +22,16 @@ export const credentialsRoutes = new Elysia({ prefix: "/app/credentials" })
     const check = requireOrg(auth)
     if ("error" in check) return { ok: false, error: check.error }
 
-    const credentials = await listCredentials(check.orgId)
-    return { ok: true, credentials }
+    try {
+      const credentials = await listCredentials(check.orgId)
+      return { ok: true, credentials }
+    } catch (error) {
+      console.error("[Credentials] Error listing credentials:", error)
+      return {
+        ok: false,
+        error: "Unable to load credentials. Please try again.",
+      }
+    }
   })
   .post("/", async ({ body }) => {
     const auth = await withAuth({ ensureSignedIn: true })

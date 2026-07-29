@@ -138,4 +138,28 @@ describe("SupportTicketsConsole", () => {
       "/en/console/support-tickets/new"
     )
   })
+
+  it("shows title and Open Ticket button during loading", async () => {
+    const { promise, resolve } = Promise.withResolvers<Response>()
+    fetchMock.mockImplementationOnce(() => promise)
+
+    const view = render(<SupportTicketsConsole lang="en" />)
+
+    expect(view.getByText("Ticket Queue")).toBeInTheDocument()
+    const openTicketLink = view.getByRole("link", { name: "Open Ticket" })
+    expect(openTicketLink).toBeInTheDocument()
+    expect(openTicketLink).toHaveAttribute(
+      "href",
+      "/en/console/support-tickets/new"
+    )
+
+    expect(
+      view.container.querySelectorAll(
+        '[data-testid="ticket-table-skeleton-row"]'
+      ).length
+    ).toBeGreaterThan(0)
+
+    resolve(jsonResponse(listSuccessPayload))
+    view.unmount()
+  })
 })

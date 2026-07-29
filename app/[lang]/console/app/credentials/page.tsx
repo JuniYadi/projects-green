@@ -202,14 +202,11 @@ export default function CredentialsPage() {
       }
 
       setState({ status: "success", data: payload.credentials ?? [] })
-    } catch (error) {
+    } catch {
       if (signal?.aborted) return
       setState({
         status: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Unable to load credentials.",
+        message: "Unable to load credentials. Please try again.",
       })
     }
   }, [])
