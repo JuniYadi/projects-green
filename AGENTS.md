@@ -31,3 +31,9 @@
 - `test/`: Bun test setup.
 - `scripts/`: operational scripts.
 
+## graphify (optional)
+
+If `graphify` is installed and `graphify-out/graph.json` exists:
+- For codebase questions, prefer `graphify query "<question>"` over raw grep.
+- Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
