@@ -7,6 +7,7 @@ import {
 } from "@/modules/jenkins/jenkins.service"
 import {
   resolveClusterIntegration,
+  type GitOpsClusterConfig,
   type JenkinsClusterConfig,
   type RegistryClusterConfig,
 } from "@/modules/deploy/cluster-integration.service"
@@ -47,6 +48,12 @@ export async function processQueuedDeployment(deploymentId: string) {
     registryConfig = await resolveClusterIntegration(stack.id, "REGISTRY")
   } catch {
     registryConfig = null
+  }
+  let gitopsConfig: GitOpsClusterConfig | null = null
+  try {
+    gitopsConfig = await resolveClusterIntegration(stack.id, "GITOPS")
+  } catch {
+    gitopsConfig = null
   }
 
   const jenkinsApiConfig: JenkinsApiConfig | undefined = jenkinsConfig
@@ -215,17 +222,21 @@ export async function processQueuedDeployment(deploymentId: string) {
           .join("---\n")
 
         try {
-          const gitops = new GitOpsRepositoryService()
-          await gitops.commitFiles(
-            process.env.GITOPS_REPO ?? "pfnapp/sgp-argocd-prod",
-            `Deploy ${stack.slug}`,
-            [
-              {
-                path: `services-yaml/${stack.slug}/deployment.yml`,
-                content: manifestYaml,
-              },
-            ]
-          )
+          if (!gitopsConfig) {
+            throw new Error(
+              "GitOps cluster integration not configured for stack"
+            )
+          }
+          const gitops = new GitOpsRepositoryService({
+            pat: gitopsConfig.pat,
+            branch: gitopsConfig.branch,
+          })
+          await gitops.commitFiles(gitopsConfig.repo, `Deploy ${stack.slug}`, [
+            {
+              path: `services-yaml/${stack.slug}/deployment.yml`,
+              content: manifestYaml,
+            },
+          ])
 
           await tx.applicationDeployment.update({
             where: { id: deployment.id },

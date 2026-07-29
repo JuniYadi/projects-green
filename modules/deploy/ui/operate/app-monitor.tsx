@@ -18,7 +18,7 @@ import type {
   StackSummaryDTO,
 } from "@/modules/deploy/deploy-monitor.dto"
 import type { DeployLogScope } from "@/modules/deploy/deploy.types"
-import { DeployTimeline } from "@/modules/deploy/ui/deploy-timeline"
+import { DeployStepTimeline } from "@/modules/deploy/ui/deploy-timeline"
 import { LogsPanel } from "@/modules/deploy/ui/logs-panel"
 
 type AppMonitorProps = {
@@ -167,7 +167,7 @@ export function AppMonitor({
           <CardContent className="space-y-4">
             <section className="space-y-2">
               <h3 className="text-sm font-medium">Status timeline</h3>
-              <DeployTimeline deployId={deployId} status={status} />
+              <DeployStepTimeline deployId={deployId} status={status} />
             </section>
 
             <section className="space-y-2">
