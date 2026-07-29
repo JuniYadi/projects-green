@@ -240,6 +240,7 @@ model ApplicationStack {
   buildCommand           String?
   dockerfileDetected     Boolean      @default(false)
   resourcePlanId         String?
+  clusterId              String?
   billingMode            String?      @default("PAYG")
   hourlyCost             Decimal?     @db.Decimal(10, 4)
   cpu                    Int?
@@ -255,11 +256,13 @@ model ApplicationStack {
 
   deployments          ApplicationDeployment[]
   repositoryConnection GithubRepositoryConnection? @relation(fields: [repositoryConnectionId], references: [id], onDelete: SetNull)
+  cluster              AppHostingCluster?           @relation(fields: [clusterId], references: [id], onDelete: SetNull)
 
   @@unique([organizationId, slug])
   @@index([organizationId])
   @@index([repositoryConnectionId])
   @@index([status])
+  @@index([clusterId])
 }
 
 model ApplicationDeployment {
@@ -298,9 +301,16 @@ model ApplicationDeployment {
 enum ApplicationDeployEventType {
   QUEUED
   BUILD_STARTED
+  JENKINS_JOB_TRIGGERED
+  JENKINS_BUILD_QUEUED
+  JENKINS_BUILD_RUNNING
+  JENKINS_BUILD_COMPLETED
+  IMAGE_TAG_RECEIVED
+  GITOPS_COMMIT_CREATED
   MANIFEST_PUSHED
   ARGOCD_SYNC_STARTED
   ARGOCD_SYNCED
+  POD_READY
   DEPLOY_COMPLETED
   DEPLOY_FAILED
   ROLLBACK_STARTED
@@ -2406,4 +2416,57 @@ model AppCredential {
   @@unique([organizationId, type, name])
   @@index([organizationId])
   @@index([organizationId, type])
+}
+
+enum AppHostingClusterStatus {
+  PLANNED
+  ACTIVE
+  DEPRECATED
+}
+
+enum AppHostingClusterIntegrationType {
+  JENKINS
+  GITOPS
+  REGISTRY
+  ARGOCD
+  KUBECONFIG
+  OPENSEARCH
+  PROMETHEUS
+}
+
+model AppHostingCluster {
+  id           String                       @id @default(cuid())
+  code         String                       @unique
+  name         String
+  region       String
+  status       AppHostingClusterStatus      @default(PLANNED)
+  isDefault    Boolean                      @default(false)
+  metadataJson Json?
+  createdAt    DateTime                     @default(now())
+  updatedAt    DateTime                     @updatedAt
+
+  integrations AppHostingClusterIntegration[]
+  stacks       ApplicationStack[]
+
+  @@index([status])
+  @@index([isDefault])
+}
+
+model AppHostingClusterIntegration {
+  id               String                           @id @default(cuid())
+  clusterId        String
+  type             AppHostingClusterIntegrationType
+  metaJson         Json                             @default("{}")
+  secretCiphertext String?
+  secretPreview    String?
+  isActive         Boolean                          @default(true)
+  createdAt        DateTime                         @default(now())
+  updatedAt        DateTime                         @updatedAt
+
+  cluster AppHostingCluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+
+  @@unique([clusterId, type])
+  @@index([clusterId])
+  @@index([type])
+  @@index([isActive])
 }

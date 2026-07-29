@@ -35,6 +35,7 @@
     "seed:system": "bun run scripts/seed-runner.ts --system",
     "seed:dummy": "bun run scripts/seed-runner.ts --dummy",
     "seed:invoices-support-tickets": "bun run scripts/seed-invoices-support-tickets.ts",
+    "seed:app-hosting-cluster": "bun run scripts/seed-app-hosting-cluster.ts",
     "remediate:creator-tenant-roles": "bun run scripts/remediate-creator-tenant-roles.ts",
     "admin:role": "bun run scripts/admin-role.ts",
     "seed:workos-roles": "node scripts/seed-workos-roles.mjs",

@@ -5,8 +5,11 @@ import { recordDeployEvent, recordDeployLog } from "../../deploy-event.service"
 /**
  * POST /api/deploy/jenkins-webhook
  *
- * Receives build result callbacks from Jenkins.
- * Body: { slug: string, buildStatus: "SUCCESS"|"FAILURE", commitSha?: string }
+ * Receives build status callbacks from Jenkins. Body shape supports the
+ * new build-phase events (JENKINS_BUILD_QUEUED / RUNNING / COMPLETED) so
+ * the UI timeline can render real Jenkins progress. The image tag itself
+ * is delivered via /api/deploy/jenkins-image-ready — this route is for
+ * build status and failure notifications.
  */
 export const deployJenkinsWebhookRoutes = new Elysia({
   prefix: "/deploy",
@@ -20,7 +23,68 @@ export const deployJenkinsWebhookRoutes = new Elysia({
       return { ok: false, error: "UNAUTHORIZED" }
     }
 
-    const { slug, buildStatus, commitSha } = body
+    const {
+      slug,
+      buildStatus,
+      commitSha,
+      buildNumber,
+      durationMs,
+      imageTag,
+      phase,
+    } = body
+
+    if (phase) {
+      const stack = await prisma.applicationStack.findFirst({
+        where: { slug },
+      })
+      if (stack) {
+        const deployment = await prisma.applicationDeployment.findFirst({
+          where: {
+            stackId: stack.id,
+            status: { in: ["QUEUED", "BUILDING", "DEPLOYING"] },
+            ...(commitSha ? { commitSha } : {}),
+          },
+          orderBy: { createdAt: "desc" },
+        })
+
+        if (deployment) {
+          if (phase === "QUEUED") {
+            await recordDeployEvent({
+              deploymentId: deployment.id,
+              type: "JENKINS_BUILD_QUEUED",
+              message: `Jenkins build queued for ${slug}`,
+              metadata: buildNumber !== undefined ? { buildNumber } : {},
+            })
+          } else if (phase === "RUNNING") {
+            if (deployment.status === "QUEUED") {
+              await prisma.applicationDeployment.update({
+                where: { id: deployment.id },
+                data: { status: "BUILDING" },
+              })
+            }
+            await recordDeployEvent({
+              deploymentId: deployment.id,
+              type: "JENKINS_BUILD_RUNNING",
+              message: `Jenkins build running for ${slug}`,
+              metadata: buildNumber !== undefined ? { buildNumber } : {},
+            })
+          } else if (phase === "COMPLETED") {
+            await recordDeployEvent({
+              deploymentId: deployment.id,
+              type: "JENKINS_BUILD_COMPLETED",
+              message: `Jenkins build completed for ${slug}`,
+              metadata: {
+                ...(buildNumber !== undefined ? { buildNumber } : {}),
+                ...(durationMs !== undefined ? { durationMs } : {}),
+                imageTag: imageTag ?? null,
+                commitSha: commitSha ?? null,
+              },
+            })
+          }
+        }
+      }
+      return { ok: true, message: `Recorded phase ${phase}` }
+    }
 
     const stack = await prisma.applicationStack.findFirst({
       where: { slug },
@@ -50,26 +114,30 @@ export const deployJenkinsWebhookRoutes = new Elysia({
     }
 
     // Idempotency check — skip if already processed
-    if (deployment.status === "RUNNING") {
+    if (deployment.status === "RUNNING" || deployment.status === "DEPLOYING") {
       return { ok: true, message: "Deployment already completed" }
     }
 
     if (buildStatus === "SUCCESS") {
-      // Only update status - do NOT call processQueuedDeployment
-      await prisma.applicationDeployment.update({
-        where: { id: deployment.id },
-        data: { status: "RUNNING" },
-      })
+      // Do NOT mark RUNNING here. ArgoCD owns the RUNNING transition after
+      // the image-ready webhook commits Helm values and sync completes.
       await recordDeployEvent({
         deploymentId: deployment.id,
-        type: "DEPLOY_COMPLETED",
+        type: "JENKINS_BUILD_COMPLETED",
         message: `Jenkins build succeeded for ${slug}`,
+        metadata: {
+          ...(buildNumber !== undefined ? { buildNumber } : {}),
+          ...(durationMs !== undefined ? { durationMs } : {}),
+          imageTag: imageTag ?? null,
+          commitSha: commitSha ?? null,
+        },
       })
       await recordDeployLog({
         deploymentId: deployment.id,
         scope: "build",
         status: "BUILD_SUCCESS",
-        message: "Jenkins build completed successfully.",
+        message:
+          "Jenkins build completed successfully. Awaiting image-ready webhook.",
       })
     } else {
       const attempt = deployment.attempt ?? 1
@@ -81,6 +149,16 @@ export const deployJenkinsWebhookRoutes = new Elysia({
           data: {
             status: "QUEUED",
             attempt: newAttempt,
+          },
+        })
+        await recordDeployEvent({
+          deploymentId: deployment.id,
+          type: "JENKINS_BUILD_COMPLETED",
+          message: `Jenkins build failed for ${slug} (attempt ${attempt}/3)`,
+          metadata: {
+            ...(buildNumber !== undefined ? { buildNumber } : {}),
+            commitSha: commitSha ?? null,
+            outcome: "FAILURE",
           },
         })
         await recordDeployLog({
@@ -122,8 +200,20 @@ export const deployJenkinsWebhookRoutes = new Elysia({
   {
     body: t.Object({
       slug: t.String(),
-      buildStatus: t.Union([t.Literal("SUCCESS"), t.Literal("FAILURE")]),
+      buildStatus: t.Optional(
+        t.Union([t.Literal("SUCCESS"), t.Literal("FAILURE")])
+      ),
       commitSha: t.Optional(t.String()),
+      buildNumber: t.Optional(t.Number()),
+      durationMs: t.Optional(t.Number()),
+      imageTag: t.Optional(t.String()),
+      phase: t.Optional(
+        t.Union([
+          t.Literal("QUEUED"),
+          t.Literal("RUNNING"),
+          t.Literal("COMPLETED"),
+        ])
+      ),
       token: t.Optional(t.String()),
     }),
   }

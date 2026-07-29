@@ -108,7 +108,7 @@ export type DeployLogLine = {
 export type DeployTimelineItem = {
   id: string
   label: string
-  status: Exclude<DeployStatus, "idle" | "running" | "failed">
+  status: Exclude<DeployStatus, "idle" | "failed">
 }
 
 export type DeploySourceState = {

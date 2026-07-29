@@ -106,15 +106,15 @@ const eslintConfig = defineConfig([
       "react-hooks/set-state-in-effect": "warn",
     },
   },
-  // VPN admin module tests - prisma mocks require any
+  // Deploy module tests - bun mock returns any narrowing is incompatible
   {
-    files: ["modules/vpn/admin/**/*.test.ts"],
+    files: ["modules/deploy/**/*.test.ts"],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
-  // Email service test files use module.exports pattern
+   // VPN admin module tests - prisma mocks require any
   {
     files: ["modules/invoices/email.service.test.ts", "modules/support-tickets/email.service.test.ts"],
     rules: {

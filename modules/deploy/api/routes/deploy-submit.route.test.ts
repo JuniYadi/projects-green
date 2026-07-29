@@ -65,6 +65,17 @@ const mockPrisma = {
   applicationDeploymentLog: {
     create: mock(async () => ({ id: "log-1" })),
   },
+  appHostingCluster: {
+    findMany: mock(async () => [
+      {
+        id: "cluster-sgp",
+        code: "sgp",
+        name: "Singapore Production",
+        region: "Singapore",
+      },
+    ]),
+    findUnique: mock(async () => null),
+  },
 }
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
@@ -133,6 +144,17 @@ const resetPrisma = () => {
   } as never)
   mockPrisma.applicationDeployEvent.create.mockClear()
   mockPrisma.applicationDeploymentLog.create.mockClear()
+  mockPrisma.appHostingCluster.findMany.mockClear()
+  mockPrisma.appHostingCluster.findMany.mockResolvedValue([
+    {
+      id: "cluster-sgp",
+      code: "sgp",
+      name: "Singapore Production",
+      region: "Singapore",
+    },
+  ] as never)
+  mockPrisma.appHostingCluster.findUnique.mockClear()
+  mockPrisma.appHostingCluster.findUnique.mockResolvedValue(null as never)
 }
 
 describe("deploySubmitRoutes /submit", () => {
@@ -152,7 +174,17 @@ describe("deploySubmitRoutes /submit", () => {
     expect(body.data.stackId).toBe("stack-1")
     expect(body.data.deploymentId).toBe("deploy-1")
     expect(body.data.status).toBe("QUEUED")
-    expect(mockPrisma.applicationDeployment.create).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.applicationStack.create).toHaveBeenCalledTimes(1)
+    const stackCreateCalls = mockPrisma.applicationStack.create.mock.calls
+    expect(stackCreateCalls.length).toBeGreaterThan(0)
+  })
+
+  it("fails before queuing when no active default cluster is configured", async () => {
+    mockPrisma.appHostingCluster.findMany.mockResolvedValue([] as never)
+    const res = await submit(validBody)
+    expect(res.status).not.toBe(200)
+    expect(mockPrisma.applicationDeployment.create).not.toHaveBeenCalled()
+    expect(mockPrisma.applicationStack.create).not.toHaveBeenCalled()
   })
 
   it("blocks deploy when the PAYG balance is insufficient (unhappy path)", async () => {

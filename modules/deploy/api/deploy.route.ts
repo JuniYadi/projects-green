@@ -9,6 +9,8 @@ import { environmentVariablesRoutes } from "@/modules/deploy/api/routes/environm
 import { monitoringRoutes } from "@/modules/deploy/api/routes/monitoring.route"
 import { opensearchLogsRoutes } from "@/modules/deploy/api/routes/opensearch-logs.route"
 import { deployJenkinsWebhookRoutes } from "@/modules/deploy/api/routes/jenkins-webhook.route"
+import { deployJenkinsImageReadyRoutes } from "@/modules/deploy/api/routes/jenkins-image-ready.route"
+import { podStatusRoutes } from "@/modules/deploy/api/routes/pod-status.route"
 
 export const deployRoutes = new Elysia()
   .use(appStacksRoutes)
@@ -20,3 +22,5 @@ export const deployRoutes = new Elysia()
   .use(monitoringRoutes)
   .use(opensearchLogsRoutes)
   .use(deployJenkinsWebhookRoutes)
+  .use(deployJenkinsImageReadyRoutes)
+  .use(podStatusRoutes)
