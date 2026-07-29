@@ -5,13 +5,22 @@ import { Prisma } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
-import { getCachedOrganizations } from "@/lib/workos-directory"
+import {
+  getCachedOrganizations,
+  getCachedOrganizationsMetadata,
+  refreshCachedOrganizationsMetadata,
+} from "@/lib/workos-directory"
 import type { PlatformAccessRole } from "@/lib/platform-role"
 
 const listQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(20),
   search: z.string().optional(),
+  currency: z.string().trim().min(1).optional(),
+})
+
+const refreshBodySchema = z.object({
+  orgIds: z.array(z.string().trim().min(1)).min(1).max(100),
 })
 
 type BillingAuthContext = {
@@ -73,159 +82,213 @@ export const createAdminOrgsRoutes = (
     ...deps,
   }
 
-  return new Elysia().get("/admin/orgs", async ({ query, set }) => {
-    const auth = await authenticate()
+  return new Elysia()
+    .get("/admin/orgs", async ({ query, set }) => {
+      const auth = await authenticate()
 
-    if (!auth.user) {
-      return toUnauthorized(set)
-    }
-
-    const platformRole = await getPlatformRole({
-      id: auth.user.id,
-      email: auth.user.email,
-    })
-
-    if (platformRole !== "super_admin") {
-      return toForbidden(
-        set,
-        "Only super administrators can view organization list."
-      )
-    }
-
-    const parsed = listQuerySchema.safeParse(query)
-    if (!parsed.success) {
-      set.status = 422
-      return {
-        ok: false as const,
-        error: "VALIDATION_ERROR" as const,
-        message: "Invalid query parameters.",
+      if (!auth.user) {
+        return toUnauthorized(set)
       }
-    }
 
-    const { page, limit, search } = parsed.data
-    const skip = (page - 1) * limit
+      const platformRole = await getPlatformRole({
+        id: auth.user.id,
+        email: auth.user.email,
+      })
 
-    try {
-      const accountWhere: Prisma.BillingAccountWhereInput = {
-        status: "ACTIVE",
+      if (platformRole !== "super_admin") {
+        return toForbidden(
+          set,
+          "Only super administrators can view organization list."
+        )
       }
-      // Note: search by organizationId (UUID) until org name relation is added to BillingAccount
-      // UUID-like search → filter at DB level; name search → post-filter
-      const looksLikeUUID = search && /^[0-9a-f-]{8,}/i.test(search)
-      if (search && looksLikeUUID) {
-        accountWhere.organizationId = {
-          contains: search,
-          mode: "insensitive",
+
+      const parsed = listQuerySchema.safeParse(query)
+      if (!parsed.success) {
+        set.status = 422
+        return {
+          ok: false as const,
+          error: "VALIDATION_ERROR" as const,
+          message: "Invalid query parameters.",
         }
       }
 
-      const now = new Date()
-      const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
-      // Name search → fetch all active accounts, post-filter, then paginate
-      // UUID search or no search → Prisma-level filter + pagination
-      const [accounts, total] = await Promise.all([
-        prisma.billingAccount.findMany({
-          where: accountWhere,
-          skip: looksLikeUUID || !search ? skip : undefined,
-          take: looksLikeUUID || !search ? limit : undefined,
-          orderBy: { balance: "desc" },
-        }),
-        prisma.billingAccount.count({ where: accountWhere }),
-      ])
+      const { page, limit, search, currency } = parsed.data
+      const skip = (page - 1) * limit
 
-      // Query service subscriptions and usage ledgers in bulk
-      const orgIds = accounts.map((a) => a.organizationId)
+      try {
+        const accountWhere: Prisma.BillingAccountWhereInput = {
+          status: "ACTIVE",
+        }
+        if (currency) accountWhere.currency = currency
 
-      const [subscriptions, usageLedgers, ticketCounts] = await Promise.all([
-        prisma.serviceSubscription.findMany({
-          where: {
-            organizationId: { in: orgIds },
-            status: "ACTIVE",
-          },
-          select: { organizationId: true },
-        }),
-        prisma.billingUsageLedger.findMany({
-          where: {
-            organizationId: { in: orgIds },
-            period: currentPeriod,
-          },
-          select: { organizationId: true, amountIdr: true },
-        }),
-        prisma.supportTicket.groupBy({
-          by: ["organizationId"],
-          where: {
-            organizationId: { in: orgIds },
-            status: "OPEN",
-          },
-          _count: { id: true },
-        }),
-      ])
+        // Note: search by organizationId (UUID) until org name relation is added to BillingAccount
+        // UUID-like search → filter at DB level; name search → post-filter
+        const looksLikeUUID = search && /^[0-9a-f-]{8,}/i.test(search)
+        if (search && looksLikeUUID) {
+          accountWhere.organizationId = {
+            contains: search,
+            mode: "insensitive",
+          }
+        }
 
-      // Build lookup maps
-      const subCountMap = new Map<string, number>()
-      for (const sub of subscriptions) {
-        subCountMap.set(
-          sub.organizationId,
-          (subCountMap.get(sub.organizationId) ?? 0) + 1
+        const now = new Date()
+        const currentPeriod = `${now.getFullYear()}-${String(
+          now.getMonth() + 1
+        ).padStart(2, "0")}`
+        // Name search → fetch all active accounts, post-filter, then paginate
+        // UUID search or no search → Prisma-level filter + pagination
+        const [accounts, total] = await Promise.all([
+          prisma.billingAccount.findMany({
+            where: accountWhere,
+            skip: looksLikeUUID || !search ? skip : undefined,
+            take: looksLikeUUID || !search ? limit : undefined,
+            orderBy: { balance: "desc" },
+          }),
+          prisma.billingAccount.count({ where: accountWhere }),
+        ])
+
+        // Query service subscriptions and usage ledgers in bulk
+        const orgIds = accounts.map((a) => a.organizationId)
+
+        const [subscriptions, usageLedgers, ticketCounts] = await Promise.all([
+          prisma.serviceSubscription.findMany({
+            where: {
+              organizationId: { in: orgIds },
+              status: "ACTIVE",
+            },
+            select: { organizationId: true },
+          }),
+          prisma.billingUsageLedger.findMany({
+            where: {
+              organizationId: { in: orgIds },
+              period: currentPeriod,
+            },
+            select: { organizationId: true, amountIdr: true },
+          }),
+          prisma.supportTicket.groupBy({
+            by: ["organizationId"],
+            where: {
+              organizationId: { in: orgIds },
+              status: "OPEN",
+            },
+            _count: { id: true },
+          }),
+        ])
+
+        // Build lookup maps
+        const subCountMap = new Map<string, number>()
+        for (const sub of subscriptions) {
+          subCountMap.set(
+            sub.organizationId,
+            (subCountMap.get(sub.organizationId) ?? 0) + 1
+          )
+        }
+
+        const spendMap = new Map<string, number>()
+        for (const ledger of usageLedgers) {
+          const current = spendMap.get(ledger.organizationId) ?? 0
+          spendMap.set(
+            ledger.organizationId,
+            current + (ledger.amountIdr?.toNumber() ?? 0)
+          )
+        }
+
+        const ticketCountMap = new Map<string, number>()
+        for (const tc of ticketCounts) {
+          ticketCountMap.set(tc.organizationId, tc._count.id)
+        }
+
+        const orgMap = await getCachedOrganizations(orgIds)
+        const metadataMap = await getCachedOrganizationsMetadata(orgIds)
+
+        let orgs = accounts.map((account) => ({
+          orgId: account.organizationId,
+          orgName:
+            orgMap.get(account.organizationId)?.name ?? account.organizationId,
+          balance: account.balance.toFixed(2),
+          currency: account.currency,
+          activeSubscriptions: subCountMap.get(account.organizationId) ?? 0,
+          monthlySpend: (spendMap.get(account.organizationId) ?? 0).toFixed(2),
+          lastTopUp: null,
+          openTicketCount: ticketCountMap.get(account.organizationId) ?? 0,
+          ownerUserId:
+            metadataMap.get(account.organizationId)?.ownerUserId ?? null,
+          ownerName: metadataMap.get(account.organizationId)?.ownerName ?? null,
+          ownerEmail:
+            metadataMap.get(account.organizationId)?.ownerEmail ?? null,
+          memberCount:
+            metadataMap.get(account.organizationId)?.memberCount ?? 0,
+          metadataRefreshedAt:
+            metadataMap.get(account.organizationId)?.refreshedAt ?? null,
+        }))
+
+        // Post-filter by name when search is not UUID-like
+        if (search && !looksLikeUUID) {
+          const term = search.toLowerCase()
+          orgs = orgs.filter((o) => o.orgName.toLowerCase().includes(term))
+        }
+
+        const filteredTotal = search && !looksLikeUUID ? orgs.length : total
+
+        // Paginate after name filtering (Prisma skip/take was bypassed)
+        if (search && !looksLikeUUID) {
+          orgs = orgs.slice(skip, skip + limit)
+        }
+
+        return {
+          ok: true as const,
+          orgs,
+          pagination: {
+            page,
+            limit,
+            total: filteredTotal,
+            totalPages: Math.ceil(filteredTotal / limit),
+          },
+        }
+      } catch (error) {
+        console.error("[AdminOrgs] Error:", error)
+        return toServerError(set, "Unable to load organization list.")
+      }
+    })
+    .post("/admin/orgs/metadata/refresh", async ({ body, set }) => {
+      const auth = await authenticate()
+
+      if (!auth.user) {
+        return toUnauthorized(set)
+      }
+
+      const platformRole = await getPlatformRole({
+        id: auth.user.id,
+        email: auth.user.email,
+      })
+
+      if (platformRole !== "super_admin") {
+        return toForbidden(
+          set,
+          "Only super administrators can refresh organization metadata."
         )
       }
 
-      const spendMap = new Map<string, number>()
-      for (const ledger of usageLedgers) {
-        const current = spendMap.get(ledger.organizationId) ?? 0
-        spendMap.set(
-          ledger.organizationId,
-          current + (ledger.amountIdr?.toNumber() ?? 0)
+      const parsed = refreshBodySchema.safeParse(body)
+      if (!parsed.success) {
+        set.status = 422
+        return {
+          ok: false as const,
+          error: "VALIDATION_ERROR" as const,
+          message: "Invalid organization metadata refresh request.",
+        }
+      }
+
+      try {
+        const refreshedMap = await refreshCachedOrganizationsMetadata(
+          parsed.data.orgIds
         )
+        return { ok: true as const, refreshed: refreshedMap.size }
+      } catch (error) {
+        console.error("[AdminOrgs] Metadata refresh error:", error)
+        return toServerError(set, "Unable to refresh organization metadata.")
       }
-
-      const ticketCountMap = new Map<string, number>()
-      for (const tc of ticketCounts) {
-        ticketCountMap.set(tc.organizationId, tc._count.id)
-      }
-
-      const orgMap = await getCachedOrganizations(orgIds)
-
-      let orgs = accounts.map((account) => ({
-        orgId: account.organizationId,
-        orgName:
-          orgMap.get(account.organizationId)?.name ?? account.organizationId,
-        balance: account.balance.toFixed(2),
-        currency: account.currency,
-        activeSubscriptions: subCountMap.get(account.organizationId) ?? 0,
-        monthlySpend: (spendMap.get(account.organizationId) ?? 0).toFixed(2),
-        lastTopUp: null,
-        openTicketCount: ticketCountMap.get(account.organizationId) ?? 0,
-      }))
-
-      // Post-filter by name when search is not UUID-like
-      if (search && !looksLikeUUID) {
-        const term = search.toLowerCase()
-        orgs = orgs.filter((o) => o.orgName.toLowerCase().includes(term))
-      }
-
-      const filteredTotal = search && !looksLikeUUID ? orgs.length : total
-
-      // Paginate after name filtering (Prisma skip/take was bypassed)
-      if (search && !looksLikeUUID) {
-        orgs = orgs.slice(skip, skip + limit)
-      }
-
-      return {
-        ok: true as const,
-        orgs,
-        pagination: {
-          page,
-          limit,
-          total: filteredTotal,
-          totalPages: Math.ceil(filteredTotal / limit),
-        },
-      }
-    } catch (error) {
-      console.error("[AdminOrgs] Error:", error)
-      return toServerError(set, "Unable to load organization list.")
-    }
-  })
+    })
 }
 
 export const adminOrgsRoutes = createAdminOrgsRoutes()
