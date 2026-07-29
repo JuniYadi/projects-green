@@ -1,4 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
+import { BillingCurrencyMismatchError } from "../vouchers.errors"
 
 import { createConsoleVoucherRoutes } from "./console-vouchers.route"
 
@@ -132,6 +133,29 @@ describe("Console Voucher Routes", () => {
       )
 
       expect(res.status).toBe(422)
+    })
+
+    it("returns 400 with human message for currency mismatch", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.service.redeemVoucher = mock(() =>
+        Promise.reject(new BillingCurrencyMismatchError("IDR", "USD"))
+      )
+      const app = toApp(deps)
+      const request = new Request("http://localhost/vouchers/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: "TESTVOUCHER" }),
+      })
+
+      const response = await app.handle(request)
+      expect(response.status).toBe(400)
+
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("BILLING_CURRENCY_MISMATCH")
+      expect(body.message).toContain("does not match")
+      expect(body.message).not.toContain("BILLING_CURRENCY_MISMATCH")
     })
   })
 

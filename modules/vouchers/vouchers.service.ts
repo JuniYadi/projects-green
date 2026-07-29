@@ -10,6 +10,7 @@ import {
   VoucherAlreadyClaimedError,
   VoucherTargetUserMismatchError,
   VoucherTargetOrgMismatchError,
+  BillingCurrencyMismatchError,
 } from "./vouchers.errors"
 
 type CreateVoucherData = {
@@ -325,7 +326,10 @@ export class VoucherService {
       }
 
       if (billingAccount.currency !== voucher.currency) {
-        throw new Error("BILLING_CURRENCY_MISMATCH")
+        throw new BillingCurrencyMismatchError(
+          voucher.currency,
+          billingAccount.currency
+        )
       }
 
       const balanceBefore = billingAccount.balance

@@ -54,6 +54,16 @@ export class VoucherTargetOrgMismatchError extends Error {
   }
 }
 
+export class BillingCurrencyMismatchError extends Error {
+  readonly code = "BILLING_CURRENCY_MISMATCH"
+  constructor(voucherCurrency: string, accountCurrency: string) {
+    super(
+      `Voucher currency (${voucherCurrency}) does not match your billing account currency (${accountCurrency}).`
+    )
+    this.name = "BillingCurrencyMismatchError"
+  }
+}
+
 export class VoucherCollisionRetryExhaustedError extends Error {
   readonly code = "VOUCHER_COLLISION_RETRY_EXHAUSTED"
   constructor() {

@@ -206,6 +206,22 @@ describe("CredentialsPage", () => {
     view.unmount()
   })
 
+  it("shows fallback error message on thrown/network error", async () => {
+    mockFetch.mockImplementation(() =>
+      Promise.reject(new Error("Network error during fetch"))
+    )
+
+    const view = render(<CredentialsPage />)
+
+    await waitFor(() => {
+      expect(
+        view.getByText("Unable to load credentials. Please try again.")
+      ).toBeInTheDocument()
+    })
+
+    view.unmount()
+  })
+
   it("renders Add Credential button with correct link", async () => {
     const view = render(<CredentialsPage />)
 
