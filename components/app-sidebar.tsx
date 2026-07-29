@@ -790,7 +790,8 @@ const buildNavSecondary = (input: {
   surface: AppSidebarSurface
   currentPathname: string
 }) => {
-  const locale = getLocaleFromPathname(input.currentPathname)
+  const locale =
+    getLocaleFromPathname(input.currentPathname).locale ?? defaultLocale
 
   const items: {
     title: string

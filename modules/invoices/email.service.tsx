@@ -132,8 +132,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
         type: "INVOICE_PAYMENT_REMINDER",
         subject,
         bodyHtml: html,
-        organizationId:
-          "organizationId" in invoice ? (invoice.organizationId ?? null) : null,
+        organizationId: null,
         relatedEntityType: "invoice",
         relatedEntityId: invoice.id,
       })
@@ -162,8 +161,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
         type: "INVOICE_PAID",
         subject,
         bodyHtml: html,
-        organizationId:
-          "organizationId" in invoice ? (invoice.organizationId ?? null) : null,
+        organizationId: null,
         relatedEntityType: "invoice",
         relatedEntityId: invoice.id,
       })
@@ -192,8 +190,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
         type: "INVOICE_OVERDUE",
         subject,
         bodyHtml: html,
-        organizationId:
-          "organizationId" in invoice ? (invoice.organizationId ?? null) : null,
+        organizationId: null,
         relatedEntityType: "invoice",
         relatedEntityId: invoice.id,
       })
@@ -225,8 +222,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
         type: "INVOICE_CANCELLED",
         subject,
         bodyHtml: html,
-        organizationId:
-          "organizationId" in invoice ? (invoice.organizationId ?? null) : null,
+        organizationId: null,
         relatedEntityType: "invoice",
         relatedEntityId: invoice.id,
       })

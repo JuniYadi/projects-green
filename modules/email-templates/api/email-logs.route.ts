@@ -3,7 +3,7 @@ import { z } from "zod"
 
 import { adminAuthGuard } from "@/modules/admin/api/admin.guards"
 import { prisma } from "@/lib/prisma"
-import { toEmailLogListItemDTO, toEmailLogDetailDTO } from "./email-logs.dto"
+import { toEmailLogListItemDTO, toEmailLogDetailDTO } from "../email-logs.dto"
 
 const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
