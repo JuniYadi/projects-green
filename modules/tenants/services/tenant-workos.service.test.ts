@@ -805,6 +805,24 @@ describeTenantWorkosService("tenant-workos service", () => {
       metadata: { env: "prod" },
     })
   })
+  it("verifies WorkOS updateOrganization call shape", async () => {
+    mockUpdateOrganization.mockImplementationOnce(async () =>
+      makeOrganization({ name: "Acme Labs", metadata: { region: "EMEA" } })
+    )
+
+    const updated = await updateTenantOrganization({
+      organizationId: "org_1",
+      name: "Acme Labs",
+      metadata: { region: "EMEA" },
+    })
+
+    expect(mockUpdateOrganization).toHaveBeenCalledWith({
+      organization: "org_1",
+      name: "Acme Labs",
+      metadata: { region: "EMEA" },
+    })
+    expect(updated.name).toBe("Acme Labs")
+  })
 
   it("evaluates active owner membership predicate", () => {
     expect(
