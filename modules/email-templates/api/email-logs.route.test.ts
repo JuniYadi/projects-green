@@ -1,39 +1,77 @@
-import { describe, expect, it, mock, beforeEach, afterEach } from "bun:test"
+import { beforeEach, describe, expect, it, mock } from "bun:test"
+import type {
+  AdminApiError,
+  AdminActorContext,
+  RouteSet,
+} from "@/modules/admin/api/admin.guards"
 import { Elysia } from "elysia"
+import { createMockPrisma } from "@/test/helpers/prisma-mock"
 
-const mockFindMany = mock(() => Promise.resolve([]))
-const mockFindUnique = mock(() => Promise.resolve(null))
-const mockCount = mock(() => Promise.resolve(0))
+const { prisma: mockPrisma, mock: mockMethods } = createMockPrisma({
+  emailLog: ["findMany", "findUnique", "count"],
+})
 
 mock.module("@/lib/prisma", () => ({
-  prisma: {
-    emailLog: {
-      findMany: mockFindMany,
-      findUnique: mockFindUnique,
-      count: mockCount,
-    },
-  },
+  prisma: mockPrisma,
+}))
+const allowedGuard = mock<
+  (set: RouteSet) => Promise<AdminActorContext | AdminApiError>
+>(async () => ({
+  ok: true as const,
+  userId: "admin_1",
+  platformRole: "super_admin" as const,
 }))
 
-mock.module("@/modules/admin/api/admin.guards", () => ({
-  adminAuthGuard: () => (app: unknown) => app,
-}))
+import { createEmailLogRoutes } from "./email-logs.route"
 
-import { emailLogRoutes } from "./email-logs.route"
-
-const buildApp = () => new Elysia().use(emailLogRoutes)
+const buildApp = () =>
+  new Elysia({ prefix: "/api" }).use(
+    createEmailLogRoutes({ requireSuperAdmin: allowedGuard })
+  )
 
 describe("emailLogRoutes", () => {
   beforeEach(() => {
-    mockFindMany.mockReset()
-    mockFindUnique.mockReset()
-    mockCount.mockReset()
-    mockFindMany.mockImplementation(() => Promise.resolve([]))
-    mockFindUnique.mockImplementation(() => Promise.resolve(null))
-    mockCount.mockImplementation(() => Promise.resolve(0))
+    mockMethods.emailLog.findMany.mockClear()
+    mockMethods.emailLog.findUnique.mockClear()
+    mockMethods.emailLog.count.mockClear()
+    allowedGuard.mockClear()
+    mockMethods.emailLog.findMany.mockResolvedValue([])
+    mockMethods.emailLog.findUnique.mockResolvedValue(null)
+    mockMethods.emailLog.count.mockResolvedValue(0)
+    allowedGuard.mockImplementation(async () => ({
+      ok: true as const,
+      userId: "admin_1",
+      platformRole: "super_admin" as const,
+    }))
   })
 
   describe("GET /email-logs", () => {
+    it("rejects unauthorized access before querying Prisma", async () => {
+      allowedGuard.mockImplementation(async (set) => {
+        set.status = 403
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "This action requires super admin access.",
+        }
+      })
+
+      const app = buildApp()
+      const res = await app.handle(
+        new Request("http://localhost/api/email-logs")
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(403)
+      expect(body).toEqual({
+        ok: false,
+        error: "FORBIDDEN",
+        message: "This action requires super admin access.",
+      })
+      expect(mockMethods.emailLog.findMany).not.toHaveBeenCalled()
+      expect(mockMethods.emailLog.count).not.toHaveBeenCalled()
+    })
+
     it("returns paginated list of email logs", async () => {
       const now = new Date()
       const logs = [
@@ -57,8 +95,8 @@ describe("emailLogRoutes", () => {
           bodyHtml: "<p>Hello</p>",
         },
       ]
-      mockFindMany.mockImplementation(() => Promise.resolve(logs))
-      mockCount.mockImplementation(() => Promise.resolve(1))
+      mockMethods.emailLog.findMany.mockResolvedValue(logs)
+      mockMethods.emailLog.count.mockResolvedValue(1)
 
       const app = buildApp()
       const res = await app.handle(
@@ -85,7 +123,7 @@ describe("emailLogRoutes", () => {
         new Request("http://localhost/api/email-logs?status=FAILED")
       )
 
-      expect(mockFindMany).toHaveBeenCalledWith(
+      expect(mockMethods.emailLog.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ status: "FAILED" }),
         })
@@ -98,7 +136,7 @@ describe("emailLogRoutes", () => {
         new Request("http://localhost/api/email-logs?type=TICKET_CREATED")
       )
 
-      expect(mockFindMany).toHaveBeenCalledWith(
+      expect(mockMethods.emailLog.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ type: "TICKET_CREATED" }),
         })
@@ -111,7 +149,7 @@ describe("emailLogRoutes", () => {
         new Request("http://localhost/api/email-logs?recipient=example.com")
       )
 
-      expect(mockFindMany).toHaveBeenCalledWith(
+      expect(mockMethods.emailLog.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             recipientEmail: { contains: "example.com" },
@@ -126,7 +164,7 @@ describe("emailLogRoutes", () => {
         new Request("http://localhost/api/email-logs?organizationId=org-1")
       )
 
-      expect(mockFindMany).toHaveBeenCalledWith(
+      expect(mockMethods.emailLog.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ organizationId: "org-1" }),
         })
@@ -134,14 +172,14 @@ describe("emailLogRoutes", () => {
     })
 
     it("paginates correctly", async () => {
-      mockCount.mockImplementation(() => Promise.resolve(50))
+      mockMethods.emailLog.count.mockResolvedValue(50)
 
       const app = buildApp()
       await app.handle(
         new Request("http://localhost/api/email-logs?page=3&limit=10")
       )
 
-      expect(mockFindMany).toHaveBeenCalledWith(
+      expect(mockMethods.emailLog.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ take: 10, skip: 20 })
       )
     })
@@ -150,27 +188,25 @@ describe("emailLogRoutes", () => {
   describe("GET /email-logs/:id", () => {
     it("returns email log detail with previewUrl", async () => {
       const now = new Date()
-      mockFindUnique.mockImplementation(() =>
-        Promise.resolve({
-          id: "log-1",
-          recipientEmail: "user@example.com",
-          type: "TICKET_CREATED",
-          subject: "Your ticket was created",
-          status: "SENT",
-          organizationId: "org-1",
-          relatedEntityType: "support_ticket",
-          relatedEntityId: "ticket-1",
-          ticketId: "ticket-1",
-          ticketNumber: "TKT-001",
-          providerMessageId: "msg-1",
-          errorMessage: null,
-          attempts: 1,
-          sentAt: now,
-          createdAt: now,
-          updatedAt: now,
-          bodyHtml: "<p>Hello</p>",
-        })
-      )
+      mockMethods.emailLog.findUnique.mockResolvedValue({
+        id: "log-1",
+        recipientEmail: "user@example.com",
+        type: "TICKET_CREATED",
+        subject: "Your ticket was created",
+        status: "SENT",
+        organizationId: "org-1",
+        relatedEntityType: "support_ticket",
+        relatedEntityId: "ticket-1",
+        ticketId: "ticket-1",
+        ticketNumber: "TKT-001",
+        providerMessageId: "msg-1",
+        errorMessage: null,
+        attempts: 1,
+        sentAt: now,
+        createdAt: now,
+        updatedAt: now,
+        bodyHtml: "<p>Hello</p>",
+      })
 
       const app = buildApp()
       const res = await app.handle(
@@ -185,7 +221,7 @@ describe("emailLogRoutes", () => {
     })
 
     it("returns 404 for unknown log", async () => {
-      mockFindUnique.mockImplementation(() => Promise.resolve(null))
+      mockMethods.emailLog.findUnique.mockResolvedValue(null)
 
       const app = buildApp()
       const res = await app.handle(
@@ -201,9 +237,9 @@ describe("emailLogRoutes", () => {
 
   describe("GET /email-logs/:id/preview", () => {
     it("returns redacted HTML", async () => {
-      mockFindUnique.mockImplementation(() =>
-        Promise.resolve({ bodyHtml: "<p>Hello world</p>" })
-      )
+      mockMethods.emailLog.findUnique.mockResolvedValue({
+        bodyHtml: "<p>Hello world</p>",
+      } as Record<string, unknown>)
 
       const app = buildApp()
       const res = await app.handle(
@@ -212,12 +248,13 @@ describe("emailLogRoutes", () => {
 
       expect(res.status).toBe(200)
       expect(res.headers.get("content-type")).toBe("text/html; charset=utf-8")
+      expect(await res.text()).toBe("<p>Hello world</p>")
     })
 
     it("returns 404 when bodyHtml is null", async () => {
-      mockFindUnique.mockImplementation(() =>
-        Promise.resolve({ bodyHtml: null })
-      )
+      mockMethods.emailLog.findUnique.mockResolvedValue({
+        bodyHtml: null,
+      } as Record<string, unknown>)
 
       const app = buildApp()
       const res = await app.handle(
@@ -230,13 +267,12 @@ describe("emailLogRoutes", () => {
     })
 
     it("returns 404 for unknown log", async () => {
-      mockFindUnique.mockImplementation(() => Promise.resolve(null))
+      mockMethods.emailLog.findUnique.mockResolvedValue(null)
 
       const app = buildApp()
       const res = await app.handle(
         new Request("http://localhost/api/email-logs/unknown/preview")
       )
-      const body = await res.json()
 
       expect(res.status).toBe(404)
     })
