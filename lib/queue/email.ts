@@ -23,6 +23,11 @@ export type EmailJobData = {
   ticketId?: string
   ticketNumber?: string
   emailLogId?: string
+  organizationId?: string
+  relatedEntityType?: string
+  relatedEntityId?: string
+  bodyHtml?: string
+  providerMessageId?: string
 }
 
 export class EmailJob extends BaseJob {
@@ -32,7 +37,8 @@ export class EmailJob extends BaseJob {
   static readonly backoff = { type: "fixed" as const, delay: 10_000 }
 
   static async handle(job: { data: EmailJobData }): Promise<void> {
-    const { to, subject, html, from, emailLogId } = job.data
+    const { to, subject, html, from } = job.data
+    const emailLogId = job.data.emailLogId
     const transporter = createTransporter()
     const fromAddress = from ?? process.env.EMAIL_FROM ?? "noreply@yourapp.com"
 
@@ -48,7 +54,7 @@ export class EmailJob extends BaseJob {
     }
 
     try {
-      await transporter.sendMail({
+      const info = await transporter.sendMail({
         from: fromAddress,
         to,
         subject,
@@ -63,6 +69,8 @@ export class EmailJob extends BaseJob {
             data: {
               status: "SENT",
               sentAt: new Date(),
+              providerMessageId:
+                typeof info.messageId === "string" ? info.messageId : null,
             },
           })
           .catch((err) => {
