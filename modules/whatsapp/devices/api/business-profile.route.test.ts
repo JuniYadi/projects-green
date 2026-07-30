@@ -30,6 +30,7 @@ mock.module("@/lib/platform-role", () => ({
 mock.module("@workos-inc/node", () => ({
   __esModule: true,
   default: {},
+  createWorkOS: mock(() => ({})),
   WorkOS: mock(() => ({})),
 }))
 
@@ -60,6 +61,7 @@ mock.module("@/lib/whatsapp/meta-cloud/device-client", () => ({
 
 mock.module("@/lib/whatsapp/crypto", () => ({
   decryptWhatsAppToken: mock(async (token: string) => token),
+  encryptWhatsAppToken: mock(async (token: string) => token),
 }))
 
 // Must import after mocks
@@ -76,7 +78,9 @@ let profileMockData: Record<string, unknown> | null = {
 }
 
 function createTestApp() {
-  return new Elysia().use(devicesRoutes).use(businessProfileRoutes)
+  return new Elysia().group("/api/whatsapp", (app) => {
+    return app.use(devicesRoutes).use(businessProfileRoutes)
+  })
 }
 
 function createMockDevice(overrides: Record<string, unknown> = {}) {
