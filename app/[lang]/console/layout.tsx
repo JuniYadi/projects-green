@@ -23,6 +23,8 @@ import { ensureBillingAccountForOrg } from "@/modules/billing/billing-account.se
 import { MINIMUM_BALANCE_WARN_IDR } from "@/modules/billing/constants"
 import { BillingBalanceGateBanner } from "@/components/billing-balance-gate-banner"
 import { formatBillingMoney } from "@/modules/billing/format-money"
+import { headers } from "next/headers"
+import { readFunctionalTestIdentity } from "@/lib/auth/functional-test-session"
 
 const ONBOARDING_PATH = "/onboarding/organization"
 
@@ -37,7 +39,8 @@ export default async function ConsoleLayout({
 }>) {
   const { lang } = await params
   const locale = resolveLocaleOrDefault(lang)
-  const auth = await withAuth({ ensureSignedIn: true })
+  const functionalIdentity = readFunctionalTestIdentity(await headers())
+  const auth = functionalIdentity ?? (await withAuth({ ensureSignedIn: true }))
   const consolePath = localizePathname({ pathname: "/console", locale })
   const portalPath = localizePathname({ pathname: "/portal", locale })
 
@@ -50,48 +53,57 @@ export default async function ConsoleLayout({
     redirect(`${onboardingPath}?next=${encodeURIComponent(consolePath)}`)
   }
 
-  const platformAccess = await getPlatformAccessForUser({
-    id: auth.user.id,
-    email: auth.user.email,
-  })
+  const platformAccess = functionalIdentity
+    ? { exists: false, role: "none" as const }
+    : await getPlatformAccessForUser({
+        id: auth.user.id,
+        email: auth.user.email,
+      })
 
   if (platformAccess.exists) {
     redirect(portalPath)
   }
 
-  const workosUser = await getLatestWorkOSUser(auth.user)
-  const sidebarUser = resolveSidebarUser(workosUser)
-  const sidebarOrganization = await resolveSidebarOrganization(
-    auth.organizationId
-  )
+  const sidebarUser = functionalIdentity
+    ? {
+        name: "Functional User",
+        email: functionalIdentity.user.email,
+        avatarUrl: null,
+      }
+    : resolveSidebarUser(await getLatestWorkOSUser(auth.user))
+  const sidebarOrganization = functionalIdentity
+    ? { id: auth.organizationId, name: "Functional Test Organization" }
+    : await resolveSidebarOrganization(auth.organizationId)
 
   // JIT guarantee: every org reaching the console has a billing account, so the
   // "missing account" state is impossible by the time a purchase is attempted.
   // Best-effort — never block console access if WorkOS lookup or the DB write
   // transiently fails; the purchase flow still returns a clean 402 in that case.
   let balanceGate: { formattedBalance: string; isZero: boolean } | null = null
-  try {
-    const account = await ensureBillingAccountForOrg({
-      organizationId: auth.organizationId,
-      getOrganizationAction: (orgId) =>
-        getWorkOS().organizations.getOrganization(orgId),
-    })
-    if (account.balance.lt(MINIMUM_BALANCE_WARN_IDR)) {
-      // Single source of truth: `currency` (see CURRENCY-FIX-STRATEGY).
-      const currency = account.currency
-      balanceGate = {
-        formattedBalance: formatBillingMoney(
-          account.balance.toFixed(2),
-          currency
-        ),
-        isZero: account.balance.lte(0),
+  if (!functionalIdentity) {
+    try {
+      const account = await ensureBillingAccountForOrg({
+        organizationId: auth.organizationId,
+        getOrganizationAction: (orgId) =>
+          getWorkOS().organizations.getOrganization(orgId),
+      })
+      if (account.balance.lt(MINIMUM_BALANCE_WARN_IDR)) {
+        // Single source of truth: `currency` (see CURRENCY-FIX-STRATEGY).
+        const currency = account.currency
+        balanceGate = {
+          formattedBalance: formatBillingMoney(
+            account.balance.toFixed(2),
+            currency
+          ),
+          isZero: account.balance.lte(0),
+        }
       }
+    } catch (error) {
+      console.error("[ConsoleLayout] ensureBillingAccount failed", {
+        organizationId: auth.organizationId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      })
     }
-  } catch (error) {
-    console.error("[ConsoleLayout] ensureBillingAccount failed", {
-      organizationId: auth.organizationId,
-      error: error instanceof Error ? error.message : "Unknown error",
-    })
   }
 
   const topupPath = localizePathname({
