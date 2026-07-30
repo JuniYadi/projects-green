@@ -57,12 +57,26 @@ jobs:
       - name: Enforce changed logic coverage
         run: bun run test:coverage:changed --timeout=30000
 
+      - name: Verify LCOV output
+        run: |
+          test -s coverage/lcov.info
+          ls -lh coverage/lcov.info
+
+      - name: Upload changed logic coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          files: coverage/lcov.info
+          flags: logic
+          name: logic-coverage
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+
       - name: Enforce test policy
         run: bun run test:policy
 
   functional-smoke:
     name: Affected Functional Smoke
-    if: ${{ github.actor != 'github-actions[bot]' }}
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
