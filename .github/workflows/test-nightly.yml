@@ -1,0 +1,81 @@
+name: Nightly Tests
+
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  complete-suite:
+    name: Logic, Component, Smoke, and Legacy
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      TZ: UTC
+      CI: "true"
+      TEST_CONCURRENCY: "8"
+      FUNCTIONAL_TEST_MODE: "true"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Prepare test environment
+        run: |
+          cp .env.example .env
+          while IFS='=' read -r key value; do
+            case "$key" in
+              ""|\#*) continue ;;
+            esac
+            value="${value%\"}"
+            value="${value#\"}"
+            echo "${key}=${value}" >> "$GITHUB_ENV"
+          done < .env
+          echo "FUNCTIONAL_TEST_AUTH_SECRET=$(openssl rand -hex 32)" \
+            >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bun run db:generate
+
+      - name: Install Chromium
+        run: bun x playwright install --with-deps chromium
+
+      - name: Run complete nightly suite quietly
+        shell: bash
+        run: |
+          mkdir -p ci-logs
+          set +e
+          bun run test:nightly > ci-logs/nightly.log 2>&1
+          status=$?
+          set -e
+
+          if [ "$status" -eq 0 ]; then
+            echo "Nightly suites passed."
+            tail -n 25 ci-logs/nightly.log
+          else
+            echo "Nightly suites failed. Showing the final 300 lines."
+            tail -n 300 ci-logs/nightly.log
+          fi
+
+          exit "$status"
+
+      - name: Upload failure reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-test-reports
+          path: |
+            ci-logs/nightly.log
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
