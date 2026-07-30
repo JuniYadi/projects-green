@@ -1,3 +1,5 @@
+import { timingSafeEqual } from "node:crypto"
+
 export const FUNCTIONAL_AUTH_SECRET_HEADER = "x-pfn-functional-test-auth-secret"
 export const FUNCTIONAL_AUTH_ROLE_HEADER = "x-pfn-functional-test-role"
 export const FUNCTIONAL_AUTH_VALIDATED_HEADER =
@@ -29,14 +31,12 @@ const IDENTITY_HEADERS = [
 ] as const
 
 const constantTimeEqual = (left: string, right: string) => {
-  const length = Math.max(left.length, right.length)
-  let mismatch = left.length ^ right.length
+  const leftBuffer = Buffer.from(left)
+  const rightBuffer = Buffer.from(right)
 
-  for (let index = 0; index < length; index++) {
-    mismatch |= (left.charCodeAt(index) || 0) ^ (right.charCodeAt(index) || 0)
-  }
+  if (leftBuffer.length !== rightBuffer.length) return false
 
-  return mismatch === 0
+  return timingSafeEqual(leftBuffer, rightBuffer)
 }
 
 export const resolveFunctionalTestAuth = (
@@ -48,14 +48,13 @@ export const resolveFunctionalTestAuth = (
     headers.get(FUNCTIONAL_AUTH_SECRET_HEADER)?.trim() ?? ""
 
   if (
-    environment.FUNCTIONAL_TEST_MODE !== "true" ||
     configuredSecret.length < 32 ||
     suppliedSecret.length === 0 ||
-    !constantTimeEqual(configuredSecret, suppliedSecret)
+    !constantTimeEqual(configuredSecret, suppliedSecret) ||
+    environment.FUNCTIONAL_TEST_MODE !== "true"
   ) {
     return { status: "disabled" }
   }
-
   const role = headers.get(FUNCTIONAL_AUTH_ROLE_HEADER)?.trim()
   if (role !== "console" && role !== "admin") {
     return { status: "invalid-role" }

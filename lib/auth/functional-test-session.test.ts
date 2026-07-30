@@ -60,6 +60,14 @@ describe("functional test session", () => {
     }
   })
 
+  it("does not activate with correct secret but missing FUNCTIONAL_TEST_MODE", () => {
+    expect(
+      resolveFunctionalTestAuth(authenticatedHeaders(), {
+        FUNCTIONAL_TEST_AUTH_SECRET: SECRET,
+      })
+    ).toEqual({ status: "disabled" })
+  })
+
   it("rejects invalid roles after authenticating the secret", () => {
     expect(
       resolveFunctionalTestAuth(authenticatedHeaders("owner"), {

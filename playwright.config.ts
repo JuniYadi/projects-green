@@ -80,14 +80,14 @@ export default defineConfig({
   reporter: [["html", { outputFolder: "playwright-report" }], ["list"]],
   use: {
     baseURL: BASE_URL,
-    trace: "on-first-retry",
-    screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    trace: process.env.CI ? "on-first-retry" : "on",
+    screenshot: process.env.CI ? "only-on-failure" : "on",
+    video: process.env.CI ? "retain-on-failure" : "off",
   },
   projects,
   webServer: {
     command: process.env.CI
-      ? "bun run build && bun run start"
+      ? "bun run build && bun run start -- --port 3300"
       : "bun x next dev --turbopack --port 3300",
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
