@@ -32,7 +32,9 @@ const IDENTITY_HEADERS = [
 
 const constantTimeEqual = (left: string, right: string) => {
   if (left.length !== right.length) return false
-  return timingSafeEqual(Buffer.from(left), Buffer.from(right))
+  const leftBuffer = Buffer.from(left) // Moved AFTER length check
+  const rightBuffer = Buffer.from(right)
+  return timingSafeEqual(leftBuffer, rightBuffer)
 }
 
 export const resolveFunctionalTestAuth = (
@@ -43,16 +45,18 @@ export const resolveFunctionalTestAuth = (
   const suppliedSecret =
     headers.get(FUNCTIONAL_AUTH_SECRET_HEADER)?.trim() ?? ""
 
-  const hasMatchingSecret = constantTimeEqual(configuredSecret, suppliedSecret)
-
   if (
     configuredSecret.length < 32 ||
     suppliedSecret.length === 0 ||
-    !hasMatchingSecret ||
-    environment.FUNCTIONAL_TEST_MODE !== "true"
+    !constantTimeEqual(configuredSecret, suppliedSecret)
   ) {
     return { status: "disabled" }
   }
+
+  if (environment.FUNCTIONAL_TEST_MODE !== "true") {
+    return { status: "disabled" }
+  }
+
   const role = headers.get(FUNCTIONAL_AUTH_ROLE_HEADER)?.trim()
   if (role !== "console" && role !== "admin") {
     return { status: "invalid-role" }
