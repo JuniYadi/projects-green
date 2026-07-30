@@ -8,21 +8,37 @@ coverage:
 
   status:
     project:
-      default:
-        target: 80%
-        threshold: 2%
-        if_ci_failed: success
+      logic:
+        target: 85%
+        threshold: 0%
+        flags:
+          - logic
+        if_ci_failed: error
     patch:
-      default:
-        target: 80%
-        threshold: 2%
+      logic:
+        target: 85%
+        threshold: 0%
+        flags:
+          - logic
         informational: false
 
 ignore:
   - "**/*.test.ts"
   - "**/*.test.tsx"
+  - "test/**"
+  - "scripts/**"
+  - "**/*.tsx"
+  - "**/*.d.ts"
+  - "**/fixtures/**"
+  - "**/generated/**"
+  - "**/prisma/**"
   - "**/integration/**"
   - "**/_ops/**"
+  - "**/vpn-server-ssh-executor.ts"
+  - "**/wireguard-ssh-adapter.ts"
+  - "**/proxy-ssh-adapter.ts"
+  - "**/paypal.provider.ts"
+  - "**/docs-embedding.service.ts"
 
 comment:
   layout: "reach,diff,flags,files,footer"

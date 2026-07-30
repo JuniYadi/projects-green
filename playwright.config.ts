@@ -2,6 +2,8 @@ import { defineConfig, devices, type Project } from "@playwright/test"
 import fs from "fs"
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3300"
+const FUNCTIONAL_AUTH_SECRET =
+  process.env.FUNCTIONAL_TEST_AUTH_SECRET?.trim() ?? ""
 const USER_AUTH_FILE = ".auth/user.json"
 const ADMIN_AUTH_FILE = ".auth/admin.json"
 const HAS_USER_AUTH = fs.existsSync(USER_AUTH_FILE)
@@ -31,6 +33,17 @@ const projects: Project[] = [
     name: "public",
     testMatch: /\/landing\/.*\.spec\.ts/,
     use: { ...devices["Desktop Chrome"] },
+  },
+  {
+    name: "smoke-deploy",
+    testMatch: /\/smoke\/deploy\/.*\.spec\.ts/,
+    use: {
+      ...devices["Desktop Chrome"],
+      extraHTTPHeaders: {
+        "x-pfn-functional-test-auth-secret": FUNCTIONAL_AUTH_SECRET,
+        "x-pfn-functional-test-role": "console",
+      },
+    },
   },
 ]
 
@@ -67,13 +80,15 @@ export default defineConfig({
   reporter: [["html", { outputFolder: "playwright-report" }], ["list"]],
   use: {
     baseURL: BASE_URL,
-    trace: process.env.CI ? "on-first-retry" : "on",
-    screenshot: process.env.CI ? "only-on-failure" : "on",
-    video: process.env.CI ? "retain-on-failure" : "off",
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
+    video: "retain-on-failure",
   },
   projects,
   webServer: {
-    command: process.env.CI ? "bun run build && bun run start" : "bun run dev",
+    command: process.env.CI
+      ? "bun run build && bun run start"
+      : "bun x next dev --turbopack --port 3300",
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
