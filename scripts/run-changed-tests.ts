@@ -19,6 +19,13 @@ for (const path of changed) {
     }
     continue
   }
+  if (path.endsWith(".tsx")) {
+    const candidate = path.replace(/\.tsx$/, ".test.tsx")
+    if (await Bun.file(candidate).exists()) {
+      tests.add(candidate)
+    }
+    continue
+  }
 
   if (path.endsWith(".ts")) {
     const candidate = path.replace(/\.ts$/, ".test.ts")
