@@ -7,7 +7,7 @@ import { localizePathname, getLocaleFromPathname } from "@/lib/i18n/pathname"
 import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
 import { NavOrganization } from "@/components/nav-organization"
-import { NavSecondary } from "@/components/nav-secondary"
+import { NavSecondary, type NavSecondaryItem } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
@@ -730,43 +730,6 @@ const buildPortalNavMain = (
   locale: AppLocale
 ): AppSidebarNavItem[] => [
   {
-    title: "My Organization",
-    url: localizePathname({ pathname: "/portal/settings/members", locale }),
-    icon: <GearSixIcon />,
-    isActive: startsWithRoute(pathname, "/portal/settings"),
-    items: [
-      {
-        title: "Members",
-        url: localizePathname({ pathname: "/portal/settings/members", locale }),
-        isActive: startsWithRoute(pathname, "/portal/settings/members"),
-      },
-      {
-        title: "Invitations",
-        url: localizePathname({
-          pathname: "/portal/settings/invitations",
-          locale,
-        }),
-        isActive: startsWithRoute(pathname, "/portal/settings/invitations"),
-      },
-      {
-        title: "Ownership",
-        url: localizePathname({
-          pathname: "/portal/settings/ownership",
-          locale,
-        }),
-        isActive: startsWithRoute(pathname, "/portal/settings/ownership"),
-      },
-      {
-        title: "Email Templates",
-        url: localizePathname({
-          pathname: "/portal/settings/emails",
-          locale,
-        }),
-        isActive: startsWithRoute(pathname, "/portal/settings/emails"),
-      },
-    ],
-  },
-  {
     title: "App Hosting",
     url: localizePathname({ pathname: "/portal/app", locale }),
     icon: <RocketLaunchIcon />,
@@ -784,6 +747,32 @@ const buildPortalNavMain = (
     icon: <WhatsappLogoIcon />,
     isActive: startsWithRoute(pathname, "/portal/whatsapp"),
   },
+  {
+    title: "Settings",
+    url: localizePathname({ pathname: "/portal/settings/emails", locale }),
+    icon: <GearSixIcon />,
+    isActive: startsWithRoute(pathname, "/portal/settings/emails"),
+    items: [
+      {
+        title: "Email Templates",
+        url: localizePathname({ pathname: "/portal/settings/emails", locale }),
+        isActive:
+          startsWithRoute(pathname, "/portal/settings/emails") &&
+          !startsWithRoute(pathname, "/portal/settings/emails/delivery-logs"),
+      },
+      {
+        title: "Email Logs",
+        url: localizePathname({
+          pathname: "/portal/settings/emails/delivery-logs",
+          locale,
+        }),
+        isActive: startsWithRoute(
+          pathname,
+          "/portal/settings/emails/delivery-logs"
+        ),
+      },
+    ],
+  },
 ]
 
 const buildNavSecondary = (input: {
@@ -792,13 +781,12 @@ const buildNavSecondary = (input: {
 }) => {
   const locale =
     getLocaleFromPathname(input.currentPathname).locale ?? defaultLocale
+  const pathnameWithoutLocale = getLocaleFromPathname(
+    input.currentPathname
+  ).pathnameWithoutLocale
+  const pathWithoutSearch = getPathnameWithoutSearch(pathnameWithoutLocale)
 
-  const items: {
-    title: string
-    url: string
-    icon: React.ReactNode
-    isActive?: boolean
-  }[] = [
+  const items: NavSecondaryItem[] = [
     {
       title: "Support",
       url: "#",
@@ -820,29 +808,51 @@ const buildNavSecondary = (input: {
   }
 
   if (input.surface === "portal") {
-    const pathWithoutSearch = getPathnameWithoutSearch(input.currentPathname)
-    items.push(
-      {
-        title: "Settings",
-        url: localizePathname({
-          pathname: "/portal/settings/members",
-          locale,
-        }),
-        icon: <GearSixIcon />,
-        isActive:
-          pathWithoutSearch.startsWith("/portal/settings") &&
-          !pathWithoutSearch.startsWith("/portal/settings/emails"),
-      },
-      {
-        title: "Email Templates",
-        url: localizePathname({
-          pathname: "/portal/settings/emails",
-          locale,
-        }),
-        icon: <TicketIcon />,
-        isActive: pathWithoutSearch.startsWith("/portal/settings/emails"),
-      }
-    )
+    items.push({
+      title: "My Organization",
+      url: localizePathname({
+        pathname: "/portal/settings/members",
+        locale,
+      }),
+      icon: <BuildingsIcon />,
+      isActive: startsWithRoute(pathWithoutSearch, "/portal/settings"),
+      items: [
+        {
+          title: "Members",
+          url: localizePathname({
+            pathname: "/portal/settings/members",
+            locale,
+          }),
+          isActive: pathWithoutSearch.startsWith("/portal/settings/members"),
+        },
+        {
+          title: "Invitation",
+          url: localizePathname({
+            pathname: "/portal/settings/invitations",
+            locale,
+          }),
+          isActive: pathWithoutSearch.startsWith(
+            "/portal/settings/invitations"
+          ),
+        },
+        {
+          title: "Ownership",
+          url: localizePathname({
+            pathname: "/portal/settings/ownership",
+            locale,
+          }),
+          isActive: pathWithoutSearch.startsWith("/portal/settings/ownership"),
+        },
+        {
+          title: "Email Templates",
+          url: localizePathname({
+            pathname: "/portal/settings/emails",
+            locale,
+          }),
+          isActive: pathWithoutSearch.startsWith("/portal/settings/emails"),
+        },
+      ],
+    })
   }
 
   return items

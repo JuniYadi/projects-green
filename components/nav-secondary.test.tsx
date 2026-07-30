@@ -35,4 +35,47 @@ describe("NavSecondary", () => {
     ).toBe("/notifications")
     expect(view.container.querySelector(".mt-auto")).toBeTruthy()
   })
+  it("renders nested items with active parent and active child", () => {
+    const view = render(
+      <SidebarProvider>
+        <NavSecondary
+          items={[
+            {
+              title: "Settings",
+              url: "/settings",
+              icon: <LifebuoyIcon />,
+              isActive: true,
+              items: [
+                {
+                  title: "Email Templates",
+                  url: "/settings/emails",
+                  isActive: false,
+                },
+                {
+                  title: "Email Logs",
+                  url: "/settings/emails/logs",
+                  isActive: true,
+                },
+              ],
+            },
+          ]}
+        />
+      </SidebarProvider>
+    )
+
+    // Active parent link preserved
+    expect(
+      view.getByRole("link", { name: "Settings" }).getAttribute("href")
+    ).toBe("/settings")
+
+    // Active child nested link preserved
+    expect(
+      view.getByRole("link", { name: "Email Logs" }).getAttribute("href")
+    ).toBe("/settings/emails/logs")
+
+    // Nested child link preserved
+    expect(
+      view.getByRole("link", { name: "Email Templates" }).getAttribute("href")
+    ).toBe("/settings/emails")
+  })
 })
