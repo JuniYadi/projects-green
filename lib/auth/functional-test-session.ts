@@ -31,12 +31,8 @@ const IDENTITY_HEADERS = [
 ] as const
 
 const constantTimeEqual = (left: string, right: string) => {
-  const leftBuffer = Buffer.from(left)
-  const rightBuffer = Buffer.from(right)
-
-  if (leftBuffer.length !== rightBuffer.length) return false
-
-  return timingSafeEqual(leftBuffer, rightBuffer)
+  if (left.length !== right.length) return false
+  return timingSafeEqual(Buffer.from(left), Buffer.from(right))
 }
 
 export const resolveFunctionalTestAuth = (
@@ -47,10 +43,12 @@ export const resolveFunctionalTestAuth = (
   const suppliedSecret =
     headers.get(FUNCTIONAL_AUTH_SECRET_HEADER)?.trim() ?? ""
 
+  const hasMatchingSecret = constantTimeEqual(configuredSecret, suppliedSecret)
+
   if (
     configuredSecret.length < 32 ||
     suppliedSecret.length === 0 ||
-    !constantTimeEqual(configuredSecret, suppliedSecret) ||
+    !hasMatchingSecret ||
     environment.FUNCTIONAL_TEST_MODE !== "true"
   ) {
     return { status: "disabled" }
