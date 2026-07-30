@@ -17,6 +17,8 @@ import { BillingSetupBannerClient } from "@/components/billing/setup-status/bill
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { redirect } from "next/navigation"
 import { getPlatformAccessForUser } from "@/lib/platform-role"
+import { headers } from "next/headers"
+import { readFunctionalTestIdentity } from "@/lib/auth/functional-test-session"
 
 const ONBOARDING_PATH = "/onboarding/organization"
 
@@ -31,7 +33,8 @@ export default async function PortalLayout({
 }>) {
   const { lang } = await params
   const locale = resolveLocaleOrDefault(lang)
-  const auth = await withAuth({ ensureSignedIn: true })
+  const functionalIdentity = readFunctionalTestIdentity(await headers())
+  const auth = functionalIdentity ?? (await withAuth({ ensureSignedIn: true }))
   const portalPath = localizePathname({
     pathname: "/portal",
     locale,
@@ -46,10 +49,12 @@ export default async function PortalLayout({
     redirect(`${onboardingPath}?next=${encodeURIComponent(portalPath)}`)
   }
 
-  const platformAccess = await getPlatformAccessForUser({
-    id: auth.user.id,
-    email: auth.user.email,
-  })
+  const platformAccess = functionalIdentity
+    ? { exists: true, role: "super_admin" as const }
+    : await getPlatformAccessForUser({
+        id: auth.user.id,
+        email: auth.user.email,
+      })
 
   if (!platformAccess.exists) {
     const consolePath = localizePathname({
@@ -60,11 +65,16 @@ export default async function PortalLayout({
     redirect(consolePath)
   }
 
-  const workosUser = await getLatestWorkOSUser(auth.user)
-  const sidebarUser = resolveSidebarUser(workosUser)
-  const sidebarOrganization = await resolveSidebarOrganization(
-    auth.organizationId
-  )
+  const sidebarUser = functionalIdentity
+    ? {
+        name: "Functional Admin",
+        email: functionalIdentity.user.email,
+        avatarUrl: null,
+      }
+    : resolveSidebarUser(await getLatestWorkOSUser(auth.user))
+  const sidebarOrganization = functionalIdentity
+    ? { id: auth.organizationId, name: "Functional Test Organization" }
+    : await resolveSidebarOrganization(auth.organizationId)
 
   return (
     <SidebarProvider>

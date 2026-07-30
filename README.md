@@ -24,8 +24,12 @@ bun run dev
 
 - `bun run dev`: Start local development server
 - `bun run build`: Production build
-- `bun run test`: Run Bun test suite (excludes e2e tests)
-- `bun run test:coverage`: Run tests with coverage report + threshold check
+- `bun run test`: Run deterministic `*.test.ts` logic tests
+- `bun run test:changed`: Run changed logic tests and feature dependents
+- `bun run test:component`: Run nightly `*.test.tsx` component tests
+- `bun run test:functional`: Run affected Playwright smoke flows
+- `bun run test:coverage:changed`: Cover changed-feature logic locally
+- `bun run test:coverage`: Run complete logic coverage (merge queue/manual)
 - `bun run lint`: Run ESLint checks
 - `bun run typecheck`: Run TypeScript compiler checks
 - `bun run prisma:migrate:dev`: Apply database migrations
@@ -36,28 +40,42 @@ bun run dev
 ## Testing
 
 ### Local workflow
+
 ```bash
 bun install            # Install dependencies
-bun run test           # Run unit + component tests (CI-equivalent)
+bun run test:changed   # Fast logic feedback for the current diff
+bun run test:coverage:changed # Enforce 85% on changed logic
 bun run lint           # ESLint — 0 errors required
 bun run typecheck      # TypeScript — 0 errors required
 ```
 
+The pull request gate uses the two changed-logic commands above and the
+affected Playwright smoke project. The complete logic coverage gate runs in
+GitHub's merge queue. Component and deterministic legacy browser suites run
+nightly, outside the pull request critical path.
+
 ### Coverage
-Coverage enforced via `scripts/check-coverage-threshold.ts`:
-- **Base threshold** (CI fail): functions ≥80%, lines ≥80%
-- **Target** (warning): 90% — below this prints a warning, doesn't fail
-- Checked by `bun run test:coverage` in CI (`coverage-codecov.yml`)
-- Coverage runs in single-process mode (same as CI), which surfaces `mock.module` cross-file pollution missed by `bun test`
+Coverage is logic-only and enforced by Bun and Codecov:
+
+- Project line coverage: at least 85%
+- Project function coverage: at least 85%
+- Codecov patch coverage: at least 85%, with no threshold leniency
+- `.tsx` presentation code is excluded from coverage
+- Executable DTO mappers remain eligible
+- LCOV is uploaded intact under the single `logic` flag
+- Changed-only LCOV is not uploaded as project coverage
 
 ### Excluded from coverage
-- `**/*.dto.ts` — DTO-only files (pure type mappings)
+- `**/*.tsx` — Presentation and component rendering
+- `**/*.test.ts(x)`, declarations, fixtures, and generated output
 - `**/prisma/**` — Generated Prisma client
-- `next.config.*` — Build configuration
-- whatsapp/, e2e/, modules/deploy/ — excluded via script logic
+- Configuration files and the reviewed external-adapter exemptions in
+  `scripts/test-suites.ts`
 
 ### Mocking rules
-See `AGENTS.md` for Bun `mock.module` rules — critical for CI where coverage runs in a single process and `mock.module` state persists across files.
+See `AGENTS.md` for Bun `mock.module` rules. Full component and browser suites
+run nightly or by manual dispatch; small affected-feature Playwright smoke
+flows are the automated UI gate for pull requests.
 
 ## Route Access
 

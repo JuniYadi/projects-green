@@ -42,6 +42,7 @@ const { uploadAndSave, downloadAndSave, deleteLocal, isExpired, expiryStatus } =
 
 describe("media.service", () => {
   // ponytail: temp dir for each test to avoid cross-test FS pollution
+  const originalCwd = process.cwd()
   let tmpDir: string
 
   beforeEach(() => {
@@ -51,6 +52,7 @@ describe("media.service", () => {
 
   afterEach(() => {
     vi.clearAllMocks()
+    process.chdir(originalCwd)
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true })
     } catch {

@@ -1,76 +1,79 @@
 export {}
 
-// Runs bun test scoped to files changed vs origin/main (or main fallback),
-// mapping each changed *.ts(x) to its co-located *.test.ts(x) when present.
+import { collectChangedFiles } from "./changed-files"
+import { collectSuiteFiles, findFeatureMappings } from "./test-suites"
 
-const base = (() => {
-  const candidates = ["origin/main", "main"]
-  for (const ref of candidates) {
-    const probe = Bun.spawnSync(["git", "rev-parse", "--verify", ref], {
-      stderr: "ignore",
-    })
-    if (probe.exitCode === 0) return ref
-  }
-  return null
-})()
-
-if (!base) {
-  console.error("run-changed-tests: no origin/main or main ref found")
-  process.exit(1)
-}
-
-const diff = Bun.spawnSync(["git", "diff", "--name-only", `${base}...HEAD`], {
-  stdout: "pipe",
-})
-if (diff.exitCode !== 0) {
-  console.error(`run-changed-tests: git diff ${base}...HEAD failed`)
-  process.exit(1)
-}
-
-const changed = new Set(
-  diff.stdout
-    .toString()
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-)
-
-// Static table mapping .ts/.tsx to candidate .test.* suffixes.
-const TEST_EXTENSIONS: Record<string, readonly string[]> = {
-  ts: ["test.ts"],
-  tsx: ["test.tsx"],
-}
+const changed = new Set(collectChangedFiles())
+const allLogicTests = collectSuiteFiles("logic")
+const coverage = process.argv.includes("--coverage")
 
 const tests = new Set<string>()
 for (const path of changed) {
-  if (/\.test\.(ts|tsx)$/.test(path)) {
-    tests.add(path)
+  if (path.endsWith(".test.ts")) {
+    const sourcePath = path.replace(/\.test\.ts$/, ".ts")
+    if (
+      (await Bun.file(path).exists()) &&
+      (!coverage || changed.has(sourcePath))
+    ) {
+      tests.add(path)
+    }
     continue
   }
-  const m = path.match(/\.(ts|tsx)$/)
-  if (!m) continue
-  const ext = m[1]
-  for (const suffix of TEST_EXTENSIONS[ext] ?? []) {
-    const candidate = path.replace(/\.(ts|tsx)$/, `.${suffix}`)
-    if (await Bun.file(candidate).exists()) tests.add(candidate)
+
+  if (path.endsWith(".ts")) {
+    const candidate = path.replace(/\.ts$/, ".test.ts")
+    if (await Bun.file(candidate).exists()) {
+      tests.add(candidate)
+    }
+  }
+
+  if (!coverage) {
+    for (const mapping of findFeatureMappings(path)) {
+      for (const testFile of allLogicTests) {
+        if (
+          mapping.testPrefixes.some((prefix) => testFile.startsWith(prefix))
+        ) {
+          tests.add(testFile)
+        }
+      }
+    }
   }
 }
 
 if (changed.has("test/setup.ts")) {
-  console.warn(
-    "run-changed-tests: test/setup.ts changed; preload is global — verify CI separately."
-  )
+  for (const testFile of allLogicTests) {
+    tests.add(testFile)
+  }
 }
 
 if (tests.size === 0) {
-  console.log("run-changed-tests: no *.test.ts(x) files map to this diff")
+  console.log("test:changed: no logic tests map to this diff")
   process.exit(0)
 }
 
 const sorted = [...tests].sort()
-console.log(`run-changed-tests: ${sorted.join(", ")}`)
-const proc = Bun.spawnSync(["bun", "run", "scripts/run-tests.ts", ...sorted], {
+const concurrency =
+  process.env.TEST_CONCURRENCY?.trim() || (process.env.CI ? "8" : "2")
+const preload = import.meta.dir + "/../test/setup.ts"
+const args = [
+  "test",
+  "--isolate",
+  "--preload",
+  preload,
+  `--max-concurrency=${concurrency}`,
+  ...(coverage
+    ? ["--coverage", "--coverage-reporter=text", "--coverage-reporter=lcov"]
+    : []),
+  ...sorted,
+]
+
+console.log(
+  `test:changed: ${sorted.length} logic files` +
+    (coverage ? ", coverage enabled" : "")
+)
+const proc = Bun.spawnSync(["bun", ...args], {
   stdout: "inherit",
   stderr: "inherit",
+  env: process.env,
 })
 process.exit(proc.exitCode)

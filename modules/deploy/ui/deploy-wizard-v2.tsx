@@ -51,103 +51,20 @@ import { StepBuildV2 } from "@/modules/deploy/ui/step-build-v2"
 import { StepEnvironmentV2 } from "@/modules/deploy/ui/step-environment-v2"
 import { StepMonitorV2 } from "@/modules/deploy/ui/step-monitor-v2"
 import { StepSourceV2 } from "@/modules/deploy/ui/step-source-v2"
+import {
+  buildDeploySubmitPayload,
+  buildRepositoriesUrl,
+  generateAppName,
+  getDeploySubmitError,
+  getRequestErrorMessage,
+  mapGithubRepository,
+  toGeneratedSubdomain,
+  toOwnerOptions,
+  type DeploySubmitResponse,
+  type GithubRepositoriesResponse,
+} from "@/modules/deploy/deploy-wizard.logic"
 
 type GithubConnectionStatus = "idle" | "connected" | "error"
-
-type GithubRepositoryApiItem = {
-  repositoryId: number | string
-  name: string
-  owner: string
-  defaultBranch?: string
-  private: boolean
-  installationId: string
-}
-
-type GithubRepositoriesResponse = {
-  ok: boolean
-  items: GithubRepositoryApiItem[]
-  owners?: { id: string; name: string; avatarUrl: string | null }[]
-  error?: string
-}
-
-const toOwnerOptions = (repositories: Repository[]) => {
-  const byOwnerId = new Map<string, Owner>()
-
-  for (const repository of repositories) {
-    if (byOwnerId.has(repository.ownerId)) {
-      continue
-    }
-
-    byOwnerId.set(repository.ownerId, {
-      id: repository.ownerId,
-      name: repository.ownerId,
-      avatarUrl: "",
-    })
-  }
-
-  return Array.from(byOwnerId.values()).sort((left, right) => {
-    return left.name.localeCompare(right.name)
-  })
-}
-
-const mapGithubRepository = (item: GithubRepositoryApiItem): Repository => {
-  return {
-    id: String(item.repositoryId),
-    ownerId: item.owner,
-    name: item.name,
-    isPrivate: item.private,
-    defaultBranch: item.defaultBranch || undefined,
-    installationId: Number(item.installationId),
-  }
-}
-
-const getRequestErrorMessage = (cause: unknown) => {
-  if (cause instanceof Error && cause.message) {
-    return cause.message
-  }
-
-  return "Unable to load repositories from GitHub. Please try again."
-}
-
-const buildRepositoriesUrl = (params: {
-  ownerId?: string
-  query?: string
-  limit?: number
-}) => {
-  const searchParams = new URLSearchParams()
-
-  if (params.ownerId) {
-    searchParams.set("ownerId", params.ownerId)
-  }
-
-  if (params.query) {
-    searchParams.set("query", params.query)
-  }
-
-  searchParams.set("limit", String(params.limit ?? 100))
-
-  return `/api/integrations/github/repositories?${searchParams.toString()}`
-}
-
-const toGeneratedSubdomain = (repositoryName: string | undefined) => {
-  const slug = (repositoryName ?? "my-app")
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-")
-
-  return `${slug || "my-app"}.pfn.app`
-}
-
-const generateAppName = (templateName: string): string => {
-  const slug = templateName
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-")
-  const suffix = Math.random().toString(36).substring(2, 6)
-  return `${slug}-${suffix}`
-}
 
 type DeployWizardV2Props = {
   title?: string
@@ -731,44 +648,20 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
       const response = await fetch("/api/deploy/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sourceType: "TEMPLATE",
-          templateId: state.source.templateId,
-          name: state.source.appName || "app",
-          branchName: "/",
-          rootDirectory: "/",
-          framework: state.build.framework || undefined,
-          frameworkVersion: state.build.frameworkVersion || undefined,
-          buildCommand: state.build.buildCommand || undefined,
-          useDockerfile: state.build.useDockerfile,
-          primaryEngine: state.build.primaryEngine || undefined,
-          primaryEngineVersion: state.build.primaryEngineVersion || undefined,
-          secondaryEngine: state.build.secondaryEngine || undefined,
-          secondaryEngineVersion:
-            state.build.secondaryEngineVersion || undefined,
-          defaultPort: state.build.defaultPort || undefined,
-          resourcePlanId: state.environment.resourcePlanId,
-          billingMode: state.environment.billingMode ?? "PAYG",
-          cpu: state.environment.cpu,
-          memory: state.environment.memory,
-          subdomain: `${state.source.appName}.pfn.app`,
-          envVars: [],
-        }),
+        body: JSON.stringify(
+          buildDeploySubmitPayload({
+            state,
+            selectedRepository,
+            deployWithTemplateDefaults: true,
+          })
+        ),
       })
 
-      const payload = (await response.json()) as {
-        ok: boolean
-        error?: string
-        message?: string
-        topupUrl?: string
-        data?: { deploymentId: string; status: DeployStatus | string }
-      }
+      const payload = (await response.json()) as DeploySubmitResponse
+      const errorMessage = getDeploySubmitError(response.ok, payload)
 
-      if (!response.ok || !payload.ok || !payload.data) {
-        setSubmitError(
-          payload.message ??
-            "Unable to start the deployment. Please review your settings and try again."
-        )
+      if (errorMessage || !payload.data) {
+        setSubmitError(errorMessage)
         return
       }
 
@@ -799,64 +692,20 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
     setIsSubmitting(true)
     setSubmitError(null)
 
-    const billingMode = state.environment.billingMode ?? "PAYG"
-    const isTemplate = state.source.sourceType === "template"
-
     try {
       const response = await fetch("/api/deploy/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sourceType: isTemplate ? "TEMPLATE" : "GITHUB",
-          templateId: isTemplate ? state.source.templateId : undefined,
-          repositoryId: isTemplate ? undefined : state.source.repositoryId,
-          name: isTemplate
-            ? state.source.appName || "app"
-            : selectedRepository?.name,
-          branchName: isTemplate ? "/" : state.source.branchName,
-          rootDirectory: isTemplate ? "/" : state.source.rootDirectory || "/",
-          framework: state.build.framework || undefined,
-          frameworkVersion: state.build.frameworkVersion || undefined,
-          buildCommand: state.build.buildCommand || undefined,
-          useDockerfile: state.build.useDockerfile,
-          primaryEngine: state.build.primaryEngine || undefined,
-          primaryEngineVersion: state.build.primaryEngineVersion || undefined,
-          secondaryEngine: state.build.secondaryEngine || undefined,
-          secondaryEngineVersion:
-            state.build.secondaryEngineVersion || undefined,
-          defaultPort: state.build.defaultPort || undefined,
-          resourcePlanId: state.environment.resourcePlanId,
-          billingMode,
-          cpu: state.environment.cpu,
-          memory: state.environment.memory,
-          paygBufferHours: isTemplate
-            ? undefined
-            : state.environment.paygBufferHours,
-          customDomain: state.environment.useGeneratedSubdomain
-            ? undefined
-            : state.environment.customDomain.trim() || undefined,
-          envVars: state.environment.envVars.map((item) => ({
-            key: item.key,
-            value: item.value,
-            type: item.type,
-            scope: item.scope,
-          })),
-        }),
+        body: JSON.stringify(
+          buildDeploySubmitPayload({ state, selectedRepository })
+        ),
       })
 
-      const payload = (await response.json()) as {
-        ok: boolean
-        error?: string
-        message?: string
-        topupUrl?: string
-        data?: { deploymentId: string; status: DeployStatus | string }
-      }
+      const payload = (await response.json()) as DeploySubmitResponse
+      const errorMessage = getDeploySubmitError(response.ok, payload)
 
-      if (!response.ok || !payload.ok || !payload.data) {
-        setSubmitError(
-          payload.message ??
-            "Unable to start the deployment. Please review your settings and try again."
-        )
+      if (errorMessage || !payload.data) {
+        setSubmitError(errorMessage)
         return
       }
 

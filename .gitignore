@@ -99,3 +99,6 @@ temp/
 
 # codex — per-machine install artifact
 .codex/hooks.json
+
+# Graphify
+graphify-out/cache/last_query_stamp

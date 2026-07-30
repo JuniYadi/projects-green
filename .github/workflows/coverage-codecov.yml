@@ -1,47 +1,43 @@
-name: Coverage
+name: Fast PR Tests
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
 
 permissions:
   contents: read
 
 jobs:
-  test-coverage:
-    name: Test Coverage (Bun + Codecov)
+  changed-logic:
+    name: Changed Logic and Coverage
     if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
     env:
       TZ: UTC
+      TEST_CONCURRENCY: "8"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Show Bun version
-        run: |
-          bun --version
-          node --version
-          uname -a
-          date
-
-      - name: Prepare test env file from .env.example
+      - name: Prepare test environment
         run: |
           cp .env.example .env
-          for line in $(grep -v '^#' .env | grep '='); do
-            key=$(echo "$line" | cut -d'=' -f1)
-            value=$(echo "$line" | cut -d'=' -f2- | sed 's/^"*//;s/"*$//')
-            echo "${key}=${value}" >> $GITHUB_ENV
-          done
+          while IFS='=' read -r key value; do
+            case "$key" in
+              ""|\#*) continue ;;
+            esac
+            value="${value%\"}"
+            value="${value#\"}"
+            echo "${key}=${value}" >> "$GITHUB_ENV"
+          done < .env
 
-      - name: Cache node_modules
+      - name: Cache dependencies
         uses: actions/cache@v6
         with:
           path: node_modules
@@ -55,36 +51,80 @@ jobs:
       - name: Generate Prisma client
         run: bun run db:generate
 
-      - name: Run tests with coverage
-        run: bun run test:coverage --timeout=30000 --max-concurrency=10
-      - name: Run test quality linter
-        # Non-blocking: surfaces AI test anti-patterns as a warning.
-        # Many pre-existing tests trip the heuristic; fixing them is tracked
-        # separately so this does not block otherwise-valid PRs.
-        continue-on-error: true
-        run: bun run test:lint
+      - name: Run changed logic and feature dependents
+        run: bun run test:changed --timeout=30000
 
-      - name: Verify LCOV output exists
+      - name: Enforce changed logic coverage
+        run: bun run test:coverage:changed --timeout=30000
+
+      - name: Verify LCOV output
         run: |
-          test -f coverage/lcov.info
-          echo "Found LCOV report at coverage/lcov.info"
+          test -s coverage/lcov.info
           ls -lh coverage/lcov.info
 
-      - name: Filter lcov for CodeCov
-        run: |
-          # Remove whatsapp and test files from lcov.info before upload
-          grep -v "^SF:.*/whatsapp/" coverage/lcov.info | \
-          grep -v "^SF:.*/test/" > coverage/lcov.filtered.info
-          echo "Filtered $(wc -l < coverage/lcov.filtered.info) lines from lcov"
-          ls -lh coverage/lcov.filtered.info
-
-      - name: Upload coverage to Codecov
+      - name: Upload changed logic coverage to Codecov
         uses: codecov/codecov-action@v7
         with:
-          files: coverage/lcov.filtered.info
-          flags: unit
-          name: bun-test-coverage
-          fail_ci_if_error: false
-          # Required for private repos. Public repos with Codecov GitHub App
-          # can often upload without this secret.
+          files: coverage/lcov.info
+          flags: logic
+          name: logic-coverage
+          fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Enforce test policy
+        run: bun run test:policy
+
+  functional-smoke:
+    name: Affected Functional Smoke
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TZ: UTC
+      FUNCTIONAL_TEST_MODE: "true"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Prepare test environment
+        run: |
+          cp .env.example .env
+          while IFS='=' read -r key value; do
+            case "$key" in
+              ""|\#*) continue ;;
+            esac
+            value="${value%\"}"
+            value="${value#\"}"
+            echo "${key}=${value}" >> "$GITHUB_ENV"
+          done < .env
+          echo "FUNCTIONAL_TEST_AUTH_SECRET=$(openssl rand -hex 32)" \
+            >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bun run db:generate
+
+      - name: Install Chromium
+        run: bun x playwright install --with-deps chromium
+
+      - name: Run affected smoke tests
+        run: bun run test:functional
+
+      - name: Upload Playwright failure report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-functional-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7

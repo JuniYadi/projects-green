@@ -1,0 +1,1 @@
+{"nodes": [{"id": "home_juniyadi_github_juniyadi_projects_green_prisma_migrations_20260728182616_add_deploy_event_jenkins_build_completed_migration_sql", "label": "migration.sql", "file_type": "code", "source_file": "prisma/migrations/20260728182616_add_deploy_event_jenkins_build_completed/migration.sql", "source_location": null}], "edges": []}

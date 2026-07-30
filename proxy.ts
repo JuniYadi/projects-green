@@ -10,6 +10,11 @@ import { resolveRequestLocale } from "@/lib/i18n/request-locale"
 import { getLocaleFromPathname, localizePathname } from "@/lib/i18n/pathname"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import {
+  applyFunctionalTestIdentity,
+  resolveFunctionalTestAuth,
+  stripUntrustedIdentityHeaders,
+} from "@/lib/auth/functional-test-session"
+import {
   hasScopedSuperAdminClaim,
   resolveScopedRoleTargetFromClaims,
 } from "@/modules/tenants/tenant-policy"
@@ -84,6 +89,62 @@ const resolveUserArea = (session: { role?: string; roles?: string[] }) => {
 
 export default async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
+  const functionalAuth = resolveFunctionalTestAuth(request.headers, {
+    FUNCTIONAL_TEST_MODE: process.env.FUNCTIONAL_TEST_MODE,
+    FUNCTIONAL_TEST_AUTH_SECRET: process.env.FUNCTIONAL_TEST_AUTH_SECRET,
+  })
+  const sanitizedHeaders = stripUntrustedIdentityHeaders(request.headers)
+  const sanitizedRequest = new NextRequest(request, {
+    headers: sanitizedHeaders,
+  })
+
+  if (functionalAuth.status === "invalid-role") {
+    return NextResponse.json(
+      { ok: false, error: "INVALID_FUNCTIONAL_TEST_ROLE" },
+      { status: 400 }
+    )
+  }
+
+  if (functionalAuth.status === "authenticated") {
+    const { locale: localeFromPathname, pathnameWithoutLocale } =
+      getLocaleFromPathname(pathname)
+    const locale = localeFromPathname ?? getPreferredLocale(request)
+    const normalizedPathname = pathnameWithoutLocale
+    const expectedArea =
+      functionalAuth.role === "admin" ? PORTAL_HOME : CONSOLE_HOME
+
+    if (!localeFromPathname && !shouldSkipLocaleRouting(normalizedPathname)) {
+      const localizedPathname = withLocalePrefix(normalizedPathname, locale)
+      return withLocaleCookie(
+        NextResponse.redirect(
+          new URL(`${localizedPathname}${search}`, request.url)
+        ),
+        locale
+      )
+    }
+
+    if (
+      isProtectedPath(normalizedPathname) &&
+      !normalizedPathname.startsWith(expectedArea)
+    ) {
+      return withLocaleCookie(
+        NextResponse.redirect(
+          new URL(withLocalePrefix(expectedArea, locale), request.url)
+        ),
+        locale
+      )
+    }
+
+    const trustedHeaders = applyFunctionalTestIdentity(
+      sanitizedHeaders,
+      functionalAuth.role,
+      request.url
+    )
+    return withLocaleCookie(
+      NextResponse.next({ request: { headers: trustedHeaders } }),
+      locale
+    )
+  }
 
   // Run authkit for API routes to validate and refresh the WorkOS session
   // cookie.  Without this, the Elysia WhatsApp plugin's getWorkOSSession
@@ -104,12 +165,15 @@ export default async function proxy(request: NextRequest) {
     const { locale: localeFromPathname } = getLocaleFromPathname(pathname)
     const locale = localeFromPathname ?? getPreferredLocale(request)
 
-    const { session, headers } = await authkit(request)
+    const { session, headers } = await authkit(sanitizedRequest)
 
     // partitionAuthkitHeaders merges the fresh AuthKit headers (x-workos-middleware,
     // x-workos-session, etc.) into the request headers.  These are required for
     // downstream withAuth() calls in Elysia route handlers.
-    const { requestHeaders } = partitionAuthkitHeaders(request, headers)
+    const { requestHeaders } = partitionAuthkitHeaders(
+      sanitizedRequest,
+      headers
+    )
 
     if (session?.user) {
       requestHeaders.set("x-workos-authed", "true")
@@ -145,7 +209,7 @@ export default async function proxy(request: NextRequest) {
     )
   }
 
-  const { session, headers } = await authkit(request)
+  const { session, headers } = await authkit(sanitizedRequest)
 
   const { locale: localeFromPathname, pathnameWithoutLocale } =
     getLocaleFromPathname(pathname)
@@ -161,11 +225,14 @@ export default async function proxy(request: NextRequest) {
 
   const responseOptions = (options?: { redirect: string }) => {
     if (!options) {
-      return withLocaleCookie(handleAuthkitHeaders(request, headers), locale)
+      return withLocaleCookie(
+        handleAuthkitHeaders(sanitizedRequest, headers),
+        locale
+      )
     }
 
     return withLocaleCookie(
-      handleAuthkitHeaders(request, headers, options),
+      handleAuthkitHeaders(sanitizedRequest, headers, options),
       locale
     )
   }
