@@ -58,6 +58,13 @@ try {
   const url = new URL(dbUrl)
   if (url.searchParams.has("schema")) {
     schema = url.searchParams.get("schema") ?? "public"
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(schema)) {
+      console.error(
+        `ERROR: invalid schema name in DATABASE_URL: "${schema}". ` +
+          `Only [a-zA-Z_][a-zA-Z0-9_] characters allowed.`
+      )
+      process.exit(1)
+    }
     url.searchParams.delete("schema")
     pgUrl = url.toString().replace(/\?$/, "")
   }

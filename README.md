@@ -54,15 +54,15 @@ The SQL files use `INSERT ... ON CONFLICT DO NOTHING`, so restores are idempoten
 
 ```bash
 bun run db:reset               # interactive — will prompt before each step
-bun run db:reset --yes        # non-interactive, skips restore
-```
+bun run db:reset --yes        # non-interactive (skips confirmation prompt, restore still runs)
 
-`db:reset` runs through these steps, prompting at each (unless `--yes`):
+`db:reset` runs through all steps, including seed restore. Use `--yes` to skip
+interactive confirmation prompts (restore:seeds still runs automatically).
 1. **Drop & recreate DB** — destroys all data
 2. **Regenerate migrations?** — say `y` if migration history is broken (removes `prisma/migrations`, runs `migrate dev`)
 3. **Run migrations?** — applies existing migrations via `migrate deploy`
 4. **Generate Prisma client**
-5. **Restore seeds?** — replays `prisma/seeds/*.sql`
+5. **Restore seeds** — replays `prisma/seeds/*.sql`
 6. **Run system seeders?** — currencies, billing plans, etc.
 
 ### Just drop the database
