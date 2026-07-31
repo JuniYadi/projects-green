@@ -32,8 +32,8 @@
     "db:generate": "bun --bun prisma generate",
     "db:migrate:dev": "bun --bun prisma migrate dev",
     "db:migrate:deploy": "bun --bun prisma migrate deploy",
-    "db:studio": "bun --bun prisma studio",
-    "db:status": "bun --bun prisma status",
+    "db:reset": "bun run scripts/db-reset.ts",
+    "db:drop": "bun run scripts/db-drop.ts",
     "db:pull": "bun --bun prisma db pull --print",
     "tinker": "bun run scripts/tinker.ts",
     "github:worker": "bun run scripts/github-worker.ts",
@@ -41,6 +41,8 @@
     "seed:system": "bun run scripts/seed-runner.ts --system",
     "seed:dummy": "bun run scripts/seed-runner.ts --dummy",
     "seed:invoices-support-tickets": "bun run scripts/seed-invoices-support-tickets.ts",
+    "dump:seeds": "bun run scripts/dump-seed-data.ts  -- --concurrency=25",
+    "restore:seeds": "bun run scripts/seed-runner.ts --seed=SqlRestore",
     "seed:app-hosting-cluster": "bun run scripts/seed-app-hosting-cluster.ts",
     "remediate:creator-tenant-roles": "bun run scripts/remediate-creator-tenant-roles.ts",
     "admin:role": "bun run scripts/admin-role.ts",
@@ -63,7 +65,8 @@
     "cleanup:webhook-events": "bun run scripts/cleanup-whatsapp-webhook-events.ts",
     "test:lint": "bun run scripts/lint-test-quality.ts",
     "test:policy": "bun run scripts/lint-test-policy.ts",
-    "prepare": "husky"
+    "prepare": "husky",
+    "docker:db:run": "docker compose -f docker-compose.db.yml up -d"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

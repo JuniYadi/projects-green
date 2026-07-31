@@ -5,13 +5,19 @@ CREATE TYPE "ApiKeyEnvironment" AS ENUM ('SANDBOX', 'LIVE');
 CREATE TYPE "PlatformRole" AS ENUM ('NONE', 'SUPER_ADMIN');
 
 -- CreateEnum
+CREATE TYPE "AppCredentialType" AS ENUM ('GITHUB_APP', 'GITHUB_TOKEN', 'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_LEGACY_TOKEN');
+
+-- CreateEnum
+CREATE TYPE "AppCredentialStatus" AS ENUM ('ACTIVE', 'REVOKED', 'EXPIRED', 'PENDING');
+
+-- CreateEnum
 CREATE TYPE "StackStatus" AS ENUM ('IDLE', 'QUEUED', 'BUILDING', 'DEPLOYING', 'RUNNING', 'FAILED');
 
 -- CreateEnum
 CREATE TYPE "DeploySource" AS ENUM ('GITHUB', 'TEMPLATE', 'MANUAL');
 
 -- CreateEnum
-CREATE TYPE "ApplicationDeployEventType" AS ENUM ('QUEUED', 'BUILD_STARTED', 'MANIFEST_PUSHED', 'ARGOCD_SYNC_STARTED', 'ARGOCD_SYNCED', 'DEPLOY_COMPLETED', 'DEPLOY_FAILED', 'ROLLBACK_STARTED', 'ROLLBACK_COMPLETED');
+CREATE TYPE "ApplicationDeployEventType" AS ENUM ('QUEUED', 'BUILD_STARTED', 'JENKINS_JOB_TRIGGERED', 'JENKINS_BUILD_QUEUED', 'JENKINS_BUILD_RUNNING', 'JENKINS_BUILD_COMPLETED', 'IMAGE_TAG_RECEIVED', 'GITOPS_COMMIT_CREATED', 'MANIFEST_PUSHED', 'ARGOCD_SYNC_STARTED', 'ARGOCD_SYNCED', 'POD_READY', 'DEPLOY_COMPLETED', 'DEPLOY_FAILED', 'ROLLBACK_STARTED', 'ROLLBACK_COMPLETED');
 
 -- CreateEnum
 CREATE TYPE "SupportTicketDepartment" AS ENUM ('BILLING', 'TECHNICAL', 'ACCOUNT', 'COMPLIANCE');
@@ -158,13 +164,19 @@ CREATE TYPE "WhatsappApiKeyEnvironment" AS ENUM ('SANDBOX', 'LIVE');
 CREATE TYPE "WebhookDeliveryStatus" AS ENUM ('PENDING', 'SUCCESS', 'FAILED', 'DEAD_LETTERED');
 
 -- CreateEnum
-CREATE TYPE "EmailLogType" AS ENUM ('TICKET_CREATED', 'TICKET_REPLIED', 'TICKET_CLOSED', 'TICKET_ADMIN_ALERT');
+CREATE TYPE "EmailLogType" AS ENUM ('TICKET_CREATED', 'TICKET_REPLIED', 'TICKET_CLOSED', 'TICKET_ADMIN_ALERT', 'INVOICE_CREATED', 'INVOICE_PAYMENT_REMINDER', 'INVOICE_PAID', 'INVOICE_OVERDUE', 'INVOICE_CANCELLED', 'VPN_SUBSCRIPTION_CREATED', 'VPN_PROVISIONING_SUCCESS', 'VPN_PROVISIONING_FAILED', 'VPN_RENEWAL_SUCCESS', 'VPN_RENEWAL_FAILED', 'VPN_SUBSCRIPTION_SUSPENDED', 'VPN_SUBSCRIPTION_EXPIRED', 'VPN_SUBSCRIPTION_CANCELLED');
 
 -- CreateEnum
 CREATE TYPE "EmailLogStatus" AS ENUM ('QUEUED', 'SENT', 'FAILED', 'BOUNCED');
 
 -- CreateEnum
 CREATE TYPE "VoucherStatus" AS ENUM ('ACTIVE', 'EXPIRED', 'DEPLETED', 'DISABLED');
+
+-- CreateEnum
+CREATE TYPE "AppHostingClusterStatus" AS ENUM ('PLANNED', 'ACTIVE', 'DEPRECATED');
+
+-- CreateEnum
+CREATE TYPE "AppHostingClusterIntegrationType" AS ENUM ('JENKINS', 'GITOPS', 'REGISTRY', 'ARGOCD', 'KUBECONFIG', 'OPENSEARCH', 'PROMETHEUS');
 
 -- CreateTable
 CREATE TABLE "User" (
@@ -347,6 +359,7 @@ CREATE TABLE "ApplicationStack" (
     "buildCommand" TEXT,
     "dockerfileDetected" BOOLEAN NOT NULL DEFAULT false,
     "resourcePlanId" TEXT,
+    "clusterId" TEXT,
     "billingMode" TEXT DEFAULT 'PAYG',
     "hourlyCost" DECIMAL(10,4),
     "cpu" INTEGER,
@@ -1600,6 +1613,11 @@ CREATE TABLE "EmailLog" (
     "errorMessage" TEXT,
     "attempts" INTEGER NOT NULL DEFAULT 0,
     "sentAt" TIMESTAMP(3),
+    "organizationId" TEXT,
+    "relatedEntityType" TEXT,
+    "relatedEntityId" TEXT,
+    "bodyHtml" TEXT,
+    "providerMessageId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -1794,15 +1812,50 @@ CREATE TABLE "CacheEntry" (
 );
 
 -- CreateTable
-CREATE TABLE "CloudflareDnsCredential" (
+CREATE TABLE "AppCredential" (
     "id" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
+    "type" "AppCredentialType" NOT NULL,
     "name" TEXT NOT NULL,
-    "tokenJson" TEXT NOT NULL,
+    "metadata" JSONB NOT NULL,
+    "encryptedJSON" TEXT NOT NULL,
+    "maskedPreview" TEXT NOT NULL,
+    "status" "AppCredentialStatus" NOT NULL DEFAULT 'ACTIVE',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "CloudflareDnsCredential_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "AppCredential_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AppHostingCluster" (
+    "id" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "region" TEXT NOT NULL,
+    "status" "AppHostingClusterStatus" NOT NULL DEFAULT 'PLANNED',
+    "isDefault" BOOLEAN NOT NULL DEFAULT false,
+    "metadataJson" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AppHostingCluster_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AppHostingClusterIntegration" (
+    "id" TEXT NOT NULL,
+    "clusterId" TEXT NOT NULL,
+    "type" "AppHostingClusterIntegrationType" NOT NULL,
+    "metaJson" JSONB NOT NULL DEFAULT '{}',
+    "secretCiphertext" TEXT,
+    "secretPreview" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "keyVersion" INTEGER NOT NULL DEFAULT 1,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AppHostingClusterIntegration_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -1887,6 +1940,9 @@ CREATE INDEX "ApplicationStack_repositoryConnectionId_idx" ON "ApplicationStack"
 CREATE INDEX "ApplicationStack_status_idx" ON "ApplicationStack"("status");
 
 -- CreateIndex
+CREATE INDEX "ApplicationStack_clusterId_idx" ON "ApplicationStack"("clusterId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "ApplicationStack_organizationId_slug_key" ON "ApplicationStack"("organizationId", "slug");
 
 -- CreateIndex
@@ -1909,6 +1965,9 @@ CREATE INDEX "DeployEvent_type_idx" ON "DeployEvent"("type");
 
 -- CreateIndex
 CREATE INDEX "DeployEvent_createdAt_idx" ON "DeployEvent"("createdAt" DESC);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "DeployEvent_deploymentId_type_key" ON "DeployEvent"("deploymentId", "type");
 
 -- CreateIndex
 CREATE INDEX "DeploymentLog_deploymentId_idx" ON "DeploymentLog"("deploymentId");
@@ -2475,6 +2534,12 @@ CREATE INDEX "EmailLog_status_idx" ON "EmailLog"("status");
 CREATE INDEX "EmailLog_createdAt_idx" ON "EmailLog"("createdAt" DESC);
 
 -- CreateIndex
+CREATE INDEX "EmailLog_organizationId_idx" ON "EmailLog"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "EmailLog_type_idx" ON "EmailLog"("type");
+
+-- CreateIndex
 CREATE INDEX "PaymentGateway_type_isActive_idx" ON "PaymentGateway"("type", "isActive");
 
 -- CreateIndex
@@ -2571,16 +2636,43 @@ CREATE UNIQUE INDEX "CacheEntry_key_key" ON "CacheEntry"("key");
 CREATE INDEX "CacheEntry_key_expiresAt_idx" ON "CacheEntry"("key", "expiresAt");
 
 -- CreateIndex
-CREATE INDEX "CloudflareDnsCredential_organizationId_idx" ON "CloudflareDnsCredential"("organizationId");
+CREATE INDEX "AppCredential_organizationId_idx" ON "AppCredential"("organizationId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "CloudflareDnsCredential_organizationId_name_key" ON "CloudflareDnsCredential"("organizationId", "name");
+CREATE INDEX "AppCredential_organizationId_type_idx" ON "AppCredential"("organizationId", "type");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AppCredential_organizationId_type_name_key" ON "AppCredential"("organizationId", "type", "name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AppHostingCluster_code_key" ON "AppHostingCluster"("code");
+
+-- CreateIndex
+CREATE INDEX "AppHostingCluster_status_idx" ON "AppHostingCluster"("status");
+
+-- CreateIndex
+CREATE INDEX "AppHostingCluster_isDefault_idx" ON "AppHostingCluster"("isDefault");
+
+-- CreateIndex
+CREATE INDEX "AppHostingClusterIntegration_clusterId_idx" ON "AppHostingClusterIntegration"("clusterId");
+
+-- CreateIndex
+CREATE INDEX "AppHostingClusterIntegration_type_idx" ON "AppHostingClusterIntegration"("type");
+
+-- CreateIndex
+CREATE INDEX "AppHostingClusterIntegration_isActive_idx" ON "AppHostingClusterIntegration"("isActive");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AppHostingClusterIntegration_clusterId_type_key" ON "AppHostingClusterIntegration"("clusterId", "type");
 
 -- AddForeignKey
 ALTER TABLE "GithubRepositoryConnection" ADD CONSTRAINT "GithubRepositoryConnection_installationId_fkey" FOREIGN KEY ("installationId") REFERENCES "GithubInstallation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ApplicationStack" ADD CONSTRAINT "ApplicationStack_repositoryConnectionId_fkey" FOREIGN KEY ("repositoryConnectionId") REFERENCES "GithubRepositoryConnection"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ApplicationStack" ADD CONSTRAINT "ApplicationStack_clusterId_fkey" FOREIGN KEY ("clusterId") REFERENCES "AppHostingCluster"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Deployment" ADD CONSTRAINT "Deployment_stackId_fkey" FOREIGN KEY ("stackId") REFERENCES "ApplicationStack"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -2827,3 +2919,6 @@ ALTER TABLE "WhatsappCatalog" ADD CONSTRAINT "WhatsappCatalog_deviceId_fkey" FOR
 
 -- AddForeignKey
 ALTER TABLE "WhatsappCatalogProduct" ADD CONSTRAINT "WhatsappCatalogProduct_catalogId_fkey" FOREIGN KEY ("catalogId") REFERENCES "WhatsappCatalog"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AppHostingClusterIntegration" ADD CONSTRAINT "AppHostingClusterIntegration_clusterId_fkey" FOREIGN KEY ("clusterId") REFERENCES "AppHostingCluster"("id") ON DELETE CASCADE ON UPDATE CASCADE;
