@@ -35,7 +35,88 @@ bun run dev
 - `bun run prisma:migrate:dev`: Apply database migrations
 - `bun run grant:super-admin -- --workos-user-id=<id>`: Grant platform super-admin role
 - `bun run seed:workos-roles`: Seed required WorkOS organization roles
-- `bun run worker:github`: Start background GitHub webhook worker
+## Database & Seed Data
+
+### Dumping seed data
+
+Before resetting the database, dump your live data so it can be restored afterward:
+
+```bash
+bun run dump:seeds              # dumps all tables with data → prisma/seeds/*.sql
+bun run dump:seeds --tables=User,Organization  # dump specific tables only
+bun run dump:seeds --concurrency=25           # increase parallelism (default: 8)
+```
+
+Only tables with rows are written — empty tables are skipped automatically.
+The SQL files use `INSERT ... ON CONFLICT DO NOTHING`, so restores are idempotent.
+
+### Database reset (interactive)
+
+```bash
+bun run db:reset               # interactive — will prompt before each step
+bun run db:reset --yes        # non-interactive, skips restore
+```
+
+`db:reset` runs through these steps, prompting at each (unless `--yes`):
+1. **Drop & recreate DB** — destroys all data
+2. **Regenerate migrations?** — say `y` if migration history is broken (removes `prisma/migrations`, runs `migrate dev`)
+3. **Run migrations?** — applies existing migrations via `migrate deploy`
+4. **Generate Prisma client**
+5. **Restore seeds?** — replays `prisma/seeds/*.sql`
+6. **Run system seeders?** — currencies, billing plans, etc.
+
+### Just drop the database
+
+```bash
+bun run db:drop                # drops the database immediately, no prompts
+```
+
+Use this when you want to manually fix migrations before running `db:reset`.
+
+### Individual seed operations
+
+| Command | What it does |
+|---|---|
+| `bun run restore:seeds` | Replay `prisma/seeds/*.sql` via `SqlRestoreSeeder` |
+| `bun run seed:system` | Run all system seeders (currencies, billing plans, etc.) |
+| `bun run seed:dummy` | Run dummy seeders (test orgs, fake invoices, etc.) |
+| `bun run seed:all` | Run all seeders (system + dummy) |
+
+### Manual workflow (step-by-step)
+
+```bash
+# 1. Dump live data before touching anything
+bun run dump:seeds
+
+# 2. Just drop — fix migrations manually if needed
+bun run db:drop
+
+# 3. Reset with interactive prompts
+bun run db:reset
+
+# Or: run each step manually
+# bun --bun prisma migrate dev   # regenerate migrations if needed
+# bun --bun prisma migrate deploy  # apply migrations
+# bun --bun prisma generate
+# bun run restore:seeds
+# bun run seed:system
+```
+
+### Seed file overview
+
+| File | Purpose |
+|---|---|
+| `prisma/seeds/manifest.ts` | List of tables to dump/restore, in FK-safe order |
+| `prisma/seeds/*.sql` | Dumped data (gitignored — local only) |
+| `lib/seeders/system/sql-restore.seeder.ts` | Seeder that replays `.sql` files |
+| `lib/seeders/system/` | Other system seeders (billing, currency, etc.) |
+| `lib/seeders/dummy/` | Dev-only seeders with fake/test data |
+| `scripts/db-reset.ts` | Interactive DB reset workflow |
+| `scripts/db-drop.ts` | Just drop the database |
+| `scripts/dump-seed-data.ts` | Dump live data to `.sql` files |
+
+**Gitignore:** `prisma/seeds/*.sql` are local-only and not committed.
+
 
 ## Testing
 
