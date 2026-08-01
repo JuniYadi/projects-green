@@ -82,12 +82,35 @@ describe("BillingSetupBannerClient", () => {
   })
 
   it("hides banner when all present", async () => {
-    const data = [{ id: "g1" }, { id: "g2" }]
+    const data = [
+      { id: "g1", isActive: true },
+      { id: "g2", isActive: true },
+    ]
     mockGateways = { status: 200, data }
     mockBankAccounts = { status: 200, data }
     mockCurrencies = { status: 200, data }
 
     const view = render(<BillingSetupBannerClient locale="en" />)
+
+    await waitFor(() => {
+      expect(view.queryByTestId("billing-setup-banner")).not.toBeInTheDocument()
+    })
+  })
+
+  it("banner disappears after invalidation event adds active gateway while mounted", async () => {
+    // Other prerequisites are satisfied; only gateways missing
+    mockGateways = { status: 200, data: [] }
+    mockBankAccounts = { status: 200, data: [{ id: "ba1" }] }
+    mockCurrencies = { status: 200, data: [{ id: "c1" }] }
+
+    const view = render(<BillingSetupBannerClient locale="en" />)
+    expect(await view.findByTestId("billing-setup-banner")).toBeInTheDocument()
+
+    // Simulate gateway becoming active (e.g. user created one via GatewaysTab)
+    mockGateways = { status: 200, data: [{ id: "g1", isActive: true }] }
+
+    // Dispatch invalidation — mounted banner must re-check without remounting
+    window.dispatchEvent(new Event("billing-setup-status:invalidate"))
 
     await waitFor(() => {
       expect(view.queryByTestId("billing-setup-banner")).not.toBeInTheDocument()
