@@ -1,9 +1,8 @@
 "use client"
 
-import { ArrowClockwise, ArrowSquareOut } from "@phosphor-icons/react"
+import { ArrowClockwise } from "@phosphor-icons/react"
 import Link from "next/link"
 
-import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -26,6 +25,8 @@ type AppMonitorProps = {
   deployment: DeploymentStatusDTO | null
   logScope: DeployLogScope
   onLogScopeChange: (scope: DeployLogScope) => void
+  onRetry?: () => void
+  liveDomain?: string
 }
 
 const STATUS_TONE: Record<string, string> = {
@@ -50,11 +51,13 @@ export function AppMonitor({
   deployment,
   logScope,
   onLogScopeChange,
+  onRetry,
+  liveDomain,
 }: AppMonitorProps) {
   const status = deployment?.status ?? stack.status
   const tone = STATUS_TONE[status] ?? STATUS_TONE.idle
   const billingNote = BILLING_NOTE[stack.billingState]
-  const targetDomain = stack.customDomain || stack.subdomain
+  const targetDomain = liveDomain ?? (stack.customDomain || stack.subdomain)
   const deployId = deployment?.id ?? stack.latestDeploymentId ?? undefined
 
   return (
@@ -87,19 +90,6 @@ export function AppMonitor({
                 ) : null}
               </CardDescription>
             </div>
-
-            {targetDomain ? (
-              <Button asChild variant="outline" size="sm" className="gap-2">
-                <a
-                  href={`https://${targetDomain}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <ArrowSquareOut size={15} />
-                  Visit app
-                </a>
-              </Button>
-            ) : null}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -167,7 +157,12 @@ export function AppMonitor({
           <CardContent className="space-y-4">
             <section className="space-y-2">
               <h3 className="text-sm font-medium">Status timeline</h3>
-              <DeployStepTimeline deployId={deployId} status={status} />
+              <DeployStepTimeline
+                deployId={deployId}
+                status={status}
+                liveDomain={targetDomain ?? undefined}
+                onRetry={status === "failed" ? onRetry : undefined}
+              />
             </section>
 
             <section className="space-y-2">
