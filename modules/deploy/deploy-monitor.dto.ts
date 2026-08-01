@@ -211,7 +211,7 @@ export const DEPLOY_EVENT_LABELS: Record<string, string> = {
   ROLLBACK_COMPLETED: "Rollback completed",
 }
 
-const DEPLOY_EVENT_STEP_INDEX: Record<string, number> = {
+export const DEPLOY_EVENT_STEP_INDEX: Record<string, number> = {
   QUEUED: 0,
   BUILD_STARTED: 2,
   JENKINS_JOB_TRIGGERED: 3,
@@ -230,17 +230,29 @@ const DEPLOY_EVENT_STEP_INDEX: Record<string, number> = {
 export type CurrentDeployStepDTO = {
   currentStepLabel: string | null
   currentStepIndex: number | null
+  currentStepStartedAt: string | null
 }
 
 export const deriveCurrentDeployStep = (
-  events: Array<Pick<ApplicationDeployEvent, "type">> = []
+  events: Array<Pick<ApplicationDeployEvent, "type" | "createdAt">> = []
 ): CurrentDeployStepDTO => {
-  const latest = events[events.length - 1]
-  if (!latest) return { currentStepLabel: null, currentStepIndex: null }
+  const recognized = events.filter(
+    (event) => DEPLOY_EVENT_STEP_INDEX[event.type] !== undefined
+  )
+  const latest = recognized[recognized.length - 1]
+  if (!latest)
+    return {
+      currentStepLabel: null,
+      currentStepIndex: null,
+      currentStepStartedAt: null,
+    }
 
   return {
     currentStepLabel: DEPLOY_EVENT_LABELS[latest.type] ?? latest.type,
     currentStepIndex: DEPLOY_EVENT_STEP_INDEX[latest.type] ?? null,
+    currentStepStartedAt: latest.createdAt
+      ? latest.createdAt.toISOString()
+      : null,
   }
 }
 
@@ -265,7 +277,8 @@ export const toDeploymentHistoryDTO = (
     | "failureReason"
     | "startedAt"
     | "completedAt"
-  >
+  >,
+  now: Date = new Date()
 ): DeploymentHistoryDTO => {
   const startedAt = deployment.startedAt ?? null
   const completedAt = deployment.completedAt ?? null
@@ -274,10 +287,9 @@ export const toDeploymentHistoryDTO = (
     id: deployment.id,
     status: mapStackStatusToDeployStatus(deployment.status),
     attempt: Math.max(deployment.attempt, 1),
-    durationMs:
-      startedAt && completedAt
-        ? Math.max(0, completedAt.getTime() - startedAt.getTime())
-        : null,
+    durationMs: startedAt
+      ? Math.max(0, (completedAt ?? now).getTime() - startedAt.getTime())
+      : null,
     commitSha: deployment.commitSha ?? null,
     failureReason: deployment.failureReason ?? null,
     startedAt: startedAt?.toISOString() ?? null,
@@ -335,6 +347,7 @@ export type StackSummaryDTO = {
   latestDeploymentId: string | null
   currentStepLabel: string | null
   currentStepIndex: number | null
+  currentStepStartedAt: string | null
 }
 
 export const resolveStackBillingState = (
@@ -360,7 +373,7 @@ export const toStackSummaryDTO = (stack: {
   metadataJson: unknown
   lastDeployedAt: Date | null
   deployments?: Array<{ id: string }>
-  events?: Array<Pick<ApplicationDeployEvent, "type">>
+  events?: Array<Pick<ApplicationDeployEvent, "type" | "createdAt">>
 }): StackSummaryDTO => {
   return {
     id: stack.id,
