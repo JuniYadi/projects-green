@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it } from "bun:test"
+import { afterEach, describe, expect, it, mock } from "bun:test"
 
 import {
   createGithubRepositoryService,
   createGithubService,
   GithubIntegrationDisabledError,
+  GithubReconnectRequiredError,
   syncGithubInstallation,
 } from "@/modules/github/github.service"
 import type { GithubInstallationRecord } from "@/modules/github/github.types"
@@ -193,6 +194,7 @@ describe("githubRepositoryService", () => {
       async listRepositoriesForInstallation() {
         return []
       },
+      async invalidateInstallationAccessToken() {},
     })
 
     const result = await service.listInstallationsForActor({
@@ -249,6 +251,7 @@ describe("githubRepositoryService", () => {
           },
         ]
       },
+      async invalidateInstallationAccessToken() {},
     })
 
     const firstPage = await service.listRepositoriesForActor(
@@ -324,6 +327,7 @@ describe("githubRepositoryService", () => {
           },
         ]
       },
+      async invalidateInstallationAccessToken() {},
     })
 
     const acmeOnly = await service.listRepositoriesForActor(
@@ -379,6 +383,7 @@ describe("githubRepositoryService", () => {
         })
         return [repository]
       },
+      async invalidateInstallationAccessToken() {},
     })
 
     const result = await service.listRepositoriesForActor(
@@ -388,5 +393,96 @@ describe("githubRepositoryService", () => {
 
     expect(result.items).toEqual([repository])
     expect(calls).toEqual([{ installationId: 101, token: "known-token" }])
+  })
+  it("invalidates cached token and retries once after reconnect error", async () => {
+    const repository = {
+      repositoryId: 1,
+      fullName: "acme/platform",
+      name: "platform",
+      owner: "acme",
+      installationId: 101,
+      defaultBranch: "main",
+      private: true,
+      pushedAt: "2026-05-16T03:10:45.000Z",
+    }
+    const createInstallationAccessToken = mock(async () => "cached-token")
+    createInstallationAccessToken.mockResolvedValueOnce("cached-token")
+    createInstallationAccessToken.mockResolvedValueOnce("fresh-token")
+    const invalidateInstallationAccessToken = mock(
+      async (installationId: number) => {
+        expect(installationId).toBe(101)
+      }
+    )
+    const listRepositoriesForInstallation = mock(
+      async (_installation: GithubInstallationRecord, token: string) => {
+        if (token === "cached-token") {
+          throw new GithubReconnectRequiredError(undefined, 401)
+        }
+
+        return [repository]
+      }
+    )
+    const service = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return [installations[0]]
+      },
+      createInstallationAccessToken,
+      invalidateInstallationAccessToken,
+      listRepositoriesForInstallation,
+    })
+
+    const result = await service.listRepositoriesForActor(
+      { userId: "user_1", organizationId: "org_1" },
+      {}
+    )
+
+    expect(result.items).toEqual([repository])
+    expect(invalidateInstallationAccessToken).toHaveBeenCalledTimes(1)
+    expect(invalidateInstallationAccessToken).toHaveBeenCalledWith(101)
+    expect(createInstallationAccessToken).toHaveBeenNthCalledWith(1, 101)
+    expect(createInstallationAccessToken).toHaveBeenNthCalledWith(2, 101)
+    expect(listRepositoriesForInstallation).toHaveBeenNthCalledWith(
+      1,
+      installations[0],
+      "cached-token"
+    )
+    expect(listRepositoriesForInstallation).toHaveBeenNthCalledWith(
+      2,
+      installations[0],
+      "fresh-token"
+    )
+  })
+
+  it("propagates reconnect error after one retry", async () => {
+    const reconnectError = new GithubReconnectRequiredError(undefined, 401)
+    const createInstallationAccessToken = mock(async () => "cached-token")
+    createInstallationAccessToken.mockResolvedValueOnce("cached-token")
+    createInstallationAccessToken.mockResolvedValueOnce("fresh-token")
+    const invalidateInstallationAccessToken = mock(async () => {})
+    const listRepositoriesForInstallation = mock(
+      async (_installation: GithubInstallationRecord, _token: string) => {
+        throw reconnectError
+      }
+    )
+    const service = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return [installations[0]]
+      },
+      createInstallationAccessToken,
+      invalidateInstallationAccessToken,
+      listRepositoriesForInstallation,
+    })
+
+    await expect(
+      service.listRepositoriesForActor(
+        { userId: "user_1", organizationId: "org_1" },
+        {}
+      )
+    ).rejects.toBe(reconnectError)
+
+    expect(invalidateInstallationAccessToken).toHaveBeenCalledTimes(1)
+    expect(invalidateInstallationAccessToken).toHaveBeenCalledWith(101)
+    expect(createInstallationAccessToken).toHaveBeenCalledTimes(2)
+    expect(listRepositoriesForInstallation).toHaveBeenCalledTimes(2)
   })
 })
