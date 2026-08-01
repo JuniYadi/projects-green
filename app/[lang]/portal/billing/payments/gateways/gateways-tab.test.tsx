@@ -1,4 +1,4 @@
-import { describe, expect, it, mock } from "bun:test"
+import { describe, expect, it } from "bun:test"
 import { fireEvent, render, waitFor } from "@testing-library/react"
 
 import { GatewaysTab } from "./gateways-tab"
@@ -200,13 +200,9 @@ describe("GatewaysTab", () => {
   })
 
   it("create gateway dispatches exactly one invalidate event", async () => {
-    // Spy on the invalidateBillingSetupStatus function directly
     const dispatched: Event[] = []
-    const origDispatch = window.dispatchEvent.bind(window)
-    window.dispatchEvent = ((e: Event) => {
-      dispatched.push(e)
-      return origDispatch(e)
-    }) as typeof window.dispatchEvent
+    const onInvalidate = (event: Event) => dispatched.push(event)
+    window.addEventListener("billing-setup-status:invalidate", onInvalidate)
 
     const view = render(<GatewaysTab />)
 
@@ -220,16 +216,21 @@ describe("GatewaysTab", () => {
     fireEvent.change(view.getByLabelText("Gateway name"), {
       target: { value: "Test Gateway" },
     })
+    fireEvent.click(view.getByRole("combobox"))
+    fireEvent.click(await view.findByRole("option", { name: "Duitku" }))
 
     // Submit form — eden.post() is called internally; mockFetch intercepts the
     // underlying HTTP call. On success (no error), the handler calls
     // invalidateBillingSetupStatus() which dispatches our event.
     fireEvent.click(view.getByRole("button", { name: "Create gateway" }))
 
-    // Wait for the list to reappear (POST + fetchGateways completed)
-    await view.findByRole("button", { name: "Add Gateway" })
+    await waitFor(() => {
+      expect(
+        view.queryByRole("button", { name: "Create gateway" })
+      ).not.toBeInTheDocument()
+    })
 
-    window.dispatchEvent = origDispatch as typeof window.dispatchEvent
+    window.removeEventListener("billing-setup-status:invalidate", onInvalidate)
 
     const invalidateCalls = dispatched.filter(
       (e) => e.type === "billing-setup-status:invalidate"
@@ -241,11 +242,8 @@ describe("GatewaysTab", () => {
     const { calls } = mockFetch()
 
     const dispatched: Event[] = []
-    const origDispatch = window.dispatchEvent.bind(window)
-    window.dispatchEvent = ((e: Event) => {
-      dispatched.push(e)
-      return origDispatch(e)
-    }) as typeof window.dispatchEvent
+    const onInvalidate = (event: Event) => dispatched.push(event)
+    window.addEventListener("billing-setup-status:invalidate", onInvalidate)
 
     const view = render(<GatewaysTab />)
 
@@ -260,23 +258,20 @@ describe("GatewaysTab", () => {
       expect(calls.some((c) => c.url.includes("toggle"))).toBe(true)
     })
 
-    window.dispatchEvent = origDispatch as typeof window.dispatchEvent
-
-    const invalidateCalls = dispatched.filter(
-      (e) => e.type === "billing-setup-status:invalidate"
-    )
-    expect(invalidateCalls.length).toBe(1)
+    await waitFor(() => {
+      expect(
+        dispatched.filter((e) => e.type === "billing-setup-status:invalidate")
+          .length
+      ).toBe(1)
+    })
+    window.removeEventListener("billing-setup-status:invalidate", onInvalidate)
   })
-
   it("update gateway config does not dispatch invalidate event", async () => {
     const { calls } = mockFetch()
 
     const dispatched: Event[] = []
-    const origDispatch = window.dispatchEvent.bind(window)
-    window.dispatchEvent = ((e: Event) => {
-      dispatched.push(e)
-      return origDispatch(e)
-    }) as typeof window.dispatchEvent
+    const onInvalidate = (event: Event) => dispatched.push(event)
+    window.addEventListener("billing-setup-status:invalidate", onInvalidate)
 
     const view = render(<GatewaysTab />)
 
@@ -293,7 +288,7 @@ describe("GatewaysTab", () => {
     // Wait for list to return
     await view.findByRole("button", { name: "Add Gateway" })
 
-    window.dispatchEvent = origDispatch as typeof window.dispatchEvent
+    window.removeEventListener("billing-setup-status:invalidate", onInvalidate)
 
     // PUT should have been called
     expect(

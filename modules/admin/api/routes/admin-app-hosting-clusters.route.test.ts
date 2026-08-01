@@ -97,6 +97,9 @@ const mockUpdateClusterIntegrationStatus = mock(
     updatedAt: "2026-01-01T00:00:00.000Z",
   })
 )
+class MockClusterIntegrationValidationError extends Error {
+  issues: never[] = []
+}
 
 mock.module("@/modules/deploy/cluster-management.service", () => ({
   listClusters: mockListClusters,
@@ -106,6 +109,7 @@ mock.module("@/modules/deploy/cluster-management.service", () => ({
   updateClusterStatus: mockUpdateClusterStatus,
   upsertClusterIntegration: mockUpsertClusterIntegration,
   updateClusterIntegrationStatus: mockUpdateClusterIntegrationStatus,
+  ClusterIntegrationValidationError: MockClusterIntegrationValidationError,
 }))
 
 // ── Guard mock ───────────────────────────────────────
