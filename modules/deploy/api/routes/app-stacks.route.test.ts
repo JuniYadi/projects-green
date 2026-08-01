@@ -14,6 +14,10 @@ const mockPrisma = {
     findMany: mock(async () => []),
     findUnique: mock(async () => null),
   },
+  applicationDeployment: {
+    count: mock(async () => 0),
+    findMany: mock(async () => []),
+  },
 }
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
@@ -39,8 +43,13 @@ const sampleStack = {
   resourcePlanId: "payg",
   billingMode: "PAYG",
   metadataJson: null,
+  deployments: [
+    {
+      id: "deploy-1",
+      events: [{ type: "QUEUED" }, { type: "ARGOCD_SYNCED" }],
+    },
+  ],
   lastDeployedAt: new Date("2026-06-05T10:00:00.000Z"),
-  deployments: [{ id: "deploy-1" }],
 }
 
 describe("appStacksRoutes", () => {
@@ -48,8 +57,12 @@ describe("appStacksRoutes", () => {
     mockWithAuth.mockClear()
     mockPrisma.applicationStack.findMany.mockClear()
     mockPrisma.applicationStack.findUnique.mockClear()
+    mockPrisma.applicationDeployment.count.mockClear()
+    mockPrisma.applicationDeployment.findMany.mockClear()
     mockPrisma.applicationStack.findMany.mockResolvedValue([] as never)
     mockPrisma.applicationStack.findUnique.mockResolvedValue(null as never)
+    mockPrisma.applicationDeployment.count.mockResolvedValue(0 as never)
+    mockPrisma.applicationDeployment.findMany.mockResolvedValue([] as never)
   })
 
   it("returns an honest empty list when no stacks exist", async () => {
@@ -60,20 +73,28 @@ describe("appStacksRoutes", () => {
     expect(body.data).toEqual([])
   })
 
-  it("maps stacks into summary DTOs", async () => {
+  it("maps stacks into summary DTOs with current deploy step", async () => {
     mockPrisma.applicationStack.findMany.mockResolvedValueOnce([
       sampleStack,
     ] as never)
     const res = await get("/deploy/apps/")
     const body = (await res.json()) as {
-      data: Array<{ slug: string; status: string; latestDeploymentId: string }>
+      data: Array<{
+        slug: string
+        status: string
+        latestDeploymentId: string
+        currentStepLabel: string | null
+        currentStepIndex: number | null
+      }>
     }
     expect(body.data[0]?.slug).toBe("console-next-app")
     expect(body.data[0]?.status).toBe("running")
     expect(body.data[0]?.latestDeploymentId).toBe("deploy-1")
+    expect(body.data[0]?.currentStepLabel).toBe("Synced")
+    expect(body.data[0]?.currentStepIndex).toBe(10)
   })
 
-  it("returns stack overview with latest deployment status", async () => {
+  it("returns stack overview with latest deployment status and current step", async () => {
     mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
       ...sampleStack,
       deployments: [
@@ -86,6 +107,7 @@ describe("appStacksRoutes", () => {
           failureReason: null,
           startedAt: null,
           completedAt: null,
+          events: [{ type: "QUEUED" }, { type: "ARGOCD_SYNCED" }],
         },
       ],
     } as never)
@@ -94,12 +116,115 @@ describe("appStacksRoutes", () => {
     expect(res.status).toBe(200)
     const body = (await res.json()) as {
       data: {
-        stack: { slug: string }
+        stack: {
+          slug: string
+          currentStepLabel: string | null
+          currentStepIndex: number | null
+        }
         latestDeployment: { status: string } | null
       }
     }
     expect(body.data.stack.slug).toBe("console-next-app")
+    expect(body.data.stack.currentStepLabel).toBe("Synced")
+    expect(body.data.stack.currentStepIndex).toBe(10)
     expect(body.data.latestDeployment?.status).toBe("running")
+  })
+
+  it("returns paginated deployment history with bounded page size", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+      id: "stack-1",
+    } as never)
+    mockPrisma.applicationDeployment.count.mockResolvedValueOnce(3 as never)
+    mockPrisma.applicationDeployment.findMany.mockResolvedValueOnce([
+      {
+        id: "deploy-2",
+        status: "FAILED",
+        attempt: 2,
+        commitSha: "abc123",
+        failureReason: "build failed",
+        startedAt: new Date("2026-06-05T10:00:00.000Z"),
+        completedAt: new Date("2026-06-05T10:00:05.000Z"),
+      },
+    ] as never)
+
+    const res = await get(
+      "/deploy/apps/console-next-app/history?page=2&pageSize=999"
+    )
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      ok: boolean
+      data: Array<{
+        id: string
+        status: string
+        attempt: number
+        durationMs: number | null
+        commitSha: string | null
+        failureReason: string | null
+        startedAt: string | null
+        completedAt: string | null
+      }>
+      meta: {
+        page: number
+        pageSize: number
+        total: number
+        totalPages: number
+      }
+    }
+    expect(body).toEqual({
+      ok: true,
+      data: [
+        {
+          id: "deploy-2",
+          status: "failed",
+          attempt: 2,
+          durationMs: 5000,
+          commitSha: "abc123",
+          failureReason: "build failed",
+          startedAt: "2026-06-05T10:00:00.000Z",
+          completedAt: "2026-06-05T10:00:05.000Z",
+        },
+      ],
+      meta: { page: 2, pageSize: 100, total: 3, totalPages: 1 },
+    })
+    expect(mockPrisma.applicationStack.findUnique).toHaveBeenCalledWith({
+      where: {
+        organizationId_slug: {
+          organizationId: "org-1",
+          slug: "console-next-app",
+        },
+      },
+      select: { id: true },
+    })
+    expect(mockPrisma.applicationDeployment.count).toHaveBeenCalledWith({
+      where: { stackId: "stack-1" },
+    })
+    expect(mockPrisma.applicationDeployment.findMany).toHaveBeenCalledWith({
+      where: { stackId: "stack-1" },
+      orderBy: { createdAt: "desc" },
+      skip: 100,
+      take: 100,
+    })
+  })
+
+  it("returns 404 for history on an unknown stack", async () => {
+    const res = await get("/deploy/apps/missing/history")
+    expect(res.status).toBe(404)
+    expect(await res.json()).toMatchObject({
+      ok: false,
+      error: "NOT_FOUND",
+      message: "Application not found",
+    })
+  })
+
+  it("rejects unauthenticated history requests", async () => {
+    mockWithAuth.mockResolvedValueOnce({ user: null } as never)
+    const res = await get("/deploy/apps/console-next-app/history")
+    expect(res.status).toBe(401)
+    expect(await res.json()).toMatchObject({
+      ok: false,
+      error: "UNAUTHORIZED",
+      message: "Unauthorized",
+    })
   })
 
   it("returns 404 for an unknown stack", async () => {
