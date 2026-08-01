@@ -23,10 +23,12 @@ import {
   getCredentialTypeDef,
 } from "@/modules/credentials/credential-type-registry"
 
-const TYPE_OPTIONS = Object.keys(credentialTypeRegistry).map((key) => ({
-  value: key as AppCredentialType,
-  label: getCredentialTypeDef(key as AppCredentialType).label,
-}))
+const TYPE_OPTIONS = Object.keys(credentialTypeRegistry)
+  .filter((key) => key !== "GITHUB_APP") // system-managed, created automatically on GitHub App install
+  .map((key) => ({
+    value: key as AppCredentialType,
+    label: getCredentialTypeDef(key as AppCredentialType).label,
+  }))
 
 // ─── Secrets field definitions per type ─────────────────────────────────────
 
