@@ -6,9 +6,7 @@ import {
   RocketLaunch,
   ListMagnifyingGlass,
   ChartLine,
-  ArrowSquareOut,
 } from "@phosphor-icons/react"
-
 import { eden } from "@/lib/eden"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
@@ -25,7 +23,22 @@ const STATUS_TONE: Record<string, string> = {
   queued: "border-amber-500/20 bg-amber-500/5 text-amber-400",
   idle: "border-border bg-muted/30 text-muted-foreground",
 }
-
+const formatRelativeTime = (timestamp: string, locale: string) => {
+  const elapsedMs = new Date(timestamp).getTime() - Date.now()
+  const absoluteMs = Math.abs(elapsedMs)
+  const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [
+    ["day", 86_400_000],
+    ["hour", 3_600_000],
+    ["minute", 60_000],
+    ["second", 1_000],
+  ]
+  const [unit, unitMs] =
+    units.find(([, value]) => absoluteMs >= value) ?? units[units.length - 1]
+  return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(
+    Math.round(elapsedMs / unitMs),
+    unit
+  )
+}
 export default function ApplicationsPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
@@ -135,6 +148,7 @@ export default function ApplicationsPage() {
                   <th className="px-4 py-3 font-medium">Framework</th>
                   <th className="px-4 py-3 font-medium">Branch</th>
                   <th className="px-4 py-3 font-medium">Last Deployed</th>
+                  <th className="px-4 py-3 font-medium">Current deployment</th>
                   <th className="px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
@@ -150,9 +164,9 @@ export default function ApplicationsPage() {
                       pathname: "/console/app/metrics",
                       locale,
                     }) + `?app=${app.slug}`
-                  const eventsHref =
+                  const deploymentsHref =
                     localizePathname({
-                      pathname: "/console/app/events",
+                      pathname: "/console/app/deployments",
                       locale,
                     }) + `?app=${app.slug}`
                   const deployHref = localizePathname({
@@ -165,22 +179,7 @@ export default function ApplicationsPage() {
                       key={app.id}
                       className="border-b border-border transition-colors hover:bg-muted/20"
                     >
-                      <td className="px-4 py-3 font-medium">
-                        <div className="flex items-center gap-2">
-                          {app.name}
-                          {app.subdomain || app.customDomain ? (
-                            <a
-                              href={`https://${app.customDomain || app.subdomain}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-muted-foreground hover:text-foreground"
-                              title="Open app"
-                            >
-                              <ArrowSquareOut size={14} />
-                            </a>
-                          ) : null}
-                        </div>
-                      </td>
+                      <td className="px-4 py-3 font-medium">{app.name}</td>
                       <td className="px-4 py-3">
                         <span
                           className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${
@@ -201,6 +200,18 @@ export default function ApplicationsPage() {
                           ? new Date(app.lastDeployedAt).toLocaleDateString()
                           : "Never"}
                       </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {app.currentStepLabel
+                          ? `${app.currentStepLabel} — ${
+                              app.currentStepStartedAt
+                                ? formatRelativeTime(
+                                    app.currentStepStartedAt,
+                                    locale
+                                  )
+                                : "—"
+                            }`
+                          : "—"}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
                           <Button asChild variant="outline" size="xs">
@@ -216,9 +227,9 @@ export default function ApplicationsPage() {
                             </Link>
                           </Button>
                           <Button asChild variant="outline" size="xs">
-                            <Link href={eventsHref}>
+                            <Link href={deploymentsHref}>
                               <ListMagnifyingGlass size={14} className="mr-1" />
-                              Events
+                              Deployments
                             </Link>
                           </Button>
                           <Button asChild variant="outline" size="xs">
