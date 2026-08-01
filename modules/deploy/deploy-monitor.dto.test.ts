@@ -7,6 +7,8 @@ import {
   toDeployEventDTOs,
   toDeployLogLines,
   toDeploymentStatusDTO,
+  deriveCurrentDeployStep,
+  toDeploymentHistoryDTO,
   toStackSummaryDTO,
 } from "./deploy-monitor.dto"
 
@@ -69,7 +71,49 @@ describe("deploy-monitor.dto", () => {
       expect(dto.attempt).toBe(1)
       expect(dto.startedAt).toBeNull()
       expect(dto.completedAt).toBeNull()
+
       expect(dto.failureReason).toBe("boom")
+    })
+  })
+  describe("deriveCurrentDeployStep", () => {
+    it("derives current label and canonical index from latest event", () => {
+      expect(
+        deriveCurrentDeployStep([{ type: "QUEUED" }, { type: "ARGOCD_SYNCED" }])
+      ).toEqual({ currentStepLabel: "Synced", currentStepIndex: 10 })
+    })
+
+    it("returns nulls when events are empty", () => {
+      expect(deriveCurrentDeployStep()).toEqual({
+        currentStepLabel: null,
+        currentStepIndex: null,
+      })
+    })
+  })
+
+  describe("toDeploymentHistoryDTO", () => {
+    it("maps deployment history fields and derives duration", () => {
+      const startedAt = new Date("2026-06-05T10:00:00.000Z")
+      const completedAt = new Date("2026-06-05T10:00:05.500Z")
+      expect(
+        toDeploymentHistoryDTO({
+          id: "deploy-1",
+          status: "RUNNING",
+          attempt: 2,
+          commitSha: "abc123",
+          failureReason: null,
+          startedAt,
+          completedAt,
+        })
+      ).toEqual({
+        id: "deploy-1",
+        status: "running",
+        attempt: 2,
+        durationMs: 5500,
+        commitSha: "abc123",
+        failureReason: null,
+        startedAt: startedAt.toISOString(),
+        completedAt: completedAt.toISOString(),
+      })
     })
   })
 
@@ -255,12 +299,15 @@ describe("deploy-monitor.dto", () => {
         metadataJson: { billingState: "PAYMENT_GRACE" },
         lastDeployedAt,
         deployments: [{ id: "deploy-9" }, { id: "deploy-8" }],
+        events: [{ type: "ARGOCD_SYNCED" }],
       })
 
       expect(dto.status).toBe("running")
       expect(dto.billingState).toBe("PAYMENT_GRACE")
       expect(dto.latestDeploymentId).toBe("deploy-9")
       expect(dto.lastDeployedAt).toBe(lastDeployedAt.toISOString())
+      expect(dto.currentStepLabel).toBe("Synced")
+      expect(dto.currentStepIndex).toBe(10)
     })
 
     it("tolerates a stack with no deployments", () => {
@@ -283,6 +330,8 @@ describe("deploy-monitor.dto", () => {
       expect(dto.billingState).toBe("ACTIVE")
       expect(dto.latestDeploymentId).toBeNull()
       expect(dto.lastDeployedAt).toBeNull()
+      expect(dto.currentStepLabel).toBeNull()
+      expect(dto.currentStepIndex).toBeNull()
     })
   })
 })
