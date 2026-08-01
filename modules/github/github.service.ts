@@ -86,6 +86,7 @@ type GithubDependencies = {
     actor: GithubActorContext
   ) => Promise<GithubInstallationRecord[]>
   createInstallationAccessToken: (installationId: number) => Promise<string>
+  invalidateInstallationAccessToken: (installationId: number) => Promise<void>
   listRepositoriesForInstallation: (
     installation: GithubInstallationRecord,
     token: string
@@ -613,6 +614,13 @@ const createDefaultDependencies = (): GithubDependencies => ({
       throw new GithubApiError("Unable to create installation access token.")
     }
   },
+  async invalidateInstallationAccessToken(installationId) {
+    try {
+      await redis.del(`github:iat:${installationId}`)
+    } catch (error) {
+      console.warn("Failed to invalidate GitHub token cache", error)
+    }
+  },
   async listRepositoriesForInstallation(installation, token) {
     const repositories: GithubRepositoryListItem[] = []
     let nextUrl: string | null =
@@ -691,18 +699,39 @@ export const createGithubRepositoryService = (
           nextCursor: null,
         }
       }
+      const listRepositoriesWithRetry = async (
+        installation: GithubInstallationRecord
+      ) => {
+        const token = await dependencies.createInstallationAccessToken(
+          installation.githubInstallationId
+        )
 
-      const repositoriesByInstallation = await Promise.all(
-        targetInstallations.map(async (installation) => {
-          const token = await dependencies.createInstallationAccessToken(
+        try {
+          return await dependencies.listRepositoriesForInstallation(
+            installation,
+            token
+          )
+        } catch (error) {
+          if (!(error instanceof GithubReconnectRequiredError)) {
+            throw error
+          }
+
+          await dependencies.invalidateInstallationAccessToken(
+            installation.githubInstallationId
+          )
+          const freshToken = await dependencies.createInstallationAccessToken(
             installation.githubInstallationId
           )
 
           return dependencies.listRepositoriesForInstallation(
             installation,
-            token
+            freshToken
           )
-        })
+        }
+      }
+
+      const repositoriesByInstallation = await Promise.all(
+        targetInstallations.map(listRepositoriesWithRetry)
       )
 
       const repositories = dedupeRepositories(

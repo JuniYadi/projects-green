@@ -441,6 +441,7 @@ describe("githubRepositoryService", () => {
     expect(invalidateInstallationAccessToken).toHaveBeenCalledWith(101)
     expect(createInstallationAccessToken).toHaveBeenNthCalledWith(1, 101)
     expect(createInstallationAccessToken).toHaveBeenNthCalledWith(2, 101)
+    expect(createInstallationAccessToken).toHaveBeenCalledTimes(2)
     expect(listRepositoriesForInstallation).toHaveBeenNthCalledWith(
       1,
       installations[0],
@@ -451,6 +452,7 @@ describe("githubRepositoryService", () => {
       installations[0],
       "fresh-token"
     )
+    expect(listRepositoriesForInstallation).toHaveBeenCalledTimes(2)
   })
 
   it("propagates reconnect error after one retry", async () => {
