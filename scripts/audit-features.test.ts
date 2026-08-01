@@ -260,7 +260,7 @@ describe("deploy.ui.operate", () => {
     const r = findRule("deploy.ui.operate").check([
       "modules/deploy/ui/operate/tab-domains.tsx",
       "modules/deploy/ui/operate/tab-env.tsx",
-      "modules/deploy/ui/operate/tab-events.tsx",
+      "modules/deploy/ui/operate/tab-metrics.tsx",
       "modules/deploy/ui/operate/tab-logs.tsx",
     ])
     expect(r.codeStatus).toBe("implemented")
