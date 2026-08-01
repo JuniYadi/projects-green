@@ -775,8 +775,8 @@
     "semantic_hash": "08932e277c1833abbce7a0f4cacdfb12"
   },
   "app/[lang]/portal/app/page.tsx": {
-    "mtime": 1785570445.9379115,
-    "ast_hash": "0b2c6663c8f3dc5ccf115fbf0656c6f5",
+    "mtime": 1785574088.0035062,
+    "ast_hash": "ec19ffae4cdd16576441f6e8b46fcb4f",
     "semantic_hash": ""
   },
   "app/[lang]/portal/app/settings/page.tsx": {
@@ -1580,13 +1580,13 @@
     "semantic_hash": "42e0ef2d81db794069e1090647548f48"
   },
   "components/app-sidebar.test.tsx": {
-    "mtime": 1785414555.9089046,
-    "ast_hash": "928c1e02a46ae3cd04d5d2167efcbd46",
+    "mtime": 1785575005.164811,
+    "ast_hash": "81abeee08e76196709806da1e67a6044",
     "semantic_hash": ""
   },
   "components/app-sidebar.tsx": {
-    "mtime": 1785414555.9092379,
-    "ast_hash": "d4e75005e13de2a2a1faa52253144bb5",
+    "mtime": 1785575022.0283642,
+    "ast_hash": "4dee7d8cb473f62fe9251c8c2bf3a0a4",
     "semantic_hash": ""
   },
   "components/auth-page-shell.test.tsx": {
@@ -2895,8 +2895,8 @@
     "semantic_hash": ""
   },
   "modules/admin/api/admin.schema.ts": {
-    "mtime": 1785571150.2218843,
-    "ast_hash": "4ace3ebc676166616c32d777d09b1ed1",
+    "mtime": 1785574049.992056,
+    "ast_hash": "8d07f6363113c4eecf16a644cf9a527d",
     "semantic_hash": ""
   },
   "modules/admin/api/routes/admin-invitations.route.ts": {
@@ -7190,13 +7190,13 @@
     "semantic_hash": ""
   },
   "app/[lang]/portal/app/clusters/[clusterId]/cluster-detail.test.tsx": {
-    "mtime": 1785571876.3938313,
-    "ast_hash": "2df147da9e7b501ba6fbd85fcdad1663",
+    "mtime": 1785574093.6454995,
+    "ast_hash": "ab18c7b97fb398fbba471323e276dd17",
     "semantic_hash": ""
   },
   "app/[lang]/portal/app/clusters/[clusterId]/cluster-detail.tsx": {
-    "mtime": 1785572182.7508855,
-    "ast_hash": "e02ca5fc63c742d924344e9e1f28ebee",
+    "mtime": 1785574093.7655463,
+    "ast_hash": "d93f17273cc3cb601f696c157f30c70c",
     "semantic_hash": ""
   },
   "app/[lang]/portal/app/clusters/[clusterId]/page.tsx": {
@@ -7205,18 +7205,18 @@
     "semantic_hash": ""
   },
   "app/[lang]/portal/app/clusters/_components/cluster-create-dialog.tsx": {
-    "mtime": 1785570368.1499364,
-    "ast_hash": "3ad282600acd958e2fc8d5ab7c674599",
+    "mtime": 1785574093.8111494,
+    "ast_hash": "db61f6330f7e0b3235ecec108379aaf7",
     "semantic_hash": ""
   },
   "app/[lang]/portal/app/clusters/_components/cluster-list.test.tsx": {
-    "mtime": 1785570850.5538547,
-    "ast_hash": "d14563f799bf31bd2cf8e7bc1c83ce94",
+    "mtime": 1785574093.841493,
+    "ast_hash": "e6fc8a96750419d8bd1e47cf546bd847",
     "semantic_hash": ""
   },
   "app/[lang]/portal/app/clusters/_components/cluster-list.tsx": {
-    "mtime": 1785571201.8058453,
-    "ast_hash": "80ed052988513b5e809a0f6653fc0382",
+    "mtime": 1785574093.876127,
+    "ast_hash": "6ee552b2d16335067a84ffd7ea5c5bcf",
     "semantic_hash": ""
   },
   "app/[lang]/portal/app/clusters/page.tsx": {
@@ -7225,13 +7225,13 @@
     "semantic_hash": ""
   },
   "modules/admin/api/routes/admin-app-hosting-clusters.route.test.ts": {
-    "mtime": 1785571246.1738482,
-    "ast_hash": "bb97c3f6a10feb576a2c992b1917a11e",
+    "mtime": 1785574082.4419222,
+    "ast_hash": "3b8b6fc7e91e3369eba2464b874d642a",
     "semantic_hash": ""
   },
   "modules/admin/api/routes/admin-app-hosting-clusters.route.ts": {
-    "mtime": 1785572182.2388868,
-    "ast_hash": "59f2d0ae9ead327860819cfc02295b7a",
+    "mtime": 1785574066.6198916,
+    "ast_hash": "6e3513962361bd20529724e7597108dc",
     "semantic_hash": ""
   },
   "modules/deploy/cluster-management.dto.ts": {
@@ -7240,8 +7240,8 @@
     "semantic_hash": ""
   },
   "modules/deploy/cluster-management.service.test.ts": {
-    "mtime": 1785571523.8738353,
-    "ast_hash": "de952c60db95f123837195157c3b6395",
+    "mtime": 1785574076.849377,
+    "ast_hash": "2c944757296e8af79468e2fd54856b60",
     "semantic_hash": ""
   },
   "modules/deploy/cluster-management.service.ts": {

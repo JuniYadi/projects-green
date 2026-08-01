@@ -7195,8 +7195,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/portal/app/clusters/[clusterId]/cluster-detail.tsx": {
-    "mtime": 1785571981.821828,
-    "ast_hash": "5fa0d913f66ba79f7499c55ad73dded2",
+    "mtime": 1785572182.7508855,
+    "ast_hash": "e02ca5fc63c742d924344e9e1f28ebee",
     "semantic_hash": ""
   },
   "app/[lang]/portal/app/clusters/[clusterId]/page.tsx": {
@@ -7230,8 +7230,8 @@
     "semantic_hash": ""
   },
   "modules/admin/api/routes/admin-app-hosting-clusters.route.ts": {
-    "mtime": 1785570596.589907,
-    "ast_hash": "6c310463f666dd9e87f36b3da52efbf4",
+    "mtime": 1785572182.2388868,
+    "ast_hash": "59f2d0ae9ead327860819cfc02295b7a",
     "semantic_hash": ""
   },
   "modules/deploy/cluster-management.dto.ts": {
