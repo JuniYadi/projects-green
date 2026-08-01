@@ -58,11 +58,30 @@ const mockPrisma = {
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
+const mockRollbackDeployment = mock(async () => ({
+  deploymentId: "deployment-rollback",
+  status: "QUEUED" as const,
+}))
+
+mock.module("../../deploy-rollback.service", () => ({
+  rollbackDeployment: mockRollbackDeployment,
+  getRollbackOptions: mock(async () => []),
+}))
+
 const { deployTriggerRoutes } = await import("./deploy-trigger.route")
 
 const post = (body: unknown = {}) =>
   deployTriggerRoutes.handle(
     new Request("http://localhost/deploy/trigger/stack-1", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+  )
+
+const postRollback = (body: unknown = {}) =>
+  deployTriggerRoutes.handle(
+    new Request("http://localhost/deploy/rollback/stack-1", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -87,6 +106,7 @@ const resetMocks = () => {
   mockPrisma.applicationDeployEvent.create.mockClear()
   mockPrisma.applicationDeploymentLog.create.mockClear()
   mockPrisma.billingAccount.findUnique.mockClear()
+  mockRollbackDeployment.mockClear()
   setStack({ ...stackRecord })
   mockPrisma.applicationDeployment.count.mockResolvedValue(1 as never)
   mockPrisma.applicationDeployment.create.mockResolvedValue({
@@ -228,5 +248,25 @@ describe("POST /deploy/trigger/:stackId", () => {
 
     expect(response.status).toBe(409)
     expect(mockPrisma.applicationDeployment.create).not.toHaveBeenCalled()
+  })
+})
+
+describe("POST /deploy/rollback/:stackId", () => {
+  beforeEach(resetMocks)
+
+  it("returns 409 when deployment is already in progress", async () => {
+    setStack({ ...stackRecord, status: "BUILDING" })
+    mockRollbackDeployment.mockRejectedValueOnce(
+      new Error("A deployment is already in progress for this stack")
+    )
+
+    const response = await postRollback({ targetDeploymentId: "dep-old" })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: "STACK_DEPLOY_IN_PROGRESS",
+      message: "A deployment is already in progress for this stack",
+    })
   })
 })

@@ -252,12 +252,27 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
         }
       }
 
-      const result = await rollbackDeployment({
-        stackId: params.stackId,
-        targetDeploymentId: body.targetDeploymentId,
-      })
+      try {
+        const result = await rollbackDeployment({
+          stackId: params.stackId,
+          targetDeploymentId: body.targetDeploymentId,
+        })
 
-      return { ok: true, data: result }
+        return { ok: true, data: result }
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message === "A deployment is already in progress for this stack"
+        ) {
+          set.status = 409
+          return {
+            ok: false,
+            error: "STACK_DEPLOY_IN_PROGRESS",
+            message: error.message,
+          }
+        }
+        throw error
+      }
     },
     {
       params: t.Object({
