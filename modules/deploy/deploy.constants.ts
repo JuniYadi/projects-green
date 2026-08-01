@@ -84,6 +84,7 @@ export const DEFAULT_MONITOR_STATE: DeployMonitorState = {
   isActive: false,
   shouldFail: false,
   failureReason: null,
+  liveDomain: undefined,
 }
 
 export const DEPLOY_STATUS_LABELS: Record<DeployStatus, string> = {
@@ -95,6 +96,7 @@ export const DEPLOY_STATUS_LABELS: Record<DeployStatus, string> = {
   failed: "Failed",
 }
 
+// Wizard status polling stops when monitor is inactive or leaves monitor step.
 export const MONITOR_POLL_INTERVAL_MS = 900
 
 export const DEPLOY_TEMPLATES: Array<{
