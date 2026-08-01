@@ -9,26 +9,41 @@ type FetchCalls = Array<{
   json: () => Promise<unknown>
 }>
 
+type MonitoringPayload = {
+  data: unknown
+  events?: unknown[]
+}
+
 const buildJson =
-  (data: unknown, ok = true) =>
+  (data: unknown, events?: unknown[], ok = true) =>
   () =>
-    Promise.resolve({ ok, data })
+    Promise.resolve({ ok, data, ...(events ? { events } : {}) })
 
 const buildResponse = (
   url: string,
   data: unknown,
+  events?: unknown[],
   ok = true
 ): FetchCalls[number] => ({
   url,
   ok,
-  json: buildJson(data, ok),
+  json: buildJson(data, events, ok),
 })
 
 const mockFetch = (dataByUrl?: (url: string) => unknown) => {
   return mock(async (input: RequestInfo | URL) => {
     const url = typeof input === "string" ? input : input.toString()
-    const data = dataByUrl ? dataByUrl(url) : null
-    return buildResponse(url, data) as unknown as Response
+    const payload = dataByUrl ? dataByUrl(url) : null
+    if (
+      payload &&
+      typeof payload === "object" &&
+      "data" in payload &&
+      "events" in payload
+    ) {
+      const { data, events } = payload as MonitoringPayload
+      return buildResponse(url, data, events) as unknown as Response
+    }
+    return buildResponse(url, payload) as unknown as Response
   }) as unknown as typeof globalThis.fetch
 }
 
@@ -97,15 +112,18 @@ describe("DeployStepTimeline", () => {
           completedAt: null,
         }
       }
-      return [
-        {
-          id: "evt-1",
-          type: "DEPLOY_COMPLETED",
-          label: "Deploy completed",
-          message: null,
-          createdAt: "2026-07-29T00:00:00.000Z",
-        },
-      ]
+      return {
+        data: [{ id: "queued" }],
+        events: [
+          {
+            id: "evt-1",
+            type: "BUILD_STARTED",
+            label: "Build started",
+            message: null,
+            createdAt: "2026-07-29T00:00:00.000Z",
+          },
+        ],
+      }
     })
 
     const view = render(
@@ -115,7 +133,148 @@ describe("DeployStepTimeline", () => {
     await waitFor(() => {
       expect(view.getAllByText("Failed").length).toBeGreaterThanOrEqual(1)
     })
-    expect(view.getAllByText("Skipped").length).toBeGreaterThan(0)
+    const items = view.getAllByRole("listitem")
+    expect(items[2]).toHaveTextContent("Failed")
+    expect(items[6]).toHaveTextContent("Skipped")
+  })
+
+  it("infers runtime-only attempts from raw events", async () => {
+    globalThis.fetch = mockFetch((url) => {
+      if (url.includes("/status/")) {
+        return {
+          status: "deploying",
+          failureReason: null,
+          startedAt: null,
+          completedAt: null,
+        }
+      }
+      return {
+        data: [{ id: "queued" }],
+        events: [
+          {
+            id: "evt-1",
+            type: "GITOPS_COMMIT_CREATED",
+            label: "GitOps commit created",
+            message: null,
+            createdAt: "2026-07-29T00:00:00.000Z",
+          },
+        ],
+      }
+    })
+
+    const view = render(
+      <DeployStepTimeline deployId="deploy-1" status="deploying" />
+    )
+
+    await waitFor(() => {
+      expect(view.getAllByText("Skipped").length).toBe(8)
+    })
+  })
+
+  it("shows degraded readiness notes on steps 10 through 12", async () => {
+    globalThis.fetch = mockFetch((url) => {
+      if (url.includes("/status/")) {
+        return {
+          status: "running",
+          failureReason: null,
+          startedAt: null,
+          completedAt: null,
+        }
+      }
+      return { data: [{ id: "queued" }], events: [] }
+    })
+
+    const view = render(
+      <DeployStepTimeline deployId="deploy-1" status="running" />
+    )
+
+    for (const index of [9, 10, 11]) {
+      const trigger = view.getAllByRole("button")[index]
+      fireEvent.click(trigger!)
+      await waitFor(() => {
+        expect(view.getByText("ArgoCD health not tracked")).toBeInTheDocument()
+      })
+      fireEvent.click(trigger!)
+    }
+  })
+
+  it("does not show live URL before DEPLOY_COMPLETED", async () => {
+    globalThis.fetch = mockFetch((url) => {
+      if (url.includes("/status/")) {
+        return {
+          status: "running",
+          failureReason: null,
+          startedAt: null,
+          completedAt: null,
+        }
+      }
+      return {
+        data: [{ id: "queued" }],
+        events: [
+          {
+            id: "evt-1",
+            type: "POD_READY",
+            label: "Pods ready",
+            message: null,
+            createdAt: "2026-07-29T00:00:00.000Z",
+          },
+        ],
+      }
+    })
+
+    const view = render(
+      <DeployStepTimeline
+        deployId="deploy-1"
+        status="running"
+        liveDomain="myapp.pfnapp.dev"
+      />
+    )
+
+    await waitFor(() => expect(view.getAllByRole("listitem")).toHaveLength(13))
+    expect(view.queryByText("Open live deployment →")).not.toBeInTheDocument()
+  })
+
+  it("shows live domain link after DEPLOY_COMPLETED", async () => {
+    globalThis.fetch = mockFetch((url) => {
+      if (url.includes("/status/")) {
+        return {
+          status: "running",
+          failureReason: null,
+          startedAt: "2026-07-29T00:00:00.000Z",
+          completedAt: null,
+        }
+      }
+      return {
+        data: [{ id: "queued" }],
+        events: [
+          {
+            id: "evt-1",
+            type: "DEPLOY_COMPLETED",
+            label: "Deploy completed",
+            message: null,
+            createdAt: "2026-07-29T00:00:00.000Z",
+          },
+        ],
+      }
+    })
+
+    const view = render(
+      <DeployStepTimeline
+        deployId="deploy-1"
+        status="running"
+        liveDomain="myapp.pfnapp.dev"
+      />
+    )
+
+    await waitFor(() => {
+      expect(view.getByText("Open live deployment →")).toBeInTheDocument()
+    })
+    expect(
+      view
+        .getByText("Open live deployment →")
+        .closest("a")
+        ?.getAttribute("href")
+    ).toBe("https://myapp.pfnapp.dev")
   })
 
   it("shows retry CTA on failed step when onRetry provided", async () => {
@@ -172,15 +331,18 @@ describe("DeployStepTimeline", () => {
           completedAt: null,
         }
       }
-      return [
-        {
-          id: "evt-1",
-          type: "DEPLOY_COMPLETED",
-          label: "Deploy completed",
-          message: null,
-          createdAt: "2026-07-29T00:00:00.000Z",
-        },
-      ]
+      return {
+        data: [{ id: "queued" }],
+        events: [
+          {
+            id: "evt-1",
+            type: "DEPLOY_COMPLETED",
+            label: "Deploy completed",
+            message: null,
+            createdAt: "2026-07-29T00:00:00.000Z",
+          },
+        ],
+      }
     })
 
     const view = render(
