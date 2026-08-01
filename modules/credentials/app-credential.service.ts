@@ -56,6 +56,77 @@ export async function createCredential<T extends AppCredentialType>({
   })
 }
 
+// ─── Upsert GitHub App credential (auto-mirrored on install) ──────────────
+
+export async function upsertGithubAppCredential({
+  organizationId,
+  githubInstallationId,
+  accountLogin,
+  accountType,
+  targetType,
+  permissions,
+  events,
+}: {
+  organizationId: string
+  githubInstallationId: number
+  accountLogin: string
+  accountType?: string
+  targetType?: string
+  permissions: string[]
+  events: string[]
+}) {
+  const def = getCredentialTypeDef(AppCredentialType.GITHUB_APP)
+
+  const parsedMetadata = def.metadataSchema.parse({
+    githubInstallationId,
+    accountLogin,
+    accountType,
+    targetType,
+    permissions,
+    events,
+  })
+  const parsedSecrets = def.secretsSchema.parse({})
+
+  const encrypted = encrypt(JSON.stringify(parsedSecrets), getEncryptionKey())
+  const maskedPreview = buildMaskedPreview(
+    AppCredentialType.GITHUB_APP,
+    parsedSecrets
+  )
+
+  return prisma.appCredential.upsert({
+    where: {
+      organizationId_type_name: {
+        organizationId,
+        type: AppCredentialType.GITHUB_APP,
+        name: accountLogin,
+      },
+    },
+    create: {
+      organizationId,
+      type: AppCredentialType.GITHUB_APP,
+      name: accountLogin,
+      metadata: parsedMetadata,
+      encryptedJSON: serializeEncryptedField(encrypted),
+      maskedPreview,
+    },
+    update: {
+      metadata: parsedMetadata,
+      encryptedJSON: serializeEncryptedField(encrypted),
+      maskedPreview,
+    },
+    select: {
+      id: true,
+      type: true,
+      name: true,
+      metadata: true,
+      maskedPreview: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  })
+}
+
 // ─── List ─────────────────────────────────────────────────────────────────
 
 export async function listCredentials(
