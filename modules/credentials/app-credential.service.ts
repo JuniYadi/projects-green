@@ -11,6 +11,7 @@ import {
   getCredentialTypeDef,
   buildMaskedPreview,
 } from "./credential-type-registry"
+import { githubAppMetadataSchema } from "./types/github-app"
 
 // ─── Create ────────────────────────────────────────────────────────────────
 
@@ -146,6 +147,42 @@ export async function listCredentials(
       createdAt: true,
       updatedAt: true,
     },
+  })
+}
+
+export type GithubAppAccountDTO = {
+  id: string
+  githubInstallationId: number
+  accountLogin: string
+  accountType: string | null
+  targetType: string | null
+  installedAt: string
+}
+
+export async function listActiveGithubAppAccounts(
+  organizationId: string
+): Promise<GithubAppAccountDTO[]> {
+  const credentials = await listCredentials(
+    organizationId,
+    AppCredentialType.GITHUB_APP
+  )
+
+  return credentials.flatMap((credential) => {
+    if (credential.status !== AppCredentialStatus.ACTIVE) return []
+
+    const parsed = githubAppMetadataSchema.safeParse(credential.metadata)
+    if (!parsed.success) return []
+
+    return [
+      {
+        id: credential.id,
+        githubInstallationId: parsed.data.githubInstallationId,
+        accountLogin: parsed.data.accountLogin,
+        accountType: parsed.data.accountType ?? null,
+        targetType: parsed.data.targetType ?? null,
+        installedAt: credential.createdAt.toISOString(),
+      },
+    ]
   })
 }
 
