@@ -44,11 +44,6 @@ export function ResultPanel({
         <p className="text-xs text-emerald-700">
           Attempt {attempt} finished successfully. Your app is ready to visit.
         </p>
-        <Button asChild>
-          <a href="#" aria-label="Visit App">
-            Visit App
-          </a>
-        </Button>
       </div>
     )
   }
