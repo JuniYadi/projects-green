@@ -76,16 +76,29 @@ describe("deploy-monitor.dto", () => {
     })
   })
   describe("deriveCurrentDeployStep", () => {
-    it("derives current label and canonical index from latest event", () => {
-      expect(
-        deriveCurrentDeployStep([{ type: "QUEUED" }, { type: "ARGOCD_SYNCED" }])
-      ).toEqual({ currentStepLabel: "Synced", currentStepIndex: 10 })
+    it("derives current label, index, and startedAt from latest event", () => {
+      const events: Array<{
+        type: "QUEUED" | "ARGOCD_SYNCED"
+        createdAt: Date
+      }> = [
+        { type: "QUEUED", createdAt: new Date("2026-06-05T10:00:00.000Z") },
+        {
+          type: "ARGOCD_SYNCED",
+          createdAt: new Date("2026-06-05T10:05:00.000Z"),
+        },
+      ]
+      expect(deriveCurrentDeployStep(events)).toEqual({
+        currentStepLabel: "Synced",
+        currentStepIndex: 10,
+        currentStepStartedAt: "2026-06-05T10:05:00.000Z",
+      })
     })
 
     it("returns nulls when events are empty", () => {
       expect(deriveCurrentDeployStep([])).toEqual({
         currentStepLabel: null,
         currentStepIndex: null,
+        currentStepStartedAt: null,
       })
     })
   })
@@ -113,6 +126,57 @@ describe("deploy-monitor.dto", () => {
         failureReason: null,
         startedAt: startedAt.toISOString(),
         completedAt: completedAt.toISOString(),
+      })
+    })
+
+    it("derives active duration with a fixed injected now", () => {
+      const startedAt = new Date("2026-06-05T10:00:00.000Z")
+      const now = new Date("2026-06-05T10:00:10.000Z")
+      expect(
+        toDeploymentHistoryDTO(
+          {
+            id: "deploy-1",
+            status: "RUNNING",
+            attempt: 1,
+            commitSha: null,
+            failureReason: null,
+            startedAt,
+            completedAt: null,
+          },
+          now
+        )
+      ).toEqual({
+        id: "deploy-1",
+        status: "running",
+        attempt: 1,
+        durationMs: 10000,
+        commitSha: null,
+        failureReason: null,
+        startedAt: startedAt.toISOString(),
+        completedAt: null,
+      })
+    })
+
+    it("returns null duration when startedAt is absent", () => {
+      expect(
+        toDeploymentHistoryDTO({
+          id: "deploy-2",
+          status: "QUEUED",
+          attempt: 1,
+          commitSha: null,
+          failureReason: null,
+          startedAt: null as unknown as Date,
+          completedAt: null as unknown as Date,
+        })
+      ).toEqual({
+        id: "deploy-2",
+        status: "queued",
+        attempt: 1,
+        durationMs: null,
+        commitSha: null,
+        failureReason: null,
+        startedAt: null,
+        completedAt: null,
       })
     })
   })
@@ -299,7 +363,7 @@ describe("deploy-monitor.dto", () => {
         metadataJson: { billingState: "PAYMENT_GRACE" },
         lastDeployedAt,
         deployments: [{ id: "deploy-9" }, { id: "deploy-8" }],
-        events: [{ type: "ARGOCD_SYNCED" }],
+        events: [{ type: "ARGOCD_SYNCED", createdAt: null as unknown as Date }],
       })
 
       expect(dto.status).toBe("running")
@@ -308,6 +372,36 @@ describe("deploy-monitor.dto", () => {
       expect(dto.lastDeployedAt).toBe(lastDeployedAt.toISOString())
       expect(dto.currentStepLabel).toBe("Synced")
       expect(dto.currentStepIndex).toBe(10)
+      expect(dto.currentStepStartedAt).toBeNull()
+    })
+
+    it("includes currentStepStartedAt from latest event createdAt", () => {
+      const lastDeployedAt = new Date("2026-06-05T10:00:00.000Z")
+      const dto = toStackSummaryDTO({
+        id: "stack-3",
+        name: "with-started-at",
+        slug: "with-started-at",
+        status: "RUNNING",
+        framework: "Next.js",
+        branchName: "main",
+        subdomain: "with-started-at.pfn.app",
+        customDomain: null,
+        resourcePlanId: "payg",
+        billingMode: "PAYG",
+        metadataJson: null,
+        lastDeployedAt,
+        events: [
+          { type: "QUEUED", createdAt: new Date("2026-06-05T09:00:00.000Z") },
+          {
+            type: "DEPLOY_COMPLETED",
+            createdAt: new Date("2026-06-05T09:30:00.000Z"),
+          },
+        ],
+      })
+
+      expect(dto.currentStepLabel).toBe("Deploy completed")
+      expect(dto.currentStepIndex).toBe(12)
+      expect(dto.currentStepStartedAt).toBe("2026-06-05T09:30:00.000Z")
     })
 
     it("tolerates a stack with no deployments", () => {
@@ -332,6 +426,7 @@ describe("deploy-monitor.dto", () => {
       expect(dto.lastDeployedAt).toBeNull()
       expect(dto.currentStepLabel).toBeNull()
       expect(dto.currentStepIndex).toBeNull()
+      expect(dto.currentStepStartedAt).toBeNull()
     })
   })
 })
