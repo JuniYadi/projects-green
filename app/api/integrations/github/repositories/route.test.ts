@@ -94,6 +94,7 @@ mock.module("@/modules/github/github.service", () => {
   return {
     GithubIntegrationDisabledError: MockGithubIntegrationDisabledError,
     GithubReconnectRequiredError: MockGithubReconnectRequiredError,
+    GithubApiError: MockGithubApiError,
     createGithubService: mockCreateGithubService,
   }
 })
@@ -295,5 +296,52 @@ describe("GET /api/integrations/github/repositories", () => {
     expect(body.ok).toBe(false)
     expect(body.error).toBe("GITHUB_RECONNECT_REQUIRED")
     expect(body.message).toContain("Reconnect GitHub")
+  })
+  it("maps a raw GitHub 404 to a 409 reconnect-required response", async () => {
+    mockListRepositoriesForActor.mockImplementation(async () => {
+      throw new MockGithubApiError("GitHub API request failed.", 404)
+    })
+
+    const route =
+      await import("@/app/api/integrations/github/repositories/route")
+    const response = await route.GET(
+      new NextRequest(
+        "http://localhost/api/integrations/github/repositories?limit=100"
+      )
+    )
+    const body = (await response.json()) as Record<string, unknown>
+
+    expect(response.status).toBe(409)
+    expect(body).toEqual({
+      ok: false,
+      error: "GITHUB_RECONNECT_REQUIRED",
+      message:
+        "GitHub access expired or was revoked. Reconnect GitHub to continue.",
+    })
+    expect(body).not.toHaveProperty("token")
+  })
+
+  it("maps other GitHub API failures to a safe 502 response", async () => {
+    mockListRepositoriesForActor.mockImplementation(async () => {
+      throw new MockGithubApiError("provider body must stay private", 500)
+    })
+
+    const route =
+      await import("@/app/api/integrations/github/repositories/route")
+    const response = await route.GET(
+      new NextRequest(
+        "http://localhost/api/integrations/github/repositories?limit=100"
+      )
+    )
+    const body = (await response.json()) as Record<string, unknown>
+
+    expect(response.status).toBe(502)
+    expect(body).toEqual({
+      ok: false,
+      error: "GITHUB_REPOSITORIES_UNAVAILABLE",
+      message:
+        "GitHub repository access is temporarily unavailable. Try again later.",
+    })
+    expect(body).not.toHaveProperty("token")
   })
 })
