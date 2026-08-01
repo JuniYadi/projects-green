@@ -1,9 +1,18 @@
 import { Prisma, type AppHostingClusterIntegrationType } from "@prisma/client"
+import { z } from "zod"
+
 import { prisma } from "@/lib/prisma"
 import {
+  decryptClusterIntegrationSecrets,
   encryptClusterIntegrationSecrets,
   maskClusterIntegrationSecret,
 } from "@/modules/deploy/cluster-integration.service"
+import {
+  clusterMetadataSchema,
+  integrationMetaJsonSchemas,
+  integrationSecretPatchSchemas,
+  integrationSecretSchemas,
+} from "@/modules/deploy/cluster-integration.schema"
 import { toClusterDTO } from "@/modules/deploy/cluster-management.dto"
 import type { ClusterAdminDTO } from "@/modules/deploy/cluster-management.dto"
 
@@ -29,6 +38,71 @@ export type UpdateClusterInput = {
 export type UpsertIntegrationInput = {
   metaJson?: Record<string, unknown>
   secrets?: Record<string, unknown>
+}
+
+export class ClusterIntegrationValidationError extends Error {
+  readonly issues: z.ZodIssue[]
+
+  constructor(issues: z.ZodIssue[]) {
+    super("Cluster integration validation failed")
+    this.name = "ClusterIntegrationValidationError"
+    this.issues = issues
+  }
+}
+
+function validateClusterMetadata(
+  metadata: Record<string, unknown> | undefined
+) {
+  const parsed = clusterMetadataSchema.safeParse(metadata ?? {})
+  if (!parsed.success) {
+    throw new ClusterIntegrationValidationError(parsed.error.issues)
+  }
+  return parsed.data
+}
+
+function validateIntegrationConfig(
+  type: AppHostingClusterIntegrationType,
+  metadata: Record<string, unknown> | undefined,
+  secrets: Record<string, unknown>,
+  existingSecrets: Record<string, unknown>
+) {
+  const metadataResult = integrationMetaJsonSchemas[type].safeParse(
+    metadata ?? {}
+  )
+  const secretPatchResult =
+    integrationSecretPatchSchemas[type].safeParse(secrets)
+  const issues = [
+    ...(metadataResult.success
+      ? []
+      : metadataResult.error.issues.map((issue) => ({
+          ...issue,
+          path: ["metaJson", ...issue.path],
+        }))),
+    ...(secretPatchResult.success
+      ? []
+      : secretPatchResult.error.issues.map((issue) => ({
+          ...issue,
+          path: ["secrets", ...issue.path],
+        }))),
+  ]
+  if (issues.length > 0) throw new ClusterIntegrationValidationError(issues)
+
+  const mergedSecrets = {
+    ...existingSecrets,
+    ...(secretPatchResult.data ?? {}),
+  }
+  const completeSecrets =
+    integrationSecretSchemas[type].safeParse(mergedSecrets)
+  if (!completeSecrets.success) {
+    throw new ClusterIntegrationValidationError(
+      completeSecrets.error.issues.map((issue) => ({
+        ...issue,
+        path: ["secrets", ...issue.path],
+      }))
+    )
+  }
+
+  return { metadata: metadataResult.data, secrets: completeSecrets.data }
 }
 
 // ── Helpers ──────────────────────────────────────────
@@ -90,6 +164,7 @@ export async function getClusterById(
 export async function createCluster(
   input: CreateClusterInput
 ): Promise<ClusterAdminDTO> {
+  const metadata = validateClusterMetadata(input.metadataJson)
   const existing = await prisma.appHostingCluster.findFirst({
     where: { code: input.code },
   })
@@ -111,9 +186,7 @@ export async function createCluster(
           region: input.region,
           status: input.status ?? "PLANNED",
           isDefault: true,
-          metadataJson: input.metadataJson
-            ? (input.metadataJson as Prisma.InputJsonValue)
-            : undefined,
+          metadataJson: metadata as Prisma.InputJsonValue,
         },
         include: clusterInclude,
       })
@@ -128,9 +201,7 @@ export async function createCluster(
       region: input.region,
       status: input.status ?? "PLANNED",
       isDefault: input.isDefault ?? false,
-      metadataJson: input.metadataJson
-        ? (input.metadataJson as Prisma.InputJsonValue)
-        : undefined,
+      metadataJson: metadata as Prisma.InputJsonValue,
     },
     include: clusterInclude,
   })
@@ -146,14 +217,16 @@ export async function updateCluster(
     "Cluster"
   )
 
+  const metadata =
+    input.metadataJson === undefined
+      ? undefined
+      : (validateClusterMetadata(input.metadataJson) as Prisma.InputJsonValue)
   const row = await prisma.appHostingCluster.update({
     where: { id },
     data: {
       ...(input.name !== undefined && { name: input.name }),
       ...(input.region !== undefined && { region: input.region }),
-      ...(input.metadataJson !== undefined && {
-        metadataJson: input.metadataJson as Prisma.InputJsonValue,
-      }),
+      ...(metadata !== undefined && { metadataJson: metadata }),
     },
     include: clusterInclude,
   })
@@ -231,33 +304,40 @@ export async function upsertClusterIntegration(
     "Cluster"
   )
 
-  let secretCiphertext: string | null = null
-  let secretPreview: string | null = null
-
-  if (input.secrets && Object.keys(input.secrets).length > 0) {
-    secretCiphertext = encryptClusterIntegrationSecrets(input.secrets)
-    secretPreview = maskClusterIntegrationSecret(input.secrets)
-  }
+  const existing = await prisma.appHostingClusterIntegration.findUnique({
+    where: { clusterId_type: { clusterId, type } },
+  })
+  const existingSecrets = existing
+    ? decryptClusterIntegrationSecrets(
+        existing.secretCiphertext,
+        existing.keyVersion
+      )
+    : {}
+  const validated = validateIntegrationConfig(
+    type,
+    input.metaJson,
+    input.secrets ?? {},
+    existingSecrets
+  )
+  const secretCiphertext = encryptClusterIntegrationSecrets(validated.secrets)
+  const secretPreview = maskClusterIntegrationSecret(validated.secrets)
 
   const row = await prisma.appHostingClusterIntegration.upsert({
     where: { clusterId_type: { clusterId, type } },
     create: {
       clusterId,
       type,
-      metaJson: (input.metaJson ?? {}) as Prisma.InputJsonValue,
-      ...(secretCiphertext !== null && { secretCiphertext }),
-      ...(secretPreview !== null && { secretPreview }),
+      metaJson: validated.metadata as Prisma.InputJsonValue,
+      secretCiphertext,
+      secretPreview,
     },
     update: {
-      ...(input.metaJson !== undefined && {
-        metaJson: input.metaJson as Prisma.InputJsonValue,
-      }),
-      ...(secretCiphertext !== null && { secretCiphertext }),
-      ...(secretPreview !== null && { secretPreview }),
+      metaJson: validated.metadata as Prisma.InputJsonValue,
+      secretCiphertext,
+      secretPreview,
     },
   })
 
-  // Return secret-safe DTO (no ciphertext, no decrypted secrets)
   return {
     id: row.id,
     type: row.type,

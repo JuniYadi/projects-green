@@ -23,8 +23,8 @@ const mockPrismaAppHostingClusterIntegration = {
   upsert: mock(),
   update: mock(),
   findFirst: mock(),
+  findUnique: mock(),
 }
-
 const mockPrismaTransaction = mock(async (fn: (tx: unknown) => unknown) => {
   return fn({
     appHostingCluster: mockPrismaAppHostingCluster,
@@ -48,8 +48,10 @@ const mockEncryptClusterIntegrationSecrets = mock(
   () => "encrypted-ciphertext-abc"
 )
 const mockMaskClusterIntegrationSecret = mock(() => "abcd…efgh")
+const mockDecryptClusterIntegrationSecrets = mock(() => ({}))
 
 mock.module("@/modules/deploy/cluster-integration.service", () => ({
+  decryptClusterIntegrationSecrets: mockDecryptClusterIntegrationSecrets,
   encryptClusterIntegrationSecrets: mockEncryptClusterIntegrationSecrets,
   maskClusterIntegrationSecret: mockMaskClusterIntegrationSecret,
 }))
@@ -107,6 +109,7 @@ function fakeIntegration(overrides: Record<string, unknown> = {}) {
 describe("ClusterManagementService", () => {
   beforeEach(() => {
     mock.clearAllMocks()
+    mockPrismaAppHostingClusterIntegration.findUnique.mockResolvedValue(null)
   })
 
   // ── listClusters ─────────────────────────────────
@@ -313,12 +316,23 @@ describe("ClusterManagementService", () => {
       )
 
       const result = await upsertClusterIntegration("cl_1", "JENKINS", {
-        metaJson: { url: "https://jenkins.example.com" },
-        secrets: { apiToken: "secret123" },
+        metaJson: {
+          baseUrl: "https://jenkins.example.com",
+          dslOwner: "pfnapp",
+          dslRepo: "Jenkins",
+          gitCredentialId: "github-token",
+        },
+        secrets: {
+          username: "jenkins-user",
+          apiToken: "secret123",
+          webhookToken: "webhook123",
+        },
       })
 
       expect(mockEncryptClusterIntegrationSecrets).toHaveBeenCalledWith({
+        username: "jenkins-user",
         apiToken: "secret123",
+        webhookToken: "webhook123",
       })
       expect(result.type).toBe("JENKINS")
       // Must not expose ciphertext
@@ -333,6 +347,11 @@ describe("ClusterManagementService", () => {
       )
 
       const result = await upsertClusterIntegration("cl_1", "GITOPS", {
+        metaJson: {
+          repo: "pfnapp/argocd",
+          branch: "main",
+          basePath: "services-yaml/{slug}",
+        },
         secrets: { pat: "ghp_abc123" },
       })
 
@@ -346,7 +365,19 @@ describe("ClusterManagementService", () => {
         fakeIntegration({ secretCiphertext: "should-not-leak" })
       )
 
-      const result = await upsertClusterIntegration("cl_1", "JENKINS", {})
+      const result = await upsertClusterIntegration("cl_1", "JENKINS", {
+        metaJson: {
+          baseUrl: "https://jenkins.example.com",
+          dslOwner: "pfnapp",
+          dslRepo: "Jenkins",
+          gitCredentialId: "github-token",
+        },
+        secrets: {
+          username: "jenkins-user",
+          apiToken: "secret123",
+          webhookToken: "webhook123",
+        },
+      })
 
       expect(result).not.toHaveProperty("secretCiphertext")
     })
