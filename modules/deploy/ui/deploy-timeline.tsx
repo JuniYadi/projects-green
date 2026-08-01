@@ -22,6 +22,7 @@ import type {
   DeployLogLine,
   DeployStatus,
   DeployTimelineItem,
+  DeployStep,
 } from "@/modules/deploy/deploy.types"
 
 type DeployStepTimelineProps = {
@@ -31,6 +32,10 @@ type DeployStepTimelineProps = {
   liveDomain?: string
   /** Retry handler invoked from the failed step CTA. */
   onRetry?: () => void
+  /** Current wizard step — used for gating live URL and retry behavior. */
+  currentStep?: DeployStep
+  /** Max unlocked wizard step — used for gating live URL and retry behavior. */
+  maxUnlockedStep?: DeployStep
 }
 
 // ponytail: 120s fixed lag threshold; tune per-step if needed
@@ -154,6 +159,8 @@ export function DeployStepTimeline({
   status,
   liveDomain,
   onRetry,
+  currentStep,
+  maxUnlockedStep,
 }: DeployStepTimelineProps) {
   const [steps] = useState<DeployTimelineItem[]>(() =>
     buildDeployTimelineItems()
@@ -170,6 +177,23 @@ export function DeployStepTimeline({
 
   const effectiveStatus = fetchedStatus?.status ?? status
   const failureReason = fetchedStatus?.failureReason ?? null
+
+  // Degradation: running without ArgoCD readiness events (steps 10-12)
+  // marks the timeline as completed/degraded with an exact note.
+  const hasArgoCDReadiness =
+    effectiveStatus !== "running" ||
+    events.some((ev) => ev.type === "ARGOCD_SYNC_STARTED") ||
+    events.some((ev) => ev.type === "ARGOCD_SYNCED") ||
+    events.some((ev) => ev.type === "POD_READY")
+
+  const isDegraded = effectiveStatus === "running" && !hasArgoCDReadiness
+
+  // Live URL gating: requires running status AND the live step event.
+  const hasLiveEvent =
+    events.some((ev) => ev.type === "DEPLOY_COMPLETED") ||
+    events.some((ev) => ev.type === "POD_READY")
+  const showLiveUrl =
+    effectiveStatus === "running" && liveDomain && hasLiveEvent
   const activeIndex = activeStepIndex(effectiveStatus)
 
   const pollActive =
@@ -390,7 +414,10 @@ export function DeployStepTimeline({
         })}
       </ol>
 
-      {effectiveStatus === "running" && liveDomain && (
+      {isDegraded && (
+        <p className="text-xs text-amber-600">ArgoCD health not tracked</p>
+      )}
+      {showLiveUrl && (
         <a
           href={`https://${liveDomain}`}
           target="_blank"

@@ -1,4 +1,13 @@
 import { prisma } from "@/lib/prisma"
+/**
+ * PGREEN-072 — Deploy Monitor Service
+ *
+ * The wizard monitor uses a 900ms polling interval (MONITOR_POLL_INTERVAL_MS)
+ * for status updates during active deployments. The timeline component uses
+ * its own independent 3000ms polling interval (POLL_INTERVAL_MS) for fetching
+ * status, events, and logs. Both intervals stop polling when the deployment
+ * reaches terminal states (running, failed, idle).
+ */
 import { recordDeployEventOnce, recordDeployLog } from "./deploy-event.service"
 import { processQueuedDeployment } from "./deploy-builder.service"
 import { pollDeploymentRollout } from "./argocd-rollout.service"

@@ -97,7 +97,15 @@ describe("DeployStepTimeline", () => {
           completedAt: null,
         }
       }
-      return []
+      return [
+        {
+          id: "evt-1",
+          type: "DEPLOY_COMPLETED",
+          label: "Deploy completed",
+          message: null,
+          createdAt: "2026-07-29T00:00:00.000Z",
+        },
+      ]
     })
 
     const view = render(
@@ -120,7 +128,15 @@ describe("DeployStepTimeline", () => {
           completedAt: null,
         }
       }
-      return []
+      return [
+        {
+          id: "evt-1",
+          type: "DEPLOY_COMPLETED",
+          label: "Deploy completed",
+          message: null,
+          createdAt: "2026-07-29T00:00:00.000Z",
+        },
+      ]
     })
 
     const retry = mock()
@@ -156,7 +172,15 @@ describe("DeployStepTimeline", () => {
           completedAt: null,
         }
       }
-      return []
+      return [
+        {
+          id: "evt-1",
+          type: "DEPLOY_COMPLETED",
+          label: "Deploy completed",
+          message: null,
+          createdAt: "2026-07-29T00:00:00.000Z",
+        },
+      ]
     })
 
     const view = render(
@@ -188,7 +212,15 @@ describe("DeployStepTimeline", () => {
           },
         ]
       }
-      return []
+      return [
+        {
+          id: "evt-1",
+          type: "DEPLOY_COMPLETED",
+          label: "Deploy completed",
+          message: null,
+          createdAt: "2026-07-29T00:00:00.000Z",
+        },
+      ]
     })
 
     const view = render(
@@ -228,7 +260,15 @@ describe("DeployStepTimeline", () => {
           },
         ]
       }
-      return []
+      return [
+        {
+          id: "evt-1",
+          type: "DEPLOY_COMPLETED",
+          label: "Deploy completed",
+          message: null,
+          createdAt: "2026-07-29T00:00:00.000Z",
+        },
+      ]
     })
 
     const view = render(
@@ -265,7 +305,15 @@ describe("DeployStepTimeline", () => {
           completedAt: null,
         }
       }
-      return []
+      return [
+        {
+          id: "evt-1",
+          type: "DEPLOY_COMPLETED",
+          label: "Deploy completed",
+          message: null,
+          createdAt: "2026-07-29T00:00:00.000Z",
+        },
+      ]
     })
 
     render(<DeployStepTimeline deployId="deploy-1" status="running" />)
