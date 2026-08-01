@@ -122,10 +122,26 @@ export const deployTriggerRoutes = new Elysia({ prefix: "/deploy" })
         }
       }
 
-      const result = await triggerDeploy({
-        stackId: params.stackId,
-        triggerType: "MANUAL",
-      })
+      let result
+      try {
+        result = await triggerDeploy({
+          stackId: params.stackId,
+          triggerType: "MANUAL",
+        })
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message === "A deployment is already in progress for this stack"
+        ) {
+          set.status = 409
+          return {
+            ok: false,
+            error: "STACK_DEPLOY_IN_PROGRESS",
+            message: error.message,
+          }
+        }
+        throw error
+      }
 
       return { ok: true, data: result }
     },
