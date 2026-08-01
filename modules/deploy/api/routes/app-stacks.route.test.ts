@@ -1,4 +1,12 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  setSystemTime,
+} from "bun:test"
 
 const mockWithAuth = mock(async () => ({
   user: { id: "user-123", email: "test@example.com" },
@@ -46,7 +54,13 @@ const sampleStack = {
   deployments: [
     {
       id: "deploy-1",
-      events: [{ type: "QUEUED" }, { type: "ARGOCD_SYNCED" }],
+      events: [
+        { type: "QUEUED", createdAt: new Date("2026-06-05T09:00:00.000Z") },
+        {
+          type: "ARGOCD_SYNCED",
+          createdAt: new Date("2026-06-05T09:10:00.000Z"),
+        },
+      ],
     },
   ],
   lastDeployedAt: new Date("2026-06-05T10:00:00.000Z"),
@@ -63,6 +77,10 @@ describe("appStacksRoutes", () => {
     mockPrisma.applicationStack.findUnique.mockResolvedValue(null as never)
     mockPrisma.applicationDeployment.count.mockResolvedValue(0 as never)
     mockPrisma.applicationDeployment.findMany.mockResolvedValue([] as never)
+  })
+
+  afterEach(() => {
+    setSystemTime()
   })
 
   it("returns an honest empty list when no stacks exist", async () => {
@@ -85,6 +103,7 @@ describe("appStacksRoutes", () => {
         latestDeploymentId: string
         currentStepLabel: string | null
         currentStepIndex: number | null
+        currentStepStartedAt: string | null
       }>
     }
     expect(body.data[0]?.slug).toBe("console-next-app")
@@ -92,6 +111,145 @@ describe("appStacksRoutes", () => {
     expect(body.data[0]?.latestDeploymentId).toBe("deploy-1")
     expect(body.data[0]?.currentStepLabel).toBe("Synced")
     expect(body.data[0]?.currentStepIndex).toBe(10)
+    expect(body.data[0]?.currentStepStartedAt).toBe("2026-06-05T09:10:00.000Z")
+  })
+
+  it("includes currentStepStartedAt from latest event createdAt in list", async () => {
+    mockPrisma.applicationStack.findMany.mockResolvedValueOnce([
+      {
+        ...sampleStack,
+        deployments: [
+          {
+            id: "deploy-1",
+            events: [
+              {
+                type: "QUEUED",
+                createdAt: new Date("2026-06-05T09:00:00.000Z"),
+              },
+              {
+                type: "DEPLOY_COMPLETED",
+                createdAt: new Date("2026-06-05T09:30:00.000Z"),
+              },
+            ],
+          },
+        ],
+      } as never,
+    ])
+
+    const res = await get("/deploy/apps/")
+    const body = (await res.json()) as {
+      data: Array<{
+        slug: string
+        currentStepLabel: string | null
+        currentStepIndex: number | null
+        currentStepStartedAt: string | null
+      }>
+    }
+    expect(body.data[0]?.currentStepLabel).toBe("Deploy completed")
+    expect(body.data[0]?.currentStepIndex).toBe(12)
+    expect(body.data[0]?.currentStepStartedAt).toBe("2026-06-05T09:30:00.000Z")
+    expect(mockPrisma.applicationStack.findMany).toHaveBeenCalledWith({
+      where: { organizationId: "org-1" },
+      orderBy: { updatedAt: "desc" },
+      include: {
+        deployments: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: {
+            createdAt: true,
+            id: true,
+            events: {
+              orderBy: { createdAt: "asc" },
+              select: { type: true, createdAt: true },
+            },
+          },
+        },
+      },
+    })
+  })
+
+  it("returns null current-step fields when latest deployment has no events", async () => {
+    mockPrisma.applicationStack.findMany.mockResolvedValueOnce([
+      {
+        ...sampleStack,
+        deployments: [{ id: "deploy-1", events: [] }],
+      },
+    ] as never)
+
+    const res = await get("/deploy/apps/")
+    const body = (await res.json()) as {
+      data: Array<{
+        currentStepLabel: string | null
+        currentStepIndex: number | null
+        currentStepStartedAt: string | null
+      }>
+    }
+    expect(body.data[0]).toMatchObject({
+      currentStepLabel: null,
+      currentStepIndex: null,
+      currentStepStartedAt: null,
+    })
+  })
+
+  it("uses latest event timestamp for detail current step", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+      ...sampleStack,
+      deployments: [
+        {
+          id: "deploy-1",
+          status: "RUNNING",
+          attempt: 1,
+          manifestPushed: true,
+          argocdSynced: true,
+          failureReason: null,
+          startedAt: null,
+          completedAt: null,
+          events: [
+            { type: "QUEUED", createdAt: new Date("2026-06-05T09:00:00.000Z") },
+            {
+              type: "ARGOCD_SYNCED",
+              createdAt: new Date("2026-06-05T09:10:00.000Z"),
+            },
+          ],
+        },
+      ],
+    } as never)
+
+    const res = await get("/deploy/apps/console-next-app")
+    const body = (await res.json()) as {
+      data: { stack: { currentStepStartedAt: string | null } }
+    }
+    expect(body.data.stack.currentStepStartedAt).toBe(
+      "2026-06-05T09:10:00.000Z"
+    )
+  })
+
+  it("calculates active duration with a fixed current time", async () => {
+    setSystemTime(new Date("2026-06-05T10:00:10.000Z"))
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+      id: "stack-1",
+    } as never)
+    mockPrisma.applicationDeployment.count.mockResolvedValueOnce(1 as never)
+    mockPrisma.applicationDeployment.findMany.mockResolvedValueOnce([
+      {
+        id: "deploy-3",
+        status: "BUILDING",
+        attempt: 3,
+        commitSha: "def456",
+        failureReason: null,
+        startedAt: new Date("2026-06-05T10:00:00.000Z"),
+        completedAt: null,
+      },
+    ] as never)
+
+    const res = await get(
+      "/deploy/apps/console-next-app/history?page=1&pageSize=20"
+    )
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      data: Array<{ durationMs: number | null }>
+    }
+    expect(body.data[0]?.durationMs).toBe(10_000)
   })
 
   it("returns stack overview with latest deployment status and current step", async () => {
@@ -107,7 +265,13 @@ describe("appStacksRoutes", () => {
           failureReason: null,
           startedAt: null,
           completedAt: null,
-          events: [{ type: "QUEUED" }, { type: "ARGOCD_SYNCED" }],
+          events: [
+            { type: "QUEUED", createdAt: new Date("2026-06-05T09:00:00.000Z") },
+            {
+              type: "ARGOCD_SYNCED",
+              createdAt: new Date("2026-06-05T09:10:00.000Z"),
+            },
+          ],
         },
       ],
     } as never)
@@ -120,6 +284,7 @@ describe("appStacksRoutes", () => {
           slug: string
           currentStepLabel: string | null
           currentStepIndex: number | null
+          currentStepStartedAt: string | null
         }
         latestDeployment: { status: string } | null
       }
@@ -127,7 +292,53 @@ describe("appStacksRoutes", () => {
     expect(body.data.stack.slug).toBe("console-next-app")
     expect(body.data.stack.currentStepLabel).toBe("Synced")
     expect(body.data.stack.currentStepIndex).toBe(10)
+    expect(body.data.stack.currentStepStartedAt).toBe(
+      "2026-06-05T09:10:00.000Z"
+    )
     expect(body.data.latestDeployment?.status).toBe("running")
+  })
+
+  it("includes currentStepStartedAt from detail event createdAt", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+      ...sampleStack,
+      deployments: [
+        {
+          id: "deploy-1",
+          status: "RUNNING",
+          attempt: 1,
+          manifestPushed: true,
+          argocdSynced: true,
+          failureReason: null,
+          startedAt: null,
+          completedAt: null,
+          events: [
+            { type: "QUEUED", createdAt: new Date("2026-06-05T09:00:00.000Z") },
+            {
+              type: "DEPLOY_COMPLETED",
+              createdAt: new Date("2026-06-05T09:30:00.000Z"),
+            },
+          ],
+        },
+      ],
+    } as never)
+
+    const res = await get("/deploy/apps/console-next-app")
+    const body = (await res.json()) as {
+      data: {
+        stack: {
+          slug: string
+          currentStepLabel: string | null
+          currentStepIndex: number | null
+          currentStepStartedAt: string | null
+        }
+        latestDeployment: { status: string } | null
+      }
+    }
+    expect(body.data.stack.currentStepLabel).toBe("Deploy completed")
+    expect(body.data.stack.currentStepIndex).toBe(12)
+    expect(body.data.stack.currentStepStartedAt).toBe(
+      "2026-06-05T09:30:00.000Z"
+    )
   })
 
   it("returns paginated deployment history with bounded page size", async () => {
