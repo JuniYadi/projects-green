@@ -145,15 +145,34 @@ describe("GET /api/integrations/github/install/callback", () => {
     }))
   })
 
-  it("redirects to returnTo with github=connected and syncs installation", async () => {
+  it("redirects to returnTo with github=connected after sync completes", async () => {
+    const syncPending = Promise.withResolvers<{ id: string }>()
+    const syncStarted = Promise.withResolvers<void>()
+    mockSyncGithubInstallation.mockImplementation(() => {
+      syncStarted.resolve()
+      return syncPending.promise
+    })
+
     const route =
       await import("@/app/api/integrations/github/install/callback/route")
 
-    const response = await route.GET(
-      new NextRequest(
-        "http://localhost/api/integrations/github/install/callback?installation_id=123&state=valid"
+    let responseSettled = false
+    const responsePromise = route
+      .GET(
+        new NextRequest(
+          "http://localhost/api/integrations/github/install/callback?installation_id=123&state=valid"
+        )
       )
-    )
+      .then((response) => {
+        responseSettled = true
+        return response
+      })
+
+    await syncStarted.promise
+    expect(responseSettled).toBe(false)
+
+    syncPending.resolve({ id: "ghi_install_1" })
+    const response = await responsePromise
 
     expect(response.status).toBe(307)
     expect(response.headers.get("location")).toBe(
