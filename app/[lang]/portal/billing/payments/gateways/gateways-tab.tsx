@@ -26,6 +26,8 @@ import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import type { ColumnDef } from "@tanstack/react-table"
 
+import { invalidateBillingSetupStatus } from "@/components/billing/setup-status/billing-setup-banner"
+
 interface PaymentGateway {
   id: string
   name: string
@@ -242,6 +244,7 @@ export function GatewaysTab() {
       const { error } =
         await eden.api.portal.payments.gateways[gateway.id].toggle.patch()
       if (!error) {
+        invalidateBillingSetupStatus()
         await fetchGateways()
       }
     } catch {
@@ -283,9 +286,9 @@ export function GatewaysTab() {
         })
         return
       }
-
       setIsCreating(false)
       setSelectedProvider("")
+      invalidateBillingSetupStatus()
       await fetchGateways()
     } catch {
       setState({ status: "error", message: "Failed to create gateway" })
