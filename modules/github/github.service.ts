@@ -293,10 +293,8 @@ const githubRequest = async <T>({
   })
 
   if (!response.ok) {
-    const responseText = await response.text()
-    throw new Error(
-      `GitHub API request failed: ${method} ${path} (${response.status}) ${responseText}`
-    )
+    await response.text()
+    throw new GithubApiError("GitHub API request failed.", response.status)
   }
 
   return (await response.json()) as T
@@ -319,6 +317,7 @@ const fetchJson = async <T>(
     clearTimeout(timeoutId)
 
     if (!response.ok) {
+      await response.text()
       if (response.status === 401 || response.status === 403) {
         throw new GithubReconnectRequiredError(
           "GitHub access expired or was revoked. Reconnect GitHub to continue.",
@@ -330,7 +329,6 @@ const fetchJson = async <T>(
         response.status
       )
     }
-
     const body = (await response.json()) as T
 
     return { body, response }
@@ -589,10 +587,25 @@ const createDefaultDependencies = (): GithubDependencies => ({
         throw error
       }
       if (error instanceof GithubReconnectRequiredError) {
+        console.warn({
+          operation: "create_installation_access_token",
+          statusCode: error.statusCode,
+          classification: "reconnect_required",
+        })
         throw error
       }
       if (error instanceof GithubApiError) {
-        if (error.statusCode === 401 || error.statusCode === 403) {
+        const reconnectRequired = [401, 403, 404].includes(
+          error.statusCode ?? 0
+        )
+        console.warn({
+          operation: "create_installation_access_token",
+          statusCode: error.statusCode,
+          classification: reconnectRequired
+            ? "reconnect_required"
+            : "provider_error",
+        })
+        if (reconnectRequired) {
           throw new GithubReconnectRequiredError(undefined, error.statusCode)
         }
         throw error
