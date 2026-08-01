@@ -1,5 +1,6 @@
 import { Elysia } from "elysia"
 
+import { fieldErrorMapFromIssues } from "@/lib/validation"
 import {
   listClustersQuerySchema,
   createClusterBodySchema,
@@ -7,6 +8,9 @@ import {
   updateClusterStatusBodySchema,
   upsertIntegrationBodySchema,
   updateIntegrationStatusBodySchema,
+  INTEGRATION_TYPES,
+  integrationMetaJsonSchemas,
+  integrationSecretPatchSchemas,
 } from "@/modules/admin/api/admin.schema"
 import {
   requireSuperAdmin,
@@ -20,15 +24,8 @@ import {
   updateClusterStatus,
   upsertClusterIntegration,
   updateClusterIntegrationStatus,
+  ClusterIntegrationValidationError,
 } from "@/modules/deploy/cluster-management.service"
-
-const INTEGRATION_TYPES = [
-  "JENKINS",
-  "GITOPS",
-  "REGISTRY",
-  "ARGOCD",
-  "KUBECONFIG",
-] as const
 
 type IntegrationType = (typeof INTEGRATION_TYPES)[number]
 
@@ -40,8 +37,17 @@ function clusterError(
   set: { status?: number | string },
   error: unknown
 ): AdminApiError {
-  const msg = error instanceof Error ? error.message : String(error)
+  if (error instanceof ClusterIntegrationValidationError) {
+    set.status = 422
+    return {
+      ok: false,
+      error: "VALIDATION_ERROR",
+      message: "Please fix the highlighted fields and try again.",
+      fieldErrors: fieldErrorMapFromIssues(error.issues),
+    }
+  }
 
+  const msg = error instanceof Error ? error.message : String(error)
   if (msg.startsWith("NOT_FOUND")) {
     set.status = 404
     return { ok: false, error: "NOT_FOUND", message: msg }
@@ -201,13 +207,50 @@ export const createAdminAppHostingClusterRoutes = (deps = {}) => {
             }
           }
 
+          const metaJsonSchema = integrationMetaJsonSchemas[params.type]
+          const parsed = metaJsonSchema.safeParse(body.metaJson ?? {})
+
+          if (!parsed.success) {
+            set.status = 422
+            return {
+              ok: false,
+              error: "VALIDATION_ERROR",
+              message: "Please fix the highlighted fields and try again.",
+              fieldErrors: fieldErrorMapFromIssues(
+                parsed.error.issues.map((issue) => ({
+                  ...issue,
+                  path: ["metaJson", ...issue.path],
+                }))
+              ),
+            }
+          }
+
+          const secretParsed = integrationSecretPatchSchemas[
+            params.type
+          ].safeParse(body.secrets ?? {})
+
+          if (!secretParsed.success) {
+            set.status = 422
+            return {
+              ok: false,
+              error: "VALIDATION_ERROR",
+              message: "Please fix the highlighted fields and try again.",
+              fieldErrors: fieldErrorMapFromIssues(
+                secretParsed.error.issues.map((issue) => ({
+                  ...issue,
+                  path: ["secrets", ...issue.path],
+                }))
+              ),
+            }
+          }
+
           try {
             const integration = await upsertClusterIntegration(
               params.id,
               params.type,
               {
-                metaJson: body.metaJson as Record<string, unknown> | undefined,
-                secrets: body.secrets as Record<string, unknown> | undefined,
+                metaJson: parsed.data as Record<string, unknown>,
+                secrets: secretParsed.data as Record<string, unknown>,
               }
             )
             return { ok: true as const, data: integration }

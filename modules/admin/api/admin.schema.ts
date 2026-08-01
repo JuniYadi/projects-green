@@ -1,3 +1,10 @@
+export { INTEGRATION_TYPES } from "@/modules/deploy/cluster-integration.schema"
+export {
+  integrationMetaJsonSchemas,
+  integrationSecretSchemas,
+  integrationSecretPatchSchemas,
+} from "@/modules/deploy/cluster-integration.schema"
+
 import { z } from "zod"
 
 export const adminCreateOrganizationSchema = z.object({
@@ -84,10 +91,22 @@ export const updateClusterStatusBodySchema = z.object({
   isDefault: z.boolean().optional(),
 })
 
-export const upsertIntegrationBodySchema = z.object({
+// ── App Hosting integration transport ─────────────────
+
+// The route type is carried in the URL. Keep body transport JSON-compatible;
+// the service validates it against the URL-selected integration schema.
+export const upsertIntegrationBodySchema = z.strictObject({
   metaJson: z.record(z.string(), z.unknown()).optional(),
   secrets: z.record(z.string(), z.unknown()).optional(),
 })
+
+export const updateIntegrationBodySchema = z.strictObject({
+  metaJson: z.record(z.string(), z.unknown()).optional(),
+  secrets: z.record(z.string(), z.unknown()).optional(),
+})
+
+export type UpsertIntegrationBody = z.infer<typeof upsertIntegrationBodySchema>
+export type UpdateIntegrationBody = z.infer<typeof updateIntegrationBodySchema>
 
 export const updateIntegrationStatusBodySchema = z.object({
   isActive: z.boolean(),
@@ -99,7 +118,6 @@ export type UpdateClusterBody = z.infer<typeof updateClusterBodySchema>
 export type UpdateClusterStatusBody = z.infer<
   typeof updateClusterStatusBodySchema
 >
-export type UpsertIntegrationBody = z.infer<typeof upsertIntegrationBodySchema>
 export type UpdateIntegrationStatusBody = z.infer<
   typeof updateIntegrationStatusBodySchema
 >

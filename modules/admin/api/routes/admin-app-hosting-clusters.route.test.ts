@@ -494,8 +494,17 @@ describe("Admin App Hosting Clusters Routes", () => {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            metaJson: { url: "https://jenkins.example.com" },
-            secrets: { apiToken: "secret123" },
+            metaJson: {
+              baseUrl: "https://jenkins.example.com",
+              dslOwner: "pfnapp",
+              dslRepo: "Jenkins",
+              gitCredentialId: "github-token",
+            },
+            secrets: {
+              username: "jenkins-user",
+              apiToken: "secret123",
+              webhookToken: "webhook123",
+            },
           }),
         })
       )
@@ -527,6 +536,135 @@ describe("Admin App Hosting Clusters Routes", () => {
       )
 
       expect(res.status).toBe(422)
+    })
+
+    it("returns 422 with fieldErrors for invalid OPENSEARCH metaJson", async () => {
+      mockRequireSuperAdmin.mockImplementationOnce(async () => ({
+        ok: true as const,
+        userId: "u1",
+        platformRole: "super_admin",
+      }))
+
+      const app = new Elysia().use(createAdminAppHostingClusterRoutes())
+
+      const res = await app.handle(
+        new Request(`${BASE}/cl_1/integrations/OPENSEARCH`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            metaJson: { host: "", sslVerify: "not-a-boolean" },
+          }),
+        })
+      )
+
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("VALIDATION_ERROR")
+      expect(body.fieldErrors).toBeDefined()
+      expect(body.fieldErrors?.["metaJson.host"]?.[0]).toContain("host")
+    })
+
+    it("returns 422 with fieldErrors for invalid PROMETHEUS metaJson", async () => {
+      mockRequireSuperAdmin.mockImplementationOnce(async () => ({
+        ok: true as const,
+        userId: "u1",
+        platformRole: "super_admin",
+      }))
+
+      const app = new Elysia().use(createAdminAppHostingClusterRoutes())
+
+      const res = await app.handle(
+        new Request(`${BASE}/cl_1/integrations/PROMETHEUS`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            metaJson: { endpoint: "" },
+          }),
+        })
+      )
+
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("VALIDATION_ERROR")
+      expect(body.fieldErrors).toBeDefined()
+      expect(body.fieldErrors?.["metaJson.endpoint"]?.[0]).toContain("endpoint")
+    })
+
+    it("validates OPENSEARCH integration with valid body", async () => {
+      mockRequireSuperAdmin.mockImplementationOnce(async () => ({
+        ok: true as const,
+        userId: "u1",
+        platformRole: "super_admin",
+      }))
+      mockUpsertClusterIntegration.mockResolvedValueOnce({
+        id: "int_1",
+        type: "OPENSEARCH",
+        metaJson: { host: "https://opensearch.example.com", sslVerify: true },
+        secretPreview: null,
+        isActive: true,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      })
+
+      const app = new Elysia().use(createAdminAppHostingClusterRoutes())
+
+      const res = await app.handle(
+        new Request(`${BASE}/cl_1/integrations/OPENSEARCH`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            metaJson: {
+              host: "https://opensearch.example.com",
+              sslVerify: true,
+            },
+            secrets: { username: "admin", password: "secret" },
+          }),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.type).toBe("OPENSEARCH")
+      expect(body.data).not.toHaveProperty("secretCiphertext")
+    })
+
+    it("validates PROMETHEUS integration with valid body", async () => {
+      mockRequireSuperAdmin.mockImplementationOnce(async () => ({
+        ok: true as const,
+        userId: "u1",
+        platformRole: "super_admin",
+      }))
+      mockUpsertClusterIntegration.mockResolvedValueOnce({
+        id: "int_1",
+        type: "PROMETHEUS",
+        metaJson: { endpoint: "https://prometheus.example.com/metrics" },
+        secretPreview: null,
+        isActive: true,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      })
+
+      const app = new Elysia().use(createAdminAppHostingClusterRoutes())
+
+      const res = await app.handle(
+        new Request(`${BASE}/cl_1/integrations/PROMETHEUS`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            metaJson: { endpoint: "https://prometheus.example.com/metrics" },
+            secrets: { username: "admin", password: "secret" },
+          }),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.type).toBe("PROMETHEUS")
+      expect(body.data).not.toHaveProperty("secretCiphertext")
     })
   })
 
