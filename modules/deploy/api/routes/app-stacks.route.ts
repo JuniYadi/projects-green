@@ -39,10 +39,11 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
           orderBy: { createdAt: "desc" },
           take: 1,
           select: {
+            createdAt: true,
             id: true,
             events: {
               orderBy: { createdAt: "asc" },
-              select: { type: true },
+              select: { type: true, createdAt: true },
             },
           },
         },
@@ -114,7 +115,9 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
 
       return {
         ok: true,
-        data: deployments.map(toDeploymentHistoryDTO),
+        data: deployments.map((deployment) =>
+          toDeploymentHistoryDTO(deployment)
+        ),
         meta: {
           page,
           pageSize,
@@ -165,7 +168,7 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
             include: {
               events: {
                 orderBy: { createdAt: "asc" },
-                select: { type: true },
+                select: { type: true, createdAt: true },
               },
             },
           },
