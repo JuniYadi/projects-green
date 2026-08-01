@@ -153,6 +153,7 @@ export type DeployMonitorState = {
   isActive: boolean
   shouldFail: boolean
   failureReason: string | null
+  liveDomain?: string
 }
 
 export type DeployWizardState = {
