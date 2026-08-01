@@ -352,4 +352,41 @@ describe("githubRepositoryService", () => {
     expect(orbitOnly.items).toHaveLength(1)
     expect(orbitOnly.items[0]?.owner).toBe("orbit")
   })
+  it("passes created token to installation repository listing", async () => {
+    const calls: Array<{ installationId: number; token: string }> = []
+    const repository = {
+      repositoryId: 1,
+      fullName: "acme/platform",
+      name: "platform",
+      owner: "acme",
+      installationId: 101,
+      defaultBranch: "main",
+      private: true,
+      pushedAt: "2026-05-16T03:10:45.000Z",
+    }
+    const service = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return [installations[0]]
+      },
+      async createInstallationAccessToken(installationId) {
+        expect(installationId).toBe(101)
+        return "known-token"
+      },
+      async listRepositoriesForInstallation(installation, token) {
+        calls.push({
+          installationId: installation.githubInstallationId,
+          token,
+        })
+        return [repository]
+      },
+    })
+
+    const result = await service.listRepositoriesForActor(
+      { userId: "user_1", organizationId: "org_1" },
+      {}
+    )
+
+    expect(result.items).toEqual([repository])
+    expect(calls).toEqual([{ installationId: 101, token: "known-token" }])
+  })
 })
