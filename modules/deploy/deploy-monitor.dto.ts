@@ -235,7 +235,7 @@ export type CurrentDeployStepDTO = {
 export const deriveCurrentDeployStep = (
   events: Array<Pick<ApplicationDeployEvent, "type">> = []
 ): CurrentDeployStepDTO => {
-  const latest = events[0]
+  const latest = events[events.length - 1]
   if (!latest) return { currentStepLabel: null, currentStepIndex: null }
 
   return {

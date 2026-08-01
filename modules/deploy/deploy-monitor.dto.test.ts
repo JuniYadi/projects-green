@@ -83,7 +83,7 @@ describe("deploy-monitor.dto", () => {
     })
 
     it("returns nulls when events are empty", () => {
-      expect(deriveCurrentDeployStep()).toEqual({
+      expect(deriveCurrentDeployStep([])).toEqual({
         currentStepLabel: null,
         currentStepIndex: null,
       })
