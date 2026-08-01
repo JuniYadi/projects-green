@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/phosphor-icons"
 import { cn } from "@/lib/utils"
 import {
+  DEPLOY_EVENT_STEP_INDEX,
   buildDeployTimelineItems,
   toDeployLogLines,
 } from "@/modules/deploy/deploy-monitor.dto"
@@ -28,8 +29,10 @@ import type {
 type DeployStepTimelineProps = {
   deployId?: string
   status: DeployStatus
-  /** Optional live domain shown when deployment reaches running state. */
+  /** Optional live domain shown after DEPLOY_COMPLETED. */
   liveDomain?: string
+  /** Explicitly skip build steps for runtime-only attempts. */
+  skipBuildSteps?: boolean
   /** Retry handler invoked from the failed step CTA. */
   onRetry?: () => void
   /** Current wizard step — used for gating live URL and retry behavior. */
@@ -38,7 +41,7 @@ type DeployStepTimelineProps = {
   maxUnlockedStep?: DeployStep
 }
 
-// ponytail: 120s fixed lag threshold; tune per-step if needed
+// Timeline and LogsPanel own 3s polling; stop at running, failed, or idle.
 const LAG_THRESHOLD_MS = 120_000
 const POLL_INTERVAL_MS = 3_000
 
@@ -77,11 +80,17 @@ function activeStepIndex(status: DeployStatus): number {
 function stepUiState(
   stepIndex: number,
   activeIndex: number,
-  status: DeployStatus
+  status: DeployStatus,
+  failedIndex: number | null,
+  skipBuildSteps: boolean,
+  degraded: boolean
 ): StepUiState {
+  if (skipBuildSteps && stepIndex < 8) return "skipped"
+  if (degraded && stepIndex >= 9 && stepIndex <= 11) return "completed"
   if (status === "failed") {
-    if (stepIndex < activeIndex) return "completed"
-    if (stepIndex === activeIndex) return "failed"
+    const failure = failedIndex ?? activeIndex
+    if (stepIndex < failure) return "completed"
+    if (stepIndex === failure) return "failed"
     return "skipped"
   }
   if (stepIndex < activeIndex) return "completed"
@@ -158,9 +167,8 @@ export function DeployStepTimeline({
   deployId,
   status,
   liveDomain,
+  skipBuildSteps,
   onRetry,
-  currentStep,
-  maxUnlockedStep,
 }: DeployStepTimelineProps) {
   const [steps] = useState<DeployTimelineItem[]>(() =>
     buildDeployTimelineItems()
@@ -172,29 +180,64 @@ export function DeployStepTimeline({
   const [renderTick, setRenderTick] = useState(() => Date.now())
   const [logsError, setLogsError] = useState<string | null>(null)
 
+  const requestVersionRef = useRef(0)
   const fetchStatusRef = useRef<() => Promise<void>>(async () => {})
   const fetchEventsRef = useRef<() => Promise<void>>(async () => {})
 
+  // Reset state when deployId changes so stale data from a previous deployment is cleared.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    requestVersionRef.current += 1
+    setFetchedStatus(null)
+    setEvents([])
+    setOpenStep(null)
+    setStepLogs({})
+    setLogsError(null)
+  }, [deployId])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
   const effectiveStatus = fetchedStatus?.status ?? status
-  const failureReason = fetchedStatus?.failureReason ?? null
 
-  // Degradation: running without ArgoCD readiness events (steps 10-12)
-  // marks the timeline as completed/degraded with an exact note.
-  const hasArgoCDReadiness =
-    effectiveStatus !== "running" ||
-    events.some((ev) => ev.type === "ARGOCD_SYNC_STARTED") ||
-    events.some((ev) => ev.type === "ARGOCD_SYNCED") ||
-    events.some((ev) => ev.type === "POD_READY")
-
+  const hasArgoCDReadiness = events.some(
+    (ev) =>
+      ev.type === "ARGOCD_SYNC_STARTED" ||
+      ev.type === "ARGOCD_SYNCED" ||
+      ev.type === "POD_READY"
+  )
   const isDegraded = effectiveStatus === "running" && !hasArgoCDReadiness
-
-  // Live URL gating: requires running status AND the live step event.
-  const hasLiveEvent =
-    events.some((ev) => ev.type === "DEPLOY_COMPLETED") ||
-    events.some((ev) => ev.type === "POD_READY")
+  const recognizedEvents = events.filter(
+    (event) => DEPLOY_EVENT_STEP_INDEX[event.type] !== undefined
+  )
+  const latestEvent = recognizedEvents[recognizedEvents.length - 1]
+  const activeIndex =
+    events.length === 0
+      ? activeStepIndex(effectiveStatus)
+      : latestEvent
+        ? DEPLOY_EVENT_STEP_INDEX[latestEvent.type]
+        : -1
+  const failedIndex = latestEvent
+    ? DEPLOY_EVENT_STEP_INDEX[latestEvent.type]
+    : null
+  const inferredSkipBuild =
+    events.some(
+      (event) =>
+        event.type === "GITOPS_COMMIT_CREATED" ||
+        event.type === "MANIFEST_PUSHED"
+    ) &&
+    !events.some((event) =>
+      [
+        "BUILD_STARTED",
+        "JENKINS_JOB_TRIGGERED",
+        "JENKINS_BUILD_QUEUED",
+        "JENKINS_BUILD_RUNNING",
+        "JENKINS_BUILD_COMPLETED",
+      ].includes(event.type)
+    )
+  const resolvedSkipBuild = skipBuildSteps ?? inferredSkipBuild
   const showLiveUrl =
-    effectiveStatus === "running" && liveDomain && hasLiveEvent
-  const activeIndex = activeStepIndex(effectiveStatus)
+    effectiveStatus === "running" &&
+    Boolean(liveDomain?.trim()) &&
+    events.some((event) => event.type === "DEPLOY_COMPLETED")
 
   const pollActive =
     deployId &&
@@ -204,10 +247,12 @@ export function DeployStepTimeline({
 
   const fetchStatus = useCallback(async () => {
     if (!deployId) return
+    const requestVersion = requestVersionRef.current
     try {
       const res = await fetch(`/api/deploy/status/${deployId}`)
       if (!res.ok) return
       const json = await res.json()
+      if (requestVersion !== requestVersionRef.current) return
       if (json.ok && json.data) {
         setFetchedStatus({
           status: json.data.status,
@@ -220,21 +265,21 @@ export function DeployStepTimeline({
       // ponytail: swallow — status polling is best-effort
     }
   }, [deployId])
-
   const fetchEvents = useCallback(async () => {
     if (!deployId) return
+    const requestVersion = requestVersionRef.current
     try {
       const res = await fetch(`/api/deploy/events/${deployId}`)
       if (!res.ok) return
       const json = await res.json()
-      if (json.ok && Array.isArray(json.data)) {
-        setEvents(json.data)
+      if (requestVersion !== requestVersionRef.current) return
+      if (json.ok && Array.isArray(json.events)) {
+        setEvents(json.events)
       }
     } catch {
       // ponytail: swallow — events polling is best-effort
     }
   }, [deployId])
-
   useEffect(() => {
     fetchStatusRef.current = fetchStatus
     fetchEventsRef.current = fetchEvents
@@ -257,18 +302,22 @@ export function DeployStepTimeline({
       fetchStatusRef.current()
       fetchEventsRef.current()
     }
-  }, [deployId])
+  }, [deployId, effectiveStatus])
 
   const fetchStepLogs = useCallback(
     async (stepId: string) => {
       if (!deployId) return
+      const requestVersion = requestVersionRef.current
       try {
         const res = await fetch(`/api/deploy/logs/${deployId}`)
         if (!res.ok) {
-          setLogsError("Failed to load logs")
+          if (requestVersion === requestVersionRef.current) {
+            setLogsError("Failed to load logs")
+          }
           return
         }
         const json = await res.json()
+        if (requestVersion !== requestVersionRef.current) return
         if (!json.ok) {
           setLogsError(json.error || "Failed to load logs")
           return
@@ -277,7 +326,9 @@ export function DeployStepTimeline({
         setStepLogs((prev) => ({ ...prev, [stepId]: lines }))
         setLogsError(null)
       } catch {
-        setLogsError("Failed to load logs")
+        if (requestVersion === requestVersionRef.current) {
+          setLogsError("Failed to load logs")
+        }
       }
     },
     [deployId]
@@ -292,8 +343,13 @@ export function DeployStepTimeline({
     }
   }
 
-  const eventByType: Record<string, FetchedEvent> = {}
-  for (const ev of events) eventByType[ev.type] = ev
+  const eventForStep = (stepIndex: number): FetchedEvent | undefined => {
+    for (let index = recognizedEvents.length - 1; index >= 0; index -= 1) {
+      const event = recognizedEvents[index]
+      if (DEPLOY_EVENT_STEP_INDEX[event.type] === stepIndex) return event
+    }
+    return undefined
+  }
 
   if (effectiveStatus === "idle") {
     return (
@@ -311,11 +367,20 @@ export function DeployStepTimeline({
         aria-live="polite"
       >
         {steps.map((step, idx) => {
-          const uiState = stepUiState(idx, activeIndex, effectiveStatus)
-          const ev = eventByType[step.id]
+          const uiState = stepUiState(
+            idx,
+            activeIndex,
+            effectiveStatus,
+            effectiveStatus === "failed" ? failedIndex : null,
+            resolvedSkipBuild,
+            isDegraded
+          )
+          const ev = eventForStep(idx)
           const stepStartedAt = ev ? Date.parse(ev.createdAt) : null
-          const nextEv = events
-            .filter((e) => e.createdAt > (ev?.createdAt ?? ""))
+          const nextEv = recognizedEvents
+            .filter(
+              (event) => Date.parse(event.createdAt) > (stepStartedAt ?? 0)
+            )
             .sort(
               (a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt)
             )[0]
@@ -323,9 +388,11 @@ export function DeployStepTimeline({
           const duration =
             stepStartedAt !== null && stepEndedAt !== null
               ? stepEndedAt - stepStartedAt
-              : uiState === "active" && fetchedStatus?.startedAt
-                ? renderTick - Date.parse(fetchedStatus.startedAt)
-                : null
+              : uiState === "active" && stepStartedAt !== null
+                ? renderTick - stepStartedAt
+                : uiState === "active" && fetchedStatus?.startedAt
+                  ? renderTick - Date.parse(fetchedStatus.startedAt)
+                  : null
           const lagging =
             duration !== null &&
             duration > LAG_THRESHOLD_MS &&
@@ -375,7 +442,8 @@ export function DeployStepTimeline({
                   {uiState === "failed" && (
                     <div className="space-y-2">
                       <p className="text-xs text-destructive">
-                        {failureReason ?? "Deployment failed at this step."}
+                        {fetchedStatus?.failureReason ??
+                          "Deployment failed at this step."}
                       </p>
                       {onRetry && (
                         <button
@@ -387,6 +455,11 @@ export function DeployStepTimeline({
                         </button>
                       )}
                     </div>
+                  )}
+                  {isDegraded && idx >= 9 && idx <= 11 && (
+                    <p className="text-xs text-amber-600">
+                      ArgoCD health not tracked
+                    </p>
                   )}
                   {logsError && (
                     <p className="text-xs text-destructive">{logsError}</p>
@@ -414,9 +487,6 @@ export function DeployStepTimeline({
         })}
       </ol>
 
-      {isDegraded && (
-        <p className="text-xs text-amber-600">ArgoCD health not tracked</p>
-      )}
       {showLiveUrl && (
         <a
           href={`https://${liveDomain}`}
