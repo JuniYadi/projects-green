@@ -59,12 +59,15 @@ import {
   getRequestErrorMessage,
   mapGithubRepository,
   toGeneratedSubdomain,
-  toOwnerOptions,
   type DeploySubmitResponse,
   type GithubRepositoriesResponse,
 } from "@/modules/deploy/deploy-wizard.logic"
 
 type GithubConnectionStatus = "idle" | "connected" | "error"
+type GithubAccountsResponse = {
+  ok: boolean
+  accounts?: { accountLogin?: string | null }[]
+}
 
 type DeployWizardV2Props = {
   title?: string
@@ -107,15 +110,16 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
   const githubConnectionStatus: GithubConnectionStatus = (() => {
     const status = searchParams.get("github")
 
-    if (status === "connected") {
-      return "connected"
-    }
-
     if (status === "error") {
       return "error"
     }
 
-    return "idle"
+    if (githubReconnectRequired) {
+      return "idle"
+    }
+
+    if (ownerOptionsError) return "error"
+    return ownerOptions.length > 0 ? "connected" : "idle"
   })()
 
   const selectedOwner = useMemo(() => {
@@ -177,83 +181,78 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
       setOwnerOptionsError(null)
 
       try {
-        const response = await fetch(
-          buildRepositoriesUrl({ query: ownerSearch, limit: 100 }),
-          {
-            signal: controller.signal,
-          }
-        )
-
-        if (response.status === 409) {
-          const payload = (await response
-            .json()
-            .catch(() => null)) as GithubRepositoriesResponse | null
-          if (payload?.error === "GITHUB_RECONNECT_REQUIRED") {
-            setOwnerOptions([])
-            setGithubReconnectRequired(true)
-            return
-          }
-        }
+        const response = await fetch("/api/integrations/github/accounts", {
+          signal: controller.signal,
+        })
 
         if (!response.ok) {
           throw new Error(
-            `Unable to load repositories. Request failed with ${response.status}.`
+            `Unable to load GitHub accounts. Request failed with ${response.status}.`
           )
         }
 
-        const payload = (await response.json()) as GithubRepositoriesResponse
-        if (!payload.ok || !Array.isArray(payload.items)) {
-          throw new Error("Unable to load repositories from GitHub.")
+        const payload = (await response.json()) as GithubAccountsResponse
+        if (!payload.ok || !Array.isArray(payload.accounts)) {
+          throw new Error("Unable to load GitHub accounts.")
         }
-        const mapped = payload.items.map(mapGithubRepository)
+
+        const owners = payload.accounts
+          .filter(
+            (account): account is { accountLogin: string } =>
+              typeof account.accountLogin === "string" &&
+              account.accountLogin.length > 0
+          )
+          .map((account) => ({
+            id: account.accountLogin,
+            name: account.accountLogin,
+            avatarUrl: "",
+          }))
+
         setGithubReconnectRequired(false)
+        setOwnerOptions(owners)
 
-        if (Array.isArray(payload.owners) && payload.owners.length > 0) {
-          const owners = payload.owners.map(
-            (owner: {
-              id: string
-              name: string
-              avatarUrl: string | null
-            }) => ({
-              id: owner.id,
-              name: owner.name,
-              avatarUrl: owner.avatarUrl ?? "",
-            })
-          )
-          setOwnerOptions(owners)
-          if (owners.length === 1) {
-            setRepositorySearch("")
-            setRepositoryOptions(mapped)
-            setRepositoryOptionsError(null)
-            dispatch({
-              type: "set-source",
-              payload: {
-                sourceType: "github",
-                ownerId: owners[0].id,
-                repositoryId: "",
-                branchName: "",
-                templateId: undefined,
-              },
-            })
-            dispatch({ type: "set-detection", payload: null })
-          }
-        } else {
-          setOwnerOptions(toOwnerOptions(mapped))
+        const hasSelectedOwner = owners.some(
+          (owner) => owner.id === state.source.ownerId
+        )
+        if (!hasSelectedOwner && state.source.ownerId) {
+          dispatch({
+            type: "set-source",
+            payload: {
+              sourceType: "github",
+              ownerId: "",
+              repositoryId: "",
+              branchName: "",
+              templateId: undefined,
+            },
+          })
+          dispatch({ type: "set-detection", payload: null })
+        } else if (owners.length === 1 && !hasSelectedOwner) {
+          setRepositorySearch("")
+          setRepositoryOptions([])
+          setRepositoryOptionsError(null)
+          dispatch({
+            type: "set-source",
+            payload: {
+              sourceType: "github",
+              ownerId: owners[0].id,
+              repositoryId: "",
+              branchName: "",
+              templateId: undefined,
+            },
+          })
+          dispatch({ type: "set-detection", payload: null })
         }
-        setRepositoryById((current) => {
-          const next = { ...current }
-          for (const repository of mapped) {
-            next[repository.id] = repository
-          }
-          return next
-        })
       } catch (cause) {
         if (cause instanceof Error && cause.name === "AbortError") {
           return
         }
 
         setOwnerOptions([])
-        setOwnerOptionsError(getRequestErrorMessage(cause))
+        setOwnerOptionsError(
+          cause instanceof Error && cause.message
+            ? cause.message
+            : "Unable to load GitHub accounts."
+        )
       } finally {
         setOwnerOptionsLoading(false)
       }
@@ -264,7 +263,7 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
     return () => {
       controller.abort()
     }
-  }, [ownerSearch, dispatch])
+  }, [dispatch, state.source.ownerId])
 
   useEffect(() => {
     if (!state.source.ownerId) {
@@ -919,6 +918,12 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
       )
     }
 
+    const liveDomain = state.environment.useGeneratedSubdomain
+      ? toGeneratedSubdomain(
+          selectedRepository?.name || state.source.templateId
+        )
+      : normalizedCustomDomain || undefined
+
     return (
       <StepMonitorV2
         deployId={state.monitor.deployId}
@@ -926,6 +931,7 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
         logScope={state.monitor.logScope}
         attempt={state.monitor.attempt}
         failureReason={state.monitor.failureReason}
+        liveDomain={liveDomain}
         onLogScopeChange={(logScope) => {
           dispatch({ type: "set-monitor-log-scope", payload: logScope })
         }}
