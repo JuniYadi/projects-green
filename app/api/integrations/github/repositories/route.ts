@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import {
   createGithubService,
+  GithubApiError,
   GithubIntegrationDisabledError,
   GithubReconnectRequiredError,
 } from "@/modules/github/github.service"
@@ -109,6 +110,29 @@ export const GET = async (request: NextRequest) => {
       )
     }
 
+    if (error instanceof GithubApiError) {
+      if ([401, 403, 404].includes(error.statusCode ?? 0)) {
+        return NextResponse.json(
+          {
+            ok: false as const,
+            error: "GITHUB_RECONNECT_REQUIRED" as const,
+            message:
+              "GitHub access expired or was revoked. Reconnect GitHub to continue.",
+          },
+          { status: 409 }
+        )
+      }
+
+      return NextResponse.json(
+        {
+          ok: false as const,
+          error: "GITHUB_REPOSITORIES_UNAVAILABLE" as const,
+          message:
+            "GitHub repository access is temporarily unavailable. Try again later.",
+        },
+        { status: 502 }
+      )
+    }
     throw error
   }
 
