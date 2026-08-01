@@ -155,6 +155,18 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.find((item) => item.title === "Events")?.isActive).toBe(true)
   })
 
+  it("includes and activates cluster management link", () => {
+    const { navMain } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/app/clusters/cl_1",
+      locale: "en",
+    })
+
+    const clusters = navMain.find((item) => item.title === "Clusters")
+    expect(clusters?.url).toBe("/en/portal/app/clusters")
+    expect(clusters?.isActive).toBe(true)
+  })
+
   it("includes Webhook Logs link in whatsapp context", () => {
     const { navMain, navMainLabel } = resolveSidebarMenu({
       surface: "portal",

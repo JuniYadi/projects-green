@@ -323,6 +323,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         isActive: path === "/portal/app",
       },
       {
+        title: "Clusters",
+        url: localizePathname({
+          pathname: "/portal/app/clusters",
+          locale,
+        }),
+        icon: <HardDrivesIcon />,
+        isActive: startsWithRoute(path, "/portal/app/clusters"),
+      },
+      {
         title: "Logs",
         url: localizePathname({ pathname: "/portal/app/logs", locale }),
         icon: <ListMagnifyingGlassIcon />,
