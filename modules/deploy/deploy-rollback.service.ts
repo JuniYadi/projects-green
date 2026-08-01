@@ -22,6 +22,14 @@ export async function rollbackDeployment(params: {
       where: { id: params.stackId },
     })
 
+    if (
+      currentStack.status === "QUEUED" ||
+      currentStack.status === "BUILDING" ||
+      currentStack.status === "DEPLOYING"
+    ) {
+      throw new Error("A deployment is already in progress for this stack")
+    }
+
     // Count previous non-rollback deployments to set attempt number
     const previousAttempts = await tx.applicationDeployment.count({
       where: { stackId: params.stackId, rollbackOfId: null },
