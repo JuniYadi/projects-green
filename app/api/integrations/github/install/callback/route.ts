@@ -13,6 +13,7 @@ import {
   GithubIntegrationDisabledError,
   syncGithubInstallation,
 } from "@/modules/github/github.service"
+import { upsertGithubAppCredential } from "@/modules/credentials/app-credential.service"
 
 export const runtime = "nodejs"
 const githubService = createGithubService()
@@ -131,6 +132,28 @@ export const GET = async (request: NextRequest) => {
       installation,
       repositories,
     })
+
+    if (statePayload.organizationId) {
+      try {
+        await upsertGithubAppCredential({
+          organizationId: statePayload.organizationId,
+          githubInstallationId: installation.id,
+          accountLogin: installation.account.login,
+          accountType: installation.account.type,
+          targetType: installation.target_type,
+          permissions: installation.permissions
+            ? Object.entries(installation.permissions).map(
+                ([key, value]) => `${key}:${value}`
+              )
+            : [],
+          events: installation.events ?? [],
+        })
+      } catch (credentialError) {
+        if (process.env.NODE_ENV !== "test") {
+          console.error("GitHub App credential mirror failed", credentialError)
+        }
+      }
+    }
 
     return NextResponse.redirect(
       toRedirectUrl({
