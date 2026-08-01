@@ -13,6 +13,7 @@ type StepMonitorV2Props = {
   logScope: DeployLogScope
   attempt: number
   failureReason: string | null
+  liveDomain?: string
   onLogScopeChange: (scope: DeployLogScope) => void
   onRetry: () => void
   onEditSettings: () => void
@@ -24,6 +25,7 @@ export function StepMonitorV2({
   logScope,
   attempt,
   failureReason,
+  liveDomain,
   onLogScopeChange,
   onRetry,
   onEditSettings,
@@ -62,6 +64,7 @@ export function StepMonitorV2({
         <DeployStepTimeline
           deployId={deployId}
           status={status}
+          liveDomain={liveDomain}
           onRetry={onRetry}
         />
       </section>
