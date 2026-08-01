@@ -197,9 +197,10 @@ describe("ClusterDetail", () => {
     const editButtons = view.getAllByRole("button", { name: /^Edit$/i })
     fireEvent.click(editButtons[0])
 
-    const secretInput = await view.findByPlaceholderText(
-      "Leave blank to keep existing secrets"
-    )
-    expect(secretInput.getAttribute("value")).toBe("")
+    expect(view.getByText(/Edit Jenkins/)).toBeTruthy()
+    const secretInput = view.container.querySelector('input[type="password"]')
+    expect(secretInput).toBeTruthy()
+    expect((secretInput as HTMLInputElement | null)?.value).toBe("")
+    expect(view.getByText(/not the PAT value/i)).toBeTruthy()
   })
 })

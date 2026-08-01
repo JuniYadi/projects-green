@@ -19,6 +19,30 @@ import {
 } from "@/components/ui/select"
 import { ArrowLeft, Pencil, Power } from "@phosphor-icons/react"
 
+import {
+  INTEGRATION_TYPES,
+  INTEGRATION_TYPE_LABELS,
+  clusterMetadataSchema,
+  jenkinsMetadataSchema,
+  gitopsMetadataSchema,
+  registryMetadataSchema,
+  argocdMetadataSchema,
+  kubeconfigMetadataSchema,
+  opensearchMetadataSchema,
+  prometheusMetadataSchema,
+  jenkinsSecretsPatchSchema,
+  gitopsSecretsPatchSchema,
+  registrySecretsPatchSchema,
+  argocdSecretsPatchSchema,
+  kubeconfigSecretsPatchSchema,
+  opensearchSecretsPatchSchema,
+  prometheusSecretsPatchSchema,
+  integrationFieldLabels,
+  integrationFieldDescriptions,
+  formStateToPayload,
+  type ClusterMetadataInput,
+} from "@/modules/deploy/cluster-integration.schema"
+
 type ClusterIntegration = {
   id: string
   type: string
@@ -57,25 +81,52 @@ const STATUS_LABEL: Record<string, string> = {
   DEPRECATED: "Deprecated",
 }
 
-const INTEGRATION_TYPE_LABEL: Record<string, string> = {
-  JENKINS: "Jenkins",
-  GITOPS: "GitOps",
-  REGISTRY: "Registry",
-  ARGOCD: "Argo CD",
-  KUBECONFIG: "Kubeconfig",
-  OPENSEARCH: "OpenSearch",
-  PROMETHEUS: "Prometheus",
-}
-const SUPPORTED_INTEGRATION_TYPES = [
-  "JENKINS",
-  "GITOPS",
-  "REGISTRY",
-  "ARGOCD",
-  "KUBECONFIG",
-] as const
-
 type ClusterDetailProps = {
   clusterId: string
+}
+
+type FieldErrors = Record<string, string | undefined>
+
+function getMetadataSchema(type: string) {
+  switch (type) {
+    case "JENKINS":
+      return jenkinsMetadataSchema
+    case "GITOPS":
+      return gitopsMetadataSchema
+    case "REGISTRY":
+      return registryMetadataSchema
+    case "ARGOCD":
+      return argocdMetadataSchema
+    case "KUBECONFIG":
+      return kubeconfigMetadataSchema
+    case "OPENSEARCH":
+      return opensearchMetadataSchema
+    case "PROMETHEUS":
+      return prometheusMetadataSchema
+    default:
+      return null
+  }
+}
+
+function getSecretsSchema(type: string) {
+  switch (type) {
+    case "JENKINS":
+      return jenkinsSecretsPatchSchema
+    case "GITOPS":
+      return gitopsSecretsPatchSchema
+    case "REGISTRY":
+      return registrySecretsPatchSchema
+    case "ARGOCD":
+      return argocdSecretsPatchSchema
+    case "KUBECONFIG":
+      return kubeconfigSecretsPatchSchema
+    case "OPENSEARCH":
+      return opensearchSecretsPatchSchema
+    case "PROMETHEUS":
+      return prometheusSecretsPatchSchema
+    default:
+      return null
+  }
 }
 
 export function ClusterDetail({ clusterId }: ClusterDetailProps) {
@@ -90,20 +141,31 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
 
   const [editingIntegration, setEditingIntegration] =
     useState<ClusterIntegration | null>(null)
-  const [integrationMeta, setIntegrationMeta] = useState("")
-  const [integrationSecrets, setIntegrationSecrets] = useState("")
+  const [integrationMeta, setIntegrationMeta] = useState<
+    Record<string, unknown>
+  >({})
+  const [integrationSecrets, setIntegrationSecrets] = useState<
+    Record<string, unknown>
+  >({})
+  const [integrationFieldErrors, setIntegrationFieldErrors] =
+    useState<FieldErrors>({})
   const [integrationSaving, setIntegrationSaving] = useState(false)
   const [integrationError, setIntegrationError] = useState<string | null>(null)
 
   const [statusSaving, setStatusSaving] = useState(false)
   const [clusterName, setClusterName] = useState("")
   const [clusterRegion, setClusterRegion] = useState("")
-  const [clusterMetadataJson, setClusterMetadataJson] = useState("{}")
+  const [clusterMetadata, setClusterMetadata] = useState<ClusterMetadataInput>(
+    {}
+  )
+  const [metadataFieldErrors, setMetadataFieldErrors] = useState<FieldErrors>(
+    {}
+  )
   const [metadataSaving, setMetadataSaving] = useState(false)
   const [metadataError, setMetadataError] = useState<string | null>(null)
   const [newIntegrationType, setNewIntegrationType] = useState<
-    (typeof SUPPORTED_INTEGRATION_TYPES)[number]
-  >(SUPPORTED_INTEGRATION_TYPES[0])
+    (typeof INTEGRATION_TYPES)[number]
+  >(INTEGRATION_TYPES[0])
 
   useEffect(() => {
     let cancelled = false
@@ -123,8 +185,8 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         setCluster(payload.data)
         setClusterName(payload.data.name)
         setClusterRegion(payload.data.region)
-        setClusterMetadataJson(
-          JSON.stringify(payload.data.metadataJson ?? {}, null, 2)
+        setClusterMetadata(
+          (payload.data.metadataJson as ClusterMetadataInput) ?? {}
         )
       } catch (cause) {
         if (cancelled) return
@@ -174,15 +236,19 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
     event.preventDefault()
     setMetadataSaving(true)
     setMetadataError(null)
+    setMetadataFieldErrors({})
 
     try {
-      const parsedMetadata = JSON.parse(clusterMetadataJson)
-      if (
-        !parsedMetadata ||
-        typeof parsedMetadata !== "object" ||
-        Array.isArray(parsedMetadata)
-      ) {
-        throw new Error("Metadata must be a JSON object.")
+      const result = clusterMetadataSchema.safeParse(clusterMetadata)
+      if (!result.success) {
+        const fieldErrors: FieldErrors = {}
+        for (const issue of result.error.issues) {
+          if (issue.path.length > 0) {
+            fieldErrors[issue.path[0] as string] = issue.message
+          }
+        }
+        setMetadataFieldErrors(fieldErrors)
+        throw new Error("Please fix the errors below.")
       }
       if (!clusterName.trim() || !clusterRegion.trim()) {
         throw new Error("Name and region are required.")
@@ -193,7 +259,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       ].patch({
         name: clusterName.trim(),
         region: clusterRegion.trim(),
-        metadataJson: parsedMetadata as Record<string, unknown>,
+        metadataJson: result.data as Record<string, unknown>,
       })
 
       if (!payload || !payload.ok) {
@@ -208,12 +274,15 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       setMetadataSaving(false)
     }
   }
+
   const handleIntegrationEdit = (integration: ClusterIntegration) => {
     setEditingIntegration(integration)
-    setIntegrationMeta(JSON.stringify(integration.metaJson, null, 2))
-    setIntegrationSecrets("")
+    setIntegrationMeta((integration.metaJson as Record<string, unknown>) ?? {})
+    setIntegrationSecrets({})
+    setIntegrationFieldErrors({})
     setIntegrationError(null)
   }
+
   const handleIntegrationCreate = () => {
     const now = new Date().toISOString()
     setEditingIntegration({
@@ -225,8 +294,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       createdAt: now,
       updatedAt: now,
     })
-    setIntegrationMeta("{}")
-    setIntegrationSecrets("")
+    setIntegrationMeta({})
+    setIntegrationSecrets({})
+    setIntegrationFieldErrors({})
     setIntegrationError(null)
   }
 
@@ -234,49 +304,85 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
     if (!editingIntegration) return
     setIntegrationSaving(true)
     setIntegrationError(null)
+    setIntegrationFieldErrors({})
 
     try {
-      let metaJson: Record<string, unknown>
-      try {
-        const parsed = JSON.parse(integrationMeta)
-        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-          throw new Error("Metadata must be a JSON object.")
-        }
-        metaJson = parsed as Record<string, unknown>
-      } catch (cause) {
-        if (
-          cause instanceof Error &&
-          cause.message === "Metadata must be a JSON object."
-        ) {
-          throw cause
-        }
-        throw new Error("Invalid JSON in meta fields.")
+      const metaSchema = getMetadataSchema(editingIntegration.type)
+      const secretsSchema = getSecretsSchema(editingIntegration.type)
+
+      if (!metaSchema) {
+        throw new Error(`Unknown integration type: ${editingIntegration.type}`)
       }
 
-      let secrets: Record<string, unknown> | undefined
-      if (integrationSecrets.trim()) {
-        const parsed = JSON.parse(integrationSecrets)
-        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-          throw new Error("Secrets must be a JSON object.")
+      // Validate metadata fields
+      const metaResult = metaSchema.safeParse(integrationMeta)
+      if (!metaResult.success) {
+        const fieldErrors: FieldErrors = {}
+        for (const issue of metaResult.error.issues) {
+          if (issue.path.length > 0) {
+            fieldErrors[issue.path[0] as string] = issue.message
+          }
         }
-        secrets = parsed as Record<string, unknown>
+        setIntegrationFieldErrors(fieldErrors)
+        throw new Error("Please fix the errors below.")
       }
 
-      const body: {
-        metaJson: Record<string, unknown>
-        secrets?: Record<string, unknown>
-      } = {
-        metaJson,
-        ...(secrets ? { secrets } : {}),
+      // Validate only supplied secret fields; backend merges them with stored secrets.
+      if (Object.keys(integrationSecrets).length > 0) {
+        if (!secretsSchema) {
+          throw new Error(
+            `Unknown integration type: ${editingIntegration.type}`
+          )
+        }
+        const secretsResult = secretsSchema.safeParse(integrationSecrets)
+        if (!secretsResult.success) {
+          const fieldErrors: FieldErrors = {}
+          for (const issue of secretsResult.error.issues) {
+            if (issue.path.length > 0) {
+              fieldErrors[`secret_${String(issue.path[0])}`] = issue.message
+            }
+          }
+          setIntegrationFieldErrors(fieldErrors)
+          throw new Error("Please fix the errors below.")
+        }
       }
 
-      const { data: payload } =
+      // Build form state for formStateToPayload
+      const formState: Record<string, unknown> = {}
+      for (const [key, value] of Object.entries(integrationMeta)) {
+        if (value !== undefined && value !== null && value !== "") {
+          formState[key] = value
+        }
+      }
+      for (const [key, value] of Object.entries(integrationSecrets)) {
+        if (value !== undefined && value !== null && value !== "") {
+          formState[`secret_${key}`] = value
+        }
+      }
+
+      const payload = formStateToPayload(formState)
+
+      const { data: response } =
         await eden.api.admin["app-hosting"].clusters[clusterId].integrations[
           editingIntegration.type
-        ].put(body)
+        ].put(payload)
 
-      if (!payload || !payload.ok) {
-        throw new Error(payload?.message ?? "Failed to update integration.")
+      if (!response || !response.ok) {
+        const failure = response as unknown as {
+          message?: string
+          fieldErrors?: Record<string, string[]>
+        }
+        if (failure.fieldErrors) {
+          const fieldErrors: FieldErrors = {}
+          for (const [key, messages] of Object.entries(failure.fieldErrors)) {
+            const field = key
+              .replace(/^metaJson\./, "")
+              .replace(/^secrets\./, "secret_")
+            fieldErrors[field] = messages[0]
+          }
+          setIntegrationFieldErrors(fieldErrors)
+        }
+        throw new Error(failure.message ?? "Failed to update integration.")
       }
 
       setEditingIntegration(null)
@@ -342,7 +448,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   const configuredIntegrationTypes = new Set(
     cluster.integrations.map((integration) => integration.type)
   )
-  const availableIntegrationTypes = SUPPORTED_INTEGRATION_TYPES.filter(
+  const availableIntegrationTypes = INTEGRATION_TYPES.filter(
     (type) => !configuredIntegrationTypes.has(type)
   )
 
@@ -402,31 +508,107 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cluster-metadata">Cluster metadata (JSON)</Label>
-              <textarea
-                id="cluster-metadata"
-                value={clusterMetadataJson}
-                onChange={(event) => setClusterMetadataJson(event.target.value)}
-                rows={5}
-                className="w-full rounded-xl border border-border bg-input/50 px-3 py-2 font-mono text-sm"
+              <Label htmlFor="cluster-kubernetes-version">
+                Kubernetes Version
+              </Label>
+              <Input
+                id="cluster-kubernetes-version"
+                value={clusterMetadata.kubernetesVersion ?? ""}
+                onChange={(event) =>
+                  setClusterMetadata((prev) => ({
+                    ...prev,
+                    kubernetesVersion: event.target.value || undefined,
+                  }))
+                }
+                placeholder="e.g. 1.28"
               />
+              {metadataFieldErrors.kubernetesVersion && (
+                <p className="text-xs text-destructive">
+                  {metadataFieldErrors.kubernetesVersion}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cluster-status">Status</Label>
-              <Select
-                value={cluster.status}
-                onValueChange={(value) => void handleStatusChange(value)}
-                disabled={statusSaving}
-              >
-                <SelectTrigger id="cluster-status" className="w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PLANNED">Planned</SelectItem>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="DEPRECATED">Deprecated</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="cluster-node-pool-name">Node Pool Name</Label>
+              <Input
+                id="cluster-node-pool-name"
+                value={clusterMetadata.nodePoolName ?? ""}
+                onChange={(event) =>
+                  setClusterMetadata((prev) => ({
+                    ...prev,
+                    nodePoolName: event.target.value || undefined,
+                  }))
+                }
+              />
+              {metadataFieldErrors.nodePoolName && (
+                <p className="text-xs text-destructive">
+                  {metadataFieldErrors.nodePoolName}
+                </p>
+              )}
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="cluster-node-pool-instance-type">
+                  Node Pool Instance Type
+                </Label>
+                <Input
+                  id="cluster-node-pool-instance-type"
+                  value={clusterMetadata.nodePoolInstanceType ?? ""}
+                  onChange={(event) =>
+                    setClusterMetadata((prev) => ({
+                      ...prev,
+                      nodePoolInstanceType: event.target.value || undefined,
+                    }))
+                  }
+                />
+                {metadataFieldErrors.nodePoolInstanceType && (
+                  <p className="text-xs text-destructive">
+                    {metadataFieldErrors.nodePoolInstanceType}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cluster-node-count">Node Count</Label>
+                <Input
+                  id="cluster-node-count"
+                  type="number"
+                  min="1"
+                  value={clusterMetadata.nodeCount ?? ""}
+                  onChange={(event) =>
+                    setClusterMetadata((prev) => ({
+                      ...prev,
+                      nodeCount: event.target.value
+                        ? Number(event.target.value)
+                        : undefined,
+                    }))
+                  }
+                />
+                {metadataFieldErrors.nodeCount && (
+                  <p className="text-xs text-destructive">
+                    {metadataFieldErrors.nodeCount}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cluster-notes">Notes</Label>
+              <textarea
+                id="cluster-notes"
+                value={clusterMetadata.notes ?? ""}
+                onChange={(event) =>
+                  setClusterMetadata((prev) => ({
+                    ...prev,
+                    notes: event.target.value || undefined,
+                  }))
+                }
+                rows={3}
+                className="w-full rounded-xl border border-border bg-input/50 px-3 py-2 text-sm"
+              />
+              {metadataFieldErrors.notes && (
+                <p className="text-xs text-destructive">
+                  {metadataFieldErrors.notes}
+                </p>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button type="submit" size="sm" disabled={metadataSaving}>
@@ -477,15 +659,14 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                 value={newIntegrationType}
                 onChange={(event) =>
                   setNewIntegrationType(
-                    event.target
-                      .value as (typeof SUPPORTED_INTEGRATION_TYPES)[number]
+                    event.target.value as (typeof INTEGRATION_TYPES)[number]
                   )
                 }
                 className="h-8 rounded-md border border-input bg-background px-2 text-sm"
               >
                 {availableIntegrationTypes.map((type) => (
                   <option key={type} value={type}>
-                    {INTEGRATION_TYPE_LABEL[type] ?? type}
+                    {INTEGRATION_TYPE_LABELS[type] ?? type}
                   </option>
                 ))}
               </select>
@@ -510,7 +691,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">
-                        {INTEGRATION_TYPE_LABEL[integration.type] ??
+                        {INTEGRATION_TYPE_LABELS[integration.type] ??
                           integration.type}
                       </span>
                       <Badge
@@ -557,74 +738,203 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       </Card>
 
       {editingIntegration && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-lg rounded-xl border border-border bg-background p-6 shadow-lg">
-            <h3 className="text-lg font-semibold">
-              Edit{" "}
-              {INTEGRATION_TYPE_LABEL[editingIntegration.type] ??
-                editingIntegration.type}
-            </h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Update metadata and secrets for this integration.
-            </p>
-
-            {integrationError && (
-              <div
-                className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
-                role="alert"
-              >
-                {integrationError}
-              </div>
-            )}
-
-            <div className="mt-4 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="integration-meta">Metadata (JSON)</Label>
-                <textarea
-                  id="integration-meta"
-                  value={integrationMeta}
-                  onChange={(e) => setIntegrationMeta(e.target.value)}
-                  rows={8}
-                  className="w-full rounded-xl border border-border bg-input/50 px-3 py-2 font-mono text-sm"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="integration-secrets">
-                  Secrets (JSON, write-only)
-                </Label>
-                <Input
-                  id="integration-secrets"
-                  type="password"
-                  value={integrationSecrets}
-                  onChange={(e) => setIntegrationSecrets(e.target.value)}
-                  placeholder="Leave blank to keep existing secrets"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Secret fields are write-only and will never be prepopulated.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setEditingIntegration(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={handleIntegrationSave}
-                disabled={integrationSaving}
-              >
-                {integrationSaving ? "Saving..." : "Save Integration"}
-              </Button>
-            </div>
-          </div>
-        </div>
+        <IntegrationEditModal
+          integration={editingIntegration}
+          meta={integrationMeta}
+          secrets={integrationSecrets}
+          fieldErrors={integrationFieldErrors}
+          formError={integrationError}
+          saving={integrationSaving}
+          onMetaChange={setIntegrationMeta}
+          onSecretsChange={setIntegrationSecrets}
+          onSave={handleIntegrationSave}
+          onCancel={() => setEditingIntegration(null)}
+        />
       )}
+    </div>
+  )
+}
+
+function IntegrationEditModal({
+  integration,
+  meta,
+  secrets,
+  fieldErrors,
+  formError,
+  saving,
+  onMetaChange,
+  onSecretsChange,
+  onSave,
+  onCancel,
+}: {
+  integration: ClusterIntegration
+  meta: Record<string, unknown>
+  secrets: Record<string, unknown>
+  fieldErrors: FieldErrors
+  formError: string | null
+  saving: boolean
+  onMetaChange: (value: Record<string, unknown>) => void
+  onSecretsChange: (value: Record<string, unknown>) => void
+  onSave: () => void
+  onCancel: () => void
+}) {
+  const type = integration.type
+  const metaSchema = getMetadataSchema(type)
+  const secretsSchema = getSecretsSchema(type)
+  const labels = integrationFieldLabels[type] ?? {}
+  const descriptions = integrationFieldDescriptions[type] ?? {}
+
+  if (!metaSchema) return null
+
+  const metaFields = Object.keys(metaSchema.shape)
+  const secretFields = secretsSchema ? Object.keys(secretsSchema.shape) : []
+
+  const handleMetaChange = (key: string, value: unknown) => {
+    onMetaChange({
+      ...meta,
+      [key]: value === "" || value === undefined ? undefined : value,
+    })
+  }
+
+  const handleSecretChange = (key: string, value: string) => {
+    onSecretsChange({ ...secrets, [key]: value || undefined })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="w-full max-w-lg rounded-xl border border-border bg-background p-6 shadow-lg">
+        <h3 className="text-lg font-semibold">
+          Edit {INTEGRATION_TYPE_LABELS[type] ?? type}
+        </h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Update metadata and secrets for this integration.
+        </p>
+
+        {formError && (
+          <div
+            className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+            role="alert"
+          >
+            {formError}
+          </div>
+        )}
+
+        <div className="mt-4 space-y-4">
+          {metaFields.map((field) => {
+            const schema = (
+              metaSchema.shape as Record<string, { _type?: string }>
+            )[field]
+            const isBool = schema?._type === "ZodBoolean"
+            const isNum = schema?._type === "ZodNumber"
+            const label = labels[field] ?? field
+            const description = descriptions[field]
+            const error = fieldErrors[field]
+
+            return (
+              <div key={field} className="space-y-2">
+                <Label htmlFor={`int-meta-${field}`}>
+                  {label}
+                  {description && (
+                    <span className="block text-xs text-muted-foreground">
+                      {description}
+                    </span>
+                  )}
+                </Label>
+                {isBool ? (
+                  <Select
+                    value={String(meta[field] ?? "")}
+                    onValueChange={(value) =>
+                      handleMetaChange(field, value === "true")
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">True</SelectItem>
+                      <SelectItem value="false">False</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : isNum ? (
+                  <Input
+                    id={`int-meta-${field}`}
+                    type="number"
+                    value={String(meta[field] ?? "")}
+                    onChange={(event) =>
+                      handleMetaChange(
+                        field,
+                        event.target.value
+                          ? Number(event.target.value)
+                          : undefined
+                      )
+                    }
+                  />
+                ) : (
+                  <Input
+                    id={`int-meta-${field}`}
+                    value={String(meta[field] ?? "")}
+                    onChange={(event) =>
+                      handleMetaChange(field, event.target.value)
+                    }
+                  />
+                )}
+                {error && <p className="text-xs text-destructive">{error}</p>}
+              </div>
+            )
+          })}
+
+          {secretFields.map((field) => {
+            const label = labels[field] ?? field
+            const description = descriptions[field]
+            const error = fieldErrors[`secret_${field}`]
+
+            return (
+              <div key={field} className="space-y-2">
+                <Label htmlFor={`int-secret-${field}`}>
+                  {label}
+                  {description && (
+                    <span className="block text-xs text-muted-foreground">
+                      {description}
+                    </span>
+                  )}
+                </Label>
+                {field === "caCertificate" || field === "kubeconfig" ? (
+                  <textarea
+                    id={`int-secret-${field}`}
+                    value={String(secrets[field] ?? "")}
+                    onChange={(event) =>
+                      handleSecretChange(field, event.target.value)
+                    }
+                    placeholder="Leave blank to keep existing secrets"
+                    rows={5}
+                    className="w-full rounded-xl border border-border bg-input/50 px-3 py-2 font-mono text-sm"
+                  />
+                ) : (
+                  <Input
+                    id={`int-secret-${field}`}
+                    type="password"
+                    value={String(secrets[field] ?? "")}
+                    onChange={(event) =>
+                      handleSecretChange(field, event.target.value)
+                    }
+                    placeholder="Leave blank to keep existing secrets"
+                  />
+                )}
+                {error && <p className="text-xs text-destructive">{error}</p>}
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={onSave} disabled={saving}>
+            {saving ? "Saving..." : "Save Integration"}
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
