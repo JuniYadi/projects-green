@@ -7,6 +7,7 @@ import {
   ListMagnifyingGlass,
   ChartLine,
   ArrowSquareOut,
+  Database,
 } from "@phosphor-icons/react"
 
 import { eden } from "@/lib/eden"
@@ -79,6 +80,27 @@ export default function PortalApplicationsPage() {
           deploy and runtime management live in the console.
         </p>
       </header>
+      <div className="rounded-xl border border-border bg-muted/20 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold">Cluster Inventory</h2>
+            <p className="text-xs text-muted-foreground">
+              Manage hosting clusters, regions, and integrations.
+            </p>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link
+              href={localizePathname({
+                pathname: "/portal/app/clusters",
+                locale,
+              })}
+            >
+              <Database size={14} className="mr-1" />
+              View Clusters
+            </Link>
+          </Button>
+        </div>
+      </div>
 
       {loading ? (
         <div className="rounded-xl border border-border bg-muted/20 p-6 text-sm text-muted-foreground">
