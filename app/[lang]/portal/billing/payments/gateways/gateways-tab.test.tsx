@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it, mock } from "bun:test"
 import { fireEvent, render, waitFor } from "@testing-library/react"
 
 import { GatewaysTab } from "./gateways-tab"
@@ -197,5 +197,117 @@ describe("GatewaysTab", () => {
       expect(view.getByText("Duitku")).toBeInTheDocument()
     })
     expect(view.getByText("PayPal")).toBeInTheDocument()
+  })
+
+  it("create gateway dispatches exactly one invalidate event", async () => {
+    // Spy on the invalidateBillingSetupStatus function directly
+    const dispatched: Event[] = []
+    const origDispatch = window.dispatchEvent.bind(window)
+    window.dispatchEvent = ((e: Event) => {
+      dispatched.push(e)
+      return origDispatch(e)
+    }) as typeof window.dispatchEvent
+
+    const view = render(<GatewaysTab />)
+
+    // Wait for initial load
+    await view.findByRole("button", { name: "Add Gateway" })
+
+    // Open create form
+    fireEvent.click(view.getByRole("button", { name: "Add Gateway" }))
+
+    // Fill required fields
+    fireEvent.change(view.getByLabelText("Gateway name"), {
+      target: { value: "Test Gateway" },
+    })
+
+    // Submit form — eden.post() is called internally; mockFetch intercepts the
+    // underlying HTTP call. On success (no error), the handler calls
+    // invalidateBillingSetupStatus() which dispatches our event.
+    fireEvent.click(view.getByRole("button", { name: "Create gateway" }))
+
+    // Wait for the list to reappear (POST + fetchGateways completed)
+    await view.findByRole("button", { name: "Add Gateway" })
+
+    window.dispatchEvent = origDispatch as typeof window.dispatchEvent
+
+    const invalidateCalls = dispatched.filter(
+      (e) => e.type === "billing-setup-status:invalidate"
+    )
+    expect(invalidateCalls.length).toBe(1)
+  })
+
+  it("toggle gateway dispatches exactly one invalidate event", async () => {
+    const { calls } = mockFetch()
+
+    const dispatched: Event[] = []
+    const origDispatch = window.dispatchEvent.bind(window)
+    window.dispatchEvent = ((e: Event) => {
+      dispatched.push(e)
+      return origDispatch(e)
+    }) as typeof window.dispatchEvent
+
+    const view = render(<GatewaysTab />)
+
+    // Wait for table to appear
+    await view.findByRole("table")
+
+    // Click toggle button (aria-label "Toggle Duitku")
+    fireEvent.click(view.getByRole("button", { name: /Toggle/i }))
+
+    // Wait for toggle to complete
+    await waitFor(() => {
+      expect(calls.some((c) => c.url.includes("toggle"))).toBe(true)
+    })
+
+    window.dispatchEvent = origDispatch as typeof window.dispatchEvent
+
+    const invalidateCalls = dispatched.filter(
+      (e) => e.type === "billing-setup-status:invalidate"
+    )
+    expect(invalidateCalls.length).toBe(1)
+  })
+
+  it("update gateway config does not dispatch invalidate event", async () => {
+    const { calls } = mockFetch()
+
+    const dispatched: Event[] = []
+    const origDispatch = window.dispatchEvent.bind(window)
+    window.dispatchEvent = ((e: Event) => {
+      dispatched.push(e)
+      return origDispatch(e)
+    }) as typeof window.dispatchEvent
+
+    const view = render(<GatewaysTab />)
+
+    // Open configure form
+    fireEvent.click(await view.findByRole("button", { name: "Configure" }))
+
+    // Change name
+    const nameInput = view.getByDisplayValue("Duitku")
+    fireEvent.change(nameInput, { target: { value: "Duitku Updated" } })
+
+    // Save
+    fireEvent.click(view.getByRole("button", { name: "Save gateway" }))
+
+    // Wait for list to return
+    await view.findByRole("button", { name: "Add Gateway" })
+
+    window.dispatchEvent = origDispatch as typeof window.dispatchEvent
+
+    // PUT should have been called
+    expect(
+      calls.some(
+        (call: { url: string; init?: RequestInit }) =>
+          new URL(call.url, "http://localhost").pathname ===
+            "/api/portal/payments/gateways/gw-1" && call.init?.method === "PUT"
+      )
+    ).toBe(true)
+
+    // No invalidate event for config-only update
+    const invalidateCalls = dispatched.filter(
+      (e) => e.type === "billing-setup-status:invalidate"
+    )
+    expect(invalidateCalls.length).toBe(0)
   })
 })
