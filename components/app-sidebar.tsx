@@ -311,28 +311,19 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
     ],
     getNavMain: (path, locale) => [
       {
-        title: "Deploy",
-        url: localizePathname({ pathname: "/portal/app/deploy", locale }),
-        icon: <RocketLaunchIcon />,
-        isActive: path === "/portal/app/deploy",
-      },
-      {
         title: "Overview",
         url: localizePathname({ pathname: "/portal/app", locale }),
         icon: <GaugeIcon />,
         isActive: path === "/portal/app",
       },
       {
-        title: "Logs",
-        url: localizePathname({ pathname: "/portal/app/logs", locale }),
-        icon: <ListMagnifyingGlassIcon />,
-        isActive: startsWithRoute(path, "/portal/app/logs"),
-      },
-      {
-        title: "Metrics",
-        url: localizePathname({ pathname: "/portal/app/metrics", locale }),
-        icon: <ChartLineIcon />,
-        isActive: startsWithRoute(path, "/portal/app/metrics"),
+        title: "Clusters",
+        url: localizePathname({
+          pathname: "/portal/app/clusters",
+          locale,
+        }),
+        icon: <HardDrivesIcon />,
+        isActive: startsWithRoute(path, "/portal/app/clusters"),
       },
       {
         title: "Events",
@@ -486,6 +477,12 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         isActive: path === "/console/app/deploy",
       },
       {
+        title: "Deployments",
+        url: localizePathname({ pathname: "/console/app/deployments", locale }),
+        icon: <ListMagnifyingGlassIcon />,
+        isActive: startsWithRoute(path, "/console/app/deployments"),
+      },
+      {
         title: "Overview",
         url: localizePathname({ pathname: "/console/app", locale }),
         icon: <GaugeIcon />,
@@ -502,12 +499,6 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         url: localizePathname({ pathname: "/console/app/metrics", locale }),
         icon: <ChartLineIcon />,
         isActive: startsWithRoute(path, "/console/app/metrics"),
-      },
-      {
-        title: "Events",
-        url: localizePathname({ pathname: "/console/app/events", locale }),
-        icon: <ListMagnifyingGlassIcon />,
-        isActive: startsWithRoute(path, "/console/app/events"),
       },
       {
         title: "Settings",

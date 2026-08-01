@@ -82,6 +82,22 @@ describe("deploy-rollback.service", () => {
     ).rejects.toThrow("Can only rollback to a successful deployment")
   })
 
+  it("rollbackDeployment blocks when deployment is in progress", async () => {
+    mockPrisma.applicationStack.findUniqueOrThrow.mockResolvedValueOnce({
+      ...mockStack,
+      status: "BUILDING",
+    })
+
+    await expect(
+      rollbackDeployment({
+        stackId: "stack-1",
+        targetDeploymentId: "dep-old",
+      })
+    ).rejects.toThrow("A deployment is already in progress for this stack")
+
+    expect(mockPrisma.applicationDeployment.create).not.toHaveBeenCalled()
+  })
+
   it("getRollbackOptions returns successful deployments", async () => {
     const result = await getRollbackOptions("stack-1")
     expect(result).toHaveLength(1)

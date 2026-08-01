@@ -92,7 +92,7 @@ whatsapp-broadcast-worker
 /storage/
 .mimocode
 .opencode
-.claude
+.claude/settings.local.json
 research/
 temp/
 

@@ -18,10 +18,10 @@ describe("resolveSidebarMenu", () => {
 
     expect(navMain.map((item) => item.title)).toEqual([
       "Deploy",
+      "Deployments",
       "Overview",
       "Logs",
       "Metrics",
-      "Events",
       "Settings",
       "Credentials",
     ])
@@ -42,6 +42,19 @@ describe("resolveSidebarMenu", () => {
     expect(
       settingsMenu.navMain.find((item) => item.title === "Settings")?.isActive
     ).toBe(true)
+  })
+  it("marks Deployments active with localized URL", () => {
+    const deploymentsMenu = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/app/deployments/stack-1",
+      locale: "en",
+    })
+
+    const deployments = deploymentsMenu.navMain.find(
+      (item) => item.title === "Deployments"
+    )
+    expect(deployments?.url).toBe("/en/console/app/deployments")
+    expect(deployments?.isActive).toBe(true)
   })
 
   it("marks items active for console utility routes in their context", () => {
@@ -136,9 +149,18 @@ describe("resolveSidebarMenu", () => {
       pathname: "/portal/app/deploy",
       locale: "en",
     })
-
     expect(navMainLabel).toBe("App Hosting")
-    expect(navMain.map((item) => item.title)).toContain("Events")
+
+    expect(navMain.map((item) => item.title)).toEqual([
+      "Overview",
+      "Clusters",
+      "Events",
+      "Detector Control",
+      "Settings",
+    ])
+    expect(navMain.map((item) => item.title)).not.toContain("Deploy")
+    expect(navMain.map((item) => item.title)).not.toContain("Logs")
+    expect(navMain.map((item) => item.title)).not.toContain("Metrics")
 
     const events = navMain.find((item) => item.title === "Events")!
     expect(events.url).toBe("/en/portal/app/events/github")
@@ -153,6 +175,18 @@ describe("resolveSidebarMenu", () => {
     })
 
     expect(navMain.find((item) => item.title === "Events")?.isActive).toBe(true)
+  })
+
+  it("includes and activates cluster management link", () => {
+    const { navMain } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/app/clusters/cl_1",
+      locale: "en",
+    })
+
+    const clusters = navMain.find((item) => item.title === "Clusters")
+    expect(clusters?.url).toBe("/en/portal/app/clusters")
+    expect(clusters?.isActive).toBe(true)
   })
 
   it("includes Webhook Logs link in whatsapp context", () => {

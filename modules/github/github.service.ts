@@ -86,6 +86,7 @@ type GithubDependencies = {
     actor: GithubActorContext
   ) => Promise<GithubInstallationRecord[]>
   createInstallationAccessToken: (installationId: number) => Promise<string>
+  invalidateInstallationAccessToken: (installationId: number) => Promise<void>
   listRepositoriesForInstallation: (
     installation: GithubInstallationRecord,
     token: string
@@ -293,10 +294,8 @@ const githubRequest = async <T>({
   })
 
   if (!response.ok) {
-    const responseText = await response.text()
-    throw new Error(
-      `GitHub API request failed: ${method} ${path} (${response.status}) ${responseText}`
-    )
+    await response.text()
+    throw new GithubApiError("GitHub API request failed.", response.status)
   }
 
   return (await response.json()) as T
@@ -319,6 +318,7 @@ const fetchJson = async <T>(
     clearTimeout(timeoutId)
 
     if (!response.ok) {
+      await response.text()
       if (response.status === 401 || response.status === 403) {
         throw new GithubReconnectRequiredError(
           "GitHub access expired or was revoked. Reconnect GitHub to continue.",
@@ -330,7 +330,6 @@ const fetchJson = async <T>(
         response.status
       )
     }
-
     const body = (await response.json()) as T
 
     return { body, response }
@@ -589,15 +588,37 @@ const createDefaultDependencies = (): GithubDependencies => ({
         throw error
       }
       if (error instanceof GithubReconnectRequiredError) {
+        console.warn({
+          operation: "create_installation_access_token",
+          statusCode: error.statusCode,
+          classification: "reconnect_required",
+        })
         throw error
       }
       if (error instanceof GithubApiError) {
-        if (error.statusCode === 401 || error.statusCode === 403) {
+        const reconnectRequired = [401, 403, 404].includes(
+          error.statusCode ?? 0
+        )
+        console.warn({
+          operation: "create_installation_access_token",
+          statusCode: error.statusCode,
+          classification: reconnectRequired
+            ? "reconnect_required"
+            : "provider_error",
+        })
+        if (reconnectRequired) {
           throw new GithubReconnectRequiredError(undefined, error.statusCode)
         }
         throw error
       }
       throw new GithubApiError("Unable to create installation access token.")
+    }
+  },
+  async invalidateInstallationAccessToken(installationId) {
+    try {
+      await redis.del(`github:iat:${installationId}`)
+    } catch (error) {
+      console.warn("Failed to invalidate GitHub token cache", error)
     }
   },
   async listRepositoriesForInstallation(installation, token) {
@@ -678,18 +699,39 @@ export const createGithubRepositoryService = (
           nextCursor: null,
         }
       }
+      const listRepositoriesWithRetry = async (
+        installation: GithubInstallationRecord
+      ) => {
+        const token = await dependencies.createInstallationAccessToken(
+          installation.githubInstallationId
+        )
 
-      const repositoriesByInstallation = await Promise.all(
-        targetInstallations.map(async (installation) => {
-          const token = await dependencies.createInstallationAccessToken(
+        try {
+          return await dependencies.listRepositoriesForInstallation(
+            installation,
+            token
+          )
+        } catch (error) {
+          if (!(error instanceof GithubReconnectRequiredError)) {
+            throw error
+          }
+
+          await dependencies.invalidateInstallationAccessToken(
+            installation.githubInstallationId
+          )
+          const freshToken = await dependencies.createInstallationAccessToken(
             installation.githubInstallationId
           )
 
           return dependencies.listRepositoriesForInstallation(
             installation,
-            token
+            freshToken
           )
-        })
+        }
+      }
+
+      const repositoriesByInstallation = await Promise.all(
+        targetInstallations.map(listRepositoriesWithRetry)
       )
 
       const repositories = dedupeRepositories(

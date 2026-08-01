@@ -198,4 +198,111 @@ describe("GatewaysTab", () => {
     })
     expect(view.getByText("PayPal")).toBeInTheDocument()
   })
+
+  it("create gateway dispatches exactly one invalidate event", async () => {
+    const dispatched: Event[] = []
+    const onInvalidate = (event: Event) => dispatched.push(event)
+    window.addEventListener("billing-setup-status:invalidate", onInvalidate)
+
+    const view = render(<GatewaysTab />)
+
+    // Wait for initial load
+    await view.findByRole("button", { name: "Add Gateway" })
+
+    // Open create form
+    fireEvent.click(view.getByRole("button", { name: "Add Gateway" }))
+
+    // Fill required fields
+    fireEvent.change(view.getByLabelText("Gateway name"), {
+      target: { value: "Test Gateway" },
+    })
+    fireEvent.click(view.getByRole("combobox"))
+    fireEvent.click(await view.findByRole("option", { name: "Duitku" }))
+
+    // Submit form — eden.post() is called internally; mockFetch intercepts the
+    // underlying HTTP call. On success (no error), the handler calls
+    // invalidateBillingSetupStatus() which dispatches our event.
+    fireEvent.click(view.getByRole("button", { name: "Create gateway" }))
+
+    await waitFor(() => {
+      expect(
+        view.queryByRole("button", { name: "Create gateway" })
+      ).not.toBeInTheDocument()
+    })
+
+    window.removeEventListener("billing-setup-status:invalidate", onInvalidate)
+
+    const invalidateCalls = dispatched.filter(
+      (e) => e.type === "billing-setup-status:invalidate"
+    )
+    expect(invalidateCalls.length).toBe(1)
+  })
+
+  it("toggle gateway dispatches exactly one invalidate event", async () => {
+    const { calls } = mockFetch()
+
+    const dispatched: Event[] = []
+    const onInvalidate = (event: Event) => dispatched.push(event)
+    window.addEventListener("billing-setup-status:invalidate", onInvalidate)
+
+    const view = render(<GatewaysTab />)
+
+    // Wait for table to appear
+    await view.findByRole("table")
+
+    // Click toggle button (aria-label "Toggle Duitku")
+    fireEvent.click(view.getByRole("button", { name: /Toggle/i }))
+
+    // Wait for toggle to complete
+    await waitFor(() => {
+      expect(calls.some((c) => c.url.includes("toggle"))).toBe(true)
+    })
+
+    await waitFor(() => {
+      expect(
+        dispatched.filter((e) => e.type === "billing-setup-status:invalidate")
+          .length
+      ).toBe(1)
+    })
+    window.removeEventListener("billing-setup-status:invalidate", onInvalidate)
+  })
+  it("update gateway config does not dispatch invalidate event", async () => {
+    const { calls } = mockFetch()
+
+    const dispatched: Event[] = []
+    const onInvalidate = (event: Event) => dispatched.push(event)
+    window.addEventListener("billing-setup-status:invalidate", onInvalidate)
+
+    const view = render(<GatewaysTab />)
+
+    // Open configure form
+    fireEvent.click(await view.findByRole("button", { name: "Configure" }))
+
+    // Change name
+    const nameInput = view.getByDisplayValue("Duitku")
+    fireEvent.change(nameInput, { target: { value: "Duitku Updated" } })
+
+    // Save
+    fireEvent.click(view.getByRole("button", { name: "Save gateway" }))
+
+    // Wait for list to return
+    await view.findByRole("button", { name: "Add Gateway" })
+
+    window.removeEventListener("billing-setup-status:invalidate", onInvalidate)
+
+    // PUT should have been called
+    expect(
+      calls.some(
+        (call: { url: string; init?: RequestInit }) =>
+          new URL(call.url, "http://localhost").pathname ===
+            "/api/portal/payments/gateways/gw-1" && call.init?.method === "PUT"
+      )
+    ).toBe(true)
+
+    // No invalidate event for config-only update
+    const invalidateCalls = dispatched.filter(
+      (e) => e.type === "billing-setup-status:invalidate"
+    )
+    expect(invalidateCalls.length).toBe(0)
+  })
 })

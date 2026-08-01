@@ -45,6 +45,7 @@ export type AdminApiError = {
   ok: false
   error: string
   message: string
+  fieldErrors?: Record<string, string[]>
   policyCode?: string
 }
 

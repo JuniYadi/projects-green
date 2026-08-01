@@ -3,9 +3,7 @@
 ## Agent boot order
 
 1. Read this file for repo-local non-negotiables.
-2. Read repo-root `.obsidian.json` (`directory`, `entry`) and open `{directory}/{entry}`.
-3. In the vault, follow that note's Agent entry flow: `[[SESSION-BRIEFING]]`, `[[index]]`, recent `[[log]]`, `[[SCHEMA]]`, matching skill notes, then the relevant project hub.
-4. If `.obsidian.json` is missing or the vault path is unavailable, continue with this file plus the task prompt; mark vault-backed claims as unverified instead of inventing docs. Setup: copy `.obsidian.json.example` → `.obsidian.json` and set absolute `directory`.
+2. Read repo-root `.obsidian.json` (at `{repo-root}/.obsidian.json`, NOT anywhere else). Extract `directory` and `entry`. Then use `skill://obsidian-load` to open the vault and follow the entry note's Agent flow. For `obsidian://open?vault=<name>&file=<path>` URLs, use `skill://obsidian-resolve` first, then `skill://obsidian-load`.
 
 ## Local hard rules
 

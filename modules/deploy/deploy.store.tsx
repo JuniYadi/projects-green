@@ -131,6 +131,7 @@ const deployWizardReducer = (
           attempt: state.monitor.attempt + 1,
           shouldFail: action.payload.shouldFail,
           failureReason: action.payload.failureReason,
+          liveDomain: undefined,
         },
       }
     }
@@ -175,6 +176,7 @@ const deployWizardReducer = (
           attempt: state.monitor.attempt + 1,
           shouldFail: false,
           failureReason: null,
+          liveDomain: undefined,
         },
       }
     }

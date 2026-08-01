@@ -84,8 +84,12 @@ mock.module("@/lib/eden", () => ({
                     resourcePlanId: "starter",
                     billingMode: null,
                     billingState: "ACTIVE",
-                    lastDeployedAt: "2026-01-01T00:00:00Z",
-                    latestDeploymentId: null,
+                    latestDeploymentId: "deployment-1",
+                    currentStepLabel: "Build started",
+                    currentStepIndex: 2,
+                    currentStepStartedAt: new Date(
+                      Date.now() - 5 * 60 * 1000
+                    ).toISOString(),
                   },
                 ],
               },
@@ -156,13 +160,21 @@ describe("ApplicationsPage overview", () => {
     })
   })
 
+  it("renders current deployment relative time", async () => {
+    const { getByText } = render(<ApplicationsPage />)
+
+    await waitFor(() => {
+      expect(getByText(/Build started — \d+ minutes ago/)).toBeDefined()
+    })
+  })
+
   it("renders action links with correct hrefs", async () => {
     const { getByText } = render(<ApplicationsPage />)
 
     await waitFor(() => {
       const logsLink = getByText("Logs").closest("a")
       const metricsLink = getByText("Metrics").closest("a")
-      const eventsLink = getByText("Events").closest("a")
+      const deploymentsLink = getByText("Deployments").closest("a")
       const deployLink = getByText("Deploy").closest("a")
 
       expect(logsLink?.getAttribute("href")).toBe(
@@ -171,8 +183,8 @@ describe("ApplicationsPage overview", () => {
       expect(metricsLink?.getAttribute("href")).toBe(
         "/en/console/app/metrics?app=test-app"
       )
-      expect(eventsLink?.getAttribute("href")).toBe(
-        "/en/console/app/events?app=test-app"
+      expect(deploymentsLink?.getAttribute("href")).toBe(
+        "/en/console/app/deployments?app=test-app"
       )
       expect(deployLink?.getAttribute("href")).toBe("/en/console/app/deploy")
     })

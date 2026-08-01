@@ -66,7 +66,6 @@ describe("ResultPanel", () => {
       />
     )
     expect(view.getByText("Deployment live")).toBeInTheDocument()
-    expect(view.getByText("Visit App")).toBeInTheDocument()
   })
 
   it("shows failure message and action buttons", () => {

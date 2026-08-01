@@ -35,6 +35,13 @@ type BillingSetupStatusState = {
   error: Error | null
 }
 
+const BILLING_SETUP_STATUS_INVALIDATE_EVENT = "billing-setup-status:invalidate"
+
+export const invalidateBillingSetupStatus = (): void => {
+  if (typeof window === "undefined") return
+  window.dispatchEvent(new Event(BILLING_SETUP_STATUS_INVALIDATE_EVENT))
+}
+
 const DISMISSED_KEY = "billing-setup-status-dismissed"
 const DEFAULT_TTL_MS = 60_000
 
@@ -146,6 +153,7 @@ export const useBillingSetupStatus = (
       error: null,
     }
   })
+  const [refreshVersion, setRefreshVersion] = useState(0)
 
   const prerequisites = useMemo(
     () => options.prerequisites ?? buildDefaultPrerequisites(),
@@ -183,7 +191,15 @@ export const useBillingSetupStatus = (
     return () => {
       cancelled = true
     }
-  }, [prerequisites, options.locale, ttlMs])
+  }, [prerequisites, options.locale, ttlMs, refreshVersion])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const handler = () => setRefreshVersion((v) => v + 1)
+    window.addEventListener(BILLING_SETUP_STATUS_INVALIDATE_EVENT, handler)
+    return () =>
+      window.removeEventListener(BILLING_SETUP_STATUS_INVALIDATE_EVENT, handler)
+  }, [])
 
   return state
 }

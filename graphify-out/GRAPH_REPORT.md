@@ -1,94 +1,94 @@
-# Graph Report - projects-green  (2026-07-31)
+# Graph Report - projects-green  (2026-08-01)
 
 ## Corpus Check
-- 1426 files · ~838,579 words
+- 1452 files · ~864,820 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 9507 nodes · 20886 edges · 531 communities (422 shown, 109 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 169 edges (avg confidence: 0.69)
+- 9737 nodes · 21228 edges · 558 communities (453 shown, 105 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 171 edges (avg confidence: 0.69)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `0f89f079`
+- Built from commit: `436d3b6c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - button.tsx
-- card.tsx
+- devices.schemas.ts
 - cn
-- servers/[id]/page.tsx
-- badge.tsx
-- support-ticket-admin-detail-screen.tsx
-- devices.dto.ts
-- react
+- portal/vpn/subscriptions/[id]/page.tsx
+- card.tsx
+- support-ticket.repository.ts
+- portal/whatsapp/devices/page.tsx
+- cluster-list.tsx
 - resolveLocaleOrDefault
 - platform-role.ts
-- vpn-admin-client.ts
-- console/app/settings/page.tsx
-- usage/api/usage.route.test.ts
-- step-source.tsx
-- tenants.guards.ts
-- deploy-wizard.tsx
+- vpn-subscriptions.route.ts
+- deploy.store.tsx
+- support-ticket-admin-detail-screen.tsx
+- cluster-management.service.ts
+- tenant-api.contract.ts
+- deploy-wizard-v2.tsx
 - support-tickets.route.ts
-- billing/api/topup.route.ts
+- template-preview.tsx
 - github.service.ts
 - sidebar.tsx
 - SshTarget
 - support-ticket.service.ts
 - auth.route.ts
-- whatsapp.module.ts
+- resolve-proxy-auth.ts
 - support-ticket-attachment.service.ts
 - scripts
 - OpenSearchClient
-- BillingTransactionService
+- eden.ts
 - console/whatsapp/usage/page.tsx
-- prisma.ts
-- portal/whatsapp/events/page.tsx
+- vpn-client.ts
+- regions-table.tsx
 - whatsapp/whatsapp-client.ts
-- invoices/email.service.tsx
-- vpn-subscription.service.ts
+- email-templates.tsx
+- deploy-stepper.tsx
 - DeploymentBuilder
 - vpn-ssh-key.service.test.ts
 - invoices.service.ts
 - tenants-admin.route.test.ts
 - billing.route.ts
-- deploy.constants.ts
+- support-ticket-detail-screen.test.tsx
 - vpn-packages.route.ts
 - workers.ts
 - TestDecimal
 - vpn.route.ts
 - auth.ts
-- getMessages
+- deployments/page.tsx
 - scripts/billing-cron.ts
-- crypto.ts
+- getPlatformRoleForUser
 - billing-client.ts
-- deploy-timeline.tsx
+- logs-panel.tsx
 - BaseJob
 - webhooks.service.ts
-- console/layout.tsx
+- server-form.tsx
 - opensearch-log.service.ts
-- organization-admin-surface.tsx
+- console/whatsapp/messages/page.tsx
 - vpn-regions.route.ts
-- devices.schemas.ts
+- vpn-crypto.ts
 - dependencies
 - wireguard.service.ts
 - github.webhook.ts
 - env-vars-editor.tsx
-- vpn-subscriptions.route.ts
+- vouchers.dto.ts
 - billing/types.ts
 - cache/index.ts
 - framework-detection.service.ts
 - missing-modules.d.ts
 - api.ts
-- billing-setup-banner.tsx
+- isLocale
 - meta-cloud/types.ts
 - admin.guards.ts
-- admin/subscriptions.route.ts
+- account.route.ts
 - mobile-auth.route.test.ts
 - mobile-integration.test.ts
-- console/invoices/invoices-table.tsx
+- invoice-pdf.tsx
 - invoices/api/invoices.route.ts
 - portal-vouchers.route.ts
 - mobile/index.ts
@@ -101,94 +101,94 @@
 - invoice-detail-screen.tsx
 - usage/api/usage.route.ts
 - vpn-server.service.test.ts
-- github.route.ts
+- github-install-state.ts
 - (home)/page.tsx
 - seed-runner.ts
 - credential-type-registry.ts
 - jenkins.route.ts
 - JenkinsClient
-- support-ticket.types.ts
-- support-ticket.repository.ts
+- tenants-bootstrap.route.test.ts
+- device-client.ts
 - User Case Verify - E2E Testing
-- CurrencyService
+- currency.service.ts
 - invoices.types.ts
 - broadcast-worker.test.ts
-- vpn-my-services.tsx
+- support-ticket.service.test.ts
 - workos-directory.ts
-- app-credential.service.ts
+- cluster-detail.tsx
 - broadcasts.route.ts
 - migration.sql
 - AppHostingBillingService
-- deploy.types.ts
+- admin/topup.route.ts
 - proxy.ts
-- getPlatformRoleForUser
+- NavOrganization
 - vouchers.service.ts
 - vpn-connection-scanner.ts
-- vpn-mobile-device.service.test.ts
+- logAuditEvent
 - audit-features.ts
-- github-install-state.ts
+- whatsapp-broadcast-worker.ts
 - messages.service.ts
-- billing/api/index.ts
+- deploy-monitor.dto.ts
 - providers/index.ts
 - templates.schemas.ts
 - devDependencies
-- mobile-auth.route.ts
+- vpn/dashboard/page.tsx
 - seeders/index.ts
 - idempotency-repository.ts
 - UsageLedgerService
-- deploy-monitor.service.ts
+- What You Must Do When Invoked
 - mobile-profiles.route.test.ts
 - vpn-pairing-token.service.test.ts
 - github-event-log.route.ts
-- invoice-pdf.tsx
-- console/whatsapp/messages/page.tsx
+- billing/api/invoices.route.ts
+- message-status-badge.tsx
 - webhook-routes.ts
-- device-client.ts
+- support-ticket.policy.ts
 - ManifestBuilder
-- payment/api/topup.route.ts
+- payment/api/index.ts
 - tenant-workos.service.test.ts
 - vpn-server-connection.ts
 - catalogs.route.ts
-- whatsapp-broadcast-worker.ts
+- VpnEmailService
 - app-breadcrumbs.tsx
 - components.json
 - plans.ts
-- deploy-config.ts
+- deploy.schema.ts
 - tenants-create-organization.shared.ts
-- tenant-api.contract.ts
-- vpn-client.ts
-- vpn/dashboard/page.tsx
+- adjustments.route.ts
+- whatsapp-audit.route.ts
+- modules/users/api/users.route.ts
 - compilerOptions
 - deploy-detection.service.ts
 - framework-detection.dto.ts
-- payment/api/index.ts
+- deploy.types.ts
 - whatsapp/users/api/users.route.ts
-- server-form.tsx
-- whatsapp-audit.route.ts
+- vpn-my-services.tsx
+- admin-vpn-audit.route.ts
 - device-create-wizard.tsx
-- vpn-mobile-client.ts
+- devices/api/admin-devices.route.ts
 - whatsapp-template-sync-worker.ts
 - github-deploy.ts
 - DeploymentBuilder
 - BankAccountService
-- deploy-submit.route.ts
-- console-vouchers.route.ts
+- api/subscriptions.route.ts
+- mobile-pairing.route.ts
 - vpn-servers.route.test.ts
-- github-event-classifier.ts
-- VpnEmailService
+- console/vpn/subscriptions/[id]/page.tsx
+- WhatsAppDeviceClient
 - vpn-servers.route.ts
 - whatsapp-broadcast.ts
-- WhatsAppDeviceClient
+- whatsapp-audit-table.tsx
 - deploy.mock.ts
-- whatsapp-monthly-billing-worker.ts
+- console/layout.tsx
 - dump-seed-data.ts
-- servers-table.test.tsx
+- prisma.ts
 - vpn-packages-catalog.route.ts
 - admin-devices.route.test.ts
 - media.route.ts
 - seed-invoices-support-tickets.ts
-- deploy-wizard-v2.tsx
-- portal/vpn/subscriptions/[id]/page.tsx
+- usage/api/usage.route.test.ts
+- vpn-mobile-device.service.test.ts
 - console/layout.test.tsx
 - cache.test.ts
 - currency.seeder.ts
@@ -197,49 +197,49 @@
 - detector-admin.route.ts
 - jenkins-sync.service.ts
 - tenants-memberships.route.test.ts
-- Repository Guidelines
-- whatsapp-health.tsx
-- whatsapp/auth.test.ts
+- app-credential.service.ts
+- support-ticket-attachment.validation.ts
+- audit-logs-table.tsx
 - members.route.ts
 - BalanceGateService
 - github.webhook-dispatch.ts
 - AppManifestBuilder
 - support-ticket.repository.test.ts
-- admin-vpn-audit.route.ts
+- fieldErrorMapFromIssues
 - VpnMobileSessionService
 - setup.ts
-- audit-details.ts
+- tabs-device-detail.tsx
 - invoice-grouped-lines.tsx
-- template-preview.tsx
-- mobile/api/admin-devices.route.ts
+- WebhookMetricsCollector
+- framework-detection.service.test.ts
 - TestSeeder
 - invoices-support-tickets.seeder.ts
 - analytics.service.ts
-- BillingCycleService
-- deploy-monitor.dto.ts
+- vpn-pricing.ts
+- tenants-organization.route.ts
 - GitOpsRepositoryService
 - templates.route.ts
-- adjust.route.ts
-- deploy-chat-sidebar.tsx
-- EnvBuilder
+- admin/subscriptions.route.ts
+- messages/page.test.tsx
+- builders/index.ts
 - HpaBuilder
 - "BillingAccount"
 - "WhatsappDevice"
-- tenants-bootstrap.route.test.ts
+- vpn-mobile-client.ts
 - tenants-organizations.route.test.ts
-- VoucherService
+- register.ts
 - Graphify SKILL Documentation
 - github-events.ts
 - quota-reconciliation.ts
-- orgs.route.ts
-- stats.route.ts
-- api/subscriptions.route.ts
+- whatsapp/auth.test.ts
+- console-vouchers.route.ts
+- crypto.ts
 - detector-admin.service.ts
-- throwIfError
+- admin-bank.route.ts
 - test-suites.ts
-- GatewayService
+- payment.types.ts
 - tenant-policy.ts
-- invoices.dto.ts
+- billing-cycle.service.ts
 - vpn-health.service.ts
 - VpnMobileDeviceService
 - admin-role.ts
@@ -248,66 +248,66 @@
 - callback/route.test.ts
 - repositories/route.test.ts
 - BillingSeeder
-- fieldErrorMapFromIssues
-- vpn-crypto.ts
+- vpn-my-services.test.tsx
+- organization-onboarding.test.tsx
 - jenkins-image-ready.service.test.ts
 - ConfigMapBuilder
-- builders/index.ts
-- webhook/route.ts
+- volume.builder.ts
+- DuitkuService
 - webhook/route.test.ts
-- audit-log.route.ts
+- whatsapp-health.tsx
 - org-overview-dashboard.test.tsx
-- app/layout.tsx
-- webhooks.route.ts
+- VoucherService
+- encryption.service.ts
 - vpn-pairing-qr-modal.test.tsx
-- github.webhook.test.ts
-- admin-bank.route.ts
+- cluster-management.service.test.ts
+- admin-app-hosting-clusters.route.test.ts
 - cluster-integration.service.ts
-- PaymentService
-- VpnServerService
+- support-tickets.client.test.ts
+- CurrencyService
 - status-tracking.test.ts
 - template-sync-worker.test.ts
-- console/vpn/subscriptions/[id]/page.tsx
-- messages/page.test.tsx
+- deployment.builder.ts
+- operate-troubleshooter.tsx
 - bun
-- logAuditEvent
+- webhook-dispatcher.service.ts
 - billing/api/usage.route.ts
-- provisioning-audit-modal.tsx
+- lib/audit.service.ts
 - quota-gate.service.test.ts
-- invite-cookie.ts
-- github-event-normalizer.ts
-- device-edit-form.tsx
+- orgs.route.ts
+- webhook/route.ts
+- payment/api/topup.route.ts
 - verify-feature-docs.ts
-- mobile-pairing.route.ts
+- mobile-auth.route.ts
 - Graphify Knowledge Graph Skill
-- eden.ts
+- console/invoices/invoices-table.tsx
 - package.json
 - seed-runner.test.ts
 - "VpnServer"
-- vouchers.dto.ts
+- stats.route.ts
 - ManifestPathResolver
-- SecretBuilder
+- deploy-submit.route.ts
 - manifest.builder.ts
 - user-bank-account.route.test.ts
-- payment.types.ts
-- WebhookMetricsCollector
-- org-detail.route.ts
-- messages.service.test.ts
-- getColumns
+- invoices.dto.ts
+- raw-payload-viewer.tsx
+- vpn-admin-client.ts
+- seed-embeddings.ts
+- SecretBuilder
 - Exports Reference
 - ErrorBoundary
 - remediate-creator-tenant-roles.ts
 - tinker.ts
 - install/start/route.test.ts
-- vpn-renewal.service.test.ts
+- VpnServerService
 - include
-- whatsapp-webhook.ts
+- whatsapp-webhook.test.ts
 - WhatsappTestOrgSeeder
 - "Subscription"
-- user-bank-account.route.ts
-- webhook.route.test.ts
-- org-summary-table.test.tsx
-- webhook-retry.job.ts
+- email.ts
+- github.route.ts
+- billing/api/index.ts
+- usage/page.test.tsx
 - seed-app-hosting-cluster.ts
 - inbound-worker.test.ts
 - support-ticket-create-screen.test.tsx
@@ -315,22 +315,22 @@
 - workos-cache.service.test.ts
 - github-events.test.ts
 - quota-reconciliation.test.ts
-- payment.seeder.ts
+- org-detail.route.ts
 - deploy-builder.service.test.ts
 - confirm.route.test.ts
-- gateways-tab.test.tsx
+- github-event-normalizer.ts
 - vpn-provisioning.service.test.ts
-- github.route.test.ts
-- messages/quota-alert.service.ts
+- member-discovery.ts
+- step-source.tsx
 - bootstrap-super-admin.ts
 - run-changed-tests.ts
 - seed-workos-roles.mjs
 - contacts-guard.tsx
 - login/start/route.ts
-- voucher-create-errors.ts
-- resource-plan-selector.tsx
-- whatsapp-audit-details.ts
-- Database Docker Compose
+- GatewayService
+- pay-as-you-go-selector.tsx
+- react-dom
+- organization-admin-surface.test.tsx
 - session.test.ts
 - feature-flags.ts
 - deploy-submit.route.test.ts
@@ -341,24 +341,24 @@
 - vouchers.name-resolver.ts
 - vpn-reconciliation.service.test.ts
 - admin-role.test.ts
-- whatsapp-webhook.e2e.test.ts
+- messages.route.test.ts
 - seed-app-hosting-policy.ts
 - session/route.test.ts
-- vpn-my-services.test.tsx
+- subscription-card.tsx
 - "WhatsappConversation"
 - app-sidebar.tsx
-- support-tickets-console.test.tsx
-- devices/page.test.tsx
+- analytics.service.test.ts
+- invoices/email.service.tsx
 - subscription-manager.test.tsx
 - idempotency-repository.test.ts
-- analytics.test.ts
+- Repository Guidelines
 - admin.service.test.ts
-- DeviceCreateWizard
+- whatsapp-webhook-worker.ts
 - jenkins-image-ready.route.test.ts
 - argocd-rollout.service.test.ts
 - app-hosting-alerts.service.test.ts
 - github-inspection.service.test.ts
-- DuitkuService
+- mobile/api/admin-devices.route.ts
 - support-tickets/email.service.test.ts
 - email.service.test.tsx
 - wireguard.service.test.ts
@@ -385,7 +385,7 @@
 - Obsidian Markdown Skill
 - console/app/layout.tsx
 - [deviceId]/page.test.tsx
-- environment-variables.route.ts
+- framework-detection.route.ts
 - portal/whatsapp/webhook-logs/page.test.tsx
 - graphify reference: add a URL and watch a folder
 - resolve-proxy-auth.test.ts
@@ -415,10 +415,9 @@
 - login/start/route.test.ts
 - org/[orgId]/page.tsx
 - documentations/page.test.tsx
-- js-yaml
 - signup/start/route.ts
 - org-role.test.ts
-- lucide-react
+- whatsapp-billing.service.test.ts
 - MockException
 - subscriptions.route.default-deps.test.ts
 - health.route.test.ts
@@ -436,42 +435,44 @@
 - usage-tab.test.tsx
 - platform-stats-cards.test.tsx
 - org-overview-stats-cards.test.tsx
-- bullmq
-- negotiator
-- portal-billing-org-selector.test.tsx
-- @phosphor-icons/react
-- eslint.config.mjs
-- @prisma/adapter-pg
-- @eslint/eslintrc
-- packages-table.tsx
-- deploy-wizard.spec.ts
-- next
-- react-dom
-- @react-email/components
-- shadcn
-- step-source-v2.tsx
-- ssh2
-- console/support-tickets/page.tsx
-- radix-ui
-- run-nightly-tests.ts
-- VpnDevicesTable
-- @tanstack/react-query
-- @tanstack/react-table
+- PaymentSeeder
 - tw-animate-css
-- @playwright/test
-- tailwindcss
-- @types/node
-- vaul
-- @types/nodemailer
-- zod
-- husky
+- portal-billing-org-selector.test.tsx
+- webhooks.route.test.ts
+- eslint.config.mjs
+- package-form.tsx
+- message-cost.service.ts
+- org-summary-table.test.tsx
+- deploy-wizard.spec.ts
+- WireGuardService
+- analytics.test.ts
+- react-icons
+- voucher-create-errors.ts
+- graphify reference: extra exports and benchmark
+- BillingTransactionService
+- github.webhook.test.ts
+- @workos-inc/authkit-nextjs
+- run-nightly-tests.ts
+- vpn.route.test.ts
+- support-ticket-attachment.storage.ts
+- subscriptions-table.tsx
+- accounts/route.test.ts
+- user-bank-account.route.ts
+- webhook.route.test.ts
+- wireguard.test.ts
+- deployments/page.test.tsx
+- deploy-trigger.route.test.ts
+- organization-admin-surface.tsx
+- voucher-management-table.test.tsx
 - db-reset.ts
 - lint-test-policy.ts
-- postcss
+- devices/page.test.tsx
 - pg
-- @testing-library/jest-dom
+- graphify reference: query, path, explain
+- obsidian-load
 - pull_request_template.md
-- @types/ssh2
+- obsidian-resolve
+- @react-pdf/renderer
 - billing-contact.service.test.ts
 - cluster-integration.service.test.ts
 - deploy-event.service.test.ts
@@ -489,26 +490,50 @@
 - Defuddle Web Extraction Skill
 - Defuddle CLI Reference
 - Obsidian CLI Skill
-- tailwind-merge
-- elysia-healthcheck
-- recharts
+- credentials/page.test.tsx
+- billing-contacts-list.test.tsx
+- app/layout.tsx
+- admin-gateway.route.ts
+- messages.service.test.ts
+- billing-alerts-form.test.tsx
+- bullmq
+- console/support-tickets/page.tsx
+- graphify reference: add a URL and watch a folder
+- graphify reference: commit hook and native CLAUDE.md integration
+- graphify reference: incremental update and cluster-only
+- cleanup-whatsapp-webhook-events.ts
+- graphify reference: GitHub clone and cross-repo merge
+- negotiator
+- graphify reference: transcribe video and audio
+- deploy-wizard-v2.test.tsx
+- clsx
+- @elysia/openapi
+- zod
+- lucide-react
+- extraction-spec.md
+- elysia
+- next
+- @opensearch-project/opensearch
+- shadcn
+- next-themes
+- nodemailer
+- @openrouter/ai-sdk-provider
 - @sinclair/typebox
-- @tailwindcss/postcss
-- @types/bun
-- @types/js-yaml
-- @types/qrcode
+- @tanstack/react-form
+- @react-email/components
+- @tanstack/react-table
 
 ## God Nodes (most connected - your core abstractions)
 1. `cn()` - 204 edges
-2. `Button()` - 189 edges
-3. `resolveLocaleOrDefault()` - 160 edges
-4. `localizePathname()` - 138 edges
+2. `Button()` - 188 edges
+3. `resolveLocaleOrDefault()` - 156 edges
+4. `localizePathname()` - 140 edges
 5. `Card()` - 128 edges
 6. `CardContent()` - 127 edges
 7. `CardHeader()` - 118 edges
 8. `CardTitle()` - 118 edges
 9. `Skeleton()` - 105 edges
-10. `Input()` - 83 edges
+10. `Input()` - 85 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Claude PR Review Workflow` --uses--> `prisma`  [EXTRACTED]
@@ -519,8 +544,8 @@
   .github/workflows/typecheck-build.yml → package.json
 - `SupportTicketCreateScreen()` --indirect_call--> `file()`  [INFERRED]
   app/[lang]/console/support-tickets/support-ticket-create-screen.tsx → modules/support-tickets/support-ticket-attachment.storage.test.ts
-- `InviteUnavailable()` --calls--> `localizePathname()`  [EXTRACTED]
-  app/[lang]/invite/page.tsx → lib/i18n/pathname.ts
+- `IconStub()` --references--> `react`  [EXTRACTED]
+  app/[lang]/portal/billing/voucher/voucher-management-table.test.tsx → package.json
 
 ## Import Cycles
 - 5-file cycle: `lib/api.ts -> modules/whatsapp/whatsapp.module.ts -> modules/whatsapp/messages/api/messages.route.ts -> lib/api/whatsapp-client.ts -> lib/eden.ts -> lib/api.ts`
@@ -534,107 +559,107 @@
 - **Graphify Query Flows** — pi_agent_skills_graphify_references_query_graphify_query, pi_agent_skills_graphify_references_query_graphify_path, pi_agent_skills_graphify_references_query_graphify_explain, pi_agent_skills_graphify_references_query_graphify_save_result, pi_agent_skills_graphify_references_query_graphify_reflect [EXTRACTED 1.00]
 - **E2E Test Infrastructure** — e2e_project_public, e2e_project_console, e2e_project_admin, e2e_project_auth_setup, e2e_project_admin_auth_setup, e2e_command_test_e2e, e2e_command_test_e2e_auth, e2e_command_test_e2e_admin_auth, e2e_command_test_e2e_console, e2e_command_test_e2e_admin, e2e_command_test_e2e_all [EXTRACTED 1.00]
 
-## Communities (531 total, 109 thin omitted)
+## Communities (558 total, 105 thin omitted)
 
 ### Community 0 - "button.tsx"
 Cohesion: 0.04
-Nodes (139): SecretField, SECRETS_FIELDS, TYPE_OPTIONS, TabDangerProps, ROLE_FILTERS, Props, STATUS_VARIANT, Props (+131 more)
+Nodes (127): SecretField, SECRETS_FIELDS, TYPE_OPTIONS, TabDangerProps, ROLE_FILTERS, Currency, PageState, Props (+119 more)
 
-### Community 1 - "card.tsx"
+### Community 1 - "devices.schemas.ts"
 Cohesion: 0.04
-Nodes (75): TabGeneralProps, ClaimRecord, InvoicesPage(), InvoicesPageProps, DashboardCard, PageState, protocolBenefits, ComparisonRow (+67 more)
+Nodes (69): ComparisonRow, CostResult, CostRow, deltaBadge(), deltaBadgeCost(), formatNumber(), PageState, ReportResult (+61 more)
 
 ### Community 2 - "cn"
-Cohesion: 0.03
-Nodes (91): SelectOrganizationPage(), SelectOrganizationPageProps, BankAccount, ConfirmationPageContent(), formatCurrency(), FormState, getDefaultPaymentDateTime(), TopupTabProps (+83 more)
-
-### Community 3 - "servers/[id]/page.tsx"
-Cohesion: 0.22
-Nodes (12): getVpnServer(), getVpnServerMetrics(), listOpenVpnUsers(), OpenVpnUserItem, syncVpnServerProtocols(), unwrapData(), VpnServerMetrics, VpnServerProcessItem (+4 more)
-
-### Community 4 - "badge.tsx"
-Cohesion: 0.05
-Nodes (74): bestFor(), displayPrice(), formatPrice(), Props, VpnPackageComparison(), formatPrice(), PriceDisplay(), Props (+66 more)
-
-### Community 5 - "support-ticket-admin-detail-screen.tsx"
 Cohesion: 0.04
-Nodes (58): ACCEPT_MIME_STRING, apiClient, FileWithPreview, SupportTicketCreateScreenProps, apiClient, AttachmentItem(), FileWithPreview, resolveInitials() (+50 more)
+Nodes (77): SelectOrganizationPage(), SelectOrganizationPageProps, BankAccount, ConfirmationPageContent(), formatCurrency(), FormState, getDefaultPaymentDateTime(), TopupTabProps (+69 more)
 
-### Community 6 - "devices.dto.ts"
-Cohesion: 0.15
-Nodes (16): formatDate(), PortalWhatsAppDeviceDetailPage(), formatCurrency(), formatDate(), getDisplayName(), PortalWhatsAppDevicesPage(), DeviceHealthInfo, DeviceHealthStatus (+8 more)
+### Community 3 - "portal/vpn/subscriptions/[id]/page.tsx"
+Cohesion: 0.10
+Nodes (29): Props, ProvisioningAuditModal(), AuditEvent, AuditEventType, EVENT_CONFIG, getStatusVariant(), Props, ProvisioningTimeline() (+21 more)
 
-### Community 7 - "react"
-Cohesion: 0.05
-Nodes (60): CatalogDetailPage(), CatalogsPage(), ConsoleTemplateDetailPage(), mockTemplatesData, mockUseSyncTemplate, mockUseTemplates, NOTE: Do NOT import `screen` — it is evaluated at module-import time when, CatalogDetailPage() (+52 more)
+### Community 4 - "card.tsx"
+Cohesion: 0.03
+Nodes (110): TabGeneralProps, ClaimRecord, AUDIT_ACTIONS, AUDIT_STATUSES, ConsoleWhatsAppAuditLogsPage(), mockFetch, formatDate(), statusVariant() (+102 more)
+
+### Community 5 - "support-ticket.repository.ts"
+Cohesion: 0.07
+Nodes (25): currentSearchParams, mockListAdminTickets, mockRouterReplace, ConsumedUploadSessions, ConsumeUploadSessionInput, consumeUploadSessions(), DOMAIN_TO_PRISMA_DEPARTMENT, DOMAIN_TO_PRISMA_PRIORITY (+17 more)
+
+### Community 6 - "portal/whatsapp/devices/page.tsx"
+Cohesion: 0.11
+Nodes (23): DeviceEmptyState(), StatusBadge(), StatusBadgeProps, SyncButton(), DeviceRow, DevicesPageProps, formatCurrency(), formatDate() (+15 more)
+
+### Community 7 - "cluster-list.tsx"
+Cohesion: 0.22
+Nodes (7): ClusterCreateDialog(), ClusterAdminDTO, ClusterIntegration, ClusterList(), STATUS_LABEL, STATUS_VARIANT, MOCK_CLUSTERS
 
 ### Community 8 - "resolveLocaleOrDefault"
-Cohesion: 0.04
-Nodes (91): getSafeNext(), VerifyEmailPage(), VerifyEmailPageProps, NewCredentialPage(), ManagePage(), ManagePageProps, VouchersPage(), InvoiceDetailPage() (+83 more)
+Cohesion: 0.03
+Nodes (109): getSafeNext(), VerifyEmailPage(), VerifyEmailPageProps, NewCredentialPage(), CredentialsPage(), DeployPage(), ManagePage(), ManagePageProps (+101 more)
 
 ### Community 9 - "platform-role.ts"
+Cohesion: 0.04
+Nodes (67): PlatformAccess, mockCreate, mockFindUnique, mockPrismaClient, mockTransaction, mockUpdate, mockCount, mockFindMany (+59 more)
+
+### Community 10 - "vpn-subscriptions.route.ts"
+Cohesion: 0.07
+Nodes (36): createAdminVpnSubscriptionsRoutes(), Deps, listQuerySchema, notFound(), RouteSet, AuthContext, createVpnSubscriptionRoutes(), defaultService() (+28 more)
+
+### Community 11 - "deploy.store.tsx"
+Cohesion: 0.12
+Nodes (20): DEFAULT_BUILD_STATE, DEFAULT_ENVIRONMENT_STATE, DEFAULT_MONITOR_STATE, DEFAULT_SOURCE_STATE, createInitialDeployWizardState(), DeployWizardAction, DeployWizardDispatchContext, DeployWizardProvider() (+12 more)
+
+### Community 12 - "support-ticket-admin-detail-screen.tsx"
 Cohesion: 0.05
-Nodes (68): PlatformAccess, PlatformAccessRole, mockCreate, mockFindUnique, mockPrismaClient, mockTransaction, mockUpdate, mockCount (+60 more)
+Nodes (69): ACCEPT_MIME_STRING, apiClient, FileWithPreview, SupportTicketCreateScreenProps, apiClient, AttachmentItem(), FileWithPreview, resolveInitials() (+61 more)
 
-### Community 10 - "vpn-admin-client.ts"
-Cohesion: 0.09
-Nodes (20): mockListVpnAdminSubscriptions, AdminDeviceEntry, ApiBody, AuditEntry, AuditLogPagination, AuditLogQuery, EdenRes, PaginationMeta (+12 more)
+### Community 13 - "cluster-management.service.ts"
+Cohesion: 0.08
+Nodes (46): AdminCreateOrganizationInput, AdminSendInvitationInput, clusterStatusEnum, CreateClusterBody, createClusterBodySchema, ListClustersQuery, listClustersQuerySchema, ListOrganizationsQuery (+38 more)
 
-### Community 11 - "console/app/settings/page.tsx"
+### Community 14 - "tenant-api.contract.ts"
 Cohesion: 0.06
-Nodes (41): TabBuild(), TabDanger(), TabGeneral(), findDefaultSlug(), resolveTab(), SettingsPage(), SettingsTab, STATUS_TONE (+33 more)
+Nodes (60): getSafeNext(), OnboardingPageProps, OrganizationOnboardingPage(), App, defaultEnsureTenantContextAccess(), defaultRequireTenantActor(), defaultTenantsAuthorizationRouteDeps, TenantsAuthorizationRouteDeps (+52 more)
 
-### Community 12 - "usage/api/usage.route.test.ts"
-Cohesion: 0.03
-Nodes (49): DEFAULT_AUTH, mockAuthContext, setMockAuthContext(), whatsappAuthMock, mockCreate, mockDelete, mockFindFirst, mockFindMany (+41 more)
-
-### Community 13 - "step-source.tsx"
-Cohesion: 0.05
-Nodes (39): OrganizationTab, OrganizationTabsProps, TABS, formatExpiresAt(), formatRelativeTime(), Membership, MembersTable(), MembersTableProps (+31 more)
-
-### Community 14 - "tenants.guards.ts"
-Cohesion: 0.06
-Nodes (57): App, defaultEnsureTenantContextAccess(), defaultRequireTenantActor(), defaultTenantsAuthorizationRouteDeps, TenantsAuthorizationRouteDeps, tenantsAuthorizationRoutes, defaultRequireTenantActor(), defaultTenantsBootstrapRouteDeps (+49 more)
-
-### Community 15 - "deploy-wizard.tsx"
-Cohesion: 0.13
-Nodes (30): clampStepToUnlocked(), getAvailableStepsList(), getMaxUnlockedStep(), getNextStep(), getPreviousStep(), getStepIndex(), isStepValid(), resolveMonitorStatus() (+22 more)
+### Community 15 - "deploy-wizard-v2.tsx"
+Cohesion: 0.10
+Nodes (50): DEPLOY_TEMPLATES, fetchFrameworkDetection(), clampStepToUnlocked(), getAvailableStepsList(), getMaxUnlockedStep(), getNextStep(), getPreviousStep(), getStepIndex() (+42 more)
 
 ### Community 16 - "support-tickets.route.ts"
 Cohesion: 0.05
-Nodes (44): getCachedOrganizations(), getCachedUsers(), App, createDefaultDependencies(), createRouteHandler(), createSupportTicketRoutes(), dedupeRecipients(), defaultSupportRecipient() (+36 more)
+Nodes (45): getCachedOrganizations(), getCachedUsers(), App, createDefaultDependencies(), createRouteHandler(), createSupportTicketRoutes(), dedupeRecipients(), defaultSupportRecipient() (+37 more)
 
-### Community 17 - "billing/api/topup.route.ts"
-Cohesion: 0.13
-Nodes (16): BillingAuthContext, BillingTopupRouteDeps, billingTopupRoutes, createBillingTopupRoutes(), defaultDeps, MAX_BALANCE, RouteSet, mockCreate (+8 more)
+### Community 17 - "template-preview.tsx"
+Cohesion: 0.24
+Nodes (14): WhatsAppTemplateLanguage, extractParameterExamples(), getButtonLabel(), getFlagEmoji(), getLanguageDisplay(), getTemplatePlaceholderIndexes(), REGION_MAP, renderTemplateBody() (+6 more)
 
 ### Community 18 - "github.service.ts"
 Cohesion: 0.05
-Nodes (44): GET(), githubService, parseLimit(), CommitFileInput, CommitFileResult, createGithubAppJwt(), createGithubRepositoryService(), CursorPayload (+36 more)
+Nodes (45): GET(), githubService, parseLimit(), CommitFileInput, CommitFileResult, createGithubAppJwt(), createGithubRepositoryService(), createInstallationToken() (+37 more)
 
 ### Community 19 - "sidebar.tsx"
-Cohesion: 0.07
-Nodes (47): NavMain(), NavOrganization(), resolveOrganizationInitials(), mockRefresh, mockReplace, mockSearchParams, mockSwitchToOrganization, NavProjects() (+39 more)
+Cohesion: 0.13
+Nodes (31): NavSecondary(), NavSecondaryItem, Collapsible(), CollapsibleContent(), CollapsibleTrigger(), Sidebar(), SidebarContent(), SidebarContext (+23 more)
 
 ### Community 20 - "SshTarget"
 Cohesion: 0.06
 Nodes (31): hasEnv, assertSafeAbsolutePath(), disconnectedState, OpenVpnClientSummary, OpenVpnSshAdapter, RemoteAccountValidationResult, sanitizeOpenVpnClientName(), mockExecChecked (+23 more)
 
 ### Community 21 - "support-ticket.service.ts"
-Cohesion: 0.04
-Nodes (52): ticket(), createSupportTicketContentCipher(), CreateSupportTicketContentCipherOptions, isSupportTicketEncryptedPayload(), parseBase64Key(), SupportTicketCiphertextFormatError, SupportTicketContentCipher, SupportTicketDecryptionError (+44 more)
+Cohesion: 0.08
+Nodes (25): createSupportTicketContentCipher(), CreateSupportTicketContentCipherOptions, isSupportTicketEncryptedPayload(), parseBase64Key(), SupportTicketCiphertextFormatError, SupportTicketContentCipher, SupportTicketDecryptionError, SupportTicketEncryptionConfigurationError (+17 more)
 
 ### Community 22 - "auth.route.ts"
-Cohesion: 0.07
-Nodes (28): authRoutes, createAuthRoutes(), emailVerificationCompleteSchema, magicCodeSchema, magicRequestSchema, magicVerifySchema, organizationSelectionCompleteSchema, readInviteToken() (+20 more)
+Cohesion: 0.06
+Nodes (37): acceptInviteFromToken(), authHandler, GET(), readInviteTokenFromRequest(), authRoutes, createAuthRoutes(), emailVerificationCompleteSchema, magicCodeSchema (+29 more)
 
-### Community 23 - "whatsapp.module.ts"
-Cohesion: 0.07
-Nodes (26): CostReconciliationInput, costReconciliationQuerySchema, ReportInput, reportQuerySchema, SyncInput, syncQuerySchema, analyticsRoutes, contactBodySchema (+18 more)
+### Community 23 - "resolve-proxy-auth.ts"
+Cohesion: 0.06
+Nodes (35): AuthSource, normalizeOrgRole(), ProxyAuthResult, resolveAuthContext(), resolveOrgRoleFromHeaders(), resolveProxyAuth(), extractBearerToken(), resolveFirstActiveOrganization() (+27 more)
 
 ### Community 24 - "support-ticket-attachment.service.ts"
-Cohesion: 0.04
-Nodes (67): createDefaultDependencies(), createRouteHandler(), createSupportTicketAttachmentRoutes(), RouteSet, supportTicketAttachmentPresignInputSchema, supportTicketAttachmentRegisterInputSchema, SupportTicketAttachmentRouteDependencies, supportTicketAttachmentRoutes (+59 more)
+Cohesion: 0.07
+Nodes (37): createDefaultDependencies(), createRouteHandler(), createSupportTicketAttachmentRoutes(), RouteSet, supportTicketAttachmentPresignInputSchema, supportTicketAttachmentRegisterInputSchema, SupportTicketAttachmentRouteDependencies, supportTicketAttachmentRoutes (+29 more)
 
 ### Community 25 - "scripts"
 Cohesion: 0.03
@@ -644,33 +669,33 @@ Nodes (63): scripts, admin:role, bootstrap:super-admin, build, cleanup:webhook-e
 Cohesion: 0.08
 Nodes (26): buildOpenSearchConfig(), buildUrl(), getAuthHeaders(), getDefaultConfig(), getEnvironmentConfig(), OpenSearchClient, OpenSearchRegionClient, TODO: Add database config resolution (Server custom fields) (+18 more)
 
-### Community 27 - "BillingTransactionService"
-Cohesion: 0.07
-Nodes (23): BalanceMutationInput, BalanceMutationResult, BillingChargeSource, BillingTransactionService, inferCategory(), MAX_BALANCE, ServiceBalanceInput, ServiceLineInput (+15 more)
+### Community 27 - "eden.ts"
+Cohesion: 0.02
+Nodes (93): formatExpiresAt(), formatRelativeTime(), Membership, MembersTable(), MembersTableProps, PendingInvitation, ListMetadata, Organization (+85 more)
 
 ### Community 28 - "console/whatsapp/usage/page.tsx"
-Cohesion: 0.04
-Nodes (59): DailyTrend, exportToCSV(), formatCurrency(), UsageBreakdown, UsagePage(), UsageSummary, CostBreakdownData, CostCategory (+51 more)
+Cohesion: 0.06
+Nodes (44): DailyTrend, exportToCSV(), formatCurrency(), UsageBreakdown, UsagePage(), UsageSummary, CostBreakdownData, CostCategory (+36 more)
 
-### Community 29 - "prisma.ts"
-Cohesion: 0.07
-Nodes (27): DATABASE_URL, globalForPrisma, deployRoutes, appStacksRoutes, billingGateRoutes, deployTriggerRoutes, environmentVariablesRoutes, deployJenkinsImageReadyRoutes (+19 more)
+### Community 29 - "vpn-client.ts"
+Cohesion: 0.11
+Nodes (23): formatPrice(), PriceDisplay(), VpnPackages(), PortalVpnPage(), activateVpnSubscription(), fetchVpn(), getVpnAdminHealth(), getVpnPackage() (+15 more)
 
-### Community 30 - "portal/whatsapp/events/page.tsx"
-Cohesion: 0.07
-Nodes (34): ConsoleWhatsAppWebhookLogsPage(), EVENT_TYPES, EventsApiResponse, makeDeviceLabel(), PageState, PROCESSING_STATUSES, mockFetch, EVENT_TYPES (+26 more)
+### Community 30 - "regions-table.tsx"
+Cohesion: 0.33
+Nodes (6): EMPTY_FORM, FormState, RegionsTable(), createVpnRegion(), deleteVpnRegion(), updateVpnRegion()
 
 ### Community 31 - "whatsapp/whatsapp-client.ts"
 Cohesion: 0.04
 Nodes (45): ApiError, ApiResponse, ApiSuccess, BroadcastRecipient, BroadcastRecipientStatus, BroadcastScheduleRecommendation, Catalog, CatalogProduct (+37 more)
 
-### Community 32 - "invoices/email.service.tsx"
-Cohesion: 0.08
-Nodes (31): EMAIL_TEMPLATES, EmailTemplateCategory, EmailTemplateMeta, INVOICE_MOCK, renderEmailTemplate(), REPLY_MOCK, TICKET_MOCK, adminAuthGuard (+23 more)
+### Community 32 - "email-templates.tsx"
+Cohesion: 0.06
+Nodes (50): EMAIL_TEMPLATES, EmailTemplateCategory, EmailTemplateMeta, INVOICE_MOCK, renderEmailTemplate(), REPLY_MOCK, TICKET_MOCK, getEmailBaseUrl() (+42 more)
 
-### Community 33 - "vpn-subscription.service.ts"
-Cohesion: 0.05
-Nodes (35): VpnServerSyncJobData, CurrencyNotFoundError, EnabledProtocol, enabledProtocols(), SyncSummary, VpnServerSyncService, mockBillingAccountFindUnique, mockBillingAdjustmentFindMany (+27 more)
+### Community 33 - "deploy-stepper.tsx"
+Cohesion: 0.28
+Nodes (6): DEPLOY_STEPS, DeployStep, DeployStepper(), DeployStepperProps, DeployTimelineV2(), DeployTimelineV2Props
 
 ### Community 34 - "DeploymentBuilder"
 Cohesion: 0.04
@@ -678,159 +703,155 @@ Nodes (14): ApplicationHelmValues, ContainerHelmValues, DeploymentBuilder, EnvVa
 
 ### Community 35 - "vpn-ssh-key.service.test.ts"
 Cohesion: 0.07
-Nodes (28): createAdminVpnSshKeysRoutes(), Deps, RouteSet, toSshKeyError(), computeSshKeyFingerprint(), parseSshPrivateKey(), resetVpnSshCrypto(), VpnSshKeyError (+20 more)
+Nodes (31): createAdminVpnSshKeysRoutes(), Deps, RouteSet, toSshKeyError(), computeSshKeyFingerprint(), decryptSshPrivateKey(), encryptSshPrivateKey(), getEncryptionKey() (+23 more)
 
 ### Community 36 - "invoices.service.ts"
-Cohesion: 0.08
-Nodes (28): APP_TO_PRISMA_STATUS, InvoiceBankAccountRecord, InvoiceDelegate, InvoiceGatewayRecord, InvoiceLineRecord, InvoicePaymentConfirmationRecord, InvoiceRecord, InvoiceRepository (+20 more)
+Cohesion: 0.07
+Nodes (29): createDefaultDependencies(), APP_TO_PRISMA_STATUS, InvoiceBankAccountRecord, InvoiceDelegate, InvoiceGatewayRecord, InvoiceLineRecord, InvoicePaymentConfirmationRecord, InvoiceRecord (+21 more)
 
 ### Community 37 - "tenants-admin.route.test.ts"
 Cohesion: 0.05
-Nodes (35): defaultActor, MockActor, mockCancelTenantInvitation, MockDeleteResult, mockDeleteTenantMembershipSafely, mockDeleteTenantOrganization, mockDemoteTenantMembershipSafely, mockEnsureTenantContextAccess (+27 more)
+Nodes (36): defaultActor, getMembershipApp(), MockActor, mockCancelTenantInvitation, MockDeleteResult, mockDeleteTenantMembershipSafely, mockDeleteTenantOrganization, mockDemoteTenantMembershipSafely (+28 more)
 
 ### Community 38 - "billing.route.ts"
 Cohesion: 0.08
 Nodes (39): adminBillingContactsRoutes, AdminContactsDeps, BillingAuthContext, createAdminBillingContactsRoutes(), defaultDeps, BillingAuthContext, BillingRouteDeps, billingRoutes (+31 more)
 
-### Community 39 - "deploy.constants.ts"
-Cohesion: 0.11
-Nodes (25): DEFAULT_BUILD_STATE, DEFAULT_ENVIRONMENT_STATE, DEFAULT_MONITOR_STATE, DEFAULT_SOURCE_STATE, DEPLOY_STEP_ORDER, parseStepQueryValue(), createInitialDeployWizardState(), DeployWizardAction (+17 more)
-
 ### Community 40 - "vpn-packages.route.ts"
-Cohesion: 0.07
-Nodes (29): createAdminVpnPackagesRoutes(), Deps, RouteSet, toPackageError(), serverProtocolLabels(), toVpnPackageDTO(), VpnPackageDTO, VpnPackageServerDTO (+21 more)
+Cohesion: 0.09
+Nodes (22): createAdminVpnPackagesRoutes(), Deps, RouteSet, toPackageError(), CreateVpnPackageInput, createVpnPackageSchema, serverIdsSchema, SUPPORTED_CURRENCIES (+14 more)
 
 ### Community 41 - "workers.ts"
 Cohesion: 0.06
-Nodes (32): BillingCronJobData, closeAllQueues(), RETRY_DELAYS_MS, VpnProvisioningJobData, vpnStagedBackoff(), allWorkers, appHostingBillingInterval, billingDailyWorker (+24 more)
+Nodes (34): closeAllQueues(), RETRY_DELAYS_MS, VpnProvisioningJob, VpnProvisioningJobData, vpnStagedBackoff(), ReconciliationResult, VpnReconciliationService, allWorkers (+26 more)
 
 ### Community 42 - "TestDecimal"
 Cohesion: 0.05
 Nodes (26): mockAccountRecord, mockCreate, mockFindUnique, mockTx, mockCount, mockFindMany, mockPlatformRoleFindFirst, mockFindUnique (+18 more)
 
 ### Community 43 - "vpn.route.ts"
-Cohesion: 0.06
-Nodes (43): buildOpenVpnClientName(), createVpnRoutes(), currentPeriod(), defaultBilling(), defaultOpenVpn(), defaultVpnClients(), isAdminAuth(), isAuthSuccess() (+35 more)
+Cohesion: 0.13
+Nodes (23): buildOpenVpnClientName(), createVpnRoutes(), currentPeriod(), defaultBilling(), defaultOpenVpn(), defaultVpnClients(), isAdminAuth(), isAuthSuccess() (+15 more)
 
 ### Community 44 - "auth.ts"
-Cohesion: 0.11
-Nodes (29): getActionMessage(), GuardedRoute, guardOrgFull(), guardOrgRead(), guardOrgWrite(), guardSuperAdmin(), hasOrgMembership(), isSuperAdmin() (+21 more)
+Cohesion: 0.12
+Nodes (28): getActionMessage(), GuardedRoute, guardOrgFull(), guardOrgRead(), guardOrgWrite(), guardSuperAdmin(), hasOrgMembership(), isSuperAdmin() (+20 more)
 
-### Community 45 - "getMessages"
-Cohesion: 0.05
-Nodes (60): AppCredentialListItem, CREDENTIAL_TYPE_OPTIONS, CredentialListRequestState, CredentialsPage(), formatDate(), getColumns(), STATUS_OPTIONS, DeployPage() (+52 more)
+### Community 45 - "deployments/page.tsx"
+Cohesion: 0.04
+Nodes (65): DeploymentsCopy, DeploymentsPage(), findDefaultSlug(), formatDuration(), formatTime(), HistoryMeta, STATUS_TONE, toDeploymentStatus() (+57 more)
 
 ### Community 46 - "scripts/billing-cron.ts"
-Cohesion: 0.08
-Nodes (21): InvoiceStatusManager, PRISMA_STATUS_TO_EMAIL_STATUS, mockBillingAccountFindUnique, mockEmailService, mockFindMany, mockPrismaClient, mockSendPaymentReminder, mockUpdate (+13 more)
+Cohesion: 0.10
+Nodes (14): BillingCronJobData, InvoiceStatusManager, toInvoiceListItem(), monthlyWorker, processInvoiceStatusManager(), processMonthlyBilling(), processPaymentReminder(), redisConnection (+6 more)
 
-### Community 47 - "crypto.ts"
-Cohesion: 0.09
-Nodes (30): AppKeyCryptoError, AppKeyCryptoErrorCode, assertAppKeyCryptoConfigured(), decryptWhatsAppToken(), decryptWithAppKey(), encodeBase64Url(), encryptWhatsAppToken(), encryptWithAppKey() (+22 more)
+### Community 47 - "getPlatformRoleForUser"
+Cohesion: 0.10
+Nodes (15): GET(), DeviceEditInitialData, EditDevicePageProps, EditWhatsAppDevicePage(), formatDateTimeLocal(), toPlainObject(), PortalTemplatesPage(), resolveOrgRole() (+7 more)
 
 ### Community 48 - "billing-client.ts"
 Cohesion: 0.02
-Nodes (141): BillingAlertsForm(), defaultPreferences, metadata, BillingDashboard(), calculateCostProjection(), createSecondaryLinks(), DashboardData, formatCurrency() (+133 more)
+Nodes (147): BillingAlertsForm(), defaultPreferences, metadata, BillingDashboard(), calculateCostProjection(), createSecondaryLinks(), DashboardData, formatCurrency() (+139 more)
 
-### Community 49 - "deploy-timeline.tsx"
-Cohesion: 0.07
-Nodes (36): Collapsible(), CollapsibleContent(), CollapsibleTrigger(), DEPLOY_STATUS_LABELS, StackBillingState, DeployLogLine, DeployLogScope, DeployTimelineItem (+28 more)
+### Community 49 - "logs-panel.tsx"
+Cohesion: 0.17
+Nodes (15): DeployLogLine, DeployLogScope, DeployStatus, getStreamStateLabel(), getTerminalLogLine(), getVisibleLogLines(), LOG_SCOPES, LogsPanel() (+7 more)
 
 ### Community 50 - "BaseJob"
 Cohesion: 0.06
-Nodes (34): BaseJob, DEFAULTS, createTransporter(), EmailJob, EmailJobData, mockSendMail, getOptionalEnv(), getQueue() (+26 more)
+Nodes (34): BaseJob, DEFAULTS, getOptionalEnv(), getQueue(), getQueueRuntimeConfig(), getRedisConnection(), getRedisUrl(), parseRedisDb() (+26 more)
 
 ### Community 51 - "webhooks.service.ts"
-Cohesion: 0.09
-Nodes (26): ResolveContactGroupResult, resolveWhatsappContactGroupId(), upsertWhatsappContactFromMessage(), UpsertWhatsappContactFromMessageOptions, toWebhookEventDTO(), WhatsappWebhookEventDetailDTO, WhatsappWebhookEventDTO, extractMediaMetaId() (+18 more)
+Cohesion: 0.12
+Nodes (19): webhooksRoutes, verifyWebhookSignature(), toWebhookEventDTO(), WhatsappWebhookEventDetailDTO, WhatsappWebhookEventDTO, extractMediaMetaId(), extractMediaUrl(), extractMessageBody() (+11 more)
 
-### Community 52 - "console/layout.tsx"
-Cohesion: 0.24
-Nodes (17): AdminLayout(), ConsoleLayout(), PortalLayout(), AppSidebar(), AppSidebarOrganization, Separator(), SidebarInset(), SidebarTrigger() (+9 more)
+### Community 52 - "server-form.tsx"
+Cohesion: 0.07
+Nodes (31): buildPlainTextReport(), CheckRow(), ConnectionTestModal(), formatLatency(), formatPort(), formatTimestamp(), STATUS_CLASS, STATUS_ICON (+23 more)
 
 ### Community 53 - "opensearch-log.service.ts"
-Cohesion: 0.12
-Nodes (25): clients, createOpenSearchClient(), getOpenSearchClient(), getRegionConfig(), OpenSearchConfig, { connection: redisConnection }, opensearchIngestQueue, ensureLogIndex() (+17 more)
+Cohesion: 0.11
+Nodes (26): clients, createOpenSearchClient(), getOpenSearchClient(), getRegionConfig(), OpenSearchConfig, { connection: redisConnection }, opensearchIngestQueue, opensearchLogsRoutes (+18 more)
 
-### Community 54 - "organization-admin-surface.tsx"
-Cohesion: 0.07
-Nodes (34): DiscoverableMember, filterMembers(), getMemberDiscoveryOptions(), MemberDiscoveryFilters, MemberRole, normalizeText(), ROLE_ORDER, toRoleValue() (+26 more)
+### Community 54 - "console/whatsapp/messages/page.tsx"
+Cohesion: 0.05
+Nodes (61): AppCredentialListItem, CREDENTIAL_TYPE_OPTIONS, CredentialListRequestState, formatDate(), getColumns(), STATUS_OPTIONS, ExpiryBadgeProps, MediaRecord (+53 more)
 
 ### Community 55 - "vpn-regions.route.ts"
 Cohesion: 0.08
 Nodes (25): createAdminVpnRegionsRoutes(), Deps, RouteSet, toRegionError(), toVpnRegionDTO(), VpnRegionDTO, VpnRegionWithCount, CreateVpnRegionInput (+17 more)
 
-### Community 56 - "devices.schemas.ts"
-Cohesion: 0.07
-Nodes (36): WhatsappAuditAction, WhatsappAuditEventParams, WhatsappAuditEventStatus, AdminGuard, createAdminDevicesRoutes(), isAdminError(), MAX_BALANCE, RouteSet (+28 more)
+### Community 56 - "vpn-crypto.ts"
+Cohesion: 0.09
+Nodes (24): decrypt(), parseEncryptedField(), getDecryptedSecrets(), decryptClusterIntegrationSecrets(), CreateActiveClientInput, CreateClientInput, CreateProvisioningFailureInput, OrganizationClientInput (+16 more)
 
 ### Community 57 - "dependencies"
 Cohesion: 0.05
-Nodes (43): ai, @ai-sdk/openai, class-variance-authority, clsx, elysia, @elysia/eden, @elysia/openapi, @elysia/server-timing (+35 more)
+Nodes (41): ai, @ai-sdk/openai, class-variance-authority, @elysia/eden, elysia-healthcheck, @elysia/server-timing, @faker-js/faker, @formatjs/intl-localematcher (+33 more)
 
 ### Community 58 - "wireguard.service.ts"
-Cohesion: 0.09
-Nodes (22): wireguard, wireguardRoutes, WireGuardService, parseWgDump(), sanitizeUsername(), WireGuardSshAdapter, MOCK_SERVER, mockCreatePeer (+14 more)
+Cohesion: 0.18
+Nodes (12): wireguard, wireguardRoutes, parseWgDump(), sanitizeUsername(), WireGuardSshAdapter, CreatePeerInput, CreatePeerResult, SshTarget (+4 more)
 
 ### Community 59 - "github.webhook.ts"
-Cohesion: 0.12
-Nodes (24): BuildDispatcher, BuildDispatchPayload, CreateGithubWebhookEventInput, createGithubWebhookHandler(), enqueueGithubWebhookEvent(), getHeaderValue(), GithubRepositoryConnectionRecord, GithubRepositoryConnectionStore (+16 more)
+Cohesion: 0.11
+Nodes (27): BuildDispatcher, BuildDispatchPayload, CreateGithubWebhookEventInput, createGithubWebhookHandler(), enqueueGithubWebhookEvent(), getHeaderValue(), getIdempotencyKey(), GithubRepositoryConnectionRecord (+19 more)
 
 ### Community 60 - "env-vars-editor.tsx"
 Cohesion: 0.07
-Nodes (54): createEnvironmentVariablesClient(), fetchList(), fetchMutation(), ImportInput, MutateCreateInput, MutateUpdateInput, parseJsonSafely(), EnvVariableActivity (+46 more)
+Nodes (59): createEnvironmentVariablesClient(), fetchList(), fetchMutation(), ImportInput, MutateCreateInput, MutateUpdateInput, parseJsonSafely(), EnvVariableActivity (+51 more)
 
-### Community 61 - "vpn-subscriptions.route.ts"
-Cohesion: 0.08
-Nodes (36): VpnProvisioningJob, createAdminVpnSubscriptionsRoutes(), Deps, listQuerySchema, notFound(), RouteSet, AuthContext, createVpnSubscriptionRoutes() (+28 more)
+### Community 61 - "vouchers.dto.ts"
+Cohesion: 0.25
+Nodes (7): RedeemResultDTO, VoucherClaimDTO, VoucherClaimRecord, VoucherDetailDTO, VoucherDTO, VoucherRecord, VoucherRecordBase
 
 ### Community 62 - "billing/types.ts"
-Cohesion: 0.08
-Nodes (21): mockedPrisma, MockPrisma, roundCpu(), roundMem(), USAGE_CATEGORIES, UsageCategory, CostingService, mockPrisma (+13 more)
+Cohesion: 0.10
+Nodes (17): mockedPrisma, MockPrisma, CostingService, mockPrisma, BillingAccountNotFoundError, CalcPaygOnNonPaygError, CostingResult, DeviceNotFoundError (+9 more)
 
 ### Community 63 - "cache/index.ts"
 Cohesion: 0.09
 Nodes (15): DbCacheAdapter, dbAdapter, getOrFetch(), redisAdapter, retryRedisGet(), sleep(), waitForLock(), dbAdapter (+7 more)
 
 ### Community 64 - "framework-detection.service.ts"
-Cohesion: 0.07
-Nodes (46): AI_DECISION_SCHEMA, AiDecision, AiDecisionResult, buildDetectorRuleHints(), buildInventory(), buildRequiredDependencies(), checkForBlockedFrameworks(), cloneRepository() (+38 more)
+Cohesion: 0.08
+Nodes (36): AI_DECISION_SCHEMA, AiDecision, AiDecisionResult, buildDetectorRuleHints(), buildRequiredDependencies(), checkForBlockedFrameworks(), cloneRepository(), DEFAULT_PORT_MAP (+28 more)
 
 ### Community 65 - "missing-modules.d.ts"
 Cohesion: 0.06
 Nodes (16): Certificate, DefaultLegendContentProps, DefaultTooltipContentProps, Fingerprint, Identity, Key, lru-cache, LRUCache (+8 more)
 
 ### Community 66 - "api.ts"
-Cohesion: 0.08
-Nodes (21): App, parseErrorPath(), toFieldErrors(), adminRoutes, authWhoamiRoute, healthRoutes, checkLiveness(), checkReadiness() (+13 more)
+Cohesion: 0.14
+Nodes (15): App, parseErrorPath(), toFieldErrors(), authWhoamiRoute, healthRoutes, checkLiveness(), checkReadiness(), checkStartup() (+7 more)
 
-### Community 67 - "billing-setup-banner.tsx"
-Cohesion: 0.07
-Nodes (34): InviteInactive(), InvitePage(), InvitePageProps, InviteUnavailable(), persistInviteToken(), ResolvedInvitation, resolveInvitation(), LocaleLayout() (+26 more)
+### Community 67 - "isLocale"
+Cohesion: 0.21
+Nodes (9): LocaleLayout(), LocaleLayoutProps, BillingSetupBannerClient(), mockBankAccounts, mockCurrencies, mockGateways, isLocale(), resolveFromHeader() (+1 more)
 
 ### Community 68 - "meta-cloud/types.ts"
 Cohesion: 0.05
 Nodes (36): CatalogMessageAction, CatalogProductAction, CatalogProductListAction, CatalogProductListSection, InteractiveButtonPayload, InteractiveCTAUrlButton, InteractiveListPayload, InteractiveListSection (+28 more)
 
 ### Community 69 - "admin.guards.ts"
-Cohesion: 0.12
-Nodes (24): AdminActorContext, AdminApiError, getAdminActorContext(), TODO: Migrate all migration-candidate routes to adminAuthGuard, requireSuperAdmin(), RouteSet, toForbiddenError(), toUnauthorizedError() (+16 more)
+Cohesion: 0.09
+Nodes (31): RouteSet, toWorkosError(), AdminActorContext, AdminApiError, getAdminActorContext(), TODO: Migrate all migration-candidate routes to adminAuthGuard, requireSuperAdmin(), RouteSet (+23 more)
 
-### Community 70 - "admin/subscriptions.route.ts"
-Cohesion: 0.08
-Nodes (30): BillingAccountRouteDeps, billingAccountRoutes, BillingAuthContext, createBillingAccountRoutes(), daysSince(), defaultDeps, RouteSet, toForbidden() (+22 more)
+### Community 70 - "account.route.ts"
+Cohesion: 0.23
+Nodes (12): BillingAccountRouteDeps, billingAccountRoutes, BillingAuthContext, createBillingAccountRoutes(), daysSince(), defaultDeps, RouteSet, toForbidden() (+4 more)
 
 ### Community 71 - "mobile-auth.route.test.ts"
 Cohesion: 0.10
-Nodes (19): activeSubscription, authenticate, createAuthApp(), exchangeCode, fakeDeviceService, fakeDeviceServiceMocks, inactiveSubscription, mockCount (+11 more)
+Nodes (18): activeSubscription, authenticate, exchangeCode, fakeDeviceService, fakeDeviceServiceMocks, inactiveSubscription, mockCount, mockCreate (+10 more)
 
 ### Community 72 - "mobile-integration.test.ts"
-Cohesion: 0.07
-Nodes (30): AuthContext, createMobileDeviceRoutes(), Deps, forbidden(), notFound(), RouteSet, unauthorized(), activeDevice (+22 more)
+Cohesion: 0.08
+Nodes (22): activeDevice, activeSubscription, authenticate, exchangeCode, fakeDeviceService, fakeDeviceServiceMocks, fakePairingService, fakePairingServiceMocks (+14 more)
 
-### Community 73 - "console/invoices/invoices-table.tsx"
-Cohesion: 0.11
-Nodes (22): getErrorMessage(), getInvoiceColumns(), InvoiceListRequestState, InvoicesTable(), InvoicesTableProps, getErrorMessage(), getInvoiceColumns(), InvoicesTable() (+14 more)
+### Community 73 - "invoice-pdf.tsx"
+Cohesion: 0.12
+Nodes (14): BalanceTransactionEntry, formatBalanceTransaction(), formatPaymentMethod(), FormattedBalanceTransaction, SOURCE_LABELS, BankAccountInput, InvoiceFooter(), InvoicePdfDocument() (+6 more)
 
 ### Community 74 - "invoices/api/invoices.route.ts"
 Cohesion: 0.10
@@ -841,36 +862,36 @@ Cohesion: 0.09
 Nodes (32): createPortalVoucherRoutes(), defaultDeps, isAdmin(), PortalVoucherRouteDeps, portalVoucherRoutes, resolveActor(), RouteSet, createDefaultService() (+24 more)
 
 ### Community 76 - "mobile/index.ts"
-Cohesion: 0.08
-Nodes (33): DevicePayload, MobileDeviceRow, toMobileDeviceDTO(), toMobileDeviceListDTO(), VpnMobileDeviceDTO, VpnMobileDeviceListDTO, CreateMobileDeviceInput, ListMobileDeviceFilter (+25 more)
+Cohesion: 0.10
+Nodes (27): DevicePayload, MobileDeviceRow, toMobileDeviceDTO(), toMobileDeviceListDTO(), VpnMobileDeviceDTO, VpnMobileDeviceListDTO, VpnPairingTokenAlreadyUsedError, VpnPairingTokenExpiredError (+19 more)
 
 ### Community 77 - "BaseSeeder"
 Cohesion: 0.06
-Nodes (18): BaseSeeder, EmbeddingsSeeder, DEFAULT_TEST_DATA, registerSeeder(), AppHostingPolicySeeder, deriveId(), LaunchPolicy, POLICIES (+10 more)
+Nodes (19): BaseSeeder, EmbeddingsSeeder, DEFAULT_TEST_DATA, registerSeeder(), AppHostingPolicySeeder, deriveId(), LaunchPolicy, POLICIES (+11 more)
 
 ### Community 78 - "admin.service.ts"
-Cohesion: 0.11
-Nodes (26): AdminInvitationPendingSummary, AdminInvitationSummary, AdminMembershipSummary, AdminOrganizationSummary, createAdminOrganization(), listAdminOrganizationMembers(), listAdminOrganizations(), ListOrganizationMembersResult (+18 more)
+Cohesion: 0.14
+Nodes (19): AdminInvitationPendingSummary, AdminInvitationSummary, AdminMembershipSummary, AdminOrganizationSummary, createAdminOrganization(), listAdminOrganizationMembers(), listAdminOrganizations(), ListOrganizationMembersResult (+11 more)
 
 ### Community 79 - "vpn/email.service.tsx"
 Cohesion: 0.08
 Nodes (24): ProvisioningFailedEmail(), ProvisioningFailedEmailProps, s, ProvisioningSuccessEmail(), ProvisioningSuccessEmailProps, s, RenewalFailedEmail(), RenewalFailedEmailProps (+16 more)
 
 ### Community 80 - "mobile-auth.middleware.ts"
-Cohesion: 0.07
-Nodes (29): adminDevicesRoutes, mobileVpnRoutes, defaultGetSecret(), defaultVerifySessionJwt(), Deps, extractBearerToken(), GetDeviceStatus, MobileAuthContext (+21 more)
+Cohesion: 0.08
+Nodes (28): adminDevicesRoutes, mobileVpnRoutes, defaultGetSecret(), defaultVerifySessionJwt(), Deps, extractBearerToken(), GetDeviceStatus, MobileAuthResult (+20 more)
 
 ### Community 81 - "business-profile.route.ts"
-Cohesion: 0.11
-Nodes (18): BusinessProfileFields, businessProfileFieldsSchema, metaGetBusinessProfileResponseSchema, metaUpdateBusinessProfileResponseSchema, UpdateBusinessProfileInput, updateBusinessProfileSchema, Vertical, VERTICALS (+10 more)
+Cohesion: 0.10
+Nodes (19): BusinessProfileFields, businessProfileFieldsSchema, metaGetBusinessProfileResponseSchema, metaUpdateBusinessProfileResponseSchema, UpdateBusinessProfileInput, updateBusinessProfileSchema, Vertical, VERTICALS (+11 more)
 
 ### Community 82 - "tenant-workos.service.ts"
-Cohesion: 0.09
-Nodes (38): getMembershipApp(), App, createTenantsMembershipRoutes(), defaultEnsureTenantContextAccess(), defaultTenantsMembershipRouteDeps, TenantsMembershipRouteDeps, tenantsMembershipRoutes, TenantMemberRemoveResponse (+30 more)
+Cohesion: 0.08
+Nodes (42): getInvitationApp(), createTenantsInvitationRoutes(), getApp(), toWorkosApiError(), locks, NOTE: This protects a single Node.js process. If the app is scaled, withOwnershipLock(), acceptTenantInvitation() (+34 more)
 
 ### Community 83 - "invoice-detail-screen.tsx"
-Cohesion: 0.14
-Nodes (17): InvoiceDetailPageProps, Sheet(), SheetClose(), SheetContent(), SheetDescription(), SheetFooter(), SheetHeader(), SheetOverlay() (+9 more)
+Cohesion: 0.13
+Nodes (20): InvoiceDetailPageProps, Sheet(), SheetClose(), SheetContent(), SheetDescription(), SheetFooter(), SheetHeader(), SheetOverlay() (+12 more)
 
 ### Community 84 - "usage/api/usage.route.ts"
 Cohesion: 0.10
@@ -878,11 +899,11 @@ Nodes (19): ResolvedAuth, RouteSet, usageRoutes, BillingCostDTO, CategoryBreakdo
 
 ### Community 85 - "vpn-server.service.test.ts"
 Cohesion: 0.08
-Nodes (21): baseServerShape, CreateVpnServerInput, createVpnServerSchema, ipAddressSchema, portSchema, updateVpnServerSchema, PrismaLike, AnyFn (+13 more)
+Nodes (22): baseServerShape, CreateVpnServerInput, createVpnServerSchema, ipAddressSchema, portSchema, UpdateVpnServerInput, updateVpnServerSchema, PrismaLike (+14 more)
 
-### Community 86 - "github.route.ts"
-Cohesion: 0.12
-Nodes (25): GET(), getStateSecret(), githubService, toErrorRedirect(), toRedirectUrl(), createDefaultDependencies(), createGithubRoutes(), disabledResponse (+17 more)
+### Community 86 - "github-install-state.ts"
+Cohesion: 0.15
+Nodes (16): GET(), getStateSecret(), githubService, createSignature(), getDefaultNonceStore(), getSafeReturnTo(), GithubInstallStateError, GithubInstallStateNonceRecord (+8 more)
 
 ### Community 87 - "(home)/page.tsx"
 Cohesion: 0.09
@@ -894,7 +915,7 @@ Nodes (20): SeedClassification, SeederConfig, SeedResult, clearRegistry(), disco
 
 ### Community 89 - "credential-type-registry.ts"
 Cohesion: 0.09
-Nodes (24): AnyCredentialSecrets, CredentialMetadata, CredentialSecrets, CredentialTypeKey, CloudflareApiTokenDef, CloudflareApiTokenMetadata, cloudflareApiTokenMetadataSchema, CloudflareApiTokenSecrets (+16 more)
+Nodes (25): AnyCredentialSecrets, buildMaskedPreview(), CredentialMetadata, CredentialSecrets, CredentialTypeKey, CloudflareApiTokenDef, CloudflareApiTokenMetadata, cloudflareApiTokenMetadataSchema (+17 more)
 
 ### Community 90 - "jenkins.route.ts"
 Cohesion: 0.07
@@ -904,21 +925,21 @@ Nodes (32): buildTriggerSchema, createJenkinsRoutes(), jenkinsRoutes, JOB_TYPES,
 Cohesion: 0.12
 Nodes (13): buildGitHubCredentialXml(), EnvVar, escapeXml(), getBasicAuthHeader(), JenkinsBuildInfo, JenkinsClient, JenkinsConfig, JenkinsCredentialSyncResult (+5 more)
 
-### Community 92 - "support-ticket.types.ts"
-Cohesion: 0.09
-Nodes (36): apiClient, SupportTicketsConsoleProps, SupportTicketsPageProps, apiClient, SupportTicketsPortalProps, getEmailBaseUrl(), EmailServiceError, TicketOrganizationEmailContext (+28 more)
+### Community 92 - "tenants-bootstrap.route.test.ts"
+Cohesion: 0.14
+Nodes (12): createTenantsBootstrapRoutes(), BootstrapRouteDeps, defaultActor, getApp(), MockActor, mockCreateTenantMembership, mockCreateTenantOrganization, mockDeleteTenantOrganization (+4 more)
 
-### Community 93 - "support-ticket.repository.ts"
-Cohesion: 0.08
-Nodes (24): currentSearchParams, mockListAdminTickets, mockRouterReplace, ConsumedUploadSessions, ConsumeUploadSessionInput, consumeUploadSessions(), DOMAIN_TO_PRISMA_DEPARTMENT, DOMAIN_TO_PRISMA_PRIORITY (+16 more)
+### Community 93 - "device-client.ts"
+Cohesion: 0.12
+Nodes (16): mockRequest, AnalyticsCost, AnalyticsDataItem, AnalyticsGranularity, AnalyticsMetricType, AnalyticsPaging, AnalyticsQueryParams, AnalyticsResponse (+8 more)
 
 ### Community 94 - "User Case Verify - E2E Testing"
 Cohesion: 0.09
 Nodes (29): bun run test:e2e, bun run test:e2e:admin, bun run test:e2e:admin-auth, bun run test:e2e:all, bun run test:e2e:auth, bun run test:e2e:console, admin Project, admin-auth-setup Project (+21 more)
 
-### Community 95 - "CurrencyService"
-Cohesion: 0.08
-Nodes (13): CurrencyDTO, CurrencyRecord, toCurrencyDTO(), BaseCurrencyMissingError, CurrencyDb, CurrencyRecord, CurrencyService, createAdminCurrencyRoutes() (+5 more)
+### Community 95 - "currency.service.ts"
+Cohesion: 0.19
+Nodes (11): CurrencyDTO, CurrencyRecord, toCurrencyDTO(), BaseCurrencyMissingError, CurrencyDb, CurrencyRecord, createAdminCurrencyRoutes(), CreateCurrencySchema (+3 more)
 
 ### Community 96 - "invoices.types.ts"
 Cohesion: 0.09
@@ -928,41 +949,41 @@ Nodes (26): InvoiceCancelSuccessResponse, InvoiceDetailSuccessResponse, InvoiceL
 Cohesion: 0.08
 Nodes (21): campaign(), campaignFU, campaignUpd, convUp, dailyCountFU, device(), deviceFU, fromDeviceMock (+13 more)
 
-### Community 98 - "vpn-my-services.tsx"
-Cohesion: 0.11
-Nodes (24): BillingStatus, ConfigCell(), copySubscriptionId(), flagEmoji(), groupByServer(), normalizeCountryCode(), Props, ProtocolIconProps (+16 more)
+### Community 98 - "support-ticket.service.test.ts"
+Cohesion: 0.07
+Nodes (9): ticket(), SupportTicketStatusTransitionError, SupportTicketRepository, SupportTicketAccessDeniedError, SupportTicketContentUnavailableError, baseTicket, createTicket(), getTicketThread() (+1 more)
 
 ### Community 99 - "workos-directory.ts"
-Cohesion: 0.14
-Nodes (19): CachedOrg, CachedUser, useWorkosOrg, useWorkosUser, CachedOrg, CachedUser, workosCacheService, getCachedOrganization() (+11 more)
+Cohesion: 0.15
+Nodes (17): CachedOrg, CachedUser, useWorkosOrg, useWorkosUser, CachedOrg, CachedUser, workosCacheService, getCachedOrganizationMetadata() (+9 more)
 
-### Community 100 - "app-credential.service.ts"
-Cohesion: 0.13
-Nodes (26): decrypt(), encrypt(), EncryptedData, getEncryptionKey(), parseEncryptedField(), serializeEncryptedField(), credentialsRoutes, mockListCredentials (+18 more)
+### Community 100 - "cluster-detail.tsx"
+Cohesion: 0.08
+Nodes (39): ClusterAdminDTO, ClusterDetail(), ClusterDetailProps, ClusterIntegration, FieldErrors, getMetadataSchema(), getSecretsSchema(), IntegrationEditModal() (+31 more)
 
 ### Community 101 - "broadcasts.route.ts"
 Cohesion: 0.11
 Nodes (21): getWhatsAppBroadcastQueue, broadcastCampaignBodySchema, broadcastCampaignUpdateSchema, broadcastPreviewBodySchema, broadcastRecipientSchema, broadcastsRoutes, BroadcastScheduleRecommendationDTO, DeviceBroadcastCapacityDTO (+13 more)
 
 ### Community 102 - "migration.sql"
-Cohesion: 0.07
-Nodes (34): "ApiKey", "AppCredential", "AppHostingCluster", "AppHostingClusterIntegration", "ApplicationStack", "CacheEntry", "Currency", "DeployEvent" (+26 more)
+Cohesion: 0.08
+Nodes (32): "ApiKey", "AppCredential", "AppHostingCluster", "AppHostingClusterIntegration", "ApplicationStack", "CacheEntry", "Currency", "DeployEvent" (+24 more)
 
 ### Community 103 - "AppHostingBillingService"
-Cohesion: 0.10
+Cohesion: 0.11
 Nodes (17): AppHostingBillingMode, AppHostingBillingService, AppHostingChargeQuote, GraceCheckResult, GraceClearResult, PaygChargeResult, TODO: Trigger actual runtime teardown (stop container, revoke tokens) here or…, applicationStack() (+9 more)
 
-### Community 104 - "deploy.types.ts"
-Cohesion: 0.11
-Nodes (22): MANUAL_FRAMEWORK_OPTIONS, MANUAL_LANGUAGE_OPTIONS, FALLBACK_RECOMMENDATION, PAYG_FRAMEWORKS, PlanRecommendation, PRO_FRAMEWORKS, Branch, DeployTemplate (+14 more)
+### Community 104 - "admin/topup.route.ts"
+Cohesion: 0.13
+Nodes (16): AdminTopupRouteDeps, adminTopupRoutes, adminTopupSchema, BillingAuthContext, createAdminTopupRoutes(), defaultDeps, MAX_BALANCE, RouteSet (+8 more)
 
 ### Community 105 - "proxy.ts"
 Cohesion: 0.14
 Nodes (23): applyFunctionalTestIdentity(), constantTimeEqual(), FunctionalTestAuthResult, FunctionalTestEnvironment, FunctionalTestRole, IDENTITY_HEADERS, resolveFunctionalTestAuth(), stripUntrustedIdentityHeaders() (+15 more)
 
-### Community 106 - "getPlatformRoleForUser"
-Cohesion: 0.12
-Nodes (17): GET(), PortalTemplatesPage(), resolveOrgRole(), AuthSource, normalizeOrgRole(), ProxyAuthResult, resolveAuthContext(), resolveOrgRoleFromHeaders() (+9 more)
+### Community 106 - "NavOrganization"
+Cohesion: 0.25
+Nodes (6): NavOrganization(), resolveOrganizationInitials(), mockRefresh, mockReplace, mockSearchParams, mockSwitchToOrganization
 
 ### Community 107 - "vouchers.service.ts"
 Cohesion: 0.12
@@ -970,27 +991,27 @@ Nodes (16): VoucherAlreadyClaimedError, VoucherCollisionRetryExhaustedError, Vou
 
 ### Community 108 - "vpn-connection-scanner.ts"
 Cohesion: 0.07
-Nodes (33): buildPortChecks(), createVpnServerScanner(), defaultResolveKey(), isDnsError(), KeyResolver, LABELS, PortCheckSpec, resolveHosts() (+25 more)
+Nodes (35): buildPortChecks(), createVpnServerScanner(), defaultResolveKey(), isDnsError(), KeyResolver, LABELS, PortCheckSpec, resolveHosts() (+27 more)
 
-### Community 109 - "vpn-mobile-device.service.test.ts"
-Cohesion: 0.12
-Nodes (15): activeDevice, count, create, createInput, findFirst, findMany, findUnique, MockFn (+7 more)
+### Community 109 - "logAuditEvent"
+Cohesion: 0.05
+Nodes (35): logAuditEvent(), CurrencyNotFoundError, VpnProvisioningService, EnabledProtocol, enabledProtocols(), SyncSummary, VpnServerSyncService, mockBillingAccountFindUnique (+27 more)
 
 ### Community 110 - "audit-features.ts"
 Cohesion: 0.12
 Nodes (21): AUDITS_DIR, collectFiles(), groupByModule(), OUTPUT_PATH, REPO_ROOT, Rule, RuleResult, RULES (+13 more)
 
-### Community 111 - "github-install-state.ts"
+### Community 111 - "whatsapp-broadcast-worker.ts"
 Cohesion: 0.15
-Nodes (16): GET(), getStateSecret(), githubService, createSignature(), getDefaultNonceStore(), getSafeReturnTo(), GithubInstallStateError, GithubInstallStateNonceRecord (+8 more)
+Nodes (19): ResolveContactGroupResult, resolveWhatsappContactGroupId(), upsertWhatsappContactFromMessage(), UpsertWhatsappContactFromMessageOptions, DEFAULT_WHATSAPP_QUOTA_CREDIT, ResolveQuotaCreditResult, resolveWhatsappCountry(), resolveWhatsappQuotaCredit() (+11 more)
 
 ### Community 112 - "messages.service.ts"
-Cohesion: 0.08
-Nodes (19): InteractivePayload, messageBodySchema, messageUpdateSchema, sendSchema, sendTemplateSchema, MessageWithStatusHistory, toWhatsappMessageDTO(), toWhatsappMessageStatusDTO() (+11 more)
+Cohesion: 0.09
+Nodes (18): InteractivePayload, QuotaExceededError, messageBodySchema, messagesRoutes, messageUpdateSchema, sendSchema, sendTemplateSchema, MessageWithStatusHistory (+10 more)
 
-### Community 113 - "billing/api/index.ts"
+### Community 113 - "deploy-monitor.dto.ts"
 Cohesion: 0.10
-Nodes (24): AdminInvoicesListRouteDeps, adminInvoicesListRoutes, BillingAuthContext, createAdminInvoicesListRoutes(), defaultDeps, formatInvoiceResponse(), querySchema, RouteSet (+16 more)
+Nodes (32): buildDeployTimelineItems(), CurrentDeployStepDTO, DEPLOY_EVENT_LABELS, DEPLOY_EVENT_STEP_INDEX, DeployEventDTO, DeploymentHistoryDTO, deriveCurrentDeployStep(), mapStackStatusToDeployStatus() (+24 more)
 
 ### Community 114 - "providers/index.ts"
 Cohesion: 0.15
@@ -1001,12 +1022,12 @@ Cohesion: 0.08
 Nodes (23): Button, buttonSchema, ButtonType, buttonTypeEnum, Category, categoryEnum, HeaderType, headerTypeEnum (+15 more)
 
 ### Community 116 - "devDependencies"
-Cohesion: 0.08
-Nodes (26): eslint, eslint-config-next, @happy-dom/global-registrator, lint-staged, devDependencies, eslint, eslint-config-next, @happy-dom/global-registrator (+18 more)
+Cohesion: 0.04
+Nodes (51): eslint, eslint-config-next, @eslint/eslintrc, @happy-dom/global-registrator, husky, lint-staged, devDependencies, eslint (+43 more)
 
-### Community 117 - "mobile-auth.route.ts"
-Cohesion: 0.15
-Nodes (22): buildRateLimitResponse(), createRateLimiter(), getClientIp(), RateLimitConfig, rateLimitHeaders(), RateLimitResult, AuthContext, createMobileAuthRoutes() (+14 more)
+### Community 117 - "vpn/dashboard/page.tsx"
+Cohesion: 0.13
+Nodes (15): buildOverview(), ConsoleVpnDashboardPage(), DashboardAction, formatDate(), PageState, protocolLabel(), RegionCoverage, VpnOverview (+7 more)
 
 ### Community 118 - "seeders/index.ts"
 Cohesion: 0.33
@@ -1020,9 +1041,9 @@ Nodes (20): DebugSnapshotInput, saveDebugSnapshot(), DebugRepository, HandleEven
 Cohesion: 0.09
 Nodes (12): mockGetUser, mockListOrgMemberships, mockUsageLedger, UsageLedgerEntry, RatedUsage, MockedPrisma, mockEntries, mockEntry (+4 more)
 
-### Community 121 - "deploy-monitor.service.ts"
-Cohesion: 0.16
-Nodes (17): deployPipelineRoutes, deployJenkinsWebhookRoutes, ArgoCdApplicationStatus, getArgoCdApplicationStatus(), pollDeploymentRollout(), processQueuedDeployment(), getDeployEvents(), getDeployLogs() (+9 more)
+### Community 121 - "What You Must Do When Invoked"
+Cohesion: 0.08
+Nodes (24): For /graphify add and --watch, For /graphify query, For the commit hook and native CLAUDE.md integration, For --update and --cluster-only, /graphify, Honesty Rules, Interpreter guard for subcommands, Part A - Structural extraction for code files (+16 more)
 
 ### Community 122 - "mobile-profiles.route.test.ts"
 Cohesion: 0.08
@@ -1036,49 +1057,45 @@ Nodes (18): AnyFn, fakeDeviceService, IAT, mockPrisma, NOW, prismaMock, randomJt
 Cohesion: 0.14
 Nodes (19): GithubEventDetailDTO, GithubEventListDTO, GithubEventRowDTO, toEventDetailDTO(), toEventRowDTO(), createGithubEventLogRoutes(), GithubEventLogRouteDeps, githubEventLogRoutes (+11 more)
 
-### Community 125 - "invoice-pdf.tsx"
-Cohesion: 0.12
-Nodes (14): BalanceTransactionEntry, formatBalanceTransaction(), formatPaymentMethod(), FormattedBalanceTransaction, SOURCE_LABELS, BankAccountInput, InvoiceFooter(), InvoicePdfDocument() (+6 more)
+### Community 125 - "billing/api/invoices.route.ts"
+Cohesion: 0.19
+Nodes (14): BillingAuthContext, BillingInvoicesRouteDeps, billingInvoicesRoutes, createBillingInvoicesRoutes(), defaultDeps, formatInvoiceLine(), getPaymentUrl(), InvoiceLineResponse (+6 more)
 
-### Community 126 - "console/whatsapp/messages/page.tsx"
-Cohesion: 0.11
-Nodes (23): cleanPhoneForQuery(), ConversationDetail, ConversationItem(), ConversationListItem, DeliveryStatus, findConversationByPhone(), formatLocalDateTime(), formatPhone() (+15 more)
+### Community 126 - "message-status-badge.tsx"
+Cohesion: 0.14
+Nodes (13): mockRefresh, mockReplace, mockSearchParams, mockSignOut, SidebarProvider(), Tooltip(), TooltipContent(), TooltipProvider() (+5 more)
 
 ### Community 127 - "webhook-routes.ts"
-Cohesion: 0.21
-Nodes (10): enqueueWhatsAppWebhook(), VerifyWebhookInput, VerifyWebhookResult, verifyWebhookUseCase(), dispatchWebhookEvents(), lookupDeviceByPhoneId(), whatsappWebhookRoutes, verifySignature() (+2 more)
+Cohesion: 0.13
+Nodes (18): createWhatsAppWebhookQueue(), DEFAULT_JOB_OPTIONS, enqueueWhatsAppWebhook(), getSharedQueue(), getWhatsAppWebhookRedisConnection(), parseRedisDb(), QueueAddOnly, __testing (+10 more)
 
-### Community 128 - "device-client.ts"
-Cohesion: 0.12
-Nodes (16): mockRequest, AnalyticsCost, AnalyticsDataItem, AnalyticsGranularity, AnalyticsMetricType, AnalyticsPaging, AnalyticsQueryParams, AnalyticsResponse (+8 more)
+### Community 128 - "support-ticket.policy.ts"
+Cohesion: 0.30
+Nodes (13): assertSupportTicketStatusTransition(), canCloseSupportTicket(), canCreateSupportTicketInternalReply(), canCreateSupportTicketReply(), canReadSupportTicket(), canUpdateSupportTicketStatus(), hasOrganizationAccess(), isAssignedAgent() (+5 more)
 
-### Community 129 - "ManifestBuilder"
-Cohesion: 0.12
-Nodes (8): HelmChartRenderer, AppStack, GitOpsRepoConfig, K8sResource, ManifestBuilder, StackContainer, StackSyncResult, StackSyncService
-
-### Community 130 - "payment/api/topup.route.ts"
-Cohesion: 0.21
-Nodes (11): bankAccountService, BASE_TOPUP_PRESETS, createTopupRoutes(), currencyService, duitkuService, findPayPalGatewayForCurrency(), gatewayService, paymentService (+3 more)
+### Community 130 - "payment/api/index.ts"
+Cohesion: 0.13
+Nodes (15): confirmationService, createAdminConfirmationRoutes(), paymentService, requireConfirmationAuth(), createAdminSettingsRoutes(), TODO: Persist settings to database (Task 13), paymentRoutes, userPaymentRoutes (+7 more)
 
 ### Community 131 - "tenant-workos.service.test.ts"
 Cohesion: 0.09
 Nodes (19): MembershipFixture, mockAutoPagination, mockCreateOrganization, mockCreateOrganizationMembership, mockDeleteOrganization, mockDeleteOrganizationMembership, mockGetInvitation, mockGetOrganization (+11 more)
 
 ### Community 132 - "vpn-server-connection.ts"
-Cohesion: 0.10
-Nodes (21): runSsExec(), classifyDialError(), createVpnServerConnectionTester(), defaultDial(), defaultResolveKey(), defaultSshExec(), DialOutcome, DialTarget (+13 more)
+Cohesion: 0.11
+Nodes (19): classifyDialError(), createVpnServerConnectionTester(), defaultDial(), defaultResolveKey(), defaultSshExec(), DialOutcome, DialTarget, KeyResolver (+11 more)
 
 ### Community 133 - "catalogs.route.ts"
 Cohesion: 0.10
 Nodes (17): catalogsRoutes, createCatalogSchema, sendCatalogSchema, updateCatalogSchema, toWhatsappCatalogDTO(), toWhatsappCatalogProductDTO(), WhatsappCatalogDTO, WhatsappCatalogProductDTO (+9 more)
 
-### Community 134 - "whatsapp-broadcast-worker.ts"
-Cohesion: 0.19
-Nodes (15): DEFAULT_WHATSAPP_QUOTA_CREDIT, ResolveQuotaCreditResult, resolveWhatsappCountry(), resolveWhatsappQuotaCredit(), broadcastQueue, dispatchBroadcast(), enforceDeviceLimit(), enforceThrottle() (+7 more)
+### Community 134 - "VpnEmailService"
+Cohesion: 0.10
+Nodes (18): CREDENTIAL_PATTERNS, CredentialMatch, createEmailLog(), CreateEmailLogInput, redactEmailHtml(), { prisma: mockPrisma, mock: mockMethods }, sendEmail(), PrismaLike (+10 more)
 
 ### Community 135 - "app-breadcrumbs.tsx"
 Cohesion: 0.16
-Nodes (19): AppBreadcrumbs(), AppBreadcrumbsProps, AppRootSegment, BreadcrumbItemModel, buildAppBreadcrumbItems(), BuildAppBreadcrumbItemsOptions, DETAIL_LABELS_BY_PARENT, isDetailSegment() (+11 more)
+Nodes (18): AppBreadcrumbsProps, AppRootSegment, BreadcrumbItemModel, buildAppBreadcrumbItems(), BuildAppBreadcrumbItemsOptions, DETAIL_LABELS_BY_PARENT, isDetailSegment(), labelForSegment() (+10 more)
 
 ### Community 136 - "components.json"
 Cohesion: 0.09
@@ -1088,25 +1105,25 @@ Nodes (21): aliases, components, hooks, lib, ui, utils, iconLibrary, menuAccent 
 Cohesion: 0.09
 Nodes (21): ADJUSTMENT_TYPE_LABELS, ADJUSTMENT_TYPES, AdjustmentType, APP_HOSTING_PLANS, BILLING_MODE_LABELS, BILLING_MODES, BillingMode, PLAN_LABELS (+13 more)
 
-### Community 138 - "deploy-config.ts"
-Cohesion: 0.14
-Nodes (17): buildDeployConfig(), collectBuildErrors(), collectEnvironmentErrors(), collectSourceErrors(), DeployConfig, DeployConfigBuild, DeployConfigDomain, DeployConfigEnvVar (+9 more)
+### Community 138 - "deploy.schema.ts"
+Cohesion: 0.10
+Nodes (21): buildDeployConfig(), collectBuildErrors(), collectEnvironmentErrors(), collectSourceErrors(), DeployConfig, DeployConfigBuild, DeployConfigDomain, DeployConfigEnvVar (+13 more)
 
 ### Community 139 - "tenants-create-organization.shared.ts"
 Cohesion: 0.13
-Nodes (18): createTenantOrganizationWithCreator(), delay(), rollbackOrganizationCreation(), TenantCreateOrganizationDeps, mockCreateTenantMembership, mockCreateTenantOrganization, mockDeleteTenantOrganization, mockGetBootstrapCreatorRoleSlug (+10 more)
+Nodes (17): createTenantOrganizationWithCreator(), delay(), rollbackOrganizationCreation(), mockCreateTenantMembership, mockCreateTenantOrganization, mockDeleteTenantOrganization, mockGetBootstrapCreatorRoleSlug, mockHasBootstrapCreatorRole (+9 more)
 
-### Community 140 - "tenant-api.contract.ts"
-Cohesion: 0.11
-Nodes (26): getInvitationApp(), App, createTenantsInvitationRoutes(), defaultTenantsInvitationRouteDeps, TenantsInvitationRouteDeps, getApp(), toWorkosApiError(), TenantInvitationCancelResponse (+18 more)
+### Community 140 - "adjustments.route.ts"
+Cohesion: 0.22
+Nodes (12): AdminAdjustmentsRouteDeps, adminAdjustmentsRoutes, BillingAuthContext, createAdminAdjustmentsRoutes(), defaultDeps, listQuerySchema, resolveActor(), RouteSet (+4 more)
 
-### Community 141 - "vpn-client.ts"
-Cohesion: 0.16
-Nodes (16): PortalVpnPage(), activateVpnSubscription(), fetchVpn(), getVpnAdminHealth(), getVpnStatus(), ProvisioningSummary, revokeVpnClient(), VpnAdminHealthResponse (+8 more)
+### Community 141 - "whatsapp-audit.route.ts"
+Cohesion: 0.14
+Nodes (15): buildApp(), mockPrisma, mockResolveAuthContext, okAdmin, sampleRows, AuditLogPayload, toWhatsappAuditLogDTO(), WhatsappAuditLogDTO (+7 more)
 
-### Community 142 - "vpn/dashboard/page.tsx"
-Cohesion: 0.13
-Nodes (15): buildOverview(), ConsoleVpnDashboardPage(), DashboardAction, formatDate(), PageState, protocolLabel(), RegionCoverage, VpnOverview (+7 more)
+### Community 142 - "modules/users/api/users.route.ts"
+Cohesion: 0.19
+Nodes (6): createUsersRoutes(), isUserEmailAlreadyExistsError(), userCreateSchema, usersRoutes, UserEmailAlreadyExistsError, UsersService
 
 ### Community 143 - "compilerOptions"
 Cohesion: 0.10
@@ -1114,99 +1131,95 @@ Nodes (21): compilerOptions, allowJs, baseUrl, esModuleInterop, ignoreDeprecatio
 
 ### Community 144 - "deploy-detection.service.ts"
 Cohesion: 0.14
-Nodes (18): deriveBuildCommand(), detectDockerfileInEvidence(), DetectionError, ECOSYSTEM_TO_LANGUAGE, fetchFrameworkDetection(), FrameworkDetectionErrorResponse, FrameworkDetectionInput, FrameworkDetectionResponse (+10 more)
+Nodes (17): deriveBuildCommand(), detectDockerfileInEvidence(), DetectionError, ECOSYSTEM_TO_LANGUAGE, FrameworkDetectionErrorResponse, FrameworkDetectionInput, FrameworkDetectionResponse, KNOWN_BUILD_COMMANDS (+9 more)
 
 ### Community 145 - "framework-detection.dto.ts"
-Cohesion: 0.12
-Nodes (25): createFrameworkDetectionRoutes(), DetectFrameworkFromGithubApiFunction, DetectFrameworkFunction, frameworkDetectionRoutes, gitDetectionRequestSchema, githubApiDetectionRequestSchema, DetectedFrameworkDTO, DetectionDecisionDTO (+17 more)
+Cohesion: 0.17
+Nodes (18): DetectedFrameworkDTO, DetectionDecisionDTO, DetectionEvidenceDTO, DetectorRuleDTO, InspectionLogDTO, RequiredDependencyDTO, RuntimeMappingDTO, toDetectedFrameworkDTO() (+10 more)
 
-### Community 146 - "payment/api/index.ts"
-Cohesion: 0.13
-Nodes (15): createAdminGatewayRoutes(), gatewayService, requireGatewayAuth(), createAdminSettingsRoutes(), TODO: Persist settings to database (Task 13), paymentRoutes, userPaymentRoutes, webhookRoutes (+7 more)
+### Community 146 - "deploy.types.ts"
+Cohesion: 0.09
+Nodes (29): DEPLOY_STEP_ORDER, MANUAL_FRAMEWORK_OPTIONS, MANUAL_LANGUAGE_OPTIONS, parseStepQueryValue(), FALLBACK_RECOMMENDATION, PAYG_FRAMEWORKS, PlanRecommendation, PRO_FRAMEWORKS (+21 more)
 
 ### Community 147 - "whatsapp/users/api/users.route.ts"
 Cohesion: 0.16
-Nodes (18): toScopedTenantRoleSlug(), normalizeTenantRole(), GetUserResponse, inviteBodySchema, InviteUserResponse, ListUsersResponse, updateRoleSchema, UpdateUserResponse (+10 more)
+Nodes (18): toScopedTenantRoleSlug(), updateTenantMembershipRole(), GetUserResponse, inviteBodySchema, InviteUserResponse, ListUsersResponse, updateRoleSchema, UpdateUserResponse (+10 more)
 
-### Community 148 - "server-form.tsx"
-Cohesion: 0.14
-Nodes (19): ConnectionTestModal(), DEFAULT_PORTS, initialProtocols(), PROTOCOL_LABELS, ProtocolKey, ProtoState, ServerForm(), ServerFormProps (+11 more)
+### Community 148 - "vpn-my-services.tsx"
+Cohesion: 0.11
+Nodes (24): BillingStatus, ConfigCell(), copySubscriptionId(), flagEmoji(), groupByServer(), normalizeCountryCode(), Props, ProtocolIconProps (+16 more)
 
-### Community 149 - "whatsapp-audit.route.ts"
-Cohesion: 0.14
-Nodes (15): buildApp(), mockPrisma, mockResolveAuthContext, okAdmin, sampleRows, AuditLogPayload, toWhatsappAuditLogDTO(), WhatsappAuditLogDTO (+7 more)
+### Community 149 - "admin-vpn-audit.route.ts"
+Cohesion: 0.18
+Nodes (13): adminVpnRoutes, toAuditLogDTO(), toAuditLogListDTO(), VpnAuditLogDTO, VpnAuditLogListDTO, ACTION_FILTER_VALUES, AUDIT_ACTIONS, createAdminVpnAuditRoutes() (+5 more)
 
 ### Community 150 - "device-create-wizard.tsx"
 Cohesion: 0.13
-Nodes (14): ApiValidationError, DeviceCreateWizardProps, emptyData, STEPS, WizardData, StepOrganization(), Props, StepProfile() (+6 more)
+Nodes (12): ApiValidationError, DeviceCreateWizard(), DeviceCreateWizardProps, emptyData, STEPS, validateStep(), StepOrganization(), StepProfile() (+4 more)
 
-### Community 151 - "vpn-mobile-client.ts"
-Cohesion: 0.12
-Nodes (21): formatDate(), activeDevice, revokedDevice, VpnDeviceCard(), formatDate(), onRevoke, VpnDevicesList(), ConsoleVpnDevicesPage() (+13 more)
+### Community 151 - "devices/api/admin-devices.route.ts"
+Cohesion: 0.09
+Nodes (26): WhatsappAuditAction, WhatsappAuditEventParams, WhatsappAuditEventStatus, AdminGuard, createAdminDevicesRoutes(), isAdminError(), MAX_BALANCE, RouteSet (+18 more)
 
 ### Community 152 - "whatsapp-template-sync-worker.ts"
-Cohesion: 0.19
+Cohesion: 0.21
 Nodes (18): logWhatsappAuditEvent(), createClient(), fetchAllTemplates(), getComponent(), getRejectReason(), loadDevice(), MetaTemplate, MetaTemplateComponent (+10 more)
 
 ### Community 153 - "github-deploy.ts"
 Cohesion: 0.17
 Nodes (11): DeploymentResult, generateAppJWT(), getGitHubDeployConfig(), GitHubAppConfig, GitHubDeployConfig, GitHubDeploymentService, githubHeaders(), githubRequest() (+3 more)
 
-### Community 154 - "DeploymentBuilder"
-Cohesion: 0.09
-Nodes (5): ContainerPort, DeploymentBuilder, Probe, EnvFromSource, EnvVar
-
 ### Community 155 - "BankAccountService"
 Cohesion: 0.23
 Nodes (4): BankAccountInput, BankAccountService, EncryptionService, BankAccountResponse
 
-### Community 156 - "deploy-submit.route.ts"
-Cohesion: 0.11
-Nodes (18): deploySubmitRoutes, envVarSchema, resolveAppHostingClusterForStack(), resolveDefaultAppHostingClusterId(), createOrUpdateStack(), IN_PROGRESS_STATUSES, StackUpsertInput, syncJenkinsPipelineForStack() (+10 more)
+### Community 156 - "api/subscriptions.route.ts"
+Cohesion: 0.19
+Nodes (12): BillingAuthContext, BillingSubscriptionsRouteDeps, billingSubscriptionsRoutes, createBillingSubscriptionsRoutes(), defaultDeps, RouteSet, mockFindBillingAccount, mockFindMany (+4 more)
 
-### Community 157 - "console-vouchers.route.ts"
-Cohesion: 0.16
-Nodes (15): ConsoleVoucherRouteDeps, consoleVoucherRoutes, createConsoleVoucherRoutes(), defaultDeps, RouteSet, createDefaultService(), createDeps(), toApp() (+7 more)
+### Community 157 - "mobile-pairing.route.ts"
+Cohesion: 0.21
+Nodes (13): createPairingApp(), AuthContext, badRequest(), claimRateLimiter, createMobilePairingRoutes(), Deps, forbidden(), generateRateLimiter (+5 more)
 
 ### Community 158 - "vpn-servers.route.test.ts"
 Cohesion: 0.11
 Nodes (17): allowedGuard(), createApp(), mockAuditLog, mockConsoleError, mockOpenVpnListClients, mockSshExecutorExec, mockSyncJobDispatch, openVpnResponses (+9 more)
 
-### Community 159 - "github-event-classifier.ts"
-Cohesion: 0.24
-Nodes (5): classifyGithubWebhookEvent(), GithubEventClassification, GithubEventClassifierStore, GithubEventDisposition, ignored()
+### Community 159 - "console/vpn/subscriptions/[id]/page.tsx"
+Cohesion: 0.29
+Nodes (8): formatDate(), subscriptionPriceLabel(), activeDeviceCount(), ConsoleVpnSubscriptionDetailPage(), copySubscriptionId(), maxDevicesFor(), PageState, getVpnSubscription()
 
-### Community 160 - "VpnEmailService"
-Cohesion: 0.16
-Nodes (11): createEmailLog(), CreateEmailLogInput, redactEmailHtml(), { prisma: mockPrisma, mock: mockMethods }, sendEmail(), PrismaLike, RenewalSubscription, VpnRenewalResult (+3 more)
+### Community 160 - "WhatsAppDeviceClient"
+Cohesion: 0.19
+Nodes (3): WhatsAppDeviceClient, ENDPOINTS, SendMessageResult
 
 ### Community 161 - "vpn-servers.route.ts"
-Cohesion: 0.16
-Nodes (17): VpnServerSyncJob, createAdminVpnServersRoutes(), Deps, execJson(), execText(), formatVnstatDate(), parseCpuSummary(), parseMemorySummary() (+9 more)
+Cohesion: 0.13
+Nodes (23): createAdminVpnServersRoutes(), Deps, execJson(), execText(), formatVnstatDate(), parseCpuSummary(), parseMemorySummary(), parseProcessList() (+15 more)
 
 ### Community 162 - "whatsapp-broadcast.ts"
 Cohesion: 0.16
 Nodes (14): createWhatsAppBroadcastQueue(), DEFAULT_JOB_OPTIONS, enqueueWhatsAppBroadcast(), getSharedQueue(), getWhatsAppBroadcastRedisConnection(), parseRedisDb(), QueueAddOnly, queueAddMock (+6 more)
 
-### Community 163 - "WhatsAppDeviceClient"
-Cohesion: 0.20
-Nodes (3): WhatsAppDeviceClient, ENDPOINTS, SendMessageResult
+### Community 163 - "whatsapp-audit-table.tsx"
+Cohesion: 0.19
+Nodes (13): AUDIT_ACTIONS, AUDIT_STATUSES, PortalWhatsAppAuditLogsPage(), actionTone, extractKnownDetails(), extractOtherDetails(), actionVariant(), AuditLogDTO (+5 more)
 
 ### Community 164 - "deploy.mock.ts"
-Cohesion: 0.14
-Nodes (14): buildInitialBuildState(), DEPLOY_LOG_LINES, DEPLOY_TIMELINE, filterByText(), getDetectionForRepository(), MOCK_BRANCHES, MOCK_DETECTION_BY_REPOSITORY_ID, MOCK_OWNERS (+6 more)
+Cohesion: 0.13
+Nodes (15): buildInitialBuildState(), DEPLOY_LOG_LINES, DEPLOY_TIMELINE, filterByText(), getDetectionForRepository(), MOCK_BRANCHES, MOCK_DETECTION_BY_REPOSITORY_ID, MOCK_OWNERS (+7 more)
 
-### Community 165 - "whatsapp-monthly-billing-worker.ts"
-Cohesion: 0.12
-Nodes (16): MonthlyBaseInput, OverageInput, billingAccount(), decimal(), defaultTx, mockBillingTransactionService, mockPrisma, mockTransaction (+8 more)
+### Community 165 - "console/layout.tsx"
+Cohesion: 0.25
+Nodes (15): AdminLayout(), ConsoleLayout(), PortalLayout(), AppBreadcrumbs(), AppSidebar(), BillingBalanceGateBanner(), Separator(), SidebarInset() (+7 more)
 
 ### Community 166 - "dump-seed-data.ts"
 Cohesion: 0.10
 Nodes (14): SEEDS_DIR, SqlRestoreSeeder, SEED_TABLES, SeedTable, concurrency, dbTables, DumpResult, errors (+6 more)
 
-### Community 167 - "servers-table.test.tsx"
-Cohesion: 0.14
-Nodes (6): mockDeleteVpnServer, mockListVpnRegions, mockListVpnServers, mockListVpnSshKeys, mockTestVpnServer, ScanResult
+### Community 167 - "prisma.ts"
+Cohesion: 0.09
+Nodes (30): DATABASE_URL, globalForPrisma, deployRoutes, appStacksRoutes, billingGateRoutes, deployPipelineRoutes, deployTriggerRoutes, environmentVariablesRoutes (+22 more)
 
 ### Community 168 - "vpn-packages-catalog.route.ts"
 Cohesion: 0.17
@@ -1224,13 +1237,13 @@ Nodes (14): MediaDTO, toMediaDTO(), deleteLocal(), downloadAndSave(), expiryStat
 Cohesion: 0.17
 Nodes (18): addDays(), args, buildInvoiceTotals(), DATABASE_URL, decimal(), getArgValue(), InvoiceLineSeed, InvoiceSeed (+10 more)
 
-### Community 172 - "deploy-wizard-v2.tsx"
-Cohesion: 0.21
-Nodes (20): getDefaultBranchName(), getRepositoryBranches(), recommendPlan(), DeployWizardState, buildDeploySubmitPayload(), buildRepositoriesUrl(), DeploySubmitResponse, generateAppName() (+12 more)
+### Community 172 - "usage/api/usage.route.test.ts"
+Cohesion: 0.04
+Nodes (47): DEFAULT_AUTH, mockAuthContext, setMockAuthContext(), whatsappAuthMock, mockCreate, mockDelete, mockFindFirst, mockFindMany (+39 more)
 
-### Community 173 - "portal/vpn/subscriptions/[id]/page.tsx"
-Cohesion: 0.15
-Nodes (17): getVpnAdminSubscription(), retryAllVpnServerAccounts(), retryVpnServerAccount(), revokeVpnServerAccount(), validateVpnServerAccount(), vpnAdminConfigDownloadUrl(), addAccountToSummary(), createEmptySummary() (+9 more)
+### Community 173 - "vpn-mobile-device.service.test.ts"
+Cohesion: 0.09
+Nodes (21): CreateMobileDeviceInput, ListMobileDeviceFilter, PrismaLike, activeDevice, count, create, createInput, findFirst (+13 more)
 
 ### Community 174 - "console/layout.test.tsx"
 Cohesion: 0.14
@@ -1245,12 +1258,12 @@ Cohesion: 0.12
 Nodes (14): currencies, CurrencySeed, CurrencySeeder, currency(), decimal(), IDR, mockPrisma, USD (+6 more)
 
 ### Community 177 - "client.ts"
-Cohesion: 0.10
-Nodes (12): MetaCloudHttpClient, MetaCloudHttpClientConfig, OperationHook, OperationHookEvent, getEndpoint(), MetaCloudError, MetaErrorCandidate, NormalizedMetaError (+4 more)
+Cohesion: 0.15
+Nodes (10): MetaCloudHttpClient, MetaCloudHttpClientConfig, OperationHook, OperationHookEvent, getEndpoint(), MetaCloudError, MetaErrorCandidate, NormalizedMetaError (+2 more)
 
 ### Community 178 - "invoice.route.ts"
-Cohesion: 0.14
-Nodes (20): AdminInvoiceRouteDeps, adminInvoiceRoutes, BillingAuthContext, createAdminInvoiceRoutes(), defaultDeps, formatInvoiceResponse(), invoiceParamsSchema, notifyInvoiceRecipients() (+12 more)
+Cohesion: 0.15
+Nodes (19): AdminInvoiceRouteDeps, adminInvoiceRoutes, BillingAuthContext, createAdminInvoiceRoutes(), defaultDeps, formatInvoiceResponse(), invoiceParamsSchema, notifyInvoiceRecipients() (+11 more)
 
 ### Community 179 - "detector-admin.route.ts"
 Cohesion: 0.14
@@ -1264,25 +1277,25 @@ Nodes (15): commitFileToRepo(), escapeGroovy(), generateDockerDsl(), generateJen
 Cohesion: 0.11
 Nodes (16): defaultActor, getApp(), makeMembership(), MockActor, MockDeleteResult, mockDeleteTenantMembershipSafely, MockDemoteResult, mockDemoteTenantMembershipSafely (+8 more)
 
-### Community 182 - "Repository Guidelines"
-Cohesion: 0.18
-Nodes (16): Repository Guidelines, Obsidian Vault Skill, Bun JavaScript Runtime, Claude Agent Configuration, Codecov Configuration, Gemini Agent Configuration, Next.js Framework, Obsidian Vault (+8 more)
+### Community 182 - "app-credential.service.ts"
+Cohesion: 0.13
+Nodes (22): deriveEncryptionKey(), encrypt(), EncryptedData, getEncryptionKey(), serializeEncryptedField(), credentialsRoutes, mockListCredentials, createCredential() (+14 more)
 
-### Community 183 - "whatsapp-health.tsx"
-Cohesion: 0.19
-Nodes (13): checkDeviceHealth(), checkSingleDevice(), clearMissCount(), HealthCheckResult, incrementMissCount(), missKey(), runHeartbeatCycle(), sendDisconnectEmail() (+5 more)
+### Community 183 - "support-ticket-attachment.validation.ts"
+Cohesion: 0.17
+Nodes (14): assertExtensionAllowed(), assertFileSizeAllowed(), assertMimeMatchesExtension(), assertMimeTypeAllowed(), DEFAULT_ALLOWED_EXTENSIONS, EXTENSION_MIME_ALLOWLIST, getFileExtension(), isAllowedSupportTicketAttachmentStorageKey() (+6 more)
 
-### Community 184 - "whatsapp/auth.test.ts"
-Cohesion: 0.16
-Nodes (12): buildCookieRequest(), composeWorkOSScope(), hasOrgMembership(), isSuperAdmin(), makeWorkOSUser(), mockAuthenticateWithSessionCookie, mockListOrganizationMemberships, mockPlatformFindFirst (+4 more)
+### Community 184 - "audit-logs-table.tsx"
+Cohesion: 0.11
+Nodes (24): actionTone(), AuditDetailRow, DANGER_TOKENS, extractAuditDetails(), ExtractedDetails, formatDuration(), humanizeKey(), KNOWN_KEYS (+16 more)
 
 ### Community 185 - "members.route.ts"
 Cohesion: 0.16
 Nodes (16): AdminMembersRouteDeps, adminMembersRoutes, BillingAuthContext, createAdminMembersRoutes(), defaultDeps, listQuerySchema, MemberBillingDetail, MemberBillingSummary (+8 more)
 
 ### Community 186 - "BalanceGateService"
-Cohesion: 0.15
-Nodes (5): BalanceGateService, MessageCostService, MessageType, MockedPrisma, ChargeResult
+Cohesion: 0.18
+Nodes (6): BalanceGateService, roundCpu(), roundMem(), USAGE_CATEGORIES, UsageCategory, ChargeResult
 
 ### Community 187 - "github.webhook-dispatch.ts"
 Cohesion: 0.18
@@ -1292,33 +1305,25 @@ Nodes (12): evaluatePushDispatch(), getBranchFromGitRef(), getObject(), GithubBu
 Cohesion: 0.12
 Nodes (15): basePrismaTicket, mockCount, mockCreate, mockDelete, mockFindMany, mockFindUnique, mockReplyCreate, mockReplyUpdate (+7 more)
 
-### Community 190 - "admin-vpn-audit.route.ts"
-Cohesion: 0.18
-Nodes (13): adminVpnRoutes, toAuditLogDTO(), toAuditLogListDTO(), VpnAuditLogDTO, VpnAuditLogListDTO, ACTION_FILTER_VALUES, AUDIT_ACTIONS, createAdminVpnAuditRoutes() (+5 more)
+### Community 190 - "fieldErrorMapFromIssues"
+Cohesion: 0.07
+Nodes (35): ApiErrorCode, ApiErrorResponse, fieldErrorMapFromIssues(), LoginInput, loginSchema, SignupInput, signupSchema, SimpleIssue (+27 more)
 
 ### Community 191 - "VpnMobileSessionService"
 Cohesion: 0.13
 Nodes (6): runCleanup(), startStaleSessionCleanup(), CreateSessionInput, ListSessionFilter, PrismaLike, VpnMobileSessionService
 
-### Community 192 - "setup.ts"
-Cohesion: 0.05
-Nodes (15): defaultFetch(), jsonResponse(), MOCK_CREDENTIALS, mockFetch, defaultAccount, mockGetBillingAccount, mockUpdateBillingAlerts, financeContact (+7 more)
-
-### Community 193 - "audit-details.ts"
-Cohesion: 0.22
-Nodes (14): actionTone(), AuditDetailRow, DANGER_TOKENS, extractAuditDetails(), ExtractedDetails, formatDuration(), humanizeKey(), KNOWN_KEYS (+6 more)
+### Community 193 - "tabs-device-detail.tsx"
+Cohesion: 0.09
+Nodes (42): bestFor(), displayPrice(), formatPrice(), Props, VpnPackageComparison(), STATUS_COLORS, VoucherClaimDTO, VoucherDetail (+34 more)
 
 ### Community 194 - "invoice-grouped-lines.tsx"
-Cohesion: 0.20
-Nodes (16): InvoiceDetailPage(), Category, CATEGORY_META, extractDetail(), formatLineAmount(), getCategory(), Grouped, groupLines() (+8 more)
+Cohesion: 0.22
+Nodes (14): Category, CATEGORY_META, extractDetail(), formatLineAmount(), getCategory(), Grouped, groupLines(), GroupSection() (+6 more)
 
-### Community 195 - "template-preview.tsx"
-Cohesion: 0.24
-Nodes (14): WhatsAppTemplateLanguage, extractParameterExamples(), getButtonLabel(), getFlagEmoji(), getLanguageDisplay(), getTemplatePlaceholderIndexes(), REGION_MAP, renderTemplateBody() (+6 more)
-
-### Community 196 - "mobile/api/admin-devices.route.ts"
-Cohesion: 0.17
-Nodes (14): AuditAction, AuditEventParams, AuditEventStatus, AuthContext, createAdminDevicesRoutes(), Deps, forbidden(), isOrgAdmin() (+6 more)
+### Community 196 - "framework-detection.service.test.ts"
+Cohesion: 0.22
+Nodes (10): buildInventory(), detectFrameworkFromGitRepo(), DetectorDependencies, listFilesRecursively(), parseJsonObject(), runWithMockClone(), writeRepoFiles(), __testables (+2 more)
 
 ### Community 197 - "TestSeeder"
 Cohesion: 0.12
@@ -1329,28 +1334,36 @@ Cohesion: 0.22
 Nodes (12): addDays(), buildInvoiceTotals(), decimal(), InvoiceLineSeed, InvoiceSeed, invoiceSeedData(), InvoicesSupportTicketsSeeder, sumNumbers() (+4 more)
 
 ### Community 199 - "analytics.service.ts"
-Cohesion: 0.12
-Nodes (17): AnalyticsService, mockAnalyticsData, mockBillingLedgerFindMany, mockClient, mockDailyCountCreate, mockDailyCountFindFirst, mockDailyCountFindMany, mockDailyCountUpdate (+9 more)
+Cohesion: 0.24
+Nodes (7): AnalyticsService, AnalyticsReport, AnalyticsSyncResult, ComparisonRow, CostReconciliationReport, CostReconciliationRow, SyncAnalyticsInput
 
-### Community 201 - "deploy-monitor.dto.ts"
-Cohesion: 0.30
-Nodes (11): buildDeployTimelineItems(), DEPLOY_EVENT_LABELS, DeployEventDTO, mapStackStatusToDeployStatus(), normalizeLogScope(), normalizeLogStatus(), resolveStackBillingState(), toDeployEventDTOs() (+3 more)
+### Community 200 - "vpn-pricing.ts"
+Cohesion: 0.13
+Nodes (11): CATALOG, IDR_USD_FIXED_RATE, PlanCode, RegionCode, ResolveVpnMonthlyPriceInput, VpnPriceNotConfiguredError, VpnResolvedPrice, resolveVpnSubscriptionRefs() (+3 more)
+
+### Community 201 - "tenants-organization.route.ts"
+Cohesion: 0.08
+Nodes (30): App, createTenantsOrganizationRoutes(), defaultEnsureTenantContextAccess(), defaultRequireTenantActor(), defaultTenantsOrganizationRouteDeps, TenantsOrganizationRouteDeps, createApp(), mockCanManageTenant (+22 more)
 
 ### Community 202 - "GitOpsRepositoryService"
-Cohesion: 0.24
-Nodes (3): GitFile, GitOpsRepositoryService, mockFetch
+Cohesion: 0.13
+Nodes (9): GitFile, GitOpsRepositoryService, mockFetch, HelmChartRenderer, AppStack, GitOpsRepoConfig, K8sResource, StackContainer (+1 more)
 
 ### Community 203 - "templates.route.ts"
 Cohesion: 0.14
 Nodes (13): AuthContext, BodyRecord, templateBodySchema, templateLanguageSchema, templatesRoutes, templateUpdateLanguageSchema, templateUpdateSchema, UpdateLanguage (+5 more)
 
-### Community 204 - "adjust.route.ts"
-Cohesion: 0.07
-Nodes (34): AdminAdjustRouteDeps, adminBillingRoutes, BillingAuthContext, createAdminBillingRoutes(), defaultDeps, MAX_BALANCE, resolveActor(), RouteSet (+26 more)
+### Community 204 - "admin/subscriptions.route.ts"
+Cohesion: 0.06
+Nodes (38): AdminSubscriptionRouteDeps, adminSubscriptionRoutes, BillingAuthContext, createAdminSubscriptionRoutes(), defaultDeps, resolveActor(), RouteSet, toForbidden() (+30 more)
 
-### Community 205 - "deploy-chat-sidebar.tsx"
-Cohesion: 0.13
-Nodes (15): DEPLOY_STEPS, DeploySourceType, DeployStep, ChatContext, ContextualHint, DEPLOY_CHAT_HINTS, DeployChatSidebar(), DeployChatSidebarProps (+7 more)
+### Community 205 - "messages/page.test.tsx"
+Cohesion: 0.18
+Nodes (8): mockConversationsGet, mockConversationsList, mockDevicesList, mockRouterPush, mockRouterReplace, mockSearchParams, mockSendTemplate, mockTemplatesData
+
+### Community 206 - "builders/index.ts"
+Cohesion: 0.19
+Nodes (5): EnvBuilder, EnvFromSource, EnvVar, ManifestPath, ManifestPathResolverOptions
 
 ### Community 207 - "HpaBuilder"
 Cohesion: 0.14
@@ -1361,20 +1374,20 @@ Cohesion: 0.17
 Nodes (19): "BankAccount", "BillingAccount", "BillingAdjustment", "BillingAuditLog", "BillingContact", "BillingRun", "BillingSubscription", "Invoice" (+11 more)
 
 ### Community 209 - ""WhatsappDevice""
-Cohesion: 0.14
-Nodes (17): "WhatsappAttachment", "WhatsappBillingLedger", "WhatsappBroadcastCampaign", "WhatsappBroadcastRateState", "WhatsappBroadcastRecipient", "WhatsappCatalog", "WhatsappCatalogProduct", "WhatsappContact" (+9 more)
+Cohesion: 0.12
+Nodes (19): "WhatsappAttachment", "WhatsappBillingLedger", "WhatsappBroadcastCampaign", "WhatsappBroadcastRateState", "WhatsappBroadcastRecipient", "WhatsappCatalog", "WhatsappCatalogProduct", "WhatsappContact" (+11 more)
 
-### Community 210 - "tenants-bootstrap.route.test.ts"
-Cohesion: 0.14
-Nodes (12): createTenantsBootstrapRoutes(), BootstrapRouteDeps, defaultActor, getApp(), MockActor, mockCreateTenantMembership, mockCreateTenantOrganization, mockDeleteTenantOrganization (+4 more)
+### Community 210 - "vpn-mobile-client.ts"
+Cohesion: 0.13
+Nodes (20): formatDate(), activeDevice, revokedDevice, VpnDeviceCard(), formatDate(), onRevoke, VpnDevicesList(), ConsoleVpnDevicesPage() (+12 more)
 
 ### Community 211 - "tenants-organizations.route.test.ts"
 Cohesion: 0.14
 Nodes (12): createTenantsOrganizationsRoutes(), defaultActor, getApp(), MockActor, mockCreateTenantMembership, mockCreateTenantOrganization, mockDeleteTenantOrganization, mockGetBootstrapCreatorRoleSlug (+4 more)
 
-### Community 212 - "VoucherService"
-Cohesion: 0.16
-Nodes (4): generateUniqueVoucherCode(), generateVoucherCode(), randomAlphanumeric(), VoucherService
+### Community 212 - "register.ts"
+Cohesion: 0.20
+Nodes (3): mockState, pushMock, TopupFormEnhanced()
 
 ### Community 213 - "Graphify SKILL Documentation"
 Cohesion: 0.14
@@ -1388,37 +1401,37 @@ Nodes (13): createGithubEventsQueue(), DEFAULT_JOB_OPTIONS, enqueueGithubWebhook
 Cohesion: 0.23
 Nodes (12): createQuotaReconciliationQueue(), DEFAULT_JOB_OPTIONS, enqueueQuotaReconciliation(), getQuotaReconciliationRedisConnection(), getSharedQueue(), parseRedisDb(), QueueAddOnly, QuotaReconciliationJobData (+4 more)
 
-### Community 216 - "orgs.route.ts"
-Cohesion: 0.21
-Nodes (11): AdminOrgsRouteDeps, adminOrgsRoutes, BillingAuthContext, createAdminOrgsRoutes(), defaultDeps, listQuerySchema, refreshBodySchema, RouteSet (+3 more)
+### Community 216 - "whatsapp/auth.test.ts"
+Cohesion: 0.16
+Nodes (12): buildCookieRequest(), composeWorkOSScope(), hasOrgMembership(), isSuperAdmin(), makeWorkOSUser(), mockAuthenticateWithSessionCookie, mockListOrganizationMemberships, mockPlatformFindFirst (+4 more)
 
-### Community 217 - "stats.route.ts"
+### Community 217 - "console-vouchers.route.ts"
+Cohesion: 0.18
+Nodes (14): ConsoleVoucherRouteDeps, consoleVoucherRoutes, createConsoleVoucherRoutes(), defaultDeps, RouteSet, createDefaultService(), createDeps(), toApp() (+6 more)
+
+### Community 218 - "crypto.ts"
+Cohesion: 0.09
+Nodes (31): AppKeyCryptoError, AppKeyCryptoErrorCode, assertAppKeyCryptoConfigured(), decryptWhatsAppToken(), decryptWithAppKey(), encodeBase64Url(), encryptWhatsAppToken(), encryptWithAppKey() (+23 more)
+
+### Community 220 - "admin-bank.route.ts"
 Cohesion: 0.19
-Nodes (13): AdminStatsRouteDeps, adminStatsRoutes, BALANCE_CURRENCIES, BalanceCurrency, BillingAuthContext, createAdminStatsRoutes(), defaultDeps, emptyTotalBalances() (+5 more)
-
-### Community 218 - "api/subscriptions.route.ts"
-Cohesion: 0.19
-Nodes (12): BillingAuthContext, BillingSubscriptionsRouteDeps, billingSubscriptionsRoutes, createBillingSubscriptionsRoutes(), defaultDeps, RouteSet, mockFindBillingAccount, mockFindMany (+4 more)
-
-### Community 220 - "throwIfError"
-Cohesion: 0.15
-Nodes (13): PackageForm(), protocolLabels(), RegionsTable(), SshKeysTable(), createVpnPackage(), createVpnRegion(), createVpnSshKey(), deleteVpnRegion() (+5 more)
+Nodes (8): bankAccountService, createAdminBankRoutes(), requireBankAuth(), BANK_CODES, DUITKU_PAYMENT_METHODS, PAYMENT_AUDIT_ACTIONS, PAYMENT_CONSTANTS, InvoiceExpirationService
 
 ### Community 221 - "test-suites.ts"
 Cohesion: 0.29
 Nodes (12): collectSuiteFiles(), COVERAGE_EXEMPTIONS, FEATURE_MAPPINGS, FeatureMapping, findFeatureMappings(), IGNORED_PATH_PARTS, isIgnored(), isSharedUiPath() (+4 more)
 
-### Community 222 - "GatewayService"
-Cohesion: 0.37
-Nodes (3): GatewayService, DuitkuConfig, PaymentGatewayResponse
+### Community 222 - "payment.types.ts"
+Cohesion: 0.17
+Nodes (12): confirmationService, createConfirmRoutes(), ConfirmationStatus, ConfirmationStatusValue, ConfirmPaymentSchema, DuitkuInquiryRequest, DuitkuInquiryResponse, InvoiceType (+4 more)
 
 ### Community 223 - "tenant-policy.ts"
 Cohesion: 0.10
-Nodes (28): GET(), toAttachmentActorContext(), toActorContext(), createTenantsAuthorizationRoutes(), loadApp(), MockActor, mockEnsureTenantContextAccess, mockRequireTenantActor (+20 more)
+Nodes (31): GET(), PlatformAccessRole, listActiveGithubAppAccounts(), createTenantsAuthorizationRoutes(), loadApp(), MockActor, mockEnsureTenantContextAccess, mockRequireTenantActor (+23 more)
 
-### Community 224 - "invoices.dto.ts"
-Cohesion: 0.25
-Nodes (10): buildPaymentReference(), buildPaymentTimeline(), readMetadataString(), toConfirmationStatus(), toNumber(), toPaymentConfirmationDTO(), toPaymentInfoDTO(), InvoiceDetailRecord (+2 more)
+### Community 224 - "billing-cycle.service.ts"
+Cohesion: 0.26
+Nodes (6): BillingCycleService, ZERO, BillingRunResult, InvoiceStatusTransition, SubscriptionBillingResult, processMonthlyBilling()
 
 ### Community 225 - "vpn-health.service.ts"
 Cohesion: 0.22
@@ -1437,20 +1450,20 @@ Cohesion: 0.23
 Nodes (13): createSuperAdmin(), createTestContacts(), createTestConversations(), createTestMessages(), createWhatsAppDevice(), createWorkOSOrganizationAndMembership(), DATABASE_URL, DEFAULT_TEST_DATA (+5 more)
 
 ### Community 230 - "callback/route.test.ts"
-Cohesion: 0.15
-Nodes (10): AuthResult, mockCreateGithubService, mockFetchGithubInstallationDetails, mockFetchGithubInstallationRepositories, MockGithubInstallStateError, MockGithubIntegrationDisabledError, mockGithubServiceAssertEnabled, mockSyncGithubInstallation (+2 more)
+Cohesion: 0.14
+Nodes (11): AuthResult, mockCreateGithubService, mockFetchGithubInstallationDetails, mockFetchGithubInstallationRepositories, MockGithubInstallStateError, MockGithubIntegrationDisabledError, mockGithubServiceAssertEnabled, mockSyncGithubInstallation (+3 more)
 
 ### Community 231 - "repositories/route.test.ts"
 Cohesion: 0.17
 Nodes (9): AuthResult, mockCreateGithubService, MockGithubApiError, MockGithubIntegrationDisabledError, MockGithubReconnectRequiredError, mockGithubServiceAssertEnabled, mockListInstallationsForActor, mockListRepositoriesForActor (+1 more)
 
-### Community 233 - "fieldErrorMapFromIssues"
-Cohesion: 0.07
-Nodes (38): ApiErrorCode, ApiErrorResponse, fieldErrorMapFromIssues(), LoginInput, loginSchema, SignupInput, signupSchema, SimpleIssue (+30 more)
+### Community 233 - "vpn-my-services.test.tsx"
+Cohesion: 0.53
+Nodes (4): manyServerSubscription(), serverAccount(), subscription(), VpnServerAccount
 
-### Community 234 - "vpn-crypto.ts"
-Cohesion: 0.09
-Nodes (19): CreateActiveClientInput, CreateClientInput, CreateProvisioningFailureInput, OrganizationClientInput, mockPrisma, service, VALID_ENCRYPTION_KEY, VpnClientConfigUnavailableError (+11 more)
+### Community 234 - "organization-onboarding.test.tsx"
+Cohesion: 0.29
+Nodes (4): loadOrganizationOnboarding(), mockRouterRefresh, mockRouterReplace, mockSwitchToOrganization
 
 ### Community 235 - "jenkins-image-ready.service.test.ts"
 Cohesion: 0.17
@@ -1460,57 +1473,49 @@ Nodes (10): defaultDeployment, defaultStack, fakeCommit, FakeGitOps, mockPrisma,
 Cohesion: 0.17
 Nodes (4): ConfigMapBinaryData, ConfigMapBuilder, ConfigMapData, KubernetesConfigMap
 
-### Community 237 - "builders/index.ts"
-Cohesion: 0.16
-Nodes (6): ManifestPath, ManifestPathResolverOptions, KubernetesVolume, VolumeBuilder, VolumeMount, VolumeMountBuilder
-
-### Community 238 - "webhook/route.ts"
-Cohesion: 0.21
-Nodes (8): githubService, handler, POST(), getIdempotencyKey(), processGithubWebhookEvent(), toErrorMessage(), GithubEventData, GithubEventJob
+### Community 237 - "volume.builder.ts"
+Cohesion: 0.18
+Nodes (4): KubernetesVolume, VolumeBuilder, VolumeMount, VolumeMountBuilder
 
 ### Community 239 - "webhook/route.test.ts"
-Cohesion: 0.22
-Nodes (7): mockCreate, mockCreateGithubService, mockEnqueueGithubWebhookEvent, mockFindUnique, MockGithubIntegrationDisabledError, mockGithubServiceAssertEnabled, mockUpdate
+Cohesion: 0.18
+Nodes (10): createSignedRequest(), mockCreate, mockCreateGithubService, mockEnqueueGithubWebhookEvent, mockFindUnique, MockGithubIntegrationDisabledError, mockGithubServiceAssertEnabled, mockUpdate (+2 more)
 
-### Community 240 - "audit-log.route.ts"
-Cohesion: 0.22
-Nodes (12): AdminAuditLogRouteDeps, adminAuditLogRoutes, BillingAuthContext, createAdminAuditLogRoutes(), defaultDeps, listQuerySchema, resolveActor(), RouteSet (+4 more)
+### Community 240 - "whatsapp-health.tsx"
+Cohesion: 0.19
+Nodes (13): checkDeviceHealth(), checkSingleDevice(), clearMissCount(), HealthCheckResult, incrementMissCount(), missKey(), runHeartbeatCycle(), sendDisconnectEmail() (+5 more)
 
 ### Community 241 - "org-overview-dashboard.test.tsx"
 Cohesion: 0.17
 Nodes (10): mockGetAdminAdjustments, mockGetAdminInvoices, mockGetAdminOrgDetail, mockGetAdminSubscriptions, mockGetAdminUsage, mockGetOrganizationInvitations, mockGetOrganizationMembers, mockListAdminTickets (+2 more)
 
-### Community 242 - "app/layout.tsx"
-Cohesion: 0.20
-Nodes (8): fontDisplay, jetbrainsMono, jetbrainsMonoHeading, roboto, RootLayout(), QueryProvider(), ThemeHotkey(), ThemeProvider()
+### Community 242 - "VoucherService"
+Cohesion: 0.16
+Nodes (4): generateUniqueVoucherCode(), generateVoucherCode(), randomAlphanumeric(), VoucherService
 
-### Community 243 - "webhooks.route.ts"
-Cohesion: 0.19
-Nodes (9): webhooksRoutes, verifyWebhookSignature(), DeliveryLogFilters, GetPayloadInput, PaginatedResult, toDeliveryLogDTO(), WebhookDeliveryLogDetailDTO, webhookDispatcher (+1 more)
+### Community 243 - "encryption.service.ts"
+Cohesion: 0.36
+Nodes (6): ConfirmationWithRelations, decryptPaymentField(), PaymentConfirmationDTO, toPaymentConfirmationDTO(), getEncryptionService(), resetEncryptionService()
 
 ### Community 244 - "vpn-pairing-qr-modal.test.tsx"
+Cohesion: 0.17
+Nodes (9): PairingGenerateResponse, PairingStatusResponse, defaultProps, intervalRegistry, mockClearInterval, mockGeneratePairingToken, mockGetPairingStatus, mockQrToDataURL (+1 more)
+
+### Community 245 - "cluster-management.service.test.ts"
 Cohesion: 0.18
-Nodes (8): PairingStatusResponse, defaultProps, intervalRegistry, mockClearInterval, mockGeneratePairingToken, mockGetPairingStatus, mockQrToDataURL, mockSetInterval
+Nodes (8): mockDecryptClusterIntegrationSecrets, mockEncryptClusterIntegrationSecrets, mockMaskClusterIntegrationSecret, mockPrismaAppHostingCluster, mockPrismaAppHostingClusterIntegration, mockPrismaClient, mockPrismaTransaction, now
 
-### Community 245 - "github.webhook.test.ts"
-Cohesion: 0.20
-Nodes (7): createSignedRequest(), evaluatePushRules(), extractBranchFromRef(), matchesBranchFilters(), signGithubWebhookBody(), createSignedRequest(), MutableWebhookEvent
-
-### Community 246 - "admin-bank.route.ts"
-Cohesion: 0.19
-Nodes (8): bankAccountService, createAdminBankRoutes(), requireBankAuth(), BANK_CODES, DUITKU_PAYMENT_METHODS, PAYMENT_AUDIT_ACTIONS, PAYMENT_CONSTANTS, InvoiceExpirationService
+### Community 246 - "admin-app-hosting-clusters.route.test.ts"
+Cohesion: 0.18
+Nodes (11): mockCreateCluster, mockGetClusterById, mockListClusters, mockRequireSuperAdmin, mockUpdateCluster, mockUpdateClusterIntegrationStatus, mockUpdateClusterStatus, mockUpsertClusterIntegration (+3 more)
 
 ### Community 247 - "cluster-integration.service.ts"
-Cohesion: 0.11
-Nodes (27): deriveEncryptionKey(), AppHostingClusterSummary, ArgoCdClusterConfig, buildArgoCdConfig(), buildGitOpsConfig(), buildJenkinsConfig(), buildKubeconfigConfig(), buildRegistryConfig() (+19 more)
+Cohesion: 0.09
+Nodes (31): AppHostingClusterSummary, buildArgoCdConfig(), buildGitOpsConfig(), buildJenkinsConfig(), buildKubeconfigConfig(), buildRegistryConfig(), buildTypedConfig(), ClusterIntegrationConfigMap (+23 more)
 
-### Community 248 - "PaymentService"
-Cohesion: 0.16
-Nodes (4): createInvoiceEmailService(), InvoiceEmailService, PaymentService, InvoiceTypeValue
-
-### Community 249 - "VpnServerService"
-Cohesion: 0.28
-Nodes (3): UpdateVpnServerInput, toProtocolData(), VpnServerService
+### Community 248 - "support-tickets.client.test.ts"
+Cohesion: 0.33
+Nodes (4): attachmentFixture, fetchMock, replyFixture, ticketFixture
 
 ### Community 250 - "status-tracking.test.ts"
 Cohesion: 0.17
@@ -1520,61 +1525,61 @@ Nodes (9): mockConversation, mockMessage, MockQuery, mockStatus, sampleMessageFo
 Cohesion: 0.20
 Nodes (8): fromDeviceMock, listTemplatesPageMock, logWhatsappAuditEventMock, mockPrisma, QueueMock, workerCloseMock, WorkerMock, workerOnMock
 
-### Community 252 - "console/vpn/subscriptions/[id]/page.tsx"
-Cohesion: 0.29
-Nodes (8): formatDate(), subscriptionPriceLabel(), activeDeviceCount(), ConsoleVpnSubscriptionDetailPage(), copySubscriptionId(), maxDevicesFor(), PageState, getVpnSubscription()
+### Community 252 - "deployment.builder.ts"
+Cohesion: 0.24
+Nodes (8): ContainerPort, KubernetesDeployment, KubernetesHPA, Probe, KubernetesSecret, SecretData, TLSSecretData, KubernetesMetadata
 
-### Community 253 - "messages/page.test.tsx"
-Cohesion: 0.18
-Nodes (8): mockConversationsGet, mockConversationsList, mockDevicesList, mockRouterPush, mockRouterReplace, mockSearchParams, mockSendTemplate, mockTemplatesData
+### Community 253 - "operate-troubleshooter.tsx"
+Cohesion: 0.27
+Nodes (7): K8S_ENV_IDS, OPERATE_TAB_IDS, OperateTabId, parseEnvQueryValue(), parseTabQueryValue(), FAQ_LIST, OperateTroubleshooterProps
 
 ### Community 254 - "bun"
 Cohesion: 0.33
 Nodes (4): types, bun, node, ./types/matchers.d.ts
 
-### Community 255 - "logAuditEvent"
-Cohesion: 0.25
-Nodes (4): logAuditEvent(), VpnProvisioningService, ReconciliationResult, VpnReconciliationService
+### Community 255 - "webhook-dispatcher.service.ts"
+Cohesion: 0.20
+Nodes (9): DeliveryLogsSection(), DeliveryLogsSectionProps, TestPingButton(), TestPingButtonProps, DeliveryLogFilters, GetPayloadInput, PaginatedResult, WebhookDeliveryLogDetailDTO (+1 more)
 
 ### Community 256 - "billing/api/usage.route.ts"
 Cohesion: 0.24
 Nodes (10): createUsageRoutes(), isValidDate(), RouteSet, mockAuthenticate, mockCostingService, mockUsageLedgerService, toForbidden(), toUnauthorized() (+2 more)
 
-### Community 257 - "provisioning-audit-modal.tsx"
-Cohesion: 0.24
-Nodes (10): Props, ProvisioningAuditModal(), AuditEvent, AuditEventType, EVENT_CONFIG, getStatusVariant(), Props, ProvisioningTimeline() (+2 more)
+### Community 257 - "lib/audit.service.ts"
+Cohesion: 0.19
+Nodes (11): AuditAction, AuditEventParams, AuditEventStatus, AuthContext, createMobileDeviceRoutes(), Deps, forbidden(), notFound() (+3 more)
 
 ### Community 258 - "quota-gate.service.test.ts"
-Cohesion: 0.16
-Nodes (9): QuotaGateService, mockDevice, MockedPrisma, mockSubscription, mockUnlimitedSubscription, DeviceNotFoundError, QuotaCheckResult, SubscriptionNotFoundError (+1 more)
+Cohesion: 0.18
+Nodes (8): QuotaGateService, mockDevice, MockedPrisma, mockSubscription, mockUnlimitedSubscription, DailyLimitExceededError, QuotaCheckResult, WhatsAppPlanResources
 
-### Community 259 - "invite-cookie.ts"
-Cohesion: 0.35
-Nodes (9): acceptInviteFromToken(), authHandler, GET(), readInviteTokenFromRequest(), buildClearInviteCookieHeader(), buildInviteCookieHeader(), clearInviteCookie(), isHttps() (+1 more)
+### Community 259 - "orgs.route.ts"
+Cohesion: 0.21
+Nodes (13): getCachedOrganizationsMetadata(), refreshCachedOrganizationsMetadata(), AdminOrgsRouteDeps, adminOrgsRoutes, BillingAuthContext, createAdminOrgsRoutes(), defaultDeps, listQuerySchema (+5 more)
 
-### Community 260 - "github-event-normalizer.ts"
-Cohesion: 0.27
-Nodes (9): asBigInt(), asRecord(), asString(), branchFromRef(), JsonRecord, NormalizedGithubWebhookPayload, normalizeGithubWebhookPayload(), installationPayload (+1 more)
+### Community 260 - "webhook/route.ts"
+Cohesion: 0.19
+Nodes (8): githubService, handler, POST(), classifyGithubWebhookEvent(), GithubEventClassification, GithubEventClassifierStore, GithubEventDisposition, ignored()
 
-### Community 261 - "device-edit-form.tsx"
-Cohesion: 0.27
-Nodes (10): ApiValidationError, booleanValue(), DeviceEditForm(), DeviceEditFormProps, fieldErrorDescription(), FormState, stringValue(), toNumber() (+2 more)
+### Community 261 - "payment/api/topup.route.ts"
+Cohesion: 0.19
+Nodes (12): bankAccountService, BASE_TOPUP_PRESETS, createPaymentHistoryRoutes(), createTopupRoutes(), currencyService, duitkuService, findPayPalGatewayForCurrency(), gatewayService (+4 more)
 
 ### Community 262 - "verify-feature-docs.ts"
 Cohesion: 0.20
 Nodes (14): file(), ANTI_PATTERNS, collectTestFiles(), main(), extractPaths(), findFilesWithoutSection(), Finding, main() (+6 more)
 
-### Community 263 - "mobile-pairing.route.ts"
-Cohesion: 0.21
-Nodes (13): createPairingApp(), AuthContext, badRequest(), claimRateLimiter, createMobilePairingRoutes(), Deps, forbidden(), generateRateLimiter (+5 more)
+### Community 263 - "mobile-auth.route.ts"
+Cohesion: 0.14
+Nodes (24): buildRateLimitResponse(), createRateLimiter(), getClientIp(), RateLimitConfig, rateLimitHeaders(), RateLimitResult, MobileAuthContext, AuthContext (+16 more)
 
 ### Community 264 - "Graphify Knowledge Graph Skill"
 Cohesion: 0.20
 Nodes (10): Graphify Knowledge Graph Skill, Graphify Add and Watch Reference, Graphify Exports Reference, Graphify GitHub Merge Reference, Graphify Hooks Reference, Graphify Query Reference, Graphify Extraction Specification, Graphify Transcribe Reference (+2 more)
 
-### Community 265 - "eden.ts"
-Cohesion: 0.03
-Nodes (62): FilterStatus, Transaction, ListMetadata, Organization, OrganizationsTable(), STATUS_TONE, BankAccount, BankAccountsRequestState (+54 more)
+### Community 265 - "console/invoices/invoices-table.tsx"
+Cohesion: 0.09
+Nodes (30): InvoiceDetailPage(), getErrorMessage(), getInvoiceColumns(), InvoiceListRequestState, InvoicesTable(), InvoicesTableProps, InvoicesPage(), InvoicesPageProps (+22 more)
 
 ### Community 266 - "package.json"
 Cohesion: 0.20
@@ -1588,13 +1593,13 @@ Nodes (5): AlphaSeeder, BetaSeeder, DeltaSeeder, GammaSeeder, mockPrisma
 Cohesion: 0.27
 Nodes (10): "VpnMobileDevice", "VpnMobileSession", "VpnPackage", "VpnPackageServer", "VpnPairingToken", "VpnRegion", "VpnServer", "VpnServerAccount" (+2 more)
 
-### Community 269 - "vouchers.dto.ts"
-Cohesion: 0.25
-Nodes (7): RedeemResultDTO, VoucherClaimDTO, VoucherClaimRecord, VoucherDetailDTO, VoucherDTO, VoucherRecord, VoucherRecordBase
+### Community 269 - "stats.route.ts"
+Cohesion: 0.19
+Nodes (13): AdminStatsRouteDeps, adminStatsRoutes, BALANCE_CURRENCIES, BalanceCurrency, BillingAuthContext, createAdminStatsRoutes(), defaultDeps, emptyTotalBalances() (+5 more)
 
-### Community 271 - "SecretBuilder"
-Cohesion: 0.14
-Nodes (7): KubernetesDeployment, KubernetesHPA, KubernetesSecret, SecretBuilder, SecretData, TLSSecretData, KubernetesMetadata
+### Community 271 - "deploy-submit.route.ts"
+Cohesion: 0.12
+Nodes (17): deploySubmitRoutes, envVarSchema, resolveDefaultAppHostingClusterId(), createOrUpdateStack(), IN_PROGRESS_STATUSES, StackUpsertInput, syncJenkinsPipelineForStack(), triggerDeploy() (+9 more)
 
 ### Community 272 - "manifest.builder.ts"
 Cohesion: 0.29
@@ -1604,21 +1609,21 @@ Nodes (5): AppManifest, HelmChart, KubernetesResource, AppDescriptor, YamlManife
 Cohesion: 0.20
 Nodes (8): BankAccountShape, mockBankAccountFindMany, mockBankAccountFindUnique, mockBankAccountUpdate, mockBankAccountUpdateMany, mockBillingAccountFindUnique, mockGetPlatformRole, mockWithAuth
 
-### Community 274 - "payment.types.ts"
-Cohesion: 0.13
-Nodes (16): confirmationService, createAdminConfirmationRoutes(), paymentService, requireConfirmationAuth(), confirmationService, createConfirmRoutes(), ConfirmationStatus, ConfirmationStatusValue (+8 more)
-
-### Community 276 - "org-detail.route.ts"
+### Community 274 - "invoices.dto.ts"
 Cohesion: 0.25
-Nodes (10): AdminOrgDetailRouteDeps, adminOrgDetailRoutes, BillingAuthContext, createAdminOrgDetailRoutes(), defaultDeps, RouteSet, toForbidden(), toNotFound() (+2 more)
+Nodes (10): buildPaymentReference(), buildPaymentTimeline(), readMetadataString(), toConfirmationStatus(), toNumber(), toPaymentConfirmationDTO(), toPaymentInfoDTO(), InvoiceDetailRecord (+2 more)
 
-### Community 277 - "messages.service.test.ts"
-Cohesion: 0.25
-Nodes (6): mockDevice, mockDeviceClient, mockEnqueue, mockPrisma, mockTx, IMPORTANT: We intentionally do NOT mock
+### Community 275 - "raw-payload-viewer.tsx"
+Cohesion: 0.50
+Nodes (3): RawPayloadViewer(), RawPayloadViewerProps, samplePayload
 
-### Community 278 - "getColumns"
-Cohesion: 0.29
-Nodes (5): AuditLogsTable(), formatDateTime(), getColumns(), shortId(), listVpnAuditLogs()
+### Community 276 - "vpn-admin-client.ts"
+Cohesion: 0.08
+Nodes (34): ServersTable(), SshKeysTable(), AdminDeviceEntry, ApiBody, AuditEntry, AuditLogQuery, createVpnSshKey(), deleteVpnSshKey() (+26 more)
+
+### Community 277 - "seed-embeddings.ts"
+Cohesion: 0.40
+Nodes (3): DRY_RUN, LIMIT_ARG, ORG_ARG
 
 ### Community 279 - "Exports Reference"
 Cohesion: 0.24
@@ -1640,37 +1645,33 @@ Nodes (8): compile(), ctx, ctxKeys, DATABASE_URL, evalLine(), models, prisma, sk
 Cohesion: 0.22
 Nodes (7): AuthResult, mockCreateGithubService, mockGetGithubInstallUrl, MockGithubIntegrationDisabledError, mockGithubServiceAssertEnabled, mockIssueGithubInstallState, mockWithAuth
 
-### Community 284 - "vpn-renewal.service.test.ts"
-Cohesion: 0.33
-Nodes (5): decimal(), mockPrisma, mockTransactions, NOW, subscription()
-
 ### Community 285 - "include"
 Cohesion: 0.22
 Nodes (8): exclude, include, .next/dev/types/**/*.ts, next-env.d.ts, .next/types/**/*.ts, node_modules, **/*.ts, **/*.tsx
 
-### Community 286 - "whatsapp-webhook.ts"
-Cohesion: 0.15
-Nodes (14): createWhatsAppWebhookQueue(), DEFAULT_JOB_OPTIONS, getSharedQueue(), getWhatsAppWebhookRedisConnection(), parseRedisDb(), QueueAddOnly, queueAddMock, queueCloseMock (+6 more)
+### Community 286 - "whatsapp-webhook.test.ts"
+Cohesion: 0.33
+Nodes (5): queueAddMock, queueCloseMock, queueConstructorMock, QueueMock, WhatsAppWebhookJobData
 
 ### Community 288 - ""Subscription""
 Cohesion: 0.38
 Nodes (7): "Package", "Pricing", "Region", "ServicePlan", "Subscription", "UsageLedger", "VpnClient"
 
-### Community 289 - "user-bank-account.route.ts"
+### Community 289 - "email.ts"
+Cohesion: 0.19
+Nodes (10): createTransporter(), EmailJob, EmailJobData, mockSendMail, formatCurrency(), QUOTA_THRESHOLDS, QuotaAlertService, QuotaEmailParams (+2 more)
+
+### Community 290 - "github.route.ts"
+Cohesion: 0.09
+Nodes (27): GET(), getStateSecret(), githubService, toErrorRedirect(), toRedirectUrl(), createDefaultDependencies(), createGithubRoutes(), disabledResponse (+19 more)
+
+### Community 291 - "billing/api/index.ts"
+Cohesion: 0.10
+Nodes (24): AdminInvoicesListRouteDeps, adminInvoicesListRoutes, BillingAuthContext, createAdminInvoicesListRoutes(), defaultDeps, formatInvoiceResponse(), querySchema, RouteSet (+16 more)
+
+### Community 292 - "usage/page.test.tsx"
 Cohesion: 0.33
-Nodes (8): bankAccountService, BankAuthContext, createUserBankAccountRoutes(), RouteSet, toForbidden(), toNotFoundError(), toUnauthorized(), toValidationError()
-
-### Community 290 - "webhook.route.test.ts"
-Cohesion: 0.22
-Nodes (8): DEFAULT_BODY, mockBillingAccount, mockBillingInvoice, mockCreditBalance, mockMarkInvoiceAsPaid, mockPaymentAuditLog, mockSendInvoicePaidEmail, mockVerifyCallback
-
-### Community 291 - "org-summary-table.test.tsx"
-Cohesion: 0.33
-Nodes (5): mockGetAdminOrgs, mockRefreshAdminOrgMetadata, page1Response, page2Response, AdminOrgsResponse
-
-### Community 292 - "webhook-retry.job.ts"
-Cohesion: 0.20
-Nodes (10): webhookDeadLetterRoutes, WebhookRetryJob, WebhookRetryJobData, createDeadLetter(), CreateDeadLetterInput, DeadLetterFilter, getDeadLetterById(), listDeadLetters() (+2 more)
+Nodes (5): mockCostBreakdown, mockDaily, mockDevices, mockMonthly, mockOverview
 
 ### Community 293 - "seed-app-hosting-cluster.ts"
 Cohesion: 0.31
@@ -1696,9 +1697,9 @@ Nodes (4): queueAddMock, queueCloseMock, queueConstructorMock, QueueMock
 Cohesion: 0.36
 Nodes (4): queueAddMock, queueCloseMock, queueConstructorMock, QueueMock
 
-### Community 300 - "payment.seeder.ts"
-Cohesion: 0.32
-Nodes (3): bankAccounts, BankAccountSeed, PaymentSeeder
+### Community 300 - "org-detail.route.ts"
+Cohesion: 0.24
+Nodes (11): getCachedOrganization(), AdminOrgDetailRouteDeps, adminOrgDetailRoutes, BillingAuthContext, createAdminOrgDetailRoutes(), defaultDeps, RouteSet, toForbidden() (+3 more)
 
 ### Community 301 - "deploy-builder.service.test.ts"
 Cohesion: 0.25
@@ -1708,17 +1709,21 @@ Nodes (7): commitFilesMock, defaultDeployment, mockPrisma, mockTx, syncJenkinsPi
 Cohesion: 0.25
 Nodes (7): mockAuthValue, mockBillingInvoiceFindFirst, mockPaymentConfirmationCreate, mockPaymentConfirmationFindFirst, mockPrisma, MockVal, mockWithAuth
 
-### Community 303 - "gateways-tab.test.tsx"
-Cohesion: 0.40
-Nodes (3): MOCK_GATEWAYS_RESPONSE_EMPTY, MOCK_GATEWAYS_RESPONSE_ONE, MOCK_PROVIDERS_RESPONSE
+### Community 303 - "github-event-normalizer.ts"
+Cohesion: 0.27
+Nodes (9): asBigInt(), asRecord(), asString(), branchFromRef(), JsonRecord, NormalizedGithubWebhookPayload, normalizeGithubWebhookPayload(), installationPayload (+1 more)
 
 ### Community 304 - "vpn-provisioning.service.test.ts"
 Cohesion: 0.25
 Nodes (7): account, mockAuditLogs, mockOpenVpn, mockPrisma, mockProxy, mockWireGuard, PrismaLike
 
-### Community 306 - "messages/quota-alert.service.ts"
-Cohesion: 0.39
-Nodes (6): formatCurrency(), QUOTA_THRESHOLDS, QuotaAlertService, QuotaEmailParams, QuotaThreshold, sendQuotaEmail()
+### Community 305 - "member-discovery.ts"
+Cohesion: 0.29
+Nodes (8): DiscoverableMember, filterMembers(), getMemberDiscoveryOptions(), MemberDiscoveryFilters, MemberRole, normalizeText(), ROLE_ORDER, toRoleValue()
+
+### Community 306 - "step-source.tsx"
+Cohesion: 0.09
+Nodes (27): computeHourlyCost(), computeHourlyCostDecimal(), FIXED_PLAN_HOURLY_COST, round4(), DeployBuildState, DeploySourceType, EnvVar, ResourcePlanId (+19 more)
 
 ### Community 307 - "bootstrap-super-admin.ts"
 Cohesion: 0.25
@@ -1740,21 +1745,17 @@ Nodes (3): ContactsGuard(), ContactsGuardProps, getPlatformRole()
 Cohesion: 0.43
 Nodes (6): GET(), getOauthProvider(), getSafeNext(), isSignupIntent(), ProviderKey, providerMap
 
-### Community 312 - "voucher-create-errors.ts"
-Cohesion: 0.43
-Nodes (5): clearFieldError(), CreateApiError, CreateFormFields, resolveCreateExceptionMessage(), resolveCreateFailureState()
+### Community 312 - "GatewayService"
+Cohesion: 0.37
+Nodes (3): GatewayService, DuitkuConfig, PaymentGatewayResponse
 
-### Community 313 - "resource-plan-selector.tsx"
-Cohesion: 0.15
-Nodes (12): CPU_CONFIG, getResourceConfig(), MEMORY_CONFIG, ResourceSlider(), ResourceSliderProps, ResourceType, Slider(), PAYG_BASE_LIMITS (+4 more)
+### Community 313 - "pay-as-you-go-selector.tsx"
+Cohesion: 0.18
+Nodes (10): CPU_CONFIG, getResourceConfig(), MEMORY_CONFIG, ResourceSlider(), ResourceSliderProps, ResourceType, Slider(), PAYG_BASE_LIMITS (+2 more)
 
-### Community 314 - "whatsapp-audit-details.ts"
-Cohesion: 0.70
-Nodes (3): actionTone, extractKnownDetails(), extractOtherDetails()
-
-### Community 315 - "Database Docker Compose"
-Cohesion: 0.33
-Nodes (7): Docker Configuration, Application Docker Compose, Database Docker Compose, Docker Network pfnapp-net, PostgreSQL Database, Redis Cache, Docker Publish Workflow
+### Community 315 - "organization-admin-surface.test.tsx"
+Cohesion: 0.24
+Nodes (8): FetchMockConfig, jsonResponse(), loadOrganizationAdminSurface(), mockConfirm, MockMember, mockRouterRefresh, mockRouterReplace, mockTenantFetch()
 
 ### Community 316 - "session.test.ts"
 Cohesion: 0.33
@@ -1796,9 +1797,9 @@ Nodes (6): mockAuditLogs, mockDispatched, mockPrisma, mockVpnProvisioningJob, OL
 Cohesion: 0.29
 Nodes (6): baseSuperAdminRecord, mockCreate, mockDelete, mockFindFirst, mockFindMany, mockUpdate
 
-### Community 326 - "whatsapp-webhook.e2e.test.ts"
+### Community 326 - "messages.route.test.ts"
 Cohesion: 0.22
-Nodes (7): mockCount, mockCreate, mockDelete, mockFindFirst, mockFindMany, mockFindUnique, mockUpdate
+Nodes (5): mockMessageService, mockPrisma, InsufficientQuotaError, QuotaCheckResult, QuotaService
 
 ### Community 327 - "seed-app-hosting-policy.ts"
 Cohesion: 0.33
@@ -1808,17 +1809,25 @@ Nodes (6): DATABASE_URL, deriveId(), LaunchPolicy, main(), POLICIES, prisma
 Cohesion: 0.33
 Nodes (5): AuthResponse, mockCookieGet, mockCookies, mockUnsealData, mockWithAuth
 
-### Community 329 - "vpn-my-services.test.tsx"
-Cohesion: 0.53
-Nodes (4): manyServerSubscription(), serverAccount(), subscription(), VpnServerAccount
+### Community 329 - "subscription-card.tsx"
+Cohesion: 0.27
+Nodes (8): formatCurrency(), formatDate(), packageConfig, PackageInfo, statusStyles, SubscriptionCard(), SubscriptionCardProps, SubscriptionItem
 
 ### Community 330 - ""WhatsappConversation""
 Cohesion: 0.40
 Nodes (5): "WhatsappConversation", "WhatsappConversationLabel", "WhatsappConversationLabelOnConversation", "WhatsappMessage", "WhatsappMessageStatus"
 
 ### Community 331 - "app-sidebar.tsx"
+Cohesion: 0.16
+Nodes (19): AppSidebarNavItem, AppSidebarOrganization, AppSidebarProject, AppSidebarProps, AppSidebarSurface, AppSidebarUser, buildNavSecondary(), buildPortalNavMain() (+11 more)
+
+### Community 332 - "analytics.service.test.ts"
+Cohesion: 0.18
+Nodes (10): mockAnalyticsData, mockBillingLedgerFindMany, mockClient, mockDailyCountCreate, mockDailyCountFindFirst, mockDailyCountFindMany, mockDailyCountUpdate, mockDevice (+2 more)
+
+### Community 333 - "invoices/email.service.tsx"
 Cohesion: 0.09
-Nodes (30): AppSidebarNavItem, AppSidebarProject, AppSidebarProps, AppSidebarSurface, AppSidebarUser, buildNavSecondary(), buildPortalNavMain(), buildPortalProjects() (+22 more)
+Nodes (16): PRISMA_STATUS_TO_EMAIL_STATUS, mockBillingAccountFindUnique, mockEmailService, mockFindMany, mockPrismaClient, mockSendPaymentReminder, mockUpdate, createInvoiceEmailService() (+8 more)
 
 ### Community 334 - "subscription-manager.test.tsx"
 Cohesion: 0.33
@@ -1828,13 +1837,17 @@ Nodes (4): baseSubscription, fetchMock, mockToastError, mockToastSuccess
 Cohesion: 0.33
 Nodes (5): mockRedisDel, mockRedisGet, mockRedisScan, mockRedisSet, redisStore
 
-### Community 336 - "analytics.test.ts"
-Cohesion: 0.33
-Nodes (4): mockAnalyticsResponse, mockEmptyResponse, mockPaginatedResponse, mockRequest
+### Community 336 - "Repository Guidelines"
+Cohesion: 0.12
+Nodes (24): Repository Guidelines, Obsidian Vault Skill, Bun JavaScript Runtime, Claude Agent Configuration, Codecov Configuration, Docker Configuration, Application Docker Compose, Database Docker Compose (+16 more)
 
 ### Community 337 - "admin.service.test.ts"
 Cohesion: 0.33
 Nodes (5): mockCreateOrganization, mockListInvitations, mockListOrganizationMemberships, mockListOrganizations, mockSendInvitation
+
+### Community 338 - "whatsapp-webhook-worker.ts"
+Cohesion: 0.13
+Nodes (16): webhookDeadLetterRoutes, WebhookRetryJob, WebhookRetryJobData, createDeadLetter(), CreateDeadLetterInput, DeadLetterFilter, getDeadLetterById(), listDeadLetters() (+8 more)
 
 ### Community 339 - "jenkins-image-ready.route.test.ts"
 Cohesion: 0.33
@@ -1851,6 +1864,10 @@ Nodes (3): calculateHoursRemaining(), getLowBalanceMessage(), isLowBalance()
 ### Community 342 - "github-inspection.service.test.ts"
 Cohesion: 0.33
 Nodes (5): mockFetch, mockRedisGet, mockRedisSet, { privateKey }, validPrivateKeyBase64
+
+### Community 343 - "mobile/api/admin-devices.route.ts"
+Cohesion: 0.26
+Nodes (11): AuthContext, createAdminDevicesRoutes(), Deps, forbidden(), isOrgAdmin(), isSuperAdminViaDb(), isSuperAdminViaJwt(), notFound() (+3 more)
 
 ### Community 344 - "support-tickets/email.service.test.ts"
 Cohesion: 0.33
@@ -1936,9 +1953,9 @@ Nodes (4): assert(), results, run(), TestResult
 Cohesion: 0.50
 Nodes (4): Obsidian Markdown Skill, Obsidian Callouts Reference, Obsidian Embeds Reference, Obsidian Properties Reference
 
-### Community 370 - "environment-variables.route.ts"
-Cohesion: 0.12
-Nodes (16): createRouteGuard(), createSchema, defaultDependencies, EnvironmentVariablesRouteDeps, importSchema, updateSchema, isTenantApiError(), TenantBootstrapCreateResponse (+8 more)
+### Community 370 - "framework-detection.route.ts"
+Cohesion: 0.24
+Nodes (7): createFrameworkDetectionRoutes(), DetectFrameworkFromGithubApiFunction, DetectFrameworkFunction, frameworkDetectionRoutes, gitDetectionRequestSchema, githubApiDetectionRequestSchema, DetectionResult
 
 ### Community 372 - "graphify reference: add a URL and watch a folder"
 Cohesion: 0.50
@@ -1992,6 +2009,10 @@ Nodes (3): HAS_ADMIN_AUTH, HAS_USER_AUTH, projects
 Cohesion: 0.50
 Nodes (3): keys, matched, query
 
+### Community 403 - "whatsapp-billing.service.test.ts"
+Cohesion: 0.28
+Nodes (7): billingAccount(), decimal(), defaultTx, mockBillingTransactionService, mockPrisma, mockTransaction, whatsappDevice()
+
 ### Community 412 - "Hooks Reference"
 Cohesion: 0.67
 Nodes (3): Hooks Reference, graphify claude install, graphify hook install
@@ -2000,53 +2021,173 @@ Nodes (3): Hooks Reference, graphify claude install, graphify hook install
 Cohesion: 0.25
 Nodes (7): args, coverage, passthroughArgs, processResult, suite, testFiles, TestSuiteName
 
-### Community 439 - "packages-table.tsx"
-Cohesion: 0.36
-Nodes (6): formatPrice(), PackagesTable(), deleteVpnPackage(), listVpnPackages(), listVpnServers(), VpnPackageItem
+### Community 435 - "webhooks.route.test.ts"
+Cohesion: 0.20
+Nodes (7): mockDevice, mockDeviceFindUnique, mockEvent, mockWebhookEventCount, mockWebhookEventCreate, mockWebhookEventFindMany, mockWebhookEventUpdate
+
+### Community 437 - "package-form.tsx"
+Cohesion: 0.23
+Nodes (11): PackageForm(), PackageFormProps, protocolLabels(), formatPrice(), PackagesTable(), createVpnPackage(), deleteVpnPackage(), listVpnPackages() (+3 more)
+
+### Community 438 - "message-cost.service.ts"
+Cohesion: 0.24
+Nodes (3): MessageCostService, MessageType, MockedPrisma
+
+### Community 439 - "org-summary-table.test.tsx"
+Cohesion: 0.33
+Nodes (5): mockGetAdminOrgs, mockRefreshAdminOrgMetadata, page1Response, page2Response, AdminOrgsResponse
 
 ### Community 440 - "deploy-wizard.spec.ts"
 Cohesion: 0.29
 Nodes (3): detection, repositories, runningStatus
 
-### Community 445 - "step-source-v2.tsx"
-Cohesion: 0.16
-Nodes (13): DEPLOY_TEMPLATES, computeHourlyCost(), computeHourlyCostDecimal(), FIXED_PLAN_HOURLY_COST, round4(), DeployTemplateId, ResourcePlanId, getTemplateCategory() (+5 more)
+### Community 441 - "WireGuardService"
+Cohesion: 0.33
+Nodes (3): WireGuardService, qrcode, qrcode
+
+### Community 442 - "analytics.test.ts"
+Cohesion: 0.33
+Nodes (4): mockAnalyticsResponse, mockEmptyResponse, mockPaginatedResponse, mockRequest
+
+### Community 444 - "voucher-create-errors.ts"
+Cohesion: 0.43
+Nodes (5): clearFieldError(), CreateApiError, CreateFormFields, resolveCreateExceptionMessage(), resolveCreateFailureState()
+
+### Community 445 - "graphify reference: extra exports and benchmark"
+Cohesion: 0.22
+Nodes (8): graphify reference: extra exports and benchmark, Step 6b - Wiki (only if --wiki flag), Step 7 - Neo4j export (only if --neo4j or --neo4j-push flag), Step 7a - FalkorDB export (only if --falkordb or --falkordb-push flag), Step 7b - SVG export (only if --svg flag), Step 7c - GraphML export (only if --graphml flag), Step 7d - MCP server (only if --mcp flag), Step 8 - Token reduction benchmark (only if total_words > 5000)
+
+### Community 446 - "BillingTransactionService"
+Cohesion: 0.05
+Nodes (32): BalanceMutationInput, BalanceMutationResult, BillingChargeSource, BillingTransactionService, inferCategory(), MAX_BALANCE, ServiceBalanceInput, ServiceLineInput (+24 more)
+
+### Community 447 - "github.webhook.test.ts"
+Cohesion: 0.25
+Nodes (4): evaluatePushRules(), extractBranchFromRef(), matchesBranchFilters(), MutableWebhookEvent
 
 ### Community 449 - "run-nightly-tests.ts"
 Cohesion: 0.33
 Nodes (5): NIGHTLY_QUARANTINE, commands, failures, NightlyCommand, smokeProjects
 
-### Community 450 - "VpnDevicesTable"
+### Community 450 - "vpn.route.test.ts"
+Cohesion: 0.22
+Nodes (9): createRoute(), decimal(), mockBilling, mockOpenVpn, mockPrisma, mockVpnClients, setupPrismaDefaults(), validAuth (+1 more)
+
+### Community 451 - "support-ticket-attachment.storage.ts"
+Cohesion: 0.16
+Nodes (16): AttachmentStorageConfig, buildSupportTicketAttachmentStorageKey(), buildSupportTicketAttachmentStoragePrefix(), CreatePresignedUploadInput, getOptionalEnv(), getPresignTtlSeconds(), getRequiredEnv(), getStoragePrefix() (+8 more)
+
+### Community 452 - "subscriptions-table.tsx"
+Cohesion: 0.12
+Nodes (14): extractUnique(), formatCurrency(), formatDate(), getColumns(), STATUS_FILTER_OPTIONS, STATUS_VARIANT, SubscriptionsTable(), mockListVpnAdminSubscriptions (+6 more)
+
+### Community 453 - "accounts/route.test.ts"
+Cohesion: 0.25
+Nodes (7): AuthResult, GithubAppAccountTest, mockGetPlatformRoleForUser, mockHasScopedSuperAdminClaim, mockListActiveGithubAppAccounts, mockResolveTenantRoleFromClaims, mockWithAuth
+
+### Community 454 - "user-bank-account.route.ts"
 Cohesion: 0.33
-Nodes (4): listVpnMobileAdminDevices(), revokeVpnMobileDevice(), formatDate(), VpnDevicesTable()
+Nodes (8): bankAccountService, BankAuthContext, createUserBankAccountRoutes(), RouteSet, toForbidden(), toNotFoundError(), toUnauthorized(), toValidationError()
+
+### Community 455 - "webhook.route.test.ts"
+Cohesion: 0.22
+Nodes (8): DEFAULT_BODY, mockBillingAccount, mockBillingInvoice, mockCreditBalance, mockMarkInvoiceAsPaid, mockPaymentAuditLog, mockSendInvoicePaidEmail, mockVerifyCallback
+
+### Community 456 - "wireguard.test.ts"
+Cohesion: 0.25
+Nodes (7): MOCK_SERVER, mockCreatePeer, mockFetchConfig, mockListPeers, mockPrisma, mockRemovePeer, mockWireGuardSshAdapter
+
+### Community 457 - "deployments/page.test.tsx"
+Cohesion: 0.29
+Nodes (6): appsApi, getApps, getHistory, getOverview, postTrigger, triggerApi
+
+### Community 458 - "deploy-trigger.route.test.ts"
+Cohesion: 0.33
+Nodes (5): mockPrisma, mockWithAuth, resetMocks(), setStack(), stackRecord
+
+### Community 459 - "organization-admin-surface.tsx"
+Cohesion: 0.13
+Nodes (18): ApiError, formatTimestamp(), isApiError(), OrganizationAdminSurface(), OrganizationAdminSurfaceProps, OrganizationProfile, TAB_OPTIONS, TabKey (+10 more)
+
+### Community 460 - "voucher-management-table.test.tsx"
+Cohesion: 0.33
+Nodes (4): IconStub(), mockListGet, routerPushMock, sampleVouchers
 
 ### Community 462 - "lint-test-policy.ts"
 Cohesion: 0.40
 Nodes (4): files, PROHIBITED, smokeTests, TEST_POLICY_ALLOWLIST
 
+### Community 465 - "graphify reference: query, path, explain"
+Cohesion: 0.33
+Nodes (5): For /graphify explain, For /graphify path, graphify reference: query, path, explain, Step 0 — Constrained query expansion (REQUIRED before traversal), Step 1 — Traversal
+
+### Community 467 - "obsidian-load"
+Cohesion: 0.33
+Nodes (5): Entry flow, obsidian-load, Reading a note, Vault discovery, Vault name
+
 ### Community 468 - "pull_request_template.md"
 Cohesion: 0.50
 Nodes (3): Summary, UI verification, Verification
 
+### Community 469 - "obsidian-resolve"
+Cohesion: 0.33
+Nodes (5): After resolving, Example, obsidian-resolve, obsidian:// URL format, Parsing steps
+
+### Community 525 - "credentials/page.test.tsx"
+Cohesion: 0.50
+Nodes (4): defaultFetch(), jsonResponse(), MOCK_CREDENTIALS, mockFetch
+
+### Community 527 - "app/layout.tsx"
+Cohesion: 0.22
+Nodes (7): fontDisplay, jetbrainsMono, jetbrainsMonoHeading, roboto, QueryProvider(), ThemeHotkey(), ThemeProvider()
+
+### Community 528 - "admin-gateway.route.ts"
+Cohesion: 0.60
+Nodes (4): createAdminGatewayRoutes(), gatewayService, requireGatewayAuth(), listProviders()
+
+### Community 529 - "messages.service.test.ts"
+Cohesion: 0.25
+Nodes (6): mockDevice, mockDeviceClient, mockEnqueue, mockPrisma, mockTx, IMPORTANT: We intentionally do NOT mock
+
+### Community 530 - "billing-alerts-form.test.tsx"
+Cohesion: 0.50
+Nodes (3): defaultAccount, mockGetBillingAccount, mockUpdateBillingAlerts
+
+### Community 534 - "graphify reference: add a URL and watch a folder"
+Cohesion: 0.50
+Nodes (3): For /graphify add, For --watch, graphify reference: add a URL and watch a folder
+
+### Community 535 - "graphify reference: commit hook and native CLAUDE.md integration"
+Cohesion: 0.50
+Nodes (3): For git commit hook, For native CLAUDE.md integration, graphify reference: commit hook and native CLAUDE.md integration
+
+### Community 536 - "graphify reference: incremental update and cluster-only"
+Cohesion: 0.50
+Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphify reference: incremental update and cluster-only
+
+### Community 537 - "cleanup-whatsapp-webhook-events.ts"
+Cohesion: 0.83
+Nodes (3): isDryRun(), main(), parseDurationMs()
+
 ## Knowledge Gaps
-- **3303 isolated node(s):** `features`, `logos`, `footerLinks`, `codeLines`, `stats` (+3298 more)
+- **3426 isolated node(s):** `features`, `logos`, `footerLinks`, `codeLines`, `stats` (+3421 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **109 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **105 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Button()` connect `button.tsx` to `card.tsx`, `cn`, `provisioning-audit-modal.tsx`, `badge.tsx`, `support-ticket-admin-detail-screen.tsx`, `servers/[id]/page.tsx`, `react`, `resolveLocaleOrDefault`, `eden.ts`, `device-edit-form.tsx`, `console/app/settings/page.tsx`, `step-source.tsx`, `vpn/dashboard/page.tsx`, `sidebar.tsx`, `server-form.tsx`, `device-create-wizard.tsx`, `vpn-mobile-client.ts`, `console/whatsapp/usage/page.tsx`, `portal/whatsapp/events/page.tsx`, `deploy-wizard-v2.tsx`, `getMessages`, `portal/vpn/subscriptions/[id]/page.tsx`, `billing-client.ts`, `deploy-timeline.tsx`, `organization-admin-surface.tsx`, `packages-table.tsx`, `env-vars-editor.tsx`, `step-source-v2.tsx`, `billing-setup-banner.tsx`, `console/invoices/invoices-table.tsx`, `app-sidebar.tsx`, `invoice-detail-screen.tsx`, `support-ticket.types.ts`, `invoices.types.ts`, `vpn-my-services.tsx`, `deploy.types.ts`, `environment-variables.route.ts`, `console/vpn/subscriptions/[id]/page.tsx`, `console/whatsapp/messages/page.tsx`?**
-  _High betweenness centrality (0.046) - this node is a cross-community bridge._
-- **Why does `cn()` connect `cn` to `button.tsx`, `card.tsx`, `badge.tsx`, `support-ticket-admin-detail-screen.tsx`, `app-breadcrumbs.tsx`, `react`, `step-source.tsx`, `sidebar.tsx`, `console/whatsapp/usage/page.tsx`, `portal/whatsapp/events/page.tsx`, `billing-client.ts`, `deploy-timeline.tsx`, `console/layout.tsx`, `resource-plan-selector.tsx`, `step-source-v2.tsx`, `console/invoices/invoices-table.tsx`, `app-sidebar.tsx`, `deploy-chat-sidebar.tsx`, `invoice-detail-screen.tsx`, `deploy.types.ts`, `app/layout.tsx`?**
-  _High betweenness centrality (0.032) - this node is a cross-community bridge._
-- **Why does `file()` connect `verify-feature-docs.ts` to `resolveLocaleOrDefault`, `support-ticket-attachment.service.ts`, `seed-runner.ts`?**
-  _High betweenness centrality (0.029) - this node is a cross-community bridge._
+- **Why does `Button()` connect `button.tsx` to `devices.schemas.ts`, `cn`, `portal/vpn/subscriptions/[id]/page.tsx`, `card.tsx`, `portal/whatsapp/devices/page.tsx`, `cluster-list.tsx`, `resolveLocaleOrDefault`, `console/invoices/invoices-table.tsx`, `support-ticket-admin-detail-screen.tsx`, `tenant-api.contract.ts`, `deploy-wizard-v2.tsx`, `deploy.types.ts`, `sidebar.tsx`, `vpn-my-services.tsx`, `vpn-admin-client.ts`, `device-create-wizard.tsx`, `raw-payload-viewer.tsx`, `eden.ts`, `console/whatsapp/usage/page.tsx`, `regions-table.tsx`, `console/vpn/subscriptions/[id]/page.tsx`, `whatsapp-audit-table.tsx`, `deployments/page.tsx`, `billing-client.ts`, `logs-panel.tsx`, `step-source.tsx`, `server-form.tsx`, `package-form.tsx`, `console/whatsapp/messages/page.tsx`, `audit-logs-table.tsx`, `env-vars-editor.tsx`, `tabs-device-detail.tsx`, `subscriptions-table.tsx`, `organization-admin-surface.tsx`, `vpn-mobile-client.ts`, `invoice-detail-screen.tsx`, `invoices.types.ts`, `cluster-detail.tsx`, `vpn/dashboard/page.tsx`, `operate-troubleshooter.tsx`, `webhook-dispatcher.service.ts`?**
+  _High betweenness centrality (0.047) - this node is a cross-community bridge._
+- **Why does `dependencies` connect `dependencies` to `card.tsx`, `package.json`, `bullmq`, `negotiator`, `clsx`, `@elysia/openapi`, `zod`, `lucide-react`, `elysia`, `next`, `@opensearch-project/opensearch`, `shadcn`, `next-themes`, `nodemailer`, `@openrouter/ai-sdk-provider`, `@sinclair/typebox`, `@tanstack/react-form`, `@react-email/components`, `@tanstack/react-table`, `tw-animate-css`, `WireGuardService`, `react-dom`, `react-icons`, `@workos-inc/authkit-nextjs`, `pg`, `@react-pdf/renderer`?**
+  _High betweenness centrality (0.039) - this node is a cross-community bridge._
+- **Why does `file()` connect `verify-feature-docs.ts` to `resolveLocaleOrDefault`, `seed-runner.ts`, `support-ticket-attachment.storage.ts`?**
+  _High betweenness centrality (0.037) - this node is a cross-community bridge._
 - **What connects `features`, `logos`, `footerLinks` to the rest of the system?**
-  _3303 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _3426 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `button.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.036322125363221255 - nodes in this community are weakly interconnected._
-- **Should `card.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.03997944501541624 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.03805660195112528 - nodes in this community are weakly interconnected._
+- **Should `devices.schemas.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.03557422969187675 - nodes in this community are weakly interconnected._
 - **Should `cn` be split into smaller, more focused modules?**
-  _Cohesion score 0.02799650043744532 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.03626373626373627 - nodes in this community are weakly interconnected._

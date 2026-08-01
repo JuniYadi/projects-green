@@ -70,6 +70,9 @@ const mockFetchGithubInstallationRepositories = mock(async () => [
 const mockSyncGithubInstallation = mock(async () => ({
   id: "ghi_install_1",
 }))
+const mockUpsertGithubAppCredential = mock(async () => ({
+  id: "cred_1",
+}))
 const mockGithubServiceAssertEnabled = mock(() => {})
 const mockCreateGithubService = mock(() => ({
   getFeatureStatus: () => ({
@@ -112,6 +115,12 @@ mock.module("@/modules/github/github.service", () => {
   }
 })
 
+mock.module("@/modules/credentials/app-credential.service", () => {
+  return {
+    upsertGithubAppCredential: mockUpsertGithubAppCredential,
+  }
+})
+
 describe("GET /api/integrations/github/install/callback", () => {
   beforeEach(() => {
     mockWithAuth.mockClear()
@@ -119,8 +128,16 @@ describe("GET /api/integrations/github/install/callback", () => {
     mockFetchGithubInstallationDetails.mockClear()
     mockFetchGithubInstallationRepositories.mockClear()
     mockSyncGithubInstallation.mockClear()
+    mockUpsertGithubAppCredential.mockClear()
     mockGithubServiceAssertEnabled.mockClear()
     mockCreateGithubService.mockClear()
+
+    mockSyncGithubInstallation.mockImplementation(async () => ({
+      id: "ghi_install_1",
+    }))
+    mockUpsertGithubAppCredential.mockImplementation(async () => ({
+      id: "cred_1",
+    }))
 
     mockWithAuth.mockImplementation(async () => ({
       user: { id: "user_123" },
@@ -145,20 +162,61 @@ describe("GET /api/integrations/github/install/callback", () => {
     }))
   })
 
-  it("redirects to returnTo with github=connected and syncs installation", async () => {
+  it("redirects to returnTo with github=connected after sync completes", async () => {
+    const syncPending = Promise.withResolvers<{ id: string }>()
+    const syncStarted = Promise.withResolvers<void>()
+
+    const callOrder: string[] = []
+    mockSyncGithubInstallation.mockImplementation(() => {
+      syncStarted.resolve()
+      return syncPending.promise.then((result) => {
+        callOrder.push("sync")
+        return result
+      })
+    })
+    mockUpsertGithubAppCredential.mockImplementation(async () => {
+      callOrder.push("credential")
+      return { id: "cred_1" }
+    })
+
     const route =
       await import("@/app/api/integrations/github/install/callback/route")
 
-    const response = await route.GET(
-      new NextRequest(
-        "http://localhost/api/integrations/github/install/callback?installation_id=123&state=valid"
+    let responseSettled = false
+    const responsePromise = route
+      .GET(
+        new NextRequest(
+          "http://localhost/api/integrations/github/install/callback?installation_id=123&state=valid"
+        )
       )
-    )
+      .then((response) => {
+        responseSettled = true
+        return response
+      })
+
+    await syncStarted.promise
+    expect(responseSettled).toBe(false)
+    expect(mockUpsertGithubAppCredential).not.toHaveBeenCalled()
+
+    syncPending.resolve({ id: "ghi_install_1" })
+    const response = await responsePromise
 
     expect(response.status).toBe(307)
     expect(response.headers.get("location")).toBe(
       "http://localhost/console/app/deploy?tab=source&github=connected"
     )
+
+    expect(mockUpsertGithubAppCredential).toHaveBeenCalledTimes(1)
+    expect(mockUpsertGithubAppCredential).toHaveBeenCalledWith({
+      organizationId: "org_123",
+      githubInstallationId: 123,
+      accountLogin: "acme",
+      accountType: "Organization",
+      targetType: "Organization",
+      permissions: ["contents:read"],
+      events: ["push"],
+    })
+    expect(callOrder).toEqual(["sync", "credential"])
 
     expect(mockWithAuth).toHaveBeenCalledWith({ ensureSignedIn: true })
     expect(mockValidateGithubInstallState).toHaveBeenCalledWith({
@@ -193,6 +251,28 @@ describe("GET /api/integrations/github/install/callback", () => {
         },
       ],
     })
+  })
+
+  it("still redirects with github=connected when credential mirroring throws", async () => {
+    mockUpsertGithubAppCredential.mockImplementation(async () => {
+      throw new Error("credential upsert failed")
+    })
+
+    const route =
+      await import("@/app/api/integrations/github/install/callback/route")
+
+    const response = await route.GET(
+      new NextRequest(
+        "http://localhost/api/integrations/github/install/callback?installation_id=123&state=valid"
+      )
+    )
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get("location")).toBe(
+      "http://localhost/console/app/deploy?tab=source&github=connected"
+    )
+    expect(mockSyncGithubInstallation).toHaveBeenCalledTimes(1)
+    expect(mockUpsertGithubAppCredential).toHaveBeenCalledTimes(1)
   })
 
   it("redirects to github=error when state is invalid", async () => {

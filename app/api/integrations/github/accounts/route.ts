@@ -1,7 +1,7 @@
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { NextResponse } from "next/server"
 
-import { prisma } from "@/lib/prisma"
+import { listActiveGithubAppAccounts } from "@/modules/credentials/app-credential.service"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import {
   hasScopedSuperAdminClaim,
@@ -38,20 +38,11 @@ export const GET = async () => {
     }
   }
 
-  const installations = await prisma.githubInstallation.findMany({
-    where: auth.organizationId
-      ? { organizationId: auth.organizationId, status: "active" }
-      : { workosUserId: auth.user.id, organizationId: null, status: "active" },
-    orderBy: { installedAt: "asc" },
-  })
+  if (!auth.organizationId) {
+    return NextResponse.json({ ok: true, accounts: [] })
+  }
 
-  const accounts = installations.map((i) => ({
-    id: i.id,
-    accountLogin: i.accountLogin,
-    accountType: i.accountType,
-    targetType: i.targetType,
-    installedAt: i.installedAt.toISOString(),
-  }))
+  const accounts = await listActiveGithubAppAccounts(auth.organizationId)
 
   return NextResponse.json({ ok: true, accounts })
 }
