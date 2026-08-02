@@ -827,31 +827,60 @@ const buildDetectorRuleHints = (rules: DetectorRuleRecord[]): string => {
   ].join("\n")
 }
 
+const buildAiDetectionSystemPrompt = (
+  detectorRules: DetectorRuleRecord[]
+): string => {
+  return [
+    "You are a framework detection agent for source repositories.",
+    "Inspect repository evidence before deciding: manifests, lockfiles, framework configuration files, package scripts, and Dockerfiles when present.",
+    "Conclude the framework, exact version when evidenced, ecosystem, required runtime IDs, build command or build approach, and application port from inspected evidence.",
+    "Every conclusion must cite concrete repository evidence in reasoning. Never invent, guess, or infer unsupported values; use an empty optional value or unknown only when the schema permits it.",
+    "Return strict JSON only: no markdown, prose, or code fences.",
+    "Include every schema field exactly once: primaryFrameworkId, frameworkVersion, ecosystem, confidence, requiredRuntimeIds, reasoning.",
+    "frameworkVersion and ecosystem are optional schema fields but must still be included; use an empty string or unknown when evidence is unavailable.",
+    buildDetectorRuleHints(detectorRules),
+  ].join("\n")
+}
+
+const parseAiDecision = (finalText: string): AiDecision => {
+  const jsonMatch = finalText.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) {
+    throw new Error(
+      `AI failed to return a valid decision. Response: ${finalText}`
+    )
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(jsonMatch[0])
+  } catch {
+    throw new Error(
+      `AI failed to return a valid decision. Response: ${finalText}`
+    )
+  }
+
+  const result = AI_DECISION_SCHEMA.safeParse(parsed)
+  if (!result.success) {
+    throw new Error(
+      `AI returned an invalid decision schema: ${result.error.message}`
+    )
+  }
+
+  return result.data
+}
+
 const resolveWithAiToolCalling = async (
   input: GithubApiDetectionInput,
   fileList: string[],
   detectorRules: DetectorRuleRecord[],
   dependencies: GithubApiDetectorDependencies
 ): Promise<AiDecisionResult> => {
+  const systemPrompt = buildAiDetectionSystemPrompt(detectorRules)
   const modelName = process.env.AI_DETECTOR_MODEL?.trim() || "gpt-4.1-mini"
   const provider = createOpenAI(getAiProviderConfig())
 
   const readFileFn = dependencies.readFile ?? readRepoFile
   const listFilesFn = dependencies.listFiles ?? listRepoFiles
-
-  const systemPrompt = [
-    "You are a framework detection agent for source repositories.",
-    "Your job is to identify the primary framework and its version by inspecting repository files.",
-    "Use the available tools to inspect files as needed.",
-    "Always check package.json, composer.json, or other manifest files to determine the exact framework and version.",
-    buildDetectorRuleHints(detectorRules),
-    "",
-    "Return your final answer as a JSON object with:",
-    "- primaryFrameworkId: the framework identifier (e.g., 'laravel', 'nextjs', 'react')",
-    "- confidence: a number between 0 and 1",
-    "- requiredRuntimeIds: array of runtime IDs needed (e.g., ['node', 'php'])",
-    "- reasoning: array of strings explaining your reasoning",
-  ].join("\n")
 
   const toolDefinitions = {
     list_repo_files: tool({
@@ -934,22 +963,8 @@ const resolveWithAiToolCalling = async (
     }
   })
 
-  // Parse the final text response as JSON
-  const finalText = result.text
-  try {
-    // Try to extract JSON from the response
-    const jsonMatch = finalText.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]) as AiDecision
-      return { decision: parsed, toolCalls }
-    }
-  } catch {
-    // Fall through to error
-  }
-
-  throw new Error(
-    `AI failed to return a valid decision. Response: ${finalText}`
-  )
+  const decision = parseAiDecision(result.text)
+  return { decision, toolCalls }
 }
 
 // --- RuntimeMapping Enforcement ---
@@ -1593,6 +1608,8 @@ export const __testables = {
   fromInventory,
   checkForBlockedFrameworks,
   buildDetectorRuleHints,
+  buildAiDetectionSystemPrompt,
+  parseAiDecision,
   enforceRuntimeMappings,
   inferFrameworkEcosystem,
   evaluateSupportDecision,

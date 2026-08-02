@@ -411,6 +411,61 @@ describe("buildDetectorRuleHints", () => {
   })
 })
 
+describe("buildAiDetectionSystemPrompt", () => {
+  it("requires evidence inspection and strict schema-complete JSON", () => {
+    const prompt = __testables.buildAiDetectionSystemPrompt([])
+
+    for (const requirement of [
+      "manifests",
+      "lockfiles",
+      "framework configuration files",
+      "package scripts",
+      "Dockerfiles",
+      "framework",
+      "exact version",
+      "ecosystem",
+      "required runtime IDs",
+      "build command",
+      "application port",
+      "concrete repository evidence",
+      "Never invent",
+      "strict JSON only",
+      "primaryFrameworkId",
+      "frameworkVersion",
+      "confidence",
+      "requiredRuntimeIds",
+      "reasoning",
+    ]) {
+      expect(prompt).toContain(requirement)
+    }
+  })
+})
+describe("parseAiDecision", () => {
+  it("rejects malformed model output", () => {
+    expect(() =>
+      __testables.parseAiDecision(
+        JSON.stringify({ primaryFrameworkId: "nextjs" })
+      )
+    ).toThrow("invalid decision schema")
+  })
+
+  it("accepts schema-complete model output", () => {
+    const decision = __testables.parseAiDecision(
+      JSON.stringify({
+        primaryFrameworkId: "nextjs",
+        frameworkVersion: "16",
+        ecosystem: "node",
+        confidence: 0.95,
+        requiredRuntimeIds: ["node"],
+        reasoning: ["package.json declares next"],
+      })
+    )
+
+    expect(decision.primaryFrameworkId).toBe("nextjs")
+    expect(decision.requiredRuntimeIds).toEqual(["node"])
+  })
+})
+
 describe("detectFrameworkFromGithubApi - error handling", () => {
   beforeEach(() => {
     delete process.env.AI_API_KEY
