@@ -9,7 +9,7 @@
 
 import { test, expect } from "@playwright/test"
 
-test.describe("Billing Contacts (authenticated)", () => {
+test.describe("Billing Contacts (authenticated) @e2e/billing/console/contacts", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/en/console/billing/contacts")
   })
