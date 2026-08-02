@@ -49,20 +49,10 @@ const TEMPLATE_CATEGORIES = [
 ] as const
 
 const getTemplateCategory = (id: DeployTemplateId) => {
-  if (
-    [
-      "wordpress",
-      "ghost",
-      "strapi",
-      "directus",
-      "payload",
-      "pocketbase",
-    ].includes(id)
+  return (
+    DEPLOY_TEMPLATES.find((template) => template.id === id)?.category ??
+    "Developer Tools"
   )
-    return "CMS"
-  if (["umami", "plausible"].includes(id)) return "Analytics"
-  if (id === "n8n") return "Automation"
-  return "Developer Tools"
 }
 
 export type StepSourceProps = {
@@ -568,32 +558,38 @@ export function StepSourceV2(props: StepSourceProps) {
                   templateView === "grid" ? "grid grid-cols-2" : "flex flex-col"
                 )}
               >
-                {visibleTemplates.map((tmpl) => (
-                  <button
-                    key={tmpl.id}
-                    type="button"
-                    onClick={() => onTemplateSelect(tmpl.id)}
-                    className={cn(
-                      "flex items-center gap-2 rounded-lg border p-2.5 text-left text-xs transition-all",
-                      templateView === "grid" && "flex-col text-center",
-                      templateId === tmpl.id
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border hover:border-primary/50 hover:bg-muted/50"
-                    )}
-                  >
-                    {TMPL_ICON[tmpl.id] ?? (
-                      <FileCode className="h-6 w-6 shrink-0 text-[#6366f1]" />
-                    )}
-                    <span className="leading-tight font-medium">
-                      {tmpl.name}
-                    </span>
-                    {templateView === "list" && (
-                      <span className="ml-auto text-[10px] text-muted-foreground">
-                        {getTemplateCategory(tmpl.id)}
+                {visibleTemplates.length === 0 ? (
+                  <div className="col-span-2 py-8 text-center text-sm text-muted-foreground">
+                    No templates match your search or category.
+                  </div>
+                ) : (
+                  visibleTemplates.map((tmpl) => (
+                    <button
+                      key={tmpl.id}
+                      type="button"
+                      onClick={() => onTemplateSelect(tmpl.id)}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg border p-2.5 text-left text-xs transition-all",
+                        templateView === "grid" && "flex-col text-center",
+                        templateId === tmpl.id
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-border hover:border-primary/50 hover:bg-muted/50"
+                      )}
+                    >
+                      {TMPL_ICON[tmpl.id] ?? (
+                        <FileCode className="h-6 w-6 shrink-0 text-[#6366f1]" />
+                      )}
+                      <span className="leading-tight font-medium">
+                        {tmpl.name}
                       </span>
-                    )}
-                  </button>
-                ))}
+                      {templateView === "list" && (
+                        <span className="ml-auto text-[10px] text-muted-foreground">
+                          {getTemplateCategory(tmpl.id)}
+                        </span>
+                      )}
+                    </button>
+                  ))
+                )}
               </div>
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>

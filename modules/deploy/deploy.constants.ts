@@ -103,6 +103,7 @@ export const DEPLOY_TEMPLATES: Array<{
   id: DeployTemplateId
   name: string
   description: string
+  category: "CMS" | "Analytics" | "Automation" | "Developer Tools"
   icon?: string
   defaultCpu: number
   defaultMemory: number
@@ -112,6 +113,7 @@ export const DEPLOY_TEMPLATES: Array<{
     id: "wordpress",
     name: "WordPress",
     description: "The world's most popular website builder.",
+    category: "CMS",
     defaultCpu: 500,
     defaultMemory: 512,
     build: {
@@ -131,6 +133,7 @@ export const DEPLOY_TEMPLATES: Array<{
     id: "ghost",
     name: "Ghost",
     description: "Professional publishing platform.",
+    category: "CMS",
     defaultCpu: 500,
     defaultMemory: 1024,
     build: {
@@ -150,6 +153,7 @@ export const DEPLOY_TEMPLATES: Array<{
     id: "strapi",
     name: "Strapi",
     description: "Leading open-source headless CMS.",
+    category: "CMS",
     defaultCpu: 1000,
     defaultMemory: 2048,
     build: {
@@ -169,6 +173,7 @@ export const DEPLOY_TEMPLATES: Array<{
     id: "directus",
     name: "Directus",
     description: "Instant App & API for your SQL database.",
+    category: "CMS",
     defaultCpu: 1000,
     defaultMemory: 2048,
     build: {
@@ -188,6 +193,7 @@ export const DEPLOY_TEMPLATES: Array<{
     id: "payload",
     name: "Payload",
     description: "The best headless CMS for TypeScript.",
+    category: "CMS",
     defaultCpu: 1000,
     defaultMemory: 2048,
     build: {
@@ -207,6 +213,7 @@ export const DEPLOY_TEMPLATES: Array<{
     id: "pocketbase",
     name: "PocketBase",
     description: "Open source backend in 1 file.",
+    category: "CMS",
     defaultCpu: 500,
     defaultMemory: 512,
     build: {
@@ -226,6 +233,7 @@ export const DEPLOY_TEMPLATES: Array<{
     id: "umami",
     name: "Umami",
     description: "Simple, privacy-focused analytics.",
+    category: "Analytics",
     defaultCpu: 500,
     defaultMemory: 512,
     build: {
@@ -245,6 +253,7 @@ export const DEPLOY_TEMPLATES: Array<{
     id: "plausible",
     name: "Plausible",
     description: "Lightweight & open-source analytics.",
+    category: "Analytics",
     defaultCpu: 500,
     defaultMemory: 1024,
     build: {
@@ -264,6 +273,7 @@ export const DEPLOY_TEMPLATES: Array<{
     id: "n8n",
     name: "n8n",
     description: "Workflow automation tool for developers.",
+    category: "Automation",
     defaultCpu: 500,
     defaultMemory: 1024,
     build: {
@@ -283,6 +293,7 @@ export const DEPLOY_TEMPLATES: Array<{
     id: "openclaw",
     name: "OpenClaw",
     description: "Open source crawler and data extraction platform.",
+    category: "Developer Tools",
     defaultCpu: 1000,
     defaultMemory: 2048,
     build: {
