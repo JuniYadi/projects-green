@@ -16,6 +16,7 @@ import {
 } from "../../deploy-pipeline.service"
 import { resolveAppHostingClusterForStack } from "../../cluster-integration.service"
 import { DEPLOY_TEMPLATES } from "../../deploy.constants"
+import { parsePublicGitUrl } from "../../public-source"
 
 /**
  * PGREEN-071 — Console Deploy Journey truth path.
@@ -88,6 +89,8 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
 
     const sourceType = body.sourceType ?? "GITHUB"
     let repositoryConnectionId: string | null | undefined
+    let publicSourceUrl: string | null = null
+    let publicSourceRef: string | null = null
     let name: string
     let slug: string
 
@@ -103,6 +106,23 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       }
       repositoryConnectionId = null
       name = body.name?.trim() || template.name
+      slug = slugify(name)
+    } else if (sourceType === "PUBLIC") {
+      const parsed = parsePublicGitUrl(body.publicSourceUrl ?? "")
+      if ("error" in parsed) {
+        set.status = 422
+        return {
+          ok: false,
+          error: "INVALID_PUBLIC_SOURCE",
+          message: parsed.error,
+        }
+      }
+      repositoryConnectionId = null
+      publicSourceUrl = parsed.url
+      publicSourceRef =
+        body.publicSourceRef?.trim() || body.branchName?.trim() || "main"
+      const derivedName = parsed.host.split(".")[0] || "app"
+      name = body.name?.trim() || derivedName
       slug = slugify(name)
     } else {
       // Resolve the repository connection for GitHub deploys.
@@ -156,8 +176,15 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         organizationId: auth.organizationId,
         name,
         slug,
-        sourceType: sourceType === "TEMPLATE" ? "TEMPLATE" : "GITHUB",
+        sourceType:
+          sourceType === "TEMPLATE"
+            ? "TEMPLATE"
+            : sourceType === "PUBLIC"
+              ? "PUBLIC"
+              : "GITHUB",
         repositoryConnectionId,
+        publicSourceUrl,
+        publicSourceRef,
         branchName: body.branchName || null,
         rootDirectory: body.rootDirectory || null,
         framework: body.framework ?? null,
@@ -254,7 +281,12 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       throw error
     }
 
-    const triggerType = sourceType === "TEMPLATE" ? "TEMPLATE" : "MANUAL"
+    const triggerType =
+      sourceType === "TEMPLATE"
+        ? "TEMPLATE"
+        : sourceType === "PUBLIC"
+          ? "PUBLIC"
+          : "MANUAL"
     const result = await triggerDeploy({
       stackId: stack.id,
       triggerType,
@@ -273,8 +305,14 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
   {
     body: t.Object({
       sourceType: t.Optional(
-        t.Union([t.Literal("GITHUB"), t.Literal("TEMPLATE")])
+        t.Union([
+          t.Literal("GITHUB"),
+          t.Literal("TEMPLATE"),
+          t.Literal("PUBLIC"),
+        ])
       ),
+      publicSourceUrl: t.Optional(t.String()),
+      publicSourceRef: t.Optional(t.String()),
       templateId: t.Optional(t.String()),
       repositoryId: t.Optional(t.String()),
       name: t.Optional(t.String()),

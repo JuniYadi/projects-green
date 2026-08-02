@@ -217,7 +217,9 @@ const sanitizeState = (
 
   const source = state.source ?? safeState.source
   const sourceType =
-    source.sourceType === "github" || source.sourceType === "template"
+    source.sourceType === "github" ||
+    source.sourceType === "template" ||
+    source.sourceType === "public"
       ? source.sourceType
       : safeState.source.sourceType
   const templateId =

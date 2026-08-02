@@ -47,10 +47,13 @@ export type DeployConfigEnvVar = Pick<EnvVar, "key" | "value"> & {
 
 export type DeployConfig = {
   source: {
-    sourceType: "github"
-    ownerId: string
-    repositoryId: string
-    branchName: string
+    sourceType: "github" | "public"
+    ownerId?: string
+    repositoryId?: string
+    branchName?: string
+    publicSourceUrl?: string
+    publicSourceRef?: string
+    appName?: string
     rootDirectory: string
   }
   build: DeployConfigBuild
@@ -91,6 +94,27 @@ const normalizeEnvVar = (item: EnvVar): DeployConfigEnvVar => {
 const collectSourceErrors = (
   source: DeploySourceState
 ): DeployConfigValidationError[] => {
+  if (source.sourceType === "public") {
+    const url = source.publicSourceUrl?.trim()
+    if (!url) {
+      return [
+        {
+          field: "source.publicSourceUrl",
+          message: "Public source URL is required.",
+        },
+      ]
+    }
+    if (!url.startsWith("https://")) {
+      return [
+        {
+          field: "source.publicSourceUrl",
+          message: "Public source URL must use HTTPS.",
+        },
+      ]
+    }
+    return []
+  }
+
   // App Hosting MVP is private-repo first: only github source is durable here.
   if (source.sourceType !== "github") {
     return [
@@ -177,13 +201,22 @@ export const buildDeployConfig = (
     : { mode: "custom", customDomain: environment.customDomain.trim() }
 
   const config: DeployConfig = {
-    source: {
-      sourceType: "github",
-      ownerId: state.source.ownerId.trim(),
-      repositoryId: state.source.repositoryId.trim(),
-      branchName: state.source.branchName.trim(),
-      rootDirectory: state.source.rootDirectory.trim() || "/",
-    },
+    source:
+      state.source.sourceType === "public"
+        ? {
+            sourceType: "public",
+            publicSourceUrl: state.source.publicSourceUrl?.trim() ?? "",
+            publicSourceRef: state.source.publicSourceRef?.trim() || "main",
+            appName: state.source.appName.trim(),
+            rootDirectory: state.source.rootDirectory.trim() || "/",
+          }
+        : {
+            sourceType: "github",
+            ownerId: state.source.ownerId.trim(),
+            repositoryId: state.source.repositoryId.trim(),
+            branchName: state.source.branchName.trim(),
+            rootDirectory: state.source.rootDirectory.trim() || "/",
+          },
     build: {
       language: state.build.language.trim(),
       framework: state.build.framework.trim(),

@@ -484,7 +484,10 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
     state.environment.memory,
   ])
 
-  const sourceValid = validateSourceStep(state.source)
+  const sourceValid =
+    state.source.sourceType === "public"
+      ? state.source.publicSourceUrl?.trim().startsWith("https://") === true
+      : validateSourceStep(state.source)
   const buildValid = validateBuildStep(state.build, state.detectionResult)
   const environmentValidationMessages = getEnvironmentValidationMessages(
     state.environment
@@ -796,11 +799,28 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
           rootDirectory={state.source.rootDirectory}
           appName={state.source.appName}
           templateResourcePlanId={state.environment.resourcePlanId}
+          publicSourceUrl={state.source.publicSourceUrl}
+          publicSourceRef={state.source.publicSourceRef}
+          onPublicSourceUrlChange={(url) => {
+            dispatch({ type: "set-source", payload: { publicSourceUrl: url } })
+          }}
+          onPublicSourceRefChange={(ref) => {
+            dispatch({ type: "set-source", payload: { publicSourceRef: ref } })
+          }}
           canProceed={sourceValid}
           isDetecting={isDetecting}
           detectionError={detectionError}
           onSourceTypeChange={(sourceType) => {
-            dispatch({ type: "set-source", payload: { sourceType } })
+            dispatch({
+              type: "set-source",
+              payload: {
+                sourceType,
+                publicSourceUrl:
+                  sourceType === "public" ? state.source.publicSourceUrl : "",
+                publicSourceRef:
+                  sourceType === "public" ? state.source.publicSourceRef : "",
+              },
+            })
           }}
           onTemplateSelect={handleTemplateSelect}
           onOwnerSearchChange={setOwnerSearch}

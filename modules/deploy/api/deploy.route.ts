@@ -11,12 +11,14 @@ import { opensearchLogsRoutes } from "@/modules/deploy/api/routes/opensearch-log
 import { deployJenkinsWebhookRoutes } from "@/modules/deploy/api/routes/jenkins-webhook.route"
 import { deployJenkinsImageReadyRoutes } from "@/modules/deploy/api/routes/jenkins-image-ready.route"
 import { podStatusRoutes } from "@/modules/deploy/api/routes/pod-status.route"
+import { publicSourceRoutes } from "@/modules/deploy/api/routes/public-source.route"
 
 export const deployRoutes = new Elysia()
   .use(appStacksRoutes)
   .use(deploySubmitRoutes)
   .use(deployTriggerRoutes)
   .use(billingGateRoutes)
+  .use(publicSourceRoutes)
   .use(deployPipelineRoutes)
   .use(environmentVariablesRoutes)
   .use(monitoringRoutes)
