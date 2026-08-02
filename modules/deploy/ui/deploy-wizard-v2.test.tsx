@@ -218,4 +218,205 @@ describe("DeployWizardV2 GitHub accounts", () => {
 
     expect(view.getByText("Detect build settings")).toBeInTheDocument()
   })
+  it("two failures then success makes exactly three requests and renders result", async () => {
+    const { DeployWizardProvider } =
+      await import("@/modules/deploy/deploy.store")
+    const { DeployWizardV2 } =
+      await import("@/modules/deploy/ui/deploy-wizard-v2")
+
+    let requestCount = 0
+    globalThis.fetch = mock((input: RequestInfo | URL) => {
+      const requestUrl =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url
+      requests.push(requestUrl)
+      const url = new URL(requestUrl, "http://localhost")
+
+      if (url.pathname === "/api/integrations/github/accounts") {
+        return Promise.resolve(
+          new Response(JSON.stringify(accountResponse), { status: 200 })
+        )
+      }
+
+      if (url.pathname === "/api/integrations/github/repositories") {
+        return Promise.resolve(
+          new Response(JSON.stringify(repositories), { status: 200 })
+        )
+      }
+
+      if (url.pathname === "/api/framework-detection/github") {
+        requestCount++
+        if (requestCount < 3) {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                ok: false,
+                error: "NETWORK_ERROR",
+                message: "Network error while contacting detection service.",
+              }),
+              { status: 500 }
+            )
+          )
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify(detectionResponse), { status: 200 })
+        )
+      }
+
+      throw new Error(`Unexpected request: ${requestUrl}`)
+    }) as unknown as typeof fetch
+
+    const view = render(
+      <DeployWizardProvider>
+        <DeployWizardV2 />
+      </DeployWizardProvider>
+    )
+
+    const repositoryButton = await view.findByRole("button", {
+      name: /storefront/,
+    })
+    fireEvent.click(repositoryButton)
+
+    await waitFor(
+      () => {
+        const detectionRequests = requests.filter((r) =>
+          r.includes("/api/framework-detection/github")
+        )
+        expect(detectionRequests.length).toBe(3)
+      },
+      { timeout: 10000 }
+    )
+    fireEvent.click(view.getByRole("button", { name: /Detect AI scans/ }))
+
+    expect(view.getByText("Detect build settings")).toBeInTheDocument()
+  })
+
+  it("three failures makes exactly three requests and renders manual fallback", async () => {
+    const { DeployWizardProvider } =
+      await import("@/modules/deploy/deploy.store")
+    const { DeployWizardV2 } =
+      await import("@/modules/deploy/ui/deploy-wizard-v2")
+
+    globalThis.fetch = mock((input: RequestInfo | URL) => {
+      const requestUrl =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url
+      requests.push(requestUrl)
+      const url = new URL(requestUrl, "http://localhost")
+
+      if (url.pathname === "/api/integrations/github/accounts") {
+        return Promise.resolve(
+          new Response(JSON.stringify(accountResponse), { status: 200 })
+        )
+      }
+
+      if (url.pathname === "/api/integrations/github/repositories") {
+        return Promise.resolve(
+          new Response(JSON.stringify(repositories), { status: 200 })
+        )
+      }
+
+      if (url.pathname === "/api/framework-detection/github") {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: false,
+              error: "NETWORK_ERROR",
+              message: "Network error while contacting detection service.",
+            }),
+            { status: 500 }
+          )
+        )
+      }
+
+      throw new Error(`Unexpected request: ${requestUrl}`)
+    }) as unknown as typeof fetch
+
+    const view = render(
+      <DeployWizardProvider>
+        <DeployWizardV2 />
+      </DeployWizardProvider>
+    )
+    const repositoryButton = await view.findByRole("button", {
+      name: /storefront/,
+    })
+    fireEvent.click(repositoryButton)
+    await waitFor(
+      () => {
+        const detectionRequests = requests.filter((r) =>
+          r.includes("/api/framework-detection/github")
+        )
+        expect(detectionRequests.length).toBe(3)
+      },
+      { timeout: 10000 }
+    )
+    fireEvent.click(view.getByRole("button", { name: /Detect AI scans/ }))
+
+    expect(
+      view.getByText(/Detection failed after three attempts/)
+    ).toBeInTheDocument()
+    expect(view.getByLabelText("Language selector")).toBeInTheDocument()
+  })
+
+  it("abort does not retry detection", async () => {
+    const { DeployWizardProvider } =
+      await import("@/modules/deploy/deploy.store")
+    const { DeployWizardV2 } =
+      await import("@/modules/deploy/ui/deploy-wizard-v2")
+
+    globalThis.fetch = mock((input: RequestInfo | URL) => {
+      const requestUrl =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url
+      requests.push(requestUrl)
+      const url = new URL(requestUrl, "http://localhost")
+
+      if (url.pathname === "/api/integrations/github/accounts") {
+        return Promise.resolve(
+          new Response(JSON.stringify(accountResponse), { status: 200 })
+        )
+      }
+
+      if (url.pathname === "/api/integrations/github/repositories") {
+        return Promise.resolve(
+          new Response(JSON.stringify(repositories), { status: 200 })
+        )
+      }
+
+      if (url.pathname === "/api/framework-detection/github") {
+        const controller = new AbortController()
+        controller.abort()
+        return Promise.reject(new DOMException("Aborted", "AbortError"))
+      }
+
+      throw new Error(`Unexpected request: ${requestUrl}`)
+    }) as unknown as typeof fetch
+
+    const view = render(
+      <DeployWizardProvider>
+        <DeployWizardV2 />
+      </DeployWizardProvider>
+    )
+
+    const repositoryButton = await view.findByRole("button", {
+      name: /storefront/,
+    })
+    fireEvent.click(repositoryButton)
+
+    await waitFor(() => {
+      const detectionRequests = requests.filter((r) =>
+        r.includes("/api/framework-detection/github")
+      )
+      expect(detectionRequests.length).toBe(1)
+    })
+  })
 })
