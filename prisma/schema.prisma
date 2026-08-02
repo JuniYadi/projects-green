@@ -165,6 +165,7 @@ enum StackStatus {
 enum DeploySource {
   GITHUB
   TEMPLATE
+  PUBLIC
   MANUAL
 }
 
@@ -234,6 +235,8 @@ model ApplicationStack {
   status                 StackStatus  @default(IDLE)
   sourceType             DeploySource @default(GITHUB)
   repositoryConnectionId String?
+  publicSourceUrl        String?
+  publicSourceRef        String?
   branchName             String       @default("main")
   rootDirectory          String       @default("/")
   framework              String?
@@ -274,6 +277,8 @@ model ApplicationDeployment {
   commitSha        String?
   commitMessage    String?
   commitAuthor     String?
+  sourceUrl        String?
+  sourceRef        String?
   branchName       String       @default("main")
   manifestPushed   Boolean      @default(false)
   manifestPushedAt DateTime?
