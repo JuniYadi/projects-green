@@ -18,6 +18,8 @@
  *   6. Closes the browser — you're done
  */
 
+import { dirname } from "node:path"
+import { mkdir } from "node:fs/promises"
 import { test as setup, expect } from "@playwright/test"
 
 const AUTH_FILE = ".auth/user.json"
@@ -42,7 +44,7 @@ setup("authenticate via WorkOS OAuth (manual login)", async ({ page }) => {
   await expect(page).toHaveURL(/\/en\/console(?:\/|$|\?|#)/)
 
   // Save the authenticated state (cookies + localStorage)
+  await mkdir(dirname(AUTH_FILE), { recursive: true })
   await page.context().storageState({ path: AUTH_FILE })
-
   console.log(`\n  ✅ Auth state saved to ${AUTH_FILE}\n`)
 })
