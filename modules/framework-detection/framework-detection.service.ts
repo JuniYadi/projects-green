@@ -8,6 +8,8 @@ import { createOpenAI } from "@ai-sdk/openai"
 import { generateObject, generateText, stepCountIs, tool } from "ai"
 import { z } from "zod"
 
+import { getAiProviderConfig } from "@/lib/ai-config"
+
 import {
   listRepoFiles,
   readRepoFile,
@@ -707,15 +709,9 @@ const resolveWithAi = async (
   candidates: FrameworkCandidate[],
   inventory: Inventory
 ): Promise<AiDecision> => {
-  const apiKey = process.env.OPENAI_API_KEY
-
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured")
-  }
-
   const modelName = process.env.AI_DETECTOR_MODEL?.trim() || "gpt-4.1-mini"
 
-  const provider = createOpenAI({ apiKey })
+  const provider = createOpenAI(getAiProviderConfig())
 
   const result = await generateObject({
     model: provider(modelName),
@@ -837,14 +833,8 @@ const resolveWithAiToolCalling = async (
   detectorRules: DetectorRuleRecord[],
   dependencies: GithubApiDetectorDependencies
 ): Promise<AiDecisionResult> => {
-  const apiKey = process.env.OPENAI_API_KEY
-
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured")
-  }
-
   const modelName = process.env.AI_DETECTOR_MODEL?.trim() || "gpt-4.1-mini"
-  const provider = createOpenAI({ apiKey })
+  const provider = createOpenAI(getAiProviderConfig())
 
   const readFileFn = dependencies.readFile ?? readRepoFile
   const listFilesFn = dependencies.listFiles ?? listRepoFiles

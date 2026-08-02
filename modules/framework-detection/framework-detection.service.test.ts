@@ -38,7 +38,8 @@ const runWithMockClone = async (
 
 describe("detectFrameworkFromGitRepo", () => {
   beforeEach(() => {
-    delete process.env.OPENAI_API_KEY
+    delete process.env.AI_API_KEY
+    delete process.env.AI_BASE_URL
     delete process.env.AI_DETECTOR_MODEL
   })
 
@@ -180,7 +181,8 @@ describe("detectFrameworkFromGitRepo", () => {
 
 describe("detectFrameworkFromGithubApi", () => {
   beforeEach(() => {
-    delete process.env.OPENAI_API_KEY
+    delete process.env.AI_API_KEY
+    delete process.env.AI_BASE_URL
     delete process.env.AI_DETECTOR_MODEL
   })
 
@@ -411,7 +413,8 @@ describe("buildDetectorRuleHints", () => {
 
 describe("detectFrameworkFromGithubApi - error handling", () => {
   beforeEach(() => {
-    delete process.env.OPENAI_API_KEY
+    delete process.env.AI_API_KEY
+    delete process.env.AI_BASE_URL
     delete process.env.AI_DETECTOR_MODEL
   })
 
