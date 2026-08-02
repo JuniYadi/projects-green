@@ -85,12 +85,20 @@ type GithubDependencies = {
   listActiveInstallations: (
     actor: GithubActorContext
   ) => Promise<GithubInstallationRecord[]>
-  createInstallationAccessToken: (installationId: number) => Promise<string>
+  createInstallationAccessToken: (
+    installationId: number,
+    forceRefresh?: boolean
+  ) => Promise<string>
   invalidateInstallationAccessToken: (installationId: number) => Promise<void>
   listRepositoriesForInstallation: (
     installation: GithubInstallationRecord,
     token: string
   ) => Promise<GithubRepositoryListItem[]>
+}
+
+type GithubInstallationAccessTokenResponse = {
+  token: string
+  expires_at?: string | null
 }
 
 type CursorPayload = {
@@ -496,51 +504,61 @@ const dedupeRepositories = (repositories: GithubRepositoryListItem[]) => {
   return Array.from(deduped.values())
 }
 
-const createInstallationToken = async (installationId: bigint | number) => {
+const createInstallationToken = async (
+  installationId: bigint | number,
+  forceRefresh = false
+) => {
   const cacheKey = `github:iat:${installationId}`
 
-  try {
-    const cached = await redis.get(cacheKey)
-    if (cached) {
-      const encryptedData = parseEncryptedField(cached)
-      if (encryptedData) {
-        const decrypted = decrypt(encryptedData, getEncryptionKey())
-        if (decrypted && decrypted.trim()) {
-          return decrypted
+  if (!forceRefresh) {
+    try {
+      const cached = await redis.get(cacheKey)
+      if (cached) {
+        const encryptedData = parseEncryptedField(cached)
+        if (encryptedData) {
+          const decrypted = decrypt(encryptedData, getEncryptionKey())
+          if (decrypted && decrypted.trim()) return decrypted
         }
       }
+    } catch (error) {
+      console.error("Failed to retrieve GitHub token from cache", error)
     }
-  } catch (error) {
-    console.error("Failed to retrieve GitHub token from cache", error)
   }
 
   const { appId, privateKeyPem } = getGithubAppAuth()
-  const appJwt = createGithubAppJwt({
-    appId,
-    privateKeyPem,
-  })
-
-  const result = await githubRequest<{ token: string }>({
+  const appJwt = createGithubAppJwt({ appId, privateKeyPem })
+  const result = await githubRequest<GithubInstallationAccessTokenResponse>({
     path: `/app/installations/${installationId}/access_tokens`,
     method: "POST",
     token: appJwt,
   })
-
-  try {
-    const encrypted = encrypt(result.token, getEncryptionKey())
-    // Token caching is best-effort to optimize performance.
-    // If it fails, the service will still return the newly generated token.
-    await redis.set(
-      cacheKey,
-      serializeEncryptedField(encrypted),
-      "EX",
-      TOKEN_CACHE_TTL_SECONDS
-    )
-  } catch (error) {
-    console.error("Failed to cache GitHub token", error)
+  const token = result.token?.trim()
+  if (!token) {
+    throw new GithubApiError("GitHub returned an empty installation token.")
   }
 
-  return result.token
+  const providerExpiresAt = result.expires_at
+    ? Date.parse(result.expires_at)
+    : Number.NaN
+  const providerTtl = Number.isFinite(providerExpiresAt)
+    ? Math.ceil((providerExpiresAt - Date.now()) / 1000)
+    : TOKEN_CACHE_TTL_SECONDS
+  const cacheTtl = Math.min(TOKEN_CACHE_TTL_SECONDS, providerTtl)
+  if (cacheTtl > 0) {
+    try {
+      const encrypted = encrypt(token, getEncryptionKey())
+      await redis.set(
+        cacheKey,
+        serializeEncryptedField(encrypted),
+        "EX",
+        cacheTtl
+      )
+    } catch (error) {
+      console.error("Failed to cache GitHub token", error)
+    }
+  }
+
+  return token
 }
 
 const createDefaultDependencies = (): GithubDependencies => ({
@@ -580,9 +598,9 @@ const createDefaultDependencies = (): GithubDependencies => ({
         installation.targetId === null ? null : Number(installation.targetId),
     }))
   },
-  async createInstallationAccessToken(installationId) {
+  async createInstallationAccessToken(installationId, forceRefresh = false) {
     try {
-      return await createInstallationToken(installationId)
+      return await createInstallationToken(installationId, forceRefresh)
     } catch (error) {
       if (error instanceof GithubConfigurationError) {
         throw error
@@ -720,7 +738,8 @@ export const createGithubRepositoryService = (
             installation.githubInstallationId
           )
           const freshToken = await dependencies.createInstallationAccessToken(
-            installation.githubInstallationId
+            installation.githubInstallationId,
+            true
           )
 
           return dependencies.listRepositoriesForInstallation(
@@ -811,7 +830,7 @@ export const fetchGithubInstallationDetails = async (
 export const fetchGithubInstallationRepositories = async (
   installationId: bigint
 ): Promise<GithubInstallationRepository[]> => {
-  const installationToken = await createInstallationToken(installationId)
+  const installationToken = await createInstallationToken(installationId, true)
 
   const response = await githubRequest<GithubInstallationRepositoriesResponse>({
     path: "/installation/repositories",

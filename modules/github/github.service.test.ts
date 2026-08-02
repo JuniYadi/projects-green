@@ -1,23 +1,149 @@
-import { afterEach, describe, expect, it, mock } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { createHash, generateKeyPairSync } from "node:crypto"
 
-import {
+const mockRedisGet = mock(async () => null as string | null)
+const mockRedisSet = mock(async () => "OK")
+const mockFetch = mock<typeof fetch>()
+
+mock.module("@/lib/redis", () => ({
+  redis: { get: mockRedisGet, set: mockRedisSet },
+}))
+
+const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 })
+const validPrivateKeyBase64 = Buffer.from(
+  privateKey.export({ type: "pkcs1", format: "pem" })
+).toString("base64")
+
+// Dynamic import is required so Redis mock loads before service infrastructure.
+const {
   createGithubRepositoryService,
   createGithubService,
+  fetchGithubInstallationRepositories,
   GithubIntegrationDisabledError,
   GithubReconnectRequiredError,
+  listRepoFiles,
   syncGithubInstallation,
-} from "@/modules/github/github.service"
+} = await import("@/modules/github/github.service")
 import type { GithubInstallationRecord } from "@/modules/github/github.types"
 
 const originalFlag = process.env.FEATURE_GITHUB_APP_INTEGRATION
+const originalFetch = global.fetch
+const originalGithubAppId = process.env.GITHUB_APP_ID
+const originalGithubAppPrivateKeyBase64 =
+  process.env.GITHUB_APP_PRIVATE_KEY_BASE64
+const originalAppSecret = process.env.APP_SECRET
+
+beforeEach(() => {
+  global.fetch = mockFetch as unknown as typeof global.fetch
+  process.env.GITHUB_APP_ID = "12345"
+  process.env.GITHUB_APP_PRIVATE_KEY_BASE64 = validPrivateKeyBase64
+  process.env.APP_SECRET = "test-app-secret"
+  mockFetch.mockReset()
+  mockRedisGet.mockClear()
+  mockRedisSet.mockClear()
+  mockRedisGet.mockResolvedValue(null)
+  mockRedisSet.mockResolvedValue("OK")
+})
 
 afterEach(() => {
-  if (originalFlag === undefined) {
+  global.fetch = originalFetch
+  if (originalFlag === undefined)
     delete process.env.FEATURE_GITHUB_APP_INTEGRATION
-    return
-  }
+  else process.env.FEATURE_GITHUB_APP_INTEGRATION = originalFlag
+  if (originalGithubAppId === undefined) delete process.env.GITHUB_APP_ID
+  else process.env.GITHUB_APP_ID = originalGithubAppId
+  if (originalGithubAppPrivateKeyBase64 === undefined)
+    delete process.env.GITHUB_APP_PRIVATE_KEY_BASE64
+  else
+    process.env.GITHUB_APP_PRIVATE_KEY_BASE64 =
+      originalGithubAppPrivateKeyBase64
+  if (originalAppSecret === undefined) delete process.env.APP_SECRET
+  else process.env.APP_SECRET = originalAppSecret
+})
+describe("installation token lifecycle", () => {
+  it("uses cached token normally and caps provider-aware TTL", async () => {
+    const { encrypt, serializeEncryptedField } =
+      await import("@/lib/encryption")
+    const encryptionKey = createHash("sha256")
+      .update("test-app-secret")
+      .digest()
+    mockRedisGet.mockResolvedValue(
+      serializeEncryptedField(encrypt("cached-token", encryptionKey))
+    )
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ object: { sha: "commit-sha" } }),
+    } as Response)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ tree: [] }),
+    } as Response)
 
-  process.env.FEATURE_GITHUB_APP_INTEGRATION = originalFlag
+    await listRepoFiles({
+      installationId: 101,
+      owner: "acme",
+      repo: "platform",
+    })
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+
+    mockRedisGet.mockResolvedValue(null)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        token: "fresh-token",
+        expires_at: new Date(Date.now() + 90_000).toISOString(),
+      }),
+    } as Response)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ object: { sha: "commit-sha" } }),
+    } as Response)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ tree: [] }),
+    } as Response)
+
+    await listRepoFiles({
+      installationId: 101,
+      owner: "acme",
+      repo: "platform",
+    })
+    const ttl = (mockRedisSet.mock.calls[0] as unknown[] | undefined)?.[3]
+    expect(ttl).toBeGreaterThan(0)
+    expect(ttl).toBeLessThanOrEqual(90)
+    expect(ttl).toBeLessThanOrEqual(3300)
+  })
+
+  it("force refreshes callback token and rejects empty provider token", async () => {
+    const { encrypt, serializeEncryptedField } =
+      await import("@/lib/encryption")
+    const encryptionKey = createHash("sha256")
+      .update("test-app-secret")
+      .digest()
+    mockRedisGet.mockResolvedValue(
+      serializeEncryptedField(encrypt("stale-token", encryptionKey))
+    )
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ token: "callback-fresh", expires_at: null }),
+    } as Response)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ repositories: [] }),
+    } as Response)
+
+    await fetchGithubInstallationRepositories(BigInt(101))
+    expect(mockRedisGet).not.toHaveBeenCalled()
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ token: "", expires_at: null }),
+    } as Response)
+    await expect(
+      fetchGithubInstallationRepositories(BigInt(101))
+    ).rejects.toThrow("empty installation token")
+  })
 })
 
 describe("githubService", () => {
@@ -405,9 +531,15 @@ describe("githubRepositoryService", () => {
       private: true,
       pushedAt: "2026-05-16T03:10:45.000Z",
     }
-    const createInstallationAccessToken = mock(async () => "cached-token")
-    createInstallationAccessToken.mockResolvedValueOnce("cached-token")
-    createInstallationAccessToken.mockResolvedValueOnce("fresh-token")
+    const createInstallationAccessToken = mock(
+      async (_installationId: number, forceRefresh = false) => {
+        if (forceRefresh) {
+          return "fresh-token"
+        }
+
+        return "cached-token"
+      }
+    )
     const invalidateInstallationAccessToken = mock(
       async (installationId: number) => {
         expect(installationId).toBe(101)
@@ -440,7 +572,7 @@ describe("githubRepositoryService", () => {
     expect(invalidateInstallationAccessToken).toHaveBeenCalledTimes(1)
     expect(invalidateInstallationAccessToken).toHaveBeenCalledWith(101)
     expect(createInstallationAccessToken).toHaveBeenNthCalledWith(1, 101)
-    expect(createInstallationAccessToken).toHaveBeenNthCalledWith(2, 101)
+    expect(createInstallationAccessToken).toHaveBeenNthCalledWith(2, 101, true)
     expect(createInstallationAccessToken).toHaveBeenCalledTimes(2)
     expect(listRepositoriesForInstallation).toHaveBeenNthCalledWith(
       1,
