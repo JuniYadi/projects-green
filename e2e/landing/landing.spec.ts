@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test"
 
-test.describe("Landing Page (/)", () => {
+test.describe("Landing Page (/) @e2e/landing", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/en")
   })
@@ -206,7 +206,7 @@ test.describe("Landing Page (/)", () => {
   })
 })
 
-test.describe("Landing Page — Mobile Responsive", () => {
+test.describe("Landing Page — Mobile Responsive @e2e/landing", () => {
   test.use({ viewport: { width: 375, height: 812 } })
 
   test("page heading is readable on mobile", async ({ page }) => {
@@ -221,7 +221,7 @@ test.describe("Landing Page — Mobile Responsive", () => {
   })
 })
 
-test.describe("Landing Page — SEO & Accessibility", () => {
+test.describe("Landing Page — SEO & Accessibility @e2e/landing", () => {
   test("has semantic heading hierarchy", async ({ page }) => {
     await page.goto("/en")
     const h1 = page.locator("h1")
@@ -231,7 +231,7 @@ test.describe("Landing Page — SEO & Accessibility", () => {
   })
 })
 
-test.describe("Landing Page — Navigation", () => {
+test.describe("Landing Page — Navigation @e2e/landing", () => {
   test("Pricing link scrolls to pricing section", async ({ page }) => {
     await page.goto("/en")
     await page.locator('header nav a[href="#pricing"]').click()
