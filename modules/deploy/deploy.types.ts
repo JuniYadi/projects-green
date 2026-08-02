@@ -1,4 +1,4 @@
-export type DeployStep = "source" | "build" | "environment" | "monitor"
+export type DeployStep = "source" | "connect" | "detect" | "review" | "deploy"
 
 export type DeploySourceType = "github" | "template"
 

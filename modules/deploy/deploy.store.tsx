@@ -17,6 +17,7 @@ import {
   DEFAULT_SOURCE_STATE,
   DEPLOY_WIZARD_STORAGE_KEY,
   DEPLOY_WIZARD_STORAGE_VERSION,
+  DEPLOY_TEMPLATES,
 } from "@/modules/deploy/deploy.constants"
 import type {
   DeployBuildState,
@@ -199,13 +200,57 @@ const sanitizeState = (
   }
 
   const safeState = createInitialDeployWizardState()
+  const rawStep = String(state.step)
+  const migratedStep: DeployStep =
+    rawStep === "build"
+      ? "detect"
+      : rawStep === "environment"
+        ? "review"
+        : rawStep === "monitor"
+          ? "deploy"
+          : rawStep === "connect" ||
+              rawStep === "detect" ||
+              rawStep === "review" ||
+              rawStep === "deploy"
+            ? rawStep
+            : "source"
+
+  const source = state.source ?? safeState.source
+  const sourceType =
+    source.sourceType === "github" || source.sourceType === "template"
+      ? source.sourceType
+      : safeState.source.sourceType
+  const templateId =
+    typeof source.templateId === "string" &&
+    DEPLOY_TEMPLATES.some((template) => template.id === source.templateId)
+      ? source.templateId
+      : undefined
+  const environment = state.environment ?? safeState.environment
+  const resourcePlanId =
+    environment.resourcePlanId === "starter" ||
+    environment.resourcePlanId === "pro" ||
+    environment.resourcePlanId === "payg"
+      ? environment.resourcePlanId
+      : safeState.environment.resourcePlanId
+  const monitor = state.monitor ?? safeState.monitor
+  const status: DeployStatus =
+    monitor.status === "queued" ||
+    monitor.status === "building" ||
+    monitor.status === "deploying" ||
+    monitor.status === "running" ||
+    monitor.status === "failed"
+      ? monitor.status
+      : "idle"
 
   return {
     ...safeState,
     ...state,
+    step: migratedStep,
     source: {
       ...safeState.source,
-      ...(state.source ?? {}),
+      ...source,
+      sourceType,
+      templateId,
     },
     build: {
       ...safeState.build,
@@ -213,14 +258,16 @@ const sanitizeState = (
     },
     environment: {
       ...safeState.environment,
-      ...(state.environment ?? {}),
-      envVars: Array.isArray(state.environment?.envVars)
-        ? state.environment?.envVars
-        : [],
+      ...environment,
+      resourcePlanId,
+      envVars: Array.isArray(environment.envVars) ? environment.envVars : [],
     },
     monitor: {
       ...safeState.monitor,
-      ...(state.monitor ?? {}),
+      ...monitor,
+      status,
+      isActive:
+        status === "queued" || status === "building" || status === "deploying",
     },
   }
 }

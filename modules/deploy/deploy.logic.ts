@@ -1,93 +1,47 @@
 import {
-  isManualOverrideRequired,
   validateBuildStep,
   validateEnvironmentStep,
   validateSourceStep,
 } from "@/modules/deploy/deploy.schema"
 import type {
-  DeploySourceType,
   DeployStatus,
   DeployStep,
   DeployWizardState,
-  DetectionResult,
 } from "@/modules/deploy/deploy.types"
 
-export const getAvailableStepsList = (
-  sourceType: DeploySourceType
-): DeployStep[] => {
-  if (sourceType === "template") {
-    return ["source", "environment", "monitor"]
-  }
-  return ["source", "build", "environment", "monitor"]
+export const getAvailableStepsList = (): DeployStep[] => {
+  return ["source", "connect", "detect", "review", "deploy"]
 }
 
-export const getStepIndex = (
-  step: DeployStep,
-  sourceType: DeploySourceType
-): number => {
-  return getAvailableStepsList(sourceType).indexOf(step)
+export const getStepIndex = (step: DeployStep): number => {
+  return getAvailableStepsList().indexOf(step)
 }
 
-export const getNextStep = (
-  step: DeployStep,
-  state: {
-    source: { sourceType: DeploySourceType }
-    detectionResult: DetectionResult | null
-  }
-): DeployStep | null => {
-  const { sourceType } = state.source
-  if (sourceType === "template") {
-    if (step === "source") return "environment"
-    if (step === "environment") return "monitor"
-    return null
-  }
-
-  // For GitHub source:
-  if (step === "source") {
-    // Skip Build step if manual override is not required (high-confidence auto-detection)
-    if (!isManualOverrideRequired(state.detectionResult)) {
-      return "environment"
-    }
-    return "build"
-  }
-  if (step === "build") {
-    return "environment"
-  }
-  if (step === "environment") {
-    return "monitor"
-  }
+export const getNextStep = (step: DeployStep): DeployStep | null => {
+  if (step === "source") return "connect"
+  if (step === "connect") return "detect"
+  if (step === "detect") return "review"
+  if (step === "review") return "deploy"
   return null
 }
 
-export const getPreviousStep = (
-  step: DeployStep,
-  state: {
-    source: { sourceType: DeploySourceType }
-  }
-): DeployStep | null => {
-  const { sourceType } = state.source
-  if (sourceType === "template") {
-    if (step === "monitor") return "environment"
-    if (step === "environment") return "source"
-    return null
-  }
-
-  // For GitHub source:
-  if (step === "monitor") return "environment"
-  if (step === "environment") return "build" // Always allow going back to build to view/override
-  if (step === "build") return "source"
+export const getPreviousStep = (step: DeployStep): DeployStep | null => {
+  if (step === "connect") return "source"
+  if (step === "detect") return "connect"
+  if (step === "review") return "detect"
+  if (step === "deploy") return "review"
   return null
 }
 
 export const isStepValid = (
-  step: Exclude<DeployStep, "monitor">,
+  step: Exclude<DeployStep, "deploy">,
   state: DeployWizardState
 ): boolean => {
-  if (step === "source") {
+  if (step === "source" || step === "connect") {
     return validateSourceStep(state.source)
   }
 
-  if (step === "build") {
+  if (step === "detect") {
     return validateBuildStep(state.build, state.detectionResult)
   }
 
@@ -99,17 +53,21 @@ export const getMaxUnlockedStep = (state: DeployWizardState): DeployStep => {
     return "source"
   }
 
-  if (state.source.sourceType !== "template") {
-    if (!isStepValid("build", state)) {
-      return "build"
-    }
+  if (!state.detectionResult) {
+    return "detect"
   }
 
-  if (!isStepValid("environment", state)) {
-    return "environment"
+  if (!isStepValid("detect", state)) {
+    return "detect"
   }
 
-  return "monitor"
+  if (!isStepValid("review", state)) {
+    return "review"
+  }
+
+  return state.monitor.deployId && state.monitor.status !== "idle"
+    ? "deploy"
+    : "review"
 }
 
 export const clampStepToUnlocked = (
@@ -117,15 +75,10 @@ export const clampStepToUnlocked = (
   state: DeployWizardState
 ): DeployStep => {
   const maxUnlocked = getMaxUnlockedStep(state)
-  const stepsOrder = getAvailableStepsList(state.source.sourceType)
-  const requestedIndex = stepsOrder.indexOf(requestedStep)
-  const maxUnlockedIndex = stepsOrder.indexOf(maxUnlocked)
+  const requestedIndex = getStepIndex(requestedStep)
+  const maxUnlockedIndex = getStepIndex(maxUnlocked)
 
-  if (requestedIndex <= maxUnlockedIndex) {
-    return requestedStep
-  }
-
-  return maxUnlocked
+  return requestedIndex <= maxUnlockedIndex ? requestedStep : maxUnlocked
 }
 
 export const resolveMonitorStatus = (

@@ -37,8 +37,8 @@ mock.module("@/modules/deploy/deploy.constants", () => {
 })
 
 import { fireEvent, render, waitFor, act } from "@testing-library/react"
-import { StepSource } from "@/modules/deploy/ui/step-source"
-import type { StepSourceProps } from "@/modules/deploy/ui/step-source"
+import { StepSourceV2 } from "@/modules/deploy/ui/step-source-v2"
+import type { StepSourceProps } from "@/modules/deploy/ui/step-source-v2"
 import type { ResourcePlanId } from "@/modules/deploy/deploy.types"
 
 const createProps = () => {
@@ -90,7 +90,6 @@ const createProps = () => {
     onRepositorySearchChange: mock(() => {}),
     onAppNameChange: mock(() => {}),
     onTemplateResourcePlanChange: mock(() => {}),
-    onDeployWithDefaults: mock(() => {}),
     onOwnerSelect: mock(() => {}),
     onRepositorySelect: mock(() => {}),
     onBranchSelect: mock(() => {}),
@@ -104,11 +103,11 @@ const createProps = () => {
   }
 }
 
-describe.skip("StepSource", () => {
+describe.skip("StepSourceV2 legacy assertions", () => {
   it("renders source fields and organization choices", () => {
     const props = createProps()
 
-    const view = render(<StepSource {...props} />)
+    const view = render(<StepSourceV2 {...props} />)
 
     expect(view.getByText("Select Account / Organization")).toBeTruthy()
     expect(view.getByRole("button", { name: /owner-pfn/i })).toBeTruthy()
@@ -122,7 +121,7 @@ describe.skip("StepSource", () => {
     props.selectedBranchName = "main"
     props.rootDirectory = "/apps/web"
 
-    const view = render(<StepSource {...props} />)
+    const view = render(<StepSourceV2 {...props} />)
 
     expect(view.getByRole("button", { name: /owner-pfn/i })).toBeTruthy()
     expect(view.getByText("console-next-app")).toBeTruthy()
@@ -134,7 +133,7 @@ describe.skip("StepSource", () => {
     const props = createProps()
     props.owners = []
 
-    const view = render(<StepSource {...props} />)
+    const view = render(<StepSourceV2 {...props} />)
     expect(
       view.getByText(
         "No accounts found. Please make sure the GitHub App is installed."
@@ -146,7 +145,7 @@ describe.skip("StepSource", () => {
     propsWithOwner.selectedOwnerId = "owner-pfn"
     propsWithOwner.repositories = []
 
-    const viewWithRepos = render(<StepSource {...propsWithOwner} />)
+    const viewWithRepos = render(<StepSourceV2 {...propsWithOwner} />)
     expect(
       viewWithRepos.getByText("No repositories found for this account.")
     ).toBeTruthy()
@@ -156,7 +155,7 @@ describe.skip("StepSource", () => {
     const props = createProps()
     props.githubConnectionStatus = "connected"
 
-    const view = render(<StepSource {...props} />)
+    const view = render(<StepSourceV2 {...props} />)
 
     expect(
       view.getByText("Successfully connected to your GitHub account.")
@@ -170,7 +169,7 @@ describe.skip("StepSource", () => {
     const props = createProps()
     props.githubConnectionStatus = "error"
 
-    const view = render(<StepSource {...props} />)
+    const view = render(<StepSourceV2 {...props} />)
 
     expect(
       view.getByText("GitHub connection failed. Please try connecting again.")
@@ -184,7 +183,7 @@ describe.skip("StepSource", () => {
     props.ownerOptionsError = "Unable to load owners."
     props.repositoryOptionsError = "Unable to load repositories."
 
-    const view = render(<StepSource {...props} />)
+    const view = render(<StepSourceV2 {...props} />)
 
     expect(view.getByText("Unable to load owners.")).toBeTruthy()
     expect(view.getByText("Unable to load repositories.")).toBeTruthy()
@@ -196,7 +195,7 @@ describe.skip("StepSource", () => {
     props.selectedOwnerId = "owner-pfn"
     props.repositoryOptionsLoading = true
 
-    const view = render(<StepSource {...props} />)
+    const view = render(<StepSourceV2 {...props} />)
 
     expect(view.getByText("Loading installations...")).toBeTruthy()
     expect(view.getByText("Loading repositories...")).toBeTruthy()
@@ -207,7 +206,7 @@ describe.skip("StepSource", () => {
     props.sourceType = "template"
     props.templateId = "wordpress"
 
-    const view = render(<StepSource {...props} />)
+    const view = render(<StepSourceV2 {...props} />)
 
     // Verify WordPress template card is visible
     expect(view.getByText("WordPress")).toBeTruthy()
@@ -247,7 +246,7 @@ describe.skip("StepSource", () => {
     const props = createProps()
     props.sourceType = "template"
 
-    const view = render(<StepSource {...props} />)
+    const view = render(<StepSourceV2 {...props} />)
 
     // Verify first page items are rendered
     expect(view.getByText("WordPress")).toBeTruthy()
@@ -287,5 +286,65 @@ describe.skip("StepSource", () => {
     // Verify we are back on page 1
     expect(view.getByText("WordPress")).toBeTruthy()
     expect(view.queryByText("Template 5")).toBeNull()
+  })
+})
+
+describe("StepSourceV2 catalog", () => {
+  it("shows search, category, view, and pagination controls", () => {
+    const props = { ...createProps(), sourceType: "template" as const }
+    const view = render(<StepSourceV2 {...props} />)
+
+    expect(view.getByLabelText("Search templates")).toBeTruthy()
+    expect(view.getByRole("button", { name: "CMS" })).toBeTruthy()
+    expect(view.getByRole("button", { name: "Grid view" })).toBeTruthy()
+    expect(view.getByRole("button", { name: "List view" })).toBeTruthy()
+    expect(view.getByText(/Page 1 of/)).toBeTruthy()
+  })
+
+  it("filters and selects a template through the canonical callbacks", () => {
+    const props = {
+      ...createProps(),
+      sourceType: "template" as const,
+    }
+    const onTemplateSelect = mock(() => {})
+    props.onTemplateSelect = onTemplateSelect
+    const view = render(<StepSourceV2 {...props} />)
+    fireEvent.change(view.getByLabelText("Search templates"), {
+      target: { value: "WordPress" },
+    })
+    fireEvent.click(view.getByRole("button", { name: /WordPress/ }))
+
+    expect(onTemplateSelect).toHaveBeenCalledWith("wordpress")
+  })
+  it("shows empty state when template filters match nothing", () => {
+    const props = {
+      ...createProps(),
+      sourceType: "template" as const,
+    }
+    const view = render(<StepSourceV2 {...props} />)
+    const searchInput = view.getByLabelText("Search templates")
+    const reactPropsKey = Object.keys(searchInput).find((key) =>
+      key.startsWith("__reactProps")
+    )
+
+    act(() => {
+      if (reactPropsKey) {
+        const inputWithProps = searchInput as unknown as Record<
+          string,
+          { onChange: (event: { target: { value: string } }) => void }
+        >
+        inputWithProps[reactPropsKey].onChange({
+          target: { value: "does-not-exist" },
+        })
+      } else {
+        fireEvent.change(searchInput, {
+          target: { value: "does-not-exist" },
+        })
+      }
+    })
+
+    expect(
+      view.getByText("No templates match your search or category.")
+    ).toBeTruthy()
   })
 })

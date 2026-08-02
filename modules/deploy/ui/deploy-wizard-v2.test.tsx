@@ -1,20 +1,11 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
 
-mock.module("@/modules/deploy/ui/deploy-timeline-v2", () => ({
-  DeployTimelineV2: () => null,
-}))
-mock.module("@/modules/deploy/ui/step-build-v2", () => ({
-  StepBuildV2: () => null,
-}))
 mock.module("@/modules/deploy/ui/step-environment-v2", () => ({
   StepEnvironmentV2: () => null,
 }))
 mock.module("@/modules/deploy/ui/step-monitor-v2", () => ({
   StepMonitorV2: () => null,
-}))
-mock.module("@/modules/deploy/ui/deploy-chat-sidebar", () => ({
-  DeployChatSidebar: () => null,
 }))
 
 const account = {
@@ -89,6 +80,22 @@ describe("DeployWizardV2 GitHub accounts", () => {
     await waitFor(() => {
       expect(view.getByText("storefront")).toBeInTheDocument()
     })
+    expect(
+      view.getByRole("navigation", { name: "Deploy wizard steps" })
+    ).toBeTruthy()
+    expect(
+      view.getByRole("button", { name: /Source Choose code location/ })
+    ).toBeTruthy()
+    expect(
+      view.getByRole("button", { name: /Connect Pick repository/ })
+    ).toBeTruthy()
+    expect(view.getByRole("button", { name: /Detect AI scans/ })).toBeTruthy()
+    expect(
+      view.getByRole("button", { name: /Review Confirm build/ })
+    ).toBeTruthy()
+    expect(
+      view.getByRole("button", { name: /Deploy Watch it go live/ })
+    ).toBeTruthy()
 
     expect((view.getByRole("combobox") as HTMLSelectElement).value).toBe("acme")
     const repositoryRequest = requests.find((request) =>

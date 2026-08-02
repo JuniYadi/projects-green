@@ -40,7 +40,7 @@ const repositories: Repository[] = [
 ]
 
 const baseState: DeployWizardState = {
-  step: "environment",
+  step: "review",
   source: {
     sourceType: "github",
     appName: "",
