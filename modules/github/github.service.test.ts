@@ -629,6 +629,79 @@ describe("githubRepositoryService", () => {
     expect(deactivateInstallation).toHaveBeenCalled()
   })
 
+  it("deactivates when forced token refresh also needs reconnect", async () => {
+    const createInstallationAccessToken = mock(
+      async (_installationId: number, forceRefresh = false) => {
+        if (forceRefresh) {
+          throw new GithubReconnectRequiredError(undefined, 404)
+        }
+
+        return "cached-token"
+      }
+    )
+    const invalidateInstallationAccessToken = mock(async () => {})
+    const deactivateInstallation = mock(async () => {})
+    const service = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return [installations[0]]
+      },
+      createInstallationAccessToken,
+      invalidateInstallationAccessToken,
+      async listRepositoriesForInstallation() {
+        throw new GithubReconnectRequiredError(undefined, 401)
+      },
+      deactivateInstallation,
+    })
+
+    await expect(
+      service.listRepositoriesForActor(
+        { userId: "user_1", organizationId: "org_1" },
+        {}
+      )
+    ).rejects.toThrow(GithubReconnectRequiredError)
+
+    expect(invalidateInstallationAccessToken).toHaveBeenCalledWith(101)
+    expect(createInstallationAccessToken).toHaveBeenNthCalledWith(2, 101, true)
+    expect(deactivateInstallation).toHaveBeenCalledWith(101)
+  })
+
+  it("keeps valid repositories when listing one installation fails", async () => {
+    const validRepository = {
+      repositoryId: 2,
+      fullName: "orbit/tools",
+      name: "tools",
+      owner: "orbit",
+      installationId: 202,
+      defaultBranch: "main",
+      private: true,
+      pushedAt: "2026-05-16T03:10:45.000Z",
+    }
+    const service = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return installations
+      },
+      async createInstallationAccessToken() {
+        return "valid-token"
+      },
+      async listRepositoriesForInstallation(installation) {
+        if (installation.githubInstallationId === 101) {
+          throw new Error("repository listing failed")
+        }
+
+        return [validRepository]
+      },
+      async invalidateInstallationAccessToken() {},
+      async deactivateInstallation() {},
+    })
+
+    const result = await service.listRepositoriesForActor(
+      { userId: "user_1", organizationId: "org_1" },
+      {}
+    )
+
+    expect(result.items).toEqual([validRepository])
+  })
+
   it("swallows non-reconnect errors from one installation and returns repos from others", async () => {
     const validRepository = {
       repositoryId: 1,
