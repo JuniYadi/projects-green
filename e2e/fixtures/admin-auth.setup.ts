@@ -17,6 +17,8 @@
  *   6. Closes the browser
  */
 
+import { dirname } from "node:path"
+import { mkdir } from "node:fs/promises"
 import { test as setup, expect } from "@playwright/test"
 
 const AUTH_FILE = ".auth/admin.json"
@@ -31,8 +33,8 @@ setup(
     await page.waitForURL(/\/en\/console(?:\/|$|\?|#)/, { timeout: 300_000 })
     await expect(page).toHaveURL(/\/en\/console(?:\/|$|\?|#)/)
 
+    await mkdir(dirname(AUTH_FILE), { recursive: true })
     await page.context().storageState({ path: AUTH_FILE })
-
     console.log(`\n  ✅ Admin auth state saved to ${AUTH_FILE}\n`)
   }
 )
