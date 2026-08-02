@@ -7,17 +7,26 @@ import {
 } from "@/modules/deploy/deploy.store"
 
 describe("deploy store persistence helpers", () => {
-  it("serializes and hydrates wizard state", () => {
+  it("serializes and hydrates canonical wizard state", () => {
     const state = createInitialDeployWizardState()
-    state.step = "build"
+    state.step = "review"
     state.source.ownerId = "owner-pfn"
 
-    const serialized = serializeDeployWizardState(state)
-    const hydrated = hydrateDeployWizardState(serialized)
+    const hydrated = hydrateDeployWizardState(serializeDeployWizardState(state))
 
     expect(hydrated).not.toBeNull()
-    expect(hydrated?.step).toBe("build")
+    expect(hydrated?.step).toBe("review")
     expect(hydrated?.source.ownerId).toBe("owner-pfn")
+  })
+
+  it("maps legacy persisted stages to canonical stages", () => {
+    const state = createInitialDeployWizardState()
+    const legacy = JSON.stringify({
+      version: 1,
+      state: { ...state, step: "build" },
+    })
+
+    expect(hydrateDeployWizardState(legacy)?.step).toBe("detect")
   })
 
   it("returns null for invalid payloads", () => {

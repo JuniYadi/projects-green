@@ -15,14 +15,13 @@ import type {
 } from "@/modules/deploy/deploy.types"
 import {
   Folder,
-  Globe,
   SquaresFour,
   GithubLogo,
   ArrowRight,
   MagnifyingGlass,
   Check,
-  RocketLaunchIcon,
   FileCode,
+  List,
 } from "@/components/ui/phosphor-icons"
 import {
   SiN8N,
@@ -68,7 +67,6 @@ export type StepSourceProps = {
   onRootDirectoryChange: (rootDirectory: string) => void
   onAppNameChange: (appName: string) => void
   onTemplateResourcePlanChange: (resourcePlanId: ResourcePlanId) => void
-  onDeployWithDefaults: () => void
   onConnectGithub: () => void
   onCancel: () => void
   onNext: () => void
@@ -94,6 +92,27 @@ const TMPL_ICON: Record<DeployTemplateId, React.ReactNode> = {
   ),
   n8n: <SiN8N className="h-6 w-6 shrink-0 text-[#ff6d5a]" />,
   openclaw: <SiDocker className="h-6 w-6 shrink-0 text-[#2496ed]" />,
+}
+const CATEGORIES = ["All", "CMS", "Analytics", "Automation", "Developer Tools"]
+
+const getTemplateCategory = (id: DeployTemplateId): string => {
+  switch (id) {
+    case "wordpress":
+    case "ghost":
+    case "strapi":
+    case "directus":
+    case "payload":
+    case "pocketbase":
+      return "CMS"
+    case "umami":
+    case "plausible":
+      return "Analytics"
+    case "n8n":
+      return "Automation"
+    case "openclaw":
+    default:
+      return "Developer Tools"
+  }
 }
 
 export function StepSourceV2(props: StepSourceProps) {
@@ -129,14 +148,19 @@ export function StepSourceV2(props: StepSourceProps) {
     onConnectGithub,
     onNext,
     canProceed,
-    detectionError,
   } = props
 
-  const [urlInput, setUrlInput] = useState("")
-  const [urlDetecting, setUrlDetecting] = useState(false)
-
+  const [templateFilter, setTemplateFilter] = useState("")
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [selectedCategory, setSelectedCategory] = useState("All")
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 6
   const selCard =
-    sourceType === "github" ? "github" : templateId ? "template" : null
+    sourceType === "github"
+      ? "github"
+      : sourceType === "template" || templateId
+        ? "template"
+        : null
 
   const filteredRepos = useMemo(
     () =>
@@ -153,6 +177,38 @@ export function StepSourceV2(props: StepSourceProps) {
         : null,
     [templateId]
   )
+  const filteredTemplates = useMemo(() => {
+    const query = templateFilter.trim().toLowerCase()
+    return DEPLOY_TEMPLATES.filter((template) => {
+      const matchesQuery =
+        !query ||
+        template.name.toLowerCase().includes(query) ||
+        template.description.toLowerCase().includes(query)
+      const matchesCategory =
+        selectedCategory === "All" ||
+        getTemplateCategory(template.id) === selectedCategory
+      return matchesQuery && matchesCategory
+    })
+  }, [selectedCategory, templateFilter])
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredTemplates.length / ITEMS_PER_PAGE)
+  )
+  const visibleTemplates = filteredTemplates.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  )
+
+  const setCategory = (category: string) => {
+    setSelectedCategory(category)
+    setCurrentPage(1)
+  }
+
+  const setTemplateSearch = (query: string) => {
+    setTemplateFilter(query)
+    setCurrentPage(1)
+  }
 
   const selRepo = useMemo(
     () =>
@@ -387,53 +443,6 @@ export function StepSourceV2(props: StepSourceProps) {
           )}
         </div>
 
-        <div className={cardCls(false)}>
-          <div className="flex items-start gap-3 p-5">
-            <div className={badgeCls(false)}>
-              <Globe className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-semibold">Public Repo URL</h3>
-              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                Deploy any public Git repository by entering its URL.
-              </p>
-            </div>
-          </div>
-          <div className="space-y-3 px-5 pb-5">
-            <div className="flex gap-2">
-              <Input
-                placeholder="https://github.com/user/repo"
-                value={urlInput}
-                onChange={(e) => {
-                  setUrlInput(e.target.value)
-                  if (e.target.value.trim()) {
-                    setUrlDetecting(true)
-                    setTimeout(() => setUrlDetecting(false), 1500)
-                  }
-                }}
-                className="h-9 flex-1 text-sm"
-              />
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => urlInput.trim() && onSourceTypeChange("github")}
-                disabled={!urlInput.trim()}
-              >
-                Detect
-              </Button>
-            </div>
-            {urlDetecting && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                Detecting framework...
-              </div>
-            )}
-            {detectionError && (
-              <p className="text-xs text-destructive">{detectionError}</p>
-            )}
-          </div>
-        </div>
-
         <div
           className={cardCls(selCard === "template")}
           onClick={() => onSourceTypeChange("template")}
@@ -458,13 +467,72 @@ export function StepSourceV2(props: StepSourceProps) {
               className="space-y-3 px-5 pb-5"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="grid grid-cols-2 gap-2">
-                {DEPLOY_TEMPLATES.map((tmpl) => (
+              <div className="space-y-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    aria-label="Search templates"
+                    placeholder="Search templates..."
+                    value={templateFilter}
+                    onChange={(event) => setTemplateSearch(event.target.value)}
+                    className="h-9 flex-1 text-xs"
+                  />
+                  <div className="flex items-center gap-1">
+                    <span className="sr-only">Template view</span>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant={viewMode === "grid" ? "secondary" : "ghost"}
+                      aria-label="Grid view"
+                      aria-pressed={viewMode === "grid"}
+                      onClick={() => setViewMode("grid")}
+                    >
+                      <SquaresFour className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant={viewMode === "list" ? "secondary" : "ghost"}
+                      aria-label="List view"
+                      aria-pressed={viewMode === "list"}
+                      onClick={() => setViewMode("list")}
+                    >
+                      <List className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {CATEGORIES.map((category) => (
+                    <Button
+                      key={category}
+                      type="button"
+                      size="sm"
+                      variant={
+                        selectedCategory === category ? "secondary" : "ghost"
+                      }
+                      aria-pressed={selectedCategory === category}
+                      onClick={() => setCategory(category)}
+                      className="h-7 px-2 text-[11px]"
+                    >
+                      {category}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div
+                className={cn(
+                  "gap-2",
+                  viewMode === "grid" ? "grid grid-cols-2" : "flex flex-col"
+                )}
+              >
+                {visibleTemplates.map((tmpl) => (
                   <button
+                    type="button"
                     key={tmpl.id}
                     onClick={() => onTemplateSelect(tmpl.id)}
+                    aria-pressed={templateId === tmpl.id}
                     className={cn(
-                      "flex flex-col items-center gap-1.5 rounded-lg border p-2.5 text-center text-xs transition-all",
+                      "flex items-center gap-2 rounded-lg border p-2.5 text-left text-xs transition-all",
+                      viewMode === "grid" && "flex-col text-center",
                       templateId === tmpl.id
                         ? "border-primary bg-primary/5 text-primary"
                         : "border-border hover:border-primary/50 hover:bg-muted/50"
@@ -473,11 +541,47 @@ export function StepSourceV2(props: StepSourceProps) {
                     {TMPL_ICON[tmpl.id] ?? (
                       <FileCode className="h-6 w-6 shrink-0 text-[#6366f1]" />
                     )}
-                    <span className="leading-tight font-medium">
-                      {tmpl.name}
+                    <span className="min-w-0">
+                      <span className="block leading-tight font-medium">
+                        {tmpl.name}
+                      </span>
+                      <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                        {tmpl.description}
+                      </span>
                     </span>
                   </button>
                 ))}
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                <span>
+                  {filteredTemplates.length} template
+                  {filteredTemplates.length === 1 ? "" : "s"}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((page) => page - 1)}
+                    className="h-7 px-2"
+                  >
+                    Previous
+                  </Button>
+                  <span>
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((page) => page + 1)}
+                    className="h-7 px-2"
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
 
               {selTemplate && (
@@ -510,14 +614,6 @@ export function StepSourceV2(props: StepSourceProps) {
                       onChange={(e) => onAppNameChange(e.target.value)}
                       className="h-8 text-xs"
                     />
-                    <Button
-                      size="sm"
-                      onClick={props.onDeployWithDefaults}
-                      className="shrink-0"
-                    >
-                      <RocketLaunchIcon className="mr-1.5 h-3.5 w-3.5" />
-                      Deploy
-                    </Button>
                   </div>
                 </div>
               )}

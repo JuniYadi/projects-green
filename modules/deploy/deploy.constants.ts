@@ -16,21 +16,26 @@ export const DEPLOY_STEPS: Array<{
   {
     id: "source",
     label: "Source",
-    description: "Where is your code?",
+    description: "Choose code location",
   },
   {
-    id: "build",
-    label: "Build",
-    description: "How do we build it?",
+    id: "connect",
+    label: "Connect",
+    description: "Pick repository or template",
   },
   {
-    id: "environment",
-    label: "Environment",
-    description: "Where does it run?",
+    id: "detect",
+    label: "Detect",
+    description: "AI scans and rules",
   },
   {
-    id: "monitor",
-    label: "Monitor",
+    id: "review",
+    label: "Review",
+    description: "Confirm build configuration",
+  },
+  {
+    id: "deploy",
+    label: "Deploy",
     description: "Watch it go live",
   },
 ]
@@ -331,6 +336,12 @@ export const parseStepQueryValue = (
     return "source"
   }
 
-  const matched = DEPLOY_STEP_ORDER.find((step) => step === value)
+  const legacyStep: Record<string, DeployStep> = {
+    build: "detect",
+    environment: "review",
+    monitor: "deploy",
+  }
+  const canonicalStep = legacyStep[value] ?? value
+  const matched = DEPLOY_STEP_ORDER.find((step) => step === canonicalStep)
   return matched ?? "source"
 }

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
-import { ArrowLeft, X } from "@/components/ui/phosphor-icons"
+import { X } from "@/components/ui/phosphor-icons"
 import { Button } from "@/components/ui/button"
 import {
   fetchFrameworkDetection,
@@ -12,6 +12,7 @@ import {
 import { recommendPlan } from "@/modules/deploy/deploy-recommendation"
 import {
   DEPLOY_STEP_QUERY_KEY,
+  DEPLOY_STEPS,
   DEPLOY_TEMPLATES,
   MONITOR_POLL_INTERVAL_MS,
   parseStepQueryValue,
@@ -20,8 +21,8 @@ import {
   clampStepToUnlocked,
   getMaxUnlockedStep,
   getNextStep,
-  getPreviousStep,
 } from "@/modules/deploy/deploy.logic"
+import { cn } from "@/lib/utils"
 import {
   getDefaultBranchName,
   getRepositoryBranches,
@@ -45,11 +46,10 @@ import {
   useDeployWizardDispatch,
   useDeployWizardState,
 } from "@/modules/deploy/deploy.store"
-import { DeployChatSidebar } from "@/modules/deploy/ui/deploy-chat-sidebar"
-import { DeployTimelineV2 } from "@/modules/deploy/ui/deploy-timeline-v2"
-import { StepBuildV2 } from "@/modules/deploy/ui/step-build-v2"
-import { StepEnvironmentV2 } from "@/modules/deploy/ui/step-environment-v2"
+import { StepConnectV2 } from "@/modules/deploy/ui/step-connect-v2"
+import { StepDetectV2 } from "@/modules/deploy/ui/step-detect-v2"
 import { StepMonitorV2 } from "@/modules/deploy/ui/step-monitor-v2"
+import { StepReviewV2 } from "@/modules/deploy/ui/step-review-v2"
 import { StepSourceV2 } from "@/modules/deploy/ui/step-source-v2"
 import {
   buildDeploySubmitPayload,
@@ -82,7 +82,6 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
   const state = useDeployWizardState()
   const dispatch = useDeployWizardDispatch()
 
-  const [chatCollapsed, setChatCollapsed] = useState(false)
   const [ownerSearch, setOwnerSearch] = useState("")
   const [repositorySearch, setRepositorySearch] = useState("")
   const [ownerOptions, setOwnerOptions] = useState<Owner[]>([])
@@ -390,7 +389,7 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
   }, [pathname, router, searchParams, state.step])
 
   useEffect(() => {
-    if (state.step !== "monitor" || !state.monitor.isActive) {
+    if (state.step !== "deploy" || !state.monitor.isActive) {
       return
     }
 
@@ -620,70 +619,19 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
     )
   }
 
-  const handleBuildNext = () => {
-    const nextStep = getNextStep("build", state)
-    if (!nextStep) {
-      return
-    }
-
-    navigateStep(nextStep)
-  }
-
   const handleSourceNext = () => {
-    const nextStep = getNextStep("source", state)
-    if (!nextStep) {
-      return
-    }
-
-    navigateStep(nextStep)
+    const nextStep = getNextStep("source")
+    if (nextStep) navigateStep(nextStep)
   }
 
-  const handleDeployWithDefaults = async () => {
-    if (isSubmitting) return
-    setIsSubmitting(true)
-    setSubmitError(null)
+  const handleConnectNext = () => {
+    const nextStep = getNextStep("connect")
+    if (nextStep) navigateStep(nextStep)
+  }
 
-    try {
-      const response = await fetch("/api/deploy/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          buildDeploySubmitPayload({
-            state,
-            selectedRepository,
-            deployWithTemplateDefaults: true,
-          })
-        ),
-      })
-
-      const payload = (await response.json()) as DeploySubmitResponse
-      const errorMessage = getDeploySubmitError(response.ok, payload)
-
-      if (errorMessage || !payload.data) {
-        setSubmitError(errorMessage)
-        return
-      }
-
-      dispatch({ type: "set-step", payload: "monitor" })
-      dispatch({
-        type: "start-monitor",
-        payload: { shouldFail: false, failureReason: null },
-      })
-      dispatch({
-        type: "set-monitor",
-        payload: {
-          deployId: payload.data.deploymentId,
-          status: "queued",
-          isActive: true,
-        },
-      })
-    } catch {
-      setSubmitError(
-        "Network error while starting the deployment. Please try again."
-      )
-    } finally {
-      setIsSubmitting(false)
-    }
+  const handleDetectNext = () => {
+    const nextStep = getNextStep("detect")
+    if (nextStep) navigateStep(nextStep)
   }
 
   const handleEnvironmentDeploy = async () => {
@@ -708,7 +656,7 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
         return
       }
 
-      dispatch({ type: "set-step", payload: "monitor" })
+      dispatch({ type: "set-step", payload: "deploy" })
       dispatch({
         type: "start-monitor",
         payload: { shouldFail: false, failureReason: null },
@@ -731,6 +679,13 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
   }
 
   const renderStep = () => {
+    const buildFieldChange = (
+      field: string,
+      value: string | number | boolean
+    ) => {
+      dispatch({ type: "set-build", payload: { [field]: value } })
+    }
+
     if (state.step === "source") {
       const visibleRepositories = state.source.ownerId ? repositoryOptions : []
 
@@ -782,21 +737,17 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
           }}
           onTemplateResourcePlanChange={(resourcePlanId) => {
             const template = DEPLOY_TEMPLATES.find(
-              (t) => t.id === state.source.templateId
+              (item) => item.id === state.source.templateId
             )
             const updates: Partial<DeployEnvironmentState> = { resourcePlanId }
             if (template) {
-              if (resourcePlanId === "payg") {
-                updates.cpu = template.defaultCpu
-                updates.memory = template.defaultMemory
-              } else {
-                updates.cpu = 100
-                updates.memory = 256
-              }
+              updates.cpu =
+                resourcePlanId === "payg" ? template.defaultCpu : 100
+              updates.memory =
+                resourcePlanId === "payg" ? template.defaultMemory : 256
             }
             dispatch({ type: "set-environment", payload: updates })
           }}
-          onDeployWithDefaults={handleDeployWithDefaults}
           onConnectGithub={handleConnectGithub}
           onCancel={() => {
             dispatch({ type: "reset" })
@@ -808,46 +759,39 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
       )
     }
 
-    if (state.step === "build") {
+    if (state.step === "connect") {
       return (
-        <StepBuildV2
+        <StepConnectV2
+          sourceType={state.source.sourceType}
           owner={selectedOwner}
           repository={selectedRepository}
           branch={selectedBranch}
-          rootDirectory={state.source.rootDirectory}
-          detectionResult={state.detectionResult}
-          isDetecting={isDetecting}
-          language={state.build.language}
-          framework={state.build.framework}
-          frameworkVersion={state.build.frameworkVersion ?? ""}
-          buildCommand={state.build.buildCommand}
-          useDockerfile={state.build.useDockerfile}
-          primaryEngine={state.build.primaryEngine ?? ""}
-          primaryEngineVersion={state.build.primaryEngineVersion ?? ""}
-          secondaryEngine={state.build.secondaryEngine ?? ""}
-          secondaryEngineVersion={state.build.secondaryEngineVersion ?? ""}
-          defaultPort={state.build.defaultPort ?? 0}
-          manualOverrideRequired={manualOverrideRequired}
-          canProceed={buildValid}
-          onBack={() => {
-            const previous = getPreviousStep("build", state)
-            if (!previous) {
-              return
-            }
-
-            navigateStep(previous)
-          }}
-          onNext={handleBuildNext}
-          onBuildFieldChange={(field, value) => {
-            dispatch({ type: "set-build", payload: { [field]: value } })
-          }}
+          canProceed={sourceValid}
+          onBack={() => navigateStep("source")}
+          onNext={handleConnectNext}
         />
       )
     }
 
-    if (state.step === "environment") {
+    if (state.step === "detect") {
       return (
-        <StepEnvironmentV2
+        <StepDetectV2
+          detectionResult={state.detectionResult}
+          isDetecting={isDetecting}
+          detectionError={detectionError}
+          buildState={state.build}
+          manualOverrideRequired={manualOverrideRequired}
+          canProceed={buildValid}
+          onBack={() => navigateStep("connect")}
+          onNext={handleDetectNext}
+          onBuildFieldChange={buildFieldChange}
+        />
+      )
+    }
+
+    if (state.step === "review") {
+      return (
+        <StepReviewV2
           generatedSubdomain={toGeneratedSubdomain(
             selectedRepository?.name || state.source.templateId
           )}
@@ -871,17 +815,8 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
           submitError={submitError}
           sourceType={state.source.sourceType}
           buildState={state.build}
-          onEditBuildSettings={() =>
-            dispatch({ type: "set-step", payload: "build" })
-          }
-          onBack={() => {
-            const previous = getPreviousStep("environment", state)
-            if (!previous) {
-              return
-            }
-
-            navigateStep(previous)
-          }}
+          onEditBuildSettings={() => navigateStep("detect")}
+          onBack={() => navigateStep("detect")}
           onDeploy={handleEnvironmentDeploy}
           onDomainToggleChange={(useGeneratedSubdomain) => {
             dispatch({
@@ -893,18 +828,13 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
             dispatch({ type: "set-environment", payload: { customDomain } })
           }}
           onEnvVarsChange={(envVars) => {
-            dispatch({
-              type: "set-environment",
-              payload: {
-                envVars,
-              },
-            })
+            dispatch({ type: "set-environment", payload: { envVars } })
           }}
           onResourcePlanChange={(resourcePlanId) => {
             const updates: Partial<DeployEnvironmentState> = { resourcePlanId }
             if (resourcePlanId === "payg") {
-              updates.cpu = updates.cpu ?? 100
-              updates.memory = updates.memory ?? 256
+              updates.cpu = 100
+              updates.memory = 256
             }
             dispatch({ type: "set-environment", payload: updates })
           }}
@@ -938,36 +868,40 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
         onRetry={() => {
           void handleEnvironmentDeploy()
         }}
-        onEditSettings={() => {
-          dispatch({ type: "set-step", payload: "environment" })
-        }}
+        onEditSettings={() => navigateStep("review")}
       />
     )
   }
 
+  const maxStepIndex = DEPLOY_STEPS.findIndex(
+    (step) => step.id === maxUnlockedStep
+  )
+
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <header className="flex items-center justify-between">
-        <div>
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">
+            Deploy New
+          </p>
           <h1 className="text-2xl font-semibold">
             {title ?? "Deploy Application"}
           </h1>
           {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              {description}
+            </p>
           )}
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => dispatch({ type: "reset" })}
-          >
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            Back
-          </Button>
+        <div className="flex items-center gap-2">
+          <div className="rounded-lg border border-border bg-card px-4 py-2 text-xs shadow-sm">
+            <span className="block text-muted-foreground">Target route</span>
+            <code className="font-mono text-primary">/console/app/deploy</code>
+          </div>
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
+            aria-label="Reset deploy wizard"
             onClick={() => dispatch({ type: "reset" })}
           >
             <X className="h-4 w-4" />
@@ -975,37 +909,65 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
         </div>
       </header>
 
-      <div className="flex flex-1 gap-4">
-        <div className="w-52 shrink-0">
-          <DeployTimelineV2
-            currentStep={state.step}
-            maxUnlockedStep={maxUnlockedStep}
-            sourceType={state.source.sourceType}
-            onStepChange={navigateStep}
-          />
-        </div>
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <nav
+          className="overflow-x-auto border-b border-border p-4"
+          aria-label="Deploy wizard steps"
+        >
+          <ol className="flex min-w-[680px] items-center">
+            {DEPLOY_STEPS.map((step, index) => {
+              const isActive = state.step === step.id
+              const isCompleted =
+                index < maxStepIndex || state.step === "deploy"
+              const isUnlocked = index <= maxStepIndex || state.step === step.id
 
-        <div className="min-w-0 flex-1 overflow-y-auto">{renderStep()}</div>
+              return (
+                <li key={step.id} className="flex min-w-0 flex-1 items-center">
+                  {index > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "h-px flex-1",
+                        isCompleted ? "bg-primary" : "bg-border"
+                      )}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    disabled={!isUnlocked}
+                    onClick={() => navigateStep(step.id)}
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors",
+                      isActive && "bg-primary/10",
+                      !isUnlocked && "cursor-not-allowed opacity-45"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold",
+                        isActive || isCompleted
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-muted-foreground"
+                      )}
+                    >
+                      {isCompleted && !isActive ? "✓" : index + 1}
+                    </span>
+                    <span className="hidden min-w-0 sm:block">
+                      <span className="block text-xs font-semibold">
+                        {step.label}
+                      </span>
+                      <span className="block text-[10px] text-muted-foreground">
+                        {step.description}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ol>
+        </nav>
 
-        <DeployChatSidebar
-          context={{
-            step: state.step,
-            sourceType: state.source.sourceType,
-            githubConnected: githubConnectionStatus === "connected",
-            userName: selectedOwner?.name ?? "",
-            framework: state.build.framework,
-            confidence: state.detectionResult
-              ? state.detectionResult.confidence >= 80
-                ? "high"
-                : state.detectionResult.confidence >= 50
-                  ? "medium"
-                  : "low"
-              : null,
-            resourcePlan: state.environment.resourcePlanId,
-          }}
-          isCollapsed={chatCollapsed}
-          onToggleCollapse={() => setChatCollapsed((prev) => !prev)}
-        />
+        <main className="min-h-[560px] bg-background">{renderStep()}</main>
       </div>
     </div>
   )

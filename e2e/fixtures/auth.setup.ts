@@ -35,7 +35,7 @@ setup("authenticate via WorkOS OAuth (manual login)", async ({ page }) => {
   // page redirects immediately — that's fine too.
   //
   // Timeout: 120s to give time for the full OAuth redirect dance.
-  await page.waitForURL("**/console/**", { timeout: 120_000 })
+  await page.waitForURL("**/console/**", { timeout: 300_000 })
 
   // Verify we're actually on a console page (authenticated)
   await expect(page).toHaveURL(/\/console\//)

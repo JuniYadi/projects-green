@@ -11,8 +11,12 @@ describe("parseStepQueryValue", () => {
 
   it("returns the requested step when valid", () => {
     expect(parseStepQueryValue("source")).toBe("source")
-    expect(parseStepQueryValue("build")).toBe("build")
-    expect(parseStepQueryValue("environment")).toBe("environment")
-    expect(parseStepQueryValue("monitor")).toBe("monitor")
+    expect(parseStepQueryValue("connect")).toBe("connect")
+    expect(parseStepQueryValue("detect")).toBe("detect")
+    expect(parseStepQueryValue("review")).toBe("review")
+    expect(parseStepQueryValue("deploy")).toBe("deploy")
+    expect(parseStepQueryValue("build")).toBe("detect")
+    expect(parseStepQueryValue("environment")).toBe("review")
+    expect(parseStepQueryValue("monitor")).toBe("deploy")
   })
 })
