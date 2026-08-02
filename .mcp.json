@@ -7,6 +7,13 @@
       "args": [
         "-y", "chrome-devtools-mcp@latest", "--no-usage-statistics", "--browser-url", "http://localhost:9222"
       ]
+    },
+    "admin-browser": {
+      "type": "stdio",
+      "command": "bunx",
+      "args": [
+        "-y", "chrome-devtools-mcp@latest", "--no-usage-statistics", "--browser-url", "http://localhost:9223"
+      ]
     }
   }
 }
