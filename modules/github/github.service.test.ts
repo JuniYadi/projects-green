@@ -3,10 +3,29 @@ import { createHash, generateKeyPairSync } from "node:crypto"
 
 const mockRedisGet = mock(async () => null as string | null)
 const mockRedisSet = mock(async () => "OK")
+const mockRedisDel = mock(async () => 1)
 const mockFetch = mock<typeof fetch>()
+const mockPrismaFindMany = mock(
+  async () =>
+    [] as Array<{
+      githubInstallationId: bigint
+      accountLogin: string
+      targetId: bigint | null
+    }>
+)
+const mockPrismaUpdateMany = mock(async () => ({ count: 1 }))
 
 mock.module("@/lib/redis", () => ({
-  redis: { get: mockRedisGet, set: mockRedisSet },
+  redis: { get: mockRedisGet, set: mockRedisSet, del: mockRedisDel },
+}))
+
+mock.module("@/lib/prisma", () => ({
+  prisma: {
+    githubInstallation: {
+      findMany: mockPrismaFindMany,
+      updateMany: mockPrismaUpdateMany,
+    },
+  },
 }))
 
 const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 })
@@ -41,6 +60,9 @@ beforeEach(() => {
   mockFetch.mockReset()
   mockRedisGet.mockClear()
   mockRedisSet.mockClear()
+  mockRedisDel.mockClear()
+  mockPrismaFindMany.mockClear()
+  mockPrismaUpdateMany.mockClear()
   mockRedisGet.mockResolvedValue(null)
   mockRedisSet.mockResolvedValue("OK")
 })
@@ -306,6 +328,66 @@ const installations: GithubInstallationRecord[] = [
 ]
 
 describe("githubRepositoryService", () => {
+  it("uses default dependencies to list active installations", async () => {
+    mockPrismaFindMany.mockResolvedValue([
+      {
+        githubInstallationId: BigInt(303),
+        accountLogin: "default-org",
+        targetId: BigInt(7003),
+      },
+    ])
+
+    const service = createGithubRepositoryService()
+    const result = await service.listInstallationsForActor({
+      userId: "user_1",
+      organizationId: "org_1",
+    })
+
+    expect(result).toEqual([
+      {
+        githubInstallationId: 303,
+        accountLogin: "default-org",
+        targetId: 7003,
+      },
+    ])
+  })
+
+  it("deactivates stale installation through repository service", async () => {
+    mockPrismaFindMany.mockResolvedValue([
+      {
+        githubInstallationId: BigInt(303),
+        accountLogin: "default-org",
+        targetId: null,
+      },
+    ])
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 404,
+      text: async () => "Not Found",
+      json: async () => ({ message: "Not Found" }),
+    } as Response)
+
+    const service = createGithubRepositoryService()
+
+    await expect(
+      service.listRepositoriesForActor(
+        { userId: "user_1", organizationId: "org_1" },
+        {}
+      )
+    ).rejects.toThrow(GithubReconnectRequiredError)
+
+    expect(mockPrismaUpdateMany).toHaveBeenCalled()
+    expect(
+      (mockPrismaUpdateMany.mock.calls as unknown[][])[0]?.[0]
+    ).toMatchObject({
+      where: {
+        githubInstallationId: 303,
+        status: "active",
+      },
+      data: { status: "inactive" },
+    })
+  })
+
   it("returns active installations for actor", async () => {
     const service = createGithubRepositoryService({
       async listActiveInstallations(actor) {
