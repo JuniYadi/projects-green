@@ -3,10 +3,29 @@ import { createHash, generateKeyPairSync } from "node:crypto"
 
 const mockRedisGet = mock(async () => null as string | null)
 const mockRedisSet = mock(async () => "OK")
+const mockRedisDel = mock(async () => 1)
 const mockFetch = mock<typeof fetch>()
+const mockPrismaFindMany = mock(
+  async () =>
+    [] as Array<{
+      githubInstallationId: bigint
+      accountLogin: string
+      targetId: bigint | null
+    }>
+)
+const mockPrismaUpdateMany = mock(async () => ({ count: 1 }))
 
 mock.module("@/lib/redis", () => ({
-  redis: { get: mockRedisGet, set: mockRedisSet },
+  redis: { get: mockRedisGet, set: mockRedisSet, del: mockRedisDel },
+}))
+
+mock.module("@/lib/prisma", () => ({
+  prisma: {
+    githubInstallation: {
+      findMany: mockPrismaFindMany,
+      updateMany: mockPrismaUpdateMany,
+    },
+  },
 }))
 
 const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 })
@@ -41,6 +60,9 @@ beforeEach(() => {
   mockFetch.mockReset()
   mockRedisGet.mockClear()
   mockRedisSet.mockClear()
+  mockRedisDel.mockClear()
+  mockPrismaFindMany.mockClear()
+  mockPrismaUpdateMany.mockClear()
   mockRedisGet.mockResolvedValue(null)
   mockRedisSet.mockResolvedValue("OK")
 })
@@ -306,6 +328,66 @@ const installations: GithubInstallationRecord[] = [
 ]
 
 describe("githubRepositoryService", () => {
+  it("uses default dependencies to list active installations", async () => {
+    mockPrismaFindMany.mockResolvedValue([
+      {
+        githubInstallationId: BigInt(303),
+        accountLogin: "default-org",
+        targetId: BigInt(7003),
+      },
+    ])
+
+    const service = createGithubRepositoryService()
+    const result = await service.listInstallationsForActor({
+      userId: "user_1",
+      organizationId: "org_1",
+    })
+
+    expect(result).toEqual([
+      {
+        githubInstallationId: 303,
+        accountLogin: "default-org",
+        targetId: 7003,
+      },
+    ])
+  })
+
+  it("deactivates stale installation through repository service", async () => {
+    mockPrismaFindMany.mockResolvedValue([
+      {
+        githubInstallationId: BigInt(303),
+        accountLogin: "default-org",
+        targetId: null,
+      },
+    ])
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 404,
+      text: async () => "Not Found",
+      json: async () => ({ message: "Not Found" }),
+    } as Response)
+
+    const service = createGithubRepositoryService()
+
+    await expect(
+      service.listRepositoriesForActor(
+        { userId: "user_1", organizationId: "org_1" },
+        {}
+      )
+    ).rejects.toThrow(GithubReconnectRequiredError)
+
+    expect(mockPrismaUpdateMany).toHaveBeenCalled()
+    expect(
+      (mockPrismaUpdateMany.mock.calls as unknown[][])[0]?.[0]
+    ).toMatchObject({
+      where: {
+        githubInstallationId: 303,
+        status: "active",
+      },
+      data: { status: "inactive" },
+    })
+  })
+
   it("returns active installations for actor", async () => {
     const service = createGithubRepositoryService({
       async listActiveInstallations(actor) {
@@ -321,6 +403,7 @@ describe("githubRepositoryService", () => {
         return []
       },
       async invalidateInstallationAccessToken() {},
+      async deactivateInstallation() {},
     })
 
     const result = await service.listInstallationsForActor({
@@ -378,6 +461,7 @@ describe("githubRepositoryService", () => {
         ]
       },
       async invalidateInstallationAccessToken() {},
+      async deactivateInstallation() {},
     })
 
     const firstPage = await service.listRepositoriesForActor(
@@ -454,6 +538,7 @@ describe("githubRepositoryService", () => {
         ]
       },
       async invalidateInstallationAccessToken() {},
+      async deactivateInstallation() {},
     })
 
     const acmeOnly = await service.listRepositoriesForActor(
@@ -510,6 +595,7 @@ describe("githubRepositoryService", () => {
         return [repository]
       },
       async invalidateInstallationAccessToken() {},
+      async deactivateInstallation() {},
     })
 
     const result = await service.listRepositoriesForActor(
@@ -554,6 +640,7 @@ describe("githubRepositoryService", () => {
         return [repository]
       }
     )
+    const deactivateInstallation = mock(async () => {})
     const service = createGithubRepositoryService({
       async listActiveInstallations() {
         return [installations[0]]
@@ -561,6 +648,7 @@ describe("githubRepositoryService", () => {
       createInstallationAccessToken,
       invalidateInstallationAccessToken,
       listRepositoriesForInstallation,
+      deactivateInstallation,
     })
 
     const result = await service.listRepositoriesForActor(
@@ -585,9 +673,10 @@ describe("githubRepositoryService", () => {
       "fresh-token"
     )
     expect(listRepositoriesForInstallation).toHaveBeenCalledTimes(2)
+    expect(deactivateInstallation).not.toHaveBeenCalled()
   })
 
-  it("propagates reconnect error after one retry", async () => {
+  it("deactivates installation and throws reconnect error after retry fails", async () => {
     const reconnectError = new GithubReconnectRequiredError(undefined, 401)
     const createInstallationAccessToken = mock(async () => "cached-token")
     createInstallationAccessToken.mockResolvedValueOnce("cached-token")
@@ -598,6 +687,7 @@ describe("githubRepositoryService", () => {
         throw reconnectError
       }
     )
+    const deactivateInstallation = mock(async () => {})
     const service = createGithubRepositoryService({
       async listActiveInstallations() {
         return [installations[0]]
@@ -605,6 +695,7 @@ describe("githubRepositoryService", () => {
       createInstallationAccessToken,
       invalidateInstallationAccessToken,
       listRepositoriesForInstallation,
+      deactivateInstallation,
     })
 
     await expect(
@@ -612,11 +703,223 @@ describe("githubRepositoryService", () => {
         { userId: "user_1", organizationId: "org_1" },
         {}
       )
-    ).rejects.toBe(reconnectError)
+    ).rejects.toThrow(GithubReconnectRequiredError)
 
     expect(invalidateInstallationAccessToken).toHaveBeenCalledTimes(1)
-    expect(invalidateInstallationAccessToken).toHaveBeenCalledWith(101)
     expect(createInstallationAccessToken).toHaveBeenCalledTimes(2)
     expect(listRepositoriesForInstallation).toHaveBeenCalledTimes(2)
+    expect(deactivateInstallation).toHaveBeenCalled()
+  })
+
+  it("deactivates when forced token refresh also needs reconnect", async () => {
+    const createInstallationAccessToken = mock(
+      async (_installationId: number, forceRefresh = false) => {
+        if (forceRefresh) {
+          throw new GithubReconnectRequiredError(undefined, 404)
+        }
+
+        return "cached-token"
+      }
+    )
+    const invalidateInstallationAccessToken = mock(async () => {})
+    const deactivateInstallation = mock(async () => {})
+    const service = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return [installations[0]]
+      },
+      createInstallationAccessToken,
+      invalidateInstallationAccessToken,
+      async listRepositoriesForInstallation() {
+        throw new GithubReconnectRequiredError(undefined, 401)
+      },
+      deactivateInstallation,
+    })
+
+    await expect(
+      service.listRepositoriesForActor(
+        { userId: "user_1", organizationId: "org_1" },
+        {}
+      )
+    ).rejects.toThrow(GithubReconnectRequiredError)
+
+    expect(invalidateInstallationAccessToken).toHaveBeenCalledWith(101)
+    expect(createInstallationAccessToken).toHaveBeenNthCalledWith(2, 101, true)
+    expect(deactivateInstallation).toHaveBeenCalledWith(101)
+  })
+
+  it("keeps valid repositories when listing one installation fails", async () => {
+    const validRepository = {
+      repositoryId: 2,
+      fullName: "orbit/tools",
+      name: "tools",
+      owner: "orbit",
+      installationId: 202,
+      defaultBranch: "main",
+      private: true,
+      pushedAt: "2026-05-16T03:10:45.000Z",
+    }
+    const service = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return installations
+      },
+      async createInstallationAccessToken() {
+        return "valid-token"
+      },
+      async listRepositoriesForInstallation(installation) {
+        if (installation.githubInstallationId === 101) {
+          throw new Error("repository listing failed")
+        }
+
+        return [validRepository]
+      },
+      async invalidateInstallationAccessToken() {},
+      async deactivateInstallation() {},
+    })
+
+    const result = await service.listRepositoriesForActor(
+      { userId: "user_1", organizationId: "org_1" },
+      {}
+    )
+
+    expect(result.items).toEqual([validRepository])
+  })
+
+  it("swallows non-reconnect errors from one installation and returns repos from others", async () => {
+    const validRepository = {
+      repositoryId: 1,
+      fullName: "acme/platform",
+      name: "platform",
+      owner: "acme",
+      installationId: 202,
+      defaultBranch: "main",
+      private: true,
+      pushedAt: "2026-05-16T03:10:45.000Z",
+    }
+    const service = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return installations
+      },
+      async createInstallationAccessToken(installationId) {
+        if (installationId === 101) {
+          throw new Error("network timeout")
+        }
+        return "valid-token"
+      },
+      async listRepositoriesForInstallation() {
+        return [validRepository]
+      },
+      async invalidateInstallationAccessToken() {},
+      async deactivateInstallation() {},
+    })
+
+    const result = await service.listRepositoriesForActor(
+      { userId: "user_1", organizationId: "org_1" },
+      {}
+    )
+
+    expect(result.items).toEqual([validRepository])
+  })
+
+  it("deactivates stale installation and returns repos from valid installation", async () => {
+    const validRepository = {
+      repositoryId: 1,
+      fullName: "acme/platform",
+      name: "platform",
+      owner: "acme",
+      installationId: 202,
+      defaultBranch: "main",
+      private: true,
+      pushedAt: "2026-05-16T03:10:45.000Z",
+    }
+    const createInstallationAccessToken = mock(
+      async (installationId: number) => {
+        if (installationId === 101) {
+          throw new GithubReconnectRequiredError(undefined, 404)
+        }
+        return "valid-token"
+      }
+    )
+    const invalidateInstallationAccessToken = mock(async () => {})
+    const listRepositoriesForInstallation = mock(
+      async (_installation: GithubInstallationRecord, _token: string) => {
+        return [validRepository]
+      }
+    )
+    const deactivateInstallation = mock(async (installationId: number) => {
+      expect(installationId).toBe(101)
+    })
+    const service = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return installations
+      },
+      createInstallationAccessToken,
+      invalidateInstallationAccessToken,
+      listRepositoriesForInstallation,
+      deactivateInstallation,
+    })
+
+    const result = await service.listRepositoriesForActor(
+      { userId: "user_1", organizationId: "org_1" },
+      {}
+    )
+
+    expect(result.items).toEqual([validRepository])
+    expect(deactivateInstallation).toHaveBeenCalledTimes(1)
+    expect(deactivateInstallation).toHaveBeenCalledWith(101)
+    expect(createInstallationAccessToken).toHaveBeenCalledTimes(2)
+    expect(listRepositoriesForInstallation).toHaveBeenCalledTimes(1)
+  })
+
+  it("throws reconnect error when all installations return empty repos", async () => {
+    const service = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return installations
+      },
+      async createInstallationAccessToken() {
+        return "valid-token"
+      },
+      async listRepositoriesForInstallation() {
+        return []
+      },
+      async invalidateInstallationAccessToken() {},
+      async deactivateInstallation() {},
+    })
+
+    await expect(
+      service.listRepositoriesForActor(
+        { userId: "user_1", organizationId: "org_1" },
+        {}
+      )
+    ).rejects.toThrow(GithubReconnectRequiredError)
+  })
+
+  it("throws reconnect error when all installations fail", async () => {
+    const createInstallationAccessToken = mock(
+      async (_installationId: number) => {
+        throw new GithubReconnectRequiredError(undefined, 404)
+      }
+    )
+    const invalidateInstallationAccessToken = mock(async () => {})
+    const listRepositoriesForInstallation = mock(async () => [])
+    const deactivateInstallation = mock(async () => {})
+    const service = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return installations
+      },
+      createInstallationAccessToken,
+      invalidateInstallationAccessToken,
+      listRepositoriesForInstallation,
+      deactivateInstallation,
+    })
+
+    await expect(
+      service.listRepositoriesForActor(
+        { userId: "user_1", organizationId: "org_1" },
+        {}
+      )
+    ).rejects.toThrow(GithubReconnectRequiredError)
+
+    expect(deactivateInstallation).toHaveBeenCalledTimes(2)
+    expect(createInstallationAccessToken).toHaveBeenCalledTimes(2)
   })
 })

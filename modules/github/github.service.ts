@@ -90,6 +90,7 @@ type GithubDependencies = {
     forceRefresh?: boolean
   ) => Promise<string>
   invalidateInstallationAccessToken: (installationId: number) => Promise<void>
+  deactivateInstallation: (installationId: number) => Promise<void>
   listRepositoriesForInstallation: (
     installation: GithubInstallationRecord,
     token: string
@@ -639,6 +640,25 @@ const createDefaultDependencies = (): GithubDependencies => ({
       console.warn("Failed to invalidate GitHub token cache", error)
     }
   },
+  async deactivateInstallation(installationId) {
+    try {
+      const { prisma } = await import("@/lib/prisma")
+      await prisma.githubInstallation.updateMany({
+        where: {
+          githubInstallationId: installationId,
+          status: "active",
+        },
+        data: {
+          status: "inactive",
+        },
+      })
+    } catch (error) {
+      console.warn("Failed to deactivate GitHub installation", {
+        installationId,
+        error,
+      })
+    }
+  },
   async listRepositoriesForInstallation(installation, token) {
     const repositories: GithubRepositoryListItem[] = []
     let nextUrl: string | null =
@@ -719,39 +739,74 @@ export const createGithubRepositoryService = (
       }
       const listRepositoriesWithRetry = async (
         installation: GithubInstallationRecord
-      ) => {
-        const token = await dependencies.createInstallationAccessToken(
-          installation.githubInstallationId
-        )
-
+      ): Promise<GithubRepositoryListItem[]> => {
         try {
-          return await dependencies.listRepositoriesForInstallation(
-            installation,
-            token
-          )
-        } catch (error) {
-          if (!(error instanceof GithubReconnectRequiredError)) {
-            throw error
-          }
-
-          await dependencies.invalidateInstallationAccessToken(
+          const token = await dependencies.createInstallationAccessToken(
             installation.githubInstallationId
           )
-          const freshToken = await dependencies.createInstallationAccessToken(
-            installation.githubInstallationId,
-            true
-          )
 
-          return dependencies.listRepositoriesForInstallation(
-            installation,
-            freshToken
-          )
+          try {
+            return await dependencies.listRepositoriesForInstallation(
+              installation,
+              token
+            )
+          } catch (error) {
+            if (!(error instanceof GithubReconnectRequiredError)) {
+              throw error
+            }
+
+            await dependencies.invalidateInstallationAccessToken(
+              installation.githubInstallationId
+            )
+            const freshToken = await dependencies.createInstallationAccessToken(
+              installation.githubInstallationId,
+              true
+            )
+
+            return await dependencies.listRepositoriesForInstallation(
+              installation,
+              freshToken
+            )
+          }
+        } catch (error) {
+          if (error instanceof GithubReconnectRequiredError) {
+            await dependencies.deactivateInstallation(
+              installation.githubInstallationId
+            )
+            console.warn({
+              operation: "list_repositories_for_actor",
+              installationId: installation.githubInstallationId,
+              statusCode: error.statusCode,
+              classification: "installation_deactivated",
+            })
+            return []
+          }
+          throw error
         }
       }
 
-      const repositoriesByInstallation = await Promise.all(
+      const results = await Promise.allSettled(
         targetInstallations.map(listRepositoriesWithRetry)
       )
+
+      const successfulResults = results.filter(
+        (
+          result
+        ): result is PromiseFulfilledResult<GithubRepositoryListItem[]> =>
+          result.status === "fulfilled"
+      )
+
+      const allEmpty =
+        successfulResults.length === 0 ||
+        successfulResults.every((result) => result.value.length === 0)
+
+      if (allEmpty) {
+        throw new GithubReconnectRequiredError()
+      }
+
+      const repositoriesByInstallation = successfulResults
+        .filter((result) => result.value.length > 0)
+        .map((result) => result.value)
 
       const repositories = dedupeRepositories(
         repositoriesByInstallation.flat()
