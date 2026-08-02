@@ -18,12 +18,15 @@
  */
 
 import { test as setup, expect } from "@playwright/test"
+import fs from "fs"
 
 const AUTH_FILE = ".auth/admin.json"
 
 setup(
   "authenticate as admin via WorkOS OAuth (manual login)",
   async ({ page }) => {
+    fs.mkdirSync(".auth", { recursive: true })
+
     await page.goto("/en/login")
 
     // Wait for the user to complete the OAuth flow and land on a console page.

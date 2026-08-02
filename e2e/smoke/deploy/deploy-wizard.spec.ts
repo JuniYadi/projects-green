@@ -74,6 +74,12 @@ const installDeployFixtures = async (
   await page.route("**/api/integrations/github/repositories?**", (route) => {
     return route.fulfill({ status: 200, json: repositories })
   })
+  await page.route("**/api/integrations/github/accounts", (route) => {
+    return route.fulfill({
+      status: 200,
+      json: { ok: true, accounts: [{ accountLogin: "pfn" }] },
+    })
+  })
   await page.route("**/api/framework-detection/github", (route) => {
     return route.fulfill({ status: 200, json: detection })
   })
@@ -198,5 +204,30 @@ test("shows a submit error and completes after retry", async ({ page }) => {
   await expect(deployButton).toBeEnabled()
 
   await deployButton.click()
+  await expect(page.getByText("Deployment live")).toBeVisible()
+})
+
+test("deploys a selected template with defaults", async ({ page }) => {
+  await installDeployFixtures(page, () => ({
+    status: 200,
+    body: {
+      ok: true,
+      data: {
+        deploymentId: "deploy-smoke-template",
+        status: "queued",
+      },
+    },
+  }))
+
+  await page.goto("/en/console/app/deploy?github=connected")
+  await expect(
+    page.getByRole("heading", { name: "Deploy Application" })
+  ).toBeVisible()
+  await page.getByText("From Template", { exact: true }).click()
+  await page.getByRole("button", { name: "Automation" }).click()
+  await page.getByRole("button", { name: "n8n" }).click()
+  await page.getByPlaceholder("App name").fill("smoke-n8n")
+  await page.getByRole("button", { name: "Deploy", exact: true }).click()
+
   await expect(page.getByText("Deployment live")).toBeVisible()
 })

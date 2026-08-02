@@ -19,10 +19,13 @@
  */
 
 import { test as setup, expect } from "@playwright/test"
+import fs from "fs"
 
 const AUTH_FILE = ".auth/user.json"
 
 setup("authenticate via WorkOS OAuth (manual login)", async ({ page }) => {
+  fs.mkdirSync(".auth", { recursive: true })
+
   // Navigate to login page
   await page.goto("/en/login")
 

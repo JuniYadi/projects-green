@@ -6,6 +6,9 @@ const FUNCTIONAL_AUTH_SECRET =
   process.env.FUNCTIONAL_TEST_AUTH_SECRET?.trim() ?? ""
 const USER_AUTH_FILE = ".auth/user.json"
 const ADMIN_AUTH_FILE = ".auth/admin.json"
+
+fs.mkdirSync(".auth", { recursive: true })
+
 const HAS_USER_AUTH = fs.existsSync(USER_AUTH_FILE)
 const HAS_ADMIN_AUTH = fs.existsSync(ADMIN_AUTH_FILE)
 
