@@ -48,6 +48,20 @@ type DetectFrameworkFromGithubApiFunction = (input: {
   subdir?: string
 }) => Promise<DetectionResult>
 
+const getDetectionErrorMessage = (error: unknown) => {
+  if (
+    error instanceof Error &&
+    (error.message.includes("AI returned an invalid decision schema") ||
+      error.message.includes("AI failed to return a valid decision"))
+  ) {
+    return "Automatic detection could not validate the AI response. Retry detection or configure build settings manually."
+  }
+
+  return error instanceof Error
+    ? error.message
+    : "Unable to detect frameworks for this repository."
+}
+
 // --- Routes ---
 
 export const createFrameworkDetectionRoutes = (
@@ -82,10 +96,7 @@ export const createFrameworkDetectionRoutes = (
         return {
           ok: false as const,
           error: "DETECTION_FAILED" as const,
-          message:
-            error instanceof Error
-              ? error.message
-              : "Unable to detect frameworks for this repository.",
+          message: getDetectionErrorMessage(error),
         }
       }
     })
@@ -116,10 +127,7 @@ export const createFrameworkDetectionRoutes = (
         return {
           ok: false as const,
           error: "DETECTION_FAILED" as const,
-          message:
-            error instanceof Error
-              ? error.message
-              : "Unable to detect frameworks for this repository.",
+          message: getDetectionErrorMessage(error),
         }
       }
     })
