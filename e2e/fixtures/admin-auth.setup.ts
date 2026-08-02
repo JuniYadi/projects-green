@@ -26,6 +26,9 @@ const AUTH_FILE = ".auth/admin.json"
 setup(
   "authenticate as admin via WorkOS OAuth (manual login)",
   async ({ page }) => {
+    // Extend test timeout to match the 300s waitForURL below.
+    setup.setTimeout(300_000)
+
     await page.goto("/en/login")
 
     // Wait for the user to complete the OAuth flow and land on a console page.

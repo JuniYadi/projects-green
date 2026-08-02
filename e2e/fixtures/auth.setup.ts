@@ -25,6 +25,9 @@ import { test as setup, expect } from "@playwright/test"
 const AUTH_FILE = ".auth/user.json"
 
 setup("authenticate via WorkOS OAuth (manual login)", async ({ page }) => {
+  // Extend test timeout to match the 300s waitForURL below.
+  setup.setTimeout(300_000)
+
   // Navigate to login page
   await page.goto("/en/login")
 
