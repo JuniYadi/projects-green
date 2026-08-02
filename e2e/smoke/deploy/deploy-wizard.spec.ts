@@ -132,19 +132,21 @@ const expectNormalAuthentication = async (
   await context.close()
 }
 
-test("uses normal authentication without functional credentials", async ({
+test("uses normal authentication without functional credentials @e2e/smoke/deploy/deploy-wizard", async ({
   browser,
 }) => {
   await expectNormalAuthentication(browser)
 })
 
-test("uses normal authentication with an incorrect functional secret", async ({
+test("uses normal authentication with an incorrect functional secret @e2e/smoke/deploy/deploy-wizard", async ({
   browser,
 }) => {
   await expectNormalAuthentication(browser, "incorrect-secret")
 })
 
-test("deploys a repository through the happy path", async ({ page }) => {
+test("deploys a repository through the happy path @e2e/smoke/deploy/deploy-wizard", async ({
+  page,
+}) => {
   await installDeployFixtures(page, () => ({
     status: 200,
     body: {
@@ -162,7 +164,9 @@ test("deploys a repository through the happy path", async ({ page }) => {
   await expect(page.getByText("Deployment live")).toBeVisible()
 })
 
-test("shows a submit error and completes after retry", async ({ page }) => {
+test("shows a submit error and completes after retry @e2e/smoke/deploy/deploy-wizard", async ({
+  page,
+}) => {
   await installDeployFixtures(page, (attempt) => {
     if (attempt === 1) {
       return {
