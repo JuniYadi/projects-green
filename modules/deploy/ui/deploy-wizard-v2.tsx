@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { X } from "@/components/ui/phosphor-icons"
@@ -104,7 +104,6 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isDetecting, setIsDetecting] = useState(false)
   const [detectionError, setDetectionError] = useState<string | null>(null)
-  const detectionAbortRef = useRef<AbortController | null>(null)
 
   const githubConnectionStatus: GithubConnectionStatus = (() => {
     const status = searchParams.get("github")
@@ -337,6 +336,94 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
       controller.abort()
     }
   }, [repositorySearch, state.source.ownerId])
+  useEffect(() => {
+    if (state.source.sourceType !== "github" || !state.source.repositoryId) {
+      return
+    }
+    if (state.detectionResult != null) return
+    if (detectionError != null) return
+
+    const repo =
+      repositoryById[state.source.repositoryId] ??
+      repositoryOptions.find(
+        (repository) => repository.id === state.source.repositoryId
+      )
+    if (!repo) return
+
+    const controller = new AbortController()
+
+    const run = async () => {
+      setIsDetecting(true)
+      setDetectionError(null)
+      dispatch({ type: "set-detection", payload: null })
+      dispatch({ type: "set-build", payload: null })
+
+      try {
+        const result = await fetchFrameworkDetection(
+          {
+            installationId: repo.installationId,
+            owner: repo.ownerId,
+            repo: repo.name,
+            ref: state.source.branchName || undefined,
+            subdir: state.source.rootDirectory || undefined,
+          },
+          controller.signal
+        )
+        if (controller.signal.aborted) return
+
+        dispatch({ type: "set-detection", payload: result })
+        dispatch({
+          type: "set-build",
+          payload: {
+            language: result.language ?? "",
+            framework: result.framework ?? "",
+            frameworkVersion: result.frameworkVersion ?? "",
+            buildCommand: result.buildCommand ?? "",
+            useDockerfile: result.dockerfileDetected,
+            primaryEngine: result.primaryEngine ?? "",
+            primaryEngineVersion: result.primaryEngineVersion ?? "",
+            secondaryEngine: result.secondaryEngine ?? "",
+            secondaryEngineVersion: result.secondaryEngineVersion ?? "",
+            defaultPort: result.defaultPort ?? 0,
+          },
+        })
+
+        const recommendation = recommendPlan(result)
+        dispatch({
+          type: "set-environment",
+          payload: {
+            resourcePlanId: recommendation.resourcePlanId,
+            cpu: recommendation.cpu ?? state.environment.cpu,
+            memory: recommendation.memory ?? state.environment.memory,
+          },
+        })
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return
+        const message =
+          err instanceof DetectionError
+            ? err.message
+            : "Failed to detect framework. You can configure build settings manually."
+        setDetectionError(message)
+      } finally {
+        if (!controller.signal.aborted) setIsDetecting(false)
+      }
+    }
+
+    void run()
+    return () => controller.abort()
+  }, [
+    dispatch,
+    state.source.sourceType,
+    state.source.repositoryId,
+    state.source.branchName,
+    state.source.rootDirectory,
+    state.detectionResult,
+    detectionError,
+    repositoryById,
+    repositoryOptions,
+    state.environment.cpu,
+    state.environment.memory,
+  ])
 
   const sourceValid = validateSourceStep(state.source)
   const buildValid = validateBuildStep(state.build, state.detectionResult)
@@ -362,6 +449,9 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
   }
 
   useEffect(() => {
+    if (!searchParams.has(DEPLOY_STEP_QUERY_KEY)) {
+      return
+    }
     const queryStep = parseStepQueryValue(
       searchParams.get(DEPLOY_STEP_QUERY_KEY)
     )
@@ -466,16 +556,13 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
     dispatch({ type: "set-detection", payload: null })
   }
 
-  const handleRepositorySelect = async (repositoryId: string) => {
+  const handleRepositorySelect = (repositoryId: string) => {
     const repo = repositoryById[repositoryId]
     const defaultBranchFromApi = repo?.defaultBranch ?? ""
     const branchName =
       defaultBranchFromApi || getDefaultBranchName(repositoryId)
 
-    detectionAbortRef.current?.abort()
-    const controller = new AbortController()
-    detectionAbortRef.current = controller
-
+    setDetectionError(null)
     dispatch({
       type: "set-source",
       payload: {
@@ -485,73 +572,8 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
         templateId: undefined,
       },
     })
-
-    setIsDetecting(true)
-    setDetectionError(null)
     dispatch({ type: "set-detection", payload: null })
     dispatch({ type: "set-build", payload: null })
-
-    if (repo) {
-      try {
-        const detectionResult = await fetchFrameworkDetection(
-          {
-            installationId: repo.installationId,
-            owner: repo.ownerId,
-            repo: repo.name,
-            ref: branchName || undefined,
-            subdir: undefined,
-          },
-          controller.signal
-        )
-
-        if (controller.signal.aborted) return
-
-        dispatch({ type: "set-detection", payload: detectionResult })
-        dispatch({
-          type: "set-build",
-          payload: {
-            language: detectionResult.language ?? "",
-            framework: detectionResult.framework ?? "",
-            frameworkVersion: detectionResult.frameworkVersion ?? "",
-            buildCommand: detectionResult.buildCommand ?? "",
-            useDockerfile: detectionResult.dockerfileDetected,
-            primaryEngine: detectionResult.primaryEngine ?? "",
-            primaryEngineVersion: detectionResult.primaryEngineVersion ?? "",
-            secondaryEngine: detectionResult.secondaryEngine ?? "",
-            secondaryEngineVersion:
-              detectionResult.secondaryEngineVersion ?? "",
-            defaultPort: detectionResult.defaultPort ?? 0,
-          },
-        })
-
-        const recommendation = recommendPlan(detectionResult)
-        dispatch({
-          type: "set-environment",
-          payload: {
-            resourcePlanId: recommendation.resourcePlanId,
-            cpu: recommendation.cpu ?? state.environment.cpu,
-            memory: recommendation.memory ?? state.environment.memory,
-          },
-        })
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return
-
-        const message =
-          err instanceof DetectionError
-            ? err.message
-            : "Failed to detect framework. You can configure build settings manually."
-
-        setDetectionError(message)
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsDetecting(false)
-        }
-      }
-    } else {
-      setIsDetecting(false)
-    }
-
-    detectionAbortRef.current = null
   }
 
   const handleTemplateSelect = (templateId: DeployTemplateId) => {

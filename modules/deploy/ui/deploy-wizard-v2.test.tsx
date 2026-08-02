@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
+import { fireEvent, render, waitFor } from "@testing-library/react"
 
 mock.module("@/modules/deploy/ui/step-environment-v2", () => ({
   StepEnvironmentV2: () => null,
@@ -31,6 +31,30 @@ const repositories = {
   ],
 }
 
+const detectionResponse = {
+  ok: true,
+  primaryFramework: {
+    id: "nextjs",
+    name: "Next.js",
+    ecosystem: "node",
+    confidence: 0.95,
+    reasons: ["package.json"],
+  },
+  requiredDependencies: [],
+  alternatives: [],
+  confidence: 0.95,
+  decision: {
+    status: "success",
+    message: "ok",
+    isLaunchable: true,
+  },
+  evidence: [{ type: "file", value: "package.json", detail: "detected" }],
+  warnings: [],
+  source: { repoUrl: "https://github.com/acme/storefront" },
+  frameworkVersion: "14",
+  defaultPort: 3000,
+}
+
 let accountResponse: { ok: boolean; accounts: (typeof account)[] }
 let requests: string[]
 
@@ -57,6 +81,12 @@ beforeEach(() => {
     if (url.pathname === "/api/integrations/github/repositories") {
       return Promise.resolve(
         new Response(JSON.stringify(repositories), { status: 200 })
+      )
+    }
+
+    if (url.pathname === "/api/framework-detection/github") {
+      return Promise.resolve(
+        new Response(JSON.stringify(detectionResponse), { status: 200 })
       )
     }
 
@@ -127,5 +157,65 @@ describe("DeployWizardV2 GitHub accounts", () => {
         view.getByRole("button", { name: "Connect GitHub" })
       ).toBeInTheDocument()
     })
+  })
+
+  it("detects framework after selecting a repository", async () => {
+    const { DeployWizardProvider } =
+      await import("@/modules/deploy/deploy.store")
+    const { DeployWizardV2 } =
+      await import("@/modules/deploy/ui/deploy-wizard-v2")
+
+    const view = render(
+      <DeployWizardProvider>
+        <DeployWizardV2 />
+      </DeployWizardProvider>
+    )
+    await Promise.resolve()
+
+    const repositoryButton = await view.findByRole("button", {
+      name: /storefront/,
+    })
+    fireEvent.click(repositoryButton)
+
+    await waitFor(() => {
+      expect(
+        requests.some((request) =>
+          request.includes("/api/framework-detection/github")
+        )
+      ).toBe(true)
+    })
+
+    fireEvent.click(view.getByRole("button", { name: /Detect AI scans/ }))
+    expect(view.getByText("Detect build settings")).toBeInTheDocument()
+  })
+
+  it("detects framework when detect is entered with a selected repository", async () => {
+    const { DeployWizardProvider } =
+      await import("@/modules/deploy/deploy.store")
+    const { DeployWizardV2 } =
+      await import("@/modules/deploy/ui/deploy-wizard-v2")
+
+    const view = render(
+      <DeployWizardProvider>
+        <DeployWizardV2 />
+      </DeployWizardProvider>
+    )
+
+    const repositoryButton = await view.findByRole("button", {
+      name: /storefront/,
+    })
+    fireEvent.click(repositoryButton)
+
+    await waitFor(() => {
+      expect(
+        requests.some((request) =>
+          request.includes("/api/framework-detection/github")
+        )
+      ).toBe(true)
+    })
+
+    fireEvent.click(view.getByRole("button", { name: /Detect AI scans/ }))
+
+    expect(view.getByText("Detect build settings")).toBeInTheDocument()
   })
 })
