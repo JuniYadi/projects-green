@@ -12,6 +12,37 @@
 
 Tests are organized by directory path — `console/` dir → user auth, `admin/` dir → admin auth, `landing/` dir → no auth.
 
+## Canonical Test Title Tags
+
+Every executable test title follows the contract `@e2e/<domain>/<role>/<scenario>`. Tags are the sync key to the Obsidian E2E checklist — no credentials belong in specs.
+
+| Domain | Role | Scenario example | Title |
+|--------|------|-----------------|-------|
+| `billing` | `console` | invoices list | `@e2e/billing/console/invoices` |
+| `billing` | `admin` | org billing settings | `@e2e/billing/admin/org-settings` |
+| `whatsapp` | `console` | message compose | `@e2e/whatsapp/console/compose` |
+| `smoke` | `deploy` | deploy wizard | `@e2e/smoke/deploy/deploy-wizard` |
+| `landing` | — | hero section | `@e2e/landing/hero` |
+
+Filter tests by tag with `--grep`:
+
+```bash
+bun x playwright test --grep '@e2e/billing/console/invoices'
+```
+
+## Auth File Prerequisites
+
+Conditional projects (`console`, `admin`) only appear when their auth file exists. **`.auth/user.json`** and **`.auth/admin.json`** must be present before the corresponding project runs — otherwise the project is silently skipped.
+
+Run the auth setup once per role to generate the file:
+
+```bash
+bun run test:e2e:auth          # user/member role → .auth/user.json
+bun run test:e2e:admin-auth    # admin/owner/super_admin → .auth/admin.json
+```
+
+Each opens Chromium headed and navigates to `/en/login`. **You sign in** via your WorkOS-connected account. After successful login, Playwright saves the browser session state.
+
 ## Setup: Authenticated Tests
 
 Both console and admin features are behind WorkOS OAuth login. Each role has its own auth state file.
@@ -77,3 +108,4 @@ Use cases are defined in `goals/use-case.md`. Each test is annotated with its UC
 1. Place it in the right `feature/role/` dir (`console/`, `admin/`, or `landing/`)
 2. Auth state is pre-applied by the project — no need to handle auth in individual tests
 3. Annotate tests with UC numbers from `goals/use-case.md`
+4. Use the canonical tag format `@e2e/<domain>/<role>/<scenario>` in the test title
