@@ -27,8 +27,9 @@ setup(
     await page.goto("/en/login")
 
     // Wait for the user to complete the OAuth flow and land on a console page.
-    await page.waitForURL("**/console/**", { timeout: 300_000 })
-    await expect(page).toHaveURL(/\/console\//)
+    // Accepts /en/console exactly or /en/console/* nested routes.
+    await page.waitForURL(/\/en\/console(?:\/|$|\?|#)/, { timeout: 300_000 })
+    await expect(page).toHaveURL(/\/en\/console(?:\/|$|\?|#)/)
 
     await page.context().storageState({ path: AUTH_FILE })
 
