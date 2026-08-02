@@ -11,7 +11,7 @@
 
 import { test, expect } from "@playwright/test"
 
-test.describe("Portal Billing Overview (admin)", () => {
+test.describe("Portal Billing Overview (admin) @e2e/billing/admin/overview", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/en/portal/billing")
   })
