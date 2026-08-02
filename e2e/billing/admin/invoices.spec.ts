@@ -8,7 +8,7 @@
 
 import { test, expect } from "@playwright/test"
 
-test.describe("Invoice Detail (admin)", () => {
+test.describe("Invoice Detail (admin) @e2e/billing/admin/invoices", () => {
   test("UC-9: invoice detail page shows line items grouped by service", async ({
     page,
   }) => {
