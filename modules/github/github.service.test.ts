@@ -321,6 +321,7 @@ describe("githubRepositoryService", () => {
         return []
       },
       async invalidateInstallationAccessToken() {},
+      async deactivateInstallation() {},
     })
 
     const result = await service.listInstallationsForActor({
@@ -378,6 +379,7 @@ describe("githubRepositoryService", () => {
         ]
       },
       async invalidateInstallationAccessToken() {},
+      async deactivateInstallation() {},
     })
 
     const firstPage = await service.listRepositoriesForActor(
@@ -454,6 +456,7 @@ describe("githubRepositoryService", () => {
         ]
       },
       async invalidateInstallationAccessToken() {},
+      async deactivateInstallation() {},
     })
 
     const acmeOnly = await service.listRepositoriesForActor(
@@ -510,6 +513,7 @@ describe("githubRepositoryService", () => {
         return [repository]
       },
       async invalidateInstallationAccessToken() {},
+      async deactivateInstallation() {},
     })
 
     const result = await service.listRepositoriesForActor(
@@ -554,6 +558,7 @@ describe("githubRepositoryService", () => {
         return [repository]
       }
     )
+    const deactivateInstallation = mock(async () => {})
     const service = createGithubRepositoryService({
       async listActiveInstallations() {
         return [installations[0]]
@@ -561,6 +566,7 @@ describe("githubRepositoryService", () => {
       createInstallationAccessToken,
       invalidateInstallationAccessToken,
       listRepositoriesForInstallation,
+      deactivateInstallation,
     })
 
     const result = await service.listRepositoriesForActor(
@@ -585,9 +591,10 @@ describe("githubRepositoryService", () => {
       "fresh-token"
     )
     expect(listRepositoriesForInstallation).toHaveBeenCalledTimes(2)
+    expect(deactivateInstallation).not.toHaveBeenCalled()
   })
 
-  it("propagates reconnect error after one retry", async () => {
+  it("deactivates installation and throws reconnect error after retry fails", async () => {
     const reconnectError = new GithubReconnectRequiredError(undefined, 401)
     const createInstallationAccessToken = mock(async () => "cached-token")
     createInstallationAccessToken.mockResolvedValueOnce("cached-token")
@@ -598,6 +605,7 @@ describe("githubRepositoryService", () => {
         throw reconnectError
       }
     )
+    const deactivateInstallation = mock(async () => {})
     const service = createGithubRepositoryService({
       async listActiveInstallations() {
         return [installations[0]]
@@ -605,6 +613,7 @@ describe("githubRepositoryService", () => {
       createInstallationAccessToken,
       invalidateInstallationAccessToken,
       listRepositoriesForInstallation,
+      deactivateInstallation,
     })
 
     await expect(
@@ -612,11 +621,91 @@ describe("githubRepositoryService", () => {
         { userId: "user_1", organizationId: "org_1" },
         {}
       )
-    ).rejects.toBe(reconnectError)
+    ).rejects.toThrow(GithubReconnectRequiredError)
 
     expect(invalidateInstallationAccessToken).toHaveBeenCalledTimes(1)
-    expect(invalidateInstallationAccessToken).toHaveBeenCalledWith(101)
     expect(createInstallationAccessToken).toHaveBeenCalledTimes(2)
     expect(listRepositoriesForInstallation).toHaveBeenCalledTimes(2)
+    expect(deactivateInstallation).toHaveBeenCalled()
+  })
+
+  it("deactivates stale installation and returns repos from valid installation", async () => {
+    const validRepository = {
+      repositoryId: 1,
+      fullName: "acme/platform",
+      name: "platform",
+      owner: "acme",
+      installationId: 202,
+      defaultBranch: "main",
+      private: true,
+      pushedAt: "2026-05-16T03:10:45.000Z",
+    }
+    const createInstallationAccessToken = mock(
+      async (installationId: number) => {
+        if (installationId === 101) {
+          throw new GithubReconnectRequiredError(undefined, 404)
+        }
+        return "valid-token"
+      }
+    )
+    const invalidateInstallationAccessToken = mock(async () => {})
+    const listRepositoriesForInstallation = mock(
+      async (_installation: GithubInstallationRecord, _token: string) => {
+        return [validRepository]
+      }
+    )
+    const deactivateInstallation = mock(async (installationId: number) => {
+      expect(installationId).toBe(101)
+    })
+    const service = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return installations
+      },
+      createInstallationAccessToken,
+      invalidateInstallationAccessToken,
+      listRepositoriesForInstallation,
+      deactivateInstallation,
+    })
+
+    const result = await service.listRepositoriesForActor(
+      { userId: "user_1", organizationId: "org_1" },
+      {}
+    )
+
+    expect(result.items).toEqual([validRepository])
+    expect(deactivateInstallation).toHaveBeenCalledTimes(1)
+    expect(deactivateInstallation).toHaveBeenCalledWith(101)
+    expect(createInstallationAccessToken).toHaveBeenCalledTimes(2)
+    expect(listRepositoriesForInstallation).toHaveBeenCalledTimes(1)
+  })
+
+  it("throws reconnect error when all installations fail", async () => {
+    const createInstallationAccessToken = mock(
+      async (_installationId: number) => {
+        throw new GithubReconnectRequiredError(undefined, 404)
+      }
+    )
+    const invalidateInstallationAccessToken = mock(async () => {})
+    const listRepositoriesForInstallation = mock(async () => [])
+    const deactivateInstallation = mock(async () => {})
+    const service = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return installations
+      },
+      createInstallationAccessToken,
+      invalidateInstallationAccessToken,
+      listRepositoriesForInstallation,
+      deactivateInstallation,
+    })
+
+    await expect(
+      service.listRepositoriesForActor(
+        { userId: "user_1", organizationId: "org_1" },
+        {}
+      )
+    ).rejects.toThrow(GithubReconnectRequiredError)
+
+    expect(deactivateInstallation).toHaveBeenCalledTimes(2)
+    expect(createInstallationAccessToken).toHaveBeenCalledTimes(2)
   })
 })
