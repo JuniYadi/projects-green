@@ -629,6 +629,42 @@ describe("githubRepositoryService", () => {
     expect(deactivateInstallation).toHaveBeenCalled()
   })
 
+  it("swallows non-reconnect errors from one installation and returns repos from others", async () => {
+    const validRepository = {
+      repositoryId: 1,
+      fullName: "acme/platform",
+      name: "platform",
+      owner: "acme",
+      installationId: 202,
+      defaultBranch: "main",
+      private: true,
+      pushedAt: "2026-05-16T03:10:45.000Z",
+    }
+    const service = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return installations
+      },
+      async createInstallationAccessToken(installationId) {
+        if (installationId === 101) {
+          throw new Error("network timeout")
+        }
+        return "valid-token"
+      },
+      async listRepositoriesForInstallation() {
+        return [validRepository]
+      },
+      async invalidateInstallationAccessToken() {},
+      async deactivateInstallation() {},
+    })
+
+    const result = await service.listRepositoriesForActor(
+      { userId: "user_1", organizationId: "org_1" },
+      {}
+    )
+
+    expect(result.items).toEqual([validRepository])
+  })
+
   it("deactivates stale installation and returns repos from valid installation", async () => {
     const validRepository = {
       repositoryId: 1,
@@ -677,6 +713,29 @@ describe("githubRepositoryService", () => {
     expect(deactivateInstallation).toHaveBeenCalledWith(101)
     expect(createInstallationAccessToken).toHaveBeenCalledTimes(2)
     expect(listRepositoriesForInstallation).toHaveBeenCalledTimes(1)
+  })
+
+  it("throws reconnect error when all installations return empty repos", async () => {
+    const service = createGithubRepositoryService({
+      async listActiveInstallations() {
+        return installations
+      },
+      async createInstallationAccessToken() {
+        return "valid-token"
+      },
+      async listRepositoriesForInstallation() {
+        return []
+      },
+      async invalidateInstallationAccessToken() {},
+      async deactivateInstallation() {},
+    })
+
+    await expect(
+      service.listRepositoriesForActor(
+        { userId: "user_1", organizationId: "org_1" },
+        {}
+      )
+    ).rejects.toThrow(GithubReconnectRequiredError)
   })
 
   it("throws reconnect error when all installations fail", async () => {
