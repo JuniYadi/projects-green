@@ -23,6 +23,9 @@ import {
   Check,
   RocketLaunchIcon,
   FileCode,
+  List,
+  CaretLeft,
+  CaretRight,
 } from "@/components/ui/phosphor-icons"
 import {
   SiN8N,
@@ -36,6 +39,31 @@ import {
   SiUmami,
   SiPlausibleanalytics,
 } from "react-icons/si"
+
+const TEMPLATE_CATEGORIES = [
+  "All",
+  "CMS",
+  "Analytics",
+  "Automation",
+  "Developer Tools",
+] as const
+
+const getTemplateCategory = (id: DeployTemplateId) => {
+  if (
+    [
+      "wordpress",
+      "ghost",
+      "strapi",
+      "directus",
+      "payload",
+      "pocketbase",
+    ].includes(id)
+  )
+    return "CMS"
+  if (["umami", "plausible"].includes(id)) return "Analytics"
+  if (id === "n8n") return "Automation"
+  return "Developer Tools"
+}
 
 export type StepSourceProps = {
   sourceType: DeploySourceType
@@ -134,6 +162,12 @@ export function StepSourceV2(props: StepSourceProps) {
 
   const [urlInput, setUrlInput] = useState("")
   const [urlDetecting, setUrlDetecting] = useState(false)
+  const [templateSearch, setTemplateSearch] = useState("")
+  const [templateCategory, setTemplateCategory] =
+    useState<(typeof TEMPLATE_CATEGORIES)[number]>("All")
+  const [templateView, setTemplateView] = useState<"grid" | "list">("grid")
+  const [templatePage, setTemplatePage] = useState(1)
+  const templatesPerPage = 6
 
   const selCard =
     sourceType === "github" ? "github" : templateId ? "template" : null
@@ -152,6 +186,29 @@ export function StepSourceV2(props: StepSourceProps) {
         ? (DEPLOY_TEMPLATES.find((t) => t.id === templateId) ?? null)
         : null,
     [templateId]
+  )
+
+  const filteredTemplates = useMemo(() => {
+    const query = templateSearch.trim().toLowerCase()
+    return DEPLOY_TEMPLATES.filter((template) => {
+      const matchesQuery =
+        !query ||
+        template.name.toLowerCase().includes(query) ||
+        template.description.toLowerCase().includes(query)
+      const matchesCategory =
+        templateCategory === "All" ||
+        getTemplateCategory(template.id) === templateCategory
+      return matchesQuery && matchesCategory
+    })
+  }, [templateCategory, templateSearch])
+
+  const visibleTemplates = filteredTemplates.slice(
+    (templatePage - 1) * templatesPerPage,
+    templatePage * templatesPerPage
+  )
+  const templatePages = Math.max(
+    1,
+    Math.ceil(filteredTemplates.length / templatesPerPage)
   )
 
   const selRepo = useMemo(
@@ -458,13 +515,67 @@ export function StepSourceV2(props: StepSourceProps) {
               className="space-y-3 px-5 pb-5"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="grid grid-cols-2 gap-2">
-                {DEPLOY_TEMPLATES.map((tmpl) => (
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  aria-label="Search templates"
+                  placeholder="Search templates..."
+                  value={templateSearch}
+                  onChange={(event) => {
+                    setTemplateSearch(event.target.value)
+                    setTemplatePage(1)
+                  }}
+                  className="h-9 min-w-44 flex-1 text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-label="Toggle template view"
+                  onClick={() =>
+                    setTemplateView((view) =>
+                      view === "grid" ? "list" : "grid"
+                    )
+                  }
+                >
+                  {templateView === "grid" ? (
+                    <List className="h-4 w-4" />
+                  ) : (
+                    <SquaresFour className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {TEMPLATE_CATEGORIES.map((category) => (
+                  <Button
+                    key={category}
+                    type="button"
+                    variant={
+                      templateCategory === category ? "default" : "outline"
+                    }
+                    size="sm"
+                    onClick={() => {
+                      setTemplateCategory(category)
+                      setTemplatePage(1)
+                    }}
+                  >
+                    {category}
+                  </Button>
+                ))}
+              </div>
+              <div
+                className={cn(
+                  "gap-2",
+                  templateView === "grid" ? "grid grid-cols-2" : "flex flex-col"
+                )}
+              >
+                {visibleTemplates.map((tmpl) => (
                   <button
                     key={tmpl.id}
+                    type="button"
                     onClick={() => onTemplateSelect(tmpl.id)}
                     className={cn(
-                      "flex flex-col items-center gap-1.5 rounded-lg border p-2.5 text-center text-xs transition-all",
+                      "flex items-center gap-2 rounded-lg border p-2.5 text-left text-xs transition-all",
+                      templateView === "grid" && "flex-col text-center",
                       templateId === tmpl.id
                         ? "border-primary bg-primary/5 text-primary"
                         : "border-border hover:border-primary/50 hover:bg-muted/50"
@@ -476,8 +587,47 @@ export function StepSourceV2(props: StepSourceProps) {
                     <span className="leading-tight font-medium">
                       {tmpl.name}
                     </span>
+                    {templateView === "list" && (
+                      <span className="ml-auto text-[10px] text-muted-foreground">
+                        {getTemplateCategory(tmpl.id)}
+                      </span>
+                    )}
                   </button>
                 ))}
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>
+                  {filteredTemplates.length} templates · page {templatePage} of{" "}
+                  {templatePages}
+                </span>
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Previous template page"
+                    disabled={templatePage <= 1}
+                    onClick={() =>
+                      setTemplatePage((page) => Math.max(1, page - 1))
+                    }
+                  >
+                    <CaretLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Next template page"
+                    disabled={templatePage >= templatePages}
+                    onClick={() =>
+                      setTemplatePage((page) =>
+                        Math.min(templatePages, page + 1)
+                      )
+                    }
+                  >
+                    <CaretRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
               {selTemplate && (
