@@ -316,4 +316,35 @@ describe("StepSourceV2 catalog", () => {
 
     expect(onTemplateSelect).toHaveBeenCalledWith("wordpress")
   })
+  it("shows empty state when template filters match nothing", () => {
+    const props = {
+      ...createProps(),
+      sourceType: "template" as const,
+    }
+    const view = render(<StepSourceV2 {...props} />)
+    const searchInput = view.getByLabelText("Search templates")
+    const reactPropsKey = Object.keys(searchInput).find((key) =>
+      key.startsWith("__reactProps")
+    )
+
+    act(() => {
+      if (reactPropsKey) {
+        const inputWithProps = searchInput as unknown as Record<
+          string,
+          { onChange: (event: { target: { value: string } }) => void }
+        >
+        inputWithProps[reactPropsKey].onChange({
+          target: { value: "does-not-exist" },
+        })
+      } else {
+        fireEvent.change(searchInput, {
+          target: { value: "does-not-exist" },
+        })
+      }
+    })
+
+    expect(
+      view.getByText("No templates match your search or category.")
+    ).toBeTruthy()
+  })
 })

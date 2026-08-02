@@ -96,23 +96,10 @@ const TMPL_ICON: Record<DeployTemplateId, React.ReactNode> = {
 const CATEGORIES = ["All", "CMS", "Analytics", "Automation", "Developer Tools"]
 
 const getTemplateCategory = (id: DeployTemplateId): string => {
-  switch (id) {
-    case "wordpress":
-    case "ghost":
-    case "strapi":
-    case "directus":
-    case "payload":
-    case "pocketbase":
-      return "CMS"
-    case "umami":
-    case "plausible":
-      return "Analytics"
-    case "n8n":
-      return "Automation"
-    case "openclaw":
-    default:
-      return "Developer Tools"
-  }
+  return (
+    DEPLOY_TEMPLATES.find((template) => template.id === id)?.category ??
+    "Developer Tools"
+  )
 }
 
 export function StepSourceV2(props: StepSourceProps) {
@@ -524,33 +511,39 @@ export function StepSourceV2(props: StepSourceProps) {
                   viewMode === "grid" ? "grid grid-cols-2" : "flex flex-col"
                 )}
               >
-                {visibleTemplates.map((tmpl) => (
-                  <button
-                    type="button"
-                    key={tmpl.id}
-                    onClick={() => onTemplateSelect(tmpl.id)}
-                    aria-pressed={templateId === tmpl.id}
-                    className={cn(
-                      "flex items-center gap-2 rounded-lg border p-2.5 text-left text-xs transition-all",
-                      viewMode === "grid" && "flex-col text-center",
-                      templateId === tmpl.id
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border hover:border-primary/50 hover:bg-muted/50"
-                    )}
-                  >
-                    {TMPL_ICON[tmpl.id] ?? (
-                      <FileCode className="h-6 w-6 shrink-0 text-[#6366f1]" />
-                    )}
-                    <span className="min-w-0">
-                      <span className="block leading-tight font-medium">
-                        {tmpl.name}
+                {visibleTemplates.length === 0 ? (
+                  <div className="col-span-2 py-8 text-center text-sm text-muted-foreground">
+                    No templates match your search or category.
+                  </div>
+                ) : (
+                  visibleTemplates.map((tmpl) => (
+                    <button
+                      type="button"
+                      key={tmpl.id}
+                      onClick={() => onTemplateSelect(tmpl.id)}
+                      aria-pressed={templateId === tmpl.id}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg border p-2.5 text-left text-xs transition-all",
+                        viewMode === "grid" && "flex-col text-center",
+                        templateId === tmpl.id
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-border hover:border-primary/50 hover:bg-muted/50"
+                      )}
+                    >
+                      {TMPL_ICON[tmpl.id] ?? (
+                        <FileCode className="h-6 w-6 shrink-0 text-[#6366f1]" />
+                      )}
+                      <span className="min-w-0">
+                        <span className="block leading-tight font-medium">
+                          {tmpl.name}
+                        </span>
+                        <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                          {tmpl.description}
+                        </span>
                       </span>
-                      <span className="mt-0.5 block text-[10px] text-muted-foreground">
-                        {tmpl.description}
-                      </span>
-                    </span>
-                  </button>
-                ))}
+                    </button>
+                  ))
+                )}
               </div>
               <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                 <span>
