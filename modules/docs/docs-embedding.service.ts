@@ -1,6 +1,8 @@
 import { createOpenAI } from "@ai-sdk/openai"
 import { embed } from "ai"
 
+import { getAiProviderConfig } from "@/lib/ai-config"
+
 const EMBEDDING_DIMENSIONS = 1536
 
 type EmbeddingResult = {
@@ -14,16 +16,10 @@ type EmbeddingResult = {
 export async function generateEmbedding(
   text: string
 ): Promise<EmbeddingResult> {
-  const apiKey = process.env.AI_API_KEY?.trim()
-
-  if (!apiKey) {
-    throw new Error("AI_API_KEY is not configured")
-  }
-
   const modelName =
     process.env.AI_EMBEDDING_MODEL?.trim() || "text-embedding-3-small"
 
-  const provider = createOpenAI({ apiKey })
+  const provider = createOpenAI(getAiProviderConfig())
 
   const { embedding } = await embed({
     model: provider.textEmbeddingModel(modelName),
@@ -49,8 +45,12 @@ export async function embedDocument(input: {
     `Title: ${input.title}`,
     `Path: ${input.path}`,
     `Purpose: ${input.purpose}`,
-    input.howTo.length ? `How to:\n${input.howTo.map((h) => `- ${h}`).join("\n")}` : "",
-    input.notes.length ? `Notes:\n${input.notes.map((n) => `- ${n}`).join("\n")}` : "",
+    input.howTo.length
+      ? `How to:\n${input.howTo.map((h) => `- ${h}`).join("\n")}`
+      : "",
+    input.notes.length
+      ? `Notes:\n${input.notes.map((n) => `- ${n}`).join("\n")}`
+      : "",
   ]
     .filter((line) => line.length > 0)
     .join("\n\n")
