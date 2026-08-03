@@ -225,6 +225,115 @@ describe("processQueuedDeployment", () => {
     })
     const result = await processQueuedDeployment("deploy-1")
     expect(commitFilesMock).not.toHaveBeenCalled()
+  })
+
+  it("returns not_queued when deployment status is not QUEUED", async () => {
+    mockPrisma.applicationDeployment.findUnique.mockResolvedValueOnce({
+      ...defaultDeployment,
+      status: "BUILDING",
+    } as never)
+    const result = await processQueuedDeployment("deploy-1")
+    expect(result).toEqual({ processed: false, reason: "not_queued" })
+  })
+
+  it("triggers Jenkins job for public source with PUBLIC_SOURCE_URL", async () => {
+    process.env.APP_HOSTING_EAGER_DEPLOY_FALLBACK = "true"
+    mockPrisma.applicationDeployment.findUnique.mockResolvedValueOnce({
+      ...defaultDeployment,
+      repositoryConnectionId: null,
+      stack: {
+        ...defaultDeployment.stack,
+        repositoryConnectionId: null,
+        sourceType: "PUBLIC",
+        publicSourceUrl: "https://example.com/source",
+        publicSourceRef: "main",
+      },
+    } as never)
+    const result = await processQueuedDeployment("deploy-1")
+    expect(triggerJenkinsJobMock).toHaveBeenCalledTimes(1)
+    expect(triggerJenkinsJobMock).toHaveBeenCalledWith(
+      "deploy-app-test",
+      expect.objectContaining({
+        PUBLIC_SOURCE_URL: "https://example.com/source",
+        GIT_REF: "main",
+        STACK_ID: "stack-1",
+        PFNAPP_WEBHOOK_TOKEN: "whk-token",
+      }),
+      expect.objectContaining({
+        baseUrl: "https://jenkins.example.com",
+      })
+    )
     expect(result.status).toBe("RUNNING")
+  })
+
+  it("handles manifest push failure gracefully in eager fallback", async () => {
+    process.env.APP_HOSTING_EAGER_DEPLOY_FALLBACK = "true"
+    const { resolveClusterIntegration } =
+      await import("@/modules/deploy/cluster-integration.service")
+    const resolver = resolveClusterIntegration as unknown as {
+      mockImplementation: (
+        fn: (id: string, type: string) => Promise<unknown>
+      ) => void
+    }
+    resolver.mockImplementation(async (_id, type) => {
+      if (type === "JENKINS") {
+        return {
+          baseUrl: "https://jenkins.example.com",
+          username: "user",
+          apiToken: "token",
+          webhookToken: "whk-token",
+          dslOwner: "pfnapp",
+          dslRepo: "Jenkins",
+          gitCredentialId: "github-token",
+          sharedLibraryName: null,
+          sharedLibraryBranch: null,
+        }
+      }
+      if (type === "REGISTRY") {
+        return {
+          host: "registry-apac.pfnapp.com",
+          namespace: null,
+          pushCredentialId: null,
+          pullSecretName: null,
+        }
+      }
+      if (type === "GITOPS") {
+        return {
+          repo: "pfnapp/sgp-argocd-prod",
+          branch: "main",
+          basePath: "",
+          pat: "gitops-pat",
+          authorName: null,
+          authorEmail: null,
+        }
+      }
+      throw new Error("missing " + type)
+    })
+    commitFilesMock.mockImplementationOnce(async () => {
+      throw new Error("GitOps push failed")
+    })
+    const result = await processQueuedDeployment("deploy-1")
+    expect(result.status).toBe("RUNNING")
+    expect(commitFilesMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("marks deployment as FAILED when transaction errors", async () => {
+    mockPrisma.githubRepositoryConnection.findUnique.mockImplementationOnce(
+      async () => {
+        throw new Error("Database error")
+      }
+    )
+    const result = await processQueuedDeployment("deploy-1")
+    expect(result.status).toBe("FAILED")
+    expect(result.error).toBe("Database error")
+    expect(mockPrisma.applicationDeployment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "deploy-1" },
+        data: expect.objectContaining({
+          status: "FAILED",
+          failureReason: "Database error",
+        }),
+      })
+    )
   })
 })

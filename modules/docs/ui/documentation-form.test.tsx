@@ -10,8 +10,12 @@ describe("DocumentationForm", () => {
     expect(view.getByLabelText("Path")).toBeInTheDocument()
     expect(view.getByLabelText("Title")).toBeInTheDocument()
     expect(view.getByLabelText("Purpose")).toBeInTheDocument()
-    expect(view.getByLabelText("How To (one step per line)")).toBeInTheDocument()
-    expect(view.getByLabelText("Notes (optional, one item per line)")).toBeInTheDocument()
+    expect(
+      view.getByLabelText("How To (one step per line)")
+    ).toBeInTheDocument()
+    expect(
+      view.getByLabelText("Notes (optional, one item per line)")
+    ).toBeInTheDocument()
     expect(view.getByText("Save Documentation")).toBeInTheDocument()
   })
 
@@ -32,7 +36,9 @@ describe("DocumentationForm", () => {
     const view = render(<DocumentationForm />)
 
     expect((view.getByLabelText("Title") as HTMLInputElement).value).toBe("")
-    expect((view.getByLabelText("Purpose") as HTMLTextAreaElement).value).toBe("")
+    expect((view.getByLabelText("Purpose") as HTMLTextAreaElement).value).toBe(
+      ""
+    )
   })
 
   it("resets fields when selected documentation changes", () => {

@@ -29,8 +29,6 @@ describe("ThunderAiHelpDrawer", () => {
     mock.restore()
     globalThis.fetch = mockFetch
     currentParams = ""
-
-
     ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
       replace: mockReplace,
     })
@@ -53,9 +51,7 @@ describe("ThunderAiHelpDrawer", () => {
     let view: ReturnType<typeof render> | undefined
 
     await act(async () => {
-      view = render(
-        <ThunderAiHelpDrawer />
-      )
+      view = render(<ThunderAiHelpDrawer />)
     })
 
     return view!
