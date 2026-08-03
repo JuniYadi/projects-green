@@ -315,7 +315,9 @@ describe("frameworkDetectionRoutes", () => {
       expect(response.status).toBe(422)
       expect(body.ok).toBe(false)
       expect(body.error).toBe("DETECTION_FAILED")
-      expect(body.message).toContain("Detection failed")
+      expect(body.message).toBe(
+        "Automatic detection could not validate the AI response. Retry detection or configure build settings manually."
+      )
     })
 
     it("returns blocked result when BLOCK rule matches without calling AI", async () => {
