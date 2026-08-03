@@ -101,6 +101,13 @@ export type DetectorRuleRecord = {
   priority: number
 }
 
+export type DetectorRuleSummary = {
+  activeCount: number
+  impacts: string[]
+  blockRuleNames: string[]
+  launchRuleNames: string[]
+}
+
 export type RuntimeMappingRecord = {
   id: string
   frameworkId: string
@@ -1036,6 +1043,37 @@ const checkForBlockedFrameworks = (
   return { blocked: false, matchedFiles: [] }
 }
 
+const summarizeDetectorRules = (
+  rules: DetectorRuleRecord[]
+): DetectorRuleSummary => {
+  const active = rules.filter((r) => r.isActive)
+  const impacts = [
+    ...new Set(
+      active
+        .map((r) => (r.implicationsJson as { impact?: string })?.impact)
+        .filter((i): i is string => i !== undefined)
+    ),
+  ].sort()
+  const blockRuleNames = active
+    .filter(
+      (r) => (r.implicationsJson as { impact?: string })?.impact === "BLOCK"
+    )
+    .map((r) => r.name)
+    .sort()
+  const launchRuleNames = active
+    .filter(
+      (r) => (r.implicationsJson as { impact?: string })?.impact === "LAUNCH"
+    )
+    .map((r) => r.name)
+    .sort()
+  return {
+    activeCount: active.length,
+    impacts,
+    blockRuleNames,
+    launchRuleNames,
+  }
+}
+
 // --- Support Decision Evaluation ---
 
 /**
@@ -1413,7 +1451,9 @@ export const detectFrameworkFromGithubApi = async (
     }
   }
 
-  // 3. Run AI agent with tool calling
+  // Compute rule summary for diagnostics
+  const ruleSummary = summarizeDetectorRules(detectorRules)
+
   const startTime = Date.now()
   let aiDecision: AiDecision
   let capturedToolCalls: ToolCallRecord[] = []
@@ -1428,9 +1468,12 @@ export const detectFrameworkFromGithubApi = async (
     capturedToolCalls = resolverResult.toolCalls
   } catch (error) {
     const durationMs = Date.now() - startTime
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error"
 
+    const ruleContext = `DetectorRule context: activeCount=${ruleSummary.activeCount}; impacts=${ruleSummary.impacts.join(",")}; blockRules=${ruleSummary.blockRuleNames.join(",")}; launchRules=${ruleSummary.launchRuleNames.join(",")}`
+    const errorMessage =
+      error instanceof Error
+        ? `${error.message} | ${ruleContext}`
+        : `Unknown error | ${ruleContext}`
     // Log the error (best-effort)
     try {
       await prismaClient.detectorInspectionLog.create({
@@ -1584,5 +1627,6 @@ export const __testables = {
   buildAiDetectionSystemPrompt,
   enforceRuntimeMappings,
   inferFrameworkEcosystem,
+  summarizeDetectorRules,
   evaluateSupportDecision,
 }

@@ -1363,7 +1363,7 @@ describe("detectFrameworkFromGithubApi - malformed AI with active rules", () => 
       .calls[0]?.[0]
     expect(logCall.data.status).toBe("error")
     // Rule context should be present in error logs (currently missing)
-    expect(logCall.data.ruleContext).toBeDefined()
+    expect(logCall.data.errorMessage).toContain("DetectorRule context:")
   })
 
   it("does not return a successful DetectionResult when AI resolver throws", async () => {
@@ -1480,6 +1480,20 @@ describe("detectFrameworkFromGithubApi - HINT remains advisory", () => {
             confidenceWeight: 1,
             isActive: true,
             priority: 10,
+          },
+          {
+            id: "rule-laravel-launch",
+            name: "Support Laravel Launch",
+            description: null,
+            patternJson: { frameworkId: "laravel" },
+            implicationsJson: {
+              framework: "laravel",
+              impact: "LAUNCH",
+              minConfidence: 0.8,
+            },
+            confidenceWeight: 1,
+            isActive: true,
+            priority: 100,
           },
         ],
       },
