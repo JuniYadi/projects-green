@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 
 import { createOpenAI } from "@ai-sdk/openai"
-import { generateObject, generateText, stepCountIs, tool } from "ai"
+import { generateObject, generateText, Output, stepCountIs, tool } from "ai"
 import { z } from "zod"
 
 import { getAiProviderConfig } from "@/lib/ai-config"
@@ -99,6 +99,13 @@ export type DetectorRuleRecord = {
   confidenceWeight: number
   isActive: boolean
   priority: number
+}
+
+export type DetectorRuleSummary = {
+  activeCount: number
+  impacts: string[]
+  blockRuleNames: string[]
+  launchRuleNames: string[]
 }
 
 export type RuntimeMappingRecord = {
@@ -842,33 +849,6 @@ const buildAiDetectionSystemPrompt = (
   ].join("\n")
 }
 
-const parseAiDecision = (finalText: string): AiDecision => {
-  const jsonMatch = finalText.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) {
-    throw new Error(
-      `AI failed to return a valid decision. Response: ${finalText}`
-    )
-  }
-
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(jsonMatch[0])
-  } catch {
-    throw new Error(
-      `AI failed to return a valid decision. Response: ${finalText}`
-    )
-  }
-
-  const result = AI_DECISION_SCHEMA.safeParse(parsed)
-  if (!result.success) {
-    throw new Error(
-      `AI returned an invalid decision schema: ${result.error.message}`
-    )
-  }
-
-  return result.data
-}
-
 const resolveWithAiToolCalling = async (
   input: GithubApiDetectionInput,
   fileList: string[],
@@ -946,7 +926,8 @@ const resolveWithAiToolCalling = async (
     system: systemPrompt,
     prompt: userPrompt,
     tools: toolDefinitions,
-    stopWhen: stepCountIs(15), // Allow multiple tool calls
+    output: Output.object({ schema: AI_DECISION_SCHEMA }),
+    stopWhen: stepCountIs(16),
   })
 
   // Map tool calls to audit-friendly records, matching with results
@@ -963,8 +944,7 @@ const resolveWithAiToolCalling = async (
     }
   })
 
-  const decision = parseAiDecision(result.text)
-  return { decision, toolCalls }
+  return { decision: result.output, toolCalls }
 }
 
 // --- RuntimeMapping Enforcement ---
@@ -1061,6 +1041,37 @@ const checkForBlockedFrameworks = (
   }
 
   return { blocked: false, matchedFiles: [] }
+}
+
+const summarizeDetectorRules = (
+  rules: DetectorRuleRecord[]
+): DetectorRuleSummary => {
+  const active = rules.filter((r) => r.isActive)
+  const impacts = [
+    ...new Set(
+      active
+        .map((r) => (r.implicationsJson as { impact?: string })?.impact)
+        .filter((i): i is string => i !== undefined)
+    ),
+  ].sort()
+  const blockRuleNames = active
+    .filter(
+      (r) => (r.implicationsJson as { impact?: string })?.impact === "BLOCK"
+    )
+    .map((r) => r.name)
+    .sort()
+  const launchRuleNames = active
+    .filter(
+      (r) => (r.implicationsJson as { impact?: string })?.impact === "LAUNCH"
+    )
+    .map((r) => r.name)
+    .sort()
+  return {
+    activeCount: active.length,
+    impacts,
+    blockRuleNames,
+    launchRuleNames,
+  }
 }
 
 // --- Support Decision Evaluation ---
@@ -1440,7 +1451,9 @@ export const detectFrameworkFromGithubApi = async (
     }
   }
 
-  // 3. Run AI agent with tool calling
+  // Compute rule summary for diagnostics
+  const ruleSummary = summarizeDetectorRules(detectorRules)
+
   const startTime = Date.now()
   let aiDecision: AiDecision
   let capturedToolCalls: ToolCallRecord[] = []
@@ -1455,9 +1468,12 @@ export const detectFrameworkFromGithubApi = async (
     capturedToolCalls = resolverResult.toolCalls
   } catch (error) {
     const durationMs = Date.now() - startTime
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error"
 
+    const ruleContext = `DetectorRule context: activeCount=${ruleSummary.activeCount}; impacts=${ruleSummary.impacts.join(",")}; blockRules=${ruleSummary.blockRuleNames.join(",")}; launchRules=${ruleSummary.launchRuleNames.join(",")}`
+    const errorMessage =
+      error instanceof Error
+        ? `${error.message} | ${ruleContext}`
+        : `Unknown error | ${ruleContext}`
     // Log the error (best-effort)
     try {
       await prismaClient.detectorInspectionLog.create({
@@ -1609,8 +1625,8 @@ export const __testables = {
   checkForBlockedFrameworks,
   buildDetectorRuleHints,
   buildAiDetectionSystemPrompt,
-  parseAiDecision,
   enforceRuntimeMappings,
   inferFrameworkEcosystem,
+  summarizeDetectorRules,
   evaluateSupportDecision,
 }

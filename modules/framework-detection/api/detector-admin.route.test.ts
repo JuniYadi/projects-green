@@ -137,7 +137,10 @@ describe("detectorAdminRoutes", () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: "Test Rule",
-            patternJson: { files: ["artisan"] },
+            patternJson: {
+              files: ["artisan"],
+              dependencies: ["laravel/framework"],
+            },
             implicationsJson: { framework: "laravel", impact: "HINT" },
           }),
         })
@@ -171,12 +174,125 @@ describe("detectorAdminRoutes", () => {
         })
       )
 
-      // Elysia returns 422 for validation errors by default
-      expect(response.status).toBe(422)
+      // Handler returns structured 400 validation errors.
+      expect(response.status).toBe(400)
     })
   })
 
+  it("returns 400 for rule with empty patternJson", async () => {
+    const mockCreate = mock(() => Promise.resolve(createMockDetectorRule()))
+    const app = new Elysia().use(
+      createDetectorAdminRoutes({
+        requireSuperAdmin: mockGuardPass,
+        createDetectorRule: mockCreate,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/admin/detector/rules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Empty rule",
+          patternJson: {},
+          implicationsJson: { impact: "HINT" },
+        }),
+      })
+    )
+
+    expect(response.status).toBe(400)
+  })
+
+  it("returns 400 for rule with unsupported patternJson keys and BLOCK impact", async () => {
+    const mockCreate = mock(() => Promise.resolve(createMockDetectorRule()))
+    const app = new Elysia().use(
+      createDetectorAdminRoutes({
+        requireSuperAdmin: mockGuardPass,
+        createDetectorRule: mockCreate,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/admin/detector/rules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Unsupported block",
+          patternJson: { dependencies: ["laravel/framework"] },
+          implicationsJson: { framework: "laravel", impact: "BLOCK" },
+        }),
+      })
+    )
+
+    expect(response.status).toBe(400)
+  })
+
+  it("rejects LAUNCH without framework identity", async () => {
+    const app = new Elysia().use(
+      createDetectorAdminRoutes({
+        requireSuperAdmin: mockGuardPass,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/admin/detector/rules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Launch rule",
+          patternJson: { files: ["package.json"] },
+          implicationsJson: { impact: "LAUNCH" },
+        }),
+      })
+    )
+
+    expect(response.status).toBe(400)
+  })
+
+  it("rejects HINT without evidence or framework", async () => {
+    const app = new Elysia().use(
+      createDetectorAdminRoutes({
+        requireSuperAdmin: mockGuardPass,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/admin/detector/rules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Hint rule",
+          patternJson: {},
+          implicationsJson: { impact: "HINT" },
+        }),
+      })
+    )
+
+    expect(response.status).toBe(400)
+  })
+
   describe("PATCH /admin/detector/rules/:id", () => {
+    it("rejects BLOCK update without files", async () => {
+      const app = new Elysia().use(
+        createDetectorAdminRoutes({
+          requireSuperAdmin: mockGuardPass,
+        })
+      )
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/detector/rules/rule-1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            patternJson: { dependencies: ["laravel/framework"] },
+            implicationsJson: { impact: "BLOCK" },
+          }),
+        })
+      )
+
+      expect(response.status).toBe(400)
+    })
+
     it("returns 404 for non-existent rule", async () => {
       const mockGetById = mock(() => Promise.resolve(null))
 

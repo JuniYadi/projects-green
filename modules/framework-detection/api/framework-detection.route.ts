@@ -49,17 +49,24 @@ type DetectFrameworkFromGithubApiFunction = (input: {
 }) => Promise<DetectionResult>
 
 const getDetectionErrorMessage = (error: unknown) => {
+  const message = error instanceof Error ? error.message : ""
+
   if (
-    error instanceof Error &&
-    (error.message.includes("AI returned an invalid decision schema") ||
-      error.message.includes("AI failed to return a valid decision"))
+    message.includes("AI returned an invalid decision schema") ||
+    message.includes("AI failed to return a valid decision") ||
+    message.includes("invalid-schema")
   ) {
     return "Automatic detection could not validate the AI response. Retry detection or configure build settings manually."
   }
 
-  return error instanceof Error
-    ? error.message
-    : "Unable to detect frameworks for this repository."
+  if (message === "Repository not found") {
+    return message
+  }
+  if (message === "GitHub API rate limit exceeded") {
+    return message
+  }
+
+  return "Unable to detect frameworks for this repository."
 }
 
 // --- Routes ---

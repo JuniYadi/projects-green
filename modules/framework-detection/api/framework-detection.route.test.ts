@@ -277,5 +277,113 @@ describe("frameworkDetectionRoutes", () => {
         "Automatic detection could not validate the AI response. Retry detection or configure build settings manually."
       )
     })
+
+    it("returns 422 when AI resolver throws invalid schema with active rules", async () => {
+      const app = new Elysia().use(
+        createFrameworkDetectionRoutes(
+          async () => {
+            throw new Error("should not be called")
+          },
+          async () => {
+            throw new Error(
+              "Detection failed: invalid-schema: missing primaryFrameworkId"
+            )
+          }
+        )
+      )
+
+      const response = await app.handle(
+        new Request("http://localhost/framework-detection/github", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            installationId: 12345,
+            owner: "test-org",
+            repo: "test-repo",
+          }),
+        })
+      )
+
+      const body = (await response.json()) as {
+        ok: boolean
+        error: string
+        message: string
+      }
+
+      expect(response.status).toBe(422)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("DETECTION_FAILED")
+      expect(body.message).toBe(
+        "Automatic detection could not validate the AI response. Retry detection or configure build settings manually."
+      )
+    })
+
+    it("returns blocked result when BLOCK rule matches without calling AI", async () => {
+      const app = new Elysia().use(
+        createFrameworkDetectionRoutes(
+          async () => {
+            throw new Error("should not be called")
+          },
+          async () => ({
+            primaryFramework: {
+              id: "wordpress",
+              name: "WordPress",
+              ecosystem: "php",
+              confidence: 0,
+              reasons: ["Blocked by admin rule: Block WordPress"],
+            },
+            requiredDependencies: [],
+            alternatives: [],
+            confidence: 0,
+            decision: {
+              status: "blocked",
+              message: "Deployment blocked by admin rule: Block WordPress",
+              isLaunchable: false,
+            },
+            evidence: [
+              {
+                type: "file",
+                value: "blocked",
+                detail:
+                  'Blocked by rule "Block WordPress": matched files wp-config.php',
+              },
+            ],
+            warnings: ["Framework blocked by rule: Block WordPress"],
+            source: {
+              repoUrl: "https://github.com/test-org/test-repo",
+              ref: "main",
+            },
+          })
+        )
+      )
+
+      const response = await app.handle(
+        new Request("http://localhost/framework-detection/github", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            installationId: 12345,
+            owner: "test-org",
+            repo: "test-repo",
+          }),
+        })
+      )
+
+      const body = (await response.json()) as {
+        ok: boolean
+        primaryFramework?: { id: string }
+        decision?: { status: string; isLaunchable: boolean }
+      }
+
+      expect(response.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.primaryFramework?.id).toBe("wordpress")
+      expect(body.decision?.status).toBe("blocked")
+      expect(body.decision?.isLaunchable).toBe(false)
+    })
   })
 })
