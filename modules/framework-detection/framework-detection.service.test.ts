@@ -472,44 +472,6 @@ describe("buildAiDetectionSystemPrompt", () => {
     }
   })
 })
-describe("parseAiDecision", () => {
-  it("rejects malformed model output", () => {
-    expect(() =>
-      __testables.parseAiDecision(
-        JSON.stringify({ primaryFrameworkId: "nextjs" })
-      )
-    ).toThrow("invalid decision schema")
-  })
-
-  it("accepts schema-complete model output", () => {
-    const decision = __testables.parseAiDecision(
-      JSON.stringify({
-        primaryFrameworkId: "nextjs",
-        frameworkVersion: "16",
-        ecosystem: "node",
-        confidence: 0.95,
-        requiredRuntimeIds: ["node"],
-        reasoning: ["package.json declares next"],
-      })
-    )
-
-    expect(decision.primaryFrameworkId).toBe("nextjs")
-    expect(decision.requiredRuntimeIds).toEqual(["node"])
-  })
-
-  it("throws when AI output contains no JSON", () => {
-    expect(() => __testables.parseAiDecision("no json here")).toThrow(
-      "AI failed to return a valid decision"
-    )
-  })
-
-  it("throws when AI output contains malformed JSON", () => {
-    expect(() =>
-      __testables.parseAiDecision('{"primaryFrameworkId": "nextjs",}')
-    ).toThrow("AI failed to return a valid decision")
-  })
-})
-
 describe("detectFrameworkFromGithubApi - error handling", () => {
   beforeEach(() => {
     delete process.env.AI_API_KEY
@@ -868,6 +830,103 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
   })
 })
 
+describe("detectFrameworkFromGithubApi - resolver contract", () => {
+  it("passes input, fileList, and detectorRules to resolveWithAiToolCalling and uses result.output as decision", async () => {
+    const mockFiles = ["package.json", "next.config.mjs"]
+    const detectorRules = [
+      {
+        id: "rule-1",
+        name: "Next.js Hint",
+        description: null,
+        patternJson: { files: ["next.config.mjs"] },
+        implicationsJson: { framework: "nextjs", impact: "HINT" },
+        confidenceWeight: 1,
+        isActive: true,
+        priority: 10,
+      },
+    ]
+
+    let capturedArgs: unknown[] = []
+    const mockPrisma = {
+      detectorRule: { findMany: async () => detectorRules },
+      detectorInspectionLog: { create: mock(() => ({})) },
+      detectorRuntimeMapping: { findMany: async () => [] },
+    }
+
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({ files: mockFiles, truncated: false }),
+      readFile: async ({ filePath }) => ({
+        content:
+          filePath === "package.json"
+            ? JSON.stringify({ dependencies: { next: "14.0" } })
+            : "",
+        path: filePath,
+        sha: "abc123",
+        size: 100,
+      }),
+      resolveWithAiToolCalling: async (
+        input: unknown,
+        files: unknown,
+        rules: unknown
+      ) => {
+        capturedArgs = [input, files, rules]
+        return {
+          decision: {
+            primaryFrameworkId: "nextjs",
+            confidence: 0.95,
+            requiredRuntimeIds: ["node"],
+            reasoning: ["next dependency found"],
+          },
+          toolCalls: [],
+        }
+      },
+      prisma: mockPrisma,
+    }
+
+    const result = await detectFrameworkFromGithubApi(
+      {
+        installationId: 12345,
+        owner: "test-org",
+        repo: "test-repo",
+      },
+      dependencies
+    )
+
+    expect(capturedArgs[0]).toEqual(
+      expect.objectContaining({ owner: "test-org", repo: "test-repo" })
+    )
+    expect(capturedArgs[1]).toEqual(mockFiles)
+    expect(capturedArgs[2]).toEqual(detectorRules)
+    expect(result.primaryFramework?.id).toBe("nextjs")
+  })
+
+  it("rejects with Detection failed when resolveWithAiToolCalling throws", async () => {
+    const mockPrisma = {
+      detectorRule: { findMany: async () => [] },
+      detectorInspectionLog: { create: mock(() => ({})) },
+      detectorRuntimeMapping: { findMany: async () => [] },
+    }
+
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({ files: ["package.json"], truncated: false }),
+      resolveWithAiToolCalling: async () => {
+        throw new Error("AI model unavailable")
+      },
+      prisma: mockPrisma,
+    }
+
+    await expect(
+      detectFrameworkFromGithubApi(
+        {
+          installationId: 12345,
+          owner: "test-org",
+          repo: "test-repo",
+        },
+        dependencies
+      )
+    ).rejects.toThrow("Detection failed")
+  })
+})
 describe("enforceRuntimeMappings", () => {
   it("returns suggested runtimes when no mappings exist", async () => {
     const { enforceRuntimeMappings } = __testables

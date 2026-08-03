@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 
 import { createOpenAI } from "@ai-sdk/openai"
-import { generateObject, generateText, stepCountIs, tool } from "ai"
+import { generateObject, generateText, Output, stepCountIs, tool } from "ai"
 import { z } from "zod"
 
 import { getAiProviderConfig } from "@/lib/ai-config"
@@ -842,33 +842,6 @@ const buildAiDetectionSystemPrompt = (
   ].join("\n")
 }
 
-const parseAiDecision = (finalText: string): AiDecision => {
-  const jsonMatch = finalText.match(/\{[\s\S]*\}/)
-  if (!jsonMatch) {
-    throw new Error(
-      `AI failed to return a valid decision. Response: ${finalText}`
-    )
-  }
-
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(jsonMatch[0])
-  } catch {
-    throw new Error(
-      `AI failed to return a valid decision. Response: ${finalText}`
-    )
-  }
-
-  const result = AI_DECISION_SCHEMA.safeParse(parsed)
-  if (!result.success) {
-    throw new Error(
-      `AI returned an invalid decision schema: ${result.error.message}`
-    )
-  }
-
-  return result.data
-}
-
 const resolveWithAiToolCalling = async (
   input: GithubApiDetectionInput,
   fileList: string[],
@@ -946,7 +919,8 @@ const resolveWithAiToolCalling = async (
     system: systemPrompt,
     prompt: userPrompt,
     tools: toolDefinitions,
-    stopWhen: stepCountIs(15), // Allow multiple tool calls
+    output: Output.object({ schema: AI_DECISION_SCHEMA }),
+    stopWhen: stepCountIs(16),
   })
 
   // Map tool calls to audit-friendly records, matching with results
@@ -963,8 +937,7 @@ const resolveWithAiToolCalling = async (
     }
   })
 
-  const decision = parseAiDecision(result.text)
-  return { decision, toolCalls }
+  return { decision: result.output, toolCalls }
 }
 
 // --- RuntimeMapping Enforcement ---
@@ -1609,7 +1582,6 @@ export const __testables = {
   checkForBlockedFrameworks,
   buildDetectorRuleHints,
   buildAiDetectionSystemPrompt,
-  parseAiDecision,
   enforceRuntimeMappings,
   inferFrameworkEcosystem,
   evaluateSupportDecision,
