@@ -176,6 +176,50 @@ describe("detectorAdminRoutes", () => {
     })
   })
 
+  it("returns 400 for rule with empty patternJson", async () => {
+    const app = new Elysia().use(
+      createDetectorAdminRoutes({
+        requireSuperAdmin: mockGuardPass,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/admin/detector/rules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Empty rule",
+          patternJson: {},
+          implicationsJson: { impact: "HINT" },
+        }),
+      })
+    )
+
+    expect(response.status).toBe(400)
+  })
+
+  it("returns 400 for rule with unsupported patternJson keys and BLOCK impact", async () => {
+    const app = new Elysia().use(
+      createDetectorAdminRoutes({
+        requireSuperAdmin: mockGuardPass,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/admin/detector/rules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Unsupported block",
+          patternJson: { dependencies: ["laravel/framework"] },
+          implicationsJson: { framework: "laravel", impact: "BLOCK" },
+        }),
+      })
+    )
+
+    expect(response.status).toBe(400)
+  })
+
   describe("PATCH /admin/detector/rules/:id", () => {
     it("returns 404 for non-existent rule", async () => {
       const mockGetById = mock(() => Promise.resolve(null))

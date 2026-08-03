@@ -1254,3 +1254,215 @@ describe("evaluateSupportDecision", () => {
     expect(decision.isLaunchable).toBe(false)
   })
 })
+
+describe("detectFrameworkFromGithubApi - malformed AI with active rules", () => {
+  it("rejects with Detection failed when AI resolver throws invalid schema and active rules exist", async () => {
+    const mockPrisma = {
+      detectorRule: {
+        findMany: async () => [
+          {
+            id: "rule-laravel-hint",
+            name: "Laravel Detection",
+            description: null,
+            patternJson: { files: ["artisan"] },
+            implicationsJson: { framework: "laravel", impact: "HINT" },
+            confidenceWeight: 1,
+            isActive: true,
+            priority: 10,
+          },
+        ],
+      },
+      detectorInspectionLog: { create: mock(() => ({})) },
+      detectorRuntimeMapping: { findMany: async () => [] },
+    }
+
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["artisan", "composer.json"],
+        truncated: false,
+      }),
+      resolveWithAiToolCalling: async () => {
+        throw new Error("invalid-schema: missing primaryFrameworkId")
+      },
+      prisma: mockPrisma,
+    }
+
+    await expect(
+      detectFrameworkFromGithubApi(
+        {
+          installationId: 12345,
+          owner: "test-org",
+          repo: "test-repo",
+        },
+        dependencies
+      )
+    ).rejects.toThrow("Detection failed")
+
+    expect(mockPrisma.detectorInspectionLog.create).toHaveBeenCalledTimes(1)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const logCall = (mockPrisma.detectorInspectionLog.create as any).mock
+      .calls[0]?.[0]
+    expect(logCall.data.status).toBe("error")
+    // Rule context should be present in error logs (currently missing)
+    expect(logCall.data.ruleContext).toBeDefined()
+  })
+
+  it("does not return a successful DetectionResult when AI resolver throws", async () => {
+    const mockPrisma = {
+      detectorRule: {
+        findMany: async () => [
+          {
+            id: "rule-laravel-hint",
+            name: "Laravel Detection",
+            description: null,
+            patternJson: { files: ["artisan"] },
+            implicationsJson: { framework: "laravel", impact: "HINT" },
+            confidenceWeight: 1,
+            isActive: true,
+            priority: 10,
+          },
+        ],
+      },
+      detectorInspectionLog: { create: async () => ({}) },
+      detectorRuntimeMapping: { findMany: async () => [] },
+    }
+
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["artisan", "composer.json"],
+        truncated: false,
+      }),
+      resolveWithAiToolCalling: async () => {
+        throw new Error("invalid-schema error")
+      },
+      prisma: mockPrisma,
+    }
+
+    await expect(
+      detectFrameworkFromGithubApi(
+        {
+          installationId: 12345,
+          owner: "test-org",
+          repo: "test-repo",
+        },
+        dependencies
+      )
+    ).rejects.toThrow("Detection failed")
+  })
+})
+
+describe("detectFrameworkFromGithubApi - BLOCK skips AI", () => {
+  it("skips AI resolver and returns blocked result when BLOCK rule matches", async () => {
+    const mockPrisma = {
+      detectorRule: {
+        findMany: async () => [
+          {
+            id: "rule-block-wp",
+            name: "Block WordPress",
+            description: null,
+            patternJson: { files: ["wp-config.php"] },
+            implicationsJson: { framework: "wordpress", impact: "BLOCK" },
+            confidenceWeight: 1,
+            isActive: true,
+            priority: 100,
+          },
+        ],
+      },
+      detectorInspectionLog: { create: mock(() => ({})) },
+      detectorRuntimeMapping: { findMany: async () => [] },
+    }
+
+    let aiResolverCalled = false
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["wp-config.php"],
+        truncated: false,
+      }),
+      resolveWithAiToolCalling: async () => {
+        aiResolverCalled = true
+        throw new Error("AI should not be called for BLOCK rules")
+      },
+      prisma: mockPrisma,
+    }
+
+    const result = await detectFrameworkFromGithubApi(
+      {
+        installationId: 12345,
+        owner: "test-org",
+        repo: "test-repo",
+      },
+      dependencies
+    )
+
+    expect(aiResolverCalled).toBe(false)
+    expect(result.decision.status).toBe("blocked")
+    expect(result.decision.isLaunchable).toBe(false)
+    expect(result.evidence.some((e) => e.value === "blocked")).toBe(true)
+
+    expect(mockPrisma.detectorInspectionLog.create).toHaveBeenCalledTimes(1)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const logCall = (mockPrisma.detectorInspectionLog.create as any).mock
+      .calls[0]?.[0]
+    expect(logCall.data.blockedByRuleId).toBe("rule-block-wp")
+  })
+})
+
+describe("detectFrameworkFromGithubApi - HINT remains advisory", () => {
+  it("calls AI resolver and does not let HINT rule set decision.status", async () => {
+    const mockPrisma = {
+      detectorRule: {
+        findMany: async () => [
+          {
+            id: "rule-laravel-hint",
+            name: "Laravel Detection",
+            description: null,
+            patternJson: { files: ["artisan"] },
+            implicationsJson: { framework: "laravel", impact: "HINT" },
+            confidenceWeight: 1,
+            isActive: true,
+            priority: 10,
+          },
+        ],
+      },
+      detectorInspectionLog: { create: mock(() => ({})) },
+      detectorRuntimeMapping: { findMany: async () => [] },
+    }
+
+    let aiResolverCalled = false
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["artisan", "composer.json"],
+        truncated: false,
+      }),
+      resolveWithAiToolCalling: async () => {
+        aiResolverCalled = true
+        return {
+          decision: {
+            primaryFrameworkId: "laravel",
+            frameworkVersion: "10",
+            ecosystem: "php",
+            confidence: 0.95,
+            requiredRuntimeIds: ["php"],
+            reasoning: ["artisan and composer.json found"],
+          },
+          toolCalls: [],
+        }
+      },
+      prisma: mockPrisma,
+    }
+
+    const result = await detectFrameworkFromGithubApi(
+      {
+        installationId: 12345,
+        owner: "test-org",
+        repo: "test-repo",
+      },
+      dependencies
+    )
+
+    expect(aiResolverCalled).toBe(true)
+    // HINT rule should not directly set decision.status
+    expect(result.decision.status).not.toBe("hint")
+    expect(result.decision.status).toBe("success")
+  })
+})
