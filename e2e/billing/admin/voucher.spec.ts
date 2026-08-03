@@ -12,7 +12,7 @@
 
 import { test, expect } from "@playwright/test"
 
-test.describe("Voucher Management (admin)", () => {
+test.describe("Voucher Management (admin) @e2e/billing/admin/voucher", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/en/portal/billing/voucher")
   })

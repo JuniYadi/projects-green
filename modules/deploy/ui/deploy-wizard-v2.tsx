@@ -104,7 +104,9 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isDetecting, setIsDetecting] = useState(false)
   const [detectionError, setDetectionError] = useState<string | null>(null)
-  const detectionAbortRef = useRef<AbortController | null>(null)
+  const [detectionAttempt, setDetectionAttempt] = useState(1)
+  const [detectionRetrying, setDetectionRetrying] = useState(false)
+  const [detectionRunKey, setDetectionRunKey] = useState(0)
 
   const githubConnectionStatus: GithubConnectionStatus = (() => {
     const status = searchParams.get("github")
@@ -337,8 +339,155 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
       controller.abort()
     }
   }, [repositorySearch, state.source.ownerId])
+  const detectionAttemptRef = useRef(0)
+  const detectionControllerRef = useRef<AbortController | null>(null)
 
-  const sourceValid = validateSourceStep(state.source)
+  useEffect(() => {
+    if (state.source.sourceType !== "github" || !state.source.repositoryId) {
+      return
+    }
+    if (state.detectionResult != null) return
+    if (detectionError != null) return
+
+    const repo =
+      repositoryById[state.source.repositoryId] ??
+      repositoryOptions.find(
+        (repository) => repository.id === state.source.repositoryId
+      )
+    if (!repo) return
+
+    detectionControllerRef.current?.abort()
+    const controller = new AbortController()
+    detectionControllerRef.current = controller
+
+    const shouldRetry = (err: unknown): boolean => {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return false
+      }
+      if (!(err instanceof DetectionError)) return false
+
+      return ["NETWORK_ERROR", "API_ERROR", "DETECTION_FAILED"].includes(
+        err.code
+      )
+    }
+
+    const waitForRetry = async (attempt: number) => {
+      await new Promise<void>((resolve) => {
+        const timeoutId = window.setTimeout(resolve, 1000 * attempt)
+        const handleAbort = () => {
+          window.clearTimeout(timeoutId)
+          resolve()
+        }
+        controller.signal.addEventListener("abort", handleAbort, {
+          once: true,
+        })
+      })
+    }
+
+    const run = async () => {
+      setIsDetecting(true)
+      setDetectionError(null)
+      setDetectionRetrying(false)
+      dispatch({ type: "set-detection", payload: null })
+      dispatch({ type: "set-build", payload: null })
+
+      for (let attempt = 1; attempt <= 3; attempt += 1) {
+        if (controller.signal.aborted) return
+
+        setDetectionAttempt(attempt)
+        detectionAttemptRef.current = attempt
+        setDetectionRetrying(attempt > 1)
+
+        try {
+          const result = await fetchFrameworkDetection(
+            {
+              installationId: repo.installationId,
+              owner: repo.ownerId,
+              repo: repo.name,
+              ref: state.source.branchName || undefined,
+              subdir: state.source.rootDirectory || undefined,
+            },
+            controller.signal
+          )
+          if (controller.signal.aborted) return
+
+          dispatch({ type: "set-detection", payload: result })
+          dispatch({
+            type: "set-build",
+            payload: {
+              language: result.language ?? "",
+              framework: result.framework ?? "",
+              frameworkVersion: result.frameworkVersion ?? "",
+              buildCommand: result.buildCommand ?? "",
+              useDockerfile: result.dockerfileDetected,
+              primaryEngine: result.primaryEngine ?? "",
+              primaryEngineVersion: result.primaryEngineVersion ?? "",
+              secondaryEngine: result.secondaryEngine ?? "",
+              secondaryEngineVersion: result.secondaryEngineVersion ?? "",
+              defaultPort: result.defaultPort ?? 0,
+            },
+          })
+
+          const recommendation = recommendPlan(result)
+          dispatch({
+            type: "set-environment",
+            payload: {
+              resourcePlanId: recommendation.resourcePlanId,
+              cpu: recommendation.cpu ?? state.environment.cpu,
+              memory: recommendation.memory ?? state.environment.memory,
+            },
+          })
+          return
+        } catch (err) {
+          if (controller.signal.aborted) return
+
+          const message =
+            err instanceof DetectionError
+              ? err.message
+              : "Failed to detect framework. You can configure build settings manually."
+
+          if (!shouldRetry(err) || attempt === 3) {
+            setDetectionError(message)
+            return
+          }
+
+          setDetectionRetrying(true)
+          await waitForRetry(attempt)
+        }
+      }
+    }
+
+    void run().finally(() => {
+      if (!controller.signal.aborted) {
+        setIsDetecting(false)
+        setDetectionRetrying(false)
+      }
+    })
+
+    return () => {
+      controller.abort()
+      setIsDetecting(false)
+      setDetectionRetrying(false)
+    }
+  }, [
+    dispatch,
+    state.source.sourceType,
+    state.source.repositoryId,
+    state.source.branchName,
+    state.source.rootDirectory,
+    state.detectionResult,
+    detectionError,
+    detectionRunKey,
+    repositoryById,
+    repositoryOptions,
+    state.environment.cpu,
+    state.environment.memory,
+  ])
+
+  const sourceValid =
+    state.source.sourceType === "public"
+      ? state.source.publicSourceUrl?.trim().startsWith("https://") === true
+      : validateSourceStep(state.source)
   const buildValid = validateBuildStep(state.build, state.detectionResult)
   const environmentValidationMessages = getEnvironmentValidationMessages(
     state.environment
@@ -362,6 +511,9 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
   }
 
   useEffect(() => {
+    if (!searchParams.has(DEPLOY_STEP_QUERY_KEY)) {
+      return
+    }
     const queryStep = parseStepQueryValue(
       searchParams.get(DEPLOY_STEP_QUERY_KEY)
     )
@@ -466,16 +618,13 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
     dispatch({ type: "set-detection", payload: null })
   }
 
-  const handleRepositorySelect = async (repositoryId: string) => {
+  const handleRepositorySelect = (repositoryId: string) => {
     const repo = repositoryById[repositoryId]
     const defaultBranchFromApi = repo?.defaultBranch ?? ""
     const branchName =
       defaultBranchFromApi || getDefaultBranchName(repositoryId)
 
-    detectionAbortRef.current?.abort()
-    const controller = new AbortController()
-    detectionAbortRef.current = controller
-
+    setDetectionError(null)
     dispatch({
       type: "set-source",
       payload: {
@@ -485,73 +634,8 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
         templateId: undefined,
       },
     })
-
-    setIsDetecting(true)
-    setDetectionError(null)
     dispatch({ type: "set-detection", payload: null })
     dispatch({ type: "set-build", payload: null })
-
-    if (repo) {
-      try {
-        const detectionResult = await fetchFrameworkDetection(
-          {
-            installationId: repo.installationId,
-            owner: repo.ownerId,
-            repo: repo.name,
-            ref: branchName || undefined,
-            subdir: undefined,
-          },
-          controller.signal
-        )
-
-        if (controller.signal.aborted) return
-
-        dispatch({ type: "set-detection", payload: detectionResult })
-        dispatch({
-          type: "set-build",
-          payload: {
-            language: detectionResult.language ?? "",
-            framework: detectionResult.framework ?? "",
-            frameworkVersion: detectionResult.frameworkVersion ?? "",
-            buildCommand: detectionResult.buildCommand ?? "",
-            useDockerfile: detectionResult.dockerfileDetected,
-            primaryEngine: detectionResult.primaryEngine ?? "",
-            primaryEngineVersion: detectionResult.primaryEngineVersion ?? "",
-            secondaryEngine: detectionResult.secondaryEngine ?? "",
-            secondaryEngineVersion:
-              detectionResult.secondaryEngineVersion ?? "",
-            defaultPort: detectionResult.defaultPort ?? 0,
-          },
-        })
-
-        const recommendation = recommendPlan(detectionResult)
-        dispatch({
-          type: "set-environment",
-          payload: {
-            resourcePlanId: recommendation.resourcePlanId,
-            cpu: recommendation.cpu ?? state.environment.cpu,
-            memory: recommendation.memory ?? state.environment.memory,
-          },
-        })
-      } catch (err) {
-        if (err instanceof DOMException && err.name === "AbortError") return
-
-        const message =
-          err instanceof DetectionError
-            ? err.message
-            : "Failed to detect framework. You can configure build settings manually."
-
-        setDetectionError(message)
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsDetecting(false)
-        }
-      }
-    } else {
-      setIsDetecting(false)
-    }
-
-    detectionAbortRef.current = null
   }
 
   const handleTemplateSelect = (templateId: DeployTemplateId) => {
@@ -715,11 +799,28 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
           rootDirectory={state.source.rootDirectory}
           appName={state.source.appName}
           templateResourcePlanId={state.environment.resourcePlanId}
+          publicSourceUrl={state.source.publicSourceUrl}
+          publicSourceRef={state.source.publicSourceRef}
+          onPublicSourceUrlChange={(url) => {
+            dispatch({ type: "set-source", payload: { publicSourceUrl: url } })
+          }}
+          onPublicSourceRefChange={(ref) => {
+            dispatch({ type: "set-source", payload: { publicSourceRef: ref } })
+          }}
           canProceed={sourceValid}
           isDetecting={isDetecting}
           detectionError={detectionError}
           onSourceTypeChange={(sourceType) => {
-            dispatch({ type: "set-source", payload: { sourceType } })
+            dispatch({
+              type: "set-source",
+              payload: {
+                sourceType,
+                publicSourceUrl:
+                  sourceType === "public" ? state.source.publicSourceUrl : "",
+                publicSourceRef:
+                  sourceType === "public" ? state.source.publicSourceRef : "",
+              },
+            })
           }}
           onTemplateSelect={handleTemplateSelect}
           onOwnerSearchChange={setOwnerSearch}
@@ -778,6 +879,8 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
         <StepDetectV2
           detectionResult={state.detectionResult}
           isDetecting={isDetecting}
+          detectionRetrying={detectionRetrying}
+          detectionAttempt={detectionAttempt}
           detectionError={detectionError}
           buildState={state.build}
           manualOverrideRequired={manualOverrideRequired}
@@ -785,6 +888,14 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
           onBack={() => navigateStep("connect")}
           onNext={handleDetectNext}
           onBuildFieldChange={buildFieldChange}
+          onRetry={() => {
+            detectionAttemptRef.current = 0
+            setDetectionAttempt(1)
+            setDetectionError(null)
+            dispatch({ type: "set-detection", payload: null })
+            dispatch({ type: "set-build", payload: null })
+            setDetectionRunKey((current) => current + 1)
+          }}
         />
       )
     }
@@ -893,20 +1004,14 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <div className="rounded-lg border border-border bg-card px-4 py-2 text-xs shadow-sm">
-            <span className="block text-muted-foreground">Target route</span>
-            <code className="font-mono text-primary">/console/app/deploy</code>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Reset deploy wizard"
-            onClick={() => dispatch({ type: "reset" })}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Reset deploy wizard"
+          onClick={() => dispatch({ type: "reset" })}
+        >
+          <X className="h-4 w-4" />
+        </Button>
       </header>
 
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">

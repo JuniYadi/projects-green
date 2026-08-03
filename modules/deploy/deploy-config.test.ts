@@ -205,3 +205,67 @@ describe("buildDeployConfig — unhappy path", () => {
     expect(result.ok).toBe(false)
   })
 })
+
+describe("buildDeployConfig — public source", () => {
+  it("assembles config for public source with HTTPS URL", () => {
+    const result = buildDeployConfig({
+      ...baseState(),
+      source: {
+        ...validSource,
+        sourceType: "public",
+        ownerId: "",
+        repositoryId: "",
+        publicSourceUrl: "https://github.com/org/repo",
+        publicSourceRef: "main",
+        appName: "my-public-app",
+      },
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.config.source.sourceType).toBe("public")
+    expect(result.config.source.publicSourceUrl).toBe(
+      "https://github.com/org/repo"
+    )
+    expect(result.config.source.publicSourceRef).toBe("main")
+    expect(result.config.source.appName).toBe("my-public-app")
+  })
+
+  it("rejects public source without URL", () => {
+    const result = buildDeployConfig({
+      ...baseState(),
+      source: {
+        ...validSource,
+        sourceType: "public",
+        ownerId: "",
+        repositoryId: "",
+        publicSourceUrl: "",
+      },
+    })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(
+      result.errors.some((e) => e.field === "source.publicSourceUrl")
+    ).toBe(true)
+  })
+
+  it("rejects public source with non-HTTPS URL", () => {
+    const result = buildDeployConfig({
+      ...baseState(),
+      source: {
+        ...validSource,
+        sourceType: "public",
+        ownerId: "",
+        repositoryId: "",
+        publicSourceUrl: "http://github.com/org/repo",
+      },
+    })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(
+      result.errors.some((e) => e.field === "source.publicSourceUrl")
+    ).toBe(true)
+  })
+})

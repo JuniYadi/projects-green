@@ -18,87 +18,105 @@ export const createDocsConsoleRoutes = () =>
       // For a simple listing, we'll fetch all and group by path, preferring org-specific.
       const docs = await prisma.docsKnowledgeDocument.findMany({
         where: {
-          OR: [
-            { organizationId: organizationId },
-            { organizationId: null }
-          ]
+          OR: [{ organizationId: organizationId }, { organizationId: null }],
         },
         orderBy: [
           { path: "asc" },
-          { organizationId: "desc" } // nulls last in some DBs, but here we want non-null first for same path
-        ]
+          { organizationId: "desc" }, // nulls last in some DBs, but here we want non-null first for same path
+        ],
       })
 
       // Unique by path, preferring organizationId if present
       const uniqueDocs = Array.from(
-        docs.reduce((acc: Map<string, { id: string; path: string; title: string; updatedAt: string; isGlobal: boolean }>, doc) => {
-          if (!acc.has(doc.path) || doc.organizationId !== null) {
-            acc.set(doc.path, {
-              id: doc.id,
-              path: doc.path,
-              title: doc.title,
-              updatedAt: doc.updatedAt.toISOString(),
-              isGlobal: doc.organizationId === null
-            })
-          }
-          return acc
-        }, new Map()).values()
+        docs
+          .reduce(
+            (
+              acc: Map<
+                string,
+                {
+                  id: string
+                  path: string
+                  title: string
+                  updatedAt: string
+                  isGlobal: boolean
+                }
+              >,
+              doc
+            ) => {
+              if (!acc.has(doc.path) || doc.organizationId !== null) {
+                acc.set(doc.path, {
+                  id: doc.id,
+                  path: doc.path,
+                  title: doc.title,
+                  updatedAt: doc.updatedAt.toISOString(),
+                  isGlobal: doc.organizationId === null,
+                })
+              }
+              return acc
+            },
+            new Map()
+          )
+          .values()
       )
 
       return {
         ok: true,
-        docs: uniqueDocs
+        docs: uniqueDocs,
       }
     })
-    .get("/docs/search", async ({ query, set }) => {
-      const auth = await withAuth()
-      if (!auth.user) {
-        set.status = 401
-        return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+    .get(
+      "/docs/search",
+      async ({ query, set }) => {
+        const auth = await withAuth()
+        if (!auth.user) {
+          set.status = 401
+          return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+        }
+
+        const { q } = query
+        if (!q) {
+          return { ok: true, docs: [] }
+        }
+
+        const organizationId = auth.organizationId ?? null
+
+        // Simple search for now
+        const docs = await prisma.docsKnowledgeDocument.findMany({
+          where: {
+            AND: [
+              {
+                OR: [
+                  { organizationId: organizationId },
+                  { organizationId: null },
+                ],
+              },
+              {
+                OR: [
+                  { title: { contains: q, mode: "insensitive" } },
+                  { searchText: { contains: q, mode: "insensitive" } },
+                ],
+              },
+            ],
+          },
+          take: 10,
+        })
+
+        return {
+          ok: true,
+          docs: docs.map((d) => ({
+            id: d.id,
+            path: d.path,
+            title: d.title,
+            updatedAt: d.updatedAt.toISOString(),
+            isGlobal: d.organizationId === null,
+          })),
+        }
+      },
+      {
+        query: t.Object({
+          q: t.Optional(t.String()),
+        }),
       }
-
-      const { q } = query
-      if (!q) {
-        return { ok: true, docs: [] }
-      }
-
-      const organizationId = auth.organizationId ?? null
-
-      // Simple search for now
-      const docs = await prisma.docsKnowledgeDocument.findMany({
-        where: {
-          AND: [
-            {
-              OR: [
-                { organizationId: organizationId },
-                { organizationId: null }
-              ]
-            },
-            {
-              OR: [
-                { title: { contains: q, mode: "insensitive" } },
-                { searchText: { contains: q, mode: "insensitive" } }
-              ]
-            }
-          ]
-        },
-        take: 10
-      })
-
-      return {
-        ok: true,
-        docs: docs.map(d => ({
-          id: d.id,
-          path: d.path,
-          title: d.title,
-          updatedAt: d.updatedAt.toISOString(),
-          isGlobal: d.organizationId === null
-        }))
-      }
-    }, {
-      query: t.Object({
-        q: t.Optional(t.String())
-      })
-    })
+    )
 
 export const docsConsoleRoutes = createDocsConsoleRoutes()

@@ -7,7 +7,7 @@
 
 import { test, expect } from "@playwright/test"
 
-test.describe("WhatsApp Dashboard (authenticated)", () => {
+test.describe("WhatsApp Dashboard (authenticated) @e2e/whatsapp/console/dashboard", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/en/console/whatsapp/dashboard")
   })

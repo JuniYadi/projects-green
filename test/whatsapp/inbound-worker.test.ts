@@ -52,6 +52,23 @@ mock.module("@/lib/prisma", () => ({
     whatsappContact: {
       upsert: mock(async () => ({})),
     },
+    whatsappWebhook: {
+      findUnique: mock(async () => null),
+      findMany: mock(async () => []),
+    },
+    whatsappMedia: {
+      findUnique: mock(async () => null),
+      upsert: mock(async () => ({ id: "media-1" })),
+    },
+  },
+}))
+
+mock.module("@/lib/whatsapp/meta-cloud/device-client", () => ({
+  WhatsAppDeviceClient: {
+    fromDevice: mock(async () => ({
+      getMedia: mock(async () => ({ mime_type: "image/jpeg", sha256: null })),
+      downloadMedia: mock(async () => new ArrayBuffer(0)),
+    })),
   },
 }))
 

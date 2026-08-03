@@ -26,6 +26,9 @@ const mockRedisDel = mock(async (key: string): Promise<number> => {
   redisStore.delete(key)
   return 1
 })
+const mockRedisExists = mock(async (key: string): Promise<number> => {
+  return redisStore.has(key) ? 1 : 0
+})
 
 const mockPrismaFindUnique = mock(
   async (): Promise<Record<string, unknown> | null> => {
@@ -48,6 +51,7 @@ mock.module("@/lib/redis", () => ({
     get: mockRedisGet,
     set: mockRedisSet,
     del: mockRedisDel,
+    exists: mockRedisExists,
   },
 }))
 
@@ -113,6 +117,9 @@ function defaultRedisDel(key: string): Promise<number> {
   redisStore.delete(key)
   return Promise.resolve(1)
 }
+function defaultRedisExists(key: string): Promise<number> {
+  return Promise.resolve(redisStore.has(key) ? 1 : 0)
+}
 
 // ponytail: kept for reference, no longer used by mockImplementation
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -162,7 +169,7 @@ beforeEach(() => {
   mockRedisGet.mockReset()
   mockRedisSet.mockReset()
   mockRedisDel.mockReset()
-
+  mockRedisExists.mockReset()
   mockPrismaFindUnique.mockReset()
   mockPrismaUpsert.mockReset()
   mockPrismaDelete.mockReset()
@@ -171,6 +178,7 @@ beforeEach(() => {
   mockRedisGet.mockImplementation(defaultRedisGet)
   mockRedisSet.mockImplementation(defaultRedisSet)
   mockRedisDel.mockImplementation(defaultRedisDel)
+  mockRedisExists.mockImplementation(defaultRedisExists)
   mockPrismaFindUnique.mockImplementation(async () => null)
   mockPrismaUpsert.mockImplementation(defaultPrismaUpsert)
   mockPrismaDelete.mockImplementation(defaultPrismaDelete)

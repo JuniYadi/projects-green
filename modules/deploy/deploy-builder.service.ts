@@ -168,6 +168,36 @@ export async function processQueuedDeployment(deploymentId: string) {
             // Non-fatal — continue; Jenkins webhook will update status
           }
         }
+      } else if (stack.sourceType === "PUBLIC" && stack.publicSourceUrl) {
+        try {
+          const jobName = `deploy-${stack.slug}`
+          await triggerJenkinsJob(
+            jobName,
+            {
+              PUBLIC_SOURCE_URL: stack.publicSourceUrl,
+              GIT_REF: stack.publicSourceRef ?? stack.branchName,
+              STACK_ID: stack.id,
+              ...(jenkinsConfig?.webhookToken
+                ? { PFNAPP_WEBHOOK_TOKEN: jenkinsConfig.webhookToken }
+                : {}),
+            },
+            jenkinsApiConfig
+          )
+          await recordDeployEventOnce(
+            {
+              deploymentId: deployment.id,
+              type: "JENKINS_JOB_TRIGGERED",
+              message: `Jenkins public-source job triggered for ${stack.slug}`,
+              metadata: { jobName, sourceUrl: stack.publicSourceUrl },
+            },
+            tx
+          )
+        } catch (error) {
+          console.error(
+            `[deploy-builder] Public Jenkins trigger failed for ${stack.slug}:`,
+            error
+          )
+        }
       }
 
       // Step 3: Generate and push Helm manifests. With the image-ready webhook

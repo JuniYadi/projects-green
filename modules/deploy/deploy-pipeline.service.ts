@@ -15,8 +15,10 @@ export type StackUpsertInput = {
   organizationId: string
   name: string
   slug: string
-  sourceType: "GITHUB" | "TEMPLATE"
+  sourceType: "GITHUB" | "TEMPLATE" | "PUBLIC"
   repositoryConnectionId?: string | null
+  publicSourceUrl?: string | null
+  publicSourceRef?: string | null
   branchName?: string | null
   rootDirectory?: string | null
   framework?: string | null
@@ -168,6 +170,8 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       slug: input.slug,
       sourceType: input.sourceType,
       repositoryConnectionId: input.repositoryConnectionId ?? null,
+      publicSourceUrl: input.publicSourceUrl ?? null,
+      publicSourceRef: input.publicSourceRef ?? null,
       branchName: input.branchName || undefined,
       rootDirectory: input.rootDirectory || undefined,
       framework: input.framework ?? null,
@@ -218,7 +222,7 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
 
 export async function triggerDeploy(params: {
   stackId: string
-  triggerType?: "MANUAL" | "GITHUB" | "TEMPLATE"
+  triggerType?: "MANUAL" | "GITHUB" | "TEMPLATE" | "PUBLIC"
 }) {
   // Count previous non-rollback deployments to set attempt number
   const previousAttempts = await prisma.applicationDeployment.count({
@@ -248,6 +252,8 @@ export async function triggerDeploy(params: {
         commitSha: null,
         commitMessage: null,
         commitAuthor: null,
+        sourceUrl: stack.publicSourceUrl,
+        sourceRef: stack.publicSourceRef,
         branchName: stack.branchName,
         attempt: previousAttempts + 1,
       },

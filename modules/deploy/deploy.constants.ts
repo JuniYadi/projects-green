@@ -57,6 +57,8 @@ export const DEFAULT_SOURCE_STATE: DeploySourceState = {
   repositoryId: "",
   branchName: "",
   rootDirectory: "/",
+  publicSourceUrl: "",
+  publicSourceRef: "",
 }
 
 export const DEFAULT_BUILD_STATE: DeployBuildState = {

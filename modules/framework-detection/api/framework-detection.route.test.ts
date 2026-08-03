@@ -243,5 +243,39 @@ describe("frameworkDetectionRoutes", () => {
       expect(body.error).toBe("DETECTION_FAILED")
       expect(body.message).toBe("GitHub API rate limit exceeded")
     })
+    it("hides verbose AI schema details from API errors", async () => {
+      const app = new Elysia().use(
+        createFrameworkDetectionRoutes(
+          async () => {
+            throw new Error("should not be called")
+          },
+          async () => {
+            throw new Error(
+              'Detection failed: AI returned an invalid decision schema: [{"path":["confidence"]}]'
+            )
+          }
+        )
+      )
+
+      const response = await app.handle(
+        new Request("http://localhost/framework-detection/github", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            installationId: 12345,
+            owner: "test-org",
+            repo: "test-repo",
+          }),
+        })
+      )
+
+      const body = (await response.json()) as { message: string }
+
+      expect(body.message).toBe(
+        "Automatic detection could not validate the AI response. Retry detection or configure build settings manually."
+      )
+    })
   })
 })

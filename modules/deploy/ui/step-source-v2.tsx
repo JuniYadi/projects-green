@@ -22,6 +22,7 @@ import {
   Check,
   FileCode,
   List,
+  Globe,
 } from "@/components/ui/phosphor-icons"
 import {
   SiN8N,
@@ -57,6 +58,8 @@ export type StepSourceProps = {
   rootDirectory: string
   appName: string
   templateResourcePlanId: ResourcePlanId
+  publicSourceUrl?: string
+  publicSourceRef?: string
   onSourceTypeChange: (type: DeploySourceType) => void
   onTemplateSelect: (templateId: DeployTemplateId) => void
   onOwnerSearchChange: (query: string) => void
@@ -67,6 +70,8 @@ export type StepSourceProps = {
   onRootDirectoryChange: (rootDirectory: string) => void
   onAppNameChange: (appName: string) => void
   onTemplateResourcePlanChange: (resourcePlanId: ResourcePlanId) => void
+  onPublicSourceUrlChange?: (url: string) => void
+  onPublicSourceRefChange?: (ref: string) => void
   onConnectGithub: () => void
   onCancel: () => void
   onNext: () => void
@@ -106,6 +111,7 @@ export function StepSourceV2(props: StepSourceProps) {
   const {
     sourceType,
     templateId,
+    onSourceTypeChange,
     githubConnectionStatus,
     isConnectingGithub,
     githubReconnectRequired = false,
@@ -122,8 +128,6 @@ export function StepSourceV2(props: StepSourceProps) {
     selectedBranchName,
     rootDirectory,
     appName,
-    templateResourcePlanId,
-    onSourceTypeChange,
     onTemplateSelect,
     onRepositorySearchChange,
     onOwnerSelect,
@@ -132,6 +136,11 @@ export function StepSourceV2(props: StepSourceProps) {
     onRootDirectoryChange,
     onAppNameChange,
     onTemplateResourcePlanChange,
+    templateResourcePlanId,
+    publicSourceUrl,
+    publicSourceRef,
+    onPublicSourceUrlChange,
+    onPublicSourceRefChange,
     onConnectGithub,
     onNext,
     canProceed,
@@ -147,7 +156,9 @@ export function StepSourceV2(props: StepSourceProps) {
       ? "github"
       : sourceType === "template" || templateId
         ? "template"
-        : null
+        : sourceType === "public"
+          ? "public"
+          : null
 
   const filteredRepos = useMemo(
     () =>
@@ -610,6 +621,84 @@ export function StepSourceV2(props: StepSourceProps) {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+        </div>
+
+        <div
+          className={cardCls(selCard === "public")}
+          onClick={() => onSourceTypeChange("public")}
+        >
+          <div className="flex items-start gap-3 p-5">
+            <div className={badgeCls(selCard === "public")}>
+              <Globe className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-semibold">Public Source</h3>
+              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                Deploy from a public repository URL. Untrusted code — review
+                before proceeding.
+              </p>
+            </div>
+            <div className={checkCls(selCard === "public")}>
+              {selCard === "public" && <Check className="h-3.5 w-3.5" />}
+            </div>
+          </div>
+
+          {selCard === "public" && (
+            <div
+              className="space-y-3 px-5 pb-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-amber-700 dark:text-amber-400">
+                Untrusted code warning: Public sources are not verified by this
+                platform. Review the repository contents before deploying.
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  Repository URL
+                </label>
+                <Input
+                  placeholder="https://github.com/org/repo"
+                  value={publicSourceUrl ?? ""}
+                  onChange={(e) => onPublicSourceUrlChange?.(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  Branch or Ref{" "}
+                  <span className="text-muted-foreground/60">(optional)</span>
+                </label>
+                <Input
+                  placeholder="main"
+                  value={publicSourceRef ?? ""}
+                  onChange={(e) => onPublicSourceRefChange?.(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  App Name
+                </label>
+                <Input
+                  placeholder="my-public-app"
+                  value={appName}
+                  onChange={(e) => onAppNameChange(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  Root Directory
+                </label>
+                <Input
+                  placeholder="/"
+                  value={rootDirectory}
+                  onChange={(e) => onRootDirectoryChange(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
             </div>
           )}
         </div>

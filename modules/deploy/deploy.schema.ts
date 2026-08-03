@@ -48,6 +48,18 @@ export const sourceStepSchema = z.discriminatedUnion("sourceType", [
     rootDirectory: z.string().trim().min(1, "Root directory is required."),
   }),
   z.object({
+    sourceType: z.literal("public"),
+    publicSourceUrl: z
+      .string()
+      .trim()
+      .url("A valid public Git URL is required."),
+    publicSourceRef: z.string().trim().optional(),
+    branchName: z.string().trim().min(1, "Branch is required."),
+    rootDirectory: z.string().trim().min(1, "Root directory is required."),
+    ownerId: z.string().optional(),
+    repositoryId: z.string().optional(),
+  }),
+  z.object({
     sourceType: z.literal("template"),
     templateId: z.enum([
       "wordpress",

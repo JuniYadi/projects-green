@@ -7,7 +7,7 @@
 
 import { test, expect } from "@playwright/test"
 
-test.describe("Vouchers (console)", () => {
+test.describe("Vouchers (console) @e2e/billing/console/vouchers", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/en/console/billing/vouchers")
   })

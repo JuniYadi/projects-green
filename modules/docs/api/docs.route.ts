@@ -45,7 +45,15 @@ type DocsRouteDependencies = {
   }) => Promise<"none" | "super_admin">
   getDocByPath: typeof getDocByPathService
   upsertDocByPath: typeof upsertDocByPathService
-  listDocs: (organizationId: string | null) => Promise<Array<{ id: string; path: string; title: string; updatedAt: string; score: number }>>
+  listDocs: (organizationId: string | null) => Promise<
+    Array<{
+      id: string
+      path: string
+      title: string
+      updatedAt: string
+      score: number
+    }>
+  >
   deleteDocById: (id: string) => Promise<void>
 }
 

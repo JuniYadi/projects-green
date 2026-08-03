@@ -120,14 +120,33 @@ export const buildDeploySubmitPayload = ({
   deployWithTemplateDefaults?: boolean
 }) => {
   const isTemplate = state.source.sourceType === "template"
+  const isPublic = state.source.sourceType === "public"
 
   return {
-    sourceType: isTemplate ? ("TEMPLATE" as const) : ("GITHUB" as const),
+    sourceType: isTemplate
+      ? ("TEMPLATE" as const)
+      : isPublic
+        ? ("PUBLIC" as const)
+        : ("GITHUB" as const),
     templateId: isTemplate ? state.source.templateId : undefined,
-    repositoryId: isTemplate ? undefined : state.source.repositoryId,
-    name: isTemplate ? state.source.appName || "app" : selectedRepository?.name,
-    branchName: isTemplate ? "/" : state.source.branchName,
-    rootDirectory: isTemplate ? "/" : state.source.rootDirectory || "/",
+    repositoryId:
+      isTemplate || isPublic ? undefined : state.source.repositoryId,
+    name: isTemplate
+      ? state.source.appName || "app"
+      : isPublic
+        ? state.source.appName
+        : selectedRepository?.name,
+    branchName: isTemplate
+      ? "/"
+      : isPublic
+        ? state.source.publicSourceRef || "/"
+        : state.source.branchName,
+    rootDirectory: isTemplate
+      ? "/"
+      : isPublic
+        ? state.source.rootDirectory || "/"
+        : state.source.rootDirectory || "/",
+    publicSourceUrl: isPublic ? state.source.publicSourceUrl : undefined,
     framework: state.build.framework || undefined,
     frameworkVersion: state.build.frameworkVersion || undefined,
     buildCommand: state.build.buildCommand || undefined,

@@ -396,7 +396,9 @@ export const semanticSearchKnowledgeDocs = async (input: {
  * Re-embed all existing documents that have no embedding.
  * Used for migration or when adding semantic search to existing data.
  */
-export const backfillEmbeddings = async (batchSize = 50): Promise<{
+export const backfillEmbeddings = async (
+  batchSize = 50
+): Promise<{
   processed: number
   errors: string[]
 }> => {
@@ -457,10 +459,7 @@ export const listDocs = async (
 ): Promise<KnowledgeDocMatch[]> => {
   const where = organizationId
     ? {
-        OR: [
-          { organizationId },
-          { organizationId: null },
-        ],
+        OR: [{ organizationId }, { organizationId: null }],
       }
     : { organizationId: null }
 

@@ -1,6 +1,6 @@
 export type DeployStep = "source" | "connect" | "detect" | "review" | "deploy"
 
-export type DeploySourceType = "github" | "template"
+export type DeploySourceType = "github" | "template" | "public"
 
 export type DeployTemplateId =
   | "wordpress"
@@ -119,6 +119,8 @@ export type DeploySourceState = {
   repositoryId: string
   branchName: string
   rootDirectory: string
+  publicSourceUrl?: string
+  publicSourceRef?: string
 }
 export type DeployBuildState = {
   language: string

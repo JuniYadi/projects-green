@@ -270,4 +270,77 @@ describe("deploySubmitRoutes /submit", () => {
     const body = (await res.json()) as { error: string }
     expect(body.error).toBe("FORBIDDEN")
   })
+
+  it("returns 422 for an unknown templateId", async () => {
+    const res = await submit({
+      sourceType: "TEMPLATE",
+      templateId: "nonexistent",
+      resourcePlanId: "payg",
+    })
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { error: string }
+    expect(body.error).toBe("UNKNOWN_TEMPLATE")
+    expect(mockPrisma.applicationStack.create).not.toHaveBeenCalled()
+  })
+
+  it("returns 422 for an invalid public source URL", async () => {
+    const res = await submit({
+      sourceType: "PUBLIC",
+      publicSourceUrl: "http://example.com/repo.git",
+      resourcePlanId: "payg",
+    })
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { error: string }
+    expect(body.error).toBe("INVALID_PUBLIC_SOURCE")
+    expect(mockPrisma.applicationStack.create).not.toHaveBeenCalled()
+  })
+
+  it("returns 422 for a non-numeric repositoryId", async () => {
+    const res = await submit({
+      repositoryId: "abc",
+      resourcePlanId: "payg",
+    })
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { error: string }
+    expect(body.error).toBe("INVALID_REPOSITORY")
+    expect(
+      mockPrisma.githubRepositoryConnection.findFirst
+    ).not.toHaveBeenCalled()
+  })
+
+  it("returns 402 when the billing account is not found", async () => {
+    mockPrisma.billingAccount.findUnique.mockResolvedValue(null as never)
+    const res = await submit(validBody)
+    expect(res.status).toBe(402)
+    const body = (await res.json()) as { error: string; topupUrl: string }
+    expect(body.error).toBe("BILLING_ACCOUNT_NOT_FOUND")
+    expect(body.topupUrl).toBe("/console/billing/topup")
+    expect(mockPrisma.applicationDeployment.create).not.toHaveBeenCalled()
+  })
+
+  it("returns 409 when multiple active default clusters are configured", async () => {
+    mockPrisma.appHostingCluster.findMany.mockResolvedValue([
+      {
+        id: "cluster-sgp",
+        code: "sgp",
+        name: "Singapore Production",
+        region: "Singapore",
+        status: "ACTIVE",
+        isDefault: true,
+      },
+      {
+        id: "cluster-usw",
+        code: "usw",
+        name: "US West Production",
+        region: "US West",
+        status: "ACTIVE",
+        isDefault: true,
+      },
+    ] as never)
+    const res = await submit(validBody)
+    expect(res.status).toBe(409)
+    const body = (await res.json()) as { error: string }
+    expect(body.error).toBe("APP_HOSTING_CLUSTER_NOT_CONFIGURED")
+    expect(mockPrisma.applicationDeployment.create).not.toHaveBeenCalled()
+  })
 })

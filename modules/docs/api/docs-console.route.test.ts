@@ -67,9 +67,7 @@ beforeEach(() => {
 describe("docsConsoleRoutes", () => {
   it("GET /docs/list returns docs for the organization and global", async () => {
     const app = createDocsConsoleRoutes()
-    const response = await app.handle(
-      new Request("http://localhost/docs/list")
-    )
+    const response = await app.handle(new Request("http://localhost/docs/list"))
     const data = (await response.json()) as { ok: boolean; docs: unknown[] }
 
     expect(response.status).toBe(200)
