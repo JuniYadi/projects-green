@@ -2474,6 +2474,7 @@ model AppHostingCluster {
 
   integrations AppHostingClusterIntegration[]
   stacks       ApplicationStack[]
+  managedServiceCredentials AppManagedServiceCredential[]
 
   @@index([status])
   @@index([isDefault])
@@ -2496,5 +2497,39 @@ model AppHostingClusterIntegration {
   @@unique([clusterId, type])
   @@index([clusterId])
   @@index([type])
+  @@index([isActive])
+}
+
+enum AppManagedServiceType {
+  MYSQL
+  POSTGRESQL
+  REDIS
+}
+
+enum AppManagedServiceCredentialStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model AppManagedServiceCredential {
+  id              String                          @id @default(cuid())
+  clusterId       String
+  serviceType     AppManagedServiceType
+  endpointHost    String
+  endpointPort    Int
+  tlsEnabled      Boolean                         @default(false)
+  username        String?
+  secretCiphertext String?
+  secretPreview   String?
+  isActive        Boolean                         @default(true)
+  keyVersion      Int                             @default(1)
+  createdAt       DateTime                        @default(now())
+  updatedAt       DateTime                        @updatedAt
+
+  cluster AppHostingCluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+
+  @@unique([clusterId, serviceType])
+  @@index([clusterId])
+  @@index([serviceType])
   @@index([isActive])
 }
