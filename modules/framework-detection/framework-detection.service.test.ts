@@ -1323,7 +1323,7 @@ describe("detectFrameworkFromGithubApi - malformed AI with active rules", () => 
           },
         ],
       },
-      detectorInspectionLog: { create: async () => ({}) },
+      detectorInspectionLog: { create: mock(() => ({})) },
       detectorRuntimeMapping: { findMany: async () => [] },
     }
 

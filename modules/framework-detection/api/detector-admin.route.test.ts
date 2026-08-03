@@ -177,9 +177,11 @@ describe("detectorAdminRoutes", () => {
   })
 
   it("returns 400 for rule with empty patternJson", async () => {
+    const mockCreate = mock(() => Promise.resolve(createMockDetectorRule()))
     const app = new Elysia().use(
       createDetectorAdminRoutes({
         requireSuperAdmin: mockGuardPass,
+        createDetectorRule: mockCreate,
       })
     )
 
@@ -199,9 +201,11 @@ describe("detectorAdminRoutes", () => {
   })
 
   it("returns 400 for rule with unsupported patternJson keys and BLOCK impact", async () => {
+    const mockCreate = mock(() => Promise.resolve(createMockDetectorRule()))
     const app = new Elysia().use(
       createDetectorAdminRoutes({
         requireSuperAdmin: mockGuardPass,
+        createDetectorRule: mockCreate,
       })
     )
 
