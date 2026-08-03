@@ -1,21 +1,6 @@
-export type AppManagedServiceType = "MYSQL" | "POSTGRESQL" | "REDIS"
+import type { AppManagedServiceType } from "@prisma/client"
 
-export type AppManagedServiceCredentialStatus = "ACTIVE" | "INACTIVE"
-
-export type AppManagedServiceCredential = {
-  id: string
-  clusterId: string
-  serviceType: AppManagedServiceType
-  endpointHost: string
-  endpointPort: number
-  tlsEnabled: boolean
-  username: string | null
-  secretPreview: string | null
-  isActive: boolean
-  keyVersion: number
-  createdAt: Date
-  updatedAt: Date
-}
+export type { AppManagedServiceType } from "@prisma/client"
 
 export type AppManagedServiceCredentialUpsertInput = {
   endpointHost: string

@@ -1,4 +1,4 @@
-import type { AppManagedServiceCredential } from "@/modules/deploy/app-managed-service.types"
+import type { AppManagedServiceCredential } from "@prisma/client"
 
 export type AppManagedServiceCredentialDTO = {
   id: string

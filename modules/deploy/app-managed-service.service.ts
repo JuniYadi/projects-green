@@ -1,3 +1,8 @@
+import type {
+  AppManagedServiceCredential,
+  AppManagedServiceType,
+} from "@prisma/client"
+
 import {
   decrypt,
   deriveEncryptionKey,
@@ -7,11 +12,9 @@ import {
 } from "@/lib/encryption"
 import { prisma } from "@/lib/prisma"
 import type {
-  AppManagedServiceCredential,
   AppManagedServiceCredentialUpsertInput,
   AppManagedServiceCredentialStatusUpdateInput,
   AppManagedServiceInternalConfig,
-  AppManagedServiceType,
 } from "@/modules/deploy/app-managed-service.types"
 
 const MANAGED_SERVICE_KEY_SALT = "app-managed-service-credential"

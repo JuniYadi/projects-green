@@ -1,9 +1,10 @@
-import { describe, expect, it, mock, beforeEach } from "bun:test"
+import { describe, expect, it, mock, beforeEach, type Mock } from "bun:test"
+type MockAsync = Mock<(args?: unknown) => Promise<unknown>>
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
     appHostingCluster: {
-      findUnique: mock(async () => null),
+      findUnique: mock(async () => ({ id: "cl_1" })),
     },
     appManagedServiceCredential: {
       findUnique: mock(async () => null),
@@ -22,7 +23,7 @@ mock.module("@/lib/prisma", () => ({
         createdAt: new Date("2026-01-01T00:00:00.000Z"),
         updatedAt: new Date("2026-01-01T00:00:00.000Z"),
       })),
-      update: mock(async () => ({
+      update: mock(async ({ data }: { data: { isActive: boolean } }) => ({
         id: "cred_1",
         clusterId: "cl_1",
         serviceType: "MYSQL",
@@ -32,7 +33,7 @@ mock.module("@/lib/prisma", () => ({
         username: "admin",
         secretCiphertext: null,
         secretPreview: "ab…ef",
-        isActive: true,
+        isActive: data.isActive,
         keyVersion: 1,
         createdAt: new Date("2026-01-01T00:00:00.000Z"),
         updatedAt: new Date("2026-01-01T00:00:00.000Z"),
@@ -137,9 +138,9 @@ describe("AppManagedServiceCredentialService", () => {
 
     it("rejects missing cluster", async () => {
       const { prisma } = await import("@/lib/prisma")
-      ;(prisma.appHostingCluster.findUnique as mock.Mock).mockResolvedValueOnce(
-        null
-      )
+      ;(
+        prisma.appHostingCluster.findUnique as unknown as MockAsync
+      ).mockResolvedValueOnce(null)
 
       await expect(
         upsertAppManagedServiceCredential("cl_missing", "MYSQL", {
@@ -165,7 +166,7 @@ describe("AppManagedServiceCredentialService", () => {
     it("returns decrypted config for active credential", async () => {
       const { prisma } = await import("@/lib/prisma")
       ;(
-        prisma.appManagedServiceCredential.findUnique as mock.Mock
+        prisma.appManagedServiceCredential.findUnique as unknown as MockAsync
       ).mockResolvedValueOnce({
         id: "cred_1",
         clusterId: "cl_1",
@@ -196,7 +197,7 @@ describe("AppManagedServiceCredentialService", () => {
     it("rejects inactive credential", async () => {
       const { prisma } = await import("@/lib/prisma")
       ;(
-        prisma.appManagedServiceCredential.findUnique as mock.Mock
+        prisma.appManagedServiceCredential.findUnique as unknown as MockAsync
       ).mockResolvedValueOnce({
         id: "cred_1",
         clusterId: "cl_1",
@@ -221,7 +222,7 @@ describe("AppManagedServiceCredentialService", () => {
     it("rejects missing credential", async () => {
       const { prisma } = await import("@/lib/prisma")
       ;(
-        prisma.appManagedServiceCredential.findUnique as mock.Mock
+        prisma.appManagedServiceCredential.findUnique as unknown as MockAsync
       ).mockResolvedValueOnce(null)
 
       await expect(
