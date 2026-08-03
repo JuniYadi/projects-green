@@ -85,10 +85,42 @@ describe("AppManagedServiceCredentialService", () => {
       expect(result.serviceType).toBe("MYSQL")
     })
 
+    it("updates isActive when upserting existing credential", async () => {
+      const { prisma } = await import("@/lib/prisma")
+      ;(
+        prisma.appManagedServiceCredential.findUnique as unknown as MockAsync
+      ).mockResolvedValueOnce({ keyVersion: 2 })
+
+      await upsertAppManagedServiceCredential("cl_1", "MYSQL", {
+        endpointHost: "db.example.com",
+        endpointPort: 3306,
+        username: "admin",
+        password: "secret123",
+        isActive: false,
+      })
+
+      const upsert = prisma.appManagedServiceCredential
+        .upsert as unknown as MockAsync
+      expect(upsert.mock.calls[0]?.[0]).toMatchObject({
+        update: { isActive: false },
+      })
+    })
+
     it("rejects empty endpointHost", async () => {
       await expect(
         upsertAppManagedServiceCredential("cl_1", "MYSQL", {
           endpointHost: "",
+          endpointPort: 3306,
+          username: "admin",
+          password: "secret123",
+        })
+      ).rejects.toThrow("endpointHost is required")
+    })
+
+    it("rejects whitespace-only endpointHost", async () => {
+      await expect(
+        upsertAppManagedServiceCredential("cl_1", "MYSQL", {
+          endpointHost: "   ",
           endpointPort: 3306,
           username: "admin",
           password: "secret123",

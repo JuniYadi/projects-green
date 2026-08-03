@@ -33,8 +33,8 @@ function getManagedServiceEncryptionKey(keyVersion = 1): Buffer {
 function validateManagedServiceInput(
   serviceType: AppManagedServiceType,
   input: AppManagedServiceCredentialUpsertInput
-) {
-  if (!input.endpointHost || input.endpointHost.trim().length === 0) {
+): void {
+  if (!input.endpointHost?.trim()) {
     throw new Error("endpointHost is required")
   }
   if (
@@ -162,6 +162,7 @@ export async function upsertAppManagedServiceCredential(
       secretCiphertext,
       secretPreview,
       keyVersion,
+      isActive: input.isActive,
     },
   })
 
