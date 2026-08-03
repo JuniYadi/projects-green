@@ -46,8 +46,8 @@ type RuleFormData = {
 const EMPTY_FORM: RuleFormData = {
   name: "",
   description: "",
-  patternJson: "{}",
-  implicationsJson: "{}",
+  patternJson: '{"files":["artisan"]}',
+  implicationsJson: '{"framework":"laravel","impact":"HINT"}',
   confidenceWeight: 1.0,
   priority: 0,
 }

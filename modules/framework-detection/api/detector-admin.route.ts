@@ -15,23 +15,140 @@ import {
 
 // --- Schemas ---
 
-const createDetectorRuleSchema = z.object({
-  name: z.string().trim().min(1).max(200),
-  description: z.string().trim().max(1000).optional(),
-  patternJson: z.record(z.string(), z.unknown()),
-  implicationsJson: z.record(z.string(), z.unknown()),
-  confidenceWeight: z.number().min(0).max(1).optional(),
-  priority: z.number().int().optional(),
+const detectorRulePatternSchema = z
+  .object({
+    files: z.array(z.string().trim().min(1)).optional(),
+    dependencies: z.array(z.string().trim().min(1)).optional(),
+    frameworkId: z.string().trim().min(1).optional(),
+  })
+  .refine(
+    (pattern) =>
+      Boolean(
+        pattern.files?.length ||
+        pattern.dependencies?.length ||
+        pattern.frameworkId
+      ),
+    "At least one rule pattern is required."
+  )
+
+const detectorRuleImplicationsSchema = z.object({
+  framework: z.string().trim().min(1).optional(),
+  runtime: z.string().trim().min(1).optional(),
+  impact: z.enum(["BLOCK", "HINT", "LAUNCH"]),
+  minConfidence: z.number().min(0).max(1).optional(),
 })
 
-const updateDetectorRuleSchema = z.object({
-  name: z.string().trim().min(1).max(200).optional(),
-  description: z.string().trim().max(1000).nullable().optional(),
+const createDetectorRuleSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    description: z.string().trim().max(1000).optional(),
+    patternJson: detectorRulePatternSchema,
+    implicationsJson: detectorRuleImplicationsSchema,
+    confidenceWeight: z.number().min(0).max(1).optional(),
+    priority: z.number().int().optional(),
+  })
+  .superRefine((val, ctx) => {
+    const impact = val.implicationsJson?.impact
+    if (!impact) return
+    if (impact === "BLOCK" && !val.patternJson?.files?.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "BLOCK requires pattern.files",
+        path: ["patternJson"],
+      })
+    }
+    if (
+      impact === "LAUNCH" &&
+      !val.patternJson?.frameworkId &&
+      !val.implicationsJson?.framework
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "LAUNCH requires pattern.frameworkId or implications.framework",
+        path: ["implicationsJson"],
+      })
+    }
+    if (impact === "HINT") {
+      const hasPatternEvidence =
+        val.patternJson?.files?.length ||
+        val.patternJson?.dependencies?.length ||
+        val.patternJson?.frameworkId
+      if (!hasPatternEvidence && !val.implicationsJson?.framework) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "HINT requires pattern evidence or implications.framework",
+          path: ["implicationsJson"],
+        })
+      }
+    }
+  })
+
+const updateDetectorRuleSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200).optional(),
+    description: z.string().trim().max(1000).nullable().optional(),
+    patternJson: detectorRulePatternSchema.optional(),
+    implicationsJson: detectorRuleImplicationsSchema.optional(),
+    confidenceWeight: z.number().min(0).max(1).optional(),
+    isActive: z.boolean().optional(),
+    priority: z.number().int().optional(),
+  })
+  .superRefine((val, ctx) => {
+    const impact = val.implicationsJson?.impact
+    if (!impact) return
+    if (impact === "BLOCK" && !val.patternJson?.files?.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "BLOCK requires pattern.files",
+        path: ["patternJson"],
+      })
+    }
+    if (
+      impact === "LAUNCH" &&
+      !val.patternJson?.frameworkId &&
+      !val.implicationsJson?.framework
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "LAUNCH requires pattern.frameworkId or implications.framework",
+        path: ["implicationsJson"],
+      })
+    }
+    if (impact === "HINT") {
+      const hasPatternEvidence =
+        val.patternJson?.files?.length ||
+        val.patternJson?.dependencies?.length ||
+        val.patternJson?.frameworkId
+      if (!hasPatternEvidence && !val.implicationsJson?.framework) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "HINT requires pattern evidence or implications.framework",
+          path: ["implicationsJson"],
+        })
+      }
+    }
+  })
+
+// Keep Elysia transport validation permissive; semantic checks below return 400.
+const createDetectorRuleBodySchema = z.object({
+  name: z.string().optional(),
+  description: z.string().optional(),
+  patternJson: z.record(z.string(), z.unknown()),
+  implicationsJson: z.record(z.string(), z.unknown()),
+  confidenceWeight: z.number().optional(),
+  priority: z.number().optional(),
+})
+
+const updateDetectorRuleBodySchema = z.object({
+  name: z.string().optional(),
+  description: z.string().nullable().optional(),
   patternJson: z.record(z.string(), z.unknown()).optional(),
   implicationsJson: z.record(z.string(), z.unknown()).optional(),
-  confidenceWeight: z.number().min(0).max(1).optional(),
+  confidenceWeight: z.number().optional(),
   isActive: z.boolean().optional(),
-  priority: z.number().int().optional(),
+  priority: z.number().optional(),
 })
 
 const createRuntimeMappingSchema = z.object({
@@ -183,7 +300,7 @@ export const createDetectorAdminRoutes = (
           set.status = 201
           return { ok: true as const, data: toDetectorRuleDTO(rule) }
         },
-        { body: createDetectorRuleSchema }
+        { body: createDetectorRuleBodySchema }
       )
       .patch(
         "/admin/detector/rules/:id",
@@ -220,7 +337,7 @@ export const createDetectorAdminRoutes = (
 
           return { ok: true as const, data: toDetectorRuleDTO(rule) }
         },
-        { body: updateDetectorRuleSchema }
+        { body: updateDetectorRuleBodySchema }
       )
       .delete("/admin/detector/rules/:id", async ({ params, set }) => {
         const actor = await guard(set)
