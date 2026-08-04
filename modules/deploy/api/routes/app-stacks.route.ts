@@ -35,7 +35,6 @@ export const recentSourcesRoutes = new Elysia({ prefix: "/deploy" }).get(
     const stacks = await prisma.applicationStack.findMany({
       where: { organizationId: auth.organizationId },
       orderBy: { updatedAt: "desc" },
-      take: limit,
       include: {
         repositoryConnection: {
           select: {
@@ -53,7 +52,8 @@ export const recentSourcesRoutes = new Elysia({ prefix: "/deploy" }).get(
         .map((stack) => mapRecentDeploySource(stack))
         .filter(
           (source): source is NonNullable<typeof source> => source !== null
-        ),
+        )
+        .slice(0, limit),
     }
   },
   {
