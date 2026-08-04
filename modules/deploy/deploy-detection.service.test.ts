@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, mock } from "bun:test"
 import {
   DetectionError,
   fetchFrameworkDetection,
+  fetchPublicFrameworkDetection,
   mapDetectionResultDTO,
 } from "@/modules/deploy/deploy-detection.service"
 import type { DetectionResultDTO } from "@/modules/framework-detection/framework-detection.dto"
@@ -249,6 +250,31 @@ describe("fetchFrameworkDetection", () => {
     expect(body.installationId).toBe(12345)
     expect(body.owner).toBe("test-user")
     expect(body.repo).toBe("my-app")
+  })
+  it("posts exact public payload and maps shared detection DTO", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, ...SUCCESS_DTO }),
+    })
+
+    const input = {
+      repoUrl: "https://gitlab.com/group/project",
+      ref: "release",
+      subdir: "/apps/web",
+    }
+    const result = await fetchPublicFrameworkDetection(input)
+
+    const [url, options] = mockFetch.mock.calls[0]
+    expect(url).toBe("/api/framework-detection")
+    expect(options.method).toBe("POST")
+    expect(options.headers["Content-Type"]).toBe("application/json")
+    expect(JSON.parse(options.body)).toEqual(input)
+    expect(result).toMatchObject({
+      framework: "Next.js",
+      language: "Node.js",
+      status: "success",
+      confidence: 95,
+    })
   })
 
   it("returns mapped DetectionResult on success", async () => {
