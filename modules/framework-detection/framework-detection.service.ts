@@ -8,7 +8,7 @@ import { createOpenAI } from "@ai-sdk/openai"
 import { generateObject, generateText, Output, stepCountIs, tool } from "ai"
 import { z } from "zod"
 
-import { getAiProviderConfig } from "@/lib/ai-config"
+import { DEFAULT_AI_BASE_URL, getAiProviderConfig } from "@/lib/ai-config"
 
 import {
   listRepoFiles,
@@ -18,7 +18,9 @@ import {
 } from "@/modules/github/github.service"
 import type {
   DetectionDecision,
+  DetectionErrorCode,
   DetectionEvidence,
+  DetectionFailureCode,
   DetectionResult,
   DetectedFramework,
   FrameworkDetectionInput,
@@ -162,6 +164,175 @@ export type DetectorDependencies = {
     inventory: Inventory
   ) => Promise<AiDecision>
 }
+export class FrameworkDetectionError extends Error {
+  constructor(
+    public readonly code: DetectionErrorCode,
+    message: string,
+    public readonly inspectionLogId?: string
+  ) {
+    super(message)
+    this.name = "FrameworkDetectionError"
+  }
+}
+
+type ProviderDiagnostics = {
+  model: string
+  baseUrlHost: string
+  httpStatus?: number
+  requestId?: string
+  category:
+    | "configuration"
+    | "schema"
+    | "provider"
+    | "transient_provider"
+    | "network"
+}
+
+const providerModel = () =>
+  process.env.AI_DETECTOR_MODEL?.trim() || "gpt-4.1-mini"
+
+const providerBaseUrlHost = () => {
+  const configured = process.env.AI_BASE_URL?.trim() || DEFAULT_AI_BASE_URL
+  try {
+    return new URL(configured).host
+  } catch {
+    return "invalid"
+  }
+}
+
+const readProviderStatus = (error: unknown) => {
+  if (!error || typeof error !== "object") return undefined
+  const value = error as Record<string, unknown>
+  const response = value.response
+  const responseStatus =
+    response && typeof response === "object"
+      ? (response as Record<string, unknown>).status
+      : undefined
+  const status = value.statusCode ?? value.status ?? responseStatus
+  return typeof status === "number" && Number.isInteger(status)
+    ? status
+    : undefined
+}
+
+const readProviderRequestId = (error: unknown) => {
+  if (!error || typeof error !== "object") return undefined
+  const value = error as Record<string, unknown>
+  const direct = value.requestId ?? value.requestID
+  if (typeof direct === "string" && direct.length > 0)
+    return direct.slice(0, 200)
+
+  const headers = value.responseHeaders
+  if (!headers || typeof headers !== "object") return undefined
+  if (typeof (headers as { get?: unknown }).get === "function") {
+    const id = (headers as { get: (name: string) => string | null }).get(
+      "x-request-id"
+    )
+    return id || undefined
+  }
+  const headerRecord = headers as Record<string, unknown>
+  const id = headerRecord["x-request-id"] ?? headerRecord["request-id"]
+  return typeof id === "string" && id.length > 0 ? id.slice(0, 200) : undefined
+}
+
+const classifyProviderFailure = (
+  error: unknown
+): DetectionFailureCode | "NETWORK_ERROR" => {
+  const message = error instanceof Error ? error.message : ""
+  const status = readProviderStatus(error)
+  const hasSchemaIssues =
+    error !== null &&
+    typeof error === "object" &&
+    "issues" in error &&
+    Array.isArray(error.issues)
+  if (/AI_API_KEY is not configured|API key is not configured/i.test(message)) {
+    return "DETECTION_CONFIG_ERROR"
+  }
+  if (
+    hasSchemaIssues ||
+    /schema|invalid decision|validation|typevalidation|malformed/i.test(message)
+  ) {
+    return "DETECTION_SCHEMA_ERROR"
+  }
+  if (
+    /network|fetch failed|timed out|timeout|ECONN|ENOTFOUND|socket/i.test(
+      message
+    ) &&
+    status === undefined
+  ) {
+    return "NETWORK_ERROR"
+  }
+  if (
+    status !== undefined &&
+    [408, 425, 429, 500, 502, 503, 504].includes(status)
+  ) {
+    return "DETECTION_TRANSIENT_PROVIDER_ERROR"
+  }
+  if (
+    error &&
+    typeof error === "object" &&
+    (error as Record<string, unknown>).isRetryable === true
+  ) {
+    return "DETECTION_TRANSIENT_PROVIDER_ERROR"
+  }
+  return "DETECTION_PROVIDER_ERROR"
+}
+
+const safeProviderDiagnostics = (
+  error: unknown,
+  code: DetectionFailureCode | "NETWORK_ERROR"
+): ProviderDiagnostics => {
+  const status = readProviderStatus(error)
+  return {
+    model: providerModel(),
+    baseUrlHost: providerBaseUrlHost(),
+    ...(status === undefined ? {} : { httpStatus: status }),
+    ...(readProviderRequestId(error)
+      ? { requestId: readProviderRequestId(error) }
+      : {}),
+    category:
+      code === "DETECTION_CONFIG_ERROR"
+        ? "configuration"
+        : code === "DETECTION_SCHEMA_ERROR"
+          ? "schema"
+          : code === "DETECTION_TRANSIENT_PROVIDER_ERROR"
+            ? "transient_provider"
+            : code === "NETWORK_ERROR"
+              ? "network"
+              : "provider",
+  }
+}
+
+const formatProviderDiagnostics = (diagnostics: ProviderDiagnostics) =>
+  [
+    `model=${diagnostics.model}`,
+    `baseUrlHost=${diagnostics.baseUrlHost}`,
+    diagnostics.httpStatus === undefined
+      ? null
+      : `httpStatus=${diagnostics.httpStatus}`,
+    diagnostics.requestId ? `requestId=${diagnostics.requestId}` : null,
+    `category=${diagnostics.category}`,
+  ]
+    .filter((value): value is string => value !== null)
+    .join(" ")
+
+const safeProviderMessage = (code: DetectionErrorCode) => {
+  if (code === "DETECTION_CONFIG_ERROR") {
+    return "Automatic detection is not configured. Configure build settings manually."
+  }
+  if (code === "DETECTION_SCHEMA_ERROR") {
+    return "Automatic detection returned an invalid response. Configure build settings manually."
+  }
+  if (
+    code === "DETECTION_TRANSIENT_PROVIDER_ERROR" ||
+    code === "NETWORK_ERROR"
+  ) {
+    return "Automatic detection provider is temporarily unavailable. Retry detection or configure build settings manually."
+  }
+  if (code === "DETECTION_PROVIDER_ERROR") {
+    return "Automatic detection provider failed. Configure build settings manually."
+  }
+  return "Unable to detect frameworks for this repository."
+}
 
 const normalizeConfidence = (value: number) => {
   if (Number.isNaN(value)) {
@@ -280,7 +451,9 @@ const parseJsonObject = (value: string) => {
 const buildInventory = async (
   rootPath: string,
   files: string[],
-  directories: string[]
+  directories: string[],
+  readManifest: (filePath: string) => Promise<string> = (filePath) =>
+    readFile(path.join(rootPath, filePath), "utf8")
 ): Promise<Inventory> => {
   const evidence: DetectionEvidence[] = []
   const packageJsonDependencies = new Set<string>()
@@ -347,10 +520,7 @@ const buildInventory = async (
   }
 
   if (fileSet.has("package.json")) {
-    const packageText = await readFile(
-      path.join(rootPath, "package.json"),
-      "utf8"
-    )
+    const packageText = await readManifest("package.json")
     const packageJson = parseJsonObject(packageText) as {
       dependencies?: Record<string, string>
       devDependencies?: Record<string, string>
@@ -382,10 +552,7 @@ const buildInventory = async (
   }
 
   if (fileSet.has("composer.json")) {
-    const composerText = await readFile(
-      path.join(rootPath, "composer.json"),
-      "utf8"
-    )
+    const composerText = await readManifest("composer.json")
     const composerJson = parseJsonObject(composerText) as {
       require?: Record<string, string>
       ["require-dev"]?: Record<string, string>
@@ -1359,13 +1526,17 @@ export const detectFrameworkFromGithubApi = async (
 ): Promise<DetectionResult> => {
   const warnings: string[] = []
   const evidence: DetectionEvidence[] = []
-
-  // Resolve prisma dependency
   const prismaClient =
     dependencies.prisma ?? (await import("@/lib/prisma")).prisma
-
-  // 1. Fetch repository file listing via GitHub API
   const listFilesFn = dependencies.listFiles ?? listRepoFiles
+  const readFileFn =
+    dependencies.readFile ??
+    (dependencies.resolveWithAiToolCalling ? undefined : readRepoFile)
+  const source = {
+    repoUrl: `https://github.com/${input.owner}/${input.repo}`,
+    ref: input.ref,
+    subdir: input.subdir,
+  }
   const { files: fileList, truncated } = await listFilesFn({
     installationId: input.installationId,
     owner: input.owner,
@@ -1373,7 +1544,6 @@ export const detectFrameworkFromGithubApi = async (
     ref: input.ref,
     path: input.subdir,
   })
-
   if (truncated) {
     warnings.push("File listing was truncated by GitHub API")
     evidence.push({
@@ -1382,15 +1552,21 @@ export const detectFrameworkFromGithubApi = async (
       detail: "GitHub API returned truncated file tree",
     })
   }
-
-  // 2. Check for blocked frameworks
   const detectorRules = await prismaClient.detectorRule.findMany({
     where: { isActive: true },
     orderBy: { priority: "desc" },
   })
-
+  const ruleSummary = summarizeDetectorRules(detectorRules)
+  const writeInspectionLog = async (data: Record<string, unknown>) => {
+    try {
+      const created = await prismaClient.detectorInspectionLog.create({ data })
+      return typeof created?.id === "string" ? created.id : undefined
+    } catch {
+      warnings.push("Failed to log detector inspection")
+      return undefined
+    }
+  }
   const blockCheck = checkForBlockedFrameworks(fileList, detectorRules)
-
   if (blockCheck.blocked && blockCheck.rule) {
     const blockedFramework = blockCheck.rule.implicationsJson as {
       framework?: string
@@ -1400,28 +1576,17 @@ export const detectFrameworkFromGithubApi = async (
       value: "blocked",
       detail: `Blocked by rule "${blockCheck.rule.name}": matched files ${blockCheck.matchedFiles.join(", ")}`,
     })
-
-    // Log the blocked inspection (best-effort)
-    try {
-      await prismaClient.detectorInspectionLog.create({
-        data: {
-          installationId: BigInt(input.installationId),
-          repoUrl: `https://github.com/${input.owner}/${input.repo}`,
-          ref: input.ref,
-          detectedFramework: blockedFramework?.framework ?? "unknown",
-          status: "blocked",
-          blockedByRuleId: blockCheck.rule.id,
-          toolCalls: [],
-          reasoning: [`Blocked by rule: ${blockCheck.rule.name}`],
-          warnings,
-        },
-      })
-    } catch (logError) {
-      warnings.push(
-        `Failed to log blocked inspection: ${logError instanceof Error ? logError.message : "unknown error"}`
-      )
-    }
-
+    const inspectionLogId = await writeInspectionLog({
+      installationId: BigInt(input.installationId),
+      repoUrl: source.repoUrl,
+      ref: input.ref,
+      detectedFramework: blockedFramework?.framework ?? "unknown",
+      status: "blocked",
+      blockedByRuleId: blockCheck.rule.id,
+      toolCalls: [],
+      reasoning: [`Blocked by rule: ${blockCheck.rule.name}`],
+      warnings,
+    })
     return {
       primaryFramework: {
         id: blockedFramework?.framework ?? "unknown",
@@ -1443,87 +1608,168 @@ export const detectFrameworkFromGithubApi = async (
         ...warnings,
         `Framework blocked by rule: ${blockCheck.rule.name}`,
       ],
-      source: {
-        repoUrl: `https://github.com/${input.owner}/${input.repo}`,
-        ref: input.ref,
-        subdir: input.subdir,
-      },
+      source,
+      inspectionLogId,
     }
   }
-
-  // Compute rule summary for diagnostics
-  const ruleSummary = summarizeDetectorRules(detectorRules)
-
+  const directories = [
+    ...new Set(
+      fileList.flatMap((file) => {
+        const parts = file.split("/")
+        return parts
+          .slice(0, -1)
+          .map((_, index) => parts.slice(0, index + 1).join("/"))
+      })
+    ),
+  ]
+  const inventory = await buildInventory(
+    "",
+    fileList,
+    directories,
+    async (filePath) => {
+      try {
+        if (!readFileFn) return ""
+        return (
+          await readFileFn({
+            installationId: input.installationId,
+            owner: input.owner,
+            repo: input.repo,
+            filePath,
+            ref: input.ref,
+            subdir: input.subdir,
+          })
+        ).content
+      } catch {
+        warnings.push(`Unable to read manifest: ${filePath}`)
+        return ""
+      }
+    }
+  )
+  const candidates = evaluateDeterministicCandidates(inventory)
+  const fallback = async (
+    error: unknown,
+    code: DetectionFailureCode | "NETWORK_ERROR"
+  ): Promise<DetectionResult> => {
+    const diagnosticWarning = formatProviderDiagnostics(
+      safeProviderDiagnostics(error, code)
+    )
+    if (candidates.length === 0) {
+      const safeMessage = safeProviderMessage(code)
+      const ruleContext = `DetectorRule context: activeCount=${ruleSummary.activeCount}; impacts=${ruleSummary.impacts.join(",")}; blockRules=${ruleSummary.blockRuleNames.join(",")}; launchRules=${ruleSummary.launchRuleNames.join(",")}`
+      const inspectionLogId = await writeInspectionLog({
+        installationId: BigInt(input.installationId),
+        repoUrl: source.repoUrl,
+        ref: input.ref,
+        status: "error",
+        errorMessage: `${safeMessage} | ${ruleContext}`,
+        toolCalls: [],
+        reasoning: [],
+        warnings: [...warnings, diagnosticWarning],
+      })
+      throw new FrameworkDetectionError(code, safeMessage, inspectionLogId)
+    }
+    const selected = candidates[0]
+    if (!selected)
+      throw new FrameworkDetectionError(
+        "DETECTION_FAILED",
+        "Unable to detect frameworks for this repository."
+      )
+    evidence.push({
+      type: "file",
+      value: "github-deterministic-fallback",
+      detail: "AI provider failure; framework selected from GitHub evidence",
+    })
+    warnings.push(
+      "AI provider failed; deterministic GitHub evidence fallback used",
+      diagnosticWarning
+    )
+    const primaryFramework = toDetectedFramework(selected)
+    const { enforced, appliedMappings } = await enforceRuntimeMappings(
+      selected.id,
+      null,
+      buildRequiredDependencies(selected, inventory),
+      prismaClient
+    )
+    const decision = evaluateSupportDecision(
+      { primaryFramework, confidence: primaryFramework.confidence, evidence },
+      detectorRules
+    )
+    const enforcedRuntimes = enforced.map((dependency) => ({
+      runtimeId: dependency.id,
+      version:
+        appliedMappings
+          .find((mapping) => mapping.startsWith(dependency.id))
+          ?.replace(`${dependency.id} `, "") ?? "unknown",
+    }))
+    const inspectionLogId = await writeInspectionLog({
+      installationId: BigInt(input.installationId),
+      repoUrl: source.repoUrl,
+      ref: input.ref,
+      detectedFramework: selected.id,
+      confidence: primaryFramework.confidence,
+      enforcedRuntimes,
+      toolCalls: [],
+      reasoning: selected.reasons,
+      warnings,
+      status: decision.status,
+    })
+    return {
+      primaryFramework,
+      requiredDependencies: enforced,
+      alternatives: candidates
+        .filter((candidate) => candidate.id !== selected.id)
+        .map(toDetectedFramework),
+      confidence: primaryFramework.confidence,
+      decision,
+      evidence: inventory.evidence.concat(evidence),
+      warnings,
+      source,
+      inspectionLogId,
+      frameworkVersion: null,
+      defaultPort: DEFAULT_PORT_MAP[selected.id] ?? null,
+      enforcedRuntimes,
+    }
+  }
   const startTime = Date.now()
   let aiDecision: AiDecision
   let capturedToolCalls: ToolCallRecord[] = []
-
   try {
     const resolver =
       dependencies.resolveWithAiToolCalling ??
       ((inp, files, rules) =>
         resolveWithAiToolCalling(inp, files, rules, dependencies))
     const resolverResult = await resolver(input, fileList, detectorRules)
-    aiDecision = resolverResult.decision
-    capturedToolCalls = resolverResult.toolCalls
+    aiDecision = AI_DECISION_SCHEMA.parse(resolverResult.decision)
+    capturedToolCalls = resolverResult.toolCalls ?? []
   } catch (error) {
-    const durationMs = Date.now() - startTime
-
-    const ruleContext = `DetectorRule context: activeCount=${ruleSummary.activeCount}; impacts=${ruleSummary.impacts.join(",")}; blockRules=${ruleSummary.blockRuleNames.join(",")}; launchRules=${ruleSummary.launchRuleNames.join(",")}`
-    const errorMessage =
-      error instanceof Error
-        ? `${error.message} | ${ruleContext}`
-        : `Unknown error | ${ruleContext}`
-    // Log the error (best-effort)
-    try {
-      await prismaClient.detectorInspectionLog.create({
-        data: {
-          installationId: BigInt(input.installationId),
-          repoUrl: `https://github.com/${input.owner}/${input.repo}`,
-          ref: input.ref,
-          status: "error",
-          errorMessage,
-          durationMs,
-          toolCalls: [],
-          reasoning: [],
-          warnings,
-        },
-      })
-    } catch (logError) {
-      // Audit log failure should not fail the detection
-      warnings.push(
-        `Failed to log error inspection: ${logError instanceof Error ? logError.message : "unknown error"}`
-      )
-    }
-
-    throw new Error(`Detection failed: ${errorMessage}`)
+    return fallback(error, classifyProviderFailure(error))
   }
-
-  // 4. Build detection result
   const frameworkId = aiDecision.primaryFrameworkId
   const frameworkVersion = aiDecision.frameworkVersion ?? null
-  const frameworkEcosystem =
-    aiDecision.ecosystem ?? inferFrameworkEcosystem(frameworkId)
-  const frameworkName = inferFrameworkName(frameworkId)
-
+  const normalizedConfidence = normalizeConfidence(aiDecision.confidence)
+  const primaryFramework: DetectedFramework = {
+    id: frameworkId,
+    name: inferFrameworkName(frameworkId),
+    ecosystem: aiDecision.ecosystem ?? inferFrameworkEcosystem(frameworkId),
+    confidence: normalizedConfidence,
+    reasons: aiDecision.reasoning,
+  }
   evidence.push({
     type: "ai",
     value: "tool-calling-detection",
     detail: `AI agent selected ${frameworkId} with confidence ${aiDecision.confidence}`,
   })
-
-  const requiredDependencies: RequiredDependency[] =
-    aiDecision.requiredRuntimeIds.map((runtimeId) => ({
+  const requiredDependencies = aiDecision.requiredRuntimeIds.map(
+    (runtimeId) => ({
       id: runtimeId,
-      kind: "runtime",
-      requiredFor: "app_runtime",
-      confidence: aiDecision.confidence,
+      kind: "runtime" as const,
+      requiredFor: "app_runtime" as const,
+      confidence: normalizedConfidence,
       reason:
         aiDecision.reasoning[0] ??
         "AI agent identified this runtime requirement",
-    }))
-
-  // 5. Enforce RuntimeMappings
+    })
+  )
   const { enforced: enforcedDependencies, appliedMappings } =
     await enforceRuntimeMappings(
       frameworkId,
@@ -1531,85 +1777,46 @@ export const detectFrameworkFromGithubApi = async (
       requiredDependencies,
       prismaClient
     )
-
-  if (appliedMappings.length > 0) {
+  if (appliedMappings.length > 0)
     evidence.push({
       type: "ai",
       value: "runtime-mapping-enforced",
       detail: `Applied runtime mappings: ${appliedMappings.join(", ")}`,
     })
-  }
-
-  const durationMs = Date.now() - startTime
-
-  // Build enforced runtimes for audit log (with version from mapping)
-  const enforcedRuntimes = enforcedDependencies.map((d) => {
-    const mapping = appliedMappings.find((m) => m.startsWith(d.id))
-    const version = mapping ? mapping.replace(`${d.id} `, "") : "unknown"
-    return { runtimeId: d.id, version }
-  })
-
-  // 7. Log the inspection (best-effort, don't fail detection if logging fails)
-  try {
-    await prismaClient.detectorInspectionLog.create({
-      data: {
-        installationId: BigInt(input.installationId),
-        repoUrl: `https://github.com/${input.owner}/${input.repo}`,
-        ref: input.ref,
-        detectedFramework: frameworkId,
-        confidence: aiDecision.confidence,
-        enforcedRuntimes,
-        toolCalls: capturedToolCalls,
-        reasoning: aiDecision.reasoning,
-        warnings,
-        durationMs,
-        status: "success",
-      },
-    })
-  } catch (logError) {
-    // Audit log failure should not fail the detection
-    warnings.push(
-      `Failed to log inspection: ${logError instanceof Error ? logError.message : "unknown error"}`
-    )
-  }
-
-  const normalizedConfidence = normalizeConfidence(aiDecision.confidence)
-
-  // 6. Evaluate launchable policy against DetectorRule LAUNCH rules
   const decision = evaluateSupportDecision(
-    {
-      primaryFramework: {
-        id: frameworkId,
-        name: frameworkName,
-        ecosystem: frameworkEcosystem,
-        confidence: normalizedConfidence,
-        reasons: aiDecision.reasoning,
-      },
-      confidence: normalizedConfidence,
-      evidence,
-    },
+    { primaryFramework, confidence: normalizedConfidence, evidence },
     detectorRules
   )
-
+  const enforcedRuntimes = enforcedDependencies.map((dependency) => ({
+    runtimeId: dependency.id,
+    version:
+      appliedMappings
+        .find((mapping) => mapping.startsWith(dependency.id))
+        ?.replace(`${dependency.id} `, "") ?? "unknown",
+  }))
+  const inspectionLogId = await writeInspectionLog({
+    installationId: BigInt(input.installationId),
+    repoUrl: source.repoUrl,
+    ref: input.ref,
+    detectedFramework: frameworkId,
+    confidence: normalizedConfidence,
+    enforcedRuntimes,
+    toolCalls: capturedToolCalls,
+    reasoning: aiDecision.reasoning,
+    warnings,
+    durationMs: Date.now() - startTime,
+    status: decision.status,
+  })
   return {
-    primaryFramework: {
-      id: frameworkId,
-      name: frameworkName,
-      ecosystem: frameworkEcosystem,
-      confidence: normalizedConfidence,
-      reasons: aiDecision.reasoning,
-    },
+    primaryFramework,
     requiredDependencies: enforcedDependencies,
     alternatives: [],
     confidence: normalizedConfidence,
     decision,
     evidence,
     warnings,
-    source: {
-      repoUrl: `https://github.com/${input.owner}/${input.repo}`,
-      ref: input.ref,
-      subdir: input.subdir,
-    },
+    source,
+    inspectionLogId,
     frameworkVersion,
     defaultPort: DEFAULT_PORT_MAP[frameworkId] ?? null,
     enforcedRuntimes,
