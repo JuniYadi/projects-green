@@ -54,6 +54,7 @@ const sanitizeWarningCategory = (warning: string) => {
   if (/inspection/i.test(warning)) return "inspection-log"
   return "other"
 }
+
 const rules: DetectorRuleRecord[] = [
   {
     id: "support-laravel-launch",
