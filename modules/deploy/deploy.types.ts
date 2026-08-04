@@ -50,9 +50,17 @@ export type Branch = {
 
 export type DetectionStatus =
   | "success"
+  | "blocked"
+  | "unsupported"
   | "low_confidence"
   | "failed"
   | "partial"
+
+export type DetectionEvidence = {
+  type: string
+  value: string
+  detail?: string
+}
 
 export type DetectionResult = {
   language: string | null
@@ -62,6 +70,9 @@ export type DetectionResult = {
   buildCommand: string | null
   confidence: number
   status: DetectionStatus
+  decisionMessage?: string
+  evidence?: DetectionEvidence[]
+  inspectionLogId?: string
   primaryEngine?: string | null
   primaryEngineVersion?: string | null
   secondaryEngine?: string | null
