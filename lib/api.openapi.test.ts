@@ -1,13 +1,14 @@
 import { describe, expect, it } from "bun:test"
+import { z } from "zod"
 
-import { app } from "@/lib/api"
-
+import { app, toOpenApiJsonSchema } from "@/lib/api"
 type OpenApiMediaType = {
   example?: unknown
   schema?: Record<string, unknown>
 }
 
 type OpenApiOperation = {
+  tags?: string[]
   requestBody?: {
     content?: Record<string, OpenApiMediaType>
   }
@@ -67,6 +68,18 @@ describe("OpenAPI documentation", () => {
     const operations = operationsOf(document)
     expect(Object.keys(document.paths ?? {}).length).toBe(324)
     expect(operations.length).toBe(406)
+    expect(
+      operations.every(
+        ({ operation }) =>
+          Array.isArray(operation.tags) && operation.tags.length > 0
+      )
+    ).toBe(true)
+    expect(
+      operations.some(({ operation }) => operation.tags?.includes("API Admin"))
+    ).toBe(true)
+    expect(
+      operations.some(({ operation }) => operation.tags?.includes("Api"))
+    ).toBe(false)
 
     for (const { method, operation } of operations) {
       expect(operation.responses).toBeDefined()
@@ -112,5 +125,35 @@ describe("OpenAPI documentation", () => {
     expect(echoSchema?.properties).toMatchObject({
       message: { type: "string" },
     })
+    expect(document.paths?.["/api/vouchers/portal/"]?.get?.tags).toEqual([
+      "Vouchers",
+    ])
+    expect(document.paths?.["/api/admin/organizations"]?.get?.tags).toEqual([
+      "API Admin",
+    ])
+    expect(document.paths?.["/api/admin/devices/"]?.get?.tags).toEqual([
+      "API Admin",
+    ])
+  })
+
+  it("converts Zod transforms without warnings", () => {
+    const warnings: unknown[][] = []
+    const warn = console.warn
+    console.warn = (...args: unknown[]) => warnings.push(args)
+
+    try {
+      const schema = toOpenApiJsonSchema(
+        z.object({ value: z.string().transform((value) => value.trim()) })
+      )
+
+      expect(schema).toMatchObject({
+        type: "object",
+        properties: { value: { type: "string" } },
+      })
+    } finally {
+      console.warn = warn
+    }
+
+    expect(warnings).toEqual([])
   })
 })

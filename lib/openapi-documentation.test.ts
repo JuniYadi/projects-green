@@ -409,4 +409,27 @@ describe("enrichOpenApiDocument", () => {
       paths: { "/items": { patch: { responses: {} } } },
     })
   })
+  it("assigns resource tags and groups admin routes", () => {
+    const enriched = enrichOpenApiDocument({
+      paths: {
+        "/api/vouchers": { get: { responses: { "200": {} } } },
+        "/api/admin/vouchers": { get: { responses: { "200": {} } } },
+        "/api/whatsapp/admin/devices": {
+          get: { responses: { "200": {} } },
+        },
+        "/api/portal/vpn": { get: { responses: { "200": {} } } },
+        "/api": { get: { responses: { "200": {} } } },
+      },
+    })
+
+    expect(enriched.paths["/api/vouchers"].get.tags).toEqual(["Vouchers"])
+    expect(enriched.paths["/api/admin/vouchers"].get.tags).toEqual([
+      "API Admin",
+    ])
+    expect(enriched.paths["/api/whatsapp/admin/devices"].get.tags).toEqual([
+      "API Admin",
+    ])
+    expect(enriched.paths["/api/portal/vpn"].get.tags).toEqual(["Portal"])
+    expect(enriched.paths["/api"].get.tags).toEqual(["API"])
+  })
 })

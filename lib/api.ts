@@ -107,6 +107,12 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   const prototype = Object.getPrototypeOf(value)
   return prototype === Object.prototype || prototype === null
 }
+export const toOpenApiJsonSchema = (schema: z.ZodType) =>
+  z.toJSONSchema(schema, {
+    io: "input",
+    target: "openapi-3.0",
+    unrepresentable: "any",
+  })
 
 export const app = new Elysia({ prefix: "/api" })
   .use(serverTiming())
@@ -126,8 +132,7 @@ export const app = new Elysia({ prefix: "/api" })
       path: "/openapi",
       specPath: "/openapi/json",
       mapJsonSchema: {
-        zod: (schema: z.ZodType) =>
-          z.toJSONSchema(schema, { target: "openapi-3.0" }),
+        zod: toOpenApiJsonSchema,
       },
       documentation: {
         info: {
