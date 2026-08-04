@@ -1,3 +1,14 @@
+export type DetectionFailureCode =
+  | "DETECTION_CONFIG_ERROR"
+  | "DETECTION_SCHEMA_ERROR"
+  | "DETECTION_PROVIDER_ERROR"
+  | "DETECTION_TRANSIENT_PROVIDER_ERROR"
+
+export type DetectionErrorCode =
+  | DetectionFailureCode
+  | "DETECTION_FAILED"
+  | "NETWORK_ERROR"
+
 export type DetectionEcosystem =
   | "node"
   | "php"
@@ -64,6 +75,7 @@ export type DetectionResult = {
     ref?: string
     subdir?: string
   }
+  inspectionLogId?: string
   frameworkVersion?: string | null
   defaultPort?: number | null
   enforcedRuntimes?: Array<{ runtimeId: string; version: string }>
