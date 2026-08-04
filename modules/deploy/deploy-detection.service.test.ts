@@ -68,6 +68,16 @@ const FAILED_DTO: DetectionResultDTO = {
   source: { repoUrl: "https://github.com/test/unknown-app" },
 }
 
+const BLOCKED_DTO: DetectionResultDTO = {
+  ...FAILED_DTO,
+  decision: {
+    status: "blocked",
+    message: "Deployment blocked by policy.",
+    isLaunchable: false,
+  },
+  evidence: [{ type: "file", value: "blocked", detail: "policy" }],
+}
+
 const DOCKERFILE_DTO: DetectionResultDTO = {
   ...SUCCESS_DTO,
   primaryFramework: { ...SUCCESS_DTO.primaryFramework!, name: "Django" },
@@ -118,19 +128,14 @@ describe("mapDetectionResultDTO", () => {
     expect(result.framework).toBeNull()
   })
 
-  it("maps status=success", () => {
-    const result = mapDetectionResultDTO(SUCCESS_DTO)
-    expect(result.status).toBe("success")
+  it("maps blocked and unsupported policy statuses without transport failure", () => {
+    expect(mapDetectionResultDTO(BLOCKED_DTO).status).toBe("blocked")
+    expect(mapDetectionResultDTO(FAILED_DTO).status).toBe("unsupported")
   })
 
   it("maps status=low_confidence", () => {
     const result = mapDetectionResultDTO(LOW_CONFIDENCE_DTO)
     expect(result.status).toBe("low_confidence")
-  })
-
-  it("maps decision blocked/unsupported to failed", () => {
-    const result = mapDetectionResultDTO(FAILED_DTO)
-    expect(result.status).toBe("failed")
   })
 
   it("detects Dockerfile in evidence", () => {
@@ -163,6 +168,11 @@ describe("mapDetectionResultDTO", () => {
     const result = mapDetectionResultDTO(dto)
     expect(result.buildCommand).toBeNull()
   })
+  it("preserves policy message and evidence", () => {
+    const result = mapDetectionResultDTO(BLOCKED_DTO)
+    expect(result.decisionMessage).toBe("Deployment blocked by policy.")
+    expect(result.evidence?.[0]?.value).toBe("blocked")
+  })
 
   it("returns null buildCommand when primaryFramework is null", () => {
     const result = mapDetectionResultDTO(FAILED_DTO)
@@ -172,6 +182,19 @@ describe("mapDetectionResultDTO", () => {
   it("carries confidence from DTO", () => {
     const result = mapDetectionResultDTO(SUCCESS_DTO)
     expect(result.confidence).toBe(95)
+  })
+
+  it("normalizes fractional DTO confidence to a percentage", () => {
+    const dto: DetectionResultDTO = {
+      ...SUCCESS_DTO,
+      primaryFramework: {
+        ...SUCCESS_DTO.primaryFramework!,
+        confidence: 0.8,
+      },
+      confidence: 0.8,
+    }
+
+    expect(mapDetectionResultDTO(dto).confidence).toBe(80)
   })
 })
 
@@ -307,32 +330,39 @@ describe("fetchFrameworkDetection", () => {
     expect(options.signal).toBe(controller.signal)
   })
 
-  it("throws DetectionError when primaryFramework is null", async () => {
+  it("returns structured blocked policy result", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, ...BLOCKED_DTO }),
+    })
+
+    const result = await fetchFrameworkDetection(INPUT)
+    expect(result.status).toBe("blocked")
+    expect(result.decisionMessage).toBe("Deployment blocked by policy.")
+    expect(result.evidence?.[0]?.value).toBe("blocked")
+  })
+
+  it("returns structured unsupported policy result", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ ok: true, ...FAILED_DTO }),
     })
 
-    try {
-      await fetchFrameworkDetection(INPUT)
-      expect.unreachable("Should have thrown")
-    } catch (err) {
-      expect(err).toBeInstanceOf(DetectionError)
-      expect((err as DetectionError).code).toBe("INVALID_RESPONSE")
-    }
+    const result = await fetchFrameworkDetection(INPUT)
+    expect(result.status).toBe("unsupported")
+    expect(result.framework).toBeNull()
   })
 
-  it("throws DetectionError when decision status is blocked", async () => {
+  it("preserves classified API failure code, message, and inspection log ID", async () => {
     mockFetch.mockResolvedValue({
-      ok: true,
+      ok: false,
+      status: 422,
       json: async () => ({
-        ok: true,
-        ...SUCCESS_DTO,
-        decision: {
-          status: "blocked",
-          message: "Repository is private.",
-          isLaunchable: false,
-        },
+        ok: false,
+        error: "DETECTION_CONFIG_ERROR",
+        message:
+          "Automatic detection is not configured. Configure build settings manually.",
+        inspectionLogId: "inspection-config",
       }),
     })
 
@@ -341,31 +371,11 @@ describe("fetchFrameworkDetection", () => {
       expect.unreachable("Should have thrown")
     } catch (err) {
       expect(err).toBeInstanceOf(DetectionError)
-      expect((err as DetectionError).message).toBe("Repository is private.")
-      expect((err as DetectionError).code).toBe("DETECTION_BLOCKED")
-    }
-  })
-
-  it("throws DetectionError when decision status is unsupported", async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        ok: true,
-        ...SUCCESS_DTO,
-        decision: {
-          status: "unsupported",
-          message: "No known framework.",
-          isLaunchable: false,
-        },
-      }),
-    })
-
-    try {
-      await fetchFrameworkDetection(INPUT)
-      expect.unreachable("Should have thrown")
-    } catch (err) {
-      expect(err).toBeInstanceOf(DetectionError)
-      expect((err as DetectionError).code).toBe("DETECTION_BLOCKED")
+      expect((err as DetectionError).code).toBe("DETECTION_CONFIG_ERROR")
+      expect((err as DetectionError).message).toBe(
+        "Automatic detection is not configured. Configure build settings manually."
+      )
+      expect((err as DetectionError).inspectionLogId).toBe("inspection-config")
     }
   })
 })
