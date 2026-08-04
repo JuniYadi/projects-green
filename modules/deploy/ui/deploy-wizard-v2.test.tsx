@@ -122,6 +122,10 @@ describe("DeployWizardV2 GitHub accounts", () => {
         .getByRole("navigation", { name: "Deploy wizard steps" })
         .querySelectorAll("button")
     ).toHaveLength(0)
+    expect(view.getByRole("button", { name: "Start over" })).toBeInTheDocument()
+    expect(
+      view.getByRole("button", { name: "Reset deploy wizard" })
+    ).toBeInTheDocument()
 
     expect((view.getByRole("combobox") as HTMLSelectElement).value).toBe("acme")
     const repositoryRequest = requests.find((request) =>
