@@ -366,14 +366,31 @@ function enrichRequestBody(requestBody: JsonObject): void {
 }
 
 function operationTag(path: string): string {
-  const segment = path.split("/").find(Boolean)
-  if (!segment) {
+  const segments = path.split("/").filter(Boolean)
+  const apiIndex = segments.findIndex(
+    (segment) => segment.toLowerCase() === "api"
+  )
+  const resourceSegments =
+    apiIndex === -1 ? segments : segments.slice(apiIndex + 1)
+
+  if (resourceSegments.some((segment) => segment.toLowerCase() === "admin")) {
+    return "API Admin"
+  }
+
+  const resource = resourceSegments[0]
+  if (!resource) {
     return "API"
   }
-  return segment
+
+  return resource
     .split(/[-_]/g)
     .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .map((part) => {
+      if (part.toLowerCase() === "vpn") {
+        return "VPN"
+      }
+      return part.charAt(0).toUpperCase() + part.slice(1)
+    })
     .join(" ")
 }
 
