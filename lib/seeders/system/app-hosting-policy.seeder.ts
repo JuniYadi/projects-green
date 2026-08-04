@@ -50,7 +50,7 @@ export class AppHostingPolicySeeder extends BaseSeeder {
   static override readonly classification = "system" as const
   static override readonly runOrder = 30
   static override readonly description =
-    "App Hosting framework launch policies (Laravel, Next.js)"
+    "App Hosting framework launch policies and runtime mappings (Laravel, Next.js)"
 
   async seed(): Promise<void> {
     this.log("Seeding App Hosting framework policies...")
@@ -79,6 +79,32 @@ export class AppHostingPolicySeeder extends BaseSeeder {
       this.trackUpdated()
       this.log(`Upserted rule ${rule.id} (${rule.name})`)
     }
+
+    const runtimeMapping = await this.prisma.detectorRuntimeMapping.upsert({
+      where: { id: "laravel-php-runtime" },
+      update: {
+        frameworkId: "laravel",
+        frameworkVersion: null,
+        runtimeId: "php",
+        runtimeVersion: "8.4",
+        buildVersion: null,
+        isActive: true,
+        priority: 100,
+      },
+      create: {
+        id: "laravel-php-runtime",
+        frameworkId: "laravel",
+        frameworkVersion: null,
+        runtimeId: "php",
+        runtimeVersion: "8.4",
+        buildVersion: null,
+        isActive: true,
+        priority: 100,
+      },
+    })
+
+    this.trackUpdated()
+    this.log(`Upserted runtime mapping ${runtimeMapping.id}`)
   }
 }
 
