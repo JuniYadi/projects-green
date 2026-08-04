@@ -349,6 +349,68 @@ describe("frameworkDetectionRoutes", () => {
         "Automatic detection could not validate the AI response. Retry detection or configure build settings manually."
       )
     })
+    it.each([
+      [
+        "config",
+        "OPENAI_API_KEY is not configured",
+        "DETECTION_CONFIG_ERROR",
+        "Automatic detection is not configured. Configure build settings manually.",
+      ],
+      [
+        "schema",
+        "invalid decision schema",
+        "DETECTION_SCHEMA_ERROR",
+        "Automatic detection could not validate the AI response. Retry detection or configure build settings manually.",
+      ],
+      [
+        "transient",
+        "request timeout",
+        "DETECTION_TRANSIENT_PROVIDER_ERROR",
+        "Automatic detection provider is temporarily unavailable. Retry detection or configure build settings manually.",
+      ],
+      [
+        "provider",
+        "provider returned error",
+        "DETECTION_PROVIDER_ERROR",
+        "Unable to detect frameworks for this repository.",
+      ],
+    ] as const)(
+      "classifies %s heuristic failures safely",
+      async (_name, message, error, safeMessage) => {
+        const app = new Elysia().use(
+          createFrameworkDetectionRoutes(
+            async () => {
+              throw new Error("should not be called")
+            },
+            async () => {
+              throw new Error(message)
+            }
+          )
+        )
+
+        const response = await app.handle(
+          new Request("http://localhost/framework-detection/github", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              installationId: 12345,
+              owner: "test-org",
+              repo: "test-repo",
+            }),
+          })
+        )
+        const body = (await response.json()) as {
+          ok: boolean
+          error: string
+          message: string
+        }
+
+        expect(response.status).toBe(422)
+        expect(body.ok).toBe(false)
+        expect(body.error).toBe(error)
+        expect(body.message).toBe(safeMessage)
+      }
+    )
 
     it("returns blocked result when BLOCK rule matches without calling AI", async () => {
       const app = new Elysia().use(

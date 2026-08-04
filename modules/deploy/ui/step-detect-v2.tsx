@@ -227,7 +227,13 @@ export function StepDetectV2({
       })
     }
 
-    return items
+    const keyCounts = new Map<string, number>()
+    return items.map((item) => {
+      const identity = JSON.stringify([item.label, item.value])
+      const occurrence = keyCounts.get(identity) ?? 0
+      keyCounts.set(identity, occurrence + 1)
+      return { ...item, key: `${identity}:${occurrence}` }
+    })
   }, [detectionResult])
 
   const needsManualValues = manualOverrideRequired && !buildState.useDockerfile
@@ -310,9 +316,9 @@ export function StepDetectV2({
             {detectionResult && !isDetecting ? (
               evidenceItems.length > 0 ? (
                 <ul className="space-y-2 text-xs text-muted-foreground">
-                  {evidenceItems.map((item, index) => (
+                  {evidenceItems.map((item) => (
                     <li
-                      key={`${item.label}-${index}`}
+                      key={item.key}
                       className="flex animate-in items-start gap-2 fade-in slide-in-from-bottom-1 motion-reduce:animate-none"
                     >
                       <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />

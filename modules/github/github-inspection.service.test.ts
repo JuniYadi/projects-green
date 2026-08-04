@@ -153,6 +153,39 @@ describe("GitHub Inspection Tools", () => {
     expect(mockRedisGet).toHaveBeenCalledTimes(1)
     expect(mockRedisSet).toHaveBeenCalledTimes(1)
   })
+
+  it("reads files relative to repository subdirectory", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ token: "ghs_mock_token_12345" }),
+    } as Response)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        name: "index.ts",
+        path: "packages/api/src/index.ts",
+        content: Buffer.from("export const ready = true").toString("base64"),
+        encoding: "base64",
+        sha: "file-sha",
+        size: 25,
+      }),
+    } as Response)
+
+    const result = await readRepoFile({
+      installationId: 99999,
+      owner: "test-org",
+      repo: "test-repo",
+      filePath: "/src/index.ts",
+      subdir: "packages/api/",
+      ref: "feature/branch",
+    })
+
+    expect(result.path).toBe("packages/api/src/index.ts")
+    expect(result.content).toBe("export const ready = true")
+    expect(mockFetch.mock.calls[1]?.[0]).toBe(
+      "https://api.github.com/repos/test-org/test-repo/contents/packages/api/src/index.ts?ref=feature%2Fbranch"
+    )
+  })
 })
 
 describe("GitHub Service Types", () => {

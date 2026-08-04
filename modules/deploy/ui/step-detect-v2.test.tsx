@@ -267,4 +267,50 @@ describe("StepDetectV2", () => {
     fireEvent.click(view.getByRole("button", { name: "Retry detection" }))
     expect(onRetry).toHaveBeenCalledTimes(1)
   })
+
+  it("keeps duplicate evidence rows keyed by content across insertions", () => {
+    const renderStep = (evidence: DetectionResult["evidence"]) => (
+      <StepDetectV2
+        detectionResult={{ ...baseResult, evidence }}
+        isDetecting={false}
+        detectionRetrying={false}
+        detectionAttempt={1}
+        detectionError={null}
+        buildState={baseBuild}
+        manualOverrideRequired={false}
+        canProceed={true}
+        onBack={noop}
+        onNext={noop}
+        onBuildFieldChange={noop}
+        onRetry={noop}
+      />
+    )
+
+    const duplicateEvidence = [
+      { type: "file", value: "package.json", detail: "root" },
+      { type: "file", value: "package.json", detail: "root" },
+      { type: "file", value: "tsconfig.json", detail: "root" },
+    ]
+    const view = render(renderStep(duplicateEvidence))
+    const duplicateRows = view
+      .getAllByText("package.json · root", { exact: true })
+      .map((node) => node.closest("li"))
+
+    expect(duplicateRows).toHaveLength(2)
+    expect(duplicateRows[0]).not.toBeNull()
+    expect(duplicateRows[1]).not.toBeNull()
+
+    view.rerender(
+      renderStep([
+        { type: "file", value: "README.md", detail: "root" },
+        ...duplicateEvidence,
+      ])
+    )
+
+    const updatedRows = view
+      .getAllByText("package.json · root", { exact: true })
+      .map((node) => node.closest("li"))
+    expect(updatedRows[0]).toBe(duplicateRows[0])
+    expect(updatedRows[1]).toBe(duplicateRows[1])
+  })
 })

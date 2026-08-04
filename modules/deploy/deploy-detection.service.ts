@@ -95,6 +95,8 @@ const mapDecisionStatus = (
   return "failed"
 }
 
+// Framework detection emits 0-1 confidence; deploy state and UI use 0-100.
+// Keep already-normalized percentages idempotent for compatibility.
 const normalizeConfidence = (confidence: number): number =>
   confidence <= 1 ? confidence * 100 : confidence
 

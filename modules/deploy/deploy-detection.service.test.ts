@@ -179,22 +179,22 @@ describe("mapDetectionResultDTO", () => {
     expect(result.buildCommand).toBeNull()
   })
 
-  it("carries confidence from DTO", () => {
-    const result = mapDetectionResultDTO(SUCCESS_DTO)
-    expect(result.confidence).toBe(95)
-  })
-
-  it("normalizes fractional DTO confidence to a percentage", () => {
+  it("preserves an already-normalized 0-100 DTO confidence", () => {
     const dto: DetectionResultDTO = {
       ...SUCCESS_DTO,
-      primaryFramework: {
-        ...SUCCESS_DTO.primaryFramework!,
-        confidence: 0.8,
-      },
-      confidence: 0.8,
+      confidence: 85,
     }
 
-    expect(mapDetectionResultDTO(dto).confidence).toBe(80)
+    expect(mapDetectionResultDTO(dto).confidence).toBe(85)
+  })
+
+  it("converts upstream 0-1 DTO confidence to the UI percentage", () => {
+    const dto: DetectionResultDTO = {
+      ...SUCCESS_DTO,
+      confidence: 0.85,
+    }
+
+    expect(mapDetectionResultDTO(dto).confidence).toBe(85)
   })
 })
 
