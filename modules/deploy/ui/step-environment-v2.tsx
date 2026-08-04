@@ -1,9 +1,15 @@
-import { useState } from "react"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { EnvVarsEditor } from "@/modules/deploy/ui/env-vars-editor"
+import { enMessages } from "@/lib/i18n/messages/en"
+import type { DeployWizardMessages } from "@/lib/i18n/messages/types"
 import { ResourcePlanSelector } from "@/modules/deploy/ui/resource-plan-selector"
+import { EnvVarsEditor } from "@/modules/deploy/ui/env-vars-editor"
 import type {
   EnvVar,
   ResourcePlanId,
@@ -19,8 +25,9 @@ import {
 } from "@/components/ui/phosphor-icons"
 
 type StepEnvironmentV2Props = {
-  generatedSubdomain: string
+  messages?: DeployWizardMessages
   useGeneratedSubdomain: boolean
+  generatedSubdomain: string
   customDomain: string
   environmentId: string
   envVars: EnvVar[]
@@ -45,9 +52,12 @@ type StepEnvironmentV2Props = {
   buildState?: DeployBuildState
   onEditBuildSettings?: () => void
   recommendedPlanId?: ResourcePlanId | null
+  rootDirectory?: string
+  onRootDirectoryChange?: (value: string) => void
 }
 
 export function StepEnvironmentV2({
+  messages: providedMessages,
   generatedSubdomain,
   useGeneratedSubdomain,
   customDomain,
@@ -71,10 +81,14 @@ export function StepEnvironmentV2({
   onCpuChange,
   onMemoryChange,
   sourceType,
+  rootDirectory,
+  onRootDirectoryChange,
   buildState,
   onEditBuildSettings,
   recommendedPlanId,
 }: StepEnvironmentV2Props) {
+  const messages = providedMessages ?? enMessages.console.app.deployWizard
+  const environmentMessages = messages.environment
   const targetDomain = useGeneratedSubdomain
     ? generatedSubdomain
     : customDomain.trim()
@@ -94,166 +108,55 @@ export function StepEnvironmentV2({
   return (
     <div className="flex flex-col">
       <div className="space-y-6 p-6">
-        <section className="space-y-3 rounded-xl border border-border p-4">
-          <div>
-            <p className="text-sm font-semibold text-foreground">Web address</p>
-            <p className="text-xs text-muted-foreground">
-              Choose a free address or use one you already own.
+        {validationMessages.length > 0 ? (
+          <div
+            className="space-y-1 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive"
+            role="alert"
+          >
+            <p className="font-semibold">
+              {environmentMessages.validationHeading}
             </p>
+            <ul className="list-disc space-y-0.5 pl-4">
+              {validationMessages.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
           </div>
+        ) : null}
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label
-              className={cn(
-                "block cursor-pointer rounded-lg border p-3.5 transition-all",
-                useGeneratedSubdomain
-                  ? "border-primary bg-primary/[0.02] ring-1 ring-primary/30"
-                  : "border-border bg-background hover:bg-muted/[0.02]"
-              )}
+        {submitError ? (
+          <div
+            className="space-y-1 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive"
+            role="alert"
+          >
+            <p className="font-semibold">{environmentMessages.submitHeading}</p>
+            <p>{submitError}</p>
+          </div>
+        ) : null}
+        <Collapsible>
+          <CollapsibleTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-between"
             >
-              <input
-                type="radio"
-                className="sr-only"
-                name="domain-mode"
-                checked={useGeneratedSubdomain}
-                onChange={() => onDomainToggleChange(true)}
-              />
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-foreground">
-                  Use a free pfn.app address
-                </p>
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                  Recommended
-                </span>
-              </div>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Use a generated address for immediate launch.
-              </p>
-            </label>
-
-            <label
-              className={cn(
-                "block cursor-pointer rounded-lg border p-3.5 transition-all",
-                !useGeneratedSubdomain
-                  ? "border-primary bg-primary/[0.02] ring-1 ring-primary/30"
-                  : "border-border bg-background hover:bg-muted/[0.02]"
-              )}
-            >
-              <input
-                type="radio"
-                className="sr-only"
-                name="domain-mode"
-                checked={!useGeneratedSubdomain}
-                onChange={() => onDomainToggleChange(false)}
-              />
-              <p className="text-sm font-semibold text-foreground">
-                Use my own address
-              </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Point your own domain, for example <code>app.example.com</code>.
-              </p>
-            </label>
-          </div>
-
-          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs text-foreground">
-            <Globe className="h-4 w-4 text-muted-foreground" />
-            <span>
-              {useGeneratedSubdomain
-                ? `Preview domain: ${generatedSubdomain}`
-                : "Custom domain will be configured as the primary app URL."}
-            </span>
-          </div>
-
-          {!useGeneratedSubdomain && (
-            <label className="block space-y-1 pt-1">
-              <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                Custom domain
-              </span>
-              <Input
-                aria-label="Custom domain"
-                aria-invalid={hasMissingCustomDomain || hasInvalidCustomDomain}
-                value={customDomain}
-                className={cn(
-                  "h-9 border-border text-xs",
-                  (hasMissingCustomDomain || hasInvalidCustomDomain) &&
-                    "border-destructive focus-visible:ring-destructive"
-                )}
-                placeholder="app.example.com"
-                onChange={(event) => onCustomDomainChange(event.target.value)}
-              />
-            </label>
-          )}
-          {hasMissingCustomDomain ? (
-            <p className="text-xs text-destructive">
-              Custom domain is required when generated subdomain is off.
-            </p>
-          ) : null}
-          {hasInvalidCustomDomain ? (
-            <p className="text-xs text-destructive">
-              Enter a valid domain such as <code>app.example.com</code>.
-            </p>
-          ) : null}
-        </section>
-
-        <section className="space-y-3 rounded-xl border border-border p-4">
-          <p className="text-sm font-semibold text-foreground">Hosting plan</p>
-          <ResourcePlanSelector
-            selectedPlanId={resourcePlanId}
-            recommendedPlanId={recommendedPlanId}
-            onChange={onResourcePlanChange}
-            onCpuChange={onCpuChange}
-            onMemoryChange={onMemoryChange}
-          />
-          <p className="text-xs text-muted-foreground">
-            {resourcePlanId === "payg"
-              ? "Pay As You Go: scale resources dynamically as you need."
-              : resourcePlanId === "starter"
-                ? "Starter plan selected: suitable for demos, side projects, and low traffic."
-                : "Pro plan selected: suitable for production workloads requiring high availability."}
-          </p>
-        </section>
-
-        <details
-          open={hasHiddenFieldValidation || advancedSettingsOpen}
-          onToggle={(event) => {
-            if (!hasHiddenFieldValidation) {
-              setAdvancedSettingsOpen(event.currentTarget.open)
-            }
-          }}
-          className="rounded-xl border border-border"
-        >
-          <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-foreground">
-            Advanced settings
-          </summary>
-          <div className="space-y-4 border-t border-border p-4">
-            {hiddenValidationMessages.length > 0 ? (
-              <div
-                className="space-y-1 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive"
-                role="alert"
-              >
-                <p className="font-semibold">
-                  Environment settings need attention
-                </p>
-                <ul className="list-disc space-y-0.5 pl-4">
-                  {hiddenValidationMessages.map((message) => {
-                    return <li key={message}>{message}</li>
-                  })}
-                </ul>
-              </div>
-            ) : null}
-
-            {showBuildSummary && buildState ? (
+              {environmentMessages.advanced}
+              <span aria-hidden="true">⌄</span>
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-3 space-y-6">
+            {showBuildSummary && (
               <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
                 <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                   <div>
                     <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                       <FileCode className="h-4.5 w-4.5 text-primary" />
-                      Build Configuration
+                      {environmentMessages.buildConfiguration}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {isTemplate
-                        ? "Pre-configured template deployment settings."
-                        : "Current build configuration for this deployment."}
+                        ? environmentMessages.templateBuildDescription
+                        : environmentMessages.buildDescription}
                     </p>
                   </div>
                   {!isTemplate && onEditBuildSettings && (
@@ -265,47 +168,159 @@ export function StepEnvironmentV2({
                       onClick={onEditBuildSettings}
                     >
                       <Gear className="mr-1 h-3.5 w-3.5" />
-                      Edit Build Settings
+                      {environmentMessages.editBuildSettings}
                     </Button>
                   )}
                 </div>
-
                 <div className="grid gap-4 rounded-lg border border-border/80 bg-background p-3 text-xs shadow-inner sm:grid-cols-3">
                   <div className="space-y-1">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase">
-                      Language
+                      {environmentMessages.language}
                     </span>
                     <span className="block font-semibold text-foreground">
-                      {buildState.language || "N/A"}
+                      {buildState?.language || environmentMessages.notAvailable}
                     </span>
                   </div>
                   <div className="space-y-1">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase">
-                      Framework
+                      {environmentMessages.framework}
                     </span>
                     <span className="block font-semibold text-foreground">
-                      {buildState.framework || "N/A"}
+                      {buildState?.framework ||
+                        environmentMessages.notAvailable}
                     </span>
                   </div>
                   <div className="space-y-1">
                     <span className="text-[10px] font-semibold text-muted-foreground uppercase">
-                      Build Mode
+                      {environmentMessages.buildMode}
                     </span>
                     <span className="block font-semibold text-foreground">
-                      {buildState.useDockerfile
-                        ? "Dockerfile"
-                        : buildState.buildCommand
-                          ? `Command (${buildState.buildCommand})`
-                          : "None"}
+                      {buildState?.useDockerfile
+                        ? environmentMessages.dockerfile
+                        : buildState?.buildCommand
+                          ? environmentMessages.command.replace(
+                              "{command}",
+                              buildState.buildCommand
+                            )
+                          : environmentMessages.none}
                     </span>
                   </div>
                 </div>
               </div>
-            ) : null}
-
+            )}
+            <label className="block space-y-1">
+              <span className="text-xs font-semibold text-muted-foreground">
+                {environmentMessages.rootDirectory}
+              </span>
+              <Input
+                aria-label={environmentMessages.rootDirectory}
+                value={rootDirectory ?? "/"}
+                onChange={(event) =>
+                  onRootDirectoryChange?.(event.target.value)
+                }
+              />
+            </label>
             <div className="space-y-3 rounded-xl border border-border p-4">
               <p className="text-sm font-semibold text-foreground">
-                Environment Variables
+                {environmentMessages.domainMode}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {environmentMessages.domainDescription}
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label
+                  className={cn(
+                    "block cursor-pointer rounded-lg border p-3.5 transition-all",
+                    useGeneratedSubdomain
+                      ? "border-primary bg-primary/[0.02] ring-1 ring-primary/30"
+                      : "border-border bg-background hover:bg-muted/[0.02]"
+                  )}
+                >
+                  <input
+                    type="radio"
+                    className="sr-only"
+                    name="domain-mode"
+                    checked={useGeneratedSubdomain}
+                    onChange={() => onDomainToggleChange(true)}
+                  />
+                  <p className="text-sm font-semibold text-foreground">
+                    {environmentMessages.managedSubdomain}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {environmentMessages.managedSubdomainDescription}
+                  </p>
+                </label>
+                <label
+                  className={cn(
+                    "block cursor-pointer rounded-lg border p-3.5 transition-all",
+                    !useGeneratedSubdomain
+                      ? "border-primary bg-primary/[0.02] ring-1 ring-primary/30"
+                      : "border-border bg-background hover:bg-muted/[0.02]"
+                  )}
+                >
+                  <input
+                    type="radio"
+                    className="sr-only"
+                    name="domain-mode"
+                    checked={!useGeneratedSubdomain}
+                    onChange={() => onDomainToggleChange(false)}
+                  />
+                  <p className="text-sm font-semibold text-foreground">
+                    {environmentMessages.customDomain}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {environmentMessages.customDomainDescription}
+                  </p>
+                </label>
+              </div>
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 p-3 text-xs text-foreground">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                <span>
+                  {useGeneratedSubdomain
+                    ? environmentMessages.previewDomain.replace(
+                        "{domain}",
+                        generatedSubdomain
+                      )
+                    : environmentMessages.customDomainNotice}
+                </span>
+              </div>
+              {!useGeneratedSubdomain && (
+                <label className="block space-y-1 pt-1">
+                  <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                    {environmentMessages.customDomain}
+                  </span>
+                  <Input
+                    aria-label={environmentMessages.customDomain}
+                    aria-invalid={
+                      hasMissingCustomDomain || hasInvalidCustomDomain
+                    }
+                    value={customDomain}
+                    className={cn(
+                      "h-9 border-border text-xs",
+                      (hasMissingCustomDomain || hasInvalidCustomDomain) &&
+                        "border-destructive focus-visible:ring-destructive"
+                    )}
+                    placeholder={environmentMessages.customDomainPlaceholder}
+                    onChange={(event) =>
+                      onCustomDomainChange(event.target.value)
+                    }
+                  />
+                </label>
+              )}
+              {hasMissingCustomDomain ? (
+                <p className="text-xs text-destructive">
+                  {environmentMessages.customDomainRequired}
+                </p>
+              ) : null}
+              {hasInvalidCustomDomain ? (
+                <p className="text-xs text-destructive">
+                  {environmentMessages.invalidDomain}
+                </p>
+              ) : null}
+            </div>
+            <div className="space-y-3 rounded-xl border border-border p-4">
+              <p className="text-sm font-semibold text-foreground">
+                {environmentMessages.environmentVariables}
               </p>
               <EnvVarsEditor
                 envVars={envVars}
@@ -313,79 +328,48 @@ export function StepEnvironmentV2({
                 onChange={onEnvVarsChange}
               />
             </div>
-
-            {resourcePlanId === "payg" ? (
-              <div className="grid gap-3 rounded-xl border border-border p-4 sm:grid-cols-2">
-                <label className="space-y-1">
-                  <span className="text-xs font-semibold text-foreground">
-                    CPU (millicores)
-                  </span>
-                  <Input
-                    type="number"
-                    min={100}
-                    max={2000}
-                    value={cpu ?? 100}
-                    onChange={(event) =>
-                      onCpuChange(Number(event.target.value))
-                    }
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs font-semibold text-foreground">
-                    Memory (MiB)
-                  </span>
-                  <Input
-                    type="number"
-                    min={256}
-                    max={4096}
-                    value={memory ?? 256}
-                    onChange={(event) =>
-                      onMemoryChange(Number(event.target.value))
-                    }
-                  />
-                </label>
-              </div>
-            ) : null}
-
-            <div className="space-y-2 rounded-xl border border-dashed border-border bg-muted/10 p-4">
+            <div className="space-y-3 rounded-xl border border-border p-4">
               <p className="text-sm font-semibold text-foreground">
-                Attached Resources
+                {environmentMessages.resourcePlan}
               </p>
+              <ResourcePlanSelector
+                selectedPlanId={resourcePlanId}
+                cpu={cpu}
+                memory={memory}
+                recommendedPlanId={recommendedPlanId}
+                onChange={onResourcePlanChange}
+                onCpuChange={onCpuChange}
+                onMemoryChange={onMemoryChange}
+              />
               <p className="text-xs text-muted-foreground">
-                No databases attached. You can provision and attach PostgreSQL
-                or Redis in one click after deployment.
+                {resourcePlanId === "payg"
+                  ? environmentMessages.paygDescription
+                  : resourcePlanId === "starter"
+                    ? environmentMessages.starterDescription
+                    : environmentMessages.proDescription}
               </p>
             </div>
-          </div>
-        </details>
-
-        {validationMessages.length === 0 ? (
-          <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-foreground">
-            <p>
-              Ready to publish at <code>{targetDomain}</code>.
-            </p>
-            <p className="mt-1 text-muted-foreground">
-              {envVars.length} environment variable
-              {envVars.length === 1 ? "" : "s"} on the{" "}
-              {resourcePlanId === "starter"
-                ? "Starter"
-                : resourcePlanId === "pro"
-                  ? "Pro"
-                  : "Pay-As-You-Go"}{" "}
-              plan.
-            </p>
-          </div>
-        ) : null}
-
-        {submitError ? (
-          <div
-            className="space-y-1 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive"
-            role="alert"
-          >
-            <p className="font-semibold">Unable to start deployment</p>
-            <p>{submitError}</p>
-          </div>
-        ) : null}
+            <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-foreground">
+              {environmentMessages.readySummary
+                .replace("{domain}", targetDomain)
+                .replace("{count}", String(envVars.length))
+                .replace(
+                  "{variables}",
+                  envVars.length === 1
+                    ? environmentMessages.variableSingular
+                    : environmentMessages.variablePlural
+                )
+                .replace(
+                  "{plan}",
+                  resourcePlanId === "starter"
+                    ? environmentMessages.planStarter
+                    : resourcePlanId === "pro"
+                      ? environmentMessages.planPro
+                      : environmentMessages.planPayg
+                )}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
       <div className="flex items-center justify-between border-t p-4">
         <Button
@@ -395,7 +379,7 @@ export function StepEnvironmentV2({
           className="flex h-9 items-center gap-1 border-border px-4 text-xs font-semibold shadow-sm"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Back
+          {environmentMessages.back}
         </Button>
         <Button
           type="button"
@@ -403,7 +387,9 @@ export function StepEnvironmentV2({
           disabled={!canDeploy || isSubmitting}
           className="flex h-9 items-center gap-1 bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
         >
-          {isSubmitting ? "Publishing site…" : "Publish site"}
+          {isSubmitting
+            ? environmentMessages.deploying
+            : environmentMessages.deploy}
           <ArrowRight className="h-3.5 w-3.5" />
         </Button>
       </div>
