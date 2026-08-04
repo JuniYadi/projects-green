@@ -228,6 +228,12 @@ describe("MetaAppsService", () => {
       await service.resolveCredentialsByWebhookKey("public-key")
     ).toBeNull()
   })
+  it("returns null when decrypted credentials are empty", async () => {
+    mockDecrypt.mockResolvedValueOnce("")
+    expect(
+      await service.resolveCredentialsByWebhookKey("public-key")
+    ).toBeNull()
+  })
 
   it("deletes app when no devices are attached", async () => {
     const result = await service.delete("meta-1")

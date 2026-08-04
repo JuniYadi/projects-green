@@ -93,9 +93,11 @@ export function MetaAppSelector({
       : activeApps
   const selectionError =
     error ||
-    (requiredForLive && environment === "LIVE" && !value
-      ? "MetaApp selection is required for LIVE devices."
-      : undefined)
+    (environment === "LIVE" && selectedApp && !selectedApp.active
+      ? "Cannot assign an inactive MetaApp to a LIVE device."
+      : requiredForLive && environment === "LIVE" && !value
+        ? "MetaApp selection is required for LIVE devices."
+        : undefined)
 
   return (
     <div className="grid gap-2 md:col-span-2">

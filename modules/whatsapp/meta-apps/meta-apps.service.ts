@@ -136,6 +136,14 @@ export class MetaAppsService {
         decryptWithAppKey(app.appSecretEncrypted),
         decryptWithAppKey(app.verifyTokenEncrypted),
       ])
+      if (
+        typeof appSecret !== "string" ||
+        appSecret.length === 0 ||
+        typeof verifyToken !== "string" ||
+        verifyToken.length === 0
+      ) {
+        return null
+      }
       return {
         id: app.id,
         name: app.name,
@@ -182,7 +190,7 @@ export class MetaAppsService {
   ): Promise<T> {
     return this.database.$transaction(async (tx) => {
       await tx.$queryRaw(
-        Prisma.sql`SELECT id FROM "WhatsappMetaApp" WHERE id = ${id} FOR UPDATE`
+        Prisma.sql`SELECT id FROM "WhatsappMetaApp" WHERE id = ${id} FOR UPDATE NOWAIT`
       )
       const deviceCount = await tx.whatsappDevice.count({
         where: { whatsappMetaAppId: id },
