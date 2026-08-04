@@ -163,7 +163,6 @@ describe("appStacksRoutes", () => {
     expect(mockPrisma.applicationStack.findMany).toHaveBeenCalledWith({
       where: { organizationId: "org-1" },
       orderBy: { updatedAt: "desc" },
-      take: 3,
       include: {
         repositoryConnection: {
           select: {
@@ -173,6 +172,71 @@ describe("appStacksRoutes", () => {
           },
         },
       },
+    })
+  })
+  it("returns requested valid recent sources after unsupported newer rows", async () => {
+    const recentStacks = [
+      {
+        sourceType: "UNSUPPORTED",
+        name: "future-stack",
+        repositoryConnection: null,
+      },
+      {
+        sourceType: "TEMPLATE",
+        name: "unsupported-template",
+        metadataJson: { templateId: "not-a-template" },
+        repositoryConnection: null,
+      },
+      {
+        sourceType: "GITHUB",
+        name: "storefront",
+        branchName: "main",
+        rootDirectory: "/apps/web",
+        repositoryConnection: {
+          ownerLogin: "acme",
+          githubRepositoryId: BigInt(123),
+          repoName: "storefront",
+        },
+      },
+      {
+        sourceType: "PUBLIC",
+        name: "docs",
+        publicSourceUrl: "https://gitlab.com/acme/docs",
+        publicSourceRef: "release",
+        rootDirectory: "/",
+        repositoryConnection: null,
+      },
+    ]
+    mockPrisma.applicationStack.findMany.mockImplementationOnce(
+      (...args: unknown[]) => {
+        const take = (args[0] as { take?: number } | undefined)?.take
+        return Promise.resolve(
+          typeof take === "number" ? recentStacks.slice(0, take) : recentStacks
+        ) as never
+      }
+    )
+
+    const res = await getRecent("/deploy/recent-sources?limit=2")
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({
+      ok: true,
+      data: [
+        {
+          sourceType: "github",
+          label: "acme/storefront",
+          ownerId: "acme",
+          repositoryId: "123",
+          branchName: "main",
+          rootDirectory: "/apps/web",
+        },
+        {
+          sourceType: "public",
+          label: "docs",
+          publicSourceUrl: "https://gitlab.com/acme/docs",
+          publicSourceRef: "release",
+          rootDirectory: "/",
+        },
+      ],
     })
   })
 
