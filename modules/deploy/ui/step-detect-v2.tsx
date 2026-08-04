@@ -316,7 +316,7 @@ export function StepDetectV2({
             {detectionResult && !isDetecting ? (
               evidenceItems.length > 0 ? (
                 <ul className="space-y-2 text-xs text-muted-foreground">
-                  {evidenceItems.map((item) => (
+                  {evidenceItems.map((item, index) => (
                     <li
                       key={item.key}
                       className="flex animate-in items-start gap-2 fade-in slide-in-from-bottom-1 motion-reduce:animate-none"
