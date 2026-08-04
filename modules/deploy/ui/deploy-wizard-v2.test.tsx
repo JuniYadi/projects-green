@@ -218,7 +218,7 @@ describe("DeployWizardV2 GitHub accounts", () => {
 
     expect(view.getByText("Detect build settings")).toBeInTheDocument()
   })
-  it("two failures then success makes exactly three requests and renders result", async () => {
+  it("one transient failure then success makes exactly two requests and renders result", async () => {
     const { DeployWizardProvider } =
       await import("@/modules/deploy/deploy.store")
     const { DeployWizardV2 } =
@@ -249,15 +249,15 @@ describe("DeployWizardV2 GitHub accounts", () => {
 
       if (url.pathname === "/api/framework-detection/github") {
         requestCount++
-        if (requestCount < 3) {
+        if (requestCount === 1) {
           return Promise.resolve(
             new Response(
               JSON.stringify({
                 ok: false,
-                error: "NETWORK_ERROR",
-                message: "Network error while contacting detection service.",
+                error: "DETECTION_TRANSIENT_PROVIDER_ERROR",
+                message: "Detection provider temporarily unavailable.",
               }),
-              { status: 500 }
+              { status: 503 }
             )
           )
         }
@@ -285,16 +285,15 @@ describe("DeployWizardV2 GitHub accounts", () => {
         const detectionRequests = requests.filter((r) =>
           r.includes("/api/framework-detection/github")
         )
-        expect(detectionRequests.length).toBe(3)
+        expect(detectionRequests.length).toBe(2)
       },
-      { timeout: 10000 }
+      { timeout: 5000 }
     )
     fireEvent.click(view.getByRole("button", { name: /Detect AI scans/ }))
-
     expect(view.getByText("Detect build settings")).toBeInTheDocument()
   })
 
-  it("three failures makes exactly three requests and renders manual fallback", async () => {
+  it("permanent failure makes exactly one request and renders manual fallback", async () => {
     const { DeployWizardProvider } =
       await import("@/modules/deploy/deploy.store")
     const { DeployWizardV2 } =
@@ -327,10 +326,11 @@ describe("DeployWizardV2 GitHub accounts", () => {
           new Response(
             JSON.stringify({
               ok: false,
-              error: "NETWORK_ERROR",
-              message: "Network error while contacting detection service.",
+              error: "DETECTION_CONFIG_ERROR",
+              message:
+                "Detection is not configured. Configure build settings manually.",
             }),
-            { status: 500 }
+            { status: 422 }
           )
         )
       }
@@ -347,21 +347,27 @@ describe("DeployWizardV2 GitHub accounts", () => {
       name: /storefront/,
     })
     fireEvent.click(repositoryButton)
+
     await waitFor(
       () => {
         const detectionRequests = requests.filter((r) =>
           r.includes("/api/framework-detection/github")
         )
-        expect(detectionRequests.length).toBe(3)
+        expect(detectionRequests.length).toBe(1)
       },
-      { timeout: 10000 }
+      { timeout: 5000 }
     )
     fireEvent.click(view.getByRole("button", { name: /Detect AI scans/ }))
 
     expect(
-      view.getByText(/Detection failed after three attempts/)
+      view.getAllByText(
+        "Detection is not configured. Configure build settings manually."
+      )[0]
     ).toBeInTheDocument()
     expect(view.getByLabelText("Language selector")).toBeInTheDocument()
+    expect(
+      view.queryByRole("button", { name: "Retry detection" })
+    ).not.toBeInTheDocument()
   })
 
   it("abort does not retry detection", async () => {
