@@ -1,44 +1,49 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { enMessages } from "@/lib/i18n/messages/en"
+import type { DeployWizardMessages } from "@/lib/i18n/messages/types"
+import { useMemo, useState, type ReactNode } from "react"
+import {
+  ArrowRight,
+  FileCode,
+  Folder,
+  GithubLogo,
+} from "@/components/ui/phosphor-icons"
 import { Button } from "@/components/ui/button"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { generateAppName } from "@/modules/deploy/deploy-wizard.logic"
 import { DEPLOY_TEMPLATES } from "@/modules/deploy/deploy.constants"
 import type {
+  Branch,
   DeploySourceType,
   DeployTemplateId,
   Owner,
   Repository,
-  Branch,
   ResourcePlanId,
 } from "@/modules/deploy/deploy.types"
+import type { RecentDeploySourceDTO } from "@/modules/deploy/recent-sources.dto"
 import {
-  Folder,
-  SquaresFour,
-  GithubLogo,
-  ArrowRight,
-  MagnifyingGlass,
-  Check,
-  FileCode,
-  List,
-  Globe,
-} from "@/components/ui/phosphor-icons"
-import {
-  SiN8N,
   SiDocker,
-  SiWordpress,
   SiGhost,
-  SiStrapi,
-  SiDirectus,
+  SiN8N,
   SiPayloadcms,
-  SiPocketbase,
-  SiUmami,
   SiPlausibleanalytics,
+  SiPocketbase,
+  SiStrapi,
+  SiUmami,
+  SiWordpress,
+  SiDirectus,
 } from "react-icons/si"
 
 export type StepSourceProps = {
   sourceType: DeploySourceType
+  messages?: DeployWizardMessages
   templateId?: DeployTemplateId
   githubConnectionStatus: "idle" | "connected" | "error"
   isConnectingGithub: boolean
@@ -60,6 +65,7 @@ export type StepSourceProps = {
   templateResourcePlanId: ResourcePlanId
   publicSourceUrl?: string
   publicSourceRef?: string
+  recentSources?: RecentDeploySourceDTO[]
   onSourceTypeChange: (type: DeploySourceType) => void
   onTemplateSelect: (templateId: DeployTemplateId) => void
   onOwnerSearchChange: (query: string) => void
@@ -80,642 +86,646 @@ export type StepSourceProps = {
   detectionError: string | null
 }
 
-const TMPL_ICON: Record<DeployTemplateId, React.ReactNode> = {
-  wordpress: <SiWordpress className="h-6 w-6 shrink-0 text-[#21759b]" />,
-  ghost: (
-    <SiGhost className="h-6 w-6 shrink-0 text-[#000000] dark:text-white" />
-  ),
-  strapi: <SiStrapi className="h-6 w-6 shrink-0 text-[#4945ff]" />,
-  directus: <SiDirectus className="h-6 w-6 shrink-0 text-[#64f5cb]" />,
-  payload: (
-    <SiPayloadcms className="h-6 w-6 shrink-0 text-[#000000] dark:text-white" />
-  ),
-  pocketbase: <SiPocketbase className="h-6 w-6 shrink-0 text-[#b8dcfc]" />,
-  umami: <SiUmami className="h-6 w-6 shrink-0 text-[#2970ff]" />,
+const TEMPLATE_ICONS: Record<DeployTemplateId, ReactNode> = {
+  wordpress: <SiWordpress className="h-5 w-5 shrink-0 text-[#21759b]" />,
+  ghost: <SiGhost className="h-5 w-5 shrink-0 text-foreground" />,
+  strapi: <SiStrapi className="h-5 w-5 shrink-0 text-[#4945ff]" />,
+  directus: <SiDirectus className="h-5 w-5 shrink-0 text-[#64f5cb]" />,
+  payload: <SiPayloadcms className="h-5 w-5 shrink-0 text-foreground" />,
+  pocketbase: <SiPocketbase className="h-5 w-5 shrink-0 text-[#b8dcfc]" />,
+  umami: <SiUmami className="h-5 w-5 shrink-0 text-[#2970ff]" />,
   plausible: (
-    <SiPlausibleanalytics className="h-6 w-6 shrink-0 text-[#ee5137]" />
+    <SiPlausibleanalytics className="h-5 w-5 shrink-0 text-[#ee5137]" />
   ),
-  n8n: <SiN8N className="h-6 w-6 shrink-0 text-[#ff6d5a]" />,
-  openclaw: <SiDocker className="h-6 w-6 shrink-0 text-[#2496ed]" />,
-}
-const CATEGORIES = ["All", "CMS", "Analytics", "Automation", "Developer Tools"]
-
-const getTemplateCategory = (id: DeployTemplateId): string => {
-  return (
-    DEPLOY_TEMPLATES.find((template) => template.id === id)?.category ??
-    "Developer Tools"
-  )
+  n8n: <SiN8N className="h-5 w-5 shrink-0 text-[#ff6d5a]" />,
+  openclaw: <SiDocker className="h-5 w-5 shrink-0 text-[#2496ed]" />,
 }
 
-export function StepSourceV2(props: StepSourceProps) {
-  const {
-    sourceType,
-    templateId,
-    onSourceTypeChange,
-    githubConnectionStatus,
-    isConnectingGithub,
-    githubReconnectRequired = false,
-    ownerOptionsLoading,
-    ownerOptionsError,
-    repositoryOptionsLoading,
-    repositoryOptionsError,
-    repositorySearch,
-    owners,
-    repositories,
-    branches,
-    selectedOwnerId,
-    selectedRepositoryId,
-    selectedBranchName,
-    rootDirectory,
-    appName,
-    onTemplateSelect,
-    onRepositorySearchChange,
-    onOwnerSelect,
-    onRepositorySelect,
-    onBranchSelect,
-    onRootDirectoryChange,
-    onAppNameChange,
-    onTemplateResourcePlanChange,
-    templateResourcePlanId,
-    publicSourceUrl,
-    publicSourceRef,
-    onPublicSourceUrlChange,
-    onPublicSourceRefChange,
-    onConnectGithub,
-    onNext,
-    canProceed,
-  } = props
+const RESOURCE_PLANS: ResourcePlanId[] = ["starter", "pro", "payg"]
 
-  const [templateFilter, setTemplateFilter] = useState("")
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
-  const [selectedCategory, setSelectedCategory] = useState("All")
-  const [currentPage, setCurrentPage] = useState(1)
-  const ITEMS_PER_PAGE = 6
-  const selCard =
-    sourceType === "github"
-      ? "github"
-      : sourceType === "template" || templateId
-        ? "template"
-        : sourceType === "public"
-          ? "public"
-          : null
+const publicRepositoryName = (value: string) => {
+  try {
+    const url = new URL(value)
+    const segments = url.pathname.split("/").filter(Boolean)
+    return segments.at(-1) || "my-public-app"
+  } catch {
+    return "my-public-app"
+  }
+}
 
-  const filteredRepos = useMemo(
+const isSupportedPublicUrl = (value: string) => {
+  if (!/^https:\/\//i.test(value.trim())) return false
+
+  try {
+    const url = new URL(value.trim())
+    const hostname = url.hostname.toLowerCase()
+    return (
+      url.protocol === "https:" &&
+      (hostname === "github.com" || hostname === "gitlab.com")
+    )
+  } catch {
+    return false
+  }
+}
+
+export function StepSourceV2({
+  sourceType,
+  templateId,
+  githubConnectionStatus,
+  isConnectingGithub,
+  githubReconnectRequired = false,
+  ownerOptionsLoading,
+  ownerOptionsError,
+  repositoryOptionsLoading,
+  repositoryOptionsError,
+  repositorySearch,
+  owners,
+  repositories,
+  branches,
+  selectedOwnerId,
+  selectedRepositoryId,
+  selectedBranchName,
+  rootDirectory,
+  appName,
+  templateResourcePlanId,
+  publicSourceUrl,
+  publicSourceRef,
+  recentSources = [],
+  onSourceTypeChange,
+  onTemplateSelect,
+  onRepositorySearchChange,
+  onOwnerSelect,
+  onRepositorySelect,
+  onBranchSelect,
+  onRootDirectoryChange,
+  onAppNameChange,
+  onTemplateResourcePlanChange,
+  onPublicSourceUrlChange,
+  onPublicSourceRefChange,
+  onConnectGithub,
+  onCancel,
+  onNext,
+  canProceed,
+  isDetecting,
+  detectionError,
+  messages: providedMessages,
+}: StepSourceProps) {
+  const messages = providedMessages ?? enMessages.console.app.deployWizard
+  const [query, setQuery] = useState(publicSourceUrl ?? "")
+  const normalizedQuery = query.trim().toLowerCase()
+
+  const filteredRepositories = useMemo(
     () =>
-      repositories.filter((r) =>
-        r.name.toLowerCase().includes(repositorySearch.toLowerCase())
+      repositories.filter((repository) =>
+        repository.name.toLowerCase().includes(normalizedQuery)
       ),
-    [repositories, repositorySearch]
+    [normalizedQuery, repositories]
   )
 
-  const selTemplate = useMemo(
+  const filteredTemplates = useMemo(
     () =>
-      templateId
-        ? (DEPLOY_TEMPLATES.find((t) => t.id === templateId) ?? null)
-        : null,
-    [templateId]
-  )
-  const filteredTemplates = useMemo(() => {
-    const query = templateFilter.trim().toLowerCase()
-    return DEPLOY_TEMPLATES.filter((template) => {
-      const matchesQuery =
-        !query ||
-        template.name.toLowerCase().includes(query) ||
-        template.description.toLowerCase().includes(query)
-      const matchesCategory =
-        selectedCategory === "All" ||
-        getTemplateCategory(template.id) === selectedCategory
-      return matchesQuery && matchesCategory
-    })
-  }, [selectedCategory, templateFilter])
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredTemplates.length / ITEMS_PER_PAGE)
-  )
-  const visibleTemplates = filteredTemplates.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+      DEPLOY_TEMPLATES.filter(
+        (template) =>
+          template.name.toLowerCase().includes(normalizedQuery) ||
+          template.description.toLowerCase().includes(normalizedQuery)
+      ),
+    [normalizedQuery]
   )
 
-  const setCategory = (category: string) => {
-    setSelectedCategory(category)
-    setCurrentPage(1)
+  const filteredRecentSources = useMemo(
+    () =>
+      recentSources.filter((source) =>
+        source.label.toLowerCase().includes(normalizedQuery)
+      ),
+    [normalizedQuery, recentSources]
+  )
+
+  const selectedRepository = repositories.find(
+    (repository) => repository.id === selectedRepositoryId
+  )
+  const selectedTemplate = templateId
+    ? DEPLOY_TEMPLATES.find((template) => template.id === templateId)
+    : undefined
+
+  const selectPublicSource = (
+    url: string,
+    ref = "main",
+    root = "/",
+    label?: string
+  ) => {
+    onSourceTypeChange("public")
+    onPublicSourceUrlChange?.(url)
+    onPublicSourceRefChange?.(ref || "main")
+    onRootDirectoryChange(root || "/")
+    onAppNameChange(label || generateAppName(publicRepositoryName(url)))
   }
 
-  const setTemplateSearch = (query: string) => {
-    setTemplateFilter(query)
-    setCurrentPage(1)
+  const handleQueryChange = (value: string) => {
+    setQuery(value)
+    onRepositorySearchChange(value)
+
+    const trimmed = value.trim()
+    if (!isSupportedPublicUrl(trimmed)) return
+
+    selectPublicSource(trimmed)
   }
 
-  const selRepo = useMemo(
-    () =>
-      selectedRepositoryId
-        ? (repositories.find((r) => r.id === selectedRepositoryId) ?? null)
-        : null,
-    [repositories, selectedRepositoryId]
-  )
+  const selectRepository = (repository: Repository) => {
+    onSourceTypeChange("github")
+    if (repository.ownerId !== selectedOwnerId)
+      onOwnerSelect(repository.ownerId)
+    onRepositorySelect(repository.id)
+    setQuery(repository.name)
+  }
 
-  const selBranch = useMemo(
-    () =>
-      selectedBranchName
-        ? (branches.find((b) => b.name === selectedBranchName) ?? null)
-        : null,
-    [branches, selectedBranchName]
-  )
+  const selectRecentSource = (source: RecentDeploySourceDTO) => {
+    setQuery(source.label)
+    if (source.sourceType === "github") {
+      onSourceTypeChange("github")
+      if (source.ownerId !== selectedOwnerId) onOwnerSelect(source.ownerId)
+      onRepositorySelect(source.repositoryId)
+      onBranchSelect(source.branchName)
+      onRootDirectoryChange(source.rootDirectory || "/")
+      return
+    }
 
-  const cardCls = (sel: boolean) =>
-    cn(
-      "flex flex-col rounded-xl border-2 bg-card transition-all",
-      sel ? "border-primary shadow-md" : "border-border"
+    if (source.sourceType === "template") {
+      onSourceTypeChange("template")
+      onTemplateSelect(source.templateId)
+      return
+    }
+
+    selectPublicSource(
+      source.publicSourceUrl,
+      source.publicSourceRef || "main",
+      source.rootDirectory || "/",
+      source.label
     )
+  }
 
-  const badgeCls = (sel: boolean) =>
-    cn(
-      "rounded-lg p-2.5",
-      sel
-        ? "bg-primary text-primary-foreground"
-        : "bg-muted text-muted-foreground"
-    )
-
-  const checkCls = (sel: boolean) =>
-    sel ? "rounded-full bg-primary/10 p-1 text-primary" : ""
+  const hasResults =
+    filteredRecentSources.length > 0 ||
+    filteredRepositories.length > 0 ||
+    filteredTemplates.length > 0
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="space-y-1">
-        <h2 className="text-xl font-bold">What would you like to publish?</h2>
+        <h2 className="text-xl font-semibold tracking-tight">
+          {messages.source.heading}
+        </h2>
         <p className="text-sm text-muted-foreground">
-          Choose a starting point. We&apos;ll guide you through the rest.
+          {messages.source.description}
         </p>
       </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className={cardCls(selCard === "template")}>
-          <button
-            type="button"
-            aria-pressed={selCard === "template"}
-            onClick={() => onSourceTypeChange("template")}
-            className="flex w-full items-start gap-3 p-5 text-left"
-          >
-            <div className={badgeCls(selCard === "template")}>
-              <SquaresFour className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-semibold">
-                Start with a ready-made site
-              </h3>
-              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                Choose a template for WordPress, n8n, Ghost, and more.
-              </p>
-              <span className="mt-2 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                Easiest way to start
-              </span>
-            </div>
-            <div className={checkCls(selCard === "template")}>
-              {selCard === "template" && <Check className="h-3.5 w-3.5" />}
-            </div>
-          </button>
 
-          {selCard === "template" && (
-            <div className="space-y-3 px-5 pb-5">
-              <div className="space-y-2">
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Input
-                    aria-label="Search templates"
-                    placeholder="Search templates..."
-                    value={templateFilter}
-                    onChange={(event) => setTemplateSearch(event.target.value)}
-                    className="h-9 flex-1 text-xs"
-                  />
-                  <div className="flex items-center gap-1">
-                    <span className="sr-only">Template view</span>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant={viewMode === "grid" ? "secondary" : "ghost"}
-                      aria-label="Grid view"
-                      aria-pressed={viewMode === "grid"}
-                      onClick={() => setViewMode("grid")}
+      <div className="space-y-2">
+        <label htmlFor="deploy-source-input" className="sr-only">
+          {messages.source.listLabel}
+        </label>
+        <Input
+          id="deploy-source-input"
+          value={query}
+          onChange={(event) => handleQueryChange(event.target.value)}
+          placeholder={messages.source.placeholder}
+          autoComplete="off"
+          className="h-12 text-base"
+        />
+      </div>
+
+      <div
+        role="listbox"
+        aria-label={messages.source.listLabel}
+        className="max-h-[27rem] space-y-4 overflow-y-auto rounded-xl border border-border bg-card p-3"
+      >
+        {filteredRecentSources.length > 0 && (
+          <div className="space-y-1">
+            <p className="px-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              {messages.source.recent}
+            </p>
+            {filteredRecentSources.map((source) => (
+              <SourceOption
+                key={`recent-${source.sourceType}-${source.label}`}
+                icon={<ClockIcon />}
+                label={source.label}
+                detail={
+                  source.sourceType === "public"
+                    ? source.publicSourceUrl
+                    : source.sourceType
+                }
+                selected={false}
+                selectedLabel={messages.source.selected}
+                onClick={() => selectRecentSource(source)}
+              />
+            ))}
+          </div>
+        )}
+
+        {filteredRepositories.length > 0 && (
+          <div className="space-y-1">
+            <p className="px-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              {messages.source.connectedRepositories}
+            </p>
+            {filteredRepositories.map((repository) => (
+              <SourceOption
+                key={`repository-${repository.id}`}
+                selectedLabel={messages.source.selected}
+                icon={
+                  <Folder className="h-5 w-5 shrink-0 text-muted-foreground" />
+                }
+                label={repository.name}
+                detail={
+                  repository.isPrivate
+                    ? messages.source.privateRepository
+                    : messages.source.publicRepository
+                }
+                selected={
+                  sourceType === "github" &&
+                  selectedRepositoryId === repository.id
+                }
+                onClick={() => selectRepository(repository)}
+              />
+            ))}
+          </div>
+        )}
+
+        {filteredTemplates.length > 0 && (
+          <div className="space-y-1">
+            <p className="px-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              {messages.source.templates}
+            </p>
+            {filteredTemplates.map((template) => (
+              <SourceOption
+                key={`template-${template.id}`}
+                selectedLabel={messages.source.selected}
+                icon={
+                  TEMPLATE_ICONS[template.id] ?? (
+                    <FileCode className="h-5 w-5 shrink-0" />
+                  )
+                }
+                label={template.name}
+                detail={`${template.description} · ${template.defaultCpu}m CPU · ${template.defaultMemory}MB memory`}
+                selected={
+                  sourceType === "template" && templateId === template.id
+                }
+                onClick={() => {
+                  setQuery(template.name)
+                  onSourceTypeChange("template")
+                  onTemplateSelect(template.id)
+                }}
+              />
+            ))}
+          </div>
+        )}
+
+        {!hasResults && (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            {messages.source.noMatches}
+          </p>
+        )}
+      </div>
+
+      {githubConnectionStatus !== "connected" && (
+        <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
+          {githubReconnectRequired && (
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              {messages.source.githubAccessExpired}
+            </p>
+          )}
+          {githubConnectionStatus === "error" && (
+            <p className="text-xs text-destructive">
+              {messages.source.connectionFailed}
+            </p>
+          )}
+          <Button
+            type="button"
+            onClick={onConnectGithub}
+            disabled={isConnectingGithub}
+            size="sm"
+          >
+            <GithubLogo className="mr-2 h-4 w-4" />
+            {isConnectingGithub
+              ? messages.source.redirecting
+              : githubReconnectRequired
+                ? messages.source.reconnectGithub
+                : messages.source.connectGithub}
+          </Button>
+        </div>
+      )}
+
+      {githubConnectionStatus === "connected" && ownerOptionsLoading && (
+        <p className="text-xs text-muted-foreground">
+          {messages.source.loadingAccounts}
+        </p>
+      )}
+      {ownerOptionsError && (
+        <p className="text-xs text-destructive">{ownerOptionsError}</p>
+      )}
+      {repositoryOptionsLoading && (
+        <p className="text-xs text-muted-foreground">
+          {messages.source.loadingRepositories}
+        </p>
+      )}
+      {repositoryOptionsError && (
+        <p className="text-xs text-destructive">{repositoryOptionsError}</p>
+      )}
+      {detectionError && (
+        <p className="text-xs text-destructive">{detectionError}</p>
+      )}
+
+      <Collapsible>
+        <CollapsibleTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full justify-between"
+          >
+            {messages.source.advanced}
+            <span aria-hidden="true">⌄</span>
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-3 space-y-4 rounded-lg border border-border p-4">
+          {sourceType === "github" && (
+            <>
+              <div className="space-y-1">
+                <label
+                  htmlFor="deploy-owner"
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  {messages.source.account}
+                </label>
+                <select
+                  id="deploy-owner"
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                  value={selectedOwnerId}
+                  onChange={(event) => onOwnerSelect(event.target.value)}
+                  disabled={owners.length === 1}
+                >
+                  {owners.length === 0 && (
+                    <option value="">{messages.source.noAccounts}</option>
+                  )}
+                  {owners.map((owner) => (
+                    <option key={owner.id} value={owner.id}>
+                      {owner.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label
+                  htmlFor="deploy-repository-search"
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  {messages.source.repositorySearch}
+                </label>
+                <Input
+                  id="deploy-repository-search"
+                  value={repositorySearch}
+                  onChange={(event) =>
+                    onRepositorySearchChange(event.target.value)
+                  }
+                  placeholder={messages.source.searchRepositories}
+                  className="h-9 text-sm"
+                />
+              </div>
+              {selectedRepository && (
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="deploy-branch"
+                      className="text-xs font-medium text-muted-foreground"
                     >
-                      <SquaresFour className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant={viewMode === "list" ? "secondary" : "ghost"}
-                      aria-label="List view"
-                      aria-pressed={viewMode === "list"}
-                      onClick={() => setViewMode("list")}
+                      {messages.source.branch}
+                    </label>
+                    <select
+                      id="deploy-branch"
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                      value={selectedBranchName}
+                      onChange={(event) => onBranchSelect(event.target.value)}
                     >
-                      <List className="h-4 w-4" />
-                    </Button>
+                      {branches.length === 0 && (
+                        <option value="">{messages.source.noBranches}</option>
+                      )}
+                      {branches.map((branch) => (
+                        <option key={branch.id} value={branch.name}>
+                          {branch.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+                  <SourceDetails
+                    messages={messages.source}
+                    rootDirectory={rootDirectory}
+                    appName={appName}
+                    onRootDirectoryChange={onRootDirectoryChange}
+                    onAppNameChange={onAppNameChange}
+                  />
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {CATEGORIES.map((category) => (
+              )}
+            </>
+          )}
+
+          {sourceType === "public" && (
+            <SourceDetails
+              messages={messages.source}
+              publicSourceRef={publicSourceRef || "main"}
+              rootDirectory={rootDirectory || "/"}
+              appName={appName}
+              onPublicSourceRefChange={onPublicSourceRefChange}
+              onRootDirectoryChange={onRootDirectoryChange}
+              onAppNameChange={onAppNameChange}
+            />
+          )}
+
+          {sourceType === "template" && (
+            <>
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {messages.source.resourcePlan}
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {RESOURCE_PLANS.map((plan) => (
                     <Button
-                      key={category}
+                      key={plan}
                       type="button"
                       size="sm"
                       variant={
-                        selectedCategory === category ? "secondary" : "ghost"
+                        templateResourcePlanId === plan
+                          ? "secondary"
+                          : "outline"
                       }
-                      aria-pressed={selectedCategory === category}
-                      onClick={() => setCategory(category)}
-                      className="h-7 px-2 text-[11px]"
+                      onClick={() => onTemplateResourcePlanChange(plan)}
                     >
-                      {category}
+                      {plan.charAt(0).toUpperCase() + plan.slice(1)}
                     </Button>
                   ))}
                 </div>
               </div>
-              <div
-                className={cn(
-                  "gap-2",
-                  viewMode === "grid" ? "grid grid-cols-2" : "flex flex-col"
-                )}
-              >
-                {visibleTemplates.length === 0 ? (
-                  <div className="col-span-2 py-8 text-center text-sm text-muted-foreground">
-                    No templates match your search or category.
-                  </div>
-                ) : (
-                  visibleTemplates.map((tmpl) => (
-                    <button
-                      type="button"
-                      key={tmpl.id}
-                      onClick={() => onTemplateSelect(tmpl.id)}
-                      aria-pressed={templateId === tmpl.id}
-                      className={cn(
-                        "flex items-center gap-2 rounded-lg border p-2.5 text-left text-xs transition-all",
-                        viewMode === "grid" && "flex-col text-center",
-                        templateId === tmpl.id
-                          ? "border-primary bg-primary/5 text-primary"
-                          : "border-border hover:border-primary/50 hover:bg-muted/50"
-                      )}
-                    >
-                      {TMPL_ICON[tmpl.id] ?? (
-                        <FileCode className="h-6 w-6 shrink-0 text-[#6366f1]" />
-                      )}
-                      <span className="min-w-0">
-                        <span className="block leading-tight font-medium">
-                          {tmpl.name}
-                        </span>
-                        <span className="mt-0.5 block text-[10px] text-muted-foreground">
-                          {tmpl.description}
-                        </span>
-                      </span>
-                    </button>
-                  ))
-                )}
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                <span>
-                  {filteredTemplates.length} template
-                  {filteredTemplates.length === 1 ? "" : "s"}
-                </span>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage((page) => page - 1)}
-                    className="h-7 px-2"
-                  >
-                    Previous
-                  </Button>
-                  <span>
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage((page) => page + 1)}
-                    className="h-7 px-2"
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-
-              {selTemplate && (
-                <div className="space-y-2 pt-2">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    Resource Plan
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(["starter", "pro", "payg"] as ResourcePlanId[]).map(
-                      (pid) => (
-                        <button
-                          key={pid}
-                          onClick={() => onTemplateResourcePlanChange(pid)}
-                          className={cn(
-                            "rounded-lg border py-2 text-center text-xs font-medium transition-all",
-                            templateResourcePlanId === pid
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border hover:border-primary/50"
-                          )}
-                        >
-                          {pid.charAt(0).toUpperCase() + pid.slice(1)}
-                        </button>
-                      )
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 pt-1">
-                    <Input
-                      placeholder="App name"
-                      value={appName}
-                      onChange={(e) => onAppNameChange(e.target.value)}
-                      className="h-8 text-xs"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-        <div className={cardCls(selCard === "github")}>
-          <button
-            type="button"
-            aria-pressed={selCard === "github"}
-            onClick={() => onSourceTypeChange("github")}
-            className="flex w-full items-start gap-3 p-5 text-left"
-          >
-            <div className={badgeCls(selCard === "github")}>
-              <Folder className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-semibold">Use a GitHub project</h3>
-              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                Choose code from your GitHub account.
-              </p>
-            </div>
-            <div className={checkCls(selCard === "github")}>
-              {selCard === "github" && <Check className="h-3.5 w-3.5" />}
-            </div>
-          </button>
-
-          {selCard === "github" && (
-            <div className="space-y-3 px-5 pb-5">
-              {githubConnectionStatus !== "connected" ? (
-                <div className="space-y-2">
-                  {githubReconnectRequired && (
-                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-amber-700 dark:text-amber-400">
-                      GitHub access expired. Reconnect to continue.
-                    </div>
-                  )}
-                  {githubConnectionStatus === "error" && (
-                    <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-2.5 text-xs text-destructive">
-                      Connection failed. Please try again.
-                    </div>
-                  )}
-                  <Button
-                    onClick={onConnectGithub}
-                    disabled={isConnectingGithub}
-                    className="w-full"
-                    size="sm"
-                  >
-                    <GithubLogo className="mr-2 h-4 w-4" />
-                    {isConnectingGithub
-                      ? "Redirecting..."
-                      : githubReconnectRequired
-                        ? "Reconnect GitHub"
-                        : "Connect GitHub"}
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                      GitHub account
-                    </label>
-                    {ownerOptionsLoading ? (
-                      <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                        Loading...
-                      </div>
-                    ) : ownerOptionsError ? (
-                      <p className="text-xs text-destructive">
-                        {ownerOptionsError}
-                      </p>
-                    ) : (
-                      <select
-                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-                        value={selectedOwnerId}
-                        onChange={(e) => onOwnerSelect(e.target.value)}
-                        disabled={owners.length === 1}
-                      >
-                        {owners.map((o) => (
-                          <option key={o.id} value={o.id}>
-                            {o.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                      Project
-                    </label>
-                    <div className="relative">
-                      <MagnifyingGlass className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        placeholder="Search repositories..."
-                        value={repositorySearch}
-                        onChange={(e) =>
-                          onRepositorySearchChange(e.target.value)
-                        }
-                        className="h-9 pl-9 text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  {repositoryOptionsLoading ? (
-                    <div className="flex items-center justify-center py-6">
-                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                    </div>
-                  ) : repositoryOptionsError ? (
-                    <p className="text-xs text-destructive">
-                      {repositoryOptionsError}
-                    </p>
-                  ) : filteredRepos.length === 0 ? (
-                    <p className="py-2 text-xs text-muted-foreground">
-                      {repositorySearch
-                        ? "No repositories match your search."
-                        : "No repositories found."}
-                    </p>
-                  ) : (
-                    <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-border bg-muted/20 p-1">
-                      {filteredRepos.map((repo) => (
-                        <button
-                          key={repo.id}
-                          onClick={() => onRepositorySelect(repo.id)}
-                          className={cn(
-                            "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors",
-                            selectedRepositoryId === repo.id
-                              ? "bg-primary/10 text-primary"
-                              : "hover:bg-muted"
-                          )}
-                        >
-                          <Folder className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          <span className="truncate">{repo.name}</span>
-                          {repo.isPrivate && (
-                            <span className="shrink-0 rounded border border-border px-1 text-[10px] text-muted-foreground">
-                              Private
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {selRepo && (
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                        Version to publish
-                      </label>
-                      <select
-                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-                        value={selectedBranchName}
-                        onChange={(e) => onBranchSelect(e.target.value)}
-                      >
-                        {branches.length === 0 && (
-                          <option value="">No branches</option>
-                        )}
-                        {branches.map((b) => (
-                          <option key={b.id} value={b.name}>
-                            {b.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {selBranch && (
-                    <div className="space-y-3 pt-1">
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                          Project folder
-                        </label>
-                        <Input
-                          placeholder="/"
-                          value={rootDirectory}
-                          onChange={(e) =>
-                            onRootDirectoryChange(e.target.value)
-                          }
-                          className="h-9 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                          Site name
-                        </label>
-                        <Input
-                          placeholder="my-awesome-app"
-                          value={appName}
-                          onChange={(e) => onAppNameChange(e.target.value)}
-                          className="h-9 text-sm"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className={cardCls(selCard === "public")}>
-          <button
-            type="button"
-            aria-pressed={selCard === "public"}
-            onClick={() => onSourceTypeChange("public")}
-            className="flex w-full items-start gap-3 p-5 text-left"
-          >
-            <div className={badgeCls(selCard === "public")}>
-              <Globe className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-semibold">Use a public Git link</h3>
-              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                Paste a link to a public Git repository.
-              </p>
-            </div>
-            <div className={checkCls(selCard === "public")}>
-              {selCard === "public" && <Check className="h-3.5 w-3.5" />}
-            </div>
-          </button>
-
-          {selCard === "public" && (
-            <div className="space-y-3 px-5 pb-5">
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-amber-700 dark:text-amber-400">
-                Only publish code you trust. Public repositories can contain
-                code you did not write.
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Public Git link
+              <div className="space-y-1">
+                <label
+                  htmlFor="template-app-name"
+                  className="text-xs font-medium text-muted-foreground"
+                >
+                  {messages.source.appName}
                 </label>
                 <Input
-                  placeholder="https://github.com/org/repo"
-                  value={publicSourceUrl ?? ""}
-                  onChange={(e) => onPublicSourceUrlChange?.(e.target.value)}
-                  className="h-9 text-sm"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Version to publish (optional)
-                </label>
-                <Input
-                  placeholder="main"
-                  value={publicSourceRef ?? ""}
-                  onChange={(e) => onPublicSourceRefChange?.(e.target.value)}
-                  className="h-9 text-sm"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Site name
-                </label>
-                <Input
-                  placeholder="my-public-app"
+                  id="template-app-name"
                   value={appName}
-                  onChange={(e) => onAppNameChange(e.target.value)}
+                  onChange={(event) => onAppNameChange(event.target.value)}
+                  placeholder="my-app"
                   className="h-9 text-sm"
                 />
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Project folder
-                </label>
-                <Input
-                  placeholder="/"
-                  value={rootDirectory}
-                  onChange={(e) => onRootDirectoryChange(e.target.value)}
-                  className="h-9 text-sm"
-                />
-              </div>
-            </div>
+              {selectedTemplate && (
+                <p className="text-xs text-muted-foreground">
+                  {messages.source.defaults
+                    .replace("{cpu}", String(selectedTemplate.defaultCpu))
+                    .replace(
+                      "{memory}",
+                      String(selectedTemplate.defaultMemory)
+                    )}
+                </p>
+              )}
+            </>
           )}
-        </div>
-      </div>
+        </CollapsibleContent>
+      </Collapsible>
 
-      <div className="flex items-center justify-end gap-3">
-        {!canProceed && (
-          <p className="text-xs text-muted-foreground">
-            Choose a template, project, or public Git link to continue.
-          </p>
-        )}
-        <Button onClick={onNext} disabled={!canProceed} size="lg">
-          {canProceed ? "Continue to setup" : "Continue"}
-          <ArrowRight className="ml-2 h-4 w-4" />
+      <div className="flex items-center justify-between gap-3">
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          {messages.source.cancel}
+        </Button>
+        <Button
+          type="button"
+          onClick={onNext}
+          disabled={!canProceed || isDetecting}
+          size="lg"
+        >
+          {isDetecting ? messages.source.checkingSource : messages.source.next}
+          {!isDetecting && <ArrowRight className="ml-2 h-4 w-4" />}
         </Button>
       </div>
     </div>
+  )
+}
+
+function SourceOption({
+  icon,
+  label,
+  detail,
+  selected,
+  selectedLabel,
+  onClick,
+}: {
+  icon: ReactNode
+  label: string
+  detail: string
+  selected: boolean
+  selectedLabel: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      role="option"
+      aria-selected={selected}
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
+        selected
+          ? "border-primary bg-primary/5 text-primary"
+          : "border-transparent hover:border-border hover:bg-muted/50"
+      )}
+    >
+      {icon}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium">{label}</span>
+        <span className="block truncate text-xs text-muted-foreground">
+          {detail}
+        </span>
+      </span>
+      {selected && <span className="text-xs font-medium">{selectedLabel}</span>}
+    </button>
+  )
+}
+
+function SourceDetails({
+  messages,
+  publicSourceRef,
+  rootDirectory,
+  appName,
+  onPublicSourceRefChange,
+  onRootDirectoryChange,
+  onAppNameChange,
+}: {
+  messages: DeployWizardMessages["source"]
+  publicSourceRef?: string
+  rootDirectory: string
+  appName: string
+  onPublicSourceRefChange?: (value: string) => void
+  onRootDirectoryChange: (value: string) => void
+  onAppNameChange: (value: string) => void
+}) {
+  return (
+    <div className="space-y-3">
+      {onPublicSourceRefChange && (
+        <div className="space-y-1">
+          <label
+            htmlFor="public-source-ref"
+            className="text-xs font-medium text-muted-foreground"
+          >
+            {messages.publicBranchOrRef}
+          </label>
+          <Input
+            id="public-source-ref"
+            value={publicSourceRef ?? "main"}
+            onChange={(event) => onPublicSourceRefChange(event.target.value)}
+            placeholder="main"
+            className="h-9 text-sm"
+          />
+        </div>
+      )}
+      <div className="space-y-1">
+        <label
+          htmlFor="source-root-directory"
+          className="text-xs font-medium text-muted-foreground"
+        >
+          {messages.rootDirectory}
+        </label>
+        <Input
+          id="source-root-directory"
+          value={rootDirectory}
+          onChange={(event) => onRootDirectoryChange(event.target.value)}
+          placeholder="/"
+          className="h-9 text-sm"
+        />
+      </div>
+      <div className="space-y-1">
+        <label
+          htmlFor="source-app-name"
+          className="text-xs font-medium text-muted-foreground"
+        >
+          {messages.appName}
+        </label>
+        <Input
+          id="source-app-name"
+          value={appName}
+          onChange={(event) => onAppNameChange(event.target.value)}
+          placeholder="my-app"
+          className="h-9 text-sm"
+        />
+      </div>
+    </div>
+  )
+}
+
+function ClockIcon() {
+  return (
+    <span
+      aria-hidden="true"
+      className="flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground"
+    >
+      ↺
+    </span>
   )
 }
