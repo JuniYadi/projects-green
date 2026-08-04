@@ -104,6 +104,9 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isDetecting, setIsDetecting] = useState(false)
   const [detectionError, setDetectionError] = useState<string | null>(null)
+  const [detectionErrorCode, setDetectionErrorCode] = useState<string | null>(
+    null
+  )
   const [detectionAttempt, setDetectionAttempt] = useState(1)
   const [detectionRetrying, setDetectionRetrying] = useState(false)
   const [detectionRunKey, setDetectionRunKey] = useState(0)
@@ -366,7 +369,7 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
       }
       if (!(err instanceof DetectionError)) return false
 
-      return ["NETWORK_ERROR", "API_ERROR", "DETECTION_FAILED"].includes(
+      return ["NETWORK_ERROR", "DETECTION_TRANSIENT_PROVIDER_ERROR"].includes(
         err.code
       )
     }
@@ -387,17 +390,17 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
     const run = async () => {
       setIsDetecting(true)
       setDetectionError(null)
+      setDetectionErrorCode(null)
       setDetectionRetrying(false)
       dispatch({ type: "set-detection", payload: null })
       dispatch({ type: "set-build", payload: null })
 
-      for (let attempt = 1; attempt <= 3; attempt += 1) {
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
         if (controller.signal.aborted) return
 
         setDetectionAttempt(attempt)
         detectionAttemptRef.current = attempt
         setDetectionRetrying(attempt > 1)
-
         try {
           const result = await fetchFrameworkDetection(
             {
@@ -411,7 +414,11 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
           )
           if (controller.signal.aborted) return
 
+          setDetectionError(null)
+          setDetectionErrorCode(null)
+
           dispatch({ type: "set-detection", payload: result })
+
           dispatch({
             type: "set-build",
             payload: {
@@ -445,9 +452,11 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
             err instanceof DetectionError
               ? err.message
               : "Failed to detect framework. You can configure build settings manually."
+          const errorCode = err instanceof DetectionError ? err.code : null
 
-          if (!shouldRetry(err) || attempt === 3) {
+          if (!shouldRetry(err) || attempt === 2) {
             setDetectionError(message)
+            setDetectionErrorCode(errorCode)
             return
           }
 
@@ -882,6 +891,7 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
           detectionRetrying={detectionRetrying}
           detectionAttempt={detectionAttempt}
           detectionError={detectionError}
+          detectionErrorCode={detectionErrorCode}
           buildState={state.build}
           manualOverrideRequired={manualOverrideRequired}
           canProceed={buildValid}
@@ -892,6 +902,7 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
             detectionAttemptRef.current = 0
             setDetectionAttempt(1)
             setDetectionError(null)
+            setDetectionErrorCode(null)
             dispatch({ type: "set-detection", payload: null })
             dispatch({ type: "set-build", payload: null })
             setDetectionRunKey((current) => current + 1)
