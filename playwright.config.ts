@@ -45,6 +45,17 @@ const projects: Project[] = [
       },
     },
   },
+  {
+    name: "smoke-portal",
+    testMatch: /\/smoke\/portal\/.*\.spec\.ts/,
+    use: {
+      ...devices["Desktop Chrome"],
+      extraHTTPHeaders: {
+        "x-pfn-functional-test-auth-secret": FUNCTIONAL_AUTH_SECRET,
+        "x-pfn-functional-test-role": "admin",
+      },
+    },
+  },
 ]
 
 // 3. Console tests — dir path IS the auth signal (user role)
