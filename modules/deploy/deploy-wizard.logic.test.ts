@@ -202,4 +202,37 @@ describe("Deploy Wizard logic", () => {
       envVars: [],
     })
   })
+  it("builds a public-source submission with stable source fields", () => {
+    const publicState: DeployWizardState = {
+      ...baseState,
+      source: {
+        ...baseState.source,
+        sourceType: "public",
+        appName: "project",
+        publicSourceUrl: "https://gitlab.com/group/project",
+        publicSourceRef: "release",
+        rootDirectory: "/",
+      },
+      build: {
+        ...baseState.build,
+        frameworkVersion: "14",
+      },
+    }
+
+    expect(
+      buildDeploySubmitPayload({
+        state: publicState,
+        selectedRepository: null,
+      })
+    ).toMatchObject({
+      sourceType: "PUBLIC",
+      publicSourceUrl: "https://gitlab.com/group/project",
+      name: "project",
+      branchName: "release",
+      rootDirectory: "/",
+      framework: "Next.js",
+      frameworkVersion: "14",
+      defaultPort: 3000,
+    })
+  })
 })
