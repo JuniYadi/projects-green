@@ -62,11 +62,12 @@ export function StepDetectV2({
     !!detectionError &&
     detectionAttempt >= 2 &&
     isRetryableFailure
+  const isWorking = isDetecting || detectionRetrying
 
   const [activeOperation, setActiveOperation] = useState(0)
 
   useEffect(() => {
-    if (!isDetecting) return
+    if (!isWorking) return
 
     const resetId = window.setTimeout(() => {
       setActiveOperation(detectionRetrying ? 1 : 0)
@@ -79,7 +80,7 @@ export function StepDetectV2({
       window.clearTimeout(resetId)
       window.clearInterval(intervalId)
     }
-  }, [detectionAttempt, detectionRetrying, isDetecting])
+  }, [detectionAttempt, detectionRetrying, isWorking])
 
   const operations = useMemo<OperationRow[]>(() => {
     const base: OperationRow[] = [
@@ -105,7 +106,7 @@ export function StepDetectV2({
       },
     ]
 
-    if (isDetecting) {
+    if (isWorking) {
       return base.map(
         (op, index): OperationRow => ({
           ...op,
@@ -128,7 +129,31 @@ export function StepDetectV2({
     }
 
     return base
-  }, [activeOperation, detectionError, detectionResult, isDetecting])
+  }, [activeOperation, detectionError, detectionResult, isWorking])
+  const isPolicyBlocked =
+    detectionResult?.status === "blocked" ||
+    detectionResult?.status === "unsupported"
+
+  const leadMessage = (() => {
+    if (isPolicyBlocked) {
+      return (
+        detectionResult?.decisionMessage ??
+        (detectionResult?.status === "blocked"
+          ? "This site cannot be published with the current policy."
+          : "This project is not supported yet.")
+      )
+    }
+    if (isFinalFailure || detectionResult?.status === "failed") {
+      return "We couldn't check your project automatically."
+    }
+    if (detectionResult?.status === "low_confidence") {
+      return `We found ${detectionResult.framework ?? "your project"}, but it needs a quick check.`
+    }
+    if (detectionResult) {
+      return `We found ${detectionResult.framework ?? "your project"}. Your site is ready to review.`
+    }
+    return "We couldn't check your project automatically."
+  })()
 
   const statusMessage = (() => {
     if (detectionRetrying) {
@@ -248,19 +273,43 @@ export function StepDetectV2({
   ].filter((message): message is string => Boolean(message))
 
   const showValidationErrors = validationMessages.length > 0 && !canProceed
+  const manualSettingsOpen =
+    manualOverrideRequired || isFinalFailure || showValidationErrors
 
   return (
     <div className="flex flex-col">
       <div className="space-y-4 p-6">
         <div className="space-y-1">
-          <h2 className="text-xl font-bold">Detect build settings</h2>
+          <h2 className="text-xl font-bold">
+            We're checking how to publish your site
+          </h2>
           <p className="text-sm text-muted-foreground">
-            We analyze your repository to determine the build configuration.
-            Confirm or adjust it.
+            This usually takes about a minute. You can review the result before
+            anything goes live.
           </p>
+        {!isWorking ? (
+          <div className="space-y-1" role="status" aria-live="polite">
+            <p className="text-base font-semibold">{leadMessage}</p>
+          </div>
+        ) : null}
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)_260px]">
+        {isWorking ? (
+          <div className="border border-border bg-muted/20 p-3 text-sm" role="status" aria-live="polite">
+            <p className="font-medium">Checking your project…</p>
+            <p className="text-xs text-muted-foreground">
+              {operations[activeOperation]?.label ?? "Preparing detection"}
+            </p>
+            {detectionRetrying ? (
+              <p className="text-xs text-muted-foreground">{statusMessage}</p>
+            ) : null}
+          </div>
+        ) : (
+          <details className="border border-border p-3">
+            <summary className="cursor-pointer text-sm font-medium">
+              Show technical details
+            </summary>
+            <div className="mt-3 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)_260px]">
           <section className="space-y-2 border border-border p-3">
             <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               Detection operations
@@ -384,9 +433,11 @@ export function StepDetectV2({
               </p>
             ) : null}
           </section>
-        </div>
+            </div>
+          </details>
+        )}
 
-        {detectionError && !isDetecting ? (
+        {detectionError && !isWorking ? (
           <div
             className="flex items-start gap-2 border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive"
             role="alert"
@@ -412,8 +463,12 @@ export function StepDetectV2({
           </div>
         ) : null}
 
-        {!isDetecting && (
-          <div className="space-y-3 border border-border p-3">
+        {!isWorking && (
+          <details open={manualSettingsOpen} className="border border-border p-3">
+            <summary className="cursor-pointer text-sm font-medium">
+              Change technical settings
+            </summary>
+            <div className="mt-3 space-y-3">
             <p className="text-sm font-medium">Manual override</p>
             <p className="text-xs text-muted-foreground">
               {manualOverrideRequired
@@ -633,7 +688,7 @@ export function StepDetectV2({
               </div>
             ) : null}
 
-            {!showValidationErrors && canProceed ? (
+            {!isPolicyBlocked && !showValidationErrors && canProceed ? (
               <div className="border border-border bg-muted/40 p-2 text-xs text-foreground">
                 {buildState.useDockerfile
                   ? "Ready: deployment will use your Dockerfile."
@@ -641,6 +696,7 @@ export function StepDetectV2({
               </div>
             ) : null}
           </div>
+          </details>
         )}
       </div>
       <div className="flex items-center justify-between border-t p-4">

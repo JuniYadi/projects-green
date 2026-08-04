@@ -40,7 +40,7 @@ const baseBuild: DeployBuildState = {
 const noop = () => {}
 
 describe("StepDetectV2", () => {
-  it("shows four operation rows during initial scan", () => {
+  it("shows compact progress with current operation during initial scan", () => {
     const view = render(
       <StepDetectV2
         detectionResult={null}
@@ -58,10 +58,16 @@ describe("StepDetectV2", () => {
       />
     )
 
+    expect(view.getByText("We're checking how to publish your site")).toBeInTheDocument()
+    expect(
+      view.getByText(
+        "This usually takes about a minute. You can review the result before anything goes live."
+      )
+    ).toBeInTheDocument()
+    expect(view.getByText("Checking your project…")).toBeInTheDocument()
     expect(view.getByText("Inspect repository")).toBeInTheDocument()
-    expect(view.getByText("Analyze dependencies")).toBeInTheDocument()
-    expect(view.getByText("Determine runtime")).toBeInTheDocument()
-    expect(view.getByText("Run detection rules")).toBeInTheDocument()
+    expect(view.queryByText("Analyze dependencies")).not.toBeInTheDocument()
+    expect(view.queryByText("Show technical details")).not.toBeInTheDocument()
   })
 
   it("renders real detection values including Not detected for missing version", () => {
@@ -95,6 +101,23 @@ describe("StepDetectV2", () => {
       view.getByText("node · Not detected", { exact: true })
     ).toBeInTheDocument()
     expect(view.queryByText(/vunknown/)).not.toBeInTheDocument()
+    expect(
+      view.getByText("We found Next.js. Your site is ready to review.")
+    ).toBeInTheDocument()
+
+    const technicalDetails = view
+      .getByText("Show technical details")
+      .closest("details")
+    const manualDetails = view
+      .getByText("Change technical settings")
+      .closest("details")
+    expect(technicalDetails?.hasAttribute("open")).toBe(false)
+    expect(manualDetails?.hasAttribute("open")).toBe(false)
+    expect(view.getByText(/package\.json/)).not.toBeVisible()
+    expect(view.getByLabelText("Language selector")).not.toBeVisible()
+    fireEvent.click(view.getByText("Show technical details"))
+    expect(technicalDetails?.hasAttribute("open")).toBe(true)
+    expect(view.getByText(/package\.json/)).toBeVisible()
   })
 
   it("renders manual fallback after final transient failure", () => {
@@ -115,6 +138,15 @@ describe("StepDetectV2", () => {
         onRetry={noop}
       />
     )
+    expect(
+      view.getByText("We couldn't check your project automatically.")
+    ).toBeInTheDocument()
+    expect(
+      view
+        .getByText("Change technical settings")
+        .closest("details")
+        ?.hasAttribute("open")
+    ).toBe(true)
 
     expect(
       view.getByText(
@@ -158,6 +190,7 @@ describe("StepDetectV2", () => {
     expect(
       view.getByText("Manual setup is required before continuing.")
     ).toBeInTheDocument()
+    expect(view.queryByText("We found Next.js. Your site is ready to review.")).not.toBeInTheDocument()
     expect(
       view.queryByRole("button", { name: "Retry detection" })
     ).not.toBeInTheDocument()
@@ -193,6 +226,7 @@ describe("StepDetectV2", () => {
     expect(
       view.getByText("Manual setup is required before continuing.")
     ).toBeInTheDocument()
+    expect(view.queryByText("We found Next.js. Your site is ready to review.")).not.toBeInTheDocument()
   })
 
   it("renders low-confidence decision message", () => {
@@ -219,6 +253,9 @@ describe("StepDetectV2", () => {
     )
 
     expect(
+      view.getByText("We found Next.js, but it needs a quick check.")
+    ).toBeInTheDocument()
+    expect(
       view.getAllByText("Review detected settings before deploying.")[0]
     ).toBeInTheDocument()
   })
@@ -244,6 +281,56 @@ describe("StepDetectV2", () => {
     expect(view.getByText(/Retry attempt 2/)).toBeInTheDocument()
   })
 
+
+  it("keeps Dockerfile mode exempt from manual field validation", () => {
+    const view = render(
+      <StepDetectV2
+        detectionResult={null}
+        isDetecting={false}
+        detectionRetrying={false}
+        detectionAttempt={1}
+        detectionError={null}
+        buildState={{
+          ...baseBuild,
+          language: "",
+          framework: "",
+          buildCommand: "",
+          useDockerfile: true,
+        }}
+        manualOverrideRequired={true}
+        canProceed={true}
+        onBack={noop}
+        onNext={noop}
+        onBuildFieldChange={noop}
+        onRetry={noop}
+      />
+    )
+
+    expect(view.queryByText("Build settings need attention")).not.toBeInTheDocument()
+    expect(view.getByLabelText("Build command")).toBeDisabled()
+  })
+
+  it("does not offer retry for permanent detection failures", () => {
+    const view = render(
+      <StepDetectV2
+        detectionResult={null}
+        isDetecting={false}
+        detectionRetrying={false}
+        detectionAttempt={2}
+        detectionError="Detection failed permanently."
+        detectionErrorCode="DETECTION_FAILED"
+        buildState={baseBuild}
+        manualOverrideRequired={false}
+        canProceed={false}
+        onBack={noop}
+        onNext={noop}
+        onBuildFieldChange={noop}
+        onRetry={noop}
+      />
+    )
+
+    expect(view.queryByRole("button", { name: "Retry detection" })).not.toBeInTheDocument()
+  })
   it("calls onRetry when retry button clicked", () => {
     const onRetry = mock()
     const view = render(
