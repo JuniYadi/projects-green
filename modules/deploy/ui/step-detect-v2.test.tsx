@@ -58,18 +58,10 @@ describe("StepDetectV2", () => {
       />
     )
 
-    expect(
-      view.getByText("We're checking how to publish your site")
-    ).toBeInTheDocument()
-    expect(
-      view.getByText(
-        "This usually takes about a minute. You can review the result before anything goes live."
-      )
-    ).toBeInTheDocument()
-    expect(view.getByText("Checking your project…")).toBeInTheDocument()
-    expect(view.getByText("Inspect repository")).toBeInTheDocument()
-    expect(view.queryByText("Analyze dependencies")).not.toBeInTheDocument()
-    expect(view.queryByText("Show technical details")).not.toBeInTheDocument()
+    expect(view.getAllByText("Reading your repo…").length).toBeGreaterThan(0)
+    expect(view.getByText("Checking dependencies")).toBeInTheDocument()
+    expect(view.getByText("Choosing a runtime")).toBeInTheDocument()
+    expect(view.getByText("Preparing your deploy plan")).toBeInTheDocument()
   })
 
   it("renders real detection values including Not detected for missing version", () => {
