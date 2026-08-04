@@ -40,13 +40,9 @@ export function StepConnectV2({
         <p className="text-xs font-semibold tracking-[0.18em] text-primary uppercase">
           Connect source
         </p>
-        <h2 className="text-xl font-bold">
-          {isTemplate ? "Confirm template" : "Choose repository"}
-        </h2>
+        <h2 className="text-xl font-bold">Your project is selected</h2>
         <p className="text-sm text-muted-foreground">
-          {isTemplate
-            ? "Your selected template is ready for framework review."
-            : "Confirm the repository and branch before detection starts."}
+          Next, we&apos;ll check the settings needed to publish it.
         </p>
       </div>
 
@@ -102,7 +98,7 @@ export function StepConnectV2({
           Back
         </Button>
         <Button type="button" onClick={onNext} disabled={!canProceed}>
-          Continue to detection
+          Check my site
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </div>

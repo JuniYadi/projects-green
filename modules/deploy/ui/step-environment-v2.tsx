@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
@@ -78,81 +79,28 @@ export function StepEnvironmentV2({
     ? generatedSubdomain
     : customDomain.trim()
 
-  const showBuildSummary = sourceType && buildState
+  const showBuildSummary = Boolean(sourceType && buildState)
   const isTemplate = sourceType === "template"
+  const hiddenValidationMessages = validationMessages.filter((message) => {
+    return (
+      message !==
+        "Custom domain is required when generated subdomain is off." &&
+      message !== "Enter a valid domain such as app.example.com."
+    )
+  })
+  const hasHiddenFieldValidation = hiddenValidationMessages.length > 0
+  const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState(false)
 
   return (
     <div className="flex flex-col">
       <div className="space-y-6 p-6">
-        {/* Build Configuration Summary */}
-        {showBuildSummary && (
-          <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
-            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-              <div>
-                <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                  <FileCode className="h-4.5 w-4.5 text-primary" />
-                  Build Configuration
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {isTemplate
-                    ? "Pre-configured template deployment settings."
-                    : "Current build configuration for this deployment."}
-                </p>
-              </div>
-              {!isTemplate && onEditBuildSettings && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 border-border text-xs font-semibold shadow-sm"
-                  onClick={onEditBuildSettings}
-                >
-                  <Gear className="mr-1 h-3.5 w-3.5" />
-                  Edit Build Settings
-                </Button>
-              )}
-            </div>
-
-            <div className="grid gap-4 rounded-lg border border-border/80 bg-background p-3 text-xs shadow-inner sm:grid-cols-3">
-              <div className="space-y-1">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase">
-                  Language
-                </span>
-                <span className="block font-semibold text-foreground">
-                  {buildState.language || "N/A"}
-                </span>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase">
-                  Framework
-                </span>
-                <span className="block font-semibold text-foreground">
-                  {buildState.framework || "N/A"}
-                </span>
-              </div>
-              <div className="space-y-1">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase">
-                  Build Mode
-                </span>
-                <span className="block font-semibold text-foreground">
-                  {buildState.useDockerfile
-                    ? "Dockerfile"
-                    : buildState.buildCommand
-                      ? `Command (${buildState.buildCommand})`
-                      : "None"}
-                </span>
-              </div>
-            </div>
+        <section className="space-y-3 rounded-xl border border-border p-4">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Web address</p>
+            <p className="text-xs text-muted-foreground">
+              Choose a free address or use one you already own.
+            </p>
           </div>
-        )}
-
-        {/* Domain Mode Selector */}
-        <div className="space-y-3 rounded-xl border border-border p-4">
-          <p className="text-sm font-semibold text-foreground">Domain Mode</p>
-          <p className="text-xs text-muted-foreground">
-            Choose a managed subdomain for immediate launch, or point your
-            custom domain.
-          </p>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <label
@@ -170,12 +118,16 @@ export function StepEnvironmentV2({
                 checked={useGeneratedSubdomain}
                 onChange={() => onDomainToggleChange(true)}
               />
-              <p className="text-sm font-semibold text-foreground">
-                Managed subdomain
-              </p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-foreground">
+                  Use a free pfn.app address
+                </p>
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                  Recommended
+                </span>
+              </div>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Use a generated <code>*.pfn.app</code> domain for immediate
-                launch.
+                Use a generated address for immediate launch.
               </p>
             </label>
 
@@ -195,7 +147,7 @@ export function StepEnvironmentV2({
                 onChange={() => onDomainToggleChange(false)}
               />
               <p className="text-sm font-semibold text-foreground">
-                Custom domain
+                Use my own address
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 Point your own domain, for example <code>app.example.com</code>.
@@ -241,26 +193,12 @@ export function StepEnvironmentV2({
               Enter a valid domain such as <code>app.example.com</code>.
             </p>
           ) : null}
-        </div>
+        </section>
 
-        {/* Environment Variables */}
-        <div className="space-y-3 rounded-xl border border-border p-4">
-          <p className="text-sm font-semibold text-foreground">
-            Environment Variables
-          </p>
-          <EnvVarsEditor
-            envVars={envVars}
-            environmentId={environmentId}
-            onChange={onEnvVarsChange}
-          />
-        </div>
-
-        <div className="space-y-3 rounded-xl border border-border p-4">
-          <p className="text-sm font-semibold text-foreground">Resource Plan</p>
+        <section className="space-y-3 rounded-xl border border-border p-4">
+          <p className="text-sm font-semibold text-foreground">Hosting plan</p>
           <ResourcePlanSelector
             selectedPlanId={resourcePlanId}
-            cpu={cpu}
-            memory={memory}
             recommendedPlanId={recommendedPlanId}
             onChange={onResourcePlanChange}
             onCpuChange={onCpuChange}
@@ -273,44 +211,171 @@ export function StepEnvironmentV2({
                 ? "Starter plan selected: suitable for demos, side projects, and low traffic."
                 : "Pro plan selected: suitable for production workloads requiring high availability."}
           </p>
-        </div>
+        </section>
 
-        {/* Attached Resources */}
-        <div className="space-y-2 rounded-xl border border-dashed border-border bg-muted/10 p-4">
-          <p className="text-sm font-semibold text-foreground">
-            Attached Resources
-          </p>
-          <p className="text-xs text-muted-foreground">
-            No databases attached. You can provision and attach PostgreSQL or
-            Redis in one click after deployment.
-          </p>
-        </div>
+        <details
+          open={hasHiddenFieldValidation || advancedSettingsOpen}
+          onToggle={(event) => {
+            if (!hasHiddenFieldValidation) {
+              setAdvancedSettingsOpen(event.currentTarget.open)
+            }
+          }}
+          className="rounded-xl border border-border"
+        >
+          <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-foreground">
+            Advanced settings
+          </summary>
+          <div className="space-y-4 border-t border-border p-4">
+            {hiddenValidationMessages.length > 0 ? (
+              <div
+                className="space-y-1 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive"
+                role="alert"
+              >
+                <p className="font-semibold">
+                  Environment settings need attention
+                </p>
+                <ul className="list-disc space-y-0.5 pl-4">
+                  {hiddenValidationMessages.map((message) => {
+                    return <li key={message}>{message}</li>
+                  })}
+                </ul>
+              </div>
+            ) : null}
 
-        {/* Validation Errors & Deploy Status */}
-        {validationMessages.length > 0 ? (
-          <div
-            className="space-y-1 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive"
-            role="alert"
-          >
-            <p className="font-semibold">Environment settings need attention</p>
-            <ul className="list-disc space-y-0.5 pl-4">
-              {validationMessages.map((message) => {
-                return <li key={message}>{message}</li>
-              })}
-            </ul>
+            {showBuildSummary && buildState ? (
+              <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
+                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                  <div>
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                      <FileCode className="h-4.5 w-4.5 text-primary" />
+                      Build Configuration
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {isTemplate
+                        ? "Pre-configured template deployment settings."
+                        : "Current build configuration for this deployment."}
+                    </p>
+                  </div>
+                  {!isTemplate && onEditBuildSettings && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 border-border text-xs font-semibold shadow-sm"
+                      onClick={onEditBuildSettings}
+                    >
+                      <Gear className="mr-1 h-3.5 w-3.5" />
+                      Edit Build Settings
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid gap-4 rounded-lg border border-border/80 bg-background p-3 text-xs shadow-inner sm:grid-cols-3">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                      Language
+                    </span>
+                    <span className="block font-semibold text-foreground">
+                      {buildState.language || "N/A"}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                      Framework
+                    </span>
+                    <span className="block font-semibold text-foreground">
+                      {buildState.framework || "N/A"}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                      Build Mode
+                    </span>
+                    <span className="block font-semibold text-foreground">
+                      {buildState.useDockerfile
+                        ? "Dockerfile"
+                        : buildState.buildCommand
+                          ? `Command (${buildState.buildCommand})`
+                          : "None"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="space-y-3 rounded-xl border border-border p-4">
+              <p className="text-sm font-semibold text-foreground">
+                Environment Variables
+              </p>
+              <EnvVarsEditor
+                envVars={envVars}
+                environmentId={environmentId}
+                onChange={onEnvVarsChange}
+              />
+            </div>
+
+            {resourcePlanId === "payg" ? (
+              <div className="grid gap-3 rounded-xl border border-border p-4 sm:grid-cols-2">
+                <label className="space-y-1">
+                  <span className="text-xs font-semibold text-foreground">
+                    CPU (millicores)
+                  </span>
+                  <Input
+                    type="number"
+                    min={100}
+                    max={2000}
+                    value={cpu ?? 100}
+                    onChange={(event) =>
+                      onCpuChange(Number(event.target.value))
+                    }
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs font-semibold text-foreground">
+                    Memory (MiB)
+                  </span>
+                  <Input
+                    type="number"
+                    min={256}
+                    max={4096}
+                    value={memory ?? 256}
+                    onChange={(event) =>
+                      onMemoryChange(Number(event.target.value))
+                    }
+                  />
+                </label>
+              </div>
+            ) : null}
+
+            <div className="space-y-2 rounded-xl border border-dashed border-border bg-muted/10 p-4">
+              <p className="text-sm font-semibold text-foreground">
+                Attached Resources
+              </p>
+              <p className="text-xs text-muted-foreground">
+                No databases attached. You can provision and attach PostgreSQL
+                or Redis in one click after deployment.
+              </p>
+            </div>
           </div>
-        ) : (
+        </details>
+
+        {validationMessages.length === 0 ? (
           <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-foreground">
-            Ready to deploy to <code>{targetDomain}</code> with {envVars.length}{" "}
-            environment variable{envVars.length === 1 ? "" : "s"} on the{" "}
-            {resourcePlanId === "starter"
-              ? "Starter"
-              : resourcePlanId === "pro"
-                ? "Pro"
-                : "Pay-As-You-Go"}{" "}
-            plan.
+            <p>
+              Ready to publish at <code>{targetDomain}</code>.
+            </p>
+            <p className="mt-1 text-muted-foreground">
+              {envVars.length} environment variable
+              {envVars.length === 1 ? "" : "s"} on the{" "}
+              {resourcePlanId === "starter"
+                ? "Starter"
+                : resourcePlanId === "pro"
+                  ? "Pro"
+                  : "Pay-As-You-Go"}{" "}
+              plan.
+            </p>
           </div>
-        )}
+        ) : null}
 
         {submitError ? (
           <div
@@ -338,7 +403,7 @@ export function StepEnvironmentV2({
           disabled={!canDeploy || isSubmitting}
           className="flex h-9 items-center gap-1 bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
         >
-          {isSubmitting ? "Starting deploy…" : "Deploy Application"}
+          {isSubmitting ? "Publishing site…" : "Publish site"}
           <ArrowRight className="h-3.5 w-3.5" />
         </Button>
       </div>

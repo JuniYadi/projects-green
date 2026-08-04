@@ -99,19 +99,32 @@ const installDeployFixtures = async (
 const configureDeploy = async (page: Page) => {
   await page.goto("/en/console/app/deploy?github=connected")
   await expect(
-    page.getByRole("heading", { name: "Deploy Application" })
+    page.getByRole("heading", { name: "Put a site online" })
   ).toBeVisible()
+  await expect(
+    page.getByText("Choose a starting point", { exact: true })
+  ).toBeVisible()
+  await expect(
+    page.getByText("Check your setup", { exact: true })
+  ).toBeVisible()
+  await expect(
+    page.getByText("Publish your site", { exact: true })
+  ).toBeVisible()
+  await expect(page.getByText("Step 1 of 3", { exact: true })).toBeVisible()
 
   await expect(page.getByText("PFN", { exact: true })).toBeVisible()
   await page.getByRole("button", { name: /green-app/ }).click()
-  await expect(page.getByText("Next.js", { exact: true })).toBeVisible()
 
+  await page.getByRole("button", { name: "Continue to setup" }).click()
+  await expect(
+    page.getByRole("button", { name: "Check my site" })
+  ).toBeVisible()
+  await page.getByRole("button", { name: "Check my site" }).click()
+  await expect(page.getByRole("button", { name: "Next" })).toBeVisible()
   await page.getByRole("button", { name: "Next" }).click()
   await expect(
-    page.getByText("Build Configuration", { exact: true })
+    page.getByRole("heading", { name: "Choose your web address & plan" })
   ).toBeVisible()
-  await page.getByRole("button", { name: "Next" }).click()
-  await expect(page.getByText("Domain Mode", { exact: true })).toBeVisible()
 }
 
 const expectNormalAuthentication = async (
@@ -159,7 +172,7 @@ test("deploys a repository through the happy path @e2e/smoke/deploy/deploy-wizar
   }))
 
   await configureDeploy(page)
-  await page.getByRole("button", { name: "Deploy Application" }).click()
+  await page.getByRole("button", { name: "Publish site" }).click()
 
   await expect(page.getByText("Deployment live")).toBeVisible()
 })
@@ -191,9 +204,7 @@ test("shows a submit error and completes after retry @e2e/smoke/deploy/deploy-wi
   })
 
   await configureDeploy(page)
-  const deployButton = page.getByRole("button", {
-    name: "Deploy Application",
-  })
+  const deployButton = page.getByRole("button", { name: "Publish site" })
   await deployButton.click()
 
   await expect(page.getByRole("alert")).toContainText(

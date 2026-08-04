@@ -196,6 +196,19 @@ describe("mapDetectionResultDTO", () => {
 
     expect(mapDetectionResultDTO(dto).confidence).toBe(85)
   })
+
+  it("normalizes fractional DTO confidence to a percentage", () => {
+    const dto: DetectionResultDTO = {
+      ...SUCCESS_DTO,
+      primaryFramework: {
+        ...SUCCESS_DTO.primaryFramework!,
+        confidence: 0.8,
+      },
+      confidence: 0.8,
+    }
+
+    expect(mapDetectionResultDTO(dto).confidence).toBe(80)
+  })
 })
 
 // ─── fetchFrameworkDetection ───
