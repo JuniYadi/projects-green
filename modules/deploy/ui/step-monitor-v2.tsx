@@ -25,37 +25,6 @@ type StepMonitorV2Props = {
   onEditSettings: () => void
 }
 
-const STATUS_COPY: Record<
-  DeployStatus,
-  { title: string; supportText: string }
-> = {
-  idle: {
-    title: "Getting your site ready",
-    supportText: "We'll start building it shortly.",
-  },
-  queued: {
-    title: "Getting your site ready",
-    supportText: "We'll start building it shortly.",
-  },
-  building: {
-    title: "Building your site",
-    supportText: "We're preparing it to run online.",
-  },
-  deploying: {
-    title: "Putting your site online",
-    supportText: "We're connecting it to your web address.",
-  },
-  running: {
-    title: "Your site is live",
-    supportText: "Your web address is ready to visit.",
-  },
-  failed: {
-    title: "We couldn't publish your site",
-    supportText:
-      "We hit an issue while deploying. Review logs and retry with updated settings.",
-  },
-}
-
 export function StepMonitorV2({
   deployId,
   status,

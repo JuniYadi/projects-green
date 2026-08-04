@@ -1112,6 +1112,14 @@ function DeployWizardV2Inner({
             {description ?? messages.description}
           </p>
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={messages.reset}
+          onClick={() => dispatch({ type: "reset" })}
+        >
+          <X className="h-4 w-4" />
+        </Button>
       </header>
 
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">

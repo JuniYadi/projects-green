@@ -14,6 +14,8 @@ type StepReviewProps = ComponentProps<typeof StepEnvironmentV2> & {
   appName?: string
   branchName?: string
   detectionResult?: DetectionResult | null
+  rootDirectory?: string
+  onRootDirectoryChange?: (value: string) => void
 }
 
 const resourcePlanLabels = {
@@ -34,6 +36,8 @@ export function StepReviewV2({
   cpu,
   memory,
   messages: providedMessages,
+  rootDirectory: _rootDirectory,
+  onRootDirectoryChange: _onRootDirectoryChange,
   ...environmentProps
 }: StepReviewProps) {
   const messages = providedMessages ?? enMessages.console.app.deployWizard
@@ -66,6 +70,13 @@ export function StepReviewV2({
       : isMediumConfidence(detectionResult)
         ? messages.review.editableRecommendation
         : messages.review.manualSetupRequired
+  const showOutcomeReview = Boolean(appName || branchName || detectionResult)
+  const reviewHeading = showOutcomeReview
+    ? messages.review.heading
+    : "Choose your web address & plan"
+  const reviewDescription = showOutcomeReview
+    ? messages.review.description
+    : "Use the recommended settings, or change them if you know what you need."
 
   return (
     <div className="space-y-4">
@@ -75,11 +86,9 @@ export function StepReviewV2({
             {messages.review.eyebrow}
           </p>
           <h2 id="deploy-plan-heading" className="text-xl font-bold">
-            {messages.review.heading}
+            {reviewHeading}
           </h2>
-          <p className="text-sm text-muted-foreground">
-            {messages.review.description}
-          </p>
+          <p className="text-sm text-muted-foreground">{reviewDescription}</p>
         </div>
 
         <dl className="grid gap-4 rounded-lg border border-border bg-muted/20 p-4 text-sm sm:grid-cols-2">
@@ -163,12 +172,25 @@ export function StepReviewV2({
         </p>
       </section>
 
+      {environmentProps.validationMessages.some((message) =>
+        message.toLowerCase().includes("custom domain")
+      ) ? (
+        <div role="alert" className="px-6 text-xs text-destructive">
+          {environmentProps.validationMessages
+            .filter((message) =>
+              message.toLowerCase().includes("custom domain")
+            )
+            .map((message) => (
+              <p key={message}>{message}</p>
+            ))}
+        </div>
+      ) : null}
       <StepEnvironmentV2
-        messages={messages}
         {...environmentProps}
         resourcePlanId={resourcePlanId}
         cpu={cpu}
         memory={memory}
+        submitLabel={showOutcomeReview ? "Deploy" : undefined}
       />
     </div>
   )
