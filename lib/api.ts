@@ -2,6 +2,7 @@ import { Elysia } from "elysia"
 import { openapi } from "@elysia/openapi"
 import { serverTiming } from "@elysia/server-timing"
 import { z } from "zod"
+import { enrichOpenApiDocument } from "@/lib/openapi-documentation"
 
 import { adminRoutes } from "@/modules/admin/api/admin.route"
 import { emailTemplateRoutes } from "@/modules/email-templates/api/email-templates.route"
@@ -98,11 +99,36 @@ const toFieldErrors = (
 
   return Object.keys(fieldErrors).length ? fieldErrors : undefined
 }
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  if (typeof value !== "object" || value === null) {
+    return false
+  }
+
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
 
 export const app = new Elysia({ prefix: "/api" })
   .use(serverTiming())
+  .onAfterHandle({ as: "global" }, ({ request, response }) => {
+    if (new URL(request.url).pathname !== "/api/openapi/json") {
+      return
+    }
+
+    if (!isPlainObject(response)) {
+      return
+    }
+
+    return enrichOpenApiDocument(response)
+  })
   .use(
     openapi({
+      path: "/openapi",
+      specPath: "/openapi/json",
+      mapJsonSchema: {
+        zod: (schema: z.ZodType) =>
+          z.toJSONSchema(schema, { target: "openapi-3.0" }),
+      },
       documentation: {
         info: {
           title: "PFNApp API Documentation",
