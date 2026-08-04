@@ -1041,6 +1041,7 @@ export type ReadRepoFileInput = {
   repo: string
   filePath: string
   ref?: string // branch, tag, or commit SHA
+  subdir?: string
 }
 
 /**
@@ -1120,15 +1121,17 @@ export const readRepoFile = async (
 ): Promise<{ content: string; path: string; sha: string; size: number }> => {
   const token = await createInstallationToken(input.installationId)
   const ref = input.ref ? `?ref=${encodeURIComponent(input.ref)}` : ""
+  const filePath = input.subdir
+    ? `${input.subdir.replace(/\/+$/, "")}/${input.filePath.replace(/^\/+/, "")}`
+    : input.filePath
 
   const data = await githubRequest<GithubRepoContent>({
-    path: `/repos/${input.owner}/${input.repo}/contents/${input.filePath}${ref}`,
+    path: `/repos/${input.owner}/${input.repo}/contents/${filePath}${ref}`,
     token,
   })
-
   if (data.encoding !== "base64") {
     throw new GithubApiError(
-      `Unexpected encoding "${data.encoding}" for file "${input.filePath}".`
+      `Unexpected encoding "${data.encoding}" for file "${filePath}".`
     )
   }
 
