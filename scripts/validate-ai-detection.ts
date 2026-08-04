@@ -78,7 +78,7 @@ const runtimeMappings: RuntimeMappingRecord[] = [
     frameworkId: "laravel",
     frameworkVersion: null,
     runtimeId: "php",
-    runtimeVersion: "8.3",
+    runtimeVersion: "8.4",
     buildVersion: null,
     isActive: true,
     priority: 100,
