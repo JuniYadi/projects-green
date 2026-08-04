@@ -3,12 +3,15 @@ import { render } from "@testing-library/react"
 import { ResultPanel } from "./result-panel"
 
 describe("ResultPanel", () => {
+  const dashboardHref = "/en/console/app/manage"
+
   it("shows idle message when status is idle", () => {
     const view = render(
       <ResultPanel
         status="idle"
         failureReason={null}
         attempt={0}
+        dashboardHref={dashboardHref}
         onRetry={mock()}
         onEditSettings={mock()}
       />
@@ -22,6 +25,7 @@ describe("ResultPanel", () => {
         status="queued"
         failureReason={null}
         attempt={1}
+        dashboardHref={dashboardHref}
         onRetry={mock()}
         onEditSettings={mock()}
       />
@@ -35,6 +39,7 @@ describe("ResultPanel", () => {
         status="building"
         failureReason={null}
         attempt={2}
+        dashboardHref={dashboardHref}
         onRetry={mock()}
         onEditSettings={mock()}
       />
@@ -48,6 +53,7 @@ describe("ResultPanel", () => {
         status="deploying"
         failureReason={null}
         attempt={3}
+        dashboardHref={dashboardHref}
         onRetry={mock()}
         onEditSettings={mock()}
       />
@@ -55,17 +61,70 @@ describe("ResultPanel", () => {
     expect(view.getByText("Deployment in progress")).toBeInTheDocument()
   })
 
-  it("shows live status for running status", () => {
+  it("shows live links only when running has a domain", () => {
     const view = render(
       <ResultPanel
         status="running"
         failureReason={null}
         attempt={1}
+        liveDomain="preview.example.com"
+        dashboardHref={dashboardHref}
         onRetry={mock()}
         onEditSettings={mock()}
       />
     )
-    expect(view.getByText("Deployment live")).toBeInTheDocument()
+    expect(view.getByText("Your app is live!")).toBeInTheDocument()
+    expect(
+      view.getByRole("link", { name: "Visit Preview" }).getAttribute("href")
+    ).toBe("https://preview.example.com")
+    expect(
+      view.getByRole("link", { name: "Open Dashboard" }).getAttribute("href")
+    ).toBe(dashboardHref)
+  })
+
+  it("omits preview link when running has no domain", () => {
+    const view = render(
+      <ResultPanel
+        status="running"
+        failureReason={null}
+        attempt={1}
+        dashboardHref={dashboardHref}
+        onRetry={mock()}
+        onEditSettings={mock()}
+      />
+    )
+    expect(view.getByText("Your app is live!")).toBeInTheDocument()
+    expect(view.queryByRole("link", { name: "Visit Preview" })).toBeNull()
+  })
+  it("omits preview link for a malformed domain", () => {
+    const view = render(
+      <ResultPanel
+        status="running"
+        failureReason={null}
+        attempt={1}
+        liveDomain="https://preview.example.com"
+        dashboardHref={dashboardHref}
+        onRetry={mock()}
+        onEditSettings={mock()}
+      />
+    )
+
+    expect(view.queryByRole("link", { name: "Visit Preview" })).toBeNull()
+  })
+  it("omits dashboard link when href is empty", () => {
+    const view = render(
+      <ResultPanel
+        status="running"
+        failureReason={null}
+        attempt={1}
+        liveDomain="preview.example.com"
+        dashboardHref=""
+        onRetry={mock()}
+        onEditSettings={mock()}
+      />
+    )
+
+    expect(view.queryByRole("link", { name: "Open Dashboard" })).toBeNull()
   })
 
   it("shows failure message and action buttons", () => {
@@ -76,6 +135,7 @@ describe("ResultPanel", () => {
         status="failed"
         failureReason="Build timeout"
         attempt={2}
+        dashboardHref={dashboardHref}
         onRetry={onRetry}
         onEditSettings={onEditSettings}
       />
@@ -91,6 +151,7 @@ describe("ResultPanel", () => {
         status="failed"
         failureReason={null}
         attempt={3}
+        dashboardHref={dashboardHref}
         onRetry={mock()}
         onEditSettings={mock()}
       />
@@ -106,6 +167,7 @@ describe("ResultPanel", () => {
         status={"unknown" as never}
         failureReason={null}
         attempt={0}
+        dashboardHref={dashboardHref}
         onRetry={mock()}
         onEditSettings={mock()}
       />
