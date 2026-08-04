@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
-import { X } from "@/components/ui/phosphor-icons"
+import { Check, X } from "@/components/ui/phosphor-icons"
 import { Button } from "@/components/ui/button"
 import {
   fetchFrameworkDetection,
@@ -11,17 +11,13 @@ import {
 } from "@/modules/deploy/deploy-detection.service"
 import { recommendPlan } from "@/modules/deploy/deploy-recommendation"
 import {
+  DEPLOY_PHASES,
   DEPLOY_STEP_QUERY_KEY,
-  DEPLOY_STEPS,
   DEPLOY_TEMPLATES,
   MONITOR_POLL_INTERVAL_MS,
   parseStepQueryValue,
 } from "@/modules/deploy/deploy.constants"
-import {
-  clampStepToUnlocked,
-  getMaxUnlockedStep,
-  getNextStep,
-} from "@/modules/deploy/deploy.logic"
+import { clampStepToUnlocked, getNextStep } from "@/modules/deploy/deploy.logic"
 import { cn } from "@/lib/utils"
 import {
   getDefaultBranchName,
@@ -511,7 +507,6 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
     normalizedCustomDomain.length > 0 &&
     !isValidCustomDomain(normalizedCustomDomain)
 
-  const maxUnlockedStep = getMaxUnlockedStep(state)
   const manualOverrideRequired = isManualOverrideRequired(state.detectionResult)
 
   const navigateStep = (step: DeployStep) => {
@@ -995,8 +990,11 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
     )
   }
 
-  const maxStepIndex = DEPLOY_STEPS.findIndex(
-    (step) => step.id === maxUnlockedStep
+  const activePhaseIndex = Math.max(
+    0,
+    DEPLOY_PHASES.findIndex((phase) =>
+      phase.steps.some((step) => step === state.step)
+    )
   )
 
   return (
@@ -1007,55 +1005,70 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
             Deploy New
           </p>
           <h1 className="text-2xl font-semibold">
-            {title ?? "Deploy Application"}
+            {title ?? "Put a site online"}
           </h1>
           {description && (
             <p className="max-w-2xl text-sm text-muted-foreground">
               {description}
             </p>
           )}
+          {!description && (
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              Choose where to start. We&apos;ll help set it up and publish it.
+            </p>
+          )}
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Reset deploy wizard"
-          onClick={() => dispatch({ type: "reset" })}
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => dispatch({ type: "reset" })}
+          >
+            Start over
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Reset deploy wizard"
+            onClick={() => dispatch({ type: "reset" })}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </header>
 
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <nav
-          className="overflow-x-auto border-b border-border p-4"
+          className="border-b border-border p-4"
           aria-label="Deploy wizard steps"
         >
-          <ol className="flex min-w-[680px] items-center">
-            {DEPLOY_STEPS.map((step, index) => {
-              const isActive = state.step === step.id
-              const isCompleted =
-                index < maxStepIndex || state.step === "deploy"
-              const isUnlocked = index <= maxStepIndex || state.step === step.id
+          <div className="mb-3 text-xs font-medium text-muted-foreground">
+            Step {activePhaseIndex + 1} of {DEPLOY_PHASES.length}
+          </div>
+          <ol className="flex items-start">
+            {DEPLOY_PHASES.map((phase, index) => {
+              const isActive = index === activePhaseIndex
+              const isCompleted = index < activePhaseIndex
 
               return (
-                <li key={step.id} className="flex min-w-0 flex-1 items-center">
+                <li
+                  key={phase.id}
+                  aria-current={isActive ? "step" : undefined}
+                  className="flex min-w-0 flex-1 items-start"
+                >
                   {index > 0 && (
                     <span
                       aria-hidden="true"
                       className={cn(
-                        "h-px flex-1",
+                        "mt-4 h-px flex-1",
                         isCompleted ? "bg-primary" : "bg-border"
                       )}
                     />
                   )}
-                  <button
-                    type="button"
-                    disabled={!isUnlocked}
-                    onClick={() => navigateStep(step.id)}
+                  <div
                     className={cn(
-                      "flex items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors",
-                      isActive && "bg-primary/10",
-                      !isUnlocked && "cursor-not-allowed opacity-45"
+                      "flex items-center gap-2 rounded-lg px-2 py-1.5 text-left",
+                      isActive && "bg-primary/10"
                     )}
                   >
                     <span
@@ -1066,17 +1079,21 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
                           : "border-border text-muted-foreground"
                       )}
                     >
-                      {isCompleted && !isActive ? "✓" : index + 1}
+                      {isCompleted ? (
+                        <Check className="h-4 w-4" aria-label="Completed" />
+                      ) : (
+                        index + 1
+                      )}
                     </span>
-                    <span className="hidden min-w-0 sm:block">
+                    <span className="min-w-0">
                       <span className="block text-xs font-semibold">
-                        {step.label}
+                        {phase.label}
                       </span>
                       <span className="block text-[10px] text-muted-foreground">
-                        {step.description}
+                        {phase.description}
                       </span>
                     </span>
-                  </button>
+                  </div>
                 </li>
               )
             })}

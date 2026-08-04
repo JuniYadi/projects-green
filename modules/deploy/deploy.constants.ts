@@ -39,6 +39,31 @@ export const DEPLOY_STEPS: Array<{
     description: "Watch it go live",
   },
 ]
+export const DEPLOY_PHASES = [
+  {
+    id: "choose",
+    label: "Choose a starting point",
+    description: "Pick a template or code you own",
+    steps: ["source", "connect"],
+  },
+  {
+    id: "check",
+    label: "Check your setup",
+    description: "We find the settings; you confirm",
+    steps: ["detect", "review"],
+  },
+  {
+    id: "publish",
+    label: "Publish your site",
+    description: "We put it online",
+    steps: ["deploy"],
+  },
+] as const satisfies ReadonlyArray<{
+  id: "choose" | "check" | "publish"
+  label: string
+  description: string
+  steps: readonly DeployStep[]
+}>
 
 export const DEPLOY_STEP_ORDER = DEPLOY_STEPS.map((step) => step.id)
 
@@ -51,7 +76,7 @@ export const DEPLOY_WIZARD_STORAGE_VERSION = 1
 export const DEPLOY_WIZARD_STORAGE_KEY = "pfnapp.console.deploy-wizard.v1"
 
 export const DEFAULT_SOURCE_STATE: DeploySourceState = {
-  sourceType: "github",
+  sourceType: "template",
   appName: "",
   ownerId: "",
   repositoryId: "",

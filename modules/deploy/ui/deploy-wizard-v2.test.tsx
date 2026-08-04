@@ -113,19 +113,15 @@ describe("DeployWizardV2 GitHub accounts", () => {
     expect(
       view.getByRole("navigation", { name: "Deploy wizard steps" })
     ).toBeTruthy()
+    expect(view.getByText("Choose a starting point")).toBeInTheDocument()
+    expect(view.getByText("Check your setup")).toBeInTheDocument()
+    expect(view.getByText("Publish your site")).toBeInTheDocument()
+    expect(view.getByText("Step 1 of 3")).toBeInTheDocument()
     expect(
-      view.getByRole("button", { name: /Source Choose code location/ })
-    ).toBeTruthy()
-    expect(
-      view.getByRole("button", { name: /Connect Pick repository/ })
-    ).toBeTruthy()
-    expect(view.getByRole("button", { name: /Detect AI scans/ })).toBeTruthy()
-    expect(
-      view.getByRole("button", { name: /Review Confirm build/ })
-    ).toBeTruthy()
-    expect(
-      view.getByRole("button", { name: /Deploy Watch it go live/ })
-    ).toBeTruthy()
+      view
+        .getByRole("navigation", { name: "Deploy wizard steps" })
+        .querySelectorAll("button")
+    ).toHaveLength(0)
 
     expect((view.getByRole("combobox") as HTMLSelectElement).value).toBe("acme")
     const repositoryRequest = requests.find((request) =>
@@ -152,6 +148,7 @@ describe("DeployWizardV2 GitHub accounts", () => {
       </DeployWizardProvider>
     )
 
+    fireEvent.click(view.getByRole("button", { name: /Use a GitHub project/ }))
     await waitFor(() => {
       expect(
         view.getByRole("button", { name: "Connect GitHub" })
@@ -185,7 +182,8 @@ describe("DeployWizardV2 GitHub accounts", () => {
       ).toBe(true)
     })
 
-    fireEvent.click(view.getByRole("button", { name: /Detect AI scans/ }))
+    fireEvent.click(view.getByRole("button", { name: /Continue to setup/ }))
+    fireEvent.click(view.getByRole("button", { name: "Check my site" }))
     expect(view.getByText("Detect build settings")).toBeInTheDocument()
   })
 
@@ -214,7 +212,8 @@ describe("DeployWizardV2 GitHub accounts", () => {
       ).toBe(true)
     })
 
-    fireEvent.click(view.getByRole("button", { name: /Detect AI scans/ }))
+    fireEvent.click(view.getByRole("button", { name: /Continue to setup/ }))
+    fireEvent.click(view.getByRole("button", { name: "Check my site" }))
 
     expect(view.getByText("Detect build settings")).toBeInTheDocument()
   })
@@ -289,7 +288,8 @@ describe("DeployWizardV2 GitHub accounts", () => {
       },
       { timeout: 5000 }
     )
-    fireEvent.click(view.getByRole("button", { name: /Detect AI scans/ }))
+    fireEvent.click(view.getByRole("button", { name: /Continue to setup/ }))
+    fireEvent.click(view.getByRole("button", { name: "Check my site" }))
     expect(view.getByText("Detect build settings")).toBeInTheDocument()
   })
 
@@ -357,7 +357,8 @@ describe("DeployWizardV2 GitHub accounts", () => {
       },
       { timeout: 5000 }
     )
-    fireEvent.click(view.getByRole("button", { name: /Detect AI scans/ }))
+    fireEvent.click(view.getByRole("button", { name: /Continue to setup/ }))
+    fireEvent.click(view.getByRole("button", { name: "Check my site" }))
 
     expect(
       view.getAllByText(
