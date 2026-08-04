@@ -12,6 +12,12 @@ export type FrameworkDetectionInput = {
   subdir?: string
 }
 
+export type PublicFrameworkDetectionInput = {
+  repoUrl: string
+  ref?: string
+  subdir?: string
+}
+
 export type FrameworkDetectionResponse = {
   ok: true
 } & DetectionResultDTO
@@ -45,6 +51,7 @@ export class DetectionError extends Error {
 // --- Constants ---
 
 const DETECTION_API_PATH = "/api/framework-detection/github"
+const PUBLIC_DETECTION_API_PATH = "/api/framework-detection"
 
 const ECOSYSTEM_TO_LANGUAGE: Record<string, string> = {
   node: "Node.js",
@@ -152,14 +159,15 @@ export const mapDetectionResultDTO = (
 
 // --- API Client ---
 
-export const fetchFrameworkDetection = async (
-  input: FrameworkDetectionInput,
+const fetchDetection = async (
+  path: string,
+  input: FrameworkDetectionInput | PublicFrameworkDetectionInput,
   signal?: AbortSignal
 ): Promise<DetectionResult> => {
   let response: Response
 
   try {
-    response = await fetch(DETECTION_API_PATH, {
+    response = await fetch(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
@@ -177,6 +185,7 @@ export const fetchFrameworkDetection = async (
       "NETWORK_ERROR"
     )
   }
+
   let body:
     | FrameworkDetectionResponse
     | FrameworkDetectionErrorResponse
@@ -211,3 +220,14 @@ export const fetchFrameworkDetection = async (
 
   return mapDetectionResultDTO(body)
 }
+
+export const fetchFrameworkDetection = async (
+  input: FrameworkDetectionInput,
+  signal?: AbortSignal
+): Promise<DetectionResult> => fetchDetection(DETECTION_API_PATH, input, signal)
+
+export const fetchPublicFrameworkDetection = async (
+  input: PublicFrameworkDetectionInput,
+  signal?: AbortSignal
+): Promise<DetectionResult> =>
+  fetchDetection(PUBLIC_DETECTION_API_PATH, input, signal)
