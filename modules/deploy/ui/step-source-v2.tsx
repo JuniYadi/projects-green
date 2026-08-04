@@ -227,9 +227,7 @@ export function StepSourceV2(props: StepSourceProps) {
   const cardCls = (sel: boolean) =>
     cn(
       "flex flex-col rounded-xl border-2 bg-card transition-all",
-      sel
-        ? "border-primary shadow-md"
-        : "cursor-pointer border-border hover:border-primary/50"
+      sel ? "border-primary shadow-md" : "border-border"
     )
 
   const badgeCls = (sel: boolean) =>
@@ -245,226 +243,41 @@ export function StepSourceV2(props: StepSourceProps) {
 
   return (
     <div className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-xl font-bold">What would you like to publish?</h2>
+        <p className="text-sm text-muted-foreground">
+          Choose a starting point. We&apos;ll guide you through the rest.
+        </p>
+      </div>
       <div className="grid gap-4 md:grid-cols-3">
-        <div
-          className={cardCls(selCard === "github")}
-          onClick={() => onSourceTypeChange("github")}
-        >
-          <div className="flex items-start gap-3 p-5">
-            <div className={badgeCls(selCard === "github")}>
-              <Folder className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-semibold">My Repositories</h3>
-              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                {githubConnectionStatus === "connected"
-                  ? "Browse and deploy from your connected GitHub account."
-                  : "Connect your GitHub account to access your repositories."}
-              </p>
-            </div>
-            <div className={checkCls(selCard === "github")}>
-              {selCard === "github" && <Check className="h-3.5 w-3.5" />}
-            </div>
-          </div>
-
-          {selCard === "github" && (
-            <div
-              className="space-y-3 px-5 pb-5"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {githubConnectionStatus !== "connected" ? (
-                <div className="space-y-2">
-                  {githubReconnectRequired && (
-                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-amber-700 dark:text-amber-400">
-                      GitHub access expired. Reconnect to continue.
-                    </div>
-                  )}
-                  {githubConnectionStatus === "error" && (
-                    <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-2.5 text-xs text-destructive">
-                      Connection failed. Please try again.
-                    </div>
-                  )}
-                  <Button
-                    onClick={onConnectGithub}
-                    disabled={isConnectingGithub}
-                    className="w-full"
-                    size="sm"
-                  >
-                    <GithubLogo className="mr-2 h-4 w-4" />
-                    {isConnectingGithub
-                      ? "Redirecting..."
-                      : githubReconnectRequired
-                        ? "Reconnect GitHub"
-                        : "Connect GitHub"}
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                      Account
-                    </label>
-                    {ownerOptionsLoading ? (
-                      <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                        Loading...
-                      </div>
-                    ) : ownerOptionsError ? (
-                      <p className="text-xs text-destructive">
-                        {ownerOptionsError}
-                      </p>
-                    ) : (
-                      <select
-                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-                        value={selectedOwnerId}
-                        onChange={(e) => onOwnerSelect(e.target.value)}
-                        disabled={owners.length === 1}
-                      >
-                        {owners.map((o) => (
-                          <option key={o.id} value={o.id}>
-                            {o.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                      Repository
-                    </label>
-                    <div className="relative">
-                      <MagnifyingGlass className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        placeholder="Search repositories..."
-                        value={repositorySearch}
-                        onChange={(e) =>
-                          onRepositorySearchChange(e.target.value)
-                        }
-                        className="h-9 pl-9 text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  {repositoryOptionsLoading ? (
-                    <div className="flex items-center justify-center py-6">
-                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                    </div>
-                  ) : repositoryOptionsError ? (
-                    <p className="text-xs text-destructive">
-                      {repositoryOptionsError}
-                    </p>
-                  ) : filteredRepos.length === 0 ? (
-                    <p className="py-2 text-xs text-muted-foreground">
-                      {repositorySearch
-                        ? "No repositories match your search."
-                        : "No repositories found."}
-                    </p>
-                  ) : (
-                    <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-border bg-muted/20 p-1">
-                      {filteredRepos.map((repo) => (
-                        <button
-                          key={repo.id}
-                          onClick={() => onRepositorySelect(repo.id)}
-                          className={cn(
-                            "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors",
-                            selectedRepositoryId === repo.id
-                              ? "bg-primary/10 text-primary"
-                              : "hover:bg-muted"
-                          )}
-                        >
-                          <Folder className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          <span className="truncate">{repo.name}</span>
-                          {repo.isPrivate && (
-                            <span className="shrink-0 rounded border border-border px-1 text-[10px] text-muted-foreground">
-                              Private
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {selRepo && (
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                        Branch
-                      </label>
-                      <select
-                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-                        value={selectedBranchName}
-                        onChange={(e) => onBranchSelect(e.target.value)}
-                      >
-                        {branches.length === 0 && (
-                          <option value="">No branches</option>
-                        )}
-                        {branches.map((b) => (
-                          <option key={b.id} value={b.name}>
-                            {b.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {selBranch && (
-                    <div className="space-y-3 pt-1">
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                          Root Directory
-                        </label>
-                        <Input
-                          placeholder="/"
-                          value={rootDirectory}
-                          onChange={(e) =>
-                            onRootDirectoryChange(e.target.value)
-                          }
-                          className="h-9 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                          App Name
-                        </label>
-                        <Input
-                          placeholder="my-awesome-app"
-                          value={appName}
-                          onChange={(e) => onAppNameChange(e.target.value)}
-                          className="h-9 text-sm"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div
-          className={cardCls(selCard === "template")}
-          onClick={() => onSourceTypeChange("template")}
-        >
-          <div className="flex items-start gap-3 p-5">
+        <div className={cardCls(selCard === "template")}>
+          <button
+            type="button"
+            aria-pressed={selCard === "template"}
+            onClick={() => onSourceTypeChange("template")}
+            className="flex w-full items-start gap-3 p-5 text-left"
+          >
             <div className={badgeCls(selCard === "template")}>
               <SquaresFour className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-semibold">From Template</h3>
+              <h3 className="text-sm font-semibold">
+                Start with a ready-made site
+              </h3>
               <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                One-click deploy for WordPress, Ghost, n8n, and more.
+                Choose a template for WordPress, n8n, Ghost, and more.
               </p>
+              <span className="mt-2 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                Easiest way to start
+              </span>
             </div>
             <div className={checkCls(selCard === "template")}>
               {selCard === "template" && <Check className="h-3.5 w-3.5" />}
             </div>
-          </div>
+          </button>
 
           {selCard === "template" && (
-            <div
-              className="space-y-3 px-5 pb-5"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="space-y-3 px-5 pb-5">
               <div className="space-y-2">
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
@@ -624,39 +437,228 @@ export function StepSourceV2(props: StepSourceProps) {
             </div>
           )}
         </div>
+        <div className={cardCls(selCard === "github")}>
+          <button
+            type="button"
+            aria-pressed={selCard === "github"}
+            onClick={() => onSourceTypeChange("github")}
+            className="flex w-full items-start gap-3 p-5 text-left"
+          >
+            <div className={badgeCls(selCard === "github")}>
+              <Folder className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-semibold">Use a GitHub project</h3>
+              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                Choose code from your GitHub account.
+              </p>
+            </div>
+            <div className={checkCls(selCard === "github")}>
+              {selCard === "github" && <Check className="h-3.5 w-3.5" />}
+            </div>
+          </button>
 
-        <div
-          className={cardCls(selCard === "public")}
-          onClick={() => onSourceTypeChange("public")}
-        >
-          <div className="flex items-start gap-3 p-5">
+          {selCard === "github" && (
+            <div className="space-y-3 px-5 pb-5">
+              {githubConnectionStatus !== "connected" ? (
+                <div className="space-y-2">
+                  {githubReconnectRequired && (
+                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-amber-700 dark:text-amber-400">
+                      GitHub access expired. Reconnect to continue.
+                    </div>
+                  )}
+                  {githubConnectionStatus === "error" && (
+                    <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-2.5 text-xs text-destructive">
+                      Connection failed. Please try again.
+                    </div>
+                  )}
+                  <Button
+                    onClick={onConnectGithub}
+                    disabled={isConnectingGithub}
+                    className="w-full"
+                    size="sm"
+                  >
+                    <GithubLogo className="mr-2 h-4 w-4" />
+                    {isConnectingGithub
+                      ? "Redirecting..."
+                      : githubReconnectRequired
+                        ? "Reconnect GitHub"
+                        : "Connect GitHub"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                      GitHub account
+                    </label>
+                    {ownerOptionsLoading ? (
+                      <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        Loading...
+                      </div>
+                    ) : ownerOptionsError ? (
+                      <p className="text-xs text-destructive">
+                        {ownerOptionsError}
+                      </p>
+                    ) : (
+                      <select
+                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                        value={selectedOwnerId}
+                        onChange={(e) => onOwnerSelect(e.target.value)}
+                        disabled={owners.length === 1}
+                      >
+                        {owners.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                      Project
+                    </label>
+                    <div className="relative">
+                      <MagnifyingGlass className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Search repositories..."
+                        value={repositorySearch}
+                        onChange={(e) =>
+                          onRepositorySearchChange(e.target.value)
+                        }
+                        className="h-9 pl-9 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {repositoryOptionsLoading ? (
+                    <div className="flex items-center justify-center py-6">
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    </div>
+                  ) : repositoryOptionsError ? (
+                    <p className="text-xs text-destructive">
+                      {repositoryOptionsError}
+                    </p>
+                  ) : filteredRepos.length === 0 ? (
+                    <p className="py-2 text-xs text-muted-foreground">
+                      {repositorySearch
+                        ? "No repositories match your search."
+                        : "No repositories found."}
+                    </p>
+                  ) : (
+                    <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-border bg-muted/20 p-1">
+                      {filteredRepos.map((repo) => (
+                        <button
+                          key={repo.id}
+                          onClick={() => onRepositorySelect(repo.id)}
+                          className={cn(
+                            "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors",
+                            selectedRepositoryId === repo.id
+                              ? "bg-primary/10 text-primary"
+                              : "hover:bg-muted"
+                          )}
+                        >
+                          <Folder className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          <span className="truncate">{repo.name}</span>
+                          {repo.isPrivate && (
+                            <span className="shrink-0 rounded border border-border px-1 text-[10px] text-muted-foreground">
+                              Private
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {selRepo && (
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                        Version to publish
+                      </label>
+                      <select
+                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                        value={selectedBranchName}
+                        onChange={(e) => onBranchSelect(e.target.value)}
+                      >
+                        {branches.length === 0 && (
+                          <option value="">No branches</option>
+                        )}
+                        {branches.map((b) => (
+                          <option key={b.id} value={b.name}>
+                            {b.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {selBranch && (
+                    <div className="space-y-3 pt-1">
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                          Project folder
+                        </label>
+                        <Input
+                          placeholder="/"
+                          value={rootDirectory}
+                          onChange={(e) =>
+                            onRootDirectoryChange(e.target.value)
+                          }
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                          Site name
+                        </label>
+                        <Input
+                          placeholder="my-awesome-app"
+                          value={appName}
+                          onChange={(e) => onAppNameChange(e.target.value)}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className={cardCls(selCard === "public")}>
+          <button
+            type="button"
+            aria-pressed={selCard === "public"}
+            onClick={() => onSourceTypeChange("public")}
+            className="flex w-full items-start gap-3 p-5 text-left"
+          >
             <div className={badgeCls(selCard === "public")}>
               <Globe className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-semibold">Public Source</h3>
+              <h3 className="text-sm font-semibold">Use a public Git link</h3>
               <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                Deploy from a public repository URL. Untrusted code — review
-                before proceeding.
+                Paste a link to a public Git repository.
               </p>
             </div>
             <div className={checkCls(selCard === "public")}>
               {selCard === "public" && <Check className="h-3.5 w-3.5" />}
             </div>
-          </div>
+          </button>
 
           {selCard === "public" && (
-            <div
-              className="space-y-3 px-5 pb-5"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="space-y-3 px-5 pb-5">
               <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-amber-700 dark:text-amber-400">
-                Untrusted code warning: Public sources are not verified by this
-                platform. Review the repository contents before deploying.
+                Only publish code you trust. Public repositories can contain
+                code you did not write.
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Repository URL
+                  Public Git link
                 </label>
                 <Input
                   placeholder="https://github.com/org/repo"
@@ -667,8 +669,7 @@ export function StepSourceV2(props: StepSourceProps) {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Branch or Ref{" "}
-                  <span className="text-muted-foreground/60">(optional)</span>
+                  Version to publish (optional)
                 </label>
                 <Input
                   placeholder="main"
@@ -679,7 +680,7 @@ export function StepSourceV2(props: StepSourceProps) {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  App Name
+                  Site name
                 </label>
                 <Input
                   placeholder="my-public-app"
@@ -690,7 +691,7 @@ export function StepSourceV2(props: StepSourceProps) {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Root Directory
+                  Project folder
                 </label>
                 <Input
                   placeholder="/"
@@ -704,9 +705,14 @@ export function StepSourceV2(props: StepSourceProps) {
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-3">
+        {!canProceed && (
+          <p className="text-xs text-muted-foreground">
+            Choose a template, project, or public Git link to continue.
+          </p>
+        )}
         <Button onClick={onNext} disabled={!canProceed} size="lg">
-          Next
+          {canProceed ? "Continue to setup" : "Continue"}
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </div>

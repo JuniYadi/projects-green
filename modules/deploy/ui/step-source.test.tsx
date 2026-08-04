@@ -36,7 +36,7 @@ mock.module("@/modules/deploy/deploy.constants", () => {
   }
 })
 
-import { fireEvent, render, waitFor, act } from "@testing-library/react"
+import { fireEvent, render, act } from "@testing-library/react"
 import { StepSourceV2 } from "@/modules/deploy/ui/step-source-v2"
 import type { StepSourceProps } from "@/modules/deploy/ui/step-source-v2"
 import type { ResourcePlanId } from "@/modules/deploy/deploy.types"
@@ -103,189 +103,96 @@ const createProps = () => {
   }
 }
 
-describe.skip("StepSourceV2 legacy assertions", () => {
-  it("renders source fields and organization choices", () => {
-    const props = createProps()
+describe("StepSourceV2 outcome-led source", () => {
+  // source button names include their descriptions for accessible context
+  it("starts with template path expanded and exposes pressed source buttons", () => {
+    const view = render(
+      <StepSourceV2 {...createProps()} sourceType="template" />
+    )
 
-    const view = render(<StepSourceV2 {...props} />)
-
-    expect(view.getByText("Select Account / Organization")).toBeTruthy()
-    expect(view.getByRole("button", { name: /owner-pfn/i })).toBeTruthy()
-    expect(view.queryByText("Select Repository")).toBeNull()
+    expect(
+      view.getByRole("heading", { name: "What would you like to publish?" })
+    ).toBeTruthy()
+    expect(
+      view
+        .getByRole("button", { name: /^Start with a ready-made site/ })
+        .getAttribute("aria-pressed")
+    ).toBe("true")
+    expect(view.getByText("Easiest way to start")).toBeTruthy()
+    expect(
+      view
+        .getByRole("button", { name: /^Use a GitHub project/ })
+        .getAttribute("aria-pressed")
+    ).toBe("false")
+    expect(
+      view
+        .getByRole("button", { name: /^Use a public Git link/ })
+        .getAttribute("aria-pressed")
+    ).toBe("false")
   })
 
-  it("renders selected source state and custom root directory", () => {
-    const props = createProps()
-    props.selectedOwnerId = "owner-pfn"
-    props.selectedRepositoryId = "repo-console-next"
-    props.selectedBranchName = "main"
-    props.rootDirectory = "/apps/web"
-
+  it("reveals GitHub controls only for selected GitHub source", () => {
+    const props = {
+      ...createProps(),
+      sourceType: "github" as const,
+      selectedOwnerId: "owner-pfn",
+      selectedRepositoryId: "repo-console-next",
+      selectedBranchName: "main",
+    }
     const view = render(<StepSourceV2 {...props} />)
 
-    expect(view.getByRole("button", { name: /owner-pfn/i })).toBeTruthy()
-    expect(view.getByText("console-next-app")).toBeTruthy()
-    expect(view.getByRole("button", { name: /^main$/ })).toBeTruthy()
-    expect(view.getByDisplayValue("/apps/web")).toBeTruthy()
+    expect(view.getByText("GitHub account")).toBeTruthy()
+    expect(view.getByText("Project")).toBeTruthy()
+    expect(view.getByText("Version to publish")).toBeTruthy()
+    expect(view.getByText("Project folder")).toBeTruthy()
+    expect(view.getByText("Site name")).toBeTruthy()
+    expect(
+      view
+        .getByRole("button", { name: /^Use a GitHub project/ })
+        .getAttribute("aria-pressed")
+    ).toBe("true")
   })
 
-  it("shows empty search states for owners and repositories", () => {
-    const props = createProps()
-    props.owners = []
+  it("shows public safety copy only after selecting public source", () => {
+    const templateView = render(
+      <StepSourceV2 {...createProps()} sourceType="template" />
+    )
+    expect(
+      templateView.queryByText(
+        "Only publish code you trust. Public repositories can contain code you did not write."
+      )
+    ).toBeNull()
 
-    const view = render(<StepSourceV2 {...props} />)
+    templateView.rerender(
+      <StepSourceV2 {...createProps()} sourceType="public" />
+    )
+    expect(
+      templateView.getByText(
+        "Only publish code you trust. Public repositories can contain code you did not write."
+      )
+    ).toBeTruthy()
+    expect(templateView.getByText("Public Git link")).toBeTruthy()
+    expect(templateView.getByText("Version to publish (optional)")).toBeTruthy()
+    expect(templateView.getByText("Project folder")).toBeTruthy()
+  })
+
+  it("changes continuation helper when source becomes ready", () => {
+    const props = createProps()
+    const view = render(<StepSourceV2 {...props} sourceType="template" />)
+    expect(view.getByRole("button", { name: "Continue" })).toBeTruthy()
     expect(
       view.getByText(
-        "No accounts found. Please make sure the GitHub App is installed."
+        "Choose a template, project, or public Git link to continue."
       )
     ).toBeTruthy()
 
-    // Select owner to show repos
-    const propsWithOwner = createProps()
-    propsWithOwner.selectedOwnerId = "owner-pfn"
-    propsWithOwner.repositories = []
-
-    const viewWithRepos = render(<StepSourceV2 {...propsWithOwner} />)
+    view.rerender(<StepSourceV2 {...props} sourceType="template" canProceed />)
+    expect(view.getByRole("button", { name: "Continue to setup" })).toBeTruthy()
     expect(
-      viewWithRepos.getByText("No repositories found for this account.")
-    ).toBeTruthy()
-  })
-
-  it("shows connected notice and starts GitHub connect action", () => {
-    const props = createProps()
-    props.githubConnectionStatus = "connected"
-
-    const view = render(<StepSourceV2 {...props} />)
-
-    expect(
-      view.getByText("Successfully connected to your GitHub account.")
-    ).toBeTruthy()
-
-    fireEvent.click(view.getByRole("button", { name: "Add Account" }))
-    expect(props.onConnectGithub).toHaveBeenCalledTimes(1)
-  })
-
-  it("shows connection failure error banner", () => {
-    const props = createProps()
-    props.githubConnectionStatus = "error"
-
-    const view = render(<StepSourceV2 {...props} />)
-
-    expect(
-      view.getByText("GitHub connection failed. Please try connecting again.")
-    ).toBeTruthy()
-  })
-
-  it("shows owner and repository loading errors", () => {
-    const props = createProps()
-    props.githubConnectionStatus = "connected"
-    props.selectedOwnerId = "owner-pfn"
-    props.ownerOptionsError = "Unable to load owners."
-    props.repositoryOptionsError = "Unable to load repositories."
-
-    const view = render(<StepSourceV2 {...props} />)
-
-    expect(view.getByText("Unable to load owners.")).toBeTruthy()
-    expect(view.getByText("Unable to load repositories.")).toBeTruthy()
-  })
-
-  it("shows loading indicators while owners and repositories are loading", () => {
-    const props = createProps()
-    props.ownerOptionsLoading = true
-    props.selectedOwnerId = "owner-pfn"
-    props.repositoryOptionsLoading = true
-
-    const view = render(<StepSourceV2 {...props} />)
-
-    expect(view.getByText("Loading installations...")).toBeTruthy()
-    expect(view.getByText("Loading repositories...")).toBeTruthy()
-  })
-
-  it("supports template tab selection, searching, and filtering", async () => {
-    const props = createProps()
-    props.sourceType = "template"
-    props.templateId = "wordpress"
-
-    const view = render(<StepSourceV2 {...props} />)
-
-    // Verify WordPress template card is visible
-    expect(view.getByText("WordPress")).toBeTruthy()
-    expect(
-      view.getByText("The world's most popular website builder.")
-    ).toBeTruthy()
-    // Filter templates for something non-existent
-    const searchInput = view.getByPlaceholderText("Search templates...")
-    const reactPropsKey = Object.keys(searchInput).find((key) =>
-      key.startsWith("__reactProps")
-    )
-    if (reactPropsKey) {
-      const inputWithProps = searchInput as unknown as Record<
-        string,
-        { onChange: (e: { target: { value: string } }) => void }
-      >
-      act(() => {
-        inputWithProps[reactPropsKey].onChange({
-          target: { value: "non-existent-template" },
-        })
-      })
-    } else {
-      act(() => {
-        fireEvent.change(searchInput, {
-          target: { value: "non-existent-template" },
-        })
-      })
-    }
-
-    // Verify empty state is displayed
-    await waitFor(() => {
-      expect(view.getByText("No templates match your search.")).toBeTruthy()
-    })
-  })
-
-  it("paginates templates list correctly", async () => {
-    const props = createProps()
-    props.sourceType = "template"
-
-    const view = render(<StepSourceV2 {...props} />)
-
-    // Verify first page items are rendered
-    expect(view.getByText("WordPress")).toBeTruthy()
-    expect(view.getByText("Template 0")).toBeTruthy()
-    expect(view.getByText("Template 4")).toBeTruthy()
-    // Verify page 2 item is not on the first page
-    expect(view.queryByText("Template 5")).toBeNull()
-
-    // Verify pagination footer details
-    expect(view.container.textContent).toContain("Showing 1-6 of 10 templates")
-
-    // Find and click the "Next" button
-    const nextBtn = view.getByRole("button", { name: /^Next$/i })
-    expect(nextBtn).toBeTruthy()
-
-    act(() => {
-      fireEvent.click(nextBtn)
-    })
-
-    // Verify second page items are now visible
-    expect(view.queryByText("WordPress")).toBeNull()
-    expect(view.queryByText("Template 0")).toBeNull()
-    expect(view.getByText("Template 5")).toBeTruthy()
-    expect(view.getByText("Template 8")).toBeTruthy()
-
-    // Verify pagination footer details for page 2
-    expect(view.container.textContent).toContain("Showing 7-10 of 10 templates")
-
-    // Click "Previous" to return to first page
-    const prevBtn = view.getByRole("button", { name: /^Previous$/i })
-    expect(prevBtn).toBeTruthy()
-
-    act(() => {
-      fireEvent.click(prevBtn)
-    })
-
-    // Verify we are back on page 1
-    expect(view.getByText("WordPress")).toBeTruthy()
-    expect(view.queryByText("Template 5")).toBeNull()
+      view.queryByText(
+        "Choose a template, project, or public Git link to continue."
+      )
+    ).toBeNull()
   })
 })
 
@@ -312,7 +219,11 @@ describe("StepSourceV2 catalog", () => {
     fireEvent.change(view.getByLabelText("Search templates"), {
       target: { value: "WordPress" },
     })
-    fireEvent.click(view.getByRole("button", { name: /WordPress/ }))
+    fireEvent.click(
+      view.getByRole("button", {
+        name: /WordPress The world's most popular website builder/,
+      })
+    )
 
     expect(onTemplateSelect).toHaveBeenCalledWith("wordpress")
   })
