@@ -78,12 +78,14 @@ type DeployWizardV2Props = {
   title?: string
   description?: string
   messages?: DeployWizardMessages
+  dashboardHref?: string
 }
 
 function DeployWizardV2Inner({
   title,
   description,
   messages = enMessages.console.app.deployWizard,
+  dashboardHref,
 }: DeployWizardV2Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -1079,6 +1081,7 @@ function DeployWizardV2Inner({
         attempt={state.monitor.attempt}
         failureReason={state.monitor.failureReason}
         liveDomain={liveDomain}
+        dashboardHref={dashboardHref}
         onLogScopeChange={(logScope) => {
           dispatch({ type: "set-monitor-log-scope", payload: logScope })
         }}
@@ -1178,12 +1181,14 @@ export function DeployWizardV2({
   title,
   description,
   messages,
+  dashboardHref,
 }: DeployWizardV2Props) {
   return (
     <DeployWizardV2Inner
       title={title}
       description={description}
       messages={messages}
+      dashboardHref={dashboardHref}
     />
   )
 }
