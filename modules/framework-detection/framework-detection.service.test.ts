@@ -3,11 +3,13 @@ import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 
 import {
+  FrameworkDetectionError,
   detectFrameworkFromGitRepo,
   detectFrameworkFromGithubApi,
   __testables,
 } from "@/modules/framework-detection/framework-detection.service"
 import type { FrameworkDetectionInput } from "@/modules/framework-detection/framework-detection.types"
+import type { ReadRepoFileInput } from "@/modules/github/github.service"
 import type { DetectorDependencies } from "@/modules/framework-detection/framework-detection.service"
 import type { GithubApiDetectorDependencies } from "@/modules/framework-detection/framework-detection.service"
 
@@ -612,14 +614,10 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
 
     await expect(
       detectFrameworkFromGithubApi(
-        {
-          installationId: 12345,
-          owner: "test-org",
-          repo: "test-repo",
-        },
+        { installationId: 12345, owner: "test-org", repo: "test-repo" },
         dependencies
       )
-    ).rejects.toThrow("Detection failed: AI model unavailable")
+    ).rejects.toMatchObject({ code: "DETECTION_PROVIDER_ERROR" })
   })
 
   it("handles truncated file listing", async () => {
@@ -764,14 +762,10 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
 
     await expect(
       detectFrameworkFromGithubApi(
-        {
-          installationId: 12345,
-          owner: "test-org",
-          repo: "test-repo",
-        },
+        { installationId: 12345, owner: "test-org", repo: "test-repo" },
         dependencies
       )
-    ).rejects.toThrow("Detection failed: AI model unavailable")
+    ).rejects.toMatchObject({ code: "DETECTION_PROVIDER_ERROR" })
   })
 
   it("captures tool call errors in inspection log audit trail", async () => {
@@ -917,14 +911,10 @@ describe("detectFrameworkFromGithubApi - resolver contract", () => {
 
     await expect(
       detectFrameworkFromGithubApi(
-        {
-          installationId: 12345,
-          owner: "test-org",
-          repo: "test-repo",
-        },
+        { installationId: 12345, owner: "test-org", repo: "test-repo" },
         dependencies
       )
-    ).rejects.toThrow("Detection failed")
+    ).rejects.toMatchObject({ code: "DETECTION_PROVIDER_ERROR" })
   })
 })
 describe("enforceRuntimeMappings", () => {
@@ -1346,24 +1336,21 @@ describe("detectFrameworkFromGithubApi - malformed AI with active rules", () => 
       prisma: mockPrisma,
     }
 
-    await expect(
-      detectFrameworkFromGithubApi(
-        {
-          installationId: 12345,
-          owner: "test-org",
-          repo: "test-repo",
-        },
-        dependencies
-      )
-    ).rejects.toThrow("Detection failed")
-
+    const result = await detectFrameworkFromGithubApi(
+      { installationId: 12345, owner: "test-org", repo: "test-repo" },
+      dependencies
+    )
+    expect(result.primaryFramework?.id).toBe("laravel")
+    expect(result.decision.status).toBe("unsupported")
     expect(mockPrisma.detectorInspectionLog.create).toHaveBeenCalledTimes(1)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const logCall = (mockPrisma.detectorInspectionLog.create as any).mock
-      .calls[0]?.[0]
-    expect(logCall.data.status).toBe("error")
-    // Rule context should be present in error logs (currently missing)
-    expect(logCall.data.errorMessage).toContain("DetectorRule context:")
+    const logCall = (
+      mockPrisma.detectorInspectionLog.create.mock.calls as unknown as Array<
+        [{ data: { status: string; warnings: string[] } }]
+      >
+    )[0]?.[0]
+    if (!logCall) throw new Error("Missing inspection log call")
+    expect(logCall.data.status).toBe("unsupported")
+    expect(logCall.data.warnings.join(" ")).toContain("category=schema")
   })
 
   it("does not return a successful DetectionResult when AI resolver throws", async () => {
@@ -1397,16 +1384,50 @@ describe("detectFrameworkFromGithubApi - malformed AI with active rules", () => 
       prisma: mockPrisma,
     }
 
-    await expect(
-      detectFrameworkFromGithubApi(
-        {
-          installationId: 12345,
-          owner: "test-org",
-          repo: "test-repo",
-        },
+    const result = await detectFrameworkFromGithubApi(
+      { installationId: 12345, owner: "test-org", repo: "test-repo" },
+      dependencies
+    )
+    expect(result.primaryFramework?.id).toBe("laravel")
+    expect(result.decision.status).toBe("unsupported")
+  })
+  it("throws safe non-retryable schema error when malformed AI has no fallback evidence", async () => {
+    const createLog = mock((_input: unknown) => ({}))
+    const mockPrisma = {
+      detectorRule: { findMany: async () => [] },
+      detectorInspectionLog: { create: createLog },
+      detectorRuntimeMapping: { findMany: async () => [] },
+    }
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({ files: [], truncated: false }),
+      resolveWithAiToolCalling: async () => {
+        throw new Error("invalid-schema: fake provider body SECRET_KEY=secret")
+      },
+      prisma: mockPrisma,
+    }
+
+    try {
+      await detectFrameworkFromGithubApi(
+        { installationId: 12345, owner: "test-org", repo: "test-repo" },
         dependencies
       )
-    ).rejects.toThrow("Detection failed")
+      expect.unreachable("Expected schema failure")
+    } catch (error) {
+      expect(error).toBeInstanceOf(FrameworkDetectionError)
+      expect((error as FrameworkDetectionError).code).toBe(
+        "DETECTION_SCHEMA_ERROR"
+      )
+      expect((error as FrameworkDetectionError).message).not.toContain(
+        "SECRET_KEY"
+      )
+    }
+    const logCall = createLog.mock.calls[0]?.[0] as
+      | { data: { errorMessage?: string; warnings: string[] } }
+      | undefined
+    expect(logCall).toBeDefined()
+    if (!logCall) return
+    expect(logCall.data.errorMessage).not.toContain("SECRET_KEY")
+    expect(logCall.data.warnings.join(" ")).toContain("category=schema")
   })
 })
 
@@ -1537,5 +1558,179 @@ describe("detectFrameworkFromGithubApi - HINT remains advisory", () => {
     // HINT rule should not directly set decision.status
     expect(result.decision.status).not.toBe("hint")
     expect(result.decision.status).toBe("success")
+  })
+})
+
+describe("detectFrameworkFromGithubApi - deterministic fallback", () => {
+  const laravelRules = [
+    {
+      id: "rule-laravel-hint",
+      name: "Laravel Detection",
+      description: null,
+      patternJson: { files: ["artisan"] },
+      implicationsJson: { framework: "laravel", impact: "HINT" },
+      confidenceWeight: 1,
+      isActive: true,
+      priority: 10,
+    },
+    {
+      id: "rule-laravel-launch",
+      name: "Support Laravel Launch",
+      description: null,
+      patternJson: { frameworkId: "laravel" },
+      implicationsJson: {
+        framework: "laravel",
+        impact: "LAUNCH",
+        minConfidence: 0.8,
+      },
+      confidenceWeight: 1,
+      isActive: true,
+      priority: 100,
+    },
+  ]
+
+  it("uses GitHub evidence fallback and evaluates active policy after provider failure", async () => {
+    const logCreate = mock(async () => ({ id: "log-fallback-1" }))
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["artisan", "composer.json", "bootstrap/app.php"],
+        truncated: false,
+      }),
+      readFile: async ({ filePath }) => ({
+        content:
+          filePath === "composer.json"
+            ? JSON.stringify({ require: { "laravel/framework": "^11.0" } })
+            : "",
+        path: filePath,
+        sha: "sha",
+        size: 10,
+      }),
+      resolveWithAiToolCalling: async () => {
+        throw new Error("provider failed with secret response body")
+      },
+      prisma: {
+        detectorRule: { findMany: async () => laravelRules },
+        detectorRuntimeMapping: { findMany: async () => [] },
+        detectorInspectionLog: { create: logCreate },
+      },
+    }
+
+    const result = await detectFrameworkFromGithubApi(
+      { installationId: 123, owner: "org", repo: "laravel", ref: "13.x" },
+      dependencies
+    )
+
+    expect(result.primaryFramework?.id).toBe("laravel")
+    expect(result.decision.status).toBe("success")
+    expect(result.requiredDependencies).toContainEqual(
+      expect.objectContaining({ id: "php", requiredFor: "app_runtime" })
+    )
+    expect(result.evidence).toContainEqual(
+      expect.objectContaining({ value: "github-deterministic-fallback" })
+    )
+    expect(result.inspectionLogId).toBe("log-fallback-1")
+
+    const logData = (
+      logCreate.mock.calls as unknown as Array<
+        [{ data: { errorMessage?: string; warnings: string[] } }]
+      >
+    )[0]?.[0]?.data
+    if (!logData) throw new Error("Missing inspection log call")
+    expect(logData.errorMessage ?? "").not.toContain("secret response body")
+    expect(logData.warnings.join(" ")).not.toContain("secret response body")
+  })
+
+  it("returns one safe classified failure when provider failure has no deterministic candidate", async () => {
+    const logCreate = mock(async () => ({ id: "log-error-1" }))
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({ files: ["README.md"], truncated: false }),
+      resolveWithAiToolCalling: async () => {
+        const error = new Error(
+          "provider response contains secret body"
+        ) as Error & {
+          statusCode?: number
+          requestId?: string
+          response?: { status?: number; data?: unknown }
+        }
+        error.statusCode = 400
+        error.requestId = "req-safe-1"
+        error.response = { status: 400, data: "secret response body" }
+        throw error
+      },
+      prisma: {
+        detectorRule: { findMany: async () => [] },
+        detectorRuntimeMapping: { findMany: async () => [] },
+        detectorInspectionLog: { create: logCreate },
+      },
+    }
+
+    await expect(
+      detectFrameworkFromGithubApi(
+        { installationId: 123, owner: "org", repo: "empty" },
+        dependencies
+      )
+    ).rejects.toMatchObject({ code: "DETECTION_PROVIDER_ERROR" })
+
+    const logData = (
+      logCreate.mock.calls as unknown as Array<
+        [{ data: { errorMessage: string; warnings: string[] } }]
+      >
+    )[0]?.[0]?.data
+    if (!logData) throw new Error("Missing inspection log call")
+    expect(logData.errorMessage).not.toContain("secret response body")
+    expect(logData.warnings.join(" ")).toContain("model=")
+    expect(logData.warnings.join(" ")).toContain("baseUrlHost=")
+    expect(logData.warnings.join(" ")).toContain("httpStatus=400")
+    expect(logData.warnings.join(" ")).toContain("requestId=req-safe-1")
+    expect(logData.warnings.join(" ")).toContain("category=provider")
+  })
+  it("passes nested repository subdir when reading fallback manifests", async () => {
+    const readInputs: Array<ReadRepoFileInput & { subdir?: string }> = []
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["artisan", "composer.json"],
+        truncated: false,
+      }),
+      readFile: async (input) => {
+        readInputs.push(input as ReadRepoFileInput & { subdir?: string })
+        return {
+          content: input.filePath.endsWith("composer.json")
+            ? JSON.stringify({ require: { "laravel/framework": "^11.0" } })
+            : "",
+          path: input.filePath,
+          sha: "sha",
+          size: 10,
+        }
+      },
+      resolveWithAiToolCalling: async () => {
+        throw new Error("provider failed")
+      },
+      prisma: {
+        detectorRule: { findMany: async () => laravelRules },
+        detectorRuntimeMapping: { findMany: async () => [] },
+        detectorInspectionLog: {
+          create: mock(async () => ({ id: "log-nested" })),
+        },
+      },
+    }
+
+    const result = await detectFrameworkFromGithubApi(
+      {
+        installationId: 123,
+        owner: "org",
+        repo: "laravel",
+        ref: "13.x",
+        subdir: "apps/laravel",
+      },
+      dependencies
+    )
+
+    expect(result.primaryFramework?.id).toBe("laravel")
+    expect(readInputs).toContainEqual(
+      expect.objectContaining({
+        filePath: "composer.json",
+        subdir: "apps/laravel",
+      })
+    )
   })
 })
