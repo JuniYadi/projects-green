@@ -1,3 +1,5 @@
+import { enMessages } from "@/lib/i18n/messages/en"
+import type { DeployWizardMessages } from "@/lib/i18n/messages/types"
 import { Button } from "@/components/ui/button"
 import {
   ArrowLeft,
@@ -14,6 +16,7 @@ import type {
 } from "@/modules/deploy/deploy.types"
 
 type StepConnectV2Props = {
+  messages?: DeployWizardMessages
   sourceType: DeploySourceType
   owner: Owner | null
   repository: Repository | null
@@ -31,18 +34,26 @@ export function StepConnectV2({
   canProceed,
   onBack,
   onNext,
+  messages: providedMessages,
 }: StepConnectV2Props) {
+  const messages = providedMessages ?? enMessages.console.app.deployWizard
   const isTemplate = sourceType === "template"
 
   return (
     <div className="space-y-6 p-6">
       <div className="space-y-1">
         <p className="text-xs font-semibold tracking-[0.18em] text-primary uppercase">
-          Connect source
+          {messages.connect.eyebrow}
         </p>
-        <h2 className="text-xl font-bold">Your project is selected</h2>
+        <h2 className="text-xl font-bold">
+          {isTemplate
+            ? messages.connect.templateHeading
+            : messages.connect.repositoryHeading}
+        </h2>
         <p className="text-sm text-muted-foreground">
-          Next, we&apos;ll check the settings needed to publish it.
+          {isTemplate
+            ? messages.connect.templateDescription
+            : messages.connect.repositoryDescription}
         </p>
       </div>
 
@@ -58,24 +69,26 @@ export function StepConnectV2({
           <div className="min-w-0 flex-1 space-y-1">
             {isTemplate ? (
               <>
-                <p className="font-semibold">Template deployment</p>
+                <p className="font-semibold">
+                  {messages.connect.templateDeployment}
+                </p>
                 <p className="text-sm text-muted-foreground">
-                  Preconfigured build settings will be reviewed next.
+                  {messages.connect.templateSummary}
                 </p>
               </>
             ) : (
               <>
                 <p className="font-semibold">
-                  {owner?.name ?? "GitHub account"}
+                  {owner?.name ?? messages.connect.githubAccount}
                 </p>
                 <p className="truncate text-sm text-muted-foreground">
                   {repository
                     ? `${repository.ownerId}/${repository.name}`
-                    : "Select a repository in Source"}
+                    : messages.connect.selectRepository}
                 </p>
                 <p className="flex items-center gap-1 text-xs text-muted-foreground">
                   <GitBranch className="h-3.5 w-3.5" />
-                  {branch?.name ?? "No branch selected"}
+                  {branch?.name ?? messages.connect.noBranch}
                 </p>
               </>
             )}
@@ -88,17 +101,17 @@ export function StepConnectV2({
 
       <div className="rounded-lg border border-border bg-background p-4 text-xs text-muted-foreground">
         {isTemplate
-          ? "Template defaults remain editable during Review before deployment."
-          : "Repository and branch validation use the same source state that will be sent to the deploy API."}
+          ? messages.connect.templateNotice
+          : messages.connect.repositoryNotice}
       </div>
 
       <div className="flex items-center justify-between border-t pt-4">
         <Button type="button" variant="outline" onClick={onBack}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
+          {messages.connect.back}
         </Button>
         <Button type="button" onClick={onNext} disabled={!canProceed}>
-          Check my site
+          {messages.connect.continue}
           <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </div>
