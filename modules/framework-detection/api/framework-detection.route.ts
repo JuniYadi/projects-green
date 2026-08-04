@@ -6,7 +6,10 @@ import {
   detectFrameworkFromGithubApi,
 } from "@/modules/framework-detection/framework-detection.service"
 import { toDetectionResultDTO } from "@/modules/framework-detection/framework-detection.dto"
-import type { DetectionResult } from "@/modules/framework-detection/framework-detection.types"
+import type {
+  DetectionFailureCode,
+  DetectionResult,
+} from "@/modules/framework-detection/framework-detection.types"
 
 // --- Git Clone Mode (Legacy) ---
 
@@ -48,25 +51,78 @@ type DetectFrameworkFromGithubApiFunction = (input: {
   subdir?: string
 }) => Promise<DetectionResult>
 
-const getDetectionErrorMessage = (error: unknown) => {
-  const message = error instanceof Error ? error.message : ""
+type DetectionErrorCode =
+  | DetectionFailureCode
+  | "DETECTION_FAILED"
+  | "NETWORK_ERROR"
 
-  if (
-    message.includes("AI returned an invalid decision schema") ||
-    message.includes("AI failed to return a valid decision") ||
-    message.includes("invalid-schema")
+const DETECTION_ERROR_CODES: Record<string, true> = {
+  DETECTION_CONFIG_ERROR: true,
+  DETECTION_SCHEMA_ERROR: true,
+  DETECTION_PROVIDER_ERROR: true,
+  DETECTION_TRANSIENT_PROVIDER_ERROR: true,
+  DETECTION_FAILED: true,
+  NETWORK_ERROR: true,
+}
+
+const isDetectionErrorCode = (value: unknown): value is DetectionErrorCode =>
+  typeof value === "string" && DETECTION_ERROR_CODES[value] === true
+
+const getDetectionFailure = (
+  error: unknown
+): {
+  code: DetectionErrorCode
+  message: string
+  inspectionLogId?: string
+} => {
+  const candidate = error as {
+    code?: unknown
+    message?: unknown
+    inspectionLogId?: unknown
+  }
+  const message = typeof candidate.message === "string" ? candidate.message : ""
+
+  let code: DetectionErrorCode = "DETECTION_FAILED"
+  if (isDetectionErrorCode(candidate.code)) {
+    code = candidate.code
+  } else if (
+    /AI_API_KEY|OPENAI_API_KEY|not configured|credentials?/i.test(message)
   ) {
-    return "Automatic detection could not validate the AI response. Retry detection or configure build settings manually."
+    code = "DETECTION_CONFIG_ERROR"
+  } else if (
+    /invalid-schema|invalid decision schema|valid decision/i.test(message)
+  ) {
+    code = "DETECTION_SCHEMA_ERROR"
+  } else if (
+    /rate limit|temporar|timeout|network|\b429\b|\b5\d{2}\b/i.test(message)
+  ) {
+    code = "DETECTION_TRANSIENT_PROVIDER_ERROR"
+  } else if (/provider returned error|provider/i.test(message)) {
+    code = "DETECTION_PROVIDER_ERROR"
   }
 
-  if (message === "Repository not found") {
-    return message
-  }
-  if (message === "GitHub API rate limit exceeded") {
-    return message
-  }
+  const safeMessage =
+    isDetectionErrorCode(candidate.code) && message
+      ? message
+      : message === "Repository not found" ||
+          message === "GitHub API rate limit exceeded"
+        ? message
+        : code === "DETECTION_CONFIG_ERROR"
+          ? "Automatic detection is not configured. Configure build settings manually."
+          : code === "DETECTION_SCHEMA_ERROR"
+            ? "Automatic detection could not validate the AI response. Retry detection or configure build settings manually."
+            : code === "DETECTION_TRANSIENT_PROVIDER_ERROR" ||
+                code === "NETWORK_ERROR"
+              ? "Automatic detection provider is temporarily unavailable. Retry detection or configure build settings manually."
+              : "Unable to detect frameworks for this repository."
 
-  return "Unable to detect frameworks for this repository."
+  return {
+    code,
+    message: safeMessage,
+    ...(typeof candidate.inspectionLogId === "string"
+      ? { inspectionLogId: candidate.inspectionLogId }
+      : {}),
+  }
 }
 
 // --- Routes ---
@@ -76,10 +132,8 @@ export const createFrameworkDetectionRoutes = (
   detectFrameworkFromApi: DetectFrameworkFromGithubApiFunction = detectFrameworkFromGithubApi
 ) =>
   new Elysia()
-    // Git Clone Mode (Legacy)
     .post("/framework-detection", async ({ body, set }) => {
       const parsed = gitDetectionRequestSchema.safeParse(body)
-
       if (!parsed.success) {
         set.status = 400
         return {
@@ -89,28 +143,24 @@ export const createFrameworkDetectionRoutes = (
           fieldErrors: z.flattenError(parsed.error).fieldErrors,
         }
       }
-
       try {
         const result = await detectFramework(parsed.data)
-
-        return {
-          ok: true as const,
-          ...toDetectionResultDTO(result),
-        }
+        return { ok: true as const, ...toDetectionResultDTO(result) }
       } catch (error) {
         set.status = 422
-
+        const failure = getDetectionFailure(error)
         return {
           ok: false as const,
-          error: "DETECTION_FAILED" as const,
-          message: getDetectionErrorMessage(error),
+          error: failure.code,
+          message: failure.message,
+          ...(failure.inspectionLogId
+            ? { inspectionLogId: failure.inspectionLogId }
+            : {}),
         }
       }
     })
-    // GitHub API Mode (AI-First with Tool Calling)
     .post("/framework-detection/github", async ({ body, set }) => {
       const parsed = githubApiDetectionRequestSchema.safeParse(body)
-
       if (!parsed.success) {
         set.status = 400
         return {
@@ -120,21 +170,19 @@ export const createFrameworkDetectionRoutes = (
           fieldErrors: z.flattenError(parsed.error).fieldErrors,
         }
       }
-
       try {
         const result = await detectFrameworkFromApi(parsed.data)
-
-        return {
-          ok: true as const,
-          ...toDetectionResultDTO(result),
-        }
+        return { ok: true as const, ...toDetectionResultDTO(result) }
       } catch (error) {
         set.status = 422
-
+        const failure = getDetectionFailure(error)
         return {
           ok: false as const,
-          error: "DETECTION_FAILED" as const,
-          message: getDetectionErrorMessage(error),
+          error: failure.code,
+          message: failure.message,
+          ...(failure.inspectionLogId
+            ? { inspectionLogId: failure.inspectionLogId }
+            : {}),
         }
       }
     })

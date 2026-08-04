@@ -20,6 +20,8 @@ const baseResult: DetectionResult = {
   secondaryEngine: null,
   secondaryEngineVersion: null,
   defaultPort: 3000,
+  decisionMessage: "Ready to deploy.",
+  evidence: [{ type: "file", value: "package.json", detail: "detected" }],
 }
 
 const baseBuild: DeployBuildState = {
@@ -95,14 +97,15 @@ describe("StepDetectV2", () => {
     expect(view.queryByText(/vunknown/)).not.toBeInTheDocument()
   })
 
-  it("renders manual fallback fields after final failure", () => {
+  it("renders manual fallback after final transient failure", () => {
     const view = render(
       <StepDetectV2
         detectionResult={null}
         isDetecting={false}
         detectionRetrying={false}
-        detectionAttempt={3}
-        detectionError="Detection failed after three attempts."
+        detectionAttempt={2}
+        detectionError="Detection provider temporarily unavailable."
+        detectionErrorCode="DETECTION_TRANSIENT_PROVIDER_ERROR"
         buildState={baseBuild}
         manualOverrideRequired={false}
         canProceed={false}
@@ -115,13 +118,109 @@ describe("StepDetectV2", () => {
 
     expect(
       view.getByText(
-        "Automatic detection stopped after three attempts. Manual configuration is available below."
+        "Automatic detection stopped after two attempts. Manual configuration is available below."
       )
     ).toBeInTheDocument()
     expect(
       view.getByRole("button", { name: "Retry detection" })
     ).toBeInTheDocument()
     expect(view.getByLabelText("Language selector")).toBeInTheDocument()
+  })
+
+  it("renders blocked policy message and evidence without generic failure", () => {
+    const view = render(
+      <StepDetectV2
+        detectionResult={{
+          ...baseResult,
+          status: "blocked",
+          decisionMessage: "Deployment blocked by admin rule.",
+          evidence: [{ type: "file", value: "artisan", detail: "root" }],
+        }}
+        isDetecting={false}
+        detectionRetrying={false}
+        detectionAttempt={1}
+        detectionError={null}
+        buildState={baseBuild}
+        manualOverrideRequired={true}
+        canProceed={true}
+        onBack={noop}
+        onNext={noop}
+        onBuildFieldChange={noop}
+        onRetry={noop}
+      />
+    )
+
+    expect(
+      view.getAllByText("Deployment blocked by admin rule.")[0]
+    ).toBeInTheDocument()
+    expect(view.getByText(/artisan/)).toBeInTheDocument()
+    expect(view.queryByText(/Detection failed/)).not.toBeInTheDocument()
+    expect(
+      view.getByText("Manual setup is required before continuing.")
+    ).toBeInTheDocument()
+    expect(
+      view.queryByRole("button", { name: "Retry detection" })
+    ).not.toBeInTheDocument()
+  })
+
+  it("renders unsupported policy message and evidence", () => {
+    const view = render(
+      <StepDetectV2
+        detectionResult={{
+          ...baseResult,
+          status: "unsupported",
+          decisionMessage: "This framework is not supported.",
+          evidence: [{ type: "file", value: "README.md", detail: "root" }],
+        }}
+        isDetecting={false}
+        detectionRetrying={false}
+        detectionAttempt={1}
+        detectionError={null}
+        buildState={baseBuild}
+        manualOverrideRequired={true}
+        canProceed={false}
+        onBack={noop}
+        onNext={noop}
+        onBuildFieldChange={noop}
+        onRetry={noop}
+      />
+    )
+
+    expect(
+      view.getAllByText("This framework is not supported.")[0]
+    ).toBeInTheDocument()
+    expect(view.getByText(/README\.md/)).toBeInTheDocument()
+    expect(
+      view.getByText("Manual setup is required before continuing.")
+    ).toBeInTheDocument()
+  })
+
+  it("renders low-confidence decision message", () => {
+    const view = render(
+      <StepDetectV2
+        detectionResult={{
+          ...baseResult,
+          status: "low_confidence",
+          confidence: 45,
+          decisionMessage: "Review detected settings before deploying.",
+        }}
+        isDetecting={false}
+        detectionRetrying={false}
+        detectionAttempt={1}
+        detectionError={null}
+        buildState={baseBuild}
+        manualOverrideRequired={false}
+        canProceed={true}
+        onBack={noop}
+        onNext={noop}
+        onBuildFieldChange={noop}
+        onRetry={noop}
+      />
+    )
+
+    expect(
+      view.getAllByText("Review detected settings before deploying.")[0]
+    ).toBeInTheDocument()
   })
 
   it("shows retry attempt message during retry", () => {
@@ -152,8 +251,9 @@ describe("StepDetectV2", () => {
         detectionResult={null}
         isDetecting={false}
         detectionRetrying={false}
-        detectionAttempt={3}
-        detectionError="Detection failed"
+        detectionAttempt={2}
+        detectionError="Detection provider temporarily unavailable."
+        detectionErrorCode="NETWORK_ERROR"
         buildState={baseBuild}
         manualOverrideRequired={false}
         canProceed={false}
@@ -166,5 +266,51 @@ describe("StepDetectV2", () => {
 
     fireEvent.click(view.getByRole("button", { name: "Retry detection" }))
     expect(onRetry).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps duplicate evidence rows keyed by content across insertions", () => {
+    const renderStep = (evidence: DetectionResult["evidence"]) => (
+      <StepDetectV2
+        detectionResult={{ ...baseResult, evidence }}
+        isDetecting={false}
+        detectionRetrying={false}
+        detectionAttempt={1}
+        detectionError={null}
+        buildState={baseBuild}
+        manualOverrideRequired={false}
+        canProceed={true}
+        onBack={noop}
+        onNext={noop}
+        onBuildFieldChange={noop}
+        onRetry={noop}
+      />
+    )
+
+    const duplicateEvidence = [
+      { type: "file", value: "package.json", detail: "root" },
+      { type: "file", value: "package.json", detail: "root" },
+      { type: "file", value: "tsconfig.json", detail: "root" },
+    ]
+    const view = render(renderStep(duplicateEvidence))
+    const duplicateRows = view
+      .getAllByText("package.json · root", { exact: true })
+      .map((node) => node.closest("li"))
+
+    expect(duplicateRows).toHaveLength(2)
+    expect(duplicateRows[0]).not.toBeNull()
+    expect(duplicateRows[1]).not.toBeNull()
+
+    view.rerender(
+      renderStep([
+        { type: "file", value: "README.md", detail: "root" },
+        ...duplicateEvidence,
+      ])
+    )
+
+    const updatedRows = view
+      .getAllByText("package.json · root", { exact: true })
+      .map((node) => node.closest("li"))
+    expect(updatedRows[0]).toBe(duplicateRows[0])
+    expect(updatedRows[1]).toBe(duplicateRows[1])
   })
 })

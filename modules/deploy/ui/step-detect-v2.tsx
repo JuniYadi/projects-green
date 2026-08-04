@@ -23,6 +23,7 @@ type StepDetectV2Props = {
   detectionRetrying: boolean
   detectionAttempt: number
   detectionError: string | null
+  detectionErrorCode?: string | null
   buildState: DeployBuildState
   manualOverrideRequired: boolean
   canProceed: boolean
@@ -43,7 +44,8 @@ export function StepDetectV2({
   isDetecting,
   detectionRetrying,
   detectionAttempt,
-  detectionError,
+  detectionError: detectionError,
+  detectionErrorCode,
   buildState,
   manualOverrideRequired,
   canProceed,
@@ -52,8 +54,14 @@ export function StepDetectV2({
   onBuildFieldChange,
   onRetry,
 }: StepDetectV2Props) {
+  const isRetryableFailure =
+    detectionErrorCode === "NETWORK_ERROR" ||
+    detectionErrorCode === "DETECTION_TRANSIENT_PROVIDER_ERROR"
   const isFinalFailure =
-    !isDetecting && !!detectionError && detectionAttempt >= 3
+    !isDetecting &&
+    !!detectionError &&
+    detectionAttempt >= 2 &&
+    isRetryableFailure
 
   const [activeOperation, setActiveOperation] = useState(0)
 
@@ -124,7 +132,7 @@ export function StepDetectV2({
 
   const statusMessage = (() => {
     if (detectionRetrying) {
-      return `Retry attempt ${detectionAttempt} of 3 — please wait while we re-analyze the repository.`
+      return `Retry attempt ${detectionAttempt} of 2 — please wait while we re-analyze the repository.`
     }
     if (isDetecting)
       return "Scanning repository structure... This can take a minute."
@@ -132,17 +140,17 @@ export function StepDetectV2({
       return detectionError
     }
     if (isFinalFailure) {
-      return "Detection failed after three attempts. Configure build settings manually."
+      return "Detection failed after two attempts. Configure build settings manually."
     }
     if (!detectionResult) return "No detection result yet."
+    if (detectionResult.decisionMessage) {
+      return detectionResult.decisionMessage
+    }
     if (detectionResult.status === "failed") {
       return "Detection failed. Review the settings below or enable Dockerfile mode."
     }
     if (detectionResult.status === "low_confidence") {
       return "Detection confidence is low. Review and adjust the settings below."
-    }
-    if (detectionResult.status === "partial") {
-      return "Partial detection. Some settings may need adjustment."
     }
     return "Detection completed successfully. Review the settings below."
   })()
@@ -210,8 +218,22 @@ export function StepDetectV2({
         value: String(detectionResult.defaultPort),
       })
     }
+    for (const evidence of detectionResult.evidence ?? []) {
+      items.push({
+        label: evidence.type,
+        value: evidence.detail
+          ? `${evidence.value} · ${evidence.detail}`
+          : evidence.value,
+      })
+    }
 
-    return items
+    const keyCounts = new Map<string, number>()
+    return items.map((item) => {
+      const identity = JSON.stringify([item.label, item.value])
+      const occurrence = keyCounts.get(identity) ?? 0
+      keyCounts.set(identity, occurrence + 1)
+      return { ...item, key: `${identity}:${occurrence}` }
+    })
   }, [detectionResult])
 
   const needsManualValues = manualOverrideRequired && !buildState.useDockerfile
@@ -296,7 +318,7 @@ export function StepDetectV2({
                 <ul className="space-y-2 text-xs text-muted-foreground">
                   {evidenceItems.map((item) => (
                     <li
-                      key={item.label}
+                      key={item.key}
                       className="flex animate-in items-start gap-2 fade-in slide-in-from-bottom-1 motion-reduce:animate-none"
                     >
                       <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
@@ -335,6 +357,11 @@ export function StepDetectV2({
                   <p className="text-muted-foreground capitalize">
                     {detectionResult.status.replace("_", " ")}
                   </p>
+                  {detectionResult.decisionMessage ? (
+                    <p className="mt-1 text-foreground">
+                      {detectionResult.decisionMessage}
+                    </p>
+                  ) : null}
                   <p className="mt-1 text-muted-foreground">
                     Confidence: {detectionResult.confidence}%
                   </p>
@@ -343,7 +370,7 @@ export function StepDetectV2({
             ) : (
               <div className="border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
                 {detectionRetrying
-                  ? `Waiting before retry ${detectionAttempt} of 3…`
+                  ? `Waiting before retry ${detectionAttempt} of 2…`
                   : "Waiting for detection…"}
               </div>
             )}
@@ -372,7 +399,7 @@ export function StepDetectV2({
               <p>{detectionError}</p>
               {isFinalFailure ? (
                 <p className="mt-1">
-                  Automatic detection stopped after three attempts. Manual
+                  Automatic detection stopped after two attempts. Manual
                   configuration is available below.
                 </p>
               ) : null}

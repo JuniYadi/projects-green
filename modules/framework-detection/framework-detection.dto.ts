@@ -116,6 +116,7 @@ export function toDetectionResultDTO(
     frameworkVersion: result.frameworkVersion ?? null,
     defaultPort: result.defaultPort ?? null,
     enforcedRuntimes: result.enforcedRuntimes,
+    inspectionLogId: result.inspectionLogId,
   }
 }
 

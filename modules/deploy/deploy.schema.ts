@@ -218,7 +218,12 @@ export const isManualOverrideRequired = (
     return true
   }
 
-  if (detectionResult.status === "failed") {
+  if (
+    detectionResult.status === "failed" ||
+    detectionResult.status === "blocked" ||
+    detectionResult.status === "unsupported" ||
+    detectionResult.status === "low_confidence"
+  ) {
     return true
   }
 

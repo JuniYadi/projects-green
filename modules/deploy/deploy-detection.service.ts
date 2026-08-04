@@ -1,3 +1,4 @@
+import type { DetectionFailureCode } from "@/modules/framework-detection/framework-detection.types"
 import type { DetectionResult } from "@/modules/deploy/deploy.types"
 import type { DetectionResultDTO } from "@/modules/framework-detection/framework-detection.dto"
 
@@ -15,17 +16,26 @@ export type FrameworkDetectionResponse = {
   ok: true
 } & DetectionResultDTO
 
+export type FrameworkDetectionErrorCode =
+  | DetectionFailureCode
+  | "DETECTION_FAILED"
+  | "NETWORK_ERROR"
+  | "API_ERROR"
+  | "INVALID_RESPONSE"
+
 export type FrameworkDetectionErrorResponse = {
   ok: false
-  error: string
+  error: FrameworkDetectionErrorCode
   message: string
   fieldErrors?: Record<string, string[]>
+  inspectionLogId?: string
 }
 
 export class DetectionError extends Error {
   constructor(
     message: string,
-    public readonly code: string = "DETECTION_FAILED"
+    public readonly code: FrameworkDetectionErrorCode = "DETECTION_FAILED",
+    public readonly inspectionLogId?: string
   ) {
     super(message)
     this.name = "DetectionError"
@@ -68,8 +78,6 @@ const KNOWN_BUILD_COMMANDS: Record<string, string> = {
   Rocket: "cargo build --release",
 }
 
-// --- Helpers ---
-
 const mapEcosystemToLanguage = (
   ecosystem: string | undefined | null
 ): string | null => {
@@ -81,10 +89,16 @@ const mapDecisionStatus = (
   decisionStatus: string | undefined | null
 ): DetectionResult["status"] => {
   if (decisionStatus === "success") return "success"
+  if (decisionStatus === "blocked") return "blocked"
+  if (decisionStatus === "unsupported") return "unsupported"
   if (decisionStatus === "low_confidence") return "low_confidence"
-  // "blocked" or "unsupported" → failed
   return "failed"
 }
+
+// Framework detection emits 0-1 confidence; deploy state and UI use 0-100.
+// Keep already-normalized percentages idempotent for compatibility.
+const normalizeConfidence = (confidence: number): number =>
+  confidence <= 1 ? confidence * 100 : confidence
 
 const deriveBuildCommand = (
   frameworkName: string | null | undefined
@@ -92,14 +106,10 @@ const deriveBuildCommand = (
   if (!frameworkName) return null
   return KNOWN_BUILD_COMMANDS[frameworkName] ?? null
 }
-
 const detectDockerfileInEvidence = (
   evidence: DetectionResultDTO["evidence"]
-): boolean => {
-  return evidence.some((e) => e.type === "file" && /Dockerfile/i.test(e.value))
-}
-
-// --- Mapper ---
+): boolean =>
+  evidence.some((e) => e.type === "file" && /Dockerfile/i.test(e.value))
 
 export const mapDetectionResultDTO = (
   dto: DetectionResultDTO
@@ -107,16 +117,12 @@ export const mapDetectionResultDTO = (
   const frameworkName = dto.primaryFramework?.name ?? null
   const ecosystem = dto.primaryFramework?.ecosystem ?? null
   const dockerfileDetected = detectDockerfileInEvidence(dto.evidence)
-
-  // Derive primary/secondary engines from requiredDependencies
   const appRuntime = dto.requiredDependencies?.find(
     (d) => d.requiredFor === "app_runtime"
   )
   const secondaryRuntime = dto.requiredDependencies?.find(
     (d) => d.requiredFor !== "app_runtime"
   )
-
-  // Get versions from enforcedRuntimes (populated by toDetectionResultDTO)
   const enforcedRuntimes = dto.enforcedRuntimes ?? []
   const primaryVersion =
     enforcedRuntimes.find((e) => e.runtimeId === appRuntime?.id)?.version ??
@@ -131,8 +137,11 @@ export const mapDetectionResultDTO = (
     frameworkVersion: dto.frameworkVersion ?? null,
     dockerfileDetected,
     buildCommand: deriveBuildCommand(frameworkName),
-    confidence: dto.confidence,
+    confidence: normalizeConfidence(dto.confidence),
     status: mapDecisionStatus(dto.decision?.status),
+    decisionMessage: dto.decision?.message,
+    evidence: dto.evidence,
+    inspectionLogId: dto.inspectionLogId,
     primaryEngine: appRuntime?.id ?? null,
     primaryEngineVersion: primaryVersion,
     secondaryEngine: secondaryRuntime?.id ?? null,
@@ -168,39 +177,35 @@ export const fetchFrameworkDetection = async (
       "NETWORK_ERROR"
     )
   }
+  let body:
+    | FrameworkDetectionResponse
+    | FrameworkDetectionErrorResponse
+    | null = null
+  try {
+    body = (await response.json()) as
+      | FrameworkDetectionResponse
+      | FrameworkDetectionErrorResponse
+  } catch {
+    // Keep generic status message below when response is not JSON.
+  }
 
-  if (!response.ok) {
-    let errorBody: FrameworkDetectionErrorResponse | null = null
-
-    try {
-      errorBody = (await response.json()) as FrameworkDetectionErrorResponse
-    } catch {
-      // ignore parse failure
-    }
-
+  if (!response.ok || !body?.ok) {
+    const errorBody = body && !body.ok ? body : null
     throw new DetectionError(
       errorBody?.message ??
         `Detection request failed with status ${response.status}.`,
-      errorBody?.error ?? "API_ERROR"
+      errorBody?.error ?? "DETECTION_FAILED",
+      errorBody?.inspectionLogId
     )
   }
 
-  const body: FrameworkDetectionResponse =
-    (await response.json()) as FrameworkDetectionResponse
-
-  if (!body.ok || body.primaryFramework == null) {
+  if (
+    body.primaryFramework == null &&
+    !["blocked", "unsupported", "low_confidence"].includes(body.decision.status)
+  ) {
     throw new DetectionError(
       "Detection returned an unexpected response.",
       "INVALID_RESPONSE"
-    )
-  }
-
-  const blockedStatuses = ["blocked", "unsupported"]
-  if (blockedStatuses.includes(body.decision.status)) {
-    throw new DetectionError(
-      body.decision.message ??
-        "Detection is not supported for this repository.",
-      "DETECTION_BLOCKED"
     )
   }
 
