@@ -30,7 +30,13 @@ import {
   type DeviceStatus,
   DeviceNotFoundError,
   DeviceNotOwnedError,
+  DeviceMetaAppRequiredError,
+  DeviceMetaAppNotFoundError,
+  DeviceMetaAppInactiveError,
+  DeviceMetaAppPhoneRequiredError,
+  DeviceMetaAppPhoneConflictError,
 } from "./devices.schemas"
+import { toMetaAppMetadata } from "./devices.dto"
 
 // ─── Mappers ──────────────────────────────────────────────────────────────────
 
@@ -46,6 +52,8 @@ type PrismaDeviceFields = {
   dailyLimitMessage: number
   whatsappBusinessAccountId: string | null
   whatsappPhoneId: string | null
+  whatsappMetaAppId: string | null
+  whatsappMetaApp?: { id: string; name: string; webhookKey: string } | null
   createdAt: Date
   updatedAt: Date
   callbackUrl: string | null
@@ -67,6 +75,8 @@ const toDeviceListItem = (d: PrismaDeviceFields): DeviceListItem => ({
   dailyLimitMessage: d.dailyLimitMessage,
   whatsappBusinessAccountId: d.whatsappBusinessAccountId,
   whatsappPhoneId: d.whatsappPhoneId,
+  whatsappMetaAppId: d.whatsappMetaAppId,
+  whatsappMetaApp: toMetaAppMetadata(d.whatsappMetaApp),
   createdAt: d.createdAt.toISOString(),
   updatedAt: d.updatedAt.toISOString(),
 })
@@ -80,6 +90,52 @@ const _toDeviceDetail = (d: PrismaDeviceFields): DeviceDetail => ({
   features: d.features,
 })
 
+type AssociationTx = {
+  whatsappMetaApp: {
+    findUnique: (
+      args: unknown
+    ) => Promise<{ id: string; active: boolean } | null>
+    updateMany?: (args: unknown) => Promise<{ count: number }>
+  }
+  whatsappDevice: {
+    findFirst: (args: unknown) => Promise<unknown>
+  }
+}
+
+async function validateMetaAppAssociation(
+  tx: AssociationTx,
+  metaAppId: string | null | undefined,
+  phoneId: string | null | undefined,
+  deviceId?: string
+) {
+  if (!metaAppId) {
+    if (phoneId) throw new DeviceMetaAppPhoneRequiredError()
+    return
+  }
+  if (!phoneId) throw new DeviceMetaAppPhoneRequiredError()
+
+  const app = await tx.whatsappMetaApp.findUnique({ where: { id: metaAppId } })
+  if (!app) throw new DeviceMetaAppNotFoundError()
+  if (!app.active) throw new DeviceMetaAppInactiveError()
+
+  if (tx.whatsappMetaApp.updateMany) {
+    const locked = await tx.whatsappMetaApp.updateMany({
+      where: { id: metaAppId, active: true },
+      data: { active: true },
+    })
+    if (locked.count === 0) throw new DeviceMetaAppInactiveError()
+  }
+
+  const duplicate = await tx.whatsappDevice.findFirst({
+    where: {
+      whatsappMetaAppId: metaAppId,
+      whatsappPhoneId: phoneId,
+      ...(deviceId ? { id: { not: deviceId } } : {}),
+    },
+  })
+  if (duplicate) throw new DeviceMetaAppPhoneConflictError()
+}
+
 // ─── Factory ──────────────────────────────────────────────────────────────────
 
 export const createDeviceService = (
@@ -92,57 +148,84 @@ export const createDeviceService = (
       const devices = await db.whatsappDevice.findMany({
         where: organizationId ? { organizationId } : {},
         orderBy: { createdAt: "desc" },
+        include: {
+          whatsappMetaApp: {
+            select: { id: true, name: true, webhookKey: true },
+          },
+        },
       })
       return devices.map((d) => toDeviceListItem(d as PrismaDeviceFields))
     },
 
     async findById(id, organizationId) {
-      const device = await db.whatsappDevice.findUnique({ where: { id } })
+      const device = await db.whatsappDevice.findUnique({
+        where: { id },
+        include: {
+          whatsappMetaApp: {
+            select: { id: true, name: true, webhookKey: true },
+          },
+        },
+      })
       if (!device) throw new DeviceNotFoundError(id)
       if (organizationId && device.organizationId !== organizationId) {
         throw new DeviceNotOwnedError()
       }
       return _toDeviceDetail(device as PrismaDeviceFields)
     },
-
     async create(input: DeviceCreateInput) {
       const tokenEncrypted = input.token
         ? await encryptWhatsAppToken(input.token)
         : null
-      const device = await db.whatsappDevice.create({
-        data: {
-          organizationId: input.organizationId ?? "",
-          phoneNumber: input.phoneNumber,
-          status: "ACTIVE",
-          whatsappBusinessAccountId: input.whatsappBusinessAccountId ?? null,
-          whatsappPhoneId: input.whatsappPhoneId ?? null,
-          whatsappApplicationId: input.whatsappApplicationId ?? null,
-          callbackUrl: input.callbackUrl || null,
-          whatsappVersion: input.whatsappVersion ?? "v24.0",
-          token: null,
-          tokenEncrypted,
-          tokenIv: null,
-          rates: input.rates ?? null,
-          s3Path: input.s3 ?? null,
-          quotaBase: input.quotaBase ?? DEFAULT_QUOTA_BASE,
-          quotaBaseOut:
-            input.quotaBaseOut ?? input.quotaBase ?? DEFAULT_QUOTA_BASE,
-          dailyLimitMessage: input.dailyLimitMessage ?? 0,
-          ...(input.balance != null ? { balance: input.balance } : {}),
-          ...(input.expiredAt ? { expiredAt: new Date(input.expiredAt) } : {}),
-          ...(input.features
-            ? { features: input.features as Prisma.InputJsonValue }
-            : {}),
-          ...(input.displayName || input.whatsappProfile
-            ? {
-                whatsappProfile: {
-                  ...(input.whatsappProfile ?? {}),
-                  ...(input.displayName ? { name: input.displayName } : {}),
-                } as Prisma.InputJsonValue,
-              }
-            : {}),
-          appSecret: generateWebhookSigningSecret(),
-        },
+      if (
+        (input.environment ?? "LIVE") === "LIVE" &&
+        !input.whatsappMetaAppId
+      ) {
+        throw new DeviceMetaAppRequiredError()
+      }
+
+      const device = await db.$transaction(async (tx) => {
+        await validateMetaAppAssociation(
+          tx as AssociationTx,
+          input.whatsappMetaAppId,
+          input.whatsappPhoneId
+        )
+        return tx.whatsappDevice.create({
+          data: {
+            organizationId: input.organizationId ?? "",
+            phoneNumber: input.phoneNumber,
+            status: "ACTIVE",
+            whatsappBusinessAccountId: input.whatsappBusinessAccountId ?? null,
+            whatsappPhoneId: input.whatsappPhoneId ?? null,
+            whatsappMetaAppId: input.whatsappMetaAppId ?? null,
+            whatsappApplicationId: input.whatsappApplicationId ?? null,
+            callbackUrl: input.callbackUrl || null,
+            whatsappVersion: input.whatsappVersion ?? "v24.0",
+            token: null,
+            tokenEncrypted,
+            tokenIv: null,
+            rates: input.rates ?? null,
+            s3Path: input.s3 ?? null,
+            quotaBase: input.quotaBase ?? DEFAULT_QUOTA_BASE,
+            quotaBaseOut:
+              input.quotaBaseOut ?? input.quotaBase ?? DEFAULT_QUOTA_BASE,
+            dailyLimitMessage: input.dailyLimitMessage ?? 0,
+            ...(input.balance != null ? { balance: input.balance } : {}),
+            ...(input.expiredAt
+              ? { expiredAt: new Date(input.expiredAt) }
+              : {}),
+            ...(input.features
+              ? { features: input.features as Prisma.InputJsonValue }
+              : {}),
+            ...(input.displayName || input.whatsappProfile
+              ? {
+                  whatsappProfile: {
+                    ...(input.whatsappProfile ?? {}),
+                    ...(input.displayName ? { name: input.displayName } : {}),
+                  } as Prisma.InputJsonValue,
+                }
+              : {}),
+          },
+        })
       })
       return _toDeviceDetail(device as PrismaDeviceFields)
     },
@@ -156,6 +239,22 @@ export const createDeviceService = (
           where: { id },
         })
         if (!existing) throw new DeviceNotFoundError(id)
+
+        if (
+          input.whatsappMetaAppId !== undefined ||
+          input.whatsappPhoneId !== undefined
+        ) {
+          await validateMetaAppAssociation(
+            tx as AssociationTx,
+            input.whatsappMetaAppId !== undefined
+              ? input.whatsappMetaAppId
+              : existing.whatsappMetaAppId,
+            input.whatsappPhoneId !== undefined
+              ? input.whatsappPhoneId
+              : existing.whatsappPhoneId,
+            id
+          )
+        }
 
         return tx.whatsappDevice.update({
           where: { id },
@@ -172,6 +271,10 @@ export const createDeviceService = (
             whatsappPhoneId:
               input.whatsappPhoneId !== undefined
                 ? input.whatsappPhoneId || null
+                : undefined,
+            whatsappMetaAppId:
+              input.whatsappMetaAppId !== undefined
+                ? input.whatsappMetaAppId || null
                 : undefined,
             whatsappApplicationId:
               input.whatsappApplicationId !== undefined

@@ -7,6 +7,7 @@ import { FloppyDisk, X } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
 import { eden } from "@/lib/eden"
+import { MetaAppSelector } from "@/components/whatsapp/meta-app-selector"
 import { localizePathname } from "@/lib/i18n/pathname"
 import type { AppLocale } from "@/lib/i18n/config"
 import { updateDeviceSchema } from "@/modules/whatsapp/devices/devices.schemas"
@@ -34,8 +35,10 @@ type DeviceEditInitialData = {
   id: string
   phoneNumber: string
   status: "ACTIVE" | "NON_ACTIVE" | "DISCONNECTED" | "UNKNOWN"
+  environment: "SANDBOX" | "LIVE"
   whatsappBusinessAccountId: string
   whatsappPhoneId: string
+  whatsappMetaAppId: string
   whatsappApplicationId: string
   whatsappVersion: string
   callbackUrl: string
@@ -124,8 +127,10 @@ export function DeviceEditForm({
   const [form, setForm] = useState<FormState>({
     phoneNumber: device.phoneNumber,
     status: device.status,
+    environment: device.environment,
     whatsappBusinessAccountId: device.whatsappBusinessAccountId,
     whatsappPhoneId: device.whatsappPhoneId,
+    whatsappMetaAppId: device.whatsappMetaAppId,
     whatsappApplicationId: device.whatsappApplicationId,
     whatsappVersion: device.whatsappVersion,
     callbackUrl: device.callbackUrl,
@@ -175,8 +180,10 @@ export function DeviceEditForm({
       const payload = {
         phoneNumber: form.phoneNumber,
         status: form.status,
+        environment: form.environment,
         whatsappBusinessAccountId: form.whatsappBusinessAccountId,
         whatsappPhoneId: form.whatsappPhoneId,
+        whatsappMetaAppId: form.whatsappMetaAppId,
         whatsappApplicationId: form.whatsappApplicationId,
         whatsappVersion: form.whatsappVersion || "v24.0",
         callbackUrl: form.callbackUrl,
@@ -291,6 +298,31 @@ export function DeviceEditForm({
               }
             />
           </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="edit-environment">Environment</Label>
+            <select
+              id="edit-environment"
+              value={form.environment}
+              onChange={(event) =>
+                updateForm({
+                  environment: event.target.value as FormState["environment"],
+                })
+              }
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs"
+            >
+              <option value="LIVE">Live</option>
+              <option value="SANDBOX">Sandbox</option>
+            </select>
+          </div>
+
+          <MetaAppSelector
+            value={form.whatsappMetaAppId}
+            environment={form.environment}
+            allowUnassign
+            requiredForLive={false}
+            onChange={(value) => updateForm({ whatsappMetaAppId: value })}
+          />
 
           <div className="grid gap-2">
             <Label htmlFor="applicationId">WhatsApp Application ID</Label>

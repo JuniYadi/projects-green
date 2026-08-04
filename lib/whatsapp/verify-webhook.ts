@@ -1,3 +1,7 @@
+/**
+ * Migration-only legacy verifier for the unmounted global-secret webhook route.
+ * Production verification uses per-MetaApp credentials.
+ */
 import type { VerifyWebhookInput, VerifyWebhookResult } from "./contracts"
 
 export function verifyWebhookUseCase(

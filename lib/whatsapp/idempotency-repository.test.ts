@@ -11,9 +11,16 @@ import {
 const redisStore = new Map<string, string>()
 const mockRedisGet = mock(async (key: string) => redisStore.get(key) ?? null)
 const mockRedisSet = mock(
-  async (key: string, value: string, mode: string, ttl: number) => {
+  async (
+    key: string,
+    value: string,
+    mode: string,
+    ttl: number,
+    nx?: string
+  ) => {
+    if (nx === "NX" && redisStore.has(key)) return null
     redisStore.set(key, value)
-    return { key, value, mode, ttl }
+    return { key, value, mode, ttl, nx }
   }
 )
 const mockRedisDel = mock(async (...keys: string[]) => {
@@ -43,6 +50,7 @@ mock.module("ioredis", () => ({
 const {
   hasProcessedEvent,
   markEventProcessed,
+  claimProcessedEvent,
   resetIdempotencyStore,
   __testing,
 } = await import("./idempotency-repository")
@@ -88,6 +96,35 @@ describe("whatsapp idempotency repository", () => {
       86_400
     )
     expect(redisStore.get("wa:idempotency:evt-1")).toBe("1")
+  })
+  it("claims an event atomically so concurrent claims have one winner", async () => {
+    const claims = await Promise.all([
+      claimProcessedEvent("evt-concurrent"),
+      claimProcessedEvent("evt-concurrent"),
+    ])
+
+    expect(claims.sort()).toEqual([false, true])
+    expect(mockRedisSet).toHaveBeenCalledWith(
+      "wa:idempotency:evt-concurrent",
+      "1",
+      "EX",
+      86_400,
+      "NX"
+    )
+  })
+  it("claims fallback events synchronously under concurrency", async () => {
+    await resetIdempotencyStore()
+    delete process.env.REDIS_URL
+    __testing.resetRedisClient()
+    const warn = spyOn(console, "warn").mockImplementation(() => {})
+
+    const claims = await Promise.all([
+      claimProcessedEvent("evt-fallback-concurrent"),
+      claimProcessedEvent("evt-fallback-concurrent"),
+    ])
+
+    expect(claims.sort()).toEqual([false, true])
+    warn.mockRestore()
   })
 
   it("resets idempotency keys by scanning and deleting the prefix", async () => {

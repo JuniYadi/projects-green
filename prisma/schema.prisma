@@ -1581,6 +1581,24 @@ enum WebhookDeliveryStatus {
 
 // ─── WhatsApp Models ──────────────────────────────────────────────────────────
 
+model WhatsappMetaApp {
+  id                   String           @id @default(cuid())
+  name                 String
+  metaAppId            String           @unique
+  /// Ciphertext only; never persist plaintext Meta app secret.
+  appSecretEncrypted   String
+  /// Ciphertext only; never persist plaintext webhook verify token.
+  verifyTokenEncrypted String
+  webhookKey           String           @unique
+  active               Boolean          @default(true)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  devices WhatsappDevice[]
+
+  @@index([active])
+}
+
 model WhatsappDevice {
   id                        String               @id @default(cuid())
   organizationId            String
@@ -1600,6 +1618,7 @@ model WhatsappDevice {
   s3Path                    String?
   whatsappBusinessAccountId String?
   whatsappPhoneId           String?
+  whatsappMetaAppId         String?
   whatsappApplicationId     String?
   whatsappVersion           String               @default("v24.0")
   whatsappProfile           Json?
@@ -1610,10 +1629,11 @@ model WhatsappDevice {
   expiredAt                 DateTime?
   lastHeartbeatAt           DateTime?
   lastDisconnectedAt        DateTime?
-  /// Secret for verifying incoming webhook HMAC signatures (X-Hub-Signature-256)
+  /// Deprecated compatibility-only field. Do not use for Meta app signing.
   appSecret                 String?
   createdAt                 DateTime             @default(now())
   updatedAt                 DateTime             @updatedAt
+  whatsappMetaApp       WhatsappMetaApp? @relation(fields: [whatsappMetaAppId], references: [id], onDelete: Restrict)
 
   contacts              WhatsappContact[]
   contactGroups         WhatsappContactGroup[]
@@ -1633,6 +1653,9 @@ model WhatsappDevice {
 
   @@index([organizationId])
   @@index([whatsappBusinessAccountId])
+  @@index([whatsappMetaAppId])
+  @@index([whatsappPhoneId])
+  @@unique([whatsappMetaAppId, whatsappPhoneId])
 }
 
 model WhatsappQuotaCreditRate {

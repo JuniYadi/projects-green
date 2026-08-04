@@ -1,4 +1,8 @@
 /**
+ * @deprecated Migration-only legacy global-secret webhook routes.
+ * Production mounts `metaWebhookRoutes` at `/whatsapp/meta-webhook/:webhookKey`.
+ * Keep this module for existing migration tests and operators moving legacy dashboards.
+ *
  * WhatsApp webhook handler — verify + process incoming events.
  *
  * GET  /api/whatsapp/webhook → Meta webhook verification (challenge)

@@ -66,8 +66,8 @@ describe("OpenAPI documentation", () => {
     expect(document.openapi).toBe("3.0.3")
 
     const operations = operationsOf(document)
-    expect(Object.keys(document.paths ?? {}).length).toBe(324)
-    expect(operations.length).toBe(406)
+    expect(Object.keys(document.paths ?? {}).length).toBe(326)
+    expect(operations.length).toBe(411)
     expect(
       operations.every(
         ({ operation }) =>
@@ -134,6 +134,35 @@ describe("OpenAPI documentation", () => {
     expect(document.paths?.["/api/admin/devices/"]?.get?.tags).toEqual([
       "API Admin",
     ])
+  })
+
+  describe("Production WhatsApp webhook routing", () => {
+    it("mounts canonical GET/POST routes without legacy global-secret route", () => {
+      expect(app.routes).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            method: "GET",
+            path: "/api/whatsapp/meta-webhook/:webhookKey",
+          }),
+          expect.objectContaining({
+            method: "POST",
+            path: "/api/whatsapp/meta-webhook/:webhookKey",
+          }),
+        ])
+      )
+      expect(app.routes).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            method: "GET",
+            path: "/api/whatsapp/webhook",
+          }),
+          expect.objectContaining({
+            method: "POST",
+            path: "/api/whatsapp/webhook",
+          }),
+        ])
+      )
+    })
   })
 
   it("converts Zod transforms without warnings", () => {

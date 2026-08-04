@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto"
 import { saveDebugSnapshot } from "./debug-repository"
-import { hasProcessedEvent, markEventProcessed } from "./idempotency-repository"
+import { claimProcessedEvent } from "./idempotency-repository"
 
 type WhatsappWebhookEnvelope = {
   object: "whatsapp_business_account"
@@ -72,10 +72,9 @@ export async function handleEventUseCase(
 
   if (options.rawBody) {
     const bodyHash = createHash("sha256").update(options.rawBody).digest("hex")
-    if (await hasProcessedEvent(bodyHash)) {
+    if (!(await claimProcessedEvent(bodyHash))) {
       return { duplicate: true }
     }
-    await markEventProcessed(bodyHash)
   }
 
   // Parse entries into a stable structure for downstream dispatch

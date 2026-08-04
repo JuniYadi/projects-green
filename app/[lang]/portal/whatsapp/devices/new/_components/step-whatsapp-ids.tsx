@@ -2,6 +2,7 @@
 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { MetaAppSelector } from "@/components/whatsapp/meta-app-selector"
 import type { WizardData } from "./device-create-wizard"
 
 type Props = {
@@ -14,6 +15,28 @@ export function StepWhatsappIds({ data, updateData, errors }: Props) {
   return (
     <div className="grid gap-4">
       <h2 className="text-lg font-semibold">WhatsApp Business IDs</h2>
+      <div className="grid gap-2">
+        <Label htmlFor="device-environment">Environment</Label>
+        <select
+          id="device-environment"
+          value={data.environment}
+          onChange={(event) =>
+            updateData({
+              environment: event.target.value as WizardData["environment"],
+            })
+          }
+          className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs"
+        >
+          <option value="LIVE">Live</option>
+          <option value="SANDBOX">Sandbox</option>
+        </select>
+      </div>
+      <MetaAppSelector
+        value={data.whatsappMetaAppId}
+        environment={data.environment}
+        onChange={(value) => updateData({ whatsappMetaAppId: value })}
+        error={errors.whatsappMetaAppId}
+      />
       <div className="grid gap-2">
         <Label htmlFor="waba-id">WhatsApp Business Account ID</Label>
         <Input

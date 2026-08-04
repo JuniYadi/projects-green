@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Plus } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
+import { MetaAppSelector } from "@/components/whatsapp/meta-app-selector"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -36,8 +37,10 @@ type AddDeviceForm = {
   phoneNumber: string
   name: string
   displayName: string
+  environment: "SANDBOX" | "LIVE"
   whatsappBusinessAccountId: string
   whatsappPhoneId: string
+  whatsappMetaAppId: string
   whatsappApplicationId: string
   callbackUrl: string
 }
@@ -47,8 +50,10 @@ const emptyForm: AddDeviceForm = {
   phoneNumber: "",
   name: "",
   displayName: "",
+  environment: "LIVE",
   whatsappBusinessAccountId: "",
   whatsappPhoneId: "",
+  whatsappMetaAppId: "",
   whatsappApplicationId: "",
   callbackUrl: "",
 }
@@ -61,6 +66,7 @@ export function AddDeviceDialog() {
   const [loadingOrgs, setLoadingOrgs] = useState(false)
   const [orgsLoaded, setOrgsLoaded] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [metaAppError, setMetaAppError] = useState<string | undefined>()
 
   const loadOrganizations = useCallback(async () => {
     if (orgsLoaded) return
@@ -84,9 +90,7 @@ export function AddDeviceDialog() {
   }, [orgsLoaded])
 
   const handleOpenChange = async (nextOpen: boolean) => {
-    if (nextOpen) {
-      await loadOrganizations()
-    }
+    if (nextOpen) await loadOrganizations()
     setOpen(nextOpen)
   }
 
@@ -97,29 +101,37 @@ export function AddDeviceDialog() {
       toast.error("Organization and phone number are required.")
       return
     }
-
+    if (form.environment === "LIVE" && !form.whatsappMetaAppId) {
+      toast.error("MetaApp selection is required for LIVE devices.")
+      return
+    }
     if (!e164PhoneRegex.test(form.phoneNumber.trim())) {
       toast.error("Phone number must be in E.164 format (e.g. +6281234567890)")
       return
     }
 
     setIsSubmitting(true)
+    setMetaAppError(undefined)
     try {
       const { data: body } = await eden.api.admin.devices.post({
         organizationId: form.organizationId,
         phoneNumber: form.phoneNumber,
+        environment: form.environment,
         name: form.name || "Admin Device",
         displayName: form.displayName || undefined,
         whatsappBusinessAccountId: form.whatsappBusinessAccountId || undefined,
         whatsappPhoneId: form.whatsappPhoneId || undefined,
+        whatsappMetaAppId: form.whatsappMetaAppId || undefined,
         whatsappApplicationId: form.whatsappApplicationId || undefined,
         callbackUrl: form.callbackUrl || undefined,
       } as never)
 
       if (!body?.ok) {
-        throw new Error(
-          (body as { message?: string })?.message || "Failed to add device."
-        )
+        const errorBody = body as { error?: string; message?: string }
+        if (errorBody.error?.startsWith("DEVICE_META_APP_")) {
+          setMetaAppError(errorBody.message || "MetaApp association failed.")
+        }
+        throw new Error(errorBody.message || "Failed to add device.")
       }
 
       toast.success("Device added successfully.")
@@ -203,15 +215,39 @@ export function AddDeviceDialog() {
             </p>
           </div>
           <div className="grid gap-2">
+            <Label htmlFor="add-environment">Environment</Label>
+            <select
+              id="add-environment"
+              value={form.environment}
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  environment: event.target
+                    .value as AddDeviceForm["environment"],
+                })
+              }
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs"
+            >
+              <option value="LIVE">Live</option>
+              <option value="SANDBOX">Sandbox</option>
+            </select>
+          </div>
+          <MetaAppSelector
+            value={form.whatsappMetaAppId}
+            environment={form.environment}
+            error={metaAppError}
+            onChange={(value) => {
+              setMetaAppError(undefined)
+              setForm({ ...form, whatsappMetaAppId: value })
+            }}
+          />
+          <div className="grid gap-2">
             <Label htmlFor="add-waba-id">WhatsApp Business Account ID</Label>
             <Input
               id="add-waba-id"
               value={form.whatsappBusinessAccountId}
               onChange={(e) =>
-                setForm({
-                  ...form,
-                  whatsappBusinessAccountId: e.target.value,
-                })
+                setForm({ ...form, whatsappBusinessAccountId: e.target.value })
               }
               placeholder="WABA-xxxxxxxxxxxx"
             />
@@ -233,10 +269,7 @@ export function AddDeviceDialog() {
               id="add-app-id"
               value={form.whatsappApplicationId}
               onChange={(e) =>
-                setForm({
-                  ...form,
-                  whatsappApplicationId: e.target.value,
-                })
+                setForm({ ...form, whatsappApplicationId: e.target.value })
               }
               placeholder="App-xxxxxxxxxxxx"
             />
