@@ -58,7 +58,9 @@ describe("StepDetectV2", () => {
       />
     )
 
-    expect(view.getByText("We're checking how to publish your site")).toBeInTheDocument()
+    expect(
+      view.getByText("We're checking how to publish your site")
+    ).toBeInTheDocument()
     expect(
       view.getByText(
         "This usually takes about a minute. You can review the result before anything goes live."
@@ -190,7 +192,9 @@ describe("StepDetectV2", () => {
     expect(
       view.getByText("Manual setup is required before continuing.")
     ).toBeInTheDocument()
-    expect(view.queryByText("We found Next.js. Your site is ready to review.")).not.toBeInTheDocument()
+    expect(
+      view.queryByText("We found Next.js. Your site is ready to review.")
+    ).not.toBeInTheDocument()
     expect(
       view.queryByRole("button", { name: "Retry detection" })
     ).not.toBeInTheDocument()
@@ -226,7 +230,9 @@ describe("StepDetectV2", () => {
     expect(
       view.getByText("Manual setup is required before continuing.")
     ).toBeInTheDocument()
-    expect(view.queryByText("We found Next.js. Your site is ready to review.")).not.toBeInTheDocument()
+    expect(
+      view.queryByText("We found Next.js. Your site is ready to review.")
+    ).not.toBeInTheDocument()
   })
 
   it("renders low-confidence decision message", () => {
@@ -281,7 +287,6 @@ describe("StepDetectV2", () => {
     expect(view.getByText(/Retry attempt 2/)).toBeInTheDocument()
   })
 
-
   it("keeps Dockerfile mode exempt from manual field validation", () => {
     const view = render(
       <StepDetectV2
@@ -306,7 +311,9 @@ describe("StepDetectV2", () => {
       />
     )
 
-    expect(view.queryByText("Build settings need attention")).not.toBeInTheDocument()
+    expect(
+      view.queryByText("Build settings need attention")
+    ).not.toBeInTheDocument()
     expect(view.getByLabelText("Build command")).toBeDisabled()
   })
 
@@ -329,7 +336,9 @@ describe("StepDetectV2", () => {
       />
     )
 
-    expect(view.queryByRole("button", { name: "Retry detection" })).not.toBeInTheDocument()
+    expect(
+      view.queryByRole("button", { name: "Retry detection" })
+    ).not.toBeInTheDocument()
   })
   it("calls onRetry when retry button clicked", () => {
     const onRetry = mock()
