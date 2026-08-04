@@ -281,21 +281,25 @@ export function StepDetectV2({
       <div className="space-y-4 p-6">
         <div className="space-y-1">
           <h2 className="text-xl font-bold">
-            We're checking how to publish your site
+            We&apos;re checking how to publish your site
           </h2>
           <p className="text-sm text-muted-foreground">
             This usually takes about a minute. You can review the result before
             anything goes live.
           </p>
-        {!isWorking ? (
-          <div className="space-y-1" role="status" aria-live="polite">
-            <p className="text-base font-semibold">{leadMessage}</p>
-          </div>
-        ) : null}
+          {!isWorking ? (
+            <div className="space-y-1" role="status" aria-live="polite">
+              <p className="text-base font-semibold">{leadMessage}</p>
+            </div>
+          ) : null}
         </div>
 
         {isWorking ? (
-          <div className="border border-border bg-muted/20 p-3 text-sm" role="status" aria-live="polite">
+          <div
+            className="border border-border bg-muted/20 p-3 text-sm"
+            role="status"
+            aria-live="polite"
+          >
             <p className="font-medium">Checking your project…</p>
             <p className="text-xs text-muted-foreground">
               {operations[activeOperation]?.label ?? "Preparing detection"}
@@ -310,129 +314,132 @@ export function StepDetectV2({
               Show technical details
             </summary>
             <div className="mt-3 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)_260px]">
-          <section className="space-y-2 border border-border p-3">
-            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              Detection operations
-            </p>
-            <div className="space-y-2">
-              {operations.map((op) => (
-                <div
-                  key={op.label}
-                  className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors motion-reduce:transition-none",
-                    op.status === "scanning" && "bg-primary/5 text-primary",
-                    op.status === "done" && "bg-emerald-500/5 text-emerald-600",
-                    op.status === "error" &&
-                      "bg-destructive/5 text-destructive",
-                    op.status === "idle" && "text-muted-foreground"
-                  )}
-                >
-                  <span className="shrink-0">
-                    {op.status === "scanning" ? (
-                      <span
-                        className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none"
-                        aria-hidden="true"
-                      />
-                    ) : op.status === "done" ? (
-                      <CheckCircle
-                        className="h-4 w-4 text-emerald-500"
-                        aria-hidden="true"
-                      />
-                    ) : op.status === "error" ? (
-                      <XCircle
-                        className="h-4 w-4 text-destructive"
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      op.icon
-                    )}
-                  </span>
-                  <span className="flex-1">{op.label}</span>
-                  {op.status === "scanning" ? (
-                    <span className="text-xs text-muted-foreground">
-                      Running…
-                    </span>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="space-y-2 border border-border p-3">
-            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              Evidence stream
-            </p>
-            {detectionResult && !isDetecting ? (
-              evidenceItems.length > 0 ? (
-                <ul className="space-y-2 text-xs text-muted-foreground">
-                  {evidenceItems.map((item, index) => (
-                    <li
-                      key={item.key}
-                      className="flex animate-in items-start gap-2 fade-in slide-in-from-bottom-1 motion-reduce:animate-none"
-                    >
-                      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                      <span>
-                        <span className="font-medium text-foreground">
-                          {item.label}
-                        </span>
-                        <span className="block break-words">{item.value}</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  No evidence recorded.
+              <section className="space-y-2 border border-border p-3">
+                <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                  Detection operations
                 </p>
-              )
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Evidence appears as the AI scans the repository…
-              </p>
-            )}
-          </section>
-
-          <section className="space-y-2 border border-border p-3">
-            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-              Launch verdict
-            </p>
-            {detectionResult && !isDetecting ? (
-              <>
-                <ConfidenceBadge detectionResult={detectionResult} />
-                <div className="border border-border bg-muted/20 p-3 text-xs">
-                  <p className="font-medium text-foreground">
-                    Detection status
-                  </p>
-                  <p className="text-muted-foreground capitalize">
-                    {detectionResult.status.replace("_", " ")}
-                  </p>
-                  {detectionResult.decisionMessage ? (
-                    <p className="mt-1 text-foreground">
-                      {detectionResult.decisionMessage}
-                    </p>
-                  ) : null}
-                  <p className="mt-1 text-muted-foreground">
-                    Confidence: {detectionResult.confidence}%
-                  </p>
+                <div className="space-y-2">
+                  {operations.map((op) => (
+                    <div
+                      key={op.label}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors motion-reduce:transition-none",
+                        op.status === "scanning" && "bg-primary/5 text-primary",
+                        op.status === "done" &&
+                          "bg-emerald-500/5 text-emerald-600",
+                        op.status === "error" &&
+                          "bg-destructive/5 text-destructive",
+                        op.status === "idle" && "text-muted-foreground"
+                      )}
+                    >
+                      <span className="shrink-0">
+                        {op.status === "scanning" ? (
+                          <span
+                            className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none"
+                            aria-hidden="true"
+                          />
+                        ) : op.status === "done" ? (
+                          <CheckCircle
+                            className="h-4 w-4 text-emerald-500"
+                            aria-hidden="true"
+                          />
+                        ) : op.status === "error" ? (
+                          <XCircle
+                            className="h-4 w-4 text-destructive"
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          op.icon
+                        )}
+                      </span>
+                      <span className="flex-1">{op.label}</span>
+                      {op.status === "scanning" ? (
+                        <span className="text-xs text-muted-foreground">
+                          Running…
+                        </span>
+                      ) : null}
+                    </div>
+                  ))}
                 </div>
-              </>
-            ) : (
-              <div className="border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
-                {detectionRetrying
-                  ? `Waiting before retry ${detectionAttempt} of 2…`
-                  : "Waiting for detection…"}
-              </div>
-            )}
-            {statusMessage ? (
-              <p
-                className="text-xs text-muted-foreground"
-                role="status"
-                aria-live="polite"
-              >
-                {statusMessage}
-              </p>
-            ) : null}
-          </section>
+              </section>
+
+              <section className="space-y-2 border border-border p-3">
+                <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                  Evidence stream
+                </p>
+                {detectionResult && !isDetecting ? (
+                  evidenceItems.length > 0 ? (
+                    <ul className="space-y-2 text-xs text-muted-foreground">
+                      {evidenceItems.map((item) => (
+                        <li
+                          key={item.key}
+                          className="flex animate-in items-start gap-2 fade-in slide-in-from-bottom-1 motion-reduce:animate-none"
+                        >
+                          <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                          <span>
+                            <span className="font-medium text-foreground">
+                              {item.label}
+                            </span>
+                            <span className="block break-words">
+                              {item.value}
+                            </span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      No evidence recorded.
+                    </p>
+                  )
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Evidence appears as the AI scans the repository…
+                  </p>
+                )}
+              </section>
+
+              <section className="space-y-2 border border-border p-3">
+                <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                  Launch verdict
+                </p>
+                {detectionResult && !isDetecting ? (
+                  <>
+                    <ConfidenceBadge detectionResult={detectionResult} />
+                    <div className="border border-border bg-muted/20 p-3 text-xs">
+                      <p className="font-medium text-foreground">
+                        Detection status
+                      </p>
+                      <p className="text-muted-foreground capitalize">
+                        {detectionResult.status.replace("_", " ")}
+                      </p>
+                      {detectionResult.decisionMessage ? (
+                        <p className="mt-1 text-foreground">
+                          {detectionResult.decisionMessage}
+                        </p>
+                      ) : null}
+                      <p className="mt-1 text-muted-foreground">
+                        Confidence: {detectionResult.confidence}%
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+                    {detectionRetrying
+                      ? `Waiting before retry ${detectionAttempt} of 2…`
+                      : "Waiting for detection…"}
+                  </div>
+                )}
+                {statusMessage ? (
+                  <p
+                    className="text-xs text-muted-foreground"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    {statusMessage}
+                  </p>
+                ) : null}
+              </section>
             </div>
           </details>
         )}
@@ -464,238 +471,241 @@ export function StepDetectV2({
         ) : null}
 
         {!isWorking && (
-          <details open={manualSettingsOpen} className="border border-border p-3">
+          <details
+            open={manualSettingsOpen}
+            className="border border-border p-3"
+          >
             <summary className="cursor-pointer text-sm font-medium">
               Change technical settings
             </summary>
             <div className="mt-3 space-y-3">
-            <p className="text-sm font-medium">Manual override</p>
-            <p className="text-xs text-muted-foreground">
-              {manualOverrideRequired
-                ? "Manual setup is required before continuing."
-                : "Optional: adjust settings if the detection is not exact."}
-            </p>
-            <div className="grid gap-3 sm:grid-cols-2">
+              <p className="text-sm font-medium">Manual override</p>
+              <p className="text-xs text-muted-foreground">
+                {manualOverrideRequired
+                  ? "Manual setup is required before continuing."
+                  : "Optional: adjust settings if the detection is not exact."}
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium">Language</p>
+                  <select
+                    aria-label="Language selector"
+                    aria-invalid={needsManualValues && missingLanguage}
+                    className={cn(
+                      "h-8 w-full border border-input bg-transparent px-2.5 text-xs",
+                      needsManualValues &&
+                        missingLanguage &&
+                        "border-destructive focus-visible:outline-destructive"
+                    )}
+                    value={buildState.language}
+                    onChange={(event) => {
+                      onBuildFieldChange("language", event.target.value)
+                    }}
+                  >
+                    <option value="">Select language</option>
+                    <option value="Node.js">Node.js</option>
+                    <option value="Python">Python</option>
+                    <option value="Ruby">Ruby</option>
+                    <option value="Go">Go</option>
+                    <option value="Java">Java</option>
+                    <option value="PHP">PHP</option>
+                    <option value="Rust">Rust</option>
+                    <option value="C#">C#</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-xs font-medium">Framework</p>
+                  <select
+                    aria-label="Framework selector"
+                    aria-invalid={needsManualValues && missingFramework}
+                    className={cn(
+                      "h-8 w-full border border-input bg-transparent px-2.5 text-xs",
+                      needsManualValues &&
+                        missingFramework &&
+                        "border-destructive focus-visible:outline-destructive"
+                    )}
+                    value={buildState.framework}
+                    onChange={(event) => {
+                      onBuildFieldChange("framework", event.target.value)
+                    }}
+                  >
+                    <option value="">Select framework</option>
+                    <option value="Next.js">Next.js</option>
+                    <option value="React">React</option>
+                    <option value="Vue">Vue</option>
+                    <option value="Svelte">Svelte</option>
+                    <option value="Astro">Astro</option>
+                    <option value="Remix">Remix</option>
+                    <option value="Nuxt">Nuxt</option>
+                    <option value="Django">Django</option>
+                    <option value="Flask">Flask</option>
+                    <option value="FastAPI">FastAPI</option>
+                    <option value="Rails">Rails</option>
+                    <option value="Sinatra">Sinatra</option>
+                    <option value="Spring Boot">Spring Boot</option>
+                    <option value="Laravel">Laravel</option>
+                    <option value="Express">Express</option>
+                    <option value="NestJS">NestJS</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium">Framework version</p>
+                  <input
+                    aria-label="Framework version"
+                    value={buildState.frameworkVersion ?? ""}
+                    placeholder="e.g. 13.x"
+                    className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
+                    onChange={(event) => {
+                      onBuildFieldChange("frameworkVersion", event.target.value)
+                    }}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium">Default port</p>
+                  <input
+                    aria-label="Default port"
+                    type="number"
+                    value={buildState.defaultPort || ""}
+                    placeholder="e.g. 3000"
+                    className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
+                    onChange={(event) => {
+                      onBuildFieldChange(
+                        "defaultPort",
+                        Number(event.target.value)
+                      )
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium">Primary engine</p>
+                  <input
+                    aria-label="Primary engine"
+                    value={buildState.primaryEngine ?? ""}
+                    placeholder="e.g. node"
+                    className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
+                    onChange={(event) => {
+                      onBuildFieldChange("primaryEngine", event.target.value)
+                    }}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium">Engine version</p>
+                  <input
+                    aria-label="Primary engine version"
+                    value={buildState.primaryEngineVersion ?? ""}
+                    placeholder="e.g. 24"
+                    className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
+                    onChange={(event) => {
+                      onBuildFieldChange(
+                        "primaryEngineVersion",
+                        event.target.value
+                      )
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium">Secondary engine</p>
+                  <input
+                    aria-label="Secondary engine"
+                    value={buildState.secondaryEngine ?? ""}
+                    placeholder="e.g. node"
+                    className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
+                    onChange={(event) => {
+                      onBuildFieldChange("secondaryEngine", event.target.value)
+                    }}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium">Engine version</p>
+                  <input
+                    aria-label="Secondary engine version"
+                    value={buildState.secondaryEngineVersion ?? ""}
+                    placeholder="e.g. 24"
+                    className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
+                    onChange={(event) => {
+                      onBuildFieldChange(
+                        "secondaryEngineVersion",
+                        event.target.value
+                      )
+                    }}
+                  />
+                </div>
+              </div>
+
               <div className="space-y-1">
-                <p className="text-xs font-medium">Language</p>
-                <select
-                  aria-label="Language selector"
-                  aria-invalid={needsManualValues && missingLanguage}
+                <p className="text-xs font-medium">Build command</p>
+                <input
+                  aria-label="Build command"
+                  aria-invalid={needsManualValues && missingBuildCommand}
+                  value={buildState.buildCommand}
+                  disabled={buildState.useDockerfile}
+                  placeholder="bun run build"
                   className={cn(
                     "h-8 w-full border border-input bg-transparent px-2.5 text-xs",
                     needsManualValues &&
-                      missingLanguage &&
-                      "border-destructive focus-visible:outline-destructive"
+                      missingBuildCommand &&
+                      "border-destructive focus-visible:ring-destructive",
+                    buildState.useDockerfile && "opacity-50"
                   )}
-                  value={buildState.language}
                   onChange={(event) => {
-                    onBuildFieldChange("language", event.target.value)
+                    onBuildFieldChange("buildCommand", event.target.value)
                   }}
-                >
-                  <option value="">Select language</option>
-                  <option value="Node.js">Node.js</option>
-                  <option value="Python">Python</option>
-                  <option value="Ruby">Ruby</option>
-                  <option value="Go">Go</option>
-                  <option value="Java">Java</option>
-                  <option value="PHP">PHP</option>
-                  <option value="Rust">Rust</option>
-                  <option value="C#">C#</option>
-                </select>
+                />
+                <p className="text-xs text-muted-foreground">
+                  {buildState.useDockerfile
+                    ? "Build command is ignored because Dockerfile mode is enabled."
+                    : "This command runs in the selected root directory during build."}
+                </p>
               </div>
 
-              <div className="space-y-1">
-                <p className="text-xs font-medium">Framework</p>
-                <select
-                  aria-label="Framework selector"
-                  aria-invalid={needsManualValues && missingFramework}
-                  className={cn(
-                    "h-8 w-full border border-input bg-transparent px-2.5 text-xs",
-                    needsManualValues &&
-                      missingFramework &&
-                      "border-destructive focus-visible:outline-destructive"
-                  )}
-                  value={buildState.framework}
-                  onChange={(event) => {
-                    onBuildFieldChange("framework", event.target.value)
-                  }}
-                >
-                  <option value="">Select framework</option>
-                  <option value="Next.js">Next.js</option>
-                  <option value="React">React</option>
-                  <option value="Vue">Vue</option>
-                  <option value="Svelte">Svelte</option>
-                  <option value="Astro">Astro</option>
-                  <option value="Remix">Remix</option>
-                  <option value="Nuxt">Nuxt</option>
-                  <option value="Django">Django</option>
-                  <option value="Flask">Flask</option>
-                  <option value="FastAPI">FastAPI</option>
-                  <option value="Rails">Rails</option>
-                  <option value="Sinatra">Sinatra</option>
-                  <option value="Spring Boot">Spring Boot</option>
-                  <option value="Laravel">Laravel</option>
-                  <option value="Express">Express</option>
-                  <option value="NestJS">NestJS</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <p className="text-xs font-medium">Framework version</p>
+              <label className="flex items-center gap-2 text-xs">
                 <input
-                  aria-label="Framework version"
-                  value={buildState.frameworkVersion ?? ""}
-                  placeholder="e.g. 13.x"
-                  className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
+                  type="checkbox"
+                  checked={buildState.useDockerfile}
                   onChange={(event) => {
-                    onBuildFieldChange("frameworkVersion", event.target.value)
+                    onBuildFieldChange("useDockerfile", event.target.checked)
                   }}
                 />
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-medium">Default port</p>
-                <input
-                  aria-label="Default port"
-                  type="number"
-                  value={buildState.defaultPort || ""}
-                  placeholder="e.g. 3000"
-                  className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
-                  onChange={(event) => {
-                    onBuildFieldChange(
-                      "defaultPort",
-                      Number(event.target.value)
-                    )
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <p className="text-xs font-medium">Primary engine</p>
-                <input
-                  aria-label="Primary engine"
-                  value={buildState.primaryEngine ?? ""}
-                  placeholder="e.g. node"
-                  className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
-                  onChange={(event) => {
-                    onBuildFieldChange("primaryEngine", event.target.value)
-                  }}
-                />
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-medium">Engine version</p>
-                <input
-                  aria-label="Primary engine version"
-                  value={buildState.primaryEngineVersion ?? ""}
-                  placeholder="e.g. 24"
-                  className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
-                  onChange={(event) => {
-                    onBuildFieldChange(
-                      "primaryEngineVersion",
-                      event.target.value
-                    )
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <p className="text-xs font-medium">Secondary engine</p>
-                <input
-                  aria-label="Secondary engine"
-                  value={buildState.secondaryEngine ?? ""}
-                  placeholder="e.g. node"
-                  className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
-                  onChange={(event) => {
-                    onBuildFieldChange("secondaryEngine", event.target.value)
-                  }}
-                />
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-medium">Engine version</p>
-                <input
-                  aria-label="Secondary engine version"
-                  value={buildState.secondaryEngineVersion ?? ""}
-                  placeholder="e.g. 24"
-                  className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
-                  onChange={(event) => {
-                    onBuildFieldChange(
-                      "secondaryEngineVersion",
-                      event.target.value
-                    )
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <p className="text-xs font-medium">Build command</p>
-              <input
-                aria-label="Build command"
-                aria-invalid={needsManualValues && missingBuildCommand}
-                value={buildState.buildCommand}
-                disabled={buildState.useDockerfile}
-                placeholder="bun run build"
-                className={cn(
-                  "h-8 w-full border border-input bg-transparent px-2.5 text-xs",
-                  needsManualValues &&
-                    missingBuildCommand &&
-                    "border-destructive focus-visible:ring-destructive",
-                  buildState.useDockerfile && "opacity-50"
-                )}
-                onChange={(event) => {
-                  onBuildFieldChange("buildCommand", event.target.value)
-                }}
-              />
+                Use Dockerfile instead
+              </label>
               <p className="text-xs text-muted-foreground">
                 {buildState.useDockerfile
-                  ? "Build command is ignored because Dockerfile mode is enabled."
-                  : "This command runs in the selected root directory during build."}
+                  ? "Dockerfile mode is on. Platform detection and command settings are optional."
+                  : "Dockerfile mode is off. Build command and runtime settings are used."}
               </p>
+
+              {showValidationErrors ? (
+                <div
+                  className="space-y-1 border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive"
+                  role="alert"
+                >
+                  <p className="font-medium">Build settings need attention</p>
+                  <ul className="list-disc pl-4">
+                    {validationMessages.map((message) => {
+                      return <li key={message}>{message}</li>
+                    })}
+                  </ul>
+                </div>
+              ) : null}
+
+              {!isPolicyBlocked && !showValidationErrors && canProceed ? (
+                <div className="border border-border bg-muted/40 p-2 text-xs text-foreground">
+                  {buildState.useDockerfile
+                    ? "Ready: deployment will use your Dockerfile."
+                    : "Ready: build settings are complete."}
+                </div>
+              ) : null}
             </div>
-
-            <label className="flex items-center gap-2 text-xs">
-              <input
-                type="checkbox"
-                checked={buildState.useDockerfile}
-                onChange={(event) => {
-                  onBuildFieldChange("useDockerfile", event.target.checked)
-                }}
-              />
-              Use Dockerfile instead
-            </label>
-            <p className="text-xs text-muted-foreground">
-              {buildState.useDockerfile
-                ? "Dockerfile mode is on. Platform detection and command settings are optional."
-                : "Dockerfile mode is off. Build command and runtime settings are used."}
-            </p>
-
-            {showValidationErrors ? (
-              <div
-                className="space-y-1 border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive"
-                role="alert"
-              >
-                <p className="font-medium">Build settings need attention</p>
-                <ul className="list-disc pl-4">
-                  {validationMessages.map((message) => {
-                    return <li key={message}>{message}</li>
-                  })}
-                </ul>
-              </div>
-            ) : null}
-
-            {!isPolicyBlocked && !showValidationErrors && canProceed ? (
-              <div className="border border-border bg-muted/40 p-2 text-xs text-foreground">
-                {buildState.useDockerfile
-                  ? "Ready: deployment will use your Dockerfile."
-                  : "Ready: build settings are complete."}
-              </div>
-            ) : null}
-          </div>
           </details>
         )}
       </div>

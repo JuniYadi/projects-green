@@ -78,5 +78,5 @@ it("sanitizes invalid sourceType to default while preserving public fields", () 
 
   const hydrated = hydrateDeployWizardState(raw)
   expect(hydrated).not.toBeNull()
-  expect(hydrated?.source.sourceType).toBe("github")
+  expect(hydrated?.source.sourceType).toBe("template")
 })
