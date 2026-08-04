@@ -188,7 +188,9 @@ describe("DeployWizardV2 GitHub accounts", () => {
 
     fireEvent.click(view.getByRole("button", { name: /Continue to setup/ }))
     fireEvent.click(view.getByRole("button", { name: "Check my site" }))
-    expect(view.getByText("Detect build settings")).toBeInTheDocument()
+    expect(
+      view.getByText("We're checking how to publish your site")
+    ).toBeInTheDocument()
   })
 
   it("detects framework when detect is entered with a selected repository", async () => {
@@ -219,7 +221,9 @@ describe("DeployWizardV2 GitHub accounts", () => {
     fireEvent.click(view.getByRole("button", { name: /Continue to setup/ }))
     fireEvent.click(view.getByRole("button", { name: "Check my site" }))
 
-    expect(view.getByText("Detect build settings")).toBeInTheDocument()
+    expect(
+      view.getByText("We're checking how to publish your site")
+    ).toBeInTheDocument()
   })
   it("one transient failure then success makes exactly two requests and renders result", async () => {
     const { DeployWizardProvider } =
@@ -294,7 +298,9 @@ describe("DeployWizardV2 GitHub accounts", () => {
     )
     fireEvent.click(view.getByRole("button", { name: /Continue to setup/ }))
     fireEvent.click(view.getByRole("button", { name: "Check my site" }))
-    expect(view.getByText("Detect build settings")).toBeInTheDocument()
+    expect(
+      view.getByText("We're checking how to publish your site")
+    ).toBeInTheDocument()
   })
 
   it("permanent failure makes exactly one request and renders manual fallback", async () => {
