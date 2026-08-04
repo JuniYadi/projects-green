@@ -23,6 +23,7 @@ const MAX_FILE_BYTES = 256 * 1024
 type InspectionLog = Record<string, unknown>
 type Scenario = {
   name: string
+  expectedEvidence: "github-deterministic-fallback" | "tool-calling-detection"
   resolveWithAiToolCalling: NonNullable<
     GithubApiDetectorDependencies["resolveWithAiToolCalling"]
   >
@@ -30,8 +31,28 @@ type Scenario = {
 type ScenarioSummary = {
   framework: string | undefined
   laravelEvidence: boolean
+  evidenceValues: string[]
+  enforcedRuntimes: string[]
+  warningCategories: string[]
   phpRuntime: string | undefined
   decision: DetectionResult["decision"]["status"]
+}
+
+const SANITIZED_EVIDENCE_VALUES: Record<string, true> = {
+  artisan: true,
+  "composer.json": true,
+  "laravel/framework": true,
+  "github-deterministic-fallback": true,
+  "tool-calling-detection": true,
+  "runtime-mapping-enforced": true,
+}
+
+const sanitizeWarningCategory = (warning: string) => {
+  if (/fallback/i.test(warning)) return "fallback"
+  if (/provider/i.test(warning)) return "provider"
+  if (/truncated/i.test(warning)) return "truncated-listing"
+  if (/inspection/i.test(warning)) return "inspection-log"
+  return "other"
 }
 
 const rules: DetectorRuleRecord[] = [
@@ -153,12 +174,14 @@ const createPrisma = (inspectionLogs: InspectionLog[]) => ({
 const scenarios: Scenario[] = [
   {
     name: "provider-failure fallback",
+    expectedEvidence: "github-deterministic-fallback",
     resolveWithAiToolCalling: async () => {
       throw new Error("Provider returned error")
     },
   },
   {
     name: "valid provider",
+    expectedEvidence: "tool-calling-detection",
     resolveWithAiToolCalling: async () => ({
       decision: {
         primaryFrameworkId: "laravel",
@@ -176,37 +199,62 @@ const scenarios: Scenario[] = [
 ]
 
 const assertResult = (
-  scenario: string,
+  scenario: Scenario,
   result: DetectionResult
 ): ScenarioSummary => {
+  const hasExpectedEvidence = result.evidence.some(
+    (entry) => entry.value === scenario.expectedEvidence
+  )
+  const hasLocalLaravelEvidence = result.evidence.some(
+    (entry) =>
+      entry.value === "artisan" ||
+      entry.value === "composer.json" ||
+      entry.value === "laravel/framework"
+  )
   const hasLaravelEvidence =
-    result.evidence.some(
-      (entry) =>
-        entry.value === "artisan" ||
-        entry.value === "composer.json" ||
-        entry.value === "laravel/framework"
-    ) ||
-    (result.primaryFramework?.reasons.some((reason) =>
-      /laravel|artisan|composer/i.test(reason)
-    ) ??
-      false)
+    result.primaryFramework?.id === "laravel" &&
+    hasExpectedEvidence &&
+    (scenario.expectedEvidence !== "github-deterministic-fallback" ||
+      hasLocalLaravelEvidence)
   const hasPhpRuntime = result.enforcedRuntimes?.some(
     (runtime) => runtime.runtimeId === "php" && runtime.version !== "unknown"
   )
+  const evidenceValues = [
+    ...new Set(
+      result.evidence.map((entry) =>
+        SANITIZED_EVIDENCE_VALUES[entry.value] ? entry.value : "other"
+      )
+    ),
+  ]
+  const enforcedRuntimes = (result.enforcedRuntimes ?? []).map((runtime) => {
+    const runtimeId = runtime.runtimeId.replace(/[^a-z0-9_-]/gi, "?")
+    const version = runtime.version.replace(/[^a-z0-9.*+_-]/gi, "?")
+    return `${runtimeId}=${version}`
+  })
+  const warningCategories = result.warnings.length
+    ? [...new Set(result.warnings.map(sanitizeWarningCategory))]
+    : ["none"]
   const failures = [
     result.primaryFramework?.id !== "laravel" &&
       "primary framework is not Laravel",
+    !hasExpectedEvidence &&
+      `missing expected evidence ${scenario.expectedEvidence}`,
     !hasLaravelEvidence && "Laravel evidence is missing",
     !hasPhpRuntime && "PHP runtime is not enforced",
     result.decision.status !== "success" &&
       `launch decision is ${result.decision.status}`,
+    result.decision.isLaunchable !== true &&
+      "launch decision is not launchable",
   ].filter((failure): failure is string => Boolean(failure))
   if (failures.length > 0) {
-    throw new Error(`${scenario}: ${failures.join("; ")}`)
+    throw new Error(`${scenario.name}: ${failures.join("; ")}`)
   }
   return {
     framework: result.primaryFramework?.id,
     laravelEvidence: hasLaravelEvidence,
+    evidenceValues,
+    enforcedRuntimes,
+    warningCategories,
     phpRuntime: result.enforcedRuntimes?.find(
       (runtime) => runtime.runtimeId === "php"
     )?.version,
@@ -242,13 +290,13 @@ const run = async () => {
         },
         dependencies
       )
-      summaries.push(assertResult(scenario.name, result))
+      summaries.push(assertResult(scenario, result))
     }
 
     console.log("Phase 4/4: Validation summary")
     for (const [index, summary] of summaries.entries()) {
       console.log(
-        `${scenarios[index]?.name}: framework=${summary.framework}; evidence=${summary.laravelEvidence}; php=${summary.phpRuntime}; decision=${summary.decision}`
+        `${scenarios[index]?.name}: framework=${summary.framework}; evidence=${summary.evidenceValues.join(",")}; runtimes=${summary.enforcedRuntimes.join(",")}; warnings=${summary.warningCategories.join(",")}; decision=${summary.decision}; launchable=true`
       )
     }
     console.log(`Inspection logs captured: ${inspectionLogs.length}`)
