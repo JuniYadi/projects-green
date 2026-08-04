@@ -97,6 +97,20 @@ describe("validateBuildStep", () => {
       )
     ).toBe(true)
   })
+  it("requires manual override for blocked or unsupported policy verdicts", () => {
+    const build = {
+      language: "",
+      framework: "",
+      buildCommand: "",
+      useDockerfile: false,
+    }
+
+    for (const status of ["blocked", "unsupported"] as const) {
+      expect(validateBuildStep(build, { ...successDetection, status })).toBe(
+        false
+      )
+    }
+  })
 
   it("requires manual values or dockerfile on failed detection", () => {
     expect(
