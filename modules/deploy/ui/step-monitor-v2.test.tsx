@@ -4,6 +4,27 @@ import { render } from "@testing-library/react"
 import { StepMonitorV2 } from "./step-monitor-v2"
 
 describe("StepMonitorV2", () => {
+  it("preserves localized dashboard href", () => {
+    const dashboardHref = "/id/console/app/manage"
+    const view = render(
+      <StepMonitorV2
+        appName="my-app"
+        status="running"
+        logScope="all"
+        attempt={1}
+        failureReason={null}
+        dashboardHref={dashboardHref}
+        onLogScopeChange={mock()}
+        onRetry={mock()}
+        onEditSettings={mock()}
+      />
+    )
+
+    expect(
+      view.getByRole("link", { name: "Open Dashboard" }).getAttribute("href")
+    ).toBe(dashboardHref)
+  })
+
   it("shows app activity, preview domain, and collapsed logs", () => {
     const view = render(
       <StepMonitorV2
