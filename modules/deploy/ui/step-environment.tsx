@@ -353,7 +353,7 @@ export function StepEnvironment({
           disabled={!canDeploy || isSubmitting}
           className="flex h-9 items-center gap-1 bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
         >
-          {isSubmitting ? "Starting deploy…" : "Deploy Application"}
+          {isSubmitting ? "Starting deploy…" : "Deploy"}
           <ArrowRight className="h-3.5 w-3.5" />
         </Button>
       </div>

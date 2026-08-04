@@ -1,4 +1,7 @@
 import { DEPLOY_STATUS_LABELS } from "@/modules/deploy/deploy.constants"
+import { isValidCustomDomain } from "@/modules/deploy/deploy.schema"
+import { enMessages } from "@/lib/i18n/messages/en"
+import type { DeployWizardMessages } from "@/lib/i18n/messages/types"
 import { DeployStepTimeline } from "@/modules/deploy/ui/deploy-timeline"
 import { LogsPanel } from "@/modules/deploy/ui/logs-panel"
 import { ResultPanel } from "@/modules/deploy/ui/result-panel"
@@ -8,115 +11,118 @@ import type {
 } from "@/modules/deploy/deploy.types"
 
 type StepMonitorV2Props = {
+  messages?: DeployWizardMessages
   deployId?: string
   status: DeployStatus
+  appName: string
   logScope: DeployLogScope
   attempt: number
   failureReason: string | null
   liveDomain?: string
+  dashboardHref?: string
   onLogScopeChange: (scope: DeployLogScope) => void
   onRetry: () => void
   onEditSettings: () => void
 }
 
-const STATUS_COPY: Record<
-  DeployStatus,
-  { title: string; supportText: string }
-> = {
-  idle: {
-    title: "Getting your site ready",
-    supportText: "We'll start building it shortly.",
-  },
-  queued: {
-    title: "Getting your site ready",
-    supportText: "We'll start building it shortly.",
-  },
-  building: {
-    title: "Building your site",
-    supportText: "We're preparing it to run online.",
-  },
-  deploying: {
-    title: "Putting your site online",
-    supportText: "We're connecting it to your web address.",
-  },
-  running: {
-    title: "Your site is live",
-    supportText: "Your web address is ready to visit.",
-  },
-  failed: {
-    title: "We couldn't publish your site",
-    supportText:
-      "We hit an issue while deploying. Review logs and retry with updated settings.",
-  },
-}
-
 export function StepMonitorV2({
   deployId,
   status,
+  appName,
   logScope,
   attempt,
   failureReason,
   liveDomain,
+  dashboardHref = "",
   onLogScopeChange,
   onRetry,
   onEditSettings,
+  messages: providedMessages,
 }: StepMonitorV2Props) {
-  const copy = STATUS_COPY[status]
-  const supportText =
-    status === "failed" ? (failureReason ?? copy.supportText) : copy.supportText
-  const normalizedAttempt = Math.max(attempt, 1)
-
+  const messages = providedMessages ?? enMessages.console.app.deployWizard
+  const previewDomain = liveDomain?.trim()
+  const previewHref =
+    previewDomain && isValidCustomDomain(previewDomain)
+      ? `https://${previewDomain}`
+      : null
   return (
     <div className="space-y-4 p-6">
-      <div className="space-y-1" aria-live="polite">
-        <h2 className="text-xl font-bold">{copy.title}</h2>
-        <p className="text-sm text-muted-foreground">{supportText}</p>
-        <div className="flex items-center gap-2 pt-2">
-          <span className="text-xs text-muted-foreground">Current status:</span>
-          <span className="rounded-md border border-border px-2 py-1 text-xs font-medium">
-            {DEPLOY_STATUS_LABELS[status]}
-          </span>
-          <span className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
-            Attempt {normalizedAttempt}
-          </span>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h2 className="text-xl font-bold">
+            {appName || messages.monitor.yourApp}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {messages.monitor.activity[status]}
+          </p>
         </div>
+        {previewHref && (
+          <a
+            href={previewHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-primary underline"
+          >
+            {previewDomain}
+          </a>
+        )}
       </div>
 
-      <ResultPanel
-        status={status}
-        failureReason={failureReason}
-        attempt={normalizedAttempt}
-        onRetry={onRetry}
-        onEditSettings={onEditSettings}
-      />
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">
+          {messages.monitor.currentStatus}
+        </span>
+        <span className="rounded-md border border-border px-2 py-1 text-xs font-medium">
+          {DEPLOY_STATUS_LABELS[status]}
+        </span>
+        <span className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
+          {messages.monitor.attempt.replace(
+            "{attempt}",
+            String(Math.max(attempt, 1))
+          )}
+        </span>
+      </div>
 
-      <details className="space-y-3 rounded-lg border border-border p-4">
-        <summary className="cursor-pointer text-sm font-semibold">
-          Show technical progress
-        </summary>
-        <div className="space-y-4 pt-2">
-          <section className="space-y-2">
-            <h3 className="text-sm font-medium">Status timeline</h3>
-            <DeployStepTimeline
-              deployId={deployId}
-              status={status}
-              liveDomain={liveDomain}
-              onRetry={onRetry}
-            />
-          </section>
+      <section className="space-y-2">
+        <h3 className="text-sm font-medium">
+          {messages.monitor.statusTimeline}
+        </h3>
+        <DeployStepTimeline
+          deployId={deployId}
+          status={status}
+          liveDomain={previewHref ? previewDomain : undefined}
+          onRetry={onRetry}
+        />
+      </section>
 
-          <section className="space-y-2">
-            <h3 className="text-sm font-medium">Build and runtime logs</h3>
-            <LogsPanel
-              deployId={deployId}
-              status={status}
-              scope={logScope}
-              attempt={normalizedAttempt}
-              onScopeChange={onLogScopeChange}
-            />
-          </section>
-        </div>
-      </details>
+      <section className="space-y-2">
+        <h3 className="text-sm font-medium">
+          {messages.monitor.buildRuntimeLogs}
+        </h3>
+        <LogsPanel
+          messages={messages}
+          deployId={deployId}
+          status={status}
+          scope={logScope}
+          attempt={Math.max(attempt, 1)}
+          initialOpen={false}
+          onScopeChange={onLogScopeChange}
+        />
+      </section>
+
+      <section className="space-y-2">
+        <h3 className="text-sm font-medium">{messages.monitor.resultState}</h3>
+        <ResultPanel
+          messages={messages}
+          status={status}
+          failureReason={failureReason}
+          attempt={Math.max(attempt, 1)}
+          liveDomain={liveDomain}
+          dashboardHref={dashboardHref}
+          onRetry={onRetry}
+          onEditSettings={onEditSettings}
+        />
+      </section>
     </div>
   )
 }

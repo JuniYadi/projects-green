@@ -10,6 +10,7 @@ mock.module("@/modules/deploy/deploy.constants", () => {
         id: "wordpress",
         name: "WordPress",
         description: "The world's most popular website builder.",
+        category: "CMS",
         defaultCpu: 500,
         defaultMemory: 512,
         build: {
@@ -19,243 +20,183 @@ mock.module("@/modules/deploy/deploy.constants", () => {
           useDockerfile: true,
         },
       },
-      ...Array.from({ length: 9 }).map((_, i) => ({
-        id: `template-${i}`,
-        name: `Template ${i}`,
-        description: `Description ${i}`,
-        defaultCpu: 500,
-        defaultMemory: 512,
-        build: {
-          language: "Node.js",
-          framework: "Express",
-          buildCommand: "",
-          useDockerfile: false,
-        },
-      })),
     ],
   }
 })
 
 import { fireEvent, render, act } from "@testing-library/react"
-import { StepSourceV2 } from "@/modules/deploy/ui/step-source-v2"
-import type { StepSourceProps } from "@/modules/deploy/ui/step-source-v2"
+import {
+  StepSourceV2,
+  type StepSourceProps,
+} from "@/modules/deploy/ui/step-source-v2"
 import type { ResourcePlanId } from "@/modules/deploy/deploy.types"
 
-const createProps = () => {
-  return {
-    sourceType: "github" as StepSourceProps["sourceType"],
-    templateId: undefined as StepSourceProps["templateId"],
-    githubConnectionStatus:
-      "connected" as StepSourceProps["githubConnectionStatus"],
-    isConnectingGithub: false,
-    ownerOptionsLoading: false,
-    ownerOptionsError: null as StepSourceProps["ownerOptionsError"],
-    repositoryOptionsLoading: false,
-    repositoryOptionsError: null as StepSourceProps["repositoryOptionsError"],
-    ownerSearch: "",
-    repositorySearch: "",
-    owners: [
-      {
-        id: "owner-pfn",
-        name: "owner-pfn",
-        avatarUrl: "",
-      },
-    ],
-    repositories: [
-      {
-        id: "repo-console-next",
-        ownerId: "owner-pfn",
-        name: "console-next-app",
-        isPrivate: true,
-        defaultBranch: "main",
-        installationId: 12345,
-      },
-    ],
-    branches: [
-      {
-        id: "repo-console-next-main",
-        repoId: "repo-console-next",
-        name: "main",
-      },
-    ],
-    selectedOwnerId: "",
-    selectedRepositoryId: "",
-    selectedBranchName: "",
-    rootDirectory: "/",
-    appName: "" as string,
-    templateResourcePlanId: "payg" as ResourcePlanId,
-    onSourceTypeChange: mock(() => {}),
-    onTemplateSelect: mock(() => {}),
-    onOwnerSearchChange: mock(() => {}),
-    onRepositorySearchChange: mock(() => {}),
-    onAppNameChange: mock(() => {}),
-    onTemplateResourcePlanChange: mock(() => {}),
-    onOwnerSelect: mock(() => {}),
-    onRepositorySelect: mock(() => {}),
-    onBranchSelect: mock(() => {}),
-    onRootDirectoryChange: mock(() => {}),
-    onConnectGithub: mock(() => {}),
-    onCancel: mock(() => {}),
-    onNext: mock(() => {}),
-    canProceed: false,
-    isDetecting: false,
-    detectionError: null,
+const createProps = (): StepSourceProps => ({
+  sourceType: "github",
+  templateId: undefined,
+  githubConnectionStatus: "connected",
+  isConnectingGithub: false,
+  ownerOptionsLoading: false,
+  ownerOptionsError: null,
+  repositoryOptionsLoading: false,
+  repositoryOptionsError: null,
+  ownerSearch: "",
+  repositorySearch: "",
+  owners: [{ id: "owner-pfn", name: "owner-pfn", avatarUrl: "" }],
+  repositories: [
+    {
+      id: "repo-console-next",
+      ownerId: "owner-pfn",
+      name: "console-next-app",
+      isPrivate: true,
+      defaultBranch: "main",
+      installationId: 12345,
+    },
+  ],
+  branches: [{ id: "branch-main", repoId: "repo-console-next", name: "main" }],
+  selectedOwnerId: "owner-pfn",
+  selectedRepositoryId: "",
+  selectedBranchName: "",
+  rootDirectory: "/",
+  appName: "",
+  templateResourcePlanId: "payg" as ResourcePlanId,
+  onSourceTypeChange: mock(() => {}),
+  onTemplateSelect: mock(() => {}),
+  onOwnerSearchChange: mock(() => {}),
+  onRepositorySearchChange: mock(() => {}),
+  onAppNameChange: mock(() => {}),
+  onTemplateResourcePlanChange: mock(() => {}),
+  onPublicSourceUrlChange: mock(() => {}),
+  onPublicSourceRefChange: mock(() => {}),
+  onConnectGithub: mock(() => {}),
+  onCancel: mock(() => {}),
+  onNext: mock(() => {}),
+  onOwnerSelect: mock(() => {}),
+  onRepositorySelect: mock(() => {}),
+  onBranchSelect: mock(() => {}),
+  onRootDirectoryChange: mock(() => {}),
+  canProceed: true,
+  isDetecting: false,
+  detectionError: null,
+})
+const changeSmartInput = (input: HTMLElement, value: string) => {
+  const reactPropsKey = Object.keys(input).find((key) =>
+    key.startsWith("__reactProps")
+  )
+  if (!reactPropsKey) {
+    fireEvent.change(input, { target: { value } })
+    return
   }
+  const props = input as unknown as Record<
+    string,
+    { onChange?: (event: { target: { value: string } }) => void }
+  >
+  act(() => props[reactPropsKey].onChange?.({ target: { value } }))
 }
 
-describe("StepSourceV2 outcome-led source", () => {
-  // source button names include their descriptions for accessible context
-  it("starts with template path expanded and exposes pressed source buttons", () => {
-    const view = render(
-      <StepSourceV2 {...createProps()} sourceType="template" />
-    )
+describe("StepSourceV2 smart source input", () => {
+  it("renders one heading, input, and result list without untrusted-code copy", () => {
+    const view = render(<StepSourceV2 {...createProps()} />)
 
     expect(
-      view.getByRole("heading", { name: "What would you like to publish?" })
+      view.getByRole("heading", { name: "What are we deploying?" })
     ).toBeTruthy()
     expect(
-      view
-        .getByRole("button", { name: /^Start with a ready-made site/ })
-        .getAttribute("aria-pressed")
-    ).toBe("true")
-    expect(view.getByText("Easiest way to start")).toBeTruthy()
-    expect(
-      view
-        .getByRole("button", { name: /^Use a GitHub project/ })
-        .getAttribute("aria-pressed")
-    ).toBe("false")
-    expect(
-      view
-        .getByRole("button", { name: /^Use a public Git link/ })
-        .getAttribute("aria-pressed")
-    ).toBe("false")
-  })
-
-  it("reveals GitHub controls only for selected GitHub source", () => {
-    const props = {
-      ...createProps(),
-      sourceType: "github" as const,
-      selectedOwnerId: "owner-pfn",
-      selectedRepositoryId: "repo-console-next",
-      selectedBranchName: "main",
-    }
-    const view = render(<StepSourceV2 {...props} />)
-
-    expect(view.getByText("GitHub account")).toBeTruthy()
-    expect(view.getByText("Project")).toBeTruthy()
-    expect(view.getByText("Version to publish")).toBeTruthy()
-    expect(view.getByText("Project folder")).toBeTruthy()
-    expect(view.getByText("Site name")).toBeTruthy()
-    expect(
-      view
-        .getByRole("button", { name: /^Use a GitHub project/ })
-        .getAttribute("aria-pressed")
-    ).toBe("true")
-  })
-
-  it("shows public safety copy only after selecting public source", () => {
-    const templateView = render(
-      <StepSourceV2 {...createProps()} sourceType="template" />
-    )
-    expect(
-      templateView.queryByText(
-        "Only publish code you trust. Public repositories can contain code you did not write."
-      )
-    ).toBeNull()
-
-    templateView.rerender(
-      <StepSourceV2 {...createProps()} sourceType="public" />
-    )
-    expect(
-      templateView.getByText(
-        "Only publish code you trust. Public repositories can contain code you did not write."
-      )
+      view.getByPlaceholderText("Paste a repo URL or search templates")
     ).toBeTruthy()
-    expect(templateView.getByText("Public Git link")).toBeTruthy()
-    expect(templateView.getByText("Version to publish (optional)")).toBeTruthy()
-    expect(templateView.getByText("Project folder")).toBeTruthy()
+    expect(
+      view.getByRole("listbox", { name: "Deployment sources" })
+    ).toBeTruthy()
+    expect(view.queryByText(/untrusted code/i)).toBeNull()
   })
 
-  it("changes continuation helper when source becomes ready", () => {
+  it("selects connected repositories through existing typed callbacks", () => {
     const props = createProps()
-    const view = render(<StepSourceV2 {...props} sourceType="template" />)
-    expect(view.getByRole("button", { name: "Continue" })).toBeTruthy()
-    expect(
-      view.getByText(
-        "Choose a template, project, or public Git link to continue."
-      )
-    ).toBeTruthy()
-
-    view.rerender(<StepSourceV2 {...props} sourceType="template" canProceed />)
-    expect(view.getByRole("button", { name: "Continue to setup" })).toBeTruthy()
-    expect(
-      view.queryByText(
-        "Choose a template, project, or public Git link to continue."
-      )
-    ).toBeNull()
-  })
-})
-
-describe("StepSourceV2 catalog", () => {
-  it("shows search, category, view, and pagination controls", () => {
-    const props = { ...createProps(), sourceType: "template" as const }
     const view = render(<StepSourceV2 {...props} />)
 
-    expect(view.getByLabelText("Search templates")).toBeTruthy()
-    expect(view.getByRole("button", { name: "CMS" })).toBeTruthy()
-    expect(view.getByRole("button", { name: "Grid view" })).toBeTruthy()
-    expect(view.getByRole("button", { name: "List view" })).toBeTruthy()
-    expect(view.getByText(/Page 1 of/)).toBeTruthy()
+    fireEvent.click(view.getByRole("option", { name: /console-next-app/i }))
+
+    expect(props.onSourceTypeChange).toHaveBeenCalledWith("github")
+    expect(props.onRepositorySelect).toHaveBeenCalledWith("repo-console-next")
   })
 
-  it("filters and selects a template through the canonical callbacks", () => {
-    const props = {
-      ...createProps(),
-      sourceType: "template" as const,
+  it.each(["https://github.com/acme/web", "https://gitlab.com/acme/web"])(
+    "selects %s as a public source with safe defaults",
+    (url) => {
+      const props = createProps()
+      const view = render(<StepSourceV2 {...props} />)
+
+      changeSmartInput(
+        view.getByPlaceholderText("Paste a repo URL or search templates"),
+        url
+      )
+      expect(props.onSourceTypeChange).toHaveBeenCalledWith("public")
+      expect(props.onPublicSourceUrlChange).toHaveBeenCalledWith(url)
+      expect(props.onPublicSourceRefChange).toHaveBeenCalledWith("main")
+      expect(props.onRootDirectoryChange).toHaveBeenCalledWith("/")
+      expect(props.onAppNameChange).toHaveBeenCalled()
     }
-    const onTemplateSelect = mock(() => {})
-    props.onTemplateSelect = onTemplateSelect
+  )
+
+  it("filters ordinary text without guessing a source provider", () => {
+    const props = createProps()
     const view = render(<StepSourceV2 {...props} />)
-    fireEvent.change(view.getByLabelText("Search templates"), {
-      target: { value: "WordPress" },
-    })
-    fireEvent.click(
-      view.getByRole("button", {
-        name: /WordPress The world's most popular website builder/,
-      })
+    const input = view.getByPlaceholderText(
+      "Paste a repo URL or search templates"
     )
 
-    expect(onTemplateSelect).toHaveBeenCalledWith("wordpress")
+    changeSmartInput(input, "console")
+    expect(props.onTemplateSelect).not.toHaveBeenCalled()
   })
-  it("shows empty state when template filters match nothing", () => {
-    const props = {
-      ...createProps(),
-      sourceType: "template" as const,
-    }
+
+  it("selects templates through the same input and preserves resource metadata", () => {
+    const props = createProps()
     const view = render(<StepSourceV2 {...props} />)
-    const searchInput = view.getByLabelText("Search templates")
-    const reactPropsKey = Object.keys(searchInput).find((key) =>
-      key.startsWith("__reactProps")
+    const input = view.getByPlaceholderText(
+      "Paste a repo URL or search templates"
     )
 
-    act(() => {
-      if (reactPropsKey) {
-        const inputWithProps = searchInput as unknown as Record<
-          string,
-          { onChange: (event: { target: { value: string } }) => void }
-        >
-        inputWithProps[reactPropsKey].onChange({
-          target: { value: "does-not-exist" },
-        })
-      } else {
-        fireEvent.change(searchInput, {
-          target: { value: "does-not-exist" },
-        })
-      }
-    })
+    changeSmartInput(input, "WordPress")
+    expect(view.getByText(/500m CPU · 512MB memory/)).toBeTruthy()
+    fireEvent.click(view.getByRole("option", { name: /WordPress/i }))
+    expect(props.onSourceTypeChange).toHaveBeenCalledWith("template")
+    expect(props.onTemplateSelect).toHaveBeenCalledWith("wordpress")
+  })
+
+  it("keeps Advanced closed and preserves connection, cancel, and next controls", () => {
+    const props = createProps()
+    props.githubConnectionStatus = "error"
+    props.githubReconnectRequired = true
+    const view = render(<StepSourceV2 {...props} />)
 
     expect(
-      view.getByText("No templates match your search or category.")
+      view.getByText("GitHub access expired. Reconnect to continue.")
     ).toBeTruthy()
+    fireEvent.click(view.getByRole("button", { name: /Reconnect GitHub/i }))
+    fireEvent.click(view.getByRole("button", { name: "Cancel" }))
+    fireEvent.click(view.getByRole("button", { name: "Next" }))
+    expect(props.onConnectGithub).toHaveBeenCalledTimes(1)
+    expect(props.onCancel).toHaveBeenCalledTimes(1)
+    expect(props.onNext).toHaveBeenCalledTimes(1)
+
+    const advanced = view.getByRole("button", { name: "Advanced" })
+    expect(advanced.getAttribute("aria-expanded")).toBe("false")
+  })
+
+  it("renders actual recent sources only", () => {
+    const props = createProps()
+    props.recentSources = [
+      {
+        sourceType: "public",
+        label: "Public app",
+        publicSourceUrl: "https://github.com/acme/public-app",
+        publicSourceRef: "main",
+        rootDirectory: "/",
+      },
+    ]
+    const view = render(<StepSourceV2 {...props} />)
+
+    expect(view.getByText("Recent")).toBeTruthy()
+    expect(view.getByRole("option", { name: /Public app/i })).toBeTruthy()
   })
 })

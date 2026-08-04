@@ -26,7 +26,7 @@ export const DEPLOY_STEPS: Array<{
   {
     id: "detect",
     label: "Detect",
-    description: "AI scans and rules",
+    description: "Confirm build settings",
   },
   {
     id: "review",
@@ -39,38 +39,47 @@ export const DEPLOY_STEPS: Array<{
     description: "Watch it go live",
   },
 ]
-export const DEPLOY_PHASES = [
-  {
-    id: "choose",
-    label: "Choose a starting point",
-    description: "Pick a template or code you own",
-    steps: ["source", "connect"],
-  },
-  {
-    id: "check",
-    label: "Check your setup",
-    description: "We find the settings; you confirm",
-    steps: ["detect", "review"],
-  },
-  {
-    id: "publish",
-    label: "Publish your site",
-    description: "We put it online",
-    steps: ["deploy"],
-  },
-] as const satisfies ReadonlyArray<{
-  id: "choose" | "check" | "publish"
+export type DeployPhase = "source" | "plan" | "live"
+
+export const DEPLOY_PHASES: Array<{
+  id: DeployPhase
   label: string
   description: string
-  steps: readonly DeployStep[]
-}>
+}> = [
+  {
+    id: "source",
+    label: "Source Intake",
+    description: "Choose code location",
+  },
+  {
+    id: "plan",
+    label: "Deploy Plan",
+    description: "Review deployment plan",
+  },
+  {
+    id: "live",
+    label: "Live",
+    description: "Watch it go live",
+  },
+]
+
+export const DEPLOY_STEP_PHASE: Record<DeployStep, DeployPhase> = {
+  source: "source",
+  connect: "source",
+  detect: "plan",
+  review: "plan",
+  deploy: "live",
+}
+
+export const getDeployPhase = (step: DeployStep): DeployPhase =>
+  DEPLOY_STEP_PHASE[step]
 
 export const DEPLOY_STEP_ORDER = DEPLOY_STEPS.map((step) => step.id)
 
 export const DEPLOY_STEP_QUERY_KEY = "step"
 
-export const HIGH_CONFIDENCE_THRESHOLD = 80
-export const LOW_CONFIDENCE_THRESHOLD = 50
+export const HIGH_CONFIDENCE_THRESHOLD = 90
+export const LOW_CONFIDENCE_THRESHOLD = 60
 
 export const DEPLOY_WIZARD_STORAGE_VERSION = 1
 export const DEPLOY_WIZARD_STORAGE_KEY = "pfnapp.console.deploy-wizard.v1"

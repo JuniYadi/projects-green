@@ -45,6 +45,7 @@ type StepEnvironmentV2Props = {
   buildState?: DeployBuildState
   onEditBuildSettings?: () => void
   recommendedPlanId?: ResourcePlanId | null
+  submitLabel?: string
 }
 
 export function StepEnvironmentV2({
@@ -74,6 +75,7 @@ export function StepEnvironmentV2({
   buildState,
   onEditBuildSettings,
   recommendedPlanId,
+  submitLabel,
 }: StepEnvironmentV2Props) {
   const targetDomain = useGeneratedSubdomain
     ? generatedSubdomain
@@ -223,7 +225,9 @@ export function StepEnvironmentV2({
           className="rounded-xl border border-border"
         >
           <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-foreground">
-            Advanced settings
+            <span role="button" tabIndex={0}>
+              Advanced
+            </span>
           </summary>
           <div className="space-y-4 border-t border-border p-4">
             {hiddenValidationMessages.length > 0 ? (
@@ -403,7 +407,7 @@ export function StepEnvironmentV2({
           disabled={!canDeploy || isSubmitting}
           className="flex h-9 items-center gap-1 bg-primary px-4 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
         >
-          {isSubmitting ? "Publishing site…" : "Publish site"}
+          {isSubmitting ? "Publishing site…" : (submitLabel ?? "Publish site")}
           <ArrowRight className="h-3.5 w-3.5" />
         </Button>
       </div>

@@ -22,6 +22,9 @@ export function ConfidenceBadge({ detectionResult }: ConfidenceBadgeProps) {
 
   if (
     detectionResult.status === "failed" ||
+    detectionResult.status === "blocked" ||
+    detectionResult.status === "unsupported" ||
+    detectionResult.status === "low_confidence" ||
     confidence < LOW_CONFIDENCE_THRESHOLD
   ) {
     return (

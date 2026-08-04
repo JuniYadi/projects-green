@@ -11,6 +11,7 @@
     "start": "next start",
     "serve": "local-to-pub --port 3300 --uri pgreen",
     "test": "bun run scripts/run-test-suite.ts logic",
+    "detect:validate": "bun run scripts/validate-ai-detection.ts",
     "test:changed": "bun run scripts/run-changed-tests.ts",
     "test:component": "bun run scripts/run-test-suite.ts component",
     "test:coverage": "bun run scripts/run-test-suite.ts logic --coverage",

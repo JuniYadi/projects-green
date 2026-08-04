@@ -1,5 +1,7 @@
 "use client"
 
+import { enMessages } from "@/lib/i18n/messages/en"
+import type { DeployWizardMessages } from "@/lib/i18n/messages/types"
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -18,6 +20,7 @@ import {
 } from "@/components/ui/phosphor-icons"
 
 type StepDetectV2Props = {
+  messages?: DeployWizardMessages
   detectionResult: DetectionResult | null
   isDetecting: boolean
   detectionRetrying: boolean
@@ -53,7 +56,9 @@ export function StepDetectV2({
   onNext,
   onBuildFieldChange,
   onRetry,
+  messages: providedMessages,
 }: StepDetectV2Props) {
+  const messages = providedMessages ?? enMessages.console.app.deployWizard
   const isRetryableFailure =
     detectionErrorCode === "NETWORK_ERROR" ||
     detectionErrorCode === "DETECTION_TRANSIENT_PROVIDER_ERROR"
@@ -85,22 +90,22 @@ export function StepDetectV2({
   const operations = useMemo<OperationRow[]>(() => {
     const base: OperationRow[] = [
       {
-        label: "Inspect repository",
+        label: messages.detect.operationReadRepository,
         icon: <FileCode className="h-4 w-4" aria-hidden="true" />,
         status: "idle",
       },
       {
-        label: "Analyze dependencies",
+        label: messages.detect.operationDependencies,
         icon: <ClockCounterClockwise className="h-4 w-4" aria-hidden="true" />,
         status: "idle",
       },
       {
-        label: "Determine runtime",
+        label: messages.detect.operationRuntime,
         icon: <Gear className="h-4 w-4" aria-hidden="true" />,
         status: "idle",
       },
       {
-        label: "Run detection rules",
+        label: messages.detect.operationPlan,
         icon: <CheckCircle className="h-4 w-4" aria-hidden="true" />,
         status: "idle",
       },
@@ -129,7 +134,13 @@ export function StepDetectV2({
     }
 
     return base
-  }, [activeOperation, detectionError, detectionResult, isWorking])
+  }, [
+    activeOperation,
+    detectionError,
+    detectionResult,
+    isWorking,
+    messages.detect,
+  ])
   const isPolicyBlocked =
     detectionResult?.status === "blocked" ||
     detectionResult?.status === "unsupported"
@@ -280,12 +291,9 @@ export function StepDetectV2({
     <div className="flex flex-col">
       <div className="space-y-4 p-6">
         <div className="space-y-1">
-          <h2 className="text-xl font-bold">
-            We&apos;re checking how to publish your site
-          </h2>
+          <h2 className="text-xl font-bold">{messages.detect.heading}</h2>
           <p className="text-sm text-muted-foreground">
-            This usually takes about a minute. You can review the result before
-            anything goes live.
+            {messages.detect.description}
           </p>
           {!isWorking ? (
             <div className="space-y-1" role="status" aria-live="polite">
@@ -307,6 +315,11 @@ export function StepDetectV2({
             {detectionRetrying ? (
               <p className="text-xs text-muted-foreground">{statusMessage}</p>
             ) : null}
+            <div className="sr-only">
+              {operations.map((operation) => (
+                <span key={operation.label}>{operation.label}</span>
+              ))}
+            </div>
           </div>
         ) : (
           <details className="border border-border p-3">

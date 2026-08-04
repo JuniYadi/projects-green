@@ -31,9 +31,17 @@ const mockPrisma = {
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
 const { appStacksRoutes } = await import("./app-stacks.route")
+const { deployRoutes } = await import("../deploy.route")
 
 const get = (path: string) =>
   appStacksRoutes.handle(
+    new Request(`http://localhost${path}`, {
+      headers: { "Content-Type": "application/json" },
+    })
+  )
+
+const getRecent = (path: string) =>
+  deployRoutes.handle(
     new Request(`http://localhost${path}`, {
       headers: { "Content-Type": "application/json" },
     })
@@ -89,6 +97,197 @@ describe("appStacksRoutes", () => {
     const body = (await res.json()) as { ok: boolean; data: unknown[] }
     expect(body.ok).toBe(true)
     expect(body.data).toEqual([])
+  })
+
+  it("returns up to three honest recent source DTOs", async () => {
+    mockPrisma.applicationStack.findMany.mockResolvedValueOnce([
+      {
+        sourceType: "GITHUB",
+        name: "storefront",
+        branchName: "main",
+        rootDirectory: "/apps/web",
+        repositoryConnection: {
+          ownerLogin: "acme",
+          githubRepositoryId: BigInt(123),
+          repoName: "storefront",
+        },
+      },
+      {
+        sourceType: "PUBLIC",
+        name: "",
+        publicSourceUrl: "https://gitlab.com/acme/docs",
+        publicSourceRef: "release",
+        rootDirectory: "/",
+        repositoryConnection: null,
+      },
+      {
+        sourceType: "TEMPLATE",
+        name: "Internal WordPress",
+        metadataJson: { templateId: "wordpress" },
+        repositoryConnection: null,
+      },
+      {
+        sourceType: "GITHUB",
+        name: "ignored-fourth-row",
+        repositoryConnection: null,
+      },
+    ] as never)
+
+    const res = await getRecent("/deploy/recent-sources?limit=99")
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({
+      ok: true,
+      data: [
+        {
+          sourceType: "github",
+          label: "acme/storefront",
+          ownerId: "acme",
+          repositoryId: "123",
+          branchName: "main",
+          rootDirectory: "/apps/web",
+        },
+        {
+          sourceType: "public",
+          label: "docs",
+          publicSourceUrl: "https://gitlab.com/acme/docs",
+          publicSourceRef: "release",
+          rootDirectory: "/",
+        },
+        {
+          sourceType: "template",
+          label: "Internal WordPress",
+          templateId: "wordpress",
+        },
+      ],
+    })
+    expect(mockPrisma.applicationStack.findMany).toHaveBeenCalledWith({
+      where: { organizationId: "org-1" },
+      orderBy: { updatedAt: "desc" },
+      include: {
+        repositoryConnection: {
+          select: {
+            ownerLogin: true,
+            githubRepositoryId: true,
+            repoName: true,
+          },
+        },
+      },
+    })
+  })
+  it("returns requested valid recent sources after unsupported newer rows", async () => {
+    const recentStacks = [
+      {
+        sourceType: "UNSUPPORTED",
+        name: "future-stack",
+        repositoryConnection: null,
+      },
+      {
+        sourceType: "TEMPLATE",
+        name: "unsupported-template",
+        metadataJson: { templateId: "not-a-template" },
+        repositoryConnection: null,
+      },
+      {
+        sourceType: "GITHUB",
+        name: "storefront",
+        branchName: "main",
+        rootDirectory: "/apps/web",
+        repositoryConnection: {
+          ownerLogin: "acme",
+          githubRepositoryId: BigInt(123),
+          repoName: "storefront",
+        },
+      },
+      {
+        sourceType: "PUBLIC",
+        name: "docs",
+        publicSourceUrl: "https://gitlab.com/acme/docs",
+        publicSourceRef: "release",
+        rootDirectory: "/",
+        repositoryConnection: null,
+      },
+    ]
+    mockPrisma.applicationStack.findMany.mockImplementationOnce(
+      (...args: unknown[]) => {
+        const take = (args[0] as { take?: number } | undefined)?.take
+        return Promise.resolve(
+          typeof take === "number" ? recentStacks.slice(0, take) : recentStacks
+        ) as never
+      }
+    )
+
+    const res = await getRecent("/deploy/recent-sources?limit=2")
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({
+      ok: true,
+      data: [
+        {
+          sourceType: "github",
+          label: "acme/storefront",
+          ownerId: "acme",
+          repositoryId: "123",
+          branchName: "main",
+          rootDirectory: "/apps/web",
+        },
+        {
+          sourceType: "public",
+          label: "docs",
+          publicSourceUrl: "https://gitlab.com/acme/docs",
+          publicSourceRef: "release",
+          rootDirectory: "/",
+        },
+      ],
+    })
+  })
+
+  it("omits rows that cannot reconstruct a current source", async () => {
+    mockPrisma.applicationStack.findMany.mockResolvedValueOnce([
+      {
+        sourceType: "GITHUB",
+        name: "missing-connection",
+        branchName: "main",
+        rootDirectory: "/",
+        repositoryConnection: null,
+      },
+      {
+        sourceType: "PUBLIC",
+        name: "missing-ref",
+        publicSourceUrl: "https://github.com/acme/app",
+        publicSourceRef: null,
+        rootDirectory: "/",
+        repositoryConnection: null,
+      },
+      {
+        sourceType: "TEMPLATE",
+        name: "unknown-template",
+        metadataJson: { templateId: "not-a-template" },
+        repositoryConnection: null,
+      },
+    ] as never)
+
+    const res = await getRecent("/deploy/recent-sources")
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true, data: [] })
+  })
+
+  it("rejects unauthenticated and organization-less recent source requests", async () => {
+    mockWithAuth.mockResolvedValueOnce({ user: null } as never)
+    const unauthenticated = await getRecent("/deploy/recent-sources")
+    expect(unauthenticated.status).toBe(401)
+    expect(await unauthenticated.json()).toMatchObject({
+      ok: false,
+      error: "UNAUTHORIZED",
+      message: "Unauthorized",
+    })
+
+    mockWithAuth.mockResolvedValueOnce({ user: { id: "user-123" } } as never)
+    const missingOrganization = await getRecent("/deploy/recent-sources")
+    expect(missingOrganization.status).toBe(403)
+    expect(await missingOrganization.json()).toMatchObject({
+      ok: false,
+      error: "FORBIDDEN",
+      message: "Organization required",
+    })
   })
 
   it("maps stacks into summary DTOs with current deploy step", async () => {

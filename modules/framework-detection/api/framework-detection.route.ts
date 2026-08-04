@@ -1,3 +1,4 @@
+import { withAuth } from "@workos-inc/authkit-nextjs"
 import { Elysia } from "elysia"
 import { z } from "zod"
 
@@ -6,6 +7,7 @@ import {
   detectFrameworkFromGithubApi,
 } from "@/modules/framework-detection/framework-detection.service"
 import { toDetectionResultDTO } from "@/modules/framework-detection/framework-detection.dto"
+import { parsePublicGitUrl } from "@/modules/deploy/public-source"
 import type {
   DetectionFailureCode,
   DetectionResult,
@@ -133,6 +135,24 @@ export const createFrameworkDetectionRoutes = (
 ) =>
   new Elysia()
     .post("/framework-detection", async ({ body, set }) => {
+      const auth = await withAuth()
+      if (!auth.user) {
+        set.status = 401
+        return {
+          ok: false as const,
+          error: "UNAUTHORIZED",
+          message: "Unauthorized",
+        }
+      }
+      if (!auth.organizationId) {
+        set.status = 403
+        return {
+          ok: false as const,
+          error: "FORBIDDEN",
+          message: "Organization required",
+        }
+      }
+
       const parsed = gitDetectionRequestSchema.safeParse(body)
       if (!parsed.success) {
         set.status = 400
@@ -143,8 +163,23 @@ export const createFrameworkDetectionRoutes = (
           fieldErrors: z.flattenError(parsed.error).fieldErrors,
         }
       }
+
+      const publicUrl = parsePublicGitUrl(parsed.data.repoUrl)
+      if ("error" in publicUrl) {
+        set.status = 400
+        return {
+          ok: false as const,
+          error: "INVALID_PAYLOAD" as const,
+          message: "Invalid framework detection payload.",
+          fieldErrors: { repoUrl: [publicUrl.error] },
+        }
+      }
+
       try {
-        const result = await detectFramework(parsed.data)
+        const result = await detectFramework({
+          ...parsed.data,
+          repoUrl: publicUrl.url,
+        })
         return { ok: true as const, ...toDetectionResultDTO(result) }
       } catch (error) {
         set.status = 422

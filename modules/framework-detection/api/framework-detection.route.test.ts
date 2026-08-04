@@ -1,5 +1,14 @@
-import { describe, expect, it } from "bun:test"
+import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
+
+let authResult: { user: unknown; organizationId?: string | null } = {
+  user: { id: "user_1" },
+  organizationId: "org_1",
+}
+
+mock.module("@workos-inc/authkit-nextjs", () => ({
+  withAuth: mock(async () => authResult),
+}))
 
 import { createFrameworkDetectionRoutes } from "@/modules/framework-detection/api/framework-detection.route"
 import type { DetectionResult } from "@/modules/framework-detection/framework-detection.types"
@@ -38,7 +47,91 @@ const createMockDetectionResult = (
 })
 
 describe("frameworkDetectionRoutes", () => {
+  beforeEach(() => {
+    authResult = { user: { id: "user_1" }, organizationId: "org_1" }
+  })
+
   describe("POST /framework-detection (Git Clone Mode)", () => {
+    it("returns 401 before validating when unauthenticated", async () => {
+      authResult = { user: null, organizationId: "org_1" }
+      const app = new Elysia().use(
+        createFrameworkDetectionRoutes(async () => {
+          throw new Error("should not be called")
+        })
+      )
+      const response = await app.handle(
+        new Request("http://localhost/framework-detection", {
+          method: "POST",
+          body: JSON.stringify({ repoUrl: "not-a-url" }),
+        })
+      )
+      expect(response.status).toBe(401)
+      expect(await response.json()).toEqual({
+        ok: false,
+        error: "UNAUTHORIZED",
+        message: "Unauthorized",
+      })
+    })
+
+    it("returns 403 when organization is missing", async () => {
+      authResult = { user: { id: "user_1" }, organizationId: null }
+      const app = new Elysia().use(createFrameworkDetectionRoutes())
+      const response = await app.handle(
+        new Request("http://localhost/framework-detection", {
+          method: "POST",
+          body: JSON.stringify({ repoUrl: "not-a-url" }),
+        })
+      )
+      expect(response.status).toBe(403)
+      expect(await response.json()).toEqual({
+        ok: false,
+        error: "FORBIDDEN",
+        message: "Organization required",
+      })
+    })
+
+    it("rejects blocked public URL without calling clone detector", async () => {
+      let detectorCalls = 0
+      const app = new Elysia().use(
+        createFrameworkDetectionRoutes(async () => {
+          detectorCalls += 1
+          return createMockDetectionResult()
+        })
+      )
+      const response = await app.handle(
+        new Request("http://localhost/framework-detection", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repoUrl: "https://127.0.0.1/repo.git" }),
+        })
+      )
+      const body = await response.json()
+      expect(response.status).toBe(400)
+      expect(body).toMatchObject({ ok: false, error: "INVALID_PAYLOAD" })
+      expect(body.fieldErrors.repoUrl).toEqual([
+        "Public Git URL host is not publicly routable.",
+      ])
+      expect(detectorCalls).toBe(0)
+    })
+
+    it("passes valid GitLab HTTPS URL to clone detector", async () => {
+      let detectorUrl: string | undefined
+      const app = new Elysia().use(
+        createFrameworkDetectionRoutes(async (input) => {
+          detectorUrl = input.repoUrl
+          return createMockDetectionResult()
+        })
+      )
+      const response = await app.handle(
+        new Request("http://localhost/framework-detection", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repoUrl: "https://gitlab.com/group/project" }),
+        })
+      )
+      expect(response.status).toBe(200)
+      expect(detectorUrl).toBe("https://gitlab.com/group/project")
+    })
     it("returns 400 for invalid payload", async () => {
       const app = new Elysia().use(
         createFrameworkDetectionRoutes(async () => {

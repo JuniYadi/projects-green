@@ -89,6 +89,7 @@ export function StepMonitor({
           <ResultPanel
             status={status}
             failureReason={failureReason}
+            dashboardHref="/en/console/app/manage"
             attempt={Math.max(attempt, 1)}
             onRetry={onRetry}
             onEditSettings={onEditSettings}
