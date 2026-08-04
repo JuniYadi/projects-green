@@ -56,13 +56,17 @@ const detectionResponse = {
 }
 
 let accountResponse: { ok: boolean; accounts: (typeof account)[] }
+let recentSourcesResponse = { ok: true, data: [] as unknown[] }
 let requests: string[]
+let requestBodies: Array<{ url: string; body?: string }>
 
 beforeEach(() => {
   window.sessionStorage.clear()
-  requests = []
   accountResponse = { ok: true, accounts: [account] }
-  globalThis.fetch = mock((input: RequestInfo | URL) => {
+  requests = []
+  requestBodies = []
+  recentSourcesResponse = { ok: true, data: [] }
+  globalThis.fetch = mock((input: RequestInfo | URL, init?: RequestInit) => {
     const requestUrl =
       typeof input === "string"
         ? input
@@ -70,6 +74,10 @@ beforeEach(() => {
           ? input.toString()
           : input.url
     requests.push(requestUrl)
+    requestBodies.push({
+      url: requestUrl,
+      body: typeof init?.body === "string" ? init.body : undefined,
+    })
     const url = new URL(requestUrl, "http://localhost")
 
     if (url.pathname === "/api/integrations/github/accounts") {
@@ -90,8 +98,56 @@ beforeEach(() => {
       )
     }
 
+    if (url.pathname === "/api/framework-detection") {
+      return Promise.resolve(
+        new Response(JSON.stringify(detectionResponse), { status: 200 })
+      )
+    }
+
+    if (url.pathname === "/api/deploy/recent-sources") {
+      return Promise.resolve(
+        new Response(JSON.stringify(recentSourcesResponse), { status: 200 })
+      )
+    }
+    if (url.pathname === "/api/deploy/submit") {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            ok: true,
+            data: { deploymentId: "public-test", status: "queued" },
+          }),
+          { status: 200 }
+        )
+      )
+    }
+
     throw new Error(`Unexpected request: ${requestUrl}`)
   }) as unknown as typeof fetch
+})
+
+describe("DeployWizardV2 customer phases", () => {
+  it("maps five internal steps to three non-clickable phases", async () => {
+    const { DEPLOY_PHASES, DEPLOY_STEP_ORDER, getDeployPhase } =
+      await import("@/modules/deploy/deploy.constants")
+
+    expect(DEPLOY_PHASES.map((phase) => phase.label)).toEqual([
+      "Source Intake",
+      "Deploy Plan",
+      "Live",
+    ])
+    expect(DEPLOY_STEP_ORDER).toEqual([
+      "source",
+      "connect",
+      "detect",
+      "review",
+      "deploy",
+    ])
+    expect(getDeployPhase("source")).toBe("source")
+    expect(getDeployPhase("connect")).toBe("source")
+    expect(getDeployPhase("detect")).toBe("plan")
+    expect(getDeployPhase("review")).toBe("plan")
+    expect(getDeployPhase("deploy")).toBe("live")
+  })
 })
 
 describe("DeployWizardV2 GitHub accounts", () => {
@@ -111,23 +167,20 @@ describe("DeployWizardV2 GitHub accounts", () => {
       expect(view.getByText("storefront")).toBeInTheDocument()
     })
     expect(
-      view.getByRole("navigation", { name: "Deploy wizard steps" })
+      view.getByRole("navigation", { name: "Deploy wizard phases" })
     ).toBeTruthy()
-    expect(view.getByText("Choose a starting point")).toBeInTheDocument()
-    expect(view.getByText("Check your setup")).toBeInTheDocument()
-    expect(view.getByText("Publish your site")).toBeInTheDocument()
-    expect(view.getByText("Step 1 of 3")).toBeInTheDocument()
+    expect(view.getAllByText("Source Intake").length).toBeGreaterThan(0)
+    expect(view.getByText("Deploy Plan")).toBeInTheDocument()
+    expect(view.getByText("Live")).toBeInTheDocument()
     expect(
-      view
-        .getByRole("navigation", { name: "Deploy wizard steps" })
-        .querySelectorAll("button")
-    ).toHaveLength(0)
-    expect(view.getByRole("button", { name: "Start over" })).toBeInTheDocument()
+      view.queryByRole("button", { name: /Source Intake/ })
+    ).not.toBeInTheDocument()
     expect(
-      view.getByRole("button", { name: "Reset deploy wizard" })
-    ).toBeInTheDocument()
-
-    expect((view.getByRole("combobox") as HTMLSelectElement).value).toBe("acme")
+      view.queryByRole("button", { name: /Deploy Plan/ })
+    ).not.toBeInTheDocument()
+    expect(
+      view.queryByRole("button", { name: /^Live$/ })
+    ).not.toBeInTheDocument()
     const repositoryRequest = requests.find((request) =>
       request.includes("/api/integrations/github/repositories")
     )
@@ -152,12 +205,44 @@ describe("DeployWizardV2 GitHub accounts", () => {
       </DeployWizardProvider>
     )
 
-    fireEvent.click(view.getByRole("button", { name: /Use a GitHub project/ }))
     await waitFor(() => {
       expect(
         view.getByRole("button", { name: "Connect GitHub" })
       ).toBeInTheDocument()
     })
+  })
+
+  it("loads honest recent sources without blocking source selection", async () => {
+    recentSourcesResponse = {
+      ok: true,
+      data: [
+        {
+          sourceType: "public",
+          label: "docs",
+          publicSourceUrl: "https://gitlab.com/acme/docs",
+          publicSourceRef: "main",
+          rootDirectory: "/",
+        },
+      ],
+    }
+    const { DeployWizardProvider } =
+      await import("@/modules/deploy/deploy.store")
+    const { DeployWizardV2 } =
+      await import("@/modules/deploy/ui/deploy-wizard-v2")
+
+    const view = render(
+      <DeployWizardProvider>
+        <DeployWizardV2 />
+      </DeployWizardProvider>
+    )
+
+    await waitFor(() => expect(view.getByText("Recent")).toBeInTheDocument())
+    expect(view.getByText("docs")).toBeInTheDocument()
+    expect(
+      requests.some((request) =>
+        request.includes("/api/deploy/recent-sources?limit=3")
+      )
+    ).toBe(true)
   })
 
   it("detects framework after selecting a repository", async () => {
@@ -173,7 +258,7 @@ describe("DeployWizardV2 GitHub accounts", () => {
     )
     await Promise.resolve()
 
-    const repositoryButton = await view.findByRole("button", {
+    const repositoryButton = await view.findByRole("option", {
       name: /storefront/,
     })
     fireEvent.click(repositoryButton)
@@ -186,13 +271,10 @@ describe("DeployWizardV2 GitHub accounts", () => {
       ).toBe(true)
     })
 
-    fireEvent.click(view.getByRole("button", { name: /Continue to setup/ }))
-    fireEvent.click(view.getByRole("button", { name: "Check my site" }))
-    expect(
-      view.getByText("We're checking how to publish your site")
-    ).toBeInTheDocument()
+    fireEvent.click(view.getByRole("button", { name: "Next" }))
+    fireEvent.click(view.getByRole("button", { name: "Continue to detection" }))
+    expect(view.getByText("Detect build settings")).toBeInTheDocument()
   })
-
   it("detects framework when detect is entered with a selected repository", async () => {
     const { DeployWizardProvider } =
       await import("@/modules/deploy/deploy.store")
@@ -205,7 +287,7 @@ describe("DeployWizardV2 GitHub accounts", () => {
       </DeployWizardProvider>
     )
 
-    const repositoryButton = await view.findByRole("button", {
+    const repositoryButton = await view.findByRole("option", {
       name: /storefront/,
     })
     fireEvent.click(repositoryButton)
@@ -218,13 +300,58 @@ describe("DeployWizardV2 GitHub accounts", () => {
       ).toBe(true)
     })
 
-    fireEvent.click(view.getByRole("button", { name: /Continue to setup/ }))
-    fireEvent.click(view.getByRole("button", { name: "Check my site" }))
-
-    expect(
-      view.getByText("We're checking how to publish your site")
-    ).toBeInTheDocument()
+    fireEvent.click(view.getByRole("button", { name: "Next" }))
+    fireEvent.click(view.getByRole("button", { name: "Continue to detection" }))
+    expect(view.getByText("Detect build settings")).toBeInTheDocument()
   })
+  it("uses public detector for public source without guessing a framework", async () => {
+    const {
+      DeployWizardProvider,
+      createInitialDeployWizardState,
+      serializeDeployWizardState,
+    } = await import("@/modules/deploy/deploy.store")
+    const { DEPLOY_WIZARD_STORAGE_KEY } =
+      await import("@/modules/deploy/deploy.constants")
+    const state = createInitialDeployWizardState()
+    state.step = "detect"
+    state.source = {
+      ...state.source,
+      sourceType: "public",
+      publicSourceUrl: "https://gitlab.com/group/project",
+      publicSourceRef: "release",
+      appName: "project",
+    }
+    window.sessionStorage.setItem(
+      DEPLOY_WIZARD_STORAGE_KEY,
+      serializeDeployWizardState(state)
+    )
+
+    const { DeployWizardV2 } =
+      await import("@/modules/deploy/ui/deploy-wizard-v2")
+    const view = render(
+      <DeployWizardProvider>
+        <DeployWizardV2 />
+      </DeployWizardProvider>
+    )
+
+    await waitFor(() => {
+      expect(view.getByText("Detect build settings")).toBeInTheDocument()
+      expect(requests).toContain("/api/framework-detection")
+    })
+    expect(requests).not.toContain("/api/framework-detection/github")
+    const publicRequest = requestBodies.find((request) =>
+      request.url.includes("/api/framework-detection")
+    )
+    expect(publicRequest?.body).toBe(
+      JSON.stringify({
+        repoUrl: "https://gitlab.com/group/project",
+        ref: "release",
+        subdir: "/",
+      })
+    )
+    expect(requests).not.toContain("/api/framework-detection/github")
+  })
+
   it("one transient failure then success makes exactly two requests and renders result", async () => {
     const { DeployWizardProvider } =
       await import("@/modules/deploy/deploy.store")
@@ -282,7 +409,7 @@ describe("DeployWizardV2 GitHub accounts", () => {
       </DeployWizardProvider>
     )
 
-    const repositoryButton = await view.findByRole("button", {
+    const repositoryButton = await view.findByRole("option", {
       name: /storefront/,
     })
     fireEvent.click(repositoryButton)
@@ -296,13 +423,10 @@ describe("DeployWizardV2 GitHub accounts", () => {
       },
       { timeout: 5000 }
     )
-    fireEvent.click(view.getByRole("button", { name: /Continue to setup/ }))
-    fireEvent.click(view.getByRole("button", { name: "Check my site" }))
-    expect(
-      view.getByText("We're checking how to publish your site")
-    ).toBeInTheDocument()
+    fireEvent.click(view.getByRole("button", { name: "Next" }))
+    fireEvent.click(view.getByRole("button", { name: "Continue to detection" }))
+    expect(view.getByText("Detect build settings")).toBeInTheDocument()
   })
-
   it("permanent failure makes exactly one request and renders manual fallback", async () => {
     const { DeployWizardProvider } =
       await import("@/modules/deploy/deploy.store")
@@ -353,7 +477,7 @@ describe("DeployWizardV2 GitHub accounts", () => {
         <DeployWizardV2 />
       </DeployWizardProvider>
     )
-    const repositoryButton = await view.findByRole("button", {
+    const repositoryButton = await view.findByRole("option", {
       name: /storefront/,
     })
     fireEvent.click(repositoryButton)
@@ -367,8 +491,8 @@ describe("DeployWizardV2 GitHub accounts", () => {
       },
       { timeout: 5000 }
     )
-    fireEvent.click(view.getByRole("button", { name: /Continue to setup/ }))
-    fireEvent.click(view.getByRole("button", { name: "Check my site" }))
+    fireEvent.click(view.getByRole("button", { name: "Next" }))
+    fireEvent.click(view.getByRole("button", { name: "Continue to detection" }))
 
     expect(
       view.getAllByText(
@@ -424,7 +548,7 @@ describe("DeployWizardV2 GitHub accounts", () => {
       </DeployWizardProvider>
     )
 
-    const repositoryButton = await view.findByRole("button", {
+    const repositoryButton = await view.findByRole("option", {
       name: /storefront/,
     })
     fireEvent.click(repositoryButton)
