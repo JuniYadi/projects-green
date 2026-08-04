@@ -19,6 +19,7 @@ type StepMonitorV2Props = {
   attempt: number
   failureReason: string | null
   liveDomain?: string
+  dashboardHref?: string
   onLogScopeChange: (scope: DeployLogScope) => void
   onRetry: () => void
   onEditSettings: () => void
@@ -63,6 +64,7 @@ export function StepMonitorV2({
   attempt,
   failureReason,
   liveDomain,
+  dashboardHref = "",
   onLogScopeChange,
   onRetry,
   onEditSettings,
@@ -147,7 +149,7 @@ export function StepMonitorV2({
           failureReason={failureReason}
           attempt={Math.max(attempt, 1)}
           liveDomain={liveDomain}
-          dashboardHref="/en/console/app/manage"
+          dashboardHref={dashboardHref}
           onRetry={onRetry}
           onEditSettings={onEditSettings}
         />
