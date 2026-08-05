@@ -29,6 +29,11 @@ const skippedDirectories = new Set([".obsidian", ".trash", ".git"])
 function diagnostic(message: string): Error {
   return new Error(message)
 }
+function compareCodeUnits(left: string, right: string): number {
+  if (left < right) return -1
+  if (left > right) return 1
+  return 0
+}
 
 function isInside(root: string, candidate: string): boolean {
   const child = relative(root, candidate)
@@ -53,7 +58,7 @@ async function requireDirectory(directory: string): Promise<void> {
 }
 
 export async function loadVaultConfig(
-  configPath = resolve(process.cwd(), ".obsidian.json")
+  configPath = resolve(import.meta.dir, "../.obsidian.json")
 ): Promise<VaultConfig> {
   let parsed: unknown
   try {
@@ -120,7 +125,7 @@ export async function createNoteIndex(
     relativeDirectory: string
   ): Promise<void> {
     const entries = await readdir(current, { withFileTypes: true })
-    entries.sort((left, right) => left.name.localeCompare(right.name))
+    entries.sort((left, right) => compareCodeUnits(left.name, right.name))
     for (const entry of entries) {
       if (entry.isDirectory() && skippedDirectories.has(entry.name)) continue
       const child = resolve(current, entry.name)
@@ -141,8 +146,8 @@ export async function createNoteIndex(
   await walk(root, "")
   const sorted = new Map(
     [...matches.entries()]
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([name, paths]) => [name, paths.sort()] as const)
+      .sort(([left], [right]) => compareCodeUnits(left, right))
+      .map(([name, paths]) => [name, paths.sort(compareCodeUnits)] as const)
   )
   indexRoots.set(sorted, root)
   return sorted
@@ -284,9 +289,18 @@ export async function readBootFlow(
       `Configured entry "${config.entry}" is missing the "## Agent entry flow" section.`
     )
   }
-  const notes = extractAgentLinks(content).map((target) =>
-    resolveNote(index, target)
-  )
+  const notes: ResolvedNote[] = []
+  for (const target of extractAgentLinks(content)) {
+    const note = resolveNote(index, target)
+    try {
+      await readFile(note.absolutePath, "utf8")
+    } catch {
+      throw diagnostic(
+        `Unable to read note "${note.requested}" at "${note.absolutePath}".`
+      )
+    }
+    notes.push(note)
+  }
   return { entry, notes }
 }
 
