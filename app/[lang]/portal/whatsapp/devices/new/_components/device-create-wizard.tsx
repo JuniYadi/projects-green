@@ -16,8 +16,10 @@ import { StepReview } from "./step-review"
 export type WizardData = {
   organizationId: string
   phoneNumber: string
+  environment: "SANDBOX" | "LIVE"
   whatsappBusinessAccountId: string
   whatsappPhoneId: string
+  whatsappMetaAppId: string
   whatsappApplicationId: string
   whatsappVersion: string
   callbackUrl: string
@@ -44,8 +46,10 @@ type ApiValidationError = {
 const emptyData: WizardData = {
   organizationId: "",
   phoneNumber: "",
+  environment: "LIVE",
   whatsappBusinessAccountId: "",
   whatsappPhoneId: "",
+  whatsappMetaAppId: "",
   whatsappApplicationId: "",
   whatsappVersion: "v24.0",
   callbackUrl: "",
@@ -84,16 +88,8 @@ function validateStep(step: number, data: WizardData): Record<string, string> {
     }
   }
 
-  if (step === 1) {
-    // All fields optional in this step
-  }
-
-  if (step === 2) {
-    // All fields optional — admin can set defaults
-  }
-
-  if (step === 3) {
-    // All fields optional
+  if (step === 1 && data.environment === "LIVE" && !data.whatsappMetaAppId) {
+    errors.whatsappMetaAppId = "MetaApp selection is required for LIVE devices."
   }
 
   return errors
@@ -132,7 +128,6 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
   }
 
   const handleStepClick = (targetStep: number) => {
-    // Only allow going back to completed steps
     if (targetStep < step) {
       setErrors({})
       setStep(targetStep)
@@ -145,10 +140,12 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
       const payload = {
         organizationId: data.organizationId,
         phoneNumber: data.phoneNumber,
+        environment: data.environment,
         name: data.displayName || data.phoneNumber,
         displayName: data.displayName || undefined,
         whatsappBusinessAccountId: data.whatsappBusinessAccountId || undefined,
         whatsappPhoneId: data.whatsappPhoneId || undefined,
+        whatsappMetaAppId: data.whatsappMetaAppId || undefined,
         whatsappApplicationId: data.whatsappApplicationId || undefined,
         whatsappVersion: data.whatsappVersion || "v24.0",
         callbackUrl: data.callbackUrl || undefined,
@@ -173,7 +170,6 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
       }
 
       const validated = adminCreateDeviceSchema.parse(payload)
-      // ponytail: Eden type mismatch with Elysia body — `as never` is codebase convention here
       const { data: body } = await eden.api.admin.devices.post(
         validated as never
       )
@@ -182,12 +178,12 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
         const errBody = body as ApiValidationError
         if (errBody.fieldErrors) {
           setErrors(errBody.fieldErrors)
-          // Find which step has the error and go there
           const fieldStepMap: Record<string, number> = {
             organizationId: 0,
             phoneNumber: 0,
             whatsappBusinessAccountId: 1,
             whatsappPhoneId: 1,
+            whatsappMetaAppId: 1,
             whatsappApplicationId: 1,
             whatsappVersion: 1,
             callbackUrl: 1,
@@ -203,10 +199,9 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
             s3: 3,
             token: 3,
           }
-          const errorFields = Object.keys(errBody.fieldErrors)
-          for (const f of errorFields) {
-            if (fieldStepMap[f] !== undefined) {
-              setStep(fieldStepMap[f])
+          for (const field of Object.keys(errBody.fieldErrors)) {
+            if (fieldStepMap[field] !== undefined) {
+              setStep(fieldStepMap[field])
               break
             }
           }
@@ -223,9 +218,7 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
         })
       )
     } catch (err) {
-      if (err instanceof Error) {
-        toast.error(err.message)
-      }
+      if (err instanceof Error) toast.error(err.message)
     } finally {
       setIsSubmitting(false)
     }
@@ -261,7 +254,6 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
 
   return (
     <>
-      {/* Progress indicator */}
       <nav className="flex items-center gap-1 overflow-x-auto">
         {STEPS.map((s, i) => (
           <button
@@ -284,13 +276,9 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
           </button>
         ))}
       </nav>
-
-      {/* Step content */}
       <Card>
         <CardContent className="pt-6">{stepComponents[step]}</CardContent>
       </Card>
-
-      {/* Navigation */}
       <div className="flex items-center justify-between">
         <Button variant="outline" onClick={handleBack} disabled={step === 0}>
           Previous

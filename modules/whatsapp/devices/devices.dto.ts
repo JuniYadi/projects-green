@@ -6,7 +6,9 @@ import type {
   DeviceStatus,
 } from "./devices.schemas"
 
-type WhatsappDeviceRecord = WhatsappDevice
+type WhatsappDeviceRecord = WhatsappDevice & {
+  whatsappMetaApp?: { id: string; name: string; webhookKey: string } | null
+}
 
 const toNumber = (value: Prisma.Decimal | number | string) => Number(value)
 
@@ -18,6 +20,18 @@ const toJsonRecord = (
   }
 
   return value as Record<string, unknown>
+}
+
+export function toMetaAppMetadata(
+  app: { id: string; name: string; webhookKey: string } | null | undefined
+) {
+  return app
+    ? {
+        id: app.id,
+        name: app.name,
+        callbackPath: `/api/whatsapp/meta-webhook/${app.webhookKey}`,
+      }
+    : null
 }
 
 /**
@@ -59,6 +73,8 @@ export function toDeviceListItem(device: WhatsappDeviceRecord): DeviceListItem {
     dailyLimitMessage: device.dailyLimitMessage,
     whatsappBusinessAccountId: device.whatsappBusinessAccountId,
     whatsappPhoneId: device.whatsappPhoneId,
+    whatsappMetaAppId: device.whatsappMetaAppId,
+    whatsappMetaApp: toMetaAppMetadata(device.whatsappMetaApp),
     createdAt: device.createdAt.toISOString(),
     updatedAt: device.updatedAt.toISOString(),
     lastHeartbeatAt: device.lastHeartbeatAt?.toISOString() ?? null,

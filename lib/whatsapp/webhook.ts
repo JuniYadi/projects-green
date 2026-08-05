@@ -1,3 +1,7 @@
+/**
+ * Migration-only legacy helper for the unmounted global-secret webhook route.
+ * Production webhook verification uses credentials resolved from MetaApp records.
+ */
 import { createHmac, timingSafeEqual } from "node:crypto"
 
 /**

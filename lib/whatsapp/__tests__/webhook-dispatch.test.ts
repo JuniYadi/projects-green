@@ -14,10 +14,17 @@ mock.module("ioredis", () => {
           this.status = "ready"
         }),
         get: mock(async (key: string) => store.get(key) ?? null),
-        set: mock(async (key: string, value: string, ...args: string[]) => {
-          store.set(key, value)
-          return "OK"
-        }),
+        set: mock(
+          async (
+            key: string,
+            value: string,
+            ...args: Array<string | number>
+          ) => {
+            if (args.includes("NX") && store.has(key)) return null
+            store.set(key, value)
+            return "OK"
+          }
+        ),
         del: mock(async (...keys: string[]) => {
           let count = 0
           for (const key of keys) {

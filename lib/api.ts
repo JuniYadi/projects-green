@@ -42,7 +42,7 @@ import { voucherRoutes } from "@/modules/vouchers/api"
 import { healthRoutes } from "@/modules/health/api/health.route"
 import { markStartupComplete } from "@/modules/health/health.service"
 import { whatsappRoutes } from "@/modules/whatsapp/whatsapp.module"
-import { whatsappWebhookRoutes } from "@/lib/whatsapp/webhook-routes"
+import { metaWebhookRoutes } from "@/modules/whatsapp/meta-apps/api/meta-webhook.route"
 import { credentialsRoutes } from "@/modules/credentials/api/credentials.route"
 import { webhookDeadLetterRoutes } from "@/modules/whatsapp/webhooks/api/webhook-dead-letter.route"
 
@@ -204,7 +204,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(adminVpnSubscriptionRoutes)
   .use(voucherRoutes)
   .use(healthRoutes)
-  .use(whatsappWebhookRoutes)
+  .use(metaWebhookRoutes)
   .use(webhookDeadLetterRoutes)
   .use(whatsappRoutes)
   .use(wireguardRoutes)

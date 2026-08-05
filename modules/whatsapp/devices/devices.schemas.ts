@@ -43,6 +43,7 @@ export const createDeviceSchema = z.object({
   displayName: z.string().trim().max(120).optional(),
   whatsappBusinessAccountId: z.string().trim().max(64).optional(),
   whatsappPhoneId: z.string().trim().max(64).optional(),
+  whatsappMetaAppId: z.string().trim().max(64).optional(),
   whatsappApplicationId: z.string().trim().max(64).optional(),
   callbackUrl: z.string().url().optional().or(z.literal("")),
 })
@@ -79,7 +80,8 @@ export const updateDeviceSchema = z.object({
   status: deviceStatusEnum.optional(),
   token: z.string().trim().min(1).optional(),
   whatsappBusinessAccountId: z.string().trim().max(64).optional(),
-  whatsappPhoneId: z.string().trim().max(64).optional(),
+  whatsappPhoneId: z.string().trim().max(64).nullable().optional(),
+  whatsappMetaAppId: z.string().trim().max(64).nullable().optional(),
   whatsappApplicationId: z.string().trim().max(64).optional(),
   whatsappVersion: z.string().trim().max(20).optional(),
   displayName: z.string().trim().max(120).optional(),
@@ -98,6 +100,12 @@ export type UpdateDeviceInput = z.infer<typeof updateDeviceSchema>
 
 // ─── Response types ────────────────────────────────────────────────────────────
 
+export type DeviceMetaAppMetadata = {
+  id: string
+  name: string
+  callbackPath: string
+}
+
 export type DeviceListItem = {
   id: string
   organizationId: string
@@ -111,6 +119,8 @@ export type DeviceListItem = {
   dailyLimitMessage: number
   whatsappBusinessAccountId: string | null
   whatsappPhoneId: string | null
+  whatsappMetaAppId: string | null
+  whatsappMetaApp: DeviceMetaAppMetadata | null
   createdAt: string
   updatedAt: string
   lastHeartbeatAt?: string | null
@@ -156,6 +166,46 @@ export class DeviceNotOwnedError extends Error {
   constructor() {
     super("You do not have access to this device.")
     this.name = "DeviceNotOwnedError"
+  }
+}
+
+export class DeviceMetaAppRequiredError extends Error {
+  readonly code = "DEVICE_META_APP_REQUIRED" as const
+  constructor() {
+    super("Active Meta app association is required for LIVE devices.")
+    this.name = "DeviceMetaAppRequiredError"
+  }
+}
+
+export class DeviceMetaAppNotFoundError extends Error {
+  readonly code = "DEVICE_META_APP_NOT_FOUND" as const
+  constructor() {
+    super("Meta app was not found.")
+    this.name = "DeviceMetaAppNotFoundError"
+  }
+}
+
+export class DeviceMetaAppInactiveError extends Error {
+  readonly code = "DEVICE_META_APP_INACTIVE" as const
+  constructor() {
+    super("Meta app is inactive.")
+    this.name = "DeviceMetaAppInactiveError"
+  }
+}
+
+export class DeviceMetaAppPhoneRequiredError extends Error {
+  readonly code = "DEVICE_META_APP_PHONE_REQUIRED" as const
+  constructor() {
+    super("WhatsApp phone ID is required when binding a Meta app.")
+    this.name = "DeviceMetaAppPhoneRequiredError"
+  }
+}
+
+export class DeviceMetaAppPhoneConflictError extends Error {
+  readonly code = "DEVICE_META_APP_PHONE_CONFLICT" as const
+  constructor() {
+    super("WhatsApp phone ID is already bound to this Meta app.")
+    this.name = "DeviceMetaAppPhoneConflictError"
   }
 }
 

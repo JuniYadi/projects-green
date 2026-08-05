@@ -17,6 +17,8 @@ export type WhatsappAuditAction =
   | "DEVICE_DISCONNECTED"
   | "DEVICE_CONNECTED"
   | "DEVICE_CALLBACK_URL_UPDATED"
+  | "DEVICE_META_APP_ASSIGNED"
+  | "DEVICE_PHONE_ID_BOUND"
   // Broadcast / Message
   | "BROADCAST_SENT"
   | "BROADCAST_FAILED"

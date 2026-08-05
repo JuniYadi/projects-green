@@ -6,6 +6,7 @@ const IDEMPOTENCY_KEY_PREFIX = "wa:idempotency:"
 const IDEMPOTENCY_KEY_PATTERN = `${IDEMPOTENCY_KEY_PREFIX}*`
 const MAX_FALLBACK_SIZE = 10_000
 
+// ponytail: synchronous Map check/set stays atomic within one event loop; fallback is process-local, so Redis remains required for cross-instance claims and TTL.
 const fallbackEventIds = new Map<string, number>()
 let redisClient: Redis | null = null
 
@@ -106,6 +107,31 @@ export async function markEventProcessed(eventId: string): Promise<void> {
       }
     }
     fallbackEventIds.set(eventId, Date.now())
+  }
+}
+export async function claimProcessedEvent(eventId: string): Promise<boolean> {
+  const redis = await getAvailableRedisClient()
+
+  if (!redis) {
+    if (fallbackEventIds.has(eventId)) return false
+    fallbackEventIds.set(eventId, Date.now())
+    return true
+  }
+
+  try {
+    const result = await redis.set(
+      getIdempotencyKey(eventId),
+      "1",
+      "EX",
+      IDEMPOTENCY_TTL_SECONDS,
+      "NX"
+    )
+    return result !== null
+  } catch (err) {
+    warnAndUseFallback("claim", err)
+    if (fallbackEventIds.has(eventId)) return false
+    fallbackEventIds.set(eventId, Date.now())
+    return true
   }
 }
 

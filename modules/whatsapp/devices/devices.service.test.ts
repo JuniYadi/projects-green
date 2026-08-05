@@ -17,6 +17,7 @@ function device(overrides: Record<string, unknown> = {}) {
     dailyLimitMessage: 0,
     whatsappBusinessAccountId: "waba-1",
     whatsappPhoneId: "phone-1",
+    whatsappMetaAppId: "meta-1",
     callbackUrl: null,
     expiredAt: null,
     whatsappProfile: null,
@@ -33,14 +34,23 @@ describe("devices service token storage", () => {
     device(args.data)
   )
   const findUnique = mock(async () => device())
+  const metaAppFindUnique = mock<(...args: any[]) => Promise<any>>(
+    async () => ({ id: "meta-1", active: true, name: "Primary" })
+  )
+  const findFirst = mock<(...args: any[]) => Promise<any>>(async () => null)
   const update = mock(async (args: { data: Record<string, unknown> }) =>
     device(args.data)
   )
   const transaction = mock(async (fn: (tx: unknown) => Promise<unknown>) =>
     fn({
       whatsappDevice: {
+        create,
         findUnique,
+        findFirst,
         update,
+      },
+      whatsappMetaApp: {
+        findUnique: metaAppFindUnique,
       },
     })
   )
@@ -50,6 +60,8 @@ describe("devices service token storage", () => {
     create.mockClear()
     findUnique.mockClear()
     update.mockClear()
+    metaAppFindUnique.mockClear()
+    findFirst.mockClear()
     transaction.mockClear()
   })
 
@@ -77,6 +89,7 @@ describe("devices service token storage", () => {
       token: "meta-token",
       whatsappBusinessAccountId: "waba-1",
       whatsappPhoneId: "phone-1",
+      whatsappMetaAppId: "meta-1",
     })
 
     const data = create.mock.calls[0][0].data
@@ -159,5 +172,153 @@ describe("devices service token storage", () => {
       whatsappProfile: { about: "Support", name: "Primary WA" },
     })
     expect(data.expiredAt).toEqual(new Date("2026-12-31T00:00:00.000Z"))
+  })
+
+  it("binds new LIVE device to active Meta app and phone id", async () => {
+    const service = createDeviceService({
+      prisma: {
+        whatsappDevice: { create, findUnique, update },
+        $transaction: transaction,
+      } as never,
+    })
+
+    await service.create({
+      organizationId: "org_1",
+      name: "Primary",
+      phoneNumber: "+6281234567890",
+      environment: "LIVE",
+      whatsappMetaAppId: "meta-1",
+      whatsappPhoneId: "phone-1",
+    })
+
+    expect(create.mock.calls.at(-1)?.[0].data).toMatchObject({
+      whatsappMetaAppId: "meta-1",
+      whatsappPhoneId: "phone-1",
+    })
+    expect(metaAppFindUnique).toHaveBeenCalledWith({ where: { id: "meta-1" } })
+  })
+
+  it("rejects LIVE device without Meta app", async () => {
+    const service = createDeviceService({
+      prisma: {
+        whatsappDevice: { create },
+        $transaction: transaction,
+      } as never,
+    })
+
+    await expect(
+      service.create({
+        organizationId: "org_1",
+        name: "Primary",
+        phoneNumber: "+6281234567890",
+        environment: "LIVE",
+        whatsappPhoneId: "phone-1",
+      })
+    ).rejects.toMatchObject({ code: "DEVICE_META_APP_REQUIRED" })
+  })
+
+  it("rejects duplicate Meta app and phone binding", async () => {
+    findFirst.mockResolvedValueOnce(device())
+    const service = createDeviceService({
+      prisma: {
+        whatsappDevice: { create },
+        $transaction: transaction,
+      } as never,
+    })
+
+    await expect(
+      service.create({
+        organizationId: "org_1",
+        name: "Primary",
+        phoneNumber: "+6281234567890",
+        environment: "LIVE",
+        whatsappMetaAppId: "meta-1",
+        whatsappPhoneId: "phone-1",
+      })
+    ).rejects.toMatchObject({ code: "DEVICE_META_APP_PHONE_CONFLICT" })
+  })
+
+  it("updates Meta app association and revalidates phone binding", async () => {
+    const service = createDeviceService({
+      prisma: {
+        whatsappDevice: { create, findUnique, update },
+        $transaction: transaction,
+      } as never,
+    })
+
+    await service.update(
+      "dev_1",
+      { whatsappMetaAppId: "meta-1", whatsappPhoneId: "phone-2" },
+      null
+    )
+
+    expect(update.mock.calls.at(-1)?.[0].data).toMatchObject({
+      whatsappMetaAppId: "meta-1",
+      whatsappPhoneId: "phone-2",
+    })
+  })
+  it("rejects unknown Meta app", async () => {
+    metaAppFindUnique.mockResolvedValueOnce(null)
+    const service = createDeviceService({
+      prisma: {
+        whatsappDevice: { create },
+        $transaction: transaction,
+      } as never,
+    })
+
+    await expect(
+      service.create({
+        organizationId: "org_1",
+        name: "Primary",
+        phoneNumber: "+6281234567890",
+        environment: "LIVE",
+        whatsappMetaAppId: "missing",
+        whatsappPhoneId: "phone-1",
+      })
+    ).rejects.toMatchObject({ code: "DEVICE_META_APP_NOT_FOUND" })
+  })
+
+  it("rejects inactive Meta app", async () => {
+    metaAppFindUnique.mockResolvedValueOnce({
+      id: "meta-1",
+      active: false,
+      name: "Primary",
+    })
+    const service = createDeviceService({
+      prisma: {
+        whatsappDevice: { create },
+        $transaction: transaction,
+      } as never,
+    })
+
+    await expect(
+      service.create({
+        organizationId: "org_1",
+        name: "Primary",
+        phoneNumber: "+6281234567890",
+        environment: "LIVE",
+        whatsappMetaAppId: "meta-1",
+        whatsappPhoneId: "phone-1",
+      })
+    ).rejects.toMatchObject({ code: "DEVICE_META_APP_INACTIVE" })
+  })
+  it("allows explicit MetaApp and phone unassignment", async () => {
+    const service = createDeviceService({
+      prisma: {
+        whatsappDevice: { create, findUnique, update },
+        $transaction: transaction,
+      } as never,
+    })
+
+    await service.update(
+      "dev_1",
+      { whatsappMetaAppId: null, whatsappPhoneId: null },
+      null
+    )
+
+    expect(update.mock.calls.at(-1)?.[0].data).toMatchObject({
+      whatsappMetaAppId: null,
+      whatsappPhoneId: null,
+    })
   })
 })

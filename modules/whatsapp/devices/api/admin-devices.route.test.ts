@@ -32,6 +32,10 @@ const mockTransaction = mock<(...args: any[]) => any>(
         update: mockUpdate,
         create: mockCreate,
         delete: mockDelete,
+        findFirst: mock(async () => null),
+      },
+      whatsappMetaApp: {
+        findUnique: mock(async () => ({ id: "meta-1", active: true })),
       },
       billingAccount: {
         findUnique: mockBillingFindUnique,
@@ -197,6 +201,12 @@ describe("Admin Devices Routes", () => {
           quotaBaseOut: 1000,
           dailyLimitMessage: 500,
           whatsappBusinessAccountId: null,
+          whatsappMetaAppId: "meta-1",
+          whatsappMetaApp: {
+            id: "meta-1",
+            name: "Primary Meta App",
+            webhookKey: "secret-webhook-key",
+          },
           whatsappPhoneId: null,
           whatsappApplicationId: null,
           callbackUrl: null,
@@ -214,6 +224,13 @@ describe("Admin Devices Routes", () => {
       expect(res.status).toBe(200)
       expect(body.ok).toBe(true)
       expect(body.devices).toHaveLength(1)
+      expect(body.devices[0].whatsappMetaApp).toEqual({
+        id: "meta-1",
+        name: "Primary Meta App",
+        callbackPath: "/api/whatsapp/meta-webhook/secret-webhook-key",
+      })
+      expect(JSON.stringify(body.devices[0])).not.toContain("appSecret")
+      expect(JSON.stringify(body.devices[0])).not.toContain("tokenEncrypted")
       expect(body.devices[0].id).toBe("dev-1")
     })
 
@@ -267,6 +284,12 @@ describe("Admin Devices Routes", () => {
         dailyLimitMessage: 500,
         whatsappBusinessAccountId: "waba-1",
         whatsappPhoneId: "phone-1",
+        whatsappMetaAppId: "meta-1",
+        whatsappMetaApp: {
+          id: "meta-1",
+          name: "Primary Meta App",
+          webhookKey: "secret-detail-key",
+        },
         whatsappApplicationId: "app-1",
         callbackUrl: "https://example.com/callback",
         expiredAt: null,
@@ -285,6 +308,13 @@ describe("Admin Devices Routes", () => {
       expect(body.device.id).toBe("dev-1")
       expect(body.device.balance).toBe(250000)
       expect(body.device.whatsappProfile).toEqual({ name: "Primary" })
+      expect(body.device.whatsappMetaApp).toEqual({
+        id: "meta-1",
+        name: "Primary Meta App",
+        callbackPath: "/api/whatsapp/meta-webhook/secret-detail-key",
+      })
+      expect(JSON.stringify(body.device)).not.toContain("appSecret")
+      expect(JSON.stringify(body.device)).not.toContain("tokenEncrypted")
     })
   })
 
@@ -382,6 +412,7 @@ describe("Admin Devices Routes", () => {
           body: JSON.stringify({
             name: "Test Device",
             organizationId: "org-1",
+            environment: "SANDBOX",
             phoneNumber: "+6281234567890",
           }),
         })
@@ -405,9 +436,11 @@ describe("Admin Devices Routes", () => {
           status: "ACTIVE",
           balance: { toString: () => "0", valueOf: () => 0 },
           quotaBase: { toString: () => "1000", valueOf: () => 1000 },
+          quotaBaseOut: { toString: () => "1000", valueOf: () => 1000 },
           dailyLimitMessage: 0,
           whatsappBusinessAccountId: data.whatsappBusinessAccountId,
           whatsappPhoneId: data.whatsappPhoneId,
+          whatsappMetaAppId: data.whatsappMetaAppId,
           whatsappApplicationId: data.whatsappApplicationId,
           callbackUrl: data.callbackUrl,
           expiredAt: null,
@@ -430,6 +463,7 @@ describe("Admin Devices Routes", () => {
             environment: "LIVE",
             whatsappBusinessAccountId: "waba-1",
             whatsappPhoneId: "phone-1",
+            whatsappMetaAppId: "meta-1",
             whatsappApplicationId: "app-1",
             callbackUrl: "https://example.com/cb",
           }),
@@ -451,6 +485,12 @@ describe("Admin Devices Routes", () => {
           whatsappProfile: { name: "Primary Device" },
         })
       )
+      expect(mockLogAudit).toHaveBeenCalledWith(
+        expect.objectContaining({ action: "DEVICE_META_APP_ASSIGNED" })
+      )
+      expect(mockLogAudit).toHaveBeenCalledWith(
+        expect.objectContaining({ action: "DEVICE_PHONE_ID_BOUND" })
+      )
     })
 
     it("returns 500 on service failure", async () => {
@@ -467,6 +507,7 @@ describe("Admin Devices Routes", () => {
             name: "Test Device",
             organizationId: "org-1",
             phoneNumber: "+6281234567890",
+            environment: "SANDBOX",
           }),
         })
       )
@@ -635,10 +676,47 @@ describe("Admin Devices Routes", () => {
       expect(body.ok).toBe(true)
       expect(body.device.status).toBe("NON_ACTIVE")
     })
+    it("audits MetaApp and phone association changes", async () => {
+      const existingDevice = {
+        ...defaultDevice,
+        id: "dev-1",
+        organizationId: "org-1",
+        phoneNumber: "+6281234567890",
+        status: "ACTIVE",
+        whatsappMetaAppId: "meta-old",
+        whatsappPhoneId: "phone-old",
+        callbackUrl: null,
+      }
+      mockFindUnique.mockImplementation(async () => existingDevice)
+      mockUpdate.mockImplementation(async () => ({
+        ...existingDevice,
+        whatsappMetaAppId: "meta-1",
+        whatsappPhoneId: "phone-1",
+      }))
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/dev-1`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            whatsappMetaAppId: "meta-1",
+            whatsappPhoneId: "phone-1",
+          }),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      expect(mockLogAudit).toHaveBeenCalledWith(
+        expect.objectContaining({ action: "DEVICE_META_APP_ASSIGNED" })
+      )
+      expect(mockLogAudit).toHaveBeenCalledWith(
+        expect.objectContaining({ action: "DEVICE_PHONE_ID_BOUND" })
+      )
+    })
   })
 
   // ─── DELETE /:id ────────────────────────────────────────────────────────
-
   describe("DELETE /:id", () => {
     it("returns 401 when not authenticated", async () => {
       const app = createTestApp(unauthorizedContext())
@@ -651,7 +729,6 @@ describe("Admin Devices Routes", () => {
       expect(body.ok).toBe(false)
       expect(body.error).toBe("UNAUTHORIZED")
     })
-
     it("returns 403 when not super admin", async () => {
       const app = createTestApp(forbiddenContext())
       const res = await app.handle(

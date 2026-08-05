@@ -16,8 +16,14 @@ import {
   topUpInputSchema,
   updateDeviceSchema,
   DeviceNotFoundError,
+  DeviceMetaAppRequiredError,
+  DeviceMetaAppNotFoundError,
+  DeviceMetaAppInactiveError,
+  DeviceMetaAppPhoneRequiredError,
+  DeviceMetaAppPhoneConflictError,
 } from "../devices.schemas"
 import { createDeviceService } from "../devices.service"
+import { toMetaAppMetadata } from "../devices.dto"
 import { enqueueWhatsAppTemplateSync } from "@/lib/queue/whatsapp-template-sync"
 import {
   decryptWhatsAppToken,
@@ -73,6 +79,53 @@ const isAdminError = (
   value: AdminActorContext | AdminApiError
 ): value is AdminApiError => "ok" in value && !value.ok
 
+const toAssociationError = (set: RouteSet, error: unknown) => {
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String(error.code)
+      : error instanceof Error
+        ? error.name
+        : ""
+  if (
+    error instanceof DeviceMetaAppPhoneConflictError ||
+    code === "DEVICE_META_APP_PHONE_CONFLICT"
+  ) {
+    set.status = 409
+    return {
+      ok: false as const,
+      error: "META_APP_PHONE_CONFLICT" as const,
+      message: "WhatsApp phone ID is already bound to this Meta app.",
+    }
+  }
+  if (
+    error instanceof DeviceMetaAppInactiveError ||
+    code === "DEVICE_META_APP_INACTIVE"
+  ) {
+    set.status = 409
+    return {
+      ok: false as const,
+      error: "META_APP_INACTIVE" as const,
+      message: "Meta app is inactive.",
+    }
+  }
+  if (
+    error instanceof DeviceMetaAppRequiredError ||
+    error instanceof DeviceMetaAppNotFoundError ||
+    error instanceof DeviceMetaAppPhoneRequiredError ||
+    code === "DEVICE_META_APP_REQUIRED" ||
+    code === "DEVICE_META_APP_NOT_FOUND" ||
+    code === "DEVICE_META_APP_PHONE_REQUIRED"
+  ) {
+    set.status = 422
+    return {
+      ok: false as const,
+      error: "META_APP_ASSOCIATION_INVALID" as const,
+      message: "Valid active Meta app and WhatsApp phone ID are required.",
+    }
+  }
+  return null
+}
+
 export const createAdminDevicesRoutes = (
   deps: { requireSuperAdmin?: AdminGuard } = {}
 ) => {
@@ -91,28 +144,52 @@ export const createAdminDevicesRoutes = (
           orderBy: { createdAt: "desc" },
           take,
           skip,
+          include: {
+            whatsappMetaApp: {
+              select: { id: true, name: true, webhookKey: true },
+            },
+          },
         }),
         prisma.whatsappDevice.count(),
       ])
 
       return {
         ok: true as const,
-        devices: devices.map((d) => ({
-          id: d.id,
-          organizationId: d.organizationId,
-          phoneNumber: d.phoneNumber,
-          status: d.status,
-          balance: Number(d.balance.toString()),
-          quotaBase: Number(d.quotaBase.toString()),
-          dailyLimitMessage: d.dailyLimitMessage,
-          whatsappBusinessAccountId: d.whatsappBusinessAccountId,
-          whatsappPhoneId: d.whatsappPhoneId,
-          whatsappApplicationId: d.whatsappApplicationId,
-          callbackUrl: d.callbackUrl,
-          whatsappProfile: d.whatsappProfile,
-          createdAt: d.createdAt.toISOString(),
-          updatedAt: d.updatedAt.toISOString(),
-        })),
+        devices: devices.map((d) => {
+          const profile =
+            d.whatsappProfile &&
+            typeof d.whatsappProfile === "object" &&
+            !Array.isArray(d.whatsappProfile)
+              ? (d.whatsappProfile as Record<string, unknown>)
+              : null
+          const profileName =
+            profile && typeof profile.name === "string" && profile.name.trim()
+              ? profile.name.trim()
+              : null
+          return {
+            id: d.id,
+            organizationId: d.organizationId,
+            phoneNumber: d.phoneNumber,
+            name: profileName ?? d.phoneNumber,
+            status: d.status,
+            environment: "LIVE" as const,
+            balance: Number(d.balance.toString()),
+            quotaBase: Number(d.quotaBase.toString()),
+            quotaBaseOut: Number(d.quotaBaseOut.toString()),
+            dailyLimitMessage: d.dailyLimitMessage,
+            whatsappBusinessAccountId: d.whatsappBusinessAccountId,
+            whatsappPhoneId: d.whatsappPhoneId,
+            whatsappApplicationId: d.whatsappApplicationId,
+            whatsappMetaAppId: d.whatsappMetaAppId,
+            whatsappMetaApp: toMetaAppMetadata(d.whatsappMetaApp),
+            callbackUrl: d.callbackUrl,
+            whatsappProfile: d.whatsappProfile,
+            createdAt: d.createdAt.toISOString(),
+            updatedAt: d.updatedAt.toISOString(),
+            lastHeartbeatAt: d.lastHeartbeatAt?.toISOString() ?? null,
+            lastDisconnectedAt: d.lastDisconnectedAt?.toISOString() ?? null,
+          }
+        }),
         total,
         take,
         skip,
@@ -124,6 +201,11 @@ export const createAdminDevicesRoutes = (
 
       const device = await prisma.whatsappDevice.findUnique({
         where: { id },
+        include: {
+          whatsappMetaApp: {
+            select: { id: true, name: true, webhookKey: true },
+          },
+        },
       })
 
       if (!device) {
@@ -135,23 +217,43 @@ export const createAdminDevicesRoutes = (
         }
       }
 
+      const profile =
+        device.whatsappProfile &&
+        typeof device.whatsappProfile === "object" &&
+        !Array.isArray(device.whatsappProfile)
+          ? (device.whatsappProfile as Record<string, unknown>)
+          : null
+      const profileName =
+        profile && typeof profile.name === "string" && profile.name.trim()
+          ? profile.name.trim()
+          : null
+
       return {
         ok: true as const,
         device: {
           id: device.id,
           organizationId: device.organizationId,
           phoneNumber: device.phoneNumber,
+          name: profileName ?? device.phoneNumber,
           status: device.status,
+          environment: "LIVE" as const,
           balance: Number(device.balance.toString()),
+          quotaBase: Number(device.quotaBase.toString()),
+          quotaBaseOut: Number(device.quotaBaseOut.toString()),
           dailyLimitMessage: device.dailyLimitMessage,
+          whatsappMetaAppId: device.whatsappMetaAppId,
+          whatsappMetaApp: toMetaAppMetadata(device.whatsappMetaApp),
           whatsappBusinessAccountId: device.whatsappBusinessAccountId,
           whatsappPhoneId: device.whatsappPhoneId,
           whatsappApplicationId: device.whatsappApplicationId,
           callbackUrl: device.callbackUrl,
           expiredAt: device.expiredAt?.toISOString() ?? null,
           whatsappProfile: device.whatsappProfile,
+          features: device.features,
           createdAt: device.createdAt.toISOString(),
           updatedAt: device.updatedAt.toISOString(),
+          lastHeartbeatAt: device.lastHeartbeatAt?.toISOString() ?? null,
+          lastDisconnectedAt: device.lastDisconnectedAt?.toISOString() ?? null,
         },
       }
     })
@@ -175,10 +277,34 @@ export const createAdminDevicesRoutes = (
           ...parsed.data,
           organizationId: parsed.data.organizationId,
         })
+        if (parsed.data.whatsappMetaAppId) {
+          logWhatsappAuditEvent({
+            action: "DEVICE_META_APP_ASSIGNED",
+            organizationId: device.organizationId,
+            deviceId: device.id,
+            adminId: actor.userId,
+            message: "Meta app assigned to device on creation",
+            status: "OK",
+            details: { whatsappMetaAppId: parsed.data.whatsappMetaAppId },
+          })
+        }
+        if (parsed.data.whatsappPhoneId) {
+          logWhatsappAuditEvent({
+            action: "DEVICE_PHONE_ID_BOUND",
+            organizationId: device.organizationId,
+            deviceId: device.id,
+            adminId: actor.userId,
+            message: "WhatsApp phone ID bound to device on creation",
+            status: "OK",
+            details: { whatsappPhoneId: parsed.data.whatsappPhoneId },
+          })
+        }
 
         set.status = 201
         return { ok: true as const, device }
       } catch (error) {
+        const associationError = toAssociationError(set, error)
+        if (associationError) return associationError
         console.error("[AdminDevices] Create error:", error)
         return toServerError(set, "Unable to create device.")
       }
@@ -208,13 +334,51 @@ export const createAdminDevicesRoutes = (
             organizationId: true,
             status: true,
             callbackUrl: true,
+            whatsappMetaAppId: true,
+            whatsappPhoneId: true,
           },
         })
 
         const device = await service.update(id, parsed.data, null)
 
-        // Audit: detect field changes
         if (currentDevice) {
+          // Audit association changes separately from generic device updates.
+          const metaAppChanged =
+            parsed.data.whatsappMetaAppId !== undefined &&
+            parsed.data.whatsappMetaAppId !== currentDevice.whatsappMetaAppId
+          const phoneIdChanged =
+            parsed.data.whatsappPhoneId !== undefined &&
+            parsed.data.whatsappPhoneId !== currentDevice.whatsappPhoneId
+
+          if (metaAppChanged) {
+            logWhatsappAuditEvent({
+              action: "DEVICE_META_APP_ASSIGNED",
+              organizationId: currentDevice.organizationId,
+              deviceId: id,
+              adminId: actor.userId,
+              message: "Device Meta app association updated",
+              status: "OK",
+              details: {
+                previousWhatsappMetaAppId: currentDevice.whatsappMetaAppId,
+                whatsappMetaAppId: parsed.data.whatsappMetaAppId ?? null,
+              },
+            })
+          }
+          if (phoneIdChanged) {
+            logWhatsappAuditEvent({
+              action: "DEVICE_PHONE_ID_BOUND",
+              organizationId: currentDevice.organizationId,
+              deviceId: id,
+              adminId: actor.userId,
+              message: "Device WhatsApp phone ID binding updated",
+              status: "OK",
+              details: {
+                previousWhatsappPhoneId: currentDevice.whatsappPhoneId,
+                whatsappPhoneId: parsed.data.whatsappPhoneId ?? null,
+              },
+            })
+          }
+
           const changedFields: string[] = []
           let action: WhatsappAuditAction = "DEVICE_INFO_UPDATED"
 
@@ -248,6 +412,8 @@ export const createAdminDevicesRoutes = (
 
         return { ok: true as const, device }
       } catch (error) {
+        const associationError = toAssociationError(set, error)
+        if (associationError) return associationError
         // Log failed update
         if (!(error instanceof Error && error.name === "DeviceNotFoundError")) {
           try {
