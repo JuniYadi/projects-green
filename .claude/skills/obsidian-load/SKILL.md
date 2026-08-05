@@ -9,31 +9,37 @@ Read notes from the Obsidian vault. Always invoke before accessing vault content
 
 ## Vault discovery
 
-1. Read `{repo-root}/.obsidian.json`.
+1. Read `{repo-root}/.obsidian.json` (at `{repo-root}/.obsidian.json`, NOT anywhere else).
 2. Extract `directory` (vault root path) and `entry` (entry note filename).
 3. If `.obsidian.json` is absent: fail and instruct user to copy `.obsidian.json.example` → `.obsidian.json` and set `directory` to an absolute vault path.
 
+## Boot
+
+After loading `.obsidian.json`, run the boot command before any parallel reads:
+
+```
+bun run obsidian:boot
+```
+
+It prints the entry note plus every indexed note as `{requested, path, absolutePath}` JSON. Boot must complete before parallel reads start. Missing, duplicate, or unreadable notes are blocking: report them and stop, never work around them.
+
 ## Reading a note
 
+Address notes by logical name — never by filesystem path:
+
 ```
-{directory}/{note-path}
+bun run obsidian:read -- "Note Name"
+bun run obsidian:resolve -- "Note Name"   # only when a path is needed
 ```
 
-- `note-path` is vault-relative, no `.md` extension needed.
+- The `--` separates the note name from the script args; keep the name in quotes.
+- `obsidian:read` prints the vault-relative path header, then the note content.
+- `obsidian:resolve` prints `{"requested","path"}` for a single unambiguous match.
+- Never construct filesystem paths from `[[wikilinks]]` — a wikilink is a logical name, not a path. Never use grep/find to resolve notes.
+- Explicit, already-resolved vault-relative paths (from boot output, resolve output, or an `obsidian://open` URL's `file=` param) stay paths; only logical names go through the resolver.
 - On WSL: `directory` is a `/mnt/c/...` path — use as-is.
-- Try `obsidian` CLI first (if installed and Obsidian is open):
-  ```
-  obsidian vault="<vault-name-from-dir>" read path="<note-path>"
-  ```
-- Fall back to reading the file directly at `{directory}/{note-path}`.
-
-## Vault name
-
-Derive vault name from `directory`:
-- Strip the Obsidian vault root from the path.
-- E.g. `/mnt/c/Users/Juni Yadi/Documents/Obsidian/PFNApp` → vault name `PFNApp`.
-- Use this name when calling `obsidian` CLI commands.
+- The `obsidian` desktop CLI is optional and only works when Obsidian is installed and running; on headless VPS hosts, skip it and use the adapter commands above.
 
 ## Entry flow
 
-After reading the entry note, follow **that note's** Agent section — do not hardcode a sequence (e.g. `[[SESSION-BRIEFING]]` → `[[index]]` → etc.). Derive the flow from the note content.
+After reading the entry note, follow **that note's** Agent section — do not hardcode a sequence. Derive the flow from the note content.
