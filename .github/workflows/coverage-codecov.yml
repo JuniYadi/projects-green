@@ -58,11 +58,13 @@ jobs:
         run: bun run test:coverage:changed --timeout=30000
 
       - name: Verify LCOV output
+        if: ${{ hashFiles('coverage/lcov.info') != '' }}
         run: |
           test -s coverage/lcov.info
           ls -lh coverage/lcov.info
 
       - name: Upload changed logic coverage to Codecov
+        if: ${{ hashFiles('coverage/lcov.info') != '' }}
         uses: codecov/codecov-action@v7
         with:
           files: coverage/lcov.info

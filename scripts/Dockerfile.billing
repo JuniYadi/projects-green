@@ -8,7 +8,7 @@ WORKDIR /app
 # ── Install dependencies ────────────────────────────────────────────────────
 FROM base AS deps
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+RUN bun install --frozen-lockfile --ignore-scripts
 
 # ── Build ───────────────────────────────────────────────────────────────────
 FROM base AS runner
@@ -18,7 +18,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Prisma generate
-RUN bun run prisma:generate
+ENV DATABASE_URL=postgresql://localhost:5432/dummy
+RUN bun prisma generate
 
 # Run billing cron worker
 CMD ["bun", "run", "scripts/billing-cron.ts"]
