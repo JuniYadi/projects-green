@@ -192,15 +192,19 @@ function isCurrent(row: PricingWithRelations, now: Date) {
   return row.effectiveFrom <= now && (!row.effectiveTo || row.effectiveTo > now)
 }
 
+function isMatrixPeriod(value: string | null): value is MatrixPeriod {
+  return value !== null && periods.includes(value as MatrixPeriod)
+}
+
 function selectMatrixRows(rows: PricingWithRelations[], now: Date) {
   const groups = new Map<string, PricingWithRelations[]>()
   for (const row of rows) {
     if (
-      !row.billingPeriod ||
+      !isMatrixPeriod(row.billingPeriod) ||
       (row.effectiveFrom < now && row.effectiveTo && row.effectiveTo <= now)
     )
       continue
-    const key = matrixKey(row.currency, row.billingPeriod as MatrixPeriod)
+    const key = matrixKey(row.currency, row.billingPeriod)
     const group = groups.get(key) ?? []
     group.push(row)
     groups.set(key, group)
@@ -354,13 +358,13 @@ export const createAdminPricingRoutes = (deps: AdminPricingRouteDeps = {}) => {
               }),
             ])
             const rows = activeRows as PricingWithRelations[]
+            const unsupportedRows = rows.filter(
+              (row) => !isMatrixPeriod(row.billingPeriod)
+            )
             const grouped = new Map<string, PricingWithRelations[]>()
             for (const row of rows) {
-              if (!row.billingPeriod) continue
-              const key = matrixKey(
-                row.currency,
-                row.billingPeriod as MatrixPeriod
-              )
+              if (!isMatrixPeriod(row.billingPeriod)) continue
+              const key = matrixKey(row.currency, row.billingPeriod)
               grouped.set(key, [...(grouped.get(key) ?? []), row])
             }
             const desired = new Map<
@@ -458,6 +462,7 @@ export const createAdminPricingRoutes = (deps: AdminPricingRouteDeps = {}) => {
             for (const [key, existing] of grouped) {
               if (!desired.has(key)) await deactivate(existing)
             }
+            await deactivate(unsupportedRows)
             const refreshed = await tx.servicePricing.findMany({
               where: {
                 planId: plan.id,
@@ -471,7 +476,9 @@ export const createAdminPricingRoutes = (deps: AdminPricingRouteDeps = {}) => {
               plan,
               refreshed as PricingWithRelations[],
               effectiveFrom,
-              false
+              (refreshed as PricingWithRelations[]).some(
+                (row) => row.region.code !== REGION_CODES.GLOBAL
+              )
             )
           })
           return { ok: true as const, data }

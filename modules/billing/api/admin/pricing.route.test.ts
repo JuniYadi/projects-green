@@ -625,22 +625,31 @@ describe("admin pricing routes", () => {
       .mockResolvedValueOnce(plan)
       .mockResolvedValueOnce(plan)
     db.serviceRegion.findUnique.mockResolvedValue(globalRegion)
-    db.servicePricing.findMany.mockResolvedValueOnce([]).mockResolvedValue([
-      ...["IDR:MONTHLY", "IDR:QUARTERLY", "USD:MONTHLY", "USD:QUARTERLY"].map(
-        (key) => {
-          const [currency, billingPeriod] = key.split(":")
-          return {
-            ...pricing,
-            id: key,
-            regionId: globalRegion.id,
-            billingPeriod,
-            currency,
-            servicePlan: plan,
-            region: globalRegion,
+    const unsupported = {
+      ...pricing,
+      id: "unsupported",
+      billingPeriod: "CUSTOM",
+      servicePlan: plan,
+      region: globalRegion,
+    }
+    db.servicePricing.findMany
+      .mockResolvedValueOnce([unsupported])
+      .mockResolvedValue([
+        ...["IDR:MONTHLY", "IDR:QUARTERLY", "USD:MONTHLY", "USD:QUARTERLY"].map(
+          (key) => {
+            const [currency, billingPeriod] = key.split(":")
+            return {
+              ...pricing,
+              id: key,
+              regionId: globalRegion.id,
+              billingPeriod,
+              currency,
+              servicePlan: plan,
+              region: globalRegion,
+            }
           }
-        }
-      ),
-    ])
+        ),
+      ])
     db.servicePricing.create.mockImplementation(
       async (args: { data: Record<string, unknown> }) => ({
         ...pricing,
@@ -672,6 +681,9 @@ describe("admin pricing routes", () => {
       billingMode: "PACKAGE",
       chargeUnit: "SUBSCRIPTION",
     })
+    expect(db.servicePricing.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: { in: ["unsupported"] } } })
+    )
 
     const read = await app().handle(
       new Request("http://localhost/admin/pricing/matrix/plan-1")
@@ -694,5 +706,29 @@ describe("admin pricing routes", () => {
     expect(response.status).toBe(422)
     expect(db.$transaction).not.toHaveBeenCalled()
     expect(db.servicePricing.create).not.toHaveBeenCalled()
+  })
+  it("omits unsupported billing periods from the matrix", async () => {
+    db.servicePlan.findUnique.mockResolvedValueOnce({
+      id: "plan-1",
+      code: "STANDARD",
+      name: "Standard VPN",
+      package: { code: "VPN" },
+    })
+    db.serviceRegion.findUnique.mockResolvedValueOnce({
+      id: "global-1",
+      code: "GLOBAL",
+    })
+    db.servicePricing.findMany.mockResolvedValueOnce([
+      {
+        ...pricing,
+        billingPeriod: "CUSTOM",
+        region: { id: "global-1", code: "GLOBAL" },
+      },
+    ])
+    const response = await app().handle(
+      new Request("http://localhost/admin/pricing/matrix/plan-1")
+    )
+    expect(response.status).toBe(200)
+    expect((await response.json()).data.pricing).toEqual([])
   })
 })
