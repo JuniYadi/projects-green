@@ -5,15 +5,25 @@
       "type": "stdio",
       "command": "bunx",
       "args": [
-        "-y", "chrome-devtools-mcp@latest", "--no-usage-statistics", "--browser-url", "http://localhost:9222"
-      ]
+        "-y",
+        "chrome-devtools-mcp@latest",
+        "--no-usage-statistics",
+        "--browser-url",
+        "http://localhost:9222"
+      ],
+      "enabled": false
     },
     "admin-browser": {
       "type": "stdio",
       "command": "bunx",
       "args": [
-        "-y", "chrome-devtools-mcp@latest", "--no-usage-statistics", "--browser-url", "http://localhost:9223"
-      ]
+        "-y",
+        "chrome-devtools-mcp@latest",
+        "--no-usage-statistics",
+        "--browser-url",
+        "http://localhost:9223"
+      ],
+      "enabled": false
     }
   }
 }
