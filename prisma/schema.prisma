@@ -260,12 +260,14 @@ model ApplicationStack {
   deployments          ApplicationDeployment[]
   repositoryConnection GithubRepositoryConnection? @relation(fields: [repositoryConnectionId], references: [id], onDelete: SetNull)
   cluster              AppHostingCluster?           @relation(fields: [clusterId], references: [id], onDelete: SetNull)
+  domains              ApplicationDomain[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
   @@index([repositoryConnectionId])
   @@index([status])
   @@index([clusterId])
+
 }
 
 model ApplicationDeployment {
@@ -2495,9 +2497,11 @@ model AppHostingCluster {
   createdAt    DateTime                     @default(now())
   updatedAt    DateTime                     @updatedAt
 
-  integrations AppHostingClusterIntegration[]
-  stacks       ApplicationStack[]
+  integrations              AppHostingClusterIntegration[]
+  stacks                    ApplicationStack[]
   managedServiceCredentials AppManagedServiceCredential[]
+  endpoint                  AppHostingClusterEndpoint?
+  domains                   ApplicationDomain[]
 
   @@index([status])
   @@index([isDefault])
@@ -2555,4 +2559,107 @@ model AppManagedServiceCredential {
   @@index([clusterId])
   @@index([serviceType])
   @@index([isActive])
+}
+enum ApplicationDomainKind {
+  MANAGED
+  CUSTOM
+}
+
+enum ApplicationDomainDnsStatus {
+  PENDING
+  VERIFIED
+  FAILED
+}
+
+enum ApplicationDomainCertificateSource {
+  MANAGED
+  UPLOADED
+}
+
+enum ApplicationDomainCertificateStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  INVALID
+  REVOKED
+}
+
+enum ApplicationDomainAllowlistMode {
+  OPEN
+  ALLOWLIST_ONLY
+}
+model AppHostingClusterEndpoint {
+  id                String   @id @default(cuid())
+  clusterId         String   @unique
+  managedBaseDomain String
+  cnameTarget       String
+  ipv4Addresses     String[]
+  ipv6Addresses     String[]
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  cluster AppHostingCluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+
+  @@index([isActive])
+}
+
+model ApplicationDomain {
+  id                  String                         @id @default(cuid())
+  stackId             String
+  clusterId           String
+  hostname            String                         @unique
+  kind                ApplicationDomainKind
+  isPrimary           Boolean                        @default(false)
+  dnsStatus           ApplicationDomainDnsStatus     @default(PENDING)
+  expectedCnameTarget String
+  verifiedAt          DateTime?
+  allowlistMode       ApplicationDomainAllowlistMode @default(OPEN)
+  createdAt           DateTime                       @default(now())
+  updatedAt           DateTime                       @updatedAt
+
+  stack            ApplicationStack                @relation(fields: [stackId], references: [id], onDelete: Cascade)
+  cluster          AppHostingCluster               @relation(fields: [clusterId], references: [id], onDelete: Restrict)
+  certificate      ApplicationDomainCertificate?
+  allowlistEntries ApplicationDomainAllowlistEntry[]
+
+  @@index([stackId])
+  @@index([clusterId])
+  @@index([dnsStatus])
+  @@index([stackId, isPrimary])
+}
+
+model ApplicationDomainCertificate {
+  id                   String                                  @id @default(cuid())
+  domainId             String                                  @unique
+  source               ApplicationDomainCertificateSource
+  status               ApplicationDomainCertificateStatus      @default(PENDING)
+  expiresAt            DateTime?
+  fingerprint          String?
+  validationError      String?
+  tlsSecretName        String?
+  certificateCiphertext String?
+  privateKeyCiphertext String?
+  chainCiphertext      String?
+  keyVersion           Int                                     @default(1)
+  createdAt            DateTime                                @default(now())
+  updatedAt            DateTime                                @updatedAt
+
+  domain ApplicationDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+}
+
+model ApplicationDomainAllowlistEntry {
+  id         String   @id @default(cuid())
+  domainId   String
+  cidr       String
+  description String?
+  enabled    Boolean  @default(true)
+  position   Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  domain ApplicationDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+
+  @@unique([domainId, cidr])
+  @@index([domainId, enabled, position])
 }

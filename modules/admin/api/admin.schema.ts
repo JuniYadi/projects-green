@@ -121,3 +121,35 @@ export type UpdateClusterStatusBody = z.infer<
 export type UpdateIntegrationStatusBody = z.infer<
   typeof updateIntegrationStatusBodySchema
 >
+
+const endpointHostnameSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(253)
+  .regex(
+    /^(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$/,
+    "Enter a valid hostname."
+  )
+  .transform((value) => value.replace(/\.$/, "").toLowerCase())
+
+const endpointIpSchema = z
+  .string()
+  .trim()
+  .refine(
+    (value) =>
+      z.ipv4().safeParse(value).success || z.ipv6().safeParse(value).success,
+    "Enter a valid IPv4 or IPv6 address."
+  )
+
+export const upsertClusterEndpointBodySchema = z.object({
+  managedBaseDomain: endpointHostnameSchema,
+  cnameTarget: endpointHostnameSchema,
+  ipv4Addresses: z.array(endpointIpSchema).default([]),
+  ipv6Addresses: z.array(endpointIpSchema).default([]),
+  isActive: z.boolean().default(true),
+})
+
+export type UpsertClusterEndpointBody = z.infer<
+  typeof upsertClusterEndpointBodySchema
+>

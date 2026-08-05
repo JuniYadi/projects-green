@@ -43,11 +43,27 @@ const mockTx = {
   },
 }
 
+type MockEdgeDomain = {
+  id: string
+  hostname: string
+  allowlistMode: "OPEN" | "ALLOWLIST_ONLY"
+  certificate: {
+    source: "MANAGED" | "UPLOADED"
+    status: string
+    tlsSecretName: string | null
+  } | null
+  allowlistEntries: Array<{ cidr: string }>
+}
 const mockPrisma = {
   $transaction: mock(async (fn: (tx: typeof mockTx) => unknown) => fn(mockTx)),
   applicationStack: {
     findUnique: mock(async () => defaultStack),
     findFirst: mock(async () => defaultStack),
+  },
+  applicationDomain: {
+    findFirst: mock(
+      async (..._args: unknown[]): Promise<MockEdgeDomain | null> => null
+    ),
   },
   applicationDeployment: {
     findFirst: mock(async () => defaultDeployment),
@@ -124,6 +140,8 @@ describe("handleJenkinsImageReady", () => {
     txUpsert.mockClear()
     txFindFirst.mockClear()
     txQueryRaw.mockClear()
+    mockPrisma.applicationDomain.findFirst.mockReset()
+    mockPrisma.applicationDomain.findFirst.mockResolvedValue(null)
     mockPrisma.applicationStack.findUnique.mockReset()
     mockPrisma.applicationStack.findUnique.mockResolvedValue(defaultStack)
     mockPrisma.applicationDeployment.findFirst.mockReset()
@@ -190,6 +208,28 @@ describe("handleJenkinsImageReady", () => {
     expect(files[0]?.path).toBe("services-yaml/app-metacard-prod/value.yml")
     expect(files[0]?.content).toContain("tag: '187'")
     expect(files[0]?.content).toContain("replicaCount: 1")
+  })
+  it("uses the persisted uploaded certificate secret name in Helm values", async () => {
+    mockPrisma.applicationDomain.findFirst.mockResolvedValueOnce({
+      id: "domain-1",
+      hostname: "metacard.co.id",
+      allowlistMode: "OPEN" as const,
+      certificate: {
+        source: "UPLOADED" as const,
+        status: "ACTIVE" as const,
+        tlsSecretName: "persisted-tls",
+      },
+      allowlistEntries: [],
+    })
+    await handleJenkinsImageReady({
+      slug: "app-metacard-prod",
+      deploymentId: "deploy-1",
+      imageTag: "188",
+    })
+    const files = (fakeCommit.mock.calls[0] as any)[2] as Array<{
+      content: string
+    }>
+    expect(files[0]?.content).toContain("tlsSecretName: persisted-tls")
   })
 
   it("returns idempotent when same imageTag already received and manifest pushed", async () => {

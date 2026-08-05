@@ -27,9 +27,10 @@ import type {
   StackSummaryDTO,
 } from "@/modules/deploy/deploy-monitor.dto"
 import type {
-  CustomDomain,
+  DomainAllowlistMode,
   EnvVar,
   K8sEnvironmentId,
+  TenantDomainDTO,
   VolumeMount,
 } from "@/modules/deploy/operate.types"
 
@@ -44,6 +45,58 @@ type SettingsTab =
   | "mounts"
   | "build"
   | "danger"
+
+type DomainApiResponse<T = unknown> = {
+  ok?: boolean
+  data?: T
+  message?: string
+}
+
+type DomainApiClient = {
+  get: () => Promise<{ data?: DomainApiResponse<unknown> }>
+  post: (options?: unknown) => Promise<{ data?: DomainApiResponse<unknown> }>
+  delete: (options?: unknown) => Promise<{ data?: DomainApiResponse<unknown> }>
+  put: (options?: unknown) => Promise<{ data?: DomainApiResponse<unknown> }>
+}
+
+type DomainRouteClient = DomainApiClient & {
+  [id: string]: DomainApiClient | DomainRouteClient
+  verify: DomainApiClient
+  certificate: DomainApiClient
+  allowlist: DomainApiClient & {
+    entries: DomainApiClient & { [id: string]: DomainApiClient }
+  }
+}
+
+type AppDomainClient = DomainApiClient & {
+  domains: DomainRouteClient
+}
+
+const getDomainClient = (slug: string): AppDomainClient =>
+  (eden.api.deploy.apps as unknown as Record<string, AppDomainClient>)[slug]
+
+const readDomainRecords = (
+  payload: DomainApiResponse<unknown>
+): TenantDomainDTO[] => {
+  const data = payload.data
+  if (Array.isArray(data)) return data as TenantDomainDTO[]
+  if (
+    data &&
+    typeof data === "object" &&
+    "domains" in data &&
+    Array.isArray(data.domains)
+  ) {
+    return data.domains as TenantDomainDTO[]
+  }
+  return []
+}
+
+const unwrapDomainMutation = (
+  payload: DomainApiResponse<unknown> | undefined
+) => {
+  if (!payload?.ok)
+    throw new Error(payload?.message ?? "Unable to update domain settings.")
+}
 
 const TAB_LABELS: Record<SettingsTab, string> = {
   general: "General",
@@ -115,15 +168,11 @@ export default function SettingsPage() {
     resolveTab(searchParams.get(TAB_QUERY_KEY))
   )
 
-  // Tab state records for domain/env/mount/scaling
+  // Tab state records for environment/mount/scaling
   const [selectedEnv] = useState<K8sEnvironmentId>("prod")
-  const [domains, setDomains] = useState<
-    Record<K8sEnvironmentId, CustomDomain[]>
-  >({
-    dev: [],
-    staging: [],
-    prod: [],
-  })
+  const [apiDomains, setApiDomains] = useState<TenantDomainDTO[]>([])
+  const [domainsLoading, setDomainsLoading] = useState(false)
+  const [domainsError, setDomainsError] = useState<string | null>(null)
   const [envVars, setEnvVars] = useState<Record<K8sEnvironmentId, EnvVar[]>>({
     dev: [],
     staging: [],
@@ -182,31 +231,46 @@ export default function SettingsPage() {
     if (currentApp === selectedSlug && currentTab === activeTab) return
 
     const next = new URLSearchParams(searchParams.toString())
-    if (selectedSlug) {
-      next.set(APP_QUERY_KEY, selectedSlug)
-    } else {
-      next.delete(APP_QUERY_KEY)
-    }
-    if (activeTab !== "general") {
-      next.set(TAB_QUERY_KEY, activeTab)
-    } else {
-      next.delete(TAB_QUERY_KEY)
-    }
+    if (selectedSlug) next.set(APP_QUERY_KEY, selectedSlug)
+    else next.delete(APP_QUERY_KEY)
+    if (activeTab !== "general") next.set(TAB_QUERY_KEY, activeTab)
+    else next.delete(TAB_QUERY_KEY)
     router.replace(`${pathname}?${next.toString()}`, { scroll: false })
   }, [selectedSlug, activeTab, pathname, router, searchParams])
 
+  const refreshDomains = async (slug: string) => {
+    setDomainsLoading(true)
+    setDomainsError(null)
+    try {
+      const { data: payload } = await getDomainClient(slug).domains.get()
+      if (!payload?.ok)
+        throw new Error(payload?.message ?? "Unable to load domains.")
+      setApiDomains(readDomainRecords(payload))
+    } catch (cause) {
+      setApiDomains([])
+      const message =
+        cause instanceof Error ? cause.message : "Unable to load domains."
+      setDomainsError(message)
+      throw cause
+    } finally {
+      setDomainsLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (!selectedSlug) {
-      queueMicrotask(() => setOverview(null))
+      queueMicrotask(() => {
+        setOverview(null)
+        setApiDomains([])
+        setDomainsError(null)
+      })
       return
     }
 
     let cancelled = false
-
     const run = async () => {
       setOverviewLoading(true)
       setOverviewError(null)
-
       try {
         const { data: payload } = await eden.api.deploy.apps[selectedSlug].get()
         if (!payload || !payload.ok || !payload.data) {
@@ -214,9 +278,13 @@ export default function SettingsPage() {
             payload?.message ?? "Unable to load application state."
           )
         }
-
         if (cancelled) return
         setOverview(payload.data)
+        try {
+          await refreshDomains(selectedSlug)
+        } catch {
+          // The domains tab renders its own retryable error while overview remains usable.
+        }
       } catch (cause) {
         if (cancelled) return
         setOverview(null)
@@ -229,7 +297,6 @@ export default function SettingsPage() {
         if (!cancelled) setOverviewLoading(false)
       }
     }
-
     void run()
     return () => {
       cancelled = true
@@ -240,6 +307,98 @@ export default function SettingsPage() {
     setAppsRetry((v) => v + 1)
   }
 
+  const refreshAfterDomainMutation = async (
+    action: () => Promise<{ data?: DomainApiResponse<unknown> }>
+  ) => {
+    if (!selectedSlug) throw new Error("Select an application first.")
+    const { data: payload } = await action()
+    unwrapDomainMutation(payload)
+    await refreshDomains(selectedSlug)
+  }
+
+  const domainApi = selectedSlug
+    ? {
+        onAddDomain: (hostname: string) =>
+          refreshAfterDomainMutation(() =>
+            getDomainClient(selectedSlug).domains.post({
+              hostname,
+              kind: "CUSTOM",
+            })
+          ),
+        onDeleteDomain: (domainId: string) =>
+          refreshAfterDomainMutation(() =>
+            (
+              getDomainClient(selectedSlug).domains as unknown as Record<
+                string,
+                DomainRouteClient
+              >
+            )[domainId].delete()
+          ),
+        onVerifyDomain: (domainId: string) =>
+          refreshAfterDomainMutation(() =>
+            (
+              getDomainClient(selectedSlug).domains as unknown as Record<
+                string,
+                DomainRouteClient
+              >
+            )[domainId].verify.post({})
+          ),
+        onUploadCertificate: (
+          domainId: string,
+          input: {
+            certificatePem: string
+            privateKeyPem: string
+            chainPem: string
+          }
+        ) =>
+          refreshAfterDomainMutation(() =>
+            (
+              getDomainClient(selectedSlug).domains as unknown as Record<
+                string,
+                DomainRouteClient
+              >
+            )[domainId].certificate.put({
+              certificate: input.certificatePem,
+              privateKey: input.privateKeyPem,
+              chain: input.chainPem || undefined,
+            })
+          ),
+        onUpdateAllowlist: (domainId: string, mode: DomainAllowlistMode) =>
+          refreshAfterDomainMutation(() =>
+            (
+              getDomainClient(selectedSlug).domains as unknown as Record<
+                string,
+                DomainRouteClient
+              >
+            )[domainId].allowlist.put({ mode })
+          ),
+        onAddAllowlistEntry: (
+          domainId: string,
+          input: { cidr: string; label?: string }
+        ) =>
+          refreshAfterDomainMutation(() =>
+            (
+              getDomainClient(selectedSlug).domains as unknown as Record<
+                string,
+                DomainRouteClient
+              >
+            )[domainId].allowlist.entries.post({
+              cidr: input.cidr,
+              description: input.label,
+            })
+          ),
+        onDeleteAllowlistEntry: (domainId: string, entryId: string) =>
+          refreshAfterDomainMutation(() =>
+            (
+              getDomainClient(selectedSlug).domains as unknown as Record<
+                string,
+                DomainRouteClient
+              >
+            )[domainId].allowlist.entries[entryId].delete()
+          ),
+        onRetry: () => refreshDomains(selectedSlug),
+      }
+    : null
   const renderTabContent = () => {
     if (!overview) return null
 
@@ -254,9 +413,11 @@ export default function SettingsPage() {
       case "domains":
         return (
           <TabDomains
-            selectedEnv={selectedEnv}
-            domains={domains}
-            setDomains={setDomains}
+            stackSlug={overview.stack.slug}
+            apiDomains={apiDomains}
+            api={domainApi ?? undefined}
+            domainsLoading={domainsLoading}
+            domainsError={domainsError}
           />
         )
       case "env":

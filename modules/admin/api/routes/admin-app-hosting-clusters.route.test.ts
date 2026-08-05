@@ -11,6 +11,7 @@ import type {
   AdminActorContext,
   AdminApiError,
 } from "@/modules/admin/api/admin.guards"
+import type { AppHostingClusterEndpointDTO } from "@/modules/deploy/app-hosting-edge.types"
 import type {
   ClusterAdminDTO,
   ClusterIntegrationAdminDTO,
@@ -97,6 +98,32 @@ const mockUpdateClusterIntegrationStatus = mock(
     updatedAt: "2026-01-01T00:00:00.000Z",
   })
 )
+const mockGetClusterEndpoint = mock(
+  async (): Promise<AppHostingClusterEndpointDTO> => ({
+    id: "endpoint_1",
+    clusterId: "cl_1",
+    managedBaseDomain: "apps.example.com",
+    cnameTarget: "edge.example.net",
+    ipv4Addresses: ["203.0.113.10"],
+    ipv6Addresses: ["2001:db8::10"],
+    isActive: true,
+  })
+)
+
+const mockUpsertClusterEndpoint = mock(
+  async (): Promise<AppHostingClusterEndpointDTO> => ({
+    id: "endpoint_1",
+    clusterId: "cl_1",
+    managedBaseDomain: "apps.example.com",
+    cnameTarget: "edge.example.net",
+    ipv4Addresses: ["203.0.113.10"],
+    ipv6Addresses: ["2001:db8::10"],
+    isActive: true,
+  })
+)
+
+class MockEdgeNotFoundError extends Error {}
+class MockEdgeValidationError extends Error {}
 class MockClusterIntegrationValidationError extends Error {
   issues: never[] = []
 }
@@ -110,6 +137,13 @@ mock.module("@/modules/deploy/cluster-management.service", () => ({
   upsertClusterIntegration: mockUpsertClusterIntegration,
   updateClusterIntegrationStatus: mockUpdateClusterIntegrationStatus,
   ClusterIntegrationValidationError: MockClusterIntegrationValidationError,
+}))
+
+mock.module("@/modules/deploy/app-hosting-edge.service", () => ({
+  getClusterEndpoint: mockGetClusterEndpoint,
+  upsertClusterEndpoint: mockUpsertClusterEndpoint,
+  EdgeNotFoundError: MockEdgeNotFoundError,
+  EdgeValidationError: MockEdgeValidationError,
 }))
 
 // ── Guard mock ───────────────────────────────────────
@@ -141,6 +175,16 @@ const BASE = "http://localhost/admin/app-hosting/clusters"
 describe("Admin App Hosting Clusters Routes", () => {
   beforeEach(() => {
     mock.clearAllMocks()
+    mockRequireSuperAdmin.mockImplementation(async (set: unknown) => {
+      if (set && typeof set === "object" && "status" in set) {
+        Object.assign(set, { status: 401 })
+      }
+      return {
+        ok: false as const,
+        error: "UNAUTHORIZED",
+        message: "You must be signed in to perform this action.",
+      }
+    })
   })
 
   // ── Auth guards ────────────────────────────────
@@ -707,6 +751,242 @@ describe("Admin App Hosting Clusters Routes", () => {
       expect(body.data.isActive).toBe(false)
       // Secret-safe
       expect(body.data).not.toHaveProperty("secretCiphertext")
+    })
+  })
+  // ── GET/PUT /admin/app-hosting/clusters/:id/endpoint
+
+  describe("cluster edge endpoint", () => {
+    it("returns 401 when endpoint access is unauthenticated", async () => {
+      const app = new Elysia().use(
+        createAdminAppHostingClusterRoutes({
+          requireSuperAdmin: async (set) => {
+            if (set && typeof set === "object" && "status" in set) {
+              Object.assign(set, { status: 401 })
+            }
+            return {
+              ok: false as const,
+              error: "UNAUTHORIZED",
+              message: "You must be signed in to perform this action.",
+            }
+          },
+        })
+      )
+
+      const res = await app.handle(new Request(`${BASE}/cl_1/endpoint`, {}))
+
+      expect(res.status).toBe(401)
+      const body = await res.json()
+      expect(body).toEqual({
+        ok: false,
+        error: "UNAUTHORIZED",
+        message: "You must be signed in to perform this action.",
+      })
+    })
+
+    it("returns 403 when endpoint access is not super admin", async () => {
+      const forbiddenGuard = async (set: { status?: number | string }) => {
+        if (set && typeof set === "object" && "status" in set) {
+          Object.assign(set, { status: 403 })
+        }
+        return {
+          ok: false as const,
+          error: "FORBIDDEN",
+          message: "This action requires super admin access.",
+        }
+      }
+
+      const app = new Elysia().use(
+        createAdminAppHostingClusterRoutes({
+          requireSuperAdmin: forbiddenGuard,
+        })
+      )
+
+      const res = await app.handle(new Request(`${BASE}/cl_1/endpoint`, {}))
+
+      expect(res.status).toBe(403)
+      const body = await res.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns the cluster endpoint without secrets", async () => {
+      const successGuard = async () => ({
+        ok: true as const,
+        userId: "u1",
+        platformRole: "super_admin" as const,
+      })
+
+      const app = new Elysia().use(
+        createAdminAppHostingClusterRoutes({ requireSuperAdmin: successGuard })
+      )
+
+      const res = await app.handle(new Request(`${BASE}/cl_1/endpoint`, {}))
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body).toEqual({
+        ok: true,
+        data: {
+          id: "endpoint_1",
+          clusterId: "cl_1",
+          managedBaseDomain: "apps.example.com",
+          cnameTarget: "edge.example.net",
+          ipv4Addresses: ["203.0.113.10"],
+          ipv6Addresses: ["2001:db8::10"],
+          isActive: true,
+        },
+      })
+      expect(body.data).not.toHaveProperty("secretCiphertext")
+      expect(mockGetClusterEndpoint).toHaveBeenCalledWith("cl_1")
+    })
+
+    it("maps a missing cluster endpoint to 404", async () => {
+      mockRequireSuperAdmin.mockImplementationOnce(async () => ({
+        ok: true as const,
+        userId: "u1",
+        platformRole: "super_admin",
+      }))
+      mockGetClusterEndpoint.mockRejectedValueOnce(
+        new MockEdgeNotFoundError("cluster edge endpoint not found")
+      )
+
+      const app = new Elysia().use(createAdminAppHostingClusterRoutes())
+
+      const res = await app.handle(
+        new Request(`${BASE}/cl_missing/endpoint`, {})
+      )
+
+      expect(res.status).toBe(404)
+      const body = await res.json()
+      expect(body).toEqual({
+        ok: false,
+        error: "NOT_FOUND",
+        message: "cluster edge endpoint not found",
+      })
+    })
+
+    it("upserts a cluster endpoint", async () => {
+      mockRequireSuperAdmin.mockImplementationOnce(async () => ({
+        ok: true as const,
+        userId: "u1",
+        platformRole: "super_admin",
+      }))
+      mockUpsertClusterEndpoint.mockResolvedValueOnce({
+        id: "endpoint_1",
+        clusterId: "cl_1",
+        managedBaseDomain: "apps.example.org",
+        cnameTarget: "edge.example.net",
+        ipv4Addresses: ["203.0.113.20"],
+        ipv6Addresses: [],
+        isActive: false,
+      })
+
+      const input = {
+        managedBaseDomain: "apps.example.org",
+        cnameTarget: "edge.example.net",
+        ipv4Addresses: ["203.0.113.20"],
+        ipv6Addresses: [],
+        isActive: false,
+      }
+      const app = new Elysia().use(createAdminAppHostingClusterRoutes())
+
+      const res = await app.handle(
+        new Request(`${BASE}/cl_1/endpoint`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.managedBaseDomain).toBe("apps.example.org")
+      expect(body.data.isActive).toBe(false)
+      expect(body.data).not.toHaveProperty("secretCiphertext")
+      expect(mockUpsertClusterEndpoint).toHaveBeenCalledWith("cl_1", input)
+    })
+
+    it("returns 422 for an invalid endpoint body", async () => {
+      mockRequireSuperAdmin.mockImplementationOnce(async () => ({
+        ok: true as const,
+        userId: "u1",
+        platformRole: "super_admin",
+      }))
+
+      const app = new Elysia().use(createAdminAppHostingClusterRoutes())
+
+      const res = await app.handle(
+        new Request(`${BASE}/cl_1/endpoint`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ managedBaseDomain: "not-a-hostname" }),
+        })
+      )
+
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body).toBeDefined()
+    })
+
+    it("maps edge validation errors to 422", async () => {
+      mockRequireSuperAdmin.mockImplementationOnce(async () => ({
+        ok: true as const,
+        userId: "u1",
+        platformRole: "super_admin",
+      }))
+      mockUpsertClusterEndpoint.mockRejectedValueOnce(
+        new MockEdgeValidationError(
+          "ipv4Addresses must contain only IPv4 addresses"
+        )
+      )
+
+      const app = new Elysia().use(createAdminAppHostingClusterRoutes())
+
+      const res = await app.handle(
+        new Request(`${BASE}/cl_1/endpoint`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            managedBaseDomain: "apps.example.com",
+            cnameTarget: "edge.example.net",
+            ipv4Addresses: ["203.0.113.10"],
+            ipv6Addresses: [],
+            isActive: true,
+          }),
+        })
+      )
+
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("VALIDATION_ERROR")
+      expect(body.message).toBe(
+        "ipv4Addresses must contain only IPv4 addresses"
+      )
+    })
+
+    it("maps unexpected endpoint errors to 500", async () => {
+      mockRequireSuperAdmin.mockImplementationOnce(async () => ({
+        ok: true as const,
+        userId: "u1",
+        platformRole: "super_admin",
+      }))
+      mockGetClusterEndpoint.mockRejectedValueOnce(
+        new Error("database unavailable")
+      )
+
+      const app = new Elysia().use(createAdminAppHostingClusterRoutes())
+
+      const res = await app.handle(new Request(`${BASE}/cl_1/endpoint`, {}))
+
+      expect(res.status).toBe(500)
+      const body = await res.json()
+      expect(body).toEqual({
+        ok: false,
+        error: "INTERNAL_ERROR",
+        message: "An unexpected error occurred.",
+      })
     })
   })
 })

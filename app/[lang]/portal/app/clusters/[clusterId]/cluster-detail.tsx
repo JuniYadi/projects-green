@@ -53,6 +53,27 @@ type ClusterIntegration = {
   updatedAt: string
 }
 
+type ClusterEndpointDTO = {
+  managedBaseDomain: string
+  cnameTarget: string
+  ipv4Addresses: string[]
+  ipv6Addresses: string[]
+  isActive: boolean
+}
+function isClusterEndpointDTO(value: unknown): value is ClusterEndpointDTO {
+  if (!value || typeof value !== "object") return false
+  const candidate = value as Record<string, unknown>
+  return (
+    typeof candidate.managedBaseDomain === "string" &&
+    typeof candidate.cnameTarget === "string" &&
+    Array.isArray(candidate.ipv4Addresses) &&
+    candidate.ipv4Addresses.every((address) => typeof address === "string") &&
+    Array.isArray(candidate.ipv6Addresses) &&
+    candidate.ipv6Addresses.every((address) => typeof address === "string") &&
+    typeof candidate.isActive === "boolean"
+  )
+}
+
 type ClusterAdminDTO = {
   id: string
   code: string
@@ -152,6 +173,21 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
   const [integrationSaving, setIntegrationSaving] = useState(false)
   const [integrationError, setIntegrationError] = useState<string | null>(null)
 
+  const [endpoint, setEndpoint] = useState<ClusterEndpointDTO>({
+    managedBaseDomain: "",
+    cnameTarget: "",
+    ipv4Addresses: [],
+    ipv6Addresses: [],
+    isActive: false,
+  })
+  const [endpointLoading, setEndpointLoading] = useState(true)
+  const [endpointError, setEndpointError] = useState<string | null>(null)
+  const [endpointFieldErrors, setEndpointFieldErrors] = useState<FieldErrors>(
+    {}
+  )
+  const [endpointSaving, setEndpointSaving] = useState(false)
+  const [endpointRetry, setEndpointRetry] = useState(0)
+
   const [statusSaving, setStatusSaving] = useState(false)
   const [clusterName, setClusterName] = useState("")
   const [clusterRegion, setClusterRegion] = useState("")
@@ -204,6 +240,46 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       cancelled = true
     }
   }, [clusterId, retry])
+  useEffect(() => {
+    let cancelled = false
+
+    const run = async () => {
+      setEndpointLoading(true)
+      setEndpointError(null)
+
+      try {
+        const { data: payload } =
+          await eden.api.admin["app-hosting"].clusters[clusterId].endpoint.get()
+        if (!payload || !payload.ok || !isClusterEndpointDTO(payload.data)) {
+          const message =
+            payload &&
+            typeof payload === "object" &&
+            "message" in payload &&
+            typeof payload.message === "string"
+              ? payload.message
+              : "Unable to load edge endpoint."
+          throw new Error(message)
+        }
+
+        if (cancelled) return
+        setEndpoint(payload.data)
+      } catch (cause) {
+        if (cancelled) return
+        setEndpointError(
+          cause instanceof Error
+            ? cause.message
+            : "Unable to load edge endpoint."
+        )
+      } finally {
+        if (!cancelled) setEndpointLoading(false)
+      }
+    }
+
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [clusterId, endpointRetry])
 
   const handleStatusChange = async (
     newStatus: string,
@@ -274,7 +350,70 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       setMetadataSaving(false)
     }
   }
+  const handleEndpointSave = async (
+    event: React.FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault()
+    setEndpointSaving(true)
+    setEndpointError(null)
+    setEndpointFieldErrors({})
 
+    const splitAddresses = (value: string) =>
+      value
+        .split(/[\n,]/)
+        .map((address) => address.trim())
+        .filter(Boolean)
+    const formData = new FormData(event.currentTarget)
+    const formValue = (name: string, fallback: string) =>
+      String(formData.get(name) ?? fallback)
+
+    try {
+      const { data: response } = await eden.api.admin["app-hosting"].clusters[
+        clusterId
+      ].endpoint.put({
+        managedBaseDomain: formValue(
+          "managedBaseDomain",
+          endpoint.managedBaseDomain
+        ).trim(),
+        cnameTarget: formValue("cnameTarget", endpoint.cnameTarget).trim(),
+        ipv4Addresses: splitAddresses(
+          formValue("ipv4Addresses", endpoint.ipv4Addresses.join("\n"))
+        ),
+        ipv6Addresses: splitAddresses(
+          formValue("ipv6Addresses", endpoint.ipv6Addresses.join("\n"))
+        ),
+        isActive: formData.get("isActive") === "on",
+      })
+
+      if (!response || !response.ok) {
+        const failure = response as unknown as {
+          message?: string
+          fieldErrors?: Record<string, string[] | string>
+        }
+        if (failure.fieldErrors) {
+          const fieldErrors: FieldErrors = {}
+          for (const [key, messages] of Object.entries(failure.fieldErrors)) {
+            const field = key.replace(/^endpoint\./, "").replace(/\.\d+$/, "")
+            fieldErrors[field] = Array.isArray(messages)
+              ? messages[0]
+              : messages
+          }
+          setEndpointFieldErrors(fieldErrors)
+        }
+        throw new Error(failure.message ?? "Failed to update edge endpoint.")
+      }
+
+      if (isClusterEndpointDTO(response.data)) setEndpoint(response.data)
+    } catch (cause) {
+      setEndpointError(
+        cause instanceof Error
+          ? cause.message
+          : "Failed to update edge endpoint."
+      )
+    } finally {
+      setEndpointSaving(false)
+    }
+  }
   const handleIntegrationEdit = (integration: ClusterIntegration) => {
     setEditingIntegration(integration)
     setIntegrationMeta((integration.metaJson as Record<string, unknown>) ?? {})
@@ -646,6 +785,165 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
               </dd>
             </div>
           </dl>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Edge Endpoint</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Region-specific routing for {cluster.region}. This configuration is
+            separate from cluster integrations.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {endpointError && (
+            <div
+              className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+              role="alert"
+            >
+              <span>{endpointError}</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={() => setEndpointRetry((value) => value + 1)}
+              >
+                Retry
+              </Button>
+            </div>
+          )}
+          {endpointLoading ? (
+            <p className="text-sm text-muted-foreground">
+              Loading edge endpoint...
+            </p>
+          ) : (
+            <form onSubmit={handleEndpointSave} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="endpoint-managed-base-domain">
+                    Managed Base Domain
+                  </Label>
+                  <Input
+                    id="endpoint-managed-base-domain"
+                    name="managedBaseDomain"
+                    value={endpoint.managedBaseDomain}
+                    onChange={(event) =>
+                      setEndpoint((previous) => ({
+                        ...previous,
+                        managedBaseDomain: event.target.value,
+                      }))
+                    }
+                    aria-invalid={Boolean(
+                      endpointFieldErrors.managedBaseDomain
+                    )}
+                  />
+                  {endpointFieldErrors.managedBaseDomain && (
+                    <p className="text-xs text-destructive">
+                      {endpointFieldErrors.managedBaseDomain}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="endpoint-cname-target">CNAME Target</Label>
+                  <Input
+                    id="endpoint-cname-target"
+                    name="cnameTarget"
+                    value={endpoint.cnameTarget}
+                    onChange={(event) =>
+                      setEndpoint((previous) => ({
+                        ...previous,
+                        cnameTarget: event.target.value,
+                      }))
+                    }
+                    aria-invalid={Boolean(endpointFieldErrors.cnameTarget)}
+                  />
+                  {endpointFieldErrors.cnameTarget && (
+                    <p className="text-xs text-destructive">
+                      {endpointFieldErrors.cnameTarget}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="endpoint-ipv4-addresses">
+                    IPv4 Addresses
+                  </Label>
+                  <textarea
+                    id="endpoint-ipv4-addresses"
+                    name="ipv4Addresses"
+                    rows={3}
+                    value={endpoint.ipv4Addresses.join("\n")}
+                    onChange={(event) =>
+                      setEndpoint((previous) => ({
+                        ...previous,
+                        ipv4Addresses: event.target.value.split(/[\n,]/),
+                      }))
+                    }
+                    className="w-full rounded-xl border border-border bg-input/50 px-3 py-2 text-sm"
+                    placeholder="One address per line"
+                    aria-invalid={Boolean(endpointFieldErrors.ipv4Addresses)}
+                  />
+                  {endpointFieldErrors.ipv4Addresses && (
+                    <p className="text-xs text-destructive">
+                      {endpointFieldErrors.ipv4Addresses}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="endpoint-ipv6-addresses">
+                    IPv6 Addresses
+                  </Label>
+                  <textarea
+                    id="endpoint-ipv6-addresses"
+                    name="ipv6Addresses"
+                    rows={3}
+                    value={endpoint.ipv6Addresses.join("\n")}
+                    onChange={(event) =>
+                      setEndpoint((previous) => ({
+                        ...previous,
+                        ipv6Addresses: event.target.value.split(/[\n,]/),
+                      }))
+                    }
+                    className="w-full rounded-xl border border-border bg-input/50 px-3 py-2 text-sm"
+                    placeholder="One address per line"
+                    aria-invalid={Boolean(endpointFieldErrors.ipv6Addresses)}
+                  />
+                  {endpointFieldErrors.ipv6Addresses && (
+                    <p className="text-xs text-destructive">
+                      {endpointFieldErrors.ipv6Addresses}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <label
+                htmlFor="endpoint-active"
+                className="flex items-center gap-2 text-sm"
+              >
+                <input
+                  id="endpoint-active"
+                  name="isActive"
+                  type="checkbox"
+                  checked={endpoint.isActive}
+                  onChange={(event) =>
+                    setEndpoint((previous) => ({
+                      ...previous,
+                      isActive: event.target.checked,
+                    }))
+                  }
+                />
+                <span>Endpoint Active</span>
+              </label>
+              {endpointFieldErrors.isActive && (
+                <p className="text-xs text-destructive">
+                  {endpointFieldErrors.isActive}
+                </p>
+              )}
+              <Button type="submit" size="sm" disabled={endpointSaving}>
+                {endpointSaving ? "Saving..." : "Save Endpoint"}
+              </Button>
+            </form>
+          )}
         </CardContent>
       </Card>
 

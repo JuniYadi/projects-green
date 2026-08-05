@@ -1,20 +1,57 @@
 import { describe, expect, it, mock } from "bun:test"
-import { fireEvent, render } from "@testing-library/react"
+import { fireEvent, render, waitFor } from "@testing-library/react"
 import { useState } from "react"
-
-import { INITIAL_DOMAINS, INITIAL_LOGS } from "@/modules/deploy/operate.mock"
+import { INITIAL_LOGS } from "@/modules/deploy/operate.mock"
 import { TabDomains } from "@/modules/deploy/ui/operate/tab-domains"
 import { TabLogs } from "@/modules/deploy/ui/operate/tab-logs"
 import { TabOverview } from "@/modules/deploy/ui/operate/tab-overview"
+import type { TenantDomainDTO } from "@/modules/deploy/operate.types"
 
-function DomainsHarness() {
-  const [domains, setDomains] = useState(INITIAL_DOMAINS)
-
-  return (
-    <TabDomains selectedEnv="prod" domains={domains} setDomains={setDomains} />
-  )
+const tenantDomain: TenantDomainDTO = {
+  id: "dom-1",
+  hostname: "shop.acme.test",
+  kind: "CUSTOM",
+  isPrimary: true,
+  cluster: { id: "cluster-1", code: "iad", name: "IAD", region: "us-east" },
+  dnsStatus: "PENDING",
+  expectedCnameTarget: "shop.edge.example",
+  endpoint: {
+    managedBaseDomain: "edge.example",
+    cnameTarget: "shop.edge.example",
+    ipv4Addresses: ["203.0.113.10"],
+    ipv6Addresses: ["2001:db8::10"],
+  },
+  certificate: {
+    source: "MANUAL",
+    status: "PENDING",
+    expiresAt: null,
+    fingerprint: null,
+    validationError: null,
+  },
+  allowlistMode: "OPEN",
+  allowlistEntries: [],
 }
 
+const domainCallbacks = {
+  onAddDomain: mock(async () => undefined),
+  onDeleteDomain: mock(async () => undefined),
+  onVerifyDomain: mock(async () => undefined),
+  onUploadCertificate: mock(async () => undefined),
+  onUpdateAllowlist: mock(async () => undefined),
+  onAddAllowlistEntry: mock(async () => undefined),
+  onDeleteAllowlistEntry: mock(async () => undefined),
+  onRetry: mock(async () => undefined),
+}
+
+function DomainsHarness() {
+  return (
+    <TabDomains
+      stackSlug="shop"
+      apiDomains={[tenantDomain]}
+      api={domainCallbacks}
+    />
+  )
+}
 function LogsHarness({ diagnosticMode }: { diagnosticMode: string }) {
   const [logs, setLogs] = useState(INITIAL_LOGS)
 
@@ -96,54 +133,30 @@ describe("Operate tabs coverage", () => {
       globalThis.setTimeout = originalSetTimeout
     }
   })
+  it("loads DNS targets and calls persisted domain operations", async () => {
+    const view = render(<DomainsHarness />)
 
-  it("covers domains add/delete/ssl/clipboard interactions", () => {
-    const writeTextMock = mock(() => Promise.resolve())
-    const originalClipboard = navigator.clipboard
+    expect(view.getByText("CUSTOM")).toBeTruthy()
+    expect(view.getByText("us-east")).toBeTruthy()
+    expect(view.getByText("shop.edge.example")).toBeTruthy()
+    expect(view.getByText("203.0.113.10")).toBeTruthy()
+    expect(view.getByText("2001:db8::10")).toBeTruthy()
 
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: {
-        writeText: writeTextMock,
-      },
+    fireEvent.input(view.getByPlaceholderText("e.g. shop.acme.com"), {
+      target: { value: "api.acme.test" },
     })
-
-    try {
-      const view = render(<DomainsHarness />)
-
-      fireEvent.change(view.getByPlaceholderText("e.g. shop.acme.com"), {
-        target: { value: "api.acme.test" },
-      })
-      fireEvent.change(view.getByRole("combobox"), {
-        target: { value: "pending" },
-      })
-      fireEvent.click(view.getByRole("button", { name: "Add Domain" }))
-
-      const renewButtons = view.queryAllByRole("button", {
-        name: "Force Renew SSL",
-      })
-      if (renewButtons.length > 0) {
-        fireEvent.click(renewButtons[0])
-      }
-
-      const copyButtons = view.getAllByRole("button", { name: "Copy" })
-      fireEvent.click(copyButtons[0])
-      fireEvent.click(copyButtons[1])
-      expect(writeTextMock).toHaveBeenCalledWith("76.76.21.21")
-      expect(writeTextMock).toHaveBeenCalledWith(
-        "laravel-shop.projects-green.dev"
-      )
-
-      const deleteButtons = view.getAllByRole("button", {
-        name: /delete domain/i,
-      })
-      fireEvent.click(deleteButtons[0])
-    } finally {
-      Object.defineProperty(navigator, "clipboard", {
-        configurable: true,
-        value: originalClipboard,
-      })
-    }
+    fireEvent.click(view.getByRole("button", { name: "Add Domain" }))
+    await waitFor(() =>
+      expect(domainCallbacks.onAddDomain).toHaveBeenCalledWith("api.acme.test")
+    )
+    fireEvent.click(view.getByRole("button", { name: /delete domain/i }))
+    await waitFor(() =>
+      expect(domainCallbacks.onDeleteDomain).toHaveBeenCalledWith("dom-1")
+    )
+    fireEvent.click(view.getByRole("button", { name: "Verify" }))
+    await waitFor(() =>
+      expect(domainCallbacks.onVerifyDomain).toHaveBeenCalledWith("dom-1")
+    )
   })
 
   it("covers log streaming branches, filters, and live-tail toggle", () => {
