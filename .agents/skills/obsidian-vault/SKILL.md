@@ -16,9 +16,10 @@ explicit already-resolved path — keep it distinct from logical note names.
 ## Boot
 
 Run `bun run obsidian:boot` after loading `.obsidian.json` and before any
-parallel reads. It prints the entry note plus every indexed note as
-`{requested, path, absolutePath}` JSON. Missing, duplicate, or unreadable
-notes are blocking: report them and stop, never work around them.
+parallel reads. It prints the entry note plus the notes linked from the
+entry's `## Agent entry flow` section, each as `{requested, path, absolutePath}`
+JSON. Missing, duplicate, or unreadable notes are blocking: report them and
+stop, never work around them.
 
 ## Reading and resolving notes
 
@@ -31,8 +32,8 @@ bun run obsidian:resolve -- "Note Name"   # only when a path is needed
 
 - Never construct filesystem paths from `[[wikilinks]]` — a wikilink is a
   logical name, not a path. Never use grep/find to resolve notes.
-- The boot index is the discovery surface: it lists every note's logical
-  `requested` name and vault-relative `path`.
+- Boot output is a starting point, not a full vault index: resolve any note
+  not listed there by logical name with `obsidian:resolve`.
 
 ## Linking
 
@@ -54,5 +55,11 @@ its vault-relative path, then follow its `[[wikilinks]]` by logical name.
 
 ### Find index notes
 
-List the boot index (`bun run obsidian:boot`) and match entries whose
-`requested` name contains `Index`.
+For a known logical name, resolve it directly:
+
+```bash
+bun run obsidian:resolve -- "<Index Name>"
+```
+
+Index notes not linked from the entry flow will not appear in boot output;
+resolve them by their logical name instead of scanning the vault.
