@@ -6,6 +6,7 @@ import {
   appStacksRoutes,
   recentSourcesRoutes,
 } from "@/modules/deploy/api/routes/app-stacks.route"
+import { appHostingEdgeRoutes } from "@/modules/deploy/api/routes/app-hosting-edge.route"
 import { deploySubmitRoutes } from "@/modules/deploy/api/routes/deploy-submit.route"
 import { deployTriggerRoutes } from "@/modules/deploy/api/routes/deploy-trigger.route"
 import { environmentVariablesRoutes } from "@/modules/deploy/api/routes/environment-variables.route"
@@ -20,6 +21,7 @@ export const deployRoutes = new Elysia()
   .use(recentSourcesRoutes)
   .use(appStacksRoutes)
   .use(deploySubmitRoutes)
+  .use(appHostingEdgeRoutes)
   .use(deployTriggerRoutes)
   .use(billingGateRoutes)
   .use(publicSourceRoutes)

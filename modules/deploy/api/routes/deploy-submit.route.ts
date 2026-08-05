@@ -15,6 +15,7 @@ import {
   triggerDeploy,
 } from "../../deploy-pipeline.service"
 import { resolveAppHostingClusterForStack } from "../../cluster-integration.service"
+import { ensureManagedDomainForStack } from "@/modules/deploy/app-hosting-edge.service"
 import { DEPLOY_TEMPLATES } from "../../deploy.constants"
 import { parsePublicGitUrl } from "../../public-source"
 
@@ -280,6 +281,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       }
       throw error
     }
+    await ensureManagedDomainForStack(stack.id)
 
     const triggerType =
       sourceType === "TEMPLATE"

@@ -15,6 +15,14 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
 mock.module("@/lib/platform-role", () => ({
   getPlatformRoleForUser: mock(async () => "member"),
 }))
+const ensureManagedDomainForStack = mock(async () => ({
+  id: "domain-1",
+  hostname: "console-next-app.apps.example.com",
+}))
+
+mock.module("@/modules/deploy/app-hosting-edge.service", () => ({
+  ensureManagedDomainForStack,
+}))
 
 // Leaf-only mock: every sibling service (createOrUpdateStack, triggerDeploy,
 // AppHostingBillingService, BillingTransactionService) runs for real against
@@ -113,8 +121,8 @@ const validBody = {
   memory: 256,
   paygBufferHours: 24,
 }
-
 const resetPrisma = () => {
+  ensureManagedDomainForStack.mockClear()
   mockPrisma.$transaction.mockClear()
   mockPrisma.githubRepositoryConnection.findFirst.mockClear()
   mockPrisma.githubRepositoryConnection.findFirst.mockResolvedValue({
@@ -185,7 +193,7 @@ describe("deploySubmitRoutes /submit", () => {
     expect(body.ok).toBe(true)
     expect(body.data.stackId).toBe("stack-1")
     expect(body.data.deploymentId).toBe("deploy-1")
-    expect(body.data.status).toBe("QUEUED")
+    expect(ensureManagedDomainForStack).toHaveBeenCalledWith("stack-1")
     expect(mockPrisma.applicationStack.update).toHaveBeenCalled()
   })
 
