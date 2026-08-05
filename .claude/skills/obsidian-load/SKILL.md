@@ -21,7 +21,7 @@ After loading `.obsidian.json`, run the boot command before any parallel reads:
 bun run obsidian:boot
 ```
 
-It prints the entry note plus every indexed note as `{requested, path, absolutePath}` JSON. Boot must complete before parallel reads start. Missing, duplicate, or unreadable notes are blocking: report them and stop, never work around them.
+It prints the entry note plus the notes linked from the entry's `## Agent entry flow` section, each as `{requested, path, absolutePath}` JSON. Boot must complete before parallel reads start. Missing, duplicate, or unreadable notes are blocking: report them and stop, never work around them. Boot is a starting point, not a full vault index — resolve any other note by logical name.
 
 ## Reading a note
 
