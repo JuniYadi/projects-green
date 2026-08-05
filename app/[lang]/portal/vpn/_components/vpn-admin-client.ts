@@ -151,10 +151,11 @@ export type VpnPackageServerEntry = {
 
 export type VpnPackageItem = {
   id: string
+  servicePlanId: string
   name: string
   description: string | null
-  price: string
-  currency: "IDR" | "USD"
+  price: string | null
+  currency: "IDR" | "USD" | null
   isActive: boolean
   serverCount: number
   servers: VpnPackageServerEntry[]

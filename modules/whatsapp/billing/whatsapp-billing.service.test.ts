@@ -12,6 +12,9 @@ function mockTx() {
       findUnique: mock(),
       update: mock(),
     },
+    serviceSubscription: {
+      findFirst: mock(),
+    },
     billingAccount: {
       findUnique: mock(),
     },
@@ -34,27 +37,47 @@ mockTransaction.mockImplementation((cb: (...args: unknown[]) => unknown) =>
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
-    billingAccount: {
-      findUnique: mock(),
-    },
-    whatsappDevice: {
+    billingAccount: { findUnique: mock() },
+    serviceSubscription: {
       findUnique: mock(),
       update: mock(),
+      findMany: mock(),
     },
+    billingOrder: { findUnique: mock(), update: mock() },
+    whatsappDevice: { findUnique: mock(), findMany: mock(), update: mock() },
     $transaction: mockTransaction,
   },
 }))
 
-import { WhatsappBillingService } from "./whatsapp-billing.service"
+import {
+  WhatsappBillingService,
+  runWhatsappBillingCycle,
+} from "./whatsapp-billing.service"
 import { prisma } from "@/lib/prisma"
 
 const mockPrisma = prisma as unknown as {
   billingAccount: { findUnique: ReturnType<typeof mock> }
-  whatsappDevice: {
+  serviceSubscription: {
+    findUnique: ReturnType<typeof mock>
+    update: ReturnType<typeof mock>
+    findMany: ReturnType<typeof mock>
+  }
+  billingOrder: {
     findUnique: ReturnType<typeof mock>
     update: ReturnType<typeof mock>
   }
+  whatsappDevice: {
+    findUnique: ReturnType<typeof mock>
+    findMany: ReturnType<typeof mock>
+    update: ReturnType<typeof mock>
+  }
   $transaction: ReturnType<typeof mock>
+}
+
+const mockOrderService = {
+  renewServiceSubscription: mock(),
+  chargeOrder: mock(),
+  fulfillOrder: mock(),
 }
 
 function decimal(value: string) {
@@ -117,143 +140,163 @@ describe("WhatsappBillingService", () => {
   beforeEach(() => {
     mockPrisma.billingAccount.findUnique.mockClear()
     mockPrisma.whatsappDevice.findUnique.mockClear()
+    mockPrisma.whatsappDevice.findMany.mockClear()
     mockPrisma.whatsappDevice.update.mockClear()
+    mockPrisma.serviceSubscription.findUnique.mockClear()
+    mockPrisma.serviceSubscription.update.mockClear()
+    mockPrisma.billingOrder.findUnique.mockClear()
+    mockPrisma.billingOrder.update.mockClear()
     mockPrisma.$transaction.mockClear()
     mockBillingTransactionService.debitServiceBalance.mockClear()
     mockBillingTransactionService.debitBalance.mockClear()
     mockBillingTransactionService.creditBalance.mockClear()
     defaultTx.billingAccount.findUnique.mockClear()
     defaultTx.whatsappDevice.update.mockClear()
+    mockOrderService.renewServiceSubscription.mockReset()
+    mockOrderService.fulfillOrder.mockReset()
 
     const MockTxService =
       mockBillingTransactionService as unknown as ConstructorParameters<
         typeof WhatsappBillingService
       >[1]
+    mockOrderService.renewServiceSubscription.mockReset()
+    mockOrderService.chargeOrder.mockReset()
+    mockOrderService.fulfillOrder.mockReset()
     service = new WhatsappBillingService(
       mockPrisma as unknown as PrismaClient,
-      MockTxService
+      MockTxService,
+      mockOrderService as never
     )
   })
-
-  describe("chargeMonthlyBase", () => {
-    it("charges monthly base price and resets allowance", async () => {
-      const account = billingAccount()
-      const device = whatsappDevice()
-
-      defaultTx.billingAccount.findUnique.mockResolvedValue(account)
-      mockBillingTransactionService.debitServiceBalance.mockResolvedValue({
-        billingAccountId: "ba_1",
-        adjustmentId: "adj_monthly_1",
-        balanceBefore: decimal("500.00"),
-        balanceAfter: decimal("450.00"),
-        amount: decimal("50.00"),
-        currency: "IDR",
-        alreadyProcessed: false,
-      })
-      defaultTx.whatsappDevice.update.mockResolvedValue({
-        ...device,
-        quotaBaseOut: 5000,
-      })
-
-      const result = await service.chargeMonthlyBase({
+  describe("chargeSubscriptionBase", () => {
+    it("renews once with active-device quantity and explicit allowance metadata", async () => {
+      mockPrisma.serviceSubscription.findUnique.mockResolvedValue({
+        id: "subscription_1",
         organizationId: "org_1",
-        deviceId: "device_1",
-        amount: decimal("50.00"),
-        allowance: 5000,
-        period: "2026-06",
+        quantity: decimal("1"),
+        metadata: null,
+        currentPeriodEnd: new Date("2026-06-01T00:00:00Z"),
+      })
+      mockPrisma.billingOrder.findUnique.mockResolvedValue(null)
+      mockOrderService.renewServiceSubscription.mockResolvedValue({
+        orderId: "order_1",
+        status: "FULFILLED",
+        subscriptionId: "subscription_1",
       })
 
-      expect(
-        mockBillingTransactionService.debitServiceBalance
-      ).toHaveBeenCalledWith(
-        expect.objectContaining({
-          organizationId: "org_1",
-          amount: decimal("50.00"),
-          source: "WHATSAPP",
-          reason: expect.stringContaining("monthly base"),
-          idempotencyKey: "wa-base:device_1:2026-06",
-          line: expect.objectContaining({
-            description: expect.stringContaining("monthly base"),
-            lineType: "SUBSCRIPTION",
-          }),
-        }),
-        defaultTx
-      )
+      const result = await service.chargeSubscriptionBase({
+        organizationId: "org_1",
+        subscriptionId: "subscription_1",
+        pricingId: "pricing_1",
+        unitPrice: decimal("50"),
+        quantity: decimal("2"),
+        periodStart: new Date("2026-06-01T00:00:00Z"),
+        periodEnd: new Date("2026-07-01T00:00:00Z"),
+        deviceIds: ["device_1", "device_2"],
+        period: "2026-06",
+        allowanceByDevice: { device_1: 5000, device_2: decimal("7000") },
+      })
 
-      expect(defaultTx.whatsappDevice.update).toHaveBeenCalledWith(
+      expect(result.orderId).toBe("order_1")
+      expect(mockPrisma.serviceSubscription.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: "device_1" },
+          where: { id: "subscription_1" },
           data: expect.objectContaining({
-            quotaBaseOut: 5000,
-            quotaBase: 5000,
+            quantity: decimal("2"),
+            metadata: expect.objectContaining({
+              deviceIds: ["device_1", "device_2"],
+              allowanceByDevice: { device_1: "5000", device_2: "7000" },
+            }),
           }),
         })
       )
-
-      expect(result.adjustmentId).toBe("adj_monthly_1")
-      expect(result.alreadyProcessed).toBe(false)
-    })
-
-    it("throws BILLING_ACCOUNT_NOT_FOUND when billing account missing", async () => {
-      defaultTx.billingAccount.findUnique.mockResolvedValue(null)
-
-      await expect(
-        service.chargeMonthlyBase({
-          organizationId: "org_missing",
-          deviceId: "device_1",
-          amount: decimal("50.00"),
-          allowance: 5000,
-          period: "2026-06",
-        })
-      ).rejects.toThrow("BILLING_ACCOUNT_NOT_FOUND")
-    })
-
-    it("does not double-charge monthly base for same device and period (idempotency)", async () => {
-      const account = billingAccount()
-
-      defaultTx.billingAccount.findUnique.mockResolvedValue(account)
-      mockBillingTransactionService.debitServiceBalance.mockResolvedValue({
-        billingAccountId: "ba_1",
-        adjustmentId: "adj_monthly_1",
-        balanceBefore: decimal("500.00"),
-        balanceAfter: decimal("500.00"),
-        amount: decimal("50.00"),
-        currency: "IDR",
-        alreadyProcessed: true,
-      })
-
-      const result = await service.chargeMonthlyBase({
-        organizationId: "org_1",
-        deviceId: "device_1",
-        amount: decimal("50.00"),
-        allowance: 5000,
-        period: "2026-06",
-      })
-
-      expect(result.alreadyProcessed).toBe(true)
-      expect(
-        mockBillingTransactionService.debitServiceBalance
-      ).toHaveBeenCalledTimes(1)
-    })
-
-    it("rejects monthly activation when base price cannot be covered", async () => {
-      const account = billingAccount({ balance: decimal("10.00") })
-
-      defaultTx.billingAccount.findUnique.mockResolvedValue(account)
-      mockBillingTransactionService.debitServiceBalance.mockRejectedValue(
-        new Error("INSUFFICIENT_BALANCE")
+      expect(mockOrderService.renewServiceSubscription).toHaveBeenCalledWith(
+        "subscription_1",
+        new Date("2026-06-01T00:00:00Z")
       )
-
-      await expect(
-        service.chargeMonthlyBase({
-          organizationId: "org_1",
-          deviceId: "device_1",
-          amount: decimal("50.00"),
-          allowance: 5000,
-          period: "2026-06",
-        })
-      ).rejects.toThrow("INSUFFICIENT_BALANCE")
+      expect(defaultTx.whatsappDevice.update).toHaveBeenCalledTimes(2)
     })
+    it("charges a pending existing period order before fulfillment", async () => {
+      mockPrisma.serviceSubscription.findUnique.mockResolvedValue({
+        id: "subscription_1",
+        organizationId: "org_1",
+        quantity: decimal("2"),
+        metadata: null,
+        currentPeriodEnd: new Date("2026-06-01T00:00:00Z"),
+      })
+      mockPrisma.billingOrder.findUnique.mockResolvedValue({
+        id: "order_1",
+        status: "PENDING",
+      })
+      mockOrderService.chargeOrder.mockResolvedValue({
+        orderId: "order_1",
+        status: "CHARGED",
+      })
+      mockOrderService.fulfillOrder.mockResolvedValue({
+        orderId: "order_1",
+        status: "FULFILLED",
+      })
+
+      await service.chargeSubscriptionBase({
+        organizationId: "org_1",
+        subscriptionId: "subscription_1",
+        pricingId: "pricing_1",
+        unitPrice: decimal("50"),
+        quantity: decimal("2"),
+        periodStart: new Date("2026-06-01T00:00:00Z"),
+        periodEnd: new Date("2026-07-01T00:00:00Z"),
+        deviceIds: ["device_1", "device_2"],
+        period: "2026-06",
+        allowanceByDevice: { device_1: 5000, device_2: 7000 },
+      })
+
+      expect(mockOrderService.chargeOrder).toHaveBeenCalledWith("order_1")
+      expect(mockOrderService.fulfillOrder).toHaveBeenCalledWith("order_1")
+      expect(defaultTx.whatsappDevice.update).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  it("renews each active subscription once using device count, not quota price", async () => {
+    mockPrisma.serviceSubscription.findMany.mockResolvedValue([
+      {
+        id: "subscription_1",
+        organizationId: "org_1",
+        pricingId: "pricing_1",
+        priceLocked: decimal("50"),
+        billingPeriod: "MONTHLY",
+        currentPeriodEnd: new Date("2026-06-01T00:00:00Z"),
+        plan: { resources: { quotaOut: 9000 } },
+      },
+    ])
+    mockPrisma.whatsappDevice.findMany.mockResolvedValue([
+      { id: "device_1" },
+      { id: "device_2" },
+      { id: "device_3" },
+    ])
+    mockPrisma.serviceSubscription.findUnique.mockResolvedValue({
+      organizationId: "org_1",
+      metadata: null,
+    })
+    mockPrisma.billingOrder.findUnique.mockResolvedValue(null)
+    mockOrderService.renewServiceSubscription.mockResolvedValue({
+      orderId: "order_1",
+      status: "FULFILLED",
+      subscriptionId: "subscription_1",
+    })
+
+    const result = await runWhatsappBillingCycle(
+      mockPrisma as unknown as PrismaClient,
+      mockOrderService as never,
+      new Date("2026-06-01T00:00:00Z")
+    )
+
+    expect(result).toEqual({ charged: 1, skipped: 0, errors: 0 })
+    expect(mockOrderService.renewServiceSubscription).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.serviceSubscription.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ quantity: decimal("3") }),
+      })
+    )
   })
 
   describe("consumeAllowanceOrChargeOverage", () => {

@@ -1,9 +1,5 @@
 import type { Prisma } from "@prisma/client"
 
-/**
- * Customer-facing VPN package include. Unlike the admin DTO this never pulls
- * SSH key material — only what a buyer needs to evaluate a package.
- */
 export const publicPackageInclude = {
   servers: {
     include: {
@@ -22,9 +18,24 @@ type PublicPackagePayload = Prisma.VpnPackageGetPayload<{
   include: typeof publicPackageInclude
 }>
 
+type PublicPricingPayload = {
+  id: string
+  type: string
+  billingMode: string
+  billingPeriod: string | null
+  periodPrice: Prisma.Decimal | null
+  currency: string
+  effectiveFrom: Date
+  effectiveTo: Date | null
+  isActive: boolean
+}
+
+type PublicPackageWithPricing = PublicPackagePayload & {
+  servicePlan: { pricings: PublicPricingPayload[] }
+}
+
 type PackageServerPayload = PublicPackagePayload["servers"][number]["server"]
 
-/** Enabled protocol labels on a server, derived from its feature flags. */
 function serverProtocols(server: PackageServerPayload): string[] {
   const protocols: string[] = []
   if (server.hasOpenVpn) protocols.push("OpenVPN")
@@ -40,23 +51,35 @@ export type VpnPublicPackageServerDTO = {
   protocols: string[]
 }
 
-/** Summary card shape for the package listing grid. */
+export type VpnPublicPackageOfferDTO = {
+  pricingId: string
+  billingPeriod: "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL"
+  periodMonths: 1 | 3 | 6 | 12
+  periodPrice: string
+  currency: string
+  convertedPrice: string | null
+  convertedCurrency: string | null
+  exchangeRate: number | null
+  effectiveFrom: string
+  effectiveTo: string | null
+  isActive: boolean
+}
+
 export type VpnPublicPackageDTO = {
   id: string
   name: string
   description: string | null
+  offers: VpnPublicPackageOfferDTO[]
   price: string
   currency: string
   serverCount: number
   protocolCount: number
   regions: string[]
-  // Multi-currency: converted price for the buyer's billing currency
   convertedPrice: string | null
   convertedCurrency: string | null
   exchangeRate: number | null
 }
 
-/** Detail shape with the per-server protocol breakdown. */
 export type VpnPublicPackageDetailDTO = VpnPublicPackageDTO & {
   servers: VpnPublicPackageServerDTO[]
 }
@@ -86,40 +109,93 @@ export type PackageConversion = {
   convertedCurrency: string
   exchangeRate: number
 }
+type RecurringPeriod = "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL"
+
+const PERIOD_MONTHS: Record<RecurringPeriod, 1 | 3 | 6 | 12> = {
+  MONTHLY: 1,
+  QUARTERLY: 3,
+  SEMI_ANNUAL: 6,
+  ANNUAL: 12,
+}
 
 function summaryFields(
-  pkg: PublicPackagePayload,
+  pkg: PublicPackageWithPricing,
   servers: VpnPublicPackageServerDTO[],
-  conversion?: PackageConversion
+  conversions: Map<string, PackageConversion> = new Map(),
+  at = new Date()
 ) {
-  const regions = Array.from(new Set(servers.map((s) => s.region.name)))
-  const protocolCount = servers.reduce((sum, s) => sum + s.protocols.length, 0)
+  const regions = Array.from(
+    new Set(servers.map((server) => server.region.name))
+  )
+  const protocolCount = servers.reduce(
+    (sum, server) => sum + server.protocols.length,
+    0
+  )
+  const pricings = pkg.servicePlan.pricings
+  const offers: VpnPublicPackageOfferDTO[] = pricings
+    .filter((pricing) => {
+      if (
+        !pricing.isActive ||
+        pricing.type !== "BUNDLE" ||
+        pricing.billingMode !== "PACKAGE"
+      )
+        return false
+      if (!pricing.billingPeriod || !(pricing.billingPeriod in PERIOD_MONTHS))
+        return false
+      if (!pricing.periodPrice || pricing.periodPrice.lt(0)) return false
+      return (
+        pricing.effectiveFrom <= at &&
+        (!pricing.effectiveTo || at < pricing.effectiveTo)
+      )
+    })
+    .sort((a, b) => a.effectiveFrom.getTime() - b.effectiveFrom.getTime())
+    .map((pricing) => {
+      const conversion = conversions.get(pricing.id)
+      const billingPeriod = pricing.billingPeriod as RecurringPeriod
+      return {
+        pricingId: pricing.id,
+        billingPeriod,
+        periodMonths: PERIOD_MONTHS[billingPeriod],
+        periodPrice: pricing.periodPrice!.toString(),
+        currency: pricing.currency,
+        convertedPrice: conversion?.convertedPrice.toString() ?? null,
+        convertedCurrency: conversion?.convertedCurrency ?? null,
+        exchangeRate: conversion?.exchangeRate ?? null,
+        effectiveFrom: pricing.effectiveFrom.toISOString(),
+        effectiveTo: pricing.effectiveTo?.toISOString() ?? null,
+        isActive: pricing.isActive,
+      }
+    })
+  const first = offers[0]
   return {
     id: pkg.id,
     name: pkg.name,
     description: pkg.description,
-    price: pkg.price.toString(),
-    currency: pkg.currency,
+    offers,
+    price: first?.periodPrice ?? "0",
+    currency: first?.currency ?? "IDR",
     serverCount: servers.length,
     protocolCount,
     regions,
-    convertedPrice: conversion?.convertedPrice.toString() ?? null,
-    convertedCurrency: conversion?.convertedCurrency ?? null,
-    exchangeRate: conversion?.exchangeRate ?? null,
+    convertedPrice: first?.convertedPrice ?? null,
+    convertedCurrency: first?.convertedCurrency ?? null,
+    exchangeRate: first?.exchangeRate ?? null,
   }
 }
 
 export function toVpnPublicPackageDTO(
-  pkg: PublicPackagePayload,
-  conversion?: PackageConversion
+  pkg: PublicPackageWithPricing,
+  conversions: Map<string, PackageConversion> = new Map(),
+  at?: Date
 ): VpnPublicPackageDTO {
-  return summaryFields(pkg, buildServers(pkg), conversion)
+  return summaryFields(pkg, buildServers(pkg), conversions, at)
 }
 
 export function toVpnPublicPackageDetailDTO(
-  pkg: PublicPackagePayload,
-  conversion?: PackageConversion
+  pkg: PublicPackageWithPricing,
+  conversions: Map<string, PackageConversion> = new Map(),
+  at?: Date
 ): VpnPublicPackageDetailDTO {
   const servers = buildServers(pkg)
-  return { ...summaryFields(pkg, servers, conversion), servers }
+  return { ...summaryFields(pkg, servers, conversions, at), servers }
 }

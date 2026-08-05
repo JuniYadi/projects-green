@@ -128,6 +128,86 @@ describe("VPN subscription routes", () => {
     })
   })
 
+  it("forwards pricingId to the purchase service", async () => {
+    const purchase = mock().mockResolvedValue(subscription)
+    const service = {
+      purchase,
+    }
+
+    const app = new Elysia().use(
+      createVpnSubscriptionRoutes({
+        authenticate: async () => ({
+          organizationId: "org_1",
+          user: { id: "user_1" },
+        }),
+        service: service as unknown as VpnSubscriptionService,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/vpn/packages/pkg_1/purchase", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ pricingId: "pricing_1" }),
+      })
+    )
+
+    expect(response.status).toBe(201)
+    expect(purchase).toHaveBeenCalledWith({
+      organizationId: "org_1",
+      packageId: "pkg_1",
+      pricingId: "pricing_1",
+    })
+  })
+
+  it("rejects a purchase when pricingId is missing", async () => {
+    const purchase = mock().mockResolvedValue(subscription)
+    const app = new Elysia().use(
+      createVpnSubscriptionRoutes({
+        authenticate: async () => ({
+          organizationId: "org_1",
+          user: { id: "user_1" },
+        }),
+        service: { purchase } as unknown as VpnSubscriptionService,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/vpn/packages/pkg_1/purchase", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
+      })
+    )
+
+    expect(response.status).toBe(422)
+    expect(purchase).not.toHaveBeenCalled()
+  })
+
+  it("rejects a purchase when pricingId is empty", async () => {
+    const purchase = mock().mockResolvedValue(subscription)
+    const app = new Elysia().use(
+      createVpnSubscriptionRoutes({
+        authenticate: async () => ({
+          organizationId: "org_1",
+          user: { id: "user_1" },
+        }),
+        service: { purchase } as unknown as VpnSubscriptionService,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/vpn/packages/pkg_1/purchase", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ pricingId: "" }),
+      })
+    )
+
+    expect(response.status).toBe(422)
+    expect(purchase).not.toHaveBeenCalled()
+  })
+
   describe("GET /vpn/subscriptions/:id/servers/:saId/config", () => {
     it("returns config for an active subscription with provisioning ACTIVE account", async () => {
       // valid encrypted config: {"encrypted":"c7AZT3KoMnKUcZt2xnGQlqjE8w==","iv":"b3EM9sLsx8hJK2Lpm+lzwg==","tag":"VLfxCavUeBS2LiOcCJOLmw=="}

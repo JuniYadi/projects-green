@@ -464,8 +464,24 @@ enum BillingSubscriptionStatus {
 
 enum BillingPeriod {
   MONTHLY
+  QUARTERLY
+  SEMI_ANNUAL
+  ANNUAL
   YEARLY
   CUSTOM
+}
+
+enum BillingOrderStatus {
+  PENDING
+  CHARGED
+  FULFILLED
+  FAILED
+  CANCELLED
+}
+
+enum BillingChargeUnit {
+  SUBSCRIPTION
+  DEVICE
 }
 
 enum MeterAggregation {
@@ -706,6 +722,7 @@ model BillingAccount {
   runs          BillingRun[]
   auditLogs     BillingAuditLog[]
   contacts      BillingContact[]
+  orders        BillingOrder[]
 }
 
 model BillingContact {
@@ -930,6 +947,7 @@ model BillingInvoice {
   lines                BillingInvoiceLine[]
   adjustments          BillingAdjustment[]
   paymentConfirmations PaymentConfirmation[]
+  orders               BillingOrder[]
 
   @@unique([billingAccountId, periodStart, periodEnd])
   @@index([billingAccountId, status])
@@ -938,6 +956,57 @@ model BillingInvoice {
   @@map("Invoice")
 }
 
+model BillingOrder {
+  id                    String            @id @default(cuid())
+  organizationId        String
+  billingAccountId      String
+  serviceSubscriptionId String?
+  billingInvoiceId      String?
+  status                BillingOrderStatus @default(PENDING)
+  currency              String
+  subtotalAmount        Decimal           @db.Decimal(18, 2)
+  totalAmount           Decimal           @db.Decimal(18, 2)
+  idempotencyKey        String            @unique
+  chargedAt             DateTime?
+  fulfilledAt           DateTime?
+  metadataJson          Json?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  lines               BillingOrderLine[]
+  serviceSubscription ServiceSubscription? @relation(fields: [serviceSubscriptionId], references: [id], onDelete: SetNull)
+  billingAccount      BillingAccount      @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+  billingInvoice      BillingInvoice?     @relation(fields: [billingInvoiceId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([billingAccountId, status])
+  @@index([billingInvoiceId])
+  @@index([serviceSubscriptionId])
+}
+
+model BillingOrderLine {
+  id           String            @id @default(cuid())
+  orderId      String
+  pricingId    String?
+  packageCode  ServiceType
+  planCode     String
+  regionCode   String
+  billingPeriod BillingPeriod
+  chargeUnit   BillingChargeUnit
+  quantity     Decimal           @db.Decimal(18, 6)
+  unitPrice    Decimal           @db.Decimal(18, 2)
+  amount       Decimal           @db.Decimal(18, 2)
+  currency     String
+  periodStart  DateTime
+  periodEnd    DateTime
+  metadataJson Json?
+
+  order   BillingOrder    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  pricing ServicePricing? @relation(fields: [pricingId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([pricingId])
+}
 model BillingInvoiceLine {
   id           String                 @id @default(cuid())
   invoiceId    String
@@ -1088,6 +1157,7 @@ model ServicePlan {
   package       ServicePackage        @relation(fields: [packageId], references: [id])
   pricings      ServicePricing[]
   subscriptions ServiceSubscription[]
+  vpnPackage    VpnPackage?
 
   @@unique([packageId, code])
   @@index([packageId])
@@ -1099,6 +1169,12 @@ model ServicePricing {
   regionId        String
   type            SubscriptionType
   billingMode     BillingMode
+  billingPeriod   BillingPeriod?
+  currency        String           @default("IDR")
+  periodPrice     Decimal?         @db.Decimal(18, 2)
+  effectiveFrom   DateTime         @default(now())
+  effectiveTo     DateTime?
+  chargeUnit      BillingChargeUnit @default(SUBSCRIPTION)
   basePriceIdr    Decimal          @db.Decimal(12, 2)
   monthlyCapIdr   Decimal?         @db.Decimal(12, 2)
   unitRateCpu     Decimal?         @db.Decimal(12, 4)
@@ -1111,8 +1187,9 @@ model ServicePricing {
   servicePlan   ServicePlan           @relation(fields: [planId], references: [id])
   region        ServiceRegion         @relation(fields: [regionId], references: [id])
   subscriptions ServiceSubscription[]
+  orderLines    BillingOrderLine[]
 
-  @@unique([planId, regionId, type, billingMode])
+  @@unique([planId, regionId, type, billingMode, billingPeriod, currency, effectiveFrom])
   @@index([planId])
   @@index([regionId])
   @@map("Pricing")
@@ -1126,6 +1203,10 @@ model ServiceSubscription {
   pricingId          String
   type               SubscriptionType
   billingMode        BillingMode
+  billingPeriod      BillingPeriod              @default(MONTHLY)
+  priceLocked        Decimal                    @db.Decimal(18, 2)
+  currency           String                     @default("IDR")
+  quantity           Decimal                    @default(1) @db.Decimal(18, 6)
   status             BillingSubscriptionStatus2 @default(ACTIVE)
   currentPeriodStart DateTime
   currentPeriodEnd   DateTime
@@ -1134,17 +1215,20 @@ model ServiceSubscription {
   createdAt          DateTime                   @default(now())
   updatedAt          DateTime                   @updatedAt
 
-  package      ServicePackage       @relation(fields: [packageId], references: [id])
-  plan         ServicePlan          @relation(fields: [planId], references: [id])
-  pricing      ServicePricing       @relation(fields: [pricingId], references: [id])
-  usageLedgers BillingUsageLedger[]
-  vpnClients   VpnClient[]
+  package         ServicePackage       @relation(fields: [packageId], references: [id])
+  plan            ServicePlan          @relation(fields: [planId], references: [id])
+  pricing         ServicePricing       @relation(fields: [pricingId], references: [id])
+  usageLedgers    BillingUsageLedger[]
+  vpnClients      VpnClient[]
+  orders          BillingOrder[]
+  vpnSubscription VpnSubscription?
 
   @@unique([organizationId, packageId, planId], map: "ServiceSubscription_tenantId_packageId_planId_key")
   @@index([organizationId, status], map: "ServiceSubscription_tenantId_status_idx")
   @@index([packageId], map: "ServiceSubscription_packageId_idx")
   @@map("Subscription")
 }
+
 
 model VpnClient {
   id                 String          @id @default(cuid())
@@ -1253,16 +1337,18 @@ model BillingUsageLedger {
 }
 
 model VpnPackage {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  price       Decimal  @db.Decimal(12, 2)
-  currency    String   @default("IDR")
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  servicePlanId String  @unique
+  price        Decimal? @db.Decimal(12, 2)
+  currency     String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  servers VpnPackageServer[]
+  servicePlan ServicePlan          @relation(fields: [servicePlanId], references: [id])
+  servers    VpnPackageServer[]
 
   @@index([isActive])
 }
@@ -1300,35 +1386,36 @@ enum VpnProvisioningStatus {
   FAILED
   REVOKED
 }
-
 model VpnSubscription {
-  id                 String                @id @default(cuid())
-  organizationId     String
-  packageId          String
-  status             VpnSubscriptionStatus @default(ACTIVE)
+  id                   String                @id @default(cuid())
+  organizationId       String
+  packageId            String
+  serviceSubscriptionId String?              @unique
+  status               VpnSubscriptionStatus @default(ACTIVE)
   // Price locked at purchase time. Package price changes never affect an
   // existing subscription (grandfathering, Story 16).
-  priceLocked        Decimal               @db.Decimal(12, 2)
-  currency           String                @default("IDR")
+  priceLocked          Decimal               @db.Decimal(12, 2)
+  currency             String                @default("IDR")
   // Original package price at purchase time (before any currency conversion).
   // Null for subscriptions created before multi-currency support.
-  originalPrice      Decimal?              @db.Decimal(12, 2)
-  originalCurrency   String?
+  originalPrice        Decimal?              @db.Decimal(12, 2)
+  originalCurrency     String?
   // Exchange rate used at purchase time (units of originalCurrency per 1 base unit).
-  exchangeRate       Decimal?              @db.Decimal(18, 6)
-  currentPeriodStart DateTime
-  currentPeriodEnd   DateTime
+  exchangeRate         Decimal?              @db.Decimal(18, 6)
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
   // First timestamp a renewal failed for insufficient balance. Drives the
   // grace ladder (3-day suspend, 7-day expire). Cleared on successful renewal.
-  renewalFailedAt    DateTime?
-  cancelAtPeriodEnd  Boolean               @default(false)
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
+  renewalFailedAt      DateTime?
+  cancelAtPeriodEnd    Boolean               @default(false)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 
-  serverAccounts    VpnServerAccount[]
-  mobileDevices     VpnMobileDevice[]
-  pairingTokens     VpnPairingToken[]
-  vpnMobileSessions VpnMobileSession[]
+  serviceSubscription ServiceSubscription? @relation(fields: [serviceSubscriptionId], references: [id], onDelete: SetNull)
+  serverAccounts      VpnServerAccount[]
+  mobileDevices       VpnMobileDevice[]
+  pairingTokens       VpnPairingToken[]
+  vpnMobileSessions   VpnMobileSession[]
 
   @@index([organizationId, status])
   @@index([packageId])

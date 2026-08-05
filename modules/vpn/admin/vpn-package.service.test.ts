@@ -53,11 +53,19 @@ describe("VpnPackageService.create", () => {
     })
     expect(pkgCreate).toHaveBeenCalledTimes(1)
     const data = pkgCreate.mock.calls[0][0].data
+    expect(data.servicePlan.create).toMatchObject({
+      code: expect.stringMatching(/^VPN_[0-9a-f-]{36}$/),
+      name: "Global Bundle",
+      resources: {},
+      isActive: true,
+      package: { connect: { code: "VPN" } },
+    })
     expect(data.servers.create).toEqual([
       { serverId: "srv-1" },
       { serverId: "srv-2" },
     ])
     expect(data.price.toString()).toBe("100000")
+    expect(data.currency).toBe("IDR")
   })
 
   it("rejects unknown server ids", async () => {

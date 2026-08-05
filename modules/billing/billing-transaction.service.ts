@@ -35,6 +35,8 @@ export type BalanceMutationResult = {
   amount: Prisma.Decimal
   currency: string
   alreadyProcessed: boolean
+  invoiceId: string | null
+  invoiceLineId: string | null
 }
 
 export type ServiceLineInput = {
@@ -106,19 +108,54 @@ export class BillingTransactionService {
       if (account.currency !== input.currency)
         throw new Error("CURRENCY_MISMATCH")
 
-      // Create or reuse current-month service invoice
+      await tx.$queryRaw(
+        Prisma.sql`SELECT id FROM "BillingAccount" WHERE id = ${account.id} FOR UPDATE`
+      )
+      const lockedAccount = await tx.billingAccount.findUnique({
+        where: { id: account.id },
+      })
+      if (!lockedAccount) throw new Error("BILLING_ACCOUNT_NOT_FOUND")
+      if (lockedAccount.currency !== input.currency)
+        throw new Error("CURRENCY_MISMATCH")
+
+      const existing = await tx.billingAdjustment.findFirst({
+        where: {
+          billingAccountId: lockedAccount.id,
+          metadataJson: {
+            path: ["_internal", "idempotencyKey"],
+            equals: input.idempotencyKey,
+          },
+        },
+      })
+      if (existing) {
+        const metadata = (existing.metadataJson ?? {}) as {
+          invoiceLineId?: unknown
+        }
+        return {
+          billingAccountId: lockedAccount.id,
+          adjustmentId: existing.id,
+          balanceBefore: lockedAccount.balance,
+          balanceAfter: lockedAccount.balance,
+          amount: input.amount,
+          currency: lockedAccount.currency,
+          alreadyProcessed: true,
+          invoiceId: existing.invoiceId ?? null,
+          invoiceLineId:
+            typeof metadata.invoiceLineId === "string"
+              ? metadata.invoiceLineId
+              : null,
+        }
+      }
+
       const invoice = await this.ensureMonthlyServiceInvoice(
         tx,
-        account.id,
-        account.currency
+        lockedAccount.id,
+        lockedAccount.currency
       )
-
-      // Guard: reject adding lines to finalized/paid invoices
       if (invoice.status !== "DRAFT") {
         throw new Error("INVOICE_ALREADY_FINALIZED")
       }
 
-      // Add invoice line
       const line = await tx.billingInvoiceLine.create({
         data: {
           invoiceId: invoice.id,
@@ -128,7 +165,7 @@ export class BillingTransactionService {
           quantity: input.line.quantity,
           unitPrice: input.line.unitPrice,
           amount: input.amount,
-          currency: account.currency,
+          currency: lockedAccount.currency,
           periodStart: invoice.periodStart,
           periodEnd: invoice.periodEnd,
           metadataJson: {
@@ -140,7 +177,6 @@ export class BillingTransactionService {
         },
       })
 
-      // Update invoice totals
       await tx.billingInvoice.update({
         where: { id: invoice.id },
         data: {
@@ -149,10 +185,9 @@ export class BillingTransactionService {
         },
       })
 
-      // Perform the balance debit
       return this.executeMutation(
         tx,
-        account,
+        lockedAccount,
         input,
         "DEBIT",
         invoice.id,
@@ -163,7 +198,6 @@ export class BillingTransactionService {
     if (transactionClient === this.prisma) {
       return this.prisma.$transaction(run)
     }
-
     return run(transactionClient)
   }
 
@@ -182,10 +216,19 @@ export class BillingTransactionService {
       if (account.currency !== input.currency)
         throw new Error("CURRENCY_MISMATCH")
 
-      // Idempotency check — idempotencyKey is stored under _internal to avoid leaking into user-facing API responses
+      await tx.$queryRaw(
+        Prisma.sql`SELECT id FROM "BillingAccount" WHERE id = ${account.id} FOR UPDATE`
+      )
+      const lockedAccount = await tx.billingAccount.findUnique({
+        where: { id: account.id },
+      })
+      if (!lockedAccount) throw new Error("BILLING_ACCOUNT_NOT_FOUND")
+      if (lockedAccount.currency !== input.currency)
+        throw new Error("CURRENCY_MISMATCH")
+
       const existing = await tx.billingAdjustment.findFirst({
         where: {
-          billingAccountId: account.id,
+          billingAccountId: lockedAccount.id,
           metadataJson: {
             path: ["_internal", "idempotencyKey"],
             equals: input.idempotencyKey,
@@ -194,19 +237,21 @@ export class BillingTransactionService {
       })
       if (existing) {
         return {
-          billingAccountId: account.id,
+          billingAccountId: lockedAccount.id,
           adjustmentId: existing.id,
-          balanceBefore: account.balance,
-          balanceAfter: account.balance,
+          balanceBefore: lockedAccount.balance,
+          balanceAfter: lockedAccount.balance,
           amount: input.amount,
-          currency: account.currency,
+          currency: lockedAccount.currency,
           alreadyProcessed: true,
+          invoiceId: existing.invoiceId ?? null,
+          invoiceLineId: null,
         }
       }
 
       return this.executeMutation(
         tx,
-        account,
+        lockedAccount,
         input,
         direction,
         input.invoiceId,
@@ -217,7 +262,6 @@ export class BillingTransactionService {
     if (transactionClient === this.prisma) {
       return this.prisma.$transaction(run)
     }
-
     return run(transactionClient)
   }
 
@@ -262,7 +306,6 @@ export class BillingTransactionService {
           invoiceLineId: invoiceLineId ?? null,
           balanceBefore: balanceBefore.toString(),
           balanceAfter: balanceAfter.toString(),
-          // Internal fields — not exposed in user-facing API responses
           _internal: { idempotencyKey: input.idempotencyKey },
         },
       },
@@ -276,6 +319,8 @@ export class BillingTransactionService {
       amount: input.amount,
       currency: input.currency,
       alreadyProcessed: false,
+      invoiceId: invoiceId ?? null,
+      invoiceLineId: invoiceLineId ?? null,
     }
   }
 

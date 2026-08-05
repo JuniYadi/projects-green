@@ -103,11 +103,11 @@ describe("SubscriptionCard", () => {
     expect(view.getByText("500")).toBeInTheDocument()
   })
 
-  it("displays monthly rate formatted as IDR", () => {
+  it("displays period price formatted as IDR", () => {
     const view = render(
       <SubscriptionCard subscription={whatsappSubscription} />
     )
-    expect(view.getByText("Monthly Rate")).toBeInTheDocument()
+    expect(view.getByText("Period Price")).toBeInTheDocument()
     expect(view.getByText(/Rp\s*299\.?000/)).toBeInTheDocument()
   })
 

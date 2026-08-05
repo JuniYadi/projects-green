@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto"
+
 import { Prisma, type PrismaClient } from "@prisma/client"
 
 import { prisma as defaultPrisma } from "@/lib/prisma"
@@ -44,13 +46,22 @@ export class VpnPackageService {
     return this.prisma.vpnPackage.create({
       data: {
         name: input.name,
-        description: input.description ?? null,
-        price: new Prisma.Decimal(input.price),
+        price:
+          input.price === undefined
+            ? undefined
+            : new Prisma.Decimal(input.price),
         currency: input.currency,
         isActive: input.isActive ?? true,
-        servers: {
-          create: input.serverIds.map((serverId) => ({ serverId })),
+        servicePlan: {
+          create: {
+            code: `VPN_${randomUUID()}`,
+            name: input.name,
+            resources: {},
+            isActive: input.isActive ?? true,
+            package: { connect: { code: "VPN" } },
+          },
         },
+        servers: { create: input.serverIds.map((serverId) => ({ serverId })) },
       },
       include: vpnPackageInclude,
     })
@@ -63,9 +74,6 @@ export class VpnPackageService {
     if (input.name !== undefined) data.name = input.name
     if (input.description !== undefined)
       data.description = input.description ?? null
-    if (input.price !== undefined) data.price = new Prisma.Decimal(input.price)
-    if (input.currency !== undefined) data.currency = input.currency
-    if (input.isActive !== undefined) data.isActive = input.isActive
 
     if (input.serverIds !== undefined) {
       await this.assertServersExist(input.serverIds)

@@ -9,11 +9,13 @@ import type {
   InvoiceLineItem,
   InvoiceListItem,
   InvoiceListQuery,
+  InvoiceOrderDTO,
   InvoicePaymentMethod,
   InvoiceStatus,
   PaymentInfoDTO,
 } from "@/modules/invoices/invoices.types"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
+import { settleProductOrdersForInvoice } from "@/modules/billing/orders/payment-settlement"
 import { Prisma } from "@prisma/client"
 import { emitBillingAudit } from "@/modules/billing/audit/audit.service"
 
@@ -103,6 +105,12 @@ const DEFAULT_PAYMENT_METHOD_OPTIONS: InvoicePaymentMethod[] = [
 const toNumber = (value: unknown) => {
   return Number(value ?? 0)
 }
+const PERIOD_MONTHS: Record<string, number | null> = {
+  MONTHLY: 1,
+  QUARTERLY: 3,
+  SEMI_ANNUAL: 6,
+  ANNUAL: 12,
+}
 
 export const toInvoiceStatus = (value: PrismaInvoiceStatus): InvoiceStatus => {
   return PRISMA_TO_APP_INVOICE_STATUS[value]
@@ -152,6 +160,31 @@ const toInvoiceLineItem = (line: {
     currency: line.currency,
   }
 }
+const toInvoiceOrder = (
+  order: NonNullable<InvoiceDetailRecord["orders"]>[number]
+): InvoiceOrderDTO => {
+  const line = order.lines[0]
+  const invoiceStatusValue = order.billingInvoice?.status
+  const invoiceStatus = invoiceStatusValue
+    ? toInvoiceStatus(invoiceStatusValue as PrismaInvoiceStatus)
+    : "open"
+  return {
+    orderId: order.id,
+    pricingId: line?.pricingId ?? null,
+    packageCode: line?.packageCode ?? "",
+    planCode: line?.planCode ?? "",
+    billingPeriod: line?.billingPeriod ?? "MONTHLY",
+    periodMonths: line ? (PERIOD_MONTHS[line.billingPeriod] ?? null) : null,
+    periodPrice: line ? toNumber(line.unitPrice) : 0,
+    currency: line?.currency ?? "",
+    quantity: line ? toNumber(line.quantity) : 0,
+    currentPeriodStart: line?.periodStart.toISOString() ?? "",
+    currentPeriodEnd: line?.periodEnd.toISOString() ?? "",
+    orderStatus: order.status,
+    billingInvoiceId: order.billingInvoiceId,
+    invoiceStatus,
+  }
+}
 
 export const toInvoiceDetail = (
   invoice: InvoiceDetailRecord
@@ -168,6 +201,7 @@ export const toInvoiceDetail = (
     paymentMethod: invoice.paymentMethod ?? null,
     lineItems: invoice.lines.map((line) => toInvoiceLineItem(line)),
     billingAccountId: invoice.billingAccountId,
+    orders: invoice.orders?.map(toInvoiceOrder) ?? [],
   }
 }
 
@@ -337,6 +371,7 @@ export const createInvoiceService = (
           },
         })
       })
+      await settleProductOrdersForInvoice(invoiceId)
 
       // Fire-and-forget billing audit (uses global prisma, not tx)
       emitBillingAudit({

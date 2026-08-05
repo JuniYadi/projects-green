@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
 
 import {
@@ -23,16 +24,6 @@ import {
   type VpnServerItem,
 } from "./vpn-admin-client"
 import { PackageForm } from "./package-form"
-
-function formatPrice(price: string, currency: "IDR" | "USD"): string {
-  const amount = Number(price)
-  if (Number.isNaN(amount)) return `${currency} ${price}`
-  return new Intl.NumberFormat(currency === "IDR" ? "id-ID" : "en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: currency === "IDR" ? 0 : 2,
-  }).format(amount)
-}
 
 export function PackagesTable() {
   const [packages, setPackages] = useState<VpnPackageItem[]>([])
@@ -109,7 +100,7 @@ export function PackagesTable() {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
-              <TableHead>Price/mo</TableHead>
+              <TableHead>Pricing</TableHead>
               <TableHead>Servers</TableHead>
               <TableHead>Active</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -142,7 +133,14 @@ export function PackagesTable() {
                       </p>
                     )}
                   </TableCell>
-                  <TableCell>{formatPrice(pkg.price, pkg.currency)}</TableCell>
+                  <TableCell>
+                    <Link
+                      className="text-sm text-primary hover:underline"
+                      href={`/portal/billing/pricing?plan=${encodeURIComponent(pkg.servicePlanId)}`}
+                    >
+                      Manage variants
+                    </Link>
+                  </TableCell>
                   <TableCell>
                     <div className="space-y-1">
                       {pkg.servers.map((entry) => (

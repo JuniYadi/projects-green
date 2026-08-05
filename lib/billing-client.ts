@@ -21,8 +21,26 @@ export type SubscriptionItem = {
   type: string
   status: string
   allocatedConfig: Record<string, unknown> | null
-  monthlyRateIdr: string
+  monthlyRateIdr?: string
+  pricingId?: string | null
+  billingPeriod?:
+    | "MONTHLY"
+    | "QUARTERLY"
+    | "SEMI_ANNUAL"
+    | "ANNUAL"
+    | string
+    | null
+  periodMonths?: number | null
+  periodPrice?: string | null
+  currency?: string | null
+  quantity?: string | number | null
+  currentPeriodStart?: string | null
   currentPeriodEnd: string | null
+  orderId?: string | null
+  orderStatus?: string | null
+  billingInvoiceId?: string | null
+  invoiceStatus?: string | null
+  fulfillment?: Record<string, unknown> | null
   quotaIn?: number | null
   quotaOut?: number | null
   dailyPerDevice?: number | null
@@ -31,6 +49,23 @@ export type SubscriptionItem = {
 export type BillingSubscriptions = {
   ok: true
   subscriptions: SubscriptionItem[]
+}
+
+export type InvoiceOrderItem = {
+  orderId: string
+  pricingId: string | null
+  packageCode: string
+  planCode: string
+  billingPeriod: string
+  periodMonths: number
+  periodPrice: string
+  currency: string
+  quantity: string
+  currentPeriodStart: string
+  currentPeriodEnd: string
+  orderStatus: string
+  billingInvoiceId: string
+  invoiceStatus: string
 }
 
 export type InvoiceLineItem = {
@@ -61,7 +96,8 @@ export type InvoiceListItem = {
   discountAmountIdr?: string
   totalAmountIdr: string
   currency: string
-  lines: InvoiceLineItem[]
+  orders?: InvoiceOrderItem[]
+  lines?: InvoiceLineItem[]
 }
 
 export type BillingInvoices = {
@@ -399,8 +435,20 @@ export type AdminSubscriptionItem = {
   type: string
   status: string
   allocatedConfig: Record<string, unknown> | null
-  monthlyRateIdr: string
+  monthlyRateIdr?: string
+  pricingId?: string | null
+  billingPeriod?: string | null
+  periodMonths?: number | null
+  periodPrice?: string | null
+  currency?: string | null
+  quantity?: string | number | null
+  currentPeriodStart?: string | null
   currentPeriodEnd: string | null
+  orderId?: string | null
+  orderStatus?: string | null
+  billingInvoiceId?: string | null
+  invoiceStatus?: string | null
+  fulfillment?: Record<string, unknown> | null
 }
 
 export type AdminSubscriptionsResponse = {
@@ -784,4 +832,174 @@ export async function getAdminAuditLogs(params?: {
     : "/api/billing/admin/billing-audit/logs"
 
   return fetchBilling<AdminAuditLogsResponse>(endpoint)
+}
+
+// ─── Admin Pricing and Orders ───────────────────────────────────────────────
+export type AdminPricing = {
+  id: string
+  planId: string
+  regionId: string
+  packageCode: string
+  planCode: string
+  regionCode: string
+  type: string
+  billingMode: string
+  billingPeriod: "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL" | null
+  periodPrice: string | null
+  currency: string
+  chargeUnit: "SUBSCRIPTION" | "DEVICE"
+  effectiveFrom: string
+  effectiveTo: string | null
+  isActive: boolean
+}
+
+export type AdminPricingResponse = {
+  ok: true
+  data: AdminPricing[]
+  pricing?: AdminPricing[]
+}
+
+export type AdminOrderLine = {
+  id: string
+  pricingId: string | null
+  packageCode: string
+  planCode: string
+  regionCode: string
+  billingPeriod: string
+  chargeUnit: "SUBSCRIPTION" | "DEVICE"
+  quantity: string
+  unitPrice: string
+  amount: string
+  currency: string
+  periodStart: string
+  periodEnd: string
+}
+
+export type AdminOrder = {
+  id: string
+  organizationId: string
+  billingAccountId: string
+  serviceSubscriptionId: string | null
+  billingInvoiceId: string | null
+  status: string
+  currency: string
+  subtotalAmount: string
+  totalAmount: string
+  idempotencyKey: string
+  chargedAt: string | null
+  fulfilledAt: string | null
+  createdAt: string
+  updatedAt: string
+  line: AdminOrderLine | null
+  subscription: {
+    id: string
+    status: string
+    packageCode: string
+    planCode: string
+    currentPeriodStart: string
+    currentPeriodEnd: string
+  } | null
+  invoice: {
+    id: string
+    invoiceNumber: string
+    status: string
+    paidAt: string | null
+  } | null
+}
+
+export type AdminOrdersResponse = {
+  ok: true
+  orders: AdminOrder[]
+  data?: AdminOrder[]
+  pagination: { page: number; limit: number; total: number; totalPages: number }
+}
+
+export function billingPeriodLabel(
+  period: AdminPricing["billingPeriod"] | string
+): string {
+  switch (period) {
+    case "MONTHLY":
+      return "Monthly"
+    case "QUARTERLY":
+      return "Quarterly"
+    case "SEMI_ANNUAL":
+      return "Semi-Annual"
+    case "ANNUAL":
+      return "Annual"
+    default:
+      return period ?? "Unknown period"
+  }
+}
+
+export async function getAdminPricing(params?: {
+  packageCode?: string
+  planCode?: string
+  regionCode?: string
+  billingPeriod?: AdminPricing["billingPeriod"]
+  currency?: string
+  includeInactive?: boolean
+}): Promise<AdminPricingResponse> {
+  const query = new URLSearchParams()
+  if (params?.packageCode) query.set("packageCode", params.packageCode)
+  if (params?.planCode) query.set("planCode", params.planCode)
+  if (params?.regionCode) query.set("regionCode", params.regionCode)
+  if (params?.billingPeriod) query.set("billingPeriod", params.billingPeriod)
+  if (params?.currency) query.set("currency", params.currency)
+  if (params?.includeInactive !== undefined)
+    query.set("includeInactive", String(params.includeInactive))
+  const suffix = query.toString() ? `?${query.toString()}` : ""
+  return fetchBilling<AdminPricingResponse>(
+    `/api/billing/admin/pricing${suffix}`
+  )
+}
+
+export async function createAdminPricing(input: {
+  planId: string
+  regionId: string
+  billingPeriod: Exclude<AdminPricing["billingPeriod"], null>
+  chargeUnit: "SUBSCRIPTION" | "DEVICE"
+  periodPrice: string | number
+  currency: string
+  effectiveFrom: string
+  effectiveTo?: string
+  isActive?: boolean
+}): Promise<{ ok: true; data: AdminPricing }> {
+  return fetchBilling(`/api/billing/admin/pricing`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  })
+}
+
+export async function updateAdminPricing(
+  id: string,
+  input: Partial<Parameters<typeof createAdminPricing>[0]>
+): Promise<{ ok: true; data: AdminPricing }> {
+  return fetchBilling(`/api/billing/admin/pricing/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  })
+}
+
+export async function deactivateAdminPricing(
+  id: string
+): Promise<{ ok: true; data: AdminPricing }> {
+  return fetchBilling(`/api/billing/admin/pricing/${id}`, { method: "DELETE" })
+}
+
+export async function getAdminOrders(params?: {
+  page?: number
+  limit?: number
+  organizationId?: string
+  packageCode?: string
+  status?: string
+  billingPeriod?: string
+  from?: string
+  to?: string
+}): Promise<AdminOrdersResponse> {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params ?? {})) {
+    if (value !== undefined && value !== "") query.set(key, String(value))
+  }
+  const suffix = query.toString() ? `?${query.toString()}` : ""
+  return fetchBilling<AdminOrdersResponse>(`/api/billing/admin/orders${suffix}`)
 }

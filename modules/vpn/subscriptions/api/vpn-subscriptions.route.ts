@@ -277,13 +277,14 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
     )
     .post(
       "/vpn/packages/:id/purchase",
-      async ({ params, set }) => {
+      async ({ params, set, body }) => {
         const ctx = await resolveOrg(set)
         if ("error" in ctx) return ctx.error
         try {
           const sub = await service.purchase({
             organizationId: ctx.organizationId,
             packageId: params.id,
+            pricingId: body.pricingId,
           })
           set.status = 201
           const packageNames = await resolvePackageNames([sub.packageId])
@@ -299,7 +300,7 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
           return toPurchaseError(set, error)
         }
       },
-      { body: t.Optional(t.Object({})) }
+      { body: t.Object({ pricingId: t.String({ minLength: 1 }) }) }
     )
     .get("/vpn/subscriptions/:id/billing", async ({ params, set }) => {
       const ctx = await resolveOrg(set)
@@ -451,11 +452,26 @@ function toPurchaseError(set: RouteSet, error: unknown) {
     }
   }
   if (error instanceof VpnBillingAccountNotFoundError) {
-    set.status = 402
+    set.status = 404
     return {
       ok: false as const,
       error: "BILLING_ACCOUNT_REQUIRED" as const,
       message: error.message,
+    }
+  }
+  if (
+    error instanceof Error &&
+    [
+      "PRICE_NOT_FOUND",
+      "PRICE_CONFIGURATION_CONFLICT",
+      "CURRENCY_MISMATCH",
+    ].includes(error.message)
+  ) {
+    set.status = 422
+    return {
+      ok: false as const,
+      error: "PRICING_UNAVAILABLE" as const,
+      message: "Selected pricing is unavailable for this account.",
     }
   }
   console.error(

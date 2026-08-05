@@ -215,6 +215,21 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
           icon: <ListMagnifyingGlassIcon />,
           isActive: startsWithRoute(path, "/portal/billing/audit-logs"),
         },
+        {
+          title: "Pricing",
+          url: localizePathname({
+            pathname: "/portal/billing/pricing",
+            locale,
+          }),
+          icon: <PackageIcon />,
+          isActive: startsWithRoute(path, "/portal/billing/pricing"),
+        },
+        {
+          title: "Orders",
+          url: localizePathname({ pathname: "/portal/billing/orders", locale }),
+          icon: <ReceiptIcon />,
+          isActive: startsWithRoute(path, "/portal/billing/orders"),
+        },
       ]
     },
   },

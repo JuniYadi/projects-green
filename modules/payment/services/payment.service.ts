@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client"
 import type { PrismaClient } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
+import { settleProductOrdersForInvoice } from "@/modules/billing/orders/payment-settlement"
 import { PAYMENT_CONSTANTS } from "../constants"
 import type { InvoiceTypeValue } from "../types/payment.types"
 import {
@@ -158,12 +159,13 @@ export class PaymentService {
     })
     return accounts
   }
-
   async markInvoiceAsPaid(invoiceId: string) {
-    return prisma.billingInvoice.update({
+    const invoice = await prisma.billingInvoice.update({
       where: { id: invoiceId },
       data: { status: "PAID" },
     })
+    await settleProductOrdersForInvoice(invoiceId)
+    return invoice
   }
 
   /**
@@ -239,6 +241,7 @@ export class PaymentService {
       where: { id: invoiceId },
       data: { status: "PAID" },
     })
+    await settleProductOrdersForInvoice(invoiceId)
 
     // Fire-and-forget: send invoice paid email
     this.sendInvoicePaidEmail(invoice, organizationId).catch((err) =>

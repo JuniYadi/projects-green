@@ -1,14 +1,11 @@
-import crypto from "node:crypto"
-
-import { Prisma, type PrismaClient, type VpnProtocol } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 
 import { logAuditEvent } from "@/lib/audit.service"
 import { prisma as defaultPrisma } from "@/lib/prisma"
+import { BillingOrderService } from "@/modules/billing/orders/order.service"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
-import {
-  CurrencyService,
-  CurrencyNotFoundError,
-} from "@/modules/billing/currency.service"
+export { buildAccountUsername } from "./vpn-account-username"
+import { CurrencyService } from "@/modules/billing/currency.service"
 import { vpnEmailService } from "@/modules/vpn/email.service"
 import type { VpnEmailService } from "@/modules/vpn/email.service"
 
@@ -92,35 +89,10 @@ export class VpnSubscriptionNotFoundError extends Error {
 
 type PrismaLike = PrismaClient
 
-/** Enabled protocols on a server, derived from its feature flags. */
-function enabledProtocols(server: {
-  hasOpenVpn: boolean
-  hasWireGuard: boolean
-  hasProxy: boolean
-}): VpnProtocol[] {
-  const protocols: VpnProtocol[] = []
-  if (server.hasOpenVpn) protocols.push("OPENVPN")
-  if (server.hasWireGuard) protocols.push("WIREGUARD")
-  if (server.hasProxy) protocols.push("PROXY")
-  return protocols
-}
-
-/**
- * Short remote account name for OpenVPN/EasyRSA CN safety.
- * The DB already tracks organization, server, and protocol, so the remote
- * username only needs a compact org hint plus random uniqueness.
- */
-export function buildAccountUsername(organizationId: string): string {
-  const safeOrg = organizationId.replace(/[^A-Za-z0-9]/g, "").toLowerCase()
-  const orgHint = safeOrg.slice(-8) || "org"
-  const suffix = crypto.randomBytes(3).toString("hex")
-  return `org${orgHint}-${suffix}`
-}
-
 export type PurchaseInput = {
   organizationId: string
   packageId: string
-  /** Override for testability (default: new Date()). */
+  pricingId: string
   now?: Date
 }
 
@@ -138,6 +110,7 @@ export class VpnSubscriptionService {
   private readonly dispatch: ProvisioningDispatcher
   private readonly currency: CurrencyService
   private readonly emailService: VpnEmailService
+  private readonly orders: BillingOrderService
 
   constructor(
     prisma: PrismaLike = defaultPrisma,
@@ -146,6 +119,7 @@ export class VpnSubscriptionService {
       dispatch?: ProvisioningDispatcher
       currency?: CurrencyService
       emailService?: VpnEmailService
+      orders?: BillingOrderService
     } = {}
   ) {
     this.prisma = prisma
@@ -154,6 +128,7 @@ export class VpnSubscriptionService {
     this.dispatch = options.dispatch ?? (async () => {})
     this.currency = options.currency ?? new CurrencyService(prisma)
     this.emailService = options.emailService ?? vpnEmailService
+    this.orders = options.orders ?? new BillingOrderService(prisma)
   }
 
   listForOrganization(organizationId: string) {
@@ -232,157 +207,53 @@ export class VpnSubscriptionService {
   async purchase(input: PurchaseInput): Promise<VpnSubscriptionWithAccounts> {
     const pkg = await this.prisma.vpnPackage.findUnique({
       where: { id: input.packageId },
-      include: { servers: { include: { server: true } } },
+      include: { servers: { include: { server: true } }, servicePlan: true },
     })
-    if (!pkg || !pkg.isActive) {
-      throw new VpnPackageUnavailableError()
-    }
+    if (!pkg || !pkg.isActive) throw new VpnPackageUnavailableError()
 
-    const now = input.now ?? new Date()
-    const daysInMonth = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)
-    ).getUTCDate()
-    const dayOfMonth = now.getUTCDate()
-    const daysRemaining = daysInMonth - dayOfMonth + 1
-
-    // Align first period to end of current calendar month for pro-rata billing.
-    const periodEnd = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999)
-    )
-    const period = `${now.getUTCFullYear()}-${String(
-      now.getUTCMonth() + 1
-    ).padStart(2, "0")}`
-
-    // Pro-rate the first month charge when buying mid-cycle.
-    const isFullMonth = dayOfMonth === 1
-    const chargeAmount = isFullMonth
-      ? pkg.price
-      : pkg.price
-          .mul(daysRemaining)
-          .div(daysInMonth)
-          .toDecimalPlaces(2, Prisma.Decimal.ROUND_DOWN)
-    const chargeQuantity = isFullMonth
-      ? new Prisma.Decimal(1)
-      : new Prisma.Decimal(daysRemaining).div(daysInMonth)
-
-    // ── Currency conversion ────────────────────────────────────────
-    // Fetch billing account to determine the charge currency.
-    const account = await this.prisma.billingAccount.findUnique({
-      where: { organizationId: input.organizationId },
+    const pricing = await this.prisma.servicePricing.findUnique({
+      where: { id: input.pricingId },
+      include: { servicePlan: true },
     })
-    if (!account) {
-      throw new VpnBillingAccountNotFoundError()
-    }
-    const accountCurrency = account.currency
-
-    let chargePrice: Prisma.Decimal
-    let monthlyPrice: Prisma.Decimal
-    let exchangeRate: Prisma.Decimal
-
-    if (pkg.currency === accountCurrency) {
-      // Same currency — no conversion needed.
-      chargePrice = chargeAmount
-      monthlyPrice = pkg.price
-      exchangeRate = new Prisma.Decimal(1)
-    } else {
-      // Cross-currency — convert package price to billing account currency.
-      try {
-        chargePrice = await this.currency.convert(
-          chargeAmount,
-          pkg.currency,
-          accountCurrency
-        )
-        monthlyPrice = await this.currency.convert(
-          pkg.price,
-          pkg.currency,
-          accountCurrency
-        )
-        // Compute exchange rate: units of accountCurrency per 1 unit of pkgCurrency
-        const fromRate = await this.currency.getRate(pkg.currency)
-        const toRate = await this.currency.getRate(accountCurrency)
-        exchangeRate = toRate.div(fromRate)
-      } catch (error) {
-        if (
-          error instanceof CurrencyNotFoundError ||
-          (error instanceof Error && error.name === "CurrencyNotFoundError")
-        ) {
-          throw new VpnCurrencyNotSupportedError(
-            `Cannot convert from ${pkg.currency} to ${accountCurrency}. Currency not supported.`
-          )
-        }
-        throw error
-      }
+    if (!pricing || pricing.planId !== pkg.servicePlanId) {
+      throw new VpnPackageUnavailableError(
+        "Selected pricing is not available for this package."
+      )
     }
 
-    // Build the per-protocol account plan up front.
-    const plan = pkg.servers.flatMap((entry) =>
-      enabledProtocols(entry.server).map((protocol) => ({
-        serverId: entry.server.id,
-        protocol,
-        username: buildAccountUsername(input.organizationId),
-      }))
-    )
-
-    // Create the subscription first so the billing idempotency key is stable.
-    const subscription = await this.prisma.vpnSubscription.create({
-      data: {
+    const duplicate = await this.prisma.vpnSubscription.findFirst({
+      where: {
         organizationId: input.organizationId,
         packageId: input.packageId,
-        status: "SUSPENDED",
-        priceLocked: monthlyPrice,
-        currency: accountCurrency,
-        originalPrice: pkg.price,
-        originalCurrency: pkg.currency,
-        exchangeRate: exchangeRate,
-        currentPeriodStart: now,
-        currentPeriodEnd: periodEnd,
-        serverAccounts: {
-          create: plan.map((account) => ({
-            serverId: account.serverId,
-            protocol: account.protocol,
-            username: account.username,
-            provisioningStatus: "PENDING",
-          })),
-        },
+        status: "ACTIVE",
       },
-      include: subscriptionInclude,
     })
+    if (duplicate) throw new VpnDuplicateSubscriptionError()
 
-    // Billing gate: debit balance upfront. If the charge fails for any reason
-    // (no billing account, insufficient balance, unexpected error) we delete
-    // the just-created subscription so failed attempts don't leave orphaned
-    // SUSPENDED subscriptions + PENDING server accounts behind. The delete
-    // cascades to serverAccounts (onDelete: Cascade).
+    const now = input.now ?? new Date()
+    const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`
+    let order
     try {
-      await this.transactions.debitServiceBalance({
+      order = await this.orders.createOrder({
         organizationId: input.organizationId,
-        amount: chargePrice,
-        currency: accountCurrency,
-        source: "VPN",
-        reason: `VPN package "${pkg.name}" monthly payment`,
-        idempotencyKey: `vpn-package:${subscription.id}:${period}`,
+        pricingId: input.pricingId,
+        idempotencyKey: `vpn-package:${input.organizationId}:${input.packageId}:${input.pricingId}:${period}`,
         metadata: {
-          vpnSubscriptionId: subscription.id,
-          packageId: pkg.id,
+          vpnPackageId: input.packageId,
+          packageId: input.packageId,
+          planId: pkg.servicePlanId,
           period,
         },
-        line: {
-          description: isFullMonth
-            ? `VPN package "${pkg.name}" — ${period}`
-            : `VPN package "${pkg.name}" — ${daysRemaining}/${daysInMonth} month (${period})`,
-          quantity: chargeQuantity,
-          unitPrice: monthlyPrice,
-          lineType: "SUBSCRIPTION",
-          category: "vpn",
-        },
+        now,
+        prorateMonthly: pricing.billingPeriod === "MONTHLY",
+      })
+      const charged = await this.orders.chargeOrder(order.orderId)
+      await this.orders.fulfillOrder(charged.orderId, {
+        vpnPackageId: input.packageId,
+        packageId: input.packageId,
+        planId: pkg.servicePlanId,
       })
     } catch (error) {
-      await this.prisma.vpnSubscription
-        .delete({ where: { id: subscription.id } })
-        .catch(() => {
-          // Best-effort cleanup. If the delete itself fails, surface the
-          // original billing error rather than masking it.
-        })
       if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE") {
         throw new VpnInsufficientBalanceError()
       }
@@ -395,16 +266,15 @@ export class VpnSubscriptionService {
       throw error
     }
 
-    // Charge succeeded → activate subscription and dispatch provisioning jobs.
-    const activated = await this.prisma.vpnSubscription.update({
-      where: { id: subscription.id },
-      data: { status: "ACTIVE" },
+    const activated = await this.prisma.vpnSubscription.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        packageId: input.packageId,
+      },
       include: subscriptionInclude,
+      orderBy: { createdAt: "desc" },
     })
-
-    for (const account of activated.serverAccounts) {
-      await this.dispatch(account.id)
-    }
+    if (!activated) throw new VpnSubscriptionNotFoundError()
 
     logAuditEvent({
       organizationId: activated.organizationId,
@@ -414,11 +284,9 @@ export class VpnSubscriptionService {
       message: `Subscription created for org ${activated.organizationId}: package ${input.packageId}, ${activated.serverAccounts.length} accounts`,
       details: {
         packageId: input.packageId,
-        organizationId: activated.organizationId,
-        price: chargePrice.toFixed(2),
-        currency: accountCurrency,
+        pricingId: input.pricingId,
+        organizationId: input.organizationId,
         serverAccountCount: activated.serverAccounts.length,
-        isFullMonth,
       },
     }).catch(() => {})
 

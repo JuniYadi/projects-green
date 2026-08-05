@@ -83,6 +83,13 @@ export interface PricingLookup {
   regionCode: string
   type: "PAYG" | "BUNDLE" | "CUSTOM"
   billingMode: "PACKAGE" | "PAYG" | "CUSTOM"
+  /** Recurring catalog metadata; absent on legacy mocks/callers. */
+  billingPeriod?: string | null
+  periodPrice?: Prisma.Decimal | null
+  currency?: string
+  effectiveFrom?: Date
+  effectiveTo?: Date | null
+  chargeUnit?: "SUBSCRIPTION" | "DEVICE"
   basePriceIdr: Prisma.Decimal
   monthlyCapIdr: Prisma.Decimal | null
   unitRateCpu: Prisma.Decimal | null

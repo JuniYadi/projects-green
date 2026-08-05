@@ -42,10 +42,21 @@ const mockPrisma = {
   billingAdjustment: {
     create: mock(() => Promise.resolve({})),
   },
+  billingOrder: {
+    findMany: mock(() => Promise.resolve([])),
+    update: mock(() => Promise.resolve({})),
+  },
   paymentCurrency: {
     findUnique: mock(() => Promise.resolve(null)),
   },
 }
+const mockFulfillOrder = mock(() => Promise.resolve())
+
+mock.module("@/modules/billing/orders/order.service", () => ({
+  BillingOrderService: class {
+    fulfillOrder = mockFulfillOrder
+  },
+}))
 
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
@@ -93,6 +104,9 @@ describe("PaymentService", () => {
 
   function resetMocks() {
     mockPrisma.billingInvoice.create.mockReset()
+    mockPrisma.billingOrder.findMany.mockReset()
+    mockPrisma.billingOrder.update.mockReset()
+    mockFulfillOrder.mockReset()
     mockPrisma.billingInvoice.update.mockReset()
     mockPrisma.billingInvoice.findFirst.mockReset()
     mockPrisma.billingInvoice.findMany.mockReset()
@@ -125,6 +139,11 @@ describe("PaymentService", () => {
     mockPrisma.billingInvoice.findMany.mockImplementation(() =>
       Promise.resolve([])
     )
+    mockPrisma.billingOrder.findMany.mockImplementation(() =>
+      Promise.resolve([])
+    )
+    mockPrisma.billingOrder.update.mockImplementation(() => Promise.resolve({}))
+    mockFulfillOrder.mockImplementation(() => Promise.resolve())
     mockPrisma.billingAccount.findUnique.mockImplementation(() =>
       Promise.resolve({
         id: "ba-123",
@@ -303,6 +322,20 @@ describe("PaymentService", () => {
         where: { id: "inv-123" },
         data: { status: "PAID" },
       })
+    })
+    it("marks a linked product order charged and fulfills it once", async () => {
+      mockPrisma.billingOrder.findMany.mockResolvedValueOnce([
+        { id: "order-1", status: "PENDING" } as never,
+      ])
+
+      await service.markInvoiceAsPaid("invoice-1")
+
+      expect(mockPrisma.billingOrder.update).toHaveBeenCalledWith({
+        where: { id: "order-1" },
+        data: expect.objectContaining({ status: "CHARGED" }),
+      })
+      expect(mockFulfillOrder).toHaveBeenCalledTimes(1)
+      expect(mockFulfillOrder).toHaveBeenCalledWith("order-1")
     })
   })
 

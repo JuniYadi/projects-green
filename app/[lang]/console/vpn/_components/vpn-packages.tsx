@@ -92,6 +92,9 @@ export function VpnPackages({
   const [loadedPackages, setLoadedPackages] = useState<
     VpnPackageSummary[] | null
   >(null)
+  const [selectedPricingId, setSelectedPricingId] = useState<string | null>(
+    null
+  )
   const [selected, setSelected] = useState<VpnPackageDetail | null>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [purchasing, setPurchasing] = useState(false)
@@ -124,6 +127,7 @@ export function VpnPackages({
     try {
       const detail = await getVpnPackage(id)
       setSelected(detail)
+      setSelectedPricingId(detail.offers?.[0]?.pricingId ?? null)
     } catch {
       setError({ message: "Could not load package details.", topup: false })
     } finally {
@@ -132,12 +136,13 @@ export function VpnPackages({
   }
 
   const handleBuy = async () => {
-    if (!selected) return
+    if (!selected || !selectedPricingId) return
     setPurchasing(true)
     setError(null)
     try {
-      await purchaseVpnPackage(selected.id)
+      await purchaseVpnPackage(selected.id, selectedPricingId)
       setSelected(null)
+      setSelectedPricingId(null)
       onPurchased()
     } catch (err: unknown) {
       const e = err as Error & { error?: string }
@@ -168,6 +173,9 @@ export function VpnPackages({
     )
   }
 
+  const selectedOffer = selected?.offers?.find(
+    (offer) => offer.pricingId === selectedPricingId
+  )
   return (
     <>
       <div className="grid gap-4 md:grid-cols-3">
@@ -186,14 +194,21 @@ export function VpnPackages({
             <CardContent className="flex-1 space-y-3">
               <p className="text-lg font-semibold">
                 <PriceDisplay
-                  price={pkg.price}
-                  currency={pkg.currency}
-                  convertedPrice={pkg.convertedPrice}
-                  convertedCurrency={pkg.convertedCurrency}
+                  price={pkg.offers?.[0]?.periodPrice ?? pkg.price}
+                  currency={pkg.offers?.[0]?.currency ?? pkg.currency}
+                  convertedPrice={
+                    pkg.offers?.[0]?.convertedPrice ?? pkg.convertedPrice
+                  }
+                  convertedCurrency={
+                    pkg.offers?.[0]?.convertedCurrency ?? pkg.convertedCurrency
+                  }
                 />
                 <span className="text-sm font-normal text-muted-foreground">
                   {" "}
-                  / month
+                  /{" "}
+                  {pkg.offers?.[0]?.billingPeriod
+                    .toLowerCase()
+                    .replace("_", " ") ?? "month"}
                 </span>
               </p>
               {variant === "order" && pkg.description && (
@@ -246,17 +261,49 @@ export function VpnPackages({
                 <DialogTitle>
                   {selected.name} —{" "}
                   <PriceDisplay
-                    price={selected.price}
-                    currency={selected.currency}
-                    convertedPrice={selected.convertedPrice}
-                    convertedCurrency={selected.convertedCurrency}
-                  />
-                  /month
+                    price={selectedOffer?.periodPrice ?? selected.price}
+                    currency={selectedOffer?.currency ?? selected.currency}
+                    convertedPrice={
+                      selectedOffer?.convertedPrice ?? selected.convertedPrice
+                    }
+                    convertedCurrency={
+                      selectedOffer?.convertedCurrency ??
+                      selected.convertedCurrency
+                    }
+                  />{" "}
+                  <span className="text-sm font-normal">
+                    /{" "}
+                    {selectedOffer?.billingPeriod
+                      .toLowerCase()
+                      .replace("_", " ") ?? "month"}
+                  </span>
                 </DialogTitle>
                 <DialogDescription>
                   You&apos;ll get access to all of these in one subscription.
                 </DialogDescription>
               </DialogHeader>
+              <label
+                className="text-sm font-medium"
+                htmlFor="vpn-billing-period"
+              >
+                Billing period
+              </label>
+              <select
+                id="vpn-billing-period"
+                className="h-10 rounded-md border bg-background px-3 text-sm"
+                value={selectedPricingId ?? ""}
+                onChange={(event) => setSelectedPricingId(event.target.value)}
+              >
+                {(selected.offers ?? []).map((offer) => (
+                  <option key={offer.pricingId} value={offer.pricingId}>
+                    {offer.billingPeriod.replace("_", " ")} —{" "}
+                    {formatPrice(
+                      offer.convertedPrice ?? offer.periodPrice,
+                      offer.convertedCurrency ?? offer.currency
+                    )}
+                  </option>
+                ))}
+              </select>
 
               <Table>
                 <TableHeader>

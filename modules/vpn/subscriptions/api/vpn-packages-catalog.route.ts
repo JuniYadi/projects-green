@@ -11,7 +11,10 @@ import {
   type PackageConversion,
 } from "../vpn-package-public.dto"
 
-type PrismaLike = Pick<typeof prisma, "vpnPackage" | "billingAccount">
+type PrismaLike = Pick<
+  typeof prisma,
+  "vpnPackage" | "billingAccount" | "servicePricing"
+>
 type CurrencyServiceLike = Pick<CurrencyService, "convert" | "getRate">
 
 type AuthContext = {
@@ -67,19 +70,37 @@ export const createVpnPackageCatalogRoutes = (deps: Deps = {}) => {
     }
   }
 
+  async function mapPackage(
+    pkg: Prisma.VpnPackageGetPayload<{ include: typeof publicPackageInclude }>
+  ) {
+    const at = new Date()
+    const planId = (pkg as unknown as { servicePlanId: string }).servicePlanId
+    const pricings = await db.servicePricing.findMany({ where: { planId } })
+    const packageWithPricing = { ...pkg, servicePlan: { pricings } }
+    const conversions = new Map<string, PackageConversion>()
+    await Promise.all(
+      pricings.map(async (pricing) => {
+        if (!pricing.periodPrice || !pricing.billingPeriod) return
+        const conversion = await resolveConversion(
+          pricing.currency,
+          pricing.periodPrice
+        )
+        if (conversion) conversions.set(pricing.id, conversion)
+      })
+    )
+    return toVpnPublicPackageDTO(packageWithPricing, conversions, at)
+  }
+
   return new Elysia()
     .get("/vpn/packages", async () => {
       const packages = await db.vpnPackage.findMany({
         where: { isActive: true },
         include: publicPackageInclude,
-        orderBy: { price: "asc" },
+        orderBy: { createdAt: "desc" },
       })
 
-      const results = await Promise.all(
-        packages.map(async (pkg) => {
-          const conversion = await resolveConversion(pkg.currency, pkg.price)
-          return toVpnPublicPackageDTO(pkg, conversion)
-        })
+      const results = (await Promise.all(packages.map(mapPackage))).filter(
+        (pkg) => pkg.offers.length > 0
       )
 
       return { ok: true as const, data: results }
@@ -97,10 +118,37 @@ export const createVpnPackageCatalogRoutes = (deps: Deps = {}) => {
           message: "Package not found or unavailable.",
         }
       }
-      const conversion = await resolveConversion(pkg.currency, pkg.price)
+      const at = new Date()
+      const planId = (pkg as unknown as { servicePlanId: string }).servicePlanId
+      const pricings = await db.servicePricing.findMany({ where: { planId } })
+      const packageWithPricing = { ...pkg, servicePlan: { pricings } }
+      const conversions = new Map<string, PackageConversion>()
+      await Promise.all(
+        pricings.map(async (pricing) => {
+          if (!pricing.periodPrice || !pricing.billingPeriod) return
+          const conversion = await resolveConversion(
+            pricing.currency,
+            pricing.periodPrice
+          )
+          if (conversion) conversions.set(pricing.id, conversion)
+        })
+      )
+      const dto = toVpnPublicPackageDetailDTO(
+        packageWithPricing,
+        conversions,
+        at
+      )
+      if (dto.offers.length === 0) {
+        set.status = 404
+        return {
+          ok: false as const,
+          error: "PACKAGE_UNAVAILABLE" as const,
+          message: "Package not found or unavailable.",
+        }
+      }
       return {
         ok: true as const,
-        data: toVpnPublicPackageDetailDTO(pkg, conversion),
+        data: dto,
       }
     })
 }

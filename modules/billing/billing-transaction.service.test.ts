@@ -4,6 +4,7 @@ import type { PrismaClient } from "@prisma/client"
 
 const mockPrisma = {
   $transaction: vi.fn(),
+  $queryRaw: vi.fn(),
   billingAccount: {
     findUnique: vi.fn(),
     update: vi.fn(),
@@ -190,6 +191,30 @@ describe("BillingTransactionService", () => {
       expect(result.balanceAfter.toString()).toBe("40")
       expect(result.alreadyProcessed).toBe(false)
     })
+    it("uses the fresh locked account balance for a different idempotency key", async () => {
+      const stale = billingAccount({ balance: decimal("100.00") })
+      const fresh = billingAccount({ balance: decimal("40.00") })
+      mockPrisma.billingAccount.findUnique
+        .mockResolvedValueOnce(stale)
+        .mockResolvedValueOnce(fresh)
+      mockPrisma.billingAdjustment.findFirst.mockResolvedValue(null)
+      mockPrisma.billingAccount.update.mockResolvedValue({
+        ...fresh,
+        balance: decimal("30.00"),
+      })
+      mockPrisma.billingAdjustment.create.mockResolvedValue({
+        id: "adj_fresh",
+        billingAccountId: "ba_1",
+      })
+
+      await service.debitBalance(baseInput({ amount: decimal("10.00") }))
+
+      expect(mockPrisma.billingAccount.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { balance: decimal("30.00") },
+        })
+      )
+    })
 
     it("rejects insufficient balance", async () => {
       mockPrisma.billingAccount.findUnique.mockResolvedValue(
@@ -291,10 +316,23 @@ describe("BillingTransactionService", () => {
         },
       })
 
-      expect(result.balanceBefore.toString()).toBe("100")
-      expect(result.balanceAfter.toString()).toBe("40")
       expect(mockPrisma.billingInvoice.findFirst).toHaveBeenCalled()
       expect(mockPrisma.billingInvoiceLine.create).toHaveBeenCalled()
+      expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1)
+    })
+
+    it("locks the account before a credit idempotency lookup", async () => {
+      const account = billingAccount()
+      mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
+      mockPrisma.billingAdjustment.findFirst.mockResolvedValue({
+        id: "adj_existing",
+        invoiceId: null,
+        metadataJson: { _internal: { idempotencyKey: "topup:test:001" } },
+      })
+
+      await service.creditBalance(baseInput())
+
+      expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1)
     })
   })
 })

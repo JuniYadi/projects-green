@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 
+import { BillingOrderService } from "@/modules/billing/orders/order.service"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { vpnProvisioningService } from "@/modules/vpn/provisioning/vpn-provisioning.service"
 import { vpnEmailService } from "@/modules/vpn/email.service"
@@ -28,13 +29,17 @@ export type VpnRenewalResult = {
 
 type PrismaLike = Pick<
   PrismaClient,
-  "vpnSubscription" | "vpnMobileDevice" | "vpnPairingToken"
+  | "vpnSubscription"
+  | "serviceSubscription"
+  | "vpnMobileDevice"
+  | "vpnPairingToken"
 >
 
 type RenewalSubscription = {
   id: string
   organizationId: string
   packageId: string
+  serviceSubscriptionId?: string | null
   priceLocked: Prisma.Decimal
   currency: string
   renewalFailedAt: Date | null
@@ -65,15 +70,18 @@ type RenewalSubscription = {
 export class VpnRenewalService {
   private readonly prisma: PrismaLike
   private readonly transactions: BillingTransactionService
+  private readonly orders: BillingOrderService
   private readonly emailService: VpnEmailService
 
   constructor(
     prisma: PrismaLike,
-    transactions: BillingTransactionService,
-    emailService?: VpnEmailService
+    _transactions: BillingTransactionService,
+    emailService?: VpnEmailService,
+    orders?: BillingOrderService
   ) {
     this.prisma = prisma
-    this.transactions = transactions
+    this.transactions = _transactions
+    this.orders = orders ?? new BillingOrderService(prisma as PrismaClient)
     this.emailService = emailService ?? vpnEmailService
   }
 
@@ -145,42 +153,39 @@ export class VpnRenewalService {
   ): Promise<void> {
     const period = this.currentPeriod(now)
     try {
-      const charge = await this.transactions.debitServiceBalance({
-        organizationId: subscription.organizationId,
-        amount: subscription.priceLocked,
-        currency: subscription.currency,
-        source: "VPN",
-        reason: "VPN package monthly renewal",
-        idempotencyKey: `vpn-package:${subscription.id}:${period}`,
-        metadata: {
-          vpnSubscriptionId: subscription.id,
-          packageId: subscription.packageId,
-          period,
-        },
-        line: {
-          description: "VPN package monthly renewal",
-          quantity: new Prisma.Decimal(1),
-          unitPrice: subscription.priceLocked,
-          lineType: "SUBSCRIPTION",
-        },
-      })
-
-      if (!charge.alreadyProcessed) {
-        try {
+      if (!subscription.serviceSubscriptionId) {
+        const charge = await this.transactions.debitServiceBalance({
+          organizationId: subscription.organizationId,
+          amount: subscription.priceLocked,
+          currency: subscription.currency,
+          source: "VPN",
+          reason: "VPN package monthly renewal",
+          idempotencyKey: `vpn-package:${subscription.id}:${period}`,
+          metadata: {
+            vpnSubscriptionId: subscription.id,
+            packageId: subscription.packageId,
+            period,
+          },
+          line: {
+            description: "VPN package monthly renewal",
+            quantity: new Prisma.Decimal(1),
+            unitPrice: subscription.priceLocked,
+            lineType: "SUBSCRIPTION",
+          },
+        })
+        if (!charge.alreadyProcessed) {
           const extended = await this.extendPeriod(subscription.id, now)
-          if (extended) {
-            result.renewed++
-            this.emailService
-              .sendRenewalSuccess(
-                subscription.organizationId,
-                undefined,
-                period
-              )
-              .catch(() => {})
-          }
-        } catch {
-          result.errors++
+          if (extended) result.renewed++
         }
+      } else {
+        await this.orders.renewServiceSubscription(
+          subscription.serviceSubscriptionId,
+          now
+        )
+        result.renewed++
+        this.emailService
+          .sendRenewalSuccess(subscription.organizationId, undefined, period)
+          .catch(() => {})
       }
     } catch (error) {
       if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE") {
@@ -284,20 +289,10 @@ export class VpnRenewalService {
     }
   }
 
-  /**
-   * Extend the period to the end of the next calendar month and clear
-   * renewal-failure tracking. Aligns to calendar months so renewal always
-   * happens at the start of a month, matching the pro-rated first-period
-   * from the purchase flow. Idempotent under concurrent workers via the
-   * `currentPeriodEnd` guard.
-   */
   private async extendPeriod(id: string, now: Date): Promise<boolean> {
-    // End of next calendar month (month+2, day 0).
-    // Example: now=July 1 → month+2=September, day 0=August 31
     const periodEnd = new Date(
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 2, 0, 23, 59, 59, 999)
     )
-
     const updated = await this.prisma.vpnSubscription.updateMany({
       where: { id, currentPeriodEnd: { lte: now } },
       data: {
@@ -307,28 +302,16 @@ export class VpnRenewalService {
         renewalFailedAt: null,
       },
     })
-
-    // T7.3 — Reactivate SUSPENDED mobile devices on successful renewal.
     if (updated.count > 0) {
       await this.prisma.vpnMobileDevice
         .updateMany({
-          where: {
-            subscriptionId: id,
-            status: "SUSPENDED",
-          },
-          data: {
-            status: "ACTIVE",
-            revokedReason: null,
-          },
+          where: { subscriptionId: id, status: "SUSPENDED" },
+          data: { status: "ACTIVE", revokedReason: null },
         })
-        .catch(() => {
-          // Device reactivation is best-effort.
-        })
+        .catch(() => {})
     }
-
     return updated.count > 0
   }
-
   private currentPeriod(now: Date): string {
     const year = now.getUTCFullYear()
     const month = String(now.getUTCMonth() + 1).padStart(2, "0")

@@ -88,6 +88,25 @@ export type InvoiceDetailRecord = InvoiceRecord & {
   lines: InvoiceLineRecord[]
   gateway: InvoiceGatewayRecord | null
   paymentConfirmations: InvoicePaymentConfirmationRecord[]
+  orders?: InvoiceOrderRecord[]
+}
+type InvoiceOrderRecord = {
+  id: string
+  serviceSubscriptionId: string | null
+  billingInvoiceId: string | null
+  status: string
+  lines: Array<{
+    pricingId: string | null
+    packageCode: string
+    planCode: string
+    billingPeriod: string
+    quantity: unknown
+    unitPrice: unknown
+    currency: string
+    periodStart: Date
+    periodEnd: Date
+  }>
+  billingInvoice?: { status: string } | null
 }
 
 type InvoiceDelegate = {
@@ -223,6 +242,16 @@ export const createPrismaInvoiceRepository = (): InvoiceRepository => {
             orderBy: {
               createdAt: "asc",
             },
+          },
+          orders: {
+            include: {
+              billingInvoice: { select: { status: true } },
+              lines: {
+                orderBy: { periodStart: "asc" },
+                take: 1,
+              },
+            },
+            orderBy: { createdAt: "desc" },
           },
         },
       })

@@ -15,6 +15,7 @@ import {
   BillingAccountNotFoundError,
 } from "./types"
 
+import type { RecurringBillingPeriod } from "./pricing/pricing.types"
 export class BalanceGateService {
   constructor(private prisma: PrismaClient) {}
 
@@ -60,15 +61,31 @@ export class BalanceGateService {
     regionId: string
     type: SubscriptionType
     billingMode: BillingMode
+    billingPeriod?: RecurringBillingPeriod
+    at?: Date
   }): Promise<PricingLookup> {
+    const at = opts.at ?? new Date()
+    const where: Prisma.ServicePricingWhereInput = {
+      planId: opts.planId,
+      regionId: opts.regionId,
+      type: opts.type,
+      billingMode: opts.billingMode,
+      isActive: true,
+      effectiveFrom: { lte: at },
+      OR: [{ effectiveTo: null }, { effectiveTo: { gt: at } }],
+    }
+
+    if (opts.billingMode === "PACKAGE") {
+      where.billingPeriod = opts.billingPeriod ?? { not: null }
+    } else {
+      // PAYG keeps its legacy unit-rate fields and never falls back to a
+      // recurring package row.
+      where.billingPeriod = null
+    }
+
     const row = await this.prisma.servicePricing.findFirst({
-      where: {
-        planId: opts.planId,
-        regionId: opts.regionId,
-        type: opts.type,
-        billingMode: opts.billingMode,
-        isActive: true,
-      },
+      where,
+      orderBy: { effectiveFrom: "desc" },
       include: {
         servicePlan: {
           select: { code: true, packageId: true, resources: true },
@@ -94,6 +111,12 @@ export class BalanceGateService {
       regionCode: row.region.code,
       type: row.type,
       billingMode: row.billingMode,
+      billingPeriod: row.billingPeriod,
+      periodPrice: row.periodPrice,
+      currency: row.currency,
+      effectiveFrom: row.effectiveFrom,
+      effectiveTo: row.effectiveTo,
+      chargeUnit: row.chargeUnit,
       basePriceIdr: row.basePriceIdr,
       monthlyCapIdr: row.monthlyCapIdr,
       unitRateCpu: row.unitRateCpu,
@@ -371,7 +394,7 @@ export class BalanceGateService {
       throw new SubscriptionInactiveError(subscriptionId)
     }
 
-    const amount = sub.pricing.basePriceIdr
+    const amount = sub.pricing.periodPrice ?? sub.pricing.basePriceIdr
 
     return this.prisma.$transaction(async (tx) => {
       const account = await tx.billingAccount.findUnique({
