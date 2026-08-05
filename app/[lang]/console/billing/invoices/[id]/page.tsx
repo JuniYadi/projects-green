@@ -426,13 +426,13 @@ export default function InvoiceDetailPage() {
             {invoice.type === "TOP_UP" ? (
               <div className="rounded-lg border">
                 <InvoiceFlatLine
-                  lines={invoice.lines}
+                  lines={invoice.lines ?? []}
                   currency={invoiceCurrency}
                 />
               </div>
             ) : (
               <InvoiceGroupedLines
-                lines={invoice.lines}
+                lines={invoice.lines ?? []}
                 currency={invoiceCurrency}
                 periodLabel={
                   formatPeriodDate(invoice.periodStart) +

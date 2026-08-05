@@ -14,13 +14,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -61,8 +54,6 @@ export function PackageForm({
 }: PackageFormProps) {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
-  const [price, setPrice] = useState("")
-  const [currency, setCurrency] = useState<"IDR" | "USD">("IDR")
   const [isActive, setIsActive] = useState(true)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [saving, setSaving] = useState(false)
@@ -73,8 +64,6 @@ export function PackageForm({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setName(editing?.name ?? "")
     setDescription(editing?.description ?? "")
-    setPrice(editing?.price ?? "")
-    setCurrency(editing?.currency ?? "IDR")
     setIsActive(editing?.isActive ?? true)
     setSelected(new Set(editing?.servers.map((entry) => entry.server.id) ?? []))
     setError(null)
@@ -96,8 +85,6 @@ export function PackageForm({
       const body = {
         name,
         description: description.trim() === "" ? undefined : description.trim(),
-        price: Number(price),
-        currency,
         isActive,
         serverIds: [...selected],
       }
@@ -143,35 +130,6 @@ export function PackageForm({
               placeholder="All servers, all protocols"
             />
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="package-price">Price / month</Label>
-              <Input
-                id="package-price"
-                type="number"
-                min={0}
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="100000"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Currency</Label>
-              <Select
-                value={currency}
-                onValueChange={(value) => setCurrency(value as "IDR" | "USD")}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="IDR">IDR</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
           <div className="space-y-2">
             <Label>Servers (user gets ALL protocols enabled)</Label>
             <div className="rounded-lg border">

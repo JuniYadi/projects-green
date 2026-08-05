@@ -97,8 +97,8 @@ import { WebhookRetryJob } from "@/modules/whatsapp/webhooks/jobs/webhook-retry.
 import { monitorActiveDeployments } from "@/modules/deploy/deploy-monitor.service"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { AppHostingBillingService } from "@/modules/deploy/billing/app-hosting-billing.service"
-import type { WhatsAppPlanResources } from "@/modules/billing/types"
-import { WhatsappBillingService } from "@/modules/whatsapp/billing/whatsapp-billing.service"
+import { BillingOrderService } from "@/modules/billing/orders/order.service"
+import { runWhatsappBillingCycle } from "@/modules/whatsapp/billing/whatsapp-billing.service"
 import { VpnRenewalService } from "@/modules/vpn/billing/vpn-renewal.service"
 import {
   VpnProvisioningJob,
@@ -586,90 +586,15 @@ const appHostingBillingInterval = setInterval(async () => {
   }
 }, 3_600_000) // 1 hour
 intervals.push(appHostingBillingInterval)
-function extractAllowance(resources: WhatsAppPlanResources | null): number {
-  if (!resources) return 0
-  return resources.quotaOutMonthly ?? resources.quotaOut ?? 0
-}
-
-// ── WhatsApp Monthly Billing (every hour) ───────────────────────────────────
+// ── WhatsApp Billing (every hour) ───────────────────────────────────────────
 const whatsappBillingInterval = setInterval(async () => {
   try {
-    const transactions = new BillingTransactionService(prisma)
-    const whatsappBilling = new WhatsappBillingService(prisma, transactions)
-
-    const now = new Date()
-    const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`
-
-    const BATCH_SIZE = 100
-    let charged = 0
-    let skipped = 0
-    let errors = 0
-    let cursor: string | undefined
-
-    while (true) {
-      const devices = await prisma.whatsappDevice.findMany({
-        where: { status: "ACTIVE" },
-        take: BATCH_SIZE,
-        ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-        orderBy: { id: "asc" },
-      })
-
-      if (devices.length === 0) break
-
-      const orgIds = [...new Set(devices.map((d) => d.organizationId))]
-      const subscriptions = await prisma.serviceSubscription.findMany({
-        where: {
-          organizationId: { in: orgIds },
-          package: { code: "WHATSAPP" },
-          status: "ACTIVE",
-        },
-        include: { pricing: true, plan: true },
-      })
-
-      const subByOrg = new Map(subscriptions.map((s) => [s.organizationId, s]))
-
-      for (const device of devices) {
-        try {
-          const subscription = subByOrg.get(device.organizationId)
-          if (!subscription) {
-            skipped++
-            continue
-          }
-
-          const { Prisma } = await import("@prisma/client")
-          const basePrice = new Prisma.Decimal(
-            subscription.pricing.basePriceIdr.toString()
-          )
-
-          if (basePrice.lte(0)) {
-            skipped++
-            continue
-          }
-
-          const resources = subscription.plan
-            ?.resources as unknown as WhatsAppPlanResources | null
-          const allowance = extractAllowance(resources)
-
-          await whatsappBilling.chargeMonthlyBase({
-            organizationId: device.organizationId,
-            deviceId: device.id,
-            amount: basePrice,
-            allowance,
-            period,
-          })
-
-          charged++
-        } catch (error) {
-          errors++
-          console.error(`[whatsapp-billing] device=${device.id} error:`, error)
-        }
-      }
-
-      cursor = devices[devices.length - 1].id
-    }
-
+    const result = await runWhatsappBillingCycle(
+      prisma,
+      new BillingOrderService(prisma)
+    )
     console.info(
-      `[whatsapp-billing] charged=${charged} skipped=${skipped} errors=${errors} period=${period}`
+      `[whatsapp-billing] charged=${result.charged} skipped=${result.skipped} errors=${result.errors}`
     )
   } catch (error) {
     console.error("[whatsapp-billing] cycle failed:", error)

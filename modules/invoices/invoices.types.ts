@@ -40,6 +40,23 @@ export type InvoiceLineItem = {
   currency: string
 }
 
+export type InvoiceOrderDTO = {
+  orderId: string
+  pricingId: string | null
+  packageCode: string
+  planCode: string
+  billingPeriod: string
+  periodMonths: number | null
+  periodPrice: number
+  currency: string
+  quantity: number
+  currentPeriodStart: string
+  currentPeriodEnd: string
+  orderStatus: string
+  billingInvoiceId: string | null
+  invoiceStatus: InvoiceStatus
+}
+
 export type InvoiceDetail = InvoiceListItem & {
   subtotalAmount: number
   taxAmount: number
@@ -51,6 +68,7 @@ export type InvoiceDetail = InvoiceListItem & {
   paymentMethod: string | null
   lineItems: InvoiceLineItem[]
   billingAccountId?: string
+  orders?: InvoiceOrderDTO[]
 }
 
 export type InvoicePaymentMethod = {

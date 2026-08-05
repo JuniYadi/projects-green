@@ -6,7 +6,13 @@
  */
 
 import { BaseSeeder, registerSeeder } from "@/lib/seeders"
-import { ServiceType, SubscriptionType, BillingMode } from "@prisma/client"
+import {
+  ServiceType,
+  SubscriptionType,
+  BillingMode,
+  BillingPeriod,
+  BillingChargeUnit,
+} from "@prisma/client"
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
 
@@ -523,6 +529,15 @@ export class BillingSeeder extends BaseSeeder {
         regionId: region.id,
         type: pricing.type as SubscriptionType,
         billingMode: pricing.billingMode as BillingMode,
+        billingPeriod:
+          pkgCode === "WHATSAPP" ? BillingPeriod.MONTHLY : undefined,
+        currency: "IDR",
+        periodPrice: pkgCode === "WHATSAPP" ? 0 : undefined,
+        chargeUnit:
+          pkgCode === "WHATSAPP"
+            ? BillingChargeUnit.DEVICE
+            : BillingChargeUnit.SUBSCRIPTION,
+        isActive: pkgCode !== "WHATSAPP",
         basePriceIdr: pricing.basePriceIdr,
         monthlyCapIdr: pricing.monthlyCapIdr ?? undefined,
         unitRateCpu: pricing.unitRateCpu ?? undefined,

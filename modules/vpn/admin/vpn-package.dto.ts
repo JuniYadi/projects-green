@@ -47,7 +47,8 @@ export type VpnPackageDTO = Pick<
   Prisma.VpnPackageGetPayload<object>,
   "id" | "name" | "description" | "currency" | "isActive"
 > & {
-  price: string
+  servicePlanId: string
+  price: string | null
   serverCount: number
   servers: VpnPackageServerDTO[]
   createdAt: string
@@ -65,12 +66,13 @@ export function toVpnPackageDTO(pkg: VpnPackageWithServers): VpnPackageDTO {
   })
 
   return {
+    servicePlanId: (pkg as unknown as { servicePlanId: string }).servicePlanId,
     id: pkg.id,
     name: pkg.name,
     description: pkg.description,
     currency: pkg.currency,
     isActive: pkg.isActive,
-    price: pkg.price.toString(),
+    price: pkg.price?.toString() ?? null,
     serverCount: servers.length,
     servers,
     createdAt: pkg.createdAt.toISOString(),

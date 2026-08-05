@@ -1,7 +1,5 @@
 import { z } from "zod"
 
-export const SUPPORTED_CURRENCIES = ["IDR", "USD"] as const
-
 const serverIdsSchema = z
   .array(z.string().trim().min(1, "Server id is required."))
   .min(1, "At least one server is required.")
@@ -21,14 +19,10 @@ export const createVpnPackageSchema = z.object({
     .trim()
     .max(280, "Description must be at most 280 characters.")
     .optional(),
-  price: z
-    .number({ message: "Price is required." })
-    .positive("Price must be greater than 0."),
-  currency: z.enum(SUPPORTED_CURRENCIES, {
-    message: "Currency must be IDR or USD.",
-  }),
   isActive: z.boolean().optional().default(true),
   serverIds: serverIdsSchema,
+  price: z.number().positive().optional(),
+  currency: z.enum(["IDR", "USD"]).optional(),
 })
 
 export const updateVpnPackageSchema = createVpnPackageSchema.partial()

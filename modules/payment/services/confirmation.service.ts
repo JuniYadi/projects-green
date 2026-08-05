@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
+import { settleProductOrdersForInvoice } from "@/modules/billing/orders/payment-settlement"
 import Decimal = Prisma.Decimal
 import { emitBillingAudit } from "@/modules/billing/audit/audit.service"
 
@@ -181,6 +182,7 @@ export class ConfirmationService {
         organizationId: invoice.billingAccount.organizationId,
       }
     })
+    await settleProductOrdersForInvoice(result.invoiceId)
 
     // Fire-and-forget billing audit (uses global prisma, not tx)
     emitBillingAudit({

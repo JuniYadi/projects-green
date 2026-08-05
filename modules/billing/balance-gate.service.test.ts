@@ -435,5 +435,93 @@ describe("BalanceGateService", () => {
         })
       ).rejects.toThrow(PricingNotFoundError)
     })
+    it("looks up recurring package pricing at an effective date", async () => {
+      const at = new Date("2026-08-05T12:00:00.000Z")
+      mockedPrisma.servicePricing.findFirst.mockResolvedValueOnce({
+        id: "price-annual",
+        planId: "plan-1",
+        regionId: "reg-1",
+        type: "BUNDLE",
+        billingMode: "PACKAGE",
+        billingPeriod: "ANNUAL",
+        currency: "IDR",
+        periodPrice: new Decimal("1200000"),
+        effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
+        effectiveTo: null,
+        chargeUnit: "SUBSCRIPTION",
+        basePriceIdr: new Decimal("1200000"),
+        monthlyCapIdr: null,
+        unitRateCpu: null,
+        unitRateMem: null,
+        unitRateMessage: null,
+        servicePlan: { code: "STANDARD", packageId: "VPN", resources: {} },
+        region: { code: "GLOBAL" },
+      })
+
+      const pricing = await service.findPricing({
+        planId: "plan-1",
+        regionId: "reg-1",
+        type: "BUNDLE",
+        billingMode: "PACKAGE",
+        billingPeriod: "ANNUAL",
+        at,
+      })
+
+      expect(pricing.periodPrice?.toNumber()).toBe(1_200_000)
+      expect(pricing.billingPeriod).toBe("ANNUAL")
+      expect(mockedPrisma.servicePricing.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: { effectiveFrom: "desc" },
+          where: expect.objectContaining({
+            billingPeriod: "ANNUAL",
+            effectiveFrom: { lte: at },
+          }),
+        })
+      )
+    })
+
+    it("keeps PAYG lookups on null billingPeriod and legacy rates", async () => {
+      mockedPrisma.servicePricing.findFirst.mockResolvedValueOnce({
+        id: "price-payg",
+        planId: "plan-1",
+        regionId: "reg-1",
+        type: "PAYG",
+        billingMode: "PAYG",
+        billingPeriod: null,
+        currency: "IDR",
+        periodPrice: null,
+        effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
+        effectiveTo: null,
+        chargeUnit: "SUBSCRIPTION",
+        basePriceIdr: new Decimal(0),
+        monthlyCapIdr: null,
+        unitRateCpu: new Decimal(10),
+        unitRateMem: new Decimal(5),
+        unitRateMessage: new Decimal(2),
+        servicePlan: {
+          code: "STANDARD",
+          packageId: "APP_HOSTING",
+          resources: {},
+        },
+        region: { code: "GLOBAL" },
+      })
+
+      const pricing = await service.findPricing({
+        planId: "plan-1",
+        regionId: "reg-1",
+        type: "PAYG",
+        billingMode: "PAYG",
+      })
+
+      expect(pricing.billingPeriod).toBeNull()
+      expect(pricing.periodPrice).toBeNull()
+      expect(pricing.unitRateMessage?.toNumber()).toBe(2)
+      expect(mockedPrisma.servicePricing.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: { effectiveFrom: "desc" },
+          where: expect.objectContaining({ billingPeriod: null }),
+        })
+      )
+    })
   })
 })

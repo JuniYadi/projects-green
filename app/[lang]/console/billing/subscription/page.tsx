@@ -123,14 +123,18 @@ export default function SubscriptionPage() {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">
-                        Monthly Rate
+                        Period Price
                       </span>
                       <span className="font-medium">
                         {new Intl.NumberFormat("id-ID", {
                           style: "currency",
-                          currency: "IDR",
+                          currency: sub.currency ?? "IDR",
                           minimumFractionDigits: 0,
-                        }).format(Number.parseFloat(sub.monthlyRateIdr))}
+                        }).format(
+                          Number.parseFloat(
+                            sub.periodPrice ?? sub.monthlyRateIdr ?? "0"
+                          )
+                        )}
                       </span>
                     </div>
                   </div>

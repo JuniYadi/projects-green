@@ -12,7 +12,9 @@ type SubscriptionItem = {
   type: string
   status: string
   allocatedConfig: Record<string, unknown> | null
-  monthlyRateIdr: string
+  monthlyRateIdr?: string
+  periodPrice?: string | null
+  billingPeriod?: string | null
   currentPeriodEnd: string | null
   quotaIn?: number | null
   quotaOut?: number | null
@@ -66,13 +68,12 @@ const statusStyles: Record<string, string> = {
     "border-gray-500/20 bg-gray-500/10 text-gray-600 dark:text-gray-400",
 }
 
-function formatCurrency(amountIdr: string): string {
-  const amount = Number.parseFloat(amountIdr)
+function formatCurrency(amount: string, currency = "IDR"): string {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
-    currency: "IDR",
+    currency,
     minimumFractionDigits: 0,
-  }).format(amount)
+  }).format(Number.parseFloat(amount))
 }
 
 function formatDate(dateStr: string | null): string {
@@ -149,9 +150,13 @@ export function SubscriptionCard({
           )}
 
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Monthly Rate</span>
+            <span className="text-muted-foreground">
+              {subscription.billingPeriod ?? "Period"} Price
+            </span>
             <span className="font-medium">
-              {formatCurrency(subscription.monthlyRateIdr)}
+              {formatCurrency(
+                subscription.periodPrice ?? subscription.monthlyRateIdr ?? "0"
+              )}
             </span>
           </div>
 

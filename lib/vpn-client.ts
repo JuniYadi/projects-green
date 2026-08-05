@@ -49,10 +49,25 @@ export type VpnApiErrorResponse = {
 
 // ── Package catalog + subscription (Stories 16/17) ──────────────────────
 
+export type VpnPackageOffer = {
+  pricingId: string
+  billingPeriod: "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL"
+  periodMonths: 1 | 3 | 6 | 12
+  periodPrice: string
+  currency: string
+  convertedPrice: string | null
+  convertedCurrency: string | null
+  exchangeRate: number | null
+  effectiveFrom: string
+  effectiveTo: string | null
+  isActive: boolean
+}
+
 export type VpnPackageSummary = {
   id: string
   name: string
   description: string | null
+  offers?: VpnPackageOffer[]
   price: string
   currency: string
   serverCount: number
@@ -211,10 +226,13 @@ export async function getVpnPackage(id: string): Promise<VpnPackageDetail> {
   return res.data
 }
 
-export async function purchaseVpnPackage(id: string): Promise<VpnSubscription> {
+export async function purchaseVpnPackage(
+  id: string,
+  pricingId: string
+): Promise<VpnSubscription> {
   const res = await fetchVpn<{ ok: true; data: VpnSubscription }>(
     `/api/vpn/packages/${id}/purchase`,
-    { method: "POST", body: JSON.stringify({}) }
+    { method: "POST", body: JSON.stringify({ pricingId }) }
   )
   return res.data
 }

@@ -12,6 +12,7 @@ import {
   adminSubscriptionCreateSchema,
 } from "../billing.schemas"
 import { emitBillingAudit } from "@/modules/billing/audit/audit.service"
+import type { BillingOrderService } from "@/modules/billing/orders/order.service"
 
 type BillingAuthContext = {
   organizationId?: string | null
@@ -80,6 +81,12 @@ const toServerError = (set: RouteSet, message: string) => {
     message,
   }
 }
+const PERIOD_MONTHS = {
+  MONTHLY: 1,
+  QUARTERLY: 3,
+  SEMI_ANNUAL: 6,
+  ANNUAL: 12,
+} as const
 
 async function resolveActor(
   auth: BillingAuthContext,
@@ -148,7 +155,6 @@ export const createAdminSubscriptionRoutes = (
           if (actor.platformRole !== "super_admin" && auth.organizationId) {
             where.organizationId = auth.organizationId
           }
-
           if (status) where.status = status
           if (organizationId) where.organizationId = organizationId
 
@@ -163,7 +169,18 @@ export const createAdminSubscriptionRoutes = (
                     billingMode: true,
                     type: true,
                     basePriceIdr: true,
+                    billingPeriod: true,
+                    periodPrice: true,
+                    currency: true,
+                    chargeUnit: true,
                     region: { select: { code: true } },
+                  },
+                },
+                orders: {
+                  orderBy: { createdAt: "desc" },
+                  take: 1,
+                  include: {
+                    billingInvoice: { select: { status: true } },
                   },
                 },
               },
@@ -174,22 +191,53 @@ export const createAdminSubscriptionRoutes = (
             prisma.serviceSubscription.count({ where }),
           ])
 
-          const formatted = subscriptions.map((sub) => ({
-            id: sub.id,
-            organizationId: sub.organizationId,
-            packageCode: sub.package.code,
-            planCode: sub.plan.code,
-            regionCode: sub.pricing.region.code,
-            billingMode: sub.pricing.billingMode,
-            type: sub.pricing.type,
-            status: sub.status,
-            allocatedConfig: sub.allocatedConfig as Record<
-              string,
-              unknown
-            > | null,
-            monthlyRateIdr: sub.pricing.basePriceIdr.toFixed(2),
-            currentPeriodEnd: sub.currentPeriodEnd?.toISOString() ?? null,
-          }))
+          const formatted = subscriptions.map((sub) => {
+            const snapshot = sub as typeof sub & {
+              billingPeriod?: keyof typeof PERIOD_MONTHS
+              priceLocked?: { toFixed: (digits: number) => string }
+              currency?: string
+              quantity?: { toString: () => string }
+              orders?: Array<{
+                id: string
+                status: string
+                billingInvoiceId: string | null
+                billingInvoice?: { status: string } | null
+              }>
+            }
+            const period = snapshot.billingPeriod ?? "MONTHLY"
+            const order = snapshot.orders?.[0]
+            return {
+              id: sub.id,
+              organizationId: sub.organizationId,
+              packageCode: sub.package.code,
+              planCode: sub.plan.code,
+              regionCode: sub.pricing.region.code,
+              pricingId: sub.pricingId,
+              billingPeriod: period,
+              periodMonths: PERIOD_MONTHS[period] ?? null,
+              periodPrice:
+                snapshot.priceLocked?.toFixed(2) ??
+                sub.pricing.periodPrice?.toFixed?.(2) ??
+                sub.pricing.basePriceIdr.toFixed(2),
+              currency: snapshot.currency ?? sub.pricing.currency ?? "IDR",
+              quantity: snapshot.quantity?.toString() ?? "1",
+              billingMode: sub.pricing.billingMode,
+              type: sub.pricing.type,
+              status: sub.status,
+              orderId: order?.id ?? null,
+              orderStatus: order?.status ?? null,
+              billingInvoiceId: order?.billingInvoiceId ?? null,
+              invoiceStatus: order?.billingInvoice?.status ?? null,
+              allocatedConfig: sub.allocatedConfig as Record<
+                string,
+                unknown
+              > | null,
+              monthlyRateIdr: sub.pricing.basePriceIdr.toFixed(2),
+              currentPeriodStart: sub.currentPeriodStart?.toISOString() ?? null,
+              currentPeriodEnd: sub.currentPeriodEnd?.toISOString() ?? null,
+              fulfillment: null,
+            }
+          })
 
           return {
             ok: true as const,
@@ -232,46 +280,22 @@ export const createAdminSubscriptionRoutes = (
             fieldErrors: fieldErrorMapFromIssues(parsed.error.issues),
           }
         }
-
         const {
           organizationId,
-          packageId,
-          planId,
           pricingId,
-          type,
-          billingMode,
-          currentPeriodStart,
-          currentPeriodEnd,
+          quantity,
           allocatedConfig,
           metadata,
         } = parsed.data
 
         try {
-          // Validate that package, plan, and pricing exist
-          const [servicePackage, servicePlan, pricing] = await Promise.all([
-            prisma.servicePackage.findUnique({ where: { id: packageId } }),
-            prisma.servicePlan.findUnique({ where: { id: planId } }),
-            prisma.servicePricing.findUnique({ where: { id: pricingId } }),
-          ])
-
-          if (!servicePackage) {
-            set.status = 422
-            return {
-              ok: false as const,
-              error: "VALIDATION_ERROR" as const,
-              message: "Package not found.",
-            }
-          }
-
-          if (!servicePlan) {
-            set.status = 422
-            return {
-              ok: false as const,
-              error: "VALIDATION_ERROR" as const,
-              message: "Plan not found.",
-            }
-          }
-
+          const pricing = await prisma.servicePricing.findUnique({
+            where: { id: pricingId },
+            include: {
+              servicePlan: { include: { package: true } },
+              region: true,
+            },
+          })
           if (!pricing) {
             set.status = 422
             return {
@@ -281,7 +305,8 @@ export const createAdminSubscriptionRoutes = (
             }
           }
 
-          // Check for existing subscription with same package+plan for this org
+          const packageId = pricing.servicePlan.packageId
+          const planId = pricing.planId
           const existing = await prisma.serviceSubscription.findFirst({
             where: {
               organizationId,
@@ -290,7 +315,6 @@ export const createAdminSubscriptionRoutes = (
               status: { not: "CANCELLED" },
             },
           })
-
           if (existing) {
             set.status = 409
             return {
@@ -301,56 +325,100 @@ export const createAdminSubscriptionRoutes = (
             }
           }
 
-          const subscription = await prisma.serviceSubscription.create({
-            data: {
-              organizationId,
-              packageId,
-              planId,
-              pricingId,
-              type,
-              billingMode,
-              status: "ACTIVE",
-              currentPeriodStart,
-              currentPeriodEnd,
-              allocatedConfig: (allocatedConfig ??
-                null) as Prisma.InputJsonValue,
-              metadata: (metadata ?? null) as Prisma.InputJsonValue,
-            },
+          let whatsappQuantity: number | undefined
+          const orderMetadata: Record<string, unknown> = {
+            ...(metadata ?? {}),
+            ...(allocatedConfig ? { allocatedConfig } : {}),
+          }
+          if (pricing.servicePlan.package.code === "WHATSAPP") {
+            const devices = await prisma.whatsappDevice.findMany({
+              where: { organizationId, status: "ACTIVE" },
+              select: { id: true },
+            })
+            if (devices.length === 0) {
+              set.status = 422
+              return {
+                ok: false as const,
+                error: "VALIDATION_ERROR" as const,
+                message: "At least one active WhatsApp device is required.",
+              }
+            }
+            whatsappQuantity = devices.length
+            const resources = pricing.servicePlan.resources as {
+              quotaOutMonthly?: number
+              quotaOut?: number
+            }
+            orderMetadata.deviceIds = devices.map((device) => device.id)
+            orderMetadata.allowanceByDevice = Object.fromEntries(
+              devices.map((device) => [
+                device.id,
+                resources.quotaOutMonthly ?? resources.quotaOut ?? 0,
+              ])
+            )
+          }
+          // Keep route loading independent from VPN adapter initialization in tests.
+          const { BillingOrderService } =
+            await import("@/modules/billing/orders/order.service")
+          const orders: BillingOrderService = new BillingOrderService(prisma)
+          const created = await orders.createOrder({
+            organizationId,
+            pricingId,
+            quantity: new Prisma.Decimal(whatsappQuantity ?? quantity ?? 1),
+            metadata: orderMetadata,
+            idempotencyKey: `admin-subscription:${organizationId}:${pricingId}:${Date.now()}`,
           })
+          const charged = await orders.chargeOrder(created.orderId)
+          const fulfilled = await orders.fulfillOrder(charged.orderId)
+          const subscription = fulfilled.subscriptionId
+            ? await prisma.serviceSubscription.findUnique({
+                where: { id: fulfilled.subscriptionId },
+              })
+            : null
 
-          // Audit logging
           emitBillingAudit({
-            entityType: "ServiceSubscription",
-            entityId: subscription.id,
+            entityType: "BillingOrder",
+            entityId: fulfilled.orderId,
             action: "ORDER_CREATED",
             actorId: auth.user?.id,
             context: {
               organizationId,
-              packageId,
-              planId,
               pricingId,
-              type,
-              billingMode,
+              quantity: whatsappQuantity ?? quantity ?? 1,
             },
           })
-
           return {
             ok: true as const,
-            subscription: {
-              id: subscription.id,
-              organizationId: subscription.organizationId,
-              packageId: subscription.packageId,
-              planId: subscription.planId,
-              pricingId: subscription.pricingId,
-              type: subscription.type,
-              billingMode: subscription.billingMode,
-              status: subscription.status,
-              currentPeriodStart: subscription.currentPeriodStart.toISOString(),
-              currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
-            },
+            order: fulfilled,
+            subscription: subscription
+              ? {
+                  id: subscription.id,
+                  organizationId: subscription.organizationId,
+                  packageId: subscription.packageId,
+                  planId: subscription.planId,
+                  pricingId: subscription.pricingId,
+                  type: subscription.type,
+                  billingMode: subscription.billingMode,
+                  status: subscription.status,
+                  currentPeriodStart:
+                    subscription.currentPeriodStart.toISOString(),
+                  currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
+                }
+              : null,
           }
         } catch (error) {
           console.error("[AdminSubscriptionCreate] Error:", error)
+          const message = error instanceof Error ? error.message : ""
+          if (
+            message.startsWith("PRICING_") ||
+            message === "INVALID_QUANTITY"
+          ) {
+            set.status = 422
+            return {
+              ok: false as const,
+              error: "VALIDATION_ERROR" as const,
+              message: "Pricing is unavailable for this subscription.",
+            }
+          }
           return toServerError(set, "Unable to create subscription.")
         }
       })

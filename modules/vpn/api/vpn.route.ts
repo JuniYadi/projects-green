@@ -415,6 +415,8 @@ export const createVpnRoutes = (deps: Partial<VpnRouteDeps> = {}) => {
                 pricingId: refs.pricingId,
                 type: "BUNDLE",
                 billingMode: "PACKAGE",
+                priceLocked: price.amount,
+                currency: account.currency,
                 status: "SUSPENDED",
                 currentPeriodStart: now,
                 currentPeriodEnd: periodEnd,

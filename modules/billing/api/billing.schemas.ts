@@ -47,24 +47,21 @@ export type AdminSubscriptionUpdateInput = z.infer<
 
 // ─── Admin Subscription Create ──────────────────────────────────────────────
 
-export const adminSubscriptionCreateSchema = z.object({
-  organizationId: z.string().min(1),
-  packageId: z.string().min(1),
-  planId: z.string().min(1),
-  pricingId: z.string().min(1),
-  type: z.enum(["PAYG", "BUNDLE", "CUSTOM"]),
-  billingMode: z.enum(["PACKAGE", "PAYG", "CUSTOM"]),
-  currentPeriodStart: z.coerce.date(),
-  currentPeriodEnd: z.coerce.date(),
-  allocatedConfig: z
-    .object({
-      cpu: z.number().int().min(100).optional(),
-      mem: z.number().int().min(128).optional(),
-      devices: z.number().int().min(1).optional(),
-    })
-    .optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
-})
+export const adminSubscriptionCreateSchema = z
+  .object({
+    organizationId: z.string().min(1),
+    pricingId: z.string().min(1),
+    quantity: z.coerce.number().min(1).optional(),
+    allocatedConfig: z
+      .object({
+        cpu: z.number().int().min(100).optional(),
+        mem: z.number().int().min(128).optional(),
+        devices: z.number().int().min(1).optional(),
+      })
+      .optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
+  })
+  .strict()
 
 export type AdminSubscriptionCreateInput = z.infer<
   typeof adminSubscriptionCreateSchema

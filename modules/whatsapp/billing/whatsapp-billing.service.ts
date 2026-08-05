@@ -1,6 +1,17 @@
 import { Prisma } from "@prisma/client"
 import type { PrismaClient } from "@prisma/client"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
+import type { WhatsAppPlanResources } from "@/modules/billing/types"
+
+type BillingOrderResultLike = { orderId: string; [key: string]: unknown }
+type BillingOrders = {
+  renewServiceSubscription(
+    subscriptionId: string,
+    now?: Date
+  ): Promise<BillingOrderResultLike>
+  chargeOrder(orderId: string): Promise<BillingOrderResultLike>
+  fulfillOrder(orderId: string): Promise<BillingOrderResultLike>
+}
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -22,12 +33,17 @@ export type WhatsappBillingDecision =
       adjustmentId: string
     }
 
-export type MonthlyBaseInput = {
+export type ChargeSubscriptionBaseInput = {
   organizationId: string
-  deviceId: string
-  amount: Prisma.Decimal
-  allowance: number
+  subscriptionId: string
+  pricingId: string
+  unitPrice: Prisma.Decimal
+  quantity: Prisma.Decimal
+  periodStart: Date
+  periodEnd: Date
+  deviceIds: string[]
   period: string
+  allowanceByDevice: Record<string, Prisma.Decimal | number>
 }
 
 export type OverageInput = {
@@ -39,55 +55,107 @@ export type OverageInput = {
 }
 
 // ─── Service ────────────────────────────────────────────────────────────
+function metadataObject(
+  value: Prisma.JsonValue | null | undefined
+): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {}
+  return value as Record<string, unknown>
+}
+
+function jsonObject(value: Record<string, unknown>): Prisma.InputJsonObject {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonObject
+}
 
 export class WhatsappBillingService {
+  private orders?: BillingOrders
+
   constructor(
     private prisma: PrismaClient,
-    private transactions: BillingTransactionService
-  ) {}
+    private transactions: BillingTransactionService,
+    orders?: BillingOrders
+  ) {
+    this.orders = orders
+  }
 
-  /**
-   * Charge monthly base price from balance and reset allowance.
-   * Idempotent via BillingTransactionService's idempotency key.
-   */
-  async chargeMonthlyBase(input: MonthlyBaseInput) {
-    return this.prisma.$transaction(async (tx) => {
-      const account = await tx.billingAccount.findUnique({
-        where: { organizationId: input.organizationId },
+  async chargeSubscriptionBase(input: ChargeSubscriptionBaseInput) {
+    if (
+      input.deviceIds.length === 0 ||
+      !input.quantity.eq(input.deviceIds.length)
+    ) {
+      throw new Error("NO_ACTIVE_DEVICES")
+    }
+    const allowances: Record<string, string> = {}
+    for (const deviceId of input.deviceIds) {
+      const raw = input.allowanceByDevice[deviceId]
+      if (raw === undefined)
+        throw new Error("WHATSAPP_ALLOWANCE_METADATA_REQUIRED")
+      const allowance = new Prisma.Decimal(raw)
+      if (allowance.isNegative()) throw new Error("WHATSAPP_ALLOWANCE_INVALID")
+      allowances[deviceId] = allowance.toString()
+    }
+
+    const subscription = await this.prisma.serviceSubscription.findUnique({
+      where: { id: input.subscriptionId },
+      select: { organizationId: true, metadata: true },
+    })
+    if (!subscription || subscription.organizationId !== input.organizationId) {
+      throw new Error("SUBSCRIPTION_NOT_FOUND")
+    }
+    const metadata = {
+      ...metadataObject(subscription.metadata),
+      subscriptionId: input.subscriptionId,
+      deviceIds: input.deviceIds,
+      allowanceByDevice: allowances,
+      pricingId: input.pricingId,
+      unitPrice: input.unitPrice.toString(),
+      periodStart: input.periodStart.toISOString(),
+      periodEnd: input.periodEnd.toISOString(),
+    }
+    await this.prisma.serviceSubscription.update({
+      where: { id: input.subscriptionId },
+      data: { quantity: input.quantity, metadata: jsonObject(metadata) },
+    })
+
+    const idempotencyKey = `service-subscription:${input.subscriptionId}:${input.period}`
+    const existing = await this.prisma.billingOrder.findUnique({
+      where: { idempotencyKey },
+      select: { id: true, status: true },
+    })
+    if (!this.orders) throw new Error("ORDER_SERVICE_REQUIRED")
+    const orders = this.orders
+    const result = existing
+      ? await orders.fulfillOrder(
+          existing.status === "PENDING"
+            ? (await orders.chargeOrder(existing.id)).orderId
+            : existing.id
+        )
+      : await orders.renewServiceSubscription(
+          input.subscriptionId,
+          input.periodStart
+        )
+
+    if (!existing) {
+      await this.prisma.billingOrder.update({
+        where: { id: result.orderId },
+        data: { idempotencyKey },
       })
-      if (!account) throw new Error("BILLING_ACCOUNT_NOT_FOUND")
+    }
+    await this.resetAllowances(input.deviceIds, allowances)
+    return result
+  }
 
-      const result = await this.transactions.debitServiceBalance(
-        {
-          organizationId: input.organizationId,
-          amount: input.amount,
-          currency: account.currency,
-          source: "WHATSAPP",
-          reason: "WhatsApp monthly base payment",
-          idempotencyKey: `wa-base:${input.deviceId}:${input.period}`,
-          metadata: {
-            deviceId: input.deviceId,
-            period: input.period,
-            allowance: input.allowance,
-          },
-          line: {
-            description: "WhatsApp monthly base",
-            quantity: new Prisma.Decimal(1),
-            unitPrice: input.amount,
-            lineType: "SUBSCRIPTION",
-          },
-        },
-        tx
-      )
-
-      // Reset allowance — even if alreadyProcessed, ensure allowance is set
-      // (idempotent update: setting to the same value is safe)
-      await tx.whatsappDevice.update({
-        where: { id: input.deviceId },
-        data: { quotaBaseOut: input.allowance, quotaBase: input.allowance },
-      })
-
-      return result
+  private async resetAllowances(
+    deviceIds: string[],
+    allowanceByDevice: Record<string, string>
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      for (const deviceId of deviceIds) {
+        const allowance = new Prisma.Decimal(allowanceByDevice[deviceId])
+        await tx.whatsappDevice.update({
+          where: { id: deviceId },
+          data: { quotaBaseOut: allowance, quotaBase: allowance },
+        })
+      }
     })
   }
 
@@ -151,12 +219,23 @@ export class WhatsappBillingService {
         }
       }
 
-      // Case 3: Neither covers — charge overage from org balance
+      // Overage uses the commercial subscription snapshot; account currency is legacy fallback.
       const account = await tx.billingAccount.findUnique({
         where: { organizationId: input.organizationId },
       })
       if (!account) throw new Error("BILLING_ACCOUNT_NOT_FOUND")
-
+      const subscription =
+        typeof tx.serviceSubscription?.findFirst === "function"
+          ? await tx.serviceSubscription.findFirst({
+              where: {
+                organizationId: input.organizationId,
+                package: { code: "WHATSAPP" },
+                status: "ACTIVE",
+              },
+              select: { currency: true },
+            })
+          : null
+      const currency = subscription?.currency ?? account.currency
       const overageCredit = credit.minus(combined)
       const amount = input.unitPrice.times(overageCredit)
 
@@ -165,7 +244,7 @@ export class WhatsappBillingService {
         {
           organizationId: input.organizationId,
           amount,
-          currency: account.currency,
+          currency,
           source: "WHATSAPP",
           reason: "WhatsApp overage charge",
           idempotencyKey: input.idempotencyKey,
@@ -244,4 +323,73 @@ export class WhatsappBillingService {
       })
     }
   }
+}
+
+export async function runWhatsappBillingCycle(
+  prisma: PrismaClient,
+  orders: BillingOrders,
+  now = new Date()
+): Promise<{ charged: number; skipped: number; errors: number }> {
+  const billing = new WhatsappBillingService(
+    prisma,
+    new BillingTransactionService(prisma),
+    orders
+  )
+  const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`
+  const subscriptions = await prisma.serviceSubscription.findMany({
+    where: { package: { code: "WHATSAPP" }, status: "ACTIVE" },
+    include: { plan: true },
+  })
+  let charged = 0
+  let skipped = 0
+  let errors = 0
+  for (const subscription of subscriptions) {
+    const devices = await prisma.whatsappDevice.findMany({
+      where: { organizationId: subscription.organizationId, status: "ACTIVE" },
+      select: { id: true },
+    })
+    if (devices.length === 0) {
+      skipped++
+      continue
+    }
+    const allowance =
+      (subscription.plan.resources as WhatsAppPlanResources | null)
+        ?.quotaOutMonthly ??
+      (subscription.plan.resources as WhatsAppPlanResources | null)?.quotaOut ??
+      0
+    const periodMonths =
+      subscription.billingPeriod === "QUARTERLY"
+        ? 3
+        : subscription.billingPeriod === "SEMI_ANNUAL"
+          ? 6
+          : subscription.billingPeriod === "ANNUAL"
+            ? 12
+            : 1
+    const periodEnd = new Date(subscription.currentPeriodEnd)
+    periodEnd.setUTCMonth(periodEnd.getUTCMonth() + periodMonths)
+    try {
+      await billing.chargeSubscriptionBase({
+        organizationId: subscription.organizationId,
+        subscriptionId: subscription.id,
+        pricingId: subscription.pricingId,
+        unitPrice: new Prisma.Decimal(subscription.priceLocked),
+        quantity: new Prisma.Decimal(devices.length),
+        periodStart: subscription.currentPeriodEnd,
+        periodEnd,
+        deviceIds: devices.map((device) => device.id),
+        period,
+        allowanceByDevice: Object.fromEntries(
+          devices.map((device) => [device.id, allowance])
+        ),
+      })
+      charged++
+    } catch (error) {
+      errors++
+      console.error(
+        `[whatsapp-billing] subscription=${subscription.id} error:`,
+        error
+      )
+    }
+  }
+  return { charged, skipped, errors }
 }
