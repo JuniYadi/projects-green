@@ -1,4 +1,4 @@
 {
-  "directory": "/absolute/path/to/Obsidian",
+  "directory": "/absolute/machine-local/path/to/Obsidian/vault",
   "entry": "Welcome.md"
 }
