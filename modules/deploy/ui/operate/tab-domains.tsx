@@ -147,8 +147,10 @@ export function TabDomains({
     setNewDomain("")
   }
 
-  const handleSubmit = (event: React.FormEvent) => {
-    const hostname = newDomain.trim()
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const formValue = new FormData(event.currentTarget).get("hostname")
+    const hostname = String(formValue ?? newDomain).trim()
     if (!hostname) return
     if (!apiMode || !api) {
       handleLegacyAdd(event)
@@ -508,6 +510,7 @@ export function TabDomains({
                   className="absolute top-2.5 left-3 text-muted-foreground"
                 />
                 <Input
+                  name="hostname"
                   placeholder="e.g. shop.acme.com"
                   value={newDomain}
                   onChange={(event) => setNewDomain(event.target.value)}

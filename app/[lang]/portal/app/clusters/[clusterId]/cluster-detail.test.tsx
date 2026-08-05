@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, mock } from "bun:test"
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from "@testing-library/react"
 
 import { ClusterDetail } from "./cluster-detail"
 
@@ -109,11 +115,21 @@ describe("ClusterDetail endpoint", () => {
       }
     )
 
-    fireEvent.change(view.getByLabelText("Managed Base Domain"), {
-      target: { value: "apps.eu.example.com" },
+    await act(async () => {
+      fireEvent.change(view.getByLabelText("Managed Base Domain"), {
+        target: { value: "apps.eu.example.com" },
+      })
+      fireEvent.change(view.getByLabelText("IPv4 Addresses"), {
+        target: { value: "198.51.100.10\n198.51.100.11" },
+      })
     })
-    fireEvent.change(view.getByLabelText("IPv4 Addresses"), {
-      target: { value: "198.51.100.10\n198.51.100.11" },
+    await waitFor(() => {
+      expect(
+        (view.getByLabelText("Managed Base Domain") as HTMLInputElement).value
+      ).toBe("apps.eu.example.com")
+      expect(
+        (view.getByLabelText("IPv4 Addresses") as HTMLTextAreaElement).value
+      ).toBe("198.51.100.10\n198.51.100.11")
     })
     fireEvent.click(view.getByRole("button", { name: /save endpoint/i }))
 
@@ -222,7 +238,7 @@ describe("ClusterDetail", () => {
       { timeout: 5000 }
     )
 
-    expect(view.getByText(/us-east-1/)).toBeTruthy()
+    expect(view.getAllByText(/us-east-1/).length).toBeGreaterThanOrEqual(1)
     expect(view.getAllByText("Active").length).toBeGreaterThanOrEqual(1)
     expect(view.getAllByText("Default").length).toBeGreaterThanOrEqual(1)
   })

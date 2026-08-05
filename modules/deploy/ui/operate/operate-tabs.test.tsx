@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
-import { fireEvent, render } from "@testing-library/react"
+import { fireEvent, render, waitFor } from "@testing-library/react"
 import { useState } from "react"
 import { INITIAL_LOGS } from "@/modules/deploy/operate.mock"
 import { TabDomains } from "@/modules/deploy/ui/operate/tab-domains"
@@ -133,7 +133,7 @@ describe("Operate tabs coverage", () => {
       globalThis.setTimeout = originalSetTimeout
     }
   })
-  it("loads DNS targets and calls persisted domain operations", () => {
+  it("loads DNS targets and calls persisted domain operations", async () => {
     const view = render(<DomainsHarness />)
 
     expect(view.getByText("CUSTOM")).toBeTruthy()
@@ -142,16 +142,21 @@ describe("Operate tabs coverage", () => {
     expect(view.getByText("203.0.113.10")).toBeTruthy()
     expect(view.getByText("2001:db8::10")).toBeTruthy()
 
-    fireEvent.change(view.getByPlaceholderText("e.g. shop.acme.com"), {
+    fireEvent.input(view.getByPlaceholderText("e.g. shop.acme.com"), {
       target: { value: "api.acme.test" },
     })
     fireEvent.click(view.getByRole("button", { name: "Add Domain" }))
+    await waitFor(() =>
+      expect(domainCallbacks.onAddDomain).toHaveBeenCalledWith("api.acme.test")
+    )
     fireEvent.click(view.getByRole("button", { name: /delete domain/i }))
+    await waitFor(() =>
+      expect(domainCallbacks.onDeleteDomain).toHaveBeenCalledWith("dom-1")
+    )
     fireEvent.click(view.getByRole("button", { name: "Verify" }))
-
-    expect(domainCallbacks.onAddDomain).toHaveBeenCalledWith("api.acme.test")
-    expect(domainCallbacks.onDeleteDomain).toHaveBeenCalledWith("dom-1")
-    expect(domainCallbacks.onVerifyDomain).toHaveBeenCalledWith("dom-1")
+    await waitFor(() =>
+      expect(domainCallbacks.onVerifyDomain).toHaveBeenCalledWith("dom-1")
+    )
   })
 
   it("covers log streaming branches, filters, and live-tail toggle", () => {

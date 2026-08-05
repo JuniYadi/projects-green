@@ -251,7 +251,14 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         const { data: payload } =
           await eden.api.admin["app-hosting"].clusters[clusterId].endpoint.get()
         if (!payload || !payload.ok || !isClusterEndpointDTO(payload.data)) {
-          throw new Error("Unable to load edge endpoint.")
+          const message =
+            payload &&
+            typeof payload === "object" &&
+            "message" in payload &&
+            typeof payload.message === "string"
+              ? payload.message
+              : "Unable to load edge endpoint."
+          throw new Error(message)
         }
 
         if (cancelled) return
@@ -343,7 +350,9 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
       setMetadataSaving(false)
     }
   }
-  const handleEndpointSave = async (event: React.FormEvent) => {
+  const handleEndpointSave = async (
+    event: React.FormEvent<HTMLFormElement>
+  ) => {
     event.preventDefault()
     setEndpointSaving(true)
     setEndpointError(null)
@@ -354,16 +363,26 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
         .split(/[\n,]/)
         .map((address) => address.trim())
         .filter(Boolean)
+    const formData = new FormData(event.currentTarget)
+    const formValue = (name: string, fallback: string) =>
+      String(formData.get(name) ?? fallback)
 
     try {
       const { data: response } = await eden.api.admin["app-hosting"].clusters[
         clusterId
       ].endpoint.put({
-        managedBaseDomain: endpoint.managedBaseDomain.trim(),
-        cnameTarget: endpoint.cnameTarget.trim(),
-        ipv4Addresses: splitAddresses(endpoint.ipv4Addresses.join("\n")),
-        ipv6Addresses: splitAddresses(endpoint.ipv6Addresses.join("\n")),
-        isActive: endpoint.isActive,
+        managedBaseDomain: formValue(
+          "managedBaseDomain",
+          endpoint.managedBaseDomain
+        ).trim(),
+        cnameTarget: formValue("cnameTarget", endpoint.cnameTarget).trim(),
+        ipv4Addresses: splitAddresses(
+          formValue("ipv4Addresses", endpoint.ipv4Addresses.join("\n"))
+        ),
+        ipv6Addresses: splitAddresses(
+          formValue("ipv6Addresses", endpoint.ipv6Addresses.join("\n"))
+        ),
+        isActive: formData.get("isActive") === "on",
       })
 
       if (!response || !response.ok) {
@@ -806,6 +825,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   </Label>
                   <Input
                     id="endpoint-managed-base-domain"
+                    name="managedBaseDomain"
                     value={endpoint.managedBaseDomain}
                     onChange={(event) =>
                       setEndpoint((previous) => ({
@@ -827,6 +847,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   <Label htmlFor="endpoint-cname-target">CNAME Target</Label>
                   <Input
                     id="endpoint-cname-target"
+                    name="cnameTarget"
                     value={endpoint.cnameTarget}
                     onChange={(event) =>
                       setEndpoint((previous) => ({
@@ -850,6 +871,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   </Label>
                   <textarea
                     id="endpoint-ipv4-addresses"
+                    name="ipv4Addresses"
                     rows={3}
                     value={endpoint.ipv4Addresses.join("\n")}
                     onChange={(event) =>
@@ -874,6 +896,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   </Label>
                   <textarea
                     id="endpoint-ipv6-addresses"
+                    name="ipv6Addresses"
                     rows={3}
                     value={endpoint.ipv6Addresses.join("\n")}
                     onChange={(event) =>
@@ -899,6 +922,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
               >
                 <input
                   id="endpoint-active"
+                  name="isActive"
                   type="checkbox"
                   checked={endpoint.isActive}
                   onChange={(event) =>
