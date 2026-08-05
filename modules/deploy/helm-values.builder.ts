@@ -5,6 +5,15 @@ export type HelmValuesEnvEntry = {
   scope?: string
 }
 
+export type HelmValuesEdgePolicy = {
+  domain: string
+  certificateSource: "MANAGED" | "UPLOADED"
+  certificateStatus?: string
+  certificateSecretName?: string | null
+  allowlistMode?: "OPEN" | "ALLOWLIST_ONLY"
+  enabledCidrs?: string[]
+}
+
 export type HelmValuesInput = {
   slug: string
   imageRepository: string
@@ -14,6 +23,7 @@ export type HelmValuesInput = {
   cpu?: number | null
   memory?: number | null
   domain?: string | null
+  edge?: HelmValuesEdgePolicy | null
 }
 
 const omitUndefined = <T extends Record<string, unknown>>(obj: T): T =>
@@ -57,16 +67,40 @@ export function buildHelmValues(
   if (Object.keys(plainEnv).length > 0) values.env = plainEnv
   if (Object.keys(secretEnv).length > 0) values.secrets = secretEnv
 
-  if (input.domain) {
-    values.simpleIngress = [
-      {
-        enabled: true,
-        domain: input.domain,
-        tls: true,
-        className: "haproxy",
-        certManager: { enabled: true, issuer: "production" },
-      },
-    ]
+  const edge = input.edge
+  const ingressDomain = edge?.domain || input.domain
+
+  if (ingressDomain) {
+    const ingress: Record<string, unknown> = {
+      enabled: true,
+      domain: ingressDomain,
+      tls: true,
+      className: "haproxy",
+    }
+
+    if (
+      edge?.certificateSource === "UPLOADED" &&
+      edge.certificateStatus === "ACTIVE"
+    ) {
+      if (edge.certificateSecretName) {
+        ingress.tlsSecretName = edge.certificateSecretName
+      }
+    } else if (edge?.certificateSource === "MANAGED" || !edge) {
+      ingress.certManager = { enabled: true, issuer: "production" }
+    }
+
+    if (
+      edge?.allowlistMode === "ALLOWLIST_ONLY" &&
+      edge.enabledCidrs &&
+      edge.enabledCidrs.length > 0
+    ) {
+      ingress.annotations = {
+        "haproxy-ingress.github.io/whitelist-source-range":
+          edge.enabledCidrs.join(","),
+      }
+    }
+
+    values.simpleIngress = [ingress]
   }
 
   return omitUndefined(values)

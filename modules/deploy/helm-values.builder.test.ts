@@ -82,6 +82,90 @@ describe("buildHelmValues", () => {
       },
     ])
   })
+  it("renders managed edge TLS and enabled allowlist CIDRs", () => {
+    const out = buildHelmValues({
+      slug: "s",
+      imageRepository: "r",
+      imageTag: "1",
+      env: [],
+      edge: {
+        domain: "managed.example.com",
+        certificateSource: "MANAGED",
+        certificateStatus: "ACTIVE",
+        allowlistMode: "ALLOWLIST_ONLY",
+        enabledCidrs: ["10.0.0.0/8", "2001:db8::/32"],
+      },
+    })
+
+    expect(out.simpleIngress).toEqual([
+      {
+        enabled: true,
+        domain: "managed.example.com",
+        tls: true,
+        className: "haproxy",
+        certManager: { enabled: true, issuer: "production" },
+        annotations: {
+          "haproxy-ingress.github.io/whitelist-source-range":
+            "10.0.0.0/8,2001:db8::/32",
+        },
+      },
+    ])
+  })
+
+  it("renders an uploaded TLS secret without cert-manager", () => {
+    const out = buildHelmValues({
+      slug: "s",
+      imageRepository: "r",
+      imageTag: "1",
+      env: [],
+      edge: {
+        domain: "custom.example.com",
+        certificateSource: "UPLOADED",
+        certificateStatus: "ACTIVE",
+        certificateSecretName: "domain-tls",
+      },
+    })
+
+    expect(out.simpleIngress).toEqual([
+      {
+        enabled: true,
+        domain: "custom.example.com",
+        tls: true,
+        tlsSecretName: "domain-tls",
+        className: "haproxy",
+      },
+    ])
+  })
+
+  it("omits allowlist annotation for OPEN or when all entries are disabled", () => {
+    const open = buildHelmValues({
+      slug: "s",
+      imageRepository: "r",
+      imageTag: "1",
+      env: [],
+      edge: {
+        domain: "open.example.com",
+        certificateSource: "MANAGED",
+        allowlistMode: "OPEN",
+        enabledCidrs: ["10.0.0.0/8"],
+      },
+    })
+    const disabled = buildHelmValues({
+      slug: "s",
+      imageRepository: "r",
+      imageTag: "1",
+      env: [],
+      edge: {
+        domain: "disabled.example.com",
+        certificateSource: "MANAGED",
+        allowlistMode: "ALLOWLIST_ONLY",
+        enabledCidrs: [],
+      },
+    })
+
+    expect((open.simpleIngress as any)[0].annotations).toBeUndefined()
+    expect((disabled.simpleIngress as any)[0].annotations).toBeUndefined()
+  })
 
   it("omits env, secrets, and simpleIngress when not applicable", () => {
     const out = buildHelmValues({

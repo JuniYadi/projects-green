@@ -5,6 +5,65 @@ import { buildHelmValues } from "./helm-values.builder"
 import { GitOpsRepositoryService } from "@/modules/gitops/gitops.service"
 import { recordDeployEventOnce } from "./deploy-event.service"
 
+type PersistedEdgePolicy = {
+  domain: string
+  certificateSource: "MANAGED" | "UPLOADED"
+  certificateStatus?: string
+  certificateSecretName?: string
+  allowlistMode?: "OPEN" | "ALLOWLIST_ONLY"
+  enabledCidrs: string[]
+}
+
+type EdgeDomainDelegate = {
+  findFirst(args: unknown): Promise<{
+    id: string
+    hostname: string
+    allowlistMode: "OPEN" | "ALLOWLIST_ONLY"
+    certificate: {
+      source: "MANAGED" | "UPLOADED"
+      status: string
+    } | null
+    allowlistEntries: Array<{ cidr: string }>
+  } | null>
+}
+
+async function loadPersistedEdgePolicy(
+  stackId: string,
+  stackSlug: string
+): Promise<PersistedEdgePolicy | null> {
+  const edgePrisma = prisma as unknown as {
+    applicationDomain?: EdgeDomainDelegate
+  }
+  if (!edgePrisma.applicationDomain) return null
+
+  const domain = await edgePrisma.applicationDomain.findFirst({
+    where: { stackId, isPrimary: true },
+    include: {
+      certificate: { select: { source: true, status: true } },
+      allowlistEntries: {
+        where: { enabled: true },
+        orderBy: { position: "asc" },
+        select: { cidr: true },
+      },
+    },
+  })
+  if (!domain) return null
+
+  return {
+    domain: domain.hostname,
+    certificateSource: domain.certificate?.source ?? "MANAGED",
+    // Uploaded cert material is materialized under this deterministic name by
+    // the edge deployment flow; never include encrypted certificate fields.
+    certificateSecretName:
+      domain.certificate?.source === "UPLOADED" &&
+      domain.certificate.status === "ACTIVE"
+        ? `app-domain-${domain.id}-tls`
+        : undefined,
+    allowlistMode: domain.allowlistMode,
+    enabledCidrs: domain.allowlistEntries.map((entry) => entry.cidr),
+  }
+}
+
 export type JenkinsImageReadyInput = {
   slug: string
   deploymentId?: string
@@ -87,6 +146,8 @@ export async function handleJenkinsImageReady(
       type?: string
     }>) ?? []
 
+  const edge = await loadPersistedEdgePolicy(stack.id, stack.slug)
+
   const values = buildHelmValues({
     slug: stack.slug,
     imageRepository,
@@ -96,6 +157,7 @@ export async function handleJenkinsImageReady(
     cpu: stack.cpu,
     memory: stack.memory,
     domain: stack.customDomain ?? null,
+    edge,
   })
 
   const valuesYaml = jsYaml.dump(values, {
