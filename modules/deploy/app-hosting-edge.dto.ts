@@ -41,6 +41,7 @@ export const toApplicationDomainCertificateDTO = (
     | "domainId"
     | "source"
     | "status"
+    | "tlsSecretName"
     | "expiresAt"
     | "fingerprint"
     | "validationError"
@@ -54,6 +55,7 @@ export const toApplicationDomainCertificateDTO = (
         domainId: certificate.domainId,
         source: certificate.source,
         status: certificate.status,
+        secretName: certificate.tlsSecretName,
         expiresAt: certificate.expiresAt,
         fingerprint: certificate.fingerprint,
         validationError: certificate.validationError,

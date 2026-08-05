@@ -323,7 +323,12 @@ export async function createDomainForStack(
     include: { certificate: true, allowlistEntries: true, cluster: true },
   })) as Record<string, unknown>
   const certificate = await db.applicationDomainCertificate.create({
-    data: { domainId: String(row.id), source: "MANAGED", status: "PENDING" },
+    data: {
+      domainId: String(row.id),
+      source: "MANAGED",
+      status: "PENDING",
+      tlsSecretName: null,
+    },
   })
   row.certificate = certificate
   row.allowlistEntries = []
@@ -348,9 +353,7 @@ export async function verifyDomain(
   try {
     const cname = await dns.resolveCname(hostname)
     verified = cname.some(
-      (value) =>
-        normalizeHostname(value) ===
-        normalizeHostname(String(domain.expectedCnameTarget))
+      (value) => normalizeHostname(value) === String(domain.expectedCnameTarget)
     )
   } catch {
     try {
@@ -358,15 +361,17 @@ export async function verifyDomain(
         ...(await dns.resolve4(hostname)),
         ...(await dns.resolve6(hostname)),
       ]
-      const expected = new Set([
-        ...endpoint.ipv4Addresses,
-        ...endpoint.ipv6Addresses,
-      ])
-      verified = addresses.some((value) => expected.has(value))
+      const expected = new Set(
+        [...endpoint.ipv4Addresses, ...endpoint.ipv6Addresses].map((value) =>
+          value.toLowerCase()
+        )
+      )
+      verified = addresses.some((value) => expected.has(value.toLowerCase()))
     } catch {
       verified = false
     }
   }
+
   const updated = (await db.applicationDomain.update({
     where: { id: input.domainId },
     data: {
@@ -446,16 +451,22 @@ function parseUploadedCertificate(
   const san =
     certificate.subjectAltName
       ?.split(",")
-      .map((item) => item.trim().replace(/^DNS:/, "").toLowerCase()) ?? []
-  const covered = san.some(
+      .map((item) => item.trim().replace(/^DNS:/i, "").toLowerCase()) ?? []
+  const commonNames = certificate.subject
+    .split("\n")
+    .map((item) =>
+      item
+        .trim()
+        .match(/^CN\s*=\s*(.+)$/i)?.[1]
+        ?.toLowerCase()
+    )
+    .filter((name): name is string => Boolean(name))
+  const covered = [...san, ...commonNames].some(
     (name) =>
       name === hostname ||
       (name.startsWith("*.") && hostname.endsWith(name.slice(1)))
   )
-  failIf(
-    san.length > 0 && !covered,
-    "certificate does not cover the requested hostname"
-  )
+  failIf(!covered, "certificate does not cover the requested hostname")
   if (input.chain) {
     const chainCertificates =
       input.chain.match(
@@ -493,6 +504,7 @@ export async function uploadDomainCertificate(
       expiresAt: parsed.expiresAt,
       fingerprint: parsed.fingerprint,
       validationError: null,
+      tlsSecretName: `app-domain-${input.domainId}-tls`,
       certificateCiphertext: encrypted(input.certificate),
       privateKeyCiphertext: encrypted(input.privateKey),
       chainCiphertext: input.chain ? encrypted(input.chain) : null,
@@ -504,6 +516,7 @@ export async function uploadDomainCertificate(
       expiresAt: parsed.expiresAt,
       fingerprint: parsed.fingerprint,
       validationError: null,
+      tlsSecretName: `app-domain-${input.domainId}-tls`,
       certificateCiphertext: encrypted(input.certificate),
       privateKeyCiphertext: encrypted(input.privateKey),
       chainCiphertext: input.chain ? encrypted(input.chain) : null,

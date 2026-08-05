@@ -2637,6 +2637,7 @@ model ApplicationDomainCertificate {
   expiresAt            DateTime?
   fingerprint          String?
   validationError      String?
+  tlsSecretName        String?
   certificateCiphertext String?
   privateKeyCiphertext String?
   chainCiphertext      String?

@@ -36,6 +36,7 @@ export type ApplicationDomainCertificateDTO = {
   domainId: string
   source: ApplicationDomainCertificateSource
   status: ApplicationDomainCertificateStatus
+  secretName: string | null
   expiresAt: Date | null
   fingerprint: string | null
   validationError: string | null

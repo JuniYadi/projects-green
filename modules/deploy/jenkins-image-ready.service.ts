@@ -18,11 +18,12 @@ type EdgeDomainDelegate = {
   findFirst(args: unknown): Promise<{
     id: string
     hostname: string
-    allowlistMode: "OPEN" | "ALLOWLIST_ONLY"
     certificate: {
       source: "MANAGED" | "UPLOADED"
       status: string
+      tlsSecretName: string | null
     } | null
+    allowlistMode: "OPEN" | "ALLOWLIST_ONLY"
     allowlistEntries: Array<{ cidr: string }>
   } | null>
 }
@@ -39,7 +40,9 @@ async function loadPersistedEdgePolicy(
   const domain = await edgePrisma.applicationDomain.findFirst({
     where: { stackId, isPrimary: true },
     include: {
-      certificate: { select: { source: true, status: true } },
+      certificate: {
+        select: { source: true, status: true, tlsSecretName: true },
+      },
       allowlistEntries: {
         where: { enabled: true },
         orderBy: { position: "asc" },
@@ -52,12 +55,13 @@ async function loadPersistedEdgePolicy(
   return {
     domain: domain.hostname,
     certificateSource: domain.certificate?.source ?? "MANAGED",
+    certificateStatus: domain.certificate?.status,
     // Uploaded cert material is materialized under this deterministic name by
     // the edge deployment flow; never include encrypted certificate fields.
     certificateSecretName:
       domain.certificate?.source === "UPLOADED" &&
       domain.certificate.status === "ACTIVE"
-        ? `app-domain-${domain.id}-tls`
+        ? (domain.certificate.tlsSecretName ?? `app-domain-${domain.id}-tls`)
         : undefined,
     allowlistMode: domain.allowlistMode,
     enabledCidrs: domain.allowlistEntries.map((entry) => entry.cidr),

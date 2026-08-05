@@ -1,5 +1,40 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
+import * as realCrypto from "node:crypto"
 
+const resolveCname = mock(async () => ["EDGE.EXAMPLE.NET."])
+const resolve4 = mock(async () => ["203.0.113.10"])
+const resolve6 = mock(async () => ["2001:db8::10"])
+mock.module("node:dns", () => ({
+  promises: { resolveCname, resolve4, resolve6 },
+}))
+
+class FakeX509Certificate {
+  validTo = "2099-01-01T00:00:00.000Z"
+  fingerprint256 = "fingerprint"
+  subjectAltName: string | undefined
+  subject: string
+
+  constructor(pem: string) {
+    if (pem.includes("CN_ONLY_VALID")) {
+      this.subject = "CN=secure.example.com"
+    } else if (pem.includes("CN_ONLY_INVALID")) {
+      this.subject = "CN=other.example.com"
+    } else {
+      this.subject = "CN=other.example.com"
+      this.subjectAltName = "DNS:secure.example.com"
+    }
+  }
+}
+mock.module("node:crypto", () => ({
+  ...realCrypto,
+  X509Certificate: FakeX509Certificate,
+  createPrivateKey: () => ({}),
+  default: {
+    ...realCrypto,
+    X509Certificate: FakeX509Certificate,
+    createPrivateKey: () => ({}),
+  },
+}))
 const stack = {
   id: "stack-1",
   organizationId: "org-1",
@@ -105,12 +140,22 @@ const {
   normalizeCidr,
   normalizeHostname,
   updateAllowlist,
+  uploadDomainCertificate,
+  verifyDomain,
 } = await import("./app-hosting-edge.service")
 
 describe("app hosting edge service", () => {
   beforeEach(() => {
     domains.length = 0
     mockPrisma.applicationDomain.create.mockClear()
+    mockPrisma.applicationDomainCertificate.create.mockClear()
+    mockPrisma.applicationDomainCertificate.upsert.mockClear()
+    resolveCname.mockReset()
+    resolveCname.mockResolvedValue(["EDGE.EXAMPLE.NET."])
+    resolve4.mockReset()
+    resolve4.mockResolvedValue(["203.0.113.10"])
+    resolve6.mockReset()
+    resolve6.mockResolvedValue(["2001:db8::10"])
     mockPrisma.applicationDomainAllowlistEntry.create.mockClear()
   })
 
@@ -169,6 +214,7 @@ describe("app hosting edge service", () => {
         certificateCiphertext: "secret",
         privateKeyCiphertext: "private",
         chainCiphertext: null,
+        tlsSecretName: "app-domain-domain-1-tls",
         keyVersion: 1,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -181,6 +227,127 @@ describe("app hosting edge service", () => {
     })
     expect(result[0]?.certificate).not.toHaveProperty("certificateCiphertext")
     expect(result[0]?.certificate).not.toHaveProperty("privateKeyCiphertext")
+    expect(result[0]?.certificate?.secretName).toBe("app-domain-domain-1-tls")
+  })
+
+  it("normalizes DNS CNAME answers against the stored target", async () => {
+    domains.push({
+      id: "domain-1",
+      stackId: "stack-1",
+      clusterId: "cluster-eu",
+      hostname: "secure.example.com",
+      kind: "CUSTOM",
+      isPrimary: true,
+      dnsStatus: "PENDING",
+      expectedCnameTarget: "edge.example.net",
+      verifiedAt: null,
+      allowlistMode: "OPEN",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      certificate: null,
+      allowlistEntries: [],
+    })
+    const result = await verifyDomain({
+      organizationId: "org-1",
+      slug: "demo",
+      domainId: "domain-1",
+    })
+    expect(result.dnsStatus).toBe("VERIFIED")
+  })
+
+  it("verifies uppercase IPv6 DNS answers case-insensitively", async () => {
+    resolveCname.mockRejectedValueOnce(new Error("no cname"))
+    resolve4.mockResolvedValueOnce([])
+    resolve6.mockResolvedValueOnce(["2001:DB8::10"])
+    domains.push({
+      id: "domain-1",
+      stackId: "stack-1",
+      clusterId: "cluster-eu",
+      hostname: "secure.example.com",
+      kind: "CUSTOM",
+      isPrimary: true,
+      dnsStatus: "PENDING",
+      expectedCnameTarget: "edge.example.net",
+      verifiedAt: null,
+      allowlistMode: "OPEN",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      certificate: null,
+      allowlistEntries: [],
+    })
+    const result = await verifyDomain({
+      organizationId: "org-1",
+      slug: "demo",
+      domainId: "domain-1",
+    })
+    expect(result.dnsStatus).toBe("VERIFIED")
+  })
+
+  it("accepts a certificate whose subject CN covers the hostname", async () => {
+    domains.push({
+      id: "domain-1",
+      stackId: "stack-1",
+      clusterId: "cluster-eu",
+      hostname: "secure.example.com",
+      kind: "CUSTOM",
+      isPrimary: true,
+      dnsStatus: "VERIFIED",
+      expectedCnameTarget: "edge.example.net",
+      verifiedAt: new Date(),
+      allowlistMode: "OPEN",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      certificate: null,
+      allowlistEntries: [],
+    })
+    const result = await uploadDomainCertificate({
+      organizationId: "org-1",
+      slug: "demo",
+      domainId: "domain-1",
+      certificate:
+        "-----BEGIN CERTIFICATE-----CN_ONLY_VALID-----END CERTIFICATE-----",
+      privateKey: "-----BEGIN PRIVATE KEY-----key-----END PRIVATE KEY-----",
+    })
+    expect(result.certificate?.secretName).toBe("app-domain-domain-1-tls")
+    expect(mockPrisma.applicationDomainCertificate.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          tlsSecretName: "app-domain-domain-1-tls",
+        }),
+        update: expect.objectContaining({
+          tlsSecretName: "app-domain-domain-1-tls",
+        }),
+      })
+    )
+  })
+
+  it("rejects a certificate whose SAN and subject CN miss the hostname", async () => {
+    domains.push({
+      id: "domain-1",
+      stackId: "stack-1",
+      clusterId: "cluster-eu",
+      hostname: "secure.example.com",
+      kind: "CUSTOM",
+      isPrimary: true,
+      dnsStatus: "VERIFIED",
+      expectedCnameTarget: "edge.example.net",
+      verifiedAt: new Date(),
+      allowlistMode: "OPEN",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      certificate: null,
+      allowlistEntries: [],
+    })
+    await expect(
+      uploadDomainCertificate({
+        organizationId: "org-1",
+        slug: "demo",
+        domainId: "domain-1",
+        certificate:
+          "-----BEGIN CERTIFICATE-----CN_ONLY_INVALID-----END CERTIFICATE-----",
+        privateKey: "-----BEGIN PRIVATE KEY-----key-----END PRIVATE KEY-----",
+      })
+    ).rejects.toThrow("certificate does not cover the requested hostname")
   })
 
   it("normalizes CIDRs and supports domain-scoped allowlist mode", async () => {
