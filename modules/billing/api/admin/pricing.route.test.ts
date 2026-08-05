@@ -19,6 +19,7 @@ const db = {
     findFirst: mock(),
     create: mock(),
     update: mock(),
+    updateMany: mock(),
     count: mock(),
   },
   servicePlan: { findUnique: mock() },
@@ -27,7 +28,6 @@ const db = {
   serviceSubscription: { count: mock() },
   $transaction: mock(async (fn: (tx: typeof db) => unknown) => fn(db)),
 }
-
 const pricing = {
   id: "price-1",
   planId: "plan-1",
@@ -612,5 +612,87 @@ describe("admin pricing routes", () => {
     )
     expect(response.status).toBe(500)
     expect((await response.json()).error).toBe("INTERNAL_SERVER_ERROR")
+  })
+  it("saves and reads a VPN pricing matrix against GLOBAL", async () => {
+    const plan = {
+      id: "plan-1",
+      code: "STANDARD",
+      name: "Standard VPN",
+      package: { code: "VPN" },
+    }
+    const globalRegion = { id: "global-1", code: "GLOBAL", name: "Global" }
+    db.servicePlan.findUnique
+      .mockResolvedValueOnce(plan)
+      .mockResolvedValueOnce(plan)
+    db.serviceRegion.findUnique.mockResolvedValue(globalRegion)
+    db.servicePricing.findMany.mockResolvedValueOnce([]).mockResolvedValue([
+      ...["IDR:MONTHLY", "IDR:QUARTERLY", "USD:MONTHLY", "USD:QUARTERLY"].map(
+        (key) => {
+          const [currency, billingPeriod] = key.split(":")
+          return {
+            ...pricing,
+            id: key,
+            regionId: globalRegion.id,
+            billingPeriod,
+            currency,
+            servicePlan: plan,
+            region: globalRegion,
+          }
+        }
+      ),
+    ])
+    db.servicePricing.create.mockImplementation(
+      async (args: { data: Record<string, unknown> }) => ({
+        ...pricing,
+        id: `${String(args.data.currency)}-${String(args.data.billingPeriod)}`,
+        ...args.data,
+        servicePlan: plan,
+        region: globalRegion,
+      })
+    )
+    db.servicePricing.updateMany.mockResolvedValue({ count: 0 })
+    db.serviceSubscription.count.mockResolvedValue(0)
+    db.billingOrderLine.findFirst.mockResolvedValue(null)
+
+    const save = await app().handle(
+      jsonRequest("http://localhost/admin/pricing/matrix/plan-1", "PUT", {
+        enabledPeriods: ["MONTHLY", "QUARTERLY"],
+        prices: {
+          idr: { MONTHLY: "100000", QUARTERLY: "200000" },
+          USD: { MONTHLY: "10", QUARTERLY: "20" },
+        },
+      })
+    )
+    expect(save.status).toBe(200)
+    expect((await save.json()).data.pricing).toHaveLength(4)
+    expect(db.servicePricing.create).toHaveBeenCalledTimes(4)
+    expect(db.servicePricing.create.mock.calls[0]?.[0].data).toMatchObject({
+      regionId: "global-1",
+      type: "BUNDLE",
+      billingMode: "PACKAGE",
+      chargeUnit: "SUBSCRIPTION",
+    })
+
+    const read = await app().handle(
+      new Request("http://localhost/admin/pricing/matrix/plan-1")
+    )
+    expect(read.status).toBe(200)
+    expect((await read.json()).data).toMatchObject({
+      planId: "plan-1",
+      planCode: "STANDARD",
+      packageCode: "VPN",
+    })
+  })
+
+  it("rejects matrix values before opening a transaction", async () => {
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/pricing/matrix/plan-1", "PUT", {
+        enabledPeriods: ["MONTHLY"],
+        prices: { idr: { MONTHLY: "1.001" }, IDR: { MONTHLY: "2" } },
+      })
+    )
+    expect(response.status).toBe(422)
+    expect(db.$transaction).not.toHaveBeenCalled()
+    expect(db.servicePricing.create).not.toHaveBeenCalled()
   })
 })

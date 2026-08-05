@@ -1,5 +1,6 @@
 // Billing API client types and fetch helpers
 import { getApiBaseUrl } from "@/lib/eden"
+import type { CurrencyDTO } from "@/modules/billing/currency.dto"
 
 export type BillingAccount = {
   ok: true
@@ -857,6 +858,49 @@ export type AdminPricingResponse = {
   ok: true
   data: AdminPricing[]
   pricing?: AdminPricing[]
+}
+export type AdminPricingPeriod = Exclude<AdminPricing["billingPeriod"], null>
+
+export type AdminPricingMatrixInput = {
+  enabledPeriods: AdminPricingPeriod[]
+  prices: Partial<Record<string, Partial<Record<AdminPricingPeriod, string>>>>
+}
+
+export type AdminPricingMatrix = {
+  planId: string
+  planCode: string
+  planName: string
+  packageCode: "VPN"
+  pricing: AdminPricing[]
+  hasLegacyRegionalPricing: boolean
+}
+
+export async function getAdminPricingMatrix(
+  planId: string
+): Promise<{ ok: true; data: AdminPricingMatrix }> {
+  return fetchBilling(
+    `/api/billing/admin/pricing/matrix/${encodeURIComponent(planId)}`
+  )
+}
+
+export async function saveAdminPricingMatrix(
+  planId: string,
+  input: AdminPricingMatrixInput
+): Promise<{ ok: true; data: AdminPricingMatrix }> {
+  return fetchBilling(
+    `/api/billing/admin/pricing/matrix/${encodeURIComponent(planId)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }
+  )
+}
+
+export async function getActiveBillingCurrencies(): Promise<CurrencyDTO[]> {
+  const currencies = await fetchBilling<CurrencyDTO[]>(
+    "/api/portal/payments/currencies"
+  )
+  return currencies.filter((currency) => currency.isActive)
 }
 
 export type AdminOrderLine = {

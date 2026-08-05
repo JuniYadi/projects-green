@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@prisma/client"
 
+import { REGION_CODES } from "@/modules/billing/plans"
 import { VpnPriceNotConfiguredError } from "./vpn-pricing"
 
 // ─── Resolver ───────────────────────────────────────────────────────────
@@ -65,12 +66,16 @@ export async function resolveVpnSubscriptionRefs(
   const pricing = await prisma.servicePricing.findFirst({
     where: {
       planId: plan.id,
-      regionId: region.id,
+      region: { code: REGION_CODES.GLOBAL },
+      type: "BUNDLE",
+      billingMode: "PACKAGE",
+      billingPeriod: "MONTHLY",
+      isActive: true,
     },
   })
   if (!pricing) {
     throw new VpnSubscriptionRefsNotFoundError(
-      `ServicePricing not found for plan=${input.planCode} region=${input.regionCode}`
+      `Global monthly ServicePricing not found for plan=${input.planCode}`
     )
   }
 
