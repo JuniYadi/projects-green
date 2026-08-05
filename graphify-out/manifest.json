@@ -3690,13 +3690,13 @@
     "semantic_hash": ""
   },
   "modules/deploy/jenkins-image-ready.service.test.ts": {
-    "mtime": 1785652962.5965855,
-    "ast_hash": "86e33bc7a08c40f2f3d23bd6472ae1da",
-    "semantic_hash": "86e33bc7a08c40f2f3d23bd6472ae1da"
+    "mtime": 1785947336.6547055,
+    "ast_hash": "dc31f1a2ead84c616a6baf68906ee641",
+    "semantic_hash": ""
   },
   "modules/deploy/jenkins-image-ready.service.ts": {
-    "mtime": 1785942676.093742,
-    "ast_hash": "9a6728b201ce0fe3bf030ada56790d2a",
+    "mtime": 1785947336.7087035,
+    "ast_hash": "3ec1cb2cfb8779a4de56d655fc193ffe",
     "semantic_hash": ""
   },
   "modules/deploy/opensearch/index.ts": {
@@ -7505,8 +7505,8 @@
     "semantic_hash": ""
   },
   "modules/deploy/api/routes/app-hosting-edge.route.test.ts": {
-    "mtime": 1785944267.689833,
-    "ast_hash": "e282e8acb99a5b1d03bdc56af1ef08f6",
+    "mtime": 1785948674.134976,
+    "ast_hash": "f970e7e8a7f4f9aef92b7f45c1c39269",
     "semantic_hash": ""
   },
   "modules/deploy/api/routes/app-hosting-edge.route.ts": {
@@ -7515,23 +7515,23 @@
     "semantic_hash": ""
   },
   "modules/deploy/app-hosting-edge.dto.ts": {
-    "mtime": 1785943459.874694,
-    "ast_hash": "d345fc574464ab825c956c978c1eabe0",
+    "mtime": 1785947054.8506198,
+    "ast_hash": "be92e4f6eb85b67fb07379a684d56fc4",
     "semantic_hash": ""
   },
   "modules/deploy/app-hosting-edge.service.test.ts": {
-    "mtime": 1785944256.065793,
-    "ast_hash": "fa4d6c7a4dc056ef0902e92d466307fe",
+    "mtime": 1785948674.3509815,
+    "ast_hash": "1cec57a51a4d7dfe5a1db36f4669479f",
     "semantic_hash": ""
   },
   "modules/deploy/app-hosting-edge.service.ts": {
-    "mtime": 1785944256.2238212,
-    "ast_hash": "322f769a761388208ac12320a28b2017",
+    "mtime": 1785947336.5687082,
+    "ast_hash": "953026db82da827ddcba205dc7450dda",
     "semantic_hash": ""
   },
   "modules/deploy/app-hosting-edge.types.ts": {
-    "mtime": 1785943347.1024776,
-    "ast_hash": "1d7a0f65f23a4a5d3c4308749393c52b",
+    "mtime": 1785946906.371167,
+    "ast_hash": "4b7f5f688f21e5bcca90fd6e583368df",
     "semantic_hash": ""
   },
   "modules/deploy/ui/step-environment-v2.test.tsx": {
@@ -7597,6 +7597,11 @@
   "test/whatsapp-meta-app-selector.test.tsx": {
     "mtime": 1785919155.3893383,
     "ast_hash": "768554de1967eeb98e8585ab1d4dad73",
+    "semantic_hash": ""
+  },
+  "prisma/migrations/20260805100000_add_app_domain_tls_secret_name/migration.sql": {
+    "mtime": 1785946901.4639215,
+    "ast_hash": "4e68f9e176752ee29b24f02ca0d6c00a",
     "semantic_hash": ""
   }
 }
