@@ -2,7 +2,10 @@ import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
 import { Prisma } from "@prisma/client"
 
+import { CurrencyNotFoundError } from "../../currency.service"
 import { createAdminPricingRoutes } from "./pricing.route"
+
+const getCurrencyByCode = mock(async () => ({ isActive: true }))
 
 const guard = mock(async () => ({
   ok: true as const,
@@ -54,9 +57,7 @@ function app() {
       createAdminPricingRoutes({
         requireSuperAdmin: guard,
         prisma: db as never,
-        currencyService: {
-          getByCode: mock(async () => ({ isActive: true })),
-        } as never,
+        currencyService: { getByCode: getCurrencyByCode } as never,
       })
     )
     .compile()
@@ -70,6 +71,7 @@ describe("admin pricing routes", () => {
       userId: "admin-1",
       platformRole: "super_admin" as const,
     })
+    getCurrencyByCode.mockResolvedValue({ isActive: true })
   })
 
   it("rejects negative prices and non-recurring periods", async () => {
@@ -136,6 +138,59 @@ describe("admin pricing routes", () => {
       })
     )
     expect(response.status).toBe(422)
+    expect(db.servicePricing.create).not.toHaveBeenCalled()
+  })
+
+  it("maps an unknown POST currency to the validation error DTO", async () => {
+    db.servicePlan.findUnique.mockResolvedValueOnce({ id: "plan-1" })
+    db.serviceRegion.findUnique.mockResolvedValueOnce({ id: "region-1" })
+    getCurrencyByCode.mockRejectedValueOnce(new CurrencyNotFoundError("XYZ"))
+
+    const response = await app().handle(
+      new Request("http://localhost/admin/pricing", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          planId: "plan-1",
+          regionId: "region-1",
+          billingPeriod: "MONTHLY",
+          chargeUnit: "SUBSCRIPTION",
+          periodPrice: "150000",
+          currency: "XYZ",
+          effectiveFrom: "2026-01-01T00:00:00.000Z",
+          isActive: true,
+        }),
+      })
+    )
+
+    expect(response.status).toBe(422)
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: "VALIDATION_ERROR",
+      message: "Currency is not configured.",
+    })
+    expect(db.servicePricing.create).not.toHaveBeenCalled()
+  })
+
+  it("maps an unknown PATCH currency to the validation error DTO", async () => {
+    db.servicePricing.findUnique.mockResolvedValueOnce(pricing)
+    getCurrencyByCode.mockRejectedValueOnce(new CurrencyNotFoundError("XYZ"))
+
+    const response = await app().handle(
+      new Request("http://localhost/admin/pricing/price-1", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ currency: "XYZ" }),
+      })
+    )
+
+    expect(response.status).toBe(422)
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: "VALIDATION_ERROR",
+      message: "Currency is not configured.",
+    })
+    expect(db.servicePricing.update).not.toHaveBeenCalled()
     expect(db.servicePricing.create).not.toHaveBeenCalled()
   })
 

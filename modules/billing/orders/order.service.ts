@@ -292,11 +292,12 @@ export class BillingOrderService {
         const txClient = tx as unknown as PrismaClient & {
           $executeRaw?: (query: unknown) => Promise<number>
         }
-        if (txClient.$executeRaw) {
-          await txClient.$executeRaw(
-            Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${orderId}))`
-          )
+        if (typeof txClient.$executeRaw !== "function") {
+          throw new Error("ADVISORY_LOCK_UNAVAILABLE")
         }
+        await txClient.$executeRaw(
+          Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${orderId}))`
+        )
         const order = await this.loadOrder(orderId, txClient)
         if (order.status === "FULFILLED") return toResult(order)
         if (

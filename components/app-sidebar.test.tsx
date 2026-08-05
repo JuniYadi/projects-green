@@ -377,6 +377,8 @@ describe("resolveSidebarMenu", () => {
       "Payments",
       "Vouchers",
       "Audit Logs",
+      "Pricing",
+      "Orders",
     ])
     expect(projects.map((project) => project.name)).toEqual(["Back to Portal"])
   })

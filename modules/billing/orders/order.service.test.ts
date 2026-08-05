@@ -4,6 +4,7 @@ import type { PrismaClient } from "@prisma/client"
 
 const mockPrisma = {
   $transaction: mock(),
+  $executeRaw: mock(),
   billingAccount: { findUnique: mock() },
   billingOrder: {
     findUnique: mock(),
@@ -108,6 +109,7 @@ beforeEach(() => {
   adapter.create.mockReset()
   adapter.renew.mockReset()
   mockDebitServiceBalance.mockReset()
+  mockPrisma.$executeRaw.mockResolvedValue(0)
   mockResolveRecurringPrice.mockResolvedValue(pricing)
   mockPrisma.$transaction.mockImplementation(
     async (fn: (tx: unknown) => unknown) => fn(mockPrisma)
@@ -336,6 +338,23 @@ describe("BillingOrderService", () => {
         data: expect.objectContaining({ status: "FAILED" }),
       })
     )
+  })
+  it("fails closed when the transaction cannot acquire the advisory lock", async () => {
+    const txWithoutLock = { ...mockPrisma, $executeRaw: undefined }
+    mockPrisma.$transaction.mockImplementationOnce(
+      async (fn: (tx: unknown) => unknown) => fn(txWithoutLock)
+    )
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      undefined,
+      new BillingFulfillmentRegistry([adapter])
+    )
+
+    await expect(service.fulfillOrder("order-1")).rejects.toThrow(
+      "ADVISORY_LOCK_UNAVAILABLE"
+    )
+    expect(mockPrisma.billingOrder.findUnique).not.toHaveBeenCalled()
+    expect(adapter.create).not.toHaveBeenCalled()
   })
 
   it("renews from the locked subscription price instead of resolving catalog price", async () => {
