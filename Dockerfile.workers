@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Install all dependencies (including dev for Prisma CLI + build)
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+RUN bun install --frozen-lockfile --ignore-scripts
 
 # Copy config for @/ path aliases
 COPY tsconfig.json ./
@@ -33,7 +33,7 @@ WORKDIR /app
 
 # Install production deps (resolves all external imports in the bundle)
 COPY package.json bun.lock ./
-RUN bun install --production --frozen-lockfile
+RUN bun install --production --frozen-lockfile --ignore-scripts
 
 # Copy generated Prisma client from builder (schema-specific types)
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
