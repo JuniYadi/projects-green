@@ -8,6 +8,7 @@ import {
   updateClusterStatusBodySchema,
   upsertIntegrationBodySchema,
   updateIntegrationStatusBodySchema,
+  upsertClusterEndpointBodySchema,
   INTEGRATION_TYPES,
   integrationMetaJsonSchemas,
   integrationSecretPatchSchemas,
@@ -16,6 +17,12 @@ import {
   requireSuperAdmin,
   type AdminApiError,
 } from "@/modules/admin/api/admin.guards"
+import {
+  getClusterEndpoint,
+  upsertClusterEndpoint,
+  EdgeNotFoundError,
+  EdgeValidationError,
+} from "@/modules/deploy/app-hosting-edge.service"
 import {
   listClusters,
   getClusterById,
@@ -46,6 +53,14 @@ function clusterError(
       fieldErrors: fieldErrorMapFromIssues(error.issues),
     }
   }
+  if (error instanceof EdgeNotFoundError) {
+    set.status = 404
+    return { ok: false, error: "NOT_FOUND", message: error.message }
+  }
+  if (error instanceof EdgeValidationError) {
+    set.status = 422
+    return { ok: false, error: "VALIDATION_ERROR", message: error.message }
+  }
 
   const msg = error instanceof Error ? error.message : String(error)
   if (msg.startsWith("NOT_FOUND")) {
@@ -69,8 +84,14 @@ function clusterError(
   }
 }
 
-export const createAdminAppHostingClusterRoutes = (deps = {}) => {
-  const { requireSuperAdmin: guard = requireSuperAdmin } = { ...deps }
+type AdminClusterRouteDeps = {
+  requireSuperAdmin?: typeof requireSuperAdmin
+}
+
+export const createAdminAppHostingClusterRoutes = (
+  deps: AdminClusterRouteDeps = {}
+) => {
+  const { requireSuperAdmin: guard = requireSuperAdmin } = deps
 
   return (
     new Elysia()
@@ -106,6 +127,40 @@ export const createAdminAppHostingClusterRoutes = (deps = {}) => {
         { query: listClustersQuerySchema }
       )
 
+      // ── GET/PUT edge endpoint ────────────────────
+      .get(
+        "/admin/app-hosting/clusters/:id/endpoint",
+        async ({ params, set }) => {
+          const actor = await guard(set)
+          if ("ok" in actor && !actor.ok) {
+            return actor as AdminApiError
+          }
+
+          try {
+            const endpoint = await getClusterEndpoint(params.id)
+            return { ok: true as const, data: endpoint }
+          } catch (error) {
+            return clusterError(set, error)
+          }
+        }
+      )
+      .put(
+        "/admin/app-hosting/clusters/:id/endpoint",
+        async ({ params, body, set }) => {
+          const actor = await guard(set)
+          if ("ok" in actor && !actor.ok) {
+            return actor as AdminApiError
+          }
+
+          try {
+            const endpoint = await upsertClusterEndpoint(params.id, body)
+            return { ok: true as const, data: endpoint }
+          } catch (error) {
+            return clusterError(set, error)
+          }
+        },
+        { body: upsertClusterEndpointBodySchema }
+      )
       // ── GET by id ────────────────────────────────
       .get("/admin/app-hosting/clusters/:id", async ({ params, set }) => {
         const actor = await guard(set)
