@@ -107,3 +107,6 @@ temp/
 # Graphify
 graphify-out/cache/last_query_stamp
 .mcp.json
+
+audit/
+audits/
