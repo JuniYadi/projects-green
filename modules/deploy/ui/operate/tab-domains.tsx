@@ -1,18 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import {
-  Globe,
-  Trash,
-  CheckCircle,
-  Warning,
-  ShieldCheck,
-  ShieldWarning,
-  ArrowClockwise,
-  Wrench,
-  Copy,
-  Check,
-} from "@phosphor-icons/react"
+import { Check, Copy, Globe, Trash, Wrench } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -30,107 +19,452 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-
 import type {
-  K8sEnvironmentId,
   CustomDomain,
+  DomainAllowlistMode,
+  TenantDomainDTO,
+  K8sEnvironmentId,
 } from "@/modules/deploy/operate.types"
 
+export type TabDomainsApi = {
+  onAddDomain: (hostname: string) => Promise<void>
+  onDeleteDomain: (domainId: string) => Promise<void>
+  onVerifyDomain: (domainId: string) => Promise<void>
+  onUploadCertificate: (
+    domainId: string,
+    input: {
+      certificatePem: string
+      privateKeyPem: string
+      chainPem: string
+    }
+  ) => Promise<void>
+  onUpdateAllowlist: (
+    domainId: string,
+    mode: DomainAllowlistMode
+  ) => Promise<void>
+  onAddAllowlistEntry: (
+    domainId: string,
+    input: { cidr: string; label?: string }
+  ) => Promise<void>
+  onDeleteAllowlistEntry: (domainId: string, entryId: string) => Promise<void>
+  onRetry: () => Promise<void>
+}
+
 type TabDomainsProps = {
-  selectedEnv: K8sEnvironmentId
-  domains: Record<K8sEnvironmentId, CustomDomain[]>
-  setDomains: React.Dispatch<
+  /** Legacy props remain for direct operate-tab tests. */
+  selectedEnv?: K8sEnvironmentId
+  domains?: Record<K8sEnvironmentId, CustomDomain[]>
+  setDomains?: React.Dispatch<
     React.SetStateAction<Record<K8sEnvironmentId, CustomDomain[]>>
   >
+  /** Persisted tenant domain records used by the settings page. */
+  stackSlug?: string
+  apiDomains?: TenantDomainDTO[]
+  api?: TabDomainsApi
+  domainsLoading?: boolean
+  domainsError?: string | null
+}
+
+const displayValue = (value: string | null | undefined) =>
+  value || "Not configured"
+
+const certificateLabel = (domain: TenantDomainDTO) => {
+  const certificate = domain.certificate
+  if (!certificate) return "Not configured"
+  const status = certificate.status || "unknown"
+  const expiry = certificate.expiresAt
+    ? ` · expires ${new Date(certificate.expiresAt).toLocaleDateString()}`
+    : ""
+  return `${certificate.source || "Unknown source"} · ${status}${expiry}`
 }
 
 export function TabDomains({
-  selectedEnv,
+  selectedEnv = "prod",
   domains,
   setDomains,
+  stackSlug,
+  apiDomains = [],
+  api,
+  domainsLoading = false,
+  domainsError = null,
 }: TabDomainsProps) {
+  const apiMode = Boolean(stackSlug && api)
+  const legacyItems = domains?.[selectedEnv] ?? []
+  const items = apiMode ? apiDomains : []
   const [newDomain, setNewDomain] = useState("")
-  const [newDomainTls, setNewDomainTls] = useState<
-    "active" | "expired" | "pending"
-  >("active")
-
-  const [cloudflareProxied, setCloudflareProxied] = useState(true)
-  const [cloudflareSslMode, setCloudflareSslMode] = useState<
-    "flexible" | "full" | "strict"
-  >("flexible")
-
-  // Copy state helper
+  const [busyKey, setBusyKey] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
-  const handleCopy = (text: string, key: string) => {
-    navigator.clipboard.writeText(text)
-    setCopiedKey(key)
-    setTimeout(() => setCopiedKey(null), 2000)
+  const [certificateForm, setCertificateForm] = useState<
+    Record<
+      string,
+      { certificatePem: string; privateKeyPem: string; chainPem: string }
+    >
+  >({})
+  const [allowlistInput, setAllowlistInput] = useState<Record<string, string>>(
+    {}
+  )
+
+  const runAction = async (key: string, action: () => Promise<void>) => {
+    setBusyKey(key)
+    setError(null)
+    try {
+      await action()
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Unable to save domain settings."
+      )
+    } finally {
+      setBusyKey(null)
+    }
   }
 
-  const handleAddDomain = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newDomain.trim()) return
+  const handleCopy = async (value: string, key: string) => {
+    await navigator.clipboard.writeText(value)
+    setCopiedKey(key)
+    window.setTimeout(() => setCopiedKey(null), 2000)
+  }
 
-    const newObj: CustomDomain = {
-      id: `dom-${Date.now()}`,
-      domain: newDomain.trim(),
-      isPrimary: domains[selectedEnv].length === 0,
-      tlsStatus: newDomainTls,
-      dnsStatus: "unverified",
-      expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split("T")[0],
-    }
-
-    setDomains((prev) => ({
-      ...prev,
-      [selectedEnv]: [...prev[selectedEnv], newObj],
+  const handleLegacyAdd = (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!newDomain.trim() || !setDomains) return
+    setDomains((previous) => ({
+      ...previous,
+      [selectedEnv]: [
+        ...previous[selectedEnv],
+        {
+          id: `legacy-${Date.now()}`,
+          domain: newDomain.trim(),
+          isPrimary: previous[selectedEnv].length === 0,
+          tlsStatus: "pending",
+          dnsStatus: "unverified",
+          expiresAt: "",
+        },
+      ],
     }))
     setNewDomain("")
   }
 
-  const handleDeleteDomain = (id: string) => {
-    setDomains((prev) => {
-      const currentDomains = prev[selectedEnv]
-      const removedDomain = currentDomains.find((domain) => domain.id === id)
-      const remainingDomains = currentDomains.filter(
-        (domain) => domain.id !== id
-      )
-
-      return {
-        ...prev,
-        [selectedEnv]: removedDomain?.isPrimary
-          ? remainingDomains.map((domain, index) => ({
-              ...domain,
-              isPrimary: index === 0,
-            }))
-          : remainingDomains,
-      }
+  const handleSubmit = (event: React.FormEvent) => {
+    const hostname = newDomain.trim()
+    if (!hostname) return
+    if (!apiMode || !api) {
+      handleLegacyAdd(event)
+      return
+    }
+    void runAction("add", async () => {
+      await api.onAddDomain(hostname)
+      setNewDomain("")
     })
   }
 
-  const handleForceSSL = (id: string) => {
-    setDomains((prev) => ({
-      ...prev,
-      [selectedEnv]: prev[selectedEnv].map((d) => {
-        if (d.id === id) {
-          return {
-            ...d,
-            tlsStatus: "active" as const,
-            dnsStatus: "verified" as const,
-            expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
-              .toISOString()
-              .split("T")[0],
-          }
-        }
-        return d
-      }),
+  const removeLegacy = (id: string) => {
+    if (!setDomains) return
+    setDomains((previous) => ({
+      ...previous,
+      [selectedEnv]: previous[selectedEnv].filter((domain) => domain.id !== id),
     }))
+  }
+
+  const renderCopyButton = (value: string, key: string) => (
+    <Button
+      type="button"
+      onClick={() => void handleCopy(value, key)}
+      variant="ghost"
+      size="xs"
+      aria-label="Copy"
+      className="h-6 w-6 p-0 text-muted-foreground hover:text-white"
+    >
+      {copiedKey === key ? (
+        <Check size={12} className="text-emerald-400" />
+      ) : (
+        <Copy size={12} />
+      )}
+    </Button>
+  )
+
+  const renderDns = (domain: TenantDomainDTO) => {
+    const endpoint = domain.endpoint
+    const cname = domain.expectedCnameTarget || endpoint?.cnameTarget
+    const ipv4 = endpoint?.ipv4Addresses ?? []
+    const ipv6 = endpoint?.ipv6Addresses ?? []
+    const records = [
+      ...(cname ? [{ type: "CNAME", host: "@", value: cname }] : []),
+      ...ipv4.map((value) => ({ type: "A", host: "@", value })),
+      ...ipv6.map((value) => ({ type: "AAAA", host: "@", value })),
+    ]
+    return (
+      <div className="mt-3 space-y-2 rounded-lg border border-white/[0.06] bg-black/20 p-3">
+        <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+          DNS targets
+        </p>
+        {records.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            No DNS target published.
+          </p>
+        ) : (
+          records.map((record, index) => (
+            <div
+              key={`${domain.id}-${record.type}-${record.value}-${index}`}
+              className="grid grid-cols-[64px_1fr_auto] items-center gap-2 font-mono text-[11px]"
+            >
+              <span className="font-bold text-emerald-400">{record.type}</span>
+              <span className="truncate text-white">{record.value}</span>
+              {renderCopyButton(
+                record.value,
+                `${domain.id}-${record.type}-${index}`
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    )
+  }
+
+  const updateCertificateField = (
+    domainId: string,
+    field: "certificatePem" | "privateKeyPem" | "chainPem",
+    value: string
+  ) => {
+    setCertificateForm((previous) => ({
+      ...previous,
+      [domainId]: {
+        ...previous[domainId],
+        certificatePem: "",
+        privateKeyPem: "",
+        chainPem: "",
+        [field]: value,
+      },
+    }))
+  }
+
+  const renderApiDomain = (domain: TenantDomainDTO) => {
+    const certificate = certificateForm[domain.id] ?? {
+      certificatePem: "",
+      privateKeyPem: "",
+      chainPem: "",
+    }
+    const allowlistEntry = allowlistInput[domain.id] ?? ""
+    return (
+      <div
+        key={domain.id}
+        className="space-y-3 border-b border-white/[0.06] p-4 last:border-b-0"
+      >
+        <div className="grid gap-3 md:grid-cols-[1.3fr_0.8fr_0.8fr_1.4fr_auto] md:items-start">
+          <div className="font-semibold text-white">
+            <div className="flex flex-wrap items-center gap-2">
+              <span>{domain.hostname}</span>
+              {domain.isPrimary && (
+                <span className="rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[9px] font-bold text-primary uppercase">
+                  Primary
+                </span>
+              )}
+              <span className="rounded-md border border-white/10 px-2 py-0.5 text-[9px] font-bold text-muted-foreground uppercase">
+                {domain.kind}
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] font-normal text-muted-foreground">
+              {domain.cluster
+                ? `${domain.cluster.name} · ${domain.cluster.region}`
+                : "Cluster not assigned"}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+              DNS
+            </p>
+            <p className="text-xs text-white">{domain.dnsStatus}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+              Certificate
+            </p>
+            <p className="text-xs text-white">{certificateLabel(domain)}</p>
+            {domain.certificate?.validationError && (
+              <p className="text-[11px] text-rose-400">
+                {domain.certificate.validationError}
+              </p>
+            )}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            <p>{displayValue(domain.endpoint?.managedBaseDomain)}</p>
+            <p className="text-[11px]">{domain.cluster?.code || ""}</p>
+          </div>
+          <div className="flex gap-1 md:justify-end">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busyKey !== null}
+              onClick={() =>
+                void runAction(`verify-${domain.id}`, () =>
+                  api!.onVerifyDomain(domain.id)
+                )
+              }
+            >
+              Verify
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={busyKey !== null}
+              onClick={() =>
+                void runAction(`delete-${domain.id}`, () =>
+                  api!.onDeleteDomain(domain.id)
+                )
+              }
+              aria-label={`Delete domain ${domain.hostname}`}
+            >
+              <Trash size={14} />
+            </Button>
+          </div>
+        </div>
+        {renderDns(domain)}
+        <div className="grid gap-3 rounded-lg border border-white/[0.06] bg-neutral-900/35 p-3 md:grid-cols-3">
+          {(["certificatePem", "privateKeyPem", "chainPem"] as const).map(
+            (field) => (
+              <label
+                key={field}
+                className="space-y-1 text-[10px] font-semibold text-muted-foreground"
+              >
+                {field === "certificatePem"
+                  ? "Certificate PEM"
+                  : field === "privateKeyPem"
+                    ? "Private key PEM"
+                    : "Chain PEM"}
+                <textarea
+                  className="min-h-20 w-full rounded-md border border-white/10 bg-black/30 p-2 font-mono text-[10px] text-white"
+                  value={certificate[field]}
+                  onChange={(event) =>
+                    updateCertificateField(domain.id, field, event.target.value)
+                  }
+                  placeholder="Write-only secret material"
+                />
+              </label>
+            )
+          )}
+          <Button
+            type="button"
+            size="sm"
+            className="md:col-span-3 md:w-fit"
+            disabled={
+              busyKey !== null ||
+              !certificate.certificatePem ||
+              !certificate.privateKeyPem
+            }
+            onClick={() =>
+              void runAction(`certificate-${domain.id}`, async () => {
+                await api!.onUploadCertificate(domain.id, certificate)
+                setCertificateForm((previous) => ({
+                  ...previous,
+                  [domain.id]: {
+                    certificatePem: "",
+                    privateKeyPem: "",
+                    chainPem: "",
+                  },
+                }))
+              })
+            }
+          >
+            Save certificate
+          </Button>
+        </div>
+        <div className="space-y-2 rounded-lg border border-white/[0.06] bg-neutral-900/35 p-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs font-semibold text-white">Allowlist</span>
+            <Select
+              value={domain.allowlistMode}
+              onValueChange={(value) =>
+                void runAction(`allowlist-mode-${domain.id}`, () =>
+                  api!.onUpdateAllowlist(
+                    domain.id,
+                    value as DomainAllowlistMode
+                  )
+                )
+              }
+            >
+              <SelectTrigger className="h-8 w-40 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="OPEN">Open</SelectItem>
+                <SelectItem value="ALLOWLIST_ONLY">Allowlist only</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Input
+              value={allowlistEntry}
+              onChange={(event) =>
+                setAllowlistInput((previous) => ({
+                  ...previous,
+                  [domain.id]: event.target.value,
+                }))
+              }
+              placeholder="CIDR, e.g. 203.0.113.0/24"
+              className="h-8 max-w-xs text-xs"
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busyKey !== null || !allowlistEntry.trim()}
+              onClick={() =>
+                void runAction(`allowlist-add-${domain.id}`, async () => {
+                  await api!.onAddAllowlistEntry(domain.id, {
+                    cidr: allowlistEntry.trim(),
+                  })
+                  setAllowlistInput((previous) => ({
+                    ...previous,
+                    [domain.id]: "",
+                  }))
+                })
+              }
+            >
+              Add entry
+            </Button>
+          </div>
+          {domain.allowlistEntries.length > 0 && (
+            <ul className="space-y-1 text-xs text-muted-foreground">
+              {domain.allowlistEntries.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="flex items-center justify-between gap-2"
+                >
+                  <span>
+                    {entry.cidr}
+                    {entry.label || entry.description
+                      ? ` · ${entry.label || entry.description}`
+                      : ""}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 text-rose-400"
+                    disabled={busyKey !== null}
+                    onClick={() =>
+                      void runAction(`allowlist-delete-${entry.id}`, () =>
+                        api!.onDeleteAllowlistEntry(domain.id, entry.id)
+                      )
+                    }
+                  >
+                    Remove
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="grid gap-6 md:grid-cols-3">
-      {/* Custom Domains list */}
       <Card
         size="sm"
         className="col-span-2 border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
@@ -140,150 +474,102 @@ export function TabDomains({
             Custom Domain Settings
           </CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
-            Bind domain endpoints to your ingress router and issue automated SSL
-            certificates
+            Bind domain endpoints to the application and manage DNS,
+            certificates, and allowlists.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Domain Input Form */}
-          <form
-            onSubmit={handleAddDomain}
-            className="flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-neutral-900/35 p-3.5 sm:flex-row"
-          >
-            <div className="relative flex-1">
-              <Globe
-                size={16}
-                className="absolute top-3 left-3 text-muted-foreground"
-              />
-              <Input
-                placeholder="e.g. shop.acme.com"
-                value={newDomain}
-                onChange={(e) => setNewDomain(e.target.value)}
-                className="h-9 rounded-xl pl-9 text-xs"
-              />
+        <CardContent className="space-y-4">
+          {(domainsError || error) && (
+            <div
+              role="alert"
+              className="flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive"
+            >
+              <span>{domainsError || error}</span>
+              {api && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void runAction("retry", api.onRetry)}
+                >
+                  Retry
+                </Button>
+              )}
             </div>
-            <Select
-              value={newDomainTls}
-              onValueChange={(value) =>
-                setNewDomainTls(value as "active" | "expired" | "pending")
-              }
+          )}
+          {apiMode && (
+            <form
+              onSubmit={handleSubmit}
+              className="flex gap-2 rounded-xl border border-white/[0.06] bg-neutral-900/35 p-3"
             >
-              <SelectTrigger className="h-9 w-full rounded-xl border-white/[0.08] bg-black/50 text-xs sm:w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active SSL</SelectItem>
-                <SelectItem value="pending">Pending Verification</SelectItem>
-                <SelectItem value="expired">
-                  Expired SSL (Simulation)
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              type="submit"
-              size="sm"
-              className="h-9 rounded-xl px-4 text-xs font-semibold"
-            >
-              Add Domain
-            </Button>
-          </form>
-
-          {/* Domain Table */}
-          <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-black/10">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-xs">
+              <div className="relative flex-1">
+                <Globe
+                  size={16}
+                  className="absolute top-2.5 left-3 text-muted-foreground"
+                />
+                <Input
+                  placeholder="e.g. shop.acme.com"
+                  value={newDomain}
+                  onChange={(event) => setNewDomain(event.target.value)}
+                  className="h-9 pl-9 text-xs"
+                />
+              </div>
+              <Button type="submit" size="sm" disabled={busyKey !== null}>
+                Add Domain
+              </Button>
+            </form>
+          )}
+          {domainsLoading ? (
+            <p className="p-6 text-sm text-muted-foreground">
+              Loading domains…
+            </p>
+          ) : apiMode ? (
+            <div className="overflow-hidden rounded-xl border border-white/[0.08]">
+              {items.length ? (
+                items.map(renderApiDomain)
+              ) : (
+                <p className="p-8 text-center text-xs text-muted-foreground">
+                  No domains mapped yet.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-white/[0.08]">
+              <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-white/[0.08] bg-white/[0.02] text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                    <th className="p-3.5 px-4">Domain</th>
-                    <th className="p-3.5 px-4">DNS Status</th>
-                    <th className="p-3.5 px-4">TLS Certificate</th>
-                    <th className="p-3.5 px-4 text-right">Actions</th>
+                  <tr className="border-b border-white/[0.08] text-muted-foreground">
+                    <th className="p-3">Domain</th>
+                    <th className="p-3">DNS</th>
+                    <th className="p-3">TLS</th>
+                    <th className="p-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/[0.06]">
-                  {domains[selectedEnv].map((item) => (
-                    <tr
-                      key={item.id}
-                      className="transition-all hover:bg-white/[0.01]"
-                    >
-                      <td className="p-3.5 px-4 font-semibold text-white">
-                        <div className="flex items-center gap-2">
-                          {item.domain}
-                          {item.isPrimary && (
-                            <span className="rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[9px] font-bold tracking-wide text-primary uppercase">
-                              Primary
-                            </span>
-                          )}
-                        </div>
+                <tbody>
+                  {legacyItems.map((item) => (
+                    <tr key={item.id} className="border-b border-white/[0.06]">
+                      <td className="p-3 font-semibold text-white">
+                        {item.domain}
                       </td>
-                      <td className="p-3.5 px-4">
-                        {item.dnsStatus === "verified" ? (
-                          <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-400">
-                            <CheckCircle size={13} /> Target verified
-                          </span>
-                        ) : (
-                          <span className="inline-flex animate-pulse items-center gap-1.5 font-semibold text-amber-400">
-                            <Warning size={13} /> Pending propagation
-                          </span>
-                        )}
+                      <td className="p-3 text-muted-foreground">
+                        {item.dnsStatus}
                       </td>
-                      <td className="p-3.5 px-4">
-                        {item.tlsStatus === "active" && (
-                          <span className="inline-flex items-center gap-1.5 font-medium text-emerald-400">
-                            <ShieldCheck
-                              size={14}
-                              className="text-emerald-400"
-                            />{" "}
-                            Active (expires {item.expiresAt})
-                          </span>
-                        )}
-                        {item.tlsStatus === "expired" && (
-                          <span className="inline-flex items-center gap-1.5 font-bold text-rose-400">
-                            <ShieldWarning
-                              size={14}
-                              className="text-rose-400"
-                            />{" "}
-                            EXPIRED ({item.expiresAt})
-                          </span>
-                        )}
-                        {item.tlsStatus === "pending" && (
-                          <span className="inline-flex items-center gap-1.5 font-medium text-amber-400">
-                            <ArrowClockwise
-                              size={14}
-                              className="animate-spin text-amber-400"
-                            />{" "}
-                            Issuing certificate...
-                          </span>
-                        )}
+                      <td className="p-3 text-muted-foreground">
+                        {item.tlsStatus}
                       </td>
-                      <td className="space-x-2 p-3.5 px-4 text-right">
-                        {item.tlsStatus === "expired" && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleForceSSL(item.id)}
-                            className="h-7 rounded-lg border-amber-500/30 px-3 text-[10px] font-semibold text-amber-400 hover:border-amber-500/60 hover:bg-amber-500/10"
-                          >
-                            Force Renew SSL
-                          </Button>
-                        )}
+                      <td className="p-3 text-right">
                         <Button
                           type="button"
                           size="sm"
                           variant="ghost"
-                          onClick={() => handleDeleteDomain(item.id)}
                           aria-label={`Delete domain ${item.domain}`}
-                          title={`Delete domain ${item.domain}`}
-                          className="h-7 w-7 rounded-lg p-0 text-rose-400 transition-all hover:bg-rose-500/10 hover:text-rose-300"
+                          onClick={() => removeLegacy(item.id)}
                         >
-                          <Trash size={13} />
+                          <Trash size={14} />
                         </Button>
                       </td>
                     </tr>
                   ))}
-
-                  {domains[selectedEnv].length === 0 && (
+                  {legacyItems.length === 0 && (
                     <tr>
                       <td
                         colSpan={4}
@@ -295,175 +581,62 @@ export function TabDomains({
                   )}
                 </tbody>
               </table>
+              <form
+                onSubmit={handleSubmit}
+                className="flex gap-2 border-t border-white/[0.06] p-3"
+              >
+                <Input
+                  placeholder="e.g. shop.acme.com"
+                  value={newDomain}
+                  onChange={(event) => setNewDomain(event.target.value)}
+                  className="h-9 text-xs"
+                />
+                <Button type="submit" size="sm">
+                  Add Domain
+                </Button>
+              </form>
             </div>
-          </div>
-
-          {/* DNS instructions card */}
-          <div className="space-y-3.5 rounded-xl border border-white/[0.06] bg-neutral-900/35 p-4 text-xs">
-            <div className="space-y-1">
+          )}
+          {apiMode && (
+            <div className="space-y-3 rounded-xl border border-white/[0.06] bg-neutral-900/35 p-4 text-xs">
               <span className="flex items-center gap-2 font-bold text-white">
-                <Wrench size={15} className="text-primary" /> DNS Configuration
-                Requirements
+                <Wrench size={15} className="text-primary" /> DNS configuration
               </span>
               <p className="text-[11px] text-muted-foreground">
-                Configure these DNS records in your domain registrar panel to
-                map traffic to this application.
+                Use the exact records shown for each domain above. Targets are
+                supplied by the selected cluster.
               </p>
             </div>
-
-            <div className="mt-2 grid gap-2.5 font-mono text-[11px]">
-              <div className="grid grid-cols-4 items-center rounded-lg border border-white/[0.08] bg-white/[0.02] p-2.5 font-sans text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                <span>Type</span>
-                <span>Host</span>
-                <span className="col-span-2">Value / Target</span>
-              </div>
-              <div className="grid grid-cols-4 items-center rounded-xl border border-white/[0.06] bg-black/20 p-2.5">
-                <span className="font-bold text-emerald-400">A</span>
-                <span className="text-white">@</span>
-                <span className="col-span-2 flex items-center justify-between truncate text-white">
-                  <span className="truncate pr-2">76.76.21.21</span>
-                  <Button
-                    type="button"
-                    onClick={() => handleCopy("76.76.21.21", "a-record")}
-                    variant="ghost"
-                    size="xs"
-                    aria-label="Copy"
-                    className="h-6 w-6 p-0 text-muted-foreground hover:text-white"
-                  >
-                    {copiedKey === "a-record" ? (
-                      <Check size={12} className="text-emerald-400" />
-                    ) : (
-                      <Copy size={12} />
-                    )}
-                  </Button>
-                </span>
-              </div>
-              <div className="grid grid-cols-4 items-center rounded-xl border border-white/[0.06] bg-black/20 p-2.5">
-                <span className="font-bold text-emerald-400">CNAME</span>
-                <span className="text-white">www</span>
-                <span className="col-span-2 flex items-center justify-between truncate text-white">
-                  <span className="truncate pr-2">
-                    laravel-shop.projects-green.dev
-                  </span>
-                  <Button
-                    type="button"
-                    onClick={() =>
-                      handleCopy(
-                        "laravel-shop.projects-green.dev",
-                        "cname-record"
-                      )
-                    }
-                    variant="ghost"
-                    size="xs"
-                    aria-label="Copy"
-                    className="h-6 w-6 p-0 text-muted-foreground hover:text-white"
-                  >
-                    {copiedKey === "cname-record" ? (
-                      <Check size={12} className="text-emerald-400" />
-                    ) : (
-                      <Copy size={12} />
-                    )}
-                  </Button>
-                </span>
-              </div>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
-
-      {/* Cloudflare Troubleshooting Guides */}
-      <Card
-        size="sm"
-        className="h-fit border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
-      >
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base font-bold text-white">
-            <Globe size={18} className="text-orange-500" /> Cloudflare Advisory
-          </CardTitle>
-          <CardDescription className="text-xs text-muted-foreground">
-            Avoid issues when routing custom domains behind Cloudflare proxying
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 text-xs leading-relaxed">
-          {/* Cloudflare config options simulator */}
-          <div className="space-y-3 rounded-xl border border-white/[0.06] bg-neutral-900/35 p-3.5">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-white">Proxy Status</span>
-              <Button
-                type="button"
-                onClick={() => setCloudflareProxied(!cloudflareProxied)}
-                variant="ghost"
-                size="xs"
-                className={`rounded-lg px-3 py-1 text-[10px] font-bold transition-all ${
-                  cloudflareProxied
-                    ? "border border-orange-500/30 bg-orange-500/10 text-orange-400"
-                    : "border border-white/10 bg-white/10 text-muted-foreground"
-                }`}
-              >
-                {cloudflareProxied ? "Proxied" : "DNS Only"}
-              </Button>
-            </div>
-
-            <div className="space-y-1.5">
-              <span className="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                SSL/TLS Mode
-              </span>
-              <div className="grid grid-cols-3 gap-1 rounded-lg border border-white/[0.06] bg-black/60 p-0.5">
-                {(["flexible", "full", "strict"] as const).map((m) => (
-                  <Button
-                    key={m}
-                    type="button"
-                    onClick={() => setCloudflareSslMode(m)}
-                    variant="ghost"
-                    size="xs"
-                    className={`rounded-md py-1 text-[10px] font-bold capitalize transition-all ${
-                      cloudflareSslMode === m
-                        ? "bg-primary text-white shadow-sm"
-                        : "text-muted-foreground hover:text-white"
-                    }`}
-                  >
-                    {m}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Questions explanation cards */}
-          <div className="space-y-3">
-            <div className="space-y-1.5 border-l-2 border-orange-500/40 pl-3">
-              <h4 className="leading-tight font-bold text-white">
-                SSL Failures Behind Proxy
-              </h4>
-              <p className="text-[11px] text-muted-foreground">
-                If Cloudflare proxy is active before SSL is verified, automated
-                HTTP challenge challenges might fail.
+      {apiMode && (
+        <Card
+          size="sm"
+          className="h-fit border-white/[0.08] bg-[#0A0A0C]/50 shadow-xl backdrop-blur-md"
+        >
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-bold text-white">
+              Domain endpoint
+            </CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">
+              Region and ingress details are persisted by the selected
+              application cluster.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-xs text-muted-foreground">
+            <p>
+              Stack: <span className="font-mono text-white">{stackSlug}</span>
+            </p>
+            {items[0]?.cluster && (
+              <p>
+                Region:{" "}
+                <span className="text-white">{items[0].cluster.region}</span>
               </p>
-              <p className="text-[11px] font-semibold text-primary">
-                Tip: Switch to &quot;DNS Only&quot; until SSL is active, then
-                re-enable proxy.
-              </p>
-            </div>
-
-            <div className="space-y-1.5 border-l-2 border-rose-500/40 pl-3">
-              <h4 className="leading-tight font-bold text-white">
-                Redirect Loops (ERR_TOO_MANY_REDIRECTS)
-              </h4>
-              <p className="text-[11px] text-muted-foreground">
-                Flexible SSL mode forces Cloudflare to access cluster over HTTP.
-                Redirection from HTTP to HTTPS creates an infinite loop.
-              </p>
-              <p
-                className={`text-[11px] font-semibold ${cloudflareSslMode === "flexible" ? "text-amber-400 underline underline-offset-2" : "text-emerald-400"}`}
-              >
-                {cloudflareSslMode === "flexible"
-                  ? "⚠️ Switch Cloudflare SSL setting to 'Full' or 'Full (strict)'."
-                  : "✓ SSL mode Full/Strict prevents redirection loops."}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

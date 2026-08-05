@@ -22,6 +22,54 @@ export type CustomDomain = {
   expiresAt: string
 }
 
+export type DomainKind = "MANAGED" | "CUSTOM"
+
+export type DomainCertificateDTO = {
+  source: string | null
+  status: string | null
+  expiresAt: string | null
+  fingerprint: string | null
+  validationError: string | null
+}
+
+export type DomainEndpointDTO = {
+  managedBaseDomain: string | null
+  cnameTarget: string | null
+  ipv4Addresses: string[]
+  ipv6Addresses: string[]
+}
+
+export type DomainClusterDTO = {
+  id: string
+  code: string
+  name: string
+  region: string
+}
+
+export type DomainAllowlistMode = "OPEN" | "ALLOWLIST_ONLY"
+
+export type DomainAllowlistEntryDTO = {
+  id: string
+  cidr: string
+  label?: string | null
+  description?: string | null
+  enabled?: boolean
+  position?: number
+}
+
+export type TenantDomainDTO = {
+  id: string
+  hostname: string
+  kind: DomainKind
+  isPrimary: boolean
+  cluster: DomainClusterDTO | null
+  dnsStatus: string
+  expectedCnameTarget: string | null
+  endpoint: DomainEndpointDTO | null
+  certificate: DomainCertificateDTO | null
+  allowlistMode: DomainAllowlistMode
+  allowlistEntries: DomainAllowlistEntryDTO[]
+}
 export type EnvVar = {
   id: string
   key: string
