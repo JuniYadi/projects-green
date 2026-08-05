@@ -3,7 +3,8 @@
 ## Agent boot order
 
 1. Read this file for repo-local non-negotiables.
-2. Read repo-root `.obsidian.json` (at `{repo-root}/.obsidian.json`, NOT anywhere else). Extract `directory` and `entry`. Then use `skill://obsidian-load` to open the vault and follow the entry note's Agent flow. For `obsidian://open?vault=<name>&file=<path>` URLs, use `skill://obsidian-resolve` first, then `skill://obsidian-load`.
+2. Read repo-root `.obsidian.json` (at `{repo-root}/.obsidian.json`, NOT anywhere else). Extract `directory` and `entry`. Then run `bun run obsidian:boot` — before any parallel reads — and use `skill://obsidian-load` to follow the entry note's Agent flow.
+3. Read notes by logical name: `bun run obsidian:read -- "Note Name"` or `bun run obsidian:resolve -- "Note Name"`. Never construct filesystem paths from wikilinks; never use grep/find for note resolution. For `obsidian://open?vault=<name>&file=<path>` URLs (explicit vault-relative paths, not logical names), use `skill://obsidian-resolve` first, then `skill://obsidian-load`.
 
 ## Local hard rules
 
