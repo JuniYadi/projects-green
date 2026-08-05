@@ -388,6 +388,252 @@ export type AppMessages = {
         heading: string
         description: string
       }
+      deployWizard: {
+        heading: string
+        description: string
+        reset: string
+        phaseNavigation: string
+        errors: {
+          accountsRequest: string
+          accountsLoad: string
+          repositoriesRequest: string
+          repositoriesLoad: string
+          detectionFallback: string
+          submitNetwork: string
+        }
+        phases: {
+          source: { label: string; description: string }
+          plan: { label: string; description: string }
+          live: { label: string; description: string }
+        }
+        source: {
+          heading: string
+          description: string
+          placeholder: string
+          listLabel: string
+          recent: string
+          connectedRepositories: string
+          templates: string
+          noMatches: string
+          privateRepository: string
+          publicRepository: string
+          selected: string
+          advanced: string
+          account: string
+          noAccounts: string
+          repositorySearch: string
+          searchRepositories: string
+          branch: string
+          noBranches: string
+          publicBranchOrRef: string
+          rootDirectory: string
+          appName: string
+          resourcePlan: string
+          defaults: string
+          templateDetails: string
+          publicRefPlaceholder: string
+          rootDirectoryPlaceholder: string
+          appNamePlaceholder: string
+          cancel: string
+          next: string
+          checkingSource: string
+          connectGithub: string
+          reconnectGithub: string
+          redirecting: string
+          githubAccessExpired: string
+          connectionFailed: string
+          loadingAccounts: string
+          loadingRepositories: string
+        }
+        connect: {
+          eyebrow: string
+          templateHeading: string
+          repositoryHeading: string
+          templateDescription: string
+          repositoryDescription: string
+          templateDeployment: string
+          templateSummary: string
+          githubAccount: string
+          selectRepository: string
+          noBranch: string
+          templateNotice: string
+          repositoryNotice: string
+          back: string
+          continue: string
+        }
+        detect: {
+          heading: string
+          description: string
+          operations: string
+          operationReadRepository: string
+          operationDependencies: string
+          operationRuntime: string
+          operationPlan: string
+          evidence: string
+          launchVerdict: string
+          running: string
+          noEvidence: string
+          evidenceWaiting: string
+          detectionStatus: string
+          confidence: string
+          statusRetrying: string
+          statusReading: string
+          statusFinalFailure: string
+          statusNoResult: string
+          statusFailure: string
+          statusLowConfidence: string
+          statusSuccess: string
+          waitingRetry: string
+          waiting: string
+          retryFallback: string
+          retryDetection: string
+          manualOverride: string
+          manualRequired: string
+          optionalAdjust: string
+          language: string
+          framework: string
+          frameworkVersion: string
+          defaultPort: string
+          primaryEngine: string
+          engineVersion: string
+          secondaryEngine: string
+          secondaryRuntime: string
+          buildCommand: string
+          dockerfile: string
+          detected: string
+          notDetected: string
+          selectLanguage: string
+          selectFramework: string
+          languageRequired: string
+          frameworkRequired: string
+          buildCommandRequired: string
+          buildCommandDockerfile: string
+          buildCommandRoot: string
+          useDockerfile: string
+          dockerfileOn: string
+          dockerfileOff: string
+          buildSettingsAttention: string
+          readyDockerfile: string
+          readyBuild: string
+          back: string
+          next: string
+        }
+        review: {
+          eyebrow: string
+          heading: string
+          description: string
+          appName: string
+          unnamedApp: string
+          branch: string
+          defaultBranch: string
+          framework: string
+          runtime: string
+          build: string
+          port: string
+          resourcePlan: string
+          confidence: string
+          checkedFact: string
+          editableRecommendation: string
+          manualSetupRequired: string
+          noDatabase: string
+          notDetected: string
+          dockerfile: string
+        }
+        environment: {
+          validationHeading: string
+          submitHeading: string
+          advanced: string
+          buildConfiguration: string
+          templateBuildDescription: string
+          buildDescription: string
+          editBuildSettings: string
+          language: string
+          framework: string
+          buildMode: string
+          dockerfile: string
+          command: string
+          none: string
+          notAvailable: string
+          rootDirectory: string
+          domainMode: string
+          domainDescription: string
+          managedSubdomain: string
+          managedSubdomainDescription: string
+          customDomain: string
+          customDomainDescription: string
+          previewDomain: string
+          customDomainNotice: string
+          customDomainRequired: string
+          invalidDomain: string
+          customDomainPlaceholder: string
+          environmentVariables: string
+          resourcePlan: string
+          planStarter: string
+          planPro: string
+          planPayg: string
+          variableSingular: string
+          variablePlural: string
+          paygDescription: string
+          starterDescription: string
+          proDescription: string
+          readySummary: string
+          back: string
+          deploying: string
+          deploy: string
+        }
+        monitor: {
+          yourApp: string
+          currentStatus: string
+          attempt: string
+          statusTimeline: string
+          buildRuntimeLogs: string
+          resultState: string
+          status: {
+            idle: string
+            queued: string
+            building: string
+            deploying: string
+            running: string
+            failed: string
+          }
+          activity: {
+            idle: string
+            queued: string
+            building: string
+            deploying: string
+            running: string
+            failed: string
+          }
+        }
+        logs: {
+          title: string
+          streamWaiting: string
+          streamFinished: string
+          streamLive: string
+          hide: string
+          view: string
+          all: string
+          build: string
+          runtime: string
+          empty: string
+          terminalSuccess: string
+          terminalFailure: string
+        }
+        result: {
+          idle: string
+          inProgress: string
+          waiting: string
+          live: string
+          successAttempt: string
+          visitPreview: string
+          openDashboard: string
+          failed: string
+          failedAttempt: string
+          failureFallback: string
+          retry: string
+          editSettings: string
+        }
+      }
       manage: {
         heading: string
         description: string
@@ -494,3 +740,5 @@ export type AppMessages = {
     }
   }
 }
+
+export type DeployWizardMessages = AppMessages["console"]["app"]["deployWizard"]

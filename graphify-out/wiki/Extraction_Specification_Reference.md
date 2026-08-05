@@ -1,0 +1,26 @@
+# Extraction Specification Reference
+
+> 2 nodes · cohesion 1.00
+
+## Key Concepts
+
+- **Extraction Specification Reference** (1 connections) — `.pi/agent/skills/graphify/references/extraction-spec.md`
+- **Semantic Subagent Prompt** (1 connections) — `.pi/agent/skills/graphify/references/extraction-spec.md`
+
+## Relationships
+
+- No strong cross-community connections detected
+
+## Source Files
+
+- `.pi/agent/skills/graphify/references/extraction-spec.md`
+
+## Audit Trail
+
+- EXTRACTED: 2 (100%)
+- INFERRED: 0 (0%)
+- AMBIGUOUS: 0 (0%)
+
+---
+
+*Part of the graphify knowledge wiki. See [index](index.md) to navigate.*

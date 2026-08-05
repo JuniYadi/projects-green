@@ -20,6 +20,21 @@ const repositories = {
     },
   ],
 }
+const accounts = {
+  ok: true,
+  accounts: [
+    {
+      id: "credential-pfn",
+      githubInstallationId: 501,
+      accountLogin: "pfn",
+      accountType: "Organization",
+      targetType: "Organization",
+      installedAt: "2026-01-01T00:00:00.000Z",
+    },
+  ],
+}
+
+const recentSources = { ok: true, data: [] }
 
 const detection = {
   ok: true,
@@ -71,6 +86,15 @@ const installDeployFixtures = async (
 ) => {
   let submitAttempt = 0
 
+  await page.route("**/api/integrations/github/accounts", (route) => {
+    return route.fulfill({ status: 200, json: accounts })
+  })
+  await page.route("**/api/framework-detection", (route) => {
+    return route.fulfill({ status: 200, json: detection })
+  })
+  await page.route("**/api/deploy/recent-sources**", (route) => {
+    return route.fulfill({ status: 200, json: recentSources })
+  })
   await page.route("**/api/integrations/github/repositories?**", (route) => {
     return route.fulfill({ status: 200, json: repositories })
   })
@@ -99,7 +123,7 @@ const installDeployFixtures = async (
 const configureDeploy = async (page: Page) => {
   await page.goto("/en/console/app/deploy?github=connected")
   await expect(
-    page.getByRole("heading", { name: "Put a site online" })
+    page.getByRole("heading", { name: "Let’s get your app online" })
   ).toBeVisible()
   await expect(
     page.getByText("Choose a starting point", { exact: true })
@@ -112,8 +136,7 @@ const configureDeploy = async (page: Page) => {
   ).toBeVisible()
   await expect(page.getByText("Step 1 of 3", { exact: true })).toBeVisible()
 
-  await expect(page.getByText("PFN", { exact: true })).toBeVisible()
-  await page.getByRole("button", { name: /green-app/ }).click()
+  await page.getByRole("option", { name: /green-app/ }).click()
 
   await page.getByRole("button", { name: "Continue to setup" }).click()
   await expect(
@@ -122,9 +145,13 @@ const configureDeploy = async (page: Page) => {
   await page.getByRole("button", { name: "Check my site" }).click()
   await expect(page.getByRole("button", { name: "Next" })).toBeVisible()
   await page.getByRole("button", { name: "Next" }).click()
+  await page.getByRole("button", { name: "Continue to detection" }).click()
+  await expect(page.getByText("Next.js", { exact: true })).toBeVisible()
+  await page.getByRole("button", { name: "Next" }).click()
   await expect(
-    page.getByRole("heading", { name: "Choose your web address & plan" })
+    page.getByRole("heading", { name: "Ready to deploy your app" })
   ).toBeVisible()
+  await expect(page.getByText("3000", { exact: true })).toBeVisible()
 }
 
 const expectNormalAuthentication = async (
@@ -172,9 +199,52 @@ test("deploys a repository through the happy path @e2e/smoke/deploy/deploy-wizar
   }))
 
   await configureDeploy(page)
-  await page.getByRole("button", { name: "Publish site" }).click()
+  await page.getByRole("button", { name: "Deploy" }).click()
 
-  await expect(page.getByText("Deployment live")).toBeVisible()
+  await expect(page.getByText("Your app is live!")).toBeVisible()
+  await expect(
+    page.getByRole("link", { name: "Visit Preview" })
+  ).toHaveAttribute("href", "https://green-app.pfn.app")
+  await expect(page.getByRole("button", { name: "View logs" })).toBeVisible()
+})
+
+test("shows a deploy plan for a public GitLab source @e2e/smoke/deploy/deploy-wizard", async ({
+  page,
+}) => {
+  await installDeployFixtures(page, () => ({
+    status: 200,
+    body: {
+      ok: true,
+      data: { deploymentId: "deploy-smoke-public", status: "queued" },
+    },
+  }))
+
+  await page.goto("/en/console/app/deploy?github=connected")
+  const sourceInput = page.getByPlaceholder(
+    "Paste a repo URL or search templates"
+  )
+  await sourceInput.fill("https://gitlab.com/pfn/public-app")
+  await page.getByRole("button", { name: "Next" }).click()
+  const publicRequests: string[] = []
+  page.on("request", (request) => {
+    if (request.url().includes("/api/framework-detection")) {
+      publicRequests.push(request.url())
+    }
+  })
+  await page.getByRole("button", { name: "Continue to detection" }).click()
+  await expect(page.getByText("Next.js", { exact: true })).toBeVisible()
+  await page.getByRole("button", { name: "Next" }).click()
+  await expect(
+    page.getByRole("heading", { name: "Ready to deploy your app" })
+  ).toBeVisible()
+  expect(
+    publicRequests.some((url) => url.endsWith("/api/framework-detection"))
+  ).toBe(true)
+  expect(
+    publicRequests.some((url) =>
+      url.includes("/api/framework-detection/github")
+    )
+  ).toBe(false)
 })
 
 test("shows a submit error and completes after retry @e2e/smoke/deploy/deploy-wizard", async ({
@@ -202,9 +272,8 @@ test("shows a submit error and completes after retry @e2e/smoke/deploy/deploy-wi
       },
     }
   })
-
   await configureDeploy(page)
-  const deployButton = page.getByRole("button", { name: "Publish site" })
+  const deployButton = page.getByRole("button", { name: "Deploy" })
   await deployButton.click()
 
   await expect(page.getByRole("alert")).toContainText(
@@ -213,5 +282,5 @@ test("shows a submit error and completes after retry @e2e/smoke/deploy/deploy-wi
   await expect(deployButton).toBeEnabled()
 
   await deployButton.click()
-  await expect(page.getByText("Deployment live")).toBeVisible()
+  await expect(page.getByText("Your app is live!")).toBeVisible()
 })

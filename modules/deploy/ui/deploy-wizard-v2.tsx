@@ -1,5 +1,7 @@
 "use client"
 
+import { enMessages } from "@/lib/i18n/messages/en"
+import type { DeployWizardMessages } from "@/lib/i18n/messages/types"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
@@ -7,6 +9,7 @@ import { Check, X } from "@/components/ui/phosphor-icons"
 import { Button } from "@/components/ui/button"
 import {
   fetchFrameworkDetection,
+  fetchPublicFrameworkDetection,
   DetectionError,
 } from "@/modules/deploy/deploy-detection.service"
 import { recommendPlan } from "@/modules/deploy/deploy-recommendation"
@@ -15,6 +18,7 @@ import {
   DEPLOY_STEP_QUERY_KEY,
   DEPLOY_TEMPLATES,
   MONITOR_POLL_INTERVAL_MS,
+  getDeployPhase,
   parseStepQueryValue,
 } from "@/modules/deploy/deploy.constants"
 import { clampStepToUnlocked, getNextStep } from "@/modules/deploy/deploy.logic"
@@ -31,6 +35,7 @@ import type {
   Owner,
   Repository,
 } from "@/modules/deploy/deploy.types"
+import type { RecentDeploySourceDTO } from "@/modules/deploy/recent-sources.dto"
 import {
   getEnvironmentValidationMessages,
   isValidCustomDomain,
@@ -64,25 +69,38 @@ type GithubAccountsResponse = {
   ok: boolean
   accounts?: { accountLogin?: string | null }[]
 }
+type RecentSourcesResponse = {
+  ok: boolean
+  data?: RecentDeploySourceDTO[]
+}
 
 type DeployWizardV2Props = {
   title?: string
   description?: string
+  messages?: DeployWizardMessages
+  dashboardHref?: string
 }
 
-function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
+function DeployWizardV2Inner({
+  title,
+  description,
+  messages = enMessages.console.app.deployWizard,
+  dashboardHref,
+}: DeployWizardV2Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-
   const state = useDeployWizardState()
   const dispatch = useDeployWizardDispatch()
-
   const [ownerSearch, setOwnerSearch] = useState("")
   const [repositorySearch, setRepositorySearch] = useState("")
+  const [recentSources, setRecentSources] = useState<
+    RecentSourcesResponse["data"]
+  >([])
   const [ownerOptions, setOwnerOptions] = useState<Owner[]>([])
   const [repositoryOptions, setRepositoryOptions] = useState<Repository[]>([])
   const [ownerOptionsLoading, setOwnerOptionsLoading] = useState(true)
+
   const [repositoryOptionsLoading, setRepositoryOptionsLoading] =
     useState(false)
   const [ownerOptionsError, setOwnerOptionsError] = useState<string | null>(
@@ -106,6 +124,29 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
   const [detectionAttempt, setDetectionAttempt] = useState(1)
   const [detectionRetrying, setDetectionRetrying] = useState(false)
   const [detectionRunKey, setDetectionRunKey] = useState(0)
+  useEffect(() => {
+    const controller = new AbortController()
+
+    const run = async () => {
+      try {
+        const response = await fetch("/api/deploy/recent-sources?limit=3", {
+          signal: controller.signal,
+        })
+        if (!response.ok) return
+
+        const payload = (await response.json()) as RecentSourcesResponse
+        if (!controller.signal.aborted) {
+          setRecentSources(Array.isArray(payload.data) ? payload.data : [])
+        }
+      } catch (cause) {
+        if (cause instanceof Error && cause.name === "AbortError") return
+        if (!controller.signal.aborted) setRecentSources([])
+      }
+    }
+
+    void run()
+    return () => controller.abort()
+  }, [])
 
   const githubConnectionStatus: GithubConnectionStatus = (() => {
     const status = searchParams.get("github")
@@ -340,20 +381,43 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
   }, [repositorySearch, state.source.ownerId])
   const detectionAttemptRef = useRef(0)
   const detectionControllerRef = useRef<AbortController | null>(null)
+  const detectionInputKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (state.source.sourceType !== "github" || !state.source.repositoryId) {
+    const sourceType = state.source.sourceType
+    if (
+      (sourceType === "github" && !state.source.repositoryId) ||
+      (sourceType === "public" && !state.source.publicSourceUrl?.trim()) ||
+      (sourceType !== "github" && sourceType !== "public")
+    ) {
       return
     }
-    if (state.detectionResult != null) return
-    if (detectionError != null) return
+    const detectionInputKey =
+      sourceType === "public"
+        ? `public:${state.source.publicSourceUrl}:${state.source.publicSourceRef}:${state.source.rootDirectory}`
+        : `github:${state.source.repositoryId}:${state.source.branchName}:${state.source.rootDirectory}`
+    if (
+      state.detectionResult != null &&
+      detectionInputKeyRef.current === detectionInputKey
+    ) {
+      return
+    }
+    if (
+      detectionError != null &&
+      detectionInputKeyRef.current === detectionInputKey
+    ) {
+      return
+    }
+    detectionInputKeyRef.current = detectionInputKey
 
     const repo =
-      repositoryById[state.source.repositoryId] ??
-      repositoryOptions.find(
-        (repository) => repository.id === state.source.repositoryId
-      )
-    if (!repo) return
+      sourceType === "github"
+        ? (repositoryById[state.source.repositoryId] ??
+          repositoryOptions.find(
+            (repository) => repository.id === state.source.repositoryId
+          ))
+        : null
+    if (sourceType === "github" && !repo) return
 
     detectionControllerRef.current?.abort()
     const controller = new AbortController()
@@ -398,16 +462,26 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
         detectionAttemptRef.current = attempt
         setDetectionRetrying(attempt > 1)
         try {
-          const result = await fetchFrameworkDetection(
-            {
-              installationId: repo.installationId,
-              owner: repo.ownerId,
-              repo: repo.name,
-              ref: state.source.branchName || undefined,
-              subdir: state.source.rootDirectory || undefined,
-            },
-            controller.signal
-          )
+          const result =
+            sourceType === "public"
+              ? await fetchPublicFrameworkDetection(
+                  {
+                    repoUrl: state.source.publicSourceUrl?.trim() ?? "",
+                    ref: state.source.publicSourceRef || undefined,
+                    subdir: state.source.rootDirectory || undefined,
+                  },
+                  controller.signal
+                )
+              : await fetchFrameworkDetection(
+                  {
+                    installationId: repo!.installationId,
+                    owner: repo!.ownerId,
+                    repo: repo!.name,
+                    ref: state.source.branchName || undefined,
+                    subdir: state.source.rootDirectory || undefined,
+                  },
+                  controller.signal
+                )
           if (controller.signal.aborted) return
 
           setDetectionError(null)
@@ -480,6 +554,8 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
     state.source.repositoryId,
     state.source.branchName,
     state.source.rootDirectory,
+    state.source.publicSourceUrl,
+    state.source.publicSourceRef,
     state.detectionResult,
     detectionError,
     detectionRunKey,
@@ -765,6 +841,12 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
       setIsSubmitting(false)
     }
   }
+  const resetDetectionState = () => {
+    setDetectionError(null)
+    setDetectionErrorCode(null)
+    dispatch({ type: "set-detection", payload: null })
+    dispatch({ type: "set-build", payload: null })
+  }
 
   const renderStep = () => {
     const buildFieldChange = (
@@ -779,6 +861,7 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
 
       return (
         <StepSourceV2
+          messages={messages}
           sourceType={state.source.sourceType}
           templateId={state.source.templateId}
           githubConnectionStatus={githubConnectionStatus}
@@ -805,11 +888,14 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
           templateResourcePlanId={state.environment.resourcePlanId}
           publicSourceUrl={state.source.publicSourceUrl}
           publicSourceRef={state.source.publicSourceRef}
+          recentSources={recentSources}
           onPublicSourceUrlChange={(url) => {
             dispatch({ type: "set-source", payload: { publicSourceUrl: url } })
+            resetDetectionState()
           }}
           onPublicSourceRefChange={(ref) => {
             dispatch({ type: "set-source", payload: { publicSourceRef: ref } })
+            resetDetectionState()
           }}
           canProceed={sourceValid}
           isDetecting={isDetecting}
@@ -825,6 +911,7 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
                   sourceType === "public" ? state.source.publicSourceRef : "",
               },
             })
+            resetDetectionState()
           }}
           onTemplateSelect={handleTemplateSelect}
           onOwnerSearchChange={setOwnerSearch}
@@ -836,6 +923,9 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
           }}
           onRootDirectoryChange={(rootDirectory) => {
             dispatch({ type: "set-source", payload: { rootDirectory } })
+            if (state.source.sourceType === "public") {
+              resetDetectionState()
+            }
           }}
           onAppNameChange={(appName) => {
             dispatch({ type: "set-source", payload: { appName } })
@@ -867,6 +957,7 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
     if (state.step === "connect") {
       return (
         <StepConnectV2
+          messages={messages}
           sourceType={state.source.sourceType}
           owner={selectedOwner}
           repository={selectedRepository}
@@ -881,6 +972,7 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
     if (state.step === "detect") {
       return (
         <StepDetectV2
+          messages={messages}
           detectionResult={state.detectionResult}
           isDetecting={isDetecting}
           detectionRetrying={detectionRetrying}
@@ -909,6 +1001,10 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
     if (state.step === "review") {
       return (
         <StepReviewV2
+          messages={messages}
+          appName={state.source.appName}
+          branchName={state.source.branchName}
+          detectionResult={state.detectionResult}
           generatedSubdomain={toGeneratedSubdomain(
             selectedRepository?.name || state.source.templateId
           )}
@@ -930,6 +1026,10 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
           canDeploy={environmentValid}
           isSubmitting={isSubmitting}
           submitError={submitError}
+          rootDirectory={state.source.rootDirectory}
+          onRootDirectoryChange={(rootDirectory) => {
+            dispatch({ type: "set-source", payload: { rootDirectory } })
+          }}
           sourceType={state.source.sourceType}
           buildState={state.build}
           onEditBuildSettings={() => navigateStep("detect")}
@@ -973,12 +1073,15 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
 
     return (
       <StepMonitorV2
+        messages={messages}
+        appName={state.source.appName}
         deployId={state.monitor.deployId}
         status={state.monitor.status}
         logScope={state.monitor.logScope}
         attempt={state.monitor.attempt}
         failureReason={state.monitor.failureReason}
         liveDomain={liveDomain}
+        dashboardHref={dashboardHref}
         onLogScopeChange={(logScope) => {
           dispatch({ type: "set-monitor-log-scope", payload: logScope })
         }}
@@ -990,11 +1093,9 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
     )
   }
 
-  const activePhaseIndex = Math.max(
-    0,
-    DEPLOY_PHASES.findIndex((phase) =>
-      phase.steps.some((step) => step === state.step)
-    )
+  const activePhase = getDeployPhase(state.step)
+  const activePhaseIndex = DEPLOY_PHASES.findIndex(
+    (phase) => phase.id === activePhase
   )
 
   return (
@@ -1002,60 +1103,37 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1">
           <p className="text-xs font-semibold tracking-[0.2em] text-primary uppercase">
-            Deploy New
+            {messages.phases[activePhase].label}
           </p>
           <h1 className="text-2xl font-semibold">
-            {title ?? "Put a site online"}
+            {title ?? messages.heading}
           </h1>
-          {description && (
-            <p className="max-w-2xl text-sm text-muted-foreground">
-              {description}
-            </p>
-          )}
-          {!description && (
-            <p className="max-w-2xl text-sm text-muted-foreground">
-              Choose where to start. We&apos;ll help set it up and publish it.
-            </p>
-          )}
+          <p className="max-w-2xl text-sm text-muted-foreground">
+            {description ?? messages.description}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => dispatch({ type: "reset" })}
-          >
-            Start over
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Reset deploy wizard"
-            onClick={() => dispatch({ type: "reset" })}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={messages.reset}
+          onClick={() => dispatch({ type: "reset" })}
+        >
+          <X className="h-4 w-4" />
+        </Button>
       </header>
 
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <nav
-          className="border-b border-border p-4"
-          aria-label="Deploy wizard steps"
+          className="overflow-x-auto border-b border-border p-4"
+          aria-label="Deploy wizard phases"
         >
-          <div className="mb-3 text-xs font-medium text-muted-foreground">
-            Step {activePhaseIndex + 1} of {DEPLOY_PHASES.length}
-          </div>
-          <ol className="flex items-start">
+          <ol className="flex min-w-[520px] items-center">
             {DEPLOY_PHASES.map((phase, index) => {
-              const isActive = index === activePhaseIndex
+              const isActive = activePhase === phase.id
               const isCompleted = index < activePhaseIndex
 
               return (
-                <li
-                  key={phase.id}
-                  aria-current={isActive ? "step" : undefined}
-                  className="flex min-w-0 flex-1 items-start"
-                >
+                <li key={phase.id} className="flex min-w-0 flex-1 items-center">
                   {index > 0 && (
                     <span
                       aria-hidden="true"
@@ -1066,6 +1144,7 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
                     />
                   )}
                   <div
+                    aria-current={isActive ? "step" : undefined}
                     className={cn(
                       "flex items-center gap-2 rounded-lg px-2 py-1.5 text-left",
                       isActive && "bg-primary/10"
@@ -1087,10 +1166,10 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
                     </span>
                     <span className="min-w-0">
                       <span className="block text-xs font-semibold">
-                        {phase.label}
+                        {messages.phases[phase.id].label}
                       </span>
-                      <span className="block text-[10px] text-muted-foreground">
-                        {phase.description}
+                      <span className="hidden text-[10px] text-muted-foreground sm:block">
+                        {messages.phases[phase.id].description}
                       </span>
                     </span>
                   </div>
@@ -1106,6 +1185,18 @@ function DeployWizardV2Inner({ title, description }: DeployWizardV2Props) {
   )
 }
 
-export function DeployWizardV2({ title, description }: DeployWizardV2Props) {
-  return <DeployWizardV2Inner title={title} description={description} />
+export function DeployWizardV2({
+  title,
+  description,
+  messages,
+  dashboardHref,
+}: DeployWizardV2Props) {
+  return (
+    <DeployWizardV2Inner
+      title={title}
+      description={description}
+      messages={messages}
+      dashboardHref={dashboardHref}
+    />
+  )
 }

@@ -2,7 +2,10 @@ import { Elysia } from "elysia"
 
 import { billingGateRoutes } from "@/modules/deploy/api/routes/billing-gate.route"
 import { deployPipelineRoutes } from "@/modules/deploy/api/routes/deploy-pipeline.route"
-import { appStacksRoutes } from "@/modules/deploy/api/routes/app-stacks.route"
+import {
+  appStacksRoutes,
+  recentSourcesRoutes,
+} from "@/modules/deploy/api/routes/app-stacks.route"
 import { deploySubmitRoutes } from "@/modules/deploy/api/routes/deploy-submit.route"
 import { deployTriggerRoutes } from "@/modules/deploy/api/routes/deploy-trigger.route"
 import { environmentVariablesRoutes } from "@/modules/deploy/api/routes/environment-variables.route"
@@ -14,6 +17,7 @@ import { podStatusRoutes } from "@/modules/deploy/api/routes/pod-status.route"
 import { publicSourceRoutes } from "@/modules/deploy/api/routes/public-source.route"
 
 export const deployRoutes = new Elysia()
+  .use(recentSourcesRoutes)
   .use(appStacksRoutes)
   .use(deploySubmitRoutes)
   .use(deployTriggerRoutes)

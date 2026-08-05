@@ -7,6 +7,62 @@ import {
   toStackSummaryDTO,
 } from "../../deploy-monitor.dto"
 
+import { mapRecentDeploySource } from "../../recent-sources.dto"
+
+const MAX_RECENT_SOURCE_LIMIT = 3
+
+export const recentSourcesRoutes = new Elysia({ prefix: "/deploy" }).get(
+  "/recent-sources",
+  async ({ query, set }) => {
+    const auth = await withAuth()
+    if (!auth.user) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Unauthorized" }
+    }
+
+    if (!auth.organizationId) {
+      set.status = 403
+      return { ok: false, error: "FORBIDDEN", message: "Organization required" }
+    }
+
+    const requestedLimit = query.limit ?? MAX_RECENT_SOURCE_LIMIT
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(
+          MAX_RECENT_SOURCE_LIMIT,
+          Math.max(1, Math.floor(requestedLimit))
+        )
+      : MAX_RECENT_SOURCE_LIMIT
+    const stacks = await prisma.applicationStack.findMany({
+      where: { organizationId: auth.organizationId },
+      orderBy: { updatedAt: "desc" },
+      include: {
+        repositoryConnection: {
+          select: {
+            ownerLogin: true,
+            githubRepositoryId: true,
+            repoName: true,
+          },
+        },
+      },
+    })
+
+    return {
+      ok: true,
+      data: stacks
+        .map((stack) => mapRecentDeploySource(stack))
+        .filter(
+          (source): source is NonNullable<typeof source> => source !== null
+        )
+        .slice(0, limit),
+    }
+  },
+  {
+    query: t.Object({
+      limit: t.Optional(t.Numeric()),
+    }),
+  }
+)
+
 const MAX_HISTORY_PAGE_SIZE = 100
 
 /**
