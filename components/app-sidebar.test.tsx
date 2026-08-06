@@ -376,6 +376,7 @@ describe("resolveSidebarMenu", () => {
       "Invoices",
       "Payments",
       "Vouchers",
+      "Promotions",
       "Audit Logs",
       "Pricing",
       "Orders",
