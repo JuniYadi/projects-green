@@ -7,6 +7,7 @@ import {
 } from "@/test/helpers/test-auth"
 
 import { createBillingCheckoutRoutes } from "./checkout.route"
+import { RecurringPriceResolutionError } from "../pricing/pricing.service"
 
 const mockCreateOrder = mock()
 const mockChargeOrder = mock()
@@ -222,6 +223,100 @@ describe("POST /billing/checkout", () => {
       }
       expect(body.ok).toBe(false)
       expect(body.error).toBe("INSUFFICIENT_BALANCE")
+    })
+  })
+
+  describe("error mapping", () => {
+    it("maps pricing resolution failures to a client error", async () => {
+      const app = buildApp(defaultAuth)
+      mockCreateOrder.mockRejectedValue(
+        new RecurringPriceResolutionError("PRICE_NOT_FOUND", "missing")
+      )
+
+      const response = await makeRequest(app, {
+        pricingId: "pricing-1",
+        idempotencyKey: "key-1",
+      })
+
+      expect(response.status).toBe(400)
+      expect((await response.json()).error).toBe("PRICING_NOT_FOUND")
+    })
+
+    it("maps missing accounts and unexpected order errors", async () => {
+      const app = buildApp(defaultAuth)
+      mockCreateOrder.mockRejectedValueOnce(
+        new Error("BILLING_ACCOUNT_NOT_FOUND")
+      )
+      let response = await makeRequest(app, {
+        pricingId: "pricing-1",
+        idempotencyKey: "key-1",
+      })
+      expect(response.status).toBe(400)
+      expect((await response.json()).error).toBe("BILLING_ACCOUNT_NOT_FOUND")
+
+      mockCreateOrder.mockRejectedValueOnce(new Error("DATABASE_ERROR"))
+      response = await makeRequest(app, {
+        pricingId: "pricing-1",
+        idempotencyKey: "key-2",
+      })
+      expect(response.status).toBe(500)
+      expect((await response.json()).error).toBe("INTERNAL_ERROR")
+    })
+
+    it("maps charge failures", async () => {
+      const app = buildApp(defaultAuth)
+      mockCreateOrder.mockResolvedValue({
+        orderId: "order-1",
+        status: "PENDING" as const,
+      })
+      mockChargeOrder.mockRejectedValueOnce(new Error("CURRENCY_MISMATCH"))
+
+      let response = await makeRequest(app, {
+        pricingId: "pricing-1",
+        idempotencyKey: "key-1",
+      })
+      expect(response.status).toBe(422)
+      expect((await response.json()).error).toBe("CURRENCY_MISMATCH")
+
+      mockChargeOrder.mockRejectedValueOnce(new Error("ORDER_NOT_CHARGEABLE"))
+      response = await makeRequest(app, {
+        pricingId: "pricing-1",
+        idempotencyKey: "key-2",
+      })
+      expect(response.status).toBe(409)
+      expect((await response.json()).error).toBe("ORDER_NOT_CHARGEABLE")
+
+      mockChargeOrder.mockRejectedValueOnce(new Error("CHARGE_ERROR"))
+      response = await makeRequest(app, {
+        pricingId: "pricing-1",
+        idempotencyKey: "key-3",
+      })
+      expect(response.status).toBe(500)
+      expect((await response.json()).error).toBe("INTERNAL_ERROR")
+    })
+
+    it("maps fulfillment lock and unexpected failures", async () => {
+      const app = buildApp(defaultAuth)
+      mockCreateOrder.mockResolvedValue({ orderId: "order-1" })
+      mockChargeOrder.mockResolvedValue({ orderId: "order-1" })
+      mockFulfillOrder.mockRejectedValueOnce(
+        new Error("ADVISORY_LOCK_UNAVAILABLE")
+      )
+
+      let response = await makeRequest(app, {
+        pricingId: "pricing-1",
+        idempotencyKey: "key-1",
+      })
+      expect(response.status).toBe(503)
+      expect((await response.json()).error).toBe("SERVICE_UNAVAILABLE")
+
+      mockFulfillOrder.mockRejectedValueOnce(new Error("FULFILLMENT_ERROR"))
+      response = await makeRequest(app, {
+        pricingId: "pricing-1",
+        idempotencyKey: "key-2",
+      })
+      expect(response.status).toBe(500)
+      expect((await response.json()).error).toBe("FULFILLMENT_ERROR")
     })
   })
 
