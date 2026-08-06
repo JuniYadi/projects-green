@@ -41,7 +41,7 @@ describe("subscription lifecycle migration", () => {
     expect(migration).toContain(
       'ADD COLUMN "cancelAtPeriodEnd" BOOLEAN NOT NULL DEFAULT false'
     )
-    expect(migration).not.toContain('ADD COLUMN "allocatedConfig" JSONB')
+    expect(migration.match(/ADD COLUMN/g)).toHaveLength(1)
   })
 })
 
