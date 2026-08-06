@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Prisma } from "@prisma/client"
 import type { PrismaClient } from "@prisma/client"
+import type { BillingFulfillmentInput } from "./fulfillment-adapters"
+import { RecurringPriceResolutionError } from "../pricing/pricing.types"
 
 const mockPrisma = {
   $transaction: mock(),
@@ -24,6 +26,7 @@ const mockDebitServiceBalance = mock()
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 mock.module("../pricing/pricing.service", () => ({
   resolveRecurringPrice: mockResolveRecurringPrice,
+  RecurringPriceResolutionError,
 }))
 mock.module("../billing-transaction.service", () => ({
   BillingTransactionService: class {
@@ -94,8 +97,18 @@ function orderFixture(overrides: Record<string, unknown> = {}) {
 
 const adapter = {
   packageCode: "VPN" as const,
-  create: mock(async () => ({ subscriptionId: "subscription-1" })),
-  renew: mock(async () => {}),
+  create: mock(
+    async (
+      _input: BillingFulfillmentInput,
+      _transactionClient?: Prisma.TransactionClient
+    ) => ({ subscriptionId: "subscription-1" })
+  ),
+  renew: mock(
+    async (
+      _input: BillingFulfillmentInput,
+      _transactionClient?: Prisma.TransactionClient
+    ) => {}
+  ),
 }
 
 beforeEach(() => {
@@ -170,6 +183,38 @@ describe("BillingOrderService", () => {
       unitPrice: decimal("100"),
       amount: decimal("100"),
       billingPeriod: "MONTHLY",
+    })
+  })
+
+  it("persists a discounted first payment without changing the locked price", async () => {
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      undefined,
+      new BillingFulfillmentRegistry([adapter])
+    )
+
+    await service.createOrder({
+      organizationId: "org-1",
+      pricingId: "pricing-1",
+      discountAmount: decimal("10.00"),
+      voucherId: "voucher-1",
+      voucherCode: "SAVE10",
+      voucherCurrency: "IDR",
+      voucherExchangeRate: decimal("1"),
+      idempotencyKey: "discounted-order",
+      now: periodStart,
+    })
+
+    expect(mockPrisma.billingOrder.create.mock.calls[0][0].data).toMatchObject({
+      subtotalAmount: decimal("100"),
+      discountAmount: decimal("10"),
+      totalAmount: decimal("90"),
+    })
+    expect(mockPrisma.billingOrder.create.mock.calls[0][0].data).toMatchObject({
+      voucherId: "voucher-1",
+      voucherCode: "SAVE10",
+      voucherCurrency: "IDR",
+      voucherExchangeRate: decimal("1"),
     })
   })
   it("prorates a monthly first order while locking the full period price", async () => {
@@ -338,6 +383,47 @@ describe("BillingOrderService", () => {
         data: expect.objectContaining({ status: "FAILED" }),
       })
     )
+  })
+  it("rolls back charge updates when checkout fulfillment fails", async () => {
+    const txBillingOrderUpdate = mock()
+    const transactionClient = {
+      ...mockPrisma,
+      billingOrder: {
+        ...mockPrisma.billingOrder,
+        update: txBillingOrderUpdate,
+      },
+    } as unknown as Prisma.TransactionClient
+    let committed = false
+    mockPrisma.billingOrder.findUnique
+      .mockResolvedValueOnce(orderFixture())
+      .mockResolvedValueOnce(
+        orderFixture({ status: "CHARGED", billingInvoiceId: "invoice-1" })
+      )
+    mockPrisma.$transaction.mockImplementationOnce(
+      async (fn: (tx: Prisma.TransactionClient) => Promise<unknown>) => {
+        try {
+          const result = await fn(transactionClient)
+          committed = true
+          return result
+        } catch (error) {
+          throw error
+        }
+      }
+    )
+    adapter.create.mockRejectedValueOnce(new Error("provisioning failed"))
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      undefined,
+      new BillingFulfillmentRegistry([adapter])
+    )
+
+    await expect(service.checkoutOrder("order-1")).rejects.toThrow(
+      "provisioning failed"
+    )
+    expect(committed).toBe(false)
+    expect(mockPrisma.billingOrder.update).not.toHaveBeenCalled()
+    expect(txBillingOrderUpdate).toHaveBeenCalledTimes(1)
+    expect(adapter.create.mock.calls[0]?.[1]).toBe(transactionClient)
   })
   it("fails closed when the transaction cannot acquire the advisory lock", async () => {
     const txWithoutLock = { ...mockPrisma, $executeRaw: undefined }

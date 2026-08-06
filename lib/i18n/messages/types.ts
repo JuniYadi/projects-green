@@ -84,13 +84,12 @@ export type AppMessages = {
       description: string
       usage: string
       alerts: string
-      transactions: string
-      subscriptions: string
       topUpBalance: string
       balance: string
       nextInvoice: string
-      estMonthly: string
       accountAge: string
+      estMonthly: string
+      transactions: string
       basedOnActiveSubscriptions: string
       estimatedMonthlyAverage: string
       activeSubscriptions: string
@@ -152,6 +151,124 @@ export type AppMessages = {
       maxTopUp: string
       balanceUpdatedAfterVerification: string
       manualTransfer24h: string
+      subscriptions: {
+        heading: string
+        description: string
+        searchPlaceholder: string
+        statusFilterAll: string
+        statusFilterActive: string
+        statusFilterSuspended: string
+        statusFilterCancelled: string
+        statusFilterPending: string
+        columnProduct: string
+        columnPlan: string
+        columnStatus: string
+        columnTerm: string
+        columnRenewal: string
+        columnInvoice: string
+        columnNextAction: string
+        emptyTitle: string
+        emptyDescription: string
+        loadingTitle: string
+        errorTitle: string
+        errorDescription: string
+        retryButton: string
+        detail: {
+          heading: string
+          backTo: string
+          tabs: {
+            overview: string
+            billing: string
+            manage: string
+            addons: string
+            activity: string
+          }
+          overview: {
+            product: string
+            plan: string
+            status: string
+            serviceStatus: string
+            term: string
+            renewal: string
+            invoiceState: string
+            nextAction: string
+            cancelPending: string
+            cancelPendingLabel: string
+          }
+          billing: {
+            invoiceNumber: string
+            status: string
+            period: string
+            amount: string
+            paidAt: string
+          }
+          manage: {
+            title: string
+            changePlan: {
+              title: string
+              description: string
+              dialogTitle: string
+              dialogDescription: string
+              loadingPreview: string
+              cancelBtn: string
+              confirming: string
+              confirmBtn: string
+            }
+            cancel: {
+              title: string
+              description: string
+              button: string
+              dialogTitle: string
+              dialogDescription: string
+              reasonPlaceholder: string
+              cancelBtn: string
+              confirming: string
+              confirmBtn: string
+            }
+            reinstate: {
+              title: string
+              description: string
+              button: string
+              dialogTitle: string
+              dialogDescription: string
+              reasonPlaceholder: string
+              cancelBtn: string
+              confirming: string
+              confirmBtn: string
+            }
+            cancelledNote: string
+          }
+          addons: {
+            unavailable: string
+            message: string
+          }
+          activity: {
+            noActivity: string
+          }
+        }
+      }
+      services: {
+        heading: string
+        description: string
+        searchPlaceholder: string
+        loadingTitle: string
+        errorTitle: string
+        errorDescription: string
+        retryButton: string
+        emptyTitle: string
+        emptyDescription: string
+        viewPlans: string
+        product: {
+          heading: string
+          description: string
+          selectTerm: string
+          noPlansForTerm: string
+          resources: string
+          checkout: string
+          backToServices: string
+          unavailableTerm: string
+        }
+      }
     }
     whatsapp: {
       dashboard: {

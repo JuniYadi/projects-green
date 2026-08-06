@@ -7,13 +7,28 @@ export type VoucherDTO = {
   code: string
   prefix: string | null
   status: string
+  kind: string
   maxClaims: number
   claimedCount: number
   expiresAt: string
   amount: string
   currency: string
+  // Promotion fields (always present; null when not set)
+  discountType: string | null
+  discountValue: string | null
+  discountCurrency: string | null
+  currencyPolicy: string
+  firstCheckoutOnly: boolean
+  allowUpgrade: boolean
+  stackable: boolean
+  minimumOrderAmount: string | null
+  maximumDiscountAmount: string | null
+  allowedPackageCodes: string[] | null
+  allowedPlanCodes: string[] | null
+  allowedBillingPeriods: string[] | null
   targetWorkosUserId: string | null
   targetOrganizationId: string | null
+  metadataJson: Prisma.JsonValue | null
   createdByWorkosUserId: string
   createdAt: string
   updatedAt: string
@@ -30,7 +45,13 @@ export type VoucherClaimDTO = {
   voucherId: string
   workosUserId: string
   organizationId: string
+  orderId: string | null
   billingAdjustmentId: string | null
+  discountAmount: string | null
+  discountCurrency: string | null
+  exchangeRate: string | null
+  rateAt: string | null
+  quoteExpiresAt: string | null
   claimedAt: string
   userName?: string | null
   orgName?: string | null
@@ -52,19 +73,46 @@ type VoucherRecordBase = Prisma.VoucherGetPayload<object>
 
 type VoucherClaimRecord = Prisma.VoucherClaimGetPayload<object>
 
+const decimalString = (value: Prisma.Decimal | null | undefined) =>
+  value === null || value === undefined ? null : value.toString()
+
+const jsonArrayToStringArray = (
+  value: Prisma.JsonValue | null | undefined
+): string[] | null => {
+  if (value === null || value === undefined) return null
+  if (!Array.isArray(value)) return null
+  return value.filter((item): item is string => typeof item === "string")
+}
+
 export function toVoucherDTO(voucher: VoucherRecordBase): VoucherDTO {
   return {
     id: voucher.id,
     code: voucher.code,
     prefix: voucher.prefix,
     status: voucher.status,
+    kind: voucher.kind,
     maxClaims: voucher.maxClaims,
     claimedCount: voucher.claimedCount,
     expiresAt: voucher.expiresAt.toISOString(),
     amount: voucher.amount.toFixed(2),
     currency: voucher.currency,
+    discountType: voucher.discountType,
+    discountValue: decimalString(voucher.discountValue),
+    discountCurrency: voucher.discountCurrency,
+    currencyPolicy: voucher.currencyPolicy,
+    firstCheckoutOnly: voucher.firstCheckoutOnly,
+    allowUpgrade: voucher.allowUpgrade,
+    stackable: voucher.stackable,
+    minimumOrderAmount: decimalString(voucher.minimumOrderAmount),
+    maximumDiscountAmount: decimalString(voucher.maximumDiscountAmount),
+    allowedPackageCodes: jsonArrayToStringArray(voucher.allowedPackageCodes),
+    allowedPlanCodes: jsonArrayToStringArray(voucher.allowedPlanCodes),
+    allowedBillingPeriods: jsonArrayToStringArray(
+      voucher.allowedBillingPeriods
+    ),
     targetWorkosUserId: voucher.targetWorkosUserId,
     targetOrganizationId: voucher.targetOrganizationId,
+    metadataJson: voucher.metadataJson,
     createdByWorkosUserId: voucher.createdByWorkosUserId,
     createdAt: voucher.createdAt.toISOString(),
     updatedAt: voucher.updatedAt.toISOString(),
@@ -101,7 +149,15 @@ export function toVoucherClaimDTO(
     voucherId: claim.voucherId,
     workosUserId: claim.workosUserId,
     organizationId: claim.organizationId,
+    orderId: claim.orderId,
     billingAdjustmentId: claim.billingAdjustmentId,
+    discountAmount: decimalString(claim.discountAmount),
+    discountCurrency: claim.discountCurrency,
+    exchangeRate: decimalString(claim.exchangeRate),
+    rateAt: claim.rateAt ? claim.rateAt.toISOString() : null,
+    quoteExpiresAt: claim.quoteExpiresAt
+      ? claim.quoteExpiresAt.toISOString()
+      : null,
     claimedAt: claim.claimedAt.toISOString(),
     userName: names?.userName ?? null,
     orgName: names?.orgName ?? null,

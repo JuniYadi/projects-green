@@ -66,8 +66,8 @@ describe("OpenAPI documentation", () => {
     expect(document.openapi).toBe("3.0.3")
 
     const operations = operationsOf(document)
-    expect(Object.keys(document.paths ?? {}).length).toBe(335)
-    expect(operations.length).toBe(423)
+    expect(Object.keys(document.paths ?? {}).length).toBe(357)
+    expect(operations.length).toBe(454)
     expect(
       operations.every(
         ({ operation }) =>

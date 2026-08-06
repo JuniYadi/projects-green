@@ -1,5 +1,6 @@
 // Billing API client types and fetch helpers
 import { getApiBaseUrl } from "@/lib/eden"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 
 export type BillingAccount = {
   ok: true
@@ -38,12 +39,12 @@ export type SubscriptionItem = {
   currentPeriodEnd: string | null
   orderId?: string | null
   orderStatus?: string | null
-  billingInvoiceId?: string | null
   invoiceStatus?: string | null
   fulfillment?: Record<string, unknown> | null
   quotaIn?: number | null
   quotaOut?: number | null
   dailyPerDevice?: number | null
+  cancelAtPeriodEnd?: boolean
 }
 
 export type BillingSubscriptions = {
@@ -449,6 +450,7 @@ export type AdminSubscriptionItem = {
   billingInvoiceId?: string | null
   invoiceStatus?: string | null
   fulfillment?: Record<string, unknown> | null
+  cancelAtPeriodEnd?: boolean
 }
 
 export type AdminSubscriptionsResponse = {
@@ -1002,4 +1004,491 @@ export async function getAdminOrders(params?: {
   }
   const suffix = query.toString() ? `?${query.toString()}` : ""
   return fetchBilling<AdminOrdersResponse>(`/api/billing/admin/orders${suffix}`)
+}
+// ─── Customer Catalog ──────────────────────────────────────────────────
+
+export type CatalogOffer = {
+  id: string
+  billingPeriod: "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL"
+  periodMonths: 1 | 3 | 6 | 12
+  periodPrice: string
+  currency: string
+  chargeUnit: "SUBSCRIPTION" | "DEVICE"
+  effectiveFrom: string
+  effectiveTo: string | null
+}
+
+export type CatalogPlan = {
+  id: string
+  code: string
+  name: string
+  resources: Record<string, unknown>
+  offers: CatalogOffer[]
+}
+
+export type CatalogProduct = {
+  code: string
+  name: string
+  description: string | null
+  plans: CatalogPlan[]
+}
+
+export type CatalogListResponse = {
+  products: CatalogProduct[]
+  currency: string
+}
+
+export type CatalogProductDetailResponse = {
+  product: CatalogProduct
+  currency: string
+}
+
+export async function getCatalog(
+  currency?: string
+): Promise<CatalogListResponse> {
+  const query = currency ? `?currency=${currency}` : ""
+  return fetchBilling<CatalogListResponse>(`/api/billing/catalog${query}`)
+}
+
+export async function getCatalogProduct(
+  code: string,
+  currency?: string
+): Promise<CatalogProductDetailResponse> {
+  const query = currency ? `?currency=${currency}` : ""
+  return fetchBilling<CatalogProductDetailResponse>(
+    `/api/billing/catalog/${code}${query}`
+  )
+}
+// ─── Admin Vouchers / Promotions ──────────────────────────────────────────────
+
+export type VoucherKind = "BALANCE_CREDIT" | "PRODUCT_PROMOTION"
+
+export type VoucherDiscountType = "PERCENTAGE" | "FIXED"
+
+export type VoucherCurrencyPolicy =
+  | "MATCH_CURRENCY_ONLY"
+  | "CONVERT_AT_CHECKOUT"
+  | "CONVERT_AT_REDEMPTION"
+
+export type VoucherStatus = "ACTIVE" | "EXPIRED" | "DEPLETED" | "DISABLED"
+
+export type VoucherClaimDTO = {
+  id: string
+  voucherId: string
+  workosUserId: string
+  organizationId: string
+  billingAdjustmentId: string | null
+  discountAmount: string | null
+  discountCurrency: string | null
+  exchangeRate: string | null
+  rateAt: string | null
+  quoteExpiresAt: string | null
+  claimedAt: string
+  userName?: string | null
+  orgName?: string | null
+}
+
+export type VoucherDTO = {
+  id: string
+  code: string
+  prefix: string | null
+  status: VoucherStatus
+  kind: VoucherKind
+  discountType: VoucherDiscountType | null
+  discountValue: string | null
+  discountCurrency: string | null
+  currencyPolicy: VoucherCurrencyPolicy
+  firstCheckoutOnly: boolean
+  allowUpgrade: boolean
+  stackable: boolean
+  minimumOrderAmount: string | null
+  maximumDiscountAmount: string | null
+  maxClaims: number
+  claimedCount: number
+  expiresAt: string
+  amount: string
+  currency: string
+  targetWorkosUserId: string | null
+  targetOrganizationId: string | null
+  allowedPackageCodes: string[] | null
+  allowedPlanCodes: string[] | null
+  allowedBillingPeriods: string[] | null
+  metadataJson: Record<string, unknown> | null
+  createdByWorkosUserId: string
+  createdAt: string
+  updatedAt: string
+  targetUserName?: string | null
+  targetOrgName?: string | null
+}
+
+export type VoucherDetailDTO = VoucherDTO & {
+  claims: VoucherClaimDTO[]
+}
+
+export type VoucherListResponse = {
+  ok: true
+  data: VoucherDTO[]
+  total: number
+}
+
+export type VoucherCreateInput = {
+  prefix?: string
+  maxClaims: number
+  expiresAt: string
+  amount: number
+  currency?: string
+  targetWorkosUserId?: string
+  targetOrganizationId?: string
+  metadataJson?: Record<string, unknown>
+  kind?: VoucherKind
+  discountType?: VoucherDiscountType | null
+  discountValue?: number | null
+  discountCurrency?: string | null
+  currencyPolicy?: VoucherCurrencyPolicy
+  firstCheckoutOnly?: boolean
+  allowUpgrade?: boolean
+  stackable?: boolean
+  minimumOrderAmount?: number | null
+  maximumDiscountAmount?: number | null
+  allowedPackageCodes?: string[] | null
+  allowedPlanCodes?: string[] | null
+  allowedBillingPeriods?: string[] | null
+}
+
+export type VoucherUpdateInput = Partial<VoucherCreateInput>
+
+export function voucherKindLabel(kind: VoucherKind): string {
+  return kind === "BALANCE_CREDIT" ? "Balance Credit" : "Product Promotion"
+}
+
+export function voucherDiscountTypeLabel(type: VoucherDiscountType): string {
+  return type === "PERCENTAGE" ? "Percentage" : "Fixed Amount"
+}
+
+export function voucherCurrencyPolicyLabel(
+  policy: VoucherCurrencyPolicy
+): string {
+  switch (policy) {
+    case "MATCH_CURRENCY_ONLY":
+      return "Match currency only"
+    case "CONVERT_AT_CHECKOUT":
+      return "Convert at checkout"
+    case "CONVERT_AT_REDEMPTION":
+      return "Convert at redemption"
+    default:
+      return policy
+  }
+}
+
+export function voucherStatusLabel(status: VoucherStatus): string {
+  return status
+}
+
+export const VOUCHER_STATUS_COLORS: Record<VoucherStatus, string> = {
+  ACTIVE:
+    "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+  EXPIRED:
+    "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  DEPLETED:
+    "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
+  DISABLED: "bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-400",
+}
+
+/**
+ * Compute a human-readable preview of the discount a voucher applies,
+ * used in the Preview tab and rejection previews.
+ */
+export function voucherDiscountPreview(voucher: VoucherDTO): string {
+  if (voucher.kind === "BALANCE_CREDIT") {
+    return `${formatBillingMoney(voucher.amount, voucher.currency)} credit`
+  }
+
+  if (!voucher.discountType || !voucher.discountValue) {
+    return "No discount configured"
+  }
+
+  const value = Number(voucher.discountValue)
+  if (voucher.discountType === "PERCENTAGE") {
+    return `${value}% off`
+  }
+
+  const currency = voucher.discountCurrency ?? voucher.currency
+  return formatBillingMoney(value, currency)
+}
+
+export async function getVouchers(params?: {
+  status?: string
+  prefix?: string
+  limit?: number
+  offset?: number
+  organizationId?: string
+}): Promise<VoucherListResponse> {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params ?? {})) {
+    if (value !== undefined && value !== "") query.set(key, String(value))
+  }
+  const suffix = query.toString() ? `?${query.toString()}` : ""
+  return fetchBilling<VoucherListResponse>(
+    `/api/billing/voucher/portal${suffix}`
+  )
+}
+
+export async function getVoucherDetail(
+  id: string
+): Promise<
+  { ok: true; data: VoucherDetailDTO } | { ok: false; message: string }
+> {
+  return fetchBilling<
+    | {
+        ok: true
+        data: VoucherDetailDTO
+      }
+    | { ok: false; message: string }
+  >(`/api/billing/voucher/portal/${id}`)
+}
+
+export async function getVoucherClaims(
+  voucherId: string
+): Promise<{ ok: true; data: VoucherClaimDTO[] }> {
+  return fetchBilling<{ ok: true; data: VoucherClaimDTO[] }>(
+    `/api/billing/voucher/portal/${voucherId}/claims`
+  )
+}
+
+export async function createVoucher(
+  input: VoucherCreateInput
+): Promise<{ ok: true; data: VoucherDTO }> {
+  return fetchBilling<{ ok: true; data: VoucherDTO }>(
+    `/api/billing/voucher/portal`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    }
+  )
+}
+
+export async function updateVoucher(
+  id: string,
+  input: VoucherUpdateInput
+): Promise<{ ok: true; data: VoucherDTO }> {
+  return fetchBilling<{ ok: true; data: VoucherDTO }>(
+    `/api/billing/voucher/portal/${id}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }
+  )
+}
+
+export async function disableVoucher(
+  id: string
+): Promise<{ ok: true; data: VoucherDTO }> {
+  return fetchBilling<{ ok: true; data: VoucherDTO }>(
+    `/api/billing/voucher/portal/${id}/disable`,
+    { method: "POST" }
+  )
+}
+
+// ─── Admin Promotions ──────────────────────────────────────────────────────────
+
+export type AdminPromotionListResponse = {
+  ok: true
+  data: VoucherDTO[]
+  total: number
+}
+
+export type AdminPromotionDetailResponse =
+  | { ok: true; data: VoucherDetailDTO }
+  | { ok: false; error: string; message: string }
+
+export type AdminPromotionClaimsResponse =
+  | { ok: true; data: VoucherClaimDTO[] }
+  | { ok: false; error: string; message: string }
+
+export async function getAdminPromotions(params?: {
+  kind?: VoucherKind
+  status?: string
+  prefix?: string
+  discountType?: VoucherDiscountType
+  currencyPolicy?: VoucherCurrencyPolicy
+  allowedPackageCode?: string
+  limit?: number
+  offset?: number
+  organizationId?: string
+}): Promise<AdminPromotionListResponse> {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params ?? {})) {
+    if (value !== undefined && value !== "") query.set(key, String(value))
+  }
+  const suffix = query.toString() ? `?${query.toString()}` : ""
+  return fetchBilling<AdminPromotionListResponse>(
+    `/api/billing/admin/promotions${suffix}`
+  )
+}
+
+export async function createAdminPromotion(
+  input: VoucherCreateInput
+): Promise<{ ok: true; data: VoucherDTO }> {
+  return fetchBilling<{ ok: true; data: VoucherDTO }>(
+    `/api/billing/admin/promotions`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    }
+  )
+}
+
+export async function getAdminPromotion(
+  id: string
+): Promise<AdminPromotionDetailResponse> {
+  return fetchBilling<AdminPromotionDetailResponse>(
+    `/api/billing/admin/promotions/${id}`
+  )
+}
+
+export async function updateAdminPromotion(
+  id: string,
+  input: VoucherUpdateInput
+): Promise<{ ok: true; data: VoucherDTO }> {
+  return fetchBilling<{ ok: true; data: VoucherDTO }>(
+    `/api/billing/admin/promotions/${id}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }
+  )
+}
+
+export async function publishAdminPromotion(
+  id: string
+): Promise<{ ok: true; data: VoucherDTO }> {
+  return fetchBilling<{ ok: true; data: VoucherDTO }>(
+    `/api/billing/admin/promotions/${id}/publish`,
+    { method: "POST" }
+  )
+}
+
+export async function disableAdminPromotion(
+  id: string
+): Promise<{ ok: true; data: VoucherDTO }> {
+  return fetchBilling<{ ok: true; data: VoucherDTO }>(
+    `/api/billing/admin/promotions/${id}/disable`,
+    { method: "POST" }
+  )
+}
+
+export async function getAdminPromotionClaims(
+  id: string
+): Promise<AdminPromotionClaimsResponse> {
+  return fetchBilling<AdminPromotionClaimsResponse>(
+    `/api/billing/admin/promotions/${id}/claims`
+  )
+}
+// ─── Subscription Lifecycle Transitions ─────────────────────────────────────────
+
+export type SubscriptionTransitionSnapshot = {
+  id: string
+  packageCode: string
+  planCode: string
+  regionCode: string
+  pricingId: string
+  billingMode: string
+  type: string
+  status: string
+  billingPeriod: string
+  periodMonths: number
+  periodPrice: string
+  currency: string
+  currentPeriodStart: string
+  currentPeriodEnd: string
+  allocatedConfig: Record<string, unknown> | null
+  cancelAtPeriodEnd: boolean
+}
+
+export type CancelSubscriptionResult = {
+  ok: true
+  transition: "CANCELLED_AT_PERIOD_END"
+  effectiveDate: string
+  currentPeriodEnd: string
+  subscription: SubscriptionTransitionSnapshot
+}
+
+export type ReinstateSubscriptionResult = {
+  ok: true
+  transition: "REINSTATED"
+  effectiveDate: string
+  subscription: SubscriptionTransitionSnapshot
+}
+
+export type ChangePlanPreviewResult = {
+  ok: true
+  newPricingId: string
+  newPlanCode: string
+  newBillingPeriod: string
+  newPeriodMonths: number
+  newPeriodPrice: string
+  newCurrency: string
+  effectiveDate: string
+  immediateCharge: {
+    amount: string
+    currency: string
+    description: string
+  } | null
+}
+
+export type ChangePlanResult = {
+  ok: true
+  transition: "PLAN_CHANGED"
+  effectiveDate: string
+  previousPricingId: string
+  newPricingId: string
+  subscription: SubscriptionTransitionSnapshot
+}
+
+export async function cancelSubscription(
+  subscriptionId: string,
+  input?: { reason?: string }
+): Promise<CancelSubscriptionResult> {
+  return fetchBilling<CancelSubscriptionResult>(
+    `/api/billing/subscriptions/${subscriptionId}/cancel`,
+    {
+      method: "POST",
+      body: input ? JSON.stringify(input) : "{}",
+    }
+  )
+}
+
+export async function reinstateSubscription(
+  subscriptionId: string,
+  input?: { reason?: string }
+): Promise<ReinstateSubscriptionResult> {
+  return fetchBilling<ReinstateSubscriptionResult>(
+    `/api/billing/subscriptions/${subscriptionId}/reinstate`,
+    {
+      method: "POST",
+      body: input ? JSON.stringify(input) : "{}",
+    }
+  )
+}
+
+export async function previewChangePlan(
+  subscriptionId: string,
+  pricingId: string
+): Promise<ChangePlanPreviewResult> {
+  return fetchBilling<ChangePlanPreviewResult>(
+    `/api/billing/subscriptions/${subscriptionId}/change-plan/preview?pricingId=${pricingId}`
+  )
+}
+
+export async function changePlan(
+  subscriptionId: string,
+  pricingId: string
+): Promise<ChangePlanResult> {
+  return fetchBilling<ChangePlanResult>(
+    `/api/billing/subscriptions/${subscriptionId}/change-plan`,
+    {
+      method: "POST",
+      body: JSON.stringify({ pricingId }),
+    }
+  )
 }

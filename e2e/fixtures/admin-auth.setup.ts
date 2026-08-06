@@ -17,27 +17,24 @@
  *   6. Closes the browser
  */
 
-import { dirname } from "node:path"
-import { mkdir } from "node:fs/promises"
 import { test as setup, expect } from "@playwright/test"
+import fs from "fs"
 
 const AUTH_FILE = ".auth/admin.json"
 
 setup(
   "authenticate as admin via WorkOS OAuth (manual login)",
   async ({ page }) => {
-    // Extend test timeout to match the 300s waitForURL below.
-    setup.setTimeout(300_000)
+    fs.mkdirSync(".auth", { recursive: true })
 
     await page.goto("/en/login")
 
     // Wait for the user to complete the OAuth flow and land on a console page.
-    // Accepts /en/console exactly or /en/console/* nested routes.
-    await page.waitForURL(/\/en\/console(?:\/|$|\?|#)/, { timeout: 300_000 })
-    await expect(page).toHaveURL(/\/en\/console(?:\/|$|\?|#)/)
+    await page.waitForURL("**/console/**", { timeout: 120_000 })
+    await expect(page).toHaveURL(/\/console\//)
 
-    await mkdir(dirname(AUTH_FILE), { recursive: true })
     await page.context().storageState({ path: AUTH_FILE })
+
     console.log(`\n  ✅ Admin auth state saved to ${AUTH_FILE}\n`)
   }
 )

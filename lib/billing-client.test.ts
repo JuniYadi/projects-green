@@ -10,9 +10,17 @@ mock.module("@/lib/eden", () => ({ getApiBaseUrl: mockGetApiBaseUrl }))
 import {
   addBillingContact,
   adminTopup,
+  billingPeriodLabel,
+  cancelSubscription,
+  changePlan,
   createAdminPricing,
+  createAdminPromotion,
+  createVoucher,
   deactivateAdminPricing,
   deactivateBillingContact,
+  disableAdminPromotion,
+  disableVoucher,
+  getAccount,
   getAdminAdjustments,
   getAdminBillingContacts,
   getAdminInvoices,
@@ -22,15 +30,44 @@ import {
   getAdminOrgs,
   getAdminOrders,
   getAdminPricing,
+  getAdminPromotion,
+  getAdminPromotionClaims,
+  getAdminPromotions,
   getAdminStats,
   getAdminSubscriptions,
   getAdminUsage,
+  getBillingAccount,
+  getCatalog,
+  getCatalogProduct,
+  getInvoice,
+  getInvoices,
+  getPaymentMethodCurrencies,
+  getPaymentMethods,
+  getSubscriptions,
+  getVoucherClaims,
+  getVoucherDetail,
+  getVouchers,
   getAdminAuditLogs,
+  updateVoucher,
+  payWithBalance,
+  previewChangePlan,
+  publishAdminPromotion,
+  reinstateSubscription,
   refreshAdminOrgMetadata,
+  removePaymentMethod,
+  setDefaultPaymentMethod,
+  topup,
+  topupAndPay,
   updateAdminPricing,
+  updateAdminPromotion,
   updateBillingAlerts,
   updateBillingContact,
   updateBillingCurrency,
+  voucherCurrencyPolicyLabel,
+  voucherDiscountPreview,
+  voucherDiscountTypeLabel,
+  voucherKindLabel,
+  voucherStatusLabel,
 } from "./billing-client"
 
 const jsonResponse = (body: unknown, status = 200, ok = true) =>
@@ -47,6 +84,9 @@ const calledRequest = () => {
 describe("getAdminAuditLogs", () => {
   beforeEach(() => {
     mockFetch.mockReset()
+    mockGetApiBaseUrl.mockClear()
+    mockGetApiBaseUrl.mockReturnValue("https://billing.test")
+    mockFetch.mockResolvedValue(jsonResponse({ ok: true }))
   })
 
   it("calls the correct endpoint with default params", async () => {
@@ -130,6 +170,7 @@ describe("admin billing fetch helpers", () => {
     mockFetch.mockReset()
     mockGetApiBaseUrl.mockClear()
     mockGetApiBaseUrl.mockReturnValue("https://billing.test")
+    mockFetch.mockResolvedValue(jsonResponse({ ok: true }))
   })
 
   it("builds member list and detail URLs", async () => {
@@ -471,5 +512,332 @@ describe("admin billing fetch helpers", () => {
 
     mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true }, 503, false))
     await expect(getAdminStats()).rejects.toThrow("Billing API error: 503")
+  })
+})
+
+describe("customer billing and payment helpers", () => {
+  beforeEach(() => {
+    mockFetch.mockReset()
+    mockGetApiBaseUrl.mockClear()
+    mockGetApiBaseUrl.mockReturnValue("https://billing.test")
+    mockFetch.mockResolvedValue(jsonResponse({ ok: true }))
+  })
+
+  it("fetches account, subscriptions, invoices, and invoice details", async () => {
+    await getAccount({ headers: { "X-Trace": "trace-1" } })
+    expect(calledRequest().url.pathname).toBe("/api/billing/account")
+    expect(calledRequest().init).toEqual({
+      headers: { "X-Trace": "trace-1" },
+    })
+
+    await getBillingAccount()
+    expect(calledRequest().url.pathname).toBe("/api/billing/account/detail")
+    await getSubscriptions()
+    expect(calledRequest().url.pathname).toBe("/api/billing/subscriptions")
+
+    const params = new URLSearchParams({
+      status: "OPEN",
+      search: "Acme & Sons",
+    })
+    await getInvoices(params)
+    expect(calledRequest().url.pathname).toBe("/api/billing/invoices")
+    expect(Object.fromEntries(calledRequest().url.searchParams)).toEqual({
+      status: "OPEN",
+      search: "Acme & Sons",
+    })
+    await getInvoices()
+    expect(calledRequest().url.href).toBe(
+      "https://billing.test/api/billing/invoices"
+    )
+
+    await getInvoice("invoice/1")
+    expect(calledRequest().url.pathname).toBe("/api/billing/invoices/invoice/1")
+  })
+
+  it("posts topups, invoice payments, and payment method mutations", async () => {
+    const input = {
+      amount: 1250,
+      paymentMethod: "manual_bank_transfer" as const,
+    }
+    await topup(input)
+    expect(calledRequest().url.pathname).toBe("/api/billing/topup")
+    expect(calledRequest().init).toMatchObject({
+      method: "POST",
+      body: JSON.stringify(input),
+    })
+
+    await payWithBalance("invoice-1")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/payments/invoice/pay-with-balance"
+    )
+    expect(calledRequest().init?.body).toBe(
+      JSON.stringify({ invoiceId: "invoice-1" })
+    )
+
+    await topupAndPay("invoice-2")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/payments/invoice/topup-and-pay"
+    )
+
+    await getPaymentMethods()
+    expect(calledRequest().url.pathname).toBe("/api/payments/bank-accounts")
+    await setDefaultPaymentMethod("payment-1")
+    expect(calledRequest().init?.method).toBe("PATCH")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/payments/bank-accounts/payment-1/default"
+    )
+    await removePaymentMethod("payment-1")
+    expect(calledRequest().init?.method).toBe("DELETE")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/payments/bank-accounts/payment-1"
+    )
+  })
+  it("returns supported currencies and handles missing currency lists", () => {
+    const method = { supportedCurrencies: ["USD", "IDR"] } as Parameters<
+      typeof getPaymentMethodCurrencies
+    >[0]
+    expect(getPaymentMethodCurrencies(method)).toEqual(["USD", "IDR"])
+    expect(
+      getPaymentMethodCurrencies(
+        {} as Parameters<typeof getPaymentMethodCurrencies>[0]
+      )
+    ).toEqual([])
+  })
+
+  it("propagates API messages and status errors", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ ok: false, message: "No access" })
+    )
+    await expect(getAccount()).rejects.toThrow("No access")
+    mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true }, 502, false))
+    await expect(getSubscriptions()).rejects.toThrow("Billing API error: 502")
+  })
+
+  it("fetches catalog endpoints with optional currency", async () => {
+    await getCatalog("IDR")
+    expect(calledRequest().url.href).toBe(
+      "https://billing.test/api/billing/catalog?currency=IDR"
+    )
+    await getCatalogProduct("pro plan", "USD")
+    expect(calledRequest().url.pathname).toBe("/api/billing/catalog/pro%20plan")
+    expect(calledRequest().url.searchParams.get("currency")).toBe("USD")
+    await getCatalog()
+    expect(calledRequest().url.href).toBe(
+      "https://billing.test/api/billing/catalog"
+    )
+  })
+})
+
+describe("voucher and promotion helpers", () => {
+  beforeEach(() => {
+    mockFetch.mockReset()
+    mockGetApiBaseUrl.mockClear()
+    mockGetApiBaseUrl.mockReturnValue("https://billing.test")
+    mockFetch.mockResolvedValue(jsonResponse({ ok: true, data: [] }))
+  })
+
+  it("renders voucher labels and discount previews", () => {
+    expect(voucherKindLabel("BALANCE_CREDIT")).toBe("Balance Credit")
+    expect(voucherKindLabel("PRODUCT_PROMOTION")).toBe("Product Promotion")
+    expect(voucherDiscountTypeLabel("PERCENTAGE")).toBe("Percentage")
+    expect(voucherDiscountTypeLabel("FIXED")).toBe("Fixed Amount")
+    expect(voucherCurrencyPolicyLabel("MATCH_CURRENCY_ONLY")).toBe(
+      "Match currency only"
+    )
+    expect(voucherCurrencyPolicyLabel("CONVERT_AT_CHECKOUT")).toBe(
+      "Convert at checkout"
+    )
+    expect(voucherCurrencyPolicyLabel("CONVERT_AT_REDEMPTION")).toBe(
+      "Convert at redemption"
+    )
+    expect(voucherStatusLabel("ACTIVE")).toBe("ACTIVE")
+
+    const base = {
+      id: "v-1",
+      code: "SAVE",
+      prefix: null,
+      status: "ACTIVE" as const,
+      kind: "PRODUCT_PROMOTION" as const,
+      discountType: "PERCENTAGE" as const,
+      discountValue: "15",
+      discountCurrency: null,
+      currencyPolicy: "MATCH_CURRENCY_ONLY" as const,
+      firstCheckoutOnly: false,
+      allowUpgrade: false,
+      stackable: false,
+      minimumOrderAmount: null,
+      maximumDiscountAmount: null,
+      maxClaims: 10,
+      claimedCount: 0,
+      expiresAt: "2026-12-31",
+      amount: "1000",
+      currency: "USD",
+      targetWorkosUserId: null,
+      targetOrganizationId: null,
+      allowedPackageCodes: null,
+      allowedPlanCodes: null,
+      allowedBillingPeriods: null,
+      metadataJson: null,
+      createdByWorkosUserId: "u-1",
+      createdAt: "2026-01-01",
+      updatedAt: "2026-01-01",
+    }
+    expect(voucherDiscountPreview(base)).toBe("15% off")
+    expect(
+      voucherDiscountPreview({
+        ...base,
+        discountType: "FIXED",
+        discountValue: "25",
+        discountCurrency: "EUR",
+      })
+    ).toBe("EUR 25,00")
+    expect(
+      voucherDiscountPreview({
+        ...base,
+        kind: "BALANCE_CREDIT",
+        amount: "10.5",
+        currency: "USD",
+      })
+    ).toBe("USD 10.50 credit")
+    expect(
+      voucherDiscountPreview({
+        ...base,
+        discountType: null,
+        discountValue: null,
+      })
+    ).toBe("No discount configured")
+  })
+
+  it("builds voucher list queries and CRUD requests", async () => {
+    await getVouchers({
+      status: "ACTIVE",
+      prefix: "SPRING SALE",
+      limit: 10,
+      offset: 0,
+    })
+    expect(Object.fromEntries(calledRequest().url.searchParams)).toEqual({
+      status: "ACTIVE",
+      prefix: "SPRING SALE",
+      limit: "10",
+      offset: "0",
+    })
+    await getVouchers()
+    expect(calledRequest().url.href).toBe(
+      "https://billing.test/api/billing/voucher/portal"
+    )
+    const input = { maxClaims: 5, expiresAt: "2026-12-31", amount: 20 }
+    await createVoucher(input)
+    expect(calledRequest().url.pathname).toBe("/api/billing/voucher/portal")
+    expect(calledRequest().init?.method).toBe("POST")
+    await getVoucherDetail("voucher-1")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/voucher/portal/voucher-1"
+    )
+    await getVoucherClaims("voucher-1")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/voucher/portal/voucher-1/claims"
+    )
+    await updateVoucher("voucher-1", { stackable: true })
+    expect(calledRequest().init?.method).toBe("PATCH")
+    await disableVoucher("voucher-1")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/voucher/portal/voucher-1/disable"
+    )
+  })
+
+  it("builds promotion queries and mutation endpoints", async () => {
+    await getAdminPromotions({
+      kind: "PRODUCT_PROMOTION",
+      status: "ACTIVE",
+      prefix: "SPRING SALE",
+      discountType: "PERCENTAGE",
+      currencyPolicy: "CONVERT_AT_CHECKOUT",
+      allowedPackageCode: "PRO",
+      limit: 10,
+      offset: 2,
+      organizationId: "org-1",
+    })
+    expect(Object.fromEntries(calledRequest().url.searchParams)).toEqual({
+      kind: "PRODUCT_PROMOTION",
+      status: "ACTIVE",
+      prefix: "SPRING SALE",
+      discountType: "PERCENTAGE",
+      currencyPolicy: "CONVERT_AT_CHECKOUT",
+      allowedPackageCode: "PRO",
+      limit: "10",
+      offset: "2",
+      organizationId: "org-1",
+    })
+    await getAdminPromotions()
+    expect(calledRequest().url.href).toBe(
+      "https://billing.test/api/billing/admin/promotions"
+    )
+    await createAdminPromotion({
+      maxClaims: 1,
+      expiresAt: "2026-12-31",
+      amount: 5,
+    })
+    expect(calledRequest().init?.method).toBe("POST")
+    await getAdminPromotion("promotion-1")
+    await updateAdminPromotion("promotion-1", { allowUpgrade: true })
+    expect(calledRequest().init?.method).toBe("PATCH")
+    await publishAdminPromotion("promotion-1")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/admin/promotions/promotion-1/publish"
+    )
+    await disableAdminPromotion("promotion-1")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/admin/promotions/promotion-1/disable"
+    )
+    await getAdminPromotionClaims("promotion-1")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/admin/promotions/promotion-1/claims"
+    )
+  })
+})
+
+describe("subscription lifecycle helpers", () => {
+  beforeEach(() => {
+    mockFetch.mockReset()
+    mockGetApiBaseUrl.mockClear()
+    mockGetApiBaseUrl.mockReturnValue("https://billing.test")
+    mockFetch.mockResolvedValue(jsonResponse({ ok: true }))
+  })
+
+  it("posts cancellation, reinstatement, and plan changes", async () => {
+    await cancelSubscription("sub-1")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/subscriptions/sub-1/cancel"
+    )
+    expect(calledRequest().init?.body).toBe("{}")
+    await cancelSubscription("sub-1", { reason: "Too expensive" })
+    expect(calledRequest().init?.body).toBe(
+      JSON.stringify({ reason: "Too expensive" })
+    )
+    await reinstateSubscription("sub-1", { reason: "Changed mind" })
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/subscriptions/sub-1/reinstate"
+    )
+    await previewChangePlan("sub-1", "pricing 1")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/subscriptions/sub-1/change-plan/preview"
+    )
+    expect(calledRequest().url.searchParams.get("pricingId")).toBe("pricing 1")
+    await changePlan("sub-1", "pricing-2")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/subscriptions/sub-1/change-plan"
+    )
+    expect(calledRequest().init?.body).toBe(
+      JSON.stringify({ pricingId: "pricing-2" })
+    )
+  })
+
+  it("labels all supported billing periods and preserves unknown values", () => {
+    expect(billingPeriodLabel("MONTHLY")).toBe("Monthly")
+    expect(billingPeriodLabel("QUARTERLY")).toBe("Quarterly")
+    expect(billingPeriodLabel("SEMI_ANNUAL")).toBe("Semi-Annual")
+    expect(billingPeriodLabel("ANNUAL")).toBe("Annual")
+    expect(billingPeriodLabel("CUSTOM")).toBe("CUSTOM")
+    expect(billingPeriodLabel(null as never)).toBe("Unknown period")
   })
 })
