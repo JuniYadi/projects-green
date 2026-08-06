@@ -343,12 +343,12 @@ describe("LifecycleRoute", () => {
       expect(res.status).toBe(401)
     })
 
-    it("returns 422 for invalid pricingId uuid", async () => {
+    it("returns 422 for an empty pricingId", async () => {
       const app = makeApp()
 
       const res = await app.handle(
         new Request(
-          `http://localhost/subscriptions/${SUB_ID}/change-plan/preview?pricingId=not-uuid`
+          `http://localhost/subscriptions/${SUB_ID}/change-plan/preview?pricingId=`
         )
       )
 
@@ -394,14 +394,14 @@ describe("LifecycleRoute", () => {
       expect(res.status).toBe(401)
     })
 
-    it("returns 422 for invalid pricingId", async () => {
+    it("returns 422 for an empty pricingId", async () => {
       const app = makeApp()
 
       const res = await app.handle(
         new Request(`http://localhost/subscriptions/${SUB_ID}/change-plan`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pricingId: "not-a-uuid" }),
+          body: JSON.stringify({ pricingId: "" }),
         })
       )
 

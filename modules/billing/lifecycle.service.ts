@@ -49,6 +49,37 @@ const PERIOD_MONTHS: Record<string, 1 | 3 | 6 | 12> = {
   SEMI_ANNUAL: 6,
   ANNUAL: 12,
 }
+function calculateImmediateCharge(input: {
+  now: Date
+  periodStart: Date
+  periodEnd: Date
+  currentPrice: Prisma.Decimal
+  newPrice: Prisma.Decimal
+  currency: string
+}): ChangePlanPreviewResult["immediateCharge"] {
+  const periodMs = input.periodEnd.getTime() - input.periodStart.getTime()
+  if (periodMs <= 0) return null
+  const remainingMs = Math.max(
+    0,
+    Math.min(periodMs, input.periodEnd.getTime() - input.now.getTime())
+  )
+  if (remainingMs === 0) return null
+
+  const amount = input.newPrice
+    .sub(input.currentPrice)
+    .mul(remainingMs)
+    .div(periodMs)
+    .toDecimalPlaces(2)
+  if (amount.isZero()) return null
+
+  return {
+    amount: amount.toFixed(2),
+    currency: input.currency,
+    description: amount.gt(0)
+      ? "Prorated charge for the remaining service period"
+      : "Prorated credit for the remaining service period",
+  }
+}
 
 function getMeta(sub: {
   metadata: Prisma.JsonValue | null
@@ -250,19 +281,23 @@ export class SubscriptionLifecycleService {
   }
 
   /**
-   * Preview a plan/term change — pricing info and effective date, no commit.
+   * Preview an immediate plan/term change and its prorated adjustment.
    */
   async previewChangePlan(
     organizationId: string,
     subscriptionId: string,
     newPricingId: string
   ): Promise<ChangePlanPreviewResult> {
+    const now = new Date()
     const [sub, newPricing] = await Promise.all([
       this.prisma.serviceSubscription.findFirst({
         where: { id: subscriptionId, organizationId },
         select: {
           id: true,
           pricingId: true,
+          priceLocked: true,
+          currency: true,
+          currentPeriodStart: true,
           currentPeriodEnd: true,
         },
       }),
@@ -282,12 +317,19 @@ export class SubscriptionLifecycleService {
       where: { organizationId },
       select: { currency: true },
     })
-    const currency = account?.currency ?? "IDR"
-
+    const currency = account?.currency ?? sub.currency
     const resolved = await resolveRecurringPrice({
       pricingId: newPricingId,
       currency,
-      at: new Date(),
+      at: now,
+    })
+    const immediateCharge = calculateImmediateCharge({
+      now,
+      periodStart: sub.currentPeriodStart,
+      periodEnd: sub.currentPeriodEnd,
+      currentPrice: sub.priceLocked,
+      newPrice: resolved.periodPrice,
+      currency: resolved.currency,
     })
 
     return {
@@ -298,8 +340,8 @@ export class SubscriptionLifecycleService {
       newPeriodMonths: resolved.periodMonths,
       newPeriodPrice: resolved.periodPrice.toString(),
       newCurrency: resolved.currency,
-      effectiveDate: sub.currentPeriodEnd.toISOString(),
-      immediateCharge: null,
+      effectiveDate: now.toISOString(),
+      immediateCharge,
     }
   }
 
@@ -354,7 +396,7 @@ export class SubscriptionLifecycleService {
     return {
       ok: true,
       transition: "PLAN_CHANGED",
-      effectiveDate: sub.currentPeriodEnd.toISOString(),
+      effectiveDate: new Date().toISOString(),
       previousPricingId: sub.pricingId,
       newPricingId,
       subscription: toSnapshot(
