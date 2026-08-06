@@ -195,6 +195,7 @@ export const idMessages: AppMessages = {
           tabs: {
             overview: "Gambaran Umum",
             billing: "Penagihan",
+            manage: "Kelola",
             addons: "Add-on",
             activity: "Aktivitas",
           },
@@ -207,6 +208,8 @@ export const idMessages: AppMessages = {
             renewal: "Perpanjangan",
             invoiceState: "Status Invoice",
             nextAction: "Tindakan Berikutnya",
+            cancelPending: "Pembatalan",
+            cancelPendingLabel: "Berakhir pada akhir periode",
           },
           billing: {
             invoiceNumber: "Nomor Invoice",
@@ -214,6 +217,48 @@ export const idMessages: AppMessages = {
             period: "Periode",
             amount: "Jumlah",
             paidAt: "Dibayar Pada",
+          },
+          manage: {
+            title: "Kelola Langganan",
+            changePlan: {
+              title: "Ubah Paket",
+              description:
+                "Beralih ke periode penagihan atau tingkat paket lain. Perubahan berlaku pada perpanjangan berikutnya.",
+              dialogTitle: "Ubah Paket",
+              dialogDescription:
+                "Tinjau detail paket baru sebelum mengonfirmasi.",
+              loadingPreview: "Memuat pratinjau…",
+              cancelBtn: "Batal",
+              confirming: "Mengubah…",
+              confirmBtn: "Konfirmasi Perubahan",
+            },
+            cancel: {
+              title: "Batalkan Langganan",
+              description:
+                "Langganan tetap aktif hingga akhir periode penagihan saat ini.",
+              button: "Batalkan Langganan",
+              dialogTitle: "Batalkan Langganan?",
+              dialogDescription:
+                "Akses tetap tersedia hingga akhir periode penagihan saat ini.",
+              reasonPlaceholder: "Alasan pembatalan (opsional)",
+              cancelBtn: "Pertahankan Langganan",
+              confirming: "Membatalkan…",
+              confirmBtn: "Ya, Batalkan",
+            },
+            reinstate: {
+              title: "Pulihkan Langganan",
+              description:
+                "Batalkan pembatalan dan lanjutkan langganan seperti biasa.",
+              button: "Pulihkan",
+              dialogTitle: "Pulihkan Langganan?",
+              dialogDescription: "Langganan akan diperpanjang seperti biasa.",
+              reasonPlaceholder: "Alasan pemulihan (opsional)",
+              cancelBtn: "Tetap Dibatalkan",
+              confirming: "Memulihkan…",
+              confirmBtn: "Ya, Pulihkan",
+            },
+            cancelledNote:
+              "Langganan ini telah dibatalkan dan tidak dapat dipulihkan.",
           },
           addons: {
             unavailable: "Add-on Tidak Tersedia",

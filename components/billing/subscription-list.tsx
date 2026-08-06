@@ -59,7 +59,7 @@ const statusLabels: Record<string, string> = {
   ACTIVE: "Active",
   SUSPENDED: "Suspended",
   CANCELLED: "Cancelled",
-  PENDING: "Pending",
+  PENDING: "Provisioning",
 }
 
 function getStatusLabel(status: string): string {
@@ -68,6 +68,19 @@ function getStatusLabel(status: string): string {
 
 function getStatusClassName(status: string): string {
   return statusStyles[status.toUpperCase()] ?? statusStyles.CANCELLED
+}
+
+function getStatusIcon(status: string): React.ReactNode {
+  switch (status.toUpperCase()) {
+    case "ACTIVE":
+      return <CheckCircleIcon aria-hidden="true" className="size-4" />
+    case "SUSPENDED":
+      return <TriangleIcon aria-hidden="true" className="size-4" />
+    case "CANCELLED":
+      return <XCircleIcon aria-hidden="true" className="size-4" />
+    default:
+      return <Timer aria-hidden="true" className="size-4" />
+  }
 }
 
 function getInvoiceStatusClassName(status: string): string {
@@ -82,7 +95,7 @@ function getNextAction(sub: SubscriptionItem): Action {
 
   if (status === "ACTIVE" && sub.invoiceStatus === "OVERDUE") {
     return {
-      label: "Update payment",
+      label: "Pay invoice",
       icon: <TriangleIcon className="size-4" />,
     }
   }
@@ -102,6 +115,12 @@ function getNextAction(sub: SubscriptionItem): Action {
       icon: (
         <CheckCircleIcon className="size-4 text-green-600 dark:text-green-400" />
       ),
+    }
+  }
+  if (status === "PENDING") {
+    return {
+      label: "Service being prepared",
+      icon: <Timer className="size-4" />,
     }
   }
   if (status === "SUSPENDED") {
@@ -276,8 +295,12 @@ export function SubscriptionList({
                   <td className="p-3 font-medium">{sub.packageCode}</td>
                   <td className="p-3 text-muted-foreground">{sub.planCode}</td>
                   <td className="p-3">
-                    <Badge className={getStatusClassName(sub.status)}>
-                      {getStatusLabel(sub.status)}
+                    <Badge
+                      className={`inline-flex items-center gap-1 ${getStatusClassName(sub.status)}`}
+                      aria-label={`Status: ${getStatusLabel(sub.status)}`}
+                    >
+                      {getStatusIcon(sub.status)}
+                      <span>{getStatusLabel(sub.status)}</span>
                     </Badge>
                   </td>
                   <td className="p-3 text-muted-foreground">
@@ -325,8 +348,12 @@ export function SubscriptionList({
                     {sub.planCode}
                   </p>
                 </div>
-                <Badge className={getStatusClassName(sub.status)}>
-                  {getStatusLabel(sub.status)}
+                <Badge
+                  className={`inline-flex items-center gap-1 ${getStatusClassName(sub.status)}`}
+                  aria-label={`Status: ${getStatusLabel(sub.status)}`}
+                >
+                  {getStatusIcon(sub.status)}
+                  <span>{getStatusLabel(sub.status)}</span>
                 </Badge>
               </CardHeader>
               <CardContent className="space-y-2">

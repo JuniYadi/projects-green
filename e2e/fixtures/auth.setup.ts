@@ -18,36 +18,33 @@
  *   6. Closes the browser — you're done
  */
 
-import { dirname } from "node:path"
-import { mkdir } from "node:fs/promises"
 import { test as setup, expect } from "@playwright/test"
+import fs from "fs"
 
 const AUTH_FILE = ".auth/user.json"
 
 setup("authenticate via WorkOS OAuth (manual login)", async ({ page }) => {
-  // Extend test timeout to match the 300s waitForURL below.
-  setup.setTimeout(300_000)
+  fs.mkdirSync(".auth", { recursive: true })
 
   // Navigate to login page
   await page.goto("/en/login")
 
   // Wait for the user to complete the OAuth flow.
   // After successful login, WorkOS redirects back to the app.
-  // The console layout requires authentication, so landing on
-  // /en/console or any nested route like /en/console/billing/invoices
-  // confirms login succeeded.
+  // The console layout requires authentication, so landing on any
+  // /en/console/* page confirms login succeeded.
   //
   // If the user is already logged in (existing session), the login
   // page redirects immediately — that's fine too.
   //
-  // Timeout: 300s to give time for the full OAuth redirect dance.
-  await page.waitForURL(/\/en\/console(?:\/|$|\?|#)/, { timeout: 300_000 })
+  // Timeout: 120s to give time for the full OAuth redirect dance.
+  await page.waitForURL("**/console/**", { timeout: 120_000 })
 
   // Verify we're actually on a console page (authenticated)
-  await expect(page).toHaveURL(/\/en\/console(?:\/|$|\?|#)/)
+  await expect(page).toHaveURL(/\/console\//)
 
   // Save the authenticated state (cookies + localStorage)
-  await mkdir(dirname(AUTH_FILE), { recursive: true })
   await page.context().storageState({ path: AUTH_FILE })
+
   console.log(`\n  ✅ Auth state saved to ${AUTH_FILE}\n`)
 })

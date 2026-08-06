@@ -172,6 +172,38 @@ describe("BillingOrderService", () => {
       billingPeriod: "MONTHLY",
     })
   })
+
+  it("persists a discounted first payment without changing the locked price", async () => {
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      undefined,
+      new BillingFulfillmentRegistry([adapter])
+    )
+
+    await service.createOrder({
+      organizationId: "org-1",
+      pricingId: "pricing-1",
+      discountAmount: decimal("10.00"),
+      voucherId: "voucher-1",
+      voucherCode: "SAVE10",
+      voucherCurrency: "IDR",
+      voucherExchangeRate: decimal("1"),
+      idempotencyKey: "discounted-order",
+      now: periodStart,
+    })
+
+    expect(mockPrisma.billingOrder.create.mock.calls[0][0].data).toMatchObject({
+      subtotalAmount: decimal("100"),
+      discountAmount: decimal("10"),
+      totalAmount: decimal("90"),
+    })
+    expect(mockPrisma.billingOrder.create.mock.calls[0][0].data).toMatchObject({
+      voucherId: "voucher-1",
+      voucherCode: "SAVE10",
+      voucherCurrency: "IDR",
+      voucherExchangeRate: decimal("1"),
+    })
+  })
   it("prorates a monthly first order while locking the full period price", async () => {
     mockResolveRecurringPrice.mockResolvedValue({
       ...pricing,

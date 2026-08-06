@@ -65,8 +65,8 @@ function serviceStatusVariant(
   }
 }
 
-function paymentStatusLabel(orderStatus: string | null | undefined): string {
-  switch (orderStatus) {
+function paymentStatusLabel(status: string | null | undefined): string {
+  switch (status) {
     case "CHARGED":
       return "Charged"
     case "PENDING":
@@ -75,11 +75,13 @@ function paymentStatusLabel(orderStatus: string | null | undefined): string {
       return "Failed"
     case "CANCELLED":
       return "Cancelled"
+    case "FULFILLED":
+      return "Fulfilled"
     case null:
     case undefined:
       return "—"
     default:
-      return orderStatus
+      return status
   }
 }
 
@@ -88,7 +90,9 @@ function PaymentStatusBadge({
 }: {
   orderStatus: string | null | undefined
 }) {
-  if (!orderStatus) return <span className="text-muted-foreground">—</span>
+  if (!orderStatus) {
+    return <span className="text-xs text-muted-foreground">—</span>
+  }
   const variant =
     orderStatus === "CHARGED"
       ? "default"
@@ -98,17 +102,33 @@ function PaymentStatusBadge({
   return <Badge variant={variant}>{paymentStatusLabel(orderStatus)}</Badge>
 }
 
-function SubscriptionRow({ sub }: { sub: AdminSubscriptionItem }) {
+function SubscriptionRow({
+  sub,
+  onSelect,
+}: {
+  sub: AdminSubscriptionItem
+  onSelect: (subscription: AdminSubscriptionItem) => void
+}) {
   const orgHref = sub.organizationId
     ? `/portal/billing/org/${sub.organizationId}`
     : null
 
   return (
-    <TableRow>
+    <TableRow
+      className="cursor-pointer"
+      tabIndex={0}
+      onClick={() => onSelect(sub)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault()
+          onSelect(sub)
+        }
+      }}
+    >
       <TableCell>
         {orgHref ? (
           <Link href={orgHref} className="font-mono text-xs hover:underline">
-            {sub.organizationId ?? "—"}
+            {sub.organizationId}
           </Link>
         ) : (
           <span className="font-mono text-xs text-muted-foreground">
@@ -160,68 +180,9 @@ function SubscriptionRow({ sub }: { sub: AdminSubscriptionItem }) {
   )
 }
 
-function SubscriptionCard({ sub }: { sub: AdminSubscriptionItem }) {
-  const orgHref = sub.organizationId
-    ? `/portal/billing/org/${sub.organizationId}`
-    : null
-
-  return (
-    <Card className="flex flex-col gap-3 p-4">
-      <div className="flex items-start justify-between gap-2">
-        {orgHref ? (
-          <Link href={orgHref} className="font-mono text-xs hover:underline">
-            {sub.organizationId}
-          </Link>
-        ) : (
-          <span className="font-mono text-xs text-muted-foreground">
-            {sub.organizationId ?? "—"}
-          </span>
-        )}
-        <Badge variant={serviceStatusVariant(sub.status)}>{sub.status}</Badge>
-      </div>
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="font-medium">{sub.packageCode}</div>
-          <div className="text-xs text-muted-foreground">
-            {sub.planCode} · {sub.regionCode}
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="font-medium">
-            {sub.periodPrice
-              ? formatBillingMoney(sub.periodPrice, sub.currency ?? "IDR")
-              : sub.monthlyRateIdr
-                ? formatBillingMoney(sub.monthlyRateIdr, "IDR")
-                : "—"}
-          </div>
-          {sub.billingPeriod ? (
-            <div className="text-xs text-muted-foreground">
-              /{sub.billingPeriod.toLowerCase()}
-            </div>
-          ) : null}
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-1">
-        <div className="text-xs text-muted-foreground">
-          <span className="font-medium">Payment:</span> {sub.orderStatus ?? "—"}
-        </div>
-        <div className="text-xs text-muted-foreground">
-          <span className="font-medium">Invoice:</span>{" "}
-          {sub.invoiceStatus ?? "—"}
-        </div>
-      </div>
-      <div className="text-xs text-muted-foreground">
-        <span className="font-medium">Renews:</span>{" "}
-        {sub.currentPeriodEnd
-          ? new Date(sub.currentPeriodEnd).toLocaleDateString()
-          : "—"}
-      </div>
-    </Card>
-  )
-}
 const PAGE_SIZE = 20
 
-export default function BillingSubscriptionsPage() {
+export function BillingSubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useState<AdminSubscriptionItem[]>(
     []
   )
@@ -230,17 +191,22 @@ export default function BillingSubscriptionsPage() {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
 
-  // Filter state
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState<string>("all")
   const [product, setProduct] = useState<string>("all")
   const [billingPeriod, setBillingPeriod] = useState<string>("all")
+  const [selectedSubscription, setSelectedSubscription] =
+    useState<AdminSubscriptionItem | null>(null)
 
   const load = useCallback(
     async (pageNum: number) => {
       setLoading(true)
       try {
-        const params: Parameters<typeof getAdminSubscriptions>[0] = {
+        const params: {
+          page: number
+          limit: number
+          status?: string
+        } = {
           page: pageNum,
           limit: PAGE_SIZE,
         }
@@ -268,7 +234,6 @@ export default function BillingSubscriptionsPage() {
     void load(page)
   }, [load, page])
 
-  // Client-side filter on loaded data
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
     return subscriptions.filter((sub) => {
@@ -280,14 +245,14 @@ export default function BillingSubscriptionsPage() {
       ) {
         return false
       }
-      if (product !== "all" && sub.packageCode !== product) return false
+      if (product !== "all" && sub.type !== product) return false
       if (billingPeriod !== "all" && sub.billingPeriod !== billingPeriod)
         return false
       return true
     })
   }, [subscriptions, search, product, billingPeriod])
 
-  const totalPages_ = Math.ceil(total / PAGE_SIZE)
+  const totalPages = Math.ceil(total / PAGE_SIZE)
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -302,7 +267,7 @@ export default function BillingSubscriptionsPage() {
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <CardTitle>All subscriptions</CardTitle>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Input
                 placeholder="Search org, product, plan…"
                 value={search}
@@ -358,8 +323,7 @@ export default function BillingSubscriptionsPage() {
             </div>
           ) : (
             <>
-              {/* Desktop table */}
-              <div className="hidden overflow-x-auto md:block">
+              <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -385,34 +349,25 @@ export default function BillingSubscriptionsPage() {
                       </TableRow>
                     ) : (
                       filtered.map((sub) => (
-                        <SubscriptionRow key={sub.id} sub={sub} />
+                        <SubscriptionRow
+                          key={sub.id}
+                          sub={sub}
+                          onSelect={setSelectedSubscription}
+                        />
                       ))
                     )}
                   </TableBody>
                 </Table>
               </div>
 
-              {/* Mobile cards */}
-              <div className="block space-y-3 md:hidden">
-                {filtered.length === 0 ? (
-                  <p className="py-10 text-center text-muted-foreground">
-                    No subscriptions found.
-                  </p>
-                ) : (
-                  filtered.map((sub) => (
-                    <SubscriptionCard key={sub.id} sub={sub} />
-                  ))
-                )}
-              </div>
-
-              {totalPages_ > 1 && (
+              {totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
                     Showing {subscriptions.length} of {total} subscriptions
                   </p>
                   <div className="flex items-center gap-2">
                     <p className="text-sm text-muted-foreground">
-                      Page {page} of {totalPages_}
+                      Page {page} of {totalPages}
                     </p>
                     <Button
                       variant="outline"
@@ -426,7 +381,7 @@ export default function BillingSubscriptionsPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => setPage((p) => p + 1)}
-                      disabled={page >= totalPages_ || loading}
+                      disabled={page >= totalPages || loading}
                     >
                       Next
                     </Button>
@@ -437,6 +392,82 @@ export default function BillingSubscriptionsPage() {
           )}
         </CardContent>
       </Card>
+      {selectedSubscription && (
+        <Card
+          className="border-primary/30"
+          role="dialog"
+          aria-label="Subscription detail drawer"
+        >
+          <CardHeader className="flex flex-row items-start justify-between gap-4">
+            <div>
+              <CardTitle>Subscription details</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {selectedSubscription.id}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedSubscription(null)}
+            >
+              Close
+            </Button>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Organization</p>
+              <p className="font-medium">
+                {selectedSubscription.organizationId ?? "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Service status</p>
+              <Badge
+                variant={serviceStatusVariant(selectedSubscription.status)}
+              >
+                {selectedSubscription.status}
+              </Badge>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Payment</p>
+              <p className="font-medium">
+                {paymentStatusLabel(selectedSubscription.orderStatus)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Renewal</p>
+              <p className="font-medium">
+                {selectedSubscription.currentPeriodEnd
+                  ? new Date(
+                      selectedSubscription.currentPeriodEnd
+                    ).toLocaleDateString()
+                  : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Locked price</p>
+              <p className="font-medium">
+                {selectedSubscription.periodPrice
+                  ? formatBillingMoney(
+                      selectedSubscription.periodPrice,
+                      selectedSubscription.currency ?? "IDR"
+                    )
+                  : "—"}
+              </p>
+            </div>
+            {selectedSubscription.cancelAtPeriodEnd && (
+              <div className="sm:col-span-2">
+                <p className="text-xs text-muted-foreground">Next transition</p>
+                <p className="font-medium text-yellow-600 dark:text-yellow-400">
+                  Cancellation scheduled for the current period end.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </main>
   )
 }
+
+export default BillingSubscriptionsPage

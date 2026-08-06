@@ -179,6 +179,7 @@ export type AppMessages = {
           tabs: {
             overview: string
             billing: string
+            manage: string
             addons: string
             activity: string
           }
@@ -191,6 +192,8 @@ export type AppMessages = {
             renewal: string
             invoiceState: string
             nextAction: string
+            cancelPending: string
+            cancelPendingLabel: string
           }
           billing: {
             invoiceNumber: string
@@ -198,6 +201,42 @@ export type AppMessages = {
             period: string
             amount: string
             paidAt: string
+          }
+          manage: {
+            title: string
+            changePlan: {
+              title: string
+              description: string
+              dialogTitle: string
+              dialogDescription: string
+              loadingPreview: string
+              cancelBtn: string
+              confirming: string
+              confirmBtn: string
+            }
+            cancel: {
+              title: string
+              description: string
+              button: string
+              dialogTitle: string
+              dialogDescription: string
+              reasonPlaceholder: string
+              cancelBtn: string
+              confirming: string
+              confirmBtn: string
+            }
+            reinstate: {
+              title: string
+              description: string
+              button: string
+              dialogTitle: string
+              dialogDescription: string
+              reasonPlaceholder: string
+              cancelBtn: string
+              confirming: string
+              confirmBtn: string
+            }
+            cancelledNote: string
           }
           addons: {
             unavailable: string

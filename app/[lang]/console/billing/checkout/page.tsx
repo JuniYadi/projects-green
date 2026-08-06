@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 
@@ -16,15 +16,19 @@ import {
   WalletIcon,
 } from "@phosphor-icons/react"
 
-import { submitCheckout } from "./checkout-client"
-import type { CheckoutResult } from "./checkout-client"
+import {
+  getCheckoutQuote,
+  submitCheckout,
+  type CheckoutPreview,
+  type CheckoutResult,
+} from "./checkout-client"
 
 function formatCurrency(amount: string, currency: string): string {
-  const value = Number(amount) / 100
+  const value = Number(amount)
   return new Intl.NumberFormat(currency === "USD" ? "en-US" : "id-ID", {
     style: "currency",
     currency,
-    minimumFractionDigits: 0,
+    minimumFractionDigits: currency === "USD" ? 2 : 0,
   }).format(value)
 }
 
@@ -49,10 +53,14 @@ export default function CheckoutPage() {
   const productName = searchParams.get("product") ?? ""
   const planName = searchParams.get("plan") ?? ""
   const billingPeriod = searchParams.get("billingPeriod") ?? ""
-  const price = searchParams.get("price") ?? ""
-  const currency = searchParams.get("currency") ?? "IDR"
 
   const [quote, setQuote] = useState<CheckoutResult | null>(null)
+  const [quotePreview, setQuotePreview] = useState<CheckoutPreview | null>(null)
+  const [quoteLoading, setQuoteLoading] = useState(false)
+  const [quoteError, setQuoteError] = useState<string | null>(null)
+  const [addonIds, setAddonIds] = useState<string[]>([])
+  const [voucherCode, setVoucherCode] = useState("")
+  const [voucherInput, setVoucherInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmed, setConfirmed] = useState(false)
@@ -63,8 +71,55 @@ export default function CheckoutPage() {
 
   const hasPricing = Boolean(pricingId)
 
+  const requestQuote = useCallback(
+    async (nextAddonIds: string[], nextVoucherCode: string) => {
+      if (!pricingId) return
+      setQuoteLoading(true)
+      setQuoteError(null)
+      const result = await getCheckoutQuote({
+        pricingId,
+        addonIds: nextAddonIds,
+        voucherCode: nextVoucherCode || undefined,
+        idempotencyKey,
+      })
+      if (result.ok) {
+        setQuotePreview(result)
+      } else {
+        setQuotePreview(null)
+        setQuoteError(
+          result.error === "BILLING_CURRENCY_MISMATCH"
+            ? "This balance-credit voucher must match your billing account currency. The voucher claim was not consumed."
+            : result.message
+        )
+      }
+      setQuoteLoading(false)
+    },
+    [idempotencyKey, pricingId]
+  )
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void requestQuote([], "")
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [requestQuote])
+
+  const handleAddonChange = (addonId: string, checked: boolean) => {
+    const nextAddonIds = checked
+      ? [...addonIds, addonId]
+      : addonIds.filter((id) => id !== addonId)
+    setAddonIds(nextAddonIds)
+    void requestQuote(nextAddonIds, voucherCode)
+  }
+
+  const handleApplyVoucher = () => {
+    const nextVoucherCode = voucherInput.trim().toUpperCase()
+    setVoucherCode(nextVoucherCode)
+    void requestQuote(addonIds, nextVoucherCode)
+  }
+
   const handleCheckout = async (): Promise<void> => {
-    if (!pricingId) return
+    if (!pricingId || !quotePreview) return
     setIsLoading(true)
     setError(null)
     setQuote(null)
@@ -72,6 +127,9 @@ export default function CheckoutPage() {
     try {
       const result = await submitCheckout({
         pricingId,
+        addonIds,
+        voucherCode: voucherCode || undefined,
+        quoteToken: quotePreview.quoteToken,
         idempotencyKey,
       })
       setQuote(result)
@@ -101,6 +159,7 @@ export default function CheckoutPage() {
   const isSuccess = quote?.ok === true
   const isFailure = quote?.ok === false
   const retryable = isFailure && quote && isRetryable(quote.error)
+  const addonOptions = quotePreview?.availableAddons ?? []
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -128,35 +187,111 @@ export default function CheckoutPage() {
         </Alert>
       )}
 
-      {hasPricing && !quote && !isLoading && (
+      {quoteError && (
+        <Alert variant="destructive">
+          <AlertDescription>{quoteError}</AlertDescription>
+        </Alert>
+      )}
+
+      {hasPricing && quotePreview && !quote && !isLoading && (
         <Card>
           <CardHeader>
             <CardTitle>Order Summary</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Product</span>
-              <span>{productName || "—"}</span>
+              <span>{productName || quotePreview.packageCode}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Plan</span>
-              <span>{planName || "—"}</span>
+              <span>{planName || quotePreview.planCode}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Billing Period</span>
-              <span>{billingPeriod || "—"}</span>
+              <span>{billingPeriod || quotePreview.billingPeriod}</span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Price</span>
-              <span>{price ? formatCurrency(price, currency) : "—"}</span>
+
+            {addonOptions.length > 0 && (
+              <fieldset className="space-y-2 rounded-md border p-3">
+                <legend className="px-1 text-sm font-medium">Add-ons</legend>
+                {addonOptions.map((addon) => (
+                  <div key={addon.id} className="flex items-start gap-2">
+                    <Checkbox
+                      id={`addon-${addon.id}`}
+                      checked={
+                        addon.selected === true || addonIds.includes(addon.id)
+                      }
+                      disabled={addon.required === true || quoteLoading}
+                      onCheckedChange={(checked) =>
+                        handleAddonChange(addon.id, checked === true)
+                      }
+                    />
+                    <Label htmlFor={`addon-${addon.id}`}>
+                      <span className="font-medium">{addon.name}</span>
+                      <span className="ml-2 text-muted-foreground">
+                        {formatCurrency(addon.price, addon.currency)}
+                        {addon.required ? " · Required" : ""}
+                      </span>
+                    </Label>
+                  </div>
+                ))}
+              </fieldset>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="voucher-code">Voucher code</Label>
+              <div className="flex gap-2">
+                <input
+                  id="voucher-code"
+                  value={voucherInput}
+                  onChange={(event) => setVoucherInput(event.target.value)}
+                  className="min-w-0 flex-1 rounded-md border bg-background px-3 py-2 text-sm"
+                  placeholder="Optional voucher"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleApplyVoucher}
+                  disabled={quoteLoading}
+                >
+                  Apply voucher
+                </Button>
+              </div>
+              {quotePreview.voucher && (
+                <p className="text-xs text-muted-foreground">
+                  {quotePreview.voucher.code} expires{" "}
+                  {formatDate(quotePreview.voucher.quoteExpiresAt)}
+                </p>
+              )}
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Discount</span>
-              <span className="text-muted-foreground">Not available</span>
-            </div>
-            <div className="flex justify-between text-sm font-medium">
-              <span>First Payment</span>
-              <span>{price ? formatCurrency(price, currency) : "—"}</span>
+
+            <div className="space-y-2 border-t pt-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span>
+                  {formatCurrency(quotePreview.subtotal, quotePreview.currency)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Discount</span>
+                <span>
+                  {formatCurrency(quotePreview.discount, quotePreview.currency)}
+                </span>
+              </div>
+              <div className="flex justify-between text-base font-semibold">
+                <span>First payment</span>
+                <span>
+                  {formatCurrency(
+                    quotePreview.firstPayment,
+                    quotePreview.currency
+                  )}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Next renewal</span>
+                <span>{formatDate(quotePreview.nextRenewal)}</span>
+              </div>
             </div>
 
             <div className="mt-4 space-y-3">
@@ -174,17 +309,17 @@ export default function CheckoutPage() {
 
               <Button
                 onClick={() => void handleCheckout()}
-                disabled={!confirmed || isLoading}
+                disabled={!confirmed || isLoading || quoteLoading}
                 className="w-full"
               >
-                Confirm Purchase
+                Confirm and pay
               </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {isLoading && (
+      {(isLoading || quoteLoading) && (
         <Card>
           <CardContent className="py-6">
             <div className="space-y-3">
@@ -218,7 +353,7 @@ export default function CheckoutPage() {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Discount</span>
-              <span>0</span>
+              <span>{formatCurrency(quote.discount, quote.currency)}</span>
             </div>
             <div className="flex justify-between text-sm font-semibold">
               <span>First Payment</span>

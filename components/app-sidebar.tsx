@@ -207,6 +207,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
           isActive: startsWithRoute(path, "/portal/billing/voucher"),
         },
         {
+          title: "Promotions",
+          url: localizePathname({
+            pathname: "/portal/billing/promotions",
+            locale,
+          }),
+          icon: <TicketIcon />,
+          isActive: startsWithRoute(path, "/portal/billing/promotions"),
+        },
+        {
           title: "Audit Logs",
           url: localizePathname({
             pathname: "/portal/billing/audit-logs",

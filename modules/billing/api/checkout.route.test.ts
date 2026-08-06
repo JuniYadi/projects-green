@@ -12,6 +12,7 @@ import { RecurringPriceResolutionError } from "../pricing/pricing.service"
 const mockCreateOrder = mock()
 const mockChargeOrder = mock()
 const mockFulfillOrder = mock()
+const mockQuoteService = { createQuote: mock() }
 
 mock.module("@/modules/billing/orders/order.service", () => ({
   BillingOrderService: class MockBillingOrderService {
@@ -21,10 +22,14 @@ mock.module("@/modules/billing/orders/order.service", () => ({
   },
 }))
 
-function buildApp(authContext: MockAuthContext) {
+function buildApp(
+  authContext: MockAuthContext,
+  quoteService?: { createQuote: typeof mockQuoteService.createQuote }
+) {
   return new Elysia().use(
     createBillingCheckoutRoutes({
       authenticate: async () => authContext,
+      quoteService: quoteService as never,
     })
   )
 }
@@ -60,6 +65,102 @@ describe("POST /billing/checkout", () => {
     mockCreateOrder.mockReset()
     mockChargeOrder.mockReset()
     mockFulfillOrder.mockReset()
+    mockQuoteService.createQuote.mockReset()
+  })
+
+  it("returns a quote with addon and voucher totals", async () => {
+    mockQuoteService.createQuote.mockResolvedValueOnce({
+      quoteId: "quote-1",
+      quoteToken: "quote-token-1",
+      pricingId: "pricing-1",
+      packageCode: "VPN",
+      planCode: "PRO",
+      currency: "IDR",
+      billingPeriod: "MONTHLY",
+      quantity: "1",
+      periodStart: "2026-08-06T10:00:00.000Z",
+      periodEnd: "2026-09-06T10:00:00.000Z",
+      subtotal: "120000",
+      discount: "12000",
+      firstPayment: "108000",
+      nextRenewal: "2026-09-06T10:00:00.000Z",
+      addons: [],
+      voucher: null,
+      expiresAt: "2026-08-06T10:15:00.000Z",
+    })
+    const app = buildApp(defaultAuth, mockQuoteService)
+    const response = await app.handle(
+      new Request("http://localhost/checkout/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pricingId: "pricing-1",
+          addonIds: ["addon-1"],
+          voucherCode: "SAVE10",
+          idempotencyKey: "quote-1",
+        }),
+      })
+    )
+
+    expect(response.status).toBe(200)
+    expect((await response.json()).firstPayment).toBe("108000")
+    expect(mockQuoteService.createQuote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        addonIds: ["addon-1"],
+        voucherCode: "SAVE10",
+      })
+    )
+  })
+
+  it("uses the quote discount when creating the order", async () => {
+    mockQuoteService.createQuote.mockResolvedValueOnce({
+      quoteId: "quote-1",
+      quoteToken: "quote-token-1",
+      pricingId: "pricing-1",
+      packageCode: "VPN",
+      planCode: "PRO",
+      currency: "IDR",
+      billingPeriod: "MONTHLY",
+      quantity: "1",
+      periodStart: "2026-08-06T10:00:00.000Z",
+      periodEnd: "2026-09-06T10:00:00.000Z",
+      subtotal: "120000",
+      discount: "12000",
+      firstPayment: "108000",
+      nextRenewal: "2026-09-06T10:00:00.000Z",
+      addons: [],
+      voucher: null,
+      expiresAt: "2026-08-06T10:15:00.000Z",
+    })
+    mockCreateOrder.mockResolvedValueOnce({ ...fulfilledOrderResult })
+    mockChargeOrder.mockResolvedValueOnce({ ...fulfilledOrderResult })
+    mockFulfillOrder.mockResolvedValueOnce({
+      ...fulfilledOrderResult,
+      amount: "108000",
+    })
+
+    const response = await makeRequest(
+      buildApp(defaultAuth, mockQuoteService),
+      {
+        pricingId: "pricing-1",
+        addonIds: ["addon-1"],
+        voucherCode: "SAVE10",
+        idempotencyKey: "checkout-1",
+      }
+    )
+
+    expect(response.status).toBe(200)
+    expect(mockCreateOrder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        discountAmount: expect.objectContaining({
+          toString: expect.any(Function),
+        }),
+      })
+    )
+    const createOrderInput = mockCreateOrder.mock.calls[0]?.[0]
+    expect(createOrderInput.discountAmount.toString()).toBe("12000")
+    expect(createOrderInput.amount.toString()).toBe("120000")
+    expect((await response.json()).discount).toBe("12000")
   })
 
   describe("auth guard", () => {

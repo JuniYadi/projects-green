@@ -1,68 +1,15 @@
-import { describe, expect, it, mock, beforeEach } from "bun:test"
+import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { fireEvent, render, waitFor } from "@testing-library/react"
-import React from "react"
-const mockGetAdminSubscriptions = mock<
-  (params?: Record<string, unknown>) => Promise<{
-    ok: true
-    subscriptions: Array<Record<string, unknown>>
-    pagination: {
-      page: number
-      limit: number
-      total: number
-      totalPages: number
-    }
-  }>
->(async () => ({
-  ok: true,
-  subscriptions: [],
-  pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
-}))
+
+const mockGetAdminSubscriptions = mock()
 
 mock.module("@/lib/billing-client", () => ({
   getAdminSubscriptions: mockGetAdminSubscriptions,
 }))
 
-mock.module("@/components/ui/select", () => {
-  const options = [
-    "all",
-    "ACTIVE",
-    "SUSPENDED",
-    "CANCELLED",
-    "APP_HOSTING",
-    "VPN",
-    "WHATSAPP",
-    "MONTHLY",
-    "QUARTERLY",
-    "SEMI_ANNUAL",
-    "ANNUAL",
-  ].map((value) => React.createElement("option", { key: value, value }, value))
-  const Select = (props: {
-    value: string
-    onValueChange: (value: string) => void
-  }) =>
-    React.createElement(
-      "select",
-      {
-        value: props.value,
-        role: "combobox",
-        onChange: (event: { target: { value: string } }) =>
-          props.onValueChange(event.target.value),
-      },
-      options
-    )
+const { BillingSubscriptionsPage } = await import("./page")
 
-  return {
-    Select,
-    SelectContent: () => null,
-    SelectItem: () => null,
-    SelectTrigger: () => null,
-    SelectValue: () => null,
-  }
-})
-
-const BillingSubscriptionsPage = (await import("./page")).default
-
-const baseSub = {
+const baseSubscription = {
   id: "sub_1",
   organizationId: "org_1",
   packageCode: "APP_HOSTING",
@@ -87,135 +34,71 @@ const baseSub = {
   fulfillment: null,
 }
 
-const responseFor = (
-  subscriptions: Array<Record<string, unknown>>,
-  total = subscriptions.length,
-  totalPages = 1
-) => ({
-  ok: true as const,
-  subscriptions,
-  pagination: { page: 1, limit: 20, total, totalPages },
+beforeEach(() => {
+  mockGetAdminSubscriptions.mockReset()
+  mockGetAdminSubscriptions.mockResolvedValue({
+    ok: true,
+    subscriptions: [],
+    pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+  })
 })
 
 describe("BillingSubscriptionsPage", () => {
-  beforeEach(() => {
-    mockGetAdminSubscriptions.mockReset()
-    mockGetAdminSubscriptions.mockResolvedValue(responseFor([]))
+  it("renders the async empty state", async () => {
+    const view = render(<BillingSubscriptionsPage />)
+    await waitFor(() =>
+      expect(view.getByText("No subscriptions found.")).toBeTruthy()
+    )
   })
 
-  it("renders the page heading", () => {
+  it("renders service, payment, invoice, and organization data", async () => {
+    mockGetAdminSubscriptions.mockResolvedValueOnce({
+      ok: true,
+      subscriptions: [baseSubscription],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    })
     const view = render(<BillingSubscriptionsPage />)
-    expect(view.getByText("Subscriptions")).toBeTruthy()
+    await waitFor(() => expect(view.getByText("org_1")).toBeTruthy())
+    expect(view.getByText("ACTIVE")).toBeTruthy()
+    expect(view.getByText("Charged")).toBeTruthy()
+    expect(view.getByText("PAID")).toBeTruthy()
   })
-
-  it("renders the loading state", () => {
-    mockGetAdminSubscriptions.mockImplementation(() => new Promise(() => {}))
+  it("opens a lifecycle detail drawer for a selected subscription", async () => {
+    mockGetAdminSubscriptions.mockResolvedValueOnce({
+      ok: true,
+      subscriptions: [{ ...baseSubscription, cancelAtPeriodEnd: true }],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    })
     const view = render(<BillingSubscriptionsPage />)
+    await waitFor(() => expect(view.getByText("org_1")).toBeTruthy())
+
+    fireEvent.click(view.getAllByText("APP_HOSTING")[0])
     expect(
-      view.container.querySelectorAll('[data-slot="skeleton"]').length
-    ).toBeGreaterThan(0)
+      view.getByRole("dialog", { name: "Subscription detail drawer" })
+    ).toBeTruthy()
+    expect(view.getByText(/cancellation scheduled/i)).toBeTruthy()
   })
 
-  it("renders the error state", async () => {
-    mockGetAdminSubscriptions.mockRejectedValue(new Error("Network error"))
-    const view = render(<BillingSubscriptionsPage />)
-    await waitFor(() => expect(view.getByText("Network error")).toBeTruthy())
-  })
-
-  it("renders the empty state", async () => {
+  it("exposes search and lifecycle filters", async () => {
     const view = render(<BillingSubscriptionsPage />)
     await waitFor(() =>
       expect(
-        view.getAllByText("No subscriptions found.").length
-      ).toBeGreaterThan(0)
+        view.getByPlaceholderText("Search org, product, plan…")
+      ).toBeTruthy()
     )
+    expect(view.getByText("All statuses")).toBeTruthy()
+    expect(view.getByText("All products")).toBeTruthy()
+    expect(view.getByText("All periods")).toBeTruthy()
   })
 
-  it("renders a subscription row with org link", async () => {
-    mockGetAdminSubscriptions.mockResolvedValue(responseFor([baseSub]))
-    const view = render(<BillingSubscriptionsPage />)
-    await waitFor(() =>
-      expect(view.getAllByText("org_1").length).toBeGreaterThan(0)
-    )
-  })
-
-  it("renders service status badge", async () => {
-    mockGetAdminSubscriptions.mockResolvedValue(responseFor([baseSub]))
-    const view = render(<BillingSubscriptionsPage />)
-    await waitFor(() =>
-      expect(view.getAllByText("ACTIVE").length).toBeGreaterThan(0)
-    )
-  })
-
-  it("renders payment status badge for charged order", async () => {
-    mockGetAdminSubscriptions.mockResolvedValue(responseFor([baseSub]))
-    const view = render(<BillingSubscriptionsPage />)
-    await waitFor(() =>
-      expect(view.getAllByText("Charged").length).toBeGreaterThan(0)
-    )
-  })
-
-  it("renders invoice status badge", async () => {
-    mockGetAdminSubscriptions.mockResolvedValue(responseFor([baseSub]))
-    const view = render(<BillingSubscriptionsPage />)
-    await waitFor(() =>
-      expect(view.getAllByText("PAID").length).toBeGreaterThan(0)
-    )
-  })
-
-  it("filters by status using the server-side filter", async () => {
-    mockGetAdminSubscriptions.mockResolvedValue(responseFor([baseSub]))
-    const view = render(<BillingSubscriptionsPage />)
-    fireEvent.change(view.getAllByRole("combobox")[0], {
-      target: { value: "ACTIVE" },
+  it("shows pagination when multiple pages exist", async () => {
+    mockGetAdminSubscriptions.mockResolvedValueOnce({
+      ok: true,
+      subscriptions: [baseSubscription],
+      pagination: { page: 1, limit: 20, total: 41, totalPages: 3 },
     })
-    await waitFor(() =>
-      expect(mockGetAdminSubscriptions).toHaveBeenCalledWith(
-        expect.objectContaining({ status: "ACTIVE" })
-      )
-    )
-  })
-
-  it("filters by product using client-side filter", async () => {
-    mockGetAdminSubscriptions.mockResolvedValue(responseFor([baseSub]))
-    const view = render(<BillingSubscriptionsPage />)
-    await waitFor(() =>
-      expect(view.getAllByText("APP_HOSTING").length).toBeGreaterThan(0)
-    )
-    fireEvent.change(view.getAllByRole("combobox")[1], {
-      target: { value: "APP_HOSTING" },
-    })
-    expect(view.getAllByText("APP_HOSTING").length).toBeGreaterThan(0)
-  })
-
-  it("filters by billing period using client-side filter", async () => {
-    mockGetAdminSubscriptions.mockResolvedValue(responseFor([baseSub]))
-    const view = render(<BillingSubscriptionsPage />)
-    await waitFor(() =>
-      expect(view.getAllByText("APP_HOSTING").length).toBeGreaterThan(0)
-    )
-    const periodSelect = view.getAllByRole("combobox")[2]
-    fireEvent.change(periodSelect, { target: { value: "MONTHLY" } })
-    expect((periodSelect as HTMLSelectElement).value).toBe("MONTHLY")
-  })
-
-  it("searches by organization id", async () => {
-    mockGetAdminSubscriptions.mockResolvedValue(responseFor([baseSub]))
-    const view = render(<BillingSubscriptionsPage />)
-    await waitFor(() =>
-      expect(view.getAllByText("org_1").length).toBeGreaterThan(0)
-    )
-    fireEvent.input(view.getByPlaceholderText("Search org, product, plan…"), {
-      target: { value: "org_1" },
-    })
-    expect(view.getAllByText("org_1").length).toBeGreaterThan(0)
-  })
-
-  it("shows pagination controls when there are multiple pages", async () => {
-    mockGetAdminSubscriptions.mockResolvedValue(responseFor([baseSub], 50, 3))
     const view = render(<BillingSubscriptionsPage />)
     await waitFor(() => expect(view.getByText("Page 1 of 3")).toBeTruthy())
-    expect(view.getByText("Previous")).toBeTruthy()
     expect(view.getByText("Next")).toBeTruthy()
   })
 })

@@ -153,10 +153,10 @@ describe("SubscriptionList", () => {
     expect(view.getAllByText("Renew now").length).toBe(2)
   })
 
-  it("shows 'Update payment' next action for ACTIVE subscription with OVERDUE invoice", () => {
+  it("shows 'Pay invoice' next action for ACTIVE subscription with OVERDUE invoice", () => {
     const overdueSub = [mockSubscriptions[3]]
     const view = render(<SubscriptionList subscriptions={overdueSub} />)
-    expect(view.getAllByText("Update payment").length).toBe(2)
+    expect(view.getAllByText("Pay invoice").length).toBe(2)
   })
 
   it("shows 'Contact support' next action for SUSPENDED subscription", () => {
@@ -176,6 +176,14 @@ describe("SubscriptionList", () => {
     expect(view.getAllByText("Active").length).toBe(4)
     expect(view.getAllByText("Suspended").length).toBe(2)
     expect(view.getAllByText("Cancelled").length).toBe(2)
+  })
+  it("gives subscription statuses semantic labels and icons", () => {
+    const view = render(<SubscriptionList subscriptions={mockSubscriptions} />)
+
+    expect(view.getAllByLabelText("Status: Active").length).toBe(4)
+    expect(
+      view.container.querySelectorAll('[aria-hidden="true"]').length
+    ).toBeGreaterThanOrEqual(8)
   })
 
   it("renders term labels correctly", () => {

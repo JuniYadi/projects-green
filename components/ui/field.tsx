@@ -236,3 +236,5 @@ export {
   FieldContent,
   FieldTitle,
 }
+
+export { Label } from "@/components/ui/label"

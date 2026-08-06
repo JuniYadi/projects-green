@@ -71,3 +71,45 @@ export class VoucherCollisionRetryExhaustedError extends Error {
     this.name = "VoucherCollisionRetryExhaustedError"
   }
 }
+
+// ─── Promotion domain errors ──────────────────────────────────────────────────
+
+export class VoucherNotPublishableError extends Error {
+  readonly code = "VOUCHER_NOT_PUBLISHABLE"
+  constructor(voucherCode: string, reason: string) {
+    super(`Voucher ${voucherCode} cannot be published: ${reason}`)
+    this.name = "VoucherNotPublishableError"
+  }
+}
+
+export class VoucherAlreadyDisabledError extends Error {
+  readonly code = "VOUCHER_ALREADY_DISABLED"
+  constructor(voucherCode: string) {
+    super(`Voucher ${voucherCode} is already disabled`)
+    this.name = "VoucherAlreadyDisabledError"
+  }
+}
+
+export class VoucherAlreadyPublishedError extends Error {
+  readonly code = "VOUCHER_ALREADY_PUBLISHED"
+  constructor(voucherCode: string) {
+    super(`Voucher ${voucherCode} is already published (ACTIVE)`)
+    this.name = "VoucherAlreadyPublishedError"
+  }
+}
+
+export class VoucherNotAPromotionError extends Error {
+  readonly code = "VOUCHER_NOT_A_PROMOTION"
+  constructor(voucherCode: string) {
+    super(`Voucher ${voucherCode} is not a PRODUCT_PROMOTION voucher`)
+    this.name = "VoucherNotAPromotionError"
+  }
+}
+
+export class VoucherDiscountConfigurationError extends Error {
+  readonly code = "VOUCHER_DISCOUNT_CONFIG_ERROR"
+  constructor(message: string) {
+    super(message)
+    this.name = "VoucherDiscountConfigurationError"
+  }
+}

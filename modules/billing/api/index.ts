@@ -5,6 +5,7 @@ import { createBillingAccountRoutes } from "./account.route"
 import { createBillingRoutes } from "./billing.route"
 import { createBillingTopupRoutes } from "./topup.route"
 import { createBillingSubscriptionsRoutes } from "./subscriptions.route"
+import { createLifecycleRoutes } from "./lifecycle.route"
 import { createBillingInvoicesRoutes } from "./invoices.route"
 import { createAdminBillingRoutes } from "./admin/adjust.route"
 import { createAdminAdjustmentsRoutes } from "./admin/adjustments.route"
@@ -21,6 +22,8 @@ import { createAdminOrgsRoutes } from "./admin/orgs.route"
 import { createAdminPricingRoutes } from "./admin/pricing.route"
 import { createAdminOrdersRoutes } from "./admin/orders.route"
 import { createAdminOrgDetailRoutes } from "./admin/org-detail.route"
+import { createAdminAddonsRoutes } from "./admin/addons.route"
+import { createAdminPromotionsRoutes } from "./admin/promotions.route"
 import { createAdminBillingContactsRoutes } from "./admin/contacts.route"
 import { createBillingCheckoutRoutes } from "./checkout.route"
 import { UsageLedgerService } from "../usage-ledger.service"
@@ -35,6 +38,7 @@ export const billingRoutes = new Elysia({ prefix: "/billing" })
   .use(createBillingRoutes())
   .use(createBillingTopupRoutes())
   .use(createBillingSubscriptionsRoutes())
+  .use(createLifecycleRoutes())
   .use(createBillingInvoicesRoutes())
   .use(createAdminBillingRoutes())
   .use(createAdminAdjustmentsRoutes())
@@ -52,5 +56,7 @@ export const billingRoutes = new Elysia({ prefix: "/billing" })
   .use(createAdminOrgDetailRoutes())
   .use(createAdminBillingContactsRoutes())
   .use(createBillingCheckoutRoutes())
+  .use(createAdminAddonsRoutes())
+  .use(createAdminPromotionsRoutes())
   .use(createCatalogRoutes())
   .use(createAdminAuditLogRoutes())

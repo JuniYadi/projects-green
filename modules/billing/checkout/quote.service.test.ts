@@ -1,0 +1,141 @@
+import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { Prisma } from "@prisma/client"
+
+import type { ResolvedRecurringPrice } from "../pricing/pricing.types"
+
+const mockPrisma = {
+  servicePlanAddon: { findMany: mock() },
+  voucher: { findUnique: mock() },
+  billingOrder: { count: mock() },
+  billingAccount: { findUnique: mock() },
+}
+
+mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
+
+const { CheckoutQuoteService } = await import("./quote.service")
+
+const resolvedPrice: ResolvedRecurringPrice = {
+  pricingId: "pricing-1",
+  packageCode: "VPN",
+  planId: "plan-1",
+  planCode: "PRO",
+  regionCode: "GLOBAL",
+  billingPeriod: "MONTHLY",
+  periodMonths: 1,
+  chargeUnit: "SUBSCRIPTION",
+  periodPrice: new Prisma.Decimal("100000"),
+  currency: "IDR",
+  effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
+  effectiveTo: null,
+}
+
+function buildService() {
+  return new CheckoutQuoteService(mockPrisma as never, {
+    resolvePrice: mock(async () => resolvedPrice),
+    convertCurrency: mock(async (amount: Prisma.Decimal) => amount.mul(17000)),
+    now: () => new Date("2026-08-06T10:00:00.000Z"),
+  })
+}
+
+beforeEach(() => {
+  mockPrisma.servicePlanAddon.findMany.mockReset()
+  mockPrisma.voucher.findUnique.mockReset()
+  mockPrisma.billingOrder.count.mockReset()
+  mockPrisma.billingAccount.findUnique.mockReset()
+  mockPrisma.billingAccount.findUnique.mockResolvedValue({ currency: "IDR" })
+})
+
+describe("CheckoutQuoteService", () => {
+  it("quotes selected addons and a percentage promotion", async () => {
+    mockPrisma.servicePlanAddon.findMany.mockResolvedValueOnce([
+      {
+        id: "attachment-1",
+        addonId: "addon-1",
+        isRequired: false,
+        label: "Redis",
+        description: "Fast cache",
+        addon: {
+          id: "addon-1",
+          code: "REDIS",
+          name: "Redis",
+          description: "Fast cache",
+          prices: [
+            { id: "addon-price-1", amount: new Prisma.Decimal("20000") },
+          ],
+        },
+      },
+    ])
+    mockPrisma.voucher.findUnique.mockResolvedValueOnce({
+      id: "voucher-1",
+      code: "SAVE10",
+      status: "ACTIVE",
+      kind: "PRODUCT_PROMOTION",
+      discountType: "PERCENTAGE",
+      discountValue: new Prisma.Decimal("10"),
+      currency: "IDR",
+      currencyPolicy: "MATCH_CURRENCY_ONLY",
+      firstCheckoutOnly: false,
+      allowUpgrade: false,
+      stackable: false,
+      minimumOrderAmount: null,
+      maximumDiscountAmount: null,
+      expiresAt: new Date("2026-12-31T00:00:00.000Z"),
+      targetWorkosUserId: null,
+      targetOrganizationId: null,
+      allowedPackageCodes: ["VPN"],
+      allowedPlanCodes: ["PRO"],
+      allowedBillingPeriods: ["MONTHLY"],
+    })
+    mockPrisma.billingOrder.count.mockResolvedValueOnce(0)
+
+    const quote = await buildService().createQuote({
+      organizationId: "org-1",
+      pricingId: "pricing-1",
+      addonIds: ["addon-1"],
+      voucherCode: "save10",
+      idempotencyKey: "quote-1",
+    })
+
+    expect(quote.subtotal).toBe("120000")
+    expect(quote.discount).toBe("12000")
+    expect(quote.firstPayment).toBe("108000")
+    expect(quote.addons).toHaveLength(1)
+    expect(quote.voucher?.code).toBe("SAVE10")
+    expect(quote.expiresAt).toBe("2026-08-06T10:15:00.000Z")
+  })
+
+  it("rejects an exact-currency fixed promotion mismatch", async () => {
+    mockPrisma.servicePlanAddon.findMany.mockResolvedValueOnce([])
+    mockPrisma.voucher.findUnique.mockResolvedValueOnce({
+      id: "voucher-2",
+      code: "USD20",
+      status: "ACTIVE",
+      kind: "PRODUCT_PROMOTION",
+      discountType: "FIXED",
+      discountValue: new Prisma.Decimal("20"),
+      discountCurrency: "USD",
+      currency: "USD",
+      currencyPolicy: "MATCH_CURRENCY_ONLY",
+      firstCheckoutOnly: false,
+      allowUpgrade: false,
+      stackable: false,
+      minimumOrderAmount: null,
+      maximumDiscountAmount: null,
+      expiresAt: new Date("2026-12-31T00:00:00.000Z"),
+      targetWorkosUserId: null,
+      targetOrganizationId: null,
+      allowedPackageCodes: null,
+      allowedPlanCodes: null,
+      allowedBillingPeriods: null,
+    })
+
+    await expect(
+      buildService().createQuote({
+        organizationId: "org-1",
+        pricingId: "pricing-1",
+        voucherCode: "USD20",
+        idempotencyKey: "quote-2",
+      })
+    ).rejects.toMatchObject({ code: "BILLING_CURRENCY_MISMATCH" })
+  })
+})

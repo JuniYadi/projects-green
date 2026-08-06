@@ -3,7 +3,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 
 import { prisma } from "@/lib/prisma"
 
-type BillingAuthContext = {
+export type BillingAuthContext = {
   organizationId?: string | null
   role?: string | null
   roles?: string[] | null
@@ -141,6 +141,7 @@ export const createBillingSubscriptionsRoutes = (
           dailyPerDevice: number | null
           devices: number | null
         } | null
+        const meta = sub.metadata as Record<string, unknown> | null
         const base = {
           id: sub.id,
           packageCode,
@@ -166,6 +167,7 @@ export const createBillingSubscriptionsRoutes = (
             unknown
           > | null,
           monthlyRateIdr,
+          cancelAtPeriodEnd: (meta?.cancelledAtPeriodEnd as boolean) ?? false,
           fulfillment:
             packageCode === "WHATSAPP"
               ? {

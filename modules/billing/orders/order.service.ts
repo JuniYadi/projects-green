@@ -135,10 +135,15 @@ export class BillingOrderService {
     pricingId: string
     quantity?: Prisma.Decimal
     amount?: Prisma.Decimal
+    discountAmount?: Prisma.Decimal
     periodStart?: Date
     periodEnd?: Date
     prorateMonthly?: boolean
     metadata?: Record<string, unknown>
+    voucherId?: string
+    voucherCode?: string
+    voucherCurrency?: string
+    voucherExchangeRate?: Prisma.Decimal
     idempotencyKey: string
     now?: Date
   }): Promise<BillingOrderResult> {
@@ -177,7 +182,11 @@ export class BillingOrderService {
             .div(monthEnd.getUTCDate())
             .mul(quantity)
         : price.periodPrice.mul(quantity))
-    if (amount.isNegative()) throw new Error("ORDER_AMOUNT_INVALID")
+    const discountAmount = input.discountAmount ?? new Prisma.Decimal(0)
+    if (discountAmount.isNegative() || discountAmount.gt(amount)) {
+      throw new Error("ORDER_DISCOUNT_INVALID")
+    }
+    const totalAmount = amount.sub(discountAmount)
     const metadata = input.metadata ?? {}
     const lineMetadata = { ...metadata, planId: price.planId }
     let order: OrderWithLines
@@ -195,8 +204,13 @@ export class BillingOrderService {
             status: "PENDING",
             currency: price.currency,
             subtotalAmount: amount,
-            totalAmount: amount,
+            discountAmount,
+            totalAmount,
             idempotencyKey: input.idempotencyKey,
+            voucherId: input.voucherId,
+            voucherCode: input.voucherCode,
+            voucherCurrency: input.voucherCurrency,
+            voucherExchangeRate: input.voucherExchangeRate,
             metadataJson: jsonObject(metadata),
             lines: {
               create: {

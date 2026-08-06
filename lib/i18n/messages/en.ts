@@ -196,6 +196,7 @@ export const enMessages: AppMessages = {
           tabs: {
             overview: "Overview",
             billing: "Billing",
+            manage: "Manage",
             addons: "Add-ons",
             activity: "Activity",
           },
@@ -208,6 +209,8 @@ export const enMessages: AppMessages = {
             renewal: "Renewal",
             invoiceState: "Invoice State",
             nextAction: "Next Action",
+            cancelPending: "Cancellation",
+            cancelPendingLabel: "Cancels at period end",
           },
           billing: {
             invoiceNumber: "Invoice Number",
@@ -215,6 +218,49 @@ export const enMessages: AppMessages = {
             period: "Period",
             amount: "Amount",
             paidAt: "Paid At",
+          },
+          manage: {
+            title: "Manage Subscription",
+            changePlan: {
+              title: "Change Plan",
+              description:
+                "Switch to a different billing period or plan tier. Changes take effect at the next renewal date.",
+              dialogTitle: "Change Plan",
+              dialogDescription:
+                "Review the new plan details before confirming.",
+              loadingPreview: "Loading preview…",
+              cancelBtn: "Cancel",
+              confirming: "Changing…",
+              confirmBtn: "Confirm Change",
+            },
+            cancel: {
+              title: "Cancel Subscription",
+              description:
+                "Your subscription will remain active until the end of the current billing period.",
+              button: "Cancel Subscription",
+              dialogTitle: "Cancel Subscription?",
+              dialogDescription:
+                "You will keep access until the end of the current billing period. No refunds are issued.",
+              reasonPlaceholder: "Reason for cancellation (optional)",
+              cancelBtn: "Keep Subscription",
+              confirming: "Cancelling…",
+              confirmBtn: "Yes, Cancel",
+            },
+            reinstate: {
+              title: "Reinstate Subscription",
+              description:
+                "Undo your cancellation and continue your subscription as normal.",
+              button: "Reinstate",
+              dialogTitle: "Reinstate Subscription?",
+              dialogDescription:
+                "Your subscription will continue renewing normally.",
+              reasonPlaceholder: "Reason for reinstating (optional)",
+              cancelBtn: "Keep Cancelled",
+              confirming: "Reinstating…",
+              confirmBtn: "Yes, Reinstate",
+            },
+            cancelledNote:
+              "This subscription has been cancelled and cannot be reinstated.",
           },
           addons: {
             unavailable: "Add-ons Unavailable",

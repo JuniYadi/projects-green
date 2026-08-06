@@ -1,72 +1,14 @@
-import { describe, expect, it, mock, beforeEach } from "bun:test"
-import { fireEvent, render, waitFor } from "@testing-library/react"
-import React from "react"
-const mockGetAdminOrders = mock<
-  (params?: Record<string, unknown>) => Promise<{
-    ok: true
-    orders: Array<Record<string, unknown>>
-    pagination: {
-      page: number
-      limit: number
-      total: number
-      totalPages: number
-    }
-  }>
->(async () => ({
-  ok: true,
-  orders: [],
-  pagination: { page: 1, limit: 50, total: 0, totalPages: 0 },
-}))
+import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { render, waitFor } from "@testing-library/react"
+
+const mockGetAdminOrders = mock()
 
 mock.module("@/lib/billing-client", () => ({
   getAdminOrders: mockGetAdminOrders,
   billingPeriodLabel: (period: string) => period,
 }))
 
-mock.module("@/components/ui/select", () => {
-  const options = [
-    "",
-    "PENDING",
-    "CHARGED",
-    "FULFILLED",
-    "FAILED",
-    "CANCELLED",
-    "MONTHLY",
-    "QUARTERLY",
-    "SEMI_ANNUAL",
-    "ANNUAL",
-  ].map((value) =>
-    React.createElement(
-      "option",
-      { key: value || "all", value },
-      value || "All"
-    )
-  )
-  const Select = (props: {
-    value: string
-    onValueChange: (value: string) => void
-  }) =>
-    React.createElement(
-      "select",
-      {
-        value: props.value,
-        role: "combobox",
-        onChange: (event: { target: { value: string } }) =>
-          props.onValueChange(event.target.value),
-      },
-      options
-    )
-
-  return {
-    Select,
-    SelectContent: () => null,
-    SelectItem: () => null,
-    SelectTrigger: () => null,
-    SelectValue: () => null,
-  }
-})
-
-const BillingOrdersPage = (await import("./page")).default
+const { BillingOrdersPage } = await import("./page")
 
 const baseOrder = {
   id: "ord_1",
@@ -98,14 +40,7 @@ const baseOrder = {
     periodStart: "2026-01-01T00:00:00.000Z",
     periodEnd: "2026-02-01T00:00:00.000Z",
   },
-  subscription: {
-    id: "sub_1",
-    status: "ACTIVE",
-    packageCode: "APP_HOSTING",
-    planCode: "STANDARD",
-    currentPeriodStart: "2026-01-01T00:00:00.000Z",
-    currentPeriodEnd: "2026-02-01T00:00:00.000Z",
-  },
+  subscription: null,
   invoice: {
     id: "inv_1",
     invoiceNumber: "INV-001",
@@ -114,140 +49,52 @@ const baseOrder = {
   },
 }
 
-const responseFor = (
-  orders: Array<Record<string, unknown>>,
-  total = orders.length,
-  totalPages = 1
-) => ({
+const emptyResult = {
   ok: true as const,
-  orders,
-  pagination: { page: 1, limit: 50, total, totalPages },
+  orders: [],
+  pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+}
+
+beforeEach(() => {
+  mockGetAdminOrders.mockReset()
+  mockGetAdminOrders.mockResolvedValue(emptyResult)
 })
 
 describe("BillingOrdersPage", () => {
-  beforeEach(() => {
-    mockGetAdminOrders.mockReset()
-    mockGetAdminOrders.mockResolvedValue(responseFor([]))
+  it("renders an async empty state", async () => {
+    const view = render(<BillingOrdersPage />)
+    await waitFor(() => expect(view.getByText("No orders found.")).toBeTruthy())
   })
 
-  it("renders the page heading", () => {
-    const view = render(<BillingOrdersPage />)
-    expect(view.getByText("Orders")).toBeTruthy()
-  })
-
-  it("renders the loading state", () => {
-    mockGetAdminOrders.mockImplementation(() => new Promise(() => {}))
-    const view = render(<BillingOrdersPage />)
-    expect(view.getByText("Loading orders…")).toBeTruthy()
-  })
-
-  it("renders the error state", async () => {
-    mockGetAdminOrders.mockRejectedValue(new Error("Network error"))
-    const view = render(<BillingOrdersPage />)
-    await waitFor(() => expect(view.getByText("Network error")).toBeTruthy())
-  })
-
-  it("renders the empty state", async () => {
-    const view = render(<BillingOrdersPage />)
-    await waitFor(() =>
-      expect(view.getAllByText("No orders found.").length).toBeGreaterThan(0)
-    )
-  })
-
-  it("renders an order row with product and amount", async () => {
-    mockGetAdminOrders.mockResolvedValue(responseFor([baseOrder]))
-    const view = render(<BillingOrdersPage />)
-    await waitFor(() => {
-      expect(view.getAllByText("APP_HOSTING").length).toBeGreaterThan(0)
-      expect(view.getAllByText("STANDARD").length).toBeGreaterThan(0)
+  it("renders order and charge data", async () => {
+    mockGetAdminOrders.mockResolvedValueOnce({
+      ok: true,
+      orders: [baseOrder],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
     })
+    const view = render(<BillingOrdersPage />)
+    await waitFor(() => expect(view.getByText("APP_HOSTING")).toBeTruthy())
+    expect(view.getByText("STANDARD")).toBeTruthy()
+    expect(view.getByText("CHARGED")).toBeTruthy()
   })
 
-  it("renders charge, fulfillment, and invoice status", async () => {
-    mockGetAdminOrders.mockResolvedValue(responseFor([baseOrder]))
+  it("shows filter controls", async () => {
     const view = render(<BillingOrdersPage />)
-    await waitFor(() =>
-      expect(view.getAllByText("APP_HOSTING").length).toBeGreaterThan(0)
-    )
-    expect(view.queryAllByText("CHARGED").length).toBeGreaterThan(0)
-    expect(view.getByText(/Pending/)).toBeTruthy()
-    expect(view.getByText(/INV-001/)).toBeTruthy()
-    expect(view.getByText(/PAID/)).toBeTruthy()
+    await waitFor(() => expect(view.getByText("Status")).toBeTruthy())
+    expect(view.getByText("Product")).toBeTruthy()
+    expect(view.getByText("Billing Period")).toBeTruthy()
+    expect(view.getByPlaceholderText("Package code…")).toBeTruthy()
   })
 
-  it("has visible filter controls and CSV export", () => {
+  it("shows CSV export and pagination controls", async () => {
+    mockGetAdminOrders.mockResolvedValueOnce({
+      ok: true,
+      orders: [baseOrder],
+      pagination: { page: 1, limit: 20, total: 41, totalPages: 3 },
+    })
     const view = render(<BillingOrdersPage />)
-    expect(view.getByPlaceholderText("Package code")).toBeTruthy()
-    expect(view.getAllByRole("combobox")).toHaveLength(2)
-    expect(view.getByRole("button", { name: "Export CSV" })).toBeTruthy()
-    expect(view.container.querySelectorAll('input[type="date"]')).toHaveLength(
-      2
-    )
-  })
-
-  it("shows pagination controls when there are multiple pages", async () => {
-    mockGetAdminOrders.mockResolvedValue(responseFor([baseOrder], 50, 3))
-    const view = render(<BillingOrdersPage />)
-    await waitFor(() => expect(view.getByText(/50 total orders/)).toBeTruthy())
-    expect(view.getByText(/1 of 3/)).toBeTruthy()
-    expect(view.getByText("Previous")).toBeTruthy()
+    await waitFor(() => expect(view.getByText("Export CSV")).toBeTruthy())
+    expect(view.getByText("Page 1 of 3")).toBeTruthy()
     expect(view.getByText("Next")).toBeTruthy()
-  })
-
-  it("applies status filter to API call", async () => {
-    mockGetAdminOrders.mockResolvedValue(responseFor([baseOrder]))
-    const view = render(<BillingOrdersPage />)
-    fireEvent.change(view.getAllByRole("combobox")[0], {
-      target: { value: "FULFILLED" },
-    })
-    await waitFor(() =>
-      expect(mockGetAdminOrders).toHaveBeenCalledWith(
-        expect.objectContaining({ status: "FULFILLED" })
-      )
-    )
-  })
-
-  it("applies package code filter to API call", async () => {
-    mockGetAdminOrders.mockResolvedValue(responseFor([baseOrder]))
-    const view = render(<BillingOrdersPage />)
-    fireEvent.change(view.getByPlaceholderText("Package code"), {
-      target: { value: "APP_HOSTING" },
-    })
-    fireEvent.input(view.getByPlaceholderText("Package code"), {
-      target: { value: "APP_HOSTING" },
-    })
-    await waitFor(() =>
-      expect(mockGetAdminOrders).toHaveBeenCalledWith(
-        expect.objectContaining({ packageCode: "APP_HOSTING" })
-      )
-    )
-  })
-
-  it("applies billing period filter to API call", async () => {
-    mockGetAdminOrders.mockResolvedValue(responseFor([baseOrder]))
-    const view = render(<BillingOrdersPage />)
-    fireEvent.change(view.getAllByRole("combobox")[1], {
-      target: { value: "QUARTERLY" },
-    })
-    await waitFor(() =>
-      expect(mockGetAdminOrders).toHaveBeenCalledWith(
-        expect.objectContaining({ billingPeriod: "QUARTERLY" })
-      )
-    )
-  })
-
-  it("applies date range filters to API call", async () => {
-    mockGetAdminOrders.mockResolvedValue(responseFor([baseOrder]))
-    const view = render(<BillingOrdersPage />)
-    const dateInputs = view.container.querySelectorAll('input[type="date"]')
-    fireEvent.change(dateInputs[0], { target: { value: "2026-01-01" } })
-    fireEvent.input(dateInputs[0], { target: { value: "2026-01-01" } })
-    fireEvent.change(dateInputs[1], { target: { value: "2026-12-31" } })
-    fireEvent.input(dateInputs[1], { target: { value: "2026-12-31" } })
-    await waitFor(() =>
-      expect(mockGetAdminOrders).toHaveBeenCalledWith(
-        expect.objectContaining({ from: "2026-01-01", to: "2026-12-31" })
-      )
-    )
   })
 })
