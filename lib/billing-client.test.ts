@@ -22,15 +22,30 @@ import {
   getAdminOrgs,
   getAdminOrders,
   getAdminPricing,
+  getAdminPricingMatrix,
   getAdminStats,
   getAdminSubscriptions,
+  getAccount,
   getAdminUsage,
   getAdminAuditLogs,
+  getActiveBillingCurrencies,
+  getBillingAccount,
+  getInvoice,
+  getInvoices,
+  getPaymentMethodCurrencies,
+  getPaymentMethods,
+  payWithBalance,
   refreshAdminOrgMetadata,
+  removePaymentMethod,
+  saveAdminPricingMatrix,
+  setDefaultPaymentMethod,
+  topup,
+  topupAndPay,
   updateAdminPricing,
   updateBillingAlerts,
   updateBillingContact,
   updateBillingCurrency,
+  billingPeriodLabel,
 } from "./billing-client"
 
 const jsonResponse = (body: unknown, status = 200, ok = true) =>
@@ -471,5 +486,268 @@ describe("admin billing fetch helpers", () => {
 
     mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true }, 503, false))
     await expect(getAdminStats()).rejects.toThrow("Billing API error: 503")
+  })
+})
+
+describe("customer billing client", () => {
+  beforeEach(() => {
+    mockFetch.mockReset()
+    mockGetApiBaseUrl.mockClear()
+    mockGetApiBaseUrl.mockReturnValue("https://billing.test")
+  })
+
+  it("fetches account and subscriptions", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        ok: true,
+        tenantId: "t1",
+        currency: "IDR",
+        balanceIdr: "0",
+        formattedBalance: "Rp 0",
+        isAboveWarn: false,
+        isPositive: false,
+        accountAge: "0 days",
+      })
+    )
+    await getBillingAccount()
+    expect(calledRequest().url.pathname).toBe("/api/billing/account/detail")
+  })
+
+  it("fetches account with options", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        ok: true,
+        tenantId: "t1",
+        currency: "IDR",
+        balanceIdr: "0",
+        formattedBalance: "Rp 0",
+        isAboveWarn: false,
+        isPositive: false,
+        accountAge: "0 days",
+      })
+    )
+    await getAccount()
+    expect(calledRequest().url.pathname).toBe("/api/billing/account")
+  })
+
+  it("fetches members list", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true, members: [] }))
+    await getAdminMembers()
+    expect(calledRequest().url.pathname).toBe("/api/billing/admin/members")
+  })
+
+  it("fetches invoice list with and without params", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true, invoices: [] }))
+    await getInvoices()
+    expect(calledRequest().url.href).toBe(
+      "https://billing.test/api/billing/invoices"
+    )
+
+    const params = new URLSearchParams({ status: "OPEN" })
+    mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true, invoices: [] }))
+    await getInvoices(params)
+    expect(calledRequest().url.href).toContain(
+      "/api/billing/invoices?status=OPEN"
+    )
+  })
+
+  it("fetches a single invoice", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true, invoice: {} }))
+    await getInvoice("inv-1")
+    expect(calledRequest().url.pathname).toBe("/api/billing/invoices/inv-1")
+  })
+
+  it("posts topup, payWithBalance, and topupAndPay", async () => {
+    const topupInput = {
+      amount: 100000,
+      paymentMethod: "manual_bank_transfer" as const,
+    }
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        ok: true,
+        adjustmentId: "adj-1",
+        newBalanceIdr: "100000",
+        amountIdr: "100000",
+        type: "CREDIT",
+      })
+    )
+    await topup(topupInput)
+    const req = calledRequest()
+    expect(req.url.pathname).toBe("/api/billing/topup")
+    expect(req.init.method).toBe("POST")
+    expect(JSON.parse(req.init.body as string)).toEqual(topupInput)
+
+    mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true, message: "Paid" }))
+    await payWithBalance("inv-1")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/payments/invoice/pay-with-balance"
+    )
+
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ ok: true, message: "Done", topupRequired: false })
+    )
+    await topupAndPay("inv-2")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/payments/invoice/topup-and-pay"
+    )
+  })
+})
+
+describe("payment methods client", () => {
+  beforeEach(() => {
+    mockFetch.mockReset()
+    mockGetApiBaseUrl.mockClear()
+    mockGetApiBaseUrl.mockReturnValue("https://billing.test")
+  })
+
+  it("fetches payment methods", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true, accounts: [] }))
+    await getPaymentMethods()
+    expect(calledRequest().url.pathname).toBe("/api/payments/bank-accounts")
+  })
+
+  it("sets default payment method with PATCH", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ ok: true, account: { id: "pm-1" } })
+    )
+    await setDefaultPaymentMethod("pm-1")
+    const req = calledRequest()
+    expect(req.url.pathname).toBe("/api/payments/bank-accounts/pm-1/default")
+    expect(req.init.method).toBe("PATCH")
+  })
+
+  it("removes a payment method with DELETE", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ ok: true, message: "Removed" })
+    )
+    await removePaymentMethod("pm-1")
+    const req = calledRequest()
+    expect(req.url.pathname).toBe("/api/payments/bank-accounts/pm-1")
+    expect(req.init.method).toBe("DELETE")
+  })
+})
+
+describe("pricing matrix helpers", () => {
+  beforeEach(() => {
+    mockFetch.mockReset()
+    mockGetApiBaseUrl.mockClear()
+    mockGetApiBaseUrl.mockReturnValue("https://billing.test")
+  })
+
+  it("fetches pricing matrix with encoded planId", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        ok: true,
+        data: {
+          planId: "plan-1",
+          planCode: "PRO",
+          planName: "Pro",
+          packageCode: "VPN",
+          pricing: [],
+          hasLegacyRegionalPricing: false,
+        },
+      })
+    )
+    await getAdminPricingMatrix("plan/with/slash")
+    const req = calledRequest()
+    expect(req.url.pathname).toBe(
+      "/api/billing/admin/pricing/matrix/plan%2Fwith%2Fslash"
+    )
+  })
+
+  it("saves pricing matrix with PUT", async () => {
+    const input: Parameters<typeof saveAdminPricingMatrix>[1] = {
+      enabledPeriods: ["MONTHLY"],
+      prices: { USD: { MONTHLY: "1200" } },
+    }
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        ok: true,
+        data: {
+          planId: "plan-1",
+          planCode: "PRO",
+          planName: "Pro",
+          packageCode: "VPN",
+          pricing: [],
+          hasLegacyRegionalPricing: false,
+        },
+      })
+    )
+    await saveAdminPricingMatrix("plan-1", input)
+    const req = calledRequest()
+    expect(req.url.pathname).toBe("/api/billing/admin/pricing/matrix/plan-1")
+    expect(req.init.method).toBe("PUT")
+    expect(JSON.parse(req.init.body as string)).toEqual(input)
+  })
+
+  it("filters active currencies from getActiveBillingCurrencies", async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse([
+        { code: "IDR", symbol: "Rp", isActive: true },
+        { code: "EUR", symbol: "€", isActive: false },
+      ])
+    )
+    const currencies = await getActiveBillingCurrencies()
+    expect(currencies).toHaveLength(1)
+    expect(currencies[0].code).toBe("IDR")
+    expect(calledRequest().url.pathname).toBe("/api/portal/payments/currencies")
+  })
+})
+
+describe("billingPeriodLabel", () => {
+  it("maps known billing periods to human labels", () => {
+    expect(billingPeriodLabel("MONTHLY")).toBe("Monthly")
+    expect(billingPeriodLabel("QUARTERLY")).toBe("Quarterly")
+    expect(billingPeriodLabel("SEMI_ANNUAL")).toBe("Semi-Annual")
+    expect(billingPeriodLabel("ANNUAL")).toBe("Annual")
+  })
+
+  it("returns the raw value for unknown periods, including null", () => {
+    expect(billingPeriodLabel("BIENNIAL")).toBe("BIENNIAL")
+    expect(billingPeriodLabel(null)).toBe("Unknown period")
+    expect(billingPeriodLabel("")).toBe("")
+  })
+})
+
+describe("getPaymentMethodCurrencies", () => {
+  it("returns supportedCurrencies when present and non-empty", () => {
+    const method = {
+      id: "pm-1",
+      bankCode: "BCA",
+      bankName: "Bank BCA",
+      accountName: "Acme",
+      accountNumber: "123456",
+      supportedCurrencies: ["IDR", "USD"],
+      isActive: true,
+      isDefault: false,
+    }
+    expect(getPaymentMethodCurrencies(method)).toEqual(["IDR", "USD"])
+  })
+
+  it("returns empty array when supportedCurrencies is missing", () => {
+    const method = {
+      id: "pm-1",
+      bankCode: "BCA",
+      bankName: "Bank BCA",
+      accountName: "Acme",
+      accountNumber: "123456",
+      isActive: true,
+      isDefault: false,
+    }
+    expect(getPaymentMethodCurrencies(method)).toEqual([])
+  })
+
+  it("returns empty array when supportedCurrencies is empty", () => {
+    const method = {
+      id: "pm-1",
+      bankCode: "BCA",
+      bankName: "Bank BCA",
+      accountName: "Acme",
+      accountNumber: "123456",
+      supportedCurrencies: [],
+      isActive: true,
+      isDefault: false,
+    }
+    expect(getPaymentMethodCurrencies(method)).toEqual([])
   })
 })

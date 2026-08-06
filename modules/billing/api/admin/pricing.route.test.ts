@@ -731,4 +731,495 @@ describe("admin pricing routes", () => {
     expect(response.status).toBe(200)
     expect((await response.json()).data.pricing).toEqual([])
   })
+  it("returns server error when the matrix GET encounters an exception", async () => {
+    db.servicePlan.findUnique.mockRejectedValueOnce(
+      new Error("database unavailable")
+    )
+    const response = await app().handle(
+      new Request("http://localhost/admin/pricing/matrix/plan-1")
+    )
+    expect(response.status).toBe(500)
+    expect((await response.json()).error).toBe("INTERNAL_SERVER_ERROR")
+  })
+
+  it("rejects a matrix PUT for a non-VPN plan", async () => {
+    db.servicePlan.findUnique.mockResolvedValueOnce({
+      id: "plan-1",
+      code: "SOME_CODE",
+      name: "Non-VPN Plan",
+      package: { code: "OTHER" },
+    })
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/pricing/matrix/plan-1", "PUT", {
+        enabledPeriods: ["MONTHLY"],
+        prices: { IDR: { MONTHLY: "100000" } },
+      })
+    )
+    expect(response.status).toBe(422)
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: "VALIDATION_ERROR",
+      message: "VPN plan or GLOBAL region not found.",
+    })
+  })
+
+  it("rejects a matrix PUT when a currency is inactive", async () => {
+    db.servicePlan.findUnique.mockResolvedValueOnce({
+      id: "plan-1",
+      code: "STANDARD",
+      name: "Standard VPN",
+      package: { code: "VPN" },
+    })
+    db.serviceRegion.findUnique.mockResolvedValueOnce({
+      id: "global-1",
+      code: "GLOBAL",
+    })
+    getCurrencyByCode
+      .mockResolvedValueOnce({ isActive: true })
+      .mockResolvedValueOnce({ isActive: false })
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/pricing/matrix/plan-1", "PUT", {
+        enabledPeriods: ["MONTHLY"],
+        prices: {
+          IDR: { MONTHLY: "100000" },
+          USD: { MONTHLY: "10" },
+        },
+      })
+    )
+    expect(response.status).toBe(422)
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: "VALIDATION_ERROR",
+      message: "Currency is inactive.",
+    })
+  })
+
+  it("rejects a matrix PUT when a currency is not configured", async () => {
+    db.servicePlan.findUnique.mockResolvedValueOnce({
+      id: "plan-1",
+      code: "STANDARD",
+      name: "Standard VPN",
+      package: { code: "VPN" },
+    })
+    db.serviceRegion.findUnique.mockResolvedValueOnce({
+      id: "global-1",
+      code: "GLOBAL",
+    })
+    getCurrencyByCode.mockRejectedValueOnce(new CurrencyNotFoundError("XYZ"))
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/pricing/matrix/plan-1", "PUT", {
+        enabledPeriods: ["MONTHLY"],
+        prices: { XYZ: { MONTHLY: "1" } },
+      })
+    )
+    expect(response.status).toBe(422)
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: "VALIDATION_ERROR",
+      message: "Currency is not configured.",
+    })
+  })
+
+  it("maps MatrixConflictError to a 422 CONFLICT response", async () => {
+    db.servicePlan.findUnique.mockResolvedValueOnce({
+      id: "plan-1",
+      code: "STANDARD",
+      name: "Standard VPN",
+      package: { code: "VPN" },
+    })
+    db.serviceRegion.findUnique.mockResolvedValueOnce({
+      id: "global-1",
+      code: "GLOBAL",
+    })
+    getCurrencyByCode.mockResolvedValue({ isActive: true })
+    db.servicePricing.findMany.mockResolvedValueOnce([
+      {
+        ...pricing,
+        id: "existing-idr-monthly",
+        currency: "IDR",
+        billingPeriod: "MONTHLY",
+        region: { id: "global-1", code: "GLOBAL" },
+        servicePlan: {
+          id: "plan-1",
+          code: "STANDARD",
+          package: { code: "VPN" },
+        },
+      },
+    ])
+    db.serviceSubscription.count.mockResolvedValueOnce(1)
+    // enabledPeriods does NOT include MONTHLY, so the existing IDR:MONTHLY row
+    // is deselected and MatrixConflictError is thrown when subscriptions exist.
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/pricing/matrix/plan-1", "PUT", {
+        enabledPeriods: ["QUARTERLY"],
+        prices: { IDR: { QUARTERLY: "200000" } },
+      })
+    )
+    expect(response.status).toBe(422)
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: "CONFLICT",
+      message:
+        "The last active offer for an active subscription cannot be removed.",
+    })
+  })
+
+  it("updates a matching global row instead of creating when price matches", async () => {
+    const plan = {
+      id: "plan-1",
+      code: "STANDARD",
+      name: "Standard VPN",
+      package: { code: "VPN" },
+    }
+    const globalRegion = {
+      id: "global-1",
+      code: "GLOBAL",
+      name: "Global",
+    }
+    const samePrice = new Prisma.Decimal("100000")
+    db.servicePlan.findUnique.mockResolvedValueOnce(plan)
+    db.serviceRegion.findUnique.mockResolvedValueOnce(globalRegion)
+    getCurrencyByCode.mockResolvedValue({ isActive: true })
+    db.servicePricing.findMany
+      .mockResolvedValueOnce([
+        {
+          ...pricing,
+          id: "existing-idr-monthly",
+          currency: "IDR",
+          billingPeriod: "MONTHLY",
+          periodPrice: samePrice,
+          region: globalRegion,
+          servicePlan: plan,
+          isActive: true,
+          effectiveFrom: new Date("2026-01-01"),
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          ...pricing,
+          id: "existing-idr-monthly",
+          currency: "IDR",
+          billingPeriod: "MONTHLY",
+          periodPrice: samePrice,
+          region: globalRegion,
+          servicePlan: plan,
+          isActive: true,
+          effectiveFrom: new Date("2026-01-01"),
+        },
+      ])
+    db.serviceSubscription.count.mockResolvedValue(0)
+    db.billingOrderLine.findFirst.mockResolvedValueOnce(null)
+    db.servicePricing.update.mockResolvedValueOnce({
+      ...pricing,
+      id: "existing-idr-monthly",
+      periodPrice: samePrice,
+      region: globalRegion,
+      servicePlan: plan,
+    })
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/pricing/matrix/plan-1", "PUT", {
+        enabledPeriods: ["MONTHLY"],
+        prices: { IDR: { MONTHLY: "100000" } },
+      })
+    )
+    expect(response.status).toBe(200)
+    expect(db.servicePricing.create).not.toHaveBeenCalled()
+    expect(db.servicePricing.update).toHaveBeenCalled()
+  })
+
+  it("removes a regional row when deselecting its period", async () => {
+    const plan = {
+      id: "plan-1",
+      code: "STANDARD",
+      name: "Standard VPN",
+      package: { code: "VPN" },
+    }
+    const globalRegion = {
+      id: "global-1",
+      code: "GLOBAL",
+      name: "Global",
+    }
+    db.servicePlan.findUnique.mockResolvedValueOnce(plan)
+    db.serviceRegion.findUnique.mockResolvedValueOnce(globalRegion)
+    getCurrencyByCode.mockResolvedValue({ isActive: true })
+    db.servicePricing.findMany
+      .mockResolvedValueOnce([
+        {
+          ...pricing,
+          id: "regional-idr-monthly",
+          currency: "IDR",
+          billingPeriod: "MONTHLY",
+          region: { id: "region-1", code: "ID" },
+          servicePlan: plan,
+          isActive: true,
+        },
+      ])
+      .mockResolvedValueOnce([])
+    db.serviceSubscription.count.mockResolvedValueOnce(0)
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/pricing/matrix/plan-1", "PUT", {
+        enabledPeriods: ["QUARTERLY"],
+        prices: { IDR: { QUARTERLY: "200000" } },
+      })
+    )
+    expect(response.status).toBe(200)
+    expect(db.servicePricing.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: ["regional-idr-monthly"] } },
+        data: { isActive: false },
+      })
+    )
+  })
+
+  it("returns 422 CONFLICT when a matrix PUT hits a Prisma uniqueness constraint", async () => {
+    const plan = {
+      id: "plan-1",
+      code: "STANDARD",
+      name: "Standard VPN",
+      package: { code: "VPN" },
+    }
+    const globalRegion = {
+      id: "global-1",
+      code: "GLOBAL",
+      name: "Global",
+    }
+    db.servicePlan.findUnique.mockResolvedValueOnce(plan)
+    db.serviceRegion.findUnique.mockResolvedValueOnce(globalRegion)
+    getCurrencyByCode.mockResolvedValue({ isActive: true })
+    db.servicePricing.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+    db.serviceSubscription.count.mockResolvedValueOnce(0)
+    db.servicePricing.create.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError("unique constraint", {
+        code: "P2002",
+        clientVersion: "5.22.0",
+      })
+    )
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/pricing/matrix/plan-1", "PUT", {
+        enabledPeriods: ["MONTHLY"],
+        prices: { IDR: { MONTHLY: "100000" } },
+      })
+    )
+    expect(response.status).toBe(422)
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: "CONFLICT",
+      message: "A price with this effective identity already exists.",
+    })
+  })
+
+  it("rejects a matrix PUT when a period has no price for any currency", async () => {
+    db.servicePlan.findUnique.mockResolvedValueOnce({
+      id: "plan-1",
+      code: "STANDARD",
+      name: "Standard VPN",
+      package: { code: "VPN" },
+    })
+    db.serviceRegion.findUnique.mockResolvedValueOnce({
+      id: "global-1",
+      code: "GLOBAL",
+    })
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/pricing/matrix/plan-1", "PUT", {
+        enabledPeriods: ["MONTHLY", "QUARTERLY"],
+        prices: { IDR: { MONTHLY: "100000" } },
+      })
+    )
+    expect(response.status).toBe(422)
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: "VALIDATION_ERROR",
+      message: "At least one QUARTERLY price is required.",
+    })
+    expect(db.$transaction).not.toHaveBeenCalled()
+  })
+
+  it("rejects a matrix PUT when a price exceeds the maximum allowed value", async () => {
+    db.servicePlan.findUnique.mockResolvedValueOnce({
+      id: "plan-1",
+      code: "STANDARD",
+      name: "Standard VPN",
+      package: { code: "VPN" },
+    })
+    db.serviceRegion.findUnique.mockResolvedValueOnce({
+      id: "global-1",
+      code: "GLOBAL",
+    })
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/pricing/matrix/plan-1", "PUT", {
+        enabledPeriods: ["MONTHLY"],
+        prices: { IDR: { MONTHLY: "99999999999.99" } },
+      })
+    )
+    expect(response.status).toBe(422)
+    expect((await response.json()).message).toBe(
+      "Price exceeds the maximum allowed value."
+    )
+  })
+
+  it("rejects a matrix PUT when a price has too many decimal places", async () => {
+    db.servicePlan.findUnique.mockResolvedValueOnce({
+      id: "plan-1",
+      code: "STANDARD",
+      name: "Standard VPN",
+      package: { code: "VPN" },
+    })
+    db.serviceRegion.findUnique.mockResolvedValueOnce({
+      id: "global-1",
+      code: "GLOBAL",
+    })
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/pricing/matrix/plan-1", "PUT", {
+        enabledPeriods: ["MONTHLY"],
+        prices: { IDR: { MONTHLY: "100.123" } },
+      })
+    )
+    expect(response.status).toBe(422)
+    expect((await response.json()).message).toBe(
+      "Prices must be non-negative decimals with at most two fractional digits."
+    )
+  })
+
+  it("rejects a matrix PUT when duplicate currency keys are present", async () => {
+    db.servicePlan.findUnique.mockResolvedValueOnce({
+      id: "plan-1",
+      code: "STANDARD",
+      name: "Standard VPN",
+      package: { code: "VPN" },
+    })
+    db.serviceRegion.findUnique.mockResolvedValueOnce({
+      id: "global-1",
+      code: "GLOBAL",
+    })
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/pricing/matrix/plan-1", "PUT", {
+        enabledPeriods: ["MONTHLY"],
+        prices: {
+          idr: { MONTHLY: "100000" },
+          IDR: { MONTHLY: "200000" },
+        },
+      })
+    )
+    expect(response.status).toBe(422)
+    expect((await response.json()).message).toBe(
+      "Duplicate currency keys are not allowed."
+    )
+  })
+
+  it("rejects a matrix PUT with an empty currency code", async () => {
+    db.servicePlan.findUnique.mockResolvedValueOnce({
+      id: "plan-1",
+      code: "STANDARD",
+      name: "Standard VPN",
+      package: { code: "VPN" },
+    })
+    db.serviceRegion.findUnique.mockResolvedValueOnce({
+      id: "global-1",
+      code: "GLOBAL",
+    })
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/pricing/matrix/plan-1", "PUT", {
+        enabledPeriods: ["MONTHLY"],
+        prices: { "   ": { MONTHLY: "100000" } },
+      })
+    )
+    expect(response.status).toBe(422)
+    expect((await response.json()).message).toBe("Currency is required.")
+  })
+
+  it("deactivates the charged row and creates a new one when price differs", async () => {
+    db.servicePricing.findMany.mockReset()
+    db.billingOrderLine.findFirst.mockReset()
+    db.servicePricing.updateMany.mockReset()
+    db.servicePricing.create.mockReset()
+    db.serviceSubscription.count.mockReset()
+    const plan = {
+      id: "plan-1",
+      code: "STANDARD",
+      name: "Standard VPN",
+      package: { code: "VPN" },
+    }
+    const globalRegion = {
+      id: "global-1",
+      code: "GLOBAL",
+      name: "Global",
+    }
+    db.servicePlan.findUnique.mockResolvedValueOnce(plan)
+    db.serviceRegion.findUnique.mockResolvedValueOnce(globalRegion)
+    getCurrencyByCode.mockResolvedValue({ isActive: true })
+    db.servicePricing.findMany
+      .mockResolvedValueOnce([
+        {
+          ...pricing,
+          id: "charged-idr-monthly",
+          currency: "IDR",
+          billingPeriod: "MONTHLY",
+          periodPrice: new Prisma.Decimal("50000"),
+          region: globalRegion,
+          servicePlan: plan,
+          isActive: true,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          ...pricing,
+          id: "new-idr-monthly",
+          currency: "IDR",
+          billingPeriod: "MONTHLY",
+          periodPrice: new Prisma.Decimal("100000"),
+          region: globalRegion,
+          servicePlan: plan,
+          isActive: true,
+        },
+      ])
+    db.serviceSubscription.count.mockResolvedValueOnce(0)
+    db.billingOrderLine.findFirst.mockResolvedValueOnce({ id: "line-1" })
+    db.servicePricing.updateMany.mockResolvedValue({ count: 1 })
+    db.servicePricing.create.mockResolvedValueOnce({
+      ...pricing,
+      id: "new-idr-monthly",
+      currency: "IDR",
+      billingPeriod: "MONTHLY",
+      region: globalRegion,
+      servicePlan: plan,
+    })
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/pricing/matrix/plan-1", "PUT", {
+        enabledPeriods: ["MONTHLY"],
+        prices: { IDR: { MONTHLY: "100000" } },
+      })
+    )
+    expect(response.status).toBe(200)
+    expect(db.servicePricing.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: ["charged-idr-monthly"] } },
+        data: { isActive: false },
+      })
+    )
+    expect(db.servicePricing.create).toHaveBeenCalled()
+  })
+
+  it("returns a server error when the matrix PUT encounters an unexpected error", async () => {
+    db.servicePlan.findUnique.mockResolvedValueOnce({
+      id: "plan-1",
+      code: "STANDARD",
+      name: "Standard VPN",
+      package: { code: "VPN" },
+    })
+    db.serviceRegion.findUnique.mockResolvedValueOnce({
+      id: "global-1",
+      code: "GLOBAL",
+    })
+    getCurrencyByCode.mockRejectedValueOnce(new Error("unexpected"))
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/pricing/matrix/plan-1", "PUT", {
+        enabledPeriods: ["MONTHLY"],
+        prices: { IDR: { MONTHLY: "100000" } },
+      })
+    )
+    expect(response.status).toBe(500)
+    expect((await response.json()).error).toBe("INTERNAL_SERVER_ERROR")
+  })
 })
