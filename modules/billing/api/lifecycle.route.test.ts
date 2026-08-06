@@ -9,7 +9,6 @@ const mockFindUnique = mock()
 const mockServicePricingFindUnique = mock()
 const mockBillingAccountFindUnique = mock()
 const mockAuditCreate = mock()
-
 const mockPrismaClient = {
   billingAccount: {
     findUnique: mockFindBillingAccount,
@@ -27,10 +26,28 @@ const mockPrismaClient = {
   },
 }
 
+const mockCancelAtPeriodEnd = mock()
+const mockReinstate = mock()
+const mockPreviewChangePlan = mock()
+const mockChangePlan = mock()
+const mockLifecycleService = {
+  cancelAtPeriodEnd: mockCancelAtPeriodEnd,
+  reinstate: mockReinstate,
+  previewChangePlan: mockPreviewChangePlan,
+  changePlan: mockChangePlan,
+}
+
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrismaClient,
 }))
+// Keep the Prisma mock installed before loading routes and their service error classes.
 const { createLifecycleRoutes } = await import("./lifecycle.route")
+const {
+  SubscriptionNotFoundError,
+  SubscriptionAlreadyCancelledError,
+  PricingNotFoundError,
+  SamePlanError,
+} = await import("../lifecycle.service")
 
 const SUB_ID = "11111111-1111-4111-8111-111111111111"
 const TENANT_ID = "22222222-2222-4222-8222-222222222222"
@@ -77,6 +94,20 @@ function makeApp(
     )
     .compile()
 }
+function makeServiceApp(auth: MockAuthContext = defaultAuth) {
+  return new Elysia()
+    .use(
+      createLifecycleRoutes({
+        authenticate: async () => auth,
+        lifecycleService: mockLifecycleService as unknown as NonNullable<
+          NonNullable<
+            Parameters<typeof createLifecycleRoutes>[0]
+          >["lifecycleService"]
+        >,
+      })
+    )
+    .compile()
+}
 
 describe("LifecycleRoute", () => {
   beforeEach(() => {
@@ -88,12 +119,25 @@ describe("LifecycleRoute", () => {
       mockServicePricingFindUnique,
       mockBillingAccountFindUnique,
       mockAuditCreate,
+      mockCancelAtPeriodEnd,
+      mockReinstate,
+      mockPreviewChangePlan,
+      mockChangePlan,
     ]) {
       fn.mockReset()
     }
     mockFindBillingAccount.mockResolvedValue({ tenantId: TENANT_ID })
+    mockFindFirst.mockResolvedValue(null)
+    mockFindUnique.mockResolvedValue(null)
+    mockUpdate.mockResolvedValue(undefined)
+    mockServicePricingFindUnique.mockResolvedValue(null)
+    mockBillingAccountFindUnique.mockResolvedValue(null)
+    mockAuditCreate.mockResolvedValue(undefined)
+    mockCancelAtPeriodEnd.mockResolvedValue(undefined)
+    mockReinstate.mockResolvedValue(undefined)
+    mockPreviewChangePlan.mockResolvedValue(undefined)
+    mockChangePlan.mockResolvedValue(undefined)
   })
-
   // ── Cancel ────────────────────────────────────────────────────────────────
 
   describe("POST /subscriptions/:id/cancel", () => {
@@ -472,6 +516,388 @@ describe("LifecycleRoute", () => {
       expect(res.status).toBe(422)
       const body = await res.json()
       expect(body.error).toBe("SAME_PLAN")
+    })
+  })
+  describe("route mappings with an explicit lifecycle service", () => {
+    it("returns 403 when the authenticated user has no active organization", async () => {
+      const app = makeServiceApp({
+        user: { id: "user-1", email: "user@test.com" },
+        organizationId: null,
+      })
+
+      const res = await app.handle(
+        new Request(`http://localhost/subscriptions/${SUB_ID}/cancel`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        })
+      )
+
+      expect(res.status).toBe(403)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "FORBIDDEN",
+        message: "No active organization found for billing.",
+      })
+      expect(mockFindBillingAccount).not.toHaveBeenCalled()
+      expect(mockCancelAtPeriodEnd).not.toHaveBeenCalled()
+    })
+
+    it("returns the billing-account resolution error body", async () => {
+      mockFindBillingAccount.mockResolvedValueOnce(null)
+      const app = makeServiceApp()
+
+      const res = await app.handle(
+        new Request(`http://localhost/subscriptions/${SUB_ID}/cancel`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        })
+      )
+
+      expect(res.status).toBe(403)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "FORBIDDEN",
+        message: "No billing account found.",
+      })
+      expect(mockCancelAtPeriodEnd).not.toHaveBeenCalled()
+    })
+
+    it("maps cancel validation failures to a 422 validation response", async () => {
+      const app = makeServiceApp()
+      const res = await app.handle(
+        new Request(`http://localhost/subscriptions/${SUB_ID}/cancel`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: "x".repeat(501) }),
+        })
+      )
+
+      expect(res.status).toBe(422)
+      expect(await res.json()).toMatchObject({ type: "validation", on: "body" })
+      expect(mockCancelAtPeriodEnd).not.toHaveBeenCalled()
+    })
+
+    it("passes the resolved tenant and actor to cancel and returns its success body", async () => {
+      const result = {
+        ok: true,
+        transition: "CANCELLED_AT_PERIOD_END",
+        effectiveDate: "2026-07-01T00:00:00.000Z",
+        currentPeriodEnd: "2026-07-01T00:00:00.000Z",
+        subscription: { id: SUB_ID, cancelAtPeriodEnd: true },
+      }
+      mockCancelAtPeriodEnd.mockResolvedValueOnce(result)
+      const app = makeServiceApp()
+
+      const res = await app.handle(
+        new Request(`http://localhost/subscriptions/${SUB_ID}/cancel`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: "Too expensive" }),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual(result)
+      expect(mockFindBillingAccount).toHaveBeenCalledWith({
+        where: { organizationId: "org-1" },
+        select: { tenantId: true },
+      })
+      expect(mockCancelAtPeriodEnd).toHaveBeenCalledWith(
+        TENANT_ID,
+        SUB_ID,
+        "Too expensive",
+        "user-1"
+      )
+    })
+
+    it("maps cancel domain errors and unexpected errors", async () => {
+      const app = makeServiceApp()
+
+      mockCancelAtPeriodEnd.mockRejectedValueOnce(
+        new SubscriptionNotFoundError()
+      )
+      let res = await app.handle(
+        new Request(`http://localhost/subscriptions/${SUB_ID}/cancel`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        })
+      )
+      expect(res.status).toBe(404)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "NOT_FOUND",
+        message: "Subscription not found.",
+      })
+
+      mockCancelAtPeriodEnd.mockRejectedValueOnce(
+        new SubscriptionAlreadyCancelledError()
+      )
+      res = await app.handle(
+        new Request(`http://localhost/subscriptions/${SUB_ID}/cancel`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        })
+      )
+      expect(res.status).toBe(422)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "ALREADY_CANCELLED",
+        message: "Subscription is already cancelled.",
+      })
+
+      mockCancelAtPeriodEnd.mockRejectedValueOnce(new Error("database down"))
+      res = await app.handle(
+        new Request(`http://localhost/subscriptions/${SUB_ID}/cancel`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        })
+      )
+      expect(res.status).toBe(500)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "INTERNAL_SERVER_ERROR",
+        message: "Something went wrong while cancelling the subscription.",
+      })
+    })
+
+    it("maps reinstate validation, success, not-found, and server errors", async () => {
+      const app = makeServiceApp()
+      let res = await app.handle(
+        new Request(`http://localhost/subscriptions/${SUB_ID}/reinstate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: "x".repeat(501) }),
+        })
+      )
+      expect(res.status).toBe(422)
+      expect(await res.json()).toMatchObject({ type: "validation", on: "body" })
+
+      const result = {
+        ok: true,
+        transition: "REINSTATED",
+        subscription: { id: SUB_ID, cancelAtPeriodEnd: false },
+      }
+      mockReinstate.mockResolvedValueOnce(result)
+      res = await app.handle(
+        new Request(`http://localhost/subscriptions/${SUB_ID}/reinstate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: "Changed my mind" }),
+        })
+      )
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual(result)
+      expect(mockReinstate).toHaveBeenCalledWith(
+        TENANT_ID,
+        SUB_ID,
+        "Changed my mind",
+        "user-1"
+      )
+
+      mockReinstate.mockRejectedValueOnce(new SubscriptionNotFoundError())
+      res = await app.handle(
+        new Request(`http://localhost/subscriptions/${SUB_ID}/reinstate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        })
+      )
+      expect(res.status).toBe(404)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "NOT_FOUND",
+        message: "Subscription not found or not pending cancellation.",
+      })
+
+      mockReinstate.mockRejectedValueOnce(new Error("database down"))
+      res = await app.handle(
+        new Request(`http://localhost/subscriptions/${SUB_ID}/reinstate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        })
+      )
+      expect(res.status).toBe(500)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "INTERNAL_SERVER_ERROR",
+        message: "Something went wrong while reinstating the subscription.",
+      })
+    })
+
+    it("maps preview validation, success, pricing, subscription, and server errors", async () => {
+      const app = makeServiceApp()
+      let res = await app.handle(
+        new Request(
+          `http://localhost/subscriptions/${SUB_ID}/change-plan/preview?pricingId=`
+        )
+      )
+      expect(res.status).toBe(422)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "VALIDATION_ERROR",
+        message: "Invalid pricing ID.",
+      })
+
+      const result = {
+        ok: true,
+        subscription: { id: SUB_ID },
+        immediateCharge: null,
+      }
+      mockPreviewChangePlan.mockResolvedValueOnce(result)
+      res = await app.handle(
+        new Request(
+          `http://localhost/subscriptions/${SUB_ID}/change-plan/preview?pricingId=${PRICING_ID}`
+        )
+      )
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual(result)
+      expect(mockPreviewChangePlan).toHaveBeenCalledWith(
+        TENANT_ID,
+        SUB_ID,
+        PRICING_ID
+      )
+
+      mockPreviewChangePlan.mockRejectedValueOnce(
+        new SubscriptionNotFoundError()
+      )
+      res = await app.handle(
+        new Request(
+          `http://localhost/subscriptions/${SUB_ID}/change-plan/preview?pricingId=${PRICING_ID}`
+        )
+      )
+      expect(res.status).toBe(404)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "NOT_FOUND",
+        message: "Subscription not found.",
+      })
+
+      mockPreviewChangePlan.mockRejectedValueOnce(new PricingNotFoundError())
+      res = await app.handle(
+        new Request(
+          `http://localhost/subscriptions/${SUB_ID}/change-plan/preview?pricingId=${PRICING_ID}`
+        )
+      )
+      expect(res.status).toBe(422)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "PRICING_NOT_FOUND",
+        message: "Pricing not found.",
+      })
+
+      mockPreviewChangePlan.mockRejectedValueOnce(new Error("database down"))
+      res = await app.handle(
+        new Request(
+          `http://localhost/subscriptions/${SUB_ID}/change-plan/preview?pricingId=${PRICING_ID}`
+        )
+      )
+      expect(res.status).toBe(500)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "INTERNAL_SERVER_ERROR",
+        message: "Something went wrong while previewing the plan change.",
+      })
+    })
+
+    it("maps change-plan validation, success, domain, and server errors", async () => {
+      const app = makeServiceApp()
+      let res = await app.handle(
+        new Request(`http://localhost/subscriptions/${SUB_ID}/change-plan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pricingId: "" }),
+        })
+      )
+      expect(res.status).toBe(422)
+      expect(await res.json()).toMatchObject({ type: "validation", on: "body" })
+
+      const result = {
+        ok: true,
+        transition: "PLAN_CHANGED",
+        subscription: { id: SUB_ID, pricingId: PRICING_ID },
+      }
+      mockChangePlan.mockResolvedValueOnce(result)
+      res = await app.handle(
+        new Request(`http://localhost/subscriptions/${SUB_ID}/change-plan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pricingId: PRICING_ID }),
+        })
+      )
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual(result)
+      expect(mockChangePlan).toHaveBeenCalledWith(
+        TENANT_ID,
+        SUB_ID,
+        PRICING_ID,
+        "user-1"
+      )
+
+      mockChangePlan.mockRejectedValueOnce(new SubscriptionNotFoundError())
+      res = await app.handle(
+        new Request(`http://localhost/subscriptions/${SUB_ID}/change-plan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pricingId: PRICING_ID }),
+        })
+      )
+      expect(res.status).toBe(404)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "NOT_FOUND",
+        message: "Subscription not found.",
+      })
+
+      mockChangePlan.mockRejectedValueOnce(new PricingNotFoundError())
+      res = await app.handle(
+        new Request(`http://localhost/subscriptions/${SUB_ID}/change-plan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pricingId: PRICING_ID }),
+        })
+      )
+      expect(res.status).toBe(422)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "PRICING_NOT_FOUND",
+        message: "Pricing not found.",
+      })
+
+      mockChangePlan.mockRejectedValueOnce(new SamePlanError())
+      res = await app.handle(
+        new Request(`http://localhost/subscriptions/${SUB_ID}/change-plan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pricingId: PRICING_ID }),
+        })
+      )
+      expect(res.status).toBe(422)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "SAME_PLAN",
+        message: "New pricing is the same as current.",
+      })
+
+      mockChangePlan.mockRejectedValueOnce(new Error("database down"))
+      res = await app.handle(
+        new Request(`http://localhost/subscriptions/${SUB_ID}/change-plan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pricingId: PRICING_ID }),
+        })
+      )
+      expect(res.status).toBe(500)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "INTERNAL_SERVER_ERROR",
+        message: "Something went wrong while changing the subscription plan.",
+      })
     })
   })
 })

@@ -6,8 +6,8 @@ import {
   defaultAuthNoUser,
 } from "@/test/helpers/test-auth"
 
-import { createBillingCheckoutRoutes } from "./checkout.route"
 import { RecurringPriceResolutionError } from "../pricing/pricing.service"
+import { CheckoutQuoteError } from "../checkout/quote.service"
 
 const mockCreateOrder = mock()
 const mockCheckoutOrder = mock()
@@ -19,6 +19,8 @@ mock.module("@/modules/billing/orders/order.service", () => ({
     checkoutOrder = mockCheckoutOrder
   },
 }))
+
+const { createBillingCheckoutRoutes } = await import("./checkout.route")
 
 function buildApp(
   authContext: MockAuthContext,
@@ -44,6 +46,51 @@ function makeRequest(
     })
   )
 }
+function makeQuoteRequest(
+  app: ReturnType<typeof buildApp>,
+  body: Record<string, unknown>
+) {
+  return app.handle(
+    new Request("http://localhost/checkout/quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+  )
+}
+
+const pendingOrderResult = {
+  orderId: "order-1",
+  status: "PENDING" as const,
+  subscriptionId: null,
+  invoiceId: null,
+  invoiceLineId: null,
+  amount: "50000",
+  currency: "IDR",
+  billingPeriod: "MONTHLY" as const,
+  periodStart: "2026-01-01T00:00:00.000Z",
+  periodEnd: "2026-02-01T00:00:00.000Z",
+}
+
+const defaultQuote = {
+  quoteId: "quote-1",
+  quoteToken: "quote-token-1",
+  pricingId: "pricing-1",
+  packageCode: "VPN",
+  planCode: "PRO",
+  currency: "IDR",
+  billingPeriod: "MONTHLY" as const,
+  quantity: "1",
+  periodStart: "2026-08-06T10:00:00.000Z",
+  periodEnd: "2026-09-06T10:00:00.000Z",
+  subtotal: "120000",
+  discount: "12000",
+  firstPayment: "108000",
+  nextRenewal: "2026-09-06T10:00:00.000Z",
+  addons: [],
+  voucher: null,
+  expiresAt: "2026-08-06T10:15:00.000Z",
+}
 
 const fulfilledOrderResult = {
   orderId: "order-1",
@@ -60,9 +107,112 @@ const fulfilledOrderResult = {
 
 describe("POST /billing/checkout", () => {
   beforeEach(() => {
-    mockCreateOrder.mockReset()
-    mockCheckoutOrder.mockReset()
-    mockQuoteService.createQuote.mockReset()
+    mockCreateOrder.mockClear()
+    mockCheckoutOrder.mockClear()
+    mockQuoteService.createQuote.mockClear()
+    mockCreateOrder.mockResolvedValue({ ...pendingOrderResult })
+    mockCheckoutOrder.mockResolvedValue({ ...fulfilledOrderResult })
+    mockQuoteService.createQuote.mockResolvedValue({ ...defaultQuote })
+  })
+  describe("quote request guards and errors", () => {
+    it("returns 401 when quote requester is not signed in", async () => {
+      const response = await makeQuoteRequest(buildApp(defaultAuthNoUser), {
+        pricingId: "pricing-1",
+        idempotencyKey: "quote-unauthorized",
+      })
+
+      expect(response.status).toBe(401)
+      await expect(response.json()).resolves.toMatchObject({
+        ok: false,
+        error: "UNAUTHORIZED",
+      })
+    })
+
+    it("returns 403 when quote requester has no active organization", async () => {
+      const response = await makeQuoteRequest(
+        buildApp({ ...defaultAuth, organizationId: null }),
+        { pricingId: "pricing-1", idempotencyKey: "quote-no-org" }
+      )
+
+      expect(response.status).toBe(403)
+      await expect(response.json()).resolves.toMatchObject({
+        ok: false,
+        error: "NO_ORGANIZATION",
+      })
+    })
+
+    it("returns 400 for an invalid quote request body", async () => {
+      const response = await makeQuoteRequest(buildApp(defaultAuth), {
+        pricingId: "",
+        idempotencyKey: "quote-invalid",
+      })
+
+      expect(response.status).toBe(400)
+      await expect(response.json()).resolves.toMatchObject({
+        ok: false,
+        error: "VALIDATION_ERROR",
+      })
+      expect(mockQuoteService.createQuote).not.toHaveBeenCalled()
+    })
+
+    it("maps quote service failures to their HTTP contracts", async () => {
+      const cases = [
+        {
+          error: new RecurringPriceResolutionError(
+            "PRICE_NOT_FOUND",
+            "missing"
+          ),
+          status: 400,
+          code: "PRICING_NOT_FOUND",
+        },
+        {
+          error: new CheckoutQuoteError(
+            "VOUCHER_NOT_FOUND",
+            "Voucher not found."
+          ),
+          status: 404,
+          code: "VOUCHER_NOT_FOUND",
+        },
+        {
+          error: new CheckoutQuoteError(
+            "PRICING_NOT_FOUND",
+            "Pricing not found."
+          ),
+          status: 404,
+          code: "PRICING_NOT_FOUND",
+        },
+        {
+          error: new CheckoutQuoteError(
+            "INVALID_QUANTITY",
+            "Quantity is invalid."
+          ),
+          status: 422,
+          code: "INVALID_QUANTITY",
+        },
+        {
+          error: new Error("QUOTE_DATABASE_ERROR"),
+          status: 500,
+          code: "INTERNAL_ERROR",
+        },
+      ]
+
+      for (const [index, testCase] of cases.entries()) {
+        mockQuoteService.createQuote.mockRejectedValueOnce(testCase.error)
+        const response = await makeQuoteRequest(
+          buildApp(defaultAuth, mockQuoteService),
+          {
+            pricingId: "pricing-1",
+            idempotencyKey: `quote-error-${index}`,
+          }
+        )
+
+        expect(response.status).toBe(testCase.status)
+        await expect(response.json()).resolves.toMatchObject({
+          ok: false,
+          error: testCase.code,
+        })
+      }
+    })
   })
 
   it("returns a quote with addon and voucher totals", async () => {
@@ -100,13 +250,47 @@ describe("POST /billing/checkout", () => {
     )
 
     expect(response.status).toBe(200)
-    expect((await response.json()).firstPayment).toBe("108000")
+    const body = (await response.json()) as Record<string, unknown>
+    expect(body).toMatchObject({
+      ok: true,
+      quoteId: "quote-1",
+      quoteToken: "quote-token-1",
+      subtotal: "120000",
+      discount: "12000",
+      firstPayment: "108000",
+      nextRenewal: "2026-09-06T10:00:00.000Z",
+    })
     expect(mockQuoteService.createQuote).toHaveBeenCalledWith(
       expect.objectContaining({
         addonIds: ["addon-1"],
         voucherCode: "SAVE10",
       })
     )
+  })
+  it("maps quote failures before order creation", async () => {
+    mockQuoteService.createQuote.mockRejectedValueOnce(
+      new CheckoutQuoteError(
+        "VOUCHER_EXPIRED",
+        "This voucher is no longer active."
+      )
+    )
+
+    const response = await makeRequest(
+      buildApp(defaultAuth, mockQuoteService),
+      {
+        pricingId: "pricing-1",
+        voucherCode: "EXPIRED",
+        idempotencyKey: "checkout-quote-error",
+      }
+    )
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toMatchObject({
+      ok: false,
+      error: "VOUCHER_EXPIRED",
+      message: "This voucher is no longer active.",
+    })
+    expect(mockCreateOrder).not.toHaveBeenCalled()
   })
 
   it("uses the quote discount when creating the order", async () => {
@@ -337,6 +521,21 @@ describe("POST /billing/checkout", () => {
       expect(response.status).toBe(500)
       expect((await response.json()).error).toBe("INTERNAL_ERROR")
     })
+    it("maps non-Error create-order failures to an internal error", async () => {
+      mockCreateOrder.mockRejectedValueOnce("DATABASE_ERROR")
+
+      const response = await makeRequest(buildApp(defaultAuth), {
+        pricingId: "pricing-1",
+        idempotencyKey: "key-string-error",
+      })
+
+      expect(response.status).toBe(500)
+      await expect(response.json()).resolves.toMatchObject({
+        ok: false,
+        error: "INTERNAL_ERROR",
+        message: "Unable to create order.",
+      })
+    })
 
     it("maps charge failures", async () => {
       const app = buildApp(defaultAuth)
@@ -391,6 +590,34 @@ describe("POST /billing/checkout", () => {
       })
       expect(response.status).toBe(500)
       expect((await response.json()).error).toBe("FULFILLMENT_ERROR")
+      mockCheckoutOrder.mockRejectedValueOnce("RAW_FULFILLMENT_FAILURE")
+      response = await makeRequest(app, {
+        pricingId: "pricing-1",
+        idempotencyKey: "key-3",
+      })
+      expect(response.status).toBe(500)
+      await expect(response.json()).resolves.toMatchObject({
+        ok: false,
+        error: "FULFILLMENT_ERROR",
+        message: "Fulfillment failed: RAW_FULFILLMENT_FAILURE",
+      })
+    })
+    it("maps checkout billing account failures to an internal error", async () => {
+      mockCheckoutOrder.mockRejectedValueOnce(
+        new Error("BILLING_ACCOUNT_NOT_FOUND")
+      )
+
+      const response = await makeRequest(buildApp(defaultAuth), {
+        pricingId: "pricing-1",
+        idempotencyKey: "checkout-account-error",
+      })
+
+      expect(response.status).toBe(500)
+      await expect(response.json()).resolves.toMatchObject({
+        ok: false,
+        error: "INTERNAL_ERROR",
+        message: "Unable to charge order.",
+      })
     })
   })
 
@@ -426,6 +653,25 @@ describe("POST /billing/checkout", () => {
       }
       expect(body.ok).toBe(false)
       expect(body.error).toBe("FULFILLMENT_NOT_SUPPORTED")
+    })
+    it("maps all unsupported fulfillment configuration errors", async () => {
+      for (const [index, message] of [
+        "FULFILLMENT_NOT_IMPLEMENTED",
+        "PRODUCT does not have a fulfillment adapter",
+        "FULFILLMENT_NOT_CONFIGURED",
+      ].entries()) {
+        mockCheckoutOrder.mockRejectedValueOnce(new Error(message))
+        const response = await makeRequest(buildApp(defaultAuth), {
+          pricingId: "pricing-1",
+          idempotencyKey: `unsupported-${index}`,
+        })
+
+        expect(response.status).toBe(422)
+        await expect(response.json()).resolves.toMatchObject({
+          ok: false,
+          error: "FULFILLMENT_NOT_SUPPORTED",
+        })
+      }
     })
   })
 

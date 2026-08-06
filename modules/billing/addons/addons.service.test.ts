@@ -136,6 +136,15 @@ describe("AddonsService", () => {
     mockDb.servicePlanAddon.count.mockReset()
     mockDb.serviceSubscriptionAddon.count.mockReset()
     mockDb.servicePlan.findUnique.mockReset()
+    mockDb.serviceAddon.findMany.mockResolvedValue([])
+    mockDb.serviceAddon.findUnique.mockResolvedValue(null)
+    mockDb.serviceAddon.count.mockResolvedValue(0)
+    mockDb.servicePlanAddon.findMany.mockResolvedValue([])
+    mockDb.servicePlanAddon.findUnique.mockResolvedValue(null)
+    mockDb.servicePlanAddon.findFirst.mockResolvedValue(null)
+    mockDb.servicePlanAddon.count.mockResolvedValue(0)
+    mockDb.serviceSubscriptionAddon.count.mockResolvedValue(0)
+    mockDb.servicePlan.findUnique.mockResolvedValue(null)
     service = new AddonsService({ prisma: mockDb as never })
   })
 
@@ -304,6 +313,22 @@ describe("AddonsService", () => {
         })
       )
     })
+    it("updates billing mode without replacing prices", async () => {
+      mockDb.serviceAddon.findUnique.mockResolvedValueOnce(addonRecord)
+      mockDb.serviceAddon.update.mockResolvedValueOnce(addonRecord)
+
+      await service.updateAddon("addon-1", { billingMode: "ONE_TIME" })
+
+      expect(mockDb.serviceAddon.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "addon-1" },
+          data: expect.objectContaining({ billingMode: "ONE_TIME" }),
+        })
+      )
+      expect(mockDb.serviceAddon.update.mock.calls[0]?.[0].data.prices).toBe(
+        undefined
+      )
+    })
   })
 
   describe("deactivateAddon", () => {
@@ -347,6 +372,53 @@ describe("AddonsService", () => {
       expect(result.attachments).toHaveLength(1)
       expect(result.attachments[0].addonCode).toBe("EXTRA_SEATS")
       expect(result.pagination.total).toBe(1)
+    })
+
+    it("applies attachment filters and pagination", async () => {
+      mockDb.servicePlanAddon.findMany.mockResolvedValueOnce([attachmentRecord])
+      mockDb.servicePlanAddon.count.mockResolvedValueOnce(3)
+
+      const result = await service.listPlanAttachments({
+        planId: "plan-1",
+        page: 2,
+        limit: 2,
+        isActive: true,
+      })
+
+      expect(result.pagination).toEqual({
+        page: 2,
+        limit: 2,
+        total: 3,
+        totalPages: 2,
+      })
+      expect(mockDb.servicePlanAddon.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { planId: "plan-1", isActive: true },
+          skip: 2,
+          take: 2,
+        })
+      )
+    })
+  })
+
+  describe("getPlanAttachment", () => {
+    it("returns null when a plan attachment does not exist", async () => {
+      mockDb.servicePlanAddon.findUnique.mockResolvedValueOnce(null)
+
+      const result = await service.getPlanAttachment("unknown")
+
+      expect(result).toBeNull()
+    })
+
+    it("returns plan attachment detail", async () => {
+      mockDb.servicePlanAddon.findUnique.mockResolvedValueOnce(attachmentRecord)
+
+      const result = await service.getPlanAttachment("attach-1")
+
+      expect(result?.attachment.addonCode).toBe("EXTRA_SEATS")
+      expect(mockDb.servicePlanAddon.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: "attach-1" } })
+      )
     })
   })
 
@@ -399,6 +471,72 @@ describe("AddonsService", () => {
         })
       ).rejects.toThrow("already attached")
     })
+    it("rejects attachment when the addon is inactive", async () => {
+      mockDb.servicePlan.findUnique.mockResolvedValueOnce({
+        id: "plan-1",
+        code: "PLAN_BASIC",
+      })
+      mockDb.serviceAddon.findUnique.mockResolvedValueOnce({
+        ...addonRecord,
+        isActive: false,
+      })
+
+      await expect(
+        service.attachAddonToPlan({
+          planId: "plan-1",
+          addonId: "addon-1",
+          isActive: true,
+          isRequired: false,
+          displayOrder: 0,
+        })
+      ).rejects.toThrow("inactive")
+      expect(mockDb.servicePlanAddon.findFirst).not.toHaveBeenCalled()
+    })
+
+    it("throws AddonNotFoundError when addon does not exist", async () => {
+      mockDb.servicePlan.findUnique.mockResolvedValueOnce({
+        id: "plan-1",
+        code: "PLAN_BASIC",
+      })
+      mockDb.serviceAddon.findUnique.mockResolvedValueOnce(null)
+
+      await expect(
+        service.attachAddonToPlan({
+          planId: "plan-1",
+          addonId: "unknown",
+          isActive: true,
+          isRequired: false,
+          displayOrder: 0,
+        })
+      ).rejects.toThrow("Addon")
+    })
+  })
+  describe("updatePlanAttachment", () => {
+    it("updates a plan attachment", async () => {
+      mockDb.servicePlanAddon.findUnique.mockResolvedValueOnce(attachmentRecord)
+      mockDb.servicePlanAddon.update.mockResolvedValueOnce(attachmentRecord)
+
+      const result = await service.updatePlanAttachment("attach-1", {
+        label: "Updated",
+        isRequired: true,
+      })
+
+      expect(result.label).toBe("Extra Label")
+      expect(mockDb.servicePlanAddon.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "attach-1" },
+          data: { label: "Updated", isRequired: true },
+        })
+      )
+    })
+
+    it("throws when updating a missing plan attachment", async () => {
+      mockDb.servicePlanAddon.findUnique.mockResolvedValueOnce(null)
+
+      await expect(
+        service.updatePlanAttachment("unknown", { label: "Updated" })
+      ).rejects.toThrow("not found")
+    })
   })
 
   describe("detachAddonFromPlan", () => {
@@ -431,6 +569,26 @@ describe("AddonsService", () => {
       await expect(service.detachAddonFromPlan("attach-1")).rejects.toThrow(
         "active subscription"
       )
+    })
+    it("detaches a required addon when no subscriptions are active", async () => {
+      mockDb.servicePlanAddon.findUnique.mockResolvedValueOnce({
+        ...attachmentRecord,
+        isRequired: true,
+      })
+      mockDb.serviceSubscriptionAddon.count.mockResolvedValueOnce(0)
+
+      await service.detachAddonFromPlan("attach-1")
+
+      expect(mockDb.serviceSubscriptionAddon.count).toHaveBeenCalledWith({
+        where: {
+          addonId: "addon-1",
+          subscription: { planId: "plan-1" },
+          status: "ACTIVE",
+        },
+      })
+      expect(mockDb.servicePlanAddon.delete).toHaveBeenCalledWith({
+        where: { id: "attach-1" },
+      })
     })
   })
 })

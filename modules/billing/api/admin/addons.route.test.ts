@@ -7,6 +7,7 @@ import {
   AddonNotFoundError,
   AddonConflictError,
   PlanAttachmentNotFoundError,
+  PlanNotFoundError,
 } from "../../addons/addons.service"
 
 type AdminGuardResult =
@@ -32,6 +33,13 @@ const guard = mock(
   }
 )
 
+const mockPrisma = {
+  servicePlanAddon: {
+    findMany: mock(),
+    count: mock(),
+  },
+}
+
 const mockAddonsService = {
   listAddons: mock(),
   getAddon: mock(),
@@ -51,6 +59,7 @@ function app() {
       createAdminAddonsRoutes({
         requireSuperAdmin: guard,
         addonsService: mockAddonsService as never,
+        prisma: mockPrisma as never,
       })
     )
     .compile()
@@ -63,10 +72,47 @@ function jsonRequest(url: string, method: string, body?: unknown) {
     body: JSON.stringify(body),
   })
 }
+function denyGuard() {
+  guard.mockImplementationOnce(
+    async (set: { status?: number | string }): Promise<AdminGuardResult> => {
+      set.status = 403
+      return {
+        ok: false as const,
+        error: "FORBIDDEN",
+        message: "Super admin access required.",
+      }
+    }
+  )
+}
 
 describe("admin addons routes", () => {
   beforeEach(() => {
     mock.clearAllMocks()
+    mockAddonsService.listAddons.mockReset()
+    mockAddonsService.getAddon.mockReset()
+    mockAddonsService.createAddon.mockReset()
+    mockAddonsService.updateAddon.mockReset()
+    mockAddonsService.deactivateAddon.mockReset()
+    mockAddonsService.listPlanAttachments.mockReset()
+    mockAddonsService.getPlanAttachment.mockReset()
+    mockAddonsService.attachAddonToPlan.mockReset()
+    mockAddonsService.updatePlanAttachment.mockReset()
+    mockAddonsService.detachAddonFromPlan.mockReset()
+    mockPrisma.servicePlanAddon.findMany.mockReset()
+    mockPrisma.servicePlanAddon.count.mockReset()
+    guard.mockReset()
+    mockAddonsService.listAddons.mockResolvedValue(undefined)
+    mockAddonsService.getAddon.mockResolvedValue(null)
+    mockAddonsService.createAddon.mockResolvedValue(undefined)
+    mockAddonsService.updateAddon.mockResolvedValue(undefined)
+    mockAddonsService.deactivateAddon.mockResolvedValue(undefined)
+    mockAddonsService.listPlanAttachments.mockResolvedValue(undefined)
+    mockAddonsService.getPlanAttachment.mockResolvedValue(null)
+    mockAddonsService.attachAddonToPlan.mockResolvedValue(undefined)
+    mockAddonsService.updatePlanAttachment.mockResolvedValue(undefined)
+    mockAddonsService.detachAddonFromPlan.mockResolvedValue(undefined)
+    mockPrisma.servicePlanAddon.findMany.mockResolvedValue([])
+    mockPrisma.servicePlanAddon.count.mockResolvedValue(0)
     guard.mockResolvedValue({
       ok: true as const,
       userId: "admin-1",
@@ -418,7 +464,6 @@ describe("admin addons routes", () => {
         addonId: "addon-1",
         label: "Extra seats",
         isRequired: false,
-        displayOrder: 0,
       }
 
       const response = await app().handle(
@@ -431,6 +476,7 @@ describe("admin addons routes", () => {
       expect(body.attachment.addonCode).toBe("EXTRA_SEATS")
       expect(mockAddonsService.attachAddonToPlan).toHaveBeenCalledWith({
         ...input,
+        displayOrder: 0,
         isActive: true,
       })
     })
@@ -483,5 +529,569 @@ describe("admin addons routes", () => {
 
       expect(response.status).toBe(404)
     })
+  })
+  it("returns 400 for invalid addon list query", async () => {
+    const response = await app().handle(
+      new Request("http://localhost/admin/addons?limit=0")
+    )
+
+    expect(response.status).toBe(400)
+    expect((await response.json()).error).toBe("BAD_REQUEST")
+    expect(mockAddonsService.listAddons).not.toHaveBeenCalled()
+  })
+
+  it("returns 500 when addon list fails", async () => {
+    mockAddonsService.listAddons.mockRejectedValueOnce(new Error("database"))
+
+    const response = await app().handle(
+      new Request("http://localhost/admin/addons")
+    )
+
+    expect(response.status).toBe(500)
+    expect((await response.json()).message).toBe("Unable to load addons.")
+  })
+
+  it("denies detail access when the guard rejects", async () => {
+    denyGuard()
+
+    const response = await app().handle(
+      new Request("http://localhost/admin/addons/EXTRA_SEATS")
+    )
+
+    expect(response.status).toBe(403)
+    expect(mockAddonsService.getAddon).not.toHaveBeenCalled()
+  })
+
+  it("returns 500 when addon detail fails", async () => {
+    mockAddonsService.getAddon.mockRejectedValueOnce(new Error("database"))
+
+    const response = await app().handle(
+      new Request("http://localhost/admin/addons/EXTRA_SEATS")
+    )
+
+    expect(response.status).toBe(500)
+    expect((await response.json()).message).toBe("Unable to load addon.")
+  })
+
+  it("returns 400 for invalid addon creation input", async () => {
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/addons", "POST", {
+        code: "lowercase",
+        name: "",
+        prices: [],
+      })
+    )
+
+    expect(response.status).toBe(400)
+    expect((await response.json()).error).toBe("BAD_REQUEST")
+    expect(mockAddonsService.createAddon).not.toHaveBeenCalled()
+  })
+
+  it("returns 500 when addon creation fails unexpectedly", async () => {
+    mockAddonsService.createAddon.mockRejectedValueOnce(new Error("database"))
+
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/addons", "POST", {
+        code: "EXTRA_SEATS",
+        name: "Extra Seats",
+        prices: [{ billingPeriod: "MONTHLY", currency: "IDR", amount: 1 }],
+      })
+    )
+
+    expect(response.status).toBe(500)
+    expect((await response.json()).message).toBe("Unable to create addon.")
+  })
+
+  it("denies addon creation when the guard rejects", async () => {
+    denyGuard()
+
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/addons", "POST", {})
+    )
+
+    expect(response.status).toBe(403)
+    expect(mockAddonsService.createAddon).not.toHaveBeenCalled()
+  })
+
+  it("returns 409 when addon update conflicts", async () => {
+    mockAddonsService.updateAddon.mockRejectedValueOnce(
+      new AddonConflictError("code already exists")
+    )
+
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/addons/addon-1", "PATCH", {
+        name: "Updated",
+      })
+    )
+
+    expect(response.status).toBe(409)
+    expect((await response.json()).error).toBe("CONFLICT")
+  })
+
+  it("returns 400 for an invalid addon update", async () => {
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/addons/addon-1", "PATCH", {
+        name: 123,
+      })
+    )
+
+    expect(response.status).toBe(400)
+    expect(mockAddonsService.updateAddon).not.toHaveBeenCalled()
+  })
+
+  it("returns 500 when addon update fails unexpectedly", async () => {
+    mockAddonsService.updateAddon.mockRejectedValueOnce(new Error("database"))
+
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/addons/addon-1", "PATCH", {
+        name: "Updated",
+      })
+    )
+
+    expect(response.status).toBe(500)
+    expect((await response.json()).message).toBe("Unable to update addon.")
+  })
+
+  it("denies addon updates when the guard rejects", async () => {
+    denyGuard()
+
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/addons/addon-1", "PATCH", {
+        name: "Updated",
+      })
+    )
+
+    expect(response.status).toBe(403)
+    expect(mockAddonsService.updateAddon).not.toHaveBeenCalled()
+  })
+
+  it("returns 500 when addon deactivation fails unexpectedly", async () => {
+    mockAddonsService.deactivateAddon.mockRejectedValueOnce(
+      new Error("database")
+    )
+
+    const response = await app().handle(
+      new Request("http://localhost/admin/addons/addon-1", {
+        method: "DELETE",
+      })
+    )
+
+    expect(response.status).toBe(500)
+    expect((await response.json()).message).toBe("Unable to deactivate addon.")
+  })
+
+  it("denies addon deactivation when the guard rejects", async () => {
+    denyGuard()
+
+    const response = await app().handle(
+      new Request("http://localhost/admin/addons/addon-1", {
+        method: "DELETE",
+      })
+    )
+
+    expect(response.status).toBe(403)
+    expect(mockAddonsService.deactivateAddon).not.toHaveBeenCalled()
+  })
+
+  it("maps addon plan rows and pagination", async () => {
+    const createdAt = new Date("2026-01-01T00:00:00.000Z")
+    const updatedAt = new Date("2026-01-02T00:00:00.000Z")
+    mockPrisma.servicePlanAddon.findMany.mockResolvedValueOnce([
+      {
+        id: "attach-1",
+        label: "Extra",
+        description: null,
+        isRequired: true,
+        displayOrder: 2,
+        enabledTerms: { seats: 10 },
+        isActive: true,
+        createdAt,
+        updatedAt,
+        plan: { id: "plan-1", code: "PLAN_BASIC", package: { code: "WA" } },
+        addon: { id: "addon-1", code: "EXTRA_SEATS", name: "Extra Seats" },
+      },
+    ])
+    mockPrisma.servicePlanAddon.count.mockResolvedValueOnce(3)
+
+    const response = await app().handle(
+      new Request(
+        "http://localhost/admin/addons/EXTRA_SEATS/plans?page=2&limit=2"
+      )
+    )
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.attachments[0]).toEqual({
+      id: "attach-1",
+      planId: "plan-1",
+      planCode: "PLAN_BASIC",
+      packageCode: "WA",
+      addonId: "addon-1",
+      addonCode: "EXTRA_SEATS",
+      addonName: "Extra Seats",
+      label: "Extra",
+      description: null,
+      isRequired: true,
+      displayOrder: 2,
+      enabledTerms: { seats: 10 },
+      isActive: true,
+      createdAt: createdAt.toISOString(),
+      updatedAt: updatedAt.toISOString(),
+    })
+    expect(body.pagination).toEqual({
+      page: 2,
+      limit: 2,
+      total: 3,
+      totalPages: 2,
+    })
+    expect(mockPrisma.servicePlanAddon.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { addon: { code: "EXTRA_SEATS" } },
+        skip: 2,
+        take: 2,
+      })
+    )
+  })
+
+  it("returns 400 for invalid addon plan query", async () => {
+    const response = await app().handle(
+      new Request("http://localhost/admin/addons/EXTRA_SEATS/plans?limit=0")
+    )
+
+    expect(response.status).toBe(400)
+    expect(mockPrisma.servicePlanAddon.findMany).not.toHaveBeenCalled()
+  })
+
+  it("returns 500 when addon plan lookup fails", async () => {
+    mockPrisma.servicePlanAddon.findMany.mockRejectedValueOnce(
+      new Error("database")
+    )
+
+    const response = await app().handle(
+      new Request("http://localhost/admin/addons/EXTRA_SEATS/plans")
+    )
+
+    expect(response.status).toBe(500)
+    expect((await response.json()).message).toBe(
+      "Unable to load plan attachments."
+    )
+  })
+
+  it("denies addon plan lookup when the guard rejects", async () => {
+    denyGuard()
+
+    const response = await app().handle(
+      new Request("http://localhost/admin/addons/EXTRA_SEATS/plans")
+    )
+
+    expect(response.status).toBe(403)
+    expect(mockPrisma.servicePlanAddon.findMany).not.toHaveBeenCalled()
+  })
+
+  it("returns 400 for invalid plan addon list query", async () => {
+    const response = await app().handle(
+      new Request("http://localhost/admin/plans/plan-1/addons?limit=0")
+    )
+
+    expect(response.status).toBe(400)
+    expect(mockAddonsService.listPlanAttachments).not.toHaveBeenCalled()
+  })
+
+  it("returns 500 when plan addon list fails", async () => {
+    mockAddonsService.listPlanAttachments.mockRejectedValueOnce(
+      new Error("database")
+    )
+
+    const response = await app().handle(
+      new Request("http://localhost/admin/plans/plan-1/addons")
+    )
+
+    expect(response.status).toBe(500)
+    expect((await response.json()).message).toBe("Unable to load plan addons.")
+  })
+
+  it("denies plan addon list access when the guard rejects", async () => {
+    denyGuard()
+
+    const response = await app().handle(
+      new Request("http://localhost/admin/plans/plan-1/addons")
+    )
+
+    expect(response.status).toBe(403)
+    expect(mockAddonsService.listPlanAttachments).not.toHaveBeenCalled()
+  })
+
+  it("returns plan addon attachment detail", async () => {
+    mockAddonsService.getPlanAttachment.mockResolvedValueOnce({
+      attachment: {
+        id: "attach-1",
+        planId: "plan-1",
+        planCode: "PLAN_BASIC",
+        packageCode: "WA",
+        addonId: "addon-1",
+        addonCode: "EXTRA_SEATS",
+        addonName: "Extra Seats",
+        label: null,
+        description: null,
+        isRequired: false,
+        displayOrder: 0,
+        enabledTerms: null,
+        isActive: true,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    })
+
+    const response = await app().handle(
+      new Request("http://localhost/admin/plans/plan-1/addons/attach-1")
+    )
+
+    expect(response.status).toBe(200)
+    expect((await response.json()).attachment.id).toBe("attach-1")
+    expect(mockAddonsService.getPlanAttachment).toHaveBeenCalledWith("attach-1")
+  })
+
+  it("returns 500 when plan addon detail fails", async () => {
+    mockAddonsService.getPlanAttachment.mockRejectedValueOnce(
+      new Error("database")
+    )
+
+    const response = await app().handle(
+      new Request("http://localhost/admin/plans/plan-1/addons/attach-1")
+    )
+
+    expect(response.status).toBe(500)
+    expect((await response.json()).message).toBe(
+      "Unable to load plan addon attachment."
+    )
+  })
+
+  it("denies plan addon detail access when the guard rejects", async () => {
+    denyGuard()
+
+    const response = await app().handle(
+      new Request("http://localhost/admin/plans/plan-1/addons/attach-1")
+    )
+
+    expect(response.status).toBe(403)
+    expect(mockAddonsService.getPlanAttachment).not.toHaveBeenCalled()
+  })
+
+  it("maps plan-not-found when attaching an addon", async () => {
+    mockAddonsService.attachAddonToPlan.mockRejectedValueOnce(
+      new PlanNotFoundError("Plan not found")
+    )
+
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/plans/plan-1/addons", "POST", {
+        planId: "plan-1",
+        addonId: "addon-1",
+      })
+    )
+
+    expect(response.status).toBe(404)
+    expect((await response.json()).error).toBe("NOT_FOUND")
+  })
+
+  it("maps addon-not-found when attaching an addon", async () => {
+    mockAddonsService.attachAddonToPlan.mockRejectedValueOnce(
+      new AddonNotFoundError("Addon not found")
+    )
+
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/plans/plan-1/addons", "POST", {
+        planId: "plan-1",
+        addonId: "addon-1",
+      })
+    )
+
+    expect(response.status).toBe(404)
+  })
+
+  it("returns 400 for invalid addon attachment input", async () => {
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/plans/plan-1/addons", "POST", {})
+    )
+
+    expect(response.status).toBe(400)
+    expect(mockAddonsService.attachAddonToPlan).not.toHaveBeenCalled()
+  })
+
+  it("returns 500 when addon attachment fails unexpectedly", async () => {
+    mockAddonsService.attachAddonToPlan.mockRejectedValueOnce(
+      new Error("database")
+    )
+
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/plans/plan-1/addons", "POST", {
+        planId: "plan-1",
+        addonId: "addon-1",
+      })
+    )
+
+    expect(response.status).toBe(500)
+    expect((await response.json()).message).toBe(
+      "Unable to attach addon to plan."
+    )
+  })
+
+  it("denies addon attachment when the guard rejects", async () => {
+    denyGuard()
+
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/plans/plan-1/addons", "POST", {})
+    )
+
+    expect(response.status).toBe(403)
+    expect(mockAddonsService.attachAddonToPlan).not.toHaveBeenCalled()
+  })
+
+  it("updates a plan addon attachment", async () => {
+    mockAddonsService.updatePlanAttachment.mockResolvedValueOnce({
+      id: "attach-1",
+      planId: "plan-1",
+      planCode: "PLAN_BASIC",
+      packageCode: "WA",
+      addonId: "addon-1",
+      addonCode: "EXTRA_SEATS",
+      addonName: "Extra Seats",
+      label: "Updated",
+      description: null,
+      isRequired: true,
+      displayOrder: 3,
+      enabledTerms: null,
+      isActive: true,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    })
+    const input = { label: "Updated", isRequired: true }
+
+    const response = await app().handle(
+      jsonRequest(
+        "http://localhost/admin/plans/plan-1/addons/attach-1",
+        "PATCH",
+        input
+      )
+    )
+
+    expect(response.status).toBe(200)
+    expect((await response.json()).attachment.label).toBe("Updated")
+    expect(mockAddonsService.updatePlanAttachment).toHaveBeenCalledWith(
+      "attach-1",
+      { ...input, displayOrder: 0, isActive: true }
+    )
+  })
+
+  it("returns 404 when updating a missing plan addon attachment", async () => {
+    mockAddonsService.updatePlanAttachment.mockRejectedValueOnce(
+      new PlanAttachmentNotFoundError("Attachment not found")
+    )
+
+    const response = await app().handle(
+      jsonRequest(
+        "http://localhost/admin/plans/plan-1/addons/attach-1",
+        "PATCH",
+        {
+          label: "Updated",
+        }
+      )
+    )
+
+    expect(response.status).toBe(404)
+  })
+
+  it("returns 400 for an invalid plan addon update", async () => {
+    const response = await app().handle(
+      jsonRequest(
+        "http://localhost/admin/plans/plan-1/addons/attach-1",
+        "PATCH",
+        {
+          label: 123,
+        }
+      )
+    )
+
+    expect(response.status).toBe(400)
+    expect(mockAddonsService.updatePlanAttachment).not.toHaveBeenCalled()
+  })
+
+  it("returns 500 when plan addon update fails unexpectedly", async () => {
+    mockAddonsService.updatePlanAttachment.mockRejectedValueOnce(
+      new Error("database")
+    )
+
+    const response = await app().handle(
+      jsonRequest(
+        "http://localhost/admin/plans/plan-1/addons/attach-1",
+        "PATCH",
+        {
+          label: "Updated",
+        }
+      )
+    )
+
+    expect(response.status).toBe(500)
+    expect((await response.json()).message).toBe(
+      "Unable to update plan addon attachment."
+    )
+  })
+
+  it("denies plan addon updates when the guard rejects", async () => {
+    denyGuard()
+
+    const response = await app().handle(
+      jsonRequest(
+        "http://localhost/admin/plans/plan-1/addons/attach-1",
+        "PATCH",
+        {}
+      )
+    )
+
+    expect(response.status).toBe(403)
+    expect(mockAddonsService.updatePlanAttachment).not.toHaveBeenCalled()
+  })
+
+  it("returns 409 when detaching a required plan addon is blocked", async () => {
+    mockAddonsService.detachAddonFromPlan.mockRejectedValueOnce(
+      new AddonConflictError("active subscription")
+    )
+
+    const response = await app().handle(
+      new Request("http://localhost/admin/plans/plan-1/addons/attach-1", {
+        method: "DELETE",
+      })
+    )
+
+    expect(response.status).toBe(409)
+  })
+
+  it("returns 500 when detaching a plan addon fails unexpectedly", async () => {
+    mockAddonsService.detachAddonFromPlan.mockRejectedValueOnce(
+      new Error("database")
+    )
+
+    const response = await app().handle(
+      new Request("http://localhost/admin/plans/plan-1/addons/attach-1", {
+        method: "DELETE",
+      })
+    )
+
+    expect(response.status).toBe(500)
+    expect((await response.json()).message).toBe(
+      "Unable to detach addon from plan."
+    )
+  })
+
+  it("denies plan addon detachment when the guard rejects", async () => {
+    denyGuard()
+
+    const response = await app().handle(
+      new Request("http://localhost/admin/plans/plan-1/addons/attach-1", {
+        method: "DELETE",
+      })
+    )
+
+    expect(response.status).toBe(403)
+    expect(mockAddonsService.detachAddonFromPlan).not.toHaveBeenCalled()
   })
 })
