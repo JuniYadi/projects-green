@@ -100,6 +100,8 @@ export {
   Terminal,
   TerminalIcon,
   Timer,
+  Triangle,
+  TriangleIcon,
   Trash,
   TwitterLogo,
   UploadIcon,

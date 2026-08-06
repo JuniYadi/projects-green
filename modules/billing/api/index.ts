@@ -13,14 +13,16 @@ import { createAdminMembersRoutes } from "./admin/members.route"
 import { createAdminInvoiceRoutes } from "./admin/invoice.route"
 import { createAdminInvoicesListRoutes } from "./admin/invoices-list.route"
 import { createAdminUsageRoutes } from "./admin/usage.route"
+import { createUsageRoutes } from "./usage.route"
 import { createAdminStatsRoutes } from "./admin/stats.route"
+import { createCatalogRoutes } from "./catalog.route"
 import { createAdminTopupRoutes } from "./admin/topup.route"
 import { createAdminOrgsRoutes } from "./admin/orgs.route"
 import { createAdminPricingRoutes } from "./admin/pricing.route"
 import { createAdminOrdersRoutes } from "./admin/orders.route"
 import { createAdminOrgDetailRoutes } from "./admin/org-detail.route"
 import { createAdminBillingContactsRoutes } from "./admin/contacts.route"
-import { createUsageRoutes } from "./usage.route"
+import { createBillingCheckoutRoutes } from "./checkout.route"
 import { UsageLedgerService } from "../usage-ledger.service"
 import { CostingService } from "../costing.service"
 import { prisma } from "@/lib/prisma"
@@ -41,6 +43,7 @@ export const billingRoutes = new Elysia({ prefix: "/billing" })
   .use(createAdminInvoiceRoutes())
   .use(createAdminInvoicesListRoutes())
   .use(createAdminUsageRoutes())
+  .use(createUsageRoutes({ usageLedgerService, costingService }))
   .use(createAdminStatsRoutes())
   .use(createAdminTopupRoutes())
   .use(createAdminOrgsRoutes())
@@ -48,5 +51,6 @@ export const billingRoutes = new Elysia({ prefix: "/billing" })
   .use(createAdminOrdersRoutes())
   .use(createAdminOrgDetailRoutes())
   .use(createAdminBillingContactsRoutes())
-  .use(createUsageRoutes({ usageLedgerService, costingService }))
+  .use(createBillingCheckoutRoutes())
+  .use(createCatalogRoutes())
   .use(createAdminAuditLogRoutes())

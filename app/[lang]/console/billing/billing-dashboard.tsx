@@ -88,8 +88,8 @@ const createSecondaryLinks = (messages: ReturnType<typeof getMessages>) => [
     label: messages.console.billing.transactions,
   },
   {
-    href: "/console/billing/subscription",
-    label: messages.console.billing.subscriptions,
+    href: "/console/billing/subscriptions",
+    label: messages.console.billing.subscriptions.heading,
   },
   { href: "/console/billing/vouchers", label: "Vouchers" },
   { href: "/console/billing/contacts", label: "Contacts" },

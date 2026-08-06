@@ -1003,3 +1003,57 @@ export async function getAdminOrders(params?: {
   const suffix = query.toString() ? `?${query.toString()}` : ""
   return fetchBilling<AdminOrdersResponse>(`/api/billing/admin/orders${suffix}`)
 }
+// ─── Customer Catalog ──────────────────────────────────────────────────
+
+export type CatalogOffer = {
+  id: string
+  billingPeriod: "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL"
+  periodMonths: 1 | 3 | 6 | 12
+  periodPrice: string
+  currency: string
+  chargeUnit: "SUBSCRIPTION" | "DEVICE"
+  effectiveFrom: string
+  effectiveTo: string | null
+}
+
+export type CatalogPlan = {
+  id: string
+  code: string
+  name: string
+  resources: Record<string, unknown>
+  offers: CatalogOffer[]
+}
+
+export type CatalogProduct = {
+  code: string
+  name: string
+  description: string | null
+  plans: CatalogPlan[]
+}
+
+export type CatalogListResponse = {
+  products: CatalogProduct[]
+  currency: string
+}
+
+export type CatalogProductDetailResponse = {
+  product: CatalogProduct
+  currency: string
+}
+
+export async function getCatalog(
+  currency?: string
+): Promise<CatalogListResponse> {
+  const query = currency ? `?currency=${currency}` : ""
+  return fetchBilling<CatalogListResponse>(`/api/billing/catalog${query}`)
+}
+
+export async function getCatalogProduct(
+  code: string,
+  currency?: string
+): Promise<CatalogProductDetailResponse> {
+  const query = currency ? `?currency=${currency}` : ""
+  return fetchBilling<CatalogProductDetailResponse>(
+    `/api/billing/catalog/${code}${query}`
+  )
+}
