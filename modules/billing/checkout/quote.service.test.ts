@@ -104,6 +104,79 @@ describe("CheckoutQuoteService", () => {
     expect(quote.expiresAt).toBe("2026-08-06T10:15:00.000Z")
   })
 
+  it("generates distinct quote IDs for the same clock time", async () => {
+    mockPrisma.servicePlanAddon.findMany.mockResolvedValue([])
+    const service = buildService()
+    const input = {
+      organizationId: "org-1",
+      pricingId: "pricing-1",
+      idempotencyKey: "same-key",
+    }
+
+    const [first, second] = await Promise.all([
+      service.createQuote(input),
+      service.createQuote(input),
+    ])
+
+    expect(first.quoteId).not.toBe(second.quoteId)
+    expect(first.quoteToken).not.toBe(second.quoteToken)
+  })
+
+  it("records the forward exchange rate for a fixed converted promotion", async () => {
+    mockPrisma.servicePlanAddon.findMany.mockResolvedValueOnce([])
+    mockPrisma.voucher.findUnique.mockResolvedValueOnce({
+      id: "voucher-3",
+      code: "USD20",
+      status: "ACTIVE",
+      kind: "PRODUCT_PROMOTION",
+      discountType: "FIXED",
+      discountValue: new Prisma.Decimal("20"),
+      discountCurrency: "USD",
+      currency: "USD",
+      currencyPolicy: "CONVERT_AT_CHECKOUT",
+      firstCheckoutOnly: false,
+      allowUpgrade: false,
+      stackable: false,
+      minimumOrderAmount: null,
+      maximumDiscountAmount: null,
+      expiresAt: new Date("2026-08-31T00:00:00.000Z"),
+      targetWorkosUserId: null,
+      targetOrganizationId: null,
+      allowedPackageCodes: null,
+      allowedPlanCodes: null,
+      allowedBillingPeriods: null,
+    })
+
+    const quote = await buildService().createQuote({
+      organizationId: "org-1",
+      pricingId: "pricing-1",
+      voucherCode: "USD20",
+      idempotencyKey: "quote-3",
+    })
+
+    expect(quote.voucher).toMatchObject({
+      discountAmount: "100000",
+      exchangeRate: "17000",
+      rateAt: "2026-08-06T10:00:00.000Z",
+    })
+  })
+
+  it("uses the supplied quote clock for quote timestamps", async () => {
+    mockPrisma.servicePlanAddon.findMany.mockResolvedValueOnce([])
+    const now = new Date("2026-09-10T12:34:56.000Z")
+
+    const quote = await buildService().createQuote({
+      organizationId: "org-1",
+      pricingId: "pricing-1",
+      idempotencyKey: "quote-4",
+      now,
+    })
+
+    expect(quote.periodStart).toBe("2026-09-10T12:34:56.000Z")
+    expect(quote.expiresAt).toBe("2026-09-10T12:49:56.000Z")
+    expect(quote.periodEnd).toBe("2026-10-10T12:34:56.000Z")
+  })
+
   it("rejects an exact-currency fixed promotion mismatch", async () => {
     mockPrisma.servicePlanAddon.findMany.mockResolvedValueOnce([])
     mockPrisma.voucher.findUnique.mockResolvedValueOnce({

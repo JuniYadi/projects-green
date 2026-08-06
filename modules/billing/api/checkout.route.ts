@@ -122,6 +122,7 @@ export const createBillingCheckoutRoutes = (
           return toError(set, 400, "VALIDATION_ERROR", parsed.error.message)
         }
         try {
+          const now = new Date()
           const quote = await quoteService.createQuote({
             userId: auth.user.id,
             organizationId: auth.organizationId,
@@ -135,6 +136,7 @@ export const createBillingCheckoutRoutes = (
             idempotencyKey: parsed.data.idempotencyKey,
             mode: parsed.data.mode,
             subscriptionId: parsed.data.subscriptionId,
+            now,
           })
           return { ok: true as const, ...quote }
         } catch (error) {
@@ -177,6 +179,7 @@ export const createBillingCheckoutRoutes = (
         let quote: CheckoutQuote | null = null
         if (quoteToken || addonIds?.length || voucherCode) {
           try {
+            const now = new Date()
             quote = await quoteService.createQuote({
               userId: auth.user.id,
               organizationId: auth.organizationId,
@@ -190,6 +193,7 @@ export const createBillingCheckoutRoutes = (
               idempotencyKey,
               mode,
               subscriptionId,
+              now,
             })
           } catch (error) {
             return toQuoteError(set, error)
@@ -247,12 +251,48 @@ export const createBillingCheckoutRoutes = (
           return toError(set, 500, "INTERNAL_ERROR", "Unable to create order.")
         }
 
-        // Step 2 — Charge (balance check happens here)
-        let chargedResult: typeof orderResult
         try {
-          chargedResult = await orderService.chargeOrder(orderResult.orderId)
+          const fulfilledResult = await orderService.checkoutOrder(
+            orderResult.orderId
+          )
+          const firstPayment = fulfilledResult.amount
+          const periodStart = fulfilledResult.periodStart
+          const periodEnd = fulfilledResult.periodEnd
+          const nextRenewal = periodEnd
+
+          const response: CheckoutSuccess = {
+            ok: true,
+            orderId: fulfilledResult.orderId,
+            status: fulfilledResult.status as CheckoutSuccess["status"],
+            subscriptionId: fulfilledResult.subscriptionId,
+            invoiceId: fulfilledResult.invoiceId,
+            invoiceLineId: fulfilledResult.invoiceLineId,
+            subtotal: quote?.subtotal ?? fulfilledResult.amount,
+            discount: quote?.discount ?? "0",
+            firstPayment,
+            nextRenewal: quote?.nextRenewal ?? nextRenewal,
+            currency: fulfilledResult.currency,
+            billingPeriod: fulfilledResult.billingPeriod,
+            periodStart,
+            periodEnd,
+          }
+
+          return response
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err)
+          if (
+            msg.startsWith("FULFILLMENT_ADAPTER_NOT_FOUND") ||
+            msg === "FULFILLMENT_NOT_IMPLEMENTED" ||
+            msg.includes("does not have a fulfillment adapter") ||
+            msg === "FULFILLMENT_NOT_CONFIGURED"
+          ) {
+            return toError(
+              set,
+              422,
+              "FULFILLMENT_NOT_SUPPORTED",
+              `The product for this pricing plan is not yet available for purchase. Fulfillment is not configured for this product type.`
+            )
+          }
           if (msg === "INSUFFICIENT_BALANCE") {
             return toError(
               set,
@@ -277,60 +317,14 @@ export const createBillingCheckoutRoutes = (
               "Order is not in a chargeable state."
             )
           }
-          console.error("[Checkout] chargeOrder error:", err)
-          return toError(set, 500, "INTERNAL_ERROR", "Unable to charge order.")
-        }
-
-        // Step 3 — Fulfill (may throw for unsupported package codes)
-        try {
-          const fulfilledResult = await orderService.fulfillOrder(
-            chargedResult.orderId
-          )
-
-          const firstPayment = fulfilledResult.amount
-          const periodStart = fulfilledResult.periodStart
-          const periodEnd = fulfilledResult.periodEnd
-
-          // Calculate next renewal: periodEnd for first payment
-          const nextRenewal = periodEnd
-
-          const response: CheckoutSuccess = {
-            ok: true,
-            orderId: fulfilledResult.orderId,
-            status: fulfilledResult.status as CheckoutSuccess["status"],
-            subscriptionId: fulfilledResult.subscriptionId,
-            invoiceId: fulfilledResult.invoiceId,
-            invoiceLineId: fulfilledResult.invoiceLineId,
-            subtotal: quote?.subtotal ?? fulfilledResult.amount,
-            discount: quote?.discount ?? "0",
-            firstPayment,
-            nextRenewal: quote?.nextRenewal ?? nextRenewal,
-            currency: fulfilledResult.currency,
-            billingPeriod: fulfilledResult.billingPeriod,
-            periodStart,
-            periodEnd,
-          }
-
-          return response
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err)
-
-          // Detect unsupported fulfillment packages
-          if (
-            msg.startsWith("FULFILLMENT_ADAPTER_NOT_FOUND") ||
-            msg === "FULFILLMENT_NOT_IMPLEMENTED" ||
-            msg.includes("does not have a fulfillment adapter")
-          ) {
-            // Reject precisely — charge was made but we cannot fulfill.
-            // We do not throw a 500 because this is a known product gap.
+          if (msg === "CHARGE_ERROR" || msg === "BILLING_ACCOUNT_NOT_FOUND") {
             return toError(
               set,
-              422,
-              "FULFILLMENT_NOT_SUPPORTED",
-              `The product for this pricing plan is not yet available for purchase. Fulfillment is not configured for this product type.`
+              500,
+              "INTERNAL_ERROR",
+              "Unable to charge order."
             )
           }
-
           if (msg === "ADVISORY_LOCK_UNAVAILABLE") {
             return toError(
               set,
@@ -339,10 +333,7 @@ export const createBillingCheckoutRoutes = (
               "Unable to acquire a lock. Please try again."
             )
           }
-
-          // Catch-all for other fulfillment errors — still return a useful
-          // error rather than a generic 500.
-          console.error("[Checkout] fulfillOrder error:", err)
+          console.error("[Checkout] checkoutOrder error:", err)
           return toError(
             set,
             500,

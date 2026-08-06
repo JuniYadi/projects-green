@@ -162,13 +162,14 @@ export class SubscriptionLifecycleService {
 
   /**
    * Cancel a subscription at period end.
-   * Sets cancelledAtPeriodEnd in metadata — renewal worker won't charge again.
+   * Persists the database flag and metadata — renewal worker won't charge again.
    * Customer keeps access until currentPeriodEnd.
    */
   async cancelAtPeriodEnd(
     organizationId: string,
     subscriptionId: string,
-    reason?: string
+    reason?: string,
+    actorId?: string
   ): Promise<CancelSubscriptionResult> {
     const sub = await this.prisma.serviceSubscription.findFirst({
       where: { id: subscriptionId, organizationId },
@@ -184,6 +185,7 @@ export class SubscriptionLifecycleService {
     const updated = await this.prisma.serviceSubscription.update({
       where: { id: subscriptionId },
       data: {
+        cancelAtPeriodEnd: true,
         metadata: toJsonInput({
           ...existingMeta,
           cancelledAtPeriodEnd: true,
@@ -198,9 +200,8 @@ export class SubscriptionLifecycleService {
       entityType: "ServiceSubscription",
       entityId: subscriptionId,
       action: "SUBSCRIPTION_CANCELLED",
-      actorId: undefined,
+      actorId: actorId ?? undefined,
       context: {
-        reason: reason ?? null,
         currentPeriodEnd: sub.currentPeriodEnd.toISOString(),
         mode: "AT_PERIOD_END",
         previousCancelledAtPeriodEnd:
@@ -221,12 +222,13 @@ export class SubscriptionLifecycleService {
 
   /**
    * Reinstate a subscription that was cancelled at period end.
-   * Clears the cancelledAtPeriodEnd flag in metadata.
+   * Clears the database flag and cancellation metadata.
    */
   async reinstate(
     organizationId: string,
     subscriptionId: string,
-    reason?: string
+    reason?: string,
+    actorId?: string
   ): Promise<ReinstateSubscriptionResult> {
     const sub = await this.prisma.serviceSubscription.findFirst({
       where: { id: subscriptionId, organizationId },
@@ -251,6 +253,7 @@ export class SubscriptionLifecycleService {
     const updated = await this.prisma.serviceSubscription.update({
       where: { id: subscriptionId },
       data: {
+        cancelAtPeriodEnd: false,
         metadata:
           Object.keys(cleanMeta).length > 0
             ? toJsonInput(cleanMeta)
@@ -263,9 +266,8 @@ export class SubscriptionLifecycleService {
       entityType: "ServiceSubscription",
       entityId: subscriptionId,
       action: "SUBSCRIPTION_REINSTATED",
-      actorId: undefined,
+      actorId: actorId ?? undefined,
       context: {
-        reason: reason ?? null,
         currentPeriodEnd: sub.currentPeriodEnd.toISOString(),
       },
     })
@@ -351,7 +353,8 @@ export class SubscriptionLifecycleService {
   async changePlan(
     organizationId: string,
     subscriptionId: string,
-    newPricingId: string
+    newPricingId: string,
+    actorId?: string
   ): Promise<ChangePlanResult> {
     const [sub, newPricing] = await Promise.all([
       this.prisma.serviceSubscription.findFirst({
@@ -384,9 +387,8 @@ export class SubscriptionLifecycleService {
       entityType: "ServiceSubscription",
       entityId: subscriptionId,
       action: "UPDATED",
-      actorId: undefined,
+      actorId: actorId ?? undefined,
       context: {
-        previousPricingId: sub.pricingId,
         newPricingId,
         newPlanCode: updated.plan.code,
         newBillingPeriod: updated.pricing.billingPeriod,

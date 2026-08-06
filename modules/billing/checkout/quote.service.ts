@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto"
 import { Prisma } from "@prisma/client"
 import type { PrismaClient } from "@prisma/client"
 
@@ -19,6 +20,7 @@ export type CheckoutQuoteInput = {
   idempotencyKey: string
   mode?: "PURCHASE" | "UPGRADE" | "CHANGE_TERM"
   subscriptionId?: string
+  now?: Date
 }
 
 export type CheckoutQuoteAddon = {
@@ -169,7 +171,7 @@ export class CheckoutQuoteService {
   }
 
   async createQuote(input: CheckoutQuoteInput): Promise<CheckoutQuote> {
-    const now = this.now()
+    const now = input.now ?? this.now()
     const price = await this.resolvePrice({
       pricingId: input.pricingId,
       currency: await this.resolveCurrency(input.organizationId),
@@ -270,13 +272,14 @@ export class CheckoutQuoteService {
           price,
           subtotal,
           input.mode ?? "PURCHASE",
-          expiresAt
+          expiresAt,
+          now
         )
       : null
     const discount = voucher ? decimal(voucher.discountAmount) : decimal(0)
     const firstPayment = subtotal.sub(discount)
     const periodEnd = addMonths(now, PERIOD_MONTHS[price.billingPeriod])
-    const quoteId = `${input.idempotencyKey}:${now.getTime()}`
+    const quoteId = `${input.idempotencyKey}:${now.getTime()}:${randomUUID()}`
 
     return {
       quoteId,
@@ -315,7 +318,8 @@ export class CheckoutQuoteService {
     price: ResolvedRecurringPrice,
     subtotal: Prisma.Decimal,
     mode: "PURCHASE" | "UPGRADE" | "CHANGE_TERM",
-    expiresAt: Date
+    expiresAt: Date,
+    now: Date
   ): Promise<CheckoutQuoteVoucher> {
     const voucher = await this.db.voucher.findUnique({
       where: { code: code.trim().toUpperCase() },
@@ -344,7 +348,7 @@ export class CheckoutQuoteService {
     if (!voucher || voucher.kind !== "PRODUCT_PROMOTION") {
       throw new CheckoutQuoteError("VOUCHER_NOT_FOUND", "Voucher not found.")
     }
-    if (voucher.status !== "ACTIVE" || voucher.expiresAt <= this.now()) {
+    if (voucher.status !== "ACTIVE" || voucher.expiresAt <= now) {
       throw new CheckoutQuoteError(
         "VOUCHER_EXPIRED",
         "This voucher is no longer active."
@@ -422,12 +426,13 @@ export class CheckoutQuoteService {
           `This voucher is issued in ${sourceCurrency} and cannot be used with a ${price.currency} checkout.`
         )
       }
+      const sourceDiscount = discount
       const converted = await this.convertCurrency(
-        discount,
+        sourceDiscount,
         sourceCurrency,
         price.currency
       )
-      exchangeRate = converted.div(discount)
+      exchangeRate = converted.div(sourceDiscount)
       discount = converted
     }
     if (voucher.maximumDiscountAmount) {
@@ -447,7 +452,7 @@ export class CheckoutQuoteService {
       currencyPolicy:
         voucher.currencyPolicy as CheckoutQuoteVoucher["currencyPolicy"],
       exchangeRate: exchangeRate?.toString() ?? null,
-      rateAt: exchangeRate ? this.now().toISOString() : null,
+      rateAt: exchangeRate ? now.toISOString() : null,
       quoteExpiresAt: expiresAt.toISOString(),
     }
   }

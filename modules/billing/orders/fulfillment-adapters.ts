@@ -20,8 +20,14 @@ export type BillingFulfillmentInput = {
 
 export type BillingFulfillmentAdapter = {
   packageCode: ServiceType
-  create(input: BillingFulfillmentInput): Promise<{ subscriptionId: string }>
-  renew(input: BillingFulfillmentInput): Promise<void>
+  create(
+    input: BillingFulfillmentInput,
+    transactionClient?: Prisma.TransactionClient
+  ): Promise<{ subscriptionId: string }>
+  renew(
+    input: BillingFulfillmentInput,
+    transactionClient?: Prisma.TransactionClient
+  ): Promise<void>
 }
 
 type AdapterDependencies = {
@@ -298,9 +304,12 @@ export function createVpnFulfillmentAdapter(
     dependencies.dispatch ?? ((id: string) => VpnProvisioningJob.dispatch(id))
   const username = dependencies.username ?? buildAccountUsername
 
-  const apply = async (input: BillingFulfillmentInput) => {
+  const apply = async (
+    input: BillingFulfillmentInput,
+    transactionClient?: Prisma.TransactionClient
+  ) => {
     const metadata = input.metadata
-    const result = await prisma.$transaction(async (tx) => {
+    const run = async (tx: Prisma.TransactionClient) => {
       const pricing = recurringPricing(
         (await tx.servicePricing.findUnique({
           where: { id: input.pricingId },
@@ -315,16 +324,21 @@ export function createVpnFulfillmentAdapter(
         metadata,
         username
       )
-    })
+    }
+    const result = transactionClient
+      ? await run(transactionClient)
+      : await prisma.$transaction(run)
     for (const accountId of result.accountIds) await dispatch(accountId)
     return result.subscriptionId
   }
 
   return {
     packageCode: "VPN",
-    create: async (input) => ({ subscriptionId: await apply(input) }),
-    renew: async (input) => {
-      await apply(input)
+    create: async (input, transactionClient) => ({
+      subscriptionId: await apply(input, transactionClient),
+    }),
+    renew: async (input, transactionClient) => {
+      await apply(input, transactionClient)
     },
   }
 }
@@ -362,9 +376,10 @@ function allowanceMetadata(metadata: Record<string, unknown>): {
 
 async function applyWhatsappFulfillment(
   prisma: PrismaClient,
-  input: BillingFulfillmentInput
+  input: BillingFulfillmentInput,
+  transactionClient?: Prisma.TransactionClient
 ): Promise<string> {
-  return prisma.$transaction(async (tx) => {
+  const run = async (tx: Prisma.TransactionClient) => {
     const pricing = recurringPricing(
       (await tx.servicePricing.findUnique({
         where: { id: input.pricingId },
@@ -409,7 +424,8 @@ async function applyWhatsappFulfillment(
       })
     }
     return serviceSubscription.id
-  })
+  }
+  return transactionClient ? run(transactionClient) : prisma.$transaction(run)
 }
 
 export function createWhatsappFulfillmentAdapter(
@@ -417,11 +433,15 @@ export function createWhatsappFulfillmentAdapter(
 ): BillingFulfillmentAdapter {
   return {
     packageCode: "WHATSAPP",
-    create: async (input) => ({
-      subscriptionId: await applyWhatsappFulfillment(prisma, input),
+    create: async (input, transactionClient) => ({
+      subscriptionId: await applyWhatsappFulfillment(
+        prisma,
+        input,
+        transactionClient
+      ),
     }),
-    renew: async (input) => {
-      await applyWhatsappFulfillment(prisma, input)
+    renew: async (input, transactionClient) => {
+      await applyWhatsappFulfillment(prisma, input, transactionClient)
     },
   }
 }

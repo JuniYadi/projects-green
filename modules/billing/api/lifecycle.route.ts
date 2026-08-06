@@ -128,7 +128,8 @@ export const createLifecycleRoutes = (
             const result = await service.cancelAtPeriodEnd(
               ctx.organizationId,
               id,
-              parsed.data.reason
+              parsed.data.reason,
+              ctx.userId
             )
             return result
           } catch (error) {
@@ -179,7 +180,8 @@ export const createLifecycleRoutes = (
             const result = await service.reinstate(
               ctx.organizationId,
               id,
-              parsed.data.reason
+              parsed.data.reason,
+              ctx.userId
             )
             return result
           } catch (error) {
@@ -272,7 +274,8 @@ export const createLifecycleRoutes = (
             const result = await service.changePlan(
               ctx.organizationId,
               id,
-              parsed.data.pricingId
+              parsed.data.pricingId,
+              ctx.userId
             )
             return result
           } catch (error) {

@@ -10,15 +10,13 @@ import { createBillingCheckoutRoutes } from "./checkout.route"
 import { RecurringPriceResolutionError } from "../pricing/pricing.service"
 
 const mockCreateOrder = mock()
-const mockChargeOrder = mock()
-const mockFulfillOrder = mock()
+const mockCheckoutOrder = mock()
 const mockQuoteService = { createQuote: mock() }
 
 mock.module("@/modules/billing/orders/order.service", () => ({
   BillingOrderService: class MockBillingOrderService {
     createOrder = mockCreateOrder
-    chargeOrder = mockChargeOrder
-    fulfillOrder = mockFulfillOrder
+    checkoutOrder = mockCheckoutOrder
   },
 }))
 
@@ -63,8 +61,7 @@ const fulfilledOrderResult = {
 describe("POST /billing/checkout", () => {
   beforeEach(() => {
     mockCreateOrder.mockReset()
-    mockChargeOrder.mockReset()
-    mockFulfillOrder.mockReset()
+    mockCheckoutOrder.mockReset()
     mockQuoteService.createQuote.mockReset()
   })
 
@@ -133,8 +130,7 @@ describe("POST /billing/checkout", () => {
       expiresAt: "2026-08-06T10:15:00.000Z",
     })
     mockCreateOrder.mockResolvedValueOnce({ ...fulfilledOrderResult })
-    mockChargeOrder.mockResolvedValueOnce({ ...fulfilledOrderResult })
-    mockFulfillOrder.mockResolvedValueOnce({
+    mockCheckoutOrder.mockResolvedValueOnce({
       ...fulfilledOrderResult,
       amount: "108000",
     })
@@ -230,19 +226,7 @@ describe("POST /billing/checkout", () => {
         periodStart: "2026-01-01T00:00:00.000Z",
         periodEnd: "2026-02-01T00:00:00.000Z",
       })
-      mockChargeOrder.mockResolvedValue({
-        orderId: "order-1",
-        status: "CHARGED" as const,
-        subscriptionId: null,
-        invoiceId: "inv-1",
-        invoiceLineId: "line-1",
-        amount: "50000",
-        currency: "IDR",
-        billingPeriod: "MONTHLY" as const,
-        periodStart: "2026-01-01T00:00:00.000Z",
-        periodEnd: "2026-02-01T00:00:00.000Z",
-      })
-      mockFulfillOrder.mockResolvedValue(fulfilledOrderResult)
+      mockCheckoutOrder.mockResolvedValue(fulfilledOrderResult)
 
       const response = await makeRequest(app, {
         pricingId: "00000000-0000-4000-8000-000000000001",
@@ -253,6 +237,8 @@ describe("POST /billing/checkout", () => {
       expect(mockCreateOrder).toHaveBeenCalledWith(
         expect.objectContaining({ idempotencyKey: "idem-key-123" })
       )
+      expect(mockCheckoutOrder).toHaveBeenCalledTimes(1)
+      expect(mockCheckoutOrder).toHaveBeenCalledWith("order-1")
     })
 
     it("converts quantity to a Decimal before creating the order", async () => {
@@ -269,19 +255,7 @@ describe("POST /billing/checkout", () => {
         periodStart: "2026-01-01T00:00:00.000Z",
         periodEnd: "2026-02-01T00:00:00.000Z",
       })
-      mockChargeOrder.mockResolvedValue({
-        orderId: "order-1",
-        status: "CHARGED" as const,
-        subscriptionId: "sub-1",
-        invoiceId: "inv-1",
-        invoiceLineId: "line-1",
-        amount: "150000",
-        currency: "IDR",
-        billingPeriod: "MONTHLY" as const,
-        periodStart: "2026-01-01T00:00:00.000Z",
-        periodEnd: "2026-02-01T00:00:00.000Z",
-      })
-      mockFulfillOrder.mockResolvedValue(fulfilledOrderResult)
+      mockCheckoutOrder.mockResolvedValue(fulfilledOrderResult)
 
       const response = await makeRequest(app, {
         pricingId: "pricing-1",
@@ -309,7 +283,7 @@ describe("POST /billing/checkout", () => {
         periodStart: "2026-01-01T00:00:00.000Z",
         periodEnd: "2026-02-01T00:00:00.000Z",
       })
-      mockChargeOrder.mockRejectedValue(new Error("INSUFFICIENT_BALANCE"))
+      mockCheckoutOrder.mockRejectedValue(new Error("INSUFFICIENT_BALANCE"))
 
       const response = await makeRequest(app, {
         pricingId: "00000000-0000-4000-8000-000000000001",
@@ -370,7 +344,7 @@ describe("POST /billing/checkout", () => {
         orderId: "order-1",
         status: "PENDING" as const,
       })
-      mockChargeOrder.mockRejectedValueOnce(new Error("CURRENCY_MISMATCH"))
+      mockCheckoutOrder.mockRejectedValueOnce(new Error("CURRENCY_MISMATCH"))
 
       let response = await makeRequest(app, {
         pricingId: "pricing-1",
@@ -379,7 +353,7 @@ describe("POST /billing/checkout", () => {
       expect(response.status).toBe(422)
       expect((await response.json()).error).toBe("CURRENCY_MISMATCH")
 
-      mockChargeOrder.mockRejectedValueOnce(new Error("ORDER_NOT_CHARGEABLE"))
+      mockCheckoutOrder.mockRejectedValueOnce(new Error("ORDER_NOT_CHARGEABLE"))
       response = await makeRequest(app, {
         pricingId: "pricing-1",
         idempotencyKey: "key-2",
@@ -387,7 +361,7 @@ describe("POST /billing/checkout", () => {
       expect(response.status).toBe(409)
       expect((await response.json()).error).toBe("ORDER_NOT_CHARGEABLE")
 
-      mockChargeOrder.mockRejectedValueOnce(new Error("CHARGE_ERROR"))
+      mockCheckoutOrder.mockRejectedValueOnce(new Error("CHARGE_ERROR"))
       response = await makeRequest(app, {
         pricingId: "pricing-1",
         idempotencyKey: "key-3",
@@ -399,8 +373,7 @@ describe("POST /billing/checkout", () => {
     it("maps fulfillment lock and unexpected failures", async () => {
       const app = buildApp(defaultAuth)
       mockCreateOrder.mockResolvedValue({ orderId: "order-1" })
-      mockChargeOrder.mockResolvedValue({ orderId: "order-1" })
-      mockFulfillOrder.mockRejectedValueOnce(
+      mockCheckoutOrder.mockRejectedValueOnce(
         new Error("ADVISORY_LOCK_UNAVAILABLE")
       )
 
@@ -411,7 +384,7 @@ describe("POST /billing/checkout", () => {
       expect(response.status).toBe(503)
       expect((await response.json()).error).toBe("SERVICE_UNAVAILABLE")
 
-      mockFulfillOrder.mockRejectedValueOnce(new Error("FULFILLMENT_ERROR"))
+      mockCheckoutOrder.mockRejectedValueOnce(new Error("FULFILLMENT_ERROR"))
       response = await makeRequest(app, {
         pricingId: "pricing-1",
         idempotencyKey: "key-2",
@@ -436,19 +409,7 @@ describe("POST /billing/checkout", () => {
         periodStart: "2026-01-01T00:00:00.000Z",
         periodEnd: "2026-02-01T00:00:00.000Z",
       })
-      mockChargeOrder.mockResolvedValue({
-        orderId: "order-1",
-        status: "CHARGED" as const,
-        subscriptionId: null,
-        invoiceId: "inv-1",
-        invoiceLineId: "line-1",
-        amount: "50000",
-        currency: "IDR",
-        billingPeriod: "MONTHLY" as const,
-        periodStart: "2026-01-01T00:00:00.000Z",
-        periodEnd: "2026-02-01T00:00:00.000Z",
-      })
-      mockFulfillOrder.mockRejectedValue(
+      mockCheckoutOrder.mockRejectedValue(
         new Error("FULFILLMENT_ADAPTER_NOT_FOUND: UNKNOWN_PRODUCT")
       )
 
@@ -483,19 +444,7 @@ describe("POST /billing/checkout", () => {
         periodStart: "2026-01-01T00:00:00.000Z",
         periodEnd: "2026-02-01T00:00:00.000Z",
       })
-      mockChargeOrder.mockResolvedValue({
-        orderId: "order-1",
-        status: "CHARGED" as const,
-        subscriptionId: null,
-        invoiceId: "inv-1",
-        invoiceLineId: "line-1",
-        amount: "50000",
-        currency: "IDR",
-        billingPeriod: "MONTHLY" as const,
-        periodStart: "2026-01-01T00:00:00.000Z",
-        periodEnd: "2026-02-01T00:00:00.000Z",
-      })
-      mockFulfillOrder.mockResolvedValue(fulfilledOrderResult)
+      mockCheckoutOrder.mockResolvedValue(fulfilledOrderResult)
 
       const response = await makeRequest(app, {
         pricingId: "00000000-0000-4000-8000-000000000001",

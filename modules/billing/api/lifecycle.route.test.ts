@@ -171,7 +171,7 @@ describe("LifecycleRoute", () => {
       expect(body.error).toBe("ALREADY_CANCELLED")
     })
 
-    it("sets cancelledAtPeriodEnd in metadata and returns a transition", async () => {
+    it("sets the cancellation flag and metadata and returns a transition", async () => {
       const updated = {
         ...baseSub,
         metadata: {
@@ -200,9 +200,14 @@ describe("LifecycleRoute", () => {
       expect(body.subscription.cancelAtPeriodEnd).toBe(true)
 
       const updateCall = mockUpdate.mock.calls[0]?.[0] as {
-        data?: { metadata?: Record<string, unknown> }
+        data?: {
+          cancelAtPeriodEnd?: boolean
+          metadata?: Record<string, unknown>
+        }
       }
+      expect(updateCall.data?.cancelAtPeriodEnd).toBe(true)
       const meta = updateCall.data?.metadata ?? {}
+
       expect(meta).toMatchObject({
         cancelledAtPeriodEnd: true,
         cancelledReason: "Too expensive",
@@ -313,8 +318,12 @@ describe("LifecycleRoute", () => {
 
       // Cancelled metadata fields removed
       const updateCall = mockUpdate.mock.calls[0]?.[0] as {
-        data?: { metadata?: Record<string, unknown> }
+        data?: {
+          cancelAtPeriodEnd?: boolean
+          metadata?: Record<string, unknown>
+        }
       }
+      expect(updateCall.data?.cancelAtPeriodEnd).toBe(false)
       const meta = updateCall.data?.metadata ?? {}
       expect(meta).not.toHaveProperty("cancelledAtPeriodEnd")
       expect(meta).not.toHaveProperty("cancelledReason")
