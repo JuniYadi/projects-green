@@ -7,6 +7,7 @@ import {
   loadVaultConfig,
   normalizeNoteTarget,
   readBootFlow,
+  readNote,
   resolveNote,
 } from "./obsidian-vault"
 
@@ -102,6 +103,87 @@ describe("obsidian vault note resolution", () => {
       "SESSION-BRIEFING"
     )
   })
+})
+
+it("rejects invalid vault configurations", async () => {
+  const { directory, configPath } = await makeVault({
+    "Welcome.md": "# Welcome",
+  })
+
+  await writeFile(configPath, "{", "utf8")
+  await expect(loadVaultConfig(configPath)).rejects.toThrow(
+    "Unable to read valid JSON config"
+  )
+
+  await writeFile(configPath, "null", "utf8")
+  await expect(loadVaultConfig(configPath)).rejects.toThrow(
+    "Invalid vault config"
+  )
+
+  await writeFile(
+    configPath,
+    JSON.stringify({ directory: "relative", entry: "Welcome.md" }),
+    "utf8"
+  )
+  await expect(loadVaultConfig(configPath)).rejects.toThrow(
+    "Invalid vault directory"
+  )
+
+  await writeFile(
+    configPath,
+    JSON.stringify({
+      directory: join(directory, "missing"),
+      entry: "Welcome.md",
+    }),
+    "utf8"
+  )
+  await expect(loadVaultConfig(configPath)).rejects.toThrow(
+    "Vault directory is missing or unreadable"
+  )
+
+  const fileDirectory = join(directory, "not-a-directory")
+  await writeFile(fileDirectory, "file", "utf8")
+  await writeFile(
+    configPath,
+    JSON.stringify({ directory: fileDirectory, entry: "Welcome.md" }),
+    "utf8"
+  )
+  await expect(loadVaultConfig(configPath)).rejects.toThrow(
+    "Vault directory is not a directory"
+  )
+
+  for (const entry of ["", "/absolute.md", "../outside.md", "Missing.md"]) {
+    await writeFile(configPath, JSON.stringify({ directory, entry }), "utf8")
+    await expect(loadVaultConfig(configPath)).rejects.toThrow()
+  }
+})
+
+it("rejects unsafe paths and unreadable notes", async () => {
+  const { directory, configPath } = await makeVault({
+    "Welcome.md": "# Welcome\n\n## Agent entry flow\n\n- [[Meta/First]]",
+    "Meta/First.md": "# First",
+  })
+  const config = await loadVaultConfig(configPath)
+  const index = await createNoteIndex(directory)
+
+  expect(() => resolveNote(index, "../outside")).toThrow("escapes vault root")
+  await expect(
+    readNote("Meta/First", { config, index })
+  ).resolves.toMatchObject({ content: "# First" })
+
+  await rm(join(directory, "Meta/First.md"))
+  await expect(readNote("Meta/First", { config, index })).rejects.toThrow(
+    "Unable to read note"
+  )
+  await expect(readBootFlow({ config, index })).rejects.toThrow(
+    "Unable to read note"
+  )
+
+  await writeFile(join(directory, "Meta/First.md"), "# First", "utf8")
+  await rm(join(directory, "Welcome.md"))
+  await expect(readBootFlow({ config, index })).rejects.toThrow(
+    "Unable to read configured entry"
+  )
 })
 
 describe("obsidian vault boot flow", () => {
