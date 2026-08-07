@@ -105,6 +105,18 @@ describe("obsidian vault note resolution", () => {
   })
 })
 
+it("resolves slashful targets without filesystem case sensitivity", async () => {
+  const { directory } = await makeVault({
+    "Welcome.md": "# Welcome",
+    "meta/session-briefing.md": "# Session",
+  })
+  const index = await createNoteIndex(directory)
+
+  expect(resolveNote(index, "Meta/SESSION-BRIEFING").path).toBe(
+    "meta/session-briefing.md"
+  )
+})
+
 it("rejects invalid vault configurations", async () => {
   const { directory, configPath } = await makeVault({
     "Welcome.md": "# Welcome",

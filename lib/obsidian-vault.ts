@@ -190,7 +190,7 @@ export function resolveNote(
     const relativePath = relative(root, candidate).split(sep).join("/")
     matches = [...index.values()]
       .flatMap((paths) => paths)
-      .filter((path) => path === relativePath)
+      .filter((path) => path.toLowerCase() === relativePath.toLowerCase())
   }
 
   if (matches.length === 0) {
