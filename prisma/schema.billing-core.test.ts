@@ -29,6 +29,22 @@ describe("billing core prisma models", () => {
   })
 })
 
+describe("subscription lifecycle migration", () => {
+  it("contains only the lifecycle enum and cancellation column changes", async () => {
+    const migration = await Bun.file(
+      "prisma/migrations/20260806120000_subscription_lifecycle/migration.sql"
+    ).text()
+
+    expect(migration).toContain(
+      "ALTER TYPE \"BillingAuditAction\" ADD VALUE IF NOT EXISTS 'SUBSCRIPTION_REINSTATED'"
+    )
+    expect(migration).toContain(
+      'ADD COLUMN "cancelAtPeriodEnd" BOOLEAN NOT NULL DEFAULT false'
+    )
+    expect(migration.match(/ADD COLUMN/g)).toHaveLength(1)
+  })
+})
+
 describe("unified billing catalog schema", () => {
   it("defines recurring pricing snapshots and order bridges", async () => {
     const schema = await Bun.file("prisma/schema.prisma").text()
