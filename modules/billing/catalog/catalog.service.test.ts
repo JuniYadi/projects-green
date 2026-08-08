@@ -64,7 +64,7 @@ describe("CatalogService", () => {
     expect(result.products[0]?.plans[0]?.offers[0]?.periodPrice).toBe("100000")
     expect(mockFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { isActive: true },
+        where: { isActive: true, state: "PUBLISHED" },
         include: expect.objectContaining({ plans: expect.anything() }),
       })
     )
@@ -96,7 +96,7 @@ describe("CatalogService", () => {
 
     expect(mockFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { code: "VPN", isActive: true },
+        where: { code: "VPN", isActive: true, state: "PUBLISHED" },
       })
     )
   })

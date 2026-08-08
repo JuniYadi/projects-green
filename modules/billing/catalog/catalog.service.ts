@@ -35,10 +35,9 @@ export class CatalogService {
 
   async getCatalog(currency: string): Promise<CatalogListResponse> {
     const packages = await prisma.servicePackage.findMany({
-      where: { isActive: true },
+      where: { isActive: true, state: "PUBLISHED" },
       include: {
         plans: {
-          where: { isActive: true },
           include: {
             pricings: {
               where: this.pricingWhere(currency),
@@ -85,6 +84,7 @@ export class CatalogService {
       where: {
         code: code as ServiceType,
         isActive: true,
+        state: "PUBLISHED",
       },
       include: {
         plans: {
