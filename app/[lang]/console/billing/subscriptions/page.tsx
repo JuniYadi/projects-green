@@ -1,12 +1,10 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { getSubscriptions } from "@/lib/billing-client"
-import type { BillingSubscriptions } from "@/lib/billing-client"
+import { useSubscriptionsQuery } from "@/hooks/use-billing-data"
 import { SubscriptionList } from "@/components/billing/subscription-list"
 
 export default function SubscriptionsPage() {
@@ -14,27 +12,7 @@ export default function SubscriptionsPage() {
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
   const t = messages.console.billing.subscriptions
-  const [data, setData] = useState<BillingSubscriptions | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const loadData = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const result = await getSubscriptions()
-      setData(result)
-    } catch {
-      setError(t.errorDescription)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [t.errorDescription])
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadData()
-  }, [loadData])
+  const { data, isLoading, error, refetch } = useSubscriptionsQuery()
 
   if (isLoading) {
     return (
@@ -66,8 +44,8 @@ export default function SubscriptionsPage() {
       <SubscriptionList
         subscriptions={data?.subscriptions ?? []}
         isLoading={isLoading}
-        error={error}
-        onRetry={loadData}
+        error={error instanceof Error ? error.message : null}
+        onRetry={() => void refetch()}
       />
     </main>
   )

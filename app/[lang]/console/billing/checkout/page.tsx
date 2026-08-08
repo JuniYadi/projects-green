@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import Link from "next/link"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,11 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-  ArrowLeftIcon,
-  ArrowCounterClockwise,
-  WalletIcon,
-} from "@phosphor-icons/react"
+import { ArrowCounterClockwise, WalletIcon } from "@phosphor-icons/react"
 
 import {
   getCheckoutQuote,
@@ -164,12 +159,6 @@ export default function CheckoutPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="flex items-center gap-3">
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/console/billing">
-            <ArrowLeftIcon className="size-4" />
-            Back
-          </Link>
-        </Button>
         <div>
           <h1 className="text-2xl font-semibold">Checkout</h1>
           <p className="text-sm text-muted-foreground">

@@ -1,8 +1,20 @@
 import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { render, waitFor } from "@testing-library/react"
 
 import SubscriptionsPage from "./page"
+
+const renderPage = () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  return render(
+    <QueryClientProvider client={client}>
+      <SubscriptionsPage />
+    </QueryClientProvider>
+  )
+}
 
 const originalFetch = globalThis.fetch
 
@@ -30,14 +42,14 @@ describe("SubscriptionsPage", () => {
   })
 
   it("shows loading state initially", () => {
-    const view = render(<SubscriptionsPage />)
+    const view = renderPage()
     expect(
       view.container.querySelectorAll('[data-slot="skeleton"]').length
     ).toBeGreaterThan(0)
   })
 
   it("shows empty state when no subscriptions match", async () => {
-    const view = render(<SubscriptionsPage />)
+    const view = renderPage()
 
     await waitFor(() =>
       expect(view.getByText("No subscriptions found")).toBeInTheDocument()
@@ -71,7 +83,7 @@ describe("SubscriptionsPage", () => {
       return jsonResponse({ ok: false, message: "Unhandled" }, 500)
     }) as unknown as typeof fetch
 
-    const view = render(<SubscriptionsPage />)
+    const view = renderPage()
 
     await waitFor(() => {
       expect(
@@ -86,14 +98,10 @@ describe("SubscriptionsPage", () => {
       throw new Error("Network error")
     }) as unknown as typeof fetch
 
-    const view = render(<SubscriptionsPage />)
+    const view = renderPage()
 
     await waitFor(() =>
-      expect(
-        view.getByText(
-          /Something went wrong while fetching your subscriptions/i
-        )
-      ).toBeInTheDocument()
+      expect(view.getByText(/Network error/i)).toBeInTheDocument()
     )
   })
 
@@ -125,7 +133,7 @@ describe("SubscriptionsPage", () => {
       return jsonResponse({ ok: false, message: "Unhandled" }, 500)
     }) as unknown as typeof fetch
 
-    const view = render(<SubscriptionsPage />)
+    const view = renderPage()
 
     await waitFor(() => {
       expect(view.getAllByText("WHATSAPP").length).toBeGreaterThan(0)

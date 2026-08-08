@@ -1,9 +1,21 @@
 import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { fireEvent, render, waitFor } from "@testing-library/react"
 import { useParams } from "next/navigation"
 
 import SubscriptionDetailPage from "./page"
+
+const renderPage = () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  return render(
+    <QueryClientProvider client={client}>
+      <SubscriptionDetailPage />
+    </QueryClientProvider>
+  )
+}
 
 const originalFetch = globalThis.fetch
 
@@ -48,6 +60,15 @@ describe("SubscriptionDetailPage", () => {
           ],
         })
       }
+      if (url.includes("/api/billing/catalog/")) {
+        return jsonResponse({
+          ok: true,
+          code: "WHATSAPP",
+          name: "WhatsApp",
+          description: null,
+          plans: [],
+        })
+      }
       if (url.includes("/api/billing/invoices/")) {
         return jsonResponse({
           ok: true,
@@ -80,7 +101,7 @@ describe("SubscriptionDetailPage", () => {
   })
 
   it("shows loading state initially", () => {
-    const view = render(<SubscriptionDetailPage />)
+    const view = renderPage()
     expect(
       view.container.querySelectorAll('[data-slot="skeleton"]').length
     ).toBeGreaterThan(0)
@@ -95,7 +116,7 @@ describe("SubscriptionDetailPage", () => {
       return jsonResponse({ ok: true, invoice: null })
     }) as unknown as typeof fetch
 
-    const view = render(<SubscriptionDetailPage />)
+    const view = renderPage()
 
     await waitFor(() =>
       expect(view.getByText(/Invoice Not Found/i)).toBeInTheDocument()
@@ -107,19 +128,15 @@ describe("SubscriptionDetailPage", () => {
       throw new Error("Network error")
     }) as unknown as typeof fetch
 
-    const view = render(<SubscriptionDetailPage />)
+    const view = renderPage()
 
     await waitFor(() =>
-      expect(
-        view.getByText(
-          /Something went wrong while fetching your subscriptions/i
-        )
-      ).toBeInTheDocument()
+      expect(view.getByText(/Network error/i)).toBeInTheDocument()
     )
   })
 
   it("renders subscription detail with overview tab", async () => {
-    const view = render(<SubscriptionDetailPage />)
+    const view = renderPage()
 
     await waitFor(() => {
       expect(view.getAllByText("WHATSAPP").length).toBeGreaterThan(0)
@@ -129,7 +146,7 @@ describe("SubscriptionDetailPage", () => {
   })
 
   it("renders billing tab with invoice data", async () => {
-    const view = render(<SubscriptionDetailPage />)
+    const view = renderPage()
 
     await waitFor(() =>
       expect(view.getByRole("tab", { name: "Billing" })).toBeInTheDocument()
@@ -145,7 +162,7 @@ describe("SubscriptionDetailPage", () => {
   })
 
   it("shows tabs for overview, billing, add-ons, and activity", async () => {
-    const view = render(<SubscriptionDetailPage />)
+    const view = renderPage()
 
     await waitFor(() => {
       expect(view.getByRole("tab", { name: "Overview" })).toBeInTheDocument()
@@ -156,7 +173,7 @@ describe("SubscriptionDetailPage", () => {
   })
 
   it("shows add-ons unavailable state", async () => {
-    const view = render(<SubscriptionDetailPage />)
+    const view = renderPage()
 
     await waitFor(() =>
       expect(view.getByRole("tab", { name: "Add-ons" })).toBeInTheDocument()
@@ -171,7 +188,7 @@ describe("SubscriptionDetailPage", () => {
   })
 
   it("shows activity tab with no activity message", async () => {
-    const view = render(<SubscriptionDetailPage />)
+    const view = renderPage()
 
     await waitFor(() =>
       expect(view.getByRole("tab", { name: "Activity" })).toBeInTheDocument()
@@ -186,7 +203,7 @@ describe("SubscriptionDetailPage", () => {
   })
 
   it("shows back to subscriptions link", async () => {
-    const view = render(<SubscriptionDetailPage />)
+    const view = renderPage()
 
     await waitFor(() =>
       expect(
@@ -196,7 +213,7 @@ describe("SubscriptionDetailPage", () => {
   })
 
   it("shows exact renewal date", async () => {
-    const view = render(<SubscriptionDetailPage />)
+    const view = renderPage()
 
     await waitFor(() =>
       expect(view.getByText("July 15, 2026")).toBeInTheDocument()

@@ -1,31 +1,16 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  getAdminSubscriptions,
-  type AdminSubscriptionItem,
-} from "@/lib/billing-client"
+import { DataTable } from "@/components/data-table"
+import { DataTableColumnHeader } from "@/components/data-table-column-header"
+import type { ColumnDef } from "@tanstack/react-table"
+import { useAdminSubscriptionsQuery } from "@/hooks/use-billing-data"
+import type { AdminSubscriptionItem } from "@/lib/billing-client"
 import { formatBillingMoney } from "@/modules/billing/format-money"
 
 const STATUS_OPTIONS = [
@@ -102,157 +87,131 @@ function PaymentStatusBadge({
   return <Badge variant={variant}>{paymentStatusLabel(orderStatus)}</Badge>
 }
 
-function SubscriptionRow({
-  sub,
-  onSelect,
-}: {
-  sub: AdminSubscriptionItem
-  onSelect: (subscription: AdminSubscriptionItem) => void
-}) {
-  const orgHref = sub.organizationId
-    ? `/portal/billing/org/${sub.organizationId}`
-    : null
-
-  return (
-    <TableRow
-      className="cursor-pointer"
-      tabIndex={0}
-      onClick={() => onSelect(sub)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault()
-          onSelect(sub)
-        }
-      }}
-    >
-      <TableCell>
-        {orgHref ? (
-          <Link href={orgHref} className="font-mono text-xs hover:underline">
-            {sub.organizationId}
-          </Link>
-        ) : (
-          <span className="font-mono text-xs text-muted-foreground">
-            {sub.organizationId ?? "—"}
-          </span>
-        )}
-      </TableCell>
-      <TableCell>
-        <div className="font-medium">{sub.packageCode}</div>
-        <div className="text-xs text-muted-foreground">
-          {sub.planCode} · {sub.regionCode}
-        </div>
-      </TableCell>
-      <TableCell>
-        <div className="text-xs text-muted-foreground">{sub.type}</div>
-        <div className="text-xs text-muted-foreground">{sub.billingMode}</div>
-      </TableCell>
-      <TableCell className="font-medium">
-        {sub.periodPrice
-          ? formatBillingMoney(sub.periodPrice, sub.currency ?? "IDR")
-          : sub.monthlyRateIdr
-            ? formatBillingMoney(sub.monthlyRateIdr, "IDR")
-            : "—"}
-        {sub.billingPeriod ? (
-          <span className="ml-1 text-xs text-muted-foreground">
-            /{sub.billingPeriod.toLowerCase()}
-          </span>
-        ) : null}
-      </TableCell>
-      <TableCell>
-        <Badge variant={serviceStatusVariant(sub.status)}>{sub.status}</Badge>
-      </TableCell>
-      <TableCell>
-        <PaymentStatusBadge orderStatus={sub.orderStatus} />
-      </TableCell>
-      <TableCell>
-        <PaymentStatusBadge orderStatus={sub.invoiceStatus} />
-      </TableCell>
-      <TableCell>
-        {sub.currentPeriodEnd ? (
-          <span className="text-xs">
-            {new Date(sub.currentPeriodEnd).toLocaleDateString()}
-          </span>
-        ) : (
-          "—"
-        )}
-      </TableCell>
-    </TableRow>
-  )
-}
-
 const PAGE_SIZE = 20
 
 export function BillingSubscriptionsPage() {
-  const [subscriptions, setSubscriptions] = useState<AdminSubscriptionItem[]>(
-    []
-  )
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
-  const [total, setTotal] = useState(0)
-
-  const [search, setSearch] = useState("")
-  const [status, setStatus] = useState<string>("all")
-  const [product, setProduct] = useState<string>("all")
-  const [billingPeriod, setBillingPeriod] = useState<string>("all")
   const [selectedSubscription, setSelectedSubscription] =
     useState<AdminSubscriptionItem | null>(null)
+  const subscriptionsQuery = useAdminSubscriptionsQuery({
+    page,
+    limit: PAGE_SIZE,
+  })
+  const subscriptions = subscriptionsQuery.data?.subscriptions ?? []
+  const total = subscriptionsQuery.data?.pagination.total ?? 0
+  const totalPages = subscriptionsQuery.data?.pagination.totalPages ?? 0
+  const loading = subscriptionsQuery.isLoading
+  const error =
+    subscriptionsQuery.error instanceof Error
+      ? subscriptionsQuery.error.message
+      : subscriptionsQuery.error
+        ? "Unable to load subscriptions."
+        : null
 
-  const load = useCallback(
-    async (pageNum: number) => {
-      setLoading(true)
-      try {
-        const params: {
-          page: number
-          limit: number
-          status?: string
-        } = {
-          page: pageNum,
-          limit: PAGE_SIZE,
-        }
-        if (status !== "all") params.status = status
-
-        const response = await getAdminSubscriptions(params)
-        setSubscriptions(response.subscriptions)
-        setTotal(response.pagination.total)
-        setError(null)
-      } catch (cause) {
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : "Unable to load subscriptions."
-        )
-      } finally {
-        setLoading(false)
-      }
-    },
-    [status]
+  const columns = useMemo<ColumnDef<AdminSubscriptionItem>[]>(
+    () => [
+      {
+        accessorKey: "organizationId",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Organization" />
+        ),
+        cell: ({ row }) =>
+          row.original.organizationId ? (
+            <Link
+              className="font-medium hover:underline"
+              href={`/portal/admin/organizations/${row.original.organizationId}`}
+            >
+              {row.original.organizationId}
+            </Link>
+          ) : (
+            "—"
+          ),
+      },
+      {
+        accessorKey: "packageCode",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Product / plan" />
+        ),
+        cell: ({ row }) => (
+          <Button
+            className="h-auto justify-start p-0 font-medium"
+            variant="link"
+            onClick={() => setSelectedSubscription(row.original)}
+          >
+            <span>{row.original.packageCode}</span>
+            <span> / {row.original.planCode}</span>
+          </Button>
+        ),
+      },
+      {
+        accessorKey: "billingPeriod",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Billing period" />
+        ),
+      },
+      {
+        accessorKey: "type",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Type" />
+        ),
+      },
+      {
+        accessorKey: "periodPrice",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Price" />
+        ),
+        cell: ({ row }) =>
+          formatBillingMoney(
+            row.original.periodPrice ?? row.original.monthlyRateIdr ?? "0",
+            row.original.currency ?? "IDR"
+          ),
+      },
+      {
+        accessorKey: "status",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Service" />
+        ),
+        cell: ({ row }) => (
+          <Badge variant={serviceStatusVariant(row.original.status)}>
+            {row.original.status}
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: "orderStatus",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Payment" />
+        ),
+        cell: ({ row }) => (
+          <PaymentStatusBadge orderStatus={row.original.orderStatus} />
+        ),
+      },
+      {
+        accessorKey: "invoiceStatus",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Invoice" />
+        ),
+        cell: ({ row }) =>
+          row.original.invoiceStatus ? (
+            <Badge variant="secondary">{row.original.invoiceStatus}</Badge>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          ),
+      },
+      {
+        accessorKey: "currentPeriodEnd",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Renews" />
+        ),
+        sortingFn: "datetime",
+        cell: ({ row }) =>
+          row.original.currentPeriodEnd
+            ? new Date(row.original.currentPeriodEnd).toLocaleDateString()
+            : "—",
+      },
+    ],
+    []
   )
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load(page)
-  }, [load, page])
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase()
-    return subscriptions.filter((sub) => {
-      if (
-        q &&
-        !sub.organizationId?.toLowerCase().includes(q) &&
-        !sub.packageCode.toLowerCase().includes(q) &&
-        !sub.planCode.toLowerCase().includes(q)
-      ) {
-        return false
-      }
-      if (product !== "all" && sub.type !== product) return false
-      if (billingPeriod !== "all" && sub.billingPeriod !== billingPeriod)
-        return false
-      return true
-    })
-  }, [subscriptions, search, product, billingPeriod])
-
-  const totalPages = Math.ceil(total / PAGE_SIZE)
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -265,53 +224,7 @@ export function BillingSubscriptionsPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <CardTitle>All subscriptions</CardTitle>
-            <div className="flex flex-wrap items-center gap-2">
-              <Input
-                placeholder="Search org, product, plan…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-48"
-              />
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={product} onValueChange={setProduct}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRODUCT_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={billingPeriod} onValueChange={setBillingPeriod}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {BILLING_PERIOD_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <CardTitle>All subscriptions</CardTitle>
         </CardHeader>
         <CardContent>
           {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
@@ -323,42 +236,49 @@ export function BillingSubscriptionsPage() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Organization</TableHead>
-                      <TableHead>Product / plan</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Service</TableHead>
-                      <TableHead>Payment</TableHead>
-                      <TableHead>Invoice</TableHead>
-                      <TableHead>Renews</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={8}
-                          className="py-10 text-center text-muted-foreground"
-                        >
-                          No subscriptions found.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filtered.map((sub) => (
-                        <SubscriptionRow
-                          key={sub.id}
-                          sub={sub}
-                          onSelect={setSelectedSubscription}
-                        />
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+              <DataTable
+                tableId="portal-billing-subscriptions"
+                columns={columns}
+                data={subscriptions}
+                searchPlaceholder="Search org, product, plan…"
+                searchableColumns={[
+                  "organizationId",
+                  "packageCode",
+                  "planCode",
+                  "type",
+                  "status",
+                  "orderStatus",
+                  "invoiceStatus",
+                ]}
+                facetFilters={[
+                  {
+                    columnId: "status",
+                    label: "Status",
+                    allLabel: "All statuses",
+                    options: STATUS_OPTIONS.filter(
+                      (option) => option.value !== "all"
+                    ),
+                  },
+                  {
+                    columnId: "type",
+                    label: "Product",
+                    allLabel: "All products",
+                    options: PRODUCT_OPTIONS.filter(
+                      (option) => option.value !== "all"
+                    ),
+                  },
+                  {
+                    columnId: "billingPeriod",
+                    label: "Billing period",
+                    allLabel: "All periods",
+                    options: BILLING_PERIOD_OPTIONS.filter(
+                      (option) => option.value !== "all"
+                    ),
+                  },
+                ]}
+                defaultColumnVisibility={{ billingPeriod: false }}
+                emptyMessage="No subscriptions found."
+              />
 
               {totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-between">
