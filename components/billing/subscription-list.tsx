@@ -1,6 +1,8 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import type { ColumnDef } from "@tanstack/react-table"
+import { DataTable } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -156,6 +158,82 @@ function getTermLabel(sub: SubscriptionItem): string {
   if (period === "ANNUAL") return "Annual"
   return period ?? "N/A"
 }
+const subscriptionColumns: ColumnDef<SubscriptionItem>[] = [
+  {
+    accessorKey: "packageCode",
+    header: "Product",
+    cell: ({ row }) => (
+      <span className="font-medium">{row.original.packageCode}</span>
+    ),
+  },
+  {
+    accessorKey: "planCode",
+    header: "Plan",
+    cell: ({ row }) => (
+      <span className="text-muted-foreground">{row.original.planCode}</span>
+    ),
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => {
+      const status = row.original.status
+      return (
+        <Badge
+          className={`inline-flex items-center gap-1 ${getStatusClassName(status)}`}
+          aria-label={`Status: ${getStatusLabel(status)}`}
+        >
+          {getStatusIcon(status)}
+          <span>{getStatusLabel(status)}</span>
+        </Badge>
+      )
+    },
+  },
+  {
+    accessorKey: "billingPeriod",
+    header: "Term",
+    cell: ({ row }) => (
+      <span className="text-muted-foreground">
+        {getTermLabel(row.original)}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "currentPeriodEnd",
+    header: "Renewal",
+    cell: ({ row }) => (
+      <span className="text-muted-foreground">
+        {formatRenewal(row.original)}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "invoiceStatus",
+    header: "Invoice",
+    cell: ({ row }) => {
+      const status = row.original.invoiceStatus
+      return status ? (
+        <Badge className={getInvoiceStatusClassName(status)}>{status}</Badge>
+      ) : (
+        <span className="text-muted-foreground">&mdash;</span>
+      )
+    },
+  },
+  {
+    id: "nextAction",
+    header: "Next Action",
+    accessorFn: (row) => getNextAction(row).label,
+    cell: ({ row }) => {
+      const action = getNextAction(row.original)
+      return (
+        <span className="inline-flex items-center gap-1 text-sm">
+          {action.icon}
+          {action.label}
+        </span>
+      )
+    },
+  },
+]
 
 export function SubscriptionList({
   subscriptions,
@@ -252,86 +330,14 @@ export function SubscriptionList({
         </Select>
       </div>
 
-      {/* Table view for desktop */}
-      <div className="hidden overflow-x-auto md:block">
-        <table
-          className="w-full caption-bottom text-sm"
-          role="table"
-          aria-label="Subscriptions list"
-        >
-          <thead>
-            <tr className="border-b text-left align-middle">
-              <th className="p-3 font-medium text-muted-foreground" scope="col">
-                Product
-              </th>
-              <th className="p-3 font-medium text-muted-foreground" scope="col">
-                Plan
-              </th>
-              <th className="p-3 font-medium text-muted-foreground" scope="col">
-                Status
-              </th>
-              <th className="p-3 font-medium text-muted-foreground" scope="col">
-                Term
-              </th>
-              <th className="p-3 font-medium text-muted-foreground" scope="col">
-                Renewal
-              </th>
-              <th className="p-3 font-medium text-muted-foreground" scope="col">
-                Invoice
-              </th>
-              <th className="p-3 font-medium text-muted-foreground" scope="col">
-                Next Action
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((sub) => {
-              const action = getNextAction(sub)
-              return (
-                <tr
-                  key={sub.id}
-                  className="border-b transition-colors hover:bg-muted/50"
-                >
-                  <td className="p-3 font-medium">{sub.packageCode}</td>
-                  <td className="p-3 text-muted-foreground">{sub.planCode}</td>
-                  <td className="p-3">
-                    <Badge
-                      className={`inline-flex items-center gap-1 ${getStatusClassName(sub.status)}`}
-                      aria-label={`Status: ${getStatusLabel(sub.status)}`}
-                    >
-                      {getStatusIcon(sub.status)}
-                      <span>{getStatusLabel(sub.status)}</span>
-                    </Badge>
-                  </td>
-                  <td className="p-3 text-muted-foreground">
-                    {getTermLabel(sub)}
-                  </td>
-                  <td className="p-3 text-muted-foreground">
-                    {formatRenewal(sub)}
-                  </td>
-                  <td className="p-3 text-muted-foreground">
-                    {sub.invoiceStatus ? (
-                      <Badge
-                        className={getInvoiceStatusClassName(sub.invoiceStatus)}
-                      >
-                        {sub.invoiceStatus}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">&mdash;</span>
-                    )}
-                  </td>
-                  <td className="p-3">
-                    <span className="inline-flex items-center gap-1 text-sm">
-                      {action.icon}
-                      {action.label}
-                    </span>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        tableId="billing-subscriptions"
+        columns={subscriptionColumns}
+        data={filtered}
+        searchableColumns={["packageCode", "planCode", "id"]}
+        searchPlaceholder="Search subscriptions table..."
+        emptyMessage="No subscriptions found"
+      />
 
       {/* Card view for mobile */}
       <div className="space-y-3 md:hidden">

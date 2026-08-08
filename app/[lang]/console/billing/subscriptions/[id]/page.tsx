@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -21,20 +22,17 @@ import { Textarea } from "@/components/ui/textarea"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
-  getSubscriptions,
-  getInvoice,
-  getCatalogProduct,
-  cancelSubscription,
-  reinstateSubscription,
-  previewChangePlan,
-  changePlan,
-} from "@/lib/billing-client"
+  useSubscriptionsQuery,
+  useInvoiceQuery,
+  useCatalogProductQuery,
+  cancelBillingSubscription,
+  reinstateBillingSubscription,
+  previewBillingPlanChange,
+  changeBillingPlan,
+} from "@/hooks/use-billing-data"
 import type {
-  BillingSubscriptions,
-  InvoiceDetail,
   ChangePlanPreviewResult,
   SubscriptionItem,
-  CatalogProduct,
 } from "@/lib/billing-client"
 import { ArrowLeftIcon } from "@phosphor-icons/react"
 import Link from "next/link"
@@ -106,14 +104,26 @@ export default function SubscriptionDetailPage() {
   const messages = getMessages(locale)
   const subscriptionId = params.id as string
 
-  const [subscriptions, setSubscriptions] =
-    useState<BillingSubscriptions | null>(null)
-  const [invoice, setInvoice] = useState<InvoiceDetail | null>(null)
-  const [catalogProduct, setCatalogProduct] = useState<CatalogProduct | null>(
-    null
+  const queryClient = useQueryClient()
+  const subscriptionsQuery = useSubscriptionsQuery()
+  const subscriptions = subscriptionsQuery.data
+  const sub = subscriptions?.subscriptions.find(
+    (subscription) => subscription.id === subscriptionId
+  ) as SubscriptionItem | undefined
+  const invoiceQuery = useInvoiceQuery(subscriptionId)
+  const catalogQuery = useCatalogProductQuery(
+    sub?.packageCode,
+    sub?.currency ?? undefined
   )
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const invoice = invoiceQuery.data
+  const catalogProduct = catalogQuery.data ?? null
+  const isLoading = subscriptionsQuery.isLoading || invoiceQuery.isLoading
+  const error =
+    subscriptionsQuery.error instanceof Error
+      ? subscriptionsQuery.error.message
+      : subscriptionsQuery.error
+        ? messages.console.billing.subscriptions.errorDescription
+        : null
 
   // Lifecycle action state
   const [dialog, setDialog] = useState<DialogState>({ type: "none" })
@@ -124,66 +134,17 @@ export default function SubscriptionDetailPage() {
 
   const d = messages.console.billing.subscriptions.detail
 
-  useEffect(() => {
-    let cancelled = false
-
-    async function loadData() {
-      try {
-        const subsResult = await getSubscriptions()
-        const current = subsResult.subscriptions.find(
-          (subscription) => subscription.id === subscriptionId
-        )
-        const [invResult, catalogResult] = await Promise.all([
-          getInvoice(subscriptionId),
-          current
-            ? getCatalogProduct(
-                current.packageCode,
-                current.currency ?? undefined
-              )
-                .then((result) => result.product)
-                .catch(() => null)
-            : Promise.resolve(null),
-        ])
-        if (!cancelled) {
-          setSubscriptions(subsResult)
-          setInvoice(invResult)
-          setCatalogProduct(catalogResult)
-        }
-      } catch {
-        if (!cancelled) {
-          setError(messages.console.billing.subscriptions.errorDescription)
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false)
-      }
-    }
-
-    void loadData()
-    return () => {
-      cancelled = true
-    }
-  }, [subscriptionId, messages.console.billing.subscriptions.errorDescription])
-
-  const sub = subscriptions?.subscriptions.find(
-    (s) => s.id === subscriptionId
-  ) as SubscriptionItem | undefined
-
   async function refreshSubscriptions() {
-    try {
-      const result = await getSubscriptions()
-      setSubscriptions(result)
-    } catch {
-      // non-fatal — UI will show stale status briefly
-    }
+    await queryClient.invalidateQueries({
+      queryKey: ["billing", "subscriptions"],
+    })
   }
 
   async function handleCancel() {
     setActionLoading(true)
     setActionError(null)
     try {
-      await cancelSubscription(subscriptionId, {
-        reason: cancelReason || undefined,
-      })
+      await cancelBillingSubscription(subscriptionId, cancelReason || undefined)
       setDialog({ type: "none" })
       setCancelReason("")
       await refreshSubscriptions()
@@ -202,9 +163,10 @@ export default function SubscriptionDetailPage() {
     setActionLoading(true)
     setActionError(null)
     try {
-      await reinstateSubscription(subscriptionId, {
-        reason: reinstateReason || undefined,
-      })
+      await reinstateBillingSubscription(
+        subscriptionId,
+        reinstateReason || undefined
+      )
       setDialog({ type: "none" })
       setReinstateReason("")
       await refreshSubscriptions()
@@ -228,10 +190,14 @@ export default function SubscriptionDetailPage() {
       pricingId,
     })
     try {
-      const preview = await previewChangePlan(subscriptionId, pricingId)
+      const preview = await previewBillingPlanChange(subscriptionId, pricingId)
       setDialog((prev) =>
         prev.type === "change-plan"
-          ? { ...prev, preview, loading: false }
+          ? {
+              ...prev,
+              preview: preview as ChangePlanPreviewResult,
+              loading: false,
+            }
           : prev
       )
     } catch (err) {
@@ -255,7 +221,7 @@ export default function SubscriptionDetailPage() {
     setActionLoading(true)
     setActionError(null)
     try {
-      await changePlan(subscriptionId, dialog.pricingId)
+      await changeBillingPlan(subscriptionId, dialog.pricingId)
       setDialog({ type: "none" })
       await refreshSubscriptions()
     } catch (err) {
@@ -274,7 +240,6 @@ export default function SubscriptionDetailPage() {
       <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
         <header className="space-y-1">
           <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-64" />
         </header>
         <div className="grid gap-4 md:grid-cols-3">
           <Skeleton className="h-24" />

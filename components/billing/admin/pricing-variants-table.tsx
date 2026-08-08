@@ -1,14 +1,8 @@
 "use client"
 
+import type { ColumnDef } from "@tanstack/react-table"
+import { DataTable } from "@/components/data-table"
 import { Button } from "@/components/ui/button"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { formatBillingMoney } from "@/modules/billing/format-money"
 import { billingPeriodLabel, type AdminPricing } from "@/lib/billing-client"
@@ -20,79 +14,87 @@ export function PricingVariantsTable({
   pricing: AdminPricing[]
   onDeactivate?: (id: string) => void
 }) {
+  const columns: ColumnDef<AdminPricing>[] = [
+    {
+      id: "product",
+      header: "Product / plan",
+      accessorFn: (row) => `${row.packageCode} ${row.planCode}`,
+      cell: ({ row }) => (
+        <div>
+          <div className="font-medium">{row.original.packageCode}</div>
+          <div className="text-xs text-muted-foreground">
+            {row.original.planCode}
+          </div>
+        </div>
+      ),
+    },
+    { accessorKey: "regionCode", header: "Region" },
+    {
+      accessorKey: "billingPeriod",
+      header: "Period",
+      cell: ({ row }) => billingPeriodLabel(row.original.billingPeriod),
+    },
+    {
+      accessorKey: "periodPrice",
+      header: "Price for entire period",
+      cell: ({ row }) =>
+        row.original.periodPrice === null
+          ? "—"
+          : formatBillingMoney(row.original.periodPrice, row.original.currency),
+    },
+    {
+      accessorKey: "chargeUnit",
+      header: "Charge unit",
+      cell: ({ row }) =>
+        row.original.chargeUnit === "DEVICE"
+          ? "Per device"
+          : "Per subscription",
+    },
+    {
+      accessorKey: "effectiveFrom",
+      header: "Effective",
+      cell: ({ row }) => (
+        <span className="text-xs">
+          {new Date(row.original.effectiveFrom).toLocaleDateString()}{" "}
+          {row.original.effectiveTo
+            ? `– ${new Date(row.original.effectiveTo).toLocaleDateString()}`
+            : "– open"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "isActive",
+      header: "Status",
+      cell: ({ row }) => (
+        <Badge variant={row.original.isActive ? "default" : "secondary"}>
+          {row.original.isActive ? "Active" : "Inactive"}
+        </Badge>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) =>
+        row.original.isActive && onDeactivate ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDeactivate(row.original.id)}
+          >
+            Deactivate
+          </Button>
+        ) : null,
+    },
+  ]
+
   return (
-    <div className="overflow-x-auto rounded-lg border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Product / plan</TableHead>
-            <TableHead>Region</TableHead>
-            <TableHead>Period</TableHead>
-            <TableHead>Price for entire period</TableHead>
-            <TableHead>Charge unit</TableHead>
-            <TableHead>Effective</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {pricing.length === 0 ? (
-            <TableRow>
-              <TableCell
-                colSpan={8}
-                className="py-10 text-center text-muted-foreground"
-              >
-                No pricing variants found.
-              </TableCell>
-            </TableRow>
-          ) : (
-            pricing.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>
-                  <div className="font-medium">{item.packageCode}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {item.planCode}
-                  </div>
-                </TableCell>
-                <TableCell>{item.regionCode}</TableCell>
-                <TableCell>{billingPeriodLabel(item.billingPeriod)}</TableCell>
-                <TableCell className="font-medium">
-                  {item.periodPrice === null
-                    ? "—"
-                    : formatBillingMoney(item.periodPrice, item.currency)}
-                </TableCell>
-                <TableCell>
-                  {item.chargeUnit === "DEVICE"
-                    ? "Per device"
-                    : "Per subscription"}
-                </TableCell>
-                <TableCell className="text-xs">
-                  {new Date(item.effectiveFrom).toLocaleDateString()}{" "}
-                  {item.effectiveTo
-                    ? `– ${new Date(item.effectiveTo).toLocaleDateString()}`
-                    : "– open"}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={item.isActive ? "default" : "secondary"}>
-                    {item.isActive ? "Active" : "Inactive"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  {item.isActive && onDeactivate ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onDeactivate(item.id)}
-                    >
-                      Deactivate
-                    </Button>
-                  ) : null}
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </div>
+    <DataTable
+      tableId="admin-pricing-variants"
+      columns={columns}
+      data={pricing}
+      searchableColumns={["product", "regionCode", "billingPeriod", "currency"]}
+      searchPlaceholder="Search pricing variants..."
+      emptyMessage="No pricing variants found."
+    />
   )
 }

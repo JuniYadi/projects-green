@@ -1,5 +1,10 @@
 import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+
+mock.module("next/navigation", () => ({
+  useSearchParams: mock(() => new URLSearchParams()),
+}))
+
 import { fireEvent, render, waitFor } from "@testing-library/react"
 import { useSearchParams } from "next/navigation"
 
@@ -189,8 +194,18 @@ describe("Billing CheckoutPage", () => {
         view.getByText(/must match your billing account currency/i)
       ).toBeInTheDocument()
     )
+  })
+  it("does not render a Back control", async () => {
+    const view = render(<CheckoutPage />)
+
+    await waitFor(() =>
+      expect(
+        view.getByLabelText(/i confirm this purchase/i)
+      ).toBeInTheDocument()
+    )
+
     expect(
-      view.queryByText(/voucher claim was not consumed/i)
-    ).toBeInTheDocument()
+      view.queryByRole("link", { name: /^back$/i })
+    ).not.toBeInTheDocument()
   })
 })
