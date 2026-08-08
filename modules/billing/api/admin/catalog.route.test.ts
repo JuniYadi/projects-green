@@ -114,4 +114,39 @@ describe("admin catalog routes", () => {
     )
     expect(invalid.status).toBe(422)
   })
+  it("rejects invalid product codes and reversed price dates at the boundary", async () => {
+    const invalidCode = await app().handle(
+      request("/admin/catalog", "POST", {
+        code: "NOT_A_SERVICE",
+        name: "Invalid",
+        plans: [],
+      })
+    )
+    expect(invalidCode.status).toBe(400)
+
+    const reversedDates = await app().handle(
+      request("/admin/catalog/VPN", "PATCH", {
+        name: "VPN",
+        plans: [
+          {
+            code: "STANDARD",
+            name: "Standard",
+            resources: {},
+            prices: [
+              {
+                billingPeriod: "MONTHLY",
+                currency: "IDR",
+                amount: "100",
+                effectiveFrom: "2026-02-01T00:00:00.000Z",
+                effectiveTo: "2026-01-01T00:00:00.000Z",
+                isActive: true,
+              },
+            ],
+          },
+        ],
+      })
+    )
+    expect(reversedDates.status).toBe(400)
+    expect(service.saveDraft).not.toHaveBeenCalled()
+  })
 })

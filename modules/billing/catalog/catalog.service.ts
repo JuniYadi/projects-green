@@ -38,14 +38,13 @@ export class CatalogService {
       where: { isActive: true, state: "PUBLISHED" },
       include: {
         plans: {
+          where: { isActive: true },
           include: {
             pricings: {
               where: this.pricingWhere(currency),
               include: {
                 servicePlan: {
-                  include: {
-                    package: true,
-                  },
+                  include: { package: true },
                 },
                 region: true,
               },

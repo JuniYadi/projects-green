@@ -103,6 +103,67 @@ export class AdminCatalogService {
         : await tx.servicePackage.create({
             data: { code: input.code, ...packageData },
           })
+      const existingPlans = await tx.servicePlan.findMany({
+        where: { packageId: pkg.id },
+        include: {
+          pricings: {
+            include: {
+              subscriptions: { select: { id: true } },
+              orderLines: { select: { id: true } },
+            },
+          },
+        },
+      })
+      for (const existingPlan of existingPlans) {
+        const submittedPlan = input.plans.find(
+          (planInput) => planInput.code === existingPlan.code
+        )
+        if (!submittedPlan) {
+          await tx.servicePlan.update({
+            where: { id: existingPlan.id },
+            data: { isActive: false },
+          })
+          for (const existingPrice of existingPlan.pricings) {
+            if (existingPrice.isActive) {
+              if (
+                existingPrice.subscriptions?.length ||
+                existingPrice.orderLines?.length
+              ) {
+                throw new Error(
+                  "Cannot deactivate a pricing row referenced by a subscription or order."
+                )
+              }
+              await tx.servicePricing.update({
+                where: { id: existingPrice.id },
+                data: { isActive: false },
+              })
+            }
+          }
+          continue
+        }
+        for (const existingPrice of existingPlan.pricings) {
+          const submittedCell = submittedPlan.prices.some(
+            (price) =>
+              price.currency === existingPrice.currency &&
+              price.billingPeriod === existingPrice.billingPeriod &&
+              price.isActive
+          )
+          if (!submittedCell && existingPrice.isActive) {
+            if (
+              existingPrice.subscriptions?.length ||
+              existingPrice.orderLines?.length
+            ) {
+              throw new Error(
+                "Cannot deactivate a pricing row referenced by a subscription or order."
+              )
+            }
+            await tx.servicePricing.update({
+              where: { id: existingPrice.id },
+              data: { isActive: false },
+            })
+          }
+        }
+      }
 
       for (const planInput of input.plans) {
         const existingPlan = await tx.servicePlan.findUnique({
@@ -157,13 +218,11 @@ export class AdminCatalogService {
             },
           })
           if (existingPrice) {
-            await tx.servicePricing.update({
-              where: { id: existingPrice.id },
-              data,
-            })
-          } else {
-            await tx.servicePricing.create({ data })
+            throw new Error(
+              "Cannot rewrite an existing effective price row; provide a new effectiveFrom."
+            )
           }
+          await tx.servicePricing.create({ data })
         }
       }
 

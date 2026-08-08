@@ -23,14 +23,30 @@ const periods = [
   "YEARLY",
   "CUSTOM",
 ] as const
-const priceSchema = z.object({
-  billingPeriod: z.enum(periods),
-  currency: z.enum(["IDR", "USD"]),
-  amount: z.string().trim().min(1),
-  effectiveFrom: z.string().datetime().optional(),
-  effectiveTo: z.string().datetime().optional(),
-  isActive: z.boolean(),
-})
+const serviceTypes = ["APP_HOSTING", "VPN", "WHATSAPP"] as const
+const serviceCodeSchema = z.enum(serviceTypes)
+const priceSchema = z
+  .object({
+    billingPeriod: z.enum(periods),
+    currency: z.enum(["IDR", "USD"]),
+    amount: z.string().trim().min(1),
+    effectiveFrom: z.string().datetime().optional(),
+    effectiveTo: z.string().datetime().optional(),
+    isActive: z.boolean(),
+  })
+  .superRefine((value, ctx) => {
+    if (
+      value.effectiveFrom &&
+      value.effectiveTo &&
+      new Date(value.effectiveTo) <= new Date(value.effectiveFrom)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["effectiveTo"],
+        message: "effectiveTo must be later than effectiveFrom.",
+      })
+    }
+  })
 const planSchema = z.object({
   code: z.string().trim().min(1),
   name: z.string().trim().min(1),
@@ -39,7 +55,7 @@ const planSchema = z.object({
   prices: z.array(priceSchema),
 })
 const productSchema = z.object({
-  code: z.string().trim().min(1),
+  code: serviceCodeSchema,
   name: z.string().trim().min(1),
   description: z.string().nullable().optional(),
   plans: z.array(planSchema),
@@ -127,9 +143,12 @@ export const createAdminCatalogRoutes = (deps: AdminCatalogRouteDeps = {}) => {
       } catch (error) {
         if (error instanceof ProductNotFoundError)
           return notFound(set, error.message)
-        if (error instanceof Error && error.message.includes("GLOBAL"))
-          return validation(set, error.message)
-        if (error instanceof Error && error.message.includes("positive"))
+        if (
+          error instanceof Error &&
+          (error.message.includes("GLOBAL") ||
+            error.message.includes("positive") ||
+            error.message.includes("effectiveTo"))
+        )
           return validation(set, error.message)
         console.error("[AdminCatalogDraft] Error:", error)
         return serverError(set)
@@ -138,6 +157,8 @@ export const createAdminCatalogRoutes = (deps: AdminCatalogRouteDeps = {}) => {
     .patch("/admin/catalog/:code", async ({ params, body, set }) => {
       const actor = await guard(set)
       if ("ok" in actor && !actor.ok) return actor as AdminApiError
+      const code = serviceCodeSchema.safeParse(params.code)
+      if (!code.success) return badRequest(set, "Invalid catalog product code.")
       const parsed = productSchema.omit({ code: true }).safeParse(body)
       if (!parsed.success)
         return badRequest(set, "Invalid catalog product input.")
@@ -146,7 +167,7 @@ export const createAdminCatalogRoutes = (deps: AdminCatalogRouteDeps = {}) => {
           ok: true as const,
           product: await catalogService.saveDraft({
             ...parsed.data,
-            code: params.code,
+            code: code.data,
           } as AdminCatalogProductInput),
         }
       } catch (error) {
@@ -155,7 +176,8 @@ export const createAdminCatalogRoutes = (deps: AdminCatalogRouteDeps = {}) => {
         if (
           error instanceof Error &&
           (error.message.includes("GLOBAL") ||
-            error.message.includes("positive"))
+            error.message.includes("positive") ||
+            error.message.includes("effectiveTo"))
         )
           return validation(set, error.message)
         console.error("[AdminCatalogDraftPatch] Error:", error)

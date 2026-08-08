@@ -16,8 +16,18 @@ const db = {
     create: mock(),
     update: mock(),
   },
-  servicePlan: { findUnique: mock(), create: mock(), update: mock() },
-  servicePricing: { findUnique: mock(), create: mock(), update: mock() },
+  servicePlan: {
+    findUnique: mock(),
+    findMany: mock(),
+    create: mock(),
+    update: mock(),
+  },
+  servicePricing: {
+    findUnique: mock(),
+    findMany: mock(),
+    create: mock(),
+    update: mock(),
+  },
   serviceRegion: { findUnique: mock() },
   $transaction: mock(async (fn: (tx: typeof db) => unknown) => fn(db)),
 }
@@ -84,6 +94,8 @@ describe("AdminCatalogService", () => {
     ]) {
       for (const fn of Object.values(model)) fn.mockReset()
     }
+    db.servicePlan.findMany.mockResolvedValue([])
+    db.servicePricing.findMany.mockResolvedValue([])
     db.$transaction.mockImplementation(async (fn: (tx: typeof db) => unknown) =>
       fn(db)
     )
@@ -154,6 +166,81 @@ describe("AdminCatalogService", () => {
     await expect(service.publish("VPN")).rejects.toBeInstanceOf(
       ProductPublishValidationError
     )
+  })
+
+  it("deactivates omitted plans and prices when saving a draft", async () => {
+    const existingPrice = {
+      id: "price-old",
+      planId: "plan-old",
+      isActive: true,
+    }
+    const existingPlan = {
+      id: "plan-old",
+      code: "OLD",
+      packageId: "pkg-1",
+      pricings: [existingPrice],
+    }
+    db.servicePackage.findUnique
+      .mockResolvedValueOnce(product())
+      .mockResolvedValueOnce(product())
+    db.servicePlan.findMany.mockResolvedValue([
+      product().plans[0],
+      existingPlan,
+    ])
+    db.servicePricing.findMany.mockResolvedValue([existingPrice])
+    db.servicePlan.findUnique.mockResolvedValue(null)
+    db.servicePlan.create.mockResolvedValue(product().plans[0])
+    db.servicePackage.update.mockResolvedValue(product())
+
+    await new AdminCatalogService(db as never).saveDraft({
+      ...input,
+      plans: [],
+    })
+
+    expect(db.servicePlan.update).toHaveBeenCalledWith({
+      where: { id: "plan-1" },
+      data: { isActive: false },
+    })
+    expect(db.servicePricing.update).toHaveBeenCalledWith({
+      where: { id: "price-old" },
+      data: { isActive: false },
+    })
+  })
+
+  it("rejects rewriting an existing effective price row", async () => {
+    db.servicePackage.findUnique.mockResolvedValueOnce(null)
+    db.servicePackage.create.mockResolvedValue(product())
+    db.servicePlan.create.mockResolvedValue(product().plans[0])
+    db.servicePricing.findUnique.mockResolvedValue({ id: "historical-price" })
+
+    await expect(
+      new AdminCatalogService(db as never).saveDraft(input)
+    ).rejects.toThrow("effective price row")
+    expect(db.servicePricing.update).not.toHaveBeenCalled()
+  })
+  it("rejects deactivating a pricing row referenced by billing history", async () => {
+    const referencedPrice = {
+      id: "price-ref",
+      planId: "plan-old",
+      isActive: true,
+      subscriptions: [{ id: "subscription-1" }],
+      orderLines: [],
+    }
+    db.servicePackage.findUnique.mockResolvedValueOnce(product())
+    db.servicePlan.findMany.mockResolvedValue([
+      {
+        id: "plan-old",
+        code: "OLD",
+        packageId: "pkg-1",
+        pricings: [referencedPrice],
+      },
+    ])
+    db.servicePackage.update.mockResolvedValue(product())
+
+    await expect(
+      new AdminCatalogService(db as never).saveDraft({ ...input, plans: [] })
+    ).rejects.toThrow("referenced by a subscription or order")
+    expect(db.servicePricing.update).not.toHaveBeenCalled()
   })
 
   it("publishes a complete draft", async () => {

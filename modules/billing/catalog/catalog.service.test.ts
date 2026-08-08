@@ -65,7 +65,9 @@ describe("CatalogService", () => {
     expect(mockFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { isActive: true, state: "PUBLISHED" },
-        include: expect.objectContaining({ plans: expect.anything() }),
+        include: expect.objectContaining({
+          plans: expect.objectContaining({ where: { isActive: true } }),
+        }),
       })
     )
   })
