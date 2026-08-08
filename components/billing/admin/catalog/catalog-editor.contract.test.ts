@@ -49,6 +49,37 @@ describe("product publish pricing contract", () => {
       { planId: "plan-1", currency: "USD", billingPeriod: "ANNUAL" },
     ])
   })
+  it("blocks publish when every plan is inactive", () => {
+    const result = validateProductPublish(
+      {
+        basics: { name: "App Hosting", description: "Managed hosting" },
+        plans: [{ ...plan([]), isActive: false }],
+      },
+      ["IDR"]
+    )
+
+    expect(result).toEqual({
+      valid: false,
+      invalidTabs: ["plans"],
+      missingPrices: [],
+    })
+  })
+
+  it("blocks publish when enabled currencies are empty", () => {
+    const result = validateProductPublish(
+      {
+        basics: { name: "App Hosting", description: "Managed hosting" },
+        plans: [plan([])],
+      },
+      []
+    )
+
+    expect(result).toEqual({
+      valid: false,
+      invalidTabs: ["plans"],
+      missingPrices: [],
+    })
+  })
 
   it("allows publish only when all enabled matrix cells are explicit and positive", () => {
     const result = validateProductPublish(
