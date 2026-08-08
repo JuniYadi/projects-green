@@ -23,6 +23,7 @@ import { createAdminPricingRoutes } from "./admin/pricing.route"
 import { createAdminOrdersRoutes } from "./admin/orders.route"
 import { createAdminOrgDetailRoutes } from "./admin/org-detail.route"
 import { createAdminAddonsRoutes } from "./admin/addons.route"
+import { createAdminCatalogRoutes } from "./admin/catalog.route"
 import { createAdminPromotionsRoutes } from "./admin/promotions.route"
 import { createAdminBillingContactsRoutes } from "./admin/contacts.route"
 import { createBillingCheckoutRoutes } from "./checkout.route"
@@ -56,6 +57,7 @@ export const billingRoutes = new Elysia({ prefix: "/billing" })
   .use(createAdminOrgDetailRoutes())
   .use(createAdminBillingContactsRoutes())
   .use(createBillingCheckoutRoutes())
+  .use(createAdminCatalogRoutes())
   .use(createAdminAddonsRoutes())
   .use(createAdminPromotionsRoutes())
   .use(createCatalogRoutes())

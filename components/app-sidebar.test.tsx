@@ -372,6 +372,7 @@ describe("resolveSidebarMenu", () => {
     expect(navMainLabel).toBe("Billing")
     expect(navMain.map((item) => item.title)).toEqual([
       "Overview",
+      "Catalog",
       "Org Overview",
       "Invoices",
       "Payments",
@@ -382,6 +383,25 @@ describe("resolveSidebarMenu", () => {
       "Orders",
     ])
     expect(projects.map((project) => project.name)).toEqual(["Back to Portal"])
+  })
+  it("includes a localized active Catalog link for catalog descendants", () => {
+    for (const pathname of [
+      "/portal/billing/catalog",
+      "/portal/billing/catalog/APP_HOSTING",
+      "/portal/billing/catalog/addons",
+    ]) {
+      const { navMain } = resolveSidebarMenu({
+        surface: "portal",
+        pathname,
+        locale: "id",
+      })
+      const catalog = navMain.find((item) => item.title === "Catalog")
+
+      expect(catalog).toMatchObject({
+        url: "/id/portal/billing/catalog",
+        isActive: true,
+      })
+    }
   })
 
   it("marks invoices active when on /portal/billing/invoices", () => {

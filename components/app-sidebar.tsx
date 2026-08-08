@@ -174,6 +174,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
           isActive: path === "/portal/billing",
         },
         {
+          title: "Catalog",
+          url: localizePathname({
+            pathname: "/portal/billing/catalog",
+            locale,
+          }),
+          icon: <PackageIcon />,
+          isActive: startsWithRoute(path, "/portal/billing/catalog"),
+        },
+        {
           title: "Org Overview",
           url: localizePathname({ pathname: "/portal/orgs", locale }),
           icon: <BuildingsIcon />,

@@ -470,6 +470,13 @@ enum BillingPeriod {
   CUSTOM
 }
 
+enum ProductState {
+  DRAFT
+  PUBLISHED
+  PAUSED
+  ARCHIVED
+}
+
 enum BillingOrderStatus {
   PENDING
   CHARGED
@@ -1166,6 +1173,7 @@ model ServicePackage {
   code        ServiceType @unique
   name        String
   description String?
+  state       ProductState @default(DRAFT)
   isActive    Boolean     @default(true)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
