@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { fireEvent, render, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, waitFor } from "@testing-library/react"
 
 const mockUseAdminSubscriptionsQuery = mock()
 
@@ -84,7 +84,9 @@ describe("BillingSubscriptionsPage", () => {
     const view = render(<BillingSubscriptionsPage />)
     await waitFor(() => expect(view.getByText("org_1")).toBeTruthy())
 
-    fireEvent.click(view.getAllByText("APP_HOSTING")[0])
+    await act(async () => {
+      fireEvent.click(view.getAllByText("APP_HOSTING")[0])
+    })
     expect(
       view.getByRole("dialog", { name: "Subscription detail drawer" })
     ).toBeTruthy()
