@@ -117,8 +117,10 @@ export const createAdminCatalogRoutes = (deps: AdminCatalogRouteDeps = {}) => {
     .get("/admin/catalog/:code", async ({ params, set }) => {
       const actor = await guard(set)
       if ("ok" in actor && !actor.ok) return actor as AdminApiError
+      const code = serviceCodeSchema.safeParse(params.code)
+      if (!code.success) return badRequest(set, "Invalid catalog product code.")
       try {
-        const product = await catalogService.getProduct(params.code)
+        const product = await catalogService.getProduct(code.data)
         return product
           ? { ok: true as const, product }
           : notFound(set, "Product not found.")
@@ -147,7 +149,9 @@ export const createAdminCatalogRoutes = (deps: AdminCatalogRouteDeps = {}) => {
           error instanceof Error &&
           (error.message.includes("GLOBAL") ||
             error.message.includes("positive") ||
-            error.message.includes("effectiveTo"))
+            error.message.includes("effectiveTo") ||
+            error.message.includes("effective price row") ||
+            error.message.includes("referenced by a subscription or order"))
         )
           return validation(set, error.message)
         console.error("[AdminCatalogDraft] Error:", error)
@@ -177,7 +181,9 @@ export const createAdminCatalogRoutes = (deps: AdminCatalogRouteDeps = {}) => {
           error instanceof Error &&
           (error.message.includes("GLOBAL") ||
             error.message.includes("positive") ||
-            error.message.includes("effectiveTo"))
+            error.message.includes("effectiveTo") ||
+            error.message.includes("effective price row") ||
+            error.message.includes("referenced by a subscription or order"))
         )
           return validation(set, error.message)
         console.error("[AdminCatalogDraftPatch] Error:", error)
@@ -187,10 +193,12 @@ export const createAdminCatalogRoutes = (deps: AdminCatalogRouteDeps = {}) => {
     .post("/admin/catalog/:code/publish", async ({ params, set }) => {
       const actor = await guard(set)
       if ("ok" in actor && !actor.ok) return actor as AdminApiError
+      const code = serviceCodeSchema.safeParse(params.code)
+      if (!code.success) return badRequest(set, "Invalid catalog product code.")
       try {
         return {
           ok: true as const,
-          product: await catalogService.publish(params.code),
+          product: await catalogService.publish(code.data),
         }
       } catch (error) {
         if (

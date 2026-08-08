@@ -101,7 +101,7 @@ describe("admin catalog routes", () => {
   })
   it("returns not found and validation errors", async () => {
     service.getProduct.mockResolvedValueOnce(null)
-    const missing = await app().handle(request("/admin/catalog/MISSING"))
+    const missing = await app().handle(request("/admin/catalog/VPN"))
     expect(missing.status).toBe(404)
 
     service.publish.mockRejectedValueOnce(
@@ -148,5 +148,38 @@ describe("admin catalog routes", () => {
     )
     expect(reversedDates.status).toBe(400)
     expect(service.saveDraft).not.toHaveBeenCalled()
+  })
+
+  it("maps history protection errors to validation responses", async () => {
+    service.saveDraft.mockRejectedValueOnce(
+      new Error(
+        "Cannot rewrite an existing effective price row; provide a new effectiveFrom."
+      )
+    )
+    const post = await app().handle(
+      request("/admin/catalog", "POST", { code: "VPN", name: "VPN", plans: [] })
+    )
+    expect(post.status).toBe(422)
+
+    service.saveDraft.mockRejectedValueOnce(
+      new Error(
+        "Cannot deactivate a pricing row referenced by a subscription or order."
+      )
+    )
+    const patch = await app().handle(
+      request("/admin/catalog/VPN", "PATCH", { name: "VPN", plans: [] })
+    )
+    expect(patch.status).toBe(422)
+  })
+
+  it("rejects invalid detail and publish path codes", async () => {
+    const detail = await app().handle(request("/admin/catalog/INVALID"))
+    expect(detail.status).toBe(400)
+
+    const publish = await app().handle(
+      request("/admin/catalog/INVALID/publish", "POST")
+    )
+    expect(publish.status).toBe(400)
+    expect(service.publish).not.toHaveBeenCalled()
   })
 })

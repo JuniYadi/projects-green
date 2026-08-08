@@ -184,8 +184,23 @@ export class AdminCatalogService {
           : await tx.servicePlan.create({
               data: { packageId: pkg.id, code: planInput.code, ...planData },
             })
-
         for (const price of planInput.prices) {
+          const existingPlanForInput = existingPlans.find(
+            (existing) => existing.code === planInput.code
+          )
+          if (
+            !price.effectiveFrom &&
+            existingPlanForInput?.pricings.some(
+              (existingPrice) =>
+                existingPrice.isActive &&
+                existingPrice.currency === price.currency &&
+                existingPrice.billingPeriod === price.billingPeriod
+            )
+          ) {
+            throw new Error(
+              "Cannot rewrite an existing effective price row; provide a new effectiveFrom."
+            )
+          }
           const effectiveFrom = price.effectiveFrom
             ? new Date(price.effectiveFrom)
             : new Date()

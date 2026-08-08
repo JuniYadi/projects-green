@@ -243,6 +243,27 @@ describe("AdminCatalogService", () => {
     expect(db.servicePricing.update).not.toHaveBeenCalled()
   })
 
+  it("requires a new effective date for an existing active price cell", async () => {
+    db.servicePackage.findUnique.mockResolvedValueOnce(product())
+    db.servicePackage.update.mockResolvedValue(product())
+    db.servicePlan.findMany.mockResolvedValue([product().plans[0]])
+    db.servicePlan.findUnique.mockResolvedValue(product().plans[0])
+    db.servicePlan.update.mockResolvedValue(product().plans[0])
+
+    await expect(
+      new AdminCatalogService(db as never).saveDraft({
+        ...input,
+        plans: [
+          {
+            ...input.plans[0],
+            prices: [{ ...input.plans[0].prices[0], effectiveFrom: undefined }],
+          },
+        ],
+      })
+    ).rejects.toThrow("provide a new effectiveFrom")
+    expect(db.servicePricing.create).not.toHaveBeenCalled()
+  })
+
   it("publishes a complete draft", async () => {
     db.servicePackage.findUnique.mockResolvedValue(product())
     db.servicePackage.update.mockResolvedValue(product("PUBLISHED"))
