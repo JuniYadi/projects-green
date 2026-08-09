@@ -2923,7 +2923,7 @@ model AiDeploymentSession {
   confirmedBy          String?
   confirmedAt          DateTime?
   confirmationPlanHash String?
-  idempotencyKey       String?
+  idempotencyKey       String?               @unique
   expiresAt            DateTime?
   createdAt            DateTime                @default(now())
   updatedAt            DateTime                @updatedAt
