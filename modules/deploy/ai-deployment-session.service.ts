@@ -1,6 +1,7 @@
 import {
   AiDeploymentSessionStatus,
   AiDeploymentSourceType,
+  Prisma,
   type AiDeploymentSession,
   type PrismaClient,
 } from "@prisma/client"
@@ -133,7 +134,9 @@ export class AiDeploymentSessionService {
         blockedReason: status === "BLOCKED" ? (blockedReason ?? null) : null,
         ...(validatedPlan
           ? {
-              plan: validatedPlan.plan,
+              plan: JSON.parse(
+                JSON.stringify(validatedPlan.plan)
+              ) as Prisma.InputJsonValue,
               currentPlanHash: validatedPlan.hash,
             }
           : {}),
@@ -141,7 +144,7 @@ export class AiDeploymentSessionService {
           ? {
               currentPlanVersion: { increment: 1 },
               currentPlanHash: null,
-              plan: null,
+              plan: Prisma.DbNull,
               confirmedBy: null,
               confirmedAt: null,
               confirmationPlanHash: null,

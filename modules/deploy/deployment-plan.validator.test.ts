@@ -105,7 +105,11 @@ const validPlan = () => ({
       },
     ],
   },
-  unresolved: [],
+  unresolved: [] as Array<{
+    key: string
+    required: boolean
+    description: string
+  }>,
   provenance: {
     analyzer: "framework-detector",
     sourceReference: "inspection-1",
@@ -114,13 +118,16 @@ const validPlan = () => ({
 })
 
 const createValidator = () => {
-  const db = {
+  const mockDb = {
     githubRepositoryConnection: {
       findFirst: mock(async () => ({ id: "connection-1" })),
     },
     appCredential: { findFirst: mock(async () => ({ id: "credential-1" })) },
-  } as unknown as PrismaClient
-  return { validator: new DeploymentPlanValidator(db), db }
+  }
+  return {
+    validator: new DeploymentPlanValidator(mockDb as unknown as PrismaClient),
+    db: mockDb,
+  }
 }
 
 describe("DeploymentPlanValidator", () => {
