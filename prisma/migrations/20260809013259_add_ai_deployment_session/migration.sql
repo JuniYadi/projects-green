@@ -29,7 +29,7 @@ CREATE TABLE "AiDeploymentSession" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "AiDeploymentSession_idempotencyKey_key" ON "AiDeploymentSession"("idempotencyKey");
+CREATE UNIQUE INDEX "AiDeploymentSession_idempotencyKey_key" ON "AiDeploymentSession"("idempotencyKey") WHERE "idempotencyKey" IS NOT NULL;
 
 -- CreateIndex
 CREATE INDEX "AiDeploymentSession_organizationId_workosUserId_idx" ON "AiDeploymentSession"("organizationId", "workosUserId");
