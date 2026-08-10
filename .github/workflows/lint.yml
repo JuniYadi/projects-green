@@ -30,10 +30,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_ALL_CODEBASE: false
-          # Super-Linter uses this config for both TYPESCRIPT_ES and TSX.
+          # v8.7.0 uses this config for both TYPESCRIPT_ES and TSX.
           TYPESCRIPT_ES_CONFIG_FILE: .github/linters/eslint.config.mjs
-          VALIDATE_TYPESCRIPT_ES: true
-          VALIDATE_TSX: true
+          # Both validators default to enabled. Do not mix explicit true and
+          # false VALIDATE_* settings: Super-Linter rejects that configuration.
           # Keep the project's existing ESLint and Prettier checks while avoiding
           # repository-wide tools that reject unrelated legacy and dependency files.
           VALIDATE_BIOME_FORMAT: false
