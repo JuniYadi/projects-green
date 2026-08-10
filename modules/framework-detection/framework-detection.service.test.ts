@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 
@@ -37,6 +37,59 @@ const runWithMockClone = async (
     },
     resolveWithAi,
   })
+}
+
+const generateTextMock = mock(async () => ({ output: {} }))
+const createOpenAIMock = mock(() => mock(() => "mock-model"))
+
+type ToolDefinition = {
+  execute: (input: Record<string, string>) => Promise<unknown>
+}
+
+type GenerateTextInput = {
+  tools: Record<string, ToolDefinition>
+}
+
+const aiToolCallingDecision = {
+  primaryFrameworkId: "nextjs",
+  confidence: 0.92,
+  requiredRuntimeIds: ["node"],
+  reasoning: ["next dependency found"],
+}
+
+const createToolCallingDependencies = (
+  overrides: Partial<GithubApiDetectorDependencies> = {}
+) => {
+  const logCreate = mock(async () => ({ id: "trace-log-1" }))
+
+  return {
+    dependencies: {
+      listFiles: async () => ({
+        files: ["package.json", "next.config.mjs"],
+        truncated: false,
+      }),
+      readFile: async ({ filePath }) => ({
+        content:
+          filePath === "package.json"
+            ? JSON.stringify({ dependencies: { next: "16.1.0" } })
+            : "",
+        path: filePath,
+        sha: "sha",
+        size: 100,
+      }),
+      prisma: {
+        detectorRule: { findMany: async () => [] },
+        detectorRuntimeMapping: { findMany: async () => [] },
+        detectorInspectionLog: { create: logCreate },
+      },
+      createOpenAI:
+        createOpenAIMock as GithubApiDetectorDependencies["createOpenAI"],
+      generateText:
+        generateTextMock as GithubApiDetectorDependencies["generateText"],
+      ...overrides,
+    } satisfies GithubApiDetectorDependencies,
+    logCreate,
+  }
 }
 
 describe("detectFrameworkFromGitRepo", () => {
@@ -325,6 +378,101 @@ describe("detectFrameworkFromGithubApi", () => {
     expect(result.blocked).toBe(true)
     expect(result.rule?.name).toBe("Block WordPress")
     expect(result.matchedFiles).toContain("wp-config.php")
+  })
+})
+
+describe("production AI tool-calling trace", () => {
+  beforeEach(() => {
+    process.env.AI_API_KEY = "test-key"
+    generateTextMock.mockClear()
+    createOpenAIMock.mockClear()
+    generateTextMock.mockResolvedValue({ output: aiToolCallingDecision })
+  })
+
+  afterEach(() => {
+    delete process.env.AI_API_KEY
+  })
+
+  it("records redacted completed tool steps from the production adapter", async () => {
+    generateTextMock.mockImplementationOnce(
+      async ({ tools }: GenerateTextInput) => {
+        await tools.list_repo_files.execute({ path: "\u0000src" })
+        await tools.read_repo_file.execute({ filePath: "package.json" })
+
+        return { output: aiToolCallingDecision }
+      }
+    )
+    const { dependencies, logCreate } = createToolCallingDependencies()
+
+    await detectFrameworkFromGithubApi(
+      { installationId: 123, owner: "org", repo: "repo" },
+      dependencies
+    )
+
+    expect(createOpenAIMock).toHaveBeenCalledTimes(1)
+    expect(generateTextMock).toHaveBeenCalledTimes(1)
+    const logData = logCreate.mock.calls[0]?.[0]?.data
+    expect(logData.aiTrace).toMatchObject({
+      version: 1,
+      terminalStage: "completed",
+      tools: [
+        {
+          name: "list_repo_files",
+          inputSummary: { requestedPath: "src" },
+          outcome: "completed",
+          listedFileCount: 2,
+        },
+        {
+          name: "read_repo_file",
+          inputSummary: { requestedPath: "package.json" },
+          outcome: "completed",
+        },
+      ],
+    })
+    expect(JSON.stringify(logData.aiTrace)).not.toContain("16.1.0")
+  })
+
+  it("persists a failed tool step and uses the deterministic fallback", async () => {
+    let readCount = 0
+    const { dependencies, logCreate } = createToolCallingDependencies({
+      readFile: async ({ filePath }) => {
+        readCount += 1
+        if (readCount > 1) throw new Error("GitHub read failed")
+        return {
+          content: JSON.stringify({ dependencies: { next: "16.1.0" } }),
+          path: filePath,
+          sha: "sha",
+          size: 100,
+        }
+      },
+    })
+    generateTextMock.mockImplementationOnce(
+      async ({ tools }: GenerateTextInput) => {
+        await tools.read_repo_file.execute({ filePath: "package.json" })
+        return { output: aiToolCallingDecision }
+      }
+    )
+
+    const result = await detectFrameworkFromGithubApi(
+      { installationId: 123, owner: "org", repo: "repo" },
+      dependencies
+    )
+
+    expect(result.primaryFramework?.id).toBe("nextjs")
+    expect(generateTextMock).toHaveBeenCalledTimes(1)
+    const logData = logCreate.mock.calls[0]?.[0]?.data
+    expect(logData.aiTrace).toMatchObject({
+      terminalStage: "tool",
+      tools: [
+        {
+          name: "read_repo_file",
+          inputSummary: { requestedPath: "package.json" },
+          outcome: "failed",
+          errorCategory: "tool_failure",
+        },
+      ],
+    })
+    expect(JSON.stringify(logData.aiTrace)).not.toContain("GitHub read failed")
   })
 })
 
