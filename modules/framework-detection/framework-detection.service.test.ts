@@ -39,9 +39,6 @@ const runWithMockClone = async (
   })
 }
 
-const generateTextMock = mock(async () => ({ output: {} }))
-const createOpenAIMock = mock(() => mock(() => "mock-model"))
-
 type ToolDefinition = {
   execute: (input: Record<string, string>) => Promise<unknown>
 }
@@ -56,6 +53,11 @@ const aiToolCallingDecision = {
   requiredRuntimeIds: ["node"],
   reasoning: ["next dependency found"],
 }
+
+const generateTextMock = mock(async (_input: GenerateTextInput) => ({
+  output: aiToolCallingDecision,
+}))
+const createOpenAIMock = mock(() => mock(() => "mock-model"))
 
 const createToolCallingDependencies = (
   overrides: Partial<GithubApiDetectorDependencies> = {}
@@ -83,9 +85,9 @@ const createToolCallingDependencies = (
         detectorInspectionLog: { create: logCreate },
       },
       createOpenAI:
-        createOpenAIMock as GithubApiDetectorDependencies["createOpenAI"],
+        createOpenAIMock as unknown as GithubApiDetectorDependencies["createOpenAI"],
       generateText:
-        generateTextMock as GithubApiDetectorDependencies["generateText"],
+        generateTextMock as unknown as GithubApiDetectorDependencies["generateText"],
       ...overrides,
     } satisfies GithubApiDetectorDependencies,
     logCreate,
@@ -411,7 +413,9 @@ describe("production AI tool-calling trace", () => {
 
     expect(createOpenAIMock).toHaveBeenCalledTimes(1)
     expect(generateTextMock).toHaveBeenCalledTimes(1)
-    const logData = logCreate.mock.calls[0]?.[0]?.data
+    const logData = (
+      logCreate.mock.calls as unknown as Array<[{ data: { aiTrace: unknown } }]>
+    )[0]?.[0]?.data
     expect(logData.aiTrace).toMatchObject({
       version: 1,
       terminalStage: "completed",
@@ -460,7 +464,9 @@ describe("production AI tool-calling trace", () => {
 
     expect(result.primaryFramework?.id).toBe("nextjs")
     expect(generateTextMock).toHaveBeenCalledTimes(1)
-    const logData = logCreate.mock.calls[0]?.[0]?.data
+    const logData = (
+      logCreate.mock.calls as unknown as Array<[{ data: { aiTrace: unknown } }]>
+    )[0]?.[0]?.data
     expect(logData.aiTrace).toMatchObject({
       terminalStage: "tool",
       tools: [
