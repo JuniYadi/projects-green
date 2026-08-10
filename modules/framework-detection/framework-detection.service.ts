@@ -97,6 +97,8 @@ export type GithubApiDetectorDependencies = {
     fileList: string[],
     detectorRules: DetectorRuleRecord[]
   ) => Promise<AiDecisionResult>
+  createOpenAI?: typeof createOpenAI
+  generateText?: typeof generateText
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   prisma?: any
 }
@@ -1207,8 +1209,10 @@ const resolveWithAiToolCalling = async (
     .join("\n")
 
   try {
-    const provider = createOpenAI(getAiProviderConfig())
-    const result = await generateText({
+    const createProvider = dependencies.createOpenAI ?? createOpenAI
+    const generate = dependencies.generateText ?? generateText
+    const provider = createProvider(getAiProviderConfig())
+    const result = await generate({
       model: provider(modelName),
       system: systemPrompt,
       prompt: userPrompt,
