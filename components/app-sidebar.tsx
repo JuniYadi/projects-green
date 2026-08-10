@@ -225,6 +225,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
           isActive: startsWithRoute(path, "/portal/billing/audit-logs"),
         },
         {
+          title: "Catalog",
+          url: localizePathname({
+            pathname: "/portal/billing/catalog",
+            locale,
+          }),
+          icon: <PackageIcon />,
+          isActive: startsWithRoute(path, "/portal/billing/catalog"),
+        },
+        {
           title: "Pricing",
           url: localizePathname({
             pathname: "/portal/billing/pricing",
@@ -482,6 +491,101 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
 ]
 
 const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
+  {
+    context: "billing",
+    matches: (path) => startsWithRoute(path, "/console/billing"),
+    navMainLabel: "Billing",
+    getProjects: (_path, locale) => [
+      {
+        name: "Back to Console",
+        url: localizePathname({ pathname: "/console", locale }),
+        icon: <CaretLeftIcon />,
+      },
+    ],
+    getNavMain: (path, locale) => [
+      {
+        title: "Overview",
+        url: localizePathname({ pathname: "/console/billing", locale }),
+        icon: <GaugeIcon />,
+        isActive: path === "/console/billing",
+      },
+      {
+        title: "Services",
+        url: localizePathname({
+          pathname: "/console/billing/services",
+          locale,
+        }),
+        icon: <PackageIcon />,
+        isActive: startsWithRoute(path, "/console/billing/services"),
+      },
+      {
+        title: "Subscriptions",
+        url: localizePathname({
+          pathname: "/console/billing/subscriptions",
+          locale,
+        }),
+        icon: <ReceiptIcon />,
+        isActive: startsWithRoute(path, "/console/billing/subscriptions"),
+      },
+      {
+        title: "Invoices",
+        url: localizePathname({
+          pathname: "/console/billing/invoices",
+          locale,
+        }),
+        icon: <ReceiptIcon />,
+        isActive: startsWithRoute(path, "/console/billing/invoices"),
+      },
+      {
+        title: "Usage",
+        url: localizePathname({ pathname: "/console/billing/usage", locale }),
+        icon: <ChartLineIcon />,
+        isActive: startsWithRoute(path, "/console/billing/usage"),
+      },
+      {
+        title: "Alerts",
+        url: localizePathname({ pathname: "/console/billing/alerts", locale }),
+        icon: <Lightning />,
+        isActive: startsWithRoute(path, "/console/billing/alerts"),
+      },
+      {
+        title: "Transactions",
+        url: localizePathname({
+          pathname: "/console/billing/transactions",
+          locale,
+        }),
+        icon: <WalletIcon />,
+        isActive: startsWithRoute(path, "/console/billing/transactions"),
+      },
+      {
+        title: "Vouchers",
+        url: localizePathname({
+          pathname: "/console/billing/vouchers",
+          locale,
+        }),
+        icon: <TicketIcon />,
+        isActive: startsWithRoute(path, "/console/billing/vouchers"),
+      },
+      {
+        title: "Contacts",
+        url: localizePathname({
+          pathname: "/console/billing/contacts",
+          locale,
+        }),
+        icon: <BuildingsIcon />,
+        isActive: startsWithRoute(path, "/console/billing/contacts"),
+      },
+      {
+        title: "Settings",
+        url: localizePathname({
+          pathname: "/console/billing/settings",
+          locale,
+        }),
+        icon: <GearSixIcon />,
+        isActive: startsWithRoute(path, "/console/billing/settings"),
+      },
+    ],
+  },
   {
     context: "applications",
     matches: (path) => startsWithRoute(path, "/console/app"),

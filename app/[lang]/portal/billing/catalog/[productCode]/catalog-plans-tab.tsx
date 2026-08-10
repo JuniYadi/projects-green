@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo } from "react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -10,179 +10,33 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import {
-  PlusIcon,
-  TrashIcon,
-  PencilSimpleIcon,
-} from "@/components/ui/phosphor-icons"
+import { PlusIcon, TrashIcon } from "@/components/ui/phosphor-icons"
 import type {
+  BillingPeriod,
   ProductPlanEditorForm,
   ProductPlanOfferForm,
+  SupportedCurrency,
 } from "@/components/billing/admin/catalog/catalog-editor.types"
-import {
-  BILLING_PERIODS,
-  type SupportedCurrency,
-} from "@/components/billing/admin/catalog/catalog-editor.types"
+import { BILLING_PERIODS } from "@/components/billing/admin/catalog/catalog-editor.types"
 import { billingPeriodLabel } from "@/lib/billing-client"
 import { formatBillingMoney } from "@/modules/billing/format-money"
 
-const CHARGE_UNIT_OPTIONS: {
-  value: ProductPlanOfferForm["chargeUnit"]
-  label: string
-}[] = [
-  { value: "SUBSCRIPTION", label: "Per subscription" },
-  { value: "DEVICE", label: "Per device" },
-]
-
-function OfferTermMatrix({
-  offer,
-  currencies,
-  onChange,
-}: Readonly<{
-  offer: ProductPlanOfferForm
-  currencies: SupportedCurrency[]
-  onChange: (next: Partial<ProductPlanOfferForm>) => void
-}>) {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <div className="space-y-2">
-        <Label className="text-xs">Billing period</Label>
-        <Select
-          value={offer.billingPeriod}
-          onValueChange={(value) =>
-            onChange({
-              billingPeriod: value as ProductPlanOfferForm["billingPeriod"],
-            })
-          }
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {BILLING_PERIODS.map((period) => (
-              <SelectItem key={period} value={period}>
-                {billingPeriodLabel(period)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-xs">Currency</Label>
-        <Select
-          value={offer.currency}
-          onValueChange={(value) => onChange({ currency: value })}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {currencies.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-xs">Charge unit</Label>
-        <Select
-          value={offer.chargeUnit}
-          onValueChange={(value) =>
-            onChange({
-              chargeUnit: value as ProductPlanOfferForm["chargeUnit"],
-            })
-          }
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {CHARGE_UNIT_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-xs">Price for period</Label>
-        <Input
-          type="number"
-          min="0"
-          step="0.01"
-          value={offer.periodPrice}
-          onChange={(e) => onChange({ periodPrice: e.target.value })}
-        />
-      </div>
-    </div>
-  )
-}
-
-function PlanOfferRow({
-  offer,
-  currencies,
-  onUpdate,
-  onRemove,
-}: Readonly<{
-  offer: ProductPlanOfferForm
-  currencies: SupportedCurrency[]
-  onUpdate: (next: Partial<ProductPlanOfferForm>) => void
-  onRemove: () => void
-}>) {
-  return (
-    <div className="flex items-end gap-3">
-      <div className="flex-1">
-        <OfferTermMatrix
-          offer={offer}
-          currencies={currencies}
-          onChange={onUpdate}
-        />
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1.5">
-          <Switch
-            checked={offer.isActive}
-            onCheckedChange={(checked) => onUpdate({ isActive: checked })}
-          />
-          <Label className="text-xs">Active</Label>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onRemove}
-          aria-label="Remove offer"
-        >
-          <TrashIcon className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  )
-}
+const newOffer = (
+  currency: SupportedCurrency,
+  billingPeriod: BillingPeriod
+): ProductPlanOfferForm => ({
+  id: `new-offer-${crypto.randomUUID()}`,
+  billingPeriod,
+  periodPrice: "",
+  currency,
+  chargeUnit: "SUBSCRIPTION",
+  effectiveFrom: new Date().toISOString().slice(0, 10),
+  effectiveTo: "",
+  isActive: true,
+})
 
 function PlanCard({
   plan,
@@ -195,46 +49,51 @@ function PlanCard({
   onUpdate: (plan: ProductPlanEditorForm) => void
   onRemove: () => void
 }>) {
-  const [offerDialogOpen, setOfferDialogOpen] = useState(false)
+  const enabledTerms = plan.enabledTerms
+  const offerByCell = useMemo(
+    () =>
+      new Map(
+        plan.offers.map((offer) => [
+          `${offer.currency}:${offer.billingPeriod}`,
+          offer,
+        ])
+      ),
+    [plan.offers]
+  )
 
-  const addOffer = () => {
-    const newOffer: ProductPlanOfferForm = {
-      id: `new-offer-${crypto.randomUUID()}`,
-      billingPeriod: "MONTHLY",
-      periodPrice: "",
-      currency: currencies[0] ?? "IDR",
-      chargeUnit: "SUBSCRIPTION",
-      effectiveFrom: new Date().toISOString().slice(0, 10),
-      effectiveTo: "",
-      isActive: true,
-    }
-    onUpdate({
-      ...plan,
-      offers: [...plan.offers, newOffer],
-    })
-  }
-
-  const updateOffer = (index: number, next: Partial<ProductPlanOfferForm>) => {
-    const offers = [...plan.offers]
-    offers[index] = { ...offers[index], ...next }
+  const updateCell = (
+    currency: SupportedCurrency,
+    billingPeriod: BillingPeriod,
+    periodPrice: string
+  ) => {
+    const key = `${currency}:${billingPeriod}`
+    const existing = offerByCell.get(key)
+    const offers = existing
+      ? plan.offers.map((offer) =>
+          offer.id === existing.id
+            ? { ...offer, periodPrice, isActive: true }
+            : offer
+        )
+      : [...plan.offers, { ...newOffer(currency, billingPeriod), periodPrice }]
     onUpdate({ ...plan, offers })
   }
 
-  const removeOffer = (index: number) => {
-    const offers = plan.offers.filter((_, i) => i !== index)
-    onUpdate({ ...plan, offers })
+  const toggleTerm = (billingPeriod: BillingPeriod, enabled: boolean) => {
+    const nextTerms = enabled
+      ? [...enabledTerms, billingPeriod]
+      : enabledTerms.filter((term) => term !== billingPeriod)
+    onUpdate({ ...plan, enabledTerms: nextTerms })
   }
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <CardTitle className="text-base">{plan.name}</CardTitle>
-            <CardDescription>
-              Code: {plan.code} · {plan.offers.length} offer
-              {plan.offers.length !== 1 ? "s" : ""}
-            </CardDescription>
+            <CardTitle className="text-base">
+              {plan.name || "Unnamed plan"}
+            </CardTitle>
+            <CardDescription>Code: {plan.code || "—"}</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <Switch
@@ -242,8 +101,8 @@ function PlanCard({
               onCheckedChange={(checked) =>
                 onUpdate({ ...plan, isActive: checked })
               }
+              aria-label={`Enable ${plan.name || "plan"}`}
             />
-            <Label className="text-xs">Active</Label>
             <Button
               variant="ghost"
               size="sm"
@@ -255,69 +114,97 @@ function PlanCard({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {plan.offers.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No pricing offers configured.
+      <CardContent className="space-y-5">
+        <div className="space-y-2">
+          <Label className="text-xs">Enabled terms</Label>
+          <div className="flex flex-wrap gap-3">
+            {BILLING_PERIODS.filter((period) => period !== "CUSTOM").map(
+              (period) => (
+                <label key={period} className="flex items-center gap-2 text-sm">
+                  <Switch
+                    checked={enabledTerms.includes(period)}
+                    onCheckedChange={(checked) => toggleTerm(period, checked)}
+                    aria-label={`Enable ${billingPeriodLabel(period)}`}
+                  />
+                  {billingPeriodLabel(period)}
+                </label>
+              )
+            )}
+          </div>
+        </div>
+
+        {currencies.length === 0 || enabledTerms.length === 0 ? (
+          <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+            Enable at least one currency and billing term to configure prices.
           </p>
         ) : (
-          <div className="space-y-4">
-            {plan.offers.map((offer, index) => (
-              <div key={offer.id} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium">
-                    {billingPeriodLabel(offer.billingPeriod)} ·{" "}
-                    {offer.chargeUnit === "DEVICE"
-                      ? "per device"
-                      : "per subscription"}
-                  </p>
-                  <p className="font-medium">
-                    {offer.periodPrice
-                      ? formatBillingMoney(offer.periodPrice, offer.currency)
-                      : "—"}
-                  </p>
-                </div>
-                <PlanOfferRow
-                  offer={offer}
-                  currencies={currencies}
-                  onUpdate={(next) => updateOffer(index, next)}
-                  onRemove={() => removeOffer(index)}
-                />
-              </div>
-            ))}
+          <div className="overflow-x-auto rounded-md border">
+            <table
+              className="w-full text-sm"
+              aria-label={`${plan.name || "Plan"} price matrix`}
+            >
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium">Currency</th>
+                  {enabledTerms.map((period) => (
+                    <th
+                      key={period}
+                      className="px-3 py-2 text-left font-medium"
+                    >
+                      {billingPeriodLabel(period)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {currencies.map((currency) => (
+                  <tr key={currency} className="border-t">
+                    <th className="px-3 py-2 text-left font-medium">
+                      {currency}
+                    </th>
+                    {enabledTerms.map((period) => {
+                      const offer = offerByCell.get(`${currency}:${period}`)
+                      return (
+                        <td key={`${currency}-${period}`} className="p-2">
+                          <Input
+                            aria-label={`${currency} ${billingPeriodLabel(period)} price`}
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="Required"
+                            value={offer?.periodPrice ?? ""}
+                            onChange={(event) =>
+                              updateCell(currency, period, event.target.value)
+                            }
+                          />
+                          {offer?.periodPrice &&
+                          Number(offer.periodPrice) <= 0 ? (
+                            <p className="mt-1 text-xs text-destructive">
+                              Must be positive
+                            </p>
+                          ) : null}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
 
-        <Dialog open={offerDialogOpen} onOpenChange={setOfferDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={addOffer}
-            >
-              <PlusIcon className="mr-2 h-4 w-4" />
-              Add offer
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Offer added</DialogTitle>
-              <DialogDescription>
-                A new offer has been added to this plan. Configure its pricing
-                terms below.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setOfferDialogOpen(false)}
-              >
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {plan.offers.length > 0 && (
+          <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+            {plan.offers.map((offer) => (
+              <span key={offer.id}>
+                {offer.currency} {billingPeriodLabel(offer.billingPeriod)}:{" "}
+                {offer.periodPrice
+                  ? formatBillingMoney(offer.periodPrice, offer.currency)
+                  : "incomplete"}
+              </span>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   )
@@ -335,45 +222,40 @@ export function CatalogPlansTab({
   showPreview?: boolean
 }>) {
   const handleAddPlan = () => {
-    const newPlan: ProductPlanEditorForm = {
-      id: `new-plan-${crypto.randomUUID()}`,
-      code: "",
-      name: "",
-      resources: {},
-      isActive: true,
-      offers: [],
-    }
-    onChange([...plans, newPlan])
-  }
-
-  const handleUpdatePlan = (plan: ProductPlanEditorForm) => {
-    onChange(plans.map((p) => (p.id === plan.id ? plan : p)))
-  }
-
-  const handleRemovePlan = (id: string) => {
-    onChange(plans.filter((p) => p.id !== id))
+    onChange([
+      ...plans,
+      {
+        id: `new-plan-${crypto.randomUUID()}`,
+        code: "",
+        name: "",
+        resources: {},
+        isActive: true,
+        enabledTerms: ["MONTHLY"],
+        offers: [],
+      },
+    ])
   }
 
   if (showPreview) {
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Preview mode: plans are displayed read-only.
+          Preview mode: plans are read-only.
         </p>
         {plans.map((plan) => (
-          <Card key={plan.id}>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {plan.name || plan.code}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                {plan.offers.length} offer
-                {plan.offers.length !== 1 ? "s" : ""} configured
-              </p>
-            </CardContent>
-          </Card>
+          <div key={plan.id} className="rounded-md border p-4">
+            <p className="font-medium">{plan.name || "Unnamed plan"}</p>
+            <div className="mt-2 grid gap-1 text-sm">
+              {plan.offers.map((offer) => (
+                <span key={offer.id}>
+                  {offer.currency} · {billingPeriodLabel(offer.billingPeriod)} ·{" "}
+                  {offer.periodPrice
+                    ? formatBillingMoney(offer.periodPrice, offer.currency)
+                    : "—"}
+                </span>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     )
@@ -382,41 +264,26 @@ export function CatalogPlansTab({
   return (
     <div className="space-y-4">
       {plans.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-4 py-12">
-            <PencilSimpleIcon className="h-10 w-10 text-muted-foreground/50" />
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">
-                No plans yet. Add a plan to start configuring pricing.
-              </p>
-            </div>
-            <Button onClick={handleAddPlan}>
-              <PlusIcon className="mr-2 h-4 w-4" />
-              Add plan
-            </Button>
-          </CardContent>
-        </Card>
+        <p className="text-sm text-muted-foreground">No plans configured.</p>
       ) : (
-        <>
-          <div className="flex justify-end">
-            <Button onClick={handleAddPlan}>
-              <PlusIcon className="mr-2 h-4 w-4" />
-              Add plan
-            </Button>
-          </div>
-          <div className="space-y-4">
-            {plans.map((plan) => (
-              <PlanCard
-                key={plan.id}
-                plan={plan}
-                currencies={currencies}
-                onUpdate={handleUpdatePlan}
-                onRemove={() => handleRemovePlan(plan.id)}
-              />
-            ))}
-          </div>
-        </>
+        plans.map((plan) => (
+          <PlanCard
+            key={plan.id}
+            plan={plan}
+            currencies={currencies}
+            onUpdate={(next) =>
+              onChange(plans.map((item) => (item.id === next.id ? next : item)))
+            }
+            onRemove={() =>
+              onChange(plans.filter((item) => item.id !== plan.id))
+            }
+          />
+        ))
       )}
+      <Button variant="outline" className="w-full" onClick={handleAddPlan}>
+        <PlusIcon className="mr-2 h-4 w-4" />
+        Add plan
+      </Button>
     </div>
   )
 }

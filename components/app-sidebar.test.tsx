@@ -69,14 +69,9 @@ describe("resolveSidebarMenu", () => {
       locale: "en",
     })
 
-    expect(
-      billingMenu.projects.find((project) => project.name === "Billing")
-        ?.isActive
-    ).toBe(true)
+    expect(billingMenu.navMainLabel).toBe("Billing")
     expect(billingMenu.projects.map((project) => project.name)).toEqual([
-      "Overview",
-      "Billing",
-      "Support Tickets",
+      "Back to Console",
     ])
 
     expect(
@@ -378,10 +373,41 @@ describe("resolveSidebarMenu", () => {
       "Vouchers",
       "Promotions",
       "Audit Logs",
+      "Catalog",
       "Pricing",
       "Orders",
     ])
     expect(projects.map((project) => project.name)).toEqual(["Back to Portal"])
+  })
+  it("uses a billing-specific console context with Services and Subscriptions", () => {
+    const { navMain, navMainLabel, projects } = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/billing",
+      locale: "en",
+    })
+
+    expect(navMainLabel).toBe("Billing")
+    expect(navMain.map((item) => item.title)).toContain("Services")
+    expect(navMain.map((item) => item.title)).toContain("Subscriptions")
+    expect(navMain.find((item) => item.title === "Services")?.url).toBe(
+      "/en/console/billing/services"
+    )
+    expect(navMain.find((item) => item.title === "Subscriptions")?.url).toBe(
+      "/en/console/billing/subscriptions"
+    )
+    expect(projects.map((project) => project.name)).toEqual(["Back to Console"])
+  })
+
+  it("exposes Catalog in the portal billing context", () => {
+    const { navMain } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/billing/catalog",
+      locale: "en",
+    })
+
+    const catalog = navMain.find((item) => item.title === "Catalog")
+    expect(catalog?.url).toBe("/en/portal/billing/catalog")
+    expect(catalog?.isActive).toBe(true)
   })
 
   it("marks invoices active when on /portal/billing/invoices", () => {

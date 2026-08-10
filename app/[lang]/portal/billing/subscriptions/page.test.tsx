@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { fireEvent, render, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, waitFor } from "@testing-library/react"
 
-const mockGetAdminSubscriptions = mock()
+const mockUseAdminSubscriptionsQuery = mock()
 
-mock.module("@/lib/billing-client", () => ({
-  getAdminSubscriptions: mockGetAdminSubscriptions,
+mock.module("@/hooks/use-billing-data", () => ({
+  useAdminSubscriptionsQuery: mockUseAdminSubscriptionsQuery,
 }))
 
 const { BillingSubscriptionsPage } = await import("./page")
@@ -35,11 +35,15 @@ const baseSubscription = {
 }
 
 beforeEach(() => {
-  mockGetAdminSubscriptions.mockReset()
-  mockGetAdminSubscriptions.mockResolvedValue({
-    ok: true,
-    subscriptions: [],
-    pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+  mockUseAdminSubscriptionsQuery.mockReset()
+  mockUseAdminSubscriptionsQuery.mockReturnValue({
+    data: {
+      ok: true,
+      subscriptions: [],
+      pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+    },
+    isLoading: false,
+    error: null,
   })
 })
 
@@ -52,10 +56,14 @@ describe("BillingSubscriptionsPage", () => {
   })
 
   it("renders service, payment, invoice, and organization data", async () => {
-    mockGetAdminSubscriptions.mockResolvedValueOnce({
-      ok: true,
-      subscriptions: [baseSubscription],
-      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    mockUseAdminSubscriptionsQuery.mockReturnValueOnce({
+      data: {
+        ok: true,
+        subscriptions: [baseSubscription],
+        pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+      },
+      isLoading: false,
+      error: null,
     })
     const view = render(<BillingSubscriptionsPage />)
     await waitFor(() => expect(view.getByText("org_1")).toBeTruthy())
@@ -64,21 +72,26 @@ describe("BillingSubscriptionsPage", () => {
     expect(view.getByText("PAID")).toBeTruthy()
   })
   it("opens a lifecycle detail drawer for a selected subscription", async () => {
-    mockGetAdminSubscriptions.mockResolvedValueOnce({
-      ok: true,
-      subscriptions: [{ ...baseSubscription, cancelAtPeriodEnd: true }],
-      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    mockUseAdminSubscriptionsQuery.mockReturnValueOnce({
+      data: {
+        ok: true,
+        subscriptions: [{ ...baseSubscription, cancelAtPeriodEnd: true }],
+        pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+      },
+      isLoading: false,
+      error: null,
     })
     const view = render(<BillingSubscriptionsPage />)
     await waitFor(() => expect(view.getByText("org_1")).toBeTruthy())
 
-    fireEvent.click(view.getAllByText("APP_HOSTING")[0])
+    await act(async () => {
+      fireEvent.click(view.getAllByText("APP_HOSTING")[0])
+    })
     expect(
       view.getByRole("dialog", { name: "Subscription detail drawer" })
     ).toBeTruthy()
     expect(view.getByText(/cancellation scheduled/i)).toBeTruthy()
   })
-
   it("exposes search and lifecycle filters", async () => {
     const view = render(<BillingSubscriptionsPage />)
     await waitFor(() =>
@@ -92,10 +105,14 @@ describe("BillingSubscriptionsPage", () => {
   })
 
   it("shows pagination when multiple pages exist", async () => {
-    mockGetAdminSubscriptions.mockResolvedValueOnce({
-      ok: true,
-      subscriptions: [baseSubscription],
-      pagination: { page: 1, limit: 20, total: 41, totalPages: 3 },
+    mockUseAdminSubscriptionsQuery.mockReturnValueOnce({
+      data: {
+        ok: true,
+        subscriptions: [baseSubscription],
+        pagination: { page: 1, limit: 20, total: 41, totalPages: 3 },
+      },
+      isLoading: false,
+      error: null,
     })
     const view = render(<BillingSubscriptionsPage />)
     await waitFor(() => expect(view.getByText("Page 1 of 3")).toBeTruthy())

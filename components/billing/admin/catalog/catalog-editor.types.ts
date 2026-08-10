@@ -25,6 +25,7 @@ export interface ProductBasicsForm {
   name: string
   description: string
   currency: string
+  enabledCurrencies: SupportedCurrency[]
   isActive: boolean
 }
 
@@ -53,6 +54,7 @@ export interface ProductPlanEditorForm {
   name: string
   resources: Record<string, unknown>
   isActive: boolean
+  enabledTerms: BillingPeriod[]
   offers: ProductPlanOfferForm[]
 }
 
@@ -175,6 +177,67 @@ export const SERVICE_ADDON_BILLING_MODES: ServiceAddonBillingMode[] = [
 ]
 
 export const SUPPORTED_CURRENCIES = ["IDR", "USD"] as const
+export interface ProductPublishValidation {
+  valid: boolean
+  invalidTabs: string[]
+  missingPrices: Array<{
+    planId: string
+    currency: string
+    billingPeriod: BillingPeriod
+  }>
+}
+export function validateProductPublish(
+  input: {
+    basics: Pick<ProductBasicsForm, "name" | "description">
+    plans: ProductPlanEditorForm[]
+  },
+  enabledCurrencies: SupportedCurrency[]
+): ProductPublishValidation {
+  const invalidTabs = new Set<string>()
+  const missingPrices: ProductPublishValidation["missingPrices"] = []
+
+  if (!input.basics.name.trim() || !input.basics.description.trim()) {
+    invalidTabs.add("basics")
+  }
+
+  const activePlans = input.plans.filter((plan) => plan.isActive)
+  if (activePlans.length === 0 || enabledCurrencies.length === 0) {
+    invalidTabs.add("plans")
+  }
+
+  for (const plan of activePlans) {
+    if (plan.enabledTerms.length === 0) {
+      invalidTabs.add("plans")
+      continue
+    }
+
+    for (const currency of enabledCurrencies) {
+      for (const billingPeriod of plan.enabledTerms) {
+        const offer = plan.offers.find(
+          (candidate) =>
+            candidate.isActive &&
+            candidate.currency === currency &&
+            candidate.billingPeriod === billingPeriod
+        )
+        if (
+          !offer ||
+          !Number.isFinite(Number(offer.periodPrice)) ||
+          Number(offer.periodPrice) <= 0
+        ) {
+          missingPrices.push({ planId: plan.id, currency, billingPeriod })
+        }
+      }
+    }
+  }
+
+  if (missingPrices.length > 0) invalidTabs.add("plans")
+
+  return {
+    valid: invalidTabs.size === 0,
+    invalidTabs: [...invalidTabs],
+    missingPrices,
+  }
+}
 export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number]
 
 export const PRODUCT_OPTIONS: { value: ServiceType; label: string }[] = [

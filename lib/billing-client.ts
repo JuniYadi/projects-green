@@ -1030,6 +1030,7 @@ export type CatalogProduct = {
   code: string
   name: string
   description: string | null
+  isActive: boolean
   plans: CatalogPlan[]
 }
 

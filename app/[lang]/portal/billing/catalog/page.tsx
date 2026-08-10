@@ -88,10 +88,8 @@ export default function PortalBillingCatalogPage() {
 
   const getProductStatus = (
     product: CatalogProduct
-  ): "draft" | "published" | "archived" => {
-    // A product is published if it has plans with active offers
-    const hasActivePlans = product.plans.length > 0
-    return hasActivePlans ? "published" : "draft"
+  ): "published" | "archived" => {
+    return product.isActive ? "published" : "archived"
   }
 
   return (
@@ -160,7 +158,7 @@ export default function PortalBillingCatalogPage() {
             return (
               <Link
                 key={product.code}
-                href={`/portal/billing/catalog/${product.code.toLowerCase()}`}
+                href={`/portal/billing/catalog/products/${product.code.toLowerCase()}`}
               >
                 <Card className="group transition-shadow hover:shadow-md">
                   <CardHeader>

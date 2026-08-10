@@ -36,11 +36,11 @@ import type {
   CatalogProduct,
   CatalogProductDetailResponse,
 } from "@/lib/billing-client"
-import { CatalogBasicsTab } from "./catalog-basics-tab"
-import { CatalogPlansTab } from "./catalog-plans-tab"
-import { CatalogAddonsTab } from "./catalog-addons-tab"
-import { CatalogProductDetailsTab } from "./catalog-product-details-tab"
-import { CatalogPublishTab } from "./catalog-publish-tab"
+import { CatalogBasicsTab } from "@/app/[lang]/portal/billing/catalog/[productCode]/catalog-basics-tab"
+import { CatalogPlansTab } from "@/app/[lang]/portal/billing/catalog/[productCode]/catalog-plans-tab"
+import { CatalogAddonsTab } from "@/app/[lang]/portal/billing/catalog/[productCode]/catalog-addons-tab"
+import { CatalogProductDetailsTab } from "@/app/[lang]/portal/billing/catalog/[productCode]/catalog-product-details-tab"
+import { CatalogPublishTab } from "@/app/[lang]/portal/billing/catalog/[productCode]/catalog-publish-tab"
 import type {
   ProductBasicsForm,
   ProductPlanEditorForm,
@@ -52,6 +52,7 @@ import type {
 import {
   PRODUCT_OPTIONS,
   SUPPORTED_CURRENCIES,
+  validateProductPublish,
 } from "@/components/billing/admin/catalog/catalog-editor.types"
 import { toast } from "sonner"
 
@@ -83,12 +84,26 @@ function productToEditorState(
   product: CatalogProduct,
   currency: string
 ): ProductEditorState {
+  const enabledCurrencies = [
+    ...new Set([
+      currency,
+      ...product.plans.flatMap((plan) =>
+        plan.offers.map((offer) => offer.currency)
+      ),
+    ]),
+  ].filter((value): value is ProductBasicsForm["enabledCurrencies"][number] =>
+    SUPPORTED_CURRENCIES.includes(
+      value as (typeof SUPPORTED_CURRENCIES)[number]
+    )
+  )
+
   return {
     basics: {
       code: product.code as ProductBasicsForm["code"],
       name: product.name,
       description: product.description ?? "",
       currency,
+      enabledCurrencies,
       isActive: true,
     },
     plans: product.plans.map((plan) => ({
@@ -97,6 +112,14 @@ function productToEditorState(
       name: plan.name,
       resources: plan.resources,
       isActive: true,
+      enabledTerms: [
+        ...new Set(
+          plan.offers.map(
+            (offer) =>
+              offer.billingPeriod as ProductPlanOfferForm["billingPeriod"]
+          )
+        ),
+      ],
       offers: plan.offers.map(
         (offer): ProductPlanOfferForm => ({
           id: offer.id,
@@ -117,15 +140,17 @@ function productToEditorState(
   }
 }
 
-export default function ProductEditorPage() {
+export function ProductEditor({
+  productCode: requestedProductCode,
+  isNew,
+}: Readonly<{
+  productCode: string
+  isNew: boolean
+}>) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { productCode: rawProductCode, lang } = useParams<{
-    lang: string
-    productCode: string
-  }>()
-  const productCode = rawProductCode as string
-  const isNew = searchParams.get("new") === "true"
+  const { lang } = useParams<{ lang: string }>()
+  const productCode = requestedProductCode
 
   const [state, setState] = useState<ProductEditorState | null>(null)
   const [loading, setLoading] = useState(true)
@@ -133,12 +158,20 @@ export default function ProductEditorPage() {
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [modifiedTabs, setModifiedTabs] = useState<Set<string>>(new Set())
+  const [invalidTabs, setInvalidTabs] = useState<Set<string>>(new Set())
   const [showPreview, setShowPreview] = useState(false)
 
   const loadProduct = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
+      const draftKey = `catalog-draft-${productCode}`
+      const savedDraft = localStorage.getItem(draftKey)
+      if (savedDraft) {
+        setState(JSON.parse(savedDraft) as ProductEditorState)
+        return
+      }
+
       if (isNew) {
         const baseOption =
           PRODUCT_OPTIONS.find((p) => p.value === productCode) ??
@@ -149,6 +182,7 @@ export default function ProductEditorPage() {
             name: baseOption.label,
             description: "",
             currency: "IDR",
+            enabledCurrencies: ["IDR"],
             isActive: true,
           },
           plans: [],
@@ -230,15 +264,12 @@ export default function ProductEditorPage() {
   }
 
   const hasUnsavedChanges = modifiedTabs.size > 0
-  const requiredFieldsValid =
-    !!state.basics.name.trim() && !!state.basics.description.trim()
+  const publishValidation = validateProductPublish(
+    state,
+    state.basics.enabledCurrencies
+  )
 
   const handleSaveDraft = async () => {
-    if (!requiredFieldsValid) {
-      markModified("basics")
-      toast.error("Please fill in required fields in Basics.")
-      return
-    }
     setSaving(true)
     try {
       const draftKey = `catalog-draft-${productCode}`
@@ -253,16 +284,21 @@ export default function ProductEditorPage() {
   }
 
   const handlePublish = async () => {
-    if (!requiredFieldsValid) {
-      markModified("basics")
-      toast.error("Please fill in required fields in Basics.")
+    if (!publishValidation.valid) {
+      setInvalidTabs(new Set(publishValidation.invalidTabs))
+      toast.error("Complete every enabled price before publishing.")
       return
     }
+    setInvalidTabs(new Set())
     setPublishing(true)
     try {
       const draftKey = `catalog-draft-${productCode}`
-      localStorage.setItem(draftKey, JSON.stringify(state))
-      setState((prev) => (prev ? { ...prev, publishState: "published" } : prev))
+      const nextState: ProductEditorState = {
+        ...state,
+        publishState: "published",
+      }
+      localStorage.setItem(draftKey, JSON.stringify(nextState))
+      setState(nextState)
       toast.success("Product published")
       setModifiedTabs(new Set())
     } catch {
@@ -325,9 +361,11 @@ export default function ProductEditorPage() {
               {TABS.map((tab) => (
                 <TabsTrigger key={tab.id} value={tab.id}>
                   {tab.label}
-                  {modifiedTabs.has(tab.id) && (
+                  {(modifiedTabs.has(tab.id) || invalidTabs.has(tab.id)) && (
                     <Badge
-                      variant="secondary"
+                      variant={
+                        invalidTabs.has(tab.id) ? "destructive" : "secondary"
+                      }
                       className="ml-1.5 h-4 min-w-[1.25rem] px-1 text-xs"
                     >
                       !
@@ -351,7 +389,7 @@ export default function ProductEditorPage() {
               variant="outline"
               size="sm"
               onClick={handleSaveDraft}
-              disabled={saving || !hasUnsavedChanges}
+              disabled={saving}
             >
               {saving ? "Saving…" : "Save draft"}
             </Button>
@@ -360,7 +398,7 @@ export default function ProductEditorPage() {
                 <Button
                   size="sm"
                   disabled={
-                    publishing || !hasUnsavedChanges || !requiredFieldsValid
+                    publishing || !hasUnsavedChanges || !publishValidation.valid
                   }
                 >
                   {publishing ? "Publishing…" : "Publish"}
@@ -413,19 +451,18 @@ export default function ProductEditorPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="plans" className="mt-0">
           <Card>
             <CardHeader>
               <CardTitle>Plans</CardTitle>
               <CardDescription>
-                Configure billing plans and pricing terms.
+                Configure billing plans and explicit currency-by-term pricing.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <CatalogPlansTab
                 plans={state.plans}
-                currencies={[...SUPPORTED_CURRENCIES]}
+                currencies={state.basics.enabledCurrencies}
                 onChange={updatePlans}
                 showPreview={showPreview}
               />

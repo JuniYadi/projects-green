@@ -69,6 +69,7 @@ export class CatalogService {
           code: pkg.code as ServiceType,
           name: pkg.name,
           description: pkg.description,
+          isActive: pkg.isActive,
           plans,
         }
       })
@@ -120,6 +121,7 @@ export class CatalogService {
         code: pkg.code as ServiceType,
         name: pkg.name,
         description: pkg.description,
+        isActive: pkg.isActive,
         plans,
       },
       currency,

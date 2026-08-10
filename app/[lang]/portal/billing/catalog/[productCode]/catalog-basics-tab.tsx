@@ -100,6 +100,39 @@ export function CatalogBasicsTab({
           </SelectContent>
         </Select>
       </div>
+
+      <div className="space-y-2 md:col-span-2">
+        <Label>Enabled currencies</Label>
+        <p className="text-xs text-muted-foreground">
+          Each enabled currency creates a required price row for every enabled
+          term.
+        </p>
+        <div className="flex flex-wrap gap-4">
+          {SUPPORTED_CURRENCIES.map((currency) => {
+            const enabled = basics.enabledCurrencies.includes(currency)
+            return (
+              <div key={currency} className="flex items-center gap-2">
+                <Switch
+                  id={`enabled-currency-${currency}`}
+                  checked={enabled}
+                  onCheckedChange={(checked) =>
+                    onChange({
+                      enabledCurrencies: checked
+                        ? [...new Set([...basics.enabledCurrencies, currency])]
+                        : basics.enabledCurrencies.filter(
+                            (item) => item !== currency
+                          ),
+                    })
+                  }
+                />
+                <Label htmlFor={`enabled-currency-${currency}`}>
+                  {currency}
+                </Label>
+              </div>
+            )
+          })}
+        </div>
+      </div>
     </form>
   )
 }

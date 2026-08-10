@@ -1,6 +1,7 @@
 import "@/test/register"
 import { describe, expect, it, mock } from "bun:test"
-import { render, fireEvent } from "@testing-library/react"
+import { render, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { SubscriptionList } from "./subscription-list"
 const mockSubscriptions = [
   {
@@ -85,14 +86,15 @@ describe("SubscriptionList", () => {
     expect(view.getAllByText("APP_HOSTING").length).toBe(2)
   })
 
-  it("filters by search term matching packageCode", () => {
+  it("filters by search term matching packageCode", async () => {
     const view = render(<SubscriptionList subscriptions={mockSubscriptions} />)
     const searchInput = view.getByPlaceholderText("Search subscriptions...")
-    fireEvent.change(searchInput, { target: { value: "VPN" } })
-    fireEvent.input(searchInput, { target: { value: "VPN" } })
+    await userEvent.type(searchInput, "VPN")
 
-    expect(view.getAllByText("VPN").length).toBe(2)
-    expect(view.queryByText("APP_HOSTING")).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(view.getAllByText("VPN").length).toBe(2)
+      expect(view.queryAllByText("APP_HOSTING")).toHaveLength(0)
+    })
   })
   it("renders a status filter control", () => {
     const view = render(<SubscriptionList subscriptions={mockSubscriptions} />)

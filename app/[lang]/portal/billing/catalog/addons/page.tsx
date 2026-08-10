@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 
@@ -9,14 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { DataTable } from "@/components/data-table"
+import type { ColumnDef } from "@tanstack/react-table"
 import {
   ArrowLeftIcon,
   GearSixIcon,
@@ -24,61 +18,12 @@ import {
   PlusIcon,
   SquaresFour,
 } from "@/components/ui/phosphor-icons"
-import type { AddonListItem } from "@/components/billing/admin/catalog/catalog-editor.types"
-
+import { useAdminAddonsQuery } from "@/hooks/use-billing-data"
 const BILLING_MODE_LABELS: Record<string, string> = {
   RECURRING: "Recurring",
   ONE_TIME: "One-time",
   USAGE: "Usage",
 }
-
-// UI-local mock data — replaces the need for a backend addon API on this branch.
-const MOCK_ADDONS: AddonListItem[] = [
-  {
-    id: "addon-1",
-    code: "EXTRA_STORAGE",
-    name: "Extra Storage",
-    description: "50 GB of additional SSD storage",
-    billingMode: "RECURRING",
-    isActive: true,
-    priceCount: 4,
-    createdAt: "2025-01-15T10:30:00.000Z",
-    updatedAt: "2025-01-15T10:30:00.000Z",
-  },
-  {
-    id: "addon-2",
-    code: "DEDICATED_IP",
-    name: "Dedicated IP",
-    description: "A dedicated IPv4 address for your services",
-    billingMode: "ONE_TIME",
-    isActive: true,
-    priceCount: 1,
-    createdAt: "2025-01-15T10:30:00.000Z",
-    updatedAt: "2025-01-15T10:30:00.000Z",
-  },
-  {
-    id: "addon-3",
-    code: "PRIORITY_SUPPORT",
-    name: "Priority Support",
-    description: "Priority 24/7 support with SLA",
-    billingMode: "RECURRING",
-    isActive: false,
-    priceCount: 2,
-    createdAt: "2025-01-15T10:30:00.000Z",
-    updatedAt: "2025-02-20T14:00:00.000Z",
-  },
-  {
-    id: "addon-4",
-    code: "WHATSAPP_PHONE_NUMBER",
-    name: "WhatsApp Phone Number",
-    description: "Additional WhatsApp business phone number",
-    billingMode: "RECURRING",
-    isActive: true,
-    priceCount: 1,
-    createdAt: "2025-01-15T10:30:00.000Z",
-    updatedAt: "2025-01-15T10:30:00.000Z",
-  },
-]
 
 function LoadingSkeleton() {
   return (
@@ -96,47 +41,84 @@ function LoadingSkeleton() {
 export default function PortalBillingAddonsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [addons, setAddons] = useState<AddonListItem[]>([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState(searchParams.get("q") ?? "")
-
-  const loadAddons = useCallback((query: string) => {
-    setLoading(true)
-    const timer = setTimeout(() => {
-      const q = query.toLowerCase()
-      const filtered = MOCK_ADDONS.filter(
-        (addon) =>
-          !q ||
-          addon.code.toLowerCase().includes(q) ||
-          addon.name.toLowerCase().includes(q)
-      )
-      setAddons(filtered)
-      setLoading(false)
-    }, 150)
-    return () => clearTimeout(timer)
-  }, [])
-
-  useEffect(() => {
-    let cleanup: (() => void) | undefined
-    const timer = window.setTimeout(() => {
-      cleanup = loadAddons(search)
-    }, 0)
-    return () => {
-      window.clearTimeout(timer)
-      cleanup?.()
-    }
-  }, [loadAddons, search])
+  const {
+    data,
+    isLoading: loading,
+    error,
+  } = useAdminAddonsQuery({
+    search: search.trim() || undefined,
+    currency: "IDR",
+  })
+  const addons = data?.addons ?? []
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value)
     const params = new URLSearchParams(searchParams.toString())
-    if (e.target.value.trim()) {
-      params.set("q", e.target.value)
-    } else {
-      params.delete("q")
-    }
+    if (e.target.value.trim()) params.set("q", e.target.value)
+    else params.delete("q")
     router.push(`?${params.toString()}`, { scroll: false })
   }
+
+  const addonColumns: ColumnDef<(typeof addons)[number]>[] = [
+    {
+      accessorKey: "code",
+      header: "Code",
+      cell: ({ row }) => (
+        <span className="font-mono text-xs">{row.original.code}</span>
+      ),
+    },
+    {
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => (
+        <div>
+          <div className="font-medium">{row.original.name}</div>
+          {row.original.description && (
+            <p className="text-xs text-muted-foreground">
+              {row.original.description}
+            </p>
+          )}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "billingMode",
+      header: "Billing mode",
+      cell: ({ row }) =>
+        BILLING_MODE_LABELS[row.original.billingMode] ??
+        row.original.billingMode,
+    },
+    {
+      id: "prices",
+      header: "Prices",
+      accessorFn: (row) => row.prices.length,
+      cell: ({ row }) =>
+        `${row.original.prices.length} price${row.original.prices.length === 1 ? "" : "s"}`,
+    },
+    {
+      accessorKey: "isActive",
+      header: "Status",
+      cell: ({ row }) => (
+        <Badge variant={row.original.isActive ? "default" : "secondary"}>
+          {row.original.isActive ? "Active" : "Inactive"}
+        </Badge>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => (
+        <Link
+          href={`/portal/billing/catalog/addons/${row.original.code.toLowerCase()}`}
+        >
+          <Button variant="ghost" size="sm">
+            <GearSixIcon className="h-4 w-4" />
+          </Button>
+        </Link>
+      ),
+    },
+  ]
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -173,7 +155,13 @@ export default function PortalBillingAddonsPage() {
         <MagnifyingGlassIcon className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       </div>
 
-      {loading ? (
+      {error ? (
+        <Card>
+          <CardContent className="py-8 text-center text-destructive">
+            {error instanceof Error ? error.message : "Unable to load add-ons."}
+          </CardContent>
+        </Card>
+      ) : loading ? (
         <LoadingSkeleton />
       ) : addons.length === 0 ? (
         <Card>
@@ -189,59 +177,14 @@ export default function PortalBillingAddonsPage() {
       ) : (
         <Card>
           <CardTitle className="sr-only">Add-ons list</CardTitle>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Billing mode</TableHead>
-                <TableHead>Prices</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {addons.map((addon) => (
-                <TableRow key={addon.id}>
-                  <TableCell>
-                    <span className="font-mono text-xs">{addon.code}</span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium">{addon.name}</div>
-                    {addon.description && (
-                      <p className="text-xs text-muted-foreground">
-                        {addon.description}
-                      </p>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {BILLING_MODE_LABELS[addon.billingMode] ??
-                      addon.billingMode}
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-muted-foreground">
-                      {addon.priceCount} price
-                      {addon.priceCount !== 1 ? "s" : ""}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={addon.isActive ? "default" : "secondary"}>
-                      {addon.isActive ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Link
-                      href={`/portal/billing/catalog/addons/${addon.code.toLowerCase()}`}
-                    >
-                      <Button variant="ghost" size="sm">
-                        <GearSixIcon className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            tableId="portal-billing-addons"
+            columns={addonColumns}
+            data={addons}
+            searchableColumns={["code", "name", "billingMode"]}
+            searchPlaceholder="Search add-ons table..."
+            emptyMessage="No add-ons match your search."
+          />
         </Card>
       )}
     </main>
