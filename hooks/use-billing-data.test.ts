@@ -279,6 +279,9 @@ describe("billing Eden query functions", () => {
     await expect(fetchInvoice("INV_ONE")).rejects.toThrow(
       "Unable to load invoice."
     )
+    await expect(fetchInvoice("UNKNOWN")).rejects.toThrow(
+      "Invoice not found: UNKNOWN"
+    )
     catalogProductGet.mockResolvedValueOnce({
       error: { value: { message: "catalog unavailable" } },
     })

@@ -312,7 +312,6 @@ export function SubscriptionList({
           placeholder="Search subscriptions..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          onInput={(e) => setSearch(e.currentTarget.value)}
           className="max-w-sm"
           aria-label="Search subscriptions"
         />

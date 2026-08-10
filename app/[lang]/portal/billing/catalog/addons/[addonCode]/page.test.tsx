@@ -90,6 +90,15 @@ describe.serial("AddonEditorPage local draft behavior", () => {
       )
     }
   )
+
+  it("requires every supported currency for an enabled billing term", async () => {
+    const view = render(<AddonEditorPage />)
+
+    await waitFor(() =>
+      expect(view.getByText("Missing prices: MONTHLY/USD")).toBeTruthy()
+    )
+  })
+
   it.serial(
     "restores a valid local draft over server data and persists edits",
     async () => {

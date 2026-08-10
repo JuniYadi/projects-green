@@ -167,7 +167,9 @@ export function useAdminSubscriptionsQuery(params: AdminSubscriptionParams) {
   })
 }
 export async function fetchInvoice(id: string): Promise<InvoiceDetail> {
-  const result = await billingApi.invoices[id].get()
+  const invoiceApi = billingApi.invoices[id]
+  if (!invoiceApi) throw new Error(`Invoice not found: ${id}`)
+  const result = await invoiceApi.get()
   return unwrap(result, "Unable to load invoice.")
 }
 

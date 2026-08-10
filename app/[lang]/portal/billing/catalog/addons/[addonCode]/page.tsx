@@ -258,7 +258,8 @@ export default function AddonEditorPage() {
   )
   const missingPriceCells = getMissingAddonPriceCells(
     addon.prices,
-    enabledBillingPeriods
+    enabledBillingPeriods,
+    SUPPORTED_CURRENCIES
   )
   const hasErrors =
     priceValidations.some((e) => e.length > 0) || missingPriceCells.length > 0
