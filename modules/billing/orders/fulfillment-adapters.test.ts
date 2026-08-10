@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client"
 import type { PrismaClient, ServiceType } from "@prisma/client"
 import {
   BillingFulfillmentRegistry,
+  createAppHostingFulfillmentAdapter,
   createBillingFulfillmentRegistry,
   createVpnFulfillmentAdapter,
   createWhatsappFulfillmentAdapter,
@@ -125,14 +126,12 @@ describe("BillingFulfillmentRegistry", () => {
     expect(registry.get("WHATSAPP").packageCode).toBe("WHATSAPP")
   })
 
-  it("registers exactly VPN and WhatsApp by default while leaving App Hosting unconfigured", () => {
+  it("registers App Hosting, VPN, and WhatsApp by default", () => {
     const registry = createBillingFulfillmentRegistry()
 
+    expect(registry.get("APP_HOSTING").packageCode).toBe("APP_HOSTING")
     expect(registry.get("VPN").packageCode).toBe("VPN")
     expect(registry.get("WHATSAPP").packageCode).toBe("WHATSAPP")
-    expect(() => registry.get("APP_HOSTING")).toThrow(
-      "FULFILLMENT_NOT_CONFIGURED"
-    )
   })
 
   it("rejects an unregistered package with FULFILLMENT_NOT_CONFIGURED", () => {
@@ -141,6 +140,69 @@ describe("BillingFulfillmentRegistry", () => {
     expect(() => registry.get("APP_HOSTING")).toThrow(
       "FULFILLMENT_NOT_CONFIGURED"
     )
+  })
+})
+
+describe("App Hosting fulfillment adapter", () => {
+  it("creates a subscription from safe deployment context without persisting secrets", async () => {
+    const prisma = createPrismaMock()
+    prisma.servicePricing.findUnique.mockResolvedValue({
+      ...vpnPricing,
+      servicePlan: {
+        ...vpnPricing.servicePlan,
+        package: { id: "package-app-hosting", code: "APP_HOSTING" as const },
+      },
+    })
+    const appHosting = createAppHostingFulfillmentAdapter(
+      prisma as unknown as PrismaClient
+    )
+    const context = {
+      stackId: "stack-1",
+      deploymentId: "deployment-1",
+      sourceType: "TEMPLATE" as const,
+      resourcePlanId: "starter" as const,
+    }
+
+    await expect(
+      appHosting.create(
+        fulfillmentInput({
+          packageCode: "APP_HOSTING",
+          metadata: {
+            appHostingFulfillment: context,
+            envVars: [{ key: "DATABASE_PASSWORD", value: "secret" }],
+          },
+        })
+      )
+    ).resolves.toEqual({ subscriptionId: "service-sub-1" })
+
+    expect(prisma.serviceSubscription.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          metadata: { appHostingFulfillment: context },
+        }),
+      })
+    )
+  })
+
+  it("returns an actionable failure for missing deployment context", async () => {
+    const appHosting = createAppHostingFulfillmentAdapter(
+      createPrismaMock() as unknown as PrismaClient
+    )
+
+    await expect(
+      appHosting.create(
+        fulfillmentInput({
+          packageCode: "APP_HOSTING",
+          metadata: { credentials: { token: "secret" } },
+        })
+      )
+    ).rejects.toMatchObject({
+      name: "AppHostingFulfillmentError",
+      failure: {
+        code: "APP_HOSTING_FULFILLMENT_CONTEXT_REQUIRED",
+        retryable: false,
+      },
+    })
   })
 })
 

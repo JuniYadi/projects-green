@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient, type ServiceType } from "@prisma/client"
+import { z } from "zod"
 
 import { prisma as defaultPrisma } from "@/lib/prisma"
 import { VpnProvisioningJob } from "@/lib/queue/vpn-provisioning"
@@ -16,6 +17,103 @@ export type BillingFulfillmentInput = {
   periodStart: Date
   periodEnd: Date
   metadata: Record<string, unknown>
+}
+
+export const APP_HOSTING_FULFILLMENT_METADATA_KEY = "appHostingFulfillment"
+
+export const appHostingFulfillmentContextSchema = z
+  .object({
+    stackId: z.string().min(1),
+    deploymentId: z.string().min(1),
+    sourceType: z.enum(["GITHUB", "PUBLIC", "TEMPLATE"]),
+    resourcePlanId: z.enum(["starter", "pro", "payg"]),
+  })
+  .strict()
+
+export type AppHostingFulfillmentContext = z.infer<
+  typeof appHostingFulfillmentContextSchema
+>
+
+export type AppHostingFulfillmentFailure = {
+  code:
+    | "APP_HOSTING_FULFILLMENT_CONTEXT_REQUIRED"
+    | "APP_HOSTING_FULFILLMENT_CONTEXT_INVALID"
+  message: string
+  retryable: boolean
+}
+
+export type AppHostingFulfillmentResult =
+  | {
+      ok: true
+      subscriptionId: string
+      context: AppHostingFulfillmentContext
+    }
+  | { ok: false; failure: AppHostingFulfillmentFailure }
+
+export class AppHostingFulfillmentError extends Error {
+  constructor(public readonly failure: AppHostingFulfillmentFailure) {
+    super(failure.message)
+    this.name = "AppHostingFulfillmentError"
+  }
+}
+
+type AppHostingContextParseResult =
+  | { ok: true; context: AppHostingFulfillmentContext }
+  | { ok: false; failure: AppHostingFulfillmentFailure }
+
+export function parseAppHostingFulfillmentContext(
+  metadata: Record<string, unknown>
+): AppHostingContextParseResult {
+  const raw = metadata[APP_HOSTING_FULFILLMENT_METADATA_KEY]
+  if (raw === undefined) {
+    return {
+      ok: false,
+      failure: {
+        code: "APP_HOSTING_FULFILLMENT_CONTEXT_REQUIRED",
+        message:
+          "A paid App Hosting order must include a deployment request and resource package.",
+        retryable: false,
+      },
+    }
+  }
+
+  const parsed = appHostingFulfillmentContextSchema.safeParse(raw)
+  if (!parsed.success) {
+    return {
+      ok: false,
+      failure: {
+        code: "APP_HOSTING_FULFILLMENT_CONTEXT_INVALID",
+        message:
+          "The App Hosting deployment request is invalid; retry with stack, deployment, source, and resource package references.",
+        retryable: false,
+      },
+    }
+  }
+
+  return { ok: true, context: parsed.data }
+}
+
+export function sanitizeAppHostingOrderMetadata(
+  metadata: Record<string, unknown>
+): Record<string, unknown> {
+  const invoiceLineId =
+    typeof metadata.invoiceLineId === "string" ? metadata.invoiceLineId : null
+  const parsed = parseAppHostingFulfillmentContext(metadata)
+  if (parsed.ok) {
+    return {
+      [APP_HOSTING_FULFILLMENT_METADATA_KEY]: parsed.context,
+      ...(invoiceLineId ? { invoiceLineId } : {}),
+    }
+  }
+
+  if (metadata[APP_HOSTING_FULFILLMENT_METADATA_KEY] !== undefined) {
+    return {
+      [APP_HOSTING_FULFILLMENT_METADATA_KEY]: null,
+      ...(invoiceLineId ? { invoiceLineId } : {}),
+    }
+  }
+
+  return invoiceLineId ? { invoiceLineId } : {}
 }
 
 export type BillingFulfillmentAdapter = {
@@ -446,6 +544,63 @@ export function createWhatsappFulfillmentAdapter(
   }
 }
 
+async function applyAppHostingFulfillment(
+  prisma: PrismaClient,
+  input: BillingFulfillmentInput,
+  transactionClient?: Prisma.TransactionClient
+): Promise<AppHostingFulfillmentResult> {
+  const parsed = parseAppHostingFulfillmentContext(input.metadata)
+  if (!parsed.ok) throw new AppHostingFulfillmentError(parsed.failure)
+
+  const run = async (
+    tx: Prisma.TransactionClient
+  ): Promise<AppHostingFulfillmentResult> => {
+    const pricing = recurringPricing(
+      (await tx.servicePricing.findUnique({
+        where: { id: input.pricingId },
+        include: { servicePlan: { include: { package: true } } },
+      })) as ServicePricingRecord | null,
+      input
+    )
+    const subscription = await upsertServiceSubscription(tx, input, pricing, {
+      [APP_HOSTING_FULFILLMENT_METADATA_KEY]: parsed.context,
+    })
+
+    return {
+      ok: true,
+      subscriptionId: subscription.id,
+      context: parsed.context,
+    }
+  }
+
+  return transactionClient ? run(transactionClient) : prisma.$transaction(run)
+}
+
+export function createAppHostingFulfillmentAdapter(
+  prisma: PrismaClient = defaultPrisma
+): BillingFulfillmentAdapter {
+  return {
+    packageCode: "APP_HOSTING",
+    create: async (input, transactionClient) => {
+      const result = await applyAppHostingFulfillment(
+        prisma,
+        input,
+        transactionClient
+      )
+      if (!result.ok) throw new AppHostingFulfillmentError(result.failure)
+      return { subscriptionId: result.subscriptionId }
+    },
+    renew: async (input, transactionClient) => {
+      const result = await applyAppHostingFulfillment(
+        prisma,
+        input,
+        transactionClient
+      )
+      if (!result.ok) throw new AppHostingFulfillmentError(result.failure)
+    },
+  }
+}
+
 export class BillingFulfillmentRegistry {
   private readonly adapters: ReadonlyMap<ServiceType, BillingFulfillmentAdapter>
 
@@ -473,6 +628,7 @@ export function createBillingFulfillmentRegistry(
 ): BillingFulfillmentRegistry {
   if (adapters) return new BillingFulfillmentRegistry(adapters)
   return new BillingFulfillmentRegistry([
+    createAppHostingFulfillmentAdapter(prisma),
     createVpnFulfillmentAdapter(prisma),
     createWhatsappFulfillmentAdapter(prisma),
   ])

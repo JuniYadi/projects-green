@@ -12,7 +12,9 @@ import type {
   ResolvedRecurringPrice,
 } from "../pricing/pricing.types"
 import {
+  AppHostingFulfillmentError,
   createBillingFulfillmentRegistry,
+  sanitizeAppHostingOrderMetadata,
   type BillingFulfillmentInput,
   type BillingFulfillmentRegistry,
 } from "./fulfillment-adapters"
@@ -76,6 +78,22 @@ function metadataObject(
 ): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {}
   return value as Record<string, unknown>
+}
+
+function fulfillmentFailure(error: unknown): {
+  code: string
+  message: string
+  retryable: boolean
+} {
+  if (error instanceof AppHostingFulfillmentError) return error.failure
+  return {
+    code: "FULFILLMENT_FAILED",
+    message:
+      error instanceof Error && error.message
+        ? error.message
+        : "Fulfillment adapter failed.",
+    retryable: true,
+  }
 }
 function isIdempotencyConflict(error: unknown): boolean {
   if (!error || typeof error !== "object") return false
@@ -188,7 +206,11 @@ export class BillingOrderService {
       throw new Error("ORDER_DISCOUNT_INVALID")
     }
     const totalAmount = amount.sub(discountAmount)
-    const metadata = input.metadata ?? {}
+    const rawMetadata = input.metadata ?? {}
+    const metadata =
+      price.packageCode === "APP_HOSTING"
+        ? sanitizeAppHostingOrderMetadata(rawMetadata)
+        : rawMetadata
     const lineMetadata = { ...metadata, planId: price.planId }
     let order: OrderWithLines
     try {
@@ -249,7 +271,11 @@ export class BillingOrderService {
   ): Promise<BillingOrderResult> {
     const client = transactionClient ?? this.prisma
     const order = await this.loadOrder(orderId, client)
-    if (order.status === "CHARGED" || order.status === "FULFILLED") {
+    if (
+      order.status === "CHARGED" ||
+      order.status === "FULFILLED" ||
+      (order.status === "FAILED" && order.billingInvoiceId)
+    ) {
       return toResult(order)
     }
     if (order.status !== "PENDING") throw new Error("ORDER_NOT_CHARGEABLE")
@@ -311,10 +337,8 @@ export class BillingOrderService {
     orderId: string,
     metadata: Record<string, unknown> = {}
   ): Promise<BillingOrderResult> {
-    return this.prisma.$transaction(async (tx) => {
-      const charged = await this.chargeOrder(orderId, tx)
-      return this.fulfillOrder(charged.orderId, metadata, tx)
-    })
+    const charged = await this.chargeOrder(orderId)
+    return this.fulfillOrder(charged.orderId, metadata)
   }
 
   async fulfillOrder(
@@ -323,6 +347,7 @@ export class BillingOrderService {
     transactionClient?: Prisma.TransactionClient
   ): Promise<BillingOrderResult> {
     let adapterAttempted = false
+    let attemptedOrderMetadata: Record<string, unknown> = {}
     const run = async (tx: Prisma.TransactionClient) => {
       const txClient = tx as Prisma.TransactionClient & {
         $executeRaw?: (query: unknown) => Promise<number>
@@ -348,6 +373,12 @@ export class BillingOrderService {
 
       const adapter = this.registry.get(line.packageCode)
       const lineMetadata = metadataObject(line.metadataJson)
+      const orderMetadata = metadataObject(order.metadataJson)
+      const mergedMetadata = {
+        ...orderMetadata,
+        ...lineMetadata,
+        ...metadata,
+      }
       const input: BillingFulfillmentInput = {
         orderId: order.id,
         organizationId: order.organizationId,
@@ -362,13 +393,16 @@ export class BillingOrderService {
         currency: line.currency,
         periodStart: line.periodStart,
         periodEnd: line.periodEnd,
-        metadata: {
-          ...metadataObject(order.metadataJson),
-          ...lineMetadata,
-          ...metadata,
-        },
+        metadata:
+          line.packageCode === "APP_HOSTING"
+            ? sanitizeAppHostingOrderMetadata(mergedMetadata)
+            : mergedMetadata,
       }
       adapterAttempted = true
+      attemptedOrderMetadata =
+        line.packageCode === "APP_HOSTING"
+          ? sanitizeAppHostingOrderMetadata(orderMetadata)
+          : orderMetadata
       let subscriptionId = order.serviceSubscriptionId
       if (subscriptionId) {
         await adapter.renew(input, tx)
@@ -398,7 +432,13 @@ export class BillingOrderService {
       if (adapterAttempted && !transactionClient) {
         await this.prisma.billingOrder.update({
           where: { id: orderId },
-          data: { status: "FAILED" },
+          data: {
+            status: "FAILED",
+            metadataJson: jsonObject({
+              ...attemptedOrderMetadata,
+              fulfillmentFailure: fulfillmentFailure(error),
+            }),
+          },
         })
       }
       throw error
