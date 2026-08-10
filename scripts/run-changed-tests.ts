@@ -134,8 +134,7 @@ export const parseChangedTestArgs = (
       continue
     }
     if (arg === "--test") {
-      explicitTestFiles.push(readTestFileOption(args, index + 1))
-      index += 1
+      explicitTestFiles.push(readTestFileOption(args, ++index))
       continue
     }
     if (arg.startsWith("--test=")) {
@@ -152,7 +151,7 @@ export const parseChangedTestArgs = (
   }
 }
 
-const run = () => {
+export const run = (): number => {
   let options: ChangedTestCliOptions
   try {
     options = parseChangedTestArgs(process.argv.slice(2))
@@ -239,6 +238,9 @@ const run = () => {
     `test:changed: ${sorted.length} test files` +
       (options.coverage ? ", coverage enabled" : "")
   )
+  for (const testFile of sorted) {
+    console.log(`test:changed: selected: ${testFile}`)
+  }
   const proc = Bun.spawnSync(["bun", ...args], {
     stdout: "inherit",
     stderr: "inherit",

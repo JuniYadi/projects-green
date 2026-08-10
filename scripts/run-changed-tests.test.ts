@@ -10,6 +10,9 @@ const availableTests = [
   "modules/example/example.test.tsx",
 ]
 
+const NESTED_RUN_GUARD = "RUN_CHANGED_TESTS_NO_SPAWN"
+const TARGET_TEST = "scripts/test-suites.test.ts"
+
 describe("selectChangedTests", () => {
   test("selects directly changed logic and component tests", () => {
     const selection = selectChangedTests(
@@ -116,3 +119,39 @@ test("parses explicit targeted-test and unmapped decisions", () => {
     ],
   })
 })
+
+test("parses options after a --test <path> without skipping them", () => {
+  expect(
+    parseChangedTestArgs([
+      "--test",
+      "modules/example/example.test.tsx",
+      "--allow-unmapped",
+    ])
+  ).toEqual({
+    allowUnmapped: true,
+    coverage: false,
+    explicitTestFiles: ["modules/example/example.test.tsx"],
+  })
+})
+
+const runningNested = process.env[NESTED_RUN_GUARD] === "1"
+
+if (!runningNested) {
+  test("run() passes --test paths through to the selected test set", async () => {
+    const proc = Bun.spawn(
+      ["bun", "run", "scripts/run-changed-tests.ts", "--test", TARGET_TEST],
+      {
+        cwd: import.meta.dir + "/..",
+        stdout: "pipe",
+        stderr: "pipe",
+        env: { ...process.env, [NESTED_RUN_GUARD]: "1" },
+      }
+    )
+    const stdout = await new Response(proc.stdout).text()
+    const stderr = await new Response(proc.stderr).text()
+    const exitCode = await proc.exited
+
+    expect(exitCode, `stderr: ${stderr}`).toBe(0)
+    expect(stdout).toContain(`test:changed: selected: ${TARGET_TEST}`)
+  })
+}
