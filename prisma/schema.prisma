@@ -211,7 +211,9 @@ model DetectorInspectionLog {
   detectedFramework String?
   confidence        Float?
   enforcedRuntimes  Json? // Array of {runtimeId, version} after policy enforcement
-  toolCalls         Json? // Array of {tool, input, output} for AI tool calls
+  toolCalls         Json? // Legacy raw tool payloads. New writes must use aiTrace.
+  aiTrace           Json? // Versioned redacted AI SDK tool trace.
+  providerDiagnostics Json? // Safe provider model/host/status/request-id metadata.
   reasoning         String[] // AI reasoning steps
   warnings          String[]
   durationMs        Int?

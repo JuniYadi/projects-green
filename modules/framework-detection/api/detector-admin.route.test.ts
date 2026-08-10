@@ -42,6 +42,8 @@ const createMockInspectionLog = (overrides = {}) => ({
   confidence: 0.92,
   enforcedRuntimes: [{ runtimeId: "php", version: "8.2" }],
   toolCalls: [],
+  aiTrace: null,
+  providerDiagnostics: null,
   reasoning: ["artisan found"],
   warnings: [],
   durationMs: 1500,
@@ -474,6 +476,65 @@ describe("detectorAdminRoutes", () => {
       expect(body.ok).toBe(true)
       expect(body.data.logs).toHaveLength(1)
       expect(body.data.total).toBe(1)
+    })
+
+    it("returns only the safe trace and diagnostics for a log", async () => {
+      const app = new Elysia().use(
+        createDetectorAdminRoutes({
+          requireSuperAdmin: mockGuardPass,
+          getInspectionLogById: mock(() =>
+            Promise.resolve(
+              createMockInspectionLog({
+                toolCalls: [
+                  {
+                    input: { filePath: "composer.json" },
+                    output: { content: "APP_KEY=must-not-leak" },
+                  },
+                ],
+                aiTrace: {
+                  version: 1,
+                  terminalStage: "provider",
+                  elapsedMs: 123,
+                  model: "gpt-4.1-mini",
+                  baseUrlHost: "openrouter.ai",
+                  tools: [
+                    {
+                      name: "read_repo_file",
+                      inputSummary: { requestedPath: "composer.json" },
+                      outcome: "completed",
+                      durationMs: 25,
+                    },
+                  ],
+                },
+                providerDiagnostics: {
+                  model: "gpt-4.1-mini",
+                  baseUrlHost: "openrouter.ai",
+                  httpStatus: 400,
+                  requestId: "req-safe-1",
+                  category: "provider",
+                },
+              })
+            )
+          ),
+        })
+      )
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/detector/logs/log-1")
+      )
+      const body = (await response.json()) as {
+        ok: boolean
+        data: {
+          trace: { terminalStage: string }
+          providerDiagnostics: { requestId: string }
+        }
+      }
+
+      expect(response.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.data.trace.terminalStage).toBe("provider")
+      expect(body.data.providerDiagnostics.requestId).toBe("req-safe-1")
+      expect(JSON.stringify(body)).not.toContain("APP_KEY")
     })
 
     it("passes query filters", async () => {
