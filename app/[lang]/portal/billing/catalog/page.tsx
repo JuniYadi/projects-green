@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 
 import {
   Card,
@@ -22,6 +22,7 @@ import {
 import { getCatalog } from "@/lib/billing-client"
 import type { CatalogProduct, CatalogListResponse } from "@/lib/billing-client"
 import { formatBillingMoney } from "@/modules/billing/format-money"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 const PRODUCT_LABELS: Record<string, string> = {
   APP_HOSTING: "App Hosting",
@@ -40,6 +41,8 @@ const STATUS_COLORS: Record<string, string> = {
 export default function PortalBillingCatalogPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { lang } = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(lang)
   const [products, setProducts] = useState<CatalogProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -115,6 +118,9 @@ export default function PortalBillingCatalogPage() {
             />
             <MagnifyingGlassIcon className="absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           </div>
+          <Link href={`/${locale}/portal/billing/catalog/products/new`}>
+            <Button size="sm">Create product</Button>
+          </Link>
           <Link href="/portal/billing/catalog/addons">
             <Button variant="outline" size="sm">
               Add-ons
