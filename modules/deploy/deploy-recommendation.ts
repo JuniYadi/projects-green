@@ -51,7 +51,7 @@ const FALLBACK_RECOMMENDATION: PlanRecommendation = {
 }
 
 export function recommendPlan(
-  detection: DetectionResult | null
+  detection: Pick<DetectionResult, "framework" | "secondaryEngine"> | null
 ): PlanRecommendation {
   if (!detection || !detection.framework) {
     return FALLBACK_RECOMMENDATION
