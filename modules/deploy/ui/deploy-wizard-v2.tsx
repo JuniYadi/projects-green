@@ -12,7 +12,7 @@ import {
   fetchPublicFrameworkDetection,
   DetectionError,
 } from "@/modules/deploy/deploy-detection.service"
-import { recommendPlan } from "@/modules/deploy/deploy-recommendation"
+import { recommendPlanForLegacyDetection } from "@/modules/deploy/deploy-recommendation"
 import {
   DEPLOY_PHASES,
   DEPLOY_STEP_QUERY_KEY,
@@ -505,7 +505,7 @@ function DeployWizardV2Inner({
             },
           })
 
-          const recommendation = recommendPlan(result)
+          const recommendation = recommendPlanForLegacyDetection(result)
           dispatch({
             type: "set-environment",
             payload: {
@@ -1017,7 +1017,8 @@ function DeployWizardV2Inner({
           memory={state.environment.memory}
           recommendedPlanId={
             state.detectionResult
-              ? recommendPlan(state.detectionResult).resourcePlanId
+              ? recommendPlanForLegacyDetection(state.detectionResult)
+                  .resourcePlanId
               : null
           }
           hasMissingCustomDomain={hasMissingCustomDomain}

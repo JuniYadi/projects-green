@@ -41,7 +41,9 @@ const session = (
   ...overrides,
 })
 
-const detection = (): DetectionResult => ({
+const detection = (
+  overrides: Partial<DetectionResult> = {}
+): DetectionResult => ({
   primaryFramework: {
     id: "nextjs",
     name: "Next.js",
@@ -80,6 +82,7 @@ const detection = (): DetectionResult => ({
   inspectionLogId: "inspection-1",
   frameworkVersion: "16.1.0",
   defaultPort: 3000,
+  ...overrides,
 })
 
 const safePlan = () => ({
@@ -178,8 +181,8 @@ const createHarness = (
           reason: "private_or_missing" | "ref_not_found" | "unavailable"
         }
     connection?: unknown
-    detectPublic?: typeof detection
-    detectGithub?: typeof detection
+    detectPublic?: DetectionResult
+    detectGithub?: DetectionResult
     initialSession?: Partial<AiDeploymentSession>
   } = {}
 ) => {
@@ -214,8 +217,8 @@ const createHarness = (
       findMany: mock(async () => []),
     },
   } as unknown as PrismaClient
-  const detectPublic = mock(async () => detection())
-  const detectGithub = mock(async () => detection())
+  const detectPublic = mock(async () => overrides.detectPublic ?? detection())
+  const detectGithub = mock(async () => overrides.detectGithub ?? detection())
   const service = new AiSourceInspectionService({
     db,
     sessions: { create, get, transition },
@@ -310,6 +313,82 @@ describe("AiSourceInspectionService", () => {
     )
   })
 
+  it("uses framework and toolchain detection for resource recommendations", async () => {
+    const harness = createHarness({
+      detectPublic: detection({
+        primaryFramework: {
+          id: "laravel",
+          name: "Laravel",
+          ecosystem: "php",
+          confidence: 0.96,
+          reasons: ["composer manifest is present"],
+        },
+        requiredDependencies: [
+          {
+            id: "php",
+            kind: "runtime",
+            requiredFor: "app_runtime",
+            confidence: 0.9,
+            reason: "Composer files indicate PHP runtime is required",
+          },
+          {
+            id: "node",
+            kind: "toolchain",
+            requiredFor: "asset_build",
+            confidence: 0.9,
+            reason:
+              "JavaScript lockfile indicates Node is required for asset build",
+          },
+        ],
+      }),
+    })
+
+    await harness.service.inspect({
+      actor,
+      request: inspectRequest(),
+    })
+
+    expect(harness.transition).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "PLAN_READY",
+        plan: expect.objectContaining({
+          resources: expect.objectContaining({
+            package: "payg",
+            cpu: 1000,
+            memory: 2048,
+          }),
+        }),
+      })
+    )
+  })
+
+  it("uses the fallback recommendation without a detected framework", async () => {
+    const harness = createHarness({
+      detectPublic: detection({
+        primaryFramework: null,
+        requiredDependencies: [],
+      }),
+    })
+
+    await harness.service.inspect({
+      actor,
+      request: inspectRequest(),
+    })
+
+    expect(harness.transition).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "PLAN_READY",
+        plan: expect.objectContaining({
+          resources: expect.objectContaining({
+            package: "pro",
+            cpu: 500,
+            memory: 1024,
+          }),
+        }),
+      })
+    )
+  })
+
   it("uses an existing tenant connection for private access", async () => {
     const harness = createHarness({
       publicAccess: { accessible: false, reason: "private_or_missing" },
@@ -372,6 +451,24 @@ describe("AiSourceInspectionService", () => {
     expect(result.access?.state).toBe("denied")
     expect(result.session?.serverContext).toMatchObject({
       inspection: { reasonCode: "SOURCE_REF_NOT_FOUND" },
+    })
+    expect(harness.detectPublic).not.toHaveBeenCalled()
+  })
+
+  it("maps unavailable public access to a denied inspection", async () => {
+    const harness = createHarness({
+      publicAccess: { accessible: false, reason: "unavailable" },
+    })
+
+    const result = await harness.service.inspect({
+      actor,
+      request: inspectRequest(),
+    })
+
+    expect(result.status).toBe("blocked")
+    expect(result.access?.state).toBe("denied")
+    expect(result.session?.serverContext).toMatchObject({
+      inspection: { reasonCode: "SOURCE_UNAVAILABLE" },
     })
     expect(harness.detectPublic).not.toHaveBeenCalled()
   })

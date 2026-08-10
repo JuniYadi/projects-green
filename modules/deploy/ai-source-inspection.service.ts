@@ -614,15 +614,10 @@ export class AiSourceInspectionService {
     actor: AiDeploymentSessionActor,
     source: NormalizedGithubSource
   ): Promise<AccessResolution> {
-    let publicAccess: PublicSourceAccessResult
-    try {
-      publicAccess = await this.checkPublicAccess({
-        url: source.url,
-        ref: source.ref,
-      })
-    } catch {
-      publicAccess = { accessible: false, reason: "unavailable" }
-    }
+    const publicAccess = await this.checkPublicAccess({
+      url: source.url,
+      ref: source.ref,
+    })
 
     if (publicAccess.accessible) {
       return {
@@ -867,11 +862,8 @@ export class AiSourceInspectionService {
         (dependency) => dependency.kind === "runtime"
       ) ?? detection.requiredDependencies[0]
     const recommendation = recommendPlan({
-      framework: detection.primaryFramework?.id ?? null,
-      secondaryEngine:
-        detection.requiredDependencies.find(
-          (dependency) => dependency.kind === "toolchain"
-        )?.id ?? null,
+      primaryFramework: detection.primaryFramework,
+      requiredDependencies: detection.requiredDependencies,
     })
     const evidence = detection.evidence.map((entry) => ({
       kind: entry.type,
