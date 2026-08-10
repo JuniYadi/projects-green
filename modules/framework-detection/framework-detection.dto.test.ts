@@ -200,6 +200,28 @@ describe("framework-detection.dto", () => {
         confidence: 0.92,
         enforcedRuntimes: [{ runtimeId: "php", version: "8.2" }],
         toolCalls: [],
+        aiTrace: {
+          version: 1,
+          terminalStage: "completed",
+          elapsedMs: 123,
+          model: "gpt-4.1-mini",
+          baseUrlHost: "openrouter.ai",
+          tools: [
+            {
+              name: "read_repo_file",
+              inputSummary: { requestedPath: "composer.json" },
+              outcome: "completed",
+              durationMs: 15,
+            },
+          ],
+        },
+        providerDiagnostics: {
+          model: "gpt-4.1-mini",
+          baseUrlHost: "openrouter.ai",
+          httpStatus: 400,
+          requestId: "req-123",
+          category: "provider",
+        },
         reasoning: ["artisan found"],
         warnings: [],
         durationMs: 1500,
@@ -217,6 +239,46 @@ describe("framework-detection.dto", () => {
         { runtimeId: "php", version: "8.2" },
       ])
       expect(result.status).toBe("success")
+      expect(result.trace).toMatchObject({
+        terminalStage: "completed",
+        model: "gpt-4.1-mini",
+      })
+      expect(result.providerDiagnostics).toMatchObject({
+        category: "provider",
+        requestId: "req-123",
+      })
+    })
+
+    it("does not disclose a legacy raw toolCalls payload", () => {
+      const input: Prisma.DetectorInspectionLogGetPayload<object> = {
+        id: "legacy-log",
+        installationId: BigInt(12345),
+        repoUrl: "https://github.com/org/repo",
+        ref: "main",
+        detectedFramework: "laravel",
+        confidence: 0.92,
+        enforcedRuntimes: null,
+        toolCalls: [
+          {
+            input: { filePath: "composer.json" },
+            output: { content: "APP_KEY=must-not-leak" },
+          },
+        ],
+        aiTrace: null,
+        providerDiagnostics: null,
+        reasoning: [],
+        warnings: [],
+        durationMs: null,
+        status: "success",
+        blockedByRuleId: null,
+        errorMessage: null,
+        createdAt: new Date("2026-01-01"),
+      }
+
+      const result = toInspectionLogDTO(input)
+
+      expect(result.trace).toBeNull()
+      expect(JSON.stringify(result)).not.toContain("APP_KEY")
     })
   })
 

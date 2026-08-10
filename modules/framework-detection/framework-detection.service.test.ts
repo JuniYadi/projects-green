@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 
 import {
+  AiResolverTraceError,
   FrameworkDetectionError,
   detectFrameworkFromGitRepo,
   detectFrameworkFromGithubApi,
@@ -36,6 +37,61 @@ const runWithMockClone = async (
     },
     resolveWithAi,
   })
+}
+
+type ToolDefinition = {
+  execute: (input: Record<string, string>) => Promise<unknown>
+}
+
+type GenerateTextInput = {
+  tools: Record<string, ToolDefinition>
+}
+
+const aiToolCallingDecision = {
+  primaryFrameworkId: "nextjs",
+  confidence: 0.92,
+  requiredRuntimeIds: ["node"],
+  reasoning: ["next dependency found"],
+}
+
+const generateTextMock = mock(async (_input: GenerateTextInput) => ({
+  output: aiToolCallingDecision,
+}))
+const createOpenAIMock = mock(() => mock(() => "mock-model"))
+
+const createToolCallingDependencies = (
+  overrides: Partial<GithubApiDetectorDependencies> = {}
+) => {
+  const logCreate = mock(async () => ({ id: "trace-log-1" }))
+
+  return {
+    dependencies: {
+      listFiles: async () => ({
+        files: ["package.json", "next.config.mjs"],
+        truncated: false,
+      }),
+      readFile: async ({ filePath }) => ({
+        content:
+          filePath === "package.json"
+            ? JSON.stringify({ dependencies: { next: "16.1.0" } })
+            : "",
+        path: filePath,
+        sha: "sha",
+        size: 100,
+      }),
+      prisma: {
+        detectorRule: { findMany: async () => [] },
+        detectorRuntimeMapping: { findMany: async () => [] },
+        detectorInspectionLog: { create: logCreate },
+      },
+      createOpenAI:
+        createOpenAIMock as unknown as GithubApiDetectorDependencies["createOpenAI"],
+      generateText:
+        generateTextMock as unknown as GithubApiDetectorDependencies["generateText"],
+      ...overrides,
+    } satisfies GithubApiDetectorDependencies,
+    logCreate,
+  }
 }
 
 describe("detectFrameworkFromGitRepo", () => {
@@ -324,6 +380,105 @@ describe("detectFrameworkFromGithubApi", () => {
     expect(result.blocked).toBe(true)
     expect(result.rule?.name).toBe("Block WordPress")
     expect(result.matchedFiles).toContain("wp-config.php")
+  })
+})
+
+describe("production AI tool-calling trace", () => {
+  beforeEach(() => {
+    process.env.AI_API_KEY = "test-key"
+    generateTextMock.mockClear()
+    createOpenAIMock.mockClear()
+    generateTextMock.mockResolvedValue({ output: aiToolCallingDecision })
+  })
+
+  afterEach(() => {
+    delete process.env.AI_API_KEY
+  })
+
+  it("records redacted completed tool steps from the production adapter", async () => {
+    generateTextMock.mockImplementationOnce(
+      async ({ tools }: GenerateTextInput) => {
+        await tools.list_repo_files.execute({ path: "\u0000src" })
+        await tools.read_repo_file.execute({ filePath: "package.json" })
+
+        return { output: aiToolCallingDecision }
+      }
+    )
+    const { dependencies, logCreate } = createToolCallingDependencies()
+
+    await detectFrameworkFromGithubApi(
+      { installationId: 123, owner: "org", repo: "repo" },
+      dependencies
+    )
+
+    expect(createOpenAIMock).toHaveBeenCalledTimes(1)
+    expect(generateTextMock).toHaveBeenCalledTimes(1)
+    const logData = (
+      logCreate.mock.calls as unknown as Array<[{ data: { aiTrace: unknown } }]>
+    )[0]?.[0]?.data
+    expect(logData.aiTrace).toMatchObject({
+      version: 1,
+      terminalStage: "completed",
+      tools: [
+        {
+          name: "list_repo_files",
+          inputSummary: { requestedPath: "src" },
+          outcome: "completed",
+          listedFileCount: 2,
+        },
+        {
+          name: "read_repo_file",
+          inputSummary: { requestedPath: "package.json" },
+          outcome: "completed",
+        },
+      ],
+    })
+    expect(JSON.stringify(logData.aiTrace)).not.toContain("16.1.0")
+  })
+
+  it("persists a failed tool step and uses the deterministic fallback", async () => {
+    let readCount = 0
+    const { dependencies, logCreate } = createToolCallingDependencies({
+      readFile: async ({ filePath }) => {
+        readCount += 1
+        if (readCount > 1) throw new Error("GitHub read failed")
+        return {
+          content: JSON.stringify({ dependencies: { next: "16.1.0" } }),
+          path: filePath,
+          sha: "sha",
+          size: 100,
+        }
+      },
+    })
+    generateTextMock.mockImplementationOnce(
+      async ({ tools }: GenerateTextInput) => {
+        await tools.read_repo_file.execute({ filePath: "package.json" })
+        return { output: aiToolCallingDecision }
+      }
+    )
+
+    const result = await detectFrameworkFromGithubApi(
+      { installationId: 123, owner: "org", repo: "repo" },
+      dependencies
+    )
+
+    expect(result.primaryFramework?.id).toBe("nextjs")
+    expect(generateTextMock).toHaveBeenCalledTimes(1)
+    const logData = (
+      logCreate.mock.calls as unknown as Array<[{ data: { aiTrace: unknown } }]>
+    )[0]?.[0]?.data
+    expect(logData.aiTrace).toMatchObject({
+      terminalStage: "tool",
+      tools: [
+        {
+          name: "read_repo_file",
+          inputSummary: { requestedPath: "package.json" },
+          outcome: "failed",
+          errorCategory: "tool_failure",
+        },
+      ],
+    })
+    expect(JSON.stringify(logData.aiTrace)).not.toContain("GitHub read failed")
   })
 })
 
@@ -662,7 +817,7 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
     expect(result.warnings.some((w) => w.includes("truncated"))).toBe(true)
   })
 
-  it("captures tool calls in inspection log audit trail", async () => {
+  it("persists a redacted trace instead of raw tool payloads", async () => {
     const mockPrisma = {
       detectorRule: {
         findMany: async () => [],
@@ -714,24 +869,34 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
       dependencies
     )
 
-    // Verify tool calls are captured in the audit log
     expect(mockPrisma.detectorInspectionLog.create).toHaveBeenCalledTimes(1)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const logCall = (mockPrisma.detectorInspectionLog.create as any).mock
       .calls[0]?.[0]
-    expect(logCall.data.toolCalls).toHaveLength(2)
-    expect(logCall.data.toolCalls[0]).toEqual({
-      toolCallId: "tc-1",
-      toolName: "list_repo_files",
-      input: {},
-      output: { files: ["package.json", "next.config.mjs"] },
+    expect(logCall.data.toolCalls).toBeUndefined()
+    expect(logCall.data.aiTrace).toEqual({
+      version: 1,
+      terminalStage: "completed",
+      elapsedMs: expect.any(Number),
+      model: expect.any(String),
+      baseUrlHost: expect.any(String),
+      tools: [
+        {
+          name: "list_repo_files",
+          inputSummary: {},
+          outcome: "completed",
+          durationMs: 0,
+          listedFileCount: 2,
+        },
+        {
+          name: "read_repo_file",
+          inputSummary: { requestedPath: "package.json" },
+          outcome: "completed",
+          durationMs: 0,
+        },
+      ],
     })
-    expect(logCall.data.toolCalls[1]).toEqual({
-      toolCallId: "tc-2",
-      toolName: "read_repo_file",
-      input: { filePath: "package.json" },
-      output: { content: '{"dependencies":{"next":"14.0"}}' },
-    })
+    expect(JSON.stringify(logCall.data.aiTrace)).not.toContain('next":"14')
   })
 
   it("returns error when AI resolver fails and inspection log also fails", async () => {
@@ -768,7 +933,7 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
     ).rejects.toMatchObject({ code: "DETECTION_PROVIDER_ERROR" })
   })
 
-  it("captures tool call errors in inspection log audit trail", async () => {
+  it("records a safe failed-tool step without the file body", async () => {
     const mockPrisma = {
       detectorRule: {
         findMany: async () => [],
@@ -819,8 +984,212 @@ describe("detectFrameworkFromGithubApi - error handling", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const logCall = (mockPrisma.detectorInspectionLog.create as any).mock
       .calls[0]?.[0]
-    expect(logCall.data.toolCalls).toHaveLength(1)
-    expect(logCall.data.toolCalls[0].error).toBe("File not found")
+    expect(logCall.data.toolCalls).toBeUndefined()
+    expect(logCall.data.aiTrace.tools).toEqual([
+      {
+        name: "read_repo_file",
+        inputSummary: { requestedPath: "package.json" },
+        outcome: "failed",
+        durationMs: 0,
+        errorCategory: "tool_failure",
+      },
+    ])
+    expect(JSON.stringify(logCall.data.aiTrace)).not.toContain("File not found")
+  })
+
+  it("preserves completed steps when a later tool failure falls back", async () => {
+    const logCreate = mock(async () => ({ id: "trace-log-1" }))
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["artisan", "composer.json"],
+        truncated: false,
+      }),
+      readFile: async ({ filePath }) => ({
+        content:
+          filePath === "composer.json"
+            ? JSON.stringify({ require: { "laravel/framework": "^11.0" } })
+            : "",
+        path: filePath,
+        sha: "sha",
+        size: 10,
+      }),
+      resolveWithAiToolCalling: async () => {
+        throw new AiResolverTraceError(new Error("GitHub file read failed"), {
+          version: 1,
+          terminalStage: "tool",
+          elapsedMs: 12,
+          model: "gpt-4.1-mini",
+          baseUrlHost: "openrouter.ai",
+          tools: [
+            {
+              name: "list_repo_files",
+              inputSummary: {},
+              outcome: "completed",
+              durationMs: 4,
+              listedFileCount: 2,
+            },
+            {
+              name: "read_repo_file",
+              inputSummary: { requestedPath: "composer.json" },
+              outcome: "failed",
+              durationMs: 8,
+              errorCategory: "tool_failure",
+            },
+          ],
+        })
+      },
+      prisma: {
+        detectorRule: { findMany: async () => [] },
+        detectorRuntimeMapping: { findMany: async () => [] },
+        detectorInspectionLog: { create: logCreate },
+      },
+    }
+
+    const result = await detectFrameworkFromGithubApi(
+      { installationId: 123, owner: "org", repo: "laravel" },
+      dependencies
+    )
+
+    expect(result.primaryFramework?.id).toBe("laravel")
+    const logData = (
+      logCreate.mock.calls as unknown as Array<
+        [{ data: { aiTrace: { terminalStage: string; tools: unknown[] } } }]
+      >
+    )[0]?.[0]?.data
+    if (!logData) throw new Error("Missing inspection log")
+    expect(logData.aiTrace.terminalStage).toBe("tool")
+    expect(logData.aiTrace.tools).toHaveLength(2)
+  })
+
+  it("marks malformed final AI output as an output-stage fallback", async () => {
+    const logCreate = mock(async () => ({ id: "output-log-1" }))
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["artisan", "composer.json"],
+        truncated: false,
+      }),
+      readFile: async () => ({
+        content: JSON.stringify({ require: { "laravel/framework": "^11.0" } }),
+        path: "composer.json",
+        sha: "sha",
+        size: 10,
+      }),
+      resolveWithAiToolCalling: async () => ({
+        decision: {
+          primaryFrameworkId: "laravel",
+          confidence: "not-a-number",
+          requiredRuntimeIds: ["php"],
+          reasoning: ["artisan found"],
+        } as unknown as {
+          primaryFrameworkId: string
+          confidence: number
+          requiredRuntimeIds: ["php"]
+          reasoning: string[]
+        },
+        trace: {
+          version: 1,
+          terminalStage: "completed",
+          elapsedMs: 8,
+          model: "gpt-4.1-mini",
+          baseUrlHost: "openrouter.ai",
+          tools: [],
+        },
+      }),
+      prisma: {
+        detectorRule: { findMany: async () => [] },
+        detectorRuntimeMapping: { findMany: async () => [] },
+        detectorInspectionLog: { create: logCreate },
+      },
+    }
+
+    const result = await detectFrameworkFromGithubApi(
+      { installationId: 123, owner: "org", repo: "laravel" },
+      dependencies
+    )
+
+    expect(result.primaryFramework?.id).toBe("laravel")
+    const logData = (
+      logCreate.mock.calls as unknown as Array<
+        [
+          {
+            data: {
+              aiTrace: { terminalStage: string }
+              providerDiagnostics: { category: string }
+            }
+          },
+        ]
+      >
+    )[0]?.[0]?.data
+    if (!logData) throw new Error("Missing inspection log")
+    expect(logData.aiTrace.terminalStage).toBe("output")
+    expect(logData.providerDiagnostics.category).toBe("schema")
+  })
+
+  it("records a tool-capability rejection as a non-transient provider failure", async () => {
+    const logCreate = mock(async () => ({ id: "provider-log-1" }))
+    const providerError = new Error("tools are not supported") as Error & {
+      statusCode: number
+    }
+    providerError.statusCode = 400
+    const dependencies: GithubApiDetectorDependencies = {
+      listFiles: async () => ({
+        files: ["artisan", "composer.json"],
+        truncated: false,
+      }),
+      readFile: async () => ({
+        content: JSON.stringify({ require: { "laravel/framework": "^11.0" } }),
+        path: "composer.json",
+        sha: "sha",
+        size: 10,
+      }),
+      resolveWithAiToolCalling: async () => {
+        throw new AiResolverTraceError(providerError, {
+          version: 1,
+          terminalStage: "provider",
+          elapsedMs: 8,
+          model: "gpt-4.1-mini",
+          baseUrlHost: "openrouter.ai",
+          tools: [],
+        })
+      },
+      prisma: {
+        detectorRule: { findMany: async () => [] },
+        detectorRuntimeMapping: { findMany: async () => [] },
+        detectorInspectionLog: { create: logCreate },
+      },
+    }
+
+    const result = await detectFrameworkFromGithubApi(
+      { installationId: 123, owner: "org", repo: "laravel" },
+      dependencies
+    )
+
+    expect(result.primaryFramework?.id).toBe("laravel")
+    const logData = (
+      logCreate.mock.calls as unknown as Array<
+        [
+          {
+            data: {
+              aiTrace: { terminalStage: string }
+              providerDiagnostics: {
+                model: string
+                baseUrlHost: string
+                category: string
+                httpStatus: number
+              }
+            }
+          },
+        ]
+      >
+    )[0]?.[0]?.data
+    if (!logData) throw new Error("Missing inspection log")
+    expect(logData.aiTrace.terminalStage).toBe("provider")
+    expect(logData.providerDiagnostics).toEqual({
+      model: expect.any(String),
+      baseUrlHost: expect.any(String),
+      category: "provider",
+      httpStatus: 400,
+    })
   })
 })
 

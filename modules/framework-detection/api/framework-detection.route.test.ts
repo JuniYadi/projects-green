@@ -297,6 +297,8 @@ describe("frameworkDetectionRoutes", () => {
       expect(body.ok).toBe(true)
       expect(body.primaryFramework?.id).toBe("nextjs")
       expect(body.requiredDependencies?.[0]?.id).toBe("node")
+      expect(body).not.toHaveProperty("trace")
+      expect(body).not.toHaveProperty("providerDiagnostics")
     })
 
     it("returns classified safe provider failure with inspection log correlation", async () => {

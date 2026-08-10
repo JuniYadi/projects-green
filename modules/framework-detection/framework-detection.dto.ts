@@ -1,6 +1,11 @@
 import type { Prisma } from "@prisma/client"
 
 import type {
+  AiDetectionToolTrace,
+  AiDetectionTrace,
+  ProviderDiagnostics,
+} from "@/modules/framework-detection/framework-detection.trace"
+import type {
   DetectionDecision,
   DetectionResult,
   DetectedFramework,
@@ -135,7 +140,100 @@ export type InspectionLogDTO = {
   status: string
   blockedByRuleId: string | null
   errorMessage: string | null
+  providerDiagnostics: ProviderDiagnostics | null
+  trace: AiDetectionTrace | null
   createdAt: Date
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value)
+
+const toSafeToolTrace = (value: unknown): AiDetectionToolTrace | null => {
+  if (!isRecord(value) || !isRecord(value.inputSummary)) return null
+  if (
+    (value.name !== "list_repo_files" && value.name !== "read_repo_file") ||
+    (value.outcome !== "completed" && value.outcome !== "failed") ||
+    typeof value.durationMs !== "number"
+  ) {
+    return null
+  }
+  const requestedPath = value.inputSummary.requestedPath
+  const listedFileCount = value.listedFileCount
+  const errorCategory = value.errorCategory
+  if (
+    (requestedPath !== undefined && typeof requestedPath !== "string") ||
+    (listedFileCount !== undefined && typeof listedFileCount !== "number") ||
+    (errorCategory !== undefined && errorCategory !== "tool_failure")
+  ) {
+    return null
+  }
+  return {
+    name: value.name,
+    inputSummary: {
+      ...(typeof requestedPath === "string" ? { requestedPath } : {}),
+    },
+    outcome: value.outcome,
+    durationMs: value.durationMs,
+    ...(typeof listedFileCount === "number" ? { listedFileCount } : {}),
+    ...(errorCategory === "tool_failure" ? { errorCategory } : {}),
+  }
+}
+
+const toSafeTrace = (value: unknown): AiDetectionTrace | null => {
+  if (!isRecord(value) || !Array.isArray(value.tools)) return null
+  if (
+    value.version !== 1 ||
+    !["provider", "tool", "output", "completed"].includes(
+      String(value.terminalStage)
+    ) ||
+    typeof value.elapsedMs !== "number" ||
+    typeof value.model !== "string" ||
+    typeof value.baseUrlHost !== "string"
+  ) {
+    return null
+  }
+  const tools = value.tools.map(toSafeToolTrace)
+  if (tools.some((tool) => tool === null)) return null
+  return {
+    version: 1,
+    terminalStage: value.terminalStage as AiDetectionTrace["terminalStage"],
+    elapsedMs: value.elapsedMs,
+    model: value.model,
+    baseUrlHost: value.baseUrlHost,
+    tools: tools as AiDetectionToolTrace[],
+  }
+}
+
+const toSafeProviderDiagnostics = (
+  value: unknown
+): ProviderDiagnostics | null => {
+  if (!isRecord(value)) return null
+  if (
+    typeof value.model !== "string" ||
+    typeof value.baseUrlHost !== "string" ||
+    ![
+      "configuration",
+      "schema",
+      "provider",
+      "transient_provider",
+      "network",
+    ].includes(String(value.category)) ||
+    (value.httpStatus !== undefined && typeof value.httpStatus !== "number") ||
+    (value.requestId !== undefined && typeof value.requestId !== "string")
+  ) {
+    return null
+  }
+  return {
+    model: value.model,
+    baseUrlHost: value.baseUrlHost,
+    category: value.category as ProviderDiagnostics["category"],
+    ...(typeof value.httpStatus === "number"
+      ? { httpStatus: value.httpStatus }
+      : {}),
+    ...(typeof value.requestId === "string"
+      ? { requestId: value.requestId }
+      : {}),
+  }
 }
 
 export function toInspectionLogDTO(
@@ -157,6 +255,8 @@ export function toInspectionLogDTO(
     status: log.status,
     blockedByRuleId: log.blockedByRuleId,
     errorMessage: log.errorMessage,
+    providerDiagnostics: toSafeProviderDiagnostics(log.providerDiagnostics),
+    trace: toSafeTrace(log.aiTrace),
     createdAt: log.createdAt,
   }
 }

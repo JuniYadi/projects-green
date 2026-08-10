@@ -9,6 +9,13 @@ import { generateObject, generateText, Output, stepCountIs, tool } from "ai"
 import { z } from "zod"
 
 import { DEFAULT_AI_BASE_URL, getAiProviderConfig } from "@/lib/ai-config"
+import {
+  AI_DETECTION_TRACE_VERSION,
+  type AiDetectionToolTrace,
+  type AiDetectionTrace,
+  type AiDetectionTraceTerminalStage,
+  type ProviderDiagnostics,
+} from "@/modules/framework-detection/framework-detection.trace"
 
 import {
   listRepoFiles,
@@ -73,7 +80,9 @@ export type ToolCallRecord = {
 
 export type AiDecisionResult = {
   decision: AiDecision
-  toolCalls: ToolCallRecord[]
+  trace?: AiDetectionTrace
+  // Kept for injected legacy resolvers; production never persists this shape.
+  toolCalls?: ToolCallRecord[]
 }
 
 export type GithubApiDetectorDependencies = {
@@ -88,6 +97,8 @@ export type GithubApiDetectorDependencies = {
     fileList: string[],
     detectorRules: DetectorRuleRecord[]
   ) => Promise<AiDecisionResult>
+  createOpenAI?: typeof createOpenAI
+  generateText?: typeof generateText
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   prisma?: any
 }
@@ -175,17 +186,16 @@ export class FrameworkDetectionError extends Error {
   }
 }
 
-type ProviderDiagnostics = {
-  model: string
-  baseUrlHost: string
-  httpStatus?: number
-  requestId?: string
-  category:
-    | "configuration"
-    | "schema"
-    | "provider"
-    | "transient_provider"
-    | "network"
+export class AiResolverTraceError extends Error {
+  constructor(
+    public readonly sourceError: unknown,
+    public readonly trace: AiDetectionTrace
+  ) {
+    super(
+      sourceError instanceof Error ? sourceError.message : "AI resolver failed."
+    )
+    this.name = "AiResolverTraceError"
+  }
 }
 
 const providerModel = () =>
@@ -201,6 +211,8 @@ const providerBaseUrlHost = () => {
 }
 
 const readProviderStatus = (error: unknown) => {
+  if (error instanceof AiResolverTraceError)
+    return readProviderStatus(error.sourceError)
   if (!error || typeof error !== "object") return undefined
   const value = error as Record<string, unknown>
   const response = value.response
@@ -215,6 +227,8 @@ const readProviderStatus = (error: unknown) => {
 }
 
 const readProviderRequestId = (error: unknown) => {
+  if (error instanceof AiResolverTraceError)
+    return readProviderRequestId(error.sourceError)
   if (!error || typeof error !== "object") return undefined
   const value = error as Record<string, unknown>
   const direct = value.requestId ?? value.requestID
@@ -237,13 +251,15 @@ const readProviderRequestId = (error: unknown) => {
 const classifyProviderFailure = (
   error: unknown
 ): DetectionFailureCode | "NETWORK_ERROR" => {
-  const message = error instanceof Error ? error.message : ""
+  const sourceError =
+    error instanceof AiResolverTraceError ? error.sourceError : error
+  const message = sourceError instanceof Error ? sourceError.message : ""
   const status = readProviderStatus(error)
   const hasSchemaIssues =
-    error !== null &&
-    typeof error === "object" &&
-    "issues" in error &&
-    Array.isArray(error.issues)
+    sourceError !== null &&
+    typeof sourceError === "object" &&
+    "issues" in sourceError &&
+    Array.isArray(sourceError.issues)
   if (/AI_API_KEY is not configured|API key is not configured/i.test(message)) {
     return "DETECTION_CONFIG_ERROR"
   }
@@ -268,9 +284,9 @@ const classifyProviderFailure = (
     return "DETECTION_TRANSIENT_PROVIDER_ERROR"
   }
   if (
-    error &&
-    typeof error === "object" &&
-    (error as Record<string, unknown>).isRetryable === true
+    sourceError &&
+    typeof sourceError === "object" &&
+    (sourceError as Record<string, unknown>).isRetryable === true
   ) {
     return "DETECTION_TRANSIENT_PROVIDER_ERROR"
   }
@@ -333,6 +349,73 @@ const safeProviderMessage = (code: DetectionErrorCode) => {
   }
   return "Unable to detect frameworks for this repository."
 }
+
+const safeRequestedPath = (value: string | undefined) => {
+  if (!value) return undefined
+  return value.replace(/[\u0000-\u001f]/g, "").slice(0, 500)
+}
+
+const createTrace = (startedAt: number): AiDetectionTrace => ({
+  version: AI_DETECTION_TRACE_VERSION,
+  terminalStage: "provider",
+  elapsedMs: Date.now() - startedAt,
+  model: providerModel(),
+  baseUrlHost: providerBaseUrlHost(),
+  tools: [],
+})
+
+const withTraceTerminal = (
+  trace: AiDetectionTrace,
+  terminalStage: AiDetectionTraceTerminalStage,
+  startedAt: number
+): AiDetectionTrace => ({
+  ...trace,
+  terminalStage,
+  elapsedMs: Math.max(0, Date.now() - startedAt),
+})
+
+const legacyToolCallsToTrace = (
+  toolCalls: ToolCallRecord[],
+  startedAt: number
+): AiDetectionTrace => ({
+  ...createTrace(startedAt),
+  terminalStage: "completed",
+  tools: toolCalls.flatMap((toolCall): AiDetectionToolTrace[] => {
+    if (
+      toolCall.toolName !== "list_repo_files" &&
+      toolCall.toolName !== "read_repo_file"
+    ) {
+      return []
+    }
+    const input =
+      toolCall.input && typeof toolCall.input === "object"
+        ? (toolCall.input as Record<string, unknown>)
+        : {}
+    const output =
+      toolCall.output && typeof toolCall.output === "object"
+        ? (toolCall.output as Record<string, unknown>)
+        : {}
+    const files = output.files
+    return [
+      {
+        name: toolCall.toolName,
+        inputSummary: {
+          requestedPath: safeRequestedPath(
+            typeof input.filePath === "string"
+              ? input.filePath
+              : typeof input.path === "string"
+                ? input.path
+                : undefined
+          ),
+        },
+        outcome: toolCall.error ? "failed" : "completed",
+        durationMs: 0,
+        ...(Array.isArray(files) ? { listedFileCount: files.length } : {}),
+        ...(toolCall.error ? { errorCategory: "tool_failure" as const } : {}),
+      },
+    ]
+  }),
+})
 
 const normalizeConfidence = (value: number) => {
   if (Number.isNaN(value)) {
@@ -1022,9 +1105,11 @@ const resolveWithAiToolCalling = async (
   detectorRules: DetectorRuleRecord[],
   dependencies: GithubApiDetectorDependencies
 ): Promise<AiDecisionResult> => {
+  const startedAt = Date.now()
+  const trace = createTrace(startedAt)
+  let toolFailed = false
   const systemPrompt = buildAiDetectionSystemPrompt(detectorRules)
   const modelName = process.env.AI_DETECTOR_MODEL?.trim() || "gpt-4.1-mini"
-  const provider = createOpenAI(getAiProviderConfig())
 
   const readFileFn = dependencies.readFile ?? readRepoFile
   const listFilesFn = dependencies.listFiles ?? listRepoFiles
@@ -1037,16 +1122,34 @@ const resolveWithAiToolCalling = async (
         path: z.string().optional().describe("Subdirectory to list (optional)"),
       }),
       execute: async ({ path: subPath }) => {
-        const result = await listFilesFn({
-          installationId: input.installationId,
-          owner: input.owner,
-          repo: input.repo,
-          ref: input.ref,
-          path: subPath,
-        })
-        return {
-          files: result.files.slice(0, 500),
-          truncated: result.truncated,
+        const toolStartedAt = Date.now()
+        const step: AiDetectionToolTrace = {
+          name: "list_repo_files",
+          inputSummary: { requestedPath: safeRequestedPath(subPath) },
+          outcome: "completed",
+          durationMs: 0,
+        }
+        trace.tools.push(step)
+        try {
+          const result = await listFilesFn({
+            installationId: input.installationId,
+            owner: input.owner,
+            repo: input.repo,
+            ref: input.ref,
+            path: subPath,
+          })
+          step.durationMs = Date.now() - toolStartedAt
+          step.listedFileCount = result.files.length
+          return {
+            files: result.files.slice(0, 500),
+            truncated: result.truncated,
+          }
+        } catch (error) {
+          toolFailed = true
+          step.outcome = "failed"
+          step.durationMs = Date.now() - toolStartedAt
+          step.errorCategory = "tool_failure"
+          throw error
         }
       },
     }),
@@ -1056,20 +1159,37 @@ const resolveWithAiToolCalling = async (
         filePath: z.string().describe("Path to the file to read"),
       }),
       execute: async ({ filePath }) => {
-        const result = await readFileFn({
-          installationId: input.installationId,
-          owner: input.owner,
-          repo: input.repo,
-          filePath,
-          ref: input.ref,
-        })
-        // Truncate large files to avoid token limits
-        const maxContentLength = 10_000
-        const content =
-          result.content.length > maxContentLength
-            ? result.content.slice(0, maxContentLength) + "\n... (truncated)"
-            : result.content
-        return { content, path: result.path, size: result.size }
+        const toolStartedAt = Date.now()
+        const step: AiDetectionToolTrace = {
+          name: "read_repo_file",
+          inputSummary: { requestedPath: safeRequestedPath(filePath) },
+          outcome: "completed",
+          durationMs: 0,
+        }
+        trace.tools.push(step)
+        try {
+          const result = await readFileFn({
+            installationId: input.installationId,
+            owner: input.owner,
+            repo: input.repo,
+            filePath,
+            ref: input.ref,
+          })
+          step.durationMs = Date.now() - toolStartedAt
+          // Truncate large files to avoid token limits.
+          const maxContentLength = 10_000
+          const content =
+            result.content.length > maxContentLength
+              ? result.content.slice(0, maxContentLength) + "\n... (truncated)"
+              : result.content
+          return { content, path: result.path, size: result.size }
+        } catch (error) {
+          toolFailed = true
+          step.outcome = "failed"
+          step.durationMs = Date.now() - toolStartedAt
+          step.errorCategory = "tool_failure"
+          throw error
+        }
       },
     }),
   }
@@ -1088,30 +1208,29 @@ const resolveWithAiToolCalling = async (
     .filter(Boolean)
     .join("\n")
 
-  const result = await generateText({
-    model: provider(modelName),
-    system: systemPrompt,
-    prompt: userPrompt,
-    tools: toolDefinitions,
-    output: Output.object({ schema: AI_DECISION_SCHEMA }),
-    stopWhen: stepCountIs(16),
-  })
+  try {
+    const createProvider = dependencies.createOpenAI ?? createOpenAI
+    const generate = dependencies.generateText ?? generateText
+    const provider = createProvider(getAiProviderConfig())
+    const result = await generate({
+      model: provider(modelName),
+      system: systemPrompt,
+      prompt: userPrompt,
+      tools: toolDefinitions,
+      output: Output.object({ schema: AI_DECISION_SCHEMA }),
+      stopWhen: stepCountIs(16),
+    })
 
-  // Map tool calls to audit-friendly records, matching with results
-  const toolCalls: ToolCallRecord[] = result.toolCalls.map((tc) => {
-    const toolResult = result.toolResults.find(
-      (tr) => tr.toolCallId === tc.toolCallId
-    )
     return {
-      toolCallId: tc.toolCallId,
-      toolName: tc.toolName,
-      input: tc.input,
-      output: toolResult?.output,
-      error: "error" in tc && tc.error ? String(tc.error) : undefined,
+      decision: result.output,
+      trace: withTraceTerminal(trace, "completed", startedAt),
     }
-  })
-
-  return { decision: result.output, toolCalls }
+  } catch (error) {
+    throw new AiResolverTraceError(
+      error,
+      withTraceTerminal(trace, toolFailed ? "tool" : "provider", startedAt)
+    )
+  }
 }
 
 // --- RuntimeMapping Enforcement ---
@@ -1583,7 +1702,6 @@ export const detectFrameworkFromGithubApi = async (
       detectedFramework: blockedFramework?.framework ?? "unknown",
       status: "blocked",
       blockedByRuleId: blockCheck.rule.id,
-      toolCalls: [],
       reasoning: [`Blocked by rule: ${blockCheck.rule.name}`],
       warnings,
     })
@@ -1646,13 +1764,24 @@ export const detectFrameworkFromGithubApi = async (
     }
   )
   const candidates = evaluateDeterministicCandidates(inventory)
+  const startTime = Date.now()
   const fallback = async (
     error: unknown,
-    code: DetectionFailureCode | "NETWORK_ERROR"
+    code: DetectionFailureCode | "NETWORK_ERROR",
+    trace?: AiDetectionTrace
   ): Promise<DetectionResult> => {
-    const diagnosticWarning = formatProviderDiagnostics(
-      safeProviderDiagnostics(error, code)
-    )
+    const diagnostics = safeProviderDiagnostics(error, code)
+    const diagnosticWarning = formatProviderDiagnostics(diagnostics)
+    const terminalTrace = trace
+      ? withTraceTerminal(
+          trace,
+          code === "DETECTION_SCHEMA_ERROR" ? "output" : trace.terminalStage,
+          startTime
+        )
+      : undefined
+    if (terminalTrace?.terminalStage === "completed") {
+      terminalTrace.terminalStage = "provider"
+    }
     if (candidates.length === 0) {
       const safeMessage = safeProviderMessage(code)
       const ruleContext = `DetectorRule context: activeCount=${ruleSummary.activeCount}; impacts=${ruleSummary.impacts.join(",")}; blockRules=${ruleSummary.blockRuleNames.join(",")}; launchRules=${ruleSummary.launchRuleNames.join(",")}`
@@ -1662,7 +1791,8 @@ export const detectFrameworkFromGithubApi = async (
         ref: input.ref,
         status: "error",
         errorMessage: `${safeMessage} | ${ruleContext}`,
-        toolCalls: [],
+        aiTrace: terminalTrace,
+        providerDiagnostics: diagnostics,
         reasoning: [],
         warnings: [...warnings, diagnosticWarning],
       })
@@ -1708,7 +1838,8 @@ export const detectFrameworkFromGithubApi = async (
       detectedFramework: selected.id,
       confidence: primaryFramework.confidence,
       enforcedRuntimes,
-      toolCalls: [],
+      aiTrace: terminalTrace,
+      providerDiagnostics: diagnostics,
       reasoning: selected.reasons,
       warnings,
       status: decision.status,
@@ -1730,19 +1861,22 @@ export const detectFrameworkFromGithubApi = async (
       enforcedRuntimes,
     }
   }
-  const startTime = Date.now()
   let aiDecision: AiDecision
-  let capturedToolCalls: ToolCallRecord[] = []
+  let capturedTrace: AiDetectionTrace | undefined
   try {
     const resolver =
       dependencies.resolveWithAiToolCalling ??
       ((inp, files, rules) =>
         resolveWithAiToolCalling(inp, files, rules, dependencies))
     const resolverResult = await resolver(input, fileList, detectorRules)
+    capturedTrace =
+      resolverResult.trace ??
+      legacyToolCallsToTrace(resolverResult.toolCalls ?? [], startTime)
     aiDecision = AI_DECISION_SCHEMA.parse(resolverResult.decision)
-    capturedToolCalls = resolverResult.toolCalls ?? []
   } catch (error) {
-    return fallback(error, classifyProviderFailure(error))
+    const trace =
+      error instanceof AiResolverTraceError ? error.trace : capturedTrace
+    return fallback(error, classifyProviderFailure(error), trace)
   }
   const frameworkId = aiDecision.primaryFrameworkId
   const frameworkVersion = aiDecision.frameworkVersion ?? null
@@ -1801,7 +1935,9 @@ export const detectFrameworkFromGithubApi = async (
     detectedFramework: frameworkId,
     confidence: normalizedConfidence,
     enforcedRuntimes,
-    toolCalls: capturedToolCalls,
+    aiTrace: capturedTrace
+      ? withTraceTerminal(capturedTrace, "completed", startTime)
+      : undefined,
     reasoning: aiDecision.reasoning,
     warnings,
     durationMs: Date.now() - startTime,
