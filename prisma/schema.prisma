@@ -2886,3 +2886,49 @@ model ApplicationDomainAllowlistEntry {
   @@unique([domainId, cidr])
   @@index([domainId, enabled, position])
 }
+
+/// AI-first deployment session boundary. Server-side source of truth for
+/// the deploy wizard — replaces ephemeral sessionStorage with a durable,
+/// resumable, tenant-scoped session that tracks plan state, confirmation,
+/// and execution correlation. See vault: AI Deployment Session and Plan Contract.
+enum AiDeploymentSessionStatus {
+  COLLECTING
+  INSPECTING
+  BLOCKED
+  PLAN_READY
+  CONFIRMED
+  EXECUTING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum AiDeploymentSourceType {
+  SOURCE
+  TEMPLATE
+}
+
+model AiDeploymentSession {
+  id                   String                  @id @default(cuid())
+  organizationId       String
+  workosUserId         String
+  status               AiDeploymentSessionStatus @default(COLLECTING)
+  sourceType           AiDeploymentSourceType  @default(SOURCE)
+  currentPlanVersion   Int                     @default(1)
+  currentPlanHash      String?
+  plan                 Json?
+  serverContext        Json?
+  executionRefs        Json?
+  blockedReason        String?
+  confirmedBy          String?
+  confirmedAt          DateTime?
+  confirmationPlanHash String?
+  idempotencyKey       String?               @unique
+  expiresAt            DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  @@index([organizationId, workosUserId])
+  @@index([organizationId, status])
+  @@index([status, expiresAt])
+}
