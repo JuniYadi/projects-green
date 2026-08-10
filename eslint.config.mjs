@@ -14,8 +14,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    'graphify-out/**',
     // Test files - lower strictness
     "test/**",
+    "e2e/**",
     // Ignore worktrees
     ".claude/worktrees/**",
     ".crew/worktrees/**",
