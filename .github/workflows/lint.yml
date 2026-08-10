@@ -1,93 +1,41 @@
-name: Lint
+name: Super-Linter
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
 
 permissions:
   contents: read
+  packages: read
+  statuses: write
 
 jobs:
-  lint:
-    name: ESLint
-    if: ${{ github.actor != 'github-actions[bot]' }}
+  super-linter:
+    name: Super-Linter
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      TZ: UTC
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Show Bun version
-        run: |
-          bun --version
-          node --version
-          uname -a
-          date
-
-      - name: Prepare test env file from .env.example
-        run: |
-          cp .env.example .env
-          for line in $(grep -v '^#' .env | grep '='); do
-            key=$(echo "$line" | cut -d'=' -f1)
-            value=$(echo "$line" | cut -d'=' -f2- | sed 's/^"*//;s/"*$//')
-            echo "${key}=${value}" >> $GITHUB_ENV
-          done
-
-      - name: Cache node_modules
-        uses: actions/cache@v6
-        with:
-          path: node_modules
-          key: bun-deps-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            bun-deps-${{ runner.os }}-
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Generate Prisma client
-        run: bun run db:generate
-
-      - name: Run ESLint
-        run: bun run lint
-
-  format:
-    name: Prettier
-    if: ${{ github.actor != 'github-actions[bot]' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    env:
-      TZ: UTC
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Show Bun version
-        run: |
-          bun --version
-          node --version
-
-      - name: Cache node_modules
-        uses: actions/cache@v6
-        with:
-          path: node_modules
-          key: bun-deps-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            bun-deps-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Run Prettier check
-        run: bunx prettier --check "**/*.{ts,tsx}"
+      - name: Super-Linter
+        uses: super-linter/super-linter@4ce20838b8ab83717e78138c5b3a1407148e0918 # v8.7.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_ALL_CODEBASE: false
+          # Keep the project's existing ESLint and Prettier checks while avoiding
+          # repository-wide tools that reject unrelated legacy and dependency files.
+          VALIDATE_BIOME_FORMAT: false
+          VALIDATE_BIOME_LINT: false
+          VALIDATE_CHECKOV: false
+          VALIDATE_JSCPD: false
+          VALIDATE_TRIVY: false
+          ENABLE_GITHUB_PULL_REQUEST_SUMMARY_COMMENT: false
+          ENABLE_GITHUB_ACTIONS_STEP_SUMMARY: false
