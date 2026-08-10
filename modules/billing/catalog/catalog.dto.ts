@@ -89,6 +89,7 @@ export type CatalogProductDTO = {
   code: ServiceType
   name: string
   description: string | null
+  isActive: boolean
   plans: CatalogPlanDTO[]
 }
 

@@ -10,6 +10,7 @@ describe("CatalogProductCard", () => {
     code: "WHATSAPP",
     name: "WhatsApp",
     description: "WhatsApp Business messaging",
+    isActive: true,
     plans: [],
   }
 
@@ -17,6 +18,7 @@ describe("CatalogProductCard", () => {
     code: "VPN",
     name: "VPN",
     description: "Virtual Private Network",
+    isActive: true,
     plans: [],
   }
 
@@ -24,6 +26,7 @@ describe("CatalogProductCard", () => {
     code: "APP_HOSTING",
     name: "App Hosting",
     description: "Application hosting platform",
+    isActive: true,
     plans: [],
   }
 
@@ -58,6 +61,7 @@ describe("CatalogProductCard", () => {
       code: "UNKNOWN_PRODUCT",
       name: "Unknown Product",
       description: null,
+      isActive: true,
       plans: [],
     }
     const view = render(<CatalogProductCard product={unknownProduct} />)
@@ -69,6 +73,7 @@ describe("CatalogProductCard", () => {
       code: "VPN",
       name: "VPN",
       description: null,
+      isActive: true,
       plans: [],
     }
     const view = render(<CatalogProductCard product={noDescProduct} />)

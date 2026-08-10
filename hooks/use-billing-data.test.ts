@@ -133,6 +133,7 @@ const product: CatalogProduct = {
   code: "APP_HOSTING",
   name: "App Hosting",
   description: "Application hosting",
+  isActive: true,
   plans: [],
 }
 const invoiceResponse = {

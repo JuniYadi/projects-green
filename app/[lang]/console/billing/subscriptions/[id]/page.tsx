@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -117,6 +117,17 @@ export default function SubscriptionDetailPage() {
   )
   const invoice = invoiceQuery.data
   const catalogProduct = catalogQuery.data ?? null
+  const changeOffers = useMemo(
+    () =>
+      catalogProduct?.plans.flatMap((plan) =>
+        plan.offers.map((offer) => ({
+          ...offer,
+          planCode: plan.code,
+          planName: plan.name,
+        }))
+      ) ?? [],
+    [catalogProduct]
+  )
   const isLoading = subscriptionsQuery.isLoading || invoiceQuery.isLoading
   const error =
     subscriptionsQuery.error instanceof Error
@@ -279,14 +290,6 @@ export default function SubscriptionDetailPage() {
   }
 
   const invoiceData = invoice?.invoice
-  const changeOffers =
-    catalogProduct?.plans.flatMap((plan) =>
-      plan.offers.map((offer) => ({
-        ...offer,
-        planCode: plan.code,
-        planName: plan.name,
-      }))
-    ) ?? []
   const isCancelled = sub.status === "CANCELLED"
   const isPendingCancellation = sub.cancelAtPeriodEnd === true
   const canCancel = sub.status === "ACTIVE" && !isPendingCancellation
