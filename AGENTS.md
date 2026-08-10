@@ -1,10 +1,20 @@
 # Repository Guidelines
 
-## Agent boot order
+## Context loading
 
 1. Read this file for repo-local non-negotiables.
-2. Read repo-root `.obsidian.json` (at `{repo-root}/.obsidian.json`, NOT anywhere else). Extract `directory` and `entry`. Then run `bun run obsidian:boot` — before any parallel reads — and use `skill://obsidian-load` to follow the entry note's Agent flow.
-3. Read notes by logical name: `bun run obsidian:read -- "Note Name"` or `bun run obsidian:resolve -- "Note Name"`. Never construct filesystem paths from wikilinks; never use grep/find for note resolution. For `obsidian://open?vault=<name>&file=<path>` URLs (explicit vault-relative paths, not logical names), use `skill://obsidian-resolve` first, then `skill://obsidian-load`.
+2. Load Obsidian only when the user explicitly references the vault, Obsidian,
+   a note, a wikilink, or an `obsidian://` URL. Then read repo-root
+   `.obsidian.json` (at `{repo-root}/.obsidian.json`, NOT anywhere else), run
+   `bun run obsidian:boot`, and use `skill://obsidian-load` to follow the entry
+   note's Agent flow.
+3. Once Obsidian loading is triggered, read notes by logical name:
+   `bun run obsidian:read -- "Note Name"` or
+   `bun run obsidian:resolve -- "Note Name"`. Never construct filesystem paths
+   from wikilinks; never use grep/find for note resolution. For
+   `obsidian://open?vault=<name>&file=<path>` URLs (explicit vault-relative
+   paths, not logical names), use `skill://obsidian-resolve` first, then
+   `skill://obsidian-load`.
 
 ## Local hard rules
 
@@ -30,14 +40,19 @@
 - `test/`: Bun test setup.
 - `scripts/`: operational scripts.
 
-## graphify (optional)
+## Graphify (project-scoped, on demand)
 
-If `graphify` is installed:
-- When the user types `/graphify`, use the installed graphify skill. If no graph exists yet, let the skill build one.
-
-If `graphify` is installed and `graphify-out/graph.json` exists:
-- For codebase questions, first run `graphify query "<question>"`. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
-- Dirty graphify-out/ files are expected after hooks or incremental updates; dirty graph files are not a reason to skip graphify. Only skip graphify if the task is about stale or incorrect graph output, or the user explicitly says not to use it.
-- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
-- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+- Use Graphify only for a source or repository task in this repository that
+  needs codebase navigation: architecture, symbol relationships, call paths, or
+  implementation locations. Do not load it for brainstorming, planning,
+  prompt/prose edits, or other non-code work.
+- When the user types `/graphify`, use the installed Graphify skill. If no graph
+  exists yet, let the skill build one.
+- When `graphify-out/graph.json` exists and Graphify is needed, query it before
+  raw source browsing: use `graphify query "<question>"`, `graphify path "<A>"
+  "<B>"`, or `graphify explain "<concept>"` as appropriate.
+- Dirty graph files are expected after hooks or incremental updates. Prefer the
+  project-local wiki index for broad navigation and `GRAPH_REPORT.md` only when
+  focused queries are insufficient.
+- After relevant source-code changes in this repository, run `graphify update .`.
+  Do not update the graph for prompt, documentation, or configuration-only edits.
