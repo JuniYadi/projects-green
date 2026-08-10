@@ -11,7 +11,7 @@ jobs:
     name: Changed Logic and Coverage
     if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
     env:
       TZ: UTC
       TEST_CONCURRENCY: "8"
@@ -52,10 +52,10 @@ jobs:
         run: bun run db:generate
 
       - name: Run changed logic and feature dependents
-        run: bun run test:changed --timeout=30000
+        run: bun run test:changed
 
       - name: Enforce changed logic coverage
-        run: bun run test:coverage:changed --timeout=30000
+        run: bun run test:coverage:changed
 
       - name: Verify LCOV output
         if: ${{ hashFiles('coverage/lcov.info') != '' }}
@@ -80,7 +80,7 @@ jobs:
     name: Affected Functional Smoke
     if: ${{ false }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     env:
       TZ: UTC
       FUNCTIONAL_TEST_MODE: "true"
