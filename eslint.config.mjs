@@ -14,13 +14,15 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "graphify-out/**",
     // Test files - lower strictness
     "test/**",
+    "e2e/**",
     // Ignore worktrees
     ".claude/worktrees/**",
     ".crew/worktrees/**",
     ".worktrees/**",
-    'coverage/**'
+    "coverage/**",
   ]),
   // Allow intentional underscore-prefixed unused vars/args (tests, route handlers)
   {

@@ -16,19 +16,37 @@
    paths, not logical names), use `skill://obsidian-resolve` first, then
    `skill://obsidian-load`.
 
+## Local validation matrix
+
+- Normal local work uses changed-path validation: run
+  `bun run lint -- <changed lintable paths>`, `bun run test:changed`, and, for
+  behavior changes, `bun run test:coverage:changed`. These commands are the
+  default local checks; do not run repository-wide tests or coverage after
+  every edit.
+- `test:changed` reports changed production paths that have no paired test or
+  feature mapping. Add a targeted test with
+  `bun run test:changed -- --test <path>` or record an intentional gap with
+  `--allow-unmapped`; neither path may be treated as silently validated.
+- The final pre-PR checkpoint runs the applicable changed-path lint/tests/
+  coverage commands and one full `bun run typecheck`. Typecheck has no safe
+  changed-file equivalent, so do not repeat it after each edit.
+- Run global `bun run test` and `bun run test:coverage` only for an explicit
+  user or CI request, or for a documented high-blast-radius change such as
+  shared test setup, test-selection tooling, or production code that cannot
+  be mapped to an affected module.
+
 ## Local hard rules
 
 - Use `bun` for project commands. Do not use `npm` or `yarn`.
 - Never run destructive Prisma commands: `bunx prisma migrate reset*`, `bunx prisma db push --force-reset`, `bunx prisma db push --accept-data-loss`, `prisma migrate reset*`, `prisma db push --force-reset`, or `prisma db push --accept-data-loss`.
 - Safe Prisma commands: `bun run prisma:migrate:dev` and `bun run prisma:generate`.
-- Before PR, run change-scoped 3 pillars: `bun run lint`, `bun run typecheck`, `bun run test`. Fix only regressions in changed files/modules.
 - TypeScript style: strict types, 2-space indent, no semicolons, double quotes, 80-char line width, `@/*` imports.
 - Prisma types must come from `@prisma/client`; do not declare manual model, delegate, or enum mirror types. Refactor touched violations.
 - API responses must use explicit DTOs (`*.dto.ts` plus `toDTO` mapper). Internal service-to-service calls use Prisma types directly.
 - WorkOS user/org names must resolve through `lib/workos-directory.ts`; do not use deprecated WorkOS cache/sidebar hooks.
 - Bun tests: mock leaf infrastructure only, put `mock.module()` before imports, use `mockClear()` plus explicit defaults in `beforeEach`, and run `bun run test:coverage` if mock setup changes.
 - Console pages under `app/[lang]/console/**` use the shared console spacing (`flex flex-1 flex-col gap-6 p-6 pt-0`) and shared table patterns unless product design requires otherwise.
-- Vault docs are the product/domain source of truth. If vault docs conflict with code, update code or flag the mismatch; do not duplicate domain docs in the repo.
+- Vault docs are the product/domain source of truth. If vault docs conflict with code, update code or flag the mismatch; do not duplicate domain docs in the repository.
 
 ## Project map
 
@@ -50,7 +68,7 @@
   exists yet, let the skill build one.
 - When `graphify-out/graph.json` exists and Graphify is needed, query it before
   raw source browsing: use `graphify query "<question>"`, `graphify path "<A>"
-  "<B>"`, or `graphify explain "<concept>"` as appropriate.
+"<B>"`, or `graphify explain "<concept>"` as appropriate.
 - Dirty graph files are expected after hooks or incremental updates. Prefer the
   project-local wiki index for broad navigation and `GRAPH_REPORT.md` only when
   focused queries are insufficient.
