@@ -93,12 +93,14 @@ export class AiDeploymentSessionService {
     status,
     plan,
     blockedReason,
+    serverContext,
   }: {
     actor: AiDeploymentSessionActor
     sessionId: string
     status: AiDeploymentSessionStatus
     plan?: unknown
     blockedReason?: string | null
+    serverContext?: Prisma.InputJsonValue
   }): Promise<AiDeploymentSession> {
     const session = await this.get(actor, sessionId)
     if (!isValidTransition(session.status, status)) {
@@ -132,6 +134,7 @@ export class AiDeploymentSessionService {
       data: {
         status,
         blockedReason: status === "BLOCKED" ? (blockedReason ?? null) : null,
+        ...(serverContext !== undefined ? { serverContext } : {}),
         ...(validatedPlan
           ? {
               plan: JSON.parse(

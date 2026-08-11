@@ -1,11 +1,16 @@
 import { describe, expect, it, mock } from "bun:test"
 import type { AiDeploymentSession } from "@prisma/client"
 
-import {
-  AiDeploymentSessionError,
-  type AiDeploymentSessionService,
-} from "@/modules/deploy/ai-deployment-session.service"
-import { createAiDeploymentSessionRoutes } from "./ai-deployment-session.route"
+mock.module("@/lib/prisma", () => ({ prisma: {} }))
+
+const { AiDeploymentSessionError } =
+  await import("@/modules/deploy/ai-deployment-session.service")
+const { createAiDeploymentSessionRoutes } =
+  await import("./ai-deployment-session.route")
+type AiSourceInspectionService =
+  import("@/modules/deploy/ai-source-inspection.service").AiSourceInspectionService
+type AiDeploymentSessionService =
+  import("@/modules/deploy/ai-deployment-session.service").AiDeploymentSessionService
 
 const sampleSession = (): AiDeploymentSession => ({
   id: "session-1",
@@ -138,5 +143,52 @@ describe("aiDeploymentSessionRoutes", () => {
       })
     )
     expect(response.status).toBe(409)
+  })
+
+  it("exposes the typed source inspection result through the tenant route", async () => {
+    const inspectionService = {
+      inspect: mock(async () => ({
+        status: "not_supported" as const,
+        source: null,
+        access: null,
+        detection: null,
+        plan: null,
+        manualOverride: null,
+        evidenceReferences: [],
+        session: null,
+      })),
+    }
+    const app = createAiDeploymentSessionRoutes({
+      requireActor: async () => ({
+        userId: "user-1",
+        organizationId: "org-1",
+        platformRole: "none",
+        tenantRole: "admin",
+      }),
+      service: createService() as unknown as AiDeploymentSessionService,
+      inspectionService:
+        inspectionService as unknown as AiSourceInspectionService,
+    })
+
+    const response = await app.handle(
+      request("/deploy/ai-sessions/inspect", {
+        sourceUrl: "https://gitlab.com/acme/app",
+      })
+    )
+    const body = (await response.json()) as {
+      data: { status: string }
+    }
+
+    expect(response.status).toBe(200)
+    expect(body.data.status).toBe("not_supported")
+    expect(inspectionService.inspect).toHaveBeenCalledWith({
+      actor: { organizationId: "org-1", userId: "user-1" },
+      request: {
+        sourceUrl: "https://gitlab.com/acme/app",
+        ref: undefined,
+        subdir: undefined,
+        sessionId: undefined,
+      },
+    })
   })
 })

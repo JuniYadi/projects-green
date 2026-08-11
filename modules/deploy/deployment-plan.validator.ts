@@ -132,19 +132,23 @@ export class DeploymentPlanValidator {
     plan: DeploymentPlanCandidate
   ): Promise<void> {
     if (plan.source.kind === "git") {
-      if (!plan.source.repositoryConnectionId) {
+      const requiresRepositoryConnection = plan.access.state !== "public"
+      if (requiresRepositoryConnection && !plan.source.repositoryConnectionId) {
         throw new DeploymentPlanValidationError("PLAN_UNAUTHORIZED_REFERENCE")
       }
-      const connection = await this.db.githubRepositoryConnection.findFirst({
-        where: {
-          id: plan.source.repositoryConnectionId,
-          enabled: true,
-          installation: { organizationId },
-        },
-        select: { id: true },
-      })
-      if (!connection) {
-        throw new DeploymentPlanValidationError("PLAN_UNAUTHORIZED_REFERENCE")
+
+      if (plan.source.repositoryConnectionId) {
+        const connection = await this.db.githubRepositoryConnection.findFirst({
+          where: {
+            id: plan.source.repositoryConnectionId,
+            enabled: true,
+            installation: { organizationId },
+          },
+          select: { id: true },
+        })
+        if (!connection) {
+          throw new DeploymentPlanValidationError("PLAN_UNAUTHORIZED_REFERENCE")
+        }
       }
     }
 

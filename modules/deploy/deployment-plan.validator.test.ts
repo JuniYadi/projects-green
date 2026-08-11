@@ -183,4 +183,29 @@ describe("DeploymentPlanValidator", () => {
       validator.validate({ organizationId: "org-1", plan: validPlan() })
     ).rejects.toMatchObject({ code: "PLAN_UNAUTHORIZED_REFERENCE" })
   })
+
+  it("allows a public GitHub plan without a repository connection", async () => {
+    const { validator, db } = createValidator()
+    const original = validPlan()
+    const plan = {
+      ...original,
+      source: {
+        ...original.source,
+        repositoryConnectionId: null,
+      },
+      access: {
+        ...original.access,
+        state: "public" as const,
+        credentialRef: null,
+      },
+    }
+
+    const result = await validator.validate({
+      organizationId: "org-1",
+      plan,
+    })
+
+    expect(result.plan.access.state).toBe("public")
+    expect(db.githubRepositoryConnection.findFirst).not.toHaveBeenCalled()
+  })
 })

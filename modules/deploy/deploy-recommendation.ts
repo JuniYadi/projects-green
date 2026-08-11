@@ -1,7 +1,8 @@
 import type {
-  DetectionResult,
+  DetectionResult as LegacyDetectionResult,
   ResourcePlanId,
 } from "@/modules/deploy/deploy.types"
+import type { DetectionResult } from "@/modules/framework-detection/framework-detection.types"
 
 export type PlanRecommendation = {
   resourcePlanId: ResourcePlanId
@@ -13,7 +14,7 @@ export type PlanRecommendation = {
 /**
  * PGREEN-071 — Lightweight plan recommendation based on detected framework.
  *
- * Maps detected framework + engines to a suggested resource plan and PAYG
+ * Maps detected framework + dependencies to a suggested resource plan and PAYG
  * defaults. Pure heuristic — the user can override in the environment step.
  * Recommendation is a convenience default, not a hard constraint.
  */
@@ -50,20 +51,33 @@ const FALLBACK_RECOMMENDATION: PlanRecommendation = {
   label: "Recommended for general use",
 }
 
+export type PlanRecommendationInput = {
+  primaryFramework: Pick<
+    NonNullable<DetectionResult["primaryFramework"]>,
+    "id"
+  > | null
+  requiredDependencies: Array<
+    Pick<DetectionResult["requiredDependencies"][number], "kind">
+  >
+}
+
 export function recommendPlan(
-  detection: DetectionResult | null
+  detection: PlanRecommendationInput | null
 ): PlanRecommendation {
-  if (!detection || !detection.framework) {
+  if (!detection?.primaryFramework) {
     return FALLBACK_RECOMMENDATION
   }
 
-  const framework = detection.framework.toLowerCase()
+  const framework = detection.primaryFramework.id.toLowerCase()
+  const hasToolchain = detection.requiredDependencies.some(
+    (dependency) => dependency.kind === "toolchain"
+  )
 
   if (framework in PAYG_FRAMEWORKS) {
     return {
       resourcePlanId: "payg",
-      cpu: detection.secondaryEngine ? 1000 : 500,
-      memory: detection.secondaryEngine ? 2048 : 1024,
+      cpu: hasToolchain ? 1000 : 500,
+      memory: hasToolchain ? 2048 : 1024,
       label: "AI recommended — heavy framework detected",
     }
   }
@@ -83,4 +97,19 @@ export function recommendPlan(
     memory: 256,
     label: "AI recommended — light workload",
   }
+}
+
+/**
+ * The legacy wizard receives a flattened detection DTO. Keep its adapter
+ * separate so the inspection path uses the real detection contract above.
+ */
+export function recommendPlanForLegacyDetection(
+  detection: Pick<LegacyDetectionResult, "framework" | "secondaryEngine"> | null
+): PlanRecommendation {
+  return recommendPlan({
+    primaryFramework: detection?.framework ? { id: detection.framework } : null,
+    requiredDependencies: detection?.secondaryEngine
+      ? [{ kind: "toolchain" }]
+      : [],
+  })
 }

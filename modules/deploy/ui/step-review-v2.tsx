@@ -2,7 +2,7 @@ import type { ComponentProps } from "react"
 import { enMessages } from "@/lib/i18n/messages/en"
 import type { DeployWizardMessages } from "@/lib/i18n/messages/types"
 import { CheckCircle } from "@/components/ui/phosphor-icons"
-import { recommendPlan } from "@/modules/deploy/deploy-recommendation"
+import { recommendPlanForLegacyDetection } from "@/modules/deploy/deploy-recommendation"
 import {
   isHighConfidence,
   isMediumConfidence,
@@ -41,7 +41,9 @@ export function StepReviewV2({
   ...environmentProps
 }: StepReviewProps) {
   const messages = providedMessages ?? enMessages.console.app.deployWizard
-  const recommendation = recommendPlan(detectionResult ?? null)
+  const recommendation = recommendPlanForLegacyDetection(
+    detectionResult ?? null
+  )
   const framework =
     buildState?.framework || detectionResult?.framework || "Not detected"
   const runtime =

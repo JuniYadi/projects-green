@@ -1,18 +1,44 @@
 import { describe, expect, it } from "bun:test"
-import type { DetectionResult } from "@/modules/deploy/deploy.types"
 import { recommendPlan } from "@/modules/deploy/deploy-recommendation"
+import type { DetectionResult } from "@/modules/framework-detection/framework-detection.types"
 
 function detection(overrides: Partial<DetectionResult> = {}): DetectionResult {
   return {
-    language: "javascript",
-    framework: null,
-    dockerfileDetected: false,
-    buildCommand: null,
-    confidence: 100,
-    status: "success",
+    primaryFramework: null,
+    requiredDependencies: [],
+    alternatives: [],
+    confidence: 0,
+    decision: {
+      status: "unsupported",
+      message: "No framework detected.",
+      isLaunchable: false,
+    },
+    evidence: [],
+    warnings: [],
+    source: { repoUrl: "https://github.com/acme/storefront" },
     ...overrides,
   }
 }
+
+const framework = (id: string, ecosystem: "node" | "php") => ({
+  id,
+  name: id,
+  ecosystem,
+  confidence: 0.9,
+  reasons: ["test fixture"],
+})
+
+const dependency = (
+  id: "node" | "php",
+  kind: "runtime" | "toolchain",
+  requiredFor: "app_runtime" | "asset_build"
+) => ({
+  id,
+  kind,
+  requiredFor,
+  confidence: 0.9,
+  reason: "test fixture",
+})
 
 describe("recommendPlan", () => {
   it("returns fallback for null detection", () => {
@@ -25,7 +51,7 @@ describe("recommendPlan", () => {
   })
 
   it("returns fallback for detection without framework", () => {
-    expect(recommendPlan(detection({ framework: null }))).toEqual({
+    expect(recommendPlan(detection({ primaryFramework: null }))).toEqual({
       resourcePlanId: "pro",
       cpu: 500,
       memory: 1024,
@@ -33,8 +59,15 @@ describe("recommendPlan", () => {
     })
   })
 
-  it("recommends PAYG 500/1024 for PAYG framework without secondaryEngine", () => {
-    expect(recommendPlan(detection({ framework: "laravel" }))).toEqual({
+  it("recommends PAYG 500/1024 without a toolchain dependency", () => {
+    expect(
+      recommendPlan(
+        detection({
+          primaryFramework: framework("laravel", "php"),
+          requiredDependencies: [dependency("php", "runtime", "app_runtime")],
+        })
+      )
+    ).toEqual({
       resourcePlanId: "payg",
       cpu: 500,
       memory: 1024,
@@ -42,10 +75,16 @@ describe("recommendPlan", () => {
     })
   })
 
-  it("recommends PAYG 1000/2048 for PAYG framework with secondaryEngine", () => {
+  it("recommends PAYG 1000/2048 with a toolchain dependency", () => {
     expect(
       recommendPlan(
-        detection({ framework: "laravel", secondaryEngine: "mysql" })
+        detection({
+          primaryFramework: framework("laravel", "php"),
+          requiredDependencies: [
+            dependency("php", "runtime", "app_runtime"),
+            dependency("node", "toolchain", "asset_build"),
+          ],
+        })
       )
     ).toEqual({
       resourcePlanId: "payg",
@@ -56,7 +95,14 @@ describe("recommendPlan", () => {
   })
 
   it("recommends pro for PRO frameworks", () => {
-    expect(recommendPlan(detection({ framework: "nextjs" }))).toEqual({
+    expect(
+      recommendPlan(
+        detection({
+          primaryFramework: framework("nextjs", "node"),
+          requiredDependencies: [dependency("node", "runtime", "app_runtime")],
+        })
+      )
+    ).toEqual({
       resourcePlanId: "pro",
       cpu: 500,
       memory: 1024,
@@ -65,7 +111,11 @@ describe("recommendPlan", () => {
   })
 
   it("recommends starter for unknown frameworks", () => {
-    expect(recommendPlan(detection({ framework: "unknown" }))).toEqual({
+    expect(
+      recommendPlan(
+        detection({ primaryFramework: framework("unknown", "node") })
+      )
+    ).toEqual({
       resourcePlanId: "starter",
       cpu: 100,
       memory: 256,
