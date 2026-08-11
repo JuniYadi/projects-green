@@ -35,7 +35,8 @@ mock.module("../billing-transaction.service", () => ({
 }))
 
 const { BillingOrderService } = await import("./order.service")
-const { BillingFulfillmentRegistry } = await import("./fulfillment-adapters")
+const { BillingFulfillmentRegistry, createAppHostingFulfillmentAdapter } =
+  await import("./fulfillment-adapters")
 
 const decimal = (value: string) => new Prisma.Decimal(value)
 const periodStart = new Date("2026-08-01T00:00:00.000Z")
@@ -54,7 +55,17 @@ const pricing = {
   effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
   effectiveTo: null,
 }
+const appHostingPricing = {
+  ...pricing,
+  packageCode: "APP_HOSTING" as const,
+}
 const account = { id: "account-1", currency: "IDR" }
+const appHostingContext = {
+  stackId: "stack-1",
+  deploymentId: "deployment-1",
+  sourceType: "GITHUB" as const,
+  resourcePlanId: "pro" as const,
+}
 
 function orderFixture(overrides: Record<string, unknown> = {}) {
   return {
@@ -110,6 +121,21 @@ const adapter = {
     ) => {}
   ),
 }
+const appHostingAdapter = {
+  packageCode: "APP_HOSTING" as const,
+  create: mock(
+    async (
+      _input: BillingFulfillmentInput,
+      _transactionClient?: Prisma.TransactionClient
+    ) => ({ subscriptionId: "app-hosting-subscription-1" })
+  ),
+  renew: mock(
+    async (
+      _input: BillingFulfillmentInput,
+      _transactionClient?: Prisma.TransactionClient
+    ) => {}
+  ),
+}
 
 beforeEach(() => {
   mockResolveRecurringPrice.mockReset()
@@ -121,6 +147,12 @@ beforeEach(() => {
   }
   adapter.create.mockReset()
   adapter.renew.mockReset()
+  appHostingAdapter.create.mockReset()
+  appHostingAdapter.renew.mockReset()
+  adapter.create.mockResolvedValue({ subscriptionId: "subscription-1" })
+  appHostingAdapter.create.mockResolvedValue({
+    subscriptionId: "app-hosting-subscription-1",
+  })
   mockDebitServiceBalance.mockReset()
   mockPrisma.$executeRaw.mockResolvedValue(0)
   mockResolveRecurringPrice.mockResolvedValue(pricing)
@@ -183,6 +215,35 @@ describe("BillingOrderService", () => {
       unitPrice: decimal("100"),
       amount: decimal("100"),
       billingPeriod: "MONTHLY",
+    })
+  })
+
+  it("sanitizes App Hosting order metadata to the typed deployment context", async () => {
+    mockResolveRecurringPrice.mockResolvedValue(appHostingPricing)
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      undefined,
+      new BillingFulfillmentRegistry([appHostingAdapter])
+    )
+
+    await service.createOrder({
+      organizationId: "org-1",
+      pricingId: "pricing-1",
+      idempotencyKey: "app-hosting-order",
+      metadata: {
+        appHostingFulfillment: appHostingContext,
+        credentials: { token: "secret" },
+      },
+      now: periodStart,
+    })
+
+    const data = mockPrisma.billingOrder.create.mock.calls[0][0].data
+    expect(data.metadataJson).toEqual({
+      appHostingFulfillment: appHostingContext,
+    })
+    expect(data.lines.create.metadataJson).toEqual({
+      appHostingFulfillment: appHostingContext,
+      planId: "plan-1",
     })
   })
 
@@ -380,36 +441,76 @@ describe("BillingOrderService", () => {
     expect(mockPrisma.billingOrder.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "order-1" },
-        data: expect.objectContaining({ status: "FAILED" }),
+        data: expect.objectContaining({
+          status: "FAILED",
+          metadataJson: {
+            fulfillmentFailure: {
+              code: "FULFILLMENT_FAILED",
+              message: "provisioning failed",
+              retryable: true,
+            },
+          },
+        }),
       })
     )
   })
-  it("rolls back charge updates when checkout fulfillment fails", async () => {
-    const txBillingOrderUpdate = mock()
-    const transactionClient = {
-      ...mockPrisma,
-      billingOrder: {
-        ...mockPrisma.billingOrder,
-        update: txBillingOrderUpdate,
+  it("persists a typed App Hosting failure without changing payment metadata", async () => {
+    mockPrisma.billingOrder.findUnique.mockResolvedValue(
+      orderFixture({
+        status: "CHARGED",
+        billingInvoiceId: "invoice-1",
+        metadataJson: { invoiceLineId: "invoice-line-1" },
+        lines: [
+          {
+            ...orderFixture().lines[0],
+            packageCode: "APP_HOSTING",
+            metadataJson: {
+              appHostingFulfillment: null,
+              planId: "plan-1",
+            },
+          },
+        ],
+      })
+    )
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      undefined,
+      new BillingFulfillmentRegistry([
+        createAppHostingFulfillmentAdapter(
+          mockPrisma as unknown as PrismaClient
+        ),
+      ])
+    )
+
+    await expect(service.fulfillOrder("order-1")).rejects.toMatchObject({
+      name: "AppHostingFulfillmentError",
+      failure: {
+        code: "APP_HOSTING_FULFILLMENT_CONTEXT_INVALID",
+        retryable: false,
       },
-    } as unknown as Prisma.TransactionClient
-    let committed = false
+    })
+    expect(mockPrisma.billingOrder.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "FAILED",
+          metadataJson: {
+            invoiceLineId: "invoice-line-1",
+            fulfillmentFailure: {
+              code: "APP_HOSTING_FULFILLMENT_CONTEXT_INVALID",
+              message: expect.any(String),
+              retryable: false,
+            },
+          },
+        }),
+      })
+    )
+  })
+  it("keeps the paid order and payment history when checkout fulfillment fails", async () => {
     mockPrisma.billingOrder.findUnique
       .mockResolvedValueOnce(orderFixture())
       .mockResolvedValueOnce(
         orderFixture({ status: "CHARGED", billingInvoiceId: "invoice-1" })
       )
-    mockPrisma.$transaction.mockImplementationOnce(
-      async (fn: (tx: Prisma.TransactionClient) => Promise<unknown>) => {
-        try {
-          const result = await fn(transactionClient)
-          committed = true
-          return result
-        } catch (error) {
-          throw error
-        }
-      }
-    )
     adapter.create.mockRejectedValueOnce(new Error("provisioning failed"))
     const service = new BillingOrderService(
       mockPrisma as unknown as PrismaClient,
@@ -420,10 +521,103 @@ describe("BillingOrderService", () => {
     await expect(service.checkoutOrder("order-1")).rejects.toThrow(
       "provisioning failed"
     )
-    expect(committed).toBe(false)
+    expect(mockDebitServiceBalance).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.billingOrder.update).toHaveBeenCalledTimes(2)
+    expect(mockPrisma.billingOrder.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "FAILED" }),
+      })
+    )
+  })
+  it("retries a failed paid checkout without charging the order again", async () => {
+    const failed = orderFixture({
+      status: "FAILED",
+      billingInvoiceId: "invoice-1",
+      metadataJson: { invoiceLineId: "invoice-line-1" },
+    })
+    const fulfilled = orderFixture({
+      ...failed,
+      status: "FULFILLED",
+      serviceSubscriptionId: "subscription-1",
+    })
+    mockPrisma.billingOrder.findUnique
+      .mockResolvedValueOnce(failed)
+      .mockResolvedValueOnce(failed)
+    mockPrisma.billingOrder.update.mockResolvedValue(fulfilled)
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      undefined,
+      new BillingFulfillmentRegistry([adapter])
+    )
+
+    const result = await service.checkoutOrder("order-1")
+
+    expect(result.status).toBe("FULFILLED")
+    expect(mockDebitServiceBalance).not.toHaveBeenCalled()
+    expect(adapter.create).toHaveBeenCalledTimes(1)
+  })
+  it("rejects an unpaid App Hosting order before invoking its adapter", async () => {
+    mockPrisma.billingOrder.findUnique.mockResolvedValue(
+      orderFixture({
+        lines: [
+          {
+            ...orderFixture().lines[0],
+            packageCode: "APP_HOSTING",
+            metadataJson: {
+              appHostingFulfillment: appHostingContext,
+              planId: "plan-1",
+            },
+          },
+        ],
+      })
+    )
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      undefined,
+      new BillingFulfillmentRegistry([appHostingAdapter])
+    )
+
+    await expect(service.fulfillOrder("order-1")).rejects.toThrow(
+      "ORDER_NOT_CHARGED"
+    )
+    expect(appHostingAdapter.create).not.toHaveBeenCalled()
     expect(mockPrisma.billingOrder.update).not.toHaveBeenCalled()
-    expect(txBillingOrderUpdate).toHaveBeenCalledTimes(1)
-    expect(adapter.create.mock.calls[0]?.[1]).toBe(transactionClient)
+  })
+  it("does not invoke the App Hosting adapter twice for a fulfilled order", async () => {
+    const charged = orderFixture({
+      status: "CHARGED",
+      billingInvoiceId: "invoice-1",
+      lines: [
+        {
+          ...orderFixture().lines[0],
+          packageCode: "APP_HOSTING",
+          metadataJson: {
+            appHostingFulfillment: appHostingContext,
+            planId: "plan-1",
+          },
+        },
+      ],
+    })
+    const fulfilled = orderFixture({
+      ...charged,
+      status: "FULFILLED",
+      serviceSubscriptionId: "app-hosting-subscription-1",
+    })
+    mockPrisma.billingOrder.findUnique
+      .mockResolvedValueOnce(charged)
+      .mockResolvedValueOnce(fulfilled)
+    mockPrisma.billingOrder.update.mockResolvedValue(fulfilled)
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      undefined,
+      new BillingFulfillmentRegistry([appHostingAdapter])
+    )
+
+    await service.fulfillOrder("order-1")
+    await service.fulfillOrder("order-1")
+
+    expect(appHostingAdapter.create).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.billingOrder.update).toHaveBeenCalledTimes(1)
   })
   it("fails closed when the transaction cannot acquire the advisory lock", async () => {
     const txWithoutLock = { ...mockPrisma, $executeRaw: undefined }
