@@ -41,6 +41,12 @@ const STATUS_FILTERS: { value: string; label: string }[] = [
   { value: "DISABLED", label: "Disabled" },
 ]
 
+const KIND_FILTERS: { value: string; label: string }[] = [
+  { value: "", label: "All Types" },
+  { value: "PRODUCT_PROMOTION", label: "Product promotions" },
+  { value: "BALANCE_CREDIT", label: "Balance credits" },
+]
+
 type PromoListItem = VoucherDTO & {
   discountDisplay: string
 }
@@ -69,6 +75,7 @@ export default function BillingPromotionsPage() {
   const [total, setTotal] = useState(0)
 
   const statusFilter = searchParams.get("status") ?? ""
+  const kindFilter = searchParams.get("kind") ?? ""
   const searchFilter = searchParams.get("search") ?? ""
 
   const offset = useMemo(() => {
@@ -84,6 +91,7 @@ export default function BillingPromotionsPage() {
       params.set("limit", String(PAGE_SIZE))
       params.set("offset", String(offset))
       if (statusFilter) params.set("status", statusFilter)
+      if (kindFilter) params.set("kind", kindFilter)
       if (searchFilter) params.set("prefix", searchFilter)
 
       const { data } = await eden.api.vouchers.portal.get({
@@ -114,7 +122,7 @@ export default function BillingPromotionsPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [offset, statusFilter, searchFilter])
+  }, [kindFilter, offset, statusFilter, searchFilter])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -311,6 +319,30 @@ export default function BillingPromotionsPage() {
                 {STATUS_FILTERS.map((f) => (
                   <SelectItem key={f.value || "ALL"} value={f.value || "ALL"}>
                     {f.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={kindFilter || "ALL"}
+              onValueChange={(val) => {
+                if (val === "ALL" || val === "") {
+                  updateQuery({ kind: undefined, page: "1" })
+                } else {
+                  updateQuery({ kind: val, page: "1" })
+                }
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[190px]">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                {KIND_FILTERS.map((filter) => (
+                  <SelectItem
+                    key={filter.value || "ALL"}
+                    value={filter.value || "ALL"}
+                  >
+                    {filter.label}
                   </SelectItem>
                 ))}
               </SelectContent>
