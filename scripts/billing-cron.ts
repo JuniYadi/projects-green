@@ -105,7 +105,7 @@ async function processInvoiceStatusManager(): Promise<{
 }
 
 /**
- * Payment reminder: send reminder emails for invoices due within 3 days.
+ * Payment reminder: send reminder emails exactly 3 and 1 days before due.
  */
 async function processPaymentReminder(): Promise<{ sent: number }> {
   const statusManager = new InvoiceStatusManager(prisma, invoiceEmailService)
