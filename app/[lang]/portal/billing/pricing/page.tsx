@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -10,13 +9,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  PricingVariantForm,
-  type PricingVariantFormValue,
-} from "@/components/billing/admin/pricing-variant-form"
 import { PricingVariantsTable } from "@/components/billing/admin/pricing-variants-table"
 import {
-  createAdminPricing,
   deactivateAdminPricing,
   getAdminPricing,
   type AdminPricing,
@@ -27,7 +21,6 @@ export default function BillingPricingPage() {
   const packageCode = searchParams.get("package") ?? undefined
   const planCode = searchParams.get("plan") ?? undefined
   const [pricing, setPricing] = useState<AdminPricing[]>([])
-  const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const load = useCallback(async () => {
@@ -52,11 +45,6 @@ export default function BillingPricingPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load()
   }, [load])
-  const save = async (value: PricingVariantFormValue) => {
-    await createAdminPricing(value)
-    setShowForm(false)
-    await load()
-  }
   const deactivate = async (id: string) => {
     if (!window.confirm("Deactivate this pricing variant?")) return
     await deactivateAdminPricing(id)
@@ -71,24 +59,25 @@ export default function BillingPricingPage() {
             Manage complete-period offers across products.
           </p>
         </div>
-        <Button onClick={() => setShowForm((visible) => !visible)}>
-          {showForm ? "Close" : "Add pricing"}
-        </Button>
       </header>
-      {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>New pricing variant</CardTitle>
-            <CardDescription>
-              Price for entire period; catalog edits never change charged
-              orders.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <PricingVariantForm onSubmit={save} />
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Catalog-managed pricing</CardTitle>
+          <CardDescription>
+            Pricing is read-only here. Create and edit offers from the scoped
+            Catalog plan editor so plans, currencies, terms, and add-ons stay in
+            one authoring workflow.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <a
+            className="text-sm font-medium text-primary underline underline-offset-4"
+            href="/portal/billing/catalog"
+          >
+            Open Catalog
+          </a>
+        </CardContent>
+      </Card>
       {error && <p className="text-sm text-destructive">{error}</p>}
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading pricing…</p>
