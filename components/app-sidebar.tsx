@@ -198,15 +198,6 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
           isActive: startsWithRoute(path, "/portal/billing/payments"),
         },
         {
-          title: "Vouchers",
-          url: localizePathname({
-            pathname: "/portal/billing/voucher",
-            locale,
-          }),
-          icon: <TicketIcon />,
-          isActive: startsWithRoute(path, "/portal/billing/voucher"),
-        },
-        {
           title: "Promotions",
           url: localizePathname({
             pathname: "/portal/billing/promotions",
@@ -232,15 +223,6 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
           }),
           icon: <PackageIcon />,
           isActive: startsWithRoute(path, "/portal/billing/catalog"),
-        },
-        {
-          title: "Pricing",
-          url: localizePathname({
-            pathname: "/portal/billing/pricing",
-            locale,
-          }),
-          icon: <PackageIcon />,
-          isActive: startsWithRoute(path, "/portal/billing/pricing"),
         },
         {
           title: "Orders",
