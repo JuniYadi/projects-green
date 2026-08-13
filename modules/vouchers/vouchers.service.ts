@@ -41,6 +41,7 @@ type UpdateVoucherData = {
 }
 
 type ListVouchersParams = {
+  kind?: string
   status?: string
   prefix?: string
   limit?: number
@@ -127,6 +128,9 @@ export class VoucherService {
   async listVouchers(params: ListVouchersParams = {}) {
     const where: Prisma.VoucherWhereInput = {}
 
+    if (params.kind) {
+      where.kind = params.kind as Prisma.EnumVoucherKindFilter["equals"]
+    }
     if (params.status) {
       where.status = params.status as Prisma.EnumVoucherStatusFilter["equals"]
     }
