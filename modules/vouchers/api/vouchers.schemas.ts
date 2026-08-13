@@ -298,6 +298,7 @@ export type ListPromotionsQuery = z.infer<typeof listPromotionsQuerySchema>
 // ─── List query params (legacy) ───────────────────────────────────────────────
 
 export const listVouchersQuerySchema = z.object({
+  kind: z.enum(voucherKinds).optional(),
   status: z.string().optional(),
   prefix: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
