@@ -5,9 +5,23 @@ import type {
   InvoiceStatus,
 } from "@/modules/invoices/invoices.types"
 
-const ISSUE_THRESHOLD_DAYS = 5
+const ISSUE_WINDOW_DAYS = 7
 const OVERDUE_GRACE_DAYS = 14
-const PAYMENT_REMINDER_DAYS = 3
+const PAYMENT_REMINDER_DAYS = [3, 1]
+
+function calendarDaysUntil(dueAt: Date, now: Date): number {
+  const dueDate = Date.UTC(
+    dueAt.getUTCFullYear(),
+    dueAt.getUTCMonth(),
+    dueAt.getUTCDate()
+  )
+  const currentDate = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate()
+  )
+  return Math.round((dueDate - currentDate) / (24 * 60 * 60 * 1000))
+}
 
 const PRISMA_STATUS_TO_EMAIL_STATUS: Record<string, InvoiceStatus> = {
   DRAFT: "draft",
@@ -66,16 +80,13 @@ export class InvoiceStatusManager {
   }
 
   async issueDraftInvoices(): Promise<{ issued: number }> {
-    const threshold = new Date()
-    threshold.setDate(threshold.getDate() - ISSUE_THRESHOLD_DAYS)
+    const dueThreshold = new Date()
+    dueThreshold.setUTCDate(dueThreshold.getUTCDate() + ISSUE_WINDOW_DAYS)
 
-    // Issue invoices whose billing period has ended + grace days.
-    // Using periodEnd instead of createdAt ensures a DRAFT invoice stays
-    // open for the entire month to accumulate all charges before issuing.
     const invoices = await this.prisma.billingInvoice.findMany({
       where: {
         status: "DRAFT",
-        periodEnd: { lt: threshold },
+        dueAt: { lte: dueThreshold },
       },
       include: { billingAccount: true },
     })
@@ -142,7 +153,7 @@ export class InvoiceStatusManager {
   async sendPaymentReminders(): Promise<{ sent: number }> {
     const now = new Date()
     const threshold = new Date()
-    threshold.setDate(threshold.getDate() + PAYMENT_REMINDER_DAYS)
+    threshold.setDate(threshold.getDate() + PAYMENT_REMINDER_DAYS[0])
 
     const invoices = await this.prisma.billingInvoice.findMany({
       where: {
@@ -158,6 +169,13 @@ export class InvoiceStatusManager {
     let sent = 0
 
     for (const invoice of invoices) {
+      if (
+        !invoice.dueAt ||
+        !PAYMENT_REMINDER_DAYS.includes(calendarDaysUntil(invoice.dueAt, now))
+      ) {
+        continue
+      }
+
       // Idempotency: skip if reminder already sent today
       const metadata = (invoice.metadataJson as Record<string, unknown>) ?? {}
       const lastReminderAt = metadata.lastReminderAt as string | undefined
