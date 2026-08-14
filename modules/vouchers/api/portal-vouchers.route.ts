@@ -26,6 +26,7 @@ import {
 import {
   VoucherNotFoundError,
   VoucherCollisionRetryExhaustedError,
+  VoucherKindFieldMismatchError,
 } from "../vouchers.errors"
 
 type VoucherAuthContext = {
@@ -101,6 +102,16 @@ const toServerError = (set: RouteSet, message: string) => {
 const toErrorResponse = (set: RouteSet, error: unknown) => {
   if (error instanceof VoucherNotFoundError) {
     return toNotFound(set, error.message)
+  }
+
+  if (error instanceof VoucherKindFieldMismatchError) {
+    set.status = 422
+    return {
+      ok: false as const,
+      error: "VOUCHER_KIND_FIELD_MISMATCH" as const,
+      message: error.message,
+      invalidFields: error.invalidFields,
+    }
   }
 
   if (error instanceof VoucherCollisionRetryExhaustedError) {
