@@ -98,6 +98,7 @@ export type VpnSubscriptionDTO = {
   organizationName: string | null
   packageId: string
   packageName: string
+  serviceSubscriptionId: string | null
   status: SubscriptionPayload["status"]
   currentPeriodStart: string
   currentPeriodEnd: string
@@ -197,6 +198,7 @@ export function toVpnSubscriptionDTO(
     organizationName: orgName ?? null,
     packageId: subscription.packageId,
     packageName: packageName ?? "Unknown Package",
+    serviceSubscriptionId: subscription.serviceSubscriptionId ?? null,
     status: subscription.status,
     currentPeriodStart: subscription.currentPeriodStart.toISOString(),
     currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
@@ -233,6 +235,7 @@ export function toVpnSubscriptionListDTO(
     organizationName: orgName ?? null,
     packageId: subscription.packageId,
     packageName: packageName ?? "Unknown Package",
+    serviceSubscriptionId: subscription.serviceSubscriptionId ?? null,
     status: subscription.status,
     currentPeriodStart: subscription.currentPeriodStart.toISOString(),
     currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),

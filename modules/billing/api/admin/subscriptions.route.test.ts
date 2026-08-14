@@ -735,6 +735,84 @@ describe("AdminSubscriptionRoute", () => {
       expect(body.pagination.total).toBe(1)
     })
 
+    it("returns only the explicit VPN relation for operational handoffs", async () => {
+      const makeSubscription = (
+        id: string,
+        packageCode: string,
+        vpnSubscription: { id: string } | null
+      ) => ({
+        id,
+        organizationId: "org-1",
+        pricingId: "pricing-1",
+        billingPeriod: "MONTHLY",
+        quantity: new Decimal("1"),
+        priceLocked: new Decimal("100000"),
+        currency: "IDR",
+        status: "ACTIVE",
+        cancelAtPeriodEnd: false,
+        allocatedConfig: null,
+        currentPeriodStart: new Date("2026-06-01"),
+        currentPeriodEnd: new Date("2026-07-01"),
+        package: { code: packageCode },
+        plan: { code: "STANDARD" },
+        pricing: {
+          billingMode: "PACKAGE",
+          type: "BUNDLE",
+          basePriceIdr: new Decimal("100000"),
+          periodPrice: new Decimal("100000"),
+          currency: "IDR",
+          region: { code: "GLOBAL" },
+        },
+        orders: [],
+        vpnSubscription,
+      })
+
+      mockFindMany.mockResolvedValueOnce([
+        makeSubscription("vpn-commercial", "VPN", { id: "vpn-ops-1" }),
+        makeSubscription("vpn-legacy", "VPN", null),
+        makeSubscription("app-subscription", "APP_HOSTING", null),
+      ])
+      mockCount.mockResolvedValueOnce(3)
+
+      const app = new Elysia()
+        .use(
+          createAdminSubscriptionRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/subscriptions")
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.subscriptions).toEqual([
+        expect.objectContaining({
+          id: "vpn-commercial",
+          vpnSubscriptionId: "vpn-ops-1",
+        }),
+        expect.objectContaining({
+          id: "vpn-legacy",
+          vpnSubscriptionId: null,
+        }),
+        expect.objectContaining({
+          id: "app-subscription",
+          vpnSubscriptionId: null,
+        }),
+      ])
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.objectContaining({
+            vpnSubscription: { select: { id: true } },
+          }),
+        })
+      )
+    })
+
     it("filters by status", async () => {
       mockFindMany.mockResolvedValueOnce([])
       mockCount.mockResolvedValueOnce(0)

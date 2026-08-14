@@ -504,7 +504,9 @@ export default function SubscriptionDetailPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-semibold">Subscription Details</h1>
+          <h1 className="text-2xl font-semibold">
+            VPN Service Operation Details
+          </h1>
           <p className="text-sm text-muted-foreground">
             {subscription.packageName} ·{" "}
             {subscription.organizationName ?? subscription.organizationId}
@@ -576,10 +578,30 @@ export default function SubscriptionDetailPage() {
         {/* Billing Info */}
         <Card>
           <CardHeader>
-            <CardTitle>Billing Information</CardTitle>
-            <CardDescription>Price and period details</CardDescription>
+            <CardTitle>Commercial Subscription Context</CardTitle>
+            <CardDescription>
+              Payment, orders, and renewals are managed in Billing.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-1">
+            <InfoRow
+              label="Billing record"
+              value={
+                subscription.serviceSubscriptionId ? (
+                  <Link
+                    href={`/portal/billing/subscriptions?subscriptionId=${encodeURIComponent(subscription.serviceSubscriptionId)}`}
+                    className="text-sm font-medium text-primary hover:underline"
+                  >
+                    View in Billing
+                  </Link>
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    Unavailable (legacy record)
+                  </span>
+                )
+              }
+            />
+            <Separator />
             <InfoRow
               label="Price"
               value={formatCurrency(

@@ -88,7 +88,12 @@ export function buildAppBreadcrumbItems({
     ]
 
     return {
-      label: labelForSegment(segment, parentSegment),
+      label: labelForSegment(
+        segment,
+        parentSegment,
+        rootSegment,
+        breadcrumbSegments
+      ),
       href: isLast ? undefined : `/${hrefSegments.join("/")}`,
     }
   })
@@ -128,7 +133,20 @@ export function AppBreadcrumbs({ rootSegment }: AppBreadcrumbsProps) {
   )
 }
 
-function labelForSegment(segment: string, parentSegment?: string): string {
+function labelForSegment(
+  segment: string,
+  parentSegment?: string,
+  rootSegment?: AppRootSegment,
+  breadcrumbSegments?: string[]
+): string {
+  if (
+    rootSegment === "portal" &&
+    segment === "subscriptions" &&
+    breadcrumbSegments?.includes("vpn")
+  ) {
+    return "VPN Operations"
+  }
+
   if (parentSegment && isDetailSegment(segment)) {
     return DETAIL_LABELS_BY_PARENT[parentSegment] ?? "Detail"
   }

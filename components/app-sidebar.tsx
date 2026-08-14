@@ -276,7 +276,7 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         isActive: startsWithRoute(path, "/portal/vpn/packages"),
       },
       {
-        title: "Subscriptions",
+        title: "VPN Operations",
         url: localizePathname({
           pathname: "/portal/vpn/subscriptions",
           locale,

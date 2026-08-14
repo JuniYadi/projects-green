@@ -3,6 +3,7 @@ import { describe, it, expect } from "bun:test"
 import {
   toServerAccountDTO,
   computeProvisioningSummary,
+  toVpnSubscriptionListDTO,
   type VpnServerAccountDTO,
 } from "./vpn-subscription.dto"
 
@@ -34,6 +35,49 @@ const baseAccount = {
   createdAt: new Date("2026-06-01T00:00:00Z"),
   updatedAt: new Date("2026-06-01T00:00:00Z"),
 }
+
+const baseSubscription = {
+  id: "vpn-sub-1",
+  organizationId: "org-1",
+  packageId: "pkg-1",
+  serviceSubscriptionId: "service-sub-1",
+  status: "ACTIVE" as const,
+  currentPeriodStart: new Date("2026-06-01T00:00:00Z"),
+  currentPeriodEnd: new Date("2026-07-01T00:00:00Z"),
+  cancelAtPeriodEnd: false,
+  priceLocked: 100000,
+  currency: "IDR",
+  originalPrice: null,
+  originalCurrency: null,
+  exchangeRate: null,
+  serverAccounts: [],
+  _count: { mobileDevices: 0 },
+  createdAt: new Date("2026-06-01T00:00:00Z"),
+  updatedAt: new Date("2026-06-01T00:00:00Z"),
+}
+
+describe("toVpnSubscriptionListDTO", () => {
+  it("preserves the explicit commercial subscription relation", () => {
+    const result = toVpnSubscriptionListDTO(
+      baseSubscription as unknown as Parameters<
+        typeof toVpnSubscriptionListDTO
+      >[0],
+      "Acme Inc",
+      "Basic VPN"
+    )
+
+    expect(result.serviceSubscriptionId).toBe("service-sub-1")
+  })
+
+  it("preserves a missing commercial relation for legacy records", () => {
+    const result = toVpnSubscriptionListDTO({
+      ...baseSubscription,
+      serviceSubscriptionId: null,
+    } as unknown as Parameters<typeof toVpnSubscriptionListDTO>[0])
+
+    expect(result.serviceSubscriptionId).toBeNull()
+  })
+})
 
 describe("toServerAccountDTO", () => {
   it("maps OPENVPN to openVpnPort", () => {

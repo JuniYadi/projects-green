@@ -1,8 +1,15 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useSearchParams } from "next/navigation"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -88,8 +95,11 @@ function PaymentStatusBadge({
 }
 
 const PAGE_SIZE = 20
+const EMPTY_SUBSCRIPTIONS: AdminSubscriptionItem[] = []
 
 export function BillingSubscriptionsPage() {
+  const searchParams = useSearchParams()
+  const linkedSubscriptionId = searchParams.get("subscriptionId")
   const [page, setPage] = useState(1)
   const [selectedSubscription, setSelectedSubscription] =
     useState<AdminSubscriptionItem | null>(null)
@@ -97,7 +107,8 @@ export function BillingSubscriptionsPage() {
     page,
     limit: PAGE_SIZE,
   })
-  const subscriptions = subscriptionsQuery.data?.subscriptions ?? []
+  const subscriptions =
+    subscriptionsQuery.data?.subscriptions ?? EMPTY_SUBSCRIPTIONS
   const total = subscriptionsQuery.data?.pagination.total ?? 0
   const totalPages = subscriptionsQuery.data?.pagination.totalPages ?? 0
   const loading = subscriptionsQuery.isLoading
@@ -107,6 +118,21 @@ export function BillingSubscriptionsPage() {
       : subscriptionsQuery.error
         ? "Unable to load subscriptions."
         : null
+
+  useEffect(() => {
+    if (!linkedSubscriptionId) return
+
+    const linkedSubscription = subscriptions.find(
+      (subscription) => subscription.id === linkedSubscriptionId
+    )
+    if (!linkedSubscription) return
+
+    // Open the record targeted by a VPN operations handoff.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedSubscription((current) =>
+      current?.id === linkedSubscription.id ? current : linkedSubscription
+    )
+  }, [linkedSubscriptionId, subscriptions])
 
   const columns = useMemo<ColumnDef<AdminSubscriptionItem>[]>(
     () => [
@@ -199,6 +225,29 @@ export function BillingSubscriptionsPage() {
           ),
       },
       {
+        id: "vpnOperation",
+        header: "VPN operation",
+        cell: ({ row }) => {
+          const subscription = row.original
+          if (subscription.packageCode !== "VPN") {
+            return <span className="text-xs text-muted-foreground">—</span>
+          }
+          if (!subscription.vpnSubscriptionId) {
+            return (
+              <span className="text-xs text-muted-foreground">Unavailable</span>
+            )
+          }
+          return (
+            <Link
+              href={`/portal/vpn/subscriptions/${encodeURIComponent(subscription.vpnSubscriptionId)}`}
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              Open VPN operations
+            </Link>
+          )
+        },
+      },
+      {
         accessorKey: "currentPeriodEnd",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Renews" />
@@ -216,15 +265,20 @@ export function BillingSubscriptionsPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header>
-        <h1 className="text-2xl font-bold">Subscriptions</h1>
+        <h1 className="text-2xl font-bold">Commercial subscriptions</h1>
         <p className="text-muted-foreground">
-          Manage and monitor all service subscriptions across organizations.
+          Manage payment, order, invoice, and renewal context across products.
+          VPN account provisioning lives in VPN Service Operations.
         </p>
       </header>
 
       <Card>
         <CardHeader>
-          <CardTitle>All subscriptions</CardTitle>
+          <CardTitle>All commercial subscriptions</CardTitle>
+          <CardDescription>
+            Product rows link to operational workspaces only when the explicit
+            relation exists.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {error && <p className="mb-4 text-sm text-destructive">{error}</p>}

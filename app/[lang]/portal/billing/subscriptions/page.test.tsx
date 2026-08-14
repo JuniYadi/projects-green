@@ -2,9 +2,13 @@ import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { act, fireEvent, render, waitFor } from "@testing-library/react"
 
 const mockUseAdminSubscriptionsQuery = mock()
+const mockUseSearchParams = mock()
 
 mock.module("@/hooks/use-billing-data", () => ({
   useAdminSubscriptionsQuery: mockUseAdminSubscriptionsQuery,
+}))
+mock.module("next/navigation", () => ({
+  useSearchParams: mockUseSearchParams,
 }))
 
 const { BillingSubscriptionsPage } = await import("./page")
@@ -32,10 +36,13 @@ const baseSubscription = {
   billingInvoiceId: "inv_1",
   invoiceStatus: "PAID",
   fulfillment: null,
+  vpnSubscriptionId: null,
 }
 
 beforeEach(() => {
   mockUseAdminSubscriptionsQuery.mockReset()
+  mockUseSearchParams.mockReset()
+  mockUseSearchParams.mockReturnValue(new URLSearchParams())
   mockUseAdminSubscriptionsQuery.mockReturnValue({
     data: {
       ok: true,
@@ -70,6 +77,58 @@ describe("BillingSubscriptionsPage", () => {
     expect(view.getByText("ACTIVE")).toBeTruthy()
     expect(view.getByText("Charged")).toBeTruthy()
     expect(view.getByText("PAID")).toBeTruthy()
+  })
+
+  it("links only related VPN subscriptions to VPN operations", async () => {
+    mockUseAdminSubscriptionsQuery.mockReturnValueOnce({
+      data: {
+        ok: true,
+        subscriptions: [
+          {
+            ...baseSubscription,
+            packageCode: "VPN",
+            vpnSubscriptionId: "vpn_1",
+          },
+          baseSubscription,
+        ],
+        pagination: { page: 1, limit: 20, total: 2, totalPages: 1 },
+      },
+      isLoading: false,
+      error: null,
+    })
+    const view = render(<BillingSubscriptionsPage />)
+
+    const links = await view.findAllByRole("link", {
+      name: "Open VPN operations",
+    })
+    expect(links).toHaveLength(1)
+    expect(links[0]?.getAttribute("href")).toBe(
+      "/portal/vpn/subscriptions/vpn_1"
+    )
+  })
+
+  it("opens the commercial record targeted by a VPN handoff", async () => {
+    mockUseSearchParams.mockReturnValue(
+      new URLSearchParams({ subscriptionId: "sub_1" })
+    )
+    mockUseAdminSubscriptionsQuery.mockReturnValueOnce({
+      data: {
+        ok: true,
+        subscriptions: [baseSubscription],
+        pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    const view = render(<BillingSubscriptionsPage />)
+
+    await waitFor(() =>
+      expect(
+        view.getByRole("dialog", { name: "Subscription detail drawer" })
+      ).toBeTruthy()
+    )
+    expect(view.getByText("sub_1")).toBeTruthy()
   })
   it("opens a lifecycle detail drawer for a selected subscription", async () => {
     mockUseAdminSubscriptionsQuery.mockReturnValueOnce({

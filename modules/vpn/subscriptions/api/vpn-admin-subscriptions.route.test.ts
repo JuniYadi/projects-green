@@ -11,9 +11,21 @@ const mockPrisma = {
   vpnServerAccount: {
     findUnique: mock(),
   },
+  vpnPackage: {
+    findMany: mock(),
+    findUnique: mock(),
+  },
 }
 
+const mockGetOrganization = mock()
+
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
+mock.module("@workos-inc/node", () => ({
+  WorkOS: class WorkOS {},
+  createWorkOS: mock(() => ({
+    organizations: { getOrganization: mockGetOrganization },
+  })),
+}))
 mock.module("@/lib/audit.service", () => ({
   logAuditEvent: mock().mockResolvedValue(undefined),
 }))
@@ -34,6 +46,60 @@ const adminGuard = mock<
   ok: true as const,
   userId: "admin_1",
   platformRole: "super_admin" as const,
+})
+
+describe("Admin VPN Subscriptions Routes — relation DTOs", () => {
+  it("returns linked and legacy commercial subscription IDs without matching inference", async () => {
+    mockGetOrganization.mockResolvedValue({ name: "Acme Inc" })
+    mockPrisma.vpnPackage.findMany.mockResolvedValue([
+      { id: "pkg-1", name: "Basic VPN" },
+    ])
+
+    const makeSubscription = (serviceSubscriptionId: string | null) => ({
+      id: serviceSubscriptionId ? "vpn-linked" : "vpn-legacy",
+      organizationId: "org-1",
+      packageId: "pkg-1",
+      serviceSubscriptionId,
+      status: "ACTIVE" as const,
+      currentPeriodStart: new Date("2026-06-01T00:00:00Z"),
+      currentPeriodEnd: new Date("2026-07-01T00:00:00Z"),
+      cancelAtPeriodEnd: false,
+      priceLocked: 100000,
+      currency: "IDR",
+      originalPrice: null,
+      originalCurrency: null,
+      exchangeRate: null,
+      serverAccounts: [],
+      _count: { mobileDevices: 0 },
+      createdAt: new Date("2026-06-01T00:00:00Z"),
+      updatedAt: new Date("2026-06-01T00:00:00Z"),
+    })
+    const service = {
+      listAll: mock().mockResolvedValue({
+        data: [makeSubscription("service-sub-1"), makeSubscription(null)],
+        total: 2,
+      }),
+      getById: mock(),
+    }
+
+    const app = new Elysia().use(
+      createAdminVpnSubscriptionsRoutes({
+        service: service as unknown as VpnSubscriptionService,
+        requireSuperAdmin: adminGuard,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/admin/vpn/subscriptions")
+    )
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.data).toEqual([
+      expect.objectContaining({ serviceSubscriptionId: "service-sub-1" }),
+      expect.objectContaining({ serviceSubscriptionId: null }),
+    ])
+  })
 })
 
 describe("Admin VPN Subscriptions Routes — revoke endpoint", () => {

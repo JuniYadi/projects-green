@@ -184,6 +184,18 @@ describe("resolveSidebarMenu", () => {
     expect(clusters?.isActive).toBe(true)
   })
 
+  it("labels the portal VPN route as operations while preserving its deep link", () => {
+    const { navMain } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/vpn/subscriptions",
+      locale: "en",
+    })
+
+    const operations = navMain.find((item) => item.title === "VPN Operations")
+    expect(operations?.url).toBe("/en/portal/vpn/subscriptions")
+    expect(operations?.isActive).toBe(true)
+  })
+
   it("includes Webhook Logs link in whatsapp context", () => {
     const { navMain, navMainLabel } = resolveSidebarMenu({
       surface: "portal",
