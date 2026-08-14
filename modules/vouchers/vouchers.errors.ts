@@ -113,3 +113,15 @@ export class VoucherDiscountConfigurationError extends Error {
     this.name = "VoucherDiscountConfigurationError"
   }
 }
+
+export class VoucherKindFieldMismatchError extends Error {
+  readonly code = "VOUCHER_KIND_FIELD_MISMATCH"
+  readonly invalidFields: string[]
+  constructor(kind: string, invalidFields: string[]) {
+    super(
+      `Fields [${invalidFields.join(", ")}] are not applicable to a ${kind} voucher.`
+    )
+    this.name = "VoucherKindFieldMismatchError"
+    this.invalidFields = invalidFields
+  }
+}
