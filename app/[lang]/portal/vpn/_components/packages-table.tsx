@@ -136,7 +136,7 @@ export function PackagesTable() {
                   <TableCell>
                     <Link
                       className="text-sm text-primary hover:underline"
-                      href={`/portal/billing/pricing?plan=${encodeURIComponent(pkg.servicePlanId)}`}
+                      href={`/portal/billing/catalog`}
                     >
                       Manage variants
                     </Link>
