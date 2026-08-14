@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 
 import {
   Table,
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PlusIcon, PencilSimpleIcon, TrashIcon } from "@phosphor-icons/react"
+import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 import {
   listVpnPackages,
@@ -26,6 +28,8 @@ import {
 import { PackageForm } from "./package-form"
 
 export function PackagesTable() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
   const [packages, setPackages] = useState<VpnPackageItem[]>([])
   const [servers, setServers] = useState<VpnServerItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -78,6 +82,23 @@ export function PackagesTable() {
     } catch (err) {
       window.alert((err as Error).message)
     }
+  }
+
+  const pricingHref = (pkg: VpnPackageItem) => {
+    const editorPath = localizePathname({
+      pathname: "/portal/billing/catalog/products/vpn",
+      locale,
+    })
+    const returnPath = localizePathname({
+      pathname: "/portal/vpn/packages",
+      locale,
+    })
+    const query = new URLSearchParams({
+      planId: pkg.servicePlanId,
+      returnTo: returnPath,
+      tab: "plans",
+    })
+    return `${editorPath}?${query.toString()}`
   }
 
   return (
@@ -134,12 +155,50 @@ export function PackagesTable() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Link
-                      className="text-sm text-primary hover:underline"
-                      href={`/portal/billing/catalog`}
-                    >
-                      Manage variants
-                    </Link>
+                    <div className="space-y-1">
+                      {pkg.catalogPlan ? (
+                        <>
+                          <div className="font-medium">
+                            {pkg.catalogPlan.name}
+                          </div>
+                          <div className="font-mono text-xs text-muted-foreground">
+                            {pkg.catalogPlan.code}
+                          </div>
+                          {pkg.catalogPlan.offers.length > 0 ? (
+                            <div className="text-xs text-muted-foreground">
+                              {pkg.catalogPlan.offers.map((offer) => (
+                                <div key={offer.id}>
+                                  {offer.currency} {offer.periodPrice} /{" "}
+                                  {offer.billingPeriod
+                                    .toLowerCase()
+                                    .replace("_", " ")}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <Badge variant="outline">Pricing required</Badge>
+                          )}
+                          {!pkg.catalogPlan.isActive && (
+                            <Badge variant="secondary">Plan inactive</Badge>
+                          )}
+                          {!pkg.catalogPlan.parentIsActive && (
+                            <Badge variant="secondary">
+                              Catalog parent inactive
+                            </Badge>
+                          )}
+                        </>
+                      ) : (
+                        <Badge variant="outline">Pricing required</Badge>
+                      )}
+                      <div>
+                        <Link
+                          className="text-sm text-primary hover:underline"
+                          href={pricingHref(pkg)}
+                        >
+                          Manage pricing
+                        </Link>
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">

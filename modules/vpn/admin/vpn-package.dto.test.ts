@@ -1,4 +1,5 @@
 import { expect, describe, it } from "bun:test"
+import { Prisma } from "@prisma/client"
 
 const { toVpnPackageDTO, serverProtocolLabels } =
   await import("./vpn-package.dto")
@@ -75,6 +76,26 @@ function makePackage(overrides: Record<string, unknown> = {}) {
         server: makeRawServer(),
       },
     ],
+    servicePlan: {
+      id: "plan-1",
+      code: "VPN_PACKAGE_BUSINESS",
+      name: "Business VPN plan",
+      isActive: true,
+      package: { code: "VPN", isActive: true },
+      pricings: [
+        {
+          id: "offer-1",
+          type: "BUNDLE",
+          billingMode: "PACKAGE",
+          billingPeriod: "MONTHLY",
+          periodPrice: new Prisma.Decimal("29.99"),
+          currency: "USD",
+          effectiveFrom: new Date("2026-01-01T00:00:00Z"),
+          effectiveTo: null,
+          isActive: true,
+        },
+      ],
+    },
     createdAt: new Date("2026-01-01T00:00:00Z"),
     updatedAt: new Date("2026-06-01T00:00:00Z"),
     ...overrides,
@@ -129,6 +150,14 @@ describe("toVpnPackageDTO", () => {
     expect(dto.isActive).toBe(true)
     expect(dto.price).toBe("29.99")
     expect(dto.serverCount).toBe(1)
+    expect(dto.catalogPlan).toMatchObject({
+      id: "plan-1",
+      code: "VPN_PACKAGE_BUSINESS",
+      name: "Business VPN plan",
+      offers: [expect.objectContaining({ periodPrice: "29.99" })],
+    })
+    expect(dto.pricingStatus).toBe("READY")
+    expect(dto.catalogAvailable).toBe(true)
   })
 
   it("includes server details with protocol labels", () => {

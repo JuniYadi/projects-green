@@ -108,7 +108,8 @@ export function PackageForm({
         <DialogHeader>
           <DialogTitle>{editing ? "Edit Package" : "Add Package"}</DialogTitle>
           <DialogDescription>
-            Pick servers. The user gets ALL protocols enabled on each server.
+            Pick servers for this package. Pricing and publishing are managed on
+            its linked plan in the global VPN catalog.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">

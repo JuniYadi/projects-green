@@ -4,6 +4,15 @@ import type { PrismaClient } from "@prisma/client"
 import { prisma as defaultPrisma } from "@/lib/prisma"
 import { CurrencyService } from "../currency.service"
 import type { RecurringBillingPeriod } from "../pricing/pricing.types"
+import type { CatalogProductDetailResponse } from "./catalog.dto"
+import { toCatalogPlanDTO } from "./catalog.dto"
+
+const RECURRING_PERIODS = [
+  "MONTHLY",
+  "QUARTERLY",
+  "SEMI_ANNUAL",
+  "ANNUAL",
+] as const
 
 // ─── Input types ────────────────────────────────────────────────────────────
 
@@ -194,6 +203,47 @@ export class CatalogAdminService {
         isActive: input.isActive ?? true,
       },
     })
+  }
+
+  async getProduct(code: string): Promise<CatalogProductDetailResponse | null> {
+    const pkg = await this.db.servicePackage.findFirst({
+      where: { code: code as never },
+      include: {
+        plans: {
+          include: {
+            pricings: {
+              where: {
+                isActive: true,
+                type: "BUNDLE",
+                billingMode: "PACKAGE",
+                billingPeriod: { in: RECURRING_PERIODS as never },
+                periodPrice: { not: null },
+              },
+              include: {
+                servicePlan: {
+                  include: { package: true },
+                },
+                region: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    if (!pkg) return null
+
+    return {
+      product: {
+        code: pkg.code as never,
+        name: pkg.name,
+        description: pkg.description,
+        isActive: pkg.isActive,
+        plans: pkg.plans.map(toCatalogPlanDTO),
+      },
+      // Admin editing is currency-neutral; the editor includes every offer.
+      currency: "IDR",
+    }
   }
 
   // ─── Plan ──────────────────────────────────────────────────────────

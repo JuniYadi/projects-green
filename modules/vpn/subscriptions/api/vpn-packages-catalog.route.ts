@@ -4,6 +4,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 
 import { prisma } from "@/lib/prisma"
 import { CurrencyService } from "@/modules/billing/currency.service"
+import { isVpnCatalogParentActive } from "../../catalog/vpn-catalog-eligibility"
 import {
   publicPackageInclude,
   toVpnPublicPackageDTO,
@@ -72,11 +73,16 @@ export const createVpnPackageCatalogRoutes = (deps: Deps = {}) => {
 
   async function mapPackage(
     pkg: Prisma.VpnPackageGetPayload<{ include: typeof publicPackageInclude }>
-  ) {
+  ): Promise<ReturnType<typeof toVpnPublicPackageDTO> | null> {
+    if (!isVpnCatalogParentActive(pkg.servicePlan)) return null
+
     const at = new Date()
-    const planId = (pkg as unknown as { servicePlanId: string }).servicePlanId
+    const planId = pkg.servicePlanId
     const pricings = await db.servicePricing.findMany({ where: { planId } })
-    const packageWithPricing = { ...pkg, servicePlan: { pricings } }
+    const packageWithPricing = {
+      ...pkg,
+      servicePlan: { ...pkg.servicePlan, pricings },
+    }
     const conversions = new Map<string, PackageConversion>()
     await Promise.all(
       pricings.map(async (pricing) => {
@@ -94,20 +100,34 @@ export const createVpnPackageCatalogRoutes = (deps: Deps = {}) => {
   return new Elysia()
     .get("/vpn/packages", async () => {
       const packages = await db.vpnPackage.findMany({
-        where: { isActive: true },
+        where: {
+          isActive: true,
+          servicePlan: {
+            isActive: true,
+            package: { code: "VPN", isActive: true },
+          },
+        },
         include: publicPackageInclude,
         orderBy: { createdAt: "desc" },
       })
 
       const results = (await Promise.all(packages.map(mapPackage))).filter(
-        (pkg) => pkg.offers.length > 0
+        (pkg): pkg is NonNullable<typeof pkg> =>
+          pkg !== null && pkg.offers.length > 0
       )
 
       return { ok: true as const, data: results }
     })
     .get("/vpn/packages/:id", async ({ params, set }) => {
       const pkg = await db.vpnPackage.findFirst({
-        where: { id: params.id, isActive: true },
+        where: {
+          id: params.id,
+          isActive: true,
+          servicePlan: {
+            isActive: true,
+            package: { code: "VPN", isActive: true },
+          },
+        },
         include: publicPackageInclude,
       })
       if (!pkg) {
@@ -118,10 +138,21 @@ export const createVpnPackageCatalogRoutes = (deps: Deps = {}) => {
           message: "Package not found or unavailable.",
         }
       }
+      if (!isVpnCatalogParentActive(pkg.servicePlan)) {
+        set.status = 404
+        return {
+          ok: false as const,
+          error: "PACKAGE_UNAVAILABLE" as const,
+          message: "Package not found or unavailable.",
+        }
+      }
       const at = new Date()
-      const planId = (pkg as unknown as { servicePlanId: string }).servicePlanId
+      const planId = pkg.servicePlanId
       const pricings = await db.servicePricing.findMany({ where: { planId } })
-      const packageWithPricing = { ...pkg, servicePlan: { pricings } }
+      const packageWithPricing = {
+        ...pkg,
+        servicePlan: { ...pkg.servicePlan, pricings },
+      }
       const conversions = new Map<string, PackageConversion>()
       await Promise.all(
         pricings.map(async (pricing) => {

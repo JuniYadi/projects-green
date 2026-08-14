@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event"
 
 const mockPush = mock()
 const mockPublishCatalogProduct = mock(async () => ({ ok: true, data: {} }))
+const mockGetAdminCatalogProduct = mock()
+const mockGetCatalogProduct = mock()
 const mockSearchParams = {
   get: mock<(key: string) => string | null>(() => null),
   toString: () => "",
@@ -15,7 +17,8 @@ mock.module("next/navigation", () => ({
   useParams: () => ({ lang: "en" }),
 }))
 mock.module("@/lib/billing-client", () => ({
-  getCatalogProduct: mock(),
+  getAdminCatalogProduct: mockGetAdminCatalogProduct,
+  getCatalogProduct: mockGetCatalogProduct,
   publishCatalogProduct: mockPublishCatalogProduct,
   billingPeriodLabel: (period: string) => period,
 }))
@@ -25,6 +28,16 @@ const { ProductEditor } = await import("./product-editor")
 describe("ProductEditor", () => {
   beforeEach(() => {
     mock.clearAllMocks()
+    mockGetAdminCatalogProduct.mockResolvedValue({
+      product: {
+        code: "VPN",
+        name: "VPN",
+        description: "VPN product",
+        isActive: true,
+        plans: [],
+      },
+      currency: "IDR",
+    })
     mockPublishCatalogProduct.mockResolvedValue({ ok: true, data: {} })
     localStorage.clear()
     mockSearchParams.get.mockReturnValue(null)
@@ -157,5 +170,47 @@ describe("ProductEditor", () => {
     expect(publishTrigger.hasAttribute("disabled")).toBe(true)
     fireEvent.click(publishTrigger)
     expect(view.queryByText("Publish product?")).toBeNull()
+  })
+
+  it("loads an unpriced VPN plan and marks the selected plan with a return link", async () => {
+    mockSearchParams.get.mockImplementation(
+      (key: string) =>
+        ({
+          planId: "plan-vpn-package",
+          returnTo: "/en/portal/vpn/packages",
+        })[key] ?? null
+    )
+    mockGetAdminCatalogProduct.mockResolvedValue({
+      product: {
+        code: "VPN",
+        name: "VPN",
+        description: "VPN product",
+        isActive: true,
+        plans: [
+          {
+            id: "plan-vpn-package",
+            code: "VPN_PACKAGE_1",
+            name: "Business VPN",
+            resources: {},
+            offers: [],
+          },
+        ],
+      },
+      currency: "IDR",
+    })
+
+    const view = render(<ProductEditor productCode="VPN" isNew={false} />)
+
+    await waitFor(() =>
+      expect(view.getByText("Selected from VPN package")).toBeTruthy()
+    )
+    expect(view.getByText("Back to VPN packages")).toHaveAttribute(
+      "href",
+      "/en/portal/vpn/packages"
+    )
+    expect(view.getByText(/Pricing required/)).toBeTruthy()
+    expect(
+      view.container.querySelector('input[aria-label="IDR MONTHLY price"]')
+    ).toBeTruthy()
   })
 })

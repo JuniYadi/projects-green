@@ -1,6 +1,15 @@
 import type { Prisma } from "@prisma/client"
 
+import { isValidVpnCatalogOffer } from "../catalog/vpn-catalog-eligibility"
+
 export const publicPackageInclude = {
+  servicePlan: {
+    select: {
+      id: true,
+      isActive: true,
+      package: { select: { code: true, isActive: true } },
+    },
+  },
   servers: {
     include: {
       server: {
@@ -30,8 +39,10 @@ type PublicPricingPayload = {
   isActive: boolean
 }
 
-type PublicPackageWithPricing = PublicPackagePayload & {
-  servicePlan: { pricings: PublicPricingPayload[] }
+type PublicPlanStatus = NonNullable<PublicPackagePayload["servicePlan"]>
+
+type PublicPackageWithPricing = Omit<PublicPackagePayload, "servicePlan"> & {
+  servicePlan: PublicPlanStatus & { pricings: PublicPricingPayload[] }
 }
 
 type PackageServerPayload = PublicPackagePayload["servers"][number]["server"]
@@ -133,21 +144,7 @@ function summaryFields(
   )
   const pricings = pkg.servicePlan.pricings
   const offers: VpnPublicPackageOfferDTO[] = pricings
-    .filter((pricing) => {
-      if (
-        !pricing.isActive ||
-        pricing.type !== "BUNDLE" ||
-        pricing.billingMode !== "PACKAGE"
-      )
-        return false
-      if (!pricing.billingPeriod || !(pricing.billingPeriod in PERIOD_MONTHS))
-        return false
-      if (!pricing.periodPrice || pricing.periodPrice.lt(0)) return false
-      return (
-        pricing.effectiveFrom <= at &&
-        (!pricing.effectiveTo || at < pricing.effectiveTo)
-      )
-    })
+    .filter((pricing) => isValidVpnCatalogOffer(pricing, at))
     .sort((a, b) => a.effectiveFrom.getTime() - b.effectiveFrom.getTime())
     .map((pricing) => {
       const conversion = conversions.get(pricing.id)
