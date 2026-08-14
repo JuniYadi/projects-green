@@ -1135,6 +1135,8 @@ export type VoucherCurrencyPolicy =
 
 export type VoucherStatus = "ACTIVE" | "EXPIRED" | "DEPLETED" | "DISABLED"
 
+export type VoucherInitialStatus = Extract<VoucherStatus, "ACTIVE" | "DISABLED">
+
 export type VoucherClaimDTO = {
   id: string
   voucherId: string
@@ -1194,16 +1196,54 @@ export type VoucherListResponse = {
   total: number
 }
 
-export type VoucherCreateInput = {
+type VoucherCreateBase = {
   prefix?: string
   maxClaims: number
   expiresAt: string
-  amount: number
-  currency?: string
+  status?: VoucherInitialStatus
   targetWorkosUserId?: string
   targetOrganizationId?: string
   metadataJson?: Record<string, unknown>
+}
+
+export type BalanceCreditVoucherCreateInput = VoucherCreateBase & {
+  kind?: "BALANCE_CREDIT"
+  amount: number
+  currency?: string
+}
+
+type ProductPromotionEligibility =
+  | {
+      allowedPackageCodes: string[]
+      allowedPlanCodes?: string[]
+    }
+  | {
+      allowedPackageCodes?: string[]
+      allowedPlanCodes: string[]
+    }
+
+export type ProductPromotionCreateInput = VoucherCreateBase &
+  ProductPromotionEligibility & {
+    kind: "PRODUCT_PROMOTION"
+    discountType: VoucherDiscountType
+    discountValue: number
+    discountCurrency?: string
+    currencyPolicy: VoucherCurrencyPolicy
+    firstCheckoutOnly?: boolean
+    allowUpgrade?: boolean
+    stackable?: boolean
+    minimumOrderAmount?: number
+    maximumDiscountAmount?: number
+    allowedBillingPeriods: string[]
+  }
+
+export type VoucherCreateInput =
+  | BalanceCreditVoucherCreateInput
+  | ProductPromotionCreateInput
+
+export type VoucherUpdateInput = Partial<VoucherCreateInput> & {
   kind?: VoucherKind
+  status?: VoucherInitialStatus
   discountType?: VoucherDiscountType | null
   discountValue?: number | null
   discountCurrency?: string | null
@@ -1217,8 +1257,6 @@ export type VoucherCreateInput = {
   allowedPlanCodes?: string[] | null
   allowedBillingPeriods?: string[] | null
 }
-
-export type VoucherUpdateInput = Partial<VoucherCreateInput>
 
 export function voucherKindLabel(kind: VoucherKind): string {
   return kind === "BALANCE_CREDIT" ? "Balance Credit" : "Product Promotion"
