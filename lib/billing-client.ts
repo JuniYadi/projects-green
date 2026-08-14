@@ -1060,6 +1060,81 @@ export async function getCatalogProduct(
     `/api/billing/catalog/${code}${query}`
   )
 }
+
+// ─── Admin Catalog Write ──────────────────────────────────────────────────────
+
+export type PublishCatalogProductInput = {
+  code: string
+  name: string
+  description?: string
+  isActive?: boolean
+  plans: Array<{
+    code: string
+    name: string
+    resources?: Record<string, unknown>
+    isActive?: boolean
+    offers: Array<{
+      regionId?: string
+      billingPeriod: string
+      chargeUnit: "SUBSCRIPTION" | "DEVICE"
+      periodPrice: number
+      currency: string
+      effectiveFrom: string
+      effectiveTo?: string | null
+      isActive?: boolean
+    }>
+  }>
+  addons?: Array<{
+    code: string
+    name: string
+    description?: string
+    billingMode?: "RECURRING" | "ONE_TIME" | "USAGE"
+    isActive?: boolean
+    prices: Array<{
+      billingPeriod: string
+      currency: string
+      amount: number
+      effectiveFrom: string
+      effectiveTo?: string | null
+      isActive?: boolean
+    }>
+    planAttachments?: Array<{
+      planCode: string
+      label?: string
+      description?: string
+      isRequired?: boolean
+      displayOrder?: number
+      enabledTerms?: Record<string, unknown>
+      isActive?: boolean
+    }>
+  }>
+}
+
+export async function publishCatalogProduct(
+  code: string,
+  input: PublishCatalogProductInput
+): Promise<{ ok: true; data: unknown }> {
+  return fetchBilling<{ ok: true; data: unknown }>(
+    `/api/billing/admin/catalog/products/${encodeURIComponent(code)}/publish`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    }
+  )
+}
+
+export async function saveCatalogDraft(
+  code: string,
+  input: PublishCatalogProductInput
+): Promise<{ ok: true; data: unknown }> {
+  return fetchBilling<{ ok: true; data: unknown }>(
+    `/api/billing/admin/catalog/products/${encodeURIComponent(code)}/publish`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    }
+  )
+}
 // ─── Admin Vouchers / Promotions ──────────────────────────────────────────────
 
 export type VoucherKind = "BALANCE_CREDIT" | "PRODUCT_PROMOTION"
