@@ -200,6 +200,7 @@ export type VpnSubscriptionItem = {
   organizationName: string | null
   packageId: string
   packageName: string
+  serviceSubscriptionId: string | null
   status: "ACTIVE" | "SUSPENDED" | "EXPIRED"
   currentPeriodStart: string
   currentPeriodEnd: string

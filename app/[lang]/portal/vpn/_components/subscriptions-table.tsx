@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useCallback, useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   type ColumnDef,
@@ -180,6 +181,24 @@ function getColumns(): ColumnDef<VpnSubscriptionItem>[] {
       cell: ({ row }) => (
         <span className="text-sm">{row.original.packageName}</span>
       ),
+    },
+    {
+      id: "commercialSubscription",
+      header: "Commercial billing",
+      cell: ({ row }) =>
+        row.original.serviceSubscriptionId ? (
+          <Link
+            href={`/portal/billing/subscriptions?subscriptionId=${encodeURIComponent(row.original.serviceSubscriptionId)}`}
+            className="text-sm font-medium text-primary hover:underline"
+            onClick={(event) => event.stopPropagation()}
+          >
+            View in Billing
+          </Link>
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            Unavailable (legacy)
+          </span>
+        ),
     },
     {
       accessorKey: "status",

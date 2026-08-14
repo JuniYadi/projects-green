@@ -451,6 +451,7 @@ export type AdminSubscriptionItem = {
   invoiceStatus?: string | null
   fulfillment?: Record<string, unknown> | null
   cancelAtPeriodEnd?: boolean
+  vpnSubscriptionId?: string | null
 }
 
 export type AdminSubscriptionsResponse = {

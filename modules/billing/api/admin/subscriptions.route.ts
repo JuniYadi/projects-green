@@ -11,6 +11,10 @@ import {
   adminSubscriptionUpdateSchema,
   adminSubscriptionCreateSchema,
 } from "../billing.schemas"
+import {
+  adminSubscriptionInclude,
+  toAdminSubscriptionDTO,
+} from "./subscriptions.dto"
 import { emitBillingAudit } from "@/modules/billing/audit/audit.service"
 import type { BillingOrderService } from "@/modules/billing/orders/order.service"
 
@@ -81,13 +85,6 @@ const toServerError = (set: RouteSet, message: string) => {
     message,
   }
 }
-const PERIOD_MONTHS = {
-  MONTHLY: 1,
-  QUARTERLY: 3,
-  SEMI_ANNUAL: 6,
-  ANNUAL: 12,
-} as const
-
 async function resolveActor(
   auth: BillingAuthContext,
   getPlatformRole: AdminSubscriptionRouteDeps["getPlatformRole"]
@@ -161,29 +158,7 @@ export const createAdminSubscriptionRoutes = (
           const [subscriptions, total] = await Promise.all([
             prisma.serviceSubscription.findMany({
               where,
-              include: {
-                package: { select: { code: true } },
-                plan: { select: { code: true } },
-                pricing: {
-                  select: {
-                    billingMode: true,
-                    type: true,
-                    basePriceIdr: true,
-                    billingPeriod: true,
-                    periodPrice: true,
-                    currency: true,
-                    chargeUnit: true,
-                    region: { select: { code: true } },
-                  },
-                },
-                orders: {
-                  orderBy: { createdAt: "desc" },
-                  take: 1,
-                  include: {
-                    billingInvoice: { select: { status: true } },
-                  },
-                },
-              },
+              include: adminSubscriptionInclude,
               orderBy: { createdAt: "desc" },
               skip,
               take: limit,
@@ -191,53 +166,7 @@ export const createAdminSubscriptionRoutes = (
             prisma.serviceSubscription.count({ where }),
           ])
 
-          const formatted = subscriptions.map((sub) => {
-            const snapshot = sub as typeof sub & {
-              billingPeriod?: keyof typeof PERIOD_MONTHS
-              priceLocked?: { toFixed: (digits: number) => string }
-              currency?: string
-              quantity?: { toString: () => string }
-              orders?: Array<{
-                id: string
-                status: string
-                billingInvoiceId: string | null
-                billingInvoice?: { status: string } | null
-              }>
-            }
-            const period = snapshot.billingPeriod ?? "MONTHLY"
-            const order = snapshot.orders?.[0]
-            return {
-              id: sub.id,
-              organizationId: sub.organizationId,
-              packageCode: sub.package.code,
-              planCode: sub.plan.code,
-              regionCode: sub.pricing.region.code,
-              pricingId: sub.pricingId,
-              billingPeriod: period,
-              periodMonths: PERIOD_MONTHS[period] ?? null,
-              periodPrice:
-                snapshot.priceLocked?.toFixed(2) ??
-                sub.pricing.periodPrice?.toFixed?.(2) ??
-                sub.pricing.basePriceIdr.toFixed(2),
-              currency: snapshot.currency ?? sub.pricing.currency ?? "IDR",
-              quantity: snapshot.quantity?.toString() ?? "1",
-              billingMode: sub.pricing.billingMode,
-              type: sub.pricing.type,
-              status: sub.status,
-              orderId: order?.id ?? null,
-              orderStatus: order?.status ?? null,
-              billingInvoiceId: order?.billingInvoiceId ?? null,
-              invoiceStatus: order?.billingInvoice?.status ?? null,
-              allocatedConfig: sub.allocatedConfig as Record<
-                string,
-                unknown
-              > | null,
-              monthlyRateIdr: sub.pricing.basePriceIdr.toFixed(2),
-              currentPeriodStart: sub.currentPeriodStart?.toISOString() ?? null,
-              currentPeriodEnd: sub.currentPeriodEnd?.toISOString() ?? null,
-              fulfillment: null,
-            }
-          })
+          const formatted = subscriptions.map(toAdminSubscriptionDTO)
 
           return {
             ok: true as const,

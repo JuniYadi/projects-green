@@ -37,6 +37,7 @@ function makeSub(
     organizationName: "Acme Inc",
     packageId: "pkg-1",
     packageName: "Basic VPN",
+    serviceSubscriptionId: "service-sub-1",
     status: "ACTIVE",
     currentPeriodStart: "2024-01-01T00:00:00.000Z",
     currentPeriodEnd: "2024-01-31T23:59:59.000Z",
@@ -114,6 +115,26 @@ describe("SubscriptionsTable", () => {
     const view = render(<SubscriptionsTable />)
 
     await waitFor(() => expect(view.getByText(/1 FAILED/)).toBeTruthy())
+  })
+
+  it("links a related commercial subscription to Billing", async () => {
+    mockListVpnAdminSubscriptions.mockResolvedValue(makeSuccess([makeSub()]))
+    const view = render(<SubscriptionsTable />)
+
+    const link = await view.findByRole("link", { name: "View in Billing" })
+    expect(link.getAttribute("href")).toBe(
+      "/portal/billing/subscriptions?subscriptionId=service-sub-1"
+    )
+  })
+
+  it("shows an explicit unavailable state for a legacy record", async () => {
+    mockListVpnAdminSubscriptions.mockResolvedValue(
+      makeSuccess([makeSub({ serviceSubscriptionId: null })])
+    )
+    const view = render(<SubscriptionsTable />)
+
+    expect(await view.findByText("Unavailable (legacy)")).toBeTruthy()
+    expect(view.queryByRole("link", { name: "View in Billing" })).toBeNull()
   })
 
   it("hides Retry All Failed button when no failed accounts", async () => {

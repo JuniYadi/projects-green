@@ -38,6 +38,19 @@ describe("buildAppBreadcrumbItems", () => {
     ])
   })
 
+  it("labels the portal VPN subscriptions route as operations", () => {
+    expect(
+      buildAppBreadcrumbItems({
+        pathname: "/en/portal/vpn/subscriptions",
+        rootSegment: "portal",
+      })
+    ).toEqual([
+      { label: "Portal", href: "/en/portal" },
+      { label: "VPN", href: "/en/portal/vpn" },
+      { label: "VPN Operations", href: undefined },
+    ])
+  })
+
   it("uses generic detail labels for dynamic id-like route segments", () => {
     expect(
       buildAppBreadcrumbItems({
