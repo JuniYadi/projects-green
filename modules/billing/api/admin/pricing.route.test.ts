@@ -6,6 +6,10 @@ import { CurrencyNotFoundError } from "../../currency.service"
 import { createAdminPricingRoutes } from "./pricing.route"
 
 const getCurrencyByCode = mock(async () => ({ isActive: true }))
+const convertCurrency = mock(
+  async (amount: number | Prisma.Decimal, _from: string, _to: string) =>
+    new Prisma.Decimal(amount.toString())
+)
 
 const guard = mock(async () => ({
   ok: true as const,
@@ -58,7 +62,10 @@ function app() {
       createAdminPricingRoutes({
         requireSuperAdmin: guard,
         prisma: db as never,
-        currencyService: { getByCode: getCurrencyByCode } as never,
+        currencyService: {
+          getByCode: getCurrencyByCode,
+          convert: convertCurrency,
+        } as never,
       })
     )
     .compile()
@@ -80,6 +87,10 @@ describe("admin pricing routes", () => {
       platformRole: "super_admin" as const,
     })
     getCurrencyByCode.mockResolvedValue({ isActive: true })
+    convertCurrency.mockImplementation(
+      async (amount: number | Prisma.Decimal, _from: string, _to: string) =>
+        new Prisma.Decimal(amount.toString())
+    )
   })
 
   it("rejects negative prices and non-recurring periods", async () => {
@@ -346,6 +357,101 @@ describe("admin pricing routes", () => {
           currency: "IDR",
           periodPrice: expect.any(Prisma.Decimal),
           basePriceIdr: expect.any(Prisma.Decimal),
+        }),
+      })
+    )
+  })
+
+  it("converts USD periodPrice to IDR for basePriceIdr on create", async () => {
+    db.servicePlan.findUnique.mockResolvedValueOnce({ id: "plan-1" })
+    db.serviceRegion.findUnique.mockResolvedValueOnce({ id: "region-1" })
+    db.servicePricing.findFirst.mockResolvedValueOnce(null)
+    convertCurrency.mockResolvedValueOnce(new Prisma.Decimal("160000"))
+    db.servicePricing.create.mockResolvedValueOnce({
+      ...pricing,
+      currency: "USD",
+      periodPrice: new Prisma.Decimal("10"),
+      basePriceIdr: new Prisma.Decimal("160000"),
+    })
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/pricing", "POST", {
+        planId: "plan-1",
+        regionId: "region-1",
+        billingPeriod: "MONTHLY",
+        chargeUnit: "SUBSCRIPTION",
+        periodPrice: "10",
+        currency: "USD",
+        effectiveFrom: "2026-01-01T00:00:00.000Z",
+        isActive: true,
+      })
+    )
+    expect(response.status).toBe(201)
+    expect(convertCurrency).toHaveBeenCalledWith(10, "USD", "IDR")
+    expect(db.servicePricing.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          periodPrice: new Prisma.Decimal("10"),
+          basePriceIdr: new Prisma.Decimal("160000"),
+          currency: "USD",
+        }),
+      })
+    )
+  })
+
+  it("does not call convert when currency is IDR on create", async () => {
+    db.servicePlan.findUnique.mockResolvedValueOnce({ id: "plan-1" })
+    db.serviceRegion.findUnique.mockResolvedValueOnce({ id: "region-1" })
+    db.servicePricing.findFirst.mockResolvedValueOnce(null)
+    db.servicePricing.create.mockResolvedValueOnce(pricing)
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/pricing", "POST", {
+        planId: "plan-1",
+        regionId: "region-1",
+        billingPeriod: "MONTHLY",
+        chargeUnit: "SUBSCRIPTION",
+        periodPrice: "150000",
+        currency: "IDR",
+        effectiveFrom: "2026-01-01T00:00:00.000Z",
+        isActive: true,
+      })
+    )
+    expect(response.status).toBe(201)
+    expect(convertCurrency).not.toHaveBeenCalled()
+    expect(db.servicePricing.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          basePriceIdr: new Prisma.Decimal("150000"),
+        }),
+      })
+    )
+  })
+
+  it("converts USD periodPrice to IDR for basePriceIdr on patch", async () => {
+    db.servicePricing.findUnique.mockResolvedValueOnce({
+      ...pricing,
+      currency: "USD",
+      periodPrice: new Prisma.Decimal("8"),
+      basePriceIdr: new Prisma.Decimal("128000"),
+    })
+    db.billingOrderLine.findFirst.mockResolvedValueOnce(null)
+    convertCurrency.mockResolvedValueOnce(new Prisma.Decimal("160000"))
+    db.servicePricing.update.mockResolvedValueOnce({
+      ...pricing,
+      currency: "USD",
+      periodPrice: new Prisma.Decimal("10"),
+      basePriceIdr: new Prisma.Decimal("160000"),
+    })
+    const response = await app().handle(
+      jsonRequest("http://localhost/admin/pricing/price-1", "PATCH", {
+        periodPrice: "10",
+      })
+    )
+    expect(response.status).toBe(200)
+    expect(convertCurrency).toHaveBeenCalledWith(10, "USD", "IDR")
+    expect(db.servicePricing.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          basePriceIdr: new Prisma.Decimal("160000"),
         }),
       })
     )
