@@ -31,10 +31,11 @@ import {
   WarningIcon,
   EyeIcon,
 } from "@/components/ui/phosphor-icons"
-import { getCatalogProduct } from "@/lib/billing-client"
+import { getCatalogProduct, publishCatalogProduct } from "@/lib/billing-client"
 import type {
   CatalogProduct,
   CatalogProductDetailResponse,
+  PublishCatalogProductInput,
 } from "@/lib/billing-client"
 import { CatalogBasicsTab } from "@/app/[lang]/portal/billing/catalog/[productCode]/catalog-basics-tab"
 import { CatalogPlansTab } from "@/app/[lang]/portal/billing/catalog/[productCode]/catalog-plans-tab"
@@ -165,14 +166,15 @@ export function ProductEditor({
     setLoading(true)
     setError(null)
     try {
-      const draftKey = `catalog-draft-${productCode}`
-      const savedDraft = localStorage.getItem(draftKey)
-      if (savedDraft) {
-        setState(JSON.parse(savedDraft) as ProductEditorState)
-        return
-      }
-
       if (isNew) {
+        // Check for unsaved draft recovery in localStorage
+        const draftKey = `catalog-draft-${productCode}`
+        const savedDraft = localStorage.getItem(draftKey)
+        if (savedDraft) {
+          setState(JSON.parse(savedDraft) as ProductEditorState)
+          return
+        }
+
         const baseOption =
           PRODUCT_OPTIONS.find((p) => p.value === productCode) ??
           PRODUCT_OPTIONS[0]
@@ -191,6 +193,7 @@ export function ProductEditor({
           preview: false,
         })
       } else {
+        // Always load from server API first
         const response: CatalogProductDetailResponse =
           await getCatalogProduct(productCode)
         if (!response?.product) {
@@ -198,6 +201,9 @@ export function ProductEditor({
           return
         }
         setState(productToEditorState(response.product, response.currency))
+        // Clear any stale localStorage draft since server is authoritative
+        const draftKey = `catalog-draft-${productCode}`
+        localStorage.removeItem(draftKey)
       }
     } catch (err) {
       const message =
@@ -269,15 +275,51 @@ export function ProductEditor({
     state.basics.enabledCurrencies
   )
 
+  const buildPublishPayload = (): PublishCatalogProductInput => {
+    const now = new Date().toISOString()
+    return {
+      code: state.basics.code,
+      name: state.basics.name,
+      description: state.basics.description || undefined,
+      isActive: state.basics.isActive,
+      plans: state.plans
+        .filter((plan) => plan.isActive)
+        .map((plan) => ({
+          code: plan.code,
+          name: plan.name,
+          resources: plan.resources,
+          isActive: plan.isActive,
+          offers: plan.offers
+            .filter((offer) => offer.isActive)
+            .map((offer) => ({
+              regionId: undefined,
+              billingPeriod: offer.billingPeriod,
+              chargeUnit: offer.chargeUnit,
+              periodPrice: Number(offer.periodPrice),
+              currency: offer.currency,
+              effectiveFrom: offer.effectiveFrom || now,
+              effectiveTo: offer.effectiveTo || null,
+              isActive: offer.isActive,
+            })),
+        })),
+    }
+  }
+
   const handleSaveDraft = async () => {
     setSaving(true)
     try {
+      const payload = buildPublishPayload()
+      await publishCatalogProduct(productCode, payload)
+      toast.success("Product saved")
+      setModifiedTabs(new Set())
+      // Clear any localStorage drafts
+      localStorage.removeItem(`catalog-draft-${productCode}`)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save"
+      toast.error(message)
+      // Fall back to localStorage if server save fails
       const draftKey = `catalog-draft-${productCode}`
       localStorage.setItem(draftKey, JSON.stringify(state))
-      toast.success("Draft saved")
-      setModifiedTabs(new Set())
-    } catch {
-      toast.error("Failed to save draft")
     } finally {
       setSaving(false)
     }
@@ -292,17 +334,20 @@ export function ProductEditor({
     setInvalidTabs(new Set())
     setPublishing(true)
     try {
-      const draftKey = `catalog-draft-${productCode}`
+      const payload = buildPublishPayload()
+      await publishCatalogProduct(productCode, payload)
       const nextState: ProductEditorState = {
         ...state,
         publishState: "published",
       }
-      localStorage.setItem(draftKey, JSON.stringify(nextState))
       setState(nextState)
       toast.success("Product published")
       setModifiedTabs(new Set())
-    } catch {
-      toast.error("Failed to publish")
+      // Clear localStorage draft
+      localStorage.removeItem(`catalog-draft-${productCode}`)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to publish"
+      toast.error(message)
     } finally {
       setPublishing(false)
     }
