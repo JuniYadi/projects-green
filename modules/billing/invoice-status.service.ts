@@ -176,14 +176,10 @@ export class InvoiceStatusManager {
         continue
       }
 
-      // Idempotency: skip if reminder already sent today
+      const daysBeforeDue = calendarDaysUntil(invoice.dueAt, now)
       const metadata = (invoice.metadataJson as Record<string, unknown>) ?? {}
-      const lastReminderAt = metadata.lastReminderAt as string | undefined
-      if (lastReminderAt) {
-        const lastDate = new Date(lastReminderAt).toDateString()
-        if (lastDate === now.toDateString()) {
-          continue // Already sent reminder today
-        }
+      if (metadata.lastReminderDaysBefore === daysBeforeDue) {
+        continue
       }
 
       if (this.emailService && invoice.billingAccount?.organizationId) {
@@ -195,6 +191,7 @@ export class InvoiceStatusManager {
             metadataJson: {
               ...metadata,
               lastReminderAt: now.toISOString(),
+              lastReminderDaysBefore: daysBeforeDue,
               reminderCount,
             },
           },

@@ -250,6 +250,7 @@ describe("InvoiceStatusManager", () => {
         data: {
           metadataJson: {
             lastReminderAt: expect.any(String),
+            lastReminderDaysBefore: 3,
             reminderCount: 1,
           },
         },
@@ -284,7 +285,7 @@ describe("InvoiceStatusManager", () => {
       expect(mockSendPaymentReminder).not.toHaveBeenCalled()
     })
 
-    it("skips invoices that already received a reminder today (idempotency)", async () => {
+    it("skips an invoice that already received this reminder", async () => {
       const now = new Date()
       const dueDate = new Date()
       dueDate.setDate(dueDate.getDate() + 1)
@@ -304,6 +305,7 @@ describe("InvoiceStatusManager", () => {
           billingAccount: { organizationId: "org-4" },
           metadataJson: {
             lastReminderAt: now.toISOString(), // sent today
+            lastReminderDaysBefore: 1,
             reminderCount: 2,
           },
         },
@@ -311,9 +313,51 @@ describe("InvoiceStatusManager", () => {
 
       const result = await manager.sendPaymentReminders()
 
-      // Should skip due to idempotency check
+      // Should skip because the one-day reminder was already sent.
       expect(result.sent).toBe(0)
       expect(mockUpdate).not.toHaveBeenCalled() // no update since we skipped
+    })
+
+    it("sends a different reminder type on the same day", async () => {
+      const now = new Date()
+      const dueDate = new Date(now)
+      dueDate.setDate(dueDate.getDate() + 1)
+
+      mockFindMany.mockResolvedValueOnce([
+        {
+          id: "inv-reminder-type",
+          invoiceNumber: "INV-REMINDER-TYPE",
+          totalAmount: { toNumber: () => 500 },
+          currency: "USD",
+          status: "ISSUED",
+          periodStart: now,
+          periodEnd: now,
+          issuedAt: now,
+          dueAt: dueDate,
+          billingAccount: { organizationId: "org-4" },
+          metadataJson: {
+            lastReminderAt: now.toISOString(),
+            lastReminderDaysBefore: 3,
+            reminderCount: 2,
+          },
+        },
+      ])
+      mockUpdate.mockResolvedValue({})
+      mockSendPaymentReminder.mockResolvedValue(undefined)
+
+      const result = await manager.sendPaymentReminders()
+
+      expect(result.sent).toBe(1)
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            metadataJson: expect.objectContaining({
+              lastReminderDaysBefore: 1,
+              reminderCount: 3,
+            }),
+          },
+        })
+      )
     })
 
     it("increments reminderCount for invoices that received previous reminders", async () => {

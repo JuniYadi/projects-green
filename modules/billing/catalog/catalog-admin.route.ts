@@ -11,6 +11,7 @@ import {
   CatalogPackageNotFoundError,
   CatalogPlanNotFoundError,
   CatalogAddonNotFoundError,
+  CatalogRegionNotFoundError,
 } from "./catalog-admin.service"
 import type { RecurringBillingPeriod } from "../pricing/pricing.types"
 
@@ -35,21 +36,36 @@ const upsertPlanSchema = z.object({
   isActive: z.boolean().optional(),
 })
 
-const upsertPricingSchema = z.object({
-  regionId: z.string().trim().min(1),
-  billingPeriod: z.enum(periods),
-  chargeUnit: z.enum(chargeUnits),
-  periodPrice: z.coerce.number().finite().min(0),
-  currency: z
-    .string()
-    .trim()
-    .min(1)
-    .max(8)
-    .transform((v) => v.toUpperCase()),
-  effectiveFrom: z.coerce.date(),
-  effectiveTo: z.coerce.date().optional().nullable(),
-  isActive: z.boolean().optional(),
-})
+const effectiveDateRefinement = (
+  value: { effectiveFrom: Date; effectiveTo?: Date | null },
+  ctx: z.RefinementCtx
+) => {
+  if (value.effectiveTo && value.effectiveTo <= value.effectiveFrom) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["effectiveTo"],
+      message: "effectiveTo must be later than effectiveFrom.",
+    })
+  }
+}
+
+const upsertPricingSchema = z
+  .object({
+    regionId: z.string().trim().min(1),
+    billingPeriod: z.enum(periods),
+    chargeUnit: z.enum(chargeUnits),
+    periodPrice: z.coerce.number().finite().min(0),
+    currency: z
+      .string()
+      .trim()
+      .min(1)
+      .max(8)
+      .transform((v) => v.toUpperCase()),
+    effectiveFrom: z.coerce.date(),
+    effectiveTo: z.coerce.date().optional().nullable(),
+    isActive: z.boolean().optional(),
+  })
+  .superRefine(effectiveDateRefinement)
 
 const upsertAddonSchema = z.object({
   code: z.string().trim().min(1),
@@ -59,35 +75,39 @@ const upsertAddonSchema = z.object({
   isActive: z.boolean().optional(),
 })
 
-const upsertAddonPricingSchema = z.object({
-  billingPeriod: z.enum(periods),
-  currency: z
-    .string()
-    .trim()
-    .min(1)
-    .max(8)
-    .transform((v) => v.toUpperCase()),
-  amount: z.coerce.number().finite().min(0),
-  effectiveFrom: z.coerce.date(),
-  effectiveTo: z.coerce.date().optional().nullable(),
-  isActive: z.boolean().optional(),
-})
+const upsertAddonPricingSchema = z
+  .object({
+    billingPeriod: z.enum(periods),
+    currency: z
+      .string()
+      .trim()
+      .min(1)
+      .max(8)
+      .transform((v) => v.toUpperCase()),
+    amount: z.coerce.number().finite().min(0),
+    effectiveFrom: z.coerce.date(),
+    effectiveTo: z.coerce.date().optional().nullable(),
+    isActive: z.boolean().optional(),
+  })
+  .superRefine(effectiveDateRefinement)
 
-const offerSchema = z.object({
-  regionId: z.string().trim().min(1).optional(),
-  billingPeriod: z.enum(periods),
-  chargeUnit: z.enum(chargeUnits),
-  periodPrice: z.coerce.number().finite().min(0),
-  currency: z
-    .string()
-    .trim()
-    .min(1)
-    .max(8)
-    .transform((v) => v.toUpperCase()),
-  effectiveFrom: z.coerce.date(),
-  effectiveTo: z.coerce.date().optional().nullable(),
-  isActive: z.boolean().optional(),
-})
+const offerSchema = z
+  .object({
+    regionId: z.string().trim().min(1).optional(),
+    billingPeriod: z.enum(periods),
+    chargeUnit: z.enum(chargeUnits),
+    periodPrice: z.coerce.number().finite().min(0),
+    currency: z
+      .string()
+      .trim()
+      .min(1)
+      .max(8)
+      .transform((v) => v.toUpperCase()),
+    effectiveFrom: z.coerce.date(),
+    effectiveTo: z.coerce.date().optional().nullable(),
+    isActive: z.boolean().optional(),
+  })
+  .superRefine(effectiveDateRefinement)
 
 const planAttachmentSchema = z.object({
   planCode: z.string().trim().min(1),
@@ -156,6 +176,9 @@ function handleServiceError(set: RouteSet, error: unknown) {
   }
   if (error instanceof CatalogAddonNotFoundError) {
     return notFound(set, error.message)
+  }
+  if (error instanceof CatalogRegionNotFoundError) {
+    return validationError(set, error.message)
   }
   if (error instanceof Error && error.message.includes("is inactive")) {
     return validationError(set, error.message)
@@ -316,7 +339,7 @@ export const createCatalogAdminRoutes = (deps: CatalogAdminRouteDeps = {}) => {
                 ...plan,
                 offers: plan.offers.map((offer) => ({
                   ...offer,
-                  regionId: offer.regionId ?? "",
+                  regionId: offer.regionId,
                   billingPeriod: offer.billingPeriod as RecurringBillingPeriod,
                   effectiveTo: offer.effectiveTo ?? undefined,
                 })),

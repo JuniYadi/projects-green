@@ -5,9 +5,17 @@ import { createCatalogAdminRoutes } from "./catalog-admin.route"
 import {
   CatalogPackageNotFoundError,
   CatalogPlanNotFoundError,
+  CatalogRegionNotFoundError,
 } from "./catalog-admin.service"
+import type {
+  AdminActorContext,
+  AdminApiError,
+  RouteSet,
+} from "@/modules/admin/api/admin.guards"
 
-const guard = mock(async () => ({
+const guard = mock<
+  (set: RouteSet) => Promise<AdminActorContext | AdminApiError>
+>(async () => ({
   ok: true as const,
   userId: "admin-1",
   platformRole: "super_admin" as const,
@@ -107,7 +115,7 @@ describe("catalog admin routes", () => {
   // ─── Auth guards ────────────────────────────────────────────────────
 
   it("rejects unauthenticated requests", async () => {
-    guard.mockImplementationOnce(async (set: { status?: number | string }) => {
+    guard.mockImplementationOnce(async (set) => {
       set.status = 401
       return {
         ok: false,
@@ -128,7 +136,7 @@ describe("catalog admin routes", () => {
   })
 
   it("rejects non-super-admin requests", async () => {
-    guard.mockImplementationOnce(async (set: { status?: number | string }) => {
+    guard.mockImplementationOnce(async (set) => {
       set.status = 403
       return {
         ok: false,
@@ -267,6 +275,26 @@ describe("catalog admin routes", () => {
       expect(service.upsertPlanPricing).not.toHaveBeenCalled()
     })
 
+    it("rejects a pricing range that ends on its start date", async () => {
+      const response = await app().handle(
+        json(
+          "http://localhost/admin/catalog/products/VPN/plans/plan-1/pricing",
+          {
+            regionId: "region-1",
+            billingPeriod: "MONTHLY",
+            chargeUnit: "SUBSCRIPTION",
+            periodPrice: 150000,
+            currency: "IDR",
+            effectiveFrom: "2026-01-01T00:00:00.000Z",
+            effectiveTo: "2026-01-01T00:00:00.000Z",
+          }
+        )
+      )
+
+      expect(response.status).toBe(422)
+      expect(service.upsertPlanPricing).not.toHaveBeenCalled()
+    })
+
     it("returns 422 for inactive currency", async () => {
       service.upsertPlanPricing.mockRejectedValueOnce(
         new Error("Currency XYZ is inactive.")
@@ -332,6 +360,21 @@ describe("catalog admin routes", () => {
         })
       )
     })
+
+    it("rejects an addon pricing range that ends before it starts", async () => {
+      const response = await app().handle(
+        json("http://localhost/admin/catalog/addons/addon-1/pricing", {
+          billingPeriod: "MONTHLY",
+          currency: "IDR",
+          amount: 25000,
+          effectiveFrom: "2026-02-01T00:00:00.000Z",
+          effectiveTo: "2026-01-01T00:00:00.000Z",
+        })
+      )
+
+      expect(response.status).toBe(422)
+      expect(service.upsertAddonPricing).not.toHaveBeenCalled()
+    })
   })
 
   // ─── POST /admin/catalog/products/:code/publish ─────────────────────
@@ -367,6 +410,41 @@ describe("catalog admin routes", () => {
       expect(service.publishProduct).toHaveBeenCalled()
     })
 
+    it("leaves an omitted offer region for the service to resolve", async () => {
+      const response = await app().handle(
+        json("http://localhost/admin/catalog/products/VPN/publish", {
+          code: "VPN",
+          name: "VPN Service",
+          plans: [
+            {
+              code: "VPN_BASIC",
+              name: "Basic",
+              offers: [
+                {
+                  billingPeriod: "MONTHLY",
+                  chargeUnit: "SUBSCRIPTION",
+                  periodPrice: 150000,
+                  currency: "IDR",
+                  effectiveFrom: "2026-01-01T00:00:00.000Z",
+                },
+              ],
+            },
+          ],
+        })
+      )
+
+      expect(response.status).toBe(200)
+      expect(service.publishProduct).toHaveBeenCalledWith(
+        expect.objectContaining({
+          plans: [
+            expect.objectContaining({
+              offers: [expect.objectContaining({ regionId: undefined })],
+            }),
+          ],
+        })
+      )
+    })
+
     it("rejects when body code mismatches URL param", async () => {
       const response = await app().handle(
         json("http://localhost/admin/catalog/products/VPN/publish", {
@@ -380,6 +458,34 @@ describe("catalog admin routes", () => {
       expect((await response.json()).message).toContain(
         "Body code must match URL param code"
       )
+      expect(service.publishProduct).not.toHaveBeenCalled()
+    })
+
+    it("rejects a published offer with an invalid effective date range", async () => {
+      const response = await app().handle(
+        json("http://localhost/admin/catalog/products/VPN/publish", {
+          code: "VPN",
+          name: "VPN",
+          plans: [
+            {
+              code: "VPN_BASIC",
+              name: "Basic",
+              offers: [
+                {
+                  billingPeriod: "MONTHLY",
+                  chargeUnit: "SUBSCRIPTION",
+                  periodPrice: 150000,
+                  currency: "IDR",
+                  effectiveFrom: "2026-02-01T00:00:00.000Z",
+                  effectiveTo: "2026-01-01T00:00:00.000Z",
+                },
+              ],
+            },
+          ],
+        })
+      )
+
+      expect(response.status).toBe(422)
       expect(service.publishProduct).not.toHaveBeenCalled()
     })
 
@@ -436,6 +542,23 @@ describe("catalog admin routes", () => {
 
       expect(response.status).toBe(500)
       expect((await response.json()).error).toBe("INTERNAL_SERVER_ERROR")
+    })
+
+    it("returns 422 when no active region can price an offer", async () => {
+      service.publishProduct.mockRejectedValueOnce(
+        new CatalogRegionNotFoundError()
+      )
+
+      const response = await app().handle(
+        json("http://localhost/admin/catalog/products/VPN/publish", {
+          code: "VPN",
+          name: "VPN",
+          plans: [],
+        })
+      )
+
+      expect(response.status).toBe(422)
+      expect((await response.json()).message).toContain("No region available")
     })
   })
 })

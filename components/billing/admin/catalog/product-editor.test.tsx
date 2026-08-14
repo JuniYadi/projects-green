@@ -3,6 +3,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 const mockPush = mock()
+const mockPublishCatalogProduct = mock(async () => ({ ok: true, data: {} }))
 const mockSearchParams = {
   get: mock<(key: string) => string | null>(() => null),
   toString: () => "",
@@ -15,6 +16,7 @@ mock.module("next/navigation", () => ({
 }))
 mock.module("@/lib/billing-client", () => ({
   getCatalogProduct: mock(),
+  publishCatalogProduct: mockPublishCatalogProduct,
   billingPeriodLabel: (period: string) => period,
 }))
 
@@ -22,6 +24,8 @@ const { ProductEditor } = await import("./product-editor")
 
 describe("ProductEditor", () => {
   beforeEach(() => {
+    mock.clearAllMocks()
+    mockPublishCatalogProduct.mockResolvedValue({ ok: true, data: {} })
     localStorage.clear()
     mockSearchParams.get.mockReturnValue(null)
   })
@@ -37,7 +41,7 @@ describe("ProductEditor", () => {
     expect(view.getByRole("button", { name: "Save draft" })).toBeTruthy()
   })
 
-  it("restores published status from the persisted draft after reload", async () => {
+  it("persists a published product and clears its offline draft", async () => {
     const draftKey = "catalog-draft-APP_HOSTING"
     localStorage.setItem(
       draftKey,
@@ -98,18 +102,9 @@ describe("ProductEditor", () => {
     const confirmPublish = publishActions.at(-1)!
     await userEvent.setup().click(confirmPublish)
     await waitFor(() => {
-      expect(JSON.parse(localStorage.getItem(draftKey)!).publishState).toBe(
-        "published"
-      )
+      expect(mockPublishCatalogProduct).toHaveBeenCalled()
     })
-    firstView.unmount()
-
-    const reloadedView = render(
-      <ProductEditor productCode="APP_HOSTING" isNew />
-    )
-    await waitFor(() =>
-      expect(reloadedView.getByText("published")).toBeTruthy()
-    )
+    expect(localStorage.getItem(draftKey)).toBeNull()
   })
   it("keeps Publish disabled when required Basics fields are blank", async () => {
     localStorage.setItem(

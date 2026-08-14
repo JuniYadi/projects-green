@@ -81,15 +81,13 @@ export const selectChangedTests = (
       hasAutomaticMapping = true
     }
 
-    if (!coverage) {
-      for (const mapping of findFeatureMappings(path)) {
-        for (const testFile of available) {
-          if (
-            mapping.testPrefixes.some((prefix) => testFile.startsWith(prefix))
-          ) {
-            tests.add(testFile)
-            hasAutomaticMapping = true
-          }
+    for (const mapping of findFeatureMappings(path)) {
+      for (const testFile of available) {
+        if (
+          mapping.testPrefixes.some((prefix) => testFile.startsWith(prefix))
+        ) {
+          tests.add(testFile)
+          hasAutomaticMapping = true
         }
       }
     }

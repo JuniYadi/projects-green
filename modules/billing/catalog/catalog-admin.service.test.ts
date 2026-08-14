@@ -5,9 +5,12 @@ import {
   CatalogAdminService,
   CatalogPackageNotFoundError,
   CatalogPlanNotFoundError,
+  CatalogRegionNotFoundError,
 } from "./catalog-admin.service"
 
-const mockCurrency = mock(async () => ({
+type MockFunction = (...args: unknown[]) => unknown
+
+const mockCurrency = mock<() => Promise<unknown>>(async () => ({
   isActive: true,
   code: "IDR",
   ratePerBase: new Prisma.Decimal("16000"),
@@ -19,57 +22,81 @@ const mockConvert = mock(
 
 const db = {
   servicePackage: {
-    findFirst: mock(() => null),
-    create: mock(() => ({ id: "pkg-1", code: "VPN", name: "VPN" })),
-    update: mock(() => ({ id: "pkg-1", code: "VPN", name: "VPN Updated" })),
+    findFirst: mock<MockFunction>(() => null),
+    create: mock<MockFunction>(() => ({
+      id: "pkg-1",
+      code: "VPN",
+      name: "VPN",
+    })),
+    update: mock<MockFunction>(() => ({
+      id: "pkg-1",
+      code: "VPN",
+      name: "VPN Updated",
+    })),
   },
   servicePlan: {
-    findFirst: mock(() => null),
-    create: mock(() => ({
+    findFirst: mock<MockFunction>(() => null),
+    create: mock<MockFunction>(() => ({
       id: "plan-1",
       code: "VPN_BASIC",
       name: "Basic",
     })),
-    update: mock(() => ({
+    update: mock<MockFunction>(() => ({
       id: "plan-1",
       code: "VPN_BASIC",
       name: "Basic Updated",
     })),
   },
   servicePricing: {
-    findFirst: mock(() => null),
-    create: mock(() => ({
+    findFirst: mock<MockFunction>(() => null),
+    create: mock<MockFunction>(() => ({
       id: "pricing-1",
       planId: "plan-1",
       regionId: "region-1",
     })),
-    update: mock(() => ({
+    update: mock<MockFunction>(() => ({
       id: "pricing-1",
       planId: "plan-1",
       regionId: "region-1",
     })),
   },
   serviceAddon: {
-    findFirst: mock(() => null),
-    create: mock(() => ({ id: "addon-1", code: "EXTRA_IP", name: "Extra IP" })),
-    update: mock(() => ({
+    findFirst: mock<MockFunction>(() => null),
+    create: mock<MockFunction>(() => ({
+      id: "addon-1",
+      code: "EXTRA_IP",
+      name: "Extra IP",
+    })),
+    update: mock<MockFunction>(() => ({
       id: "addon-1",
       code: "EXTRA_IP",
       name: "Extra IP Updated",
     })),
   },
   serviceAddonPricing: {
-    findFirst: mock(() => null),
-    create: mock(() => ({ id: "ap-1", addonId: "addon-1" })),
-    update: mock(() => ({ id: "ap-1", addonId: "addon-1" })),
+    findFirst: mock<MockFunction>(() => null),
+    create: mock<MockFunction>(() => ({ id: "ap-1", addonId: "addon-1" })),
+    update: mock<MockFunction>(() => ({ id: "ap-1", addonId: "addon-1" })),
   },
   servicePlanAddon: {
-    findFirst: mock(() => null),
-    create: mock(() => ({ id: "spa-1", planId: "plan-1", addonId: "addon-1" })),
-    update: mock(() => ({ id: "spa-1", planId: "plan-1", addonId: "addon-1" })),
+    findFirst: mock<MockFunction>(() => null),
+    create: mock<MockFunction>(() => ({
+      id: "spa-1",
+      planId: "plan-1",
+      addonId: "addon-1",
+    })),
+    update: mock<MockFunction>(() => ({
+      id: "spa-1",
+      planId: "plan-1",
+      addonId: "addon-1",
+    })),
   },
   serviceRegion: {
-    findFirst: mock(() => ({ id: "region-1", code: "ID", isActive: true })),
+    findFirst: mock<MockFunction>(() => ({
+      id: "region-1",
+      code: "ID",
+      isActive: true,
+    })),
   },
   $transaction: mock(async (fn: (tx: typeof db) => unknown) => fn(db)),
 }
@@ -682,6 +709,41 @@ describe("CatalogAdminService", () => {
           ],
         })
       ).rejects.toThrow(CatalogPlanNotFoundError)
+    })
+
+    it("throws CatalogRegionNotFoundError without an offer region or default", async () => {
+      db.servicePackage.findFirst
+        .mockReturnValueOnce(null)
+        .mockReturnValueOnce({ id: "pkg-1", code: "VPN" })
+      db.servicePlan.create.mockReturnValue({
+        id: "plan-1",
+        code: "VPN_BASIC",
+        name: "Basic",
+      })
+      db.serviceRegion.findFirst.mockReturnValue(null)
+
+      const service = createService()
+      await expect(
+        service.publishProduct({
+          code: "VPN",
+          name: "VPN",
+          plans: [
+            {
+              code: "VPN_BASIC",
+              name: "Basic",
+              offers: [
+                {
+                  billingPeriod: "MONTHLY",
+                  chargeUnit: "SUBSCRIPTION",
+                  periodPrice: 150000,
+                  currency: "IDR",
+                  effectiveFrom: new Date("2026-01-01"),
+                },
+              ],
+            },
+          ],
+        })
+      ).rejects.toThrow(CatalogRegionNotFoundError)
     })
 
     it("uses default region when offer has no regionId", async () => {

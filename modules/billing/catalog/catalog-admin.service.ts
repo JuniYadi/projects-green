@@ -74,7 +74,7 @@ export type PublishProductInput = {
     resources?: Record<string, unknown>
     isActive?: boolean
     offers: Array<{
-      regionId: string
+      regionId?: string
       billingPeriod: RecurringBillingPeriod
       chargeUnit: "SUBSCRIPTION" | "DEVICE"
       periodPrice: number
@@ -130,6 +130,13 @@ export class CatalogAddonNotFoundError extends Error {
   constructor(code: string) {
     super(`Addon not found: ${code}`)
     this.name = "CatalogAddonNotFoundError"
+  }
+}
+
+export class CatalogRegionNotFoundError extends Error {
+  constructor() {
+    super("No region available for pricing. Create a region first.")
+    this.name = "CatalogRegionNotFoundError"
   }
 }
 
@@ -433,9 +440,7 @@ export class CatalogAdminService {
         for (const offer of planInput.offers) {
           const regionId = offer.regionId ?? defaultRegion?.id
           if (!regionId) {
-            throw new Error(
-              "No region available for pricing. Create a region first."
-            )
+            throw new CatalogRegionNotFoundError()
           }
 
           await txService.upsertPlanPricing({

@@ -1122,19 +1122,6 @@ export async function publishCatalogProduct(
     }
   )
 }
-
-export async function saveCatalogDraft(
-  code: string,
-  input: PublishCatalogProductInput
-): Promise<{ ok: true; data: unknown }> {
-  return fetchBilling<{ ok: true; data: unknown }>(
-    `/api/billing/admin/catalog/products/${encodeURIComponent(code)}/publish`,
-    {
-      method: "POST",
-      body: JSON.stringify(input),
-    }
-  )
-}
 // ─── Admin Vouchers / Promotions ──────────────────────────────────────────────
 
 export type VoucherKind = "BALANCE_CREDIT" | "PRODUCT_PROMOTION"

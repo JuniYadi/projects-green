@@ -60,5 +60,6 @@ export const billingRoutes = new Elysia({ prefix: "/billing" })
   .use(createAdminAddonsRoutes())
   .use(createAdminPromotionsRoutes())
   .use(createCatalogRoutes())
-  .use(createCatalogAdminRoutes())
+  // Keep the app-level Elysia type graph within TypeScript's instantiation limit.
+  .use(createCatalogAdminRoutes() as unknown as Elysia)
   .use(createAdminAuditLogRoutes())
