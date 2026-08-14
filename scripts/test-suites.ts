@@ -11,6 +11,12 @@ export type FeatureMapping = {
 
 export const FEATURE_MAPPINGS: FeatureMapping[] = [
   {
+    name: "api",
+    sourcePrefixes: ["lib/api.ts"],
+    testPrefixes: ["lib/api.openapi.test.ts"],
+    smokeProjects: [],
+  },
+  {
     name: "deploy",
     sourcePrefixes: [
       "modules/deploy/",

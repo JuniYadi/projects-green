@@ -80,6 +80,18 @@ describe("selectChangedTests", () => {
     })
   })
 
+  test("selects the OpenAPI contract test for the application entrypoint", () => {
+    const selection = selectChangedTests(
+      ["lib/api.ts"],
+      ["lib/api.openapi.test.ts"]
+    )
+
+    expect(selection).toEqual({
+      testFiles: ["lib/api.openapi.test.ts"],
+      unmappedProductionPaths: [],
+    })
+  })
+
   test("selects every test when shared setup changes", () => {
     const selection = selectChangedTests(["test/setup.ts"], availableTests)
 
@@ -166,7 +178,13 @@ if (!runningNested) {
         cwd: import.meta.dir + "/..",
         stdout: "pipe",
         stderr: "pipe",
-        env: { ...process.env, [NESTED_RUN_GUARD]: "1" },
+        env: {
+          ...process.env,
+          DATABASE_URL:
+            process.env.DATABASE_URL ??
+            "postgresql://postgres:postgres@localhost:5432/pfnapp_v2?schema=public",
+          [NESTED_RUN_GUARD]: "1",
+        },
       }
     )
     const stdout = await new Response(proc.stdout).text()
