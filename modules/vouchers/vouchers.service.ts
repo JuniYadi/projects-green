@@ -16,6 +16,7 @@ import {
   VoucherAlreadyDisabledError,
   VoucherNotAPromotionError,
   VoucherDiscountConfigurationError,
+  VoucherKindFieldMismatchError,
 } from "./vouchers.errors"
 
 type CreateVoucherData = {
@@ -224,6 +225,16 @@ export class VoucherService {
     const existing = await this.prisma.voucher.findUnique({ where: { id } })
     if (!existing) {
       throw new VoucherNotFoundError(id)
+    }
+
+    // ─── Cross-kind field guard ─────────────────────────────────────────
+    const invalidFields: string[] = []
+    if (existing.kind === "PRODUCT_PROMOTION") {
+      if (data.amount !== undefined) invalidFields.push("amount")
+      if (data.currency !== undefined) invalidFields.push("currency")
+    }
+    if (invalidFields.length > 0) {
+      throw new VoucherKindFieldMismatchError(existing.kind, invalidFields)
     }
 
     if (
