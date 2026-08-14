@@ -10,6 +10,7 @@ import {
   VoucherAlreadyClaimedError,
   VoucherTargetUserMismatchError,
   VoucherTargetOrgMismatchError,
+  VoucherKindFieldMismatchError,
 } from "./vouchers.errors"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -616,6 +617,112 @@ describe("VoucherService", () => {
 
       expect(claims).toHaveLength(1)
       expect(claims[0].voucher.code).toBe("TEST1234")
+    })
+  })
+
+  // ─── updateVoucher ────────────────────────────────────────────────────
+
+  describe("updateVoucher", () => {
+    it("throws VoucherNotFoundError when voucher does not exist", async () => {
+      const prisma = createMockPrisma()
+      prisma.voucher.findUnique = mock(() => null)
+
+      const service = new VoucherService(prisma as PrismaClient)
+      await expect(
+        service.updateVoucher("missing", { maxClaims: 5 })
+      ).rejects.toThrow(VoucherNotFoundError)
+    })
+
+    it("allows updating amount on a BALANCE_CREDIT voucher", async () => {
+      const prisma = createMockPrisma()
+      prisma.voucher.findUnique = mock(() => ({
+        id: "v_1",
+        kind: "BALANCE_CREDIT",
+        claimedCount: 0,
+      }))
+      prisma.voucher.update = mock(() => ({
+        id: "v_1",
+        kind: "BALANCE_CREDIT",
+        amount: { toString: () => "75000" },
+      }))
+
+      const service = new VoucherService(prisma as PrismaClient)
+      const result = await service.updateVoucher("v_1", { amount: 75000 })
+
+      expect(result.id).toBe("v_1")
+      expect(prisma.voucher.update).toHaveBeenCalled()
+    })
+
+    it("rejects amount field on a PRODUCT_PROMOTION voucher", async () => {
+      const prisma = createMockPrisma()
+      prisma.voucher.findUnique = mock(() => ({
+        id: "v_1",
+        kind: "PRODUCT_PROMOTION",
+        claimedCount: 0,
+      }))
+
+      const service = new VoucherService(prisma as PrismaClient)
+      await expect(
+        service.updateVoucher("v_1", { amount: 50000 })
+      ).rejects.toThrow(VoucherKindFieldMismatchError)
+    })
+
+    it("rejects currency field on a PRODUCT_PROMOTION voucher", async () => {
+      const prisma = createMockPrisma()
+      prisma.voucher.findUnique = mock(() => ({
+        id: "v_1",
+        kind: "PRODUCT_PROMOTION",
+        claimedCount: 0,
+      }))
+
+      const service = new VoucherService(prisma as PrismaClient)
+      await expect(
+        service.updateVoucher("v_1", { currency: "USD" })
+      ).rejects.toThrow(VoucherKindFieldMismatchError)
+    })
+
+    it("reports both amount and currency as invalid fields together", async () => {
+      const prisma = createMockPrisma()
+      prisma.voucher.findUnique = mock(() => ({
+        id: "v_1",
+        kind: "PRODUCT_PROMOTION",
+        claimedCount: 0,
+      }))
+
+      const service = new VoucherService(prisma as PrismaClient)
+      try {
+        await service.updateVoucher("v_1", {
+          amount: 50000,
+          currency: "IDR",
+        })
+        expect.unreachable("should have thrown")
+      } catch (err) {
+        expect(err).toBeInstanceOf(VoucherKindFieldMismatchError)
+        expect((err as VoucherKindFieldMismatchError).invalidFields).toEqual([
+          "amount",
+          "currency",
+        ])
+      }
+    })
+
+    it("allows maxClaims and expiresAt on a PRODUCT_PROMOTION voucher", async () => {
+      const prisma = createMockPrisma()
+      prisma.voucher.findUnique = mock(() => ({
+        id: "v_1",
+        kind: "PRODUCT_PROMOTION",
+        claimedCount: 2,
+      }))
+      prisma.voucher.update = mock(() => ({
+        id: "v_1",
+        kind: "PRODUCT_PROMOTION",
+        maxClaims: 10,
+      }))
+
+      const service = new VoucherService(prisma as PrismaClient)
+      const result = await service.updateVoucher("v_1", { maxClaims: 10 })
+
+      expect(result.id).toBe("v_1")
+      expect(prisma.voucher.update).toHaveBeenCalled()
     })
   })
 })

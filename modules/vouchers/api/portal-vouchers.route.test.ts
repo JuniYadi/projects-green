@@ -137,6 +137,25 @@ describe("Portal Voucher Routes", () => {
         .calls[0]?.[0]
       expect(listVouchersArgs?.organizationId).toBe("org_1")
     })
+
+    it("passes kind to listVouchers for server-side type filtering", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.service.listVouchers = mock(async () => ({
+        vouchers: [],
+        total: 0,
+      }))
+
+      const response = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal?kind=PRODUCT_PROMOTION")
+      )
+
+      expect(response.status).toBe(200)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const listVouchersArgs = (deps.service.listVouchers as any).mock
+        .calls[0]?.[0]
+      expect(listVouchersArgs?.kind).toBe("PRODUCT_PROMOTION")
+    })
   })
 
   describe("POST /vouchers/portal", () => {

@@ -16,6 +16,7 @@ import {
   VoucherAlreadyDisabledError,
   VoucherNotAPromotionError,
   VoucherDiscountConfigurationError,
+  VoucherKindFieldMismatchError,
 } from "./vouchers.errors"
 
 type CreateVoucherData = {
@@ -41,6 +42,7 @@ type UpdateVoucherData = {
 }
 
 type ListVouchersParams = {
+  kind?: string
   status?: string
   prefix?: string
   limit?: number
@@ -127,6 +129,9 @@ export class VoucherService {
   async listVouchers(params: ListVouchersParams = {}) {
     const where: Prisma.VoucherWhereInput = {}
 
+    if (params.kind) {
+      where.kind = params.kind as Prisma.EnumVoucherKindFilter["equals"]
+    }
     if (params.status) {
       where.status = params.status as Prisma.EnumVoucherStatusFilter["equals"]
     }
@@ -220,6 +225,16 @@ export class VoucherService {
     const existing = await this.prisma.voucher.findUnique({ where: { id } })
     if (!existing) {
       throw new VoucherNotFoundError(id)
+    }
+
+    // ─── Cross-kind field guard ─────────────────────────────────────────
+    const invalidFields: string[] = []
+    if (existing.kind === "PRODUCT_PROMOTION") {
+      if (data.amount !== undefined) invalidFields.push("amount")
+      if (data.currency !== undefined) invalidFields.push("currency")
+    }
+    if (invalidFields.length > 0) {
+      throw new VoucherKindFieldMismatchError(existing.kind, invalidFields)
     }
 
     if (

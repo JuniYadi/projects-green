@@ -370,11 +370,9 @@ describe("resolveSidebarMenu", () => {
       "Org Overview",
       "Invoices",
       "Payments",
-      "Vouchers",
       "Promotions",
       "Audit Logs",
       "Catalog",
-      "Pricing",
       "Orders",
     ])
     expect(projects.map((project) => project.name)).toEqual(["Back to Portal"])
@@ -408,6 +406,20 @@ describe("resolveSidebarMenu", () => {
     const catalog = navMain.find((item) => item.title === "Catalog")
     expect(catalog?.url).toBe("/en/portal/billing/catalog")
     expect(catalog?.isActive).toBe(true)
+  })
+
+  it("uses one Promotions entry instead of separate voucher navigation", () => {
+    const { navMain } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/billing/promotions",
+      locale: "en",
+    })
+
+    expect(navMain.filter((item) => item.title === "Promotions")).toHaveLength(
+      1
+    )
+    expect(navMain.some((item) => item.title === "Vouchers")).toBe(false)
+    expect(navMain.some((item) => item.title === "Pricing")).toBe(false)
   })
 
   it("marks invoices active when on /portal/billing/invoices", () => {

@@ -60,6 +60,38 @@ describe("selectChangedTests", () => {
     })
   })
 
+  test("selects billing tests mapped to a billing source path", () => {
+    const selection = selectChangedTests(
+      ["modules/billing/catalog/catalog-admin.service.ts"],
+      [
+        "modules/billing/catalog/catalog-admin.route.test.ts",
+        "modules/billing/catalog/catalog-admin.service.test.ts",
+        "modules/vouchers/vouchers.service.test.ts",
+      ]
+    )
+
+    expect(selection).toEqual({
+      testFiles: [
+        "modules/billing/catalog/catalog-admin.route.test.ts",
+        "modules/billing/catalog/catalog-admin.service.test.ts",
+        "modules/vouchers/vouchers.service.test.ts",
+      ],
+      unmappedProductionPaths: [],
+    })
+  })
+
+  test("selects the OpenAPI contract test for the application entrypoint", () => {
+    const selection = selectChangedTests(
+      ["lib/api.ts"],
+      ["lib/api.openapi.test.ts"]
+    )
+
+    expect(selection).toEqual({
+      testFiles: ["lib/api.openapi.test.ts"],
+      unmappedProductionPaths: [],
+    })
+  })
+
   test("selects every test when shared setup changes", () => {
     const selection = selectChangedTests(["test/setup.ts"], availableTests)
 
@@ -69,7 +101,7 @@ describe("selectChangedTests", () => {
     })
   })
 
-  test("keeps coverage direct-test selection tied to changed source", () => {
+  test("selects mapped feature tests during coverage", () => {
     expect(
       selectChangedTests(["modules/example/example.test.tsx"], availableTests, {
         coverage: true,
@@ -77,13 +109,15 @@ describe("selectChangedTests", () => {
     ).toEqual({ testFiles: [], unmappedProductionPaths: [] })
 
     expect(
-      selectChangedTests(
-        ["modules/example/example.tsx", "modules/example/example.test.tsx"],
-        availableTests,
-        { coverage: true }
-      )
+      selectChangedTests(["modules/deploy/new-service.ts"], availableTests, {
+        coverage: true,
+      })
     ).toEqual({
-      testFiles: ["modules/example/example.test.tsx"],
+      testFiles: [
+        "app/api/deploy/route.test.ts",
+        "modules/deploy/deploy.logic.test.ts",
+        "modules/deploy/ui/deploy-wizard-v2.test.tsx",
+      ],
       unmappedProductionPaths: [],
     })
   })
@@ -144,7 +178,13 @@ if (!runningNested) {
         cwd: import.meta.dir + "/..",
         stdout: "pipe",
         stderr: "pipe",
-        env: { ...process.env, [NESTED_RUN_GUARD]: "1" },
+        env: {
+          ...process.env,
+          DATABASE_URL:
+            process.env.DATABASE_URL ??
+            "postgresql://postgres:postgres@localhost:5432/pfnapp_v2?schema=public",
+          [NESTED_RUN_GUARD]: "1",
+        },
       }
     )
     const stdout = await new Response(proc.stdout).text()
@@ -153,5 +193,5 @@ if (!runningNested) {
 
     expect(exitCode, `stderr: ${stderr}`).toBe(0)
     expect(stdout).toContain(`test:changed: selected: ${TARGET_TEST}`)
-  })
+  }, 20_000)
 }

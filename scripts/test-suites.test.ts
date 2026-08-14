@@ -18,7 +18,18 @@ describe("selectSmokeProjects", () => {
     const selection = selectSmokeProjects(["components/ui/button.tsx"])
 
     expect(selection).toEqual({
-      projects: ["smoke-deploy"],
+      projects: ["smoke-deploy", "smoke-portal"],
+      unmappedUiPaths: [],
+    })
+  })
+
+  test("selects the Billing portal smoke project", () => {
+    const selection = selectSmokeProjects([
+      "app/[lang]/portal/billing/promotions/page.tsx",
+    ])
+
+    expect(selection).toEqual({
+      projects: ["smoke-portal"],
       unmappedUiPaths: [],
     })
   })

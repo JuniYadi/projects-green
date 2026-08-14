@@ -20,10 +20,15 @@
 
 import { test as setup, expect } from "@playwright/test"
 import fs from "fs"
+import path from "path"
 
-const AUTH_FILE = ".auth/user.json"
+const AUTH_FILE = path.resolve(process.cwd(), ".auth/user.json")
 
 setup("authenticate via WorkOS OAuth (manual login)", async ({ page }) => {
+  // Email OTP and OAuth redirects can take longer than Playwright's 30s
+  // default test timeout.
+  setup.setTimeout(10 * 60 * 1000)
+
   fs.mkdirSync(".auth", { recursive: true })
 
   // Navigate to login page
@@ -37,14 +42,16 @@ setup("authenticate via WorkOS OAuth (manual login)", async ({ page }) => {
   // If the user is already logged in (existing session), the login
   // page redirects immediately — that's fine too.
   //
-  // Timeout: 120s to give time for the full OAuth redirect dance.
-  await page.waitForURL("**/console/**", { timeout: 120_000 })
+  // Allow both `/en/console` and nested console pages after login.
+  await page.waitForURL(/\/console(?:\/|$)/, { timeout: 10 * 60 * 1000 })
 
   // Verify we're actually on a console page (authenticated)
-  await expect(page).toHaveURL(/\/console\//)
+  await expect(page).toHaveURL(/\/console(?:\/|$)/)
 
   // Save the authenticated state (cookies + localStorage)
   await page.context().storageState({ path: AUTH_FILE })
 
-  console.log(`\n  ✅ Auth state saved to ${AUTH_FILE}\n`)
+  console.log(
+    `\n  ✅ Auth state saved to ${AUTH_FILE} (${fs.statSync(AUTH_FILE).size} bytes)\n`
+  )
 })

@@ -19,22 +19,30 @@
 
 import { test as setup, expect } from "@playwright/test"
 import fs from "fs"
+import path from "path"
 
-const AUTH_FILE = ".auth/admin.json"
+const AUTH_FILE = path.resolve(process.cwd(), ".auth/admin.json")
 
 setup(
   "authenticate as admin via WorkOS OAuth (manual login)",
   async ({ page }) => {
+    // The Playwright test timeout also covers this interactive setup. Keep the
+    // browser open long enough for email OTP delivery and manual entry.
+    setup.setTimeout(10 * 60 * 1000)
+
     fs.mkdirSync(".auth", { recursive: true })
 
     await page.goto("/en/login")
 
-    // Wait for the user to complete the OAuth flow and land on a console page.
-    await page.waitForURL("**/console/**", { timeout: 120_000 })
-    await expect(page).toHaveURL(/\/console\//)
-
+    // WorkOS may return either `/en/portal` or a nested portal page.
+    // The previous `**/portal/**` pattern required a trailing slash and never
+    // completed when the redirect landed on the portal root.
+    await page.waitForURL(/\/portal(?:\/|$)/, { timeout: 10 * 60 * 1000 })
+    await expect(page).toHaveURL(/\/portal(?:\/|$)/)
     await page.context().storageState({ path: AUTH_FILE })
 
-    console.log(`\n  ✅ Admin auth state saved to ${AUTH_FILE}\n`)
+    console.log(
+      `\n  ✅ Admin auth state saved to ${AUTH_FILE} (${fs.statSync(AUTH_FILE).size} bytes)\n`
+    )
   }
 )

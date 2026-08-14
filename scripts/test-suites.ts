@@ -11,6 +11,12 @@ export type FeatureMapping = {
 
 export const FEATURE_MAPPINGS: FeatureMapping[] = [
   {
+    name: "api",
+    sourcePrefixes: ["lib/api.ts"],
+    testPrefixes: ["lib/api.openapi.test.ts"],
+    smokeProjects: [],
+  },
+  {
     name: "deploy",
     sourcePrefixes: [
       "modules/deploy/",
@@ -20,6 +26,29 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     ],
     testPrefixes: ["modules/deploy/", "app/api/deploy/"],
     smokeProjects: ["smoke-deploy"],
+  },
+  {
+    name: "billing",
+    sourcePrefixes: [
+      "app/[lang]/portal/billing/",
+      "app/[lang]/portal/vpn/",
+      "components/billing/",
+      "lib/billing-client.ts",
+      "modules/billing/",
+      "modules/vouchers/",
+      "scripts/billing-cron.ts",
+    ],
+    testPrefixes: [
+      "components/billing/admin/catalog/product-editor.test.tsx",
+      "lib/billing-client.test.ts",
+      "modules/billing/api/admin/pricing.route.test.ts",
+      "modules/billing/catalog/catalog-admin.route.test.ts",
+      "modules/billing/catalog/catalog-admin.service.test.ts",
+      "modules/billing/invoice-status.service.test.ts",
+      "modules/vouchers/api/portal-vouchers.route.test.ts",
+      "modules/vouchers/vouchers.service.test.ts",
+    ],
+    smokeProjects: ["smoke-portal"],
   },
 ]
 

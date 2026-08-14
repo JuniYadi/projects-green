@@ -35,7 +35,7 @@ type PricingDb = Pick<
 type AdminPricingRouteDeps = {
   requireSuperAdmin?: typeof requireSuperAdmin
   prisma?: PricingDb
-  currencyService?: Pick<CurrencyService, "getByCode">
+  currencyService?: Pick<CurrencyService, "getByCode" | "convert">
 }
 
 const baseInputSchema = z.object({
@@ -116,6 +116,17 @@ function isPrismaConflict(error: unknown) {
     error instanceof Prisma.PrismaClientKnownRequestError &&
     error.code === "P2002"
   )
+}
+
+async function computeBasePriceIdr(
+  periodPrice: number,
+  currency: string,
+  currencies: Pick<CurrencyService, "convert">
+): Promise<Prisma.Decimal> {
+  if (currency === "IDR") {
+    return new Prisma.Decimal(periodPrice)
+  }
+  return currencies.convert(periodPrice, currency, "IDR")
 }
 
 export const createAdminPricingRoutes = (deps: AdminPricingRouteDeps = {}) => {
@@ -211,6 +222,11 @@ export const createAdminPricingRoutes = (deps: AdminPricingRouteDeps = {}) => {
               set,
               "An active price already starts at this effective date."
             )
+          const basePriceIdr = await computeBasePriceIdr(
+            input.periodPrice,
+            input.currency,
+            currencies
+          )
           const created = await db.servicePricing.create({
             data: {
               planId: input.planId,
@@ -220,7 +236,7 @@ export const createAdminPricingRoutes = (deps: AdminPricingRouteDeps = {}) => {
               billingPeriod: input.billingPeriod,
               chargeUnit: input.chargeUnit,
               periodPrice: new Prisma.Decimal(input.periodPrice),
-              basePriceIdr: new Prisma.Decimal(input.periodPrice),
+              basePriceIdr,
               currency: input.currency,
               effectiveFrom: input.effectiveFrom,
               effectiveTo: input.effectiveTo ?? null,
@@ -301,6 +317,11 @@ export const createAdminPricingRoutes = (deps: AdminPricingRouteDeps = {}) => {
             "effectiveTo must be later than effectiveFrom."
           )
         if (charged) {
+          const basePriceIdr = await computeBasePriceIdr(
+            merged.periodPrice,
+            merged.currency,
+            currencies
+          )
           const replacement = await db.$transaction(async (tx) => {
             await tx.servicePricing.update({
               where: { id: params.id },
@@ -315,7 +336,7 @@ export const createAdminPricingRoutes = (deps: AdminPricingRouteDeps = {}) => {
                 billingPeriod: merged.billingPeriod,
                 chargeUnit: merged.chargeUnit,
                 periodPrice: new Prisma.Decimal(merged.periodPrice),
-                basePriceIdr: new Prisma.Decimal(merged.periodPrice),
+                basePriceIdr,
                 currency: merged.currency,
                 effectiveFrom: input.effectiveFrom ?? new Date(),
                 effectiveTo: merged.effectiveTo,
@@ -329,6 +350,11 @@ export const createAdminPricingRoutes = (deps: AdminPricingRouteDeps = {}) => {
             data: toPricingDTO(replacement as PricingWithRelations),
           }
         }
+        const basePriceIdr = await computeBasePriceIdr(
+          merged.periodPrice,
+          merged.currency,
+          currencies
+        )
         const updated = await db.servicePricing.update({
           where: { id: params.id },
           data: {
@@ -339,7 +365,7 @@ export const createAdminPricingRoutes = (deps: AdminPricingRouteDeps = {}) => {
             billingPeriod: merged.billingPeriod,
             chargeUnit: merged.chargeUnit,
             periodPrice: new Prisma.Decimal(merged.periodPrice),
-            basePriceIdr: new Prisma.Decimal(merged.periodPrice),
+            basePriceIdr,
             currency: merged.currency,
             effectiveFrom: merged.effectiveFrom,
             effectiveTo: merged.effectiveTo,

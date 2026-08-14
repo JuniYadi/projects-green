@@ -48,8 +48,10 @@ describe("InvoiceStatusManager", () => {
   })
 
   describe("issueDraftInvoices", () => {
-    it("transitions DRAFT invoices older than 5 days to ISSUED", async () => {
+    it("transitions DRAFT invoices due within 7 days to ISSUED", async () => {
       const now = new Date()
+      const dueDate = new Date(now)
+      dueDate.setUTCDate(dueDate.getUTCDate() + 7)
       mockFindMany.mockResolvedValueOnce([
         {
           id: "inv-1",
@@ -60,7 +62,7 @@ describe("InvoiceStatusManager", () => {
           periodStart: now,
           periodEnd: now,
           issuedAt: null,
-          dueAt: null,
+          dueAt: dueDate,
           billingAccount: { organizationId: "org-1" },
         },
         {
@@ -72,7 +74,7 @@ describe("InvoiceStatusManager", () => {
           periodStart: now,
           periodEnd: now,
           issuedAt: null,
-          dueAt: null,
+          dueAt: dueDate,
           billingAccount: { organizationId: "org-1" },
         },
       ])
@@ -84,7 +86,7 @@ describe("InvoiceStatusManager", () => {
       expect(mockFindMany).toHaveBeenCalledWith({
         where: {
           status: "DRAFT",
-          periodEnd: { lt: expect.any(Date) },
+          dueAt: { lte: expect.any(Date) },
         },
         include: { billingAccount: true },
       })
@@ -105,7 +107,19 @@ describe("InvoiceStatusManager", () => {
       })
     })
 
-    it("returns 0 when no DRAFT invoices are older than 5 days", async () => {
+    it("does not issue a draft whose due date is more than 7 days away", async () => {
+      const now = new Date()
+      const dueDate = new Date(now)
+      dueDate.setUTCDate(dueDate.getUTCDate() + 8)
+      mockFindMany.mockResolvedValueOnce([])
+
+      const result = await manager.issueDraftInvoices()
+
+      expect(result.issued).toBe(0)
+      expect(mockUpdate).not.toHaveBeenCalled()
+    })
+
+    it("returns 0 when no DRAFT invoices are due within 7 days", async () => {
       mockFindMany.mockResolvedValueOnce([])
 
       const result = await manager.issueDraftInvoices()
@@ -194,10 +208,10 @@ describe("InvoiceStatusManager", () => {
   })
 
   describe("sendPaymentReminders", () => {
-    it("sends reminders for ISSUED invoices due within 3 days", async () => {
+    it("sends reminders for ISSUED invoices due in exactly 3 days", async () => {
       const now = new Date()
       const dueDate = new Date()
-      dueDate.setDate(dueDate.getDate() + 2) // due in 2 days
+      dueDate.setDate(dueDate.getDate() + 3)
 
       mockFindMany.mockResolvedValueOnce([
         {
@@ -236,16 +250,45 @@ describe("InvoiceStatusManager", () => {
         data: {
           metadataJson: {
             lastReminderAt: expect.any(String),
+            lastReminderDaysBefore: 3,
             reminderCount: 1,
           },
         },
       })
     })
 
-    it("skips invoices that already received a reminder today (idempotency)", async () => {
+    it("skips invoices due in 2 days because reminders are day 3 and day 1 only", async () => {
       const now = new Date()
       const dueDate = new Date()
       dueDate.setDate(dueDate.getDate() + 2)
+
+      mockFindMany.mockResolvedValueOnce([
+        {
+          id: "inv-between-reminders",
+          invoiceNumber: "INV-BETWEEN",
+          totalAmount: { toNumber: () => 450 },
+          currency: "USD",
+          status: "ISSUED",
+          periodStart: now,
+          periodEnd: now,
+          issuedAt: now,
+          dueAt: dueDate,
+          billingAccount: { organizationId: "org-between" },
+          metadataJson: null,
+        },
+      ])
+
+      const result = await manager.sendPaymentReminders()
+
+      expect(result.sent).toBe(0)
+      expect(mockUpdate).not.toHaveBeenCalled()
+      expect(mockSendPaymentReminder).not.toHaveBeenCalled()
+    })
+
+    it("skips an invoice that already received this reminder", async () => {
+      const now = new Date()
+      const dueDate = new Date()
+      dueDate.setDate(dueDate.getDate() + 1)
 
       // Invoice with reminder sent earlier today
       mockFindMany.mockResolvedValueOnce([
@@ -262,6 +305,7 @@ describe("InvoiceStatusManager", () => {
           billingAccount: { organizationId: "org-4" },
           metadataJson: {
             lastReminderAt: now.toISOString(), // sent today
+            lastReminderDaysBefore: 1,
             reminderCount: 2,
           },
         },
@@ -269,9 +313,51 @@ describe("InvoiceStatusManager", () => {
 
       const result = await manager.sendPaymentReminders()
 
-      // Should skip due to idempotency check
+      // Should skip because the one-day reminder was already sent.
       expect(result.sent).toBe(0)
       expect(mockUpdate).not.toHaveBeenCalled() // no update since we skipped
+    })
+
+    it("sends a different reminder type on the same day", async () => {
+      const now = new Date()
+      const dueDate = new Date(now)
+      dueDate.setDate(dueDate.getDate() + 1)
+
+      mockFindMany.mockResolvedValueOnce([
+        {
+          id: "inv-reminder-type",
+          invoiceNumber: "INV-REMINDER-TYPE",
+          totalAmount: { toNumber: () => 500 },
+          currency: "USD",
+          status: "ISSUED",
+          periodStart: now,
+          periodEnd: now,
+          issuedAt: now,
+          dueAt: dueDate,
+          billingAccount: { organizationId: "org-4" },
+          metadataJson: {
+            lastReminderAt: now.toISOString(),
+            lastReminderDaysBefore: 3,
+            reminderCount: 2,
+          },
+        },
+      ])
+      mockUpdate.mockResolvedValue({})
+      mockSendPaymentReminder.mockResolvedValue(undefined)
+
+      const result = await manager.sendPaymentReminders()
+
+      expect(result.sent).toBe(1)
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            metadataJson: expect.objectContaining({
+              lastReminderDaysBefore: 1,
+              reminderCount: 3,
+            }),
+          },
+        })
+      )
     })
 
     it("increments reminderCount for invoices that received previous reminders", async () => {
@@ -330,7 +416,7 @@ describe("InvoiceStatusManager", () => {
       // (either via WorkOS returning no admin, or WorkOS import failure caught by the try/catch)
       const now = new Date()
       const dueDate = new Date()
-      dueDate.setDate(dueDate.getDate() + 2)
+      dueDate.setDate(dueDate.getDate() + 1)
 
       mockFindMany.mockResolvedValueOnce([
         {
