@@ -41,6 +41,9 @@ export type WhatsappAuditAction =
   | "CATALOG_MESSAGE_SENT"
   // Admin
   | "DEVICE_QUOTA_TOPUP"
+  | "ORGANIZATION_API_KEY_GENERATED"
+  | "ORGANIZATION_API_KEY_ROTATED"
+  | "ORGANIZATION_API_KEY_REVOKED"
 
 export type WhatsappAuditEventStatus = "OK" | "FAILED" | "STARTED" | "PENDING"
 

@@ -185,6 +185,37 @@ export async function getCachedOrganizations(
 
   return results
 }
+
+/**
+ * List every WorkOS organization and warm the same directory cache used by
+ * point lookups. This is intended for cross-tenant admin inventory views.
+ */
+export async function listCachedOrganizations(): Promise<WorkOSDirectoryOrg[]> {
+  const workos = getWorkOS()
+  const organizations: WorkOSDirectoryOrg[] = []
+  let after: string | undefined
+
+  do {
+    const page = await workos.organizations.listOrganizations({
+      limit: 100,
+      after,
+    })
+
+    for (const organization of page.data) {
+      const entry: WorkOSDirectoryOrg = {
+        id: organization.id,
+        name: organization.name?.trim() || null,
+        slug: organization.id,
+      }
+      organizations.push(entry)
+      tryCacheSet(`workos:org:${entry.id}`, entry)
+    }
+
+    after = page.listMetadata?.after ?? undefined
+  } while (after)
+
+  return organizations
+}
 // ─── Organization metadata (owner + member count) ───────────────────────────
 
 type WorkOSDirectoryMembership = {

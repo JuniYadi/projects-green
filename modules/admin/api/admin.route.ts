@@ -7,6 +7,7 @@ import { createAdminWebhooksRoutes } from "@/modules/whatsapp/webhooks/api/admin
 import { createAdminMetaAppsRoutes } from "@/modules/whatsapp/meta-apps/api/meta-apps.route"
 import { detectorAdminRoutes } from "@/modules/framework-detection/api/detector-admin.route"
 import { createAdminAppHostingClusterRoutes } from "@/modules/admin/api/routes/admin-app-hosting-clusters.route"
+import { createAdminWhatsappOrganizationApiKeyRoutes } from "@/modules/whatsapp/organization-api-keys/api/organization-api-keys.route"
 
 export const adminRoutes = new Elysia()
   .use(createAdminOrganizationsRoutes())
@@ -14,5 +15,6 @@ export const adminRoutes = new Elysia()
   .use(createAdminDevicesRoutes())
   .use(createAdminWebhooksRoutes())
   .use(createAdminMetaAppsRoutes())
+  .use(createAdminWhatsappOrganizationApiKeyRoutes())
   .use(detectorAdminRoutes)
   .use(createAdminAppHostingClusterRoutes())
