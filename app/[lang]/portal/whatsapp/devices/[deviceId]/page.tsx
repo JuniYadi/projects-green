@@ -2,6 +2,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 import { notFound } from "next/navigation"
 
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { getEmailBaseUrl } from "@/lib/email-url"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { prisma } from "@/lib/prisma"
 import { toDeviceDetail } from "@/modules/whatsapp/devices/devices.dto"
@@ -78,6 +79,11 @@ export default async function PortalWhatsAppDeviceDetailPage({
         ? {}
         : { organizationId: auth.organizationId }),
     },
+    include: {
+      whatsappMetaApp: {
+        select: { id: true, name: true, webhookKey: true },
+      },
+    },
   })
 
   if (!deviceRecord) {
@@ -85,6 +91,13 @@ export default async function PortalWhatsAppDeviceDetailPage({
   }
 
   device = toDeviceDetail(deviceRecord)
+
+  const metaWebhook = device.whatsappMetaApp
+    ? {
+        appName: device.whatsappMetaApp.name,
+        callbackUrl: `${getEmailBaseUrl()}${device.whatsappMetaApp.callbackPath}`,
+      }
+    : null
 
   // Overview tab content (existing cards)
   const overviewContent = (
@@ -175,6 +188,7 @@ export default async function PortalWhatsAppDeviceDetailPage({
       }}
       backHref={devicesPath}
       overviewChildren={overviewContent}
+      metaWebhook={metaWebhook}
       actions={
         <DeviceActions
           deviceId={device.id}
