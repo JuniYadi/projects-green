@@ -65,7 +65,21 @@ describe("CatalogService", () => {
     expect(mockFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { isActive: true },
-        include: expect.objectContaining({ plans: expect.anything() }),
+        include: expect.objectContaining({
+          plans: expect.objectContaining({
+            include: expect.objectContaining({
+              pricings: expect.objectContaining({
+                where: expect.objectContaining({
+                  periodPrice: { gt: 0 },
+                  OR: [
+                    { effectiveTo: null },
+                    { effectiveTo: { gte: expect.any(Date) } },
+                  ],
+                }),
+              }),
+            }),
+          }),
+        }),
       })
     )
   })

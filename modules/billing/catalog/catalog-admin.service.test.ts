@@ -139,6 +139,56 @@ describe("CatalogAdminService", () => {
     )
   })
 
+  describe("getProduct", () => {
+    it("returns active plans even when a plan has no offers", async () => {
+      db.servicePackage.findFirst.mockReturnValueOnce({
+        id: "pkg-1",
+        code: "VPN",
+        name: "VPN",
+        description: "VPN product",
+        isActive: true,
+        plans: [
+          {
+            id: "plan-1",
+            code: "VPN_PACKAGE_1",
+            name: "Business VPN",
+            resources: {},
+            pricings: [],
+          },
+        ],
+      })
+
+      const result = await createService().getProduct("VPN")
+
+      expect(result).toMatchObject({
+        currency: "IDR",
+        product: {
+          code: "VPN",
+          plans: [
+            expect.objectContaining({
+              id: "plan-1",
+              code: "VPN_PACKAGE_1",
+              offers: [],
+            }),
+          ],
+        },
+      })
+      expect(db.servicePackage.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.objectContaining({
+            plans: expect.objectContaining({
+              include: expect.objectContaining({
+                pricings: expect.objectContaining({
+                  where: expect.objectContaining({ periodPrice: { gt: 0 } }),
+                }),
+              }),
+            }),
+          }),
+        })
+      )
+    })
+  })
+
   // ─── upsertPackage ──────────────────────────────────────────────────
 
   describe("upsertPackage", () => {

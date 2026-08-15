@@ -1,6 +1,13 @@
 import type { Prisma } from "@prisma/client"
 
 import { toVpnServerDTO, type VpnServerDTO } from "./vpn-server.dto"
+import {
+  hasValidVpnCatalogOffer,
+  isVpnCatalogParentActive,
+  isValidVpnCatalogOffer,
+  vpnPeriodMonths,
+  type VpnRecurringPeriod,
+} from "../catalog/vpn-catalog-eligibility"
 
 const packageServerInclude = {
   server: {
@@ -15,6 +22,12 @@ const packageServerInclude = {
 
 export const vpnPackageInclude = {
   servers: { include: packageServerInclude },
+  servicePlan: {
+    include: {
+      package: { select: { code: true, isActive: true } },
+      pricings: { orderBy: { effectiveFrom: "desc" } },
+    },
+  },
 } satisfies Prisma.VpnPackageInclude
 
 type VpnPackageWithServers = Prisma.VpnPackageGetPayload<{
@@ -39,6 +52,26 @@ export type VpnPackageServerDTO = {
   protocols: string[]
 }
 
+export type VpnPackageOfferDTO = {
+  id: string
+  billingPeriod: VpnRecurringPeriod
+  periodMonths: 1 | 3 | 6 | 12
+  periodPrice: string
+  currency: string
+  effectiveFrom: string
+  effectiveTo: string | null
+  isActive: boolean
+}
+
+export type VpnPackageCatalogPlanDTO = {
+  id: string
+  code: string
+  name: string
+  isActive: boolean
+  parentIsActive: boolean
+  offers: VpnPackageOfferDTO[]
+}
+
 /**
  * DTO for VPN package — stable admin contract. `price` is serialized as a
  * string to avoid float precision loss across the boundary.
@@ -48,6 +81,9 @@ export type VpnPackageDTO = Pick<
   "id" | "name" | "description" | "currency" | "isActive"
 > & {
   servicePlanId: string
+  catalogPlan: VpnPackageCatalogPlanDTO | null
+  pricingStatus: "READY" | "PRICING_REQUIRED"
+  catalogAvailable: boolean
   price: string | null
   serverCount: number
   servers: VpnPackageServerDTO[]
@@ -56,6 +92,8 @@ export type VpnPackageDTO = Pick<
 }
 
 export function toVpnPackageDTO(pkg: VpnPackageWithServers): VpnPackageDTO {
+  const servicePlan = pkg.servicePlan
+  const now = new Date()
   const servers: VpnPackageServerDTO[] = pkg.servers.map((entry) => {
     const server = toVpnServerDTO(entry.server)
     return {
@@ -65,14 +103,52 @@ export function toVpnPackageDTO(pkg: VpnPackageWithServers): VpnPackageDTO {
     }
   })
 
+  const offers = servicePlan
+    ? servicePlan.pricings
+        .filter((pricing) => isValidVpnCatalogOffer(pricing, now))
+        .map(
+          (pricing): VpnPackageOfferDTO => ({
+            id: pricing.id,
+            billingPeriod: pricing.billingPeriod as VpnRecurringPeriod,
+            periodMonths: vpnPeriodMonths(
+              pricing.billingPeriod as VpnRecurringPeriod
+            ),
+            periodPrice: pricing.periodPrice!.toString(),
+            currency: pricing.currency,
+            effectiveFrom: pricing.effectiveFrom.toISOString(),
+            effectiveTo: pricing.effectiveTo?.toISOString() ?? null,
+            isActive: pricing.isActive,
+          })
+        )
+    : []
+  const parentIsActive = servicePlan?.package?.isActive ?? false
+  const planIsActive = servicePlan?.isActive ?? false
+  const catalogPlan = servicePlan
+    ? {
+        id: servicePlan.id,
+        code: servicePlan.code,
+        name: servicePlan.name,
+        isActive: planIsActive,
+        parentIsActive,
+        offers,
+      }
+    : null
+  const hasValidOffers = servicePlan
+    ? hasValidVpnCatalogOffer(servicePlan.pricings, now)
+    : false
+
   return {
-    servicePlanId: (pkg as unknown as { servicePlanId: string }).servicePlanId,
+    servicePlanId: pkg.servicePlanId,
     id: pkg.id,
     name: pkg.name,
     description: pkg.description,
     currency: pkg.currency,
     isActive: pkg.isActive,
     price: pkg.price?.toString() ?? null,
+    catalogPlan,
+    pricingStatus: hasValidOffers ? "READY" : "PRICING_REQUIRED",
+    catalogAvailable:
+      pkg.isActive && isVpnCatalogParentActive(servicePlan) && hasValidOffers,
     serverCount: servers.length,
     servers,
     createdAt: pkg.createdAt.toISOString(),

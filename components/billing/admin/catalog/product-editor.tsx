@@ -31,7 +31,11 @@ import {
   WarningIcon,
   EyeIcon,
 } from "@/components/ui/phosphor-icons"
-import { getCatalogProduct, publishCatalogProduct } from "@/lib/billing-client"
+import {
+  getAdminCatalogProduct,
+  getCatalogProduct,
+  publishCatalogProduct,
+} from "@/lib/billing-client"
 import type {
   CatalogProduct,
   CatalogProductDetailResponse,
@@ -64,6 +68,11 @@ const TABS = [
   { id: "details", label: "Product details" },
   { id: "publish", label: "Publish" },
 ] as const
+
+function safeReturnPath(value: string | null): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return null
+  return value
+}
 
 function LoadingSkeleton() {
   return (
@@ -105,7 +114,7 @@ function productToEditorState(
       description: product.description ?? "",
       currency,
       enabledCurrencies,
-      isActive: true,
+      isActive: product.isActive,
     },
     plans: product.plans.map((plan) => ({
       id: plan.id,
@@ -113,14 +122,17 @@ function productToEditorState(
       name: plan.name,
       resources: plan.resources,
       isActive: true,
-      enabledTerms: [
-        ...new Set(
-          plan.offers.map(
-            (offer) =>
-              offer.billingPeriod as ProductPlanOfferForm["billingPeriod"]
-          )
-        ),
-      ],
+      enabledTerms:
+        plan.offers.length > 0
+          ? [
+              ...new Set(
+                plan.offers.map(
+                  (offer) =>
+                    offer.billingPeriod as ProductPlanOfferForm["billingPeriod"]
+                )
+              ),
+            ]
+          : ["MONTHLY"],
       offers: plan.offers.map(
         (offer): ProductPlanOfferForm => ({
           id: offer.id,
@@ -152,6 +164,8 @@ export function ProductEditor({
   const searchParams = useSearchParams()
   const { lang } = useParams<{ lang: string }>()
   const productCode = requestedProductCode
+  const selectedPlanId = searchParams.get("planId")
+  const returnTo = safeReturnPath(searchParams.get("returnTo"))
 
   const [state, setState] = useState<ProductEditorState | null>(null)
   const [loading, setLoading] = useState(true)
@@ -193,9 +207,11 @@ export function ProductEditor({
           preview: false,
         })
       } else {
-        // Always load from server API first
+        // Admin editing must include active plans that have no offers yet.
         const response: CatalogProductDetailResponse =
-          await getCatalogProduct(productCode)
+          productCode === "VPN"
+            ? await getAdminCatalogProduct(productCode)
+            : await getCatalogProduct(productCode)
         if (!response?.product) {
           setError("Product not found in catalog.")
           return
@@ -235,7 +251,8 @@ export function ProductEditor({
 
   if (!state) return null
 
-  const activeTab = searchParams.get("tab") ?? "basics"
+  const activeTab =
+    searchParams.get("tab") ?? (selectedPlanId ? "plans" : "basics")
 
   const markModified = (tabId: string) => {
     setModifiedTabs((prev) => new Set([...prev, tabId]))
@@ -362,7 +379,7 @@ export function ProductEditor({
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link href={`/${lang}/portal/billing/catalog`}>
+          <Link href={returnTo ?? `/${lang}/portal/billing/catalog`}>
             <Button variant="ghost" size="icon">
               <ArrowLeftIcon className="h-4 w-4" />
             </Button>
@@ -375,6 +392,14 @@ export function ProductEditor({
               Product code:{" "}
               <span className="font-mono">{state.basics.code}</span>
             </p>
+            {returnTo && (
+              <Link
+                className="text-sm text-primary hover:underline"
+                href={returnTo}
+              >
+                Back to VPN packages
+              </Link>
+            )}
           </div>
         </div>
 
@@ -510,6 +535,7 @@ export function ProductEditor({
                 currencies={state.basics.enabledCurrencies}
                 onChange={updatePlans}
                 showPreview={showPreview}
+                selectedPlanId={selectedPlanId}
               />
             </CardContent>
           </Card>

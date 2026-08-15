@@ -152,6 +152,25 @@ export type VpnPackageServerEntry = {
 export type VpnPackageItem = {
   id: string
   servicePlanId: string
+  catalogPlan: {
+    id: string
+    code: string
+    name: string
+    isActive: boolean
+    parentIsActive: boolean
+    offers: Array<{
+      id: string
+      billingPeriod: "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL"
+      periodMonths: 1 | 3 | 6 | 12
+      periodPrice: string
+      currency: string
+      effectiveFrom: string
+      effectiveTo: string | null
+      isActive: boolean
+    }>
+  } | null
+  pricingStatus: "READY" | "PRICING_REQUIRED"
+  catalogAvailable: boolean
   name: string
   description: string | null
   price: string | null

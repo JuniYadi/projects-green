@@ -13,6 +13,10 @@ const pkgFindUnique = mock<AnyFn>(async () => null)
 const pkgCreate = mock<AnyFn>(async () => ({}))
 const pkgUpdate = mock<AnyFn>(async () => ({}))
 const serverFindMany = mock<AnyFn>(async () => [])
+const servicePackageFindUnique = mock<AnyFn>(async () => ({
+  id: "vpn-parent",
+  isActive: true,
+}))
 
 const prismaMock = {
   vpnPackage: {
@@ -22,7 +26,13 @@ const prismaMock = {
     update: pkgUpdate,
   },
   vpnServer: { findMany: serverFindMany },
+  servicePackage: { findUnique: servicePackageFindUnique },
 } as any
+
+const transaction = mock<AnyFn>(async (callback: (tx: any) => unknown) =>
+  callback(prismaMock)
+)
+prismaMock.$transaction = transaction
 
 const service = new VpnPackageService(prismaMock)
 
@@ -32,9 +42,26 @@ beforeEach(() => {
   pkgCreate.mockClear()
   pkgUpdate.mockClear()
   serverFindMany.mockClear()
-  pkgFindUnique.mockResolvedValue({ id: "pkg-1", isActive: true })
+  servicePackageFindUnique.mockClear()
+  transaction.mockClear()
+  pkgFindUnique.mockResolvedValue({
+    id: "pkg-1",
+    isActive: true,
+    servicePlan: {
+      id: "plan-1",
+      isActive: true,
+      package: { code: "VPN", isActive: true },
+    },
+  })
   pkgCreate.mockResolvedValue({ id: "pkg-1" })
   pkgUpdate.mockResolvedValue({ id: "pkg-1" })
+  servicePackageFindUnique.mockResolvedValue({
+    id: "vpn-parent",
+    isActive: true,
+  })
+  transaction.mockImplementation(async (callback: (tx: any) => unknown) =>
+    callback(prismaMock)
+  )
   serverFindMany.mockImplementation(async (args: any) => {
     const ids = (args?.where?.id?.in as string[]) ?? []
     const known = new Set(["srv-1", "srv-2"])
@@ -66,6 +93,7 @@ describe("VpnPackageService.create", () => {
     ])
     expect(data.price.toString()).toBe("100000")
     expect(data.currency).toBe("IDR")
+    expect(transaction).toHaveBeenCalledTimes(1)
   })
 
   it("rejects unknown server ids", async () => {
@@ -79,6 +107,15 @@ describe("VpnPackageService.create", () => {
     ).rejects.toBeInstanceOf(VpnPackageValidationError)
     expect(pkgCreate).not.toHaveBeenCalled()
   })
+
+  it("rejects creation when the global VPN catalog parent is unavailable", async () => {
+    servicePackageFindUnique.mockResolvedValueOnce(null)
+
+    await expect(
+      service.create({ name: "Unavailable", serverIds: ["srv-1"] })
+    ).rejects.toBeInstanceOf(VpnPackageValidationError)
+    expect(pkgCreate).not.toHaveBeenCalled()
+  })
 })
 
 describe("VpnPackageService.update", () => {
@@ -87,6 +124,13 @@ describe("VpnPackageService.update", () => {
     const data = pkgUpdate.mock.calls[0][0].data
     expect(data.servers.deleteMany).toEqual({})
     expect(data.servers.create).toEqual([{ serverId: "srv-2" }])
+  })
+
+  it("updates package activation without changing its linked plan", async () => {
+    await service.update("pkg-1", { isActive: false })
+
+    expect(pkgUpdate.mock.calls[0][0].data).toEqual({ isActive: false })
+    expect(pkgUpdate.mock.calls[0][0].where).toEqual({ id: "pkg-1" })
   })
 
   it("throws when package missing", async () => {

@@ -22,6 +22,16 @@ const guard = mock<
 }))
 
 const service = {
+  getProduct: mock(async () => ({
+    currency: "IDR",
+    product: {
+      code: "VPN",
+      name: "VPN",
+      description: null,
+      isActive: true,
+      plans: [],
+    },
+  })),
   upsertPackage: mock(async () => ({
     id: "pkg-1",
     code: "VPN",
@@ -109,6 +119,43 @@ describe("catalog admin routes", () => {
       id: "pkg-1",
       code: "VPN",
       name: "VPN",
+    })
+    service.getProduct.mockResolvedValue({
+      currency: "IDR",
+      product: {
+        code: "VPN",
+        name: "VPN",
+        description: null,
+        isActive: true,
+        plans: [],
+      },
+    })
+  })
+
+  describe("GET /admin/catalog/products/:code", () => {
+    it("returns an admin product including plans without offers", async () => {
+      const response = await app().handle(
+        new Request("http://localhost/admin/catalog/products/VPN")
+      )
+
+      expect(response.status).toBe(200)
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        currency: "IDR",
+        product: { code: "VPN" },
+      })
+      expect(service.getProduct).toHaveBeenCalledWith("VPN")
+    })
+
+    it("returns 404 when the product does not exist", async () => {
+      service.getProduct.mockResolvedValueOnce(null as never)
+
+      const response = await app().handle(
+        new Request("http://localhost/admin/catalog/products/MISSING")
+      )
+
+      expect(response.status).toBe(404)
+      expect((await response.json()).error).toBe("NOT_FOUND")
     })
   })
 

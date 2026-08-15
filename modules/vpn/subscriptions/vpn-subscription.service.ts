@@ -8,6 +8,10 @@ export { buildAccountUsername } from "./vpn-account-username"
 import { CurrencyService } from "@/modules/billing/currency.service"
 import { vpnEmailService } from "@/modules/vpn/email.service"
 import type { VpnEmailService } from "@/modules/vpn/email.service"
+import {
+  isValidVpnCatalogOffer,
+  isVpnCatalogParentActive,
+} from "../catalog/vpn-catalog-eligibility"
 
 const subscriptionInclude = {
   serverAccounts: {
@@ -205,17 +209,28 @@ export class VpnSubscriptionService {
   }
 
   async purchase(input: PurchaseInput): Promise<VpnSubscriptionWithAccounts> {
+    const now = input.now ?? new Date()
     const pkg = await this.prisma.vpnPackage.findUnique({
       where: { id: input.packageId },
-      include: { servers: { include: { server: true } }, servicePlan: true },
+      include: {
+        servers: { include: { server: true } },
+        servicePlan: { include: { package: true } },
+      },
     })
-    if (!pkg || !pkg.isActive) throw new VpnPackageUnavailableError()
+    if (!pkg || !pkg.isActive || !isVpnCatalogParentActive(pkg.servicePlan)) {
+      throw new VpnPackageUnavailableError()
+    }
 
     const pricing = await this.prisma.servicePricing.findUnique({
       where: { id: input.pricingId },
-      include: { servicePlan: true },
+      include: { servicePlan: { include: { package: true } } },
     })
-    if (!pricing || pricing.planId !== pkg.servicePlanId) {
+    if (
+      !pricing ||
+      pricing.planId !== pkg.servicePlanId ||
+      !isVpnCatalogParentActive(pricing.servicePlan) ||
+      !isValidVpnCatalogOffer(pricing, now)
+    ) {
       throw new VpnPackageUnavailableError(
         "Selected pricing is not available for this package."
       )
@@ -230,7 +245,6 @@ export class VpnSubscriptionService {
     })
     if (duplicate) throw new VpnDuplicateSubscriptionError()
 
-    const now = input.now ?? new Date()
     const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`
     let order
     try {

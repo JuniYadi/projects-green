@@ -1062,6 +1062,14 @@ export async function getCatalogProduct(
   )
 }
 
+export async function getAdminCatalogProduct(
+  code: string
+): Promise<CatalogProductDetailResponse> {
+  return fetchBilling<CatalogProductDetailResponse>(
+    `/api/billing/admin/catalog/products/${encodeURIComponent(code)}`
+  )
+}
+
 // ─── Admin Catalog Write ──────────────────────────────────────────────────────
 
 export type PublishCatalogProductInput = {

@@ -3,6 +3,7 @@
 import { useMemo } from "react"
 
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import {
   Card,
   CardContent,
@@ -43,12 +44,15 @@ function PlanCard({
   currencies,
   onUpdate,
   onRemove,
+  selectedPlanId,
 }: Readonly<{
   plan: ProductPlanEditorForm
   currencies: SupportedCurrency[]
   onUpdate: (plan: ProductPlanEditorForm) => void
   onRemove: () => void
+  selectedPlanId?: string | null
 }>) {
+  const isSelected = selectedPlanId === plan.id
   const enabledTerms = plan.enabledTerms
   const offerByCell = useMemo(
     () =>
@@ -86,7 +90,11 @@ function PlanCard({
   }
 
   return (
-    <Card>
+    <Card
+      id={`catalog-plan-${plan.id}`}
+      data-selected-plan={isSelected ? "true" : undefined}
+      className={isSelected ? "ring-2 ring-primary" : undefined}
+    >
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
@@ -94,6 +102,9 @@ function PlanCard({
               {plan.name || "Unnamed plan"}
             </CardTitle>
             <CardDescription>Code: {plan.code || "—"}</CardDescription>
+            {isSelected && (
+              <Badge variant="secondary">Selected from VPN package</Badge>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Switch
@@ -115,6 +126,11 @@ function PlanCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
+        {plan.offers.length === 0 && (
+          <p className="rounded-md border border-dashed p-3 text-sm text-amber-700">
+            Pricing required before this plan can be published.
+          </p>
+        )}
         <div className="space-y-2">
           <Label className="text-xs">Enabled terms</Label>
           <div className="flex flex-wrap gap-3">
@@ -215,11 +231,13 @@ export function CatalogPlansTab({
   currencies,
   onChange,
   showPreview,
+  selectedPlanId,
 }: Readonly<{
   plans: ProductPlanEditorForm[]
   currencies: SupportedCurrency[]
   onChange: (plans: ProductPlanEditorForm[]) => void
   showPreview?: boolean
+  selectedPlanId?: string | null
 }>) {
   const handleAddPlan = () => {
     onChange([
@@ -277,6 +295,7 @@ export function CatalogPlansTab({
             onRemove={() =>
               onChange(plans.filter((item) => item.id !== plan.id))
             }
+            selectedPlanId={selectedPlanId}
           />
         ))
       )}

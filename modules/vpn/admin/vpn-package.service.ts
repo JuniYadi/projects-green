@@ -4,13 +4,17 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 
 import { prisma as defaultPrisma } from "@/lib/prisma"
 
+import { isVpnCatalogParent } from "../catalog/vpn-catalog-eligibility"
 import { vpnPackageInclude } from "./vpn-package.dto"
 import type {
   CreateVpnPackageInput,
   UpdateVpnPackageInput,
 } from "./vpn-package.schema"
 
-type PrismaLike = Pick<PrismaClient, "vpnPackage" | "vpnServer">
+type PrismaLike = Pick<
+  PrismaClient,
+  "vpnPackage" | "vpnServer" | "servicePackage" | "$transaction"
+>
 
 export class VpnPackageNotFoundError extends Error {
   constructor(message = "Package not found.") {
@@ -43,50 +47,85 @@ export class VpnPackageService {
   async create(input: CreateVpnPackageInput) {
     await this.assertServersExist(input.serverIds)
 
-    return this.prisma.vpnPackage.create({
-      data: {
-        name: input.name,
-        price:
-          input.price === undefined
-            ? undefined
-            : new Prisma.Decimal(input.price),
-        currency: input.currency,
-        isActive: input.isActive ?? true,
-        servicePlan: {
-          create: {
-            code: `VPN_${randomUUID()}`,
-            name: input.name,
-            resources: {},
-            isActive: input.isActive ?? true,
-            package: { connect: { code: "VPN" } },
+    return this.prisma.$transaction(async (tx) => {
+      const parent = await tx.servicePackage.findUnique({
+        where: { code: "VPN" },
+        select: { id: true, isActive: true },
+      })
+      if (!parent || !parent.isActive) {
+        throw new VpnPackageValidationError(
+          "The global VPN catalog product is unavailable."
+        )
+      }
+
+      return tx.vpnPackage.create({
+        data: {
+          name: input.name,
+          price:
+            input.price === undefined
+              ? undefined
+              : new Prisma.Decimal(input.price),
+          currency: input.currency,
+          isActive: input.isActive ?? true,
+          servicePlan: {
+            create: {
+              code: `VPN_${randomUUID()}`,
+              name: input.name,
+              resources: {},
+              isActive: input.isActive ?? true,
+              package: { connect: { code: "VPN" } },
+            },
+          },
+          servers: {
+            create: input.serverIds.map((serverId) => ({ serverId })),
           },
         },
-        servers: { create: input.serverIds.map((serverId) => ({ serverId })) },
-      },
-      include: vpnPackageInclude,
+        include: vpnPackageInclude,
+      })
     })
   }
 
   async update(id: string, input: UpdateVpnPackageInput) {
-    await this.requirePackage(id)
-
-    const data: Prisma.VpnPackageUpdateInput = {}
-    if (input.name !== undefined) data.name = input.name
-    if (input.description !== undefined)
-      data.description = input.description ?? null
-
     if (input.serverIds !== undefined) {
       await this.assertServersExist(input.serverIds)
-      data.servers = {
-        deleteMany: {},
-        create: input.serverIds.map((serverId) => ({ serverId })),
-      }
     }
 
-    return this.prisma.vpnPackage.update({
-      where: { id },
-      data,
-      include: vpnPackageInclude,
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.vpnPackage.findUnique({
+        where: { id },
+        include: {
+          servicePlan: {
+            include: {
+              package: { select: { code: true, isActive: true } },
+            },
+          },
+        },
+      })
+      if (!existing) throw new VpnPackageNotFoundError()
+      if (!isVpnCatalogParent(existing.servicePlan)) {
+        throw new VpnPackageValidationError(
+          "VPN package is not linked to the global VPN catalog product."
+        )
+      }
+
+      const data: Prisma.VpnPackageUpdateInput = {}
+      if (input.name !== undefined) data.name = input.name
+      if (input.description !== undefined)
+        data.description = input.description ?? null
+      if (input.isActive !== undefined) data.isActive = input.isActive
+
+      if (input.serverIds !== undefined) {
+        data.servers = {
+          deleteMany: {},
+          create: input.serverIds.map((serverId) => ({ serverId })),
+        }
+      }
+
+      return tx.vpnPackage.update({
+        where: { id },
+        data,
+        include: vpnPackageInclude,
+      })
     })
   }
 
@@ -95,17 +134,22 @@ export class VpnPackageService {
    * running. Story 13 forbids hard deletion.
    */
   async deactivate(id: string) {
-    await this.requirePackage(id)
-    return this.prisma.vpnPackage.update({
-      where: { id },
-      data: { isActive: false },
-      include: vpnPackageInclude,
+    return this.prisma.$transaction(async (tx) => {
+      await this.requirePackage(tx, id)
+      return tx.vpnPackage.update({
+        where: { id },
+        data: { isActive: false },
+        include: vpnPackageInclude,
+      })
     })
   }
 
-  private async assertServersExist(serverIds: string[]) {
+  private async assertServersExist(
+    serverIds: string[],
+    client: Pick<PrismaClient, "vpnServer"> = this.prisma
+  ) {
     const unique = [...new Set(serverIds)]
-    const found = await this.prisma.vpnServer.findMany({
+    const found = await client.vpnServer.findMany({
       where: { id: { in: unique } },
       select: { id: true },
     })
@@ -118,8 +162,11 @@ export class VpnPackageService {
     }
   }
 
-  private async requirePackage(id: string) {
-    const pkg = await this.prisma.vpnPackage.findUnique({ where: { id } })
+  private async requirePackage(
+    client: Pick<PrismaClient, "vpnPackage">,
+    id: string
+  ) {
+    const pkg = await client.vpnPackage.findUnique({ where: { id } })
     if (!pkg) throw new VpnPackageNotFoundError()
     return pkg
   }

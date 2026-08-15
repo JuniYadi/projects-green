@@ -6,7 +6,8 @@ export default async function VpnPackagesPage() {
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold">Packages</h1>
         <p className="text-sm text-muted-foreground">
-          Define VPN packages, pricing, and the servers each package includes.
+          Define server and protocol composition here. The global VPN catalog
+          owns plans, terms, prices, and publishing for each linked package.
         </p>
       </header>
       <PackagesTable />

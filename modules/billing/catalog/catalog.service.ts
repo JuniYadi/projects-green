@@ -22,7 +22,7 @@ export class CatalogService {
       isActive: true,
       currency,
       billingPeriod: { in: RECURRING_PERIODS },
-      periodPrice: { not: null },
+      periodPrice: { gt: 0 },
       effectiveFrom: { lte: now },
       OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }],
       AND: [

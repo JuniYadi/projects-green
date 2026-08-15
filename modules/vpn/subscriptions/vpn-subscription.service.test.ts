@@ -1,4 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
+import { Prisma } from "@prisma/client"
 
 import {
   VpnPackageUnavailableError,
@@ -11,7 +12,32 @@ function packageRecord() {
     name: "VPN Pro",
     isActive: true,
     servicePlanId: "plan-1",
-    servicePlan: { id: "plan-1" },
+    servicePlan: {
+      id: "plan-1",
+      isActive: true,
+      package: { code: "VPN", isActive: true },
+    },
+  }
+}
+
+function pricingRecord(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "pricing-1",
+    planId: "plan-1",
+    type: "BUNDLE",
+    billingMode: "PACKAGE",
+    billingPeriod: "ANNUAL",
+    periodPrice: new Prisma.Decimal("100000"),
+    currency: "IDR",
+    effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
+    effectiveTo: null,
+    isActive: true,
+    servicePlan: {
+      id: "plan-1",
+      isActive: true,
+      package: { code: "VPN", isActive: true },
+    },
+    ...overrides,
   }
 }
 
@@ -36,11 +62,7 @@ describe("VpnSubscriptionService.purchase", () => {
         findUnique: mock().mockResolvedValue(packageRecord()),
       },
       servicePricing: {
-        findUnique: mock().mockResolvedValue({
-          id: "pricing-1",
-          planId: "plan-1",
-          billingPeriod: "ANNUAL",
-        }),
+        findUnique: mock().mockResolvedValue(pricingRecord()),
       },
       vpnSubscription: { findFirst: vpnSubscriptionFindFirst },
     }
@@ -82,11 +104,9 @@ describe("VpnSubscriptionService.purchase", () => {
         findUnique: mock().mockResolvedValue(packageRecord()),
       },
       servicePricing: {
-        findUnique: mock().mockResolvedValue({
-          id: "pricing-monthly",
-          planId: "plan-1",
-          billingPeriod: "MONTHLY",
-        }),
+        findUnique: mock().mockResolvedValue(
+          pricingRecord({ id: "pricing-monthly", billingPeriod: "MONTHLY" })
+        ),
       },
       vpnSubscription: {
         findFirst: mock().mockResolvedValueOnce(null).mockResolvedValueOnce({
@@ -155,11 +175,7 @@ describe("VpnSubscriptionService.purchase", () => {
         findUnique: mock().mockResolvedValue(packageRecord()),
       },
       servicePricing: {
-        findUnique: mock().mockResolvedValue({
-          id: "pricing-1",
-          planId: "plan-1",
-          billingPeriod: "ANNUAL",
-        }),
+        findUnique: mock().mockResolvedValue(pricingRecord()),
       },
       vpnSubscription: {
         findFirst: mock().mockResolvedValue({ id: "existing-subscription" }),
@@ -191,11 +207,7 @@ describe("VpnSubscriptionService.purchase", () => {
         findUnique: mock().mockResolvedValue(packageRecord()),
       },
       servicePricing: {
-        findUnique: mock().mockResolvedValue({
-          id: "pricing-1",
-          planId: "plan-1",
-          billingPeriod: "ANNUAL",
-        }),
+        findUnique: mock().mockResolvedValue(pricingRecord()),
       },
       vpnSubscription: { findFirst: mock().mockResolvedValue(null) },
     }
@@ -225,11 +237,7 @@ describe("VpnSubscriptionService.purchase", () => {
         findUnique: mock().mockResolvedValue(packageRecord()),
       },
       servicePricing: {
-        findUnique: mock().mockResolvedValue({
-          id: "pricing-1",
-          planId: "plan-1",
-          billingPeriod: "ANNUAL",
-        }),
+        findUnique: mock().mockResolvedValue(pricingRecord()),
       },
       vpnSubscription: { findFirst: mock().mockResolvedValue(null) },
     }
@@ -278,10 +286,9 @@ describe("VpnSubscriptionService.purchase", () => {
         findUnique: mock().mockResolvedValue(packageRecord()),
       },
       servicePricing: {
-        findUnique: mock().mockResolvedValue({
-          id: "pricing-1",
-          planId: "other-plan",
-        }),
+        findUnique: mock().mockResolvedValue(
+          pricingRecord({ planId: "other-plan" })
+        ),
       },
       vpnSubscription: { findFirst: mock() },
     }
