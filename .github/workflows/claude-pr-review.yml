@@ -14,10 +14,10 @@ jobs:
       id-token: write
     steps:
       - name: Skip fix PRs
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
-          AUTHOR="${{ github.event.pull_request.user.login }}"
-          BRANCH="${{ github.event.pull_request.head.ref }}"
-
           if [ "$AUTHOR" == "github-actions[bot]" ]; then
             echo "Skipping: Fix PR created by bot"
             exit 0
