@@ -13,7 +13,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
-import { WhatsappOrganizationApiKeyInventory } from "@/modules/whatsapp/organization-api-keys/ui/organization-api-key-inventory"
 
 type PageState = "loading" | "error" | "loaded"
 
@@ -340,8 +339,6 @@ export default function PortalWhatsAppDashboardPage() {
           </CardContent>
         </Card>
       )}
-
-      <WhatsappOrganizationApiKeyInventory />
     </main>
   )
 }
