@@ -172,7 +172,10 @@ describe("public VPN package DTO pricing", () => {
         id: "future",
         effectiveFrom: new Date("2026-06-16T00:00:00.000Z"),
       }),
-      pricing({ id: "expired", effectiveTo: at }),
+      pricing({
+        id: "expired",
+        effectiveTo: new Date("2026-06-01T00:00:00.000Z"),
+      }),
     ]
 
     const result = toVpnPublicPackageDTO(
