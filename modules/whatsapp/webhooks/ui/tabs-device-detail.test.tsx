@@ -57,7 +57,7 @@ describe("TabsDeviceDetail", () => {
     const { TabsDeviceDetail } =
       await import("@/modules/whatsapp/webhooks/ui/tabs-device-detail")
 
-    render(
+    const view = render(
       React.createElement(TabsDeviceDetail, {
         device,
         backHref: "/id/console/whatsapp/devices",
@@ -69,6 +69,10 @@ describe("TabsDeviceDetail", () => {
     // eden.api.whatsapp.templates.get({ $query: { whatsappDeviceId, limit, page } })
     await waitFor(() => {
       expect(capturedUrls.length).toBeGreaterThanOrEqual(1)
+    })
+
+    await waitFor(() => {
+      expect(view.getByText("(1)")).toBeTruthy()
     })
 
     const templateUrl = capturedUrls.find((url) =>
@@ -88,5 +92,24 @@ describe("TabsDeviceDetail", () => {
       url.startsWith("http://localhost:3300/api/whatsapp/templates")
     )
     expect(envOriginUrl).toBeUndefined()
+  })
+
+  it("shows the Meta Webhook tab when its metadata is provided", async () => {
+    const { TabsDeviceDetail } =
+      await import("@/modules/whatsapp/webhooks/ui/tabs-device-detail")
+
+    const view = render(
+      React.createElement(TabsDeviceDetail, {
+        device,
+        backHref: "/id/console/whatsapp/devices",
+        overviewChildren: React.createElement("div", null, "Overview"),
+        metaWebhook: null,
+      })
+    )
+
+    await waitFor(() => {
+      expect(view.getByText("(1)")).toBeTruthy()
+    })
+    expect(view.getByRole("tab", { name: "Meta Webhook" })).toBeTruthy()
   })
 })

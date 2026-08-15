@@ -33,6 +33,10 @@ import { useTemplates } from "@/modules/whatsapp/templates/api/templates.hooks"
 import { DeliveryLogTable } from "@/modules/whatsapp/webhooks/ui/delivery-log-table"
 import type { WebhookDeliveryLogDTO } from "@/modules/whatsapp/webhooks/webhook-dispatcher.service"
 import {
+  MetaWebhookCard,
+  type MetaWebhookInfo,
+} from "@/modules/whatsapp/webhooks/ui/meta-webhook-card"
+import {
   Table,
   TableBody,
   TableCell,
@@ -79,6 +83,7 @@ type TabsDeviceDetailProps = {
   backHref: string
   overviewChildren: React.ReactNode
   actions?: React.ReactNode
+  metaWebhook?: MetaWebhookInfo | null
 }
 
 // ─── Webhook Log Tab Content ─────────────────────────────────────────────────
@@ -197,6 +202,7 @@ export function TabsDeviceDetail({
   backHref,
   overviewChildren,
   actions,
+  metaWebhook,
 }: TabsDeviceDetailProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -240,6 +246,9 @@ export function TabsDeviceDetail({
       <Tabs value={defaultTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          {metaWebhook !== undefined && (
+            <TabsTrigger value="meta-webhook">Meta Webhook</TabsTrigger>
+          )}
           <TabsTrigger value="templates">
             Templates <TemplateCountBadge deviceId={device.id} />
           </TabsTrigger>
@@ -251,6 +260,12 @@ export function TabsDeviceDetail({
         <TabsContent value="overview" className="mt-6">
           {overviewChildren}
         </TabsContent>
+
+        {metaWebhook !== undefined && (
+          <TabsContent value="meta-webhook" className="mt-6">
+            <MetaWebhookCard metaWebhook={metaWebhook} />
+          </TabsContent>
+        )}
 
         <TabsContent value="templates" className="mt-6">
           <Card>
