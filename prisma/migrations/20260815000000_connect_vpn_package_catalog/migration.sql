@@ -14,128 +14,154 @@
 -- while making the record visible to an administrator for remediation.
 
 INSERT INTO "Package" (
-    "id", "code", "name", "description", "isActive", "createdAt", "updatedAt"
+    id, code, name, description, "isActive", "createdAt", "updatedAt"
 )
 VALUES (
     'billing-vpn-package', 'VPN', 'VPN', 'VPN service catalog package', true,
     CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 )
-ON CONFLICT ("code") DO NOTHING;
+ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO "Region" (
-    "id", "code", "name", "country", "flag", "isActive", "createdAt", "updatedAt"
+    id,
+    code,
+    name,
+    country,
+    flag,
+    "isActive",
+    "createdAt",
+    "updatedAt"
 )
 VALUES (
-    'billing-region-indonesia', 'INDONESIA', 'Indonesia', 'Indonesia', NULL, true,
+    'billing-region-indonesia',
+    'INDONESIA',
+    'Indonesia',
+    'Indonesia',
+    null,
+    true,
     CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
 )
-ON CONFLICT ("code") DO NOTHING;
+ON CONFLICT (code) DO NOTHING;
 
 -- YEARLY is a legacy spelling. Reuse the existing row when an equivalent
 -- ANNUAL offer already exists; otherwise normalize it in place. Conflicts are
 -- deactivated by identity so historical pricing IDs remain stable.
 UPDATE "Pricing" legacy
 SET "billingPeriod" = 'ANNUAL'
-WHERE legacy."type" = 'BUNDLE'
-  AND legacy."billingMode" = 'PACKAGE'
-  AND legacy."billingPeriod" = 'YEARLY'
-  AND EXISTS (
-    SELECT 1
-    FROM "ServicePlan" plan
-    JOIN "Package" package ON package."id" = plan."packageId"
-    WHERE plan."id" = legacy."planId"
-      AND package."code" = 'VPN'
-  )
-  AND NOT EXISTS (
-    SELECT 1
-    FROM "Pricing" annual
-    WHERE annual."planId" = legacy."planId"
-      AND annual."regionId" = legacy."regionId"
-      AND annual."type" = legacy."type"
-      AND annual."billingMode" = legacy."billingMode"
-      AND annual."billingPeriod" = 'ANNUAL'
-      AND annual."currency" = legacy."currency"
-      AND annual."effectiveFrom" = legacy."effectiveFrom"
-  );
+WHERE
+    legacy.type = 'BUNDLE'
+    AND legacy."billingMode" = 'PACKAGE'
+    AND legacy."billingPeriod" = 'YEARLY'
+    AND EXISTS (
+        SELECT 1
+        FROM "ServicePlan" AS plan
+        INNER JOIN "Package" AS package ON plan."packageId" = package.id
+        WHERE
+            plan.id = legacy."planId"
+            AND package.code = 'VPN'
+    )
+    AND NOT EXISTS (
+        SELECT 1
+        FROM "Pricing" AS annual
+        WHERE
+            annual."planId" = legacy."planId"
+            AND annual."regionId" = legacy."regionId"
+            AND annual.type = legacy.type
+            AND annual."billingMode" = legacy."billingMode"
+            AND annual."billingPeriod" = 'ANNUAL'
+            AND annual.currency = legacy.currency
+            AND annual."effectiveFrom" = legacy."effectiveFrom"
+    );
 
 UPDATE "Pricing" legacy
 SET "isActive" = false
-WHERE legacy."type" = 'BUNDLE'
-  AND legacy."billingMode" = 'PACKAGE'
-  AND legacy."billingPeriod" = 'YEARLY'
-  AND EXISTS (
-    SELECT 1
-    FROM "ServicePlan" plan
-    JOIN "Package" package ON package."id" = plan."packageId"
-    WHERE plan."id" = legacy."planId"
-      AND package."code" = 'VPN'
-  )
-  AND EXISTS (
-    SELECT 1
-    FROM "Pricing" annual
-    WHERE annual."planId" = legacy."planId"
-      AND annual."regionId" = legacy."regionId"
-      AND annual."type" = legacy."type"
-      AND annual."billingMode" = legacy."billingMode"
-      AND annual."billingPeriod" = 'ANNUAL'
-      AND annual."currency" = legacy."currency"
-      AND annual."effectiveFrom" = legacy."effectiveFrom"
-  );
+WHERE
+    legacy.type = 'BUNDLE'
+    AND legacy."billingMode" = 'PACKAGE'
+    AND legacy."billingPeriod" = 'YEARLY'
+    AND EXISTS (
+        SELECT 1
+        FROM "ServicePlan" AS plan
+        INNER JOIN "Package" AS package ON plan."packageId" = package.id
+        WHERE
+            plan.id = legacy."planId"
+            AND package.code = 'VPN'
+    )
+    AND EXISTS (
+        SELECT 1
+        FROM "Pricing" AS annual
+        WHERE
+            annual."planId" = legacy."planId"
+            AND annual."regionId" = legacy."regionId"
+            AND annual.type = legacy.type
+            AND annual."billingMode" = legacy."billingMode"
+            AND annual."billingPeriod" = 'ANNUAL'
+            AND annual.currency = legacy.currency
+            AND annual."effectiveFrom" = legacy."effectiveFrom"
+    );
 
 -- CUSTOM VPN offers cannot be consumed by the recurring VPN catalog. Keep
 -- their rows for audit/history but make them unavailable for new purchases.
 UPDATE "Pricing" pricing
 SET "isActive" = false
-WHERE pricing."type" = 'BUNDLE'
-  AND pricing."billingMode" = 'PACKAGE'
-  AND pricing."billingPeriod" = 'CUSTOM'
-  AND EXISTS (
-    SELECT 1
-    FROM "ServicePlan" plan
-    JOIN "Package" package ON package."id" = plan."packageId"
-    WHERE plan."id" = pricing."planId"
-      AND package."code" = 'VPN'
-  );
+WHERE
+    pricing.type = 'BUNDLE'
+    AND pricing."billingMode" = 'PACKAGE'
+    AND pricing."billingPeriod" = 'CUSTOM'
+    AND EXISTS (
+        SELECT 1
+        FROM "ServicePlan" AS plan
+        INNER JOIN "Package" AS package ON plan."packageId" = package.id
+        WHERE
+            plan.id = pricing."planId"
+            AND package.code = 'VPN'
+    );
 
 -- Reconcile a legacy package price only when no catalog offer exists at all.
 -- Existing offers remain authoritative, including their effective windows.
 INSERT INTO "Pricing" (
-    "id", "planId", "regionId", "type", "billingMode", "billingPeriod",
-    "currency", "periodPrice", "effectiveFrom", "effectiveTo", "chargeUnit",
+    id, "planId", "regionId", type, "billingMode", "billingPeriod",
+    currency, "periodPrice", "effectiveFrom", "effectiveTo", "chargeUnit",
     "basePriceIdr", "monthlyCapIdr", "unitRateCpu", "unitRateMem",
     "unitRateMessage", "isActive", "createdAt", "updatedAt"
 )
 SELECT
-    'billing-vpn-pricing-legacy-' || vp."id",
-    vp."servicePlanId",
-    (SELECT id FROM "Region" WHERE code = 'INDONESIA'),
-    'BUNDLE',
-    'PACKAGE',
-    'MONTHLY',
-    COALESCE(vp."currency", 'IDR'),
-    vp."price",
-    vp."createdAt",
-    NULL,
-    'SUBSCRIPTION',
-    vp."price",
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    (vp."price" > 0),
+    'billing-vpn-pricing-legacy-' || vp.id AS id,
+    vp."servicePlanId" AS "planId",
+    (
+        SELECT r.id
+        FROM "Region" AS r
+        WHERE r.code = 'INDONESIA'
+    ) AS "regionId",
+    'BUNDLE' AS "type", -- noqa: RF06
+    'PACKAGE' AS "billingMode",
+    'MONTHLY' AS "billingPeriod",
+    COALESCE(vp.currency, 'IDR') AS currency,
+    vp.price AS "periodPrice",
+    vp."createdAt" AS "effectiveFrom",
+    null AS "effectiveTo",
+    'SUBSCRIPTION' AS "chargeUnit",
+    vp.price AS "basePriceIdr",
+    null AS "monthlyCapIdr",
+    null AS "unitRateCpu",
+    null AS "unitRateMem",
+    null AS "unitRateMessage",
+    (vp.price > 0) AS "isActive",
     vp."createdAt",
     vp."updatedAt"
-FROM "VpnPackage" vp
-WHERE vp."price" IS NOT NULL
-  AND NOT EXISTS (
-    SELECT 1
-    FROM "Pricing" p
-    WHERE p."planId" = vp."servicePlanId"
-      AND p."type" = 'BUNDLE'
-      AND p."billingMode" = 'PACKAGE'
-      AND p."periodPrice" IS NOT NULL
-  )
-ON CONFLICT ("id") DO NOTHING;
+FROM "VpnPackage" AS vp
+WHERE
+    vp.price IS NOT null
+    AND NOT EXISTS (
+        SELECT 1
+        FROM "Pricing" AS p
+        WHERE
+            p."planId" = vp."servicePlanId"
+            AND p.type = 'BUNDLE'
+            AND p."billingMode" = 'PACKAGE'
+            AND p."periodPrice" IS NOT null
+    )
+ON CONFLICT (id) DO NOTHING;
 
 -- Quarantine active packages whose linked plan belongs to another product.
 -- Do not update plan, pricing, subscription, or fulfillment IDs: those rows
