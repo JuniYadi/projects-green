@@ -1084,3 +1084,28 @@ Expected: no new errors.
 git add components/app-sidebar.tsx
 git commit -m "feat(whatsapp): add Meta Apps sidebar nav entry"
 ```
+### Task 4: Final verification
+
+- [ ] **Step 1: Changed-path lint**
+
+Run: `bun run lint -- modules/whatsapp/meta-apps/meta-apps.dto.ts modules/whatsapp/meta-apps/meta-apps.service.ts modules/whatsapp/meta-apps/api/meta-apps.route.ts modules/whatsapp/meta-apps/ui/meta-app-inventory.tsx app/\[lang\]/portal/whatsapp/meta-apps/page.tsx components/app-sidebar.tsx`
+Expected: no errors.
+
+- [ ] **Step 2: Changed-path tests**
+
+Run: `bun run test:changed`
+Expected: all pass, no unmapped-changed-path warnings for the new files (they each have a paired test).
+
+- [ ] **Step 3: Changed-path coverage (this is a behavior change)**
+
+Run: `bun run test:coverage:changed`
+Expected: passes the project's coverage threshold.
+
+- [ ] **Step 4: Full typecheck**
+
+Run: `bun run typecheck`
+Expected: no errors.
+
+- [ ] **Step 5: Do not proceed further**
+
+Do NOT open a PR yet. Do NOT update the Obsidian vault's Delivery Tracking table yet — per the vault's own Completion convention, `work_status: done` and the `closed:` date are only set after the PR is reviewed, merged, and (if Codecov reports on it) patch coverage is >=80%.
