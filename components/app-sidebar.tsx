@@ -25,6 +25,7 @@ import {
   GaugeIcon,
   GlobeIcon,
   HardDrivesIcon,
+  KeyIcon,
   LifebuoyIcon,
   Lightning,
   ListMagnifyingGlassIcon,
@@ -386,6 +387,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <GaugeIcon />,
         isActive: path === "/portal/whatsapp",
+      },
+      {
+        title: "API Keys",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/api-keys",
+          locale,
+        }),
+        icon: <KeyIcon />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/api-keys"),
       },
       {
         title: "Devices",

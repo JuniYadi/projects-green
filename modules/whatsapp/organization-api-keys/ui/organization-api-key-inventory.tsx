@@ -144,6 +144,21 @@ export function WhatsappOrganizationApiKeyInventory() {
     return () => window.clearTimeout(timer)
   }, [loadInventory])
 
+  if (authorized === false) {
+    return (
+      <section className="flex flex-col gap-6 px-6 pb-6">
+        <Card className="border-destructive">
+          <CardHeader>
+            <CardTitle>Access denied</CardTitle>
+            <CardDescription>
+              Only super-admins can view organization API keys.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </section>
+    )
+  }
+
   if (authorized !== true) return null
 
   const applyFilters = () => {

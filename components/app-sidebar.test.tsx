@@ -534,6 +534,7 @@ describe("resolveSidebarMenu", () => {
     expect(navMainLabel).toBe("WhatsApp")
     expect(navMain.map((item) => item.title)).toEqual([
       "Dashboard",
+      "API Keys",
       "Devices",
       "Templates",
       "Messages",
@@ -549,6 +550,18 @@ describe("resolveSidebarMenu", () => {
     )
 
     expect(projects.map((project) => project.name)).toEqual(["Back to Portal"])
+  })
+
+  it("marks API Keys active for its route", () => {
+    const { navMain } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/whatsapp/api-keys",
+      locale: "en",
+    })
+
+    const apiKeys = navMain.find((item) => item.title === "API Keys")
+    expect(apiKeys?.url).toBe("/en/portal/whatsapp/api-keys")
+    expect(apiKeys?.isActive).toBe(true)
   })
 
   it("marks messages active for its routes", () => {
