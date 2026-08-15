@@ -371,7 +371,10 @@ export function WhatsappMetaAppInventory({
   }, [])
 
   React.useEffect(() => {
-    void loadInventory()
+    const timer = window.setTimeout(() => {
+      void loadInventory()
+    }, 0)
+    return () => window.clearTimeout(timer)
   }, [loadInventory])
 
   if (authorized === false) {
