@@ -76,7 +76,7 @@ const json = (value: unknown): RequestInit => ({
 
 beforeEach(() => {
   mockGuard.mockImplementation(async () => admin)
-  mockList.mockImplementation(async () => [appRecord])
+  mockList.mockImplementation(async () => [{ ...appRecord, deviceCount: 0 }])
   mockGet.mockImplementation(async () => appRecord)
   mockCreate.mockImplementation(async () => appRecord)
   mockUpdate.mockImplementation(async () => appRecord)
@@ -115,7 +115,10 @@ describe("admin MetaApp routes", () => {
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(body).toEqual({ ok: true, data: [appRecord] })
+    expect(body).toEqual({
+      ok: true,
+      data: [{ ...appRecord, deviceCount: 0 }],
+    })
     expect(mockList).toHaveBeenCalledWith({ activeOnly: false })
     expect(JSON.stringify(body)).not.toContain("appSecret")
     expect(JSON.stringify(body)).not.toContain("verifyToken")

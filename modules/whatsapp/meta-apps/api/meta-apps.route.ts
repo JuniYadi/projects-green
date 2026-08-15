@@ -114,7 +114,13 @@ export const createAdminMetaAppsRoutes = (deps: AdminMetaAppsDeps = {}) => {
 
       try {
         const apps = await service.list({ activeOnly: false })
-        return { ok: true as const, data: apps.map(publicMetaApp) }
+        return {
+          ok: true as const,
+          data: apps.map((app) => ({
+            ...publicMetaApp(app),
+            deviceCount: app.deviceCount,
+          })),
+        }
       } catch (error) {
         return mapServiceError(set, error)
       }
