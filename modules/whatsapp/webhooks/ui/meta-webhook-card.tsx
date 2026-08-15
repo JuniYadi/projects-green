@@ -1,5 +1,3 @@
-import Link from "next/link"
-
 import {
   Card,
   CardContent,
@@ -11,7 +9,6 @@ import {
 export type MetaWebhookInfo = {
   appName: string
   callbackUrl: string
-  appHref?: string
 }
 
 type MetaWebhookCardProps = {
@@ -34,17 +31,6 @@ function MetaWebhookRow({
 }
 
 export function MetaWebhookCard({ metaWebhook }: MetaWebhookCardProps) {
-  const appName = metaWebhook?.appHref ? (
-    <Link
-      className="text-primary underline-offset-4 hover:underline"
-      href={metaWebhook.appHref}
-    >
-      {metaWebhook.appName}
-    </Link>
-  ) : (
-    metaWebhook?.appName
-  )
-
   return (
     <Card>
       <CardHeader>
@@ -56,7 +42,9 @@ export function MetaWebhookCard({ metaWebhook }: MetaWebhookCardProps) {
       <CardContent>
         {metaWebhook ? (
           <dl className="space-y-3">
-            <MetaWebhookRow label="Meta App">{appName}</MetaWebhookRow>
+            <MetaWebhookRow label="Meta App">
+              {metaWebhook.appName}
+            </MetaWebhookRow>
             <MetaWebhookRow label="Callback URL">
               <code className="rounded bg-muted px-1.5 py-0.5 text-xs break-all">
                 {metaWebhook.callbackUrl}
