@@ -398,6 +398,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         isActive: startsWithRoute(path, "/portal/whatsapp/api-keys"),
       },
       {
+        title: "Meta Apps",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/meta-apps",
+          locale,
+        }),
+        icon: <GearSixIcon />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/meta-apps"),
+      },
+      {
         title: "Devices",
         url: localizePathname({
           pathname: "/portal/whatsapp/devices",
