@@ -977,3 +977,110 @@ Expected: PASS (6 tests total)
 git add modules/whatsapp/meta-apps/ui/meta-app-inventory.tsx modules/whatsapp/meta-apps/ui/meta-app-inventory.test.tsx
 git commit -m "feat(whatsapp): add portal meta app inventory component"
 ```
+
+### Task 3: Mount the portal page and add sidebar navigation
+
+**Files:**
+- Create: `app/[lang]/portal/whatsapp/meta-apps/page.tsx`
+- Test: `app/[lang]/portal/whatsapp/meta-apps/page.test.tsx`
+- Modify: `components/app-sidebar.tsx`
+
+**Interfaces:**
+- Consumes: `WhatsappMetaAppInventory` from Task 2 (`@/modules/whatsapp/meta-apps/ui/meta-app-inventory`), `getEmailBaseUrl` from `@/lib/email-url`.
+- Produces: default-exported `PortalWhatsAppMetaAppsPage` React Server Component; the route `/portal/whatsapp/meta-apps` resolves to it.
+
+- [ ] **Step 1: Write the failing page test**
+
+Create `app/[lang]/portal/whatsapp/meta-apps/page.test.tsx`:
+
+```tsx
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { cleanup, render, waitFor } from "@testing-library/react"
+
+const mockFetch = mock(async () => new Response(
+  JSON.stringify({ ok: false }),
+  { status: 403, headers: { "Content-Type": "application/json" } }
+))
+global.fetch = mockFetch as unknown as typeof fetch
+
+const { default: MetaAppsPage } = await import("./page")
+
+describe("PortalWhatsAppMetaAppsPage", () => {
+  beforeEach(() => {
+    mockFetch.mockClear()
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it("renders the inventory section access-denied state for unauthorized users", async () => {
+    const view = render(<MetaAppsPage />)
+    await waitFor(() => expect(view.getByText("Access denied")).toBeTruthy())
+  })
+})
+```
+
+- [ ] **Step 2: Run it, confirm it fails**
+
+Run: `bun test app/\[lang\]/portal/whatsapp/meta-apps/page.test.tsx`
+Expected: FAIL — `./page` does not exist.
+
+- [ ] **Step 3: Implement the page**
+
+Create `app/[lang]/portal/whatsapp/meta-apps/page.tsx`:
+
+```tsx
+import { getEmailBaseUrl } from "@/lib/email-url"
+import { WhatsappMetaAppInventory } from "@/modules/whatsapp/meta-apps/ui/meta-app-inventory"
+
+export default function PortalWhatsAppMetaAppsPage() {
+  return (
+    <main className="flex flex-1 flex-col">
+      <WhatsappMetaAppInventory baseUrl={getEmailBaseUrl()} />
+    </main>
+  )
+}
+```
+
+- [ ] **Step 4: Run it, confirm it passes**
+
+Run: `bun test app/\[lang\]/portal/whatsapp/meta-apps/page.test.tsx`
+Expected: PASS
+
+- [ ] **Step 5: Commit the page**
+
+```bash
+git add app/\[lang\]/portal/whatsapp/meta-apps/page.tsx app/\[lang\]/portal/whatsapp/meta-apps/page.test.tsx
+git commit -m "feat(whatsapp): mount portal meta app management page"
+```
+
+- [ ] **Step 6: Add the sidebar nav entry**
+
+Open `components/app-sidebar.tsx`. Find the whatsapp portal context's `getNavMain` array (the one containing the `"API Keys"` entry pointing at `/portal/whatsapp/api-keys`). Add a new entry immediately after the `"API Keys"` entry:
+
+```tsx
+{
+  title: "Meta Apps",
+  url: localizePathname({
+    pathname: "/portal/whatsapp/meta-apps",
+    locale,
+  }),
+  icon: <GearSixIcon />,
+  isActive: startsWithRoute(path, "/portal/whatsapp/meta-apps"),
+},
+```
+
+`GearSixIcon` is already imported at the top of this file (used elsewhere) — do not add a new icon import. If it turns out not to already be imported, add it to the existing `@phosphor-icons/react` import block instead of adding a second import statement.
+
+- [ ] **Step 7: Confirm nothing broke**
+
+Run: `bun run typecheck`
+Expected: no new errors.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add components/app-sidebar.tsx
+git commit -m "feat(whatsapp): add Meta Apps sidebar nav entry"
+```
