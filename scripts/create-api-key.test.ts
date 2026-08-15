@@ -12,6 +12,7 @@ const { hashApiKey } = await import("@/lib/whatsapp/crypto")
 
 describe("create-api-key script", () => {
   beforeEach(() => {
+    process.env.API_KEY_HASH_SALT = "test-api-key-hash-salt"
     mockCreate.mockReset()
     mockCreate.mockImplementation(async () => ({
       id: "key_1",

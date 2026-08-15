@@ -1774,6 +1774,11 @@ enum WhatsappApiKeyEnvironment {
   LIVE
 }
 
+enum WhatsappOrganizationApiKeyStatus {
+  ACTIVE
+  REVOKED
+}
+
 enum WebhookDeliveryStatus {
   PENDING
   SUCCESS
@@ -2241,6 +2246,28 @@ model WhatsappApiKey {
   updatedAt      DateTime                  @updatedAt
 
   @@index([organizationId, key])
+}
+
+model WhatsappOrganizationApiKey {
+  id                     String                             @id @default(cuid())
+  organizationId         String
+  fingerprint            String                             @unique
+  keyHash                String                             @unique
+  status                 WhatsappOrganizationApiKeyStatus   @default(ACTIVE)
+  createdByWorkosUserId  String?
+  rotatedByWorkosUserId  String?
+  revokedByWorkosUserId  String?
+  createdAt              DateTime                           @default(now())
+  rotatedAt              DateTime?
+  revokedAt              DateTime?
+  lastUsedAt             DateTime?
+  lastUsedIp             String?
+  lastUsedUserAgent      String?
+  updatedAt              DateTime                           @updatedAt
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, status])
+  @@index([status, createdAt(sort: Desc)])
 }
 
 model WhatsappWebhook {

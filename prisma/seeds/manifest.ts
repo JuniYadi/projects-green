@@ -110,6 +110,7 @@ export const SEED_TABLES = [
   "WhatsappAttachment",
   "WhatsappBroadcastRateState",
   "WhatsappApiKey",
+  "WhatsappOrganizationApiKey",
   "WhatsappWebhook",
   "WhatsappWebhookDeliveryLog",
   "WhatsappWebhookEvent",

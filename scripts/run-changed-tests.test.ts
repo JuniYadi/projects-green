@@ -80,6 +80,24 @@ describe("selectChangedTests", () => {
     })
   })
 
+  test("selects WhatsApp tests for portal and lifecycle changes", () => {
+    const selection = selectChangedTests(
+      ["app/[lang]/portal/whatsapp/page.tsx"],
+      [
+        "modules/whatsapp/api/organization-api-key-hono.test.ts",
+        "modules/whatsapp/organization-api-keys/organization-api-keys.service.test.ts",
+      ]
+    )
+
+    expect(selection).toEqual({
+      testFiles: [
+        "modules/whatsapp/api/organization-api-key-hono.test.ts",
+        "modules/whatsapp/organization-api-keys/organization-api-keys.service.test.ts",
+      ],
+      unmappedProductionPaths: [],
+    })
+  })
+
   test("selects the OpenAPI contract test for the application entrypoint", () => {
     const selection = selectChangedTests(
       ["lib/api.ts"],

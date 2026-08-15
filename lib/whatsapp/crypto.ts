@@ -16,6 +16,14 @@ import {
 
 const PBKDF2_ITERATIONS = 600_000
 
+export const getApiKeyHashSalt = (): string => {
+  const salt = process.env.API_KEY_HASH_SALT?.trim()
+  if (!salt) {
+    throw new Error("API_KEY_HASH_SALT environment variable is required")
+  }
+  return salt
+}
+
 /**
  * Hash a raw API key with PBKDF2-SHA256.
  * Used to compare a presented key against the stored keyHash.
@@ -248,10 +256,7 @@ export async function generateRawApiKey(
 ): Promise<{ raw: string; hash: string }> {
   const bytes = randomBytes(32)
   const raw = prefix + bytes.toString("base64url")
-  const hash = await hashApiKey(
-    raw.slice(prefix.length),
-    process.env.API_KEY_HASH_SALT ?? "dev-salt-change-me"
-  )
+  const hash = await hashApiKey(raw.slice(prefix.length), getApiKeyHashSalt())
   return { raw, hash }
 }
 
