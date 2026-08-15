@@ -148,7 +148,10 @@ describe("admin MetaApp routes", () => {
 
     expect(response.status).toBe(201)
     expect(body).toEqual({ ok: true, data: appRecord })
-    expect(mockCreate).toHaveBeenCalledWith({ ...input, name: "Primary" })
+    expect(mockCreate).toHaveBeenCalledWith(
+      { ...input, name: "Primary" },
+      "admin-1"
+    )
     expect(JSON.stringify(body)).not.toContain("secret-value")
     expect(JSON.stringify(body)).not.toContain("verify-value")
   })
@@ -182,7 +185,7 @@ describe("admin MetaApp routes", () => {
 
     expect(response.status).toBe(200)
     expect(body).toEqual({ ok: true, data: appRecord })
-    expect(mockUpdate).toHaveBeenCalledWith("meta-1", input)
+    expect(mockUpdate).toHaveBeenCalledWith("meta-1", input, "admin-1")
     expect(JSON.stringify(body)).not.toContain("new-secret")
     expect(JSON.stringify(body)).not.toContain("new-token")
   })
@@ -251,6 +254,6 @@ describe("admin MetaApp routes", () => {
 
     expect(response.status).toBe(200)
     expect(body).toEqual({ ok: true, data: appRecord })
-    expect(mockDelete).toHaveBeenCalledWith("meta-1")
+    expect(mockDelete).toHaveBeenCalledWith("meta-1", "admin-1")
   })
 })

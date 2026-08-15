@@ -3,6 +3,7 @@ import { Prisma, type PrismaClient, type WhatsappDevice } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
 import { decryptWithAppKey, encryptWithAppKey } from "@/lib/whatsapp/crypto"
+import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 
 import { toWhatsappMetaAppDTO, type WhatsappMetaAppDTO } from "./meta-apps.dto"
 import {
@@ -46,10 +47,31 @@ export type MetaAppListOptions = {
   activeOnly?: boolean
 }
 
+// Meta apps are platform-scoped, while audit rows require an organization key.
+const META_APP_AUDIT_ORGANIZATION_ID = "system"
+const META_APP_AUDIT_FIELDS = [
+  "name",
+  "metaAppId",
+  "appSecret",
+  "verifyToken",
+  "active",
+] as const
+
+type MetaAppAuditField = (typeof META_APP_AUDIT_FIELDS)[number]
+
+function getChangedFields(
+  input: Partial<Record<MetaAppAuditField, unknown>>
+): MetaAppAuditField[] {
+  return META_APP_AUDIT_FIELDS.filter((field) => input[field] !== undefined)
+}
+
 export class MetaAppsService {
   constructor(private readonly database: PrismaClient = prisma) {}
 
-  async create(input: CreateMetaAppInput): Promise<WhatsappMetaAppDTO> {
+  async create(
+    input: CreateMetaAppInput,
+    actorId: string
+  ): Promise<WhatsappMetaAppDTO> {
     const data = createMetaAppSchema.parse(input)
     const [appSecretEncrypted, verifyTokenEncrypted] = await Promise.all([
       encryptWithAppKey(data.appSecret),
@@ -64,6 +86,18 @@ export class MetaAppsService {
         verifyTokenEncrypted,
         webhookKey: randomBytes(32).toString("base64url"),
         active: data.active,
+      },
+    })
+
+    await logWhatsappAuditEvent({
+      action: "META_APP_CREATED",
+      status: "OK",
+      organizationId: META_APP_AUDIT_ORGANIZATION_ID,
+      adminId: actorId,
+      message: "WhatsApp Meta app created.",
+      details: {
+        metaAppId: app.metaAppId,
+        changedFields: getChangedFields(data),
       },
     })
 
@@ -87,7 +121,8 @@ export class MetaAppsService {
 
   async update(
     id: string,
-    input: UpdateMetaAppInput
+    input: UpdateMetaAppInput,
+    actorId: string
   ): Promise<WhatsappMetaAppDTO> {
     const data = updateMetaAppSchema.parse(input)
     const updateData: Record<string, unknown> = {}
@@ -113,14 +148,33 @@ export class MetaAppsService {
             where: { id },
             data: updateData,
           })
+    const credentialsChanged =
+      data.appSecret !== undefined || data.verifyToken !== undefined
+    await logWhatsappAuditEvent({
+      action: credentialsChanged
+        ? "META_APP_CREDENTIALS_ROTATED"
+        : "META_APP_UPDATED",
+      status: "OK",
+      organizationId: META_APP_AUDIT_ORGANIZATION_ID,
+      adminId: actorId,
+      message: credentialsChanged
+        ? "WhatsApp Meta app credentials rotated."
+        : "WhatsApp Meta app updated.",
+      details: {
+        metaAppId: app.metaAppId,
+        changedFields: getChangedFields(data),
+      },
+    })
+
     return toWhatsappMetaAppDTO(app)
   }
 
   async rotateCredentials(
     id: string,
-    credentials: Pick<UpdateMetaAppInput, "appSecret" | "verifyToken">
+    credentials: Pick<UpdateMetaAppInput, "appSecret" | "verifyToken">,
+    actorId: string
   ): Promise<WhatsappMetaAppDTO> {
-    return this.update(id, credentials)
+    return this.update(id, credentials, actorId)
   }
 
   async resolveCredentialsByWebhookKey(
@@ -177,11 +231,28 @@ export class MetaAppsService {
     return app ? toWhatsappMetaAppDTO(app) : null
   }
 
-  async delete(id: string): Promise<WhatsappMetaAppDTO | null> {
+  async delete(
+    id: string,
+    actorId: string
+  ): Promise<WhatsappMetaAppDTO | null> {
     const app = await this.withNoDevicesLock(id, (tx) =>
       tx.whatsappMetaApp.delete({ where: { id } })
     )
-    return app ? toWhatsappMetaAppDTO(app) : null
+    if (!app) return null
+
+    await logWhatsappAuditEvent({
+      action: "META_APP_DELETED",
+      status: "OK",
+      organizationId: META_APP_AUDIT_ORGANIZATION_ID,
+      adminId: actorId,
+      message: "WhatsApp Meta app deleted.",
+      details: {
+        metaAppId: app.metaAppId,
+        changedFields: [],
+      },
+    })
+
+    return toWhatsappMetaAppDTO(app)
   }
 
   private async withNoDevicesLock<T>(
