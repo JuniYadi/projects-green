@@ -12,8 +12,8 @@ const KEY_PATTERN = new RegExp(
 export const generateWhatsappOrganizationApiKey = () =>
   generateRawApiKey(WHATSAPP_ORGANIZATION_API_KEY_PREFIX)
 
-export const fingerprintWhatsappOrganizationApiKey = (rawKey: string) =>
-  createHash("sha256").update(rawKey, "utf8").digest("hex")
+export const fingerprintWhatsappOrganizationApiKey = (keyHash: string) =>
+  createHash("sha256").update(keyHash, "utf8").digest("hex")
 
 export const isWellFormedWhatsappOrganizationApiKey = (value: string) =>
   KEY_PATTERN.test(value)

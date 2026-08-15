@@ -16,6 +16,7 @@ mock.module("@/lib/prisma", () => ({
   },
 }))
 mock.module("@/lib/whatsapp/crypto", () => ({
+  getApiKeyHashSalt: mock(() => "test-api-key-hash-salt"),
   hashApiKey: mock(async () => "hash"),
   generateRawApiKey: mock(async () => ({ raw: "", hash: "" })),
 }))

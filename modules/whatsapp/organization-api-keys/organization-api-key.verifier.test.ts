@@ -5,8 +5,10 @@ import type { WhatsappOrganizationApiKeyDatabase } from "./organization-api-key.
 const mockHashApiKey = mock(
   async (value: string, salt: string) => `hash:${value}:${salt}`
 )
+const mockGetApiKeyHashSalt = mock(() => "test-api-key-hash-salt")
 
 mock.module("@/lib/whatsapp/crypto", () => ({
+  getApiKeyHashSalt: mockGetApiKeyHashSalt,
   hashApiKey: mockHashApiKey,
   generateRawApiKey: mock(async () => ({ raw: "", hash: "" })),
 }))
@@ -29,6 +31,9 @@ const asDatabase = (value: unknown) =>
 
 describe("verifyWhatsappOrganizationApiKey", () => {
   beforeEach(() => {
+    process.env.API_KEY_HASH_SALT = "test-api-key-hash-salt"
+    mockGetApiKeyHashSalt.mockClear()
+    mockGetApiKeyHashSalt.mockImplementation(() => "test-api-key-hash-salt")
     mockHashApiKey.mockClear()
   })
 
@@ -117,5 +122,23 @@ describe("verifyWhatsappOrganizationApiKey", () => {
 
     expect(result?.organizationId).toBe("org-owner")
     expect(JSON.stringify(result)).not.toContain("org-caller")
+  })
+
+  it("fails closed when API-key hashing is not configured", async () => {
+    delete process.env.API_KEY_HASH_SALT
+    mockGetApiKeyHashSalt.mockImplementation(() => {
+      throw new Error("API_KEY_HASH_SALT environment variable is required")
+    })
+    const findFirst = mock(async () => null)
+    const updateMany = mock(async () => ({ count: 1 }))
+
+    await expect(
+      verifyWhatsappOrganizationApiKey(
+        validKey,
+        {},
+        asDatabase({ whatsappOrganizationApiKey: { findFirst, updateMany } })
+      )
+    ).rejects.toThrow("API_KEY_HASH_SALT environment variable is required")
+    expect(findFirst).not.toHaveBeenCalled()
   })
 })

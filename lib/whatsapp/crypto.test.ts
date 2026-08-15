@@ -16,6 +16,7 @@ import {
 const VALID_APP_KEY_32B = Buffer.alloc(32).fill("k").toString("base64")
 
 const originalAppKey = process.env.APP_KEY
+const originalApiKeyHashSalt = process.env.API_KEY_HASH_SALT
 
 function setAppKey(key: string | undefined) {
   if (key === undefined) {
@@ -25,8 +26,17 @@ function setAppKey(key: string | undefined) {
   }
 }
 
+function setApiKeyHashSalt(salt: string | undefined) {
+  if (salt === undefined) {
+    delete process.env.API_KEY_HASH_SALT
+  } else {
+    process.env.API_KEY_HASH_SALT = salt
+  }
+}
+
 afterEach(() => {
   setAppKey(originalAppKey)
+  setApiKeyHashSalt(originalApiKeyHashSalt)
 })
 
 // ─── hashApiKey ──────────────────────────────────────────────────────────────
@@ -175,6 +185,7 @@ describe("decryptWithAppKey errors", () => {
 describe("generateRawApiKey", () => {
   beforeEach(() => {
     setAppKey(VALID_APP_KEY_32B)
+    setApiKeyHashSalt("test-api-key-hash-salt")
   })
 
   it("returns raw and hash", async () => {
@@ -206,6 +217,14 @@ describe("generateRawApiKey", () => {
     const hash1 = await hashApiKey(knownKey, salt)
     const hash2 = await hashApiKey(knownKey, salt)
     expect(hash1).toBe(hash2)
+  })
+
+  it("requires an explicit API-key hash salt", async () => {
+    setApiKeyHashSalt(undefined)
+
+    await expect(generateRawApiKey()).rejects.toThrow(
+      "API_KEY_HASH_SALT environment variable is required"
+    )
   })
 })
 

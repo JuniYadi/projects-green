@@ -50,6 +50,21 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     ],
     smokeProjects: ["smoke-portal"],
   },
+  {
+    name: "whatsapp-organization-api-keys",
+    sourcePrefixes: [
+      "app/[lang]/portal/whatsapp/page.tsx",
+      "modules/admin/api/admin.route.ts",
+      "modules/whatsapp/api/organization-api-key-hono.ts",
+      "modules/whatsapp/organization-api-keys/",
+      "prisma/seeds/manifest.ts",
+    ],
+    testPrefixes: [
+      "modules/whatsapp/api/organization-api-key-hono.test.ts",
+      "modules/whatsapp/organization-api-keys/",
+    ],
+    smokeProjects: ["smoke-portal"],
+  },
 ]
 
 export const SHARED_UI_PREFIXES = [

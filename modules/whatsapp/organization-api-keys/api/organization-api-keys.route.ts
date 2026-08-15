@@ -84,6 +84,7 @@ const mapServiceError = (set: RouteSet, error: unknown) => {
     return notFoundError(set)
   }
 
+  // Generation can fail for misconfigured key hashing or infrastructure faults.
   return internalError(set)
 }
 

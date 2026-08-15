@@ -2,6 +2,7 @@ import { Hono } from "hono"
 import type { MiddlewareHandler } from "hono"
 
 import {
+  normalizeWhatsappOrganizationApiKeyClientIp,
   verifyWhatsappOrganizationApiKey,
   type WhatsappOrganizationApiKeyAuthContext,
 } from "../organization-api-keys/organization-api-key.verifier"
@@ -36,9 +37,6 @@ const bearerToken = (authorization: string | undefined) => {
   return token || null
 }
 
-const clientIp = (value: string | undefined) =>
-  value?.split(",")[0]?.trim() || null
-
 export const createWhatsappOrganizationApiKeyMiddleware =
   (
     verifier: WhatsappOrganizationApiKeyVerifier = verifyWhatsappOrganizationApiKey
@@ -47,7 +45,9 @@ export const createWhatsappOrganizationApiKeyMiddleware =
     const verified = await verifier(
       bearerToken(c.req.header("Authorization")),
       {
-        clientIp: clientIp(c.req.header("x-forwarded-for")),
+        clientIp: normalizeWhatsappOrganizationApiKeyClientIp(
+          c.req.header("x-forwarded-for")
+        ),
         userAgent: c.req.header("user-agent") ?? null,
       }
     )

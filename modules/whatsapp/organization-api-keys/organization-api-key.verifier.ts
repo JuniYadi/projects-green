@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@prisma/client"
 
 import { prisma } from "@/lib/prisma"
-import { hashApiKey } from "@/lib/whatsapp/crypto"
+import { getApiKeyHashSalt, hashApiKey } from "@/lib/whatsapp/crypto"
 
 import {
   isWellFormedWhatsappOrganizationApiKey,
@@ -18,9 +18,6 @@ export type WhatsappOrganizationApiKeyVerifyOptions = {
   clientIp?: string | null
   userAgent?: string | null
 }
-
-const API_KEY_HASH_SALT = () =>
-  process.env.API_KEY_HASH_SALT?.trim() || "dev-salt-change-me"
 
 export type WhatsappOrganizationApiKeyDatabase = Pick<
   PrismaClient,
@@ -40,10 +37,12 @@ export async function verifyWhatsappOrganizationApiKey(
     return null
   }
 
+  const salt = getApiKeyHashSalt()
+
   try {
     const keyHash = await hashApiKey(
       rawKey.slice(WHATSAPP_ORGANIZATION_API_KEY_PREFIX.length),
-      API_KEY_HASH_SALT()
+      salt
     )
     const key = await database.whatsappOrganizationApiKey.findFirst({
       where: { keyHash, status: "ACTIVE" },
@@ -56,9 +55,12 @@ export async function verifyWhatsappOrganizationApiKey(
 
     if (!key) return null
 
-    const normalizedClientIp = options.clientIp?.split(",")[0]?.trim() || null
+    const normalizedClientIp = normalizeWhatsappOrganizationApiKeyClientIp(
+      options.clientIp
+    )
 
-    database.whatsappOrganizationApiKey
+    // Authentication remains available if this best-effort usage telemetry fails.
+    void database.whatsappOrganizationApiKey
       .updateMany({
         where: { id: key.id, status: "ACTIVE" },
         data: {
@@ -67,7 +69,7 @@ export async function verifyWhatsappOrganizationApiKey(
           lastUsedUserAgent: options.userAgent ?? null,
         },
       })
-      .catch(() => {})
+      .catch(() => undefined)
 
     return {
       keyId: key.id,
@@ -78,3 +80,7 @@ export async function verifyWhatsappOrganizationApiKey(
     return null
   }
 }
+
+export const normalizeWhatsappOrganizationApiKeyClientIp = (
+  value: string | null | undefined
+) => value?.split(",")[0]?.trim() || null

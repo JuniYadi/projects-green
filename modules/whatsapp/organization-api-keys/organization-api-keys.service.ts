@@ -95,7 +95,7 @@ export class WhatsappOrganizationApiKeysService {
       .create({
         data: {
           organizationId: params.organizationId,
-          fingerprint: fingerprintWhatsappOrganizationApiKey(generated.raw),
+          fingerprint: fingerprintWhatsappOrganizationApiKey(generated.hash),
           keyHash: generated.hash,
           status: "ACTIVE",
           createdByWorkosUserId: params.actorId,
@@ -136,7 +136,7 @@ export class WhatsappOrganizationApiKeysService {
   }> {
     const rotatedAt = this.now()
     const generated = await generateWhatsappOrganizationApiKey()
-    const fingerprint = fingerprintWhatsappOrganizationApiKey(generated.raw)
+    const fingerprint = fingerprintWhatsappOrganizationApiKey(generated.hash)
 
     const result = await this.database.$transaction(async (transaction) => {
       const active = await transaction.whatsappOrganizationApiKey.findFirst({
@@ -306,7 +306,7 @@ export class WhatsappOrganizationApiKeysService {
         return (
           row.organizationId.toLowerCase().includes(search) ||
           row.organizationName.toLowerCase().includes(search) ||
-          row.fingerprint?.toLowerCase().includes(search) === true
+          row.fingerprint?.toLowerCase().includes(search)
         )
       })
       .sort((left, right) =>
