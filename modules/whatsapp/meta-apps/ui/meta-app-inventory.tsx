@@ -415,8 +415,8 @@ export function WhatsappMetaAppInventory({
             </p>
           ) : rows.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              No Meta Apps yet. Create one to start receiving inbound WhatsApp
-              events.
+              No Meta Apps yet. Create one to start receiving inbound
+              WhatsApp events.
             </p>
           ) : (
             <div className="overflow-x-auto rounded-md border">
@@ -565,8 +565,8 @@ export function WhatsappMetaAppInventory({
               Rotate credentials for {rotateTarget?.name}
             </DialogTitle>
             <DialogDescription>
-              Enter new values for both fields. The previous secret and verify
-              token stop working immediately.
+              Enter new values for both fields. The previous secret and
+              verify token stop working immediately.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
