@@ -55,7 +55,6 @@ it("lists metadata with attached device counts", async () => {
   expect(listed[0]?.deviceCount).toBe(3)
 })
 ```
-
 Leave the rest of that original test's body (the `resolveCredentialsByWebhookKey` assertions further down) in a separate `it` block if they were combined — split them so each `it` tests one behavior.
 
 - [ ] **Step 2: Run it, confirm it fails**
@@ -83,7 +82,6 @@ export function toWhatsappMetaAppListItemDTO(
   }
 }
 ```
-
 - [ ] **Step 4: Implement the service change**
 
 In `modules/whatsapp/meta-apps/meta-apps.service.ts`, update the import line to also bring in `toWhatsappMetaAppListItemDTO` and `type WhatsappMetaAppListItemDTO` from `./meta-apps.dto`, then replace the `list` method body:
@@ -853,4 +851,127 @@ export function WhatsappMetaAppInventory({
     </section>
   )
 }
+```
++- [ ] **Step 4: Run it, confirm the Step 1 test passes**
+
+Run: `bun test modules/whatsapp/meta-apps/ui/meta-app-inventory.test.tsx`
+Expected: PASS
+
+- [ ] **Step 5: Add and pass the remaining acceptance-criteria tests, one at a time**
+
+Add these `it` blocks to the same test file, each following the pattern: extend `mockFetch` to also handle `POST`/`PATCH`/`DELETE` on `/api/admin/whatsapp/meta-apps`, write the test, run it, confirm it fails only if the component above doesn't already satisfy it (it should — this step is verifying, not adding new component code), then move on. Do not modify the component in this step unless a test genuinely fails against it.
+
+```tsx
+it("access-denied state renders on a 403 response", async () => {
+  mockFetch.mockImplementationOnce(
+    async () =>
+      new Response(JSON.stringify({ ok: false }), { status: 403 })
+  )
+  const view = render(
+    <WhatsappMetaAppInventory baseUrl="https://app.example.com" />
+  )
+  expect(await view.findByText("Access denied")).toBeTruthy()
+})
+
+it("create dialog clears the secret fields after a successful submit", async () => {
+  const user = userEvent.setup()
+  mockFetch.mockImplementation(async (input, init) => {
+    const url = typeof input === "string" ? input : input.url
+    const method = init?.method ?? "GET"
+    if (url.endsWith("/meta-apps") && method === "POST") {
+      return new Response(
+        JSON.stringify({ ok: true, data: { ...metaApp, id: "meta-2" } }),
+        { status: 201, headers: { "Content-Type": "application/json" } }
+      )
+    }
+    if (url.includes("/meta-apps") && method === "GET") {
+      return new Response(
+        JSON.stringify({ ok: true, data: [metaApp] }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    }
+    return new Response(JSON.stringify({ ok: false }), { status: 404 })
+  })
+
+  const view = render(
+    <WhatsappMetaAppInventory baseUrl="https://app.example.com" />
+  )
+  await view.findByText("Primary")
+  await user.click(view.getByRole("button", { name: "New Meta App" }))
+  await user.type(view.getByLabelText("Name"), "Second App")
+  await user.type(view.getByLabelText("Meta App ID"), "67890")
+  await user.type(view.getByLabelText("App Secret"), "s3cret")
+  await user.type(view.getByLabelText("Verify Token"), "t0ken")
+  await user.click(view.getByRole("button", { name: "Create" }))
+
+  await waitFor(() =>
+    expect(view.queryByLabelText("App Secret")).toBeNull()
+  )
+})
+
+it("rotate dialog opens with blank credential fields", async () => {
+  const user = userEvent.setup()
+  const view = render(
+    <WhatsappMetaAppInventory baseUrl="https://app.example.com" />
+  )
+  await view.findByText("Primary")
+  await user.click(view.getByRole("button", { name: "Rotate" }))
+
+  const appSecretInput = view.getByLabelText(
+    "New App Secret"
+  ) as HTMLInputElement
+  const verifyTokenInput = view.getByLabelText(
+    "New Verify Token"
+  ) as HTMLInputElement
+  expect(appSecretInput.value).toBe("")
+  expect(verifyTokenInput.value).toBe("")
+})
+
+it("shows a specific conflict message when deleting a meta app with attached devices", async () => {
+  const user = userEvent.setup()
+  const originalConfirm = window.confirm
+  window.confirm = () => true
+  mockFetch.mockImplementation(async (input, init) => {
+    const url = typeof input === "string" ? input : input.url
+    const method = init?.method ?? "GET"
+    if (method === "DELETE") {
+      return new Response(
+        JSON.stringify({ ok: false, error: "CONFLICT", message: "Meta app conflicts with an existing resource." }),
+        { status: 409, headers: { "Content-Type": "application/json" } }
+      )
+    }
+    if (url.includes("/meta-apps") && method === "GET") {
+      return new Response(
+        JSON.stringify({ ok: true, data: [metaApp] }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    }
+    return new Response(JSON.stringify({ ok: false }), { status: 404 })
+  })
+
+  const view = render(
+    <WhatsappMetaAppInventory baseUrl="https://app.example.com" />
+  )
+  await view.findByText("Primary")
+  await user.click(view.getByRole("button", { name: "Delete" }))
+
+  expect(
+    await view.findByText(
+      "Cannot delete or deactivate this Meta App while devices are still attached. Detach the devices first."
+    )
+  ).toBeTruthy()
+  window.confirm = originalConfirm
+})
+```
+
+- [ ] **Step 6: Run the full test file, confirm all pass**
+
+Run: `bun test modules/whatsapp/meta-apps/ui/meta-app-inventory.test.tsx`
+Expected: PASS (6 tests total)
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add modules/whatsapp/meta-apps/ui/meta-app-inventory.tsx modules/whatsapp/meta-app-inventory.test.tsx
+git commit -m "feat(whatsapp): add portal meta app inventory component"
 ```
