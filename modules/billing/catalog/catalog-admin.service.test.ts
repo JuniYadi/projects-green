@@ -173,6 +173,19 @@ describe("CatalogAdminService", () => {
           ],
         },
       })
+      expect(db.servicePackage.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.objectContaining({
+            plans: expect.objectContaining({
+              include: expect.objectContaining({
+                pricings: expect.objectContaining({
+                  where: expect.objectContaining({ periodPrice: { gt: 0 } }),
+                }),
+              }),
+            }),
+          }),
+        })
+      )
     })
   })
 

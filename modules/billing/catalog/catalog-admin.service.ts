@@ -217,7 +217,7 @@ export class CatalogAdminService {
                 type: "BUNDLE",
                 billingMode: "PACKAGE",
                 billingPeriod: { in: RECURRING_PERIODS as never },
-                periodPrice: { not: null },
+                periodPrice: { gt: 0 },
               },
               include: {
                 servicePlan: {

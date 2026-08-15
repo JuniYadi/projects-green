@@ -24,7 +24,7 @@ export class CatalogService {
       billingPeriod: { in: RECURRING_PERIODS },
       periodPrice: { gt: 0 },
       effectiveFrom: { lte: now },
-      OR: [{ effectiveTo: null }, { effectiveTo: { gt: now } }],
+      OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }],
       AND: [
         {
           OR: [{ type: "BUNDLE" }, { billingMode: "PACKAGE" }],

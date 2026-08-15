@@ -46,7 +46,7 @@ describe("VPN catalog eligibility", () => {
 
   it("accepts only positive active offers inside the effective window", () => {
     expect(isValidVpnCatalogOffer(offer(), at)).toBe(true)
-    expect(isValidVpnCatalogOffer(offer({ effectiveTo: at }), at)).toBe(false)
+    expect(isValidVpnCatalogOffer(offer({ effectiveTo: at }), at)).toBe(true)
     expect(
       isValidVpnCatalogOffer(
         offer({ periodPrice: new Prisma.Decimal("0") }),

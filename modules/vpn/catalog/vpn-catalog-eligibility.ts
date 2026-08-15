@@ -67,7 +67,7 @@ export function isValidVpnCatalogOffer(
   return (
     periodPrice.gt(0) &&
     offer.effectiveFrom <= at &&
-    (offer.effectiveTo === null || offer.effectiveTo > at)
+    (offer.effectiveTo === null || offer.effectiveTo >= at)
   )
 }
 
