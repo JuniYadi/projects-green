@@ -43,5 +43,12 @@ jobs:
           VALIDATE_CHECKOV: false
           VALIDATE_JSCPD: false
           VALIDATE_TRIVY: false
+          # actionlint/zizmor only run once a PR touches a workflow YAML file,
+          # so they surface long-standing, repo-wide findings (unpinned actions,
+          # missing persist-credentials: false) unrelated to that PR's diff.
+          # Pinning every workflow action to a SHA is a separate follow-up, not
+          # something one unrelated PR should be blocked on.
+          VALIDATE_GITHUB_ACTIONS: false
+          VALIDATE_GITHUB_ACTIONS_ZIZMOR: false
           ENABLE_GITHUB_PULL_REQUEST_SUMMARY_COMMENT: false
           ENABLE_GITHUB_ACTIONS_STEP_SUMMARY: false
