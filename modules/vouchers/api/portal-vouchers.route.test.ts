@@ -13,6 +13,7 @@ function createDefaultService(): any {
       throw new VoucherNotFoundError("v_1")
     },
     createVoucher: () => Promise.resolve({ id: "v_1", code: "TEST1234" }),
+    createPromotion: () => Promise.resolve({ id: "v_1", code: "TEST1234" }),
     updateVoucher: () => Promise.resolve({ id: "v_1" }),
     disableVoucher: () => Promise.resolve({ id: "v_1", status: "DISABLED" }),
     getVoucherClaims: () => Promise.resolve([]),
@@ -239,6 +240,133 @@ describe("Portal Voucher Routes", () => {
       expect(body.ok).toBe(false)
       expect(Array.isArray(body.fieldErrors.maxClaims)).toBe(true)
       expect(body.fieldErrors.maxClaims.length).toBeGreaterThan(0)
+    })
+
+    it("dispatches product promotions with their initial status", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      deps.service.createVoucher = mock(() => {
+        throw new Error("balance-credit dispatcher should not be called")
+      })
+      deps.service.createPromotion = mock(() =>
+        Promise.resolve({
+          id: "promotion_1",
+          code: "PROMO123",
+          prefix: null,
+          status: "DISABLED",
+          kind: "PRODUCT_PROMOTION",
+          maxClaims: 10,
+          claimedCount: 0,
+          expiresAt: new Date(Date.now() + 86400000),
+          amount: { toFixed: () => "0.00" },
+          currency: "IDR",
+          discountType: "PERCENTAGE",
+          discountValue: { toString: () => "15" },
+          discountCurrency: null,
+          currencyPolicy: "MATCH_CURRENCY_ONLY",
+          firstCheckoutOnly: false,
+          allowUpgrade: false,
+          stackable: false,
+          minimumOrderAmount: null,
+          maximumDiscountAmount: null,
+          allowedPackageCodes: ["VPN"],
+          allowedPlanCodes: ["VPN_PRO"],
+          allowedBillingPeriods: ["MONTHLY"],
+          targetWorkosUserId: null,
+          targetOrganizationId: null,
+          createdByWorkosUserId: "user_1",
+          metadataJson: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+      )
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kind: "PRODUCT_PROMOTION",
+            status: "DISABLED",
+            maxClaims: 10,
+            expiresAt: new Date(Date.now() + 86400000).toISOString(),
+            discountType: "PERCENTAGE",
+            discountValue: 15,
+            currencyPolicy: "MATCH_CURRENCY_ONLY",
+            allowedPackageCodes: ["VPN"],
+            allowedPlanCodes: ["VPN_PRO"],
+            allowedBillingPeriods: ["MONTHLY"],
+          }),
+        })
+      )
+
+      expect(res.status).toBe(201)
+      expect(deps.service.createVoucher).not.toHaveBeenCalled()
+      expect(deps.service.createPromotion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "PRODUCT_PROMOTION",
+          status: "DISABLED",
+          allowedPackageCodes: ["VPN"],
+          allowedPlanCodes: ["VPN_PRO"],
+          allowedBillingPeriods: ["MONTHLY"],
+          createdByWorkosUserId: "user_1",
+        })
+      )
+      const body = await res.json()
+      expect(body.data.kind).toBe("PRODUCT_PROMOTION")
+      expect(body.data.status).toBe("DISABLED")
+    })
+
+    it("maps product eligibility and expiry failures to fields", async () => {
+      const res = await toApp(createDeps()).handle(
+        new Request("http://localhost/vouchers/portal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kind: "PRODUCT_PROMOTION",
+            maxClaims: 1,
+            expiresAt: new Date(Date.now() - 86400000).toISOString(),
+            discountType: "PERCENTAGE",
+            discountValue: 15,
+            currencyPolicy: "MATCH_CURRENCY_ONLY",
+            allowedPackageCodes: [],
+            allowedBillingPeriods: [],
+          }),
+        })
+      )
+
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.error).toBe("VALIDATION_ERROR")
+      expect(body.fieldErrors.expiresAt).toBeDefined()
+      expect(body.fieldErrors.allowedPackageCodes).toBeDefined()
+      expect(body.fieldErrors.allowedBillingPeriods).toBeDefined()
+    })
+
+    it("rejects incompatible product fallback fields", async () => {
+      const res = await toApp(createDeps()).handle(
+        new Request("http://localhost/vouchers/portal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kind: "PRODUCT_PROMOTION",
+            maxClaims: 1,
+            expiresAt: new Date(Date.now() + 86400000).toISOString(),
+            discountType: "PERCENTAGE",
+            discountValue: 15,
+            currencyPolicy: "MATCH_CURRENCY_ONLY",
+            allowedPackageCodes: ["VPN"],
+            allowedBillingPeriods: ["MONTHLY"],
+            amount: 10,
+            currency: "IDR",
+          }),
+        })
+      )
+
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.fieldErrors.amount).toBeDefined()
+      expect(body.fieldErrors.currency).toBeDefined()
     })
   })
 

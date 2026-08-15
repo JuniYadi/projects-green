@@ -245,6 +245,94 @@ describe("VoucherService", () => {
 
       expect(result.code).toMatch(/^PFN-[A-Z0-9]{6}$/)
     })
+
+    it("persists an explicit disabled initial status", async () => {
+      const prisma = createMockPrisma()
+      let persistedData: Record<string, unknown> | undefined
+      prisma.voucher.create = mock(
+        (args: { data: Record<string, unknown> }) => {
+          persistedData = args.data
+          return { id: "v_1", code: "TEST1234" }
+        }
+      )
+      prisma.voucher.findUniqueOrThrow = mock(() => ({
+        id: "v_1",
+        code: "TEST1234",
+      }))
+
+      const service = new VoucherService(prisma as PrismaClient)
+      await service.createVoucher({
+        maxClaims: 1,
+        expiresAt: new Date(Date.now() + 86400000).toISOString(),
+        amount: 50000,
+        status: "DISABLED",
+        createdByWorkosUserId: "user_1",
+      })
+
+      expect(persistedData?.status).toBe("DISABLED")
+    })
+  })
+
+  // ─── createPromotion ─────────────────────────────────────────────────
+
+  describe("createPromotion", () => {
+    it("persists product fields and the requested initial status", async () => {
+      for (const status of ["DISABLED", "ACTIVE"] as const) {
+        const prisma = createMockPrisma()
+        let persistedData: Record<string, unknown> | undefined
+
+        prisma.voucher.create = mock(
+          (args: { data: Record<string, unknown> }) => {
+            persistedData = args.data
+            return { id: "promotion_1", code: "PROMO123" }
+          }
+        )
+        prisma.voucher.findUniqueOrThrow = mock(() => ({
+          id: "promotion_1",
+          code: "PROMO123",
+        }))
+
+        const service = new VoucherService(prisma as PrismaClient)
+        await service.createPromotion({
+          maxClaims: 10,
+          expiresAt: new Date(Date.now() + 86400000).toISOString(),
+          discountType: "PERCENTAGE",
+          discountValue: 15,
+          currencyPolicy: "MATCH_CURRENCY_ONLY",
+          firstCheckoutOnly: true,
+          allowUpgrade: true,
+          stackable: false,
+          minimumOrderAmount: 0,
+          maximumDiscountAmount: 25000,
+          allowedPackageCodes: ["VPN"],
+          allowedPlanCodes: ["VPN_PRO"],
+          allowedBillingPeriods: ["MONTHLY"],
+          status,
+          createdByWorkosUserId: "user_1",
+        })
+
+        expect(persistedData?.kind).toBe("PRODUCT_PROMOTION")
+        expect(persistedData?.status).toBe(status)
+        expect(
+          (persistedData?.amount as { toString: () => string }).toString()
+        ).toBe("0")
+        expect(
+          (
+            persistedData?.discountValue as { toString: () => string }
+          ).toString()
+        ).toBe("15")
+        expect(persistedData?.allowedPackageCodes).toEqual(["VPN"])
+        expect(persistedData?.allowedPlanCodes).toEqual(["VPN_PRO"])
+        expect(persistedData?.allowedBillingPeriods).toEqual(["MONTHLY"])
+        expect(
+          (
+            persistedData?.minimumOrderAmount as {
+              toString: () => string
+            }
+          ).toString()
+        ).toBe("0")
+      }
+    })
   })
 
   // ─── disableVoucher ───────────────────────────────────────────────────

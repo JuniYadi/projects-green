@@ -36,6 +36,14 @@ const futureDate = z
 
 const positiveAmount = z.number().positive("amount must be positive")
 
+const positiveDecimal = z.preprocess((val) => {
+  if (typeof val === "string") {
+    const parsed = parseFloat(val)
+    return isNaN(parsed) ? val : parsed
+  }
+  return val
+}, z.number().positive("must be greater than zero"))
+
 const uppercasePrefix = z
   .string()
   .regex(/^[A-Z]+$/, "Prefix must contain only uppercase letters A-Z")
@@ -51,18 +59,22 @@ const nonNegativeDecimal = z.preprocess((val) => {
 
 const optionalNonNegativeDecimal = nonNegativeDecimal.optional()
 
-// ─── Create voucher (legacy balance-credit) ────────────────────────────────────
+// ─── Create balance-credit voucher ────────────────────────────────────────────
 
-export const createVoucherSchema = z.object({
-  prefix: uppercasePrefix,
-  maxClaims: z.number().int().min(1, "maxClaims must be at least 1"),
-  expiresAt: futureDate,
-  amount: positiveAmount,
-  currency: z.string().default("IDR"),
-  targetWorkosUserId: z.string().optional(),
-  targetOrganizationId: z.string().optional(),
-  metadataJson: z.record(z.string(), z.unknown()).optional(),
-})
+export const createVoucherSchema = z
+  .object({
+    prefix: uppercasePrefix,
+    maxClaims: z.number().int().min(1, "maxClaims must be at least 1"),
+    expiresAt: futureDate,
+    kind: z.literal("BALANCE_CREDIT").default("BALANCE_CREDIT"),
+    status: z.enum(["ACTIVE", "DISABLED"]).default("ACTIVE"),
+    amount: positiveAmount,
+    currency: z.string().default("IDR"),
+    targetWorkosUserId: z.string().optional(),
+    targetOrganizationId: z.string().optional(),
+    metadataJson: z.record(z.string(), z.unknown()).optional(),
+  })
+  .strict()
 
 export type CreateVoucherInput = z.infer<typeof createVoucherSchema>
 
@@ -100,10 +112,11 @@ export const createPromotionSchema = z
     // kind is ALWAYS "PRODUCT_PROMOTION" on this schema — callers use
     // createPromotionSchema explicitly so we hard-code the intent.
     kind: z.literal("PRODUCT_PROMOTION"),
+    status: z.enum(["ACTIVE", "DISABLED"]).default("ACTIVE"),
     discountType: z.enum(discountTypes, {
       error: "discountType must be PERCENTAGE or FIXED",
     }),
-    discountValue: nonNegativeDecimal,
+    discountValue: positiveDecimal,
     discountCurrency: z.string().trim().min(1).max(8).optional(),
     currencyPolicy: z.enum(currencyPolicies, {
       error: "Invalid currencyPolicy",
@@ -118,12 +131,11 @@ export const createPromotionSchema = z
       .optional(),
     allowedPlanCodes: z.array(z.string().trim().min(1)).optional(),
     allowedBillingPeriods: z.array(z.enum(billingPeriods)).optional(),
-    amount: positiveAmount.optional(),
-    currency: z.string().default("IDR"),
     targetWorkosUserId: z.string().optional(),
     targetOrganizationId: z.string().optional(),
     metadataJson: z.record(z.string(), z.unknown()).optional(),
   })
+  .strict()
   .superRefine((value, ctx) => {
     // Percentage discounts are capped at 100
     if (value.discountType === "PERCENTAGE" && value.discountValue > 100) {
@@ -183,9 +195,54 @@ export const createPromotionSchema = z
         message: "minimumOrderAmount requires discountCurrency to be set.",
       })
     }
+
+    if (
+      (!value.allowedPackageCodes || value.allowedPackageCodes.length === 0) &&
+      (!value.allowedPlanCodes || value.allowedPlanCodes.length === 0)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["allowedPackageCodes"],
+        message:
+          "Select at least one eligible product package or plan for a new product promotion.",
+      })
+    }
+
+    if (
+      !value.allowedBillingPeriods ||
+      value.allowedBillingPeriods.length === 0
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["allowedBillingPeriods"],
+        message: "Select at least one allowed billing period.",
+      })
+    }
   })
 
 export type CreatePromotionInput = z.infer<typeof createPromotionSchema>
+
+const createPortalVoucherInputSchema = z.discriminatedUnion("kind", [
+  createVoucherSchema,
+  createPromotionSchema,
+])
+
+// Keep callers of the legacy balance-credit endpoint compatible while routing
+// explicit PRODUCT_PROMOTION requests through the promotion contract.
+export const createPortalVoucherSchema = z.preprocess((value) => {
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    !("kind" in value)
+  ) {
+    return { ...value, kind: "BALANCE_CREDIT" }
+  }
+
+  return value
+}, createPortalVoucherInputSchema)
+
+export type CreatePortalVoucherInput = z.infer<typeof createPortalVoucherSchema>
 
 // ─── Update promotion voucher ─────────────────────────────────────────────────
 

@@ -13,7 +13,7 @@ import {
 } from "@/lib/workos-directory"
 import { VoucherService } from "../vouchers.service"
 import {
-  createVoucherSchema,
+  createPortalVoucherSchema,
   updateVoucherSchema,
   listVouchersQuerySchema,
   voucherIdParamSchema,
@@ -222,7 +222,7 @@ export const createPortalVoucherRoutes = (
           return toForbidden(set, "Only administrators can create vouchers.")
         }
 
-        const parsed = createVoucherSchema.safeParse(body)
+        const parsed = createPortalVoucherSchema.safeParse(body)
         if (!parsed.success) {
           set.status = 422
           return {
@@ -234,10 +234,16 @@ export const createPortalVoucherRoutes = (
         }
 
         try {
-          const voucher = await service.createVoucher({
-            ...parsed.data,
-            createdByWorkosUserId: auth.user.id,
-          })
+          const voucher =
+            parsed.data.kind === "PRODUCT_PROMOTION"
+              ? await service.createPromotion({
+                  ...parsed.data,
+                  createdByWorkosUserId: auth.user.id,
+                })
+              : await service.createVoucher({
+                  ...parsed.data,
+                  createdByWorkosUserId: auth.user.id,
+                })
 
           set.status = 201
           return {

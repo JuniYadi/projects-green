@@ -7,6 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -15,8 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import type { VoucherDetailDTO, VoucherKind } from "@/lib/billing-client"
 
 const KIND_OPTIONS: { value: VoucherKind; label: string; desc: string }[] = [
@@ -28,107 +29,140 @@ const KIND_OPTIONS: { value: VoucherKind; label: string; desc: string }[] = [
   {
     value: "PRODUCT_PROMOTION",
     label: "Product Promotion",
-    desc: "Applies a percentage or fixed-amount discount to eligible subscriptions or orders.",
+    desc: "Applies a discount to selected products, plans, and billing terms.",
   },
 ]
 
 export function VoucherTypeTab({
   voucher,
   onUpdate,
+  fieldErrors = {},
 }: {
   voucher: VoucherDetailDTO
   onUpdate: (updates: Record<string, unknown>) => void
+  fieldErrors?: Record<string, string[]>
 }) {
   const isProductPromo = voucher.kind === "PRODUCT_PROMOTION"
+  const kindIsEditable = voucher.id === "new"
+
+  const renderErrors = (field: string) => {
+    const errors = fieldErrors[field]
+    if (!errors?.length) return null
+
+    return (
+      <ul className="flex flex-col gap-1 text-sm text-destructive" role="alert">
+        {errors.map((error, index) => (
+          <li key={`${field}-${index}`}>{error}</li>
+        ))}
+      </ul>
+    )
+  }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Voucher Type</CardTitle>
+        <CardTitle>Promotion Type</CardTitle>
         <CardDescription>
-          Choose how this voucher applies its discount.
+          Choose whether this voucher credits a balance or discounts a selected
+          product purchase.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-3">
+      <CardContent className="flex flex-col gap-6">
+        <div className="flex flex-col gap-3">
           <Label>Kind</Label>
-          {KIND_OPTIONS.map((opt) => (
-            <label
-              key={opt.value}
-              className="flex items-start gap-3 rounded-lg border border-border p-3 has-[:checked]:border-primary has-[:checked]:bg-muted/50"
-            >
-              <input
-                type="radio"
-                name="kind"
-                value={opt.value}
-                checked={voucher.kind === opt.value}
-                onChange={() => onUpdate({ kind: opt.value })}
-                className="mt-0.5 h-4 w-4"
-              />
-              <div>
-                <p className="font-medium">{opt.label}</p>
-                <p className="text-xs text-muted-foreground">{opt.desc}</p>
-              </div>
-            </label>
-          ))}
-        </div>
-
-        {/* Balance credit amount — shown for both kinds but semantically relevant for credits */}
-        <div className="grid gap-2 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="voucher-amount">
-              {isProductPromo ? "Fallback Amount (currency)" : "Credit Amount"}
-            </Label>
-            <Input
-              id="voucher-amount"
-              type="number"
-              min="0"
-              step="0.01"
-              value={voucher.amount}
-              onChange={(e) => onUpdate({ amount: e.target.value })}
-              placeholder="e.g. 50000"
-            />
+          <ToggleGroup
+            type="single"
+            value={voucher.kind}
+            onValueChange={(value) => {
+              if (value) onUpdate({ kind: value as VoucherKind })
+            }}
+            disabled={!kindIsEditable}
+            aria-label="Voucher kind"
+            className="grid w-full gap-3 sm:grid-cols-2"
+          >
+            {KIND_OPTIONS.map((option) => (
+              <ToggleGroupItem
+                key={option.value}
+                value={option.value}
+                className="h-auto min-h-20 justify-start rounded-lg border border-border px-4 py-3 text-left whitespace-normal data-[state=on]:border-primary data-[state=on]:bg-muted"
+              >
+                <span className="flex flex-col gap-1">
+                  <span className="font-medium">{option.label}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {option.desc}
+                  </span>
+                </span>
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+          {!kindIsEditable && (
             <p className="text-xs text-muted-foreground">
-              {isProductPromo
-                ? "Used as fallback credit value when no discount applies."
-                : "The fixed credit amount added to the billing balance."}
+              A voucher&apos;s kind cannot be changed after it is created.
             </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="voucher-currency">Currency</Label>
-            <Select
-              value={voucher.currency ?? "IDR"}
-              onValueChange={(val) => onUpdate({ currency: val })}
-            >
-              <SelectTrigger id="voucher-currency">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="IDR">IDR - Indonesian Rupiah</SelectItem>
-                <SelectItem value="USD">USD - US Dollar</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          )}
+          {renderErrors("kind")}
         </div>
 
-        {/* Product promotion discount fields */}
+        {!isProductPromo && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="voucher-amount">Credit Amount</Label>
+              <Input
+                id="voucher-amount"
+                type="number"
+                min="0"
+                step="0.01"
+                value={voucher.amount}
+                onChange={(event) =>
+                  onUpdate({ amount: Number(event.target.value) })
+                }
+                placeholder="e.g. 50000"
+                aria-invalid={Boolean(fieldErrors.amount?.length)}
+              />
+              <p className="text-xs text-muted-foreground">
+                The fixed credit amount added to the billing balance.
+              </p>
+              {renderErrors("amount")}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="voucher-currency">Currency</Label>
+              <Select
+                value={voucher.currency ?? "IDR"}
+                onValueChange={(value) => onUpdate({ currency: value })}
+              >
+                <SelectTrigger id="voucher-currency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="IDR">IDR - Indonesian Rupiah</SelectItem>
+                  <SelectItem value="USD">USD - US Dollar</SelectItem>
+                </SelectContent>
+              </Select>
+              {renderErrors("currency")}
+            </div>
+          </div>
+        )}
+
         {isProductPromo && (
-          <div className="space-y-4">
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div className="space-y-2">
+          <div className="flex flex-col gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-2">
                 <Label htmlFor="voucher-discount-type">Discount Type</Label>
                 <Select
                   value={voucher.discountType ?? ""}
-                  onValueChange={(val) =>
+                  onValueChange={(value) =>
                     onUpdate({
-                      discountType: val
-                        ? (val as "PERCENTAGE" | "FIXED")
+                      discountType: value
+                        ? (value as "PERCENTAGE" | "FIXED")
                         : null,
                     })
                   }
                 >
-                  <SelectTrigger id="voucher-discount-type">
+                  <SelectTrigger
+                    id="voucher-discount-type"
+                    aria-invalid={Boolean(fieldErrors.discountType?.length)}
+                  >
                     <SelectValue placeholder="Select discount type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -136,9 +170,10 @@ export function VoucherTypeTab({
                     <SelectItem value="FIXED">Fixed Amount</SelectItem>
                   </SelectContent>
                 </Select>
+                {renderErrors("discountType")}
               </div>
 
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label htmlFor="voucher-discount-value">Discount Value</Label>
                 <Input
                   id="voucher-discount-value"
@@ -146,10 +181,10 @@ export function VoucherTypeTab({
                   min="0"
                   step="0.01"
                   value={voucher.discountValue ?? ""}
-                  onChange={(e) =>
+                  onChange={(event) =>
                     onUpdate({
-                      discountValue: e.target.value
-                        ? Number(e.target.value)
+                      discountValue: event.target.value
+                        ? Number(event.target.value)
                         : null,
                     })
                   }
@@ -159,39 +194,47 @@ export function VoucherTypeTab({
                       : "e.g. 50000"
                   }
                   disabled={!voucher.discountType}
+                  aria-invalid={Boolean(fieldErrors.discountValue?.length)}
                 />
+                {renderErrors("discountValue")}
               </div>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div className="space-y-2">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-2">
                 <Label htmlFor="voucher-discount-currency">
                   Discount Currency
                 </Label>
                 <Select
-                  value={voucher.discountCurrency ?? ""}
-                  onValueChange={(val) =>
-                    onUpdate({ discountCurrency: val || null })
+                  value={voucher.discountCurrency ?? "SAME"}
+                  onValueChange={(value) =>
+                    onUpdate({
+                      discountCurrency: value === "SAME" ? null : value,
+                    })
                   }
                 >
                   <SelectTrigger id="voucher-discount-currency">
                     <SelectValue placeholder="Same as voucher currency" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Same as voucher currency</SelectItem>
+                    <SelectItem value="SAME">
+                      Same as voucher currency
+                    </SelectItem>
                     <SelectItem value="IDR">IDR</SelectItem>
                     <SelectItem value="USD">USD</SelectItem>
                   </SelectContent>
                 </Select>
+                {renderErrors("discountCurrency")}
               </div>
 
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label htmlFor="voucher-currency-policy">Currency Policy</Label>
                 <Select
                   value={voucher.currencyPolicy ?? "MATCH_CURRENCY_ONLY"}
-                  onValueChange={(val) =>
+                  onValueChange={(value) =>
                     onUpdate({
-                      currencyPolicy: val as VoucherDetailDTO["currencyPolicy"],
+                      currencyPolicy:
+                        value as VoucherDetailDTO["currencyPolicy"],
                     })
                   }
                 >
@@ -211,10 +254,10 @@ export function VoucherTypeTab({
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  {voucher.discountType === "PERCENTAGE"
-                    ? "Percentage discounts apply regardless of currency."
-                    : "Fixed discounts use the configured currency policy."}
+                  Percentage discounts apply regardless of currency. Fixed
+                  discounts use the configured currency policy.
                 </p>
+                {renderErrors("currencyPolicy")}
               </div>
             </div>
           </div>
@@ -240,6 +283,7 @@ export function VoucherTypeTab({
             }
           />
         </div>
+
         <div className="flex items-center justify-between rounded-lg border border-border p-3">
           <div>
             <Label htmlFor="voucher-allow-upgrade" className="font-medium">

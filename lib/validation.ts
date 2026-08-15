@@ -52,11 +52,24 @@ export type ApiErrorResponse = {
 }
 
 export const fieldErrorMapFromIssues = (
-  issues: Array<{ path: Array<PropertyKey>; message: string }>
+  issues: Array<{
+    path: Array<PropertyKey>
+    message: string
+    code?: string
+    keys?: string[]
+  }>
 ) => {
   const fieldErrors: Record<string, string[]> = {}
 
   for (const issue of issues) {
+    if (issue.code === "unrecognized_keys" && issue.keys?.length) {
+      for (const key of issue.keys) {
+        fieldErrors[key] ??= []
+        fieldErrors[key].push(issue.message)
+      }
+      continue
+    }
+
     const key = issue.path
       .filter(
         (segment): segment is string | number =>

@@ -60,12 +60,14 @@ export function VoucherPreviewTab({ voucher }: { voucher: VoucherDetailDTO }) {
               </dt>
               <dd className="font-mono text-sm">{voucher.code}</dd>
             </div>
-            <div>
-              <dt className="text-xs font-medium text-muted-foreground">
-                Currency
-              </dt>
-              <dd className="text-sm">{voucher.currency}</dd>
-            </div>
+            {voucher.kind === "BALANCE_CREDIT" && (
+              <div>
+                <dt className="text-xs font-medium text-muted-foreground">
+                  Currency
+                </dt>
+                <dd className="text-sm">{voucher.currency}</dd>
+              </div>
+            )}
 
             {voucher.kind === "BALANCE_CREDIT" && (
               <>
@@ -107,7 +109,7 @@ export function VoucherPreviewTab({ voucher }: { voucher: VoucherDetailDTO }) {
                     Discount Currency
                   </dt>
                   <dd className="text-sm">
-                    {voucher.discountCurrency ?? voucher.currency ?? "—"}
+                    {voucher.discountCurrency ?? "Same as checkout currency"}
                   </dd>
                 </div>
                 <div>
@@ -134,13 +136,15 @@ export function VoucherPreviewTab({ voucher }: { voucher: VoucherDetailDTO }) {
                 Expires At
               </dt>
               <dd className="text-sm">
-                {new Date(voucher.expiresAt).toLocaleString(undefined, {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {voucher.expiresAt
+                  ? new Date(voucher.expiresAt).toLocaleString(undefined, {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "Not set"}
               </dd>
             </div>
             <div>
@@ -286,7 +290,11 @@ function computeRejectionPreviews(
     }
   }
 
-  if (voucher.amount && Number(voucher.amount) <= 0) {
+  if (
+    voucher.kind === "BALANCE_CREDIT" &&
+    voucher.amount &&
+    Number(voucher.amount) <= 0
+  ) {
     reasons.push({
       code: "INVALID_AMOUNT",
       label: "Voucher amount is zero or negative.",

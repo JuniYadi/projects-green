@@ -79,4 +79,20 @@ describe("fieldErrorMapFromIssues", () => {
       "profile.name": ["Name is required"],
     })
   })
+
+  it("maps unrecognized keys to each offending field", () => {
+    const mapped = fieldErrorMapFromIssues([
+      {
+        path: [],
+        code: "unrecognized_keys",
+        keys: ["amount", "currency"],
+        message: "Unrecognized keys",
+      },
+    ])
+
+    expect(mapped).toEqual({
+      amount: ["Unrecognized keys"],
+      currency: ["Unrecognized keys"],
+    })
+  })
 })

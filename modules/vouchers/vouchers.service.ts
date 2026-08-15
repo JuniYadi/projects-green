@@ -28,6 +28,7 @@ type CreateVoucherData = {
   targetWorkosUserId?: string
   targetOrganizationId?: string
   metadataJson?: Record<string, unknown>
+  status?: "ACTIVE" | "DISABLED"
   createdByWorkosUserId: string
 }
 
@@ -54,8 +55,6 @@ type CreatePromotionData = {
   prefix?: string
   maxClaims: number
   expiresAt: string
-  amount?: number
-  currency?: string
   discountType: "PERCENTAGE" | "FIXED"
   discountValue: number
   discountCurrency?: string | null
@@ -74,6 +73,7 @@ type CreatePromotionData = {
   targetWorkosUserId?: string
   targetOrganizationId?: string
   metadataJson?: Record<string, unknown>
+  status?: "ACTIVE" | "DISABLED"
   createdByWorkosUserId: string
 }
 
@@ -188,6 +188,7 @@ export class VoucherService {
             prefix: data.prefix ?? null,
             maxClaims: data.maxClaims,
             expiresAt: new Date(data.expiresAt),
+            status: data.status ?? "ACTIVE",
             amount: new Prisma.Decimal(data.amount),
             currency: data.currency ?? "IDR",
             targetWorkosUserId: data.targetWorkosUserId ?? null,
@@ -547,12 +548,10 @@ export class VoucherService {
             prefix: data.prefix ?? null,
             maxClaims: data.maxClaims,
             expiresAt: new Date(data.expiresAt),
-            amount: data.amount
-              ? new Prisma.Decimal(data.amount)
-              : Prisma.Decimal(0),
-            currency: data.currency ?? "IDR",
+            status: data.status ?? "ACTIVE",
+            amount: Prisma.Decimal(0),
+            currency: "IDR",
             kind: "PRODUCT_PROMOTION",
-            status: "ACTIVE",
             discountType: data.discountType,
             discountValue: new Prisma.Decimal(data.discountValue),
             discountCurrency: data.discountCurrency ?? null,
@@ -560,12 +559,16 @@ export class VoucherService {
             firstCheckoutOnly: data.firstCheckoutOnly ?? false,
             allowUpgrade: data.allowUpgrade ?? false,
             stackable: data.stackable ?? false,
-            minimumOrderAmount: data.minimumOrderAmount
-              ? new Prisma.Decimal(data.minimumOrderAmount)
-              : null,
-            maximumDiscountAmount: data.maximumDiscountAmount
-              ? new Prisma.Decimal(data.maximumDiscountAmount)
-              : null,
+            minimumOrderAmount:
+              data.minimumOrderAmount !== undefined &&
+              data.minimumOrderAmount !== null
+                ? new Prisma.Decimal(data.minimumOrderAmount)
+                : null,
+            maximumDiscountAmount:
+              data.maximumDiscountAmount !== undefined &&
+              data.maximumDiscountAmount !== null
+                ? new Prisma.Decimal(data.maximumDiscountAmount)
+                : null,
             allowedPackageCodes: data.allowedPackageCodes
               ? (data.allowedPackageCodes as Prisma.InputJsonValue)
               : undefined,

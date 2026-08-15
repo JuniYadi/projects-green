@@ -775,7 +775,12 @@ describe("voucher and promotion helpers", () => {
     await createAdminPromotion({
       maxClaims: 1,
       expiresAt: "2026-12-31",
-      amount: 5,
+      kind: "PRODUCT_PROMOTION",
+      discountType: "PERCENTAGE",
+      discountValue: 15,
+      currencyPolicy: "MATCH_CURRENCY_ONLY",
+      allowedPackageCodes: ["VPN"],
+      allowedBillingPeriods: ["MONTHLY"],
     })
     expect(calledRequest().init?.method).toBe("POST")
     await getAdminPromotion("promotion-1")
