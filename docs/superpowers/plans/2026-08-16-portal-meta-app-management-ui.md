@@ -157,3 +157,80 @@ Expected: PASS
 git add modules/whatsapp/meta-apps/api/meta-apps.route.ts modules/whatsapp/meta-apps/api/meta-apps.route.test.ts
 git commit -m "feat(whatsapp): expose device count on admin meta app list route"
 ```
+### Task 2: Build the Meta App inventory client component
+
+**Files:**
+- Create: `modules/whatsapp/meta-apps/ui/meta-app-inventory.tsx`
+- Test: `modules/whatsapp/meta-apps/ui/meta-app-inventory.test.tsx`
+
+**Interfaces:**
+- Consumes: `GET/POST/PATCH/DELETE /api/admin/whatsapp/meta-apps[/:id]` JSON responses shaped like `{ ok: boolean, data?: {...}, message?: string }`, where list `data` items are `{ id, name, metaAppId, webhookKey, active, callbackPath, deviceCount, createdAt, updatedAt }` (from Task 1).
+- Produces: `WhatsappMetaAppInventory({ baseUrl: string })` — a named-exported React client component, imported by Task 3's page as `import { WhatsappMetaAppInventory } from "@/modules/whatsapp/meta-apps/ui/meta-app-inventory"`.
+
+- [ ] **Step 1: Write the failing component test — list renders with device count, no secrets in response**
+
+Create `modules/whatsapp/meta-apps/ui/meta-app-inventory.test.tsx`:
+
+```tsx
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { cleanup, render, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+
+import { WhatsappMetaAppInventory } from "./meta-app-inventory"
+
+const metaApp = {
+  id: "meta-1",
+  name: "Primary",
+  metaAppId: "12345",
+  webhookKey: "webhook-key",
+  active: true,
+  callbackPath: "/api/whatsapp/meta-webhook/webhook-key",
+  deviceCount: 2,
+  createdAt: "2026-08-14T10:00:00.000Z",
+  updatedAt: "2026-08-14T10:00:00.000Z",
+}
+
+const mockFetch = mock(async (input: string | Request, init?: RequestInit) => {
+  const url = typeof input === "string" ? input : input.url
+  const method = init?.method ?? "GET"
+  if (url.includes("/api/admin/whatsapp/meta-apps") && method === "GET") {
+    return new Response(
+      JSON.stringify({ ok: true, data: [metaApp] }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    )
+  }
+  return new Response(JSON.stringify({ ok: false }), { status: 404 })
+})
+
+global.fetch = mockFetch as unknown as typeof fetch
+
+describe("WhatsappMetaAppInventory", () => {
+  beforeEach(() => {
+    mockFetch.mockClear()
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it("renders the list with device count and no secret material", async () => {
+    const view = render(
+      <WhatsappMetaAppInventory baseUrl="https://app.example.com" />
+    )
+
+    expect(await view.findByText("Primary")).toBeTruthy()
+    expect(view.getByText("2")).toBeTruthy()
+    expect(
+      view.getByText("https://app.example.com/api/whatsapp/meta-webhook/webhook-key")
+    ).toBeTruthy()
+    const allFetchedBodies = mockFetch.mock.results
+    expect(JSON.stringify(allFetchedBodies)).not.toContain("appSecret")
+    expect(JSON.stringify(allFetchedBodies)).not.toContain("verifyToken")
+  })
+})
+```
+
+- [ ] **Step 2: Run it, confirm it fails**
+
+Run: `bun test modules/whatsapp/meta-apps/ui/meta-app-inventory.test.tsx`
+Expected: FAIL — module `./meta-app-inventory` does not exist yet.
