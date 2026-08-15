@@ -105,5 +105,5 @@ temp/
 .codex/hooks.json
 
 # Graphify
-graphify-out/cache/last_query_stamp
+graphify-out/
 .mcp.json
