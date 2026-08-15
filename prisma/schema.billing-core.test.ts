@@ -150,7 +150,7 @@ describe("VPN package catalog invariant migration", () => {
     expect(migration).toContain("TASK2_QUARANTINED_MALFORMED_VPN_PACKAGE")
     expect(migration).toContain("billing-vpn-pricing-legacy-")
     expect(migration).toContain("\"billingPeriod\" = 'YEARLY'")
-    expect(migration).toContain("package.\"code\" = 'VPN'")
+    expect(migration).toContain("package.code = 'VPN'")
     expect(migration).toContain(
       "historical orders and locked-price subscriptions"
     )
