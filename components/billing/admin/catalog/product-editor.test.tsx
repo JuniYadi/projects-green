@@ -2,7 +2,21 @@ import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { fireEvent, render, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
+import type { AdminCatalogProductDetailResponse } from "@/lib/billing-client"
+
 const mockPush = mock()
+const mockGetAdminCatalogProduct = mock<
+  () => Promise<AdminCatalogProductDetailResponse>
+>(async () => ({
+  product: {
+    code: "VPN",
+    name: "VPN",
+    description: "VPN service",
+    isActive: true,
+    plans: [],
+  },
+  currency: "IDR",
+}))
 const mockPublishCatalogProduct = mock(async () => ({ ok: true, data: {} }))
 const mockSearchParams = {
   get: mock<(key: string) => string | null>(() => null),
@@ -15,7 +29,7 @@ mock.module("next/navigation", () => ({
   useParams: () => ({ lang: "en" }),
 }))
 mock.module("@/lib/billing-client", () => ({
-  getCatalogProduct: mock(),
+  getAdminCatalogProduct: mockGetAdminCatalogProduct,
   publishCatalogProduct: mockPublishCatalogProduct,
   billingPeriodLabel: (period: string) => period,
 }))
@@ -25,6 +39,16 @@ const { ProductEditor } = await import("./product-editor")
 describe("ProductEditor", () => {
   beforeEach(() => {
     mock.clearAllMocks()
+    mockGetAdminCatalogProduct.mockResolvedValue({
+      product: {
+        code: "VPN",
+        name: "VPN",
+        description: "VPN service",
+        isActive: true,
+        plans: [],
+      },
+      currency: "IDR",
+    })
     mockPublishCatalogProduct.mockResolvedValue({ ok: true, data: {} })
     localStorage.clear()
     mockSearchParams.get.mockReturnValue(null)
@@ -39,6 +63,45 @@ describe("ProductEditor", () => {
     expect(view.getByText("Add-ons")).toBeTruthy()
     expect(view.getAllByText("Publish").length).toBeGreaterThan(0)
     expect(view.getByRole("button", { name: "Save draft" })).toBeTruthy()
+  })
+
+  it("loads an unpriced selected plan with a return path", async () => {
+    mockGetAdminCatalogProduct.mockResolvedValue({
+      product: {
+        code: "VPN",
+        name: "VPN",
+        description: "VPN service",
+        isActive: true,
+        plans: [
+          {
+            id: "plan-vpn-package",
+            code: "VPN_PACKAGE_ONE",
+            name: "One",
+            resources: {},
+            isActive: true,
+            offers: [],
+          },
+        ],
+      },
+      currency: "IDR",
+    })
+    mockSearchParams.get.mockImplementation((key: string) => {
+      if (key === "plan") return "plan-vpn-package"
+      if (key === "returnTo") return "/en/portal/vpn/packages"
+      if (key === "tab") return "plans"
+      return null
+    })
+
+    const view = render(<ProductEditor productCode="VPN" isNew={false} />)
+
+    await waitFor(() =>
+      expect(view.getByText("Focused plan: One")).toBeTruthy()
+    )
+    expect(view.getByText("Selected from VPN package pricing")).toBeTruthy()
+    expect(
+      view.getByRole("link", { name: "Back to source package" })
+    ).toHaveAttribute("href", "/en/portal/vpn/packages")
+    expect(view.getByPlaceholderText("Required")).toBeTruthy()
   })
 
   it("persists a published product and clears its offline draft", async () => {

@@ -200,6 +200,23 @@ export const createCatalogAdminRoutes = (deps: CatalogAdminRouteDeps = {}) => {
 
   return (
     new Elysia()
+      // ─── GET /admin/catalog/products/:code ──────────────────────────
+      // The public catalog intentionally hides unpriced plans. The admin
+      // editor must load them so a newly-created VPN package can be priced.
+      .get("/admin/catalog/products/:code", async ({ params, set }) => {
+        const actor = await guard(set)
+        if ("ok" in actor && !actor.ok) return actor as AdminApiError
+
+        try {
+          const product = await service.getProductForAdmin(
+            params.code as string
+          )
+          if (!product) return notFound(set, "Catalog product not found.")
+          return { ok: true as const, ...product }
+        } catch (error) {
+          return handleServiceError(set, error)
+        }
+      })
       // ─── POST /admin/catalog/products ─────────────────────────────────
       .post("/admin/catalog/products", async ({ body, set }) => {
         const actor = await guard(set)

@@ -150,7 +150,8 @@ type ServicePricingRecord = {
   servicePlan: {
     id: string
     packageId: string
-    package: { id: string; code: ServiceType }
+    isActive: boolean
+    package: { id: string; code: ServiceType; isActive: boolean }
   }
 }
 type RecurringPricingRecord = ServicePricingRecord & {
@@ -218,6 +219,13 @@ function recurringPricing(
     throw new Error("PLAN_PRICING_MISMATCH")
   if (pricing.servicePlan.package.code !== input.packageCode) {
     throw new Error("PACKAGE_PRICING_MISMATCH")
+  }
+  if (
+    input.packageCode === "VPN" &&
+    (pricing.servicePlan.isActive === false ||
+      pricing.servicePlan.package.isActive === false)
+  ) {
+    throw new Error("VPN_CATALOG_UNAVAILABLE")
   }
   if (!pricing.billingPeriod || !PERIODS.has(pricing.billingPeriod)) {
     throw new Error("PRICING_NOT_RECURRING")

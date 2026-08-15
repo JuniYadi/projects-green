@@ -12,6 +12,9 @@ import type {
   AdminApiError,
   RouteSet,
 } from "@/modules/admin/api/admin.guards"
+import type { AdminCatalogProductDetailResponse } from "./catalog-admin.dto"
+
+type AdminCatalogResult = AdminCatalogProductDetailResponse | null
 
 const guard = mock<
   (set: RouteSet) => Promise<AdminActorContext | AdminApiError>
@@ -22,6 +25,25 @@ const guard = mock<
 }))
 
 const service = {
+  getProductForAdmin: mock<() => Promise<AdminCatalogResult>>(async () => ({
+    product: {
+      code: "VPN",
+      name: "VPN",
+      description: "VPN service",
+      isActive: true,
+      plans: [
+        {
+          id: "plan-1",
+          code: "VPN_PACKAGE_ONE",
+          name: "Business VPN",
+          resources: {},
+          isActive: true,
+          offers: [],
+        },
+      ],
+    },
+    currency: "IDR",
+  })),
   upsertPackage: mock(async () => ({
     id: "pkg-1",
     code: "VPN",
@@ -86,6 +108,25 @@ describe("catalog admin routes", () => {
       id: "pkg-1",
       code: "VPN",
       name: "VPN",
+    })
+    service.getProductForAdmin.mockResolvedValue({
+      product: {
+        code: "VPN",
+        name: "VPN",
+        description: "VPN service",
+        isActive: true,
+        plans: [
+          {
+            id: "plan-1",
+            code: "VPN_PACKAGE_ONE",
+            name: "Business VPN",
+            resources: {},
+            isActive: true,
+            offers: [],
+          },
+        ],
+      },
+      currency: "IDR",
     })
     service.upsertPlan.mockResolvedValue({
       id: "plan-1",
@@ -154,6 +195,32 @@ describe("catalog admin routes", () => {
 
     expect(response.status).toBe(403)
     expect(service.upsertPackage).not.toHaveBeenCalled()
+  })
+
+  describe("GET /admin/catalog/products/:code", () => {
+    it("returns an unpriced plan for the admin editor", async () => {
+      const response = await app().handle(
+        new Request("http://localhost/admin/catalog/products/VPN")
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.product.plans[0]).toMatchObject({
+        id: "plan-1",
+        offers: [],
+      })
+      expect(service.getProductForAdmin).toHaveBeenCalledWith("VPN")
+    })
+
+    it("returns 404 when the admin product does not exist", async () => {
+      service.getProductForAdmin.mockResolvedValueOnce(null)
+
+      const response = await app().handle(
+        new Request("http://localhost/admin/catalog/products/MISSING")
+      )
+
+      expect(response.status).toBe(404)
+    })
   })
 
   // ─── POST /admin/catalog/products ───────────────────────────────────

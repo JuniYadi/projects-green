@@ -41,11 +41,13 @@ const newOffer = (
 function PlanCard({
   plan,
   currencies,
+  selected,
   onUpdate,
   onRemove,
 }: Readonly<{
   plan: ProductPlanEditorForm
   currencies: SupportedCurrency[]
+  selected: boolean
   onUpdate: (plan: ProductPlanEditorForm) => void
   onRemove: () => void
 }>) {
@@ -86,7 +88,11 @@ function PlanCard({
   }
 
   return (
-    <Card>
+    <Card
+      id={`catalog-plan-${plan.id}`}
+      className={selected ? "ring-2 ring-primary" : undefined}
+      data-selected={selected ? "true" : "false"}
+    >
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
@@ -94,6 +100,11 @@ function PlanCard({
               {plan.name || "Unnamed plan"}
             </CardTitle>
             <CardDescription>Code: {plan.code || "—"}</CardDescription>
+            {selected && (
+              <p className="text-xs font-medium text-primary">
+                Selected from VPN package pricing
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Switch
@@ -215,11 +226,13 @@ export function CatalogPlansTab({
   currencies,
   onChange,
   showPreview,
+  selectedPlanId,
 }: Readonly<{
   plans: ProductPlanEditorForm[]
   currencies: SupportedCurrency[]
   onChange: (plans: ProductPlanEditorForm[]) => void
   showPreview?: boolean
+  selectedPlanId?: string | null
 }>) {
   const handleAddPlan = () => {
     onChange([
@@ -271,6 +284,7 @@ export function CatalogPlansTab({
             key={plan.id}
             plan={plan}
             currencies={currencies}
+            selected={plan.id === selectedPlanId}
             onUpdate={(next) =>
               onChange(plans.map((item) => (item.id === next.id ? next : item)))
             }

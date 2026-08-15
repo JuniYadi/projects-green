@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 
 import {
   Table,
@@ -15,6 +16,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PlusIcon, PencilSimpleIcon, TrashIcon } from "@phosphor-icons/react"
+import { billingPeriodLabel } from "@/lib/billing-client"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 
 import {
   listVpnPackages,
@@ -26,6 +29,7 @@ import {
 import { PackageForm } from "./package-form"
 
 export function PackagesTable() {
+  const { lang } = useParams<{ lang: string }>()
   const [packages, setPackages] = useState<VpnPackageItem[]>([])
   const [servers, setServers] = useState<VpnServerItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -78,6 +82,16 @@ export function PackagesTable() {
     } catch (err) {
       window.alert((err as Error).message)
     }
+  }
+
+  const pricingHref = (pkg: VpnPackageItem) => {
+    const returnTo = `/${lang}/portal/vpn/packages`
+    const params = new URLSearchParams({
+      plan: pkg.catalogPlan.id,
+      tab: "plans",
+      returnTo,
+    })
+    return `/${lang}/portal/billing/catalog/products/vpn?${params.toString()}`
   }
 
   return (
@@ -134,12 +148,39 @@ export function PackagesTable() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Link
-                      className="text-sm text-primary hover:underline"
-                      href={`/portal/billing/catalog`}
-                    >
-                      Manage variants
-                    </Link>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-sm font-medium">
+                          {pkg.catalogPlan.name}
+                        </p>
+                        <p className="font-mono text-xs text-muted-foreground">
+                          {pkg.catalogPlan.code}
+                        </p>
+                      </div>
+                      {pkg.pricingStatus === "READY" ? (
+                        <div className="space-y-1 text-xs text-muted-foreground">
+                          {pkg.offers.map((offer) => (
+                            <p key={offer.id}>
+                              {formatBillingMoney(
+                                offer.periodPrice,
+                                offer.currency
+                              )}
+                              {" / "}
+                              {billingPeriodLabel(offer.billingPeriod)}
+                            </p>
+                          ))}
+                        </div>
+                      ) : (
+                        <Badge variant="outline">Pricing required</Badge>
+                      )}
+                      <Link
+                        className="inline-block text-sm text-primary hover:underline"
+                        href={pricingHref(pkg)}
+                        aria-label={`Manage pricing for ${pkg.name}`}
+                      >
+                        Manage pricing
+                      </Link>
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">

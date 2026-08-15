@@ -4,6 +4,10 @@ import type { PrismaClient } from "@prisma/client"
 import { prisma as defaultPrisma } from "@/lib/prisma"
 import { CurrencyService } from "../currency.service"
 import type { RecurringBillingPeriod } from "../pricing/pricing.types"
+import {
+  toAdminCatalogProductDTO,
+  type AdminCatalogProductDetailResponse,
+} from "./catalog-admin.dto"
 
 // ─── Input types ────────────────────────────────────────────────────────────
 
@@ -296,6 +300,38 @@ export class CatalogAdminService {
         isActive: input.isActive ?? true,
       },
     })
+  }
+
+  async getProductForAdmin(
+    code: string
+  ): Promise<AdminCatalogProductDetailResponse | null> {
+    const product = await this.db.servicePackage.findFirst({
+      where: { code: code as never },
+      include: {
+        plans: {
+          include: {
+            pricings: {
+              where: {
+                type: "BUNDLE",
+                billingMode: "PACKAGE",
+                billingPeriod: {
+                  in: ["MONTHLY", "QUARTERLY", "SEMI_ANNUAL", "ANNUAL"],
+                },
+                periodPrice: { not: null },
+              },
+              include: {
+                servicePlan: { include: { package: true } },
+                region: true,
+              },
+              orderBy: { effectiveFrom: "asc" },
+            },
+          },
+        },
+      },
+    })
+
+    if (!product) return null
+    return toAdminCatalogProductDTO(product)
   }
 
   // ─── Addon ────────────────────────────────────────────────────────

@@ -139,6 +139,80 @@ describe("CatalogAdminService", () => {
     )
   })
 
+  describe("getProductForAdmin", () => {
+    it("returns plans without offers so unpriced packages can be edited", async () => {
+      db.servicePackage.findFirst.mockReturnValue({
+        id: "pkg-1",
+        code: "VPN",
+        name: "VPN",
+        description: "VPN service",
+        isActive: true,
+        plans: [
+          {
+            id: "plan-1",
+            code: "VPN_PACKAGE_ONE",
+            name: "Business VPN",
+            resources: {},
+            isActive: true,
+            pricings: [],
+          },
+        ],
+      })
+
+      const result = await createService().getProductForAdmin("VPN")
+
+      expect(result?.product.plans).toEqual([
+        expect.objectContaining({
+          id: "plan-1",
+          code: "VPN_PACKAGE_ONE",
+          offers: [],
+        }),
+      ])
+    })
+
+    it("preserves inactive offers for admin remediation", async () => {
+      db.servicePackage.findFirst.mockReturnValue({
+        id: "pkg-1",
+        code: "VPN",
+        name: "VPN",
+        description: null,
+        isActive: true,
+        plans: [
+          {
+            id: "plan-1",
+            code: "VPN_PACKAGE_ONE",
+            name: "Business VPN",
+            resources: {},
+            isActive: true,
+            pricings: [
+              {
+                id: "offer-1",
+                billingPeriod: "MONTHLY",
+                periodPrice: new Prisma.Decimal("100000"),
+                currency: "IDR",
+                chargeUnit: "SUBSCRIPTION",
+                effectiveFrom: new Date("2026-01-01"),
+                effectiveTo: null,
+                isActive: false,
+                servicePlan: {
+                  package: { code: "VPN" },
+                },
+                region: {},
+              },
+            ],
+          },
+        ],
+      })
+
+      const result = await createService().getProductForAdmin("VPN")
+
+      expect(result?.product.plans[0].offers[0]).toMatchObject({
+        id: "offer-1",
+        isActive: false,
+      })
+    })
+  })
+
   // ─── upsertPackage ──────────────────────────────────────────────────
 
   describe("upsertPackage", () => {

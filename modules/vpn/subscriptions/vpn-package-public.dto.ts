@@ -1,6 +1,14 @@
 import type { Prisma } from "@prisma/client"
 
+import {
+  isCurrentVpnPackageOffer,
+  vpnPeriodMonths,
+  type VpnPackagePricing,
+  type VpnRecurringBillingPeriod,
+} from "./vpn-package-pricing"
+
 export const publicPackageInclude = {
+  servicePlan: { select: { id: true, isActive: true } },
   servers: {
     include: {
       server: {
@@ -31,7 +39,11 @@ type PublicPricingPayload = {
 }
 
 type PublicPackageWithPricing = PublicPackagePayload & {
-  servicePlan: { pricings: PublicPricingPayload[] }
+  servicePlan: {
+    id: string
+    isActive: boolean
+    pricings: PublicPricingPayload[]
+  }
 }
 
 type PackageServerPayload = PublicPackagePayload["servers"][number]["server"]
@@ -109,15 +121,6 @@ export type PackageConversion = {
   convertedCurrency: string
   exchangeRate: number
 }
-type RecurringPeriod = "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL"
-
-const PERIOD_MONTHS: Record<RecurringPeriod, 1 | 3 | 6 | 12> = {
-  MONTHLY: 1,
-  QUARTERLY: 3,
-  SEMI_ANNUAL: 6,
-  ANNUAL: 12,
-}
-
 function summaryFields(
   pkg: PublicPackageWithPricing,
   servers: VpnPublicPackageServerDTO[],
@@ -133,29 +136,19 @@ function summaryFields(
   )
   const pricings = pkg.servicePlan.pricings
   const offers: VpnPublicPackageOfferDTO[] = pricings
-    .filter((pricing) => {
-      if (
-        !pricing.isActive ||
-        pricing.type !== "BUNDLE" ||
-        pricing.billingMode !== "PACKAGE"
-      )
-        return false
-      if (!pricing.billingPeriod || !(pricing.billingPeriod in PERIOD_MONTHS))
-        return false
-      if (!pricing.periodPrice || pricing.periodPrice.lt(0)) return false
-      return (
-        pricing.effectiveFrom <= at &&
-        (!pricing.effectiveTo || at < pricing.effectiveTo)
-      )
-    })
+    .filter(
+      (pricing) =>
+        pkg.servicePlan.isActive &&
+        isCurrentVpnPackageOffer(pricing as VpnPackagePricing, at)
+    )
     .sort((a, b) => a.effectiveFrom.getTime() - b.effectiveFrom.getTime())
     .map((pricing) => {
       const conversion = conversions.get(pricing.id)
-      const billingPeriod = pricing.billingPeriod as RecurringPeriod
+      const billingPeriod = pricing.billingPeriod as VpnRecurringBillingPeriod
       return {
         pricingId: pricing.id,
         billingPeriod,
-        periodMonths: PERIOD_MONTHS[billingPeriod],
+        periodMonths: vpnPeriodMonths(billingPeriod),
         periodPrice: pricing.periodPrice!.toString(),
         currency: pricing.currency,
         convertedPrice: conversion?.convertedPrice.toString() ?? null,

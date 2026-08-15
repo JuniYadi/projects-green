@@ -32,7 +32,7 @@ export const createAdminVpnPackagesRoutes = (deps: Deps = {}) => {
       if ("ok" in actor && !actor.ok) return actor as AdminApiError
 
       const packages = await service.list()
-      return { ok: true, data: packages.map(toVpnPackageDTO) }
+      return { ok: true, data: packages.map((pkg) => toVpnPackageDTO(pkg)) }
     })
     .post(
       "/admin/vpn/packages",

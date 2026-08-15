@@ -1,5 +1,10 @@
 import type { Prisma } from "@prisma/client"
 
+import {
+  isCurrentVpnPackageOffer,
+  vpnPeriodMonths,
+  type VpnRecurringBillingPeriod,
+} from "../subscriptions/vpn-package-pricing"
 import { toVpnServerDTO, type VpnServerDTO } from "./vpn-server.dto"
 
 const packageServerInclude = {
@@ -15,6 +20,12 @@ const packageServerInclude = {
 
 export const vpnPackageInclude = {
   servers: { include: packageServerInclude },
+  servicePlan: {
+    include: {
+      package: { select: { code: true } },
+      pricings: { orderBy: { effectiveFrom: "desc" } },
+    },
+  },
 } satisfies Prisma.VpnPackageInclude
 
 type VpnPackageWithServers = Prisma.VpnPackageGetPayload<{
@@ -39,6 +50,24 @@ export type VpnPackageServerDTO = {
   protocols: string[]
 }
 
+export type VpnPackageOfferDTO = {
+  id: string
+  billingPeriod: VpnRecurringBillingPeriod
+  periodMonths: 1 | 3 | 6 | 12
+  periodPrice: string
+  currency: string
+  effectiveFrom: string
+  effectiveTo: string | null
+}
+
+export type VpnPackageCatalogPlanDTO = {
+  id: string
+  code: string
+  name: string
+  packageCode: string
+  isActive: boolean
+}
+
 /**
  * DTO for VPN package — stable admin contract. `price` is serialized as a
  * string to avoid float precision loss across the boundary.
@@ -51,11 +80,17 @@ export type VpnPackageDTO = Pick<
   price: string | null
   serverCount: number
   servers: VpnPackageServerDTO[]
+  catalogPlan: VpnPackageCatalogPlanDTO
+  offers: VpnPackageOfferDTO[]
+  pricingStatus: "READY" | "PRICING_REQUIRED"
   createdAt: string
   updatedAt: string
 }
 
-export function toVpnPackageDTO(pkg: VpnPackageWithServers): VpnPackageDTO {
+export function toVpnPackageDTO(
+  pkg: VpnPackageWithServers,
+  at = new Date()
+): VpnPackageDTO {
   const servers: VpnPackageServerDTO[] = pkg.servers.map((entry) => {
     const server = toVpnServerDTO(entry.server)
     return {
@@ -64,9 +99,20 @@ export function toVpnPackageDTO(pkg: VpnPackageWithServers): VpnPackageDTO {
       protocols: serverProtocolLabels(server),
     }
   })
+  const offers = pkg.servicePlan.pricings
+    .filter((pricing) => isCurrentVpnPackageOffer(pricing, at))
+    .map((pricing) => ({
+      id: pricing.id,
+      billingPeriod: pricing.billingPeriod,
+      periodMonths: vpnPeriodMonths(pricing.billingPeriod),
+      periodPrice: pricing.periodPrice.toString(),
+      currency: pricing.currency,
+      effectiveFrom: pricing.effectiveFrom.toISOString(),
+      effectiveTo: pricing.effectiveTo?.toISOString() ?? null,
+    }))
 
   return {
-    servicePlanId: (pkg as unknown as { servicePlanId: string }).servicePlanId,
+    servicePlanId: pkg.servicePlanId,
     id: pkg.id,
     name: pkg.name,
     description: pkg.description,
@@ -75,6 +121,18 @@ export function toVpnPackageDTO(pkg: VpnPackageWithServers): VpnPackageDTO {
     price: pkg.price?.toString() ?? null,
     serverCount: servers.length,
     servers,
+    catalogPlan: {
+      id: pkg.servicePlan.id,
+      code: pkg.servicePlan.code,
+      name: pkg.servicePlan.name,
+      packageCode: pkg.servicePlan.package.code,
+      isActive: pkg.servicePlan.isActive,
+    },
+    offers,
+    pricingStatus:
+      pkg.servicePlan.isActive && offers.length > 0
+        ? "READY"
+        : "PRICING_REQUIRED",
     createdAt: pkg.createdAt.toISOString(),
     updatedAt: pkg.updatedAt.toISOString(),
   }

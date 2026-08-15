@@ -37,12 +37,16 @@ export async function resolveRecurringPrice(
       isActive: true,
       effectiveFrom: { lte: at },
       OR: [{ effectiveTo: null }, { effectiveTo: { gt: at } }],
+      servicePlan: {
+        isActive: true,
+        package: { isActive: true },
+      },
     },
     include: {
       servicePlan: {
         select: {
           code: true,
-          package: { select: { code: true } },
+          package: { select: { code: true, isActive: true } },
         },
       },
       region: { select: { code: true } },

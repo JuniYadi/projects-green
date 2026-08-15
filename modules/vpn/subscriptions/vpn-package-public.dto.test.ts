@@ -38,7 +38,7 @@ function packageRecord(pricings = [pricing()]) {
     isActive: true,
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
     updatedAt: new Date("2026-01-01T00:00:00.000Z"),
-    servicePlan: { pricings },
+    servicePlan: { id: "plan-1", isActive: true, pricings },
     servers: [
       {
         id: "package-server-1",

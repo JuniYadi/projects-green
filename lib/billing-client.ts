@@ -1045,6 +1045,32 @@ export type CatalogProductDetailResponse = {
   currency: string
 }
 
+export type AdminCatalogOffer = CatalogOffer & {
+  isActive: boolean
+}
+
+export type AdminCatalogPlan = {
+  id: string
+  code: string
+  name: string
+  resources: Record<string, unknown>
+  isActive: boolean
+  offers: AdminCatalogOffer[]
+}
+
+export type AdminCatalogProduct = {
+  code: string
+  name: string
+  description: string | null
+  isActive: boolean
+  plans: AdminCatalogPlan[]
+}
+
+export type AdminCatalogProductDetailResponse = {
+  product: AdminCatalogProduct
+  currency: string
+}
+
 export async function getCatalog(
   currency?: string
 ): Promise<CatalogListResponse> {
@@ -1059,6 +1085,14 @@ export async function getCatalogProduct(
   const query = currency ? `?currency=${currency}` : ""
   return fetchBilling<CatalogProductDetailResponse>(
     `/api/billing/catalog/${code}${query}`
+  )
+}
+
+export async function getAdminCatalogProduct(
+  code: string
+): Promise<AdminCatalogProductDetailResponse> {
+  return fetchBilling<AdminCatalogProductDetailResponse>(
+    `/api/billing/admin/catalog/products/${encodeURIComponent(code)}`
   )
 }
 

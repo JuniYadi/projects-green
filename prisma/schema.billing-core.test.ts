@@ -138,3 +138,21 @@ describe("unified billing catalog schema", () => {
     expect(result.exitCode).toBe(0)
   })
 })
+
+describe("VPN package catalog invariant migration", () => {
+  it("documents deterministic legacy remediation without rewriting locked refs", async () => {
+    const migration = await Bun.file(
+      "prisma/migrations/20260815000000_connect_vpn_package_catalog/migration.sql"
+    ).text()
+
+    expect(migration).toContain("ServicePackage(code = 'VPN')")
+    expect(migration).toContain("VpnPackage.price/currency")
+    expect(migration).toContain("TASK2_QUARANTINED_MALFORMED_VPN_PACKAGE")
+    expect(migration).toContain("billing-vpn-pricing-legacy-")
+    expect(migration).toContain("\"billingPeriod\" = 'YEARLY'")
+    expect(migration).toContain("package.\"code\" = 'VPN'")
+    expect(migration).toContain(
+      "historical orders and locked-price subscriptions"
+    )
+  })
+})

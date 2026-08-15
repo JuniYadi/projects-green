@@ -31,10 +31,13 @@ import {
   WarningIcon,
   EyeIcon,
 } from "@/components/ui/phosphor-icons"
-import { getCatalogProduct, publishCatalogProduct } from "@/lib/billing-client"
+import {
+  getAdminCatalogProduct,
+  publishCatalogProduct,
+} from "@/lib/billing-client"
 import type {
-  CatalogProduct,
-  CatalogProductDetailResponse,
+  AdminCatalogProduct,
+  AdminCatalogProductDetailResponse,
   PublishCatalogProductInput,
 } from "@/lib/billing-client"
 import { CatalogBasicsTab } from "@/app/[lang]/portal/billing/catalog/[productCode]/catalog-basics-tab"
@@ -82,7 +85,7 @@ function LoadingSkeleton() {
 }
 
 function productToEditorState(
-  product: CatalogProduct,
+  product: AdminCatalogProduct,
   currency: string
 ): ProductEditorState {
   const enabledCurrencies = [
@@ -105,22 +108,25 @@ function productToEditorState(
       description: product.description ?? "",
       currency,
       enabledCurrencies,
-      isActive: true,
+      isActive: product.isActive,
     },
     plans: product.plans.map((plan) => ({
       id: plan.id,
       code: plan.code,
       name: plan.name,
       resources: plan.resources,
-      isActive: true,
-      enabledTerms: [
-        ...new Set(
-          plan.offers.map(
-            (offer) =>
-              offer.billingPeriod as ProductPlanOfferForm["billingPeriod"]
-          )
-        ),
-      ],
+      isActive: plan.isActive,
+      enabledTerms:
+        plan.offers.length > 0
+          ? [
+              ...new Set(
+                plan.offers.map(
+                  (offer) =>
+                    offer.billingPeriod as ProductPlanOfferForm["billingPeriod"]
+                )
+              ),
+            ]
+          : ["MONTHLY"],
       offers: plan.offers.map(
         (offer): ProductPlanOfferForm => ({
           id: offer.id,
@@ -131,7 +137,7 @@ function productToEditorState(
           chargeUnit: offer.chargeUnit,
           effectiveFrom: offer.effectiveFrom,
           effectiveTo: offer.effectiveTo ?? "",
-          isActive: true,
+          isActive: offer.isActive,
         })
       ),
     })),
@@ -152,6 +158,13 @@ export function ProductEditor({
   const searchParams = useSearchParams()
   const { lang } = useParams<{ lang: string }>()
   const productCode = requestedProductCode
+  const selectedPlanId = searchParams.get("plan")
+  const requestedReturnPath = searchParams.get("returnTo")
+  const returnPath =
+    requestedReturnPath?.startsWith("/") &&
+    !requestedReturnPath.startsWith("//")
+      ? requestedReturnPath
+      : null
 
   const [state, setState] = useState<ProductEditorState | null>(null)
   const [loading, setLoading] = useState(true)
@@ -194,8 +207,8 @@ export function ProductEditor({
         })
       } else {
         // Always load from server API first
-        const response: CatalogProductDetailResponse =
-          await getCatalogProduct(productCode)
+        const response: AdminCatalogProductDetailResponse =
+          await getAdminCatalogProduct(productCode)
         if (!response?.product) {
           setError("Product not found in catalog.")
           return
@@ -235,7 +248,11 @@ export function ProductEditor({
 
   if (!state) return null
 
-  const activeTab = searchParams.get("tab") ?? "basics"
+  const activeTab =
+    searchParams.get("tab") ?? (selectedPlanId ? "plans" : "basics")
+  const selectedPlan = selectedPlanId
+    ? state.plans.find((plan) => plan.id === selectedPlanId)
+    : null
 
   const markModified = (tabId: string) => {
     setModifiedTabs((prev) => new Set([...prev, tabId]))
@@ -362,7 +379,12 @@ export function ProductEditor({
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link href={`/${lang}/portal/billing/catalog`}>
+          <Link
+            href={returnPath ?? `/${lang}/portal/billing/catalog`}
+            aria-label={
+              returnPath ? "Back to source package" : "Back to catalog"
+            }
+          >
             <Button variant="ghost" size="icon">
               <ArrowLeftIcon className="h-4 w-4" />
             </Button>
@@ -375,6 +397,11 @@ export function ProductEditor({
               Product code:{" "}
               <span className="font-mono">{state.basics.code}</span>
             </p>
+            {returnPath && (
+              <p className="text-xs text-muted-foreground">
+                Return to the source VPN package after pricing.
+              </p>
+            )}
           </div>
         </div>
 
@@ -503,6 +530,17 @@ export function ProductEditor({
               <CardDescription>
                 Configure billing plans and explicit currency-by-term pricing.
               </CardDescription>
+              {selectedPlanId && !selectedPlan && (
+                <p className="text-sm text-amber-600">
+                  The requested VPN package plan is no longer in this catalog
+                  product.
+                </p>
+              )}
+              {selectedPlan && (
+                <p className="text-sm text-primary">
+                  Focused plan: {selectedPlan.name || selectedPlan.code}
+                </p>
+              )}
             </CardHeader>
             <CardContent>
               <CatalogPlansTab
@@ -510,6 +548,7 @@ export function ProductEditor({
                 currencies={state.basics.enabledCurrencies}
                 onChange={updatePlans}
                 showPreview={showPreview}
+                selectedPlanId={selectedPlanId}
               />
             </CardContent>
           </Card>

@@ -69,6 +69,27 @@ function makePackage(overrides: Record<string, unknown> = {}) {
     currency: "USD",
     isActive: true,
     price: { toString: () => "29.99" },
+    servicePlanId: "plan-1",
+    servicePlan: {
+      id: "plan-1",
+      code: "VPN_PACKAGE_1",
+      name: "Business VPN",
+      isActive: true,
+      package: { code: "VPN" },
+      pricings: [
+        {
+          id: "pricing-1",
+          type: "BUNDLE",
+          billingMode: "PACKAGE",
+          billingPeriod: "MONTHLY",
+          periodPrice: { toString: () => "29.99", lt: () => false },
+          currency: "USD",
+          effectiveFrom: new Date("2026-01-01T00:00:00Z"),
+          effectiveTo: null,
+          isActive: true,
+        },
+      ],
+    },
     servers: [
       {
         id: "ps-1",
@@ -146,6 +167,43 @@ describe("toVpnPackageDTO", () => {
 
     expect(dto.createdAt).toBe("2026-01-01T00:00:00.000Z")
     expect(dto.updatedAt).toBe("2026-06-01T00:00:00.000Z")
+  })
+
+  it("exposes the linked plan and current catalog offers", () => {
+    const dto = toVpnPackageDTO(
+      makePackage() as any,
+      new Date("2026-06-01T00:00:00.000Z")
+    )
+
+    expect(dto.catalogPlan).toMatchObject({
+      id: "plan-1",
+      code: "VPN_PACKAGE_1",
+      packageCode: "VPN",
+    })
+    expect(dto.offers).toMatchObject([
+      {
+        id: "pricing-1",
+        billingPeriod: "MONTHLY",
+        periodMonths: 1,
+        periodPrice: "29.99",
+      },
+    ])
+    expect(dto.pricingStatus).toBe("READY")
+  })
+
+  it("marks plans without a current offer as pricing required", () => {
+    const dto = toVpnPackageDTO(
+      makePackage({
+        servicePlan: {
+          ...(makePackage() as any).servicePlan,
+          pricings: [],
+        },
+      }) as any,
+      new Date("2026-06-01T00:00:00.000Z")
+    )
+
+    expect(dto.offers).toEqual([])
+    expect(dto.pricingStatus).toBe("PRICING_REQUIRED")
   })
 
   it("handles multiple servers", () => {

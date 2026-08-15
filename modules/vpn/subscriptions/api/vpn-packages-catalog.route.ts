@@ -74,9 +74,12 @@ export const createVpnPackageCatalogRoutes = (deps: Deps = {}) => {
     pkg: Prisma.VpnPackageGetPayload<{ include: typeof publicPackageInclude }>
   ) {
     const at = new Date()
-    const planId = (pkg as unknown as { servicePlanId: string }).servicePlanId
+    const planId = pkg.servicePlan.id
     const pricings = await db.servicePricing.findMany({ where: { planId } })
-    const packageWithPricing = { ...pkg, servicePlan: { pricings } }
+    const packageWithPricing = {
+      ...pkg,
+      servicePlan: { ...pkg.servicePlan, pricings },
+    }
     const conversions = new Map<string, PackageConversion>()
     await Promise.all(
       pricings.map(async (pricing) => {
@@ -94,7 +97,10 @@ export const createVpnPackageCatalogRoutes = (deps: Deps = {}) => {
   return new Elysia()
     .get("/vpn/packages", async () => {
       const packages = await db.vpnPackage.findMany({
-        where: { isActive: true },
+        where: {
+          isActive: true,
+          servicePlan: { isActive: true },
+        },
         include: publicPackageInclude,
         orderBy: { createdAt: "desc" },
       })
@@ -107,7 +113,11 @@ export const createVpnPackageCatalogRoutes = (deps: Deps = {}) => {
     })
     .get("/vpn/packages/:id", async ({ params, set }) => {
       const pkg = await db.vpnPackage.findFirst({
-        where: { id: params.id, isActive: true },
+        where: {
+          id: params.id,
+          isActive: true,
+          servicePlan: { isActive: true },
+        },
         include: publicPackageInclude,
       })
       if (!pkg) {
@@ -119,9 +129,12 @@ export const createVpnPackageCatalogRoutes = (deps: Deps = {}) => {
         }
       }
       const at = new Date()
-      const planId = (pkg as unknown as { servicePlanId: string }).servicePlanId
+      const planId = pkg.servicePlan.id
       const pricings = await db.servicePricing.findMany({ where: { planId } })
-      const packageWithPricing = { ...pkg, servicePlan: { pricings } }
+      const packageWithPricing = {
+        ...pkg,
+        servicePlan: { ...pkg.servicePlan, pricings },
+      }
       const conversions = new Map<string, PackageConversion>()
       await Promise.all(
         pricings.map(async (pricing) => {

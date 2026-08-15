@@ -1455,6 +1455,8 @@ model VpnPackage {
   name          String
   description   String?
   servicePlanId String   @unique
+  // Legacy compatibility snapshot; ServicePricing is authoritative for new
+  // catalog offers and package creation no longer writes these fields.
   price         Decimal? @db.Decimal(12, 2)
   currency      String?
   isActive      Boolean  @default(true)
