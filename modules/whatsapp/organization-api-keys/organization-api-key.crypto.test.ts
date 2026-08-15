@@ -19,10 +19,12 @@ describe("WhatsApp organization API-key crypto helpers", () => {
   })
 
   it("derives the public fingerprint from the stored key hash", () => {
-    const fingerprint = fingerprintWhatsappOrganizationApiKey("stored-key-hash")
+    const fingerprint = fingerprintWhatsappOrganizationApiKey(
+      "stored-key-hash-that-must-not-be-exposed"
+    )
 
-    expect(fingerprint).toHaveLength(64)
-    expect(fingerprint).not.toBe("stored-key-hash")
+    expect(fingerprint).toHaveLength(23)
+    expect(fingerprint).toBe("wa_key_t-not-be-exposed")
   })
 
   it("rejects malformed key shapes", () => {
