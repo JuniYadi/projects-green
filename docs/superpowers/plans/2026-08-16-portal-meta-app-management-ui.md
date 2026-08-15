@@ -974,6 +974,6 @@ Expected: PASS (6 tests total)
 - [ ] **Step 7: Commit**
 
 ```bash
-git add modules/whatsapp/meta-apps/ui/meta-app-inventory.tsx modules/whatsapp/meta-app-inventory.test.tsx
+git add modules/whatsapp/meta-apps/ui/meta-app-inventory.tsx modules/whatsapp/meta-apps/ui/meta-app-inventory.test.tsx
 git commit -m "feat(whatsapp): add portal meta app inventory component"
 ```
