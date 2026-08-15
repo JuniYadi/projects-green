@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card"
 import { DeviceActions } from "./device-actions"
 import { QuotaBalanceCard } from "./quota-balance-card"
+import { MetaWebhookCard } from "@/modules/whatsapp/webhooks/ui/meta-webhook-card"
 import { TabsDeviceDetail } from "@/modules/whatsapp/webhooks/ui/tabs-device-detail"
 
 type DeviceDetailPageProps = {
@@ -78,6 +79,11 @@ export default async function PortalWhatsAppDeviceDetailPage({
         ? {}
         : { organizationId: auth.organizationId }),
     },
+    include: {
+      whatsappMetaApp: {
+        select: { id: true, name: true, webhookKey: true },
+      },
+    },
   })
 
   if (!deviceRecord) {
@@ -115,6 +121,8 @@ export default async function PortalWhatsAppDeviceDetailPage({
           </dl>
         </CardContent>
       </Card>
+
+      <MetaWebhookCard metaApp={device.whatsappMetaApp} />
 
       <QuotaBalanceCard
         deviceId={device.id}
