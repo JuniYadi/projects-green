@@ -157,6 +157,9 @@ Expected: PASS
 git add modules/whatsapp/meta-apps/api/meta-apps.route.ts modules/whatsapp/meta-apps/api/meta-apps.route.test.ts
 git commit -m "feat(whatsapp): expose device count on admin meta app list route"
 ```
+
+---
+
 ### Task 2: Build the Meta App inventory client component
 
 **Files:**
@@ -854,7 +857,7 @@ export function WhatsappMetaAppInventory({
   )
 }
 ```
-+- [ ] **Step 4: Run it, confirm the Step 1 test passes**
+- [ ] **Step 4: Run it, confirm the Step 1 test passes**
 
 Run: `bun test modules/whatsapp/meta-apps/ui/meta-app-inventory.test.tsx`
 Expected: PASS
@@ -978,6 +981,8 @@ git add modules/whatsapp/meta-apps/ui/meta-app-inventory.tsx modules/whatsapp/me
 git commit -m "feat(whatsapp): add portal meta app inventory component"
 ```
 
+---
+
 ### Task 3: Mount the portal page and add sidebar navigation
 
 **Files:**
@@ -1084,6 +1089,9 @@ Expected: no new errors.
 git add components/app-sidebar.tsx
 git commit -m "feat(whatsapp): add Meta Apps sidebar nav entry"
 ```
+
+---
+
 ### Task 4: Final verification
 
 - [ ] **Step 1: Changed-path lint**
