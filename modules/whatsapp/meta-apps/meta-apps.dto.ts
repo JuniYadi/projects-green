@@ -36,3 +36,18 @@ export function toWhatsappMetaAppDTO(
     callbackPath: `/api/whatsapp/meta-webhook/${app.webhookKey}`,
   }
 }
+
+export type WhatsappMetaAppListItemDTO = WhatsappMetaAppDTO & {
+  deviceCount: number
+}
+
+export function toWhatsappMetaAppListItemDTO(
+  app: Prisma.WhatsappMetaAppGetPayload<{
+    include: { _count: { select: { devices: true } } }
+  }>
+): WhatsappMetaAppListItemDTO {
+  return {
+    ...toWhatsappMetaAppDTO(app),
+    deviceCount: app._count.devices,
+  }
+}
