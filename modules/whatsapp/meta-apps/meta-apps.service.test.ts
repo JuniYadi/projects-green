@@ -12,6 +12,7 @@ const mockEncrypt = mock(async (value: string) => `encrypted:${value}`)
 const mockDecrypt = mock(async (value: string) =>
   value.replace(/^encrypted:/, "")
 )
+const mockAudit = mock(async (_params: unknown): Promise<void> => {})
 const mockPrisma: Record<string, unknown> = {
   whatsappMetaApp: {
     create: mockCreate,
@@ -38,6 +39,10 @@ mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 mock.module("@/lib/whatsapp/crypto", () => ({
   encryptWithAppKey: mockEncrypt,
   decryptWithAppKey: mockDecrypt,
+}))
+
+mock.module("@/modules/whatsapp/audit/whatsapp-audit.service", () => ({
+  logWhatsappAuditEvent: mockAudit,
 }))
 
 mock.module("node:crypto", () => ({
@@ -72,24 +77,26 @@ const deviceRecord = {
 }
 
 function resetMocks() {
-  mockCreate.mockReset()
-  mockFindMany.mockReset()
-  mockFindUnique.mockReset()
-  mockFindFirst.mockReset()
-  mockUpdate.mockReset()
-  mockDelete.mockReset()
-  mockQueryRaw.mockReset()
-  mockTransaction.mockReset()
-  mockEncrypt.mockReset()
-  mockDecrypt.mockReset()
-  mockCreate.mockResolvedValue(appRecord)
-  mockFindMany.mockResolvedValue([appRecord])
-  mockFindUnique.mockResolvedValue(appRecord)
-  mockFindFirst.mockResolvedValue(null)
-  mockUpdate.mockResolvedValue({ ...appRecord, name: "Renamed" })
-  mockDelete.mockResolvedValue(appRecord)
-  mockDeviceCount.mockResolvedValue(0)
-  mockQueryRaw.mockResolvedValue([])
+  mockCreate.mockClear()
+  mockFindMany.mockClear()
+  mockFindUnique.mockClear()
+  mockFindFirst.mockClear()
+  mockUpdate.mockClear()
+  mockDelete.mockClear()
+  mockDeviceCount.mockClear()
+  mockQueryRaw.mockClear()
+  mockTransaction.mockClear()
+  mockEncrypt.mockClear()
+  mockDecrypt.mockClear()
+  mockAudit.mockClear()
+  mockCreate.mockImplementation(async () => appRecord)
+  mockFindMany.mockImplementation(async () => [appRecord])
+  mockFindUnique.mockImplementation(async () => appRecord)
+  mockFindFirst.mockImplementation(async () => null)
+  mockUpdate.mockImplementation(async () => ({ ...appRecord, name: "Renamed" }))
+  mockDelete.mockImplementation(async () => appRecord)
+  mockDeviceCount.mockImplementation(async () => 0)
+  mockQueryRaw.mockImplementation(async () => [])
   mockTransaction.mockImplementation(
     async (callback: (tx: Record<string, unknown>) => Promise<unknown>) =>
       callback(mockPrisma)
@@ -98,6 +105,7 @@ function resetMocks() {
   mockDecrypt.mockImplementation(async (value: string) =>
     value.replace(/^encrypted:/, "")
   )
+  mockAudit.mockImplementation(async () => undefined)
 }
 
 describe("Meta app schemas", () => {
@@ -158,12 +166,15 @@ describe("MetaAppsService", () => {
   })
 
   it("encrypts credentials before create and returns redacted DTO", async () => {
-    const result = await service.create({
-      name: "Primary",
-      metaAppId: "123456789",
-      appSecret: "app-secret",
-      verifyToken: "verify-token",
-    })
+    const result = await service.create(
+      {
+        name: "Primary",
+        metaAppId: "123456789",
+        appSecret: "app-secret",
+        verifyToken: "verify-token",
+      },
+      "admin-1"
+    )
 
     expect(mockEncrypt).toHaveBeenNthCalledWith(1, "app-secret")
     expect(mockEncrypt).toHaveBeenNthCalledWith(2, "verify-token")
@@ -185,10 +196,45 @@ describe("MetaAppsService", () => {
     expect(result).not.toHaveProperty("verifyToken")
     expect(result).not.toHaveProperty("appSecretEncrypted")
     expect(result).not.toHaveProperty("verifyTokenEncrypted")
+    expect(mockAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "META_APP_CREATED",
+        organizationId: "system",
+        adminId: "admin-1",
+        details: {
+          metaAppId: "123456789",
+          changedFields: [
+            "name",
+            "metaAppId",
+            "appSecret",
+            "verifyToken",
+            "active",
+          ],
+        },
+      })
+    )
+  })
+
+  it("logs metadata updates separately from credential rotation", async () => {
+    await service.update("meta-1", { name: "Renamed" }, "admin-1")
+
+    expect(mockAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "META_APP_UPDATED",
+        details: {
+          metaAppId: "123456789",
+          changedFields: ["name"],
+        },
+      })
+    )
   })
 
   it("rotates only supplied credentials and maps updates", async () => {
-    await service.update("meta-1", { name: "Renamed", appSecret: "new-secret" })
+    await service.update(
+      "meta-1",
+      { name: "Renamed", appSecret: "new-secret" },
+      "admin-1"
+    )
 
     const updateArgs = mockUpdate.mock.calls[0]?.[0] as any
     expect(updateArgs.data).toEqual({
@@ -196,6 +242,49 @@ describe("MetaAppsService", () => {
       appSecretEncrypted: "encrypted:new-secret",
     })
     expect(updateArgs.data).not.toHaveProperty("verifyTokenEncrypted")
+    expect(mockAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "META_APP_CREDENTIALS_ROTATED",
+        details: {
+          metaAppId: "123456789",
+          changedFields: ["name", "appSecret"],
+        },
+      })
+    )
+  })
+
+  it("distinguishes which credentials were rotated without logging values", async () => {
+    const rotations = [
+      { input: { appSecret: "new-secret" }, fields: ["appSecret"] },
+      { input: { verifyToken: "new-token" }, fields: ["verifyToken"] },
+      {
+        input: { appSecret: "both-secret", verifyToken: "both-token" },
+        fields: ["appSecret", "verifyToken"],
+      },
+    ] as const
+
+    for (const rotation of rotations) {
+      mockAudit.mockClear()
+      await service.update("meta-1", rotation.input, "admin-1")
+
+      expect(mockAudit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "META_APP_CREDENTIALS_ROTATED",
+          details: {
+            metaAppId: "123456789",
+            changedFields: rotation.fields,
+          },
+        })
+      )
+      const auditCall = mockAudit.mock.calls[0]?.[0] as {
+        details?: unknown
+      }
+      const details = JSON.stringify(auditCall.details)
+      for (const secret of Object.values(rotation.input)) {
+        expect(details).not.toContain(secret)
+        expect(details).not.toContain(`encrypted:${secret}`)
+      }
+    }
   })
 
   it("lists active metadata and resolves credentials by webhook key", async () => {
@@ -236,12 +325,23 @@ describe("MetaAppsService", () => {
   })
 
   it("deletes app when no devices are attached", async () => {
-    const result = await service.delete("meta-1")
+    const result = await service.delete("meta-1", "admin-1")
     expect(mockDeviceCount).toHaveBeenCalledWith({
       where: { whatsappMetaAppId: "meta-1" },
     })
     expect(mockDelete).toHaveBeenCalledWith({ where: { id: "meta-1" } })
     expect(result?.id).toBe("meta-1")
+    expect(mockAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "META_APP_DELETED",
+        organizationId: "system",
+        adminId: "admin-1",
+        details: {
+          metaAppId: "123456789",
+          changedFields: [],
+        },
+      })
+    )
   })
   it("maps concurrent device attachment FK conflicts", async () => {
     mockUpdate.mockRejectedValueOnce({ code: "P2003" })
@@ -250,9 +350,10 @@ describe("MetaAppsService", () => {
     })
 
     mockDelete.mockRejectedValueOnce({ code: "P2003" })
-    await expect(service.delete("meta-1")).rejects.toMatchObject({
+    await expect(service.delete("meta-1", "admin-1")).rejects.toMatchObject({
       code: "META_APP_HAS_DEVICES",
     })
+    expect(mockAudit).not.toHaveBeenCalled()
   })
 
   it("scopes device lookup to Meta app and phone ID", async () => {
@@ -271,13 +372,13 @@ describe("MetaAppsService", () => {
 
     mockFindUnique.mockResolvedValueOnce(appRecord)
     mockDeviceCount.mockResolvedValueOnce(1)
-    await expect(service.delete("meta-1")).rejects.toMatchObject({
+    await expect(service.delete("meta-1", "admin-1")).rejects.toMatchObject({
       code: "META_APP_HAS_DEVICES",
     })
     expect(mockDelete).not.toHaveBeenCalled()
     mockDeviceCount.mockResolvedValueOnce(1)
     await expect(
-      service.update("meta-1", { active: false })
+      service.update("meta-1", { active: false }, "admin-1")
     ).rejects.toMatchObject({
       code: "META_APP_HAS_DEVICES",
     })

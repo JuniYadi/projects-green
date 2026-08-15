@@ -139,7 +139,7 @@ export const createAdminMetaAppsRoutes = (deps: AdminMetaAppsDeps = {}) => {
       if (!parsed.success) return validationError(set, parsed.error.issues)
 
       try {
-        const app = await service.create(parsed.data)
+        const app = await service.create(parsed.data, actor.userId)
         set.status = 201
         return { ok: true as const, data: publicMetaApp(app) }
       } catch (error) {
@@ -154,7 +154,7 @@ export const createAdminMetaAppsRoutes = (deps: AdminMetaAppsDeps = {}) => {
       if (!parsed.success) return validationError(set, parsed.error.issues)
 
       try {
-        const app = await service.update(id, parsed.data)
+        const app = await service.update(id, parsed.data, actor.userId)
         return { ok: true as const, data: publicMetaApp(app) }
       } catch (error) {
         return mapServiceError(set, error)
@@ -165,7 +165,7 @@ export const createAdminMetaAppsRoutes = (deps: AdminMetaAppsDeps = {}) => {
       if (isAdminError(actor)) return actor
 
       try {
-        const app = await service.delete(id)
+        const app = await service.delete(id, actor.userId)
         if (!app) return notFoundError(set)
         return { ok: true as const, data: publicMetaApp(app) }
       } catch (error) {

@@ -39,6 +39,11 @@ export type WhatsappAuditAction =
   // Catalog
   | "CATALOG_SYNCED"
   | "CATALOG_MESSAGE_SENT"
+  // Meta app
+  | "META_APP_CREATED"
+  | "META_APP_UPDATED"
+  | "META_APP_CREDENTIALS_ROTATED"
+  | "META_APP_DELETED"
   // Admin
   | "DEVICE_QUOTA_TOPUP"
   | "ORGANIZATION_API_KEY_GENERATED"
