@@ -65,6 +65,19 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     ],
     smokeProjects: ["smoke-portal"],
   },
+  {
+    name: "whatsapp-device-meta-webhook",
+    sourcePrefixes: [
+      "app/[lang]/portal/whatsapp/devices/[deviceId]/page.tsx",
+      "modules/whatsapp/webhooks/ui/meta-webhook-card.tsx",
+      "modules/whatsapp/webhooks/ui/tabs-device-detail.tsx",
+    ],
+    testPrefixes: [
+      "modules/whatsapp/webhooks/ui/meta-webhook-card.test.tsx",
+      "modules/whatsapp/webhooks/ui/tabs-device-detail.test.tsx",
+    ],
+    smokeProjects: ["smoke-portal"],
+  },
 ]
 
 export const SHARED_UI_PREFIXES = [
