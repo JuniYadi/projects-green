@@ -55,6 +55,7 @@ it("lists metadata with attached device counts", async () => {
   expect(listed[0]?.deviceCount).toBe(3)
 })
 ```
+
 Leave the rest of that original test's body (the `resolveCredentialsByWebhookKey` assertions further down) in a separate `it` block if they were combined — split them so each `it` tests one behavior.
 
 - [ ] **Step 2: Run it, confirm it fails**
@@ -82,6 +83,7 @@ export function toWhatsappMetaAppListItemDTO(
   }
 }
 ```
+
 - [ ] **Step 4: Implement the service change**
 
 In `modules/whatsapp/meta-apps/meta-apps.service.ts`, update the import line to also bring in `toWhatsappMetaAppListItemDTO` and `type WhatsappMetaAppListItemDTO` from `./meta-apps.dto`, then replace the `list` method body:
