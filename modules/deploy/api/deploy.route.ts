@@ -8,6 +8,7 @@ import {
 } from "@/modules/deploy/api/routes/app-stacks.route"
 import { appHostingEdgeRoutes } from "@/modules/deploy/api/routes/app-hosting-edge.route"
 import { aiDeploymentSessionRoutes } from "@/modules/deploy/api/routes/ai-deployment-session.route"
+import { aiDeploymentSessionDecisionRoutes } from "@/modules/deploy/api/routes/ai-deployment-session-decisions.route"
 import { deploySubmitRoutes } from "@/modules/deploy/api/routes/deploy-submit.route"
 import { deployTriggerRoutes } from "@/modules/deploy/api/routes/deploy-trigger.route"
 import { environmentVariablesRoutes } from "@/modules/deploy/api/routes/environment-variables.route"
@@ -20,6 +21,7 @@ import { publicSourceRoutes } from "@/modules/deploy/api/routes/public-source.ro
 
 export const deployRoutes = new Elysia()
   .use(aiDeploymentSessionRoutes)
+  .use(aiDeploymentSessionDecisionRoutes)
   .use(recentSourcesRoutes)
   .use(appStacksRoutes)
   .use(deploySubmitRoutes)
