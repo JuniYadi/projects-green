@@ -287,14 +287,21 @@ describe("MetaAppsService", () => {
     }
   })
 
-  it("lists active metadata and resolves credentials by webhook key", async () => {
+  it("lists metadata with attached device counts", async () => {
+    mockFindMany.mockResolvedValueOnce([
+      { ...appRecord, _count: { devices: 3 } },
+    ])
     const listed = await service.list()
     expect(mockFindMany.mock.calls[0]?.[0]).toEqual({
       where: { active: true },
       orderBy: { createdAt: "desc" },
+      include: { _count: { select: { devices: true } } },
     })
     expect(listed[0]).not.toHaveProperty("appSecretEncrypted")
+    expect(listed[0]?.deviceCount).toBe(3)
+  })
 
+  it("resolves credentials by webhook key", async () => {
     const resolved = await service.resolveCredentialsByWebhookKey("public-key")
     expect(resolved).toEqual({
       id: "meta-1",

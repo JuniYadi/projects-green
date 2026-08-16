@@ -5,7 +5,12 @@ import { prisma } from "@/lib/prisma"
 import { decryptWithAppKey, encryptWithAppKey } from "@/lib/whatsapp/crypto"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 
-import { toWhatsappMetaAppDTO, type WhatsappMetaAppDTO } from "./meta-apps.dto"
+import {
+  toWhatsappMetaAppDTO,
+  toWhatsappMetaAppListItemDTO,
+  type WhatsappMetaAppDTO,
+  type WhatsappMetaAppListItemDTO,
+} from "./meta-apps.dto"
 import {
   createMetaAppSchema,
   updateMetaAppSchema,
@@ -104,12 +109,15 @@ export class MetaAppsService {
     return toWhatsappMetaAppDTO(app)
   }
 
-  async list(options: MetaAppListOptions = {}): Promise<WhatsappMetaAppDTO[]> {
+  async list(
+    options: MetaAppListOptions = {}
+  ): Promise<WhatsappMetaAppListItemDTO[]> {
     const apps = await this.database.whatsappMetaApp.findMany({
       where: options.activeOnly === false ? {} : { active: true },
       orderBy: { createdAt: "desc" },
+      include: { _count: { select: { devices: true } } },
     })
-    return apps.map(toWhatsappMetaAppDTO)
+    return apps.map(toWhatsappMetaAppListItemDTO)
   }
 
   async get(id: string): Promise<WhatsappMetaAppDTO | null> {

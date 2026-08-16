@@ -535,6 +535,7 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.map((item) => item.title)).toEqual([
       "Dashboard",
       "API Keys",
+      "Meta Apps",
       "Devices",
       "Templates",
       "Messages",
