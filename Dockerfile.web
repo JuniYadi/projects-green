@@ -47,5 +47,9 @@ EXPOSE 3300
 # Set production environment
 ENV NODE_ENV=production
 
+# Expose the HTTP liveness endpoint to local container tooling.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD ["bun", "-e", "fetch('http://127.0.0.1:3300/api/healthz/live').then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))"]
+
 # Start Next.js
 CMD ["bun", "run", "start"]

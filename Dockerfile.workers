@@ -46,4 +46,11 @@ COPY --from=builder /app/dist/workers.js ./dist/workers.js
 
 ENV NODE_ENV=production
 
+# Kubernetes sends SIGTERM before the grace period expires.
+STOPSIGNAL SIGTERM
+
+# The worker has no HTTP server; its PID 1 process is the liveness signal.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD ["sh", "-c", "kill -0 1"]
+
 CMD ["bun", "run", "dist/workers.js"]
