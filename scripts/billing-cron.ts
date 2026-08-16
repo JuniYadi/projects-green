@@ -7,16 +7,20 @@ import {
   BILLING_MONTHLY_BILLING_JOB,
   BILLING_INVOICE_STATUS_JOB,
   BILLING_PAYMENT_REMINDER_JOB,
+  BILLING_RENEWAL_LADDER_JOB,
   BILLING_DAILY_RESET_QUEUE,
   BILLING_MONTHLY_RESET_QUEUE,
   BILLING_INVOICE_STATUS_QUEUE,
   BILLING_PAYMENT_REMINDER_QUEUE,
+  BILLING_RENEWAL_LADDER_QUEUE,
   type BillingCronJobData,
 } from "@/lib/queue/billing-cron"
 import { getRedisConnection } from "@/lib/queue/queue-config"
 import { UsageLedgerService } from "@/modules/billing/usage-ledger.service"
 import { BillingCycleService } from "@/modules/billing/billing-cycle.service"
 import { InvoiceStatusManager } from "@/modules/billing/invoice-status.service"
+import { RenewalCoordinatorService } from "@/modules/billing/renewal/renewal-coordinator.service"
+import { createVpnRenewalCallbacks } from "@/modules/vpn/billing/vpn-renewal-callbacks"
 import { invoiceEmailService } from "@/modules/invoices/email.service"
 
 const redisConnection = getRedisConnection()
@@ -116,6 +120,18 @@ async function processPaymentReminder(): Promise<{ sent: number }> {
   return result
 }
 
+/**
+ * Daily renewal ladder: suspend one day after due, terminate seven days
+ * after due, per PRD - Global Subscription and Voucher System.
+ */
+async function processRenewalLadder(): Promise<number> {
+  const coordinator = new RenewalCoordinatorService(prisma, {
+    VPN: createVpnRenewalCallbacks(prisma),
+  })
+  const result = await coordinator.runLadderTransitions()
+  return result.suspended + result.terminated
+}
+
 const worker = new Worker<BillingCronJobData>(
   BILLING_DAILY_RESET_QUEUE,
   async (job: Job<BillingCronJobData>) => {
@@ -183,6 +199,23 @@ const reminderWorker = new Worker<BillingCronJobData>(
     if (job.name === BILLING_PAYMENT_REMINDER_JOB) {
       const result = await processPaymentReminder()
       console.info(`[billing-cron] payment reminder: sent=${result.sent}`)
+    }
+  },
+  {
+    connection: redisConnection,
+    concurrency: 1,
+  }
+)
+
+// Renewal ladder worker
+const renewalLadderWorker = new Worker<BillingCronJobData>(
+  BILLING_RENEWAL_LADDER_QUEUE,
+  async (job: Job<BillingCronJobData>) => {
+    if (job.name === BILLING_RENEWAL_LADDER_JOB) {
+      const transitioned = await processRenewalLadder()
+      console.info(
+        `[billing-cron] renewal ladder: ${transitioned} transitioned`
+      )
     }
   },
   {
@@ -343,10 +376,24 @@ export async function registerRepeatableJobs() {
     }
   )
 
+  // Renewal ladder: daily at 04:00 UTC, after invoice status and billing
+  const renewalLadderQueue = new Queue(BILLING_RENEWAL_LADDER_QUEUE, {
+    connection: redisConnection,
+  })
+  await renewalLadderQueue.add(
+    BILLING_RENEWAL_LADDER_JOB,
+    {},
+    {
+      repeat: { pattern: "0 4 * * *" },
+      jobId: "billing-renewal-ladder",
+    }
+  )
+
   await dailyQueue.close()
   await monthlyQueue.close()
   await statusQueue.close()
   await reminderQueue.close()
+  await renewalLadderQueue.close()
 
   console.info("[billing-cron] repeatable jobs registered")
 }
@@ -366,6 +413,7 @@ const shutdown = async (signal: string) => {
     await monthlyWorker.close()
     await statusWorker.close()
     await reminderWorker.close()
+    await renewalLadderWorker.close()
     await prisma.$disconnect()
     process.exit(0)
   } catch (error) {
@@ -386,7 +434,7 @@ process.on("SIGINT", () => {
 if (import.meta.main) {
   void registerRepeatableJobs().then(() => {
     console.info(
-      `[billing-cron] ready queues=${BILLING_DAILY_RESET_QUEUE},${BILLING_MONTHLY_RESET_QUEUE},${BILLING_INVOICE_STATUS_QUEUE},${BILLING_PAYMENT_REMINDER_QUEUE}`
+      `[billing-cron] ready queues=${BILLING_DAILY_RESET_QUEUE},${BILLING_MONTHLY_RESET_QUEUE},${BILLING_INVOICE_STATUS_QUEUE},${BILLING_PAYMENT_REMINDER_QUEUE},${BILLING_RENEWAL_LADDER_QUEUE}`
     )
   })
 }
