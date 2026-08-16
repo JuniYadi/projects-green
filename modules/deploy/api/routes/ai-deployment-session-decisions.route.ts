@@ -58,6 +58,10 @@ const toRouteError = (set: RouteSet, error: unknown) => {
       set.status = 422
       return { ok: false as const, error: error.code, message: error.code }
     }
+    if (error.code === "ENVIRONMENT_KEY_NOT_DECLARED") {
+      set.status = 422
+      return { ok: false as const, error: error.code, message: error.code }
+    }
     set.status = 409
     return { ok: false as const, error: error.code, message: error.code }
   }
@@ -70,6 +74,34 @@ export const createAiDeploymentSessionDecisionRoutes = (
   const dependencies = { ...defaultDependencies, ...input }
 
   return new Elysia({ prefix: "/deploy/ai-sessions" })
+    .post(
+      "/:sessionId/environment-values",
+      async ({ params, body, set }) => {
+        const actor = await requireDeploymentActor(dependencies, set)
+        if (isTenantApiError(actor)) return actor
+
+        try {
+          const session = await dependencies.service.setEnvironmentValues({
+            actor,
+            sessionId: params.sessionId,
+            values: body.values,
+          })
+          return { ok: true as const, data: toAiDeploymentSessionDTO(session) }
+        } catch (error) {
+          return toRouteError(set, error)
+        }
+      },
+      {
+        body: t.Object({
+          values: t.Array(
+            t.Object({
+              key: t.String(),
+              value: t.String(),
+            })
+          ),
+        }),
+      }
+    )
     .post(
       "/:sessionId/manual-settings",
       async ({ params, body, set }) => {

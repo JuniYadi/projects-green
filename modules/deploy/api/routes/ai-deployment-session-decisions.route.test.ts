@@ -10,7 +10,7 @@ const { createAiDeploymentSessionDecisionRoutes } =
 type AiDeploymentSessionService =
   import("@/modules/deploy/ai-deployment-session.service").AiDeploymentSessionService
 
-const samplePlan = (version = 2) => ({
+const samplePlan = (version = 2, withEnvironmentRequirement = false) => ({
   version,
   source: {
     kind: "git" as const,
@@ -33,7 +33,17 @@ const samplePlan = (version = 2) => ({
     appName: "example",
     branchOrRef: "main",
     environment: "production" as const,
-    envRequirements: [],
+    envRequirements: withEnvironmentRequirement
+      ? [
+          {
+            key: "DATABASE_URL",
+            required: true,
+            kind: "secret" as const,
+            status: "missing" as const,
+            description: "Database connection string",
+          },
+        ]
+      : [],
   },
   dependencies: [],
   resources: {
@@ -126,6 +136,7 @@ const settings = {
 const createService = () => ({
   applyManualSettings: mock(async () => sampleSession()),
   selectResourcePlan: mock(async () => sampleSession()),
+  setEnvironmentValues: mock(async () => sampleSession()),
 })
 
 const request = (body: unknown) =>
@@ -138,6 +149,16 @@ const request = (body: unknown) =>
 const resourceRequest = (body: unknown) =>
   new Request(
     "http://localhost/deploy/ai-sessions/session-1/resource-selection",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  )
+
+const environmentRequest = (body: unknown) =>
+  new Request(
+    "http://localhost/deploy/ai-sessions/session-1/environment-values",
     {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -278,5 +299,54 @@ describe("aiDeploymentSessionDecisionRoutes", () => {
 
     expect(response.status).toBe(422)
     expect(body.error).toBe("RESOURCE_SELECTION_INVALID")
+  })
+
+  it("does not return submitted environment values", async () => {
+    const service = createService()
+    service.setEnvironmentValues.mockResolvedValue({
+      ...sampleSession(),
+      plan: samplePlan(3, true),
+    })
+    const app = createAiDeploymentSessionDecisionRoutes({
+      requireActor: async () => actor,
+      service: service as unknown as AiDeploymentSessionService,
+    })
+    const secret = "postgres://user:pass@host/db"
+
+    const response = await app.handle(
+      environmentRequest({
+        values: [{ key: "DATABASE_URL", value: secret }],
+      })
+    )
+    const body = await response.text()
+
+    expect(response.status).toBe(200)
+    expect(body).not.toContain(secret)
+    expect(service.setEnvironmentValues).toHaveBeenCalledWith({
+      actor: { organizationId: "org-1", userId: "user-1" },
+      sessionId: "session-1",
+      values: [{ key: "DATABASE_URL", value: secret }],
+    })
+  })
+
+  it("returns 422 for an undeclared environment key", async () => {
+    const service = createService()
+    service.setEnvironmentValues.mockRejectedValue(
+      new AiDeploymentSessionError("ENVIRONMENT_KEY_NOT_DECLARED")
+    )
+    const app = createAiDeploymentSessionDecisionRoutes({
+      requireActor: async () => actor,
+      service: service as unknown as AiDeploymentSessionService,
+    })
+
+    const response = await app.handle(
+      environmentRequest({
+        values: [{ key: "NOT_IN_PLAN", value: "x" }],
+      })
+    )
+    const body = (await response.json()) as { error: string }
+
+    expect(response.status).toBe(422)
+    expect(body.error).toBe("ENVIRONMENT_KEY_NOT_DECLARED")
   })
 })
