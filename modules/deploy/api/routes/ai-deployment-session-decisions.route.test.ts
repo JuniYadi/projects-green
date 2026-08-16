@@ -91,6 +91,8 @@ const samplePlan = (version = 2) => ({
 const sampleSession = (): AiDeploymentSession => ({
   id: "session-1",
   organizationId: "org-1",
+  stackId: null,
+  deploymentId: null,
   workosUserId: "user-1",
   status: "PLAN_READY",
   sourceType: "SOURCE",
