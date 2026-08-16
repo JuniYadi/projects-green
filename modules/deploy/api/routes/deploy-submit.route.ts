@@ -1,4 +1,3 @@
-import { Prisma } from "@prisma/client"
 import { Elysia, t } from "elysia"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { prisma } from "@/lib/prisma"
@@ -7,15 +6,13 @@ import {
   hasScopedSuperAdminClaim,
   resolveTenantRoleFromClaims,
 } from "@/modules/tenants/tenant-policy"
-import { AppHostingBillingService } from "../../billing/app-hosting-billing.service"
-import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { computeHourlyCostDecimal } from "../../deploy-pricing"
 import {
   createOrUpdateStack,
   triggerDeploy,
 } from "../../deploy-pipeline.service"
-import { resolveAppHostingClusterForStack } from "../../cluster-integration.service"
 import { ensureManagedDomainForStack } from "@/modules/deploy/app-hosting-edge.service"
+import { assertDeployExecutionGates } from "../../deploy-execution-gates"
 import { DEPLOY_TEMPLATES } from "../../deploy.constants"
 import { parsePublicGitUrl } from "../../public-source"
 
@@ -222,52 +219,36 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       throw error
     }
 
-    // Hard billing gate for PAYG — mirrors deploy-trigger.route.ts so the
-    // submit flow cannot bypass the required-balance enforcement.
-    if (billingMode === "PAYG" && resourcePlanId === "payg") {
-      const transactions = new BillingTransactionService(prisma)
-      const billingService = new AppHostingBillingService(prisma, transactions)
-      try {
-        await billingService.assertCanStartPayg({
-          organizationId: auth.organizationId,
-          hourlyCost: new Prisma.Decimal(String(hourlyCost)),
-          bufferHours: body.paygBufferHours,
-        })
-      } catch (error) {
-        if (
-          error instanceof Error &&
-          error.message === "INSUFFICIENT_PAYG_BUFFER"
-        ) {
-          set.status = 402
-          return {
-            ok: false,
-            error: "INSUFFICIENT_PAYG_BUFFER",
-            message:
-              "Your balance must cover the configured runtime buffer before deploying PAYG apps.",
-            topupUrl: "/console/billing/topup",
-          }
-        }
-        if (
-          error instanceof Error &&
-          error.message === "BILLING_ACCOUNT_NOT_FOUND"
-        ) {
-          set.status = 402
-          return {
-            ok: false,
-            error: "BILLING_ACCOUNT_NOT_FOUND",
-            message: "No billing account found for this organization.",
-            topupUrl: "/console/billing/topup",
-          }
-        }
-        throw error
-      }
-    }
-
-    // Gate: fail before queueing if no default cluster is configured
     try {
-      await resolveAppHostingClusterForStack(stack.id)
+      await assertDeployExecutionGates({
+        organizationId: auth.organizationId,
+        stackId: stack.id,
+        billingMode,
+        resourcePlanId,
+        hourlyCost: Number(hourlyCost),
+        paygBufferHours: body.paygBufferHours ?? 24,
+      })
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error"
+      if (message === "INSUFFICIENT_PAYG_BUFFER") {
+        set.status = 402
+        return {
+          ok: false,
+          error: "INSUFFICIENT_PAYG_BUFFER",
+          message:
+            "Your balance must cover the configured runtime buffer before deploying PAYG apps.",
+          topupUrl: "/console/billing/topup",
+        }
+      }
+      if (message === "BILLING_ACCOUNT_NOT_FOUND") {
+        set.status = 402
+        return {
+          ok: false,
+          error: "BILLING_ACCOUNT_NOT_FOUND",
+          message: "No billing account found for this organization.",
+          topupUrl: "/console/billing/topup",
+        }
+      }
       if (
         message.includes("No active default App Hosting cluster") ||
         message.includes("Multiple active default App Hosting clusters")
