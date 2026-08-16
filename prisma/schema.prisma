@@ -1211,6 +1211,10 @@ model ServicePricing {
   effectiveFrom   DateTime          @default(now())
   effectiveTo     DateTime?
   chargeUnit      BillingChargeUnit @default(SUBSCRIPTION)
+  // Minimum number of billing cycles the customer commits to before they may
+  // cancel or downgrade. Distinct from billingPeriod: an offer may bill
+  // monthly with a 3-cycle minimum. Null means no commitment.
+  minimumCommitmentCycles Int?
   basePriceIdr    Decimal           @db.Decimal(12, 2)
   monthlyCapIdr   Decimal?          @db.Decimal(12, 2)
   unitRateCpu     Decimal?          @db.Decimal(12, 4)
@@ -1324,6 +1328,9 @@ model ServiceSubscription {
   cancelAtPeriodEnd   Boolean                    @default(false)
   currentPeriodStart  DateTime
   currentPeriodEnd    DateTime
+  // Resolved from ServicePricing.minimumCommitmentCycles at first creation and
+  // never moved on renewal. Cancellation is blocked until this passes.
+  commitmentEndsAt    DateTime?
   allocatedConfig     Json?
   metadata           Json?
   createdAt          DateTime                   @default(now())
