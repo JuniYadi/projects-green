@@ -1,5 +1,6 @@
 services:
   web:
+    image: projects-green-web:local
     build:
       context: .
       dockerfile: Dockerfile.web
@@ -21,13 +22,24 @@ services:
       - pfnapp-net
 
   workers:
+    image: projects-green-workers:local
     build:
       context: .
       dockerfile: Dockerfile.workers
     container_name: pfnapp-workers
     restart: unless-stopped
+    stop_grace_period: 2m
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+        limits:
+          cpus: '1.0'
+          memory: 1G
     healthcheck:
-      test: ["CMD", "sh", "-c", "pgrep -f 'bun' > /dev/null || exit 1"]
+      test: ["CMD", "sh", "-c", "kill -0 1"]
       interval: 30s
       timeout: 10s
       retries: 3
