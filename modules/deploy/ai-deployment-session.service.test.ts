@@ -10,6 +10,96 @@ import {
   AiDeploymentSessionService,
 } from "./ai-deployment-session.service"
 
+export const planReadyFixture = {
+  version: 1,
+  source: {
+    kind: "git" as const,
+    url: "https://github.com/acme/example",
+    host: "github.com",
+    ref: "main",
+    templateId: null,
+  },
+  access: { state: "public" as const, displayLabel: "Public repository" },
+  detection: {
+    runtime: "Node.js",
+    framework: "Next.js",
+    version: "20",
+    commands: ["bun run build", "bun start"],
+    port: 3000,
+    confidence: null,
+    evidence: [],
+  },
+  configuration: {
+    appName: "example",
+    branchOrRef: "main",
+    environment: "production" as const,
+    envRequirements: [],
+  },
+  dependencies: [],
+  resources: {
+    package: "starter",
+    server: null,
+    region: null,
+    cpu: 1,
+    memory: 512,
+    storage: null,
+  },
+  domain: { mode: "auto" as const, hostname: null, tls: true },
+  billing: {
+    quoteReference: null,
+    currency: null,
+    estimate: null,
+    interval: null,
+  },
+  execution: {
+    ready: true,
+    steps: [
+      {
+        key: "resolve_source",
+        label: "Source verified",
+        status: "ready" as const,
+        evidenceReference: null,
+      },
+      {
+        key: "inspect_runtime",
+        label: "Runtime inspected",
+        status: "ready" as const,
+        evidenceReference: null,
+      },
+      {
+        key: "validate_plan",
+        label: "Plan validated",
+        status: "ready" as const,
+        evidenceReference: null,
+      },
+      {
+        key: "await_confirmation",
+        label: "Awaiting confirmation",
+        status: "pending" as const,
+        evidenceReference: null,
+      },
+    ],
+  },
+  unresolved: [],
+  provenance: {
+    analyzer: "framework-detector",
+    sourceReference: null,
+    analyzedAt: "2026-08-09T00:00:00.000Z",
+  },
+}
+
+const validManualSettings = {
+  language: "Node.js",
+  framework: "Express",
+  runtimeVersion: "20",
+  packageManager: "pnpm",
+  buildCommand: "pnpm run build",
+  startCommand: "pnpm start",
+  port: 3000,
+  useDockerfile: false,
+  dockerfilePath: null,
+}
+
 const session = (
   overrides: Partial<AiDeploymentSession> = {}
 ): AiDeploymentSession => ({
@@ -45,18 +135,27 @@ const createService = (rows: AiDeploymentSession[]) => {
               row.id === where.id && row.organizationId === where.organizationId
           ) ?? null
       ),
-      updateMany: mock(async () => ({ count: 1 })),
+      updateMany: mock(async ({ where, data }) => {
+        const row = rows.find(
+          (candidate) =>
+            candidate.id === where.id &&
+            candidate.organizationId === where.organizationId &&
+            candidate.status === where.status
+        )
+        if (row) Object.assign(row, data)
+        return { count: row ? 1 : 0 }
+      }),
     },
     appCredential: { findFirst: mock(async () => ({ id: "credential-1" })) },
     githubRepositoryConnection: {
       findFirst: mock(async () => ({ id: "connection-1" })),
     },
-  } as unknown as PrismaClient
+  }
 
   return {
     db,
     service: new AiDeploymentSessionService({
-      db,
+      db: db as unknown as PrismaClient,
       now: () => new Date("2026-08-09T12:00:00.000Z"),
     }),
   }
@@ -140,5 +239,47 @@ describe("AiDeploymentSessionService", () => {
       })
     ).resolves.toEqual(confirmed)
     expect(db.aiDeploymentSession.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("applies manual settings, re-validates, and bumps the plan version", async () => {
+    const { service, db } = createService([
+      session({
+        status: AiDeploymentSessionStatus.PLAN_READY,
+        currentPlanVersion: 1,
+        plan: planReadyFixture,
+      }),
+    ])
+
+    const updated = await service.applyManualSettings({
+      actor,
+      sessionId: "session-1",
+      settings: validManualSettings,
+    })
+
+    expect(updated.currentPlanVersion).toBe(2)
+    expect(updated.currentPlanHash).not.toBe("plan-hash")
+    const calledData = db.aiDeploymentSession.updateMany.mock.calls[0]![0].data
+    expect(calledData.confirmationPlanHash).toBeNull()
+  })
+
+  it("rejects a Dockerfile path that is not repository-relative", async () => {
+    const { service } = createService([
+      session({
+        status: AiDeploymentSessionStatus.PLAN_READY,
+        plan: planReadyFixture,
+      }),
+    ])
+
+    await expect(
+      service.applyManualSettings({
+        actor,
+        sessionId: "session-1",
+        settings: {
+          ...validManualSettings,
+          useDockerfile: true,
+          dockerfilePath: "https://evil.example/Dockerfile",
+        },
+      })
+    ).rejects.toThrow(AiDeploymentSessionError)
   })
 })

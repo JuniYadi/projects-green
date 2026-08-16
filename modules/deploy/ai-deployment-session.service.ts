@@ -15,6 +15,14 @@ import {
   DeploymentPlanValidator,
   type ValidatedDeploymentPlan,
 } from "@/modules/deploy/deployment-plan.validator"
+import {
+  toDeploymentPlanDTO,
+  type DeploymentPlanDTO,
+} from "@/modules/deploy/deployment-plan.dto"
+import {
+  parseManualBuildSettings,
+  type ManualBuildSettingsInput,
+} from "@/modules/deploy/manual-build-settings"
 
 const SESSION_LIFETIME_MS = 24 * 60 * 60 * 1000
 
@@ -33,6 +41,7 @@ export class AiDeploymentSessionError extends Error {
       | "PLAN_HASH_MISMATCH"
       | "SESSION_EXPIRED"
       | "IDEMPOTENCY_CONFLICT"
+      | "MANUAL_SETTINGS_INVALID"
   ) {
     super(code)
   }
@@ -214,6 +223,84 @@ export class AiDeploymentSessionService {
       throw new AiDeploymentSessionError("INVALID_TRANSITION")
     }
 
+    return this.get(actor, sessionId)
+  }
+
+  async applyManualSettings({
+    actor,
+    sessionId,
+    settings,
+  }: {
+    actor: AiDeploymentSessionActor
+    sessionId: string
+    settings: ManualBuildSettingsInput
+  }): Promise<AiDeploymentSession> {
+    const session = await this.get(actor, sessionId)
+    if (session.status !== "PLAN_READY" && session.status !== "BLOCKED") {
+      throw new AiDeploymentSessionError("INVALID_TRANSITION")
+    }
+
+    const currentPlan = toDeploymentPlanDTO(session.plan)
+    if (!currentPlan) {
+      throw new AiDeploymentSessionError("PLAN_REQUIRED")
+    }
+
+    const validatedSettings = parseManualBuildSettings(settings)
+    const nextPlan: DeploymentPlanDTO = {
+      ...currentPlan,
+      version: currentPlan.version + 1,
+      detection: {
+        ...currentPlan.detection,
+        runtime: validatedSettings.language,
+        framework: validatedSettings.framework,
+        version: validatedSettings.runtimeVersion,
+        commands: [
+          validatedSettings.buildCommand,
+          validatedSettings.startCommand,
+        ],
+        port: validatedSettings.port,
+        confidence: null,
+        evidence: [],
+      },
+      provenance: {
+        ...currentPlan.provenance,
+        analyzer: "manual",
+        analyzedAt: new Date().toISOString(),
+      },
+    }
+
+    const validated = await this.validator.validate({
+      organizationId: actor.organizationId,
+      plan: {
+        ...nextPlan,
+        source: { ...nextPlan.source, repositoryConnectionId: null },
+        access: { ...nextPlan.access, credentialRef: null },
+      },
+    })
+
+    const updated = await this.db.aiDeploymentSession.updateMany({
+      where: {
+        id: sessionId,
+        organizationId: actor.organizationId,
+        status: session.status,
+      },
+      data: {
+        status: "PLAN_READY",
+        currentPlanVersion: validated.plan.version,
+        currentPlanHash: validated.hash,
+        plan: JSON.parse(
+          JSON.stringify(validated.plan)
+        ) as Prisma.InputJsonValue,
+        blockedReason: null,
+        confirmedBy: null,
+        confirmedAt: null,
+        confirmationPlanHash: null,
+        idempotencyKey: null,
+      },
+    })
+    if (updated.count !== 1) {
+      throw new AiDeploymentSessionError("INVALID_TRANSITION")
+    }
     return this.get(actor, sessionId)
   }
 
