@@ -266,6 +266,64 @@ describe("AiDeploymentSessionService", () => {
     expect(calledData.confirmationPlanHash).toBeNull()
   })
 
+  it("updates envRequirements status without ever persisting or returning the plaintext value", async () => {
+    const { service, db } = createService([
+      session({
+        status: AiDeploymentSessionStatus.PLAN_READY,
+        plan: {
+          ...planReadyFixture,
+          configuration: {
+            ...planReadyFixture.configuration,
+            envRequirements: [
+              {
+                key: "DATABASE_URL",
+                required: true,
+                kind: "secret" as const,
+                status: "missing" as const,
+                description: "Database connection string",
+              },
+            ],
+          },
+        },
+      }),
+    ])
+
+    const updated = await service.setEnvironmentValues({
+      actor,
+      sessionId: "session-1",
+      values: [{ key: "DATABASE_URL", value: "postgres://user:pass@host/db" }],
+    })
+
+    const plan = toDeploymentPlanDTO(updated.plan)!
+    const requirement = plan.configuration.envRequirements.find(
+      (item) => item.key === "DATABASE_URL"
+    )
+    expect(requirement?.status).toBe("provided")
+    expect(JSON.stringify(updated)).not.toContain("postgres://user:pass")
+    const persistedPlanJson =
+      db.aiDeploymentSession.updateMany.mock.calls[0]![0].data.plan
+    expect(JSON.stringify(persistedPlanJson)).not.toContain(
+      "postgres://user:pass"
+    )
+  })
+
+  it("rejects a value for a key the plan does not declare as an env requirement", async () => {
+    const { service } = createService([
+      session({
+        status: AiDeploymentSessionStatus.PLAN_READY,
+        plan: planReadyFixture,
+      }),
+    ])
+
+    await expect(
+      service.setEnvironmentValues({
+        actor,
+        sessionId: "session-1",
+        values: [{ key: "NOT_IN_PLAN", value: "x" }],
+      })
+    ).rejects.toThrow(AiDeploymentSessionError)
+  })
+
   it("rejects a Dockerfile path that is not repository-relative", async () => {
     const { service } = createService([
       session({

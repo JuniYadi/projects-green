@@ -6,6 +6,11 @@ import {
   type PrismaClient,
 } from "@prisma/client"
 
+import {
+  encrypt,
+  getEncryptionKey,
+  serializeEncryptedField,
+} from "@/lib/encryption"
 import { prisma } from "@/lib/prisma"
 import {
   canConfirm,
@@ -47,6 +52,7 @@ export class AiDeploymentSessionError extends Error {
       | "IDEMPOTENCY_CONFLICT"
       | "MANUAL_SETTINGS_INVALID"
       | "RESOURCE_SELECTION_INVALID"
+      | "ENVIRONMENT_KEY_NOT_DECLARED"
   ) {
     super(code)
   }
@@ -373,6 +379,97 @@ export class AiDeploymentSessionService {
         plan: JSON.parse(
           JSON.stringify(validated.plan)
         ) as Prisma.InputJsonValue,
+        blockedReason: null,
+        confirmedBy: null,
+        confirmedAt: null,
+        confirmationPlanHash: null,
+        idempotencyKey: null,
+      },
+    })
+    if (updated.count !== 1) {
+      throw new AiDeploymentSessionError("INVALID_TRANSITION")
+    }
+    return this.get(actor, sessionId)
+  }
+
+  async setEnvironmentValues({
+    actor,
+    sessionId,
+    values,
+  }: {
+    actor: AiDeploymentSessionActor
+    sessionId: string
+    values: { key: string; value: string }[]
+  }): Promise<AiDeploymentSession> {
+    const session = await this.get(actor, sessionId)
+    if (session.status !== "PLAN_READY") {
+      throw new AiDeploymentSessionError("INVALID_TRANSITION")
+    }
+
+    const currentPlan = toDeploymentPlanDTO(session.plan)
+    if (!currentPlan) {
+      throw new AiDeploymentSessionError("PLAN_REQUIRED")
+    }
+
+    const declaredKeys = new Set(
+      currentPlan.configuration.envRequirements.map(
+        (requirement) => requirement.key
+      )
+    )
+    for (const { key } of values) {
+      if (!declaredKeys.has(key)) {
+        throw new AiDeploymentSessionError("ENVIRONMENT_KEY_NOT_DECLARED")
+      }
+    }
+
+    const nextPlan: DeploymentPlanDTO = {
+      ...currentPlan,
+      version: currentPlan.version + 1,
+      configuration: {
+        ...currentPlan.configuration,
+        envRequirements: currentPlan.configuration.envRequirements.map(
+          (requirement) =>
+            values.some((value) => value.key === requirement.key)
+              ? { ...requirement, status: "provided" }
+              : requirement
+        ),
+      },
+    }
+
+    const validated = await this.validator.validate({
+      organizationId: actor.organizationId,
+      plan: {
+        ...nextPlan,
+        source: { ...nextPlan.source, repositoryConnectionId: null },
+        access: { ...nextPlan.access, credentialRef: null },
+      },
+    })
+
+    const encryptedValues = serializeEncryptedField(
+      encrypt(JSON.stringify(values), getEncryptionKey())
+    )
+    const executionRefs = {
+      ...((session.executionRefs as Record<string, unknown> | null) ?? {}),
+      environmentValues: {
+        organizationId: actor.organizationId,
+        encrypted: encryptedValues,
+      },
+    } as Prisma.InputJsonValue
+
+    const updated = await this.db.aiDeploymentSession.updateMany({
+      where: {
+        id: sessionId,
+        organizationId: actor.organizationId,
+        status: session.status,
+      },
+      data: {
+        status: "PLAN_READY",
+        currentPlanVersion: validated.plan.version,
+        currentPlanHash: validated.hash,
+        plan: JSON.parse(
+          JSON.stringify(validated.plan)
+        ) as Prisma.InputJsonValue,
+        executionRefs,
         blockedReason: null,
         confirmedBy: null,
         confirmedAt: null,
