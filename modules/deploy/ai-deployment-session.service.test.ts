@@ -7,6 +7,7 @@ import {
 
 import {
   AiDeploymentSessionError,
+  type AiDeploymentSessionServiceDependencies,
   AiDeploymentSessionService,
 } from "./ai-deployment-session.service"
 import { computeHourlyCost } from "./deploy-pricing"
@@ -128,7 +129,10 @@ const session = (
   ...overrides,
 })
 
-const createService = (rows: AiDeploymentSession[]) => {
+const createService = (
+  rows: AiDeploymentSession[],
+  dependencies: Pick<AiDeploymentSessionServiceDependencies, "pipeline"> = {}
+) => {
   const db = {
     aiDeploymentSession: {
       create: mock(async () => session()),
@@ -161,6 +165,7 @@ const createService = (rows: AiDeploymentSession[]) => {
     service: new AiDeploymentSessionService({
       db: db as unknown as PrismaClient,
       now: () => new Date("2026-08-09T12:00:00.000Z"),
+      pipeline: dependencies.pipeline,
     }),
   }
 }
@@ -225,8 +230,10 @@ describe("AiDeploymentSessionService", () => {
 
   it("returns the existing confirmation for an idempotent retry", async () => {
     const confirmed = session({
-      status: "CONFIRMED",
+      status: "EXECUTING",
       idempotencyKey: "key-1",
+      stackId: "stack-1",
+      deploymentId: "deployment-1",
       confirmedBy: "user-1",
       confirmedAt: new Date("2026-08-09T12:00:00.000Z"),
       confirmationPlanHash: "plan-hash",
@@ -243,6 +250,130 @@ describe("AiDeploymentSessionService", () => {
       })
     ).resolves.toEqual(confirmed)
     expect(db.aiDeploymentSession.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("confirm() creates a stack, triggers exactly one deployment, and transitions to EXECUTING", async () => {
+    const pipeline = {
+      planToStackUpsertInput: mock(() => ({
+        organizationId: "org-1",
+        billingMode: "PACKAGE" as const,
+        resourcePlanId: "starter",
+        hourlyCost: null,
+      })),
+      assertDeployExecutionGates: mock(async () => undefined),
+      createOrUpdateStack: mock(async () => ({
+        id: "stack-1",
+        slug: "acme-storefront",
+      })),
+      triggerDeploy: mock(async () => ({
+        deploymentId: "deployment-1",
+        status: "QUEUED" as const,
+      })),
+    } as unknown as NonNullable<
+      AiDeploymentSessionServiceDependencies["pipeline"]
+    >
+    const { service } = createService(
+      [
+        session({
+          status: AiDeploymentSessionStatus.PLAN_READY,
+          currentPlanVersion: 3,
+          currentPlanHash: "hash-3",
+          plan: planReadyFixture,
+        }),
+      ],
+      { pipeline }
+    )
+
+    const updated = await service.confirm({
+      actor,
+      sessionId: "session-1",
+      planVersion: 3,
+      planHash: "hash-3",
+      idempotencyKey: "idem-1",
+    })
+
+    expect(pipeline.createOrUpdateStack).toHaveBeenCalledTimes(1)
+    expect(pipeline.triggerDeploy).toHaveBeenCalledTimes(1)
+    expect(updated.status).toBe("EXECUTING")
+    expect(updated.stackId).toBe("stack-1")
+    expect(updated.deploymentId).toBe("deployment-1")
+  })
+
+  it("a repeat confirm() with the same idempotencyKey does not trigger a second deployment", async () => {
+    const pipeline = {
+      planToStackUpsertInput: mock(() => ({})),
+      assertDeployExecutionGates: mock(async () => undefined),
+      createOrUpdateStack: mock(async () => ({ id: "stack-1" })),
+      triggerDeploy: mock(async () => ({
+        deploymentId: "deployment-1",
+        status: "QUEUED" as const,
+      })),
+    } as unknown as NonNullable<
+      AiDeploymentSessionServiceDependencies["pipeline"]
+    >
+    const { service } = createService(
+      [
+        session({
+          status: AiDeploymentSessionStatus.EXECUTING,
+          currentPlanVersion: 3,
+          currentPlanHash: "hash-3",
+          idempotencyKey: "idem-1",
+          stackId: "stack-1",
+          deploymentId: "deployment-1",
+        }),
+      ],
+      { pipeline }
+    )
+
+    const result = await service.confirm({
+      actor,
+      sessionId: "session-1",
+      planVersion: 3,
+      planHash: "hash-3",
+      idempotencyKey: "idem-1",
+    })
+
+    expect(pipeline.triggerDeploy).not.toHaveBeenCalled()
+    expect(result.status).toBe("EXECUTING")
+  })
+
+  it("leaves the session confirmed with a blockedReason, and creates no stack, on a gate rejection", async () => {
+    const pipeline = {
+      planToStackUpsertInput: mock(() => ({})),
+      assertDeployExecutionGates: mock(async () => {
+        throw new Error("INSUFFICIENT_PAYG_BUFFER")
+      }),
+      createOrUpdateStack: mock(async () => {
+        throw new Error("must not be called")
+      }),
+      triggerDeploy: mock(async () => {
+        throw new Error("must not be called")
+      }),
+    } as unknown as NonNullable<
+      AiDeploymentSessionServiceDependencies["pipeline"]
+    >
+    const { service } = createService(
+      [
+        session({
+          status: AiDeploymentSessionStatus.PLAN_READY,
+          currentPlanVersion: 3,
+          currentPlanHash: "hash-3",
+          plan: planReadyFixture,
+        }),
+      ],
+      { pipeline }
+    )
+
+    await expect(
+      service.confirm({
+        actor,
+        sessionId: "session-1",
+        planVersion: 3,
+        planHash: "hash-3",
+        idempotencyKey: "idem-1",
+      })
+    ).rejects.toThrow("INSUFFICIENT_PAYG_BUFFER")
+    expect(pipeline.createOrUpdateStack).not.toHaveBeenCalled()
   })
 
   it("applies manual settings, re-validates, and bumps the plan version", async () => {
