@@ -215,6 +215,27 @@ describe("LifecycleRoute", () => {
       expect(body.error).toBe("ALREADY_CANCELLED")
     })
 
+    it("returns 422 with the end date when the commitment is still active", async () => {
+      mockFindFirst.mockResolvedValue({
+        ...baseSub,
+        commitmentEndsAt: new Date("2099-01-01T00:00:00.000Z"),
+      })
+      const app = makeApp()
+
+      const res = await app.handle(
+        new Request(`http://localhost/subscriptions/${SUB_ID}/cancel`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        })
+      )
+
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.error).toBe("COMMITMENT_ACTIVE")
+      expect(body.commitmentEndsAt).toBe("2099-01-01T00:00:00.000Z")
+    })
+
     it("sets the cancellation flag and metadata and returns a transition", async () => {
       const updated = {
         ...baseSub,

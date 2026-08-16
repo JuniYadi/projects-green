@@ -91,8 +91,6 @@ describe("VpnRenewalService", () => {
       const result = await createService().renewDueSubscriptions(NOW)
 
       expect(result.renewed).toBe(1)
-      expect(result.suspended).toBe(0)
-      expect(result.expired).toBe(0)
       expect(result.errors).toBe(0)
 
       expect(mockTransactions.debitServiceBalance).toHaveBeenCalledWith(
@@ -139,7 +137,11 @@ describe("VpnRenewalService", () => {
     })
   })
 
-  describe("grace ladder on INSUFFICIENT_BALANCE", () => {
+  // The 3/7-days-after-failure ladder is retired. Suspend and terminate are
+  // RenewalCoordinatorService's job, covered by
+  // modules/billing/renewal/renewal-coordinator.service.test.ts and
+  // modules/vpn/billing/vpn-renewal-callbacks.test.ts.
+  describe("renewal failure on INSUFFICIENT_BALANCE", () => {
     beforeEach(() => {
       mockTransactions.debitServiceBalance.mockRejectedValue(
         new Error("INSUFFICIENT_BALANCE")
@@ -154,8 +156,6 @@ describe("VpnRenewalService", () => {
       const result = await createService().renewDueSubscriptions(NOW)
 
       expect(result.retried).toBe(1)
-      expect(result.suspended).toBe(0)
-      expect(result.expired).toBe(0)
       expect(mockPrisma.vpnSubscription.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "sub_vpn_1" },
@@ -164,40 +164,19 @@ describe("VpnRenewalService", () => {
       )
     })
 
-    it("day 3: suspends the subscription", async () => {
-      const failedAt = new Date("2026-06-12T00:00:00Z") // 3 days before NOW
-      mockPrisma.vpnSubscription.findMany
-        .mockResolvedValueOnce([subscription({ renewalFailedAt: failedAt })])
-        .mockResolvedValueOnce([])
-
-      const result = await createService().renewDueSubscriptions(NOW)
-
-      expect(result.suspended).toBe(1)
-      expect(result.expired).toBe(0)
-      expect(mockPrisma.vpnSubscription.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: "sub_vpn_1" },
-          data: expect.objectContaining({ status: "SUSPENDED" }),
-        })
-      )
-    })
-
-    it("day 7: expires the subscription", async () => {
+    it("never transitions status itself, however long the failure lasts", async () => {
       const failedAt = new Date("2026-06-08T00:00:00Z") // 7 days before NOW
       mockPrisma.vpnSubscription.findMany
         .mockResolvedValueOnce([subscription({ renewalFailedAt: failedAt })])
         .mockResolvedValueOnce([])
 
-      const result = await createService().renewDueSubscriptions(NOW)
+      await createService().renewDueSubscriptions(NOW)
 
-      expect(result.expired).toBe(1)
-      expect(result.suspended).toBe(0)
-      expect(mockPrisma.vpnSubscription.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: "sub_vpn_1" },
-          data: { status: "EXPIRED" },
-        })
-      )
+      expect(mockPrisma.vpnSubscription.update).toHaveBeenCalledWith({
+        where: { id: "sub_vpn_1" },
+        data: { renewalFailedAt: failedAt },
+      })
+      expect(mockPrisma.vpnSubscription.update).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -259,7 +238,6 @@ describe("VpnRenewalService", () => {
       const result = await createService().renewDueSubscriptions(NOW)
 
       expect(result.errors).toBe(1)
-      expect(result.suspended).toBe(0)
     })
 
     it("renews multiple due subscriptions in one batch", async () => {
@@ -292,48 +270,8 @@ describe("VpnRenewalService", () => {
     const sevenDaysAgo = new Date(NOW.getTime() - 7 * 24 * 60 * 60 * 1000)
     const thirtyDaysAgo = new Date(NOW.getTime() - 30 * 24 * 60 * 60 * 1000)
 
-    it("T7.1: suspends ACTIVE mobile devices on subscription suspend", async () => {
-      const failedAt = new Date("2026-06-12T00:00:00Z")
-      mockPrisma.vpnSubscription.findMany
-        .mockResolvedValueOnce([subscription({ renewalFailedAt: failedAt })])
-        .mockResolvedValueOnce([])
-      mockTransactions.debitServiceBalance.mockRejectedValue(
-        new Error("INSUFFICIENT_BALANCE")
-      )
-
-      const result = await createService().renewDueSubscriptions(NOW)
-
-      expect(result.suspended).toBe(1)
-      expect(mockPrisma.vpnMobileDevice.updateMany).toHaveBeenCalledWith({
-        where: { subscriptionId: "sub_vpn_1", status: "ACTIVE" },
-        data: { status: "SUSPENDED", revokedReason: "payment failed" },
-      })
-    })
-
-    it("T7.2: revokes ACTIVE/SUSPENDED mobile devices on subscription expiry", async () => {
-      const failedAt = new Date("2026-06-08T00:00:00Z")
-      mockPrisma.vpnSubscription.findMany
-        .mockResolvedValueOnce([subscription({ renewalFailedAt: failedAt })])
-        .mockResolvedValueOnce([])
-      mockTransactions.debitServiceBalance.mockRejectedValue(
-        new Error("INSUFFICIENT_BALANCE")
-      )
-
-      const result = await createService().renewDueSubscriptions(NOW)
-
-      expect(result.expired).toBe(1)
-      expect(mockPrisma.vpnMobileDevice.updateMany).toHaveBeenCalledWith({
-        where: {
-          subscriptionId: "sub_vpn_1",
-          status: { in: ["ACTIVE", "SUSPENDED"] },
-        },
-        data: {
-          status: "REVOKED",
-          revokedAt: NOW,
-          revokedReason: "subscription expired",
-        },
-      })
-    })
+    // T7.1 (device suspend) and T7.2 (device revoke) moved to the renewal
+    // coordinator callbacks — see vpn-renewal-callbacks.test.ts.
 
     it("T7.3: reactivates SUSPENDED mobile devices on successful renewal", async () => {
       mockPrisma.vpnSubscription.findMany

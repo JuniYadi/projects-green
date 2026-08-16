@@ -2,7 +2,6 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 
 import { BillingOrderService } from "@/modules/billing/orders/order.service"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
-import { vpnProvisioningService } from "@/modules/vpn/provisioning/vpn-provisioning.service"
 import { vpnEmailService } from "@/modules/vpn/email.service"
 import type { VpnEmailService } from "@/modules/vpn/email.service"
 
@@ -10,19 +9,12 @@ import type { VpnEmailService } from "@/modules/vpn/email.service"
 
 const BATCH_SIZE = 100
 
-/** Days after first renewal failure before the subscription is suspended. */
-export const SUSPEND_AFTER_DAYS = 3
-/** Days after first renewal failure before the subscription is expired. */
-export const EXPIRE_AFTER_DAYS = 7
-
 const DAY_MS = 24 * 60 * 60 * 1000
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
 export type VpnRenewalResult = {
   renewed: number
-  suspended: number
-  expired: number
   retried: number
   errors: number
 }
@@ -55,10 +47,10 @@ type RenewalSubscription = {
  * charges the next month upfront at the subscription's *locked* price
  * (grandfathering — package price changes never affect existing subs).
  *
- * Grace ladder on INSUFFICIENT_BALANCE (driven by `renewalFailedAt`):
- *   - Day 0-2: keep current status, retry next run (top-up may arrive).
- *   - Day 3-6: SUSPENDED.
- *   - Day 7+:  EXPIRED.
+ * On INSUFFICIENT_BALANCE it records `renewalFailedAt` as a diagnostic and
+ * retries next run. It decides no rung: suspend and terminate belong to
+ * `RenewalCoordinatorService`, which counts from
+ * `ServiceSubscription.currentPeriodEnd` per the PRD ladder.
  *
  * Safety:
  *   - Batch-limited with cursor pagination (no unbounded scan).
@@ -90,8 +82,6 @@ export class VpnRenewalService {
   ): Promise<VpnRenewalResult> {
     const result: VpnRenewalResult = {
       renewed: 0,
-      suspended: 0,
-      expired: 0,
       retried: 0,
       errors: 0,
     }
@@ -189,92 +179,9 @@ export class VpnRenewalService {
       }
     } catch (error) {
       if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE") {
-        await this.applyGrace(subscription, now, result)
-      } else {
-        result.errors++
-      }
-    }
-  }
-
-  /**
-   * Advance the grace ladder for a subscription whose renewal charge failed.
-   * Day 0-2 → retry, Day 3-6 → suspend, Day 7+ → expire.
-   */
-  private async applyGrace(
-    subscription: {
-      id: string
-      organizationId: string
-      renewalFailedAt: Date | null
-      serverAccounts?: Array<{ id: string }>
-    },
-    now: Date,
-    result: VpnRenewalResult
-  ): Promise<void> {
-    const failedAt = subscription.renewalFailedAt ?? now
-    const daysFailed = Math.floor((now.getTime() - failedAt.getTime()) / DAY_MS)
-
-    try {
-      if (daysFailed >= EXPIRE_AFTER_DAYS) {
-        await this.prisma.vpnSubscription.update({
-          where: { id: subscription.id },
-          data: { status: "EXPIRED" },
-        })
-        // Product terminated: permanently remove remote OpenVPN certs/configs.
-        await Promise.allSettled(
-          (subscription.serverAccounts ?? []).map((account) =>
-            vpnProvisioningService.removeRemoteAccount(account.id)
-          )
-        )
-
-        // T7.2 — Revoke all mobile devices on subscription expiry.
-        await this.prisma.vpnMobileDevice
-          .updateMany({
-            where: {
-              subscriptionId: subscription.id,
-              status: { in: ["ACTIVE", "SUSPENDED"] },
-            },
-            data: {
-              status: "REVOKED",
-              revokedAt: now,
-              revokedReason: "subscription expired",
-            },
-          })
-          .catch(() => {
-            // Device revocation is best-effort.
-          })
-        result.expired++
-        this.emailService
-          .sendSubscriptionExpired(subscription.organizationId)
-          .catch(() => {})
-      } else if (daysFailed >= SUSPEND_AFTER_DAYS) {
-        await this.prisma.vpnSubscription.update({
-          where: { id: subscription.id },
-          data: {
-            status: "SUSPENDED",
-            renewalFailedAt: subscription.renewalFailedAt ?? now,
-          },
-        })
-        // T7.1 — Suspend all ACTIVE mobile devices on subscription suspend.
-        await this.prisma.vpnMobileDevice
-          .updateMany({
-            where: {
-              subscriptionId: subscription.id,
-              status: "ACTIVE",
-            },
-            data: {
-              status: "SUSPENDED",
-              revokedReason: "payment failed",
-            },
-          })
-          .catch(() => {
-            // Device suspension is best-effort.
-          })
-        result.suspended++
-        this.emailService
-          .sendSubscriptionSuspended(subscription.organizationId)
-          .catch(() => {})
-      } else {
-        // Still within the retry window — only record the first failure.
+        // Record the first failure as a diagnostic only. Suspend/terminate
+        // is RenewalCoordinatorService's decision, counted from the PRD
+        // ladder against ServiceSubscription.currentPeriodEnd.
         await this.prisma.vpnSubscription.update({
           where: { id: subscription.id },
           data: { renewalFailedAt: subscription.renewalFailedAt ?? now },
@@ -283,9 +190,9 @@ export class VpnRenewalService {
         this.emailService
           .sendRenewalFailed(subscription.organizationId)
           .catch(() => {})
+      } else {
+        result.errors++
       }
-    } catch {
-      result.errors++
     }
   }
 

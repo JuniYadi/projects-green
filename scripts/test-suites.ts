@@ -34,9 +34,12 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
       "app/[lang]/portal/vpn/",
       "components/billing/",
       "lib/billing-client.ts",
+      "lib/queue/billing-cron.ts",
       "modules/billing/",
       "modules/vouchers/",
       "scripts/billing-cron.ts",
+      "scripts/vpn-renewal-worker.ts",
+      "scripts/workers.ts",
     ],
     testPrefixes: [
       "components/billing/admin/catalog/product-editor.test.tsx",

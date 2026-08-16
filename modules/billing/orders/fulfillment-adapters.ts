@@ -147,6 +147,7 @@ type ServicePricingRecord = {
     | null
   periodPrice: Prisma.Decimal | null
   currency: string
+  minimumCommitmentCycles: number | null
   servicePlan: {
     id: string
     packageId: string
@@ -225,6 +226,31 @@ function recurringPricing(
   return pricing as RecurringPricingRecord
 }
 
+const PERIOD_MONTHS: Record<string, number> = {
+  MONTHLY: 1,
+  QUARTERLY: 3,
+  SEMI_ANNUAL: 6,
+  ANNUAL: 12,
+  YEARLY: 12,
+}
+
+/**
+ * Resolve the minimum commitment end date from the offer's cycle count.
+ * Stamped on first create only — renewals must never extend a commitment.
+ */
+function commitmentEndsAt(
+  pricing: RecurringPricingRecord,
+  periodStart: Date
+): Date | null {
+  const cycles = pricing.minimumCommitmentCycles
+  if (!cycles || cycles < 1) return null
+
+  const months = PERIOD_MONTHS[pricing.billingPeriod] * cycles
+  const end = new Date(periodStart)
+  end.setUTCMonth(end.getUTCMonth() + months)
+  return end
+}
+
 function subscriptionData(
   input: BillingFulfillmentInput,
   pricing: RecurringPricingRecord,
@@ -287,7 +313,11 @@ async function upsertServiceSubscription(
   return existing
     ? tx.serviceSubscription.update({ where: { id: existing.id }, data })
     : tx.serviceSubscription.create({
-        data: { organizationId: input.organizationId, ...data },
+        data: {
+          organizationId: input.organizationId,
+          ...data,
+          commitmentEndsAt: commitmentEndsAt(pricing, input.periodStart),
+        },
       })
 }
 
