@@ -206,6 +206,80 @@ describe("App Hosting fulfillment adapter", () => {
   })
 })
 
+describe("minimum commitment stamping", () => {
+  const appHostingContext = {
+    stackId: "stack-1",
+    deploymentId: "deployment-1",
+    sourceType: "TEMPLATE" as const,
+    resourcePlanId: "starter" as const,
+  }
+
+  const appHostingInput = () =>
+    fulfillmentInput({
+      packageCode: "APP_HOSTING",
+      metadata: { appHostingFulfillment: appHostingContext },
+    })
+
+  const pricing = (minimumCommitmentCycles: number | null) => ({
+    ...vpnPricing,
+    minimumCommitmentCycles,
+    servicePlan: {
+      ...vpnPricing.servicePlan,
+      package: { id: "package-app-hosting", code: "APP_HOSTING" as const },
+    },
+  })
+
+  it("stamps commitmentEndsAt on first create from pricing cycles", async () => {
+    const prisma = createPrismaMock()
+    prisma.servicePricing.findUnique.mockResolvedValue(pricing(3))
+    prisma.serviceSubscription.findUnique.mockResolvedValue(null)
+
+    const appHosting = createAppHostingFulfillmentAdapter(
+      prisma as unknown as PrismaClient
+    )
+    await appHosting.create(appHostingInput())
+
+    const createArg = prisma.serviceSubscription.create.mock.calls[0][0]
+    expect(createArg.data.commitmentEndsAt).toEqual(
+      new Date("2026-11-01T00:00:00.000Z")
+    )
+  })
+
+  it("leaves commitmentEndsAt null when the offer has no commitment", async () => {
+    const prisma = createPrismaMock()
+    prisma.servicePricing.findUnique.mockResolvedValue(pricing(null))
+    prisma.serviceSubscription.findUnique.mockResolvedValue(null)
+
+    const appHosting = createAppHostingFulfillmentAdapter(
+      prisma as unknown as PrismaClient
+    )
+    await appHosting.create(appHostingInput())
+
+    const createArg = prisma.serviceSubscription.create.mock.calls[0][0]
+    expect(createArg.data.commitmentEndsAt).toBeNull()
+  })
+
+  it("does not move commitmentEndsAt on renewal of an existing subscription", async () => {
+    const prisma = createPrismaMock()
+    prisma.servicePricing.findUnique.mockResolvedValue(pricing(3))
+    prisma.serviceSubscription.findUnique.mockResolvedValue({
+      id: "service-sub-1",
+      organizationId: "org-1",
+      packageId: "package-app-hosting",
+      planId: "plan-1",
+      metadata: null,
+    })
+
+    const appHosting = createAppHostingFulfillmentAdapter(
+      prisma as unknown as PrismaClient
+    )
+    await appHosting.renew(appHostingInput())
+
+    const updateArg = prisma.serviceSubscription.update.mock.calls[0][0]
+    expect(updateArg.data.commitmentEndsAt).toBeUndefined()
+  })
+})
+
 describe("VPN fulfillment adapter", () => {
   it("creates all enabled protocol accounts in a transaction and dispatches each", async () => {
     const prisma = createPrismaMock()
