@@ -102,6 +102,33 @@ healthy when both Deployments report available replicas, web health checks
 pass, and worker logs show one repeatable-job registration followed by a
 completed scheduled job.
 
+## API stderr Log Handoff
+
+The web image starts Next.js directly with `bun run start`. Its standard error
+stream must remain attached to the container runtime; do not redirect it to an
+application file or add an in-container log shipper. Elysia emits one JSON
+object per line for each completed API request and an additional error record
+for unexpected API failures.
+
+The collector should read container `stderr` as JSON Lines and index these
+allowlisted fields:
+
+| Field        | Meaning                                                  |
+| ------------ | -------------------------------------------------------- |
+| `timestamp`  | ISO 8601 event time                                      |
+| `level`      | `info` for completion or `error` for unexpected failures |
+| `event`      | `api.request.completed` or `api.request.error`           |
+| `requestId`  | Request correlation ID shared by both records            |
+| `method`     | HTTP method                                              |
+| `pathname`   | URL path without the query string                        |
+| `statusCode` | Final HTTP response status                               |
+| `durationMs` | Request duration in milliseconds                         |
+| `errorCode`  | Safe Elysia error category, only on error records        |
+
+Kubernetes log collection must preserve and parse the web container's `stderr`
+records before Elasticsearch/Kibana field indexing can work. Collector
+configuration, index templates, and dashboards remain deployment-owned.
+
 ## Useful Commands
 
 ```bash

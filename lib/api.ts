@@ -2,6 +2,7 @@ import { Elysia } from "elysia"
 import { openapi } from "@elysia/openapi"
 import { serverTiming } from "@elysia/server-timing"
 import { z } from "zod"
+import { createApiLoggingPlugin } from "@/lib/api-logging"
 import { enrichOpenApiDocument } from "@/lib/openapi-documentation"
 
 import { adminRoutes } from "@/modules/admin/api/admin.route"
@@ -115,6 +116,7 @@ export const toOpenApiJsonSchema = (schema: z.ZodType) =>
   })
 
 export const app = new Elysia({ prefix: "/api" })
+  .use(createApiLoggingPlugin())
   .use(serverTiming())
   .onAfterHandle({ as: "global" }, ({ request, response }) => {
     if (new URL(request.url).pathname !== "/api/openapi/json") {
@@ -173,7 +175,7 @@ export const app = new Elysia({ prefix: "/api" })
       },
     })
   )
-  .onError(({ code, error, set, request, path }) => {
+  .onError(({ code, error, set }) => {
     if (code === "VALIDATION") {
       set.status = 422
 
@@ -197,19 +199,6 @@ export const app = new Elysia({ prefix: "/api" })
       typeof (error as Record<string, unknown>).code === "string"
         ? ((error as Record<string, unknown>).code as string)
         : null
-
-    const errorTag = detailCode ? ` [${detailCode}]` : ""
-
-    // Visible banner so errors are impossible to miss in development.
-    console.log(`\n⚠️  API ERROR — ${request.method} ${path}${errorTag}\n`)
-
-    // Always log with a grep-friendly prefix so errors are easy to find.
-    console.error(
-      `[API ERROR] ${request.method} ${path} — INTERNAL_SERVER_ERROR${errorTag}`,
-      error instanceof Error
-        ? `\n${error.stack ?? error.message}`
-        : String(error)
-    )
 
     set.status = 500
 
