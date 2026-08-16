@@ -61,6 +61,7 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
       "modules/whatsapp/api/organization-api-key-hono.ts",
       "modules/whatsapp/organization-api-keys/",
       "prisma/seeds/manifest.ts",
+      "scripts/dump-seed-data.ts",
     ],
     testPrefixes: [
       "modules/whatsapp/api/organization-api-key-hono.test.ts",
