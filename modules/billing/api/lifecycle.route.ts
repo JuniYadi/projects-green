@@ -7,6 +7,7 @@ import type { BillingAuthContext } from "./subscriptions.route"
 import {
   SubscriptionLifecycleService,
   SubscriptionNotFoundError,
+  SubscriptionCommitmentActiveError,
   SubscriptionAlreadyCancelledError,
   SamePlanError,
   PricingNotFoundError,
@@ -142,6 +143,15 @@ export const createLifecycleRoutes = (
                 ok: false as const,
                 error: "ALREADY_CANCELLED" as const,
                 message: error.message,
+              }
+            }
+            if (error instanceof SubscriptionCommitmentActiveError) {
+              set.status = 422
+              return {
+                ok: false as const,
+                error: "COMMITMENT_ACTIVE" as const,
+                message: error.message,
+                commitmentEndsAt: error.commitmentEndsAt.toISOString(),
               }
             }
             console.error("[LifecycleRoute] cancel error:", error)
