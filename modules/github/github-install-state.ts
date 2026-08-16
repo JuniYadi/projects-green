@@ -174,6 +174,35 @@ const parsePayload = (state: string) => {
   }
 }
 
+export const peekPopupIntent = (state: string) => {
+  const [payloadSegment] = state.split(".")
+
+  if (!payloadSegment) {
+    return null
+  }
+
+  try {
+    const payload = JSON.parse(
+      Buffer.from(payloadSegment, "base64url").toString("utf8")
+    ) as {
+      popup?: unknown
+      popupNonce?: unknown
+    }
+
+    if (!payload || typeof payload !== "object" || payload.popup !== true) {
+      return null
+    }
+
+    return {
+      popup: true as const,
+      popupNonce:
+        typeof payload.popupNonce === "string" ? payload.popupNonce : null,
+    }
+  } catch {
+    return null
+  }
+}
+
 export const issueGithubInstallState = async ({
   workosUserId,
   organizationId,
