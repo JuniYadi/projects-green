@@ -80,10 +80,10 @@ docker build -f Dockerfile.workers -t projects-green-workers:local .
 
 The ArgoCD repository is the Kubernetes source of truth. It must render:
 
-| Workload | Image | Network exposure | Scaling |
-| --- | --- | --- | --- |
-| `projects-green-web` | `projects-green-web:sha-<commit>` | Service and ingress | Deployment defaults |
-| `projects-green-workers` | `projects-green-workers:sha-<commit>` | None | Exactly one replica; no HPA |
+| Workload                 | Image                                 | Network exposure    | Scaling                     |
+| ------------------------ | ------------------------------------- | ------------------- | --------------------------- |
+| `projects-green-web`     | `projects-green-web:sha-<commit>`     | Service and ingress | Deployment defaults         |
+| `projects-green-workers` | `projects-green-workers:sha-<commit>` | None                | Exactly one replica; no HPA |
 
 The web Deployment should use `/api/healthz/live` for liveness and
 `/api/healthz/ready` for readiness. The worker has no HTTP listener; use an
