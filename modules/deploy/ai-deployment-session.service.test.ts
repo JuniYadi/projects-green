@@ -18,6 +18,8 @@ const session = (
   workosUserId: "user-1",
   status: AiDeploymentSessionStatus.PLAN_READY,
   sourceType: "SOURCE",
+  stackId: null,
+  deploymentId: null,
   currentPlanVersion: 1,
   currentPlanHash: "plan-hash",
   plan: null,
