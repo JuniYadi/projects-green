@@ -41,6 +41,18 @@ export class SamePlanError extends Error {
   }
 }
 
+/**
+ * The subscription is still inside its minimum commitment period.
+ * The message is the code itself so route-level error mapping and tests
+ * match on one string.
+ */
+export class SubscriptionCommitmentActiveError extends Error {
+  readonly code = "SUBSCRIPTION_COMMITMENT_ACTIVE" as const
+  constructor(readonly commitmentEndsAt: Date) {
+    super("SUBSCRIPTION_COMMITMENT_ACTIVE")
+  }
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const PERIOD_MONTHS: Record<string, 1 | 3 | 6 | 12> = {
@@ -179,6 +191,8 @@ export class SubscriptionLifecycleService {
     if (!sub) throw new SubscriptionNotFoundError()
     if (sub.status === "CANCELLED")
       throw new SubscriptionAlreadyCancelledError()
+    if (sub.commitmentEndsAt && sub.commitmentEndsAt > new Date())
+      throw new SubscriptionCommitmentActiveError(sub.commitmentEndsAt)
 
     const existingMeta = getMeta(sub)
 
@@ -374,11 +388,27 @@ export class SubscriptionLifecycleService {
     if (!newPricing) throw new PricingNotFoundError()
     if (sub.pricingId === newPricingId) throw new SamePlanError()
 
+    // Renewal bills from priceLocked, so a plan change that leaves it alone
+    // is cosmetic: the customer sees the new plan and keeps paying the old
+    // price. Relock money, currency, and cadence from the resolved price.
+    const account = await this.prisma.billingAccount.findUnique({
+      where: { organizationId },
+      select: { currency: true },
+    })
+    const resolved = await resolveRecurringPrice({
+      pricingId: newPricingId,
+      currency: account?.currency ?? sub.currency,
+      at: new Date(),
+    })
+
     const updated = await this.prisma.serviceSubscription.update({
       where: { id: subscriptionId },
       data: {
         pricingId: newPricingId,
         planId: newPricing.planId,
+        priceLocked: resolved.periodPrice,
+        currency: resolved.currency,
+        billingPeriod: resolved.billingPeriod,
       },
       include: subscriptionInclude,
     })
@@ -392,6 +422,9 @@ export class SubscriptionLifecycleService {
         newPricingId,
         newPlanCode: updated.plan.code,
         newBillingPeriod: updated.pricing.billingPeriod,
+        previousPriceLocked: sub.priceLocked.toFixed(2),
+        newPriceLocked: resolved.periodPrice.toFixed(2),
+        currency: resolved.currency,
       },
     })
 
