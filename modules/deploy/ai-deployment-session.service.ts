@@ -12,6 +12,12 @@ import {
   serializeEncryptedField,
 } from "@/lib/encryption"
 import { prisma } from "@/lib/prisma"
+import { assertDeployExecutionGates } from "@/modules/deploy/deploy-execution-gates"
+import {
+  createOrUpdateStack,
+  triggerDeploy,
+} from "@/modules/deploy/deploy-pipeline.service"
+import { planToStackUpsertInput } from "@/modules/deploy/ai-deployment-plan-to-stack.adapter"
 import {
   canConfirm,
   isValidTransition,
@@ -62,18 +68,33 @@ export type AiDeploymentSessionServiceDependencies = {
   db?: PrismaClient
   now?: () => Date
   validator?: DeploymentPlanValidator
+  pipeline?: {
+    planToStackUpsertInput: typeof planToStackUpsertInput
+    assertDeployExecutionGates: typeof assertDeployExecutionGates
+    createOrUpdateStack: typeof createOrUpdateStack
+    triggerDeploy: typeof triggerDeploy
+  }
 }
 
 export class AiDeploymentSessionService {
   private readonly db: PrismaClient
   private readonly now: () => Date
   private readonly validator: DeploymentPlanValidator
+  private readonly pipeline: NonNullable<
+    AiDeploymentSessionServiceDependencies["pipeline"]
+  >
 
   constructor(dependencies: AiDeploymentSessionServiceDependencies = {}) {
     this.db = dependencies.db ?? prisma
     this.now = dependencies.now ?? (() => new Date())
     this.validator =
       dependencies.validator ?? new DeploymentPlanValidator(this.db)
+    this.pipeline = dependencies.pipeline ?? {
+      planToStackUpsertInput,
+      assertDeployExecutionGates,
+      createOrUpdateStack,
+      triggerDeploy,
+    }
   }
 
   async create({
@@ -199,11 +220,18 @@ export class AiDeploymentSessionService {
     const session = await this.get(actor, sessionId)
     this.assertCurrentPlan(session, planVersion, planHash)
 
-    if (session.status === "CONFIRMED") {
+    if (session.status === "EXECUTING" || session.status === "SUCCEEDED") {
       if (session.idempotencyKey !== idempotencyKey) {
         throw new AiDeploymentSessionError("IDEMPOTENCY_CONFLICT")
       }
       return session
+    }
+
+    if (session.status === "CONFIRMED") {
+      if (session.idempotencyKey !== idempotencyKey) {
+        throw new AiDeploymentSessionError("IDEMPOTENCY_CONFLICT")
+      }
+      return this.executeConfirmedSession(actor, session)
     }
 
     if (!canConfirm(session.status)) {
@@ -234,7 +262,72 @@ export class AiDeploymentSessionService {
       throw new AiDeploymentSessionError("INVALID_TRANSITION")
     }
 
-    return this.get(actor, sessionId)
+    const confirmedSession = await this.get(actor, sessionId)
+    return this.executeConfirmedSession(actor, confirmedSession)
+  }
+
+  private async executeConfirmedSession(
+    actor: AiDeploymentSessionActor,
+    session: AiDeploymentSession
+  ): Promise<AiDeploymentSession> {
+    if (session.status === "EXECUTING" || session.status === "SUCCEEDED") {
+      return session
+    }
+
+    const plan = toDeploymentPlanDTO(session.plan)
+    if (!plan) throw new AiDeploymentSessionError("PLAN_REQUIRED")
+
+    try {
+      const stackInput = this.pipeline.planToStackUpsertInput(plan, {
+        organizationId: actor.organizationId,
+        repositoryConnectionId:
+          (session.serverContext as { connectionId?: string } | null)
+            ?.connectionId ?? null,
+      })
+      await this.pipeline.assertDeployExecutionGates({
+        organizationId: actor.organizationId,
+        stackId: session.stackId ?? "",
+        billingMode: stackInput.billingMode ?? "PACKAGE",
+        resourcePlanId: stackInput.resourcePlanId ?? null,
+        hourlyCost: Number(stackInput.hourlyCost ?? 0),
+        paygBufferHours: plan.billing.interval === "hour" ? 24 : 24,
+      })
+      const stack = await this.pipeline.createOrUpdateStack(stackInput)
+      const deployment = await this.pipeline.triggerDeploy({
+        stackId: stack.id,
+        triggerType: "MANUAL",
+      })
+
+      const updated = await this.db.aiDeploymentSession.updateMany({
+        where: {
+          id: session.id,
+          organizationId: actor.organizationId,
+          status: "CONFIRMED",
+        },
+        data: {
+          status: "EXECUTING",
+          stackId: stack.id,
+          deploymentId: deployment.deploymentId,
+        },
+      })
+      if (updated.count !== 1) {
+        throw new AiDeploymentSessionError("INVALID_TRANSITION")
+      }
+      return this.get(actor, session.id)
+    } catch (error) {
+      await this.db.aiDeploymentSession.updateMany({
+        where: {
+          id: session.id,
+          organizationId: actor.organizationId,
+          status: "CONFIRMED",
+        },
+        data: {
+          blockedReason:
+            error instanceof Error ? error.message : "EXECUTION_FAILED",
+        },
+      })
+      throw error
+    }
   }
 
   async applyManualSettings({
