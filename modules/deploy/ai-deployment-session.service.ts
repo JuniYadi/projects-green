@@ -23,6 +23,10 @@ import {
   parseManualBuildSettings,
   type ManualBuildSettingsInput,
 } from "@/modules/deploy/manual-build-settings"
+import {
+  resolveResourceSelection,
+  type ResourceSelectionInput,
+} from "@/modules/deploy/resource-selection"
 
 const SESSION_LIFETIME_MS = 24 * 60 * 60 * 1000
 
@@ -42,6 +46,7 @@ export class AiDeploymentSessionError extends Error {
       | "SESSION_EXPIRED"
       | "IDEMPOTENCY_CONFLICT"
       | "MANUAL_SETTINGS_INVALID"
+      | "RESOURCE_SELECTION_INVALID"
   ) {
     super(code)
   }
@@ -266,6 +271,83 @@ export class AiDeploymentSessionService {
         ...currentPlan.provenance,
         analyzer: "manual",
         analyzedAt: new Date().toISOString(),
+      },
+    }
+
+    const validated = await this.validator.validate({
+      organizationId: actor.organizationId,
+      plan: {
+        ...nextPlan,
+        source: { ...nextPlan.source, repositoryConnectionId: null },
+        access: { ...nextPlan.access, credentialRef: null },
+      },
+    })
+
+    const updated = await this.db.aiDeploymentSession.updateMany({
+      where: {
+        id: sessionId,
+        organizationId: actor.organizationId,
+        status: session.status,
+      },
+      data: {
+        status: "PLAN_READY",
+        currentPlanVersion: validated.plan.version,
+        currentPlanHash: validated.hash,
+        plan: JSON.parse(
+          JSON.stringify(validated.plan)
+        ) as Prisma.InputJsonValue,
+        blockedReason: null,
+        confirmedBy: null,
+        confirmedAt: null,
+        confirmationPlanHash: null,
+        idempotencyKey: null,
+      },
+    })
+    if (updated.count !== 1) {
+      throw new AiDeploymentSessionError("INVALID_TRANSITION")
+    }
+    return this.get(actor, sessionId)
+  }
+
+  async selectResourcePlan({
+    actor,
+    sessionId,
+    selection,
+  }: {
+    actor: AiDeploymentSessionActor
+    sessionId: string
+    selection: ResourceSelectionInput
+  }): Promise<AiDeploymentSession> {
+    const session = await this.get(actor, sessionId)
+    if (session.status !== "PLAN_READY") {
+      throw new AiDeploymentSessionError("INVALID_TRANSITION")
+    }
+
+    const currentPlan = toDeploymentPlanDTO(session.plan)
+    if (!currentPlan) {
+      throw new AiDeploymentSessionError("PLAN_REQUIRED")
+    }
+
+    let resolved: ReturnType<typeof resolveResourceSelection>
+    try {
+      resolved = resolveResourceSelection(selection)
+    } catch {
+      throw new AiDeploymentSessionError("RESOURCE_SELECTION_INVALID")
+    }
+
+    const nextPlan: DeploymentPlanDTO = {
+      ...currentPlan,
+      version: currentPlan.version + 1,
+      resources: {
+        ...currentPlan.resources,
+        package: selection.resourcePlanId,
+        cpu: resolved.cpu,
+        memory: resolved.memory,
+      },
+      billing: {
+        ...currentPlan.billing,
+        estimate: resolved.hourlyCost,
+        interval: "hour",
       },
     }
 

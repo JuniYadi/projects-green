@@ -9,6 +9,8 @@ import {
   AiDeploymentSessionError,
   AiDeploymentSessionService,
 } from "./ai-deployment-session.service"
+import { computeHourlyCost } from "./deploy-pricing"
+import { toDeploymentPlanDTO } from "./deployment-plan.dto"
 
 export const planReadyFixture = {
   version: 1,
@@ -280,6 +282,53 @@ describe("AiDeploymentSessionService", () => {
           ...validManualSettings,
           useDockerfile: true,
           dockerfilePath: "https://evil.example/Dockerfile",
+        },
+      })
+    ).rejects.toThrow(AiDeploymentSessionError)
+  })
+
+  it("recomputes hourly cost server-side and ignores a client-submitted price", async () => {
+    const { service } = createService([
+      session({
+        status: AiDeploymentSessionStatus.PLAN_READY,
+        plan: planReadyFixture,
+      }),
+    ])
+
+    const updated = await service.selectResourcePlan({
+      actor,
+      sessionId: "session-1",
+      selection: {
+        resourcePlanId: "payg",
+        cpu: 500,
+        memory: 1024,
+        bufferHours: 24,
+      },
+    })
+
+    const plan = toDeploymentPlanDTO(updated.plan)!
+    expect(plan.billing.estimate).toBeCloseTo(
+      computeHourlyCost({ resourcePlanId: "payg", cpu: 500, memory: 1024 })
+    )
+  })
+
+  it("rejects a PAYG selection outside PAYG_BASE_LIMITS", async () => {
+    const { service } = createService([
+      session({
+        status: AiDeploymentSessionStatus.PLAN_READY,
+        plan: planReadyFixture,
+      }),
+    ])
+
+    await expect(
+      service.selectResourcePlan({
+        actor,
+        sessionId: "session-1",
+        selection: {
+          resourcePlanId: "payg",
+          cpu: 5000,
+          memory: 1024,
+          bufferHours: 24,
         },
       })
     ).rejects.toThrow(AiDeploymentSessionError)
