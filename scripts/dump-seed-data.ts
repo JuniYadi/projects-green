@@ -161,7 +161,7 @@ function dumpTable(table: string): DumpResult {
   try {
     // Use --file to write directly instead of stdout capture (avoids execSync buffer limit)
     execSync(
-      `${pgDump} "${pgUrl}" --data-only --inserts --on-conflict-do-nothing --no-comments ${extraFlags} -t '"${dbTableName}"' --file="${filePath}"`,
+      `${pgDump} "${pgUrl}" --data-only --inserts --column-inserts --on-conflict-do-nothing --no-comments ${extraFlags} -t '"${dbTableName}"' --file="${filePath}"`,
       { stdio: ["pipe", "pipe", "pipe"] }
     )
 

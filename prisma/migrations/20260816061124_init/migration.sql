@@ -14,7 +14,7 @@ CREATE TYPE "AppCredentialStatus" AS ENUM ('ACTIVE', 'REVOKED', 'EXPIRED', 'PEND
 CREATE TYPE "StackStatus" AS ENUM ('IDLE', 'QUEUED', 'BUILDING', 'DEPLOYING', 'RUNNING', 'FAILED');
 
 -- CreateEnum
-CREATE TYPE "DeploySource" AS ENUM ('GITHUB', 'TEMPLATE', 'MANUAL');
+CREATE TYPE "DeploySource" AS ENUM ('GITHUB', 'TEMPLATE', 'PUBLIC', 'MANUAL');
 
 -- CreateEnum
 CREATE TYPE "ApplicationDeployEventType" AS ENUM ('QUEUED', 'BUILD_STARTED', 'JENKINS_JOB_TRIGGERED', 'JENKINS_BUILD_QUEUED', 'JENKINS_BUILD_RUNNING', 'JENKINS_BUILD_COMPLETED', 'IMAGE_TAG_RECEIVED', 'GITOPS_COMMIT_CREATED', 'MANIFEST_PUSHED', 'ARGOCD_SYNC_STARTED', 'ARGOCD_SYNCED', 'POD_READY', 'DEPLOY_COMPLETED', 'DEPLOY_FAILED', 'ROLLBACK_STARTED', 'ROLLBACK_COMPLETED');
@@ -41,7 +41,25 @@ CREATE TYPE "BillingAccountStatus" AS ENUM ('ACTIVE', 'SUSPENDED', 'CLOSED');
 CREATE TYPE "BillingSubscriptionStatus" AS ENUM ('TRIALING', 'ACTIVE', 'PAUSED', 'CANCELED', 'ENDED');
 
 -- CreateEnum
-CREATE TYPE "BillingPeriod" AS ENUM ('MONTHLY', 'YEARLY', 'CUSTOM');
+CREATE TYPE "BillingPeriod" AS ENUM ('MONTHLY', 'QUARTERLY', 'SEMI_ANNUAL', 'ANNUAL', 'YEARLY', 'CUSTOM');
+
+-- CreateEnum
+CREATE TYPE "BillingOrderStatus" AS ENUM ('PENDING', 'CHARGED', 'FULFILLED', 'FAILED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "BillingChargeUnit" AS ENUM ('SUBSCRIPTION', 'DEVICE');
+
+-- CreateEnum
+CREATE TYPE "VoucherKind" AS ENUM ('BALANCE_CREDIT', 'PRODUCT_PROMOTION');
+
+-- CreateEnum
+CREATE TYPE "VoucherDiscountType" AS ENUM ('PERCENTAGE', 'FIXED');
+
+-- CreateEnum
+CREATE TYPE "VoucherCurrencyPolicy" AS ENUM ('MATCH_CURRENCY_ONLY', 'CONVERT_AT_CHECKOUT', 'CONVERT_AT_REDEMPTION');
+
+-- CreateEnum
+CREATE TYPE "ServiceAddonBillingMode" AS ENUM ('RECURRING', 'ONE_TIME', 'USAGE');
 
 -- CreateEnum
 CREATE TYPE "MeterAggregation" AS ENUM ('SUM', 'MAX', 'LAST', 'COUNT');
@@ -65,7 +83,7 @@ CREATE TYPE "BillingRunType" AS ENUM ('RATING', 'INVOICING', 'FINALIZATION', 'RE
 CREATE TYPE "BillingRunStatus" AS ENUM ('PENDING', 'RUNNING', 'SUCCEEDED', 'FAILED');
 
 -- CreateEnum
-CREATE TYPE "BillingAuditAction" AS ENUM ('CREATED', 'UPDATED', 'DELETED', 'RUN_STARTED', 'RUN_FINISHED', 'INVOICE_GENERATED', 'PAYMENT_CONFIRMED', 'ORDER_CREATED', 'BALANCE_ADJUSTED', 'TOPUP_PERFORMED', 'SUBSCRIPTION_ACTIVATED', 'SUBSCRIPTION_CANCELLED', 'CONTACT_ADDED', 'CONTACT_REMOVED', 'SETTINGS_CHANGED');
+CREATE TYPE "BillingAuditAction" AS ENUM ('CREATED', 'UPDATED', 'DELETED', 'RUN_STARTED', 'RUN_FINISHED', 'INVOICE_GENERATED', 'PAYMENT_CONFIRMED', 'ORDER_CREATED', 'BALANCE_ADJUSTED', 'TOPUP_PERFORMED', 'SUBSCRIPTION_ACTIVATED', 'SUBSCRIPTION_CANCELLED', 'SUBSCRIPTION_REINSTATED', 'CONTACT_ADDED', 'CONTACT_REMOVED', 'SETTINGS_CHANGED');
 
 -- CreateEnum
 CREATE TYPE "BillingActorType" AS ENUM ('SYSTEM', 'USER', 'WORKER');
@@ -161,6 +179,9 @@ CREATE TYPE "WhatsappBillingStatus" AS ENUM ('CHARGED_PENDING_VERIFY', 'CONFIRME
 CREATE TYPE "WhatsappApiKeyEnvironment" AS ENUM ('SANDBOX', 'LIVE');
 
 -- CreateEnum
+CREATE TYPE "WhatsappOrganizationApiKeyStatus" AS ENUM ('ACTIVE', 'REVOKED');
+
+-- CreateEnum
 CREATE TYPE "WebhookDeliveryStatus" AS ENUM ('PENDING', 'SUCCESS', 'FAILED', 'DEAD_LETTERED');
 
 -- CreateEnum
@@ -177,6 +198,33 @@ CREATE TYPE "AppHostingClusterStatus" AS ENUM ('PLANNED', 'ACTIVE', 'DEPRECATED'
 
 -- CreateEnum
 CREATE TYPE "AppHostingClusterIntegrationType" AS ENUM ('JENKINS', 'GITOPS', 'REGISTRY', 'ARGOCD', 'KUBECONFIG', 'OPENSEARCH', 'PROMETHEUS');
+
+-- CreateEnum
+CREATE TYPE "AppManagedServiceType" AS ENUM ('MYSQL', 'POSTGRESQL', 'REDIS');
+
+-- CreateEnum
+CREATE TYPE "AppManagedServiceCredentialStatus" AS ENUM ('ACTIVE', 'INACTIVE');
+
+-- CreateEnum
+CREATE TYPE "ApplicationDomainKind" AS ENUM ('MANAGED', 'CUSTOM');
+
+-- CreateEnum
+CREATE TYPE "ApplicationDomainDnsStatus" AS ENUM ('PENDING', 'VERIFIED', 'FAILED');
+
+-- CreateEnum
+CREATE TYPE "ApplicationDomainCertificateSource" AS ENUM ('MANAGED', 'UPLOADED');
+
+-- CreateEnum
+CREATE TYPE "ApplicationDomainCertificateStatus" AS ENUM ('PENDING', 'ACTIVE', 'EXPIRED', 'INVALID', 'REVOKED');
+
+-- CreateEnum
+CREATE TYPE "ApplicationDomainAllowlistMode" AS ENUM ('OPEN', 'ALLOWLIST_ONLY');
+
+-- CreateEnum
+CREATE TYPE "AiDeploymentSessionStatus" AS ENUM ('COLLECTING', 'INSPECTING', 'BLOCKED', 'PLAN_READY', 'CONFIRMED', 'EXECUTING', 'SUCCEEDED', 'FAILED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "AiDeploymentSourceType" AS ENUM ('SOURCE', 'TEMPLATE');
 
 -- CreateTable
 CREATE TABLE "User" (
@@ -333,6 +381,8 @@ CREATE TABLE "InspectionLog" (
     "confidence" DOUBLE PRECISION,
     "enforcedRuntimes" JSONB,
     "toolCalls" JSONB,
+    "aiTrace" JSONB,
+    "providerDiagnostics" JSONB,
     "reasoning" TEXT[],
     "warnings" TEXT[],
     "durationMs" INTEGER,
@@ -353,6 +403,8 @@ CREATE TABLE "ApplicationStack" (
     "status" "StackStatus" NOT NULL DEFAULT 'IDLE',
     "sourceType" "DeploySource" NOT NULL DEFAULT 'GITHUB',
     "repositoryConnectionId" TEXT,
+    "publicSourceUrl" TEXT,
+    "publicSourceRef" TEXT,
     "branchName" TEXT NOT NULL DEFAULT 'main',
     "rootDirectory" TEXT NOT NULL DEFAULT '/',
     "framework" TEXT,
@@ -386,6 +438,8 @@ CREATE TABLE "Deployment" (
     "commitSha" TEXT,
     "commitMessage" TEXT,
     "commitAuthor" TEXT,
+    "sourceUrl" TEXT,
+    "sourceRef" TEXT,
     "branchName" TEXT NOT NULL DEFAULT 'main',
     "manifestPushed" BOOLEAN NOT NULL DEFAULT false,
     "manifestPushedAt" TIMESTAMP(3),
@@ -723,6 +777,55 @@ CREATE TABLE "Invoice" (
 );
 
 -- CreateTable
+CREATE TABLE "BillingOrder" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "billingAccountId" TEXT NOT NULL,
+    "serviceSubscriptionId" TEXT,
+    "billingInvoiceId" TEXT,
+    "voucherId" TEXT,
+    "voucherCode" TEXT,
+    "voucherCurrency" TEXT,
+    "voucherExchangeRate" DECIMAL(18,8),
+    "voucherRateAt" TIMESTAMP(3),
+    "voucherQuoteExpiresAt" TIMESTAMP(3),
+    "status" "BillingOrderStatus" NOT NULL DEFAULT 'PENDING',
+    "currency" TEXT NOT NULL,
+    "subtotalAmount" DECIMAL(18,2) NOT NULL,
+    "discountAmount" DECIMAL(18,2) NOT NULL DEFAULT 0,
+    "totalAmount" DECIMAL(18,2) NOT NULL,
+    "idempotencyKey" TEXT NOT NULL,
+    "chargedAt" TIMESTAMP(3),
+    "fulfilledAt" TIMESTAMP(3),
+    "metadataJson" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "BillingOrder_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "BillingOrderLine" (
+    "id" TEXT NOT NULL,
+    "orderId" TEXT NOT NULL,
+    "pricingId" TEXT,
+    "packageCode" "ServiceType" NOT NULL,
+    "planCode" TEXT NOT NULL,
+    "regionCode" TEXT NOT NULL,
+    "billingPeriod" "BillingPeriod" NOT NULL,
+    "chargeUnit" "BillingChargeUnit" NOT NULL,
+    "quantity" DECIMAL(18,6) NOT NULL,
+    "unitPrice" DECIMAL(18,2) NOT NULL,
+    "amount" DECIMAL(18,2) NOT NULL,
+    "currency" TEXT NOT NULL,
+    "periodStart" TIMESTAMP(3) NOT NULL,
+    "periodEnd" TIMESTAMP(3) NOT NULL,
+    "metadataJson" JSONB,
+
+    CONSTRAINT "BillingOrderLine_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "InvoiceLine" (
     "id" TEXT NOT NULL,
     "invoiceId" TEXT NOT NULL,
@@ -854,6 +957,13 @@ CREATE TABLE "Pricing" (
     "regionId" TEXT NOT NULL,
     "type" "SubscriptionType" NOT NULL,
     "billingMode" "BillingMode" NOT NULL,
+    "billingPeriod" "BillingPeriod",
+    "currency" TEXT NOT NULL DEFAULT 'IDR',
+    "periodPrice" DECIMAL(18,2),
+    "effectiveFrom" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "effectiveTo" TIMESTAMP(3),
+    "chargeUnit" "BillingChargeUnit" NOT NULL DEFAULT 'SUBSCRIPTION',
+    "minimumCommitmentCycles" INTEGER,
     "basePriceIdr" DECIMAL(12,2) NOT NULL,
     "monthlyCapIdr" DECIMAL(12,2),
     "unitRateCpu" DECIMAL(12,4),
@@ -867,6 +977,72 @@ CREATE TABLE "Pricing" (
 );
 
 -- CreateTable
+CREATE TABLE "ServiceAddon" (
+    "id" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "billingMode" "ServiceAddonBillingMode" NOT NULL DEFAULT 'RECURRING',
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ServiceAddon_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ServiceAddonPricing" (
+    "id" TEXT NOT NULL,
+    "addonId" TEXT NOT NULL,
+    "billingPeriod" "BillingPeriod" NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'IDR',
+    "amount" DECIMAL(18,2) NOT NULL,
+    "effectiveFrom" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "effectiveTo" TIMESTAMP(3),
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ServiceAddonPricing_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ServicePlanAddon" (
+    "id" TEXT NOT NULL,
+    "planId" TEXT NOT NULL,
+    "addonId" TEXT NOT NULL,
+    "label" TEXT,
+    "description" TEXT,
+    "isRequired" BOOLEAN NOT NULL DEFAULT false,
+    "displayOrder" INTEGER NOT NULL DEFAULT 0,
+    "enabledTerms" JSONB,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ServicePlanAddon_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ServiceSubscriptionAddon" (
+    "id" TEXT NOT NULL,
+    "subscriptionId" TEXT NOT NULL,
+    "addonId" TEXT NOT NULL,
+    "billingPeriod" "BillingPeriod" NOT NULL,
+    "priceLocked" DECIMAL(18,2) NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'IDR',
+    "quantity" DECIMAL(18,6) NOT NULL DEFAULT 1,
+    "status" "BillingSubscriptionStatus2" NOT NULL DEFAULT 'ACTIVE',
+    "currentPeriodStart" TIMESTAMP(3) NOT NULL,
+    "currentPeriodEnd" TIMESTAMP(3) NOT NULL,
+    "metadata" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ServiceSubscriptionAddon_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Subscription" (
     "id" TEXT NOT NULL,
     "tenantId" TEXT NOT NULL,
@@ -875,9 +1051,15 @@ CREATE TABLE "Subscription" (
     "pricingId" TEXT NOT NULL,
     "type" "SubscriptionType" NOT NULL,
     "billingMode" "BillingMode" NOT NULL,
+    "billingPeriod" "BillingPeriod" NOT NULL DEFAULT 'MONTHLY',
+    "priceLocked" DECIMAL(18,2) NOT NULL,
+    "currency" TEXT NOT NULL DEFAULT 'IDR',
+    "quantity" DECIMAL(18,6) NOT NULL DEFAULT 1,
     "status" "BillingSubscriptionStatus2" NOT NULL DEFAULT 'ACTIVE',
+    "cancelAtPeriodEnd" BOOLEAN NOT NULL DEFAULT false,
     "currentPeriodStart" TIMESTAMP(3) NOT NULL,
     "currentPeriodEnd" TIMESTAMP(3) NOT NULL,
+    "commitmentEndsAt" TIMESTAMP(3),
     "allocatedConfig" JSONB,
     "metadata" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -979,8 +1161,9 @@ CREATE TABLE "VpnPackage" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
-    "price" DECIMAL(12,2) NOT NULL,
-    "currency" TEXT NOT NULL DEFAULT 'IDR',
+    "servicePlanId" TEXT NOT NULL,
+    "price" DECIMAL(12,2),
+    "currency" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -1003,6 +1186,7 @@ CREATE TABLE "VpnSubscription" (
     "id" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
     "packageId" TEXT NOT NULL,
+    "serviceSubscriptionId" TEXT,
     "status" "VpnSubscriptionStatus" NOT NULL DEFAULT 'ACTIVE',
     "priceLocked" DECIMAL(12,2) NOT NULL,
     "currency" TEXT NOT NULL DEFAULT 'IDR',
@@ -1119,6 +1303,21 @@ CREATE TABLE "VpnAuditLog" (
 );
 
 -- CreateTable
+CREATE TABLE "WhatsappMetaApp" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "metaAppId" TEXT NOT NULL,
+    "appSecretEncrypted" TEXT NOT NULL,
+    "verifyTokenEncrypted" TEXT NOT NULL,
+    "webhookKey" TEXT NOT NULL,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "WhatsappMetaApp_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "WhatsappDevice" (
     "id" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
@@ -1138,6 +1337,7 @@ CREATE TABLE "WhatsappDevice" (
     "s3Path" TEXT,
     "whatsappBusinessAccountId" TEXT,
     "whatsappPhoneId" TEXT,
+    "whatsappMetaAppId" TEXT,
     "whatsappApplicationId" TEXT,
     "whatsappVersion" TEXT NOT NULL DEFAULT 'v24.0',
     "whatsappProfile" JSONB,
@@ -1510,6 +1710,27 @@ CREATE TABLE "WhatsappApiKey" (
 );
 
 -- CreateTable
+CREATE TABLE "WhatsappOrganizationApiKey" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "fingerprint" TEXT NOT NULL,
+    "keyHash" TEXT NOT NULL,
+    "status" "WhatsappOrganizationApiKeyStatus" NOT NULL DEFAULT 'ACTIVE',
+    "createdByWorkosUserId" TEXT,
+    "rotatedByWorkosUserId" TEXT,
+    "revokedByWorkosUserId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "rotatedAt" TIMESTAMP(3),
+    "revokedAt" TIMESTAMP(3),
+    "lastUsedAt" TIMESTAMP(3),
+    "lastUsedIp" TEXT,
+    "lastUsedUserAgent" TEXT,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "WhatsappOrganizationApiKey_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "WhatsappWebhook" (
     "id" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
@@ -1721,6 +1942,16 @@ CREATE TABLE "Voucher" (
     "code" TEXT NOT NULL,
     "prefix" TEXT,
     "status" "VoucherStatus" NOT NULL DEFAULT 'ACTIVE',
+    "kind" "VoucherKind" NOT NULL DEFAULT 'BALANCE_CREDIT',
+    "discountType" "VoucherDiscountType",
+    "discountValue" DECIMAL(65,30),
+    "discountCurrency" TEXT,
+    "currencyPolicy" "VoucherCurrencyPolicy" NOT NULL DEFAULT 'MATCH_CURRENCY_ONLY',
+    "firstCheckoutOnly" BOOLEAN NOT NULL DEFAULT false,
+    "allowUpgrade" BOOLEAN NOT NULL DEFAULT false,
+    "stackable" BOOLEAN NOT NULL DEFAULT false,
+    "minimumOrderAmount" DECIMAL(65,30),
+    "maximumDiscountAmount" DECIMAL(65,30),
     "maxClaims" INTEGER NOT NULL DEFAULT 1,
     "claimedCount" INTEGER NOT NULL DEFAULT 0,
     "expiresAt" TIMESTAMP(3) NOT NULL,
@@ -1728,6 +1959,9 @@ CREATE TABLE "Voucher" (
     "currency" TEXT NOT NULL DEFAULT 'IDR',
     "targetWorkosUserId" TEXT,
     "targetOrganizationId" TEXT,
+    "allowedPackageCodes" JSONB,
+    "allowedPlanCodes" JSONB,
+    "allowedBillingPeriods" JSONB,
     "createdByWorkosUserId" TEXT NOT NULL,
     "metadataJson" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1742,7 +1976,13 @@ CREATE TABLE "VoucherClaim" (
     "voucherId" TEXT NOT NULL,
     "workosUserId" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
+    "orderId" TEXT,
     "billingAdjustmentId" TEXT,
+    "discountAmount" DECIMAL(65,30),
+    "discountCurrency" TEXT,
+    "exchangeRate" DECIMAL(18,8),
+    "rateAt" TIMESTAMP(3),
+    "quoteExpiresAt" TIMESTAMP(3),
     "metadataJson" JSONB,
     "claimedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -1856,6 +2096,118 @@ CREATE TABLE "AppHostingClusterIntegration" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "AppHostingClusterIntegration_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AppManagedServiceCredential" (
+    "id" TEXT NOT NULL,
+    "clusterId" TEXT NOT NULL,
+    "serviceType" "AppManagedServiceType" NOT NULL,
+    "endpointHost" TEXT NOT NULL,
+    "endpointPort" INTEGER NOT NULL,
+    "tlsEnabled" BOOLEAN NOT NULL DEFAULT false,
+    "username" TEXT,
+    "secretCiphertext" TEXT,
+    "secretPreview" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "keyVersion" INTEGER NOT NULL DEFAULT 1,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AppManagedServiceCredential_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AppHostingClusterEndpoint" (
+    "id" TEXT NOT NULL,
+    "clusterId" TEXT NOT NULL,
+    "managedBaseDomain" TEXT NOT NULL,
+    "cnameTarget" TEXT NOT NULL,
+    "ipv4Addresses" TEXT[],
+    "ipv6Addresses" TEXT[],
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AppHostingClusterEndpoint_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ApplicationDomain" (
+    "id" TEXT NOT NULL,
+    "stackId" TEXT NOT NULL,
+    "clusterId" TEXT NOT NULL,
+    "hostname" TEXT NOT NULL,
+    "kind" "ApplicationDomainKind" NOT NULL,
+    "isPrimary" BOOLEAN NOT NULL DEFAULT false,
+    "dnsStatus" "ApplicationDomainDnsStatus" NOT NULL DEFAULT 'PENDING',
+    "expectedCnameTarget" TEXT NOT NULL,
+    "verifiedAt" TIMESTAMP(3),
+    "allowlistMode" "ApplicationDomainAllowlistMode" NOT NULL DEFAULT 'OPEN',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ApplicationDomain_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ApplicationDomainCertificate" (
+    "id" TEXT NOT NULL,
+    "domainId" TEXT NOT NULL,
+    "source" "ApplicationDomainCertificateSource" NOT NULL,
+    "status" "ApplicationDomainCertificateStatus" NOT NULL DEFAULT 'PENDING',
+    "expiresAt" TIMESTAMP(3),
+    "fingerprint" TEXT,
+    "validationError" TEXT,
+    "tlsSecretName" TEXT,
+    "certificateCiphertext" TEXT,
+    "privateKeyCiphertext" TEXT,
+    "chainCiphertext" TEXT,
+    "keyVersion" INTEGER NOT NULL DEFAULT 1,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ApplicationDomainCertificate_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ApplicationDomainAllowlistEntry" (
+    "id" TEXT NOT NULL,
+    "domainId" TEXT NOT NULL,
+    "cidr" TEXT NOT NULL,
+    "description" TEXT,
+    "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "position" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ApplicationDomainAllowlistEntry_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AiDeploymentSession" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "workosUserId" TEXT NOT NULL,
+    "status" "AiDeploymentSessionStatus" NOT NULL DEFAULT 'COLLECTING',
+    "sourceType" "AiDeploymentSourceType" NOT NULL DEFAULT 'SOURCE',
+    "currentPlanVersion" INTEGER NOT NULL DEFAULT 1,
+    "currentPlanHash" TEXT,
+    "plan" JSONB,
+    "serverContext" JSONB,
+    "executionRefs" JSONB,
+    "stackId" TEXT,
+    "deploymentId" TEXT,
+    "blockedReason" TEXT,
+    "confirmedBy" TEXT,
+    "confirmedAt" TIMESTAMP(3),
+    "confirmationPlanHash" TEXT,
+    "idempotencyKey" TEXT,
+    "expiresAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AiDeploymentSession_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -2150,6 +2502,30 @@ CREATE INDEX "Invoice_billingRunId_idx" ON "Invoice"("billingRunId");
 CREATE UNIQUE INDEX "Invoice_billingAccountId_periodStart_periodEnd_key" ON "Invoice"("billingAccountId", "periodStart", "periodEnd");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "BillingOrder_idempotencyKey_key" ON "BillingOrder"("idempotencyKey");
+
+-- CreateIndex
+CREATE INDEX "BillingOrder_organizationId_createdAt_idx" ON "BillingOrder"("organizationId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "BillingOrder_billingAccountId_status_idx" ON "BillingOrder"("billingAccountId", "status");
+
+-- CreateIndex
+CREATE INDEX "BillingOrder_billingInvoiceId_idx" ON "BillingOrder"("billingInvoiceId");
+
+-- CreateIndex
+CREATE INDEX "BillingOrder_serviceSubscriptionId_idx" ON "BillingOrder"("serviceSubscriptionId");
+
+-- CreateIndex
+CREATE INDEX "BillingOrder_voucherId_idx" ON "BillingOrder"("voucherId");
+
+-- CreateIndex
+CREATE INDEX "BillingOrderLine_orderId_idx" ON "BillingOrderLine"("orderId");
+
+-- CreateIndex
+CREATE INDEX "BillingOrderLine_pricingId_idx" ON "BillingOrderLine"("pricingId");
+
+-- CreateIndex
 CREATE INDEX "InvoiceLine_invoiceId_idx" ON "InvoiceLine"("invoiceId");
 
 -- CreateIndex
@@ -2207,7 +2583,31 @@ CREATE INDEX "Pricing_planId_idx" ON "Pricing"("planId");
 CREATE INDEX "Pricing_regionId_idx" ON "Pricing"("regionId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Pricing_planId_regionId_type_billingMode_key" ON "Pricing"("planId", "regionId", "type", "billingMode");
+CREATE UNIQUE INDEX "Pricing_planId_regionId_type_billingMode_billingPeriod_curr_key" ON "Pricing"("planId", "regionId", "type", "billingMode", "billingPeriod", "currency", "effectiveFrom");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ServiceAddon_code_key" ON "ServiceAddon"("code");
+
+-- CreateIndex
+CREATE INDEX "ServiceAddon_isActive_idx" ON "ServiceAddon"("isActive");
+
+-- CreateIndex
+CREATE INDEX "ServiceAddonPricing_addonId_currency_billingPeriod_isActive_idx" ON "ServiceAddonPricing"("addonId", "currency", "billingPeriod", "isActive");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ServiceAddonPricing_addonId_billingPeriod_currency_effectiv_key" ON "ServiceAddonPricing"("addonId", "billingPeriod", "currency", "effectiveFrom");
+
+-- CreateIndex
+CREATE INDEX "ServicePlanAddon_planId_isActive_idx" ON "ServicePlanAddon"("planId", "isActive");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ServicePlanAddon_planId_addonId_key" ON "ServicePlanAddon"("planId", "addonId");
+
+-- CreateIndex
+CREATE INDEX "ServiceSubscriptionAddon_subscriptionId_status_idx" ON "ServiceSubscriptionAddon"("subscriptionId", "status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ServiceSubscriptionAddon_subscriptionId_addonId_key" ON "ServiceSubscriptionAddon"("subscriptionId", "addonId");
 
 -- CreateIndex
 CREATE INDEX "ServiceSubscription_tenantId_status_idx" ON "Subscription"("tenantId", "status");
@@ -2261,6 +2661,9 @@ CREATE INDEX "UsageLedger_tenantId_category_idx" ON "UsageLedger"("tenantId", "c
 CREATE INDEX "UsageLedger_subscriptionId_idx" ON "UsageLedger"("subscriptionId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "VpnPackage_servicePlanId_key" ON "VpnPackage"("servicePlanId");
+
+-- CreateIndex
 CREATE INDEX "VpnPackage_isActive_idx" ON "VpnPackage"("isActive");
 
 -- CreateIndex
@@ -2271,6 +2674,9 @@ CREATE INDEX "VpnPackageServer_serverId_idx" ON "VpnPackageServer"("serverId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "VpnPackageServer_packageId_serverId_key" ON "VpnPackageServer"("packageId", "serverId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "VpnSubscription_serviceSubscriptionId_key" ON "VpnSubscription"("serviceSubscriptionId");
 
 -- CreateIndex
 CREATE INDEX "VpnSubscription_organizationId_status_idx" ON "VpnSubscription"("organizationId", "status");
@@ -2360,6 +2766,15 @@ CREATE INDEX "VpnAuditLog_action_createdAt_idx" ON "VpnAuditLog"("action", "crea
 CREATE INDEX "VpnAuditLog_adminId_createdAt_idx" ON "VpnAuditLog"("adminId", "createdAt" DESC);
 
 -- CreateIndex
+CREATE UNIQUE INDEX "WhatsappMetaApp_metaAppId_key" ON "WhatsappMetaApp"("metaAppId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "WhatsappMetaApp_webhookKey_key" ON "WhatsappMetaApp"("webhookKey");
+
+-- CreateIndex
+CREATE INDEX "WhatsappMetaApp_active_idx" ON "WhatsappMetaApp"("active");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "WhatsappDevice_phoneNumber_key" ON "WhatsappDevice"("phoneNumber");
 
 -- CreateIndex
@@ -2367,6 +2782,15 @@ CREATE INDEX "WhatsappDevice_organizationId_idx" ON "WhatsappDevice"("organizati
 
 -- CreateIndex
 CREATE INDEX "WhatsappDevice_whatsappBusinessAccountId_idx" ON "WhatsappDevice"("whatsappBusinessAccountId");
+
+-- CreateIndex
+CREATE INDEX "WhatsappDevice_whatsappMetaAppId_idx" ON "WhatsappDevice"("whatsappMetaAppId");
+
+-- CreateIndex
+CREATE INDEX "WhatsappDevice_whatsappPhoneId_idx" ON "WhatsappDevice"("whatsappPhoneId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "WhatsappDevice_whatsappMetaAppId_whatsappPhoneId_key" ON "WhatsappDevice"("whatsappMetaAppId", "whatsappPhoneId");
 
 -- CreateIndex
 CREATE INDEX "WhatsappContactGroup_organizationId_status_idx" ON "WhatsappContactGroup"("organizationId", "status");
@@ -2469,6 +2893,21 @@ CREATE UNIQUE INDEX "WhatsappApiKey_key_key" ON "WhatsappApiKey"("key");
 
 -- CreateIndex
 CREATE INDEX "WhatsappApiKey_organizationId_key_idx" ON "WhatsappApiKey"("organizationId", "key");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "WhatsappOrganizationApiKey_fingerprint_key" ON "WhatsappOrganizationApiKey"("fingerprint");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "WhatsappOrganizationApiKey_keyHash_key" ON "WhatsappOrganizationApiKey"("keyHash");
+
+-- CreateIndex
+CREATE INDEX "WhatsappOrganizationApiKey_organizationId_createdAt_idx" ON "WhatsappOrganizationApiKey"("organizationId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "WhatsappOrganizationApiKey_organizationId_status_idx" ON "WhatsappOrganizationApiKey"("organizationId", "status");
+
+-- CreateIndex
+CREATE INDEX "WhatsappOrganizationApiKey_status_createdAt_idx" ON "WhatsappOrganizationApiKey"("status", "createdAt" DESC);
 
 -- CreateIndex
 CREATE INDEX "WhatsappWebhook_organizationId_idx" ON "WhatsappWebhook"("organizationId");
@@ -2594,6 +3033,9 @@ CREATE INDEX "Voucher_targetOrganizationId_idx" ON "Voucher"("targetOrganization
 CREATE INDEX "Voucher_code_status_idx" ON "Voucher"("code", "status");
 
 -- CreateIndex
+CREATE INDEX "Voucher_kind_status_idx" ON "Voucher"("kind", "status");
+
+-- CreateIndex
 CREATE INDEX "VoucherClaim_workosUserId_claimedAt_idx" ON "VoucherClaim"("workosUserId", "claimedAt" DESC);
 
 -- CreateIndex
@@ -2601,6 +3043,9 @@ CREATE INDEX "VoucherClaim_voucherId_claimedAt_idx" ON "VoucherClaim"("voucherId
 
 -- CreateIndex
 CREATE INDEX "VoucherClaim_organizationId_idx" ON "VoucherClaim"("organizationId");
+
+-- CreateIndex
+CREATE INDEX "VoucherClaim_orderId_idx" ON "VoucherClaim"("orderId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "VoucherClaim_voucherId_workosUserId_key" ON "VoucherClaim"("voucherId", "workosUserId");
@@ -2664,6 +3109,69 @@ CREATE INDEX "AppHostingClusterIntegration_isActive_idx" ON "AppHostingClusterIn
 
 -- CreateIndex
 CREATE UNIQUE INDEX "AppHostingClusterIntegration_clusterId_type_key" ON "AppHostingClusterIntegration"("clusterId", "type");
+
+-- CreateIndex
+CREATE INDEX "AppManagedServiceCredential_clusterId_idx" ON "AppManagedServiceCredential"("clusterId");
+
+-- CreateIndex
+CREATE INDEX "AppManagedServiceCredential_serviceType_idx" ON "AppManagedServiceCredential"("serviceType");
+
+-- CreateIndex
+CREATE INDEX "AppManagedServiceCredential_isActive_idx" ON "AppManagedServiceCredential"("isActive");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AppManagedServiceCredential_clusterId_serviceType_key" ON "AppManagedServiceCredential"("clusterId", "serviceType");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AppHostingClusterEndpoint_clusterId_key" ON "AppHostingClusterEndpoint"("clusterId");
+
+-- CreateIndex
+CREATE INDEX "AppHostingClusterEndpoint_isActive_idx" ON "AppHostingClusterEndpoint"("isActive");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ApplicationDomain_hostname_key" ON "ApplicationDomain"("hostname");
+
+-- CreateIndex
+CREATE INDEX "ApplicationDomain_stackId_idx" ON "ApplicationDomain"("stackId");
+
+-- CreateIndex
+CREATE INDEX "ApplicationDomain_clusterId_idx" ON "ApplicationDomain"("clusterId");
+
+-- CreateIndex
+CREATE INDEX "ApplicationDomain_dnsStatus_idx" ON "ApplicationDomain"("dnsStatus");
+
+-- CreateIndex
+CREATE INDEX "ApplicationDomain_stackId_isPrimary_idx" ON "ApplicationDomain"("stackId", "isPrimary");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ApplicationDomainCertificate_domainId_key" ON "ApplicationDomainCertificate"("domainId");
+
+-- CreateIndex
+CREATE INDEX "ApplicationDomainAllowlistEntry_domainId_enabled_position_idx" ON "ApplicationDomainAllowlistEntry"("domainId", "enabled", "position");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ApplicationDomainAllowlistEntry_domainId_cidr_key" ON "ApplicationDomainAllowlistEntry"("domainId", "cidr");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AiDeploymentSession_stackId_key" ON "AiDeploymentSession"("stackId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AiDeploymentSession_deploymentId_key" ON "AiDeploymentSession"("deploymentId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AiDeploymentSession_idempotencyKey_key" ON "AiDeploymentSession"("idempotencyKey");
+
+-- CreateIndex
+CREATE INDEX "AiDeploymentSession_organizationId_workosUserId_idx" ON "AiDeploymentSession"("organizationId", "workosUserId");
+
+-- CreateIndex
+CREATE INDEX "AiDeploymentSession_organizationId_stackId_idx" ON "AiDeploymentSession"("organizationId", "stackId");
+
+-- CreateIndex
+CREATE INDEX "AiDeploymentSession_organizationId_status_idx" ON "AiDeploymentSession"("organizationId", "status");
+
+-- CreateIndex
+CREATE INDEX "AiDeploymentSession_status_expiresAt_idx" ON "AiDeploymentSession"("status", "expiresAt");
 
 -- AddForeignKey
 ALTER TABLE "GithubRepositoryConnection" ADD CONSTRAINT "GithubRepositoryConnection_installationId_fkey" FOREIGN KEY ("installationId") REFERENCES "GithubInstallation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -2750,6 +3258,24 @@ ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_billingRunId_fkey" FOREIGN KEY ("b
 ALTER TABLE "Invoice" ADD CONSTRAINT "Invoice_gatewayId_fkey" FOREIGN KEY ("gatewayId") REFERENCES "PaymentGateway"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "BillingOrder" ADD CONSTRAINT "BillingOrder_serviceSubscriptionId_fkey" FOREIGN KEY ("serviceSubscriptionId") REFERENCES "Subscription"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "BillingOrder" ADD CONSTRAINT "BillingOrder_billingAccountId_fkey" FOREIGN KEY ("billingAccountId") REFERENCES "BillingAccount"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "BillingOrder" ADD CONSTRAINT "BillingOrder_billingInvoiceId_fkey" FOREIGN KEY ("billingInvoiceId") REFERENCES "Invoice"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "BillingOrder" ADD CONSTRAINT "BillingOrder_voucherId_fkey" FOREIGN KEY ("voucherId") REFERENCES "Voucher"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "BillingOrderLine" ADD CONSTRAINT "BillingOrderLine_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "BillingOrder"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "BillingOrderLine" ADD CONSTRAINT "BillingOrderLine_pricingId_fkey" FOREIGN KEY ("pricingId") REFERENCES "Pricing"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "InvoiceLine" ADD CONSTRAINT "InvoiceLine_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "Invoice"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -2780,6 +3306,21 @@ ALTER TABLE "Pricing" ADD CONSTRAINT "Pricing_planId_fkey" FOREIGN KEY ("planId"
 ALTER TABLE "Pricing" ADD CONSTRAINT "Pricing_regionId_fkey" FOREIGN KEY ("regionId") REFERENCES "Region"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "ServiceAddonPricing" ADD CONSTRAINT "ServiceAddonPricing_addonId_fkey" FOREIGN KEY ("addonId") REFERENCES "ServiceAddon"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ServicePlanAddon" ADD CONSTRAINT "ServicePlanAddon_planId_fkey" FOREIGN KEY ("planId") REFERENCES "ServicePlan"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ServicePlanAddon" ADD CONSTRAINT "ServicePlanAddon_addonId_fkey" FOREIGN KEY ("addonId") REFERENCES "ServiceAddon"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ServiceSubscriptionAddon" ADD CONSTRAINT "ServiceSubscriptionAddon_subscriptionId_fkey" FOREIGN KEY ("subscriptionId") REFERENCES "Subscription"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ServiceSubscriptionAddon" ADD CONSTRAINT "ServiceSubscriptionAddon_addonId_fkey" FOREIGN KEY ("addonId") REFERENCES "ServiceAddon"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Subscription" ADD CONSTRAINT "Subscription_packageId_fkey" FOREIGN KEY ("packageId") REFERENCES "Package"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -2801,10 +3342,16 @@ ALTER TABLE "VpnServer" ADD CONSTRAINT "VpnServer_sshKeyId_fkey" FOREIGN KEY ("s
 ALTER TABLE "UsageLedger" ADD CONSTRAINT "UsageLedger_subscriptionId_fkey" FOREIGN KEY ("subscriptionId") REFERENCES "Subscription"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "VpnPackage" ADD CONSTRAINT "VpnPackage_servicePlanId_fkey" FOREIGN KEY ("servicePlanId") REFERENCES "ServicePlan"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "VpnPackageServer" ADD CONSTRAINT "VpnPackageServer_packageId_fkey" FOREIGN KEY ("packageId") REFERENCES "VpnPackage"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "VpnPackageServer" ADD CONSTRAINT "VpnPackageServer_serverId_fkey" FOREIGN KEY ("serverId") REFERENCES "VpnServer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "VpnSubscription" ADD CONSTRAINT "VpnSubscription_serviceSubscriptionId_fkey" FOREIGN KEY ("serviceSubscriptionId") REFERENCES "Subscription"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "VpnServerAccount" ADD CONSTRAINT "VpnServerAccount_subscriptionId_fkey" FOREIGN KEY ("subscriptionId") REFERENCES "VpnSubscription"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -2829,6 +3376,9 @@ ALTER TABLE "VpnMobileSession" ADD CONSTRAINT "VpnMobileSession_serverId_fkey" F
 
 -- AddForeignKey
 ALTER TABLE "VpnPairingToken" ADD CONSTRAINT "VpnPairingToken_subscriptionId_fkey" FOREIGN KEY ("subscriptionId") REFERENCES "VpnSubscription"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "WhatsappDevice" ADD CONSTRAINT "WhatsappDevice_whatsappMetaAppId_fkey" FOREIGN KEY ("whatsappMetaAppId") REFERENCES "WhatsappMetaApp"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "WhatsappContactGroup" ADD CONSTRAINT "WhatsappContactGroup_whatsappDeviceId_fkey" FOREIGN KEY ("whatsappDeviceId") REFERENCES "WhatsappDevice"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -2915,6 +3465,9 @@ ALTER TABLE "PaymentConfirmation" ADD CONSTRAINT "PaymentConfirmation_bankAccoun
 ALTER TABLE "VoucherClaim" ADD CONSTRAINT "VoucherClaim_voucherId_fkey" FOREIGN KEY ("voucherId") REFERENCES "Voucher"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "VoucherClaim" ADD CONSTRAINT "VoucherClaim_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "BillingOrder"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "WhatsappCatalog" ADD CONSTRAINT "WhatsappCatalog_deviceId_fkey" FOREIGN KEY ("deviceId") REFERENCES "WhatsappDevice"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -2922,3 +3475,21 @@ ALTER TABLE "WhatsappCatalogProduct" ADD CONSTRAINT "WhatsappCatalogProduct_cata
 
 -- AddForeignKey
 ALTER TABLE "AppHostingClusterIntegration" ADD CONSTRAINT "AppHostingClusterIntegration_clusterId_fkey" FOREIGN KEY ("clusterId") REFERENCES "AppHostingCluster"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AppManagedServiceCredential" ADD CONSTRAINT "AppManagedServiceCredential_clusterId_fkey" FOREIGN KEY ("clusterId") REFERENCES "AppHostingCluster"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AppHostingClusterEndpoint" ADD CONSTRAINT "AppHostingClusterEndpoint_clusterId_fkey" FOREIGN KEY ("clusterId") REFERENCES "AppHostingCluster"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ApplicationDomain" ADD CONSTRAINT "ApplicationDomain_stackId_fkey" FOREIGN KEY ("stackId") REFERENCES "ApplicationStack"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ApplicationDomain" ADD CONSTRAINT "ApplicationDomain_clusterId_fkey" FOREIGN KEY ("clusterId") REFERENCES "AppHostingCluster"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ApplicationDomainCertificate" ADD CONSTRAINT "ApplicationDomainCertificate_domainId_fkey" FOREIGN KEY ("domainId") REFERENCES "ApplicationDomain"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ApplicationDomainAllowlistEntry" ADD CONSTRAINT "ApplicationDomainAllowlistEntry_domainId_fkey" FOREIGN KEY ("domainId") REFERENCES "ApplicationDomain"("id") ON DELETE CASCADE ON UPDATE CASCADE;
