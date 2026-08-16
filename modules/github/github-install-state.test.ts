@@ -243,4 +243,45 @@ describe("github install state", () => {
       name: "GithubInstallStateError",
     } satisfies Partial<GithubInstallStateError>)
   })
+
+  it("round-trips a popup intent with its correlation nonce", async () => {
+    const store = createNonceStore()
+    const { state } = await issueGithubInstallState({
+      workosUserId: "user-1",
+      organizationId: "org-1",
+      returnTo: "/en/console/app/deploy",
+      secret: "test-secret",
+      nonceStore: store,
+      popup: { nonce: "client-nonce-abc" },
+    })
+
+    const payload = await validateGithubInstallState({
+      state,
+      secret: "test-secret",
+      nonceStore: store,
+    })
+
+    expect(payload.popup).toBe(true)
+    expect(payload.popupNonce).toBe("client-nonce-abc")
+  })
+
+  it("defaults popup to false when no popup intent is provided", async () => {
+    const store = createNonceStore()
+    const { state } = await issueGithubInstallState({
+      workosUserId: "user-1",
+      organizationId: "org-1",
+      returnTo: "/en/console/app/deploy",
+      secret: "test-secret",
+      nonceStore: store,
+    })
+
+    const payload = await validateGithubInstallState({
+      state,
+      secret: "test-secret",
+      nonceStore: store,
+    })
+
+    expect(payload.popup).toBe(false)
+    expect(payload.popupNonce).toBeNull()
+  })
 })

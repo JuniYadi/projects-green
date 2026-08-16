@@ -13,6 +13,8 @@ export type GithubInstallStatePayload = {
   returnTo: string
   nonce: string
   expiresAt: number
+  popup: boolean
+  popupNonce: string | null
 }
 
 type GithubInstallStateNonceRecord = {
@@ -163,6 +165,9 @@ const parsePayload = (state: string) => {
       returnTo: getSafeReturnTo(payload.returnTo),
       nonce: payload.nonce,
       expiresAt: payload.expiresAt,
+      popup: payload.popup === true,
+      popupNonce:
+        typeof payload.popupNonce === "string" ? payload.popupNonce : null,
     } satisfies GithubInstallStatePayload,
     payloadSegment,
     signatureSegment,
@@ -176,6 +181,7 @@ export const issueGithubInstallState = async ({
   secret,
   nonceStore,
   now = new Date(),
+  popup,
 }: {
   workosUserId: string
   organizationId: string | null
@@ -183,6 +189,7 @@ export const issueGithubInstallState = async ({
   secret: string
   nonceStore?: GithubInstallStateNonceStore
   now?: Date
+  popup?: { nonce: string }
 }) => {
   if (!secret.trim()) {
     throw new GithubInstallStateError(
@@ -200,6 +207,8 @@ export const issueGithubInstallState = async ({
     returnTo: getSafeReturnTo(returnTo),
     nonce,
     expiresAt,
+    popup: popup !== undefined,
+    popupNonce: popup?.nonce ?? null,
   }
 
   const payloadSegment = Buffer.from(JSON.stringify(payload), "utf8").toString(
