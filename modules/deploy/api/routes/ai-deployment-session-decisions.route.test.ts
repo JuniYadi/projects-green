@@ -125,6 +125,7 @@ const settings = {
 
 const createService = () => ({
   applyManualSettings: mock(async () => sampleSession()),
+  selectResourcePlan: mock(async () => sampleSession()),
 })
 
 const request = (body: unknown) =>
@@ -133,6 +134,16 @@ const request = (body: unknown) =>
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   })
+
+const resourceRequest = (body: unknown) =>
+  new Request(
+    "http://localhost/deploy/ai-sessions/session-1/resource-selection",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  )
 
 const actor = {
   userId: "user-1",
@@ -210,5 +221,62 @@ describe("aiDeploymentSessionDecisionRoutes", () => {
       sessionId: "session-1",
       settings,
     })
+  })
+
+  it("server-prices a resource selection without a client price", async () => {
+    const service = createService()
+    service.selectResourcePlan.mockResolvedValue({
+      ...sampleSession(),
+      plan: {
+        ...samplePlan(),
+        billing: {
+          ...samplePlan().billing,
+          estimate: 0.0352,
+          interval: "hour",
+        },
+      },
+    })
+    const app = createAiDeploymentSessionDecisionRoutes({
+      requireActor: async () => actor,
+      service: service as unknown as AiDeploymentSessionService,
+    })
+    const selection = {
+      resourcePlanId: "payg",
+      cpu: 500,
+      memory: 1024,
+      bufferHours: 24,
+    }
+
+    const response = await app.handle(resourceRequest(selection))
+    const body = (await response.json()) as {
+      data: { plan: { billing: { estimate: number } } }
+    }
+
+    expect(response.status).toBe(200)
+    expect(body.data.plan.billing.estimate).toBe(0.0352)
+    expect(service.selectResourcePlan).toHaveBeenCalledWith({
+      actor: { organizationId: "org-1", userId: "user-1" },
+      sessionId: "session-1",
+      selection,
+    })
+  })
+
+  it("returns 422 for an out-of-range PAYG selection", async () => {
+    const service = createService()
+    service.selectResourcePlan.mockRejectedValue(
+      new AiDeploymentSessionError("RESOURCE_SELECTION_INVALID")
+    )
+    const app = createAiDeploymentSessionDecisionRoutes({
+      requireActor: async () => actor,
+      service: service as unknown as AiDeploymentSessionService,
+    })
+
+    const response = await app.handle(
+      resourceRequest({ resourcePlanId: "payg", cpu: 5000, memory: 1024 })
+    )
+    const body = (await response.json()) as { error: string }
+
+    expect(response.status).toBe(422)
+    expect(body.error).toBe("RESOURCE_SELECTION_INVALID")
   })
 })
