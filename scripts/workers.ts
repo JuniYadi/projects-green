@@ -660,7 +660,7 @@ const vpnRenewalInterval = setInterval(async () => {
     const result = await renewalService.renewDueSubscriptions()
 
     console.info(
-      `[vpn-renewal] renewed=${result.renewed} retried=${result.retried} suspended=${result.suspended} expired=${result.expired} errors=${result.errors}`
+      `[vpn-renewal] renewed=${result.renewed} retried=${result.retried} errors=${result.errors}`
     )
   } catch (error) {
     console.error("[vpn-renewal] cycle failed:", error)
