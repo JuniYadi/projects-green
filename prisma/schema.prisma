@@ -2948,6 +2948,8 @@ model AiDeploymentSession {
   plan                 Json?
   serverContext        Json?
   executionRefs        Json?
+  stackId              String?                 @unique
+  deploymentId         String?                 @unique
   blockedReason        String?
   confirmedBy          String?
   confirmedAt          DateTime?
@@ -2958,6 +2960,7 @@ model AiDeploymentSession {
   updatedAt            DateTime                @updatedAt
 
   @@index([organizationId, workosUserId])
+  @@index([organizationId, stackId])
   @@index([organizationId, status])
   @@index([status, expiresAt])
 }

@@ -18,6 +18,8 @@ const sampleSession = (): AiDeploymentSession => ({
   workosUserId: "user-1",
   status: "PLAN_READY",
   sourceType: "SOURCE",
+  stackId: null,
+  deploymentId: null,
   currentPlanVersion: 1,
   currentPlanHash: "plan-hash",
   plan: null,
