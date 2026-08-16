@@ -9,6 +9,8 @@ export type AiDeploymentSessionDTO = {
   id: string
   status: AiDeploymentSession["status"]
   sourceType: AiDeploymentSession["sourceType"]
+  stackId: string | null
+  deploymentId: string | null
   currentPlanVersion: number
   currentPlanHash: string | null
   plan: DeploymentPlanDTO | null
@@ -27,6 +29,8 @@ export function toAiDeploymentSessionDTO(
     id: session.id,
     status: session.status,
     sourceType: session.sourceType,
+    stackId: session.stackId,
+    deploymentId: session.deploymentId,
     currentPlanVersion: session.currentPlanVersion,
     currentPlanHash: session.currentPlanHash,
     plan: toDeploymentPlanDTO(session.plan),

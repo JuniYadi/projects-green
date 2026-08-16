@@ -13,6 +13,7 @@ import {
 import { enqueueGithubWebhookEvent } from "@/modules/github/github.webhook"
 import {
   issueGithubInstallState,
+  peekPopupIntent,
   validateGithubInstallState,
 } from "@/modules/github/github-install-state"
 import {
@@ -124,6 +125,32 @@ const toServerError = (set: RouteSet, message: string, status = 500) => {
   }
 }
 
+const POPUP_COMPLETE_EVENT = "github-install-complete" as const
+
+function popupCompletionDocument(
+  status: "connected" | "error",
+  nonce: string
+): Response {
+  const safeNonce = JSON.stringify(nonce)
+  const html = `<!doctype html><html><body><script>
+    if (window.opener) {
+      window.opener.postMessage(
+        { type: ${JSON.stringify(POPUP_COMPLETE_EVENT)}, status: ${JSON.stringify(status)}, nonce: ${safeNonce} },
+        window.location.origin
+      )
+    }
+    window.close()
+  </script></body></html>`
+  return new Response(html, { headers: { "content-type": "text/html" } })
+}
+
+const redirectResponse = (url: string) => {
+  return new Response(null, {
+    status: 302,
+    headers: { location: url },
+  })
+}
+
 export const createGithubRoutes = (
   input?: GithubService | GithubRouteDependencies
 ) => {
@@ -154,16 +181,18 @@ export const createGithubRoutes = (
             organizationId: auth.organizationId ?? null,
             returnTo: (query.returnTo as string) ?? null,
             secret: process.env.APP_SECRET ?? "",
+            popup:
+              query.popup === "1" && typeof query.popupNonce === "string"
+                ? { nonce: query.popupNonce }
+                : undefined,
           })
 
           const redirectUrl = getGithubInstallUrl({ state: state.state })
 
+          set.status = 302
           set.redirect = redirectUrl
 
-          return {
-            ok: true as const,
-            redirectUrl,
-          }
+          return redirectResponse(redirectUrl)
         } catch (error) {
           console.error(
             `[github] GET /integrations/github/install/start —`,
@@ -185,41 +214,46 @@ export const createGithubRoutes = (
 
         // Determine locale from query or session for redirect
         const locale = (query.locale as string) ?? "en"
+        const stateParam = query.state as string | undefined
+        const popupHint = stateParam ? peekPopupIntent(stateParam) : null
 
         const errorRedirect = () => {
+          if (popupHint?.popup) {
+            set.status = 200
+            return popupCompletionDocument("error", popupHint.popupNonce ?? "")
+          }
+
+          set.status = 302
           set.redirect = `/${locale}/console/app/deploy?github=error`
+          return redirectResponse(`/${locale}/console/app/deploy?github=error`)
         }
 
         if (!auth.user) {
-          errorRedirect()
-          return
+          return errorRedirect()
         }
 
         const installationIdParam = query.installation_id as string | undefined
-        const stateParam = query.state as string | undefined
 
         if (!installationIdParam || !stateParam) {
-          errorRedirect()
-          return
+          return errorRedirect()
         }
 
+        let payload: Awaited<ReturnType<typeof validateGithubInstallState>>
         try {
           // Validate and consume the state nonce
-          await validateGithubInstallState({
+          payload = await validateGithubInstallState({
             state: stateParam,
             secret: process.env.APP_SECRET ?? "",
           })
         } catch {
-          errorRedirect()
-          return
+          return errorRedirect()
         }
 
         let installationId: bigint
         try {
           installationId = BigInt(installationIdParam)
         } catch {
-          errorRedirect()
-          return
+          return errorRedirect()
         }
 
         try {
@@ -244,11 +278,19 @@ export const createGithubRoutes = (
             `[github] GET /integrations/github/install/callback —`,
             error instanceof Error ? (error.stack ?? error.message) : error
           )
-          errorRedirect()
-          return
+          return errorRedirect()
         }
 
+        if (payload.popup) {
+          set.status = 200
+          return popupCompletionDocument("connected", payload.popupNonce ?? "")
+        }
+
+        set.status = 302
         set.redirect = `/${locale}/console/app/deploy?github=connected`
+        return redirectResponse(
+          `/${locale}/console/app/deploy?github=connected`
+        )
       })
     )
     .get(

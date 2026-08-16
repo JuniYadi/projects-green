@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
-import { describe, expect, it, mock } from "bun:test"
+import { beforeAll, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
 mock.module("@workos-inc/authkit-nextjs", () => ({
@@ -18,7 +18,89 @@ mock.module("@/modules/github/github.webhook", () => ({
   enqueueGithubWebhookEvent: mockEnqueueGithubWebhookEvent,
 }))
 
+const mockGithubService = {
+  fetchGithubInstallationDetails: mock(async () => ({
+    account: { login: "acme", type: "Organization" },
+    target_type: "Organization",
+    target_id: 123,
+    permissions: {},
+    events: [],
+  })),
+  fetchGithubInstallationRepositories: mock(async () => []),
+  syncGithubInstallation: mock(async () => undefined),
+}
+
+class MockGithubApiError extends Error {}
+class MockGithubConfigurationError extends Error {}
+class MockGithubCursorError extends Error {}
+class MockGithubIntegrationDisabledError extends Error {}
+
+mock.module("@/modules/github/github.service", () => ({
+  ...mockGithubService,
+  GithubApiError: MockGithubApiError,
+  GithubConfigurationError: MockGithubConfigurationError,
+  GithubCursorError: MockGithubCursorError,
+  GithubIntegrationDisabledError: MockGithubIntegrationDisabledError,
+  createGithubService: () => ({
+    getFeatureStatus: () => ({
+      feature: "github_app_integration",
+      envKey: "FEATURE_GITHUB_APP_INTEGRATION",
+      enabled: true,
+    }),
+    assertEnabled: () => undefined,
+    listRepositoriesForActor: async () => ({ items: [], nextCursor: null }),
+    listInstallationsForActor: async () => [],
+  }),
+  getGithubInstallUrl: ({ state }: { state: string }) =>
+    `https://github.test/install?state=${encodeURIComponent(state)}`,
+}))
+
+type MockNonceRecord = {
+  nonceHash: string
+  workosUserId: string
+  organizationId: string | null
+  expiresAt: Date
+  consumedAt: Date | null
+}
+
+type MockNonceWhere = {
+  nonceHash: string
+}
+
+const nonceRecords = new Map<string, MockNonceRecord>()
+mock.module("@/lib/prisma", () => ({
+  prisma: {
+    githubInstallStateNonce: {
+      create: async ({
+        data,
+      }: {
+        data: Omit<MockNonceRecord, "consumedAt">
+      }) => {
+        nonceRecords.set(data.nonceHash, { ...data, consumedAt: null })
+      },
+      findUnique: async ({ where }: { where: MockNonceWhere }) =>
+        nonceRecords.get(where.nonceHash) ?? null,
+      updateMany: async ({
+        where,
+        data,
+      }: {
+        where: MockNonceWhere
+        data: { consumedAt: Date }
+      }) => {
+        const record = nonceRecords.get(where.nonceHash)
+        if (!record || record.consumedAt !== null) return { count: 0 }
+        record.consumedAt = data.consumedAt
+        return { count: 1 }
+      },
+    },
+  },
+}))
+
+process.env.APP_SECRET = "test-secret"
+
 const { createGithubRoutes } = await import("@/modules/github/api/github.route")
+const { issueGithubInstallState, peekPopupIntent } =
+  await import("@/modules/github/github-install-state")
 const {
   GithubApiError,
   GithubConfigurationError,
@@ -47,6 +129,126 @@ const createBaseService = (enabled: boolean): GithubService => ({
   async listInstallationsForActor() {
     return []
   },
+})
+
+let popupStateFixture = ""
+const popupNonceFixture = "popup-client-nonce"
+let nonPopupStateFixture = ""
+
+beforeAll(async () => {
+  popupStateFixture = (
+    await issueGithubInstallState({
+      workosUserId: "user_123",
+      organizationId: "org_123",
+      returnTo: "/en/console/app/deploy",
+      secret: "test-secret",
+      popup: { nonce: popupNonceFixture },
+    })
+  ).state
+
+  nonPopupStateFixture = (
+    await issueGithubInstallState({
+      workosUserId: "user_123",
+      organizationId: "org_123",
+      returnTo: "/en/console/app/deploy",
+      secret: "test-secret",
+    })
+  ).state
+})
+
+describe("GET /integrations/github/install/callback (popup mode)", () => {
+  it("returns a same-origin postMessage document on success, never a redirect", async () => {
+    const app = new Elysia().use(
+      createGithubRoutes({
+        authenticate: async () => ({
+          user: { id: "user_123" },
+          organizationId: "org_123",
+        }),
+        service: createBaseService(true),
+      })
+    )
+    const response = await app.handle(
+      new Request(
+        "http://localhost/integrations/github/install/callback?installation_id=123&state=" +
+          encodeURIComponent(popupStateFixture)
+      )
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("content-type")).toContain("text/html")
+    const body = await response.text()
+    expect(body).toContain('type: "github-install-complete"')
+    expect(body).toContain('status: "connected"')
+    expect(body).toContain(popupNonceFixture)
+    expect(body).not.toMatch(/installation_id|token|repositories/i)
+  })
+
+  it("keeps the existing redirect for invalid popup state", async () => {
+    const app = new Elysia().use(
+      createGithubRoutes({
+        authenticate: async () => ({
+          user: { id: "user_123" },
+          organizationId: "org_123",
+        }),
+        service: createBaseService(true),
+      })
+    )
+    const response = await app.handle(
+      new Request(
+        "http://localhost/integrations/github/install/callback?installation_id=123&state=garbage"
+      )
+    )
+
+    expect(response.status).toBe(302)
+  })
+
+  it("keeps the existing redirect for non-popup callers", async () => {
+    const app = new Elysia().use(
+      createGithubRoutes({
+        authenticate: async () => ({
+          user: { id: "user_123" },
+          organizationId: "org_123",
+        }),
+        service: createBaseService(true),
+      })
+    )
+    const response = await app.handle(
+      new Request(
+        "http://localhost/integrations/github/install/callback?installation_id=123&state=" +
+          encodeURIComponent(nonPopupStateFixture)
+      )
+    )
+
+    expect(response.status).toBe(302)
+    expect(response.headers.get("location")).toContain("github=connected")
+  })
+})
+
+describe("GET /integrations/github/install/start (popup mode)", () => {
+  it("threads the popup nonce into the issued state", async () => {
+    const app = new Elysia().use(
+      createGithubRoutes({
+        authenticate: async () => ({
+          user: { id: "user_123" },
+          organizationId: "org_123",
+        }),
+        service: createBaseService(true),
+      })
+    )
+    const response = await app.handle(
+      new Request(
+        "http://localhost/integrations/github/install/start?popup=1&popupNonce=start-nonce"
+      )
+    )
+
+    expect(response.status).toBe(302)
+    const location = new URL(response.headers.get("location") ?? "")
+    const state = location.searchParams.get("state") ?? ""
+    expect(peekPopupIntent(state)).toEqual({
+      popup: true,
+      popupNonce: "start-nonce",
+    })
+  })
 })
 
 describe("githubRoutes", () => {

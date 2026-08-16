@@ -24,6 +24,7 @@ export type StackUpsertInput = {
   framework?: string | null
   frameworkVersion?: string | null
   buildCommand?: string | null
+  startCommand?: string | null
   dockerfileDetected: boolean
   primaryEngine?: string | null
   primaryEngineVersion?: string | null
@@ -146,6 +147,8 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
     const buildMetadata: Record<string, unknown> = {}
     if (input.frameworkVersion != null)
       buildMetadata.frameworkVersion = input.frameworkVersion
+    if (input.startCommand != null)
+      buildMetadata.startCommand = input.startCommand
     if (input.primaryEngine != null)
       buildMetadata.primaryEngine = input.primaryEngine
     if (input.primaryEngineVersion != null)

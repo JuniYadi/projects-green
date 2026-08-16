@@ -25,6 +25,8 @@ const session = (
   workosUserId: "user-1",
   status: AiDeploymentSessionStatus.COLLECTING,
   sourceType: AiDeploymentSourceType.SOURCE,
+  stackId: null,
+  deploymentId: null,
   currentPlanVersion: 1,
   currentPlanHash: null,
   plan: null,
