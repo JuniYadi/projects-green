@@ -4,24 +4,16 @@ import type {
   InvoiceListItem,
   InvoiceStatus,
 } from "@/modules/invoices/invoices.types"
+import { RENEWAL_LADDER, calendarDaysUntil } from "./renewal/renewal-ladder"
 
-const ISSUE_WINDOW_DAYS = 7
+const ISSUE_WINDOW_DAYS = RENEWAL_LADDER.invoiceDaysBeforeDue
 const OVERDUE_GRACE_DAYS = 14
-const PAYMENT_REMINDER_DAYS = [3, 1]
+const PAYMENT_REMINDER_DAYS = RENEWAL_LADDER.reminderDaysBeforeDue
 
-function calendarDaysUntil(dueAt: Date, now: Date): number {
-  const dueDate = Date.UTC(
-    dueAt.getUTCFullYear(),
-    dueAt.getUTCMonth(),
-    dueAt.getUTCDate()
-  )
-  const currentDate = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate()
-  )
-  return Math.round((dueDate - currentDate) / (24 * 60 * 60 * 1000))
-}
+// ponytail: OVERDUE_GRACE_DAYS stays local — it flags the invoice document,
+// not the subscription. Subscription suspend/terminate is the coordinator's
+// job via RENEWAL_LADDER. Merge the two only if product decides an overdue
+// invoice and a suspended subscription must share one deadline.
 
 const PRISMA_STATUS_TO_EMAIL_STATUS: Record<string, InvoiceStatus> = {
   DRAFT: "draft",
