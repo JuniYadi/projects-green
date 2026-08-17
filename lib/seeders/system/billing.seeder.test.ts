@@ -3,15 +3,17 @@ import { beforeEach, describe, expect, it, mock } from "bun:test"
 // ── Prisma mock ────────────────────────────────────────────────────────────
 // Mocks must be set up before the module import below.
 
-const serviceRegionFindUnique = mock(async () => null)
+const serviceRegionFindUnique = mock(async (_args?: unknown) => null as unknown)
 const serviceRegionCreate = mock(async (args: { data: unknown }) => args.data)
 const serviceRegionUpdate = mock(async (args: { data: unknown }) => args.data)
 
-const servicePackageFindUnique = mock(async () => null)
+const servicePackageFindUnique = mock(
+  async (_args?: unknown) => null as unknown
+)
 const servicePackageCreate = mock(async (args: { data: unknown }) => args.data)
 const servicePackageUpdate = mock(async (args: { data: unknown }) => args.data)
 
-const servicePlanFindFirst = mock(async () => null)
+const servicePlanFindFirst = mock(async (_args?: unknown) => null as unknown)
 const servicePlanCreate = mock(async (args: { data: unknown }) => args.data)
 const servicePlanUpdate = mock(async (args: { data: unknown }) => args.data)
 
@@ -93,15 +95,18 @@ function resetMocks() {
   billingAccountFindMany.mockClear()
 
   // regions and packages already exist → update path
-  serviceRegionFindUnique.mockImplementation(
-    async ({ where }: { where: { code: string } }) => makeRegion(where.code)
-  )
-  servicePackageFindUnique.mockImplementation(
-    async ({ where }: { where: { code: string } }) => makePackage(where.code)
-  )
-  servicePlanFindFirst.mockImplementation(
-    async ({ where }: { where: { code: string } }) => makePlan(where.code)
-  )
+  serviceRegionFindUnique.mockImplementation(async (args: unknown) => {
+    const { where } = args as { where: { code: string } }
+    return makeRegion(where.code)
+  })
+  servicePackageFindUnique.mockImplementation(async (args: unknown) => {
+    const { where } = args as { where: { code: string } }
+    return makePackage(where.code)
+  })
+  servicePlanFindFirst.mockImplementation(async (args: unknown) => {
+    const { where } = args as { where: { code: string } }
+    return makePlan(where.code)
+  })
   servicePricingFindFirst.mockResolvedValue(null) // always create pricings
   billingAccountFindMany.mockResolvedValue([])
 }
@@ -138,9 +143,10 @@ describe("BillingSeeder", () => {
     })
 
     it("updates regions that already exist", async () => {
-      serviceRegionFindUnique.mockImplementation(
-        async ({ where }: { where: { code: string } }) => makeRegion(where.code)
-      )
+      serviceRegionFindUnique.mockImplementation(async (args: unknown) => {
+        const { where } = args as { where: { code: string } }
+        return makeRegion(where.code)
+      })
       await new BillingSeeder().seed()
       expect(serviceRegionUpdate).toHaveBeenCalledTimes(3)
       expect(serviceRegionCreate).toHaveBeenCalledTimes(0)
