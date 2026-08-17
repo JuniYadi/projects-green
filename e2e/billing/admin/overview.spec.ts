@@ -21,22 +21,47 @@ test.describe("Portal Billing Overview (admin) @e2e/billing/admin/overview", () 
       page.getByRole("heading", { name: /Billing Overview/i })
     ).toBeVisible()
 
-    // Platform stat cards
-    await expect(page.getByText(/Total Balance/i)).toBeVisible()
-    await expect(page.getByText(/Active Orgs/i)).toBeVisible()
-    await expect(page.getByText(/Monthly Spend/i)).toBeVisible()
+    // Platform stat cards — each renders a numeric value, not just the label
+    for (const label of [
+      "Total Balance",
+      "Active Orgs",
+      "Total Spend (Month)",
+      "Low Balance Orgs",
+    ]) {
+      const statCard = page
+        .getByText(label, { exact: true })
+        .locator("xpath=../..")
+      await expect(statCard).toBeVisible()
+      await expect(statCard).toContainText(/\d/)
+    }
   })
 
   test("UC-2: org table is searchable and browseable", async ({ page }) => {
-    // Org summary table should exist
-    const orgTable = page.locator("table")
+    // Org summary table should exist, with expected columns
+    const orgTable = page.getByRole("table")
     await expect(orgTable).toBeVisible()
+    for (const header of [
+      "Organization",
+      "Owner",
+      "Members",
+      "Balance",
+      "Subscriptions",
+      "Monthly Spend",
+    ]) {
+      await expect(
+        orgTable.getByRole("columnheader", { name: header })
+      ).toBeVisible()
+    }
 
-    // Search input exists
-    const searchInput = page
-      .getByPlaceholder(/search/i)
-      .or(page.getByRole("textbox", { name: /search/i }))
-    await expect(searchInput).toBeVisible()
+    // Two search inputs: server-side org search, and client-side filter
+    // over already-loaded orgs
+    await expect(page.getByPlaceholder(/search organizations/i)).toBeVisible()
+    await expect(
+      page.getByPlaceholder(/search loaded organizations/i)
+    ).toBeVisible()
+
+    // Currency filter
+    await expect(page.getByRole("combobox")).toBeVisible()
   })
 
   test("UC-3: clicking org row navigates to org billing detail", async ({
