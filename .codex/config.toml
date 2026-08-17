@@ -1,3 +1,16 @@
-[mcp_servers.e2e_browser]
+# Mirrors .mcp.json.example's user/admin split: attach to a Chrome you've
+# already logged into as that role (chrome --remote-debugging-port=9222/9223),
+# so codex reuses the real session instead of re-running WorkOS OAuth.
+[mcp_servers.user_browser]
 command = "bunx"
-args = ["-y", "chrome-devtools-mcp@latest", "--isolated=true", "--headless=true"]
+args = ["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics", "--browser-url", "http://localhost:9222"]
+
+[mcp_servers.admin_browser]
+command = "bunx"
+args = ["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics", "--browser-url", "http://localhost:9223"]
+
+# No auth required (landing, /login itself) — isolated headless profile, no
+# manual Chrome setup needed. Safe default for CI.
+[mcp_servers.public_browser]
+command = "bunx"
+args = ["-y", "chrome-devtools-mcp@latest", "--no-usage-statistics", "--isolated=true", "--headless=true"]
