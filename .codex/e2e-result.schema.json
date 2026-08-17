@@ -1,0 +1,20 @@
+{
+  "type": "object",
+  "required": ["passed", "steps"],
+  "properties": {
+    "passed": { "type": "boolean" },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["action"],
+        "properties": {
+          "action": { "type": "string" },
+          "selector": { "type": "string" },
+          "value": { "type": "string" }
+        }
+      }
+    },
+    "failure_reason": { "type": "string" }
+  }
+}
