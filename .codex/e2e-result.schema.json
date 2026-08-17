@@ -1,7 +1,7 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["passed", "steps", "failure_reason"],
+  "required": ["passed", "steps", "failure_reason", "playwright_spec"],
   "properties": {
     "passed": { "type": "boolean" },
     "steps": {
@@ -17,6 +17,10 @@
         }
       }
     },
-    "failure_reason": { "type": ["string", "null"] }
+    "failure_reason": { "type": ["string", "null"] },
+    "playwright_spec": {
+      "type": ["string", "null"],
+      "description": "Complete @playwright/test spec file (TypeScript) reproducing every verified step"
+    }
   }
 }
