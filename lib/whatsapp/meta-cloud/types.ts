@@ -3,7 +3,7 @@ export type SendMessageInputBase = {
 }
 
 export type SendTextPayload = {
-  text: string
+  body: string
 }
 
 export type SendTemplatePayload = {

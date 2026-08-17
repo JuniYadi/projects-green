@@ -153,6 +153,7 @@ const mockPrisma = {
 
 const mockDeviceClient = {
   sendMessage: mock(async () => ({ providerMessageId: "wa-msg-123" })),
+  sendReply: mock(async () => ({ providerMessageId: "wa-msg-123" })),
   sendTemplateMessage: mock(async () => ({ providerMessageId: "wa-tmpl-123" })),
 }
 
@@ -174,7 +175,8 @@ mock.module("@/lib/queue/whatsapp-broadcast", () => ({
 
 // Import after mocks
 const { messageService } = await import("./messages.service")
-const { WhatsappSendFailedError } = await import("./messages.errors")
+const { WhatsappSendFailedError, WhatsappSessionWindowClosedError } =
+  await import("./messages.errors")
 const { InsufficientQuotaError } = await import("./quota.service")
 
 const mockDevice = {
@@ -238,6 +240,7 @@ describe("messageService", () => {
     mockTx.billingInvoice.update.mockClear()
     mockTx.billingInvoiceLine.create.mockClear()
     mockDeviceClient.sendMessage.mockClear()
+    mockDeviceClient.sendReply.mockClear()
     mockDeviceClient.sendTemplateMessage.mockClear()
     mockEnqueue.mockClear()
 
@@ -256,7 +259,11 @@ describe("messageService", () => {
     mockPrisma.whatsappDevice.updateMany.mockResolvedValue({ count: 1 } as any)
     mockPrisma.whatsappDevice.update.mockResolvedValue({} as any)
     mockPrisma.whatsappMonthlyCount.findFirst.mockResolvedValue(null) // 0 usage
-    mockPrisma.whatsappConversation.findFirst.mockResolvedValue(null)
+    mockPrisma.whatsappConversation.findFirst.mockResolvedValue({
+      id: "conv-1",
+      lastDirection: "INBOX",
+      lastMessageAt: new Date(),
+    } as any)
     mockPrisma.whatsappConversation.create.mockResolvedValue({
       id: "conv-1",
     } as any)
@@ -340,6 +347,9 @@ describe("messageService", () => {
     mockDeviceClient.sendMessage.mockResolvedValue({
       providerMessageId: "wa-msg-123",
     })
+    mockDeviceClient.sendReply.mockResolvedValue({
+      providerMessageId: "wa-msg-123",
+    })
     mockDeviceClient.sendTemplateMessage.mockResolvedValue({
       providerMessageId: "wa-tmpl-123",
     })
@@ -354,6 +364,11 @@ describe("messageService", () => {
       expect(result).toHaveProperty("messageId")
       expect(result.waMessageId).toBe("wa-msg-123")
       expect(result.status).toBe("sent")
+      expect(mockDeviceClient.sendReply).toHaveBeenCalledWith({
+        to: "+1234567890",
+        type: "text",
+        payload: { body: "Hello world" },
+      })
     })
 
     it("checks quota before sending", async () => {
@@ -393,6 +408,23 @@ describe("messageService", () => {
       await expect(sendMessageTestHelper()).rejects.toThrow(
         "WhatsApp device not found"
       )
+    })
+
+    it("rejects outside the customer service window before billing or Meta", async () => {
+      mockPrisma.whatsappConversation.findFirst.mockResolvedValue({
+        id: "conv-1",
+        lastDirection: "OUTBOX",
+        lastMessageAt: new Date(),
+      } as any)
+
+      await expect(sendMessageTestHelper()).rejects.toBeInstanceOf(
+        WhatsappSessionWindowClosedError
+      )
+
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled()
+      expect(mockDeviceClient.sendReply).not.toHaveBeenCalled()
+      expect(mockDeviceClient.sendMessage).not.toHaveBeenCalled()
+      expect(mockPrisma.whatsappMessage.create).not.toHaveBeenCalled()
     })
 
     it("deducts quota after sending", async () => {
@@ -449,13 +481,12 @@ describe("messageService", () => {
         caption: "Image caption",
       })
 
-      expect(mockDeviceClient.sendMessage).toHaveBeenCalledWith({
+      expect(mockDeviceClient.sendReply).toHaveBeenCalledWith({
         to: "+1234567890",
         type: "image",
         payload: {
           link: "https://example.com/image.jpg",
           caption: "Image caption",
-          filename: undefined,
         },
       })
       expect(mockPrisma.whatsappMessage.create).toHaveBeenCalledWith(
@@ -501,7 +532,7 @@ describe("messageService", () => {
     })
 
     it("throws and records a failed status when Meta API fails", async () => {
-      mockDeviceClient.sendMessage.mockRejectedValue(new Error("API Error"))
+      mockDeviceClient.sendReply.mockRejectedValue(new Error("API Error"))
 
       await expect(sendMessageTestHelper()).rejects.toBeInstanceOf(
         WhatsappSendFailedError
@@ -526,17 +557,45 @@ describe("messageService", () => {
       expect(mockPrisma.billingUsageLedger.create).not.toHaveBeenCalled()
     })
 
-    it("creates conversation if not exists", async () => {
+    it("rejects when Meta does not return a provider message ID", async () => {
+      mockDeviceClient.sendReply.mockResolvedValue({
+        providerMessageId: undefined,
+      } as any)
+
+      await expect(sendMessageTestHelper()).rejects.toMatchObject({
+        name: "WhatsappSendFailedError",
+        message: "Meta Cloud API returned no message ID",
+      })
+
+      expect(mockPrisma.whatsappMessage.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            statusHistory: {
+              create: expect.objectContaining({
+                status: "FAILED",
+                error: "Meta Cloud API returned no message ID",
+              }),
+            },
+          }),
+        })
+      )
+    })
+
+    it("does not create a conversation when the session window is closed", async () => {
       mockPrisma.whatsappConversation.findFirst.mockResolvedValue(null)
 
-      await sendMessageTestHelper()
+      await expect(sendMessageTestHelper()).rejects.toBeInstanceOf(
+        WhatsappSessionWindowClosedError
+      )
 
-      expect(mockPrisma.whatsappConversation.create).toHaveBeenCalled()
+      expect(mockPrisma.whatsappConversation.create).not.toHaveBeenCalled()
     })
 
     it("uses existing conversation if found", async () => {
       mockPrisma.whatsappConversation.findFirst.mockResolvedValue({
         id: "existing-conv",
+        lastDirection: "INBOX",
+        lastMessageAt: new Date(),
       } as any)
 
       await sendMessageTestHelper()
@@ -580,7 +639,7 @@ describe("messageService", () => {
 
       expect(result.status).toBe("sent")
       expect(result.waMessageId).toBe("wa-msg-123")
-      expect(mockDeviceClient.sendMessage).toHaveBeenCalled()
+      expect(mockDeviceClient.sendReply).toHaveBeenCalled()
       expect(mockTx.billingAdjustment.create).not.toHaveBeenCalled()
     })
 
@@ -595,7 +654,7 @@ describe("messageService", () => {
       const result = await sendMessageTestHelper()
 
       expect(result.status).toBe("sent")
-      expect(mockDeviceClient.sendMessage).toHaveBeenCalled()
+      expect(mockDeviceClient.sendReply).toHaveBeenCalled()
       // billingAdjustment.create is called inside the $transaction (via debitServiceBalance)
       expect(mockTx.billingAdjustment.create).toHaveBeenCalled()
     })
@@ -618,6 +677,7 @@ describe("messageService", () => {
       } as any)
 
       await expect(sendMessageTestHelper()).rejects.toThrow()
+      expect(mockDeviceClient.sendReply).not.toHaveBeenCalled()
       expect(mockDeviceClient.sendMessage).not.toHaveBeenCalled()
     })
 
@@ -645,7 +705,7 @@ describe("messageService", () => {
     })
 
     it("restores allowance when Meta API fails after allowance was consumed", async () => {
-      mockDeviceClient.sendMessage.mockRejectedValue(new Error("API Error"))
+      mockDeviceClient.sendReply.mockRejectedValue(new Error("API Error"))
 
       await expect(sendMessageTestHelper()).rejects.toBeInstanceOf(
         WhatsappSendFailedError
@@ -676,7 +736,7 @@ describe("messageService", () => {
         addonQuota: new Prisma.Decimal("0"),
       } as any)
 
-      mockDeviceClient.sendMessage.mockRejectedValue(new Error("API Error"))
+      mockDeviceClient.sendReply.mockRejectedValue(new Error("API Error"))
 
       await expect(sendMessageTestHelper()).rejects.toBeInstanceOf(
         WhatsappSendFailedError
@@ -701,6 +761,8 @@ describe("messageService", () => {
       )
       mockPrisma.whatsappConversation.findFirst.mockResolvedValueOnce({
         id: "conv-1",
+        lastDirection: "INBOX",
+        lastMessageAt: new Date(),
       } as any)
 
       const result = await messageService.sendMessage({

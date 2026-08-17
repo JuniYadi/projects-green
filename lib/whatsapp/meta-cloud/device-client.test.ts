@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { WhatsAppDeviceClient } from "./device-client"
+
+mock.module("@/modules/whatsapp/rate-limit/rate-limit.service", () => ({
+  apiCallTracker: { recordCall: mock(async () => {}) },
+}))
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -25,6 +28,8 @@ mock.module("../crypto", () => ({
   decryptWhatsAppToken: async (token: string) => token,
 }))
 
+const { WhatsAppDeviceClient } = await import("./device-client")
+
 function createClient() {
   return new WhatsAppDeviceClient({
     accessToken: "mock-token",
@@ -32,6 +37,36 @@ function createClient() {
     wabaId: "waba-1",
   })
 }
+
+describe("WhatsAppDeviceClient message methods", () => {
+  beforeEach(() => {
+    mockRequest.mockClear()
+  })
+
+  it("sends an in-window text reply with Meta's body payload", async () => {
+    const client = createClient()
+
+    const result = await client.sendReply({
+      to: "628123456789",
+      type: "text",
+      payload: { body: "Hello" },
+    })
+
+    expect(result.providerMessageId).toBe("wamid.mock")
+    expect(mockRequest).toHaveBeenCalledWith(
+      "SEND_REPLY",
+      expect.any(String),
+      "POST",
+      {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: "628123456789",
+        type: "text",
+        text: { body: "Hello" },
+      }
+    )
+  })
+})
 
 // ─── Catalog tests ───────────────────────────────────────────────────────────
 

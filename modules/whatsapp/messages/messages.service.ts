@@ -30,13 +30,13 @@ import { resolveWhatsappQuotaCredit } from "./quota-credit.service"
 import {
   getWhatsappSendErrorMessage,
   WhatsappSendFailedError,
+  WhatsappSessionWindowClosedError,
 } from "./messages.errors"
 export type SendMessageResult = {
   jobId: string
   messageId: string
-  waMessageId?: string
-  status: "queued" | "sent" | "failed"
-  error?: string
+  waMessageId: string
+  status: "sent"
 }
 
 export type SendMessageType =
@@ -88,6 +88,29 @@ export type MessageService = {
   ): Promise<string>
 }
 
+const CUSTOMER_SERVICE_WINDOW_MS = 24 * 60 * 60 * 1000
+
+async function assertCustomerServiceWindowOpen(
+  organizationId: string,
+  phoneNumber: string
+) {
+  const conversation = await prisma.whatsappConversation.findFirst({
+    where: { organizationId, contactPhone: phoneNumber },
+    select: { lastDirection: true, lastMessageAt: true },
+  })
+
+  const windowStart = new Date(Date.now() - CUSTOMER_SERVICE_WINDOW_MS)
+  const isOpen =
+    conversation?.lastDirection === "INBOX" &&
+    conversation.lastMessageAt !== null &&
+    conversation.lastMessageAt !== undefined &&
+    conversation.lastMessageAt > windowStart
+
+  if (!isOpen) {
+    throw new WhatsappSessionWindowClosedError()
+  }
+}
+
 export const messageService: MessageService = {
   async sendMessage(options) {
     const {
@@ -119,6 +142,8 @@ export const messageService: MessageService = {
     if (!device) {
       throw new Error("WhatsApp device not found")
     }
+
+    await assertCustomerServiceWindowOpen(organizationId, phoneNumber)
 
     // Initialize billing services
     const balanceGate = new BalanceGateService(prisma)
@@ -216,45 +241,65 @@ export const messageService: MessageService = {
     try {
       const result =
         type === "text"
-          ? await client.sendMessage({
+          ? await client.sendReply({
               to: phoneNumber,
               type: "text",
-              payload: { text: message ?? "" },
+              payload: { body: message ?? "" },
             })
-          : type === "location"
-            ? await client.sendMessage({
+          : type === "image"
+            ? await client.sendReply({
                 to: phoneNumber,
-                type: "location",
+                type: "image",
                 payload: {
-                  latitude: latitude ?? 0,
-                  longitude: longitude ?? 0,
-                  name,
-                  address,
+                  link: mediaUrl ?? "",
+                  caption,
                 },
               })
             : type === "document"
-              ? await client.sendMessage({
+              ? await client.sendReply({
                   to: phoneNumber,
                   type: "document",
-                  payload: { link: mediaUrl ?? "", caption, filename },
+                  payload: {
+                    link: mediaUrl ?? "",
+                    caption,
+                    filename,
+                  },
                 })
-              : type === "audio"
+              : type === "location"
                 ? await client.sendMessage({
                     to: phoneNumber,
-                    type: "audio",
-                    payload: { link: mediaUrl ?? "" },
+                    type: "location",
+                    payload: {
+                      latitude: latitude ?? 0,
+                      longitude: longitude ?? 0,
+                      name,
+                      address,
+                    },
                   })
-                : type === "interactive"
+                : type === "audio"
                   ? await client.sendMessage({
                       to: phoneNumber,
-                      type: "interactive",
-                      payload: (interactivePayload ?? {}) as InteractivePayload,
+                      type: "audio",
+                      payload: { link: mediaUrl ?? "" },
                     })
-                  : await client.sendMessage({
-                      to: phoneNumber,
-                      type,
-                      payload: { link: mediaUrl ?? "", caption },
-                    })
+                  : type === "interactive"
+                    ? await client.sendMessage({
+                        to: phoneNumber,
+                        type: "interactive",
+                        payload: (interactivePayload ??
+                          {}) as InteractivePayload,
+                      })
+                    : await client.sendMessage({
+                        to: phoneNumber,
+                        type,
+                        payload: { link: mediaUrl ?? "", caption },
+                      })
+      if (
+        typeof result.providerMessageId !== "string" ||
+        result.providerMessageId.length === 0
+      ) {
+        throw new Error("Meta Cloud API returned no message ID")
+      }
       waMessageId = result.providerMessageId
     } catch (err) {
       console.error("[messageService] Failed to send via Meta API:", err)
@@ -483,11 +528,18 @@ export const messageService: MessageService = {
       throw new WhatsappSendFailedError(sendFailure, whatsappMessage.id)
     }
 
+    if (!waMessageId) {
+      throw new WhatsappSendFailedError(
+        "Meta Cloud API returned no message ID",
+        whatsappMessage.id
+      )
+    }
+
     return {
       jobId,
       messageId: whatsappMessage.id,
       waMessageId,
-      status: waMessageId ? "sent" : "queued",
+      status: "sent",
     }
   },
   async sendTemplateMessage(options: SendTemplateMessageOptions) {
@@ -610,6 +662,12 @@ export const messageService: MessageService = {
         templateLanguage,
         fields: fields ?? [],
       })
+      if (
+        typeof result.providerMessageId !== "string" ||
+        result.providerMessageId.length === 0
+      ) {
+        throw new Error("Meta Cloud API returned no message ID")
+      }
       waMessageId = result.providerMessageId
     } catch (err) {
       console.error(
@@ -828,11 +886,18 @@ export const messageService: MessageService = {
       throw new WhatsappSendFailedError(sendFailure, whatsappMessage.id)
     }
 
+    if (!waMessageId) {
+      throw new WhatsappSendFailedError(
+        "Meta Cloud API returned no message ID",
+        whatsappMessage.id
+      )
+    }
+
     return {
       jobId,
       messageId: whatsappMessage.id,
       waMessageId,
-      status: waMessageId ? "sent" : "queued",
+      status: "sent",
     }
   },
 

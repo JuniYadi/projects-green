@@ -624,7 +624,7 @@ export default function WhatsAppMessagesPage() {
   const sendMutation = useMutation({
     mutationFn: whatsappClient.messages.sendTemplate,
     onSuccess: async (data, variables) => {
-      toast.success("Template message queued for delivery")
+      toast.success("Template message sent")
       setSendDialogOpen(false)
       setSendDeviceId(hasSingleActiveDevice ? (activeDevices[0]?.id ?? "") : "")
       setSelectedTemplateId("")

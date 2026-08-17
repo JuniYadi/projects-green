@@ -1,5 +1,23 @@
 import { Prisma } from "@prisma/client"
 
+export type WhatsappSendResultDTO = {
+  jobId: string
+  messageId: string
+  waMessageId: string
+  status: "sent"
+}
+
+export function toWhatsappSendResultDTO(
+  result: WhatsappSendResultDTO
+): WhatsappSendResultDTO {
+  return {
+    jobId: result.jobId,
+    messageId: result.messageId,
+    waMessageId: result.waMessageId,
+    status: "sent",
+  }
+}
+
 export type WhatsappMessageStatusDTO = Pick<
   Prisma.WhatsappMessageStatusGetPayload<Prisma.WhatsappMessageStatusDefaultArgs>,
   "id" | "status" | "timestamp" | "error" | "createdAt"

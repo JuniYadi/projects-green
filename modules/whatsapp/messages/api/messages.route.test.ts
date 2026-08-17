@@ -32,7 +32,9 @@ const mockMessageService = {
   })),
   sendTemplateMessage: mock(async () => ({
     ok: true,
+    jobId: "job-template-1",
     messageId: "mock-id",
+    waMessageId: "wa-template-1",
     status: "sent",
   })),
 }
@@ -54,12 +56,18 @@ mock.module("@/modules/whatsapp/audit/whatsapp-audit.service", () => ({
 import { describe, expect, it, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
 import { setMockAuthContext } from "@/lib/whatsapp/__tests__/auth-mock"
-import { InsufficientQuotaError } from "../quota.service"
 import {
   InsufficientBalanceError,
   QuotaExceededError,
   DailyLimitExceededError,
 } from "@/modules/billing/types"
+
+class InsufficientQuotaError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "InsufficientQuotaError"
+  }
+}
 
 mock.module("@/modules/whatsapp/messages/quota.service", () => ({
   InsufficientQuotaError,
@@ -78,7 +86,8 @@ mock.module("@/lib/auth/resolve-proxy-auth", () => ({
 }))
 
 const { messagesRoutes } = await import("./messages.route")
-const { WhatsappSendFailedError } = await import("../messages.errors")
+const { WhatsappSendFailedError, WhatsappSessionWindowClosedError } =
+  await import("../messages.errors")
 
 const createTestApp = () => new Elysia().use(messagesRoutes).compile()
 
@@ -147,6 +156,8 @@ describe("messagesRoutes", () => {
     mockMessageService.sendTemplateMessage.mockResolvedValue({
       ok: true,
       messageId: "mock-id",
+      jobId: "job-template-1",
+      waMessageId: "wa-template-1",
       status: "sent",
     })
   })
@@ -314,6 +325,40 @@ describe("messagesRoutes", () => {
           action: "MESSAGE_FAILED",
           status: "FAILED",
           errorMessage: "Recipient is outside the 24-hour window",
+        })
+      )
+    })
+
+    it("requires a template outside the customer service window", async () => {
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new WhatsappSessionWindowClosedError()
+      )
+
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            message: "Hello",
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(422)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "WHATSAPP_TEMPLATE_REQUIRED",
+        message:
+          "Template required outside the 24-hour customer service window. " +
+          "Use /messages/send-template.",
+      })
+      expect(mockLogAuditEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "MESSAGE_FAILED",
+          status: "FAILED",
+          errorMessage: expect.stringContaining("Template required"),
         })
       )
     })
