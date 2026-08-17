@@ -57,10 +57,12 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
   {
     name: "whatsapp-organization-api-keys",
     sourcePrefixes: [
+      "app/[lang]/console/whatsapp/api-keys/page.tsx",
       "app/[lang]/portal/whatsapp/page.tsx",
       "modules/admin/api/admin.route.ts",
       "modules/whatsapp/api/organization-api-key-hono.ts",
       "modules/whatsapp/organization-api-keys/",
+      "modules/whatsapp/whatsapp.module.ts",
       "prisma/seeds/manifest.ts",
       "scripts/dump-seed-data.ts",
     ],
