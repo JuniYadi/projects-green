@@ -25,8 +25,11 @@ PROMPT="${3:?usage: scripts/e2e-agent.sh <user|admin|public> <spec-output-path> 
 FEATURE_KEY="${4:-}"
 
 case "$ROLE" in
-  user|admin|public) ;;
-  *) echo "role must be one of: user, admin, public (got: $ROLE)" >&2; exit 1 ;;
+user | admin | public) ;;
+*)
+	echo "role must be one of: user, admin, public (got: $ROLE)" >&2
+	exit 1
+	;;
 esac
 
 TOOL="${ROLE}_browser"
@@ -37,7 +40,7 @@ LOG_FILE="$(mktemp)"
 
 VAULT_INSTRUCTIONS=""
 if [ -n "$FEATURE_KEY" ]; then
-  VAULT_INSTRUCTIONS="
+	VAULT_INSTRUCTIONS="
 
 Then, following this repo's AGENTS.md Obsidian-loading procedure and the
 vault's Skill - E2E Feature Verification note, find the checklist row for
@@ -56,13 +59,13 @@ fi
 MAX_WAIT_SECS="${E2E_AGENT_TIMEOUT_SECS:-240}"
 
 codex exec \
-  --skip-git-repo-check \
-  --dangerously-bypass-approvals-and-sandbox \
-  --disable in_app_browser \
-  --disable computer_use \
-  --output-schema "$SCHEMA" \
-  --output-last-message "$RESULT_FILE" \
-  "Base URL: $BASE_URL. Using the $TOOL MCP tool, $PROMPT
+	--skip-git-repo-check \
+	--dangerously-bypass-approvals-and-sandbox \
+	--disable in_app_browser \
+	--disable computer_use \
+	--output-schema "$SCHEMA" \
+	--output-last-message "$RESULT_FILE" \
+	"Base URL: $BASE_URL. Using the $TOOL MCP tool, $PROMPT
 
 Do not stop at functional flow. Also assess UI/UX as you go: is the page's
 intent and labeling clear to someone unfamiliar with the system, is it
@@ -83,26 +86,26 @@ placeholders, that a value is present/non-empty/numeric) instead of pinning
 exact live values such as specific balances, org names, or row counts that
 will change over time — this applies whether the target was local or
 production data.${VAULT_INSTRUCTIONS}" \
-  >"$LOG_FILE" 2>&1 &
+	>"$LOG_FILE" 2>&1 &
 CODEX_PID=$!
 
 ELAPSED=0
 while kill -0 "$CODEX_PID" 2>/dev/null && [ "$ELAPSED" -lt "$MAX_WAIT_SECS" ]; do
-  sleep 5
-  ELAPSED=$((ELAPSED + 5))
+	sleep 5
+	ELAPSED=$((ELAPSED + 5))
 done
 
 if kill -0 "$CODEX_PID" 2>/dev/null; then
-  kill -9 "$CODEX_PID" 2>/dev/null
-  echo "codex exec hung past ${MAX_WAIT_SECS}s and was killed — see $LOG_FILE" >&2
-  echo "likely the in-app-browser race (AGENTS.md) rather than the target page — just retry" >&2
-  exit 1
+	kill -9 "$CODEX_PID" 2>/dev/null
+	echo "codex exec hung past ${MAX_WAIT_SECS}s and was killed — see $LOG_FILE" >&2
+	echo "likely the in-app-browser race (AGENTS.md) rather than the target page — just retry" >&2
+	exit 1
 fi
 wait "$CODEX_PID" 2>/dev/null || true
 
 if [ ! -s "$RESULT_FILE" ]; then
-  echo "codex produced no result — see $LOG_FILE" >&2
-  exit 1
+	echo "codex produced no result — see $LOG_FILE" >&2
+	exit 1
 fi
 
 PASSED="$(jq -r '.passed' "$RESULT_FILE")"
@@ -115,6 +118,6 @@ echo "--- ui_ux_notes ---"
 jq -r '.ui_ux_notes' "$RESULT_FILE"
 
 if [ "$PASSED" != "true" ]; then
-  jq -r '.failure_reason' "$RESULT_FILE" >&2
-  exit 1
+	jq -r '.failure_reason' "$RESULT_FILE" >&2
+	exit 1
 fi

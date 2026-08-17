@@ -1,7 +1,14 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["passed", "steps", "failure_reason", "playwright_spec", "vault_update", "ui_ux_notes"],
+  "required": [
+    "passed",
+    "steps",
+    "failure_reason",
+    "playwright_spec",
+    "vault_update",
+    "ui_ux_notes"
+  ],
   "properties": {
     "passed": { "type": "boolean" },
     "steps": {

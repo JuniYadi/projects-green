@@ -36,7 +36,7 @@ test.describe("Portal Billing Overview (admin) @e2e/billing/admin/overview", () 
     }
   })
 
-  test("UC-2: org table is searchable and browseable", async ({ page }) => {
+  test("UC-2: org table is searchable and browsable", async ({ page }) => {
     // Org summary table should exist, with expected columns
     const orgTable = page.getByRole("table")
     await expect(orgTable).toBeVisible()
