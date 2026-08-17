@@ -37,9 +37,8 @@ export async function verifyWhatsappOrganizationApiKey(
     return null
   }
 
-  const salt = getApiKeyHashSalt()
-
   try {
+    const salt = getApiKeyHashSalt()
     const keyHash = await hashApiKey(
       rawKey.slice(WHATSAPP_ORGANIZATION_API_KEY_PREFIX.length),
       salt

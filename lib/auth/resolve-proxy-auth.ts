@@ -15,6 +15,8 @@ import {
   extractBearerToken,
 } from "@/lib/auth/session"
 import type { AuthContext, WorkOSScope } from "@/lib/auth/types"
+import { isWellFormedWhatsappOrganizationApiKey } from "@/modules/whatsapp/organization-api-keys/organization-api-key.crypto"
+import { verifyWhatsappOrganizationApiKey } from "@/modules/whatsapp/organization-api-keys/organization-api-key.verifier"
 
 export type AuthSource = "proxy_header" | "direct_cookie" | "api_key"
 
@@ -156,13 +158,42 @@ export const resolveAuthContext = async (
     console.error("[auth] direct cookie resolution failed", err)
   }
 
-  // 3. Static API key (Bearer "live_xxx" / "test_xxx")
+  // 3. WhatsApp organization API key (Bearer "wa_live_xxx") — org-scoped,
+  // member-level only. Deliberately mapped with scopes: [] so it can never
+  // satisfy requireTenantAdmin/requireSuperAdmin (both gate on scopes
+  // containing "platform:admin" or "*") — this is a self-service credential
+  // an org owner generates for themselves, not a platform-admin-grantable
+  // one like a "live_"/"test_" AuthApiKey can be.
   const bearerToken = extractBearerToken(request)
   if (bearerToken && !bearerToken.startsWith("wos_")) {
     const clientIp =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
       request.headers.get("cf-connecting-ip")?.trim() ??
       null
+
+    if (isWellFormedWhatsappOrganizationApiKey(bearerToken)) {
+      const orgKeyScope = await verifyWhatsappOrganizationApiKey(bearerToken, {
+        clientIp,
+        userAgent: request.headers.get("user-agent"),
+      })
+      if (orgKeyScope) {
+        console.debug(
+          "[auth] resolveAuthContext: source=api_key keyId=%s (whatsapp org key)",
+          orgKeyScope.keyId
+        )
+        return {
+          type: "platform",
+          keyId: orgKeyScope.keyId,
+          keyName: "WhatsApp organization API key",
+          organizationId: orgKeyScope.organizationId,
+          environment: "LIVE",
+          scopes: [],
+          source: "api_key",
+        }
+      }
+    }
+
+    // 4. Static API key (Bearer "live_xxx" / "test_xxx")
     const apiKeyScope = await resolveApiKey(bearerToken, clientIp ?? undefined)
     if (apiKeyScope) {
       console.debug(
@@ -173,7 +204,7 @@ export const resolveAuthContext = async (
     }
   }
 
-  // 4. No valid auth
+  // 5. No valid auth
   console.debug("[auth] resolveAuthContext: no valid auth")
   return null
 }

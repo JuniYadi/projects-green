@@ -3,8 +3,10 @@
  *
  * Resolution order:
  *  1. WorkOS sealed session (cookie OR Bearer "wos_xxx")  → WorkOS user context
- *  2. Static API key (Bearer "live_xxx" / "test_xxx")     → platform scope (no org)
- *  3. No valid auth → 401
+ *  2. WhatsApp organization API key (Bearer "wa_live_xxx") → platform scope,
+ *     scopes: [] (member-level only, org-scoped, never admin/super-admin)
+ *  3. Static API key (Bearer "live_xxx" / "test_xxx")     → platform scope (no org)
+ *  4. No valid auth → 401
  *
  * Guard functions are imported from @/lib/auth/guards and are reusable
  * across all modules.
