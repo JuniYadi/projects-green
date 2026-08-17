@@ -39,4 +39,11 @@ describe("WorkOS public redirect configuration", () => {
     expect(getWorkOSPublicOrigin()).toBeUndefined()
     expect(getWorkOSLogoutReturnTo("en")).toBeUndefined()
   })
+
+  it("returns undefined when no redirect URI is configured", () => {
+    delete process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI
+
+    expect(getWorkOSPublicOrigin()).toBeUndefined()
+    expect(getWorkOSLogoutReturnTo("en")).toBeUndefined()
+  })
 })
