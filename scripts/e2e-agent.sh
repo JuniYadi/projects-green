@@ -30,7 +30,7 @@ case "$ROLE" in
 esac
 
 TOOL="${ROLE}_browser"
-BASE_URL="${PLAYWRIGHT_BASE_URL:-http://localhost:3300}"
+BASE_URL="${PLAYWRIGHT_BASE_URL:-https://pfnapp.my.id}"
 SCHEMA="$(dirname "$0")/../.codex/e2e-result.schema.json"
 RESULT_FILE="$(mktemp)"
 LOG_FILE="$(mktemp)"
