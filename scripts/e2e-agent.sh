@@ -60,8 +60,12 @@ Then write a complete @playwright/test spec (TypeScript) reproducing every
 verified step as the 'playwright_spec' field. Use relative paths in
 page.goto() (e.g. page.goto('/en/login')), not the full base URL. Follow this
 repo's e2e conventions: test.describe with an @e2e/<domain>/<role>/<scenario>
-tag in the title, async ({ page }) test callbacks, expect() assertions
-matching only what you actually observed.${VAULT_INSTRUCTIONS}" \
+tag in the title, async ({ page }) test callbacks. Assertions must be robust
+to changing data: verify structural elements (headings, labels, input
+placeholders, that a value is present/non-empty/numeric) instead of pinning
+exact live values such as specific balances, org names, or row counts that
+will change over time — this applies whether the target was local or
+production data.${VAULT_INSTRUCTIONS}" \
   >"$LOG_FILE" 2>&1
 
 if [ ! -s "$RESULT_FILE" ]; then
