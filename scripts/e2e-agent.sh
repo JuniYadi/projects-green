@@ -6,11 +6,22 @@
 # ponytail: one codex call does exploration + spec authoring, no JSON->Playwright
 # templating engine. If flows need retries/multi-turn repair, add that then.
 #
-# Usage: scripts/e2e-agent.sh <spec-output-path> "<flow description prompt>"
+# Usage: scripts/e2e-agent.sh <role: user|admin|public> <spec-output-path> "<flow prompt>"
+#   user   -> console flows,  attaches to Chrome on :9222 (must be logged in as a user)
+#   admin  -> portal flows,   attaches to Chrome on :9223 (must be logged in as admin)
+#   public -> no-auth flows,  isolated headless profile, no setup needed
 set -euo pipefail
 
-SPEC_PATH="${1:?usage: scripts/e2e-agent.sh <spec-output-path> "<flow prompt>"}"
-PROMPT="${2:?usage: scripts/e2e-agent.sh <spec-output-path> "<flow prompt>"}"
+ROLE="${1:?usage: scripts/e2e-agent.sh <user|admin|public> <spec-output-path> "<flow prompt>"}"
+SPEC_PATH="${2:?usage: scripts/e2e-agent.sh <user|admin|public> <spec-output-path> "<flow prompt>"}"
+PROMPT="${3:?usage: scripts/e2e-agent.sh <user|admin|public> <spec-output-path> "<flow prompt>"}"
+
+case "$ROLE" in
+  user|admin|public) ;;
+  *) echo "role must be one of: user, admin, public (got: $ROLE)" >&2; exit 1 ;;
+esac
+
+TOOL="${ROLE}_browser"
 BASE_URL="${PLAYWRIGHT_BASE_URL:-http://localhost:3300}"
 SCHEMA="$(dirname "$0")/../.codex/e2e-result.schema.json"
 RESULT_FILE="$(mktemp)"
@@ -21,7 +32,7 @@ codex exec \
   --dangerously-bypass-approvals-and-sandbox \
   --output-schema "$SCHEMA" \
   --output-last-message "$RESULT_FILE" \
-  "Base URL: $BASE_URL. Using the e2e_browser MCP tool, $PROMPT
+  "Base URL: $BASE_URL. Using the $TOOL MCP tool, $PROMPT
 
 Then write a complete @playwright/test spec (TypeScript) reproducing every
 verified step as the 'playwright_spec' field. Use relative paths in
