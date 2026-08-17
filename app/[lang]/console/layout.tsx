@@ -13,6 +13,7 @@ import {
   resolveSidebarOrganization,
   resolveSidebarUser,
 } from "@/lib/sidebar-session"
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { ThunderAiHelpDrawer } from "@/modules/docs/ui/thunder-ai-help-drawer"
 import { withAuth } from "@workos-inc/authkit-nextjs"
@@ -39,6 +40,7 @@ export default async function ConsoleLayout({
 }>) {
   const { lang } = await params
   const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
   const functionalIdentity = readFunctionalTestIdentity(await headers())
   const auth = functionalIdentity ?? (await withAuth({ ensureSignedIn: true }))
   const consolePath = localizePathname({ pathname: "/console", locale })
@@ -138,6 +140,7 @@ export default async function ConsoleLayout({
             formattedBalance={balanceGate.formattedBalance}
             topupUrl={topupPath}
             isZero={balanceGate.isZero}
+            messages={messages.console.billing.balanceGate}
           />
         ) : null}
         {children}

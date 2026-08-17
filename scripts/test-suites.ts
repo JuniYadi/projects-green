@@ -85,6 +85,12 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     ],
     smokeProjects: ["smoke-portal"],
   },
+  {
+    name: "i18n",
+    sourcePrefixes: ["lib/i18n/"],
+    testPrefixes: ["lib/i18n/messages.test.ts"],
+    smokeProjects: [],
+  },
 ]
 
 export const SHARED_UI_PREFIXES = [

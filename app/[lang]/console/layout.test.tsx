@@ -68,6 +68,20 @@ mock.module("@/lib/platform-role", () => {
   }
 })
 
+mock.module("next/headers", () => ({
+  headers: mock(async () => new Headers()),
+}))
+
+mock.module("@/modules/billing/billing-account.service", () => ({
+  ensureBillingAccountForOrg: mock(async () => ({
+    balance: {
+      lt: () => false,
+      lte: () => false,
+    },
+    currency: "IDR",
+  })),
+}))
+
 mock.module("@/components/app-sidebar", () => {
   return {
     AppSidebar: ({

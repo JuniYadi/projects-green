@@ -75,6 +75,9 @@ export const enMessages: AppMessages = {
       unavailable: "Unavailable",
       noInvoicesYet: "No invoices yet",
       awaitingResponse: "Awaiting response",
+      accountAge: "Account age: {age}",
+      period: "Period: {period}",
+      status: "Status: {status}",
     },
     organization: {
       heading: "Organization Settings",
@@ -105,6 +108,16 @@ export const enMessages: AppMessages = {
       lowBalanceWarning:
         "Your balance is running low. Top up to avoid service interruption.",
       failedToLoadBalance: "Failed to load balance",
+      balanceGate: {
+        zeroTitle: "No balance available",
+        lowTitle: "Low balance",
+        description:
+          "Your balance is {balance}. Top up before purchasing a package or your purchase will be declined.",
+        topUp: "Top up",
+        topUpLabel: "Top up balance",
+        dismissLabel: "Dismiss alert",
+        dismissTitle: "Dismiss",
+      },
       topUpHeading: "Top Up Balance",
       topUpDescription:
         "Add funds to your billing account. Choose your preferred payment method.",

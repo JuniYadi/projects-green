@@ -71,6 +71,9 @@ export type AppMessages = {
       unavailable: string
       noInvoicesYet: string
       awaitingResponse: string
+      accountAge: string
+      period: string
+      status: string
     }
     organization: {
       heading: string
@@ -99,6 +102,15 @@ export type AppMessages = {
       noInvoices: string
       lowBalanceWarning: string
       failedToLoadBalance: string
+      balanceGate: {
+        zeroTitle: string
+        lowTitle: string
+        description: string
+        topUp: string
+        topUpLabel: string
+        dismissLabel: string
+        dismissTitle: string
+      }
       topUpHeading: string
       topUpDescription: string
       topUpDetails: string
