@@ -215,6 +215,7 @@ export function WhatsappOrganizationApiKeyInventory() {
       )
     } finally {
       setBusyOrganizationId(null)
+      setPendingAction(null)
     }
   }
 

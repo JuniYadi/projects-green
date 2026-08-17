@@ -111,5 +111,9 @@ describe("WhatsappOrganizationApiKeyInventory", () => {
         )
       ).toBe(true)
     })
+
+    await waitFor(() => {
+      expect(view.queryByRole("dialog")).toBeNull()
+    })
   })
 })
