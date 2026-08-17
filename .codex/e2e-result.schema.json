@@ -1,20 +1,22 @@
 {
   "type": "object",
-  "required": ["passed", "steps"],
+  "additionalProperties": false,
+  "required": ["passed", "steps", "failure_reason"],
   "properties": {
     "passed": { "type": "boolean" },
     "steps": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["action"],
+        "additionalProperties": false,
+        "required": ["action", "selector", "value"],
         "properties": {
           "action": { "type": "string" },
-          "selector": { "type": "string" },
-          "value": { "type": "string" }
+          "selector": { "type": ["string", "null"] },
+          "value": { "type": ["string", "null"] }
         }
       }
     },
-    "failure_reason": { "type": "string" }
+    "failure_reason": { "type": ["string", "null"] }
   }
 }
