@@ -524,20 +524,30 @@ export class BillingSeeder extends BaseSeeder {
         },
       })
 
+      const isWhatsapp = pkgCode === "WHATSAPP"
+      const isBundlePackage =
+        pricing.billingMode === "PACKAGE" || pricing.type === "BUNDLE"
+
       const data = {
         planId: foundPlan.id,
         regionId: region.id,
         type: pricing.type as SubscriptionType,
         billingMode: pricing.billingMode as BillingMode,
-        billingPeriod:
-          pkgCode === "WHATSAPP" ? BillingPeriod.MONTHLY : undefined,
+        billingPeriod: isWhatsapp
+          ? BillingPeriod.MONTHLY
+          : isBundlePackage
+            ? BillingPeriod.MONTHLY
+            : undefined,
         currency: "IDR",
-        periodPrice: pkgCode === "WHATSAPP" ? 0 : undefined,
-        chargeUnit:
-          pkgCode === "WHATSAPP"
-            ? BillingChargeUnit.DEVICE
-            : BillingChargeUnit.SUBSCRIPTION,
-        isActive: pkgCode !== "WHATSAPP",
+        periodPrice: isWhatsapp
+          ? 0
+          : isBundlePackage
+            ? pricing.basePriceIdr
+            : undefined,
+        chargeUnit: isWhatsapp
+          ? BillingChargeUnit.DEVICE
+          : BillingChargeUnit.SUBSCRIPTION,
+        isActive: !isWhatsapp,
         basePriceIdr: pricing.basePriceIdr,
         monthlyCapIdr: pricing.monthlyCapIdr ?? undefined,
         unitRateCpu: pricing.unitRateCpu ?? undefined,
