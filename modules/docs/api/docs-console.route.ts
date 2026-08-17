@@ -3,8 +3,8 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 import { prisma } from "@/lib/prisma"
 
 export const createDocsConsoleRoutes = () =>
-  new Elysia()
-    .get("/docs/list", async ({ set }) => {
+  new Elysia({ prefix: "/knowledge/docs/console" })
+    .get("/list", async ({ set }) => {
       const auth = await withAuth()
       if (!auth.user) {
         set.status = 401
@@ -65,7 +65,7 @@ export const createDocsConsoleRoutes = () =>
       }
     })
     .get(
-      "/docs/search",
+      "/search",
       async ({ query, set }) => {
         const auth = await withAuth()
         if (!auth.user) {

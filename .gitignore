@@ -57,6 +57,8 @@ goals/
 docs/
 !modules/docs/
 !modules/docs/**
+!app/\[lang\]/console/docs/
+!app/\[lang\]/console/docs/**
 .mavis/
 .opencode/
 .superpowers/

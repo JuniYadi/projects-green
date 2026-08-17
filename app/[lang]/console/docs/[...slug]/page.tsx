@@ -32,7 +32,9 @@ export default function DocDetailPage() {
   const { data, isLoading } = useQuery<DocResponse>({
     queryKey: ["docs", "detail", path],
     queryFn: async () => {
-      const { data } = await eden.api.docs.get({ $query: { path } })
+      const { data } = await eden.api.knowledge.docs.get({
+        $query: { path },
+      })
       if (!data) {
         return { ok: false, message: "Failed to load documentation" } as DocResponse
       }

@@ -34,8 +34,10 @@ export default function DocsPage() {
     queryKey: ["docs", "list", debouncedSearch],
     queryFn: async () => {
       const { data } = debouncedSearch
-        ? await eden.api.docs.search.get({ $query: { q: debouncedSearch } })
-        : await eden.api.docs.list.get()
+        ? await eden.api.knowledge.docs.console.search.get({
+            $query: { q: debouncedSearch },
+          })
+        : await eden.api.knowledge.docs.console.list.get()
       if (!data?.ok) {
         return { ok: false, docs: [] }
       }

@@ -65,9 +65,11 @@ beforeEach(() => {
 })
 
 describe("docsConsoleRoutes", () => {
-  it("GET /docs/list returns docs for the organization and global", async () => {
+  it("GET /knowledge/docs/console/list returns organization and global docs", async () => {
     const app = createDocsConsoleRoutes()
-    const response = await app.handle(new Request("http://localhost/docs/list"))
+    const response = await app.handle(
+      new Request("http://localhost/knowledge/docs/console/list")
+    )
     const data = (await response.json()) as { ok: boolean; docs: unknown[] }
 
     expect(response.status).toBe(200)
@@ -76,7 +78,7 @@ describe("docsConsoleRoutes", () => {
     expect(mockFindMany).toHaveBeenCalled()
   })
 
-  it("GET /docs/search returns matching docs", async () => {
+  it("GET /knowledge/docs/console/search returns matching docs", async () => {
     mockFindMany.mockImplementationOnce(() =>
       Promise.resolve([
         {
@@ -92,7 +94,7 @@ describe("docsConsoleRoutes", () => {
 
     const app = createDocsConsoleRoutes()
     const response = await app.handle(
-      new Request("http://localhost/docs/search?q=deploy")
+      new Request("http://localhost/knowledge/docs/console/search?q=deploy")
     )
     const data = (await response.json()) as { ok: boolean; docs: unknown[] }
 
@@ -101,10 +103,10 @@ describe("docsConsoleRoutes", () => {
     expect(data.docs).toHaveLength(1)
   })
 
-  it("GET /docs/search returns empty when no query", async () => {
+  it("GET /knowledge/docs/console/search returns empty when no query", async () => {
     const app = createDocsConsoleRoutes()
     const response = await app.handle(
-      new Request("http://localhost/docs/search")
+      new Request("http://localhost/knowledge/docs/console/search")
     )
     const data = (await response.json()) as { ok: boolean; docs: unknown[] }
 
