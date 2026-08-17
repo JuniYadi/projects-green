@@ -1,7 +1,7 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["passed", "steps", "failure_reason", "playwright_spec"],
+  "required": ["passed", "steps", "failure_reason", "playwright_spec", "vault_update"],
   "properties": {
     "passed": { "type": "boolean" },
     "steps": {
@@ -21,6 +21,10 @@
     "playwright_spec": {
       "type": ["string", "null"],
       "description": "Complete @playwright/test spec file (TypeScript) reproducing every verified step"
+    },
+    "vault_update": {
+      "type": ["string", "null"],
+      "description": "Vault note path + row/field changed when a tracked feature_key was verified, per Skill - E2E Feature Verification; null if no vault tracking was requested"
     }
   }
 }
