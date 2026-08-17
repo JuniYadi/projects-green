@@ -86,11 +86,14 @@
   desktop app. When that path is slow or unresponsive it can hang the whole
   run indefinitely — near-zero CPU, no `~/.codex/sessions/**` activity, no
   `chrome-devtools-mcp` subprocess ever spawned. `scripts/e2e-agent.sh`
-  passes `--disable in_app_browser --disable computer_use` on every call to
-  force it straight to our configured MCP tool and avoid this race. If a run
-  ever looks stuck again anyway, confirm with `ps -o pid,etime,%cpu -p <pid>`
-  (near-0% CPU for minutes = hung, kill and retry) rather than assuming it's
-  just slow.
+  passes `--disable in_app_browser --disable computer_use` on every call, but
+  this did **not** reliably prevent the hang in practice (reproduced twice
+  even with both disabled) — treat it as a minor mitigation, not a fix. The
+  real safety net is a hard timeout: the wrapper backgrounds `codex exec` and
+  kills it after `E2E_AGENT_TIMEOUT_SECS` (default 240s) if it hasn't
+  finished, then fails fast so you can just retry instead of waiting
+  indefinitely. If a run ever looks stuck before that timeout hits, confirm
+  with `ps -o pid,etime,%cpu -p <pid>` (near-0% CPU for minutes = hung).
 
 ## Graphify (project-scoped, on demand)
 
