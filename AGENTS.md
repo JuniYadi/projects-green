@@ -58,6 +58,23 @@
 - `test/`: Bun test setup.
 - `scripts/`: operational scripts.
 
+## E2E verification (codex-driven)
+
+- `scripts/e2e-agent.sh <user|admin|public> <spec-path> "<flow prompt>" [feature_key]`
+  drives a real browser through an isolated `codex exec` subprocess — its MCP
+  tool calls and DOM snapshots never enter the calling agent's context, only
+  the small schema-validated result does. `.codex/config.toml` defines the
+  browser tools: `user_browser`/`admin_browser` attach to a Chrome you already
+  logged into on `:9222`/`:9223` (console/portal roles); `public_browser` is
+  an isolated headless profile for no-auth pages.
+- Pass `feature_key` to also have that same codex process update the matching
+  row on the vault's E2E checklist per `Skill - E2E Feature Verification` and
+  push — codex reads this file's Obsidian-loading steps automatically. Omit
+  it for ad-hoc checks that aren't on the tracked board.
+- Result schema: `.codex/e2e-result.schema.json` (strict JSON Schema — every
+  object needs `additionalProperties: false` and every property listed in
+  `required`, per the backend's structured-output constraints).
+
 ## Graphify (project-scoped, on demand)
 
 - Use Graphify only for a source or repository task in this repository that
