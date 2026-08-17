@@ -4,8 +4,10 @@ import userEvent from "@testing-library/user-event"
 
 import { WhatsappOrganizationApiKeyInventory } from "./organization-api-key-inventory"
 
-const mockFetch = mock(async (input: string | Request) => {
+const mutationUrls: string[] = []
+const mockFetch = mock(async (input: string | Request, init?: RequestInit) => {
   const url = typeof input === "string" ? input : input.url
+  if (init?.method === "POST") mutationUrls.push(url)
   if (url.includes("organization-api-keys")) {
     return new Response(
       JSON.stringify({
@@ -42,6 +44,7 @@ global.fetch = mockFetch as unknown as typeof fetch
 describe("WhatsappOrganizationApiKeyInventory", () => {
   beforeEach(() => {
     mockFetch.mockClear()
+    mutationUrls.length = 0
   })
 
   afterEach(() => {
@@ -77,6 +80,40 @@ describe("WhatsappOrganizationApiKeyInventory", () => {
           )
         })
       ).toBe(true)
+    })
+  })
+
+  it("opens an action confirmation before posting a rotation", async () => {
+    const user = userEvent.setup()
+    const view = render(<WhatsappOrganizationApiKeyInventory />)
+
+    await user.click(await view.findByRole("button", { name: "Rotate" }))
+
+    expect(view.getByRole("dialog")).toBeTruthy()
+    expect(view.getByText("Rotate API key?")).toBeTruthy()
+    expect(
+      view.getByText(
+        "Rotate the active API key for Org One? The old key will stop working immediately."
+      )
+    ).toBeTruthy()
+    expect(
+      mutationUrls.includes(
+        "/api/admin/whatsapp/organization-api-keys/org-1/rotate"
+      )
+    ).toBe(false)
+
+    await user.click(view.getByRole("button", { name: "Rotate" }))
+
+    await waitFor(() => {
+      expect(
+        mutationUrls.includes(
+          "/api/admin/whatsapp/organization-api-keys/org-1/rotate"
+        )
+      ).toBe(true)
+    })
+
+    await waitFor(() => {
+      expect(view.queryByRole("dialog")).toBeNull()
     })
   })
 })
