@@ -130,6 +130,10 @@ describe("DocumentationForm", () => {
       await waitFor(() => {
         expect(view.getByText(/Documentation saved/)).toBeInTheDocument()
       })
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/knowledge/docs",
+        expect.objectContaining({ method: "POST" })
+      )
     })
 
     it("shows error on server error response", async () => {

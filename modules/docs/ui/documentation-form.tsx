@@ -111,7 +111,7 @@ export function DocumentationForm({
     setIsSubmitting(true)
 
     try {
-      const response = await fetch("/api/docs", {
+      const response = await fetch("/api/knowledge/docs", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -239,7 +239,7 @@ export function DocumentationForm({
       {submitMessage ? (
         <p className="text-sm text-emerald-600">
           {submitMessage}
-          {savedPath ? ` Check /api/docs?path=${savedPath}` : null}
+          {savedPath ? ` Check /api/knowledge/docs?path=${savedPath}` : null}
         </p>
       ) : null}
 

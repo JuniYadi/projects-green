@@ -10,6 +10,7 @@ import {
   upsertDocByPath as upsertDocByPathService,
   listDocs as listDocsService,
   deleteDocById as deleteDocByIdService,
+  type KnowledgeDocMatch,
 } from "@/modules/docs/docs.service"
 
 const docsQuerySchema = z.object({
@@ -45,15 +46,7 @@ type DocsRouteDependencies = {
   }) => Promise<"none" | "super_admin">
   getDocByPath: typeof getDocByPathService
   upsertDocByPath: typeof upsertDocByPathService
-  listDocs: (organizationId: string | null) => Promise<
-    Array<{
-      id: string
-      path: string
-      title: string
-      updatedAt: string
-      score: number
-    }>
-  >
+  listDocs: (organizationId: string | null) => Promise<KnowledgeDocMatch[]>
   deleteDocById: (id: string) => Promise<void>
 }
 
@@ -103,7 +96,7 @@ const toValidationError = (
 export const createDocsRoutes = (
   dependencies: DocsRouteDependencies = createDefaultDependencies()
 ) =>
-  new Elysia()
+  new Elysia({ prefix: "/knowledge" })
     .get("/docs", async ({ query, set }) => {
       const auth = await dependencies.authenticate()
 

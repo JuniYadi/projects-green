@@ -18,7 +18,7 @@ const mockFetch = mock(
       }),
       preconnect: mock(() => {}),
     }) as unknown as Response
-) as unknown as typeof fetch
+)
 const originalFetch = globalThis.fetch
 
 let currentParams = ""
@@ -27,7 +27,9 @@ let ThunderAiHelpDrawer: React.ComponentType
 describe("ThunderAiHelpDrawer", () => {
   beforeEach(async () => {
     mock.restore()
-    globalThis.fetch = mockFetch
+    mockFetch.mockClear()
+    mockReplace.mockClear()
+    globalThis.fetch = mockFetch as unknown as typeof fetch
     currentParams = ""
     ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
       replace: mockReplace,
@@ -205,17 +207,21 @@ describe("ThunderAiHelpDrawer", () => {
       await renderDrawer("doc=1")
 
       expect(mockFetch).toHaveBeenCalled()
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/knowledge/docs?path=%2Fconsole",
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
+      )
     })
 
-    it("fetch is called when drawer opens in chat mode", async () => {
+    it("does not load page docs when drawer opens in chat mode", async () => {
       await renderDrawer("kb=1")
 
-      expect(mockFetch).toHaveBeenCalled()
+      expect(mockFetch).not.toHaveBeenCalled()
     })
   })
 
   describe("starter prompt clicks", () => {
-    it("calls router when starter prompt is clicked", async () => {
+    it("sends a chat request when starter prompt is clicked", async () => {
       const view = await renderDrawer("kb=1")
 
       const prompt = view.getByText(/Tell me about/)
@@ -223,7 +229,10 @@ describe("ThunderAiHelpDrawer", () => {
         prompt.click()
       })
 
-      expect(mockReplace).toHaveBeenCalled()
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/knowledge/chat",
+        expect.objectContaining({ method: "POST" })
+      )
     })
   })
 })

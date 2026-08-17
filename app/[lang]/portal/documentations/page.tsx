@@ -35,7 +35,7 @@ export default function PortalDocumentationsPage() {
     setIsLoading(true)
     setError(null)
     try {
-      const { data: res } = await eden.api.docs.list.get()
+      const { data: res } = await eden.api.knowledge.docs.list.get()
       if (res?.ok) {
         setDocs(res.docs)
       } else {
@@ -63,7 +63,7 @@ export default function PortalDocumentationsPage() {
         return
       setIsDeleting(true)
       try {
-        const { data: res } = await eden.api.docs[doc.id].delete()
+        const { data: res } = await eden.api.knowledge.docs[doc.id].delete()
         if (res?.ok) {
           setDocs((prev) => prev.filter((d) => d.id !== doc.id))
           if (selectedDoc?.id === doc.id) setSelectedDoc(null)

@@ -90,7 +90,7 @@ export function ThunderAiHelpDrawer() {
 
       try {
         const response = await fetch(
-          `/api/docs?path=${encodeURIComponent(routePath)}`,
+          `/api/knowledge/docs?path=${encodeURIComponent(routePath)}`,
           {
             signal: controller.signal,
           }
