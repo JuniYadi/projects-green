@@ -80,6 +80,17 @@
   check `ps aux | grep "codex exec"` for a still-running process with the
   same prompt and wait on its `--output-last-message` file instead of
   starting a second one against the same Chrome session.
+- Codex has a built-in "in-app browser" skill (feature flags `in_app_browser`
+  / `computer_use`) that it tries *before* any explicitly configured MCP
+  browser tool, routed through a `node_repl` server tied to the ChatGPT
+  desktop app. When that path is slow or unresponsive it can hang the whole
+  run indefinitely — near-zero CPU, no `~/.codex/sessions/**` activity, no
+  `chrome-devtools-mcp` subprocess ever spawned. `scripts/e2e-agent.sh`
+  passes `--disable in_app_browser --disable computer_use` on every call to
+  force it straight to our configured MCP tool and avoid this race. If a run
+  ever looks stuck again anyway, confirm with `ps -o pid,etime,%cpu -p <pid>`
+  (near-0% CPU for minutes = hung, kill and retry) rather than assuming it's
+  just slow.
 
 ## Graphify (project-scoped, on demand)
 
