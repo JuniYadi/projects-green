@@ -174,6 +174,7 @@ mock.module("@/lib/queue/whatsapp-broadcast", () => ({
 
 // Import after mocks
 const { messageService } = await import("./messages.service")
+const { WhatsappSendFailedError } = await import("./messages.errors")
 const { InsufficientQuotaError } = await import("./quota.service")
 
 const mockDevice = {
@@ -209,6 +210,9 @@ describe("messageService", () => {
     mockPrisma.whatsappMonthlyCount.findFirst.mockClear()
     mockPrisma.whatsappMonthlyCount.create.mockClear()
     mockPrisma.whatsappMonthlyCount.update.mockClear()
+    mockPrisma.whatsappMonthlyCount.upsert.mockClear()
+    mockPrisma.whatsappDailyCount.upsert.mockClear()
+    mockPrisma.whatsappBillingLedger.create.mockClear()
     mockPrisma.billingAccount.findUnique.mockClear()
     mockPrisma.serviceSubscription.findFirst.mockClear()
     mockPrisma.servicePricing.findFirst.mockClear()
@@ -496,13 +500,30 @@ describe("messageService", () => {
       expect(mockEnqueue).not.toHaveBeenCalled()
     })
 
-    it("sets status to queued when Meta API fails", async () => {
+    it("throws and records a failed status when Meta API fails", async () => {
       mockDeviceClient.sendMessage.mockRejectedValue(new Error("API Error"))
 
-      const result = await sendMessageTestHelper()
+      await expect(sendMessageTestHelper()).rejects.toBeInstanceOf(
+        WhatsappSendFailedError
+      )
 
-      expect(result.status).toBe("queued")
-      expect(result.waMessageId).toBeUndefined()
+      expect(mockPrisma.whatsappMessage.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            waMessageId: undefined,
+            statusHistory: {
+              create: expect.objectContaining({
+                status: "FAILED",
+                error: "API Error",
+              }),
+            },
+          }),
+        })
+      )
+      expect(mockPrisma.whatsappBillingLedger.create).not.toHaveBeenCalled()
+      expect(mockPrisma.whatsappDailyCount.upsert).not.toHaveBeenCalled()
+      expect(mockPrisma.whatsappMonthlyCount.upsert).not.toHaveBeenCalled()
+      expect(mockPrisma.billingUsageLedger.create).not.toHaveBeenCalled()
     })
 
     it("creates conversation if not exists", async () => {
@@ -626,7 +647,9 @@ describe("messageService", () => {
     it("restores allowance when Meta API fails after allowance was consumed", async () => {
       mockDeviceClient.sendMessage.mockRejectedValue(new Error("API Error"))
 
-      await sendMessageTestHelper()
+      await expect(sendMessageTestHelper()).rejects.toBeInstanceOf(
+        WhatsappSendFailedError
+      )
 
       // restoreAllowance updates quotaBaseOut (and possibly addonQuota)
       // via prisma.whatsappDevice.update — verify the call happened
@@ -655,7 +678,9 @@ describe("messageService", () => {
 
       mockDeviceClient.sendMessage.mockRejectedValue(new Error("API Error"))
 
-      await sendMessageTestHelper()
+      await expect(sendMessageTestHelper()).rejects.toBeInstanceOf(
+        WhatsappSendFailedError
+      )
 
       // After Meta API fails with OVERAGE_CHARGED billing decision,
       // the service logs a warning and does NOT call restoreAllowance
@@ -777,6 +802,42 @@ describe("messageService", () => {
           }),
         })
       )
+    })
+
+    it("throws and records a failed status when Meta rejects a template", async () => {
+      mockDeviceClient.sendTemplateMessage.mockRejectedValue(
+        new Error("Template rejected by Meta")
+      )
+
+      await expect(
+        messageService.sendTemplateMessage({
+          organizationId: "org-1",
+          phoneNumber: "+1234567890",
+          templateName: "hello_world",
+          templateLanguage: "en",
+          fields: ["John"],
+          renderedBody: "Hello John",
+          templateLanguageData: mockTemplateLanguage,
+        })
+      ).rejects.toBeInstanceOf(WhatsappSendFailedError)
+
+      expect(mockPrisma.whatsappMessage.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            messageType: "template",
+            statusHistory: {
+              create: expect.objectContaining({
+                status: "FAILED",
+                error: "Template rejected by Meta",
+              }),
+            },
+          }),
+        })
+      )
+      expect(mockPrisma.whatsappBillingLedger.create).not.toHaveBeenCalled()
+      expect(mockPrisma.whatsappDailyCount.upsert).not.toHaveBeenCalled()
+      expect(mockPrisma.whatsappMonthlyCount.upsert).not.toHaveBeenCalled()
+      expect(mockPrisma.billingUsageLedger.create).not.toHaveBeenCalled()
     })
   })
 

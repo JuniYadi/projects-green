@@ -27,6 +27,10 @@ import {
 import { quotaAlertService } from "./quota-alert.service"
 import { upsertWhatsappContactFromMessage } from "@/modules/whatsapp/contacts/contacts.service"
 import { resolveWhatsappQuotaCredit } from "./quota-credit.service"
+import {
+  getWhatsappSendErrorMessage,
+  WhatsappSendFailedError,
+} from "./messages.errors"
 export type SendMessageResult = {
   jobId: string
   messageId: string
@@ -208,6 +212,7 @@ export const messageService: MessageService = {
 
     // Send message via Meta Cloud API
     let waMessageId: string | undefined
+    let sendFailure: string | null = null
     try {
       const result =
         type === "text"
@@ -253,6 +258,7 @@ export const messageService: MessageService = {
       waMessageId = result.providerMessageId
     } catch (err) {
       console.error("[messageService] Failed to send via Meta API:", err)
+      sendFailure = getWhatsappSendErrorMessage(err)
       // Compensate: restore allowance if it was consumed
       if (billingDecision?.kind === "ALLOWANCE") {
         whatsappBilling
@@ -434,6 +440,17 @@ export const messageService: MessageService = {
         mediaUrl,
         waMessageId,
         metadata: { jobId, quotaPending },
+        ...(sendFailure
+          ? {
+              statusHistory: {
+                create: {
+                  status: "FAILED",
+                  timestamp: now,
+                  error: sendFailure,
+                },
+              },
+            }
+          : {}),
       },
     })
 
@@ -460,6 +477,10 @@ export const messageService: MessageService = {
             err
           )
         )
+    }
+
+    if (sendFailure) {
+      throw new WhatsappSendFailedError(sendFailure, whatsappMessage.id)
     }
 
     return {
@@ -581,6 +602,7 @@ export const messageService: MessageService = {
     })
 
     let waMessageId: string | undefined
+    let sendFailure: string | null = null
     try {
       const result = await client.sendTemplateMessage({
         to: phoneNumber,
@@ -594,6 +616,7 @@ export const messageService: MessageService = {
         "[messageService] Failed to send template via Meta API:",
         err
       )
+      sendFailure = getWhatsappSendErrorMessage(err)
       if (billingDecision?.kind === "ALLOWANCE") {
         whatsappBilling
           .restoreAllowance(device.id, {
@@ -763,6 +786,17 @@ export const messageService: MessageService = {
           templateLanguageData:
             templateLanguageData as unknown as Prisma.InputJsonValue,
         },
+        ...(sendFailure
+          ? {
+              statusHistory: {
+                create: {
+                  status: "FAILED",
+                  timestamp: now,
+                  error: sendFailure,
+                },
+              },
+            }
+          : {}),
       },
     })
     // Upsert contact from this outbound template send
@@ -788,6 +822,10 @@ export const messageService: MessageService = {
             err
           )
         )
+    }
+
+    if (sendFailure) {
+      throw new WhatsappSendFailedError(sendFailure, whatsappMessage.id)
     }
 
     return {

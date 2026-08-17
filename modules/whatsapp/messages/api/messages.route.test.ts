@@ -37,12 +37,18 @@ const mockMessageService = {
   })),
 }
 
+const mockLogAuditEvent = mock(async () => {})
+
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
 mock.module("@/modules/whatsapp/messages/messages.service", () => ({
   messageService: mockMessageService,
+}))
+
+mock.module("@/modules/whatsapp/audit/whatsapp-audit.service", () => ({
+  logWhatsappAuditEvent: mockLogAuditEvent,
 }))
 
 import { describe, expect, it, beforeEach } from "bun:test"
@@ -72,6 +78,7 @@ mock.module("@/lib/auth/resolve-proxy-auth", () => ({
 }))
 
 const { messagesRoutes } = await import("./messages.route")
+const { WhatsappSendFailedError } = await import("../messages.errors")
 
 const createTestApp = () => new Elysia().use(messagesRoutes).compile()
 
@@ -107,6 +114,7 @@ describe("messagesRoutes", () => {
     mockPrisma.whatsappTemplate.findFirst.mockClear()
     mockMessageService.sendTemplateMessage.mockClear()
     mockMessageService.sendMessage.mockClear()
+    mockLogAuditEvent.mockClear()
 
     mockPrisma.whatsappMessage.count.mockResolvedValue(1)
     mockPrisma.whatsappMessage.findMany.mockResolvedValue([
@@ -271,6 +279,43 @@ describe("messagesRoutes", () => {
       const body = await res.json()
       expect(body.ok).toBe(true)
       expect(body.jobId).toBe("job-1")
+    })
+
+    it("returns the Meta failure and records a failed audit event", async () => {
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new WhatsappSendFailedError(
+          "Recipient is outside the 24-hour window",
+          "msg-failed"
+        )
+      )
+
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            message: "Hello",
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(502)
+      const body = await res.json()
+      expect(body).toEqual({
+        ok: false,
+        error: "WHATSAPP_SEND_FAILED",
+        message: "Recipient is outside the 24-hour window",
+        messageId: "msg-failed",
+      })
+      expect(mockLogAuditEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "MESSAGE_FAILED",
+          status: "FAILED",
+          errorMessage: "Recipient is outside the 24-hour window",
+        })
+      )
     })
 
     it("returns 402 with balance details on insufficient balance (PGREEN-049)", async () => {
@@ -643,6 +688,49 @@ describe("messagesRoutes", () => {
           templateName: "hello_world",
           templateLanguage: "en",
           fields: ["John", "Acme Corp"],
+        })
+      )
+    })
+
+    it("returns the Meta failure and records a failed audit event", async () => {
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(
+        mockTemplate as any
+      )
+      mockMessageService.sendTemplateMessage.mockRejectedValueOnce(
+        new WhatsappSendFailedError(
+          "Template is not approved for this phone number",
+          "msg-template-failed"
+        )
+      )
+
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest("/messages/send-template", {
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: "+1234567890",
+            templateId: "tpl-1",
+            templateLanguage: "en",
+            fields: ["John", "Acme Corp"],
+            deviceId: "device-1",
+          }),
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+
+      expect(res.status).toBe(502)
+      const body = await res.json()
+      expect(body).toEqual({
+        ok: false,
+        error: "WHATSAPP_SEND_FAILED",
+        message: "Template is not approved for this phone number",
+        messageId: "msg-template-failed",
+      })
+      expect(mockLogAuditEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "MESSAGE_FAILED",
+          status: "FAILED",
+          errorMessage: "Template is not approved for this phone number",
         })
       )
     })

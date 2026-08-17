@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { messageService } from "../messages.service"
 import { toWhatsappMessageDTO } from "../messages.dto"
+import { WhatsappSendFailedError } from "../messages.errors"
 import type { WhatsAppTemplateLanguage } from "@/lib/api/whatsapp-client"
 import { InsufficientQuotaError } from "../quota.service"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
@@ -396,6 +397,16 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           status: "FAILED",
         })
 
+        if (error instanceof WhatsappSendFailedError) {
+          set.status = 502
+          return {
+            ok: false,
+            error: "WHATSAPP_SEND_FAILED",
+            message: error.message,
+            messageId: error.messageId,
+          }
+        }
+
         if (error instanceof InsufficientBalanceError) {
           set.status = 402
           return {
@@ -612,6 +623,16 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           errorMessage: error instanceof Error ? error.message : String(error),
           status: "FAILED",
         })
+
+        if (error instanceof WhatsappSendFailedError) {
+          set.status = 502
+          return {
+            ok: false,
+            error: "WHATSAPP_SEND_FAILED",
+            message: error.message,
+            messageId: error.messageId,
+          }
+        }
 
         if (error instanceof InsufficientBalanceError) {
           set.status = 402
