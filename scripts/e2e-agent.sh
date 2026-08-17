@@ -52,6 +52,8 @@ fi
 codex exec \
   --skip-git-repo-check \
   --dangerously-bypass-approvals-and-sandbox \
+  --disable in_app_browser \
+  --disable computer_use \
   --output-schema "$SCHEMA" \
   --output-last-message "$RESULT_FILE" \
   "Base URL: $BASE_URL. Using the $TOOL MCP tool, $PROMPT
