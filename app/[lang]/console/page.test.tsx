@@ -1,12 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
 
-let accountPayload = {
+let currentLocale: "en" | "id" = "en"
+mock.module("next/navigation", () => ({
+  useParams: () => ({ lang: currentLocale }),
+}))
+
+let accountPayload: {
+  ok: boolean
+  currency: string
+  formattedBalance: string
+  accountAge: string
+  error?: string
+} = {
   ok: true,
   currency: "USD",
   formattedBalance: "USD 250.00",
   accountAge: "3 months",
 }
+
+const failedRequestPaths = new Set<string>()
 
 let invoicesPayload: {
   ok: boolean
@@ -40,10 +53,18 @@ const mockFetch = mock((input: string | URL | Request) => {
   const method = input instanceof Request ? input.method : "GET"
 
   if (url.includes("/api/billing/account")) {
+    if (failedRequestPaths.has("/api/billing/account")) {
+      return jsonResponse({ ok: false, error: "Raw API exception" })
+    }
+
     return jsonResponse(accountPayload)
   }
 
   if (url.includes("/api/billing/usage")) {
+    if (failedRequestPaths.has("/api/billing/usage")) {
+      return jsonResponse({ success: false, error: "Raw API exception" })
+    }
+
     return jsonResponse({
       success: true,
       data: { totalSpend: 125000, period: "June 2026" },
@@ -51,10 +72,18 @@ const mockFetch = mock((input: string | URL | Request) => {
   }
 
   if (url.includes("/api/billing/invoices")) {
+    if (failedRequestPaths.has("/api/billing/invoices")) {
+      return jsonResponse({ ok: false, error: "Raw API exception" })
+    }
+
     return jsonResponse(invoicesPayload)
   }
 
   if (url.includes("/api/support-tickets") && method === "GET") {
+    if (failedRequestPaths.has("/api/support-tickets")) {
+      return jsonResponse({ ok: false, error: "Raw API exception" })
+    }
+
     return jsonResponse({
       ok: true,
       tickets: [{ id: "ticket_1" }, { id: "ticket_2" }],
@@ -71,6 +100,8 @@ describe("ConsolePage", () => {
   beforeEach(() => {
     globalThis.fetch = mockFetch as unknown as typeof fetch
     mockFetch.mockClear()
+    currentLocale = "en"
+    failedRequestPaths.clear()
     accountPayload = {
       ok: true,
       currency: "USD",
@@ -94,12 +125,10 @@ describe("ConsolePage", () => {
     globalThis.fetch = originalFetch
   })
 
-  it("renders static header text", async () => {
+  it("renders English dashboard copy", async () => {
     const { default: ConsolePage } = await import("./page")
     const { container } = render(<ConsolePage />)
 
-    // Static header text renders in initial client render
-    // Card titles use hardcoded EN in initial state (module-level, no i18n access)
     expect(container.textContent).toContain("Console")
     expect(container.textContent).toContain("Current Balance")
     expect(container.textContent).toContain("Spent This Month")
@@ -115,6 +144,36 @@ describe("ConsolePage", () => {
       expect(container.textContent).not.toMatch(/IDR (125|75)/)
       expect(container.textContent).toContain("Status: PAID")
       expect(container.textContent).toContain("2")
+    })
+  })
+
+  it("renders Indonesian dashboard copy and localized links", async () => {
+    currentLocale = "id"
+    const { default: ConsolePage } = await import("./page")
+    const { container } = render(<ConsolePage />)
+
+    expect(container.textContent).toContain("Konsol")
+    expect(container.textContent).toContain("Saldo Saat Ini")
+    expect(container.textContent).toContain("Pengeluaran Bulan Ini")
+    expect(container.textContent).toContain("Invoice Terakhir")
+    expect(container.textContent).toContain("Tiket Terbuka")
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Usia akun: 3 months")
+      expect(container.textContent).toContain("Periode: June 2026")
+      expect(container.textContent).toContain("Status: PAID")
+      expect(container.textContent).not.toContain("Current Balance")
+      expect(container.textContent).not.toContain("Spent This Month")
+      expect(container.textContent).not.toContain("Last Invoice")
+      expect(container.textContent).not.toContain("Open Tickets")
+      expect(
+        container.querySelector('a[href="/id/console/billing/invoices/inv_1"]')
+      ).not.toBeNull()
+      expect(
+        container.querySelector(
+          'a[href="/id/console/support-tickets?status=open"]'
+        )
+      ).not.toBeNull()
     })
   })
 
@@ -152,6 +211,22 @@ describe("ConsolePage", () => {
     })
   })
 
+  it("uses stable locale-specific copy for failed dashboard requests", async () => {
+    currentLocale = "id"
+    failedRequestPaths.add("/api/billing/account")
+    failedRequestPaths.add("/api/billing/usage")
+    failedRequestPaths.add("/api/billing/invoices")
+    failedRequestPaths.add("/api/support-tickets")
+
+    const { default: ConsolePage } = await import("./page")
+    const { container } = render(<ConsolePage />)
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Tidak Tersedia")
+      expect(container.textContent).not.toContain("Raw API exception")
+    })
+  })
+
   it("links Last Invoice to the latest invoice detail and Open Tickets to filtered list", async () => {
     const { default: ConsolePage } = await import("./page")
     const { container } = render(<ConsolePage />)
@@ -177,6 +252,20 @@ describe("ConsolePage", () => {
       expect(container.textContent).toContain("No invoices yet")
       expect(
         container.querySelector('a[href="/en/console/billing/invoices"]')
+      ).not.toBeNull()
+    })
+  })
+
+  it("uses Indonesian empty-invoice copy and link", async () => {
+    currentLocale = "id"
+    invoicesPayload = { ok: true, invoices: [] }
+    const { default: ConsolePage } = await import("./page")
+    const { container } = render(<ConsolePage />)
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("Belum ada invoice")
+      expect(
+        container.querySelector('a[href="/id/console/billing/invoices"]')
       ).not.toBeNull()
     })
   })

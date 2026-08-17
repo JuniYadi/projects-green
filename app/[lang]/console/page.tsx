@@ -26,9 +26,11 @@ type DashboardCard = {
   href: string | null
 }
 
-const createInitialState = (): DashboardCard[] => [
+const createInitialState = (
+  overviewMessages: ReturnType<typeof getMessages>["console"]["overview"]
+): DashboardCard[] => [
   {
-    title: "Current Balance",
+    title: overviewMessages.currentBalance,
     icon: <WalletIcon />,
     value: null,
     subtitle: null,
@@ -37,7 +39,7 @@ const createInitialState = (): DashboardCard[] => [
     href: null,
   },
   {
-    title: "Spent This Month",
+    title: overviewMessages.spentThisMonth,
     icon: <CurrencyCircleDollarIcon />,
     value: null,
     subtitle: null,
@@ -46,7 +48,7 @@ const createInitialState = (): DashboardCard[] => [
     href: null,
   },
   {
-    title: "Last Invoice",
+    title: overviewMessages.lastInvoice,
     icon: <ReceiptIcon />,
     value: null,
     subtitle: null,
@@ -55,7 +57,7 @@ const createInitialState = (): DashboardCard[] => [
     href: null,
   },
   {
-    title: "Open Tickets",
+    title: overviewMessages.openTickets,
     icon: <LifebuoyIcon />,
     value: null,
     subtitle: null,
@@ -66,10 +68,12 @@ const createInitialState = (): DashboardCard[] => [
 ]
 
 export default function ConsolePage() {
-  const [cards, setCards] = useState<DashboardCard[]>(createInitialState())
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
+  const [cards, setCards] = useState<DashboardCard[]>(() =>
+    createInitialState(messages.console.overview)
+  )
 
   const fetchDashboardData = useCallback(async () => {
     const results = await Promise.allSettled([
@@ -103,7 +107,10 @@ export default function ConsolePage() {
         value: account?.formattedBalance ?? null,
         subtitle:
           results[0].status === "fulfilled" && results[0].value?.ok
-            ? `Account age: ${results[0].value.accountAge}`
+            ? messages.console.overview.accountAge.replace(
+                "{age}",
+                results[0].value.accountAge
+              )
             : null,
         loading: false,
         error: results[0].status !== "fulfilled" || !results[0].value?.ok,
@@ -121,7 +128,10 @@ export default function ConsolePage() {
             : null,
         subtitle:
           results[1].status === "fulfilled" && results[1].value?.success
-            ? `Period: ${results[1].value.data.period}`
+            ? messages.console.overview.period.replace(
+                "{period}",
+                String(results[1].value.data.period ?? "")
+              )
             : null,
         loading: false,
         error: results[1].status !== "fulfilled" || !results[1].value?.success,
@@ -145,7 +155,10 @@ export default function ConsolePage() {
           results[2].status === "fulfilled" &&
           results[2].value?.ok &&
           results[2].value.invoices?.length > 0
-            ? `Status: ${results[2].value.invoices[0].status}`
+            ? messages.console.overview.status.replace(
+                "{status}",
+                results[2].value.invoices[0].status
+              )
             : null,
         loading: false,
         error: results[2].status !== "fulfilled" || !results[2].value?.ok,

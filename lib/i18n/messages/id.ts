@@ -75,6 +75,9 @@ export const idMessages: AppMessages = {
       unavailable: "Tidak Tersedia",
       noInvoicesYet: "Belum ada invoice",
       awaitingResponse: "Menunggu respons",
+      accountAge: "Usia akun: {age}",
+      period: "Periode: {period}",
+      status: "Status: {status}",
     },
     organization: {
       heading: "Pengaturan Organisasi",
@@ -105,6 +108,16 @@ export const idMessages: AppMessages = {
       lowBalanceWarning:
         "Saldo Anda menipis. Isi ulang untuk menghindari gangguan layanan.",
       failedToLoadBalance: "Gagal memuat saldo",
+      balanceGate: {
+        zeroTitle: "Saldo tidak tersedia",
+        lowTitle: "Saldo menipis",
+        description:
+          "Saldo Anda adalah {balance}. Isi ulang sebelum membeli paket atau pembelian Anda akan ditolak.",
+        topUp: "Isi ulang",
+        topUpLabel: "Isi ulang saldo",
+        dismissLabel: "Tutup peringatan",
+        dismissTitle: "Tutup",
+      },
       topUpHeading: "Isi Saldo",
       topUpDescription:
         "Tambahkan dana ke akun penagihan Anda. Pilih metode pembayaran yang diinginkan.",

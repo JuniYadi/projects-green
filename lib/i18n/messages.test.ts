@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test"
 
 import { getMessages, getMessagesForMaybeLocale } from "@/lib/i18n/messages"
+import { enMessages } from "@/lib/i18n/messages/en"
+import { idMessages } from "@/lib/i18n/messages/id"
 
 describe("i18n messages", () => {
   it("returns locale messages for explicit locale", () => {
@@ -15,5 +17,14 @@ describe("i18n messages", () => {
 
     expect(fromNull.navUser.languages.en).toBe("English")
     expect(fromUnknown.navOrganization.label).toBe("Organization menu")
+  })
+
+  it("keeps dashboard and balance-gate locale keys in parity", () => {
+    expect(Object.keys(idMessages.console.overview).sort()).toEqual(
+      Object.keys(enMessages.console.overview).sort()
+    )
+    expect(Object.keys(idMessages.console.billing.balanceGate).sort()).toEqual(
+      Object.keys(enMessages.console.billing.balanceGate).sort()
+    )
   })
 })

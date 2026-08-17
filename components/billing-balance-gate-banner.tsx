@@ -11,6 +11,7 @@ import {
   AlertAction,
 } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import type { AppMessages } from "@/lib/i18n/messages/types"
 
 const DISMISSED_KEY = "billing-balance-banner-dismissed"
 
@@ -21,6 +22,7 @@ type BillingBalanceGateBannerProps = {
   topupUrl: string
   /** True when the balance is zero (stronger CTA than merely low). */
   isZero: boolean
+  messages: AppMessages["console"]["billing"]["balanceGate"]
 }
 
 /**
@@ -31,6 +33,7 @@ export function BillingBalanceGateBanner({
   formattedBalance,
   topupUrl,
   isZero,
+  messages,
 }: BillingBalanceGateBannerProps) {
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window !== "undefined") {
@@ -66,11 +69,10 @@ export function BillingBalanceGateBanner({
       <Alert variant="destructive">
         <FiAlertTriangle />
         <AlertTitle>
-          {isZero ? "No balance available" : "Low balance"}
+          {isZero ? messages.zeroTitle : messages.lowTitle}
         </AlertTitle>
         <AlertDescription>
-          Your balance is {formattedBalance}. Top up before purchasing a package
-          or your purchase will be declined.
+          {messages.description.replace("{balance}", formattedBalance)}
         </AlertDescription>
         <AlertAction className="!right-3 flex flex-row items-center gap-2">
           <Button
@@ -78,12 +80,12 @@ export function BillingBalanceGateBanner({
             variant="default"
             size="sm"
             className="bg-emerald-600 text-white hover:bg-emerald-700"
-            aria-label="Top up balance"
-            title="Top up balance"
+            aria-label={messages.topUpLabel}
+            title={messages.topUpLabel}
           >
             <Link href={topupUrl}>
               <FiArrowUpCircle className="size-4" />
-              Top up
+              {messages.topUp}
             </Link>
           </Button>
           <Button
@@ -92,8 +94,8 @@ export function BillingBalanceGateBanner({
             size="icon-sm"
             onClick={handleDismiss}
             className="text-foreground/50 hover:bg-foreground/10 hover:text-foreground"
-            aria-label="Dismiss alert"
-            title="Dismiss"
+            aria-label={messages.dismissLabel}
+            title={messages.dismissTitle}
           >
             <FiX className="size-4" />
           </Button>

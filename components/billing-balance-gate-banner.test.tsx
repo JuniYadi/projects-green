@@ -3,6 +3,8 @@ import { render, fireEvent } from "@testing-library/react"
 import "@testing-library/jest-dom"
 
 import { BillingBalanceGateBanner } from "./billing-balance-gate-banner"
+import { enMessages } from "@/lib/i18n/messages/en"
+import { idMessages } from "@/lib/i18n/messages/id"
 
 const DISMISSED_KEY = "billing-balance-banner-dismissed"
 
@@ -17,11 +19,17 @@ describe("BillingBalanceGateBanner", () => {
         formattedBalance="IDR 0.00"
         topupUrl="/en/console/billing/topup"
         isZero
+        messages={enMessages.console.billing.balanceGate}
       />
     )
 
     expect(view.getByText("No balance available")).toBeInTheDocument()
     expect(view.getByText(/IDR 0\.00/)).toBeInTheDocument()
+    expect(
+      view.getByText(
+        "Your balance is IDR 0.00. Top up before purchasing a package or your purchase will be declined."
+      )
+    ).toBeInTheDocument()
     const link = view.getByRole("link", { name: "Top up balance" })
     expect(link).toHaveAttribute("href", "/en/console/billing/topup")
   })
@@ -30,33 +38,42 @@ describe("BillingBalanceGateBanner", () => {
     const view = render(
       <BillingBalanceGateBanner
         formattedBalance="IDR 5,000.00"
-        topupUrl="/en/console/billing/topup"
+        topupUrl="/id/console/billing/topup"
         isZero={false}
+        messages={idMessages.console.billing.balanceGate}
       />
     )
 
-    expect(view.getByText("Low balance")).toBeInTheDocument()
+    expect(view.getByText("Saldo menipis")).toBeInTheDocument()
     expect(view.getByText(/IDR 5,000\.00/)).toBeInTheDocument()
+    expect(view.getByRole("link", { name: "Isi ulang saldo" })).toHaveAttribute(
+      "href",
+      "/id/console/billing/topup"
+    )
   })
 
   it("hides the banner when dismissed", () => {
     const view = render(
       <BillingBalanceGateBanner
         formattedBalance="IDR 0.00"
-        topupUrl="/en/console/billing/topup"
+        topupUrl="/id/console/billing/topup"
         isZero
+        messages={idMessages.console.billing.balanceGate}
       />
     )
 
     // Banner visible initially
-    expect(view.getByText("No balance available")).toBeInTheDocument()
+    expect(view.getByText("Saldo tidak tersedia")).toBeInTheDocument()
 
     // Click dismiss
-    const dismissButton = view.getByRole("button", { name: "Dismiss alert" })
+    const dismissButton = view.getByRole("button", {
+      name: "Tutup peringatan",
+    })
+    expect(dismissButton).toHaveAttribute("title", "Tutup")
     fireEvent.click(dismissButton)
 
     // Banner should be hidden
-    expect(view.queryByText("No balance available")).not.toBeInTheDocument()
+    expect(view.queryByText("Saldo tidak tersedia")).not.toBeInTheDocument()
     // localStorage was written
     expect(localStorage.getItem(DISMISSED_KEY)).toBe("true")
   })
@@ -69,6 +86,7 @@ describe("BillingBalanceGateBanner", () => {
         formattedBalance="IDR 0.00"
         topupUrl="/en/console/billing/topup"
         isZero
+        messages={enMessages.console.billing.balanceGate}
       />
     )
 
@@ -81,6 +99,7 @@ describe("BillingBalanceGateBanner", () => {
         formattedBalance="IDR 0.00"
         topupUrl="/en/console/billing/topup"
         isZero
+        messages={enMessages.console.billing.balanceGate}
       />
     )
 
