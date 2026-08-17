@@ -124,7 +124,10 @@ describe("verifyWhatsappOrganizationApiKey", () => {
     expect(JSON.stringify(result)).not.toContain("org-caller")
   })
 
-  it("fails closed when API-key hashing is not configured", async () => {
+  it("fails closed (returns null, does not throw) when API-key hashing is not configured", async () => {
+    // This function sits on the live auth-resolution path (lib/auth/resolve-proxy-auth.ts) —
+    // an attacker-reachable misconfiguration must reject the credential, not
+    // crash the whole request pipeline with an uncaught error.
     delete process.env.API_KEY_HASH_SALT
     mockGetApiKeyHashSalt.mockImplementation(() => {
       throw new Error("API_KEY_HASH_SALT environment variable is required")
@@ -132,13 +135,13 @@ describe("verifyWhatsappOrganizationApiKey", () => {
     const findFirst = mock(async () => null)
     const updateMany = mock(async () => ({ count: 1 }))
 
-    await expect(
-      verifyWhatsappOrganizationApiKey(
-        validKey,
-        {},
-        asDatabase({ whatsappOrganizationApiKey: { findFirst, updateMany } })
-      )
-    ).rejects.toThrow("API_KEY_HASH_SALT environment variable is required")
+    const result = await verifyWhatsappOrganizationApiKey(
+      validKey,
+      {},
+      asDatabase({ whatsappOrganizationApiKey: { findFirst, updateMany } })
+    )
+
+    expect(result).toBeNull()
     expect(findFirst).not.toHaveBeenCalled()
   })
 })
