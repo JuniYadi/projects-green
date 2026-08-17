@@ -16,6 +16,16 @@ export type WhatsappOrganizationApiKeyInventoryStatus =
   | "REVOKED"
   | "NOT_GENERATED"
 
+export type WhatsappOrganizationApiKeySelfDTO = {
+  status: WhatsappOrganizationApiKeyInventoryStatus
+  keyId: string | null
+  fingerprint: string | null
+  generatedKeyCount: number
+  createdAt: string | null
+  rotatedAt: string | null
+  revokedAt: string | null
+  lastUsedAt: string | null
+}
 export type WhatsappOrganizationApiKeyInventoryRowDTO = {
   organizationId: string
   organizationName: string

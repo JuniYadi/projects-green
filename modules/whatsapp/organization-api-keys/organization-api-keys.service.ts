@@ -12,6 +12,7 @@ import {
   toWhatsappOrganizationApiKeyDTO,
   type WhatsappOrganizationApiKeyDTO,
   type WhatsappOrganizationApiKeyInventoryDTO,
+  type WhatsappOrganizationApiKeySelfDTO,
 } from "./organization-api-keys.dto"
 import type { InventoryQuery } from "./organization-api-keys.schemas"
 
@@ -236,6 +237,28 @@ export class WhatsappOrganizationApiKeysService {
     })
 
     return toWhatsappOrganizationApiKeyDTO(revoked)
+  }
+
+  async getOrganizationKeyState(
+    organizationId: string
+  ): Promise<WhatsappOrganizationApiKeySelfDTO> {
+    const keys = await this.database.whatsappOrganizationApiKey.findMany({
+      where: { organizationId },
+      orderBy: { createdAt: "desc" },
+      select: publicKeySelect,
+    })
+    const latest = keys.find((key) => key.status === "ACTIVE") ?? keys[0]
+
+    return {
+      status: latest?.status ?? "NOT_GENERATED",
+      keyId: latest?.id ?? null,
+      fingerprint: latest?.fingerprint ?? null,
+      generatedKeyCount: keys.length,
+      createdAt: latest?.createdAt.toISOString() ?? null,
+      rotatedAt: latest?.rotatedAt?.toISOString() ?? null,
+      revokedAt: latest?.revokedAt?.toISOString() ?? null,
+      lastUsedAt: latest?.lastUsedAt?.toISOString() ?? null,
+    }
   }
 
   async listInventory(

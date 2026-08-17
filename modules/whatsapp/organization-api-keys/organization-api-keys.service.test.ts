@@ -212,6 +212,64 @@ describe("WhatsappOrganizationApiKeysService", () => {
     ).rejects.toBeInstanceOf(WhatsappOrganizationApiKeyNotFoundError)
   })
 
+  it("returns the active organization key state without tenant fields", async () => {
+    const database = createDatabase()
+    database.whatsappOrganizationApiKey.findMany.mockResolvedValue([
+      record({
+        id: "key-2",
+        fingerprint: "fingerprint-2",
+        createdAt: new Date("2026-08-15T10:00:00.000Z"),
+      }),
+      record({
+        id: "key-1",
+        status: "REVOKED",
+        createdAt: new Date("2026-08-14T10:00:00.000Z"),
+        revokedAt: timestamp,
+      }),
+    ])
+    const service = new WhatsappOrganizationApiKeysService(
+      database as unknown as PrismaClient
+    )
+
+    const state = await service.getOrganizationKeyState("org-1")
+
+    expect(state).toEqual({
+      status: "ACTIVE",
+      keyId: "key-2",
+      fingerprint: "fingerprint-2",
+      generatedKeyCount: 2,
+      createdAt: "2026-08-15T10:00:00.000Z",
+      rotatedAt: null,
+      revokedAt: null,
+      lastUsedAt: null,
+    })
+    expect(database.whatsappOrganizationApiKey.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { organizationId: "org-1" },
+        orderBy: { createdAt: "desc" },
+      })
+    )
+    expect(JSON.stringify(state)).not.toContain("organizationId")
+  })
+
+  it("returns a not-generated state when an organization has no keys", async () => {
+    const database = createDatabase()
+    const service = new WhatsappOrganizationApiKeysService(
+      database as unknown as PrismaClient
+    )
+
+    await expect(service.getOrganizationKeyState("org-1")).resolves.toEqual({
+      status: "NOT_GENERATED",
+      keyId: null,
+      fingerprint: null,
+      generatedKeyCount: 0,
+      createdAt: null,
+      rotatedAt: null,
+      revokedAt: null,
+      lastUsedAt: null,
+    })
+  })
+
   it("includes organizations without keys and returns only redacted inventory fields", async () => {
     const database = createDatabase()
     database.whatsappOrganizationApiKey.findMany.mockResolvedValue([
