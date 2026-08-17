@@ -74,6 +74,12 @@
 - Result schema: `.codex/e2e-result.schema.json` (strict JSON Schema — every
   object needs `additionalProperties: false` and every property listed in
   `required`, per the backend's structured-output constraints).
+- Multi-step flows (clicking through to a second page) can outrun the calling
+  shell's own timeout before `codex exec` itself finishes — the subprocess
+  keeps running as an orphan. Before retrying a "failed"/timed-out call,
+  check `ps aux | grep "codex exec"` for a still-running process with the
+  same prompt and wait on its `--output-last-message` file instead of
+  starting a second one against the same Chrome session.
 
 ## Graphify (project-scoped, on demand)
 
