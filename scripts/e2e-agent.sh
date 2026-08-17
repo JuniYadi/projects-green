@@ -49,6 +49,12 @@ Report the note path and what changed as the 'vault_update' field, or null if
 the feature_key wasn't found."
 fi
 
+# ponytail: codex occasionally hangs indefinitely (near-0% CPU, no session
+# log growth) racing its built-in in-app-browser skill against our MCP tool —
+# see AGENTS.md. --disable doesn't reliably prevent it, so bound the worst
+# case with a hard timeout instead of trusting it to finish.
+MAX_WAIT_SECS="${E2E_AGENT_TIMEOUT_SECS:-240}"
+
 codex exec \
   --skip-git-repo-check \
   --dangerously-bypass-approvals-and-sandbox \
@@ -77,7 +83,22 @@ placeholders, that a value is present/non-empty/numeric) instead of pinning
 exact live values such as specific balances, org names, or row counts that
 will change over time — this applies whether the target was local or
 production data.${VAULT_INSTRUCTIONS}" \
-  >"$LOG_FILE" 2>&1
+  >"$LOG_FILE" 2>&1 &
+CODEX_PID=$!
+
+ELAPSED=0
+while kill -0 "$CODEX_PID" 2>/dev/null && [ "$ELAPSED" -lt "$MAX_WAIT_SECS" ]; do
+  sleep 5
+  ELAPSED=$((ELAPSED + 5))
+done
+
+if kill -0 "$CODEX_PID" 2>/dev/null; then
+  kill -9 "$CODEX_PID" 2>/dev/null
+  echo "codex exec hung past ${MAX_WAIT_SECS}s and was killed — see $LOG_FILE" >&2
+  echo "likely the in-app-browser race (AGENTS.md) rather than the target page — just retry" >&2
+  exit 1
+fi
+wait "$CODEX_PID" 2>/dev/null || true
 
 if [ ! -s "$RESULT_FILE" ]; then
   echo "codex produced no result — see $LOG_FILE" >&2
