@@ -19,8 +19,11 @@ jobs:
         include:
           - file: Dockerfile.web
             suffix: web
+            build_args: |
+              NEXT_PUBLIC_WORKOS_REDIRECT_URI=https://pfnapp.my.id/callback
           - file: Dockerfile.workers
             suffix: workers
+            build_args: ""
 
     steps:
       - uses: actions/checkout@v7
@@ -44,3 +47,4 @@ jobs:
           file: ${{ matrix.file }}
           push: true
           tags: ${{ steps.image.outputs.name }}:sha-${{ github.sha }}
+          build-args: ${{ matrix.build_args }}

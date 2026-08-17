@@ -68,6 +68,49 @@ describe("GET /[lang]/login/start", () => {
     expect(mockGetSignInUrl).not.toHaveBeenCalled()
   })
 
+  it("prefers the runtime redirect URI over a stale public build value", async () => {
+    process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI =
+      "http://localhost:3300/callback"
+    process.env.WORKOS_REDIRECT_URI = "https://pfnapp.my.id/callback"
+
+    await GET(
+      new NextRequest("http://localhost/id/login/start?next=%2Fid%2Fconsole")
+    )
+
+    expect(mockGetSignInUrl).toHaveBeenCalledWith({
+      returnTo: "/id/console",
+      redirectUri: "https://pfnapp.my.id/callback",
+    })
+  })
+
+  it("uses the public redirect URI when no runtime override is configured", async () => {
+    process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI =
+      "https://pfnapp.my.id/callback"
+
+    await GET(
+      new NextRequest("http://localhost/id/login/start?next=%2Fid%2Fconsole")
+    )
+
+    expect(mockGetSignInUrl).toHaveBeenCalledWith({
+      returnTo: "/id/console",
+      redirectUri: "https://pfnapp.my.id/callback",
+    })
+  })
+
+  it("keeps an explicitly configured localhost URI for local development", async () => {
+    process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI =
+      "http://localhost:3300/callback"
+
+    await GET(
+      new NextRequest("http://localhost/id/login/start?next=%2Fid%2Fconsole")
+    )
+
+    expect(mockGetSignInUrl).toHaveBeenCalledWith({
+      returnTo: "/id/console",
+      redirectUri: "http://localhost:3300/callback",
+    })
+  })
+
   it("rejects a protocol-relative next path", async () => {
     await GET(
       new NextRequest(
