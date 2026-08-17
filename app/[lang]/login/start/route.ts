@@ -2,6 +2,8 @@ import { getSignInUrl, getSignUpUrl } from "@workos-inc/authkit-nextjs"
 import { cookies } from "next/headers"
 import { NextRequest, NextResponse } from "next/server"
 
+import { getWorkOSRedirectUri } from "@/lib/workos-redirect.server"
+
 const providerMap = {
   apple: "AppleOAuth",
   github: "GitHubOAuth",
@@ -31,10 +33,7 @@ const isSignupIntent = (intent: string | null) => intent === "signup"
 
 export const GET = async (request: NextRequest) => {
   const next = getSafeNext(request.nextUrl.searchParams.get("next"))
-  const redirectUri =
-    process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI?.trim() ||
-    process.env.WORKOS_REDIRECT_URI?.trim() ||
-    undefined
+  const redirectUri = getWorkOSRedirectUri()
   const signupIntent = isSignupIntent(
     request.nextUrl.searchParams.get("intent")
   )

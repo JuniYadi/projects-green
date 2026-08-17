@@ -16,6 +16,13 @@ COPY . .
 ENV DATABASE_URL=postgresql://localhost:5432/dummy
 RUN bun prisma generate
 
+# AuthKit inlines this public callback during the Next.js build. Keep the
+# production value in the image build input; runtime Pod env cannot override it.
+ARG NEXT_PUBLIC_WORKOS_REDIRECT_URI
+ENV NEXT_PUBLIC_WORKOS_REDIRECT_URI=${NEXT_PUBLIC_WORKOS_REDIRECT_URI}
+RUN test -n "$NEXT_PUBLIC_WORKOS_REDIRECT_URI" || \
+  (echo "NEXT_PUBLIC_WORKOS_REDIRECT_URI is required for the web image build" >&2 && exit 1)
+
 # Build Next.js
 RUN bun run build
 

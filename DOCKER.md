@@ -56,6 +56,31 @@ docker compose -f docker-compose.app.yml build workers
 docker compose -f docker-compose.app.yml build
 ```
 
+## WorkOS Redirect Build Contract
+
+`NEXT_PUBLIC_WORKOS_REDIRECT_URI` is inlined by Next.js during `bun run build`.
+The web image requires this value as a build argument; injecting it only into a
+Kubernetes Pod cannot change an already-built image.
+
+The production image must be built with:
+
+```bash
+docker build \
+  --build-arg NEXT_PUBLIC_WORKOS_REDIRECT_URI=https://pfnapp.my.id/callback \
+  -f Dockerfile.web \
+  -t projects-green-web:local .
+```
+
+Set `WORKOS_REDIRECT_URI=https://pfnapp.my.id/callback` in the web Deployment's
+runtime environment as well. The login route prefers this server-side value,
+while AuthKit's global callback configuration still comes from the public
+build-time value. The main-branch image workflow supplies the production build
+argument explicitly.
+
+For local Compose builds, copy `.env.example` to `.env`; Compose forwards the
+configured `NEXT_PUBLIC_WORKOS_REDIRECT_URI` as the web image build argument.
+Use the explicit localhost callback only for local development.
+
 ## Published Images
 
 The main-branch workflow publishes one immutable commit tag for each image:

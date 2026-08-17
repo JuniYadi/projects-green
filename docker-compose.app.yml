@@ -4,6 +4,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.web
+      args:
+        NEXT_PUBLIC_WORKOS_REDIRECT_URI: ${NEXT_PUBLIC_WORKOS_REDIRECT_URI}
     container_name: pfnapp-web
     restart: unless-stopped
     ports:

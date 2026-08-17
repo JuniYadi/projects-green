@@ -9,6 +9,7 @@ const mockRefresh = mock(() => {})
 let mockPathname = "/en/console"
 let mockSearchParams = new URLSearchParams()
 const originalFetch = globalThis.fetch
+const originalPublicRedirectUri = process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI
 
 const jsonResponse = (body: unknown, status = 200) => {
   return new Response(JSON.stringify(body), {
@@ -32,6 +33,11 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation"
 describe("NavUser", () => {
   afterEach(() => {
     globalThis.fetch = originalFetch
+    if (originalPublicRedirectUri === undefined) {
+      delete process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI
+    } else {
+      process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI = originalPublicRedirectUri
+    }
     cleanup()
   })
 
@@ -41,6 +47,8 @@ describe("NavUser", () => {
     mockRefresh.mockClear()
     mockPathname = "/en/console"
     mockSearchParams = new URLSearchParams()
+    process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI =
+      "https://pfnapp.my.id/callback"
     ;(usePathname as ReturnType<typeof mock>).mockReturnValue(mockPathname)
     ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(
       mockSearchParams
@@ -182,5 +190,61 @@ describe("NavUser", () => {
     expect(
       await view.findByRole("menuitemradio", { name: /System/ })
     ).toBeInTheDocument()
+  })
+
+  it("logs out to the absolute production login URL for the active locale", async () => {
+    mockPathname = "/id/console"
+    mockSearchParams = new URLSearchParams(
+      "returnTo=https%3A%2F%2Fevil.example"
+    )
+    ;(usePathname as ReturnType<typeof mock>).mockReturnValue(mockPathname)
+    ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(
+      mockSearchParams
+    )
+    const { NavUser } = await import("@/components/nav-user")
+
+    const view = render(
+      <SidebarProvider>
+        <NavUser
+          user={{
+            name: "Jane Doe",
+            email: "jane@example.com",
+            avatarUrl: null,
+          }}
+        />
+      </SidebarProvider>
+    )
+
+    fireEvent.pointerDown(view.getByRole("button"))
+    fireEvent.click(await view.findByText("Keluar"))
+
+    expect(mockSignOut).toHaveBeenCalledWith({
+      returnTo: "https://pfnapp.my.id/id/login",
+    })
+  })
+
+  it("keeps an explicitly configured localhost origin for local logout", async () => {
+    process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI =
+      "http://localhost:3300/callback"
+    const { NavUser } = await import("@/components/nav-user")
+
+    const view = render(
+      <SidebarProvider>
+        <NavUser
+          user={{
+            name: "Jane Doe",
+            email: "jane@example.com",
+            avatarUrl: null,
+          }}
+        />
+      </SidebarProvider>
+    )
+
+    fireEvent.pointerDown(view.getByRole("button"))
+    fireEvent.click(await view.findByText("Log out"))
+
+    expect(mockSignOut).toHaveBeenCalledWith({
+      returnTo: "http://localhost:3300/en/login",
+    })
   })
 })

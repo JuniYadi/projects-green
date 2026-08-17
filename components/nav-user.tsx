@@ -40,6 +40,7 @@ import {
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 import { getMessages } from "@/lib/i18n/messages"
 import { getLocaleFromPathname, localizePathname } from "@/lib/i18n/pathname"
+import { getWorkOSLogoutReturnTo } from "@/lib/workos-redirect"
 
 import type { AppSidebarUser } from "@/components/app-sidebar"
 
@@ -393,10 +394,7 @@ export function NavUser({ user }: { user: AppSidebarUser }) {
               onSelect={(event) => {
                 event.preventDefault()
                 void signOut({
-                  returnTo: localizePathname({
-                    pathname: "/login",
-                    locale: activeLocale,
-                  }),
+                  returnTo: getWorkOSLogoutReturnTo(activeLocale),
                 })
               }}
             >
