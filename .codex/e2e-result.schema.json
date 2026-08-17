@@ -1,7 +1,7 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["passed", "steps", "failure_reason", "playwright_spec", "vault_update"],
+  "required": ["passed", "steps", "failure_reason", "playwright_spec", "vault_update", "ui_ux_notes"],
   "properties": {
     "passed": { "type": "boolean" },
     "steps": {
@@ -25,6 +25,10 @@
     "vault_update": {
       "type": ["string", "null"],
       "description": "Vault note path + row/field changed when a tracked feature_key was verified, per Skill - E2E Feature Verification; null if no vault tracking was requested"
+    },
+    "ui_ux_notes": {
+      "type": ["string", "null"],
+      "description": "Observations on visual design, clarity of labeling/copy, consistency with the rest of the admin UI, empty/loading/error states, and any usability friction encountered — beyond pass/fail functional correctness. Null only if there was truly nothing to observe (e.g. navigation failed before any UI rendered)."
     }
   }
 }
