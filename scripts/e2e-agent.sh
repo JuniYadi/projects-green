@@ -56,6 +56,15 @@ codex exec \
   --output-last-message "$RESULT_FILE" \
   "Base URL: $BASE_URL. Using the $TOOL MCP tool, $PROMPT
 
+Do not stop at functional flow. Also assess UI/UX as you go: is the page's
+intent and labeling clear to someone unfamiliar with the system, is it
+visually consistent with the rest of the admin UI (spacing, typography,
+component style), are empty/loading/error states handled or just blank, and
+does anything create friction or a dead end (a link that goes somewhere
+unhelpful, a state the page never explains, a control with no visible
+effect)? Report these observations as the 'ui_ux_notes' field — this is
+required output, not optional color commentary.
+
 Then write a complete @playwright/test spec (TypeScript) reproducing every
 verified step as the 'playwright_spec' field. Use relative paths in
 page.goto() (e.g. page.goto('/en/login')), not the full base URL. Follow this
@@ -79,6 +88,8 @@ jq -r '.playwright_spec' "$RESULT_FILE" >"$SPEC_PATH"
 echo "passed=$PASSED"
 echo "spec written to $SPEC_PATH"
 echo "vault_update=$(jq -r '.vault_update' "$RESULT_FILE")"
+echo "--- ui_ux_notes ---"
+jq -r '.ui_ux_notes' "$RESULT_FILE"
 
 if [ "$PASSED" != "true" ]; then
   jq -r '.failure_reason' "$RESULT_FILE" >&2
