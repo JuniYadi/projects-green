@@ -38,6 +38,7 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
       "modules/billing/",
       "modules/vouchers/",
       "scripts/billing-cron.ts",
+      "scripts/seed-billing.ts",
       "scripts/vpn-renewal-worker.ts",
       "scripts/workers.ts",
     ],
