@@ -328,6 +328,7 @@ describe("resolveSidebarMenu", () => {
       currentPathname: "/id/portal/settings/invitations",
     })
     expect(items.map((item) => item.title)).toEqual([
+      "API Reference",
       "Support",
       "Feedback",
       "My Organization",
@@ -368,6 +369,18 @@ describe("resolveSidebarMenu", () => {
     expect(items.map((item) => item.title)).toContain("Thunder AI Help")
     expect(items.map((item) => item.title)).not.toContain("Settings")
     expect(items.map((item) => item.title)).not.toContain("Email Templates")
+  })
+  it("includes the API Reference link for console and portal surfaces", () => {
+    for (const surface of ["console", "portal"] as const) {
+      const items = resolveSidebarSecondaryLinks({
+        surface,
+        currentPathname: surface === "console" ? "/en/console" : "/en/portal",
+      })
+      const apiReference = items.find((item) => item.title === "API Reference")
+
+      expect(apiReference?.url).toBe("/api/openapi")
+      expect(apiReference?.icon).toBeDefined()
+    }
   })
   it("returns portal billing context with platform items for /portal/billing", () => {
     const { navMain, projects, navMainLabel } = resolveSidebarMenu({
