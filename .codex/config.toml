@@ -1,0 +1,3 @@
+[mcp_servers.e2e_browser]
+command = "bunx"
+args = ["-y", "chrome-devtools-mcp@latest", "--isolated=true", "--headless=true"]
