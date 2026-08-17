@@ -3,6 +3,16 @@
 import * as React from "react"
 import { Ban, Check, Copy, KeyRound, RotateCw } from "lucide-react"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -98,7 +108,11 @@ export function WhatsappOrganizationApiKeyInventory() {
   const [busyOrganizationId, setBusyOrganizationId] = React.useState<
     string | null
   >(null)
-
+  const [pendingAction, setPendingAction] = React.useState<{
+    organizationId: string
+    organizationName: string
+    action: "generate" | "rotate" | "revoke"
+  } | null>(null)
   const loadInventory = React.useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -167,20 +181,11 @@ export function WhatsappOrganizationApiKeyInventory() {
     setAppliedStatus(status)
   }
 
-  const runAction = async (
+  const performAction = async (
     organizationId: string,
     organizationName: string,
     action: "generate" | "rotate" | "revoke"
   ) => {
-    const confirmation =
-      action === "revoke"
-        ? `Revoke the active API key for ${organizationName}?`
-        : action === "rotate"
-          ? `Rotate the active API key for ${organizationName}? The old key will stop working immediately.`
-          : `Generate an API key for ${organizationName}?`
-
-    if (!window.confirm(confirmation)) return
-
     setBusyOrganizationId(organizationId)
     setError(null)
     try {
@@ -211,6 +216,14 @@ export function WhatsappOrganizationApiKeyInventory() {
     } finally {
       setBusyOrganizationId(null)
     }
+  }
+
+  const requestAction = (
+    organizationId: string,
+    organizationName: string,
+    action: "generate" | "rotate" | "revoke"
+  ) => {
+    setPendingAction({ organizationId, organizationName, action })
   }
 
   const copySecret = async () => {
@@ -384,7 +397,7 @@ export function WhatsappOrganizationApiKeyInventory() {
                                   variant="outline"
                                   disabled={busy}
                                   onClick={() =>
-                                    void runAction(
+                                    requestAction(
                                       row.organizationId,
                                       row.organizationName,
                                       "rotate"
@@ -400,7 +413,7 @@ export function WhatsappOrganizationApiKeyInventory() {
                                   variant="destructive"
                                   disabled={busy}
                                   onClick={() =>
-                                    void runAction(
+                                    requestAction(
                                       row.organizationId,
                                       row.organizationName,
                                       "revoke"
@@ -418,7 +431,7 @@ export function WhatsappOrganizationApiKeyInventory() {
                                 variant="outline"
                                 disabled={busy}
                                 onClick={() =>
-                                  void runAction(
+                                  requestAction(
                                     row.organizationId,
                                     row.organizationName,
                                     "generate"
@@ -468,6 +481,59 @@ export function WhatsappOrganizationApiKeyInventory() {
           )}
         </CardContent>
       </Card>
+      <AlertDialog
+        open={pendingAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingAction(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingAction?.action === "revoke"
+                ? "Revoke API key?"
+                : pendingAction?.action === "rotate"
+                  ? "Rotate API key?"
+                  : "Generate API key?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingAction?.action === "revoke"
+                ? `Revoke the active API key for ${pendingAction.organizationName}?`
+                : pendingAction?.action === "rotate"
+                  ? `Rotate the active API key for ${pendingAction.organizationName}? The old key will stop working immediately.`
+                  : pendingAction
+                    ? `Generate an API key for ${pendingAction.organizationName}?`
+                    : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              asChild
+              onClick={() => {
+                if (!pendingAction) return
+                void performAction(
+                  pendingAction.organizationId,
+                  pendingAction.organizationName,
+                  pendingAction.action
+                )
+              }}
+            >
+              <Button
+                variant={
+                  pendingAction?.action === "revoke" ? "destructive" : "default"
+                }
+              >
+                {pendingAction?.action === "revoke"
+                  ? "Revoke"
+                  : pendingAction?.action === "rotate"
+                    ? "Rotate"
+                    : "Generate"}
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   )
 }
