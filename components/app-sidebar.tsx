@@ -665,6 +665,15 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         isActive: startsWithRoute(path, "/console/whatsapp/dashboard"),
       },
       {
+        title: "API Keys",
+        url: localizePathname({
+          pathname: "/console/whatsapp/api-keys",
+          locale,
+        }),
+        icon: <KeyIcon />,
+        isActive: startsWithRoute(path, "/console/whatsapp/api-keys"),
+      },
+      {
         title: "Usage",
         url: localizePathname({
           pathname: "/console/whatsapp/usage",

@@ -481,6 +481,7 @@ describe("resolveSidebarMenu", () => {
     expect(navMainLabel).toBe("WhatsApp")
     expect(navMain.map((item) => item.title)).toEqual([
       "Dashboard",
+      "API Keys",
       "Usage",
       "Devices",
       "Templates",
@@ -589,6 +590,18 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.find((item) => item.title === "Contacts")?.isActive).toBe(
       true
     )
+  })
+
+  it("marks console API Keys active for its route", () => {
+    const { navMain } = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/whatsapp/api-keys",
+      locale: "en",
+    })
+
+    const apiKeys = navMain.find((item) => item.title === "API Keys")
+    expect(apiKeys?.url).toBe("/en/console/whatsapp/api-keys")
+    expect(apiKeys?.isActive).toBe(true)
   })
 
   it("marks Webhook Logs active for its route", () => {
