@@ -58,6 +58,43 @@
 - `test/`: Bun test setup.
 - `scripts/`: operational scripts.
 
+## End-to-end verification (codex-driven)
+
+- `scripts/e2e-agent.sh <user|admin|public> <spec-path> "<flow prompt>" [feature_key]`
+  drives a real browser through an isolated `codex exec` subprocess — its MCP
+  tool calls and DOM snapshots never enter the calling agent's context, only
+  the small schema-validated result does. `.codex/config.toml` defines the
+  browser tools: `user_browser`/`admin_browser` attach to a Chrome you already
+  logged into on `:9222`/`:9223` (console/portal roles); `public_browser` is
+  an isolated headless profile for no-auth pages.
+- Pass `feature_key` to also have that same codex process update the matching
+  row on the vault's end-to-end checklist per `Skill - E2E Feature Verification` and
+  push — codex reads this file's Obsidian-loading steps automatically. Omit
+  it for ad-hoc checks that aren't on the tracked board.
+- Result schema: `.codex/e2e-result.schema.json` (strict JSON Schema — every
+  object needs `additionalProperties: false` and every property listed in
+  `required`, per the backend's structured-output constraints).
+- Multi-step flows (clicking through to a second page) can outrun the calling
+  shell's own timeout before `codex exec` itself finishes — the subprocess
+  keeps running as an orphan. Before retrying a "failed"/timed-out call,
+  check `ps aux | grep "codex exec"` for a still-running process with the
+  same prompt and wait on its `--output-last-message` file instead of
+  starting a second one against the same Chrome session.
+- Codex has a built-in "in-app browser" skill (feature flags `in_app_browser`
+  / `computer_use`) that it tries _before_ any explicitly configured MCP
+  browser tool, routed through a `node_repl` server tied to the ChatGPT
+  desktop app. When that path is slow or unresponsive it can hang the whole
+  run indefinitely — near-zero CPU, no `~/.codex/sessions/**` activity, no
+  `chrome-devtools-mcp` subprocess ever spawned. `scripts/e2e-agent.sh`
+  passes `--disable in_app_browser --disable computer_use` on every call, but
+  this did **not** reliably prevent the hang in practice (reproduced twice
+  even with both disabled) — treat it as a minor mitigation, not a fix. The
+  real safety net is a hard timeout: the wrapper backgrounds `codex exec` and
+  kills it after `E2E_AGENT_TIMEOUT_SECS` (default 240s) if it hasn't
+  finished, then fails fast so you can just retry instead of waiting
+  indefinitely. If a run ever looks stuck before that timeout hits, confirm
+  with `ps -o pid,etime,%cpu -p <pid>` (near-0% CPU for minutes = hung).
+
 ## Graphify (project-scoped, on demand)
 
 - Use Graphify only for a source or repository task in this repository that
