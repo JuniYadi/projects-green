@@ -120,7 +120,8 @@ export const app = new Elysia({ prefix: "/api" })
   .use(createApiLoggingPlugin())
   .use(serverTiming())
   .onAfterHandle({ as: "global" }, ({ request, response }) => {
-    if (new URL(request.url).pathname !== "/api/openapi/json") {
+    const pathname = new URL(request.url).pathname
+    if (pathname !== "/api/docs/json" && pathname !== "/api/openapi/json") {
       return
     }
 
@@ -128,7 +129,11 @@ export const app = new Elysia({ prefix: "/api" })
       return
     }
 
-    return enrichOpenApiDocument(response)
+    const isInternalAdminRequest =
+      request.headers.get("x-openapi-scope") === "admin"
+    return enrichOpenApiDocument(response, {
+      scope: isInternalAdminRequest ? "admin" : "public",
+    })
   })
   .use(
     openapi({
@@ -176,6 +181,50 @@ export const app = new Elysia({ prefix: "/api" })
       },
     })
   )
+  .get("/admin/docs", () => {
+    const html = `<!doctype html>
+<html>
+  <head>
+    <title>PFNApp Admin API Documentation</title>
+    <meta name="description" content="PFNApp Admin & Internal API Reference" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>body { margin: 0; }</style>
+  </head>
+  <body>
+    <script
+      id="api-reference"
+      data-configuration='{"url":"/api/admin/docs/json","version":"latest"}'
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@latest/dist/browser/standalone.min.js" crossorigin></script>
+  </body>
+</html>`
+    return new Response(html, {
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    })
+  })
+  .get("/admin/docs/json", async ({ request, set }) => {
+    const internalUrl = new URL("/api/openapi/json", request.url)
+    const serverApp = app as unknown as {
+      handle: (req: Request) => Promise<Response>
+    }
+    const res = await serverApp.handle(
+      new Request(internalUrl.toString(), {
+        method: "GET",
+        headers: { "x-openapi-scope": "admin" },
+      })
+    )
+    if (!res.ok) {
+      set.status = res.status
+      return {
+        ok: false,
+        error: "SPEC_ERROR",
+        message: "Failed to generate admin spec.",
+      }
+    }
+    const rawDoc = (await res.json()) as unknown
+    return enrichOpenApiDocument(rawDoc, { scope: "admin" })
+  })
   .onError(({ code, error, set }) => {
     if (code === "VALIDATION") {
       set.status = 422

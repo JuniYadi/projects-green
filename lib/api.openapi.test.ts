@@ -47,7 +47,7 @@ const operationsOf = (document: OpenApiDocument) =>
   )
 
 describe("OpenAPI documentation", () => {
-  it("serves the UI and complete generated specification", async () => {
+  it("serves the public UI and filtered public specification", async () => {
     const html = await app.handle(
       new Request("http://localhost/api/openapi", { method: "GET" })
     )
@@ -70,8 +70,7 @@ describe("OpenAPI documentation", () => {
     expect(document.openapi).toBe("3.0.3")
 
     const operations = operationsOf(document)
-    expect(Object.keys(document.paths ?? {}).length).toBe(383)
-    expect(operations.length).toBe(481)
+    // Public docs should not contain admin-only tags
     expect(
       operations.every(
         ({ operation }) =>
@@ -80,11 +79,16 @@ describe("OpenAPI documentation", () => {
     ).toBe(true)
     expect(
       operations.some(({ operation }) => operation.tags?.includes("API Admin"))
-    ).toBe(true)
+    ).toBe(false)
     expect(
       operations.some(({ operation }) => operation.tags?.includes("Api"))
     ).toBe(false)
-
+    // WhatsApp sub-resource tags should be present
+    expect(
+      operations.some(({ operation }) =>
+        operation.tags?.includes("WhatsApp Messages")
+      )
+    ).toBe(true)
     for (const { method, operation } of operations) {
       expect(operation.responses).toBeDefined()
 
@@ -132,18 +136,30 @@ describe("OpenAPI documentation", () => {
     expect(document.paths?.["/api/vouchers/portal/"]?.get?.tags).toEqual([
       "Vouchers",
     ])
-    expect(document.paths?.["/api/admin/organizations"]?.get?.tags).toEqual([
-      "API Admin",
-    ])
-    expect(document.paths?.["/api/admin/devices/"]?.get?.tags).toEqual([
-      "API Admin",
-    ])
+    expect(document.paths?.["/api/admin/organizations"]).toBeUndefined()
     expect(document.paths?.["/api/knowledge/docs"]?.get).toBeDefined()
 
     const legacyDocs = await app.handle(
       new Request("http://localhost/api/docs", { method: "GET" })
     )
     expect(legacyDocs.status).not.toBe(200)
+  })
+
+  it("serves complete admin specification at /api/admin/docs/json", async () => {
+    const adminHtml = await app.handle(
+      new Request("http://localhost/api/admin/docs", { method: "GET" })
+    )
+    expect(adminHtml.status).toBe(200)
+    expect(adminHtml.headers.get("content-type")).toContain("text/html")
+
+    const adminRes = await app.handle(
+      new Request("http://localhost/api/admin/docs/json", { method: "GET" })
+    )
+    expect(adminRes.status).toBe(200)
+    const adminDoc = (await adminRes.json()) as OpenApiDocument
+    expect(adminDoc.paths?.["/api/admin/organizations"]?.get?.tags).toEqual([
+      "API Admin",
+    ])
   })
 
   describe("Production WhatsApp webhook routing", () => {
