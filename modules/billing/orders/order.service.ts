@@ -408,6 +408,33 @@ export class BillingOrderService {
         await adapter.renew(input, tx)
       } else {
         subscriptionId = (await adapter.create(input, tx)).subscriptionId
+
+        // Decrement product stock if tracked
+        if (input.planId) {
+          const plan = await tx.servicePlan.findFirst({
+            where: {
+              OR: [{ id: input.planId }, { code: input.planId }],
+            },
+            select: {
+              id: true,
+              stockControl: true,
+              stockCount: true,
+              allowBackorder: true,
+            },
+          })
+          if (plan?.stockControl === "TRACKED" && plan.stockCount !== null) {
+            const qty = Number(input.quantity) || 1
+            if (!plan.allowBackorder && plan.stockCount < qty) {
+              throw new Error("OUT_OF_STOCK")
+            }
+            await tx.servicePlan.update({
+              where: { id: plan.id },
+              data: {
+                stockCount: { decrement: qty },
+              },
+            })
+          }
+        }
       }
       await txClient.billingOrder.update({
         where: { id: order.id },
