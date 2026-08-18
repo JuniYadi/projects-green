@@ -4,7 +4,10 @@ import type { PrismaClient } from "@prisma/client"
 import { prisma as defaultPrisma } from "@/lib/prisma"
 import { CurrencyService } from "../currency.service"
 import type { RecurringBillingPeriod } from "../pricing/pricing.types"
-import type { CatalogProductDetailResponse } from "./catalog.dto"
+import type {
+  CatalogProductDetailResponse,
+  CatalogPlanDTO,
+} from "./catalog.dto"
 import { toCatalogPlanDTO } from "./catalog.dto"
 
 const RECURRING_PERIODS = [
@@ -251,6 +254,71 @@ export class CatalogAdminService {
       // Admin editing is currency-neutral; the editor includes every offer.
       currency: "IDR",
     }
+  }
+
+  async getCatalogPlan(
+    packageCode: string,
+    planCode: string
+  ): Promise<CatalogPlanDTO | null> {
+    const pkg = await this.db.servicePackage.findFirst({
+      where: { code: packageCode as never },
+    })
+    if (!pkg) return null
+
+    const plan = await this.db.servicePlan.findFirst({
+      where: { packageId: pkg.id, code: planCode },
+      include: {
+        pricings: {
+          where: {
+            isActive: true,
+            type: "BUNDLE",
+            billingMode: "PACKAGE",
+            billingPeriod: { in: RECURRING_PERIODS as never },
+            periodPrice: { gt: 0 },
+          },
+          include: {
+            servicePlan: {
+              include: { package: true },
+            },
+            region: true,
+          },
+        },
+      },
+    })
+
+    if (!plan) return null
+    return toCatalogPlanDTO(plan)
+  }
+
+  async listCatalogPlans(packageCode: string): Promise<CatalogPlanDTO[]> {
+    const pkg = await this.db.servicePackage.findFirst({
+      where: { code: packageCode as never },
+      include: {
+        plans: {
+          include: {
+            pricings: {
+              where: {
+                isActive: true,
+                type: "BUNDLE",
+                billingMode: "PACKAGE",
+                billingPeriod: { in: RECURRING_PERIODS as never },
+                periodPrice: { gt: 0 },
+              },
+              include: {
+                servicePlan: {
+                  include: { package: true },
+                },
+                region: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    })
+
+    if (!pkg) return []
+    return pkg.plans.map(toCatalogPlanDTO)
   }
 
   // ─── Plan ──────────────────────────────────────────────────────────
