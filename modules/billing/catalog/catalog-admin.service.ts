@@ -4,7 +4,10 @@ import type { PrismaClient } from "@prisma/client"
 import { prisma as defaultPrisma } from "@/lib/prisma"
 import { CurrencyService } from "../currency.service"
 import type { RecurringBillingPeriod } from "../pricing/pricing.types"
-import type { CatalogProductDetailResponse } from "./catalog.dto"
+import type {
+  CatalogProductDetailResponse,
+  CatalogPlanDTO,
+} from "./catalog.dto"
 import { toCatalogPlanDTO } from "./catalog.dto"
 
 const RECURRING_PERIODS = [
@@ -28,9 +31,12 @@ export type UpsertPlanInput = {
   code: string
   name: string
   resources?: Record<string, unknown>
+  billingStrategy?: "PRO_RATA" | "FIXED_CYCLE"
+  stockControl?: "UNLIMITED" | "TRACKED"
+  stockCount?: number | null
+  allowBackorder?: boolean
   isActive?: boolean
 }
-
 export type UpsertPlanPricingInput = {
   planId: string
   regionId: string
@@ -81,6 +87,10 @@ export type PublishProductInput = {
     code: string
     name: string
     resources?: Record<string, unknown>
+    billingStrategy?: "PRO_RATA" | "FIXED_CYCLE"
+    stockControl?: "UNLIMITED" | "TRACKED"
+    stockCount?: number | null
+    allowBackorder?: boolean
     isActive?: boolean
     offers: Array<{
       regionId?: string
@@ -246,6 +256,71 @@ export class CatalogAdminService {
     }
   }
 
+  async getCatalogPlan(
+    packageCode: string,
+    planCode: string
+  ): Promise<CatalogPlanDTO | null> {
+    const pkg = await this.db.servicePackage.findFirst({
+      where: { code: packageCode as never },
+    })
+    if (!pkg) return null
+
+    const plan = await this.db.servicePlan.findFirst({
+      where: { packageId: pkg.id, code: planCode },
+      include: {
+        pricings: {
+          where: {
+            isActive: true,
+            type: "BUNDLE",
+            billingMode: "PACKAGE",
+            billingPeriod: { in: RECURRING_PERIODS as never },
+            periodPrice: { gt: 0 },
+          },
+          include: {
+            servicePlan: {
+              include: { package: true },
+            },
+            region: true,
+          },
+        },
+      },
+    })
+
+    if (!plan) return null
+    return toCatalogPlanDTO(plan)
+  }
+
+  async listCatalogPlans(packageCode: string): Promise<CatalogPlanDTO[]> {
+    const pkg = await this.db.servicePackage.findFirst({
+      where: { code: packageCode as never },
+      include: {
+        plans: {
+          include: {
+            pricings: {
+              where: {
+                isActive: true,
+                type: "BUNDLE",
+                billingMode: "PACKAGE",
+                billingPeriod: { in: RECURRING_PERIODS as never },
+                periodPrice: { gt: 0 },
+              },
+              include: {
+                servicePlan: {
+                  include: { package: true },
+                },
+                region: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    })
+
+    if (!pkg) return []
+    return pkg.plans.map(toCatalogPlanDTO)
+  }
+
   // ─── Plan ──────────────────────────────────────────────────────────
 
   async upsertPlan(input: UpsertPlanInput) {
@@ -264,6 +339,13 @@ export class CatalogAdminService {
         data: {
           name: input.name,
           resources: (input.resources ?? existing.resources) as never,
+          billingStrategy: input.billingStrategy ?? existing.billingStrategy,
+          stockControl: input.stockControl ?? existing.stockControl,
+          stockCount:
+            input.stockCount !== undefined
+              ? input.stockCount
+              : existing.stockCount,
+          allowBackorder: input.allowBackorder ?? existing.allowBackorder,
           isActive: input.isActive ?? existing.isActive,
         },
       })
@@ -275,6 +357,10 @@ export class CatalogAdminService {
         code: input.code,
         name: input.name,
         resources: (input.resources ?? {}) as never,
+        billingStrategy: input.billingStrategy ?? "FIXED_CYCLE",
+        stockControl: input.stockControl ?? "UNLIMITED",
+        stockCount: input.stockCount ?? null,
+        allowBackorder: input.allowBackorder ?? false,
         isActive: input.isActive ?? true,
       },
     })
@@ -471,16 +557,38 @@ export class CatalogAdminService {
         isActive: input.isActive,
       })
 
-      // 2. Upsert each plan and its pricing
+      // 2. Deactivate any existing plans and pricings not included in input.plans
+      const submittedPlanCodes = input.plans.map((p) => p.code)
+      await tx.servicePlan.updateMany({
+        where: {
+          packageId: pkg.id,
+          code: { notIn: submittedPlanCodes },
+        },
+        data: { isActive: false },
+      })
+      await tx.servicePricing.updateMany({
+        where: {
+          servicePlan: {
+            packageId: pkg.id,
+            code: { notIn: submittedPlanCodes },
+          },
+        },
+        data: { isActive: false },
+      })
+
+      // 3. Upsert each plan and its pricing
       for (const planInput of input.plans) {
         const plan = await txService.upsertPlan({
           packageCode: input.code,
           code: planInput.code,
           name: planInput.name,
           resources: planInput.resources,
+          billingStrategy: planInput.billingStrategy,
+          stockControl: planInput.stockControl,
+          stockCount: planInput.stockCount,
+          allowBackorder: planInput.allowBackorder,
           isActive: planInput.isActive,
         })
-
         // Get a default region if not specified
         const defaultRegion = await tx.serviceRegion.findFirst({
           where: { isActive: true },

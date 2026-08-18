@@ -33,7 +33,6 @@ import {
 } from "@/components/ui/phosphor-icons"
 import {
   getAdminCatalogProduct,
-  getCatalogProduct,
   publishCatalogProduct,
 } from "@/lib/billing-client"
 import type {
@@ -122,6 +121,17 @@ function productToEditorState(
       code: plan.code,
       name: plan.name,
       resources: plan.resources,
+      billingStrategy:
+        (plan as unknown as { billingStrategy?: "PRO_RATA" | "FIXED_CYCLE" })
+          .billingStrategy ?? "FIXED_CYCLE",
+      stockControl:
+        (plan as unknown as { stockControl?: "UNLIMITED" | "TRACKED" })
+          .stockControl ?? "UNLIMITED",
+      stockCount:
+        (plan as unknown as { stockCount?: number | null }).stockCount ?? null,
+      allowBackorder: Boolean(
+        (plan as unknown as { allowBackorder?: boolean }).allowBackorder
+      ),
       isActive: true,
       enabledTerms:
         plan.offers.length > 0
@@ -210,9 +220,7 @@ export function ProductEditor({
       } else {
         // Admin editing must include active plans that have no offers yet.
         const response: CatalogProductDetailResponse =
-          productCode === "VPN"
-            ? await getAdminCatalogProduct(productCode)
-            : await getCatalogProduct(productCode)
+          await getAdminCatalogProduct(productCode)
         if (!response?.product) {
           setError("Product not found in catalog.")
           return
@@ -308,6 +316,10 @@ export function ProductEditor({
           code: plan.code,
           name: plan.name,
           resources: plan.resources,
+          billingStrategy: plan.billingStrategy,
+          stockControl: plan.stockControl,
+          stockCount: plan.stockCount,
+          allowBackorder: plan.allowBackorder,
           isActive: plan.isActive,
           offers: plan.offers
             .filter((offer) => offer.isActive)

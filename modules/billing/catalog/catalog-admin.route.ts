@@ -30,9 +30,13 @@ const upsertProductSchema = z.object({
 })
 
 const upsertPlanSchema = z.object({
-  code: z.string().trim().min(1),
+  code: z.string().trim().min(1).optional(),
   name: z.string().trim().min(1),
   resources: z.record(z.string(), z.unknown()).optional(),
+  billingStrategy: z.enum(["PRO_RATA", "FIXED_CYCLE"]).optional(),
+  stockControl: z.enum(["UNLIMITED", "TRACKED"]).optional(),
+  stockCount: z.number().int().min(0).nullable().optional(),
+  allowBackorder: z.boolean().optional(),
   isActive: z.boolean().optional(),
 })
 
@@ -139,6 +143,10 @@ const publishProductSchema = z.object({
       code: z.string().trim().min(1),
       name: z.string().trim().min(1),
       resources: z.record(z.string(), z.unknown()).optional(),
+      billingStrategy: z.enum(["PRO_RATA", "FIXED_CYCLE"]).optional(),
+      stockControl: z.enum(["UNLIMITED", "TRACKED"]).optional(),
+      stockCount: z.number().int().min(0).nullable().optional(),
+      allowBackorder: z.boolean().optional(),
       isActive: z.boolean().optional(),
       offers: z.array(offerSchema),
     })
@@ -216,6 +224,70 @@ export const createCatalogAdminRoutes = (deps: CatalogAdminRouteDeps = {}) => {
         }
       })
 
+      // ─── GET /admin/catalog/:catalogCode/products ────────────────────
+      .get("/admin/catalog/:catalogCode/products", async ({ params, set }) => {
+        const actor = await guard(set)
+        if ("ok" in actor && !actor.ok) return actor as AdminApiError
+
+        try {
+          const plans = await service.listCatalogPlans(
+            params.catalogCode as string
+          )
+          return { ok: true as const, products: plans }
+        } catch (error) {
+          return handleServiceError(set, error)
+        }
+      })
+
+      // ─── GET /admin/catalog/:catalogCode/products/:productCode ─────────
+      .get(
+        "/admin/catalog/:catalogCode/products/:productCode",
+        async ({ params, set }) => {
+          const actor = await guard(set)
+          if ("ok" in actor && !actor.ok) return actor as AdminApiError
+
+          try {
+            const plan = await service.getCatalogPlan(
+              params.catalogCode as string,
+              params.productCode as string
+            )
+            if (!plan) {
+              return notFound(
+                set,
+                `Product not found: ${params.productCode as string} in ${params.catalogCode as string}`
+              )
+            }
+            return { ok: true as const, product: plan }
+          } catch (error) {
+            return handleServiceError(set, error)
+          }
+        }
+      )
+
+      // ─── POST /admin/catalog/:catalogCode/products/:productCode ────────
+      .post(
+        "/admin/catalog/:catalogCode/products/:productCode",
+        async ({ params, body, set }) => {
+          const actor = await guard(set)
+          if ("ok" in actor && !actor.ok) return actor as AdminApiError
+
+          const parsed = upsertPlanSchema.safeParse(body)
+          if (!parsed.success) return validationError(set)
+
+          try {
+            const plan = await service.upsertPlan({
+              packageCode: params.catalogCode as string,
+              ...parsed.data,
+              code: (parsed.data.code || params.productCode) as string,
+            })
+            set.status = 200
+            return { ok: true as const, data: plan }
+          } catch (error) {
+            return handleServiceError(set, error)
+          }
+        }
+      )
+
       // ─── POST /admin/catalog/products ─────────────────────────────────
       .post("/admin/catalog/products", async ({ body, set }) => {
         const actor = await guard(set)
@@ -244,11 +316,14 @@ export const createCatalogAdminRoutes = (deps: CatalogAdminRouteDeps = {}) => {
           if (!parsed.success) return validationError(set)
 
           try {
+            if (!parsed.data.code) {
+              return validationError(set, "Plan code is required.")
+            }
             const plan = await service.upsertPlan({
               packageCode: params.code as string,
               ...parsed.data,
+              code: parsed.data.code,
             })
-            set.status = 200
             return { ok: true as const, data: plan }
           } catch (error) {
             return handleServiceError(set, error)

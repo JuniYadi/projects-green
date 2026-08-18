@@ -53,11 +53,14 @@ export interface ProductPlanEditorForm {
   code: string
   name: string
   resources: Record<string, unknown>
+  billingStrategy?: "PRO_RATA" | "FIXED_CYCLE"
+  stockControl?: "UNLIMITED" | "TRACKED"
+  stockCount?: number | null
+  allowBackorder?: boolean
   isActive: boolean
   enabledTerms: BillingPeriod[]
   offers: ProductPlanOfferForm[]
 }
-
 // ─── Add-ons ────────────────────────────────────────────────────────────────
 
 export interface AddonPricingForm {
@@ -166,8 +169,6 @@ export const BILLING_PERIODS: BillingPeriod[] = [
   "QUARTERLY",
   "SEMI_ANNUAL",
   "ANNUAL",
-  "YEARLY",
-  "CUSTOM",
 ]
 
 export const SERVICE_ADDON_BILLING_MODES: ServiceAddonBillingMode[] = [
