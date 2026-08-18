@@ -1104,10 +1104,47 @@ export async function upsertAdminCatalogProduct(
     stockCount?: number | null
     allowBackorder?: boolean
     isActive?: boolean
+    prices?: Array<{
+      regionId?: string
+      billingPeriod: string
+      chargeUnit?: "SUBSCRIPTION" | "DEVICE"
+      periodPrice: number
+      currency: string
+      effectiveFrom?: string
+      effectiveTo?: string | null
+      isActive?: boolean
+    }>
   }
 ): Promise<{ ok: true; data: unknown }> {
   return fetchBilling<{ ok: true; data: unknown }>(
     `/api/billing/admin/catalog/${encodeURIComponent(catalogCode)}/products/${encodeURIComponent(productCode)}`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    }
+  )
+}
+
+export async function deleteAdminCatalogProduct(
+  catalogCode: string,
+  productCode: string
+): Promise<{ ok: true; message: string }> {
+  return fetchBilling<{ ok: true; message: string }>(
+    `/api/billing/admin/catalog/${encodeURIComponent(catalogCode)}/products/${encodeURIComponent(productCode)}`,
+    {
+      method: "DELETE",
+    }
+  )
+}
+
+export async function upsertAdminCatalogPackage(input: {
+  code: string
+  name: string
+  description?: string
+  isActive?: boolean
+}): Promise<{ ok: true; data: unknown }> {
+  return fetchBilling<{ ok: true; data: unknown }>(
+    "/api/billing/admin/catalog/products",
     {
       method: "POST",
       body: JSON.stringify(input),
