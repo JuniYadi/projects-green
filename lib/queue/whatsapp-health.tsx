@@ -15,6 +15,15 @@ import { sendEmail } from "@/lib/queue/email"
 import { redis } from "@/lib/redis"
 import { devicesService } from "@/modules/whatsapp/devices/devices.service"
 import { DeviceDisconnectedEmail } from "@/modules/whatsapp/emails/device-disconnected"
+import {
+  emitWhatsAppHealthCycleEnqueued,
+  emitWhatsAppHealthDeviceCheckFailed,
+  emitWhatsAppHealthDeviceDisconnected,
+  emitWhatsAppHealthDeviceRecovered,
+  emitWhatsAppHealthDeviceUnavailable,
+  emitWhatsAppHealthDisconnectEmailFailed,
+  emitWhatsAppHealthDisconnectEmailNoRecipients,
+} from "@/lib/worker-health-logging"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -137,7 +146,7 @@ async function sendDisconnectEmail(
     const recipients = users.filter((u) => u.email)
 
     if (!recipients.length) {
-      console.warn(`[whatsapp-health] no recipients for org=${orgId}`)
+      emitWhatsAppHealthDisconnectEmailNoRecipients()
       return
     }
 
@@ -154,11 +163,11 @@ async function sendDisconnectEmail(
     const subject = `[${org.name}] WhatsApp Device Disconnected: ${device.phoneNumber}`
     for (const { email } of recipients) {
       sendEmail({ to: email, subject, html }).catch((err) =>
-        console.error(`[whatsapp-health] email send failed: ${email}`, err)
+        emitWhatsAppHealthDisconnectEmailFailed(err)
       )
     }
   } catch (err) {
-    console.error(`[whatsapp-health] failed to send disconnect email`, err)
+    emitWhatsAppHealthDisconnectEmailFailed(err)
   }
 }
 
@@ -174,7 +183,7 @@ async function checkSingleDevice(deviceId: string): Promise<void> {
   })
 
   if (!device) {
-    console.warn(`[whatsapp-health] device not found: ${deviceId}`)
+    emitWhatsAppHealthDeviceUnavailable("not_found")
     return
   }
 
@@ -183,7 +192,7 @@ async function checkSingleDevice(deviceId: string): Promise<void> {
   }
 
   if (!device.whatsappPhoneId) {
-    console.warn(`[whatsapp-health] device has no phoneId: ${deviceId}`)
+    emitWhatsAppHealthDeviceUnavailable("phone_id_missing")
     return
   }
 
@@ -201,19 +210,17 @@ async function checkSingleDevice(deviceId: string): Promise<void> {
     // Auto-recover DISCONNECTED → ACTIVE if check succeeds
     if ((device.status as string) === "DISCONNECTED") {
       await devicesService.markActive(deviceId)
-      console.info(`[whatsapp-health] device recovered: ${deviceId}`)
+      emitWhatsAppHealthDeviceRecovered()
     }
   } else {
     // Miss — increment counter
     const missCount = await incrementMissCount(deviceId)
-    console.warn(
-      `[whatsapp-health] health check failed device=${deviceId} miss=${missCount} error=${result.error}`
-    )
+    emitWhatsAppHealthDeviceCheckFailed(missCount, result.error)
 
     if (missCount >= MISS_THRESHOLD) {
       await devicesService.markDisconnected(deviceId)
       await clearMissCount(deviceId)
-      console.info(`[whatsapp-health] device marked DISCONNECTED: ${deviceId}`)
+      emitWhatsAppHealthDeviceDisconnected()
       await sendDisconnectEmail(deviceId, device.organizationId)
     }
   }
@@ -231,9 +238,7 @@ async function runHeartbeatCycle(): Promise<void> {
     await WhatsAppHealthJob.enqueue({ deviceId: device.id })
   }
 
-  console.info(
-    `[whatsapp-health] cycle: enqueued ${devices.length} device checks`
-  )
+  emitWhatsAppHealthCycleEnqueued(devices.length)
 }
 
 // ── BullMQ Job Class ──────────────────────────────────────────────────────────

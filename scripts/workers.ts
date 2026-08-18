@@ -109,6 +109,7 @@ import { vpnProvisioningService } from "@/modules/vpn/provisioning/vpn-provision
 import { vpnReconciliationService } from "@/modules/vpn/provisioning/vpn-reconciliation.service"
 import { vpnHealthService } from "@/modules/vpn/admin/vpn-health.service"
 import { EmailJob } from "@/lib/queue/email"
+import { registerWhatsAppHealthWorkerLogging } from "@/lib/worker-health-logging"
 
 // ══════════════════════════════════════════════════════════════════════════
 // BullMQ Workers
@@ -452,6 +453,7 @@ allWorkers.push(emailWorker)
 // ── WhatsApp Health Worker ──────────────────────────────────────────────
 const whatsappHealthWorker = WhatsAppHealthJob.createWorker()
 allWorkers.push(whatsappHealthWorker)
+registerWhatsAppHealthWorkerLogging(whatsappHealthWorker)
 
 // ── WhatsApp Outgoing Webhook Worker ──────────────────────────────────────
 const waOutgoingWorker = new Worker<WhatsappOutgoingWebhookJobData>(
@@ -471,6 +473,8 @@ allWorkers.push(waWebhookRetryWorker)
 
 // ── Event Logging (shared across all workers) ──────────────────────────────
 for (const worker of allWorkers) {
+  if (worker === whatsappHealthWorker) continue
+
   const name = worker.name
 
   worker.on("active", (job) => {
