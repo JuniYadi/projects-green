@@ -380,25 +380,6 @@ describe("WhatsAppMessagesPage", () => {
     view.unmount()
   })
 
-  it("shows quota credits and PAYG pricing for the selected device", async () => {
-    const view = renderWithQuery(<WhatsAppMessagesPage />)
-    await waitFor(() => {
-      expect(
-        view.getByRole("button", { name: /send message/i })
-      ).not.toBeDisabled()
-    })
-
-    fireEvent.click(view.getByRole("button", { name: /send message/i }))
-
-    await waitFor(() => {
-      expect(view.getByText("Quota & Pricing")).toBeInTheDocument()
-      expect(view.getByText("MARKETING")).toBeInTheDocument()
-      expect(view.getByText(/150.*per message/)).toBeInTheDocument()
-    })
-    expect(view.getByText("Default; rate not configured")).toBeInTheDocument()
-    view.unmount()
-  })
-
   it("shows send button enabled after filling all fields", async () => {
     const view = renderWithQuery(<WhatsAppMessagesPage />)
     await waitFor(() => {

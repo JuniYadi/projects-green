@@ -44,6 +44,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   "payment-methods": "Payment Methods",
   regions: "Regions",
   servers: "Servers",
+  pricing: "Pricing",
   settings: "Settings",
   "ssh-keys": "SSH Keys",
   subscriptions: "Subscriptions",

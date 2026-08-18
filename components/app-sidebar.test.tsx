@@ -498,6 +498,7 @@ describe("resolveSidebarMenu", () => {
       "Dashboard",
       "API Keys",
       "Usage",
+      "Pricing",
       "Devices",
       "Templates",
       "Messages",
@@ -512,6 +513,18 @@ describe("resolveSidebarMenu", () => {
     )
 
     expect(projects.map((project) => project.name)).toEqual(["Back to Console"])
+  })
+  it("marks pricing active for its routes", () => {
+    const { navMain, navMainLabel } = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/whatsapp/pricing",
+      locale: "en",
+    })
+
+    expect(navMainLabel).toBe("WhatsApp")
+    expect(navMain.find((item) => item.title === "Pricing")?.isActive).toBe(
+      true
+    )
   })
 
   it("marks devices active for its routes", () => {
