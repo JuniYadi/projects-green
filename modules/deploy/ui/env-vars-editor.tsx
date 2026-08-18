@@ -203,14 +203,23 @@ const toEnvVarFromForm = (
     isStoredSecret: isSecret,
     lastUpdatedAt: new Date().toISOString(),
     ...(form.type === "secret_ref" ? { source: "vault" as const } : {}),
-    ...(isSharedReference && sharedSecretOption
-      ? {
-          source: "managed_service" as const,
-          serviceCredentialId: sharedSecretOption.serviceCredentialId,
-          vaultPath: sharedSecretOption.vaultPath,
-          vaultKey: sharedSecretOption.vaultKey,
-          referenceLabel: sharedSecretOption.label,
-        }
+    ...(isSharedReference
+      ? sharedSecretOption
+        ? {
+            source: "managed_service" as const,
+            serviceCredentialId: sharedSecretOption.serviceCredentialId,
+            vaultPath: sharedSecretOption.vaultPath,
+            vaultKey: sharedSecretOption.vaultKey,
+            referenceLabel: sharedSecretOption.label,
+          }
+        : form.sharedSecretOptionId
+          ? {
+              source: "managed_service" as const,
+              serviceCredentialId: form.sharedSecretOptionId,
+            }
+          : {
+              source: "managed_service" as const,
+            }
       : {}),
   }
 }
@@ -243,11 +252,12 @@ const preserveStoredSecretMetadata = (
   if (form.type === "secret_shared_ref") {
     const isNewSelection =
       Boolean(next.serviceCredentialId) &&
+      Boolean(current.serviceCredentialId) &&
       next.serviceCredentialId !== current.serviceCredentialId
 
     return {
       ...next,
-      source: next.source ?? current.source ?? "managed_service",
+      source: "managed_service",
       serviceCredentialId:
         next.serviceCredentialId ?? current.serviceCredentialId,
       vaultPath: next.vaultPath ?? current.vaultPath,
