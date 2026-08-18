@@ -32,6 +32,8 @@ const service = {
       plans: [],
     },
   })),
+  getCatalogPlan: mock<() => Promise<unknown>>(async () => null),
+  listCatalogPlans: mock<() => Promise<unknown[]>>(async () => []),
   upsertPackage: mock(async () => ({
     id: "pkg-1",
     code: "VPN",
@@ -40,7 +42,7 @@ const service = {
   upsertPlan: mock(async () => ({
     id: "plan-1",
     code: "VPN_BASIC",
-    name: "Basic",
+    name: "Basic Plan",
   })),
   upsertPlanPricing: mock(async () => ({
     id: "pricing-1",
@@ -152,6 +154,81 @@ describe("catalog admin routes", () => {
 
       const response = await app().handle(
         new Request("http://localhost/admin/catalog/products/MISSING")
+      )
+
+      expect(response.status).toBe(404)
+      expect((await response.json()).error).toBe("NOT_FOUND")
+    })
+  })
+
+  describe("GET /admin/catalog/:catalogCode/products", () => {
+    it("returns list of products under a catalog category", async () => {
+      service.listCatalogPlans.mockResolvedValueOnce([
+        {
+          id: "plan-1",
+          code: "STARTER",
+          name: "Starter",
+          resources: { cpu: 1, memory: 2048 },
+          billingStrategy: "FIXED_CYCLE",
+          stockControl: "TRACKED",
+          stockCount: 5,
+          allowBackorder: false,
+          isActive: true,
+          offers: [],
+        },
+      ])
+
+      const response = await app().handle(
+        new Request("http://localhost/admin/catalog/APP_HOSTING/products")
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(body.products).toHaveLength(1)
+      expect(body.products[0].code).toBe("STARTER")
+      expect(service.listCatalogPlans).toHaveBeenCalledWith("APP_HOSTING")
+    })
+  })
+
+  describe("GET /admin/catalog/:catalogCode/products/:productCode", () => {
+    it("returns detail for a specific product", async () => {
+      service.getCatalogPlan.mockResolvedValueOnce({
+        id: "plan-1",
+        code: "STARTER",
+        name: "Starter",
+        resources: { cpu: 1, memory: 2048 },
+        billingStrategy: "FIXED_CYCLE",
+        stockControl: "TRACKED",
+        stockCount: 5,
+        allowBackorder: false,
+        isActive: true,
+        offers: [],
+      })
+
+      const response = await app().handle(
+        new Request(
+          "http://localhost/admin/catalog/APP_HOSTING/products/STARTER"
+        )
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(body.product.code).toBe("STARTER")
+      expect(service.getCatalogPlan).toHaveBeenCalledWith(
+        "APP_HOSTING",
+        "STARTER"
+      )
+    })
+
+    it("returns 404 when product is not found", async () => {
+      service.getCatalogPlan.mockResolvedValueOnce(null)
+
+      const response = await app().handle(
+        new Request(
+          "http://localhost/admin/catalog/APP_HOSTING/products/NONEXISTENT"
+        )
       )
 
       expect(response.status).toBe(404)
