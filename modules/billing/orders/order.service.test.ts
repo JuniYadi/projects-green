@@ -18,6 +18,10 @@ const mockPrisma = {
     findUnique: mock(),
     update: mock(),
   },
+  servicePlan: {
+    findFirst: mock<() => Promise<unknown>>(async () => null),
+    update: mock(),
+  },
   whatsappDevice: { count: mock() },
 }
 const mockResolveRecurringPrice = mock()
