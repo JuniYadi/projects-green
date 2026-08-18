@@ -35,6 +35,7 @@ function createClient() {
     accessToken: "mock-token",
     phoneNumberId: "phone-1",
     wabaId: "waba-1",
+    metaAppId: "meta-app-1",
   })
 }
 
@@ -361,6 +362,41 @@ describe("WhatsAppDeviceClient media methods", () => {
         expect.any(String),
         "POST",
         expect.any(FormData)
+      )
+    })
+  })
+
+  describe("uploadProfilePicture", () => {
+    it("uses Meta's resumable upload handle for the business profile", async () => {
+      mockRequest
+        .mockImplementationOnce(async () => ({ id: "upload:session-123" }))
+        .mockImplementationOnce(async () => ({ h: "profile-handle-456" }))
+
+      const client = createClient()
+      const result = await client.uploadProfilePicture({
+        data: new Uint8Array([1, 2, 3]).buffer,
+        fileName: "profile.png",
+        mimeType: "image/png",
+      })
+
+      expect(result.handle).toBe("profile-handle-456")
+      expect(mockRequest).toHaveBeenNthCalledWith(
+        1,
+        "CREATE_UPLOAD_SESSION",
+        expect.stringContaining("/meta-app-1/uploads?"),
+        "POST"
+      )
+      expect(mockRequest).toHaveBeenNthCalledWith(
+        2,
+        "UPLOAD_FILE_PART",
+        expect.stringContaining("/upload:session-123"),
+        "POST",
+        expect.any(Blob),
+        3,
+        expect.objectContaining({
+          "Content-Type": "image/png",
+          file_offset: "0",
+        })
       )
     })
   })

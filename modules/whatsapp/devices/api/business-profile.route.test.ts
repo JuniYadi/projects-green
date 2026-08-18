@@ -45,16 +45,16 @@ mock.module("@/lib/auth/resolve-proxy-auth", () => ({
   })),
 }))
 
+const mockFromDevice = mock(async () => ({
+  getBusinessProfile: mock(async () => profileMockData),
+  updateBusinessProfile: mock(async () => ({ success: true })),
+  uploadProfilePicture: mock(async () => ({ handle: "profile-handle-1" })),
+}))
+
 // Mock the device client so we don't hit Meta
 mock.module("@/lib/whatsapp/meta-cloud/device-client", () => ({
   WhatsAppDeviceClient: class {
-    static fromDevice = mock(async () => {
-      const mocks = {
-        getBusinessProfile: mock(async () => profileMockData),
-        updateBusinessProfile: mock(async () => ({ success: true })),
-      }
-      return mocks
-    })
+    static fromDevice = mockFromDevice
   },
   __esModule: true,
 }))
@@ -99,6 +99,7 @@ function createMockDevice(overrides: Record<string, unknown> = {}) {
     whatsappBusinessAccountId: "waba-1",
     whatsappPhoneId: "phone-1",
     whatsappApplicationId: null,
+    whatsappMetaApp: null,
     whatsappProfile: null,
     features: null,
     callbackUrl: null,
@@ -119,6 +120,12 @@ describe("business profile routes", () => {
       vertical: "PROF_SERVICES",
       websites: ["https://example.com"],
     }
+    mockFromDevice.mockClear()
+    mockFromDevice.mockImplementation(async () => ({
+      getBusinessProfile: mock(async () => profileMockData),
+      updateBusinessProfile: mock(async () => ({ success: true })),
+      uploadProfilePicture: mock(async () => ({ handle: "profile-handle-1" })),
+    }))
     // Set up device to exist by default
     ;(
       prisma.whatsappDevice.findUnique as ReturnType<typeof mock>
@@ -171,6 +178,75 @@ describe("business profile routes", () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.ok).toBe(true)
+  })
+
+  it("uploads a profile picture and applies Meta's returned handle", async () => {
+    ;(
+      prisma.whatsappDevice.findUnique as ReturnType<typeof mock>
+    ).mockImplementation(async () =>
+      createMockDevice({ whatsappApplicationId: "meta-app-1" })
+    )
+
+    const formData = new FormData()
+    formData.append(
+      "file",
+      new File([new Uint8Array([1, 2, 3])], "profile.png", {
+        type: "image/png",
+      })
+    )
+
+    const app = createTestApp()
+    const res = await app.handle(
+      new Request(
+        "http://localhost/api/whatsapp/devices/dev_1/profile/picture",
+        {
+          method: "POST",
+          body: formData,
+        }
+      )
+    )
+
+    expect(res.status).toBe(200)
+    expect((await res.json()).ok).toBe(true)
+    expect(mockFromDevice).toHaveBeenCalledWith(
+      expect.objectContaining({ metaAppId: "meta-app-1" })
+    )
+
+    const client = (await mockFromDevice.mock.results[0]?.value) as {
+      uploadProfilePicture: ReturnType<typeof mock>
+      updateBusinessProfile: ReturnType<typeof mock>
+    }
+    expect(client?.uploadProfilePicture).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileName: "profile.png",
+        mimeType: "image/png",
+      })
+    )
+    expect(client?.updateBusinessProfile).toHaveBeenCalledWith(
+      expect.objectContaining({ profile_picture_handle: "profile-handle-1" })
+    )
+  })
+
+  it("rejects non-image profile picture uploads", async () => {
+    const formData = new FormData()
+    formData.append(
+      "file",
+      new File(["not an image"], "profile.txt", { type: "text/plain" })
+    )
+
+    const app = createTestApp()
+    const res = await app.handle(
+      new Request(
+        "http://localhost/api/whatsapp/devices/dev_1/profile/picture",
+        {
+          method: "POST",
+          body: formData,
+        }
+      )
+    )
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe("UNSUPPORTED_MEDIA_TYPE")
   })
 
   it("PATCH returns 422 for invalid vertical", async () => {

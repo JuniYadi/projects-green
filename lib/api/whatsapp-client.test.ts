@@ -92,6 +92,19 @@ describe("whatsappClient", () => {
     await whatsappClient.devices.profile.update("device-1", { about: "Hello" })
     expect(calls[6]?.init?.method).toBe("PATCH")
     expect(bodyOf(calls[6]!)).toEqual({ about: "Hello" })
+    queueJson({
+      ok: true,
+      profile: { profile_picture_url: "https://example.com/profile.png" },
+    })
+    await whatsappClient.devices.profile.uploadPicture(
+      "device-1",
+      new File(["image"], "profile.png", { type: "image/png" })
+    )
+    expect(calls[7]?.input).toContain(
+      "/api/whatsapp/devices/device-1/profile/picture"
+    )
+    expect(calls[7]?.init?.method).toBe("POST")
+    expect(calls[7]?.init?.body).toBeInstanceOf(FormData)
     queueJson({ ok: true, message: "queued" })
     await whatsappClient.devices.syncTemplates("device-1")
     responses.push(jsonResponse({ message: "sync failed" }, 500))

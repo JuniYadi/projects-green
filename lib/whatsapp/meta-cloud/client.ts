@@ -45,7 +45,8 @@ export class MetaCloudHttpClient {
     endpoint: string,
     method: "GET" | "POST" | "DELETE" = "GET",
     body?: unknown,
-    retries = 3
+    retries = 3,
+    extraHeaders?: Record<string, string>
   ): Promise<T> {
     let lastError: Error | null = null
     let attempt = 0
@@ -56,12 +57,19 @@ export class MetaCloudHttpClient {
 
       try {
         const headers: Record<string, string> = {
+          ...extraHeaders,
           Authorization: `Bearer ${this.accessToken}`,
         }
 
         let requestBody: any = undefined
         if (body) {
           if (body instanceof FormData) {
+            requestBody = body
+          } else if (
+            (typeof Blob !== "undefined" && body instanceof Blob) ||
+            (typeof ArrayBuffer !== "undefined" &&
+              (body instanceof ArrayBuffer || ArrayBuffer.isView(body)))
+          ) {
             requestBody = body
           } else {
             headers["Content-Type"] = "application/json"

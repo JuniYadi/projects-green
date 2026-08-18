@@ -5,9 +5,12 @@ import { updateBusinessProfileSchema } from "@/lib/whatsapp/meta-cloud/types/bus
 import {
   getProfile,
   updateProfile,
+  uploadProfilePicture,
   DeviceNoPhoneIdError,
+  DeviceNoMetaAppIdError,
   ProfileNotFoundError,
 } from "../business-profile.service"
+import { toBusinessProfileDTO } from "../business-profile.dto"
 import { DeviceNotFoundError, DeviceNotOwnedError } from "../devices.schemas"
 import { resolveDeviceAuth } from "./devices.route"
 
@@ -49,7 +52,7 @@ export const businessProfileRoutes = new Elysia({
 
     try {
       const profile = await getProfile(id, auth.organizationId)
-      return { ok: true, profile }
+      return { ok: true, profile: toBusinessProfileDTO(profile) }
     } catch (e) {
       if (e instanceof DeviceNotFoundError) return toNotFound(set, e.message)
       if (e instanceof DeviceNotOwnedError) return toForbidden(set)
@@ -77,11 +80,74 @@ export const businessProfileRoutes = new Elysia({
 
     try {
       const profile = await updateProfile(id, parsed.data, auth.organizationId)
-      return { ok: true, profile }
+      return { ok: true, profile: toBusinessProfileDTO(profile) }
     } catch (e) {
       if (e instanceof DeviceNotFoundError) return toNotFound(set, e.message)
       if (e instanceof DeviceNotOwnedError) return toForbidden(set)
       if (e instanceof DeviceNoPhoneIdError) return toConflict(set, e.message)
+      if (e instanceof ProfileNotFoundError) return toNotFound(set, e.message)
+      throw e
+    }
+  })
+  .post("/picture", async ({ request, params: { id }, set }: any) => {
+    const auth = await resolveDeviceAuth(request)
+    if (!auth) return toUnauthorized(set)
+    if (!auth.organizationId) {
+      return toBadRequest(set, "Organization context required.")
+    }
+
+    const contentType = request.headers.get("content-type") ?? ""
+    if (!contentType.includes("multipart/form-data")) {
+      return toBadRequest(set, "Expected multipart/form-data.")
+    }
+
+    const formData = await request.formData()
+    const file = formData.get("file")
+    if (!(file instanceof File)) {
+      set.status = 422
+      return {
+        ok: false,
+        error: "VALIDATION_ERROR",
+        message: "An image file is required.",
+      }
+    }
+
+    if (file.type !== "image/jpeg" && file.type !== "image/png") {
+      set.status = 400
+      return {
+        ok: false,
+        error: "UNSUPPORTED_MEDIA_TYPE",
+        message: "Profile pictures must be JPEG or PNG images.",
+      }
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      set.status = 400
+      return {
+        ok: false,
+        error: "FILE_TOO_LARGE",
+        message: "Profile pictures must be 5 MB or smaller.",
+      }
+    }
+
+    try {
+      const profile = await uploadProfilePicture(
+        id,
+        {
+          data: await file.arrayBuffer(),
+          fileName: file.name || "profile-picture",
+          mimeType: file.type,
+        },
+        auth.organizationId
+      )
+      return { ok: true, profile: toBusinessProfileDTO(profile) }
+    } catch (e) {
+      if (e instanceof DeviceNotFoundError) return toNotFound(set, e.message)
+      if (e instanceof DeviceNotOwnedError) return toForbidden(set)
+      if (e instanceof DeviceNoPhoneIdError) return toConflict(set, e.message)
+      if (e instanceof DeviceNoMetaAppIdError) {
+        return toConflict(set, e.message)
+      }
       if (e instanceof ProfileNotFoundError) return toNotFound(set, e.message)
       throw e
     }

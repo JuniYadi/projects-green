@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
+import { fireEvent, render, waitFor } from "@testing-library/react"
 import React from "react"
 
 const ORIGINAL_FETCH = globalThis.fetch
@@ -31,6 +31,7 @@ const device = {
   features: null,
   whatsappProfile: {
     about: "Loaded profile about text",
+    profile_picture_url: "https://example.com/profile.png",
     websites: ["https://example.com"],
     vertical: "OTHER",
   },
@@ -95,5 +96,33 @@ describe("ConsoleWhatsAppDeviceDetailPage", () => {
       return url.includes("/api/whatsapp/devices/cmqoeiclj0006x94c6ofe0wti")
     })
     expect(deviceCall).toBeTruthy()
+    expect(view.getByText("Current WhatsApp profile picture")).toBeTruthy()
+  })
+
+  it("offers an image picker and preview instead of a profile URL field", async () => {
+    const { default: ConsoleWhatsAppDeviceDetailPage } = await import("./page")
+
+    const view = render(React.createElement(ConsoleWhatsAppDeviceDetailPage))
+    await waitFor(() => {
+      expect(view.getByText("Loaded profile about text")).toBeTruthy()
+    })
+
+    fireEvent.click(view.getByRole("button", { name: "Edit WhatsApp Profile" }))
+
+    const fileInput = view.getByLabelText("Profile picture")
+    expect(fileInput).toHaveAttribute("accept", "image/jpeg,image/png")
+    expect(view.queryByLabelText("Profile Picture URL")).toBeNull()
+
+    fireEvent.change(fileInput, {
+      target: {
+        files: [
+          new File([new Uint8Array([1, 2, 3])], "new-profile.png", {
+            type: "image/png",
+          }),
+        ],
+      },
+    })
+
+    expect(view.getByText("new-profile.png")).toBeTruthy()
   })
 })

@@ -10,6 +10,11 @@ export const ENDPOINTS = {
   PHONE_INFO: (phoneNumberId: string) => getEndpoint(phoneNumberId),
   BUSINESS_PROFILE: (phoneNumberId: string) =>
     getEndpoint(`${phoneNumberId}/whatsapp_business_profile`),
+  UPLOAD_SESSION: (appId: string) => getEndpoint(`${appId}/uploads`),
+  UPLOAD_SESSION_PART: (sessionId: string) =>
+    getEndpoint(
+      sessionId.startsWith("upload:") ? sessionId : `upload:${sessionId}`
+    ),
   TEMPLATES: (wabaId: string) => getEndpoint(`${wabaId}/message_templates`),
   WABA_INFO: (wabaId: string) => getEndpoint(wabaId),
   WABA_PHONE_NUMBERS: (wabaId: string) =>
