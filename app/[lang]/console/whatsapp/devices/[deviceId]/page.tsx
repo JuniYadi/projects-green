@@ -159,10 +159,7 @@ function WhatsAppProfilePreview({
       <div className="bg-emerald-50/70 px-4 py-5 dark:bg-emerald-950/20">
         <div className="mx-auto max-w-sm overflow-hidden rounded-2xl border bg-background shadow-sm">
           <div className="flex items-center gap-3 px-4 py-4">
-            <Avatar
-              size="lg"
-              className="size-12 border-2 border-emerald-500/20"
-            >
+            <Avatar className="size-12 border-2 border-emerald-500/20">
               {profilePictureUrl ? (
                 <AvatarImage
                   src={profilePictureUrl}

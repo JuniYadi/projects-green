@@ -32,6 +32,9 @@ const device = {
   whatsappProfile: {
     name: "Green Support",
     about: "Loaded profile about text",
+    description: "Official support channel for Green platform",
+    email: "support@green.local",
+    address: "123 Green Way",
     websites: ["https://example.com"],
     vertical: "OTHER",
   },
