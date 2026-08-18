@@ -46,6 +46,7 @@ const db = {
       code: "VPN_BASIC",
       name: "Basic Updated",
     })),
+    updateMany: mock<MockFunction>(() => ({ count: 0 })),
   },
   servicePricing: {
     findFirst: mock<MockFunction>(() => null),
@@ -59,6 +60,7 @@ const db = {
       planId: "plan-1",
       regionId: "region-1",
     })),
+    updateMany: mock<MockFunction>(() => ({ count: 0 })),
   },
   serviceAddon: {
     findFirst: mock<MockFunction>(() => null),
