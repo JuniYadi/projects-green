@@ -317,9 +317,25 @@ export default function CheckoutPage() {
               )}
             </div>
 
+            {quotePreview.isProrated && (
+              <div className="rounded-md border border-sky-200 bg-sky-50 p-2.5 text-xs text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-200">
+                <p className="font-semibold">
+                  Prorated Billing (Calendar Month)
+                </p>
+                <p className="mt-0.5">
+                  Charged for {quotePreview.proratedDays} remaining days in this
+                  month (out of {quotePreview.totalDaysInPeriod} days). Your
+                  first regular full renewal begins on{" "}
+                  {formatDate(quotePreview.nextRenewal)}.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-2 border-t pt-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal</span>
+                <span className="text-muted-foreground">
+                  {quotePreview.isProrated ? "Prorated Subtotal" : "Subtotal"}
+                </span>
                 <span>
                   {formatCurrency(quotePreview.subtotal, quotePreview.currency)}
                 </span>
