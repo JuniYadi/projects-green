@@ -230,6 +230,11 @@ export default function WhatsAppDashboardPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
+            <Link href="/console/billing/services/whatsapp">
+              Subscribe Plan
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
             <Link href="/console/whatsapp/devices">
               <Phone className="mr-2 size-4" />
               Manage Devices
@@ -243,6 +248,27 @@ export default function WhatsAppDashboardPage() {
           </Button>
         </div>
       </div>
+
+      {state === "loaded" && devices.length === 0 && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="flex flex-col items-center justify-between gap-4 p-6 sm:flex-row">
+            <div className="space-y-1 text-center sm:text-left">
+              <h3 className="text-base font-semibold">
+                Activate your WhatsApp Business Account
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                You have no active WhatsApp devices. Choose a plan to register
+                and connect your first WhatsApp Business number.
+              </p>
+            </div>
+            <Button asChild className="shrink-0">
+              <Link href="/console/billing/services/whatsapp">
+                View Plans & Subscribe
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {state === "access_denied" && accessDenied && (
         <AccessRestricted {...accessDenied} />
