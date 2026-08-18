@@ -391,6 +391,113 @@ describe("business profile routes", () => {
     expect((await res.json()).error).toBe("VALIDATION_ERROR")
   })
 
+  it("returns 409 when ProfileNotFoundError is thrown on GET /profile", async () => {
+    ;(
+      prisma.whatsappDevice.findUnique as ReturnType<typeof mock>
+    ).mockImplementation(async () =>
+      createMockDevice({ whatsappProfile: null })
+    )
+    mockFromDevice.mockImplementationOnce(async () => ({
+      getBusinessProfile: mock(async () => null),
+      updateBusinessProfile: mock(async () => ({ success: true })),
+      uploadProfilePicture: mock(async () => ({ handle: "h-1" })),
+    }))
+
+    const app = createTestApp()
+    const res = await app.handle(
+      new Request("http://localhost/api/whatsapp/devices/dev_1/profile", {
+        method: "GET",
+      })
+    )
+    expect(res.status).toBe(404)
+  })
+
+  it("returns 409 when DeviceNoPhoneIdError is thrown on GET /profile", async () => {
+    ;(
+      prisma.whatsappDevice.findUnique as ReturnType<typeof mock>
+    ).mockImplementation(async () =>
+      createMockDevice({ whatsappPhoneId: null })
+    )
+
+    const app = createTestApp()
+    const res = await app.handle(
+      new Request("http://localhost/api/whatsapp/devices/dev_1/profile", {
+        method: "GET",
+      })
+    )
+    expect(res.status).toBe(409)
+  })
+
+  it("returns 409 when DeviceNoPhoneIdError is thrown on PATCH /profile", async () => {
+    ;(
+      prisma.whatsappDevice.findUnique as ReturnType<typeof mock>
+    ).mockImplementation(async () =>
+      createMockDevice({ whatsappPhoneId: null })
+    )
+
+    const app = createTestApp()
+    const res = await app.handle(
+      new Request("http://localhost/api/whatsapp/devices/dev_1/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ about: "Test" }),
+      })
+    )
+    expect(res.status).toBe(409)
+  })
+
+  it("returns 404 when ProfileNotFoundError is thrown on PATCH /profile", async () => {
+    mockFromDevice.mockImplementationOnce(async () => ({
+      getBusinessProfile: mock(async () => null),
+      updateBusinessProfile: mock(async () => ({ success: true })),
+      uploadProfilePicture: mock(async () => ({ handle: "h-1" })),
+    }))
+
+    const app = createTestApp()
+    const res = await app.handle(
+      new Request("http://localhost/api/whatsapp/devices/dev_1/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ about: "Test" }),
+      })
+    )
+    expect(res.status).toBe(404)
+  })
+
+  it("returns 404 when ProfileNotFoundError is thrown on POST /picture", async () => {
+    ;(
+      prisma.whatsappDevice.findUnique as ReturnType<typeof mock>
+    ).mockImplementation(async () =>
+      createMockDevice({
+        whatsappMetaApp: { metaAppId: "app-1" },
+      })
+    )
+    mockFromDevice.mockImplementation(async () => ({
+      getBusinessProfile: mock(async () => null),
+      updateBusinessProfile: mock(async () => ({ success: true })),
+      uploadProfilePicture: mock(async () => ({ handle: "h-1" })),
+    }))
+    const formData = new FormData()
+    formData.append(
+      "file",
+      new File([new Uint8Array([1, 2, 3])], "profile.png", {
+        type: "image/png",
+      })
+    )
+
+    const app = createTestApp()
+    const res = await app.handle(
+      new Request(
+        "http://localhost/api/whatsapp/devices/dev_1/profile/picture",
+        {
+          method: "POST",
+          body: formData,
+        }
+      )
+    )
+    expect(res.status).toBe(404)
+  })
+
   it("rejects files larger than 5MB on POST /picture", async () => {
     const formData = new FormData()
     const largeBuffer = new Uint8Array(6 * 1024 * 1024)

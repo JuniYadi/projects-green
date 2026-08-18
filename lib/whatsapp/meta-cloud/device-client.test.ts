@@ -38,6 +38,18 @@ function createClient() {
     metaAppId: "meta-app-1",
   })
 }
+describe("WhatsAppDeviceClient.fromDevice", () => {
+  it("creates a client instance from device payload with decrypted token", async () => {
+    const clientInstance = await WhatsAppDeviceClient.fromDevice({
+      accessToken: "encrypted-token",
+      phoneNumberId: "phone-1",
+      wabaId: "waba-1",
+      metaAppId: "app-1",
+      organizationId: "org-1",
+    })
+    expect(clientInstance).toBeInstanceOf(WhatsAppDeviceClient)
+  })
+})
 
 describe("WhatsAppDeviceClient message methods", () => {
   beforeEach(() => {
