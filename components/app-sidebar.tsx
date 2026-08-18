@@ -20,7 +20,6 @@ import {
   BuildingsIcon,
   CaretLeftIcon,
   ChartLineIcon,
-  CodeIcon,
   CrosshairIcon,
   DeviceMobileIcon,
   GaugeIcon,
@@ -918,9 +917,9 @@ const buildNavSecondary = (input: {
 
   const items: NavSecondaryItem[] = [
     {
-      title: "API Docs",
+      title: "API Reference",
       url: input.surface === "portal" ? "/api/admin/docs" : "/api/openapi",
-      icon: <CodeIcon />,
+      icon: <BookOpenIcon />,
     },
     {
       title: "Support",
@@ -933,15 +932,6 @@ const buildNavSecondary = (input: {
       icon: <PaperPlaneTiltIcon />,
     },
   ]
-
-  if (input.surface === "console" || input.surface === "portal") {
-    items.unshift({
-      title: "API Reference",
-      url: "/api/openapi",
-      icon: <BookOpenIcon />,
-    })
-  }
-
   if (input.surface === "console") {
     items.unshift({
       title: "Thunder AI Help",
