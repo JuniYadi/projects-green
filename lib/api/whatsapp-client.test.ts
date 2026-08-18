@@ -383,4 +383,23 @@ describe("whatsappClient", () => {
       whatsappClient.media.upload(new File(["hello"], "hello.txt"), "device-1")
     ).rejects.toThrow("Upload failed with status 500")
   })
+
+  it("handles profile picture upload failures", async () => {
+    const whatsappClient = await client()
+    queueJson({ ok: false, message: "File too large" }, 400)
+    await expect(
+      whatsappClient.devices.profile.uploadPicture(
+        "device-1",
+        new File(["too big"], "avatar.png", { type: "image/png" })
+      )
+    ).rejects.toThrow("File too large")
+
+    responses.push(new Response("not json", { status: 500 }))
+    await expect(
+      whatsappClient.devices.profile.uploadPicture(
+        "device-1",
+        new File(["avatar"], "avatar.png", { type: "image/png" })
+      )
+    ).rejects.toThrow("Upload failed with status 500")
+  })
 })
