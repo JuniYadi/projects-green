@@ -522,6 +522,16 @@ enum ServiceAddonBillingMode {
   USAGE
 }
 
+enum BillingStrategy {
+  PRO_RATA
+  FIXED_CYCLE
+}
+
+enum StockControl {
+  UNLIMITED
+  TRACKED
+}
+
 enum MeterAggregation {
   SUM
   MAX
@@ -1195,14 +1205,18 @@ model ServicePackage {
 }
 
 model ServicePlan {
-  id        String   @id @default(cuid())
-  packageId String
-  code      String
-  name      String
-  resources Json
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String          @id @default(cuid())
+  packageId       String
+  code            String
+  name            String
+  resources       Json
+  billingStrategy BillingStrategy @default(FIXED_CYCLE)
+  stockControl    StockControl    @default(UNLIMITED)
+  stockCount      Int?
+  allowBackorder  Boolean         @default(false)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   package       ServicePackage        @relation(fields: [packageId], references: [id])
   pricings      ServicePricing[]
