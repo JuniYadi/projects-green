@@ -319,19 +319,6 @@ export const app = new Elysia({ prefix: "/api" })
       ],
     }
   })
-  .post(
-    "/echo",
-    ({ body }) => ({
-      ok: true as const,
-      data: body,
-      echoedAt: new Date().toISOString(),
-    }),
-    {
-      body: z.object({
-        message: z.string().min(1),
-      }),
-    }
-  )
 
 // Start stale VPN session cleanup timer.
 startStaleSessionCleanup()
