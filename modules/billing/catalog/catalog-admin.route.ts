@@ -30,7 +30,7 @@ const upsertProductSchema = z.object({
 })
 
 const upsertPlanSchema = z.object({
-  code: z.string().trim().min(1),
+  code: z.string().trim().min(1).optional(),
   name: z.string().trim().min(1),
   resources: z.record(z.string(), z.unknown()).optional(),
   billingStrategy: z.enum(["PRO_RATA", "FIXED_CYCLE"]).optional(),
