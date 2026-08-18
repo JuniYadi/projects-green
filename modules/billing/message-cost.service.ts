@@ -5,8 +5,71 @@ import { BalanceGateService } from "./balance-gate.service"
 
 export type MessageType = "text" | "template" | "media"
 
+export type MessagePricing = {
+  unitPrice: Decimal | null
+  currency: string | null
+  configured: boolean
+}
+
 export class MessageCostService {
   constructor(private prisma: PrismaClient) {}
+
+  /**
+   * Resolve the configured PAYG unit price and currency for WhatsApp.
+   *
+   * Keeping the configured flag separate from the numeric value lets callers
+   * distinguish an unavailable price from a valid zero-cost estimate.
+   */
+  async getMessagePricing(options: {
+    organizationId: string
+    messageType: MessageType
+    deviceId?: string
+  }): Promise<MessagePricing> {
+    const subscription = await this.prisma.serviceSubscription.findFirst({
+      where: {
+        organizationId: options.organizationId,
+        package: { code: "WHATSAPP" },
+        status: "ACTIVE",
+      },
+      include: {
+        plan: { select: { resources: true } },
+      },
+    })
+
+    if (!subscription) {
+      return { unitPrice: null, currency: null, configured: false }
+    }
+
+    // Unlimited / enterprise plans do not have a PAYG overage price.
+    const resources = subscription.plan?.resources as
+      | Record<string, unknown>
+      | undefined
+    if (resources && resources.unlimited === true) {
+      return { unitPrice: null, currency: null, configured: false }
+    }
+
+    const balanceGate = new BalanceGateService(this.prisma)
+
+    try {
+      const pricing = await balanceGate.findPricing({
+        planId: subscription.planId,
+        regionId: "GLOBAL",
+        type: "PAYG",
+        billingMode: "PAYG",
+      })
+
+      return {
+        unitPrice: pricing.unitRateMessage,
+        currency: pricing.currency ?? null,
+        configured:
+          pricing.unitRateMessage !== null &&
+          pricing.unitRateMessage !== undefined,
+      }
+    } catch {
+      // No PAYG pricing found — expose the missing configuration to callers.
+      return { unitPrice: null, currency: null, configured: false }
+    }
+  }
 
   /**
    * Estimate the per-message cost for WhatsApp outbound messaging.
@@ -20,46 +83,8 @@ export class MessageCostService {
     messageType: MessageType
     deviceId?: string
   }): Promise<Decimal> {
-    const subscription = await this.prisma.serviceSubscription.findFirst({
-      where: {
-        organizationId: options.organizationId,
-        package: { code: "WHATSAPP" },
-        status: "ACTIVE",
-      },
-      include: {
-        plan: { select: { resources: true } },
-      },
-    })
-
-    if (!subscription) {
-      return new Decimal(0)
-    }
-
-    // Unlimited / enterprise plans have no per-message cost
-    const resources = subscription.plan?.resources as
-      | Record<string, unknown>
-      | undefined
-    if (resources && resources.unlimited === true) {
-      return new Decimal(0)
-    }
-
-    const balanceGate = new BalanceGateService(this.prisma)
-
-    try {
-      const pricing = await balanceGate.findPricing({
-        planId: subscription.planId,
-        regionId: "GLOBAL",
-        type: "PAYG",
-        billingMode: "PAYG",
-      })
-
-      const cost = pricing.unitRateMessage ?? new Decimal(0)
-
-      return cost
-    } catch {
-      // No PAYG pricing found — rate is 0
-      return new Decimal(0)
-    }
+    const pricing = await this.getMessagePricing(options)
+    return pricing.unitPrice ?? new Decimal(0)
   }
 
   /**

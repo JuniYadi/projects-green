@@ -20,6 +20,18 @@ const mockPrisma = {
   whatsappTemplate: {
     findFirst: mock(async () => null),
   },
+  whatsappDevice: {
+    findMany: mock(async () => []),
+  },
+  whatsappQuotaCreditRate: {
+    findMany: mock(async () => []),
+  },
+  serviceSubscription: {
+    findFirst: mock(async () => null),
+  },
+  servicePricing: {
+    findFirst: mock(async () => null),
+  },
 }
 
 // Mock message service
@@ -127,6 +139,10 @@ describe("messagesRoutes", () => {
     mockPrisma.whatsappMessage.delete.mockClear()
     mockPrisma.whatsappConversation.findFirst.mockClear()
     mockPrisma.whatsappTemplate.findFirst.mockClear()
+    mockPrisma.whatsappDevice.findMany.mockClear()
+    mockPrisma.whatsappQuotaCreditRate.findMany.mockClear()
+    mockPrisma.serviceSubscription.findFirst.mockClear()
+    mockPrisma.servicePricing.findFirst.mockClear()
     mockMessageService.sendTemplateMessage.mockClear()
     mockMessageService.sendMessage.mockClear()
     mockLogAuditEvent.mockClear()
@@ -159,6 +175,10 @@ describe("messagesRoutes", () => {
       status: "sent",
     })
     mockPrisma.whatsappTemplate.findFirst.mockResolvedValue(null)
+    mockPrisma.whatsappDevice.findMany.mockResolvedValue([])
+    mockPrisma.whatsappQuotaCreditRate.findMany.mockResolvedValue([])
+    mockPrisma.serviceSubscription.findFirst.mockResolvedValue(null)
+    mockPrisma.servicePricing.findFirst.mockResolvedValue(null)
     mockMessageService.sendTemplateMessage.mockResolvedValue({
       ok: true,
       messageId: "mock-id",
@@ -187,6 +207,79 @@ describe("messagesRoutes", () => {
       expect(res.status).toBe(200)
       const body = await res.json()
       expect(body.messages).toBeDefined()
+    })
+  })
+
+  describe("GET /messages/pricing", () => {
+    it("returns device quota credits and PAYG overage pricing", async () => {
+      mockPrisma.whatsappDevice.findMany.mockResolvedValue([
+        { id: "device-1", phoneNumber: "+6281234567890" },
+      ] as any)
+      mockPrisma.whatsappQuotaCreditRate.findMany.mockResolvedValue([
+        {
+          category: "MARKETING",
+          country: "ID",
+          quotaCredit: "2.00",
+          description: "Marketing template credit",
+        },
+      ] as any)
+      mockPrisma.serviceSubscription.findFirst.mockResolvedValue({
+        planId: "plan-1",
+        plan: { resources: {} },
+      } as any)
+      mockPrisma.servicePricing.findFirst.mockResolvedValue({
+        id: "pricing-1",
+        planId: "plan-1",
+        regionId: "region-1",
+        type: "PAYG",
+        billingMode: "PAYG",
+        currency: "IDR",
+        basePriceIdr: "0",
+        monthlyCapIdr: null,
+        unitRateCpu: null,
+        unitRateMem: null,
+        unitRateMessage: "150",
+        servicePlan: { code: "STANDARD", packageId: "WHATSAPP" },
+        region: { code: "GLOBAL" },
+      } as any)
+
+      const res = await createTestApp().handle(authRequest("/messages/pricing"))
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.overage).toEqual({
+        unitPrice: "150",
+        currency: "IDR",
+        configured: true,
+      })
+      expect(body.devices).toHaveLength(1)
+      expect(body.devices[0]).toMatchObject({
+        deviceId: "device-1",
+        phoneNumber: "+6281234567890",
+        country: "ID",
+      })
+      expect(body.devices[0].categories).toHaveLength(5)
+      expect(body.devices[0].categories).toContainEqual({
+        category: "MARKETING",
+        quotaCredit: "2.00",
+        configured: true,
+        description: "Marketing template credit",
+      })
+      expect(body.devices[0].categories).toContainEqual({
+        category: "REPLY",
+        quotaCredit: "1",
+        configured: false,
+        description: null,
+      })
+      expect(mockPrisma.whatsappDevice.findMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", status: "ACTIVE" },
+        select: { id: true, phoneNumber: true },
+        orderBy: { createdAt: "desc" },
+      })
+      expect(mockPrisma.whatsappQuotaCreditRate.findMany).toHaveBeenCalledWith({
+        where: { country: { in: ["ID"] } },
+      })
     })
   })
 
