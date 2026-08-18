@@ -82,12 +82,12 @@ describe("environment-variables.client", () => {
         environmentId: "test-env",
         key: "MY_SECRET",
         value: "secret-value",
-        type: "secret",
+        type: "secret_ref",
       })
 
       expect(result.ok).toBe(true)
       if (result.ok) {
-        expect(result.item?.type).toBe("secret")
+        expect(result.item?.type).toBe("secret_ref")
         expect(result.item?.value).toBe("")
       }
     })

@@ -1,6 +1,8 @@
-import type { EnvVar } from "@/modules/deploy/deploy.types"
+import type { EnvVar, EnvVarType } from "@/modules/deploy/deploy.types"
 
 export const ENV_VAR_MAX_VALUE_SIZE = 4096
+export const MASKED_ENV_VAR_VALUE = "••••••••"
+export const ENV_VAR_KEY_PATTERN = /^[A-Z][A-Z0-9_]*$/
 
 export const LARAVEL_ENV_PRESETS = [
   "APP_ENV",
@@ -18,7 +20,13 @@ export const LARAVEL_ENV_PRESETS = [
 ] as const
 
 const SECRET_KEY_HINT_PATTERN =
-  /(SECRET|TOKEN|PASSWORD|PRIVATE|APP_KEY|DB_PASSWORD)/i
+  /(SECRET|TOKEN|PASSWORD|PASS|PRIVATE|CREDENTIAL|APP_KEY|DB_PASSWORD)/i
+
+export const isSecretEnvVarType = (type: EnvVarType | undefined) => {
+  return (
+    type === "secret" || type === "secret_ref" || type === "secret_shared_ref"
+  )
+}
 
 const stripQuotedValue = (value: string) => {
   const trimmed = value.trim()
@@ -33,37 +41,33 @@ const stripQuotedValue = (value: string) => {
   return trimmed
 }
 
-export const inferEnvVarTypeFromKey = (key: string): "plain" | "secret" => {
-  return SECRET_KEY_HINT_PATTERN.test(key) ? "secret" : "plain"
+export const inferEnvVarTypeFromKey = (key: string): "plain" | "secret_ref" => {
+  return SECRET_KEY_HINT_PATTERN.test(key) ? "secret_ref" : "plain"
 }
 
-export const maskEnvVarValue = (value: string) => {
-  const length = Math.max(8, Math.min(value.length, 16))
-  return "*".repeat(length)
+export const maskEnvVarValue = (_value: string) => {
+  return MASKED_ENV_VAR_VALUE
 }
 
 export const getEnvVarPreviewValue = (envVar: EnvVar): string => {
-  const normalizedValue = envVar.value.trim()
-  const isSecret = envVar.type === "secret"
-
-  if (isSecret || envVar.masked) {
-    if (normalizedValue.length > 0) {
-      return maskEnvVarValue(normalizedValue)
-    }
-
-    return "********"
+  if (isSecretEnvVarType(envVar.type) || envVar.masked) {
+    return maskEnvVarValue(envVar.value)
   }
 
   return envVar.value
 }
 
 export type ParsedEnvImportResult = {
-  entries: Array<{ key: string; value: string }>
+  entries: Array<{
+    key: string
+    value: string
+    type: "plain" | "secret_ref"
+  }>
   errors: string[]
 }
 
 export const parseDotEnvImport = (raw: string): ParsedEnvImportResult => {
-  const entries: Array<{ key: string; value: string }> = []
+  const entries: ParsedEnvImportResult["entries"] = []
   const errors: string[] = []
 
   const lines = raw.split(/\r?\n/)
@@ -86,10 +90,24 @@ export const parseDotEnvImport = (raw: string): ParsedEnvImportResult => {
       return
     }
 
-    const key = withoutExport.slice(0, equalsIndex).trim()
+    const key = withoutExport.slice(0, equalsIndex).trim().toUpperCase()
     const value = stripQuotedValue(withoutExport.slice(equalsIndex + 1))
 
-    entries.push({ key, value })
+    if (!ENV_VAR_KEY_PATTERN.test(key)) {
+      errors.push(
+        `Line ${index + 1} has an invalid key. Use uppercase letters, numbers, and underscores.`
+      )
+      return
+    }
+
+    if (value.length > ENV_VAR_MAX_VALUE_SIZE) {
+      errors.push(
+        `Line ${index + 1} value cannot exceed ${ENV_VAR_MAX_VALUE_SIZE} characters.`
+      )
+      return
+    }
+
+    entries.push({ key, value, type: inferEnvVarTypeFromKey(key) })
   })
 
   return {

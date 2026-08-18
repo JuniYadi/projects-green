@@ -180,6 +180,13 @@ export const buildDeploySubmitPayload = ({
           value: item.value,
           type: item.type,
           scope: item.scope,
+          source: item.source,
+          serviceCredentialId: item.serviceCredentialId,
+          vaultPath: item.vaultPath,
+          vaultKey: item.vaultKey,
+          version: item.version,
+          referenceLabel: item.referenceLabel,
+          lastUpdatedAt: item.lastUpdatedAt,
         })),
   }
 }

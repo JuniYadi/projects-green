@@ -175,6 +175,70 @@ describe("Deploy Wizard logic", () => {
     })
   })
 
+  it("preserves Vault and shared-reference metadata in submissions", () => {
+    const state: DeployWizardState = {
+      ...baseState,
+      environment: {
+        ...baseState.environment,
+        envVars: [
+          {
+            id: "env-vault",
+            key: "DATABASE_URL",
+            value: "",
+            type: "secret_ref",
+            scope: "runtime",
+            source: "vault",
+            vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+            vaultKey: "DATABASE_URL",
+            version: 3,
+            lastUpdatedAt: "2026-08-18T10:00:00.000Z",
+          },
+          {
+            id: "env-shared",
+            key: "REDIS_URL",
+            value: "",
+            type: "secret_shared_ref",
+            scope: "runtime",
+            source: "managed_service",
+            serviceCredentialId: "credential-redis",
+            vaultPath: "tenants/org-1/shared/managed-services/credential-redis",
+            vaultKey: "CONNECTION_STRING",
+            referenceLabel: "Managed Redis",
+          },
+        ],
+      },
+    }
+
+    const envVars = buildDeploySubmitPayload({
+      state,
+      selectedRepository: repositories[1],
+    }).envVars
+
+    expect(envVars).toHaveLength(2)
+    expect(envVars[0]).toMatchObject({
+      key: "DATABASE_URL",
+      value: "",
+      type: "secret_ref",
+      scope: "runtime",
+      source: "vault",
+      vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+      vaultKey: "DATABASE_URL",
+      version: 3,
+      lastUpdatedAt: "2026-08-18T10:00:00.000Z",
+    })
+    expect(envVars[1]).toMatchObject({
+      key: "REDIS_URL",
+      value: "",
+      type: "secret_shared_ref",
+      scope: "runtime",
+      source: "managed_service",
+      serviceCredentialId: "credential-redis",
+      vaultPath: "tenants/org-1/shared/managed-services/credential-redis",
+      vaultKey: "CONNECTION_STRING",
+      referenceLabel: "Managed Redis",
+    })
+  })
+
   it("builds a template-default submission", () => {
     const templateState: DeployWizardState = {
       ...baseState,

@@ -1,3 +1,5 @@
+import type { EnvVarType } from "@/modules/deploy/deploy.types"
+
 export type K8sEnvironmentId = "dev" | "staging" | "prod"
 
 export type K8sEnvironment = {
@@ -76,6 +78,16 @@ export type EnvVar = {
   value: string
   isSecret: boolean
   updatedAt: string
+  type?: EnvVarType
+  scope?: "all" | "build" | "runtime"
+  masked?: boolean
+  isStoredSecret?: boolean
+  source?: "vault" | "managed_service"
+  serviceCredentialId?: string
+  vaultPath?: string
+  vaultKey?: string
+  version?: number
+  referenceLabel?: string
 }
 
 export type VolumeMount = {

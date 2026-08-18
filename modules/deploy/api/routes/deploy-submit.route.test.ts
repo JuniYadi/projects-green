@@ -197,6 +197,42 @@ describe("deploySubmitRoutes /submit", () => {
     expect(mockPrisma.applicationStack.update).toHaveBeenCalled()
   })
 
+  it("persists secret reference metadata without dropping it", async () => {
+    const envVars = [
+      {
+        key: "DATABASE_URL",
+        value: "",
+        type: "secret_ref" as const,
+        scope: "runtime" as const,
+        source: "vault" as const,
+        vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+        vaultKey: "DATABASE_URL",
+        version: 3,
+        lastUpdatedAt: "2026-08-18T10:00:00.000Z",
+      },
+      {
+        key: "REDIS_URL",
+        value: "",
+        type: "secret_shared_ref" as const,
+        scope: "runtime" as const,
+        source: "managed_service" as const,
+        serviceCredentialId: "credential-redis",
+        vaultPath: "tenants/org-1/shared/managed-services/credential-redis",
+        vaultKey: "CONNECTION_STRING",
+        referenceLabel: "Managed Redis",
+      },
+    ]
+
+    const res = await submit({ ...validBody, envVars })
+
+    expect(res.status).toBe(200)
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ envVarsJson: envVars }),
+      })
+    )
+  })
+
   it("fails with 409 when no active default cluster is configured", async () => {
     mockPrisma.appHostingCluster.findMany.mockResolvedValue([] as never)
     mockPrisma.appHostingCluster.findUnique.mockResolvedValue(null as never)

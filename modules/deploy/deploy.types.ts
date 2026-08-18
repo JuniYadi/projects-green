@@ -80,15 +80,40 @@ export type DetectionResult = {
   defaultPort?: number | null
 }
 
+export type EnvVarType =
+  | "plain"
+  | "secret_ref"
+  | "secret_shared_ref"
+  /** Legacy value accepted while older deploy payloads are migrated. */
+  | "secret"
+
+export type SharedSecretServiceType = "MYSQL" | "POSTGRESQL" | "REDIS"
+
+export type SharedSecretOption = {
+  id: string
+  label: string
+  serviceType: SharedSecretServiceType
+  serviceCredentialId: string
+  vaultPath: string
+  vaultKey: string
+  description?: string
+}
+
 export type EnvVar = {
   id: string
   key: string
   value: string
-  type?: "plain" | "secret"
+  type?: EnvVarType
   scope?: "all" | "build" | "runtime"
   lastUpdatedAt?: string
   isStoredSecret?: boolean
   masked?: boolean
+  source?: "vault" | "managed_service"
+  serviceCredentialId?: string
+  vaultPath?: string
+  vaultKey?: string
+  version?: number
+  referenceLabel?: string
 }
 
 export type ResourcePlanId = "starter" | "pro" | "payg"

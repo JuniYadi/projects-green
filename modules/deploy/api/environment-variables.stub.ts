@@ -1,6 +1,7 @@
 import {
   ENV_VAR_MAX_VALUE_SIZE,
   inferEnvVarTypeFromKey,
+  isSecretEnvVarType,
   parseDotEnvImport,
 } from "@/modules/deploy/environment-vars"
 import { isValidEnvVarKey } from "@/modules/deploy/deploy.schema"
@@ -47,7 +48,7 @@ const createSeedData = (): EnvVariableRecord[] => {
       id: "var-app-key",
       key: "APP_KEY",
       value: "",
-      type: "secret",
+      type: "secret_ref",
       scope: "runtime",
       masked: true,
       isStoredSecret: true,
@@ -145,6 +146,10 @@ export const createEnvironmentVariable = (
     value: string
     type?: EnvVariableType
     scope?: EnvVariableScope
+    serviceCredentialId?: string
+    vaultPath?: string
+    vaultKey?: string
+    referenceLabel?: string
   },
   store: EnvironmentVariablesStore = memoryStore
 ): EnvVariablesMutationResponse => {
@@ -160,10 +165,25 @@ export const createEnvironmentVariable = (
     return valueError
   }
 
-  if (input.value.trim().length === 0) {
+  const type =
+    input.type === "secret"
+      ? "secret_ref"
+      : (input.type ?? inferEnvVarTypeFromKey(normalizedKey))
+
+  if (
+    (type === "plain" || type === "secret_ref") &&
+    input.value.trim().length === 0
+  ) {
     return toValidationError(
       "VALIDATION_ERROR",
       "Environment value is required."
+    )
+  }
+
+  if (type === "secret_shared_ref" && !input.serviceCredentialId) {
+    return toValidationError(
+      "VALIDATION_ERROR",
+      "Choose a managed service secret reference."
     )
   }
 
@@ -174,18 +194,26 @@ export const createEnvironmentVariable = (
     )
   }
 
-  const type = input.type ?? inferEnvVarTypeFromKey(normalizedKey)
   const now = nowIso()
 
   const row: EnvVariableRecord = {
     id: createId(),
     key: normalizedKey,
-    value: type === "secret" ? "" : input.value,
+    value: isSecretEnvVarType(type) ? "" : input.value,
     type,
     scope: input.scope ?? "runtime",
-    masked: type === "secret",
-    isStoredSecret: type === "secret",
+    masked: isSecretEnvVarType(type),
+    isStoredSecret: isSecretEnvVarType(type),
     lastUpdatedAt: now,
+    ...(type === "secret_shared_ref"
+      ? {
+          source: "managed_service" as const,
+          serviceCredentialId: input.serviceCredentialId,
+          vaultPath: input.vaultPath,
+          vaultKey: input.vaultKey,
+          referenceLabel: input.referenceLabel,
+        }
+      : {}),
   }
 
   envRows.unshift(row)
@@ -206,6 +234,10 @@ export const updateEnvironmentVariable = (
     value?: string
     type?: EnvVariableType
     scope?: EnvVariableScope
+    serviceCredentialId?: string
+    vaultPath?: string
+    vaultKey?: string
+    referenceLabel?: string
   },
   store: EnvironmentVariablesStore = memoryStore
 ): EnvVariablesMutationResponse => {
@@ -231,7 +263,11 @@ export const updateEnvironmentVariable = (
   }
 
   const current = envRows[rowIndex]
-  const nextType = input.type ?? current.type
+  const nextType =
+    input.type === "secret"
+      ? "secret_ref"
+      : (input.type ??
+        (current.type === "secret" ? "secret_ref" : current.type))
   const nextValue = input.value ?? current.value
   const valueError = ensureValueIsValid(nextValue)
   if (valueError) {
@@ -253,10 +289,59 @@ export const updateEnvironmentVariable = (
     key: normalizedKey,
     scope: normalizeScope(input.scope ?? current.scope),
     type: nextType,
-    value: nextType === "secret" ? "" : nextValue,
-    masked: nextType === "secret" ? true : current.masked,
-    isStoredSecret: nextType === "secret" ? true : false,
-    lastUpdatedAt: nowIso(),
+    value: isSecretEnvVarType(nextType) ? "" : nextValue,
+    masked: isSecretEnvVarType(nextType) ? true : current.masked,
+    isStoredSecret: isSecretEnvVarType(nextType) ? true : false,
+    lastUpdatedAt:
+      nextType === "secret_ref" &&
+      current.type === "secret_ref" &&
+      input.value === undefined
+        ? current.lastUpdatedAt
+        : nowIso(),
+    ...(nextType === "secret_shared_ref"
+      ? {
+          source: "managed_service" as const,
+          serviceCredentialId:
+            input.serviceCredentialId ?? current.serviceCredentialId,
+          vaultPath: input.vaultPath ?? current.vaultPath,
+          vaultKey: input.vaultKey ?? current.vaultKey,
+          referenceLabel: input.referenceLabel ?? current.referenceLabel,
+        }
+      : nextType === "secret_ref"
+        ? {
+            source:
+              current.type === "secret_ref"
+                ? (current.source ?? "vault")
+                : "vault",
+            serviceCredentialId: undefined,
+            ...(current.type === "secret_ref"
+              ? {
+                  vaultPath: current.vaultPath,
+                  vaultKey: current.vaultKey,
+                  version: current.version,
+                }
+              : {
+                  vaultPath: undefined,
+                  vaultKey: undefined,
+                  version: undefined,
+                }),
+            referenceLabel: undefined,
+          }
+        : {
+            source: undefined,
+            serviceCredentialId: undefined,
+            vaultPath: undefined,
+            vaultKey: undefined,
+            referenceLabel: undefined,
+            version: undefined,
+          }),
+  }
+
+  if (nextType === "secret_shared_ref" && !next.serviceCredentialId) {
+    return toValidationError(
+      "VALIDATION_ERROR",
+      "Choose a managed service secret reference."
+    )
   }
 
   envRows[rowIndex] = next
@@ -357,16 +442,16 @@ export const importEnvironmentVariables = (
 
   for (const entry of parsed.entries) {
     const key = entry.key.trim().toUpperCase()
-    const type = inferEnvVarTypeFromKey(key)
+    const type = entry.type
 
     envRows.unshift({
       id: createId(),
       key,
-      value: type === "secret" ? "" : entry.value,
+      value: isSecretEnvVarType(type) ? "" : entry.value,
       type,
       scope: normalizeScope(input.scope),
-      masked: type === "secret",
-      isStoredSecret: type === "secret",
+      masked: isSecretEnvVarType(type),
+      isStoredSecret: isSecretEnvVarType(type),
       lastUpdatedAt: now,
     })
   }
