@@ -46,6 +46,7 @@ import { whatsappRoutes } from "@/modules/whatsapp/whatsapp.module"
 import { metaWebhookRoutes } from "@/modules/whatsapp/meta-apps/api/meta-webhook.route"
 import { credentialsRoutes } from "@/modules/credentials/api/credentials.route"
 import { webhookDeadLetterRoutes } from "@/modules/whatsapp/webhooks/api/webhook-dead-letter.route"
+import { vaultSecretsRoutes } from "@/modules/secrets/api"
 
 const parseErrorPath = (
   value: string | Array<string | number> | undefined
@@ -217,6 +218,7 @@ export const app = new Elysia({ prefix: "/api" })
     }
   })
   .use(credentialsRoutes)
+  .use(vaultSecretsRoutes)
   .use(webhookRoutes)
   .use(docsRoutes)
   .use(docsConsoleRoutes)
