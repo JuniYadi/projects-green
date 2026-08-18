@@ -220,6 +220,7 @@ export class CatalogAdminService {
       where: { code: code as never },
       include: {
         plans: {
+          where: { isActive: true },
           include: {
             pricings: {
               where: {
@@ -264,9 +265,8 @@ export class CatalogAdminService {
       where: { code: packageCode as never },
     })
     if (!pkg) return null
-
     const plan = await this.db.servicePlan.findFirst({
-      where: { packageId: pkg.id, code: planCode },
+      where: { packageId: pkg.id, code: planCode, isActive: true },
       include: {
         pricings: {
           where: {

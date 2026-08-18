@@ -80,11 +80,11 @@ export default function CatalogProductsListPage() {
         </div>
         <div className="flex items-center gap-3">
           <Link
-            href={`/portal/billing/catalog/products/${catalogCode.toLowerCase()}?tab=plans`}
+            href={`/portal/billing/catalog/${catalogCode.toLowerCase()}/products/new`}
           >
             <Button size="sm">
               <PlusIcon className="mr-2 h-4 w-4" />
-              Configure Plans & Products
+              New Product
             </Button>
           </Link>
         </div>
@@ -123,7 +123,7 @@ export default function CatalogProductsListPage() {
               </p>
             </div>
             <Link
-              href={`/portal/billing/catalog/products/${catalogCode.toLowerCase()}?tab=plans`}
+              href={`/portal/billing/catalog/${catalogCode.toLowerCase()}/products/new`}
             >
               <Button size="sm">Add First Product</Button>
             </Link>
@@ -187,7 +187,7 @@ export default function CatalogProductsListPage() {
 
                   <div className="pt-2">
                     <Link
-                      href={`/portal/billing/catalog/products/${catalogCode.toLowerCase()}?planId=${product.id}&tab=plans`}
+                      href={`/portal/billing/catalog/${catalogCode.toLowerCase()}/products/${product.code.toLowerCase()}`}
                     >
                       <Button variant="outline" size="sm" className="w-full">
                         Edit Product
