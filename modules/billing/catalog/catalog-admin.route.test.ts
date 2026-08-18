@@ -236,6 +236,49 @@ describe("catalog admin routes", () => {
     })
   })
 
+  describe("POST /admin/catalog/:catalogCode/products/:productCode", () => {
+    it("upserts product successfully", async () => {
+      service.upsertPlan.mockResolvedValueOnce({
+        id: "plan-1",
+        code: "STARTER",
+        name: "Starter Plan",
+      })
+
+      const response = await app().handle(
+        json("http://localhost/admin/catalog/APP_HOSTING/products/STARTER", {
+          name: "Starter Plan",
+          billingStrategy: "FIXED_CYCLE",
+          stockControl: "TRACKED",
+          stockCount: 10,
+          allowBackorder: false,
+        })
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.code).toBe("STARTER")
+      expect(service.upsertPlan).toHaveBeenCalledWith(
+        expect.objectContaining({
+          packageCode: "APP_HOSTING",
+          code: "STARTER",
+          name: "Starter Plan",
+        })
+      )
+    })
+
+    it("rejects invalid input schema", async () => {
+      const response = await app().handle(
+        json("http://localhost/admin/catalog/APP_HOSTING/products/STARTER", {
+          name: "",
+        })
+      )
+
+      expect(response.status).toBe(422)
+      expect(service.upsertPlan).not.toHaveBeenCalled()
+    })
+  })
+
   // ─── Auth guards ────────────────────────────────────────────────────
 
   it("rejects unauthenticated requests", async () => {
