@@ -21,9 +21,9 @@ const checkoutPreview = {
   ok: true,
   quoteId: "quote-1",
   quoteToken: "quote-token-1",
-  pricingId: "offer-wa-starter-monthly",
-  packageCode: "WHATSAPP",
-  planCode: "WA_STARTER",
+  pricingId: "offer-vpn-monthly",
+  packageCode: "VPN",
+  planCode: "STANDARD",
   currency: "IDR",
   billingPeriod: "MONTHLY",
   quantity: "1",
@@ -51,9 +51,9 @@ describe("Billing CheckoutPage", () => {
   beforeEach(() => {
     ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(
       new URLSearchParams({
-        pricingId: "offer-wa-starter-monthly",
-        product: "WHATSAPP",
-        plan: "WA_STARTER",
+        pricingId: "offer-vpn-monthly",
+        product: "VPN",
+        plan: "STANDARD",
         billingPeriod: "MONTHLY",
         price: "99000",
         currency: "IDR",
@@ -207,5 +207,52 @@ describe("Billing CheckoutPage", () => {
     expect(
       view.queryByRole("link", { name: /^back$/i })
     ).not.toBeInTheDocument()
+  })
+  it("renders device configuration fields for WhatsApp product and gates submit on phone number", async () => {
+    const waQuote = {
+      ...checkoutPreview,
+      packageCode: "WHATSAPP",
+      planCode: "WA_STARTER",
+    }
+    globalThis.fetch = mock(async () =>
+      jsonResponse(waQuote)
+    ) as unknown as typeof fetch
+    ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(
+      new URLSearchParams({
+        pricingId: "offer-wa-starter-monthly",
+        product: "WHATSAPP",
+        plan: "WA_STARTER",
+        billingPeriod: "MONTHLY",
+        price: "99000",
+        currency: "IDR",
+      })
+    )
+    const view = render(<CheckoutPage />)
+
+    await waitFor(() =>
+      expect(
+        view.getByLabelText(/i confirm this purchase/i)
+      ).toBeInTheDocument()
+    )
+
+    const checkbox = view.getByLabelText(/i confirm this purchase/i)
+    fireEvent.click(checkbox)
+
+    const phoneInput = (await view.findByPlaceholderText(
+      "e.g. +6281234567890"
+    )) as HTMLInputElement
+    expect(phoneInput).toBeInTheDocument()
+    expect(
+      view.getByRole("button", { name: /confirm and pay/i })
+    ).toBeDisabled()
+
+    fireEvent.input(phoneInput, { target: { value: "+6281234567890" } })
+    fireEvent.change(phoneInput, { target: { value: "+6281234567890" } })
+
+    await waitFor(() => {
+      expect(
+        view.getByRole("button", { name: /confirm and pay/i })
+      ).toBeEnabled()
+    })
   })
 })
