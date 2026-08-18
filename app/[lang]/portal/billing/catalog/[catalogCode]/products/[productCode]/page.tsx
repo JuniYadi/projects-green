@@ -32,11 +32,13 @@ export default function ProductDetailPage() {
   }>()
   const catalogCode = (rawCatalog || "").toUpperCase()
   const productCode = (rawProduct || "").toUpperCase()
+  const isNew = productCode === "NEW"
 
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [product, setProduct] = useState<CatalogPlan | null>(null)
+  const [customCode, setCustomCode] = useState("")
 
   const [name, setName] = useState("")
   const [billingStrategy, setBillingStrategy] = useState<
@@ -50,9 +52,8 @@ export default function ProductDetailPage() {
   const [isActive, setIsActive] = useState(true)
 
   const loadProduct = useCallback(async () => {
-    if (!catalogCode || !productCode) return
+    if (!catalogCode || !productCode || isNew) return
     setLoading(true)
-    setError(null)
     try {
       const response = await getAdminCatalogProductDetail(
         catalogCode,
@@ -85,18 +86,34 @@ export default function ProductDetailPage() {
   }, [loadProduct])
 
   const handleSave = async () => {
+    const targetCode = isNew ? customCode.trim().toUpperCase() : productCode
+    if (!targetCode) {
+      toast.error("Product code is required")
+      return
+    }
+    if (!name.trim()) {
+      toast.error("Product name is required")
+      return
+    }
+
     setSaving(true)
     try {
-      await upsertAdminCatalogProduct(catalogCode, productCode, {
-        name,
+      await upsertAdminCatalogProduct(catalogCode, targetCode, {
+        name: name.trim(),
         billingStrategy,
         stockControl,
         stockCount: stockControl === "TRACKED" ? stockCount : null,
         allowBackorder,
         isActive,
       })
-      toast.success("Product updated successfully")
-      void loadProduct()
+      toast.success(
+        isNew ? "Product created successfully" : "Product updated successfully"
+      )
+      if (isNew) {
+        window.location.href = `/portal/billing/catalog/${catalogCode.toLowerCase()}/products/${targetCode.toLowerCase()}`
+      } else {
+        void loadProduct()
+      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to save product"
@@ -142,17 +159,30 @@ export default function ProductDetailPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold">
-              {product?.name || productCode}
+              {isNew
+                ? `New ${catalogCode} Product`
+                : product?.name || productCode}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Catalog: <span className="font-semibold">{catalogCode}</span> ·
-              Code: <span className="font-mono">{productCode}</span>
+              Catalog: <span className="font-semibold">{catalogCode}</span>
+              {!isNew && (
+                <>
+                  {" "}
+                  · Code: <span className="font-mono">{productCode}</span>
+                </>
+              )}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : "Save changes"}
+            {saving
+              ? isNew
+                ? "Creating..."
+                : "Saving..."
+              : isNew
+                ? "Create Product"
+                : "Save changes"}
           </Button>
         </div>
       </header>
@@ -165,6 +195,18 @@ export default function ProductDetailPage() {
             <CardDescription>General naming and active status</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {isNew && (
+              <div className="space-y-2">
+                <Label htmlFor="new-product-code">Product Code *</Label>
+                <Input
+                  id="new-product-code"
+                  value={customCode}
+                  onChange={(e) => setCustomCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. STARTER, PRO, DEDICATED"
+                  className="font-mono uppercase"
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="product-name">Product Name *</Label>
               <Input
