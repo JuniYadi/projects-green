@@ -75,6 +75,7 @@ const mockTemplatesData: Array<{
   id: string
   name: string
   slug: string
+  category?: "MARKETING" | "UTILITY" | "AUTHENTICATION" | null
   metaStatus: string | null
   syncStatus: string
   headerText?: string | null
@@ -101,6 +102,7 @@ const mockTemplatesData: Array<{
     id: "tpl_1",
     name: "hello_world",
     slug: "hello_world",
+    category: "UTILITY",
     metaStatus: "APPROVED",
     syncStatus: "SYNCED",
     languages: [
@@ -116,6 +118,13 @@ const mockTemplatesData: Array<{
         },
         isApproved: true,
         metaStatus: "APPROVED",
+      },
+      {
+        lang: "id",
+        body: "Halo {{1}}, Anda memiliki {{2}} pesan baru.",
+        footer: "Balas STOP",
+        isApproved: false,
+        metaStatus: "PENDING",
       },
     ],
     organizationId: "org_1",
@@ -274,6 +283,38 @@ describe("WhatsAppMessagesPage", () => {
     expect(
       view.getByRole("button", { name: /send template message/i })
     ).not.toBeDisabled()
+    view.unmount()
+  })
+
+  it("shows template categories and flagged language choices", async () => {
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
+    await waitFor(() => {
+      expect(
+        view.getByRole("button", { name: /send message/i })
+      ).not.toBeDisabled()
+    })
+    fireEvent.click(view.getByRole("button", { name: /send message/i }))
+    await waitFor(() => {
+      expect(
+        view.getByRole("heading", { name: "Send Template Message" })
+      ).toBeInTheDocument()
+    })
+
+    expect(
+      view.getByRole("button", { name: /hello_world.*Utility/i })
+    ).toBeInTheDocument()
+    expect(view.getAllByText("Utility")).toHaveLength(1)
+
+    fireEvent.click(view.getByRole("button", { name: /hello_world.*Utility/i }))
+
+    await waitFor(() => {
+      expect(view.getByRole("radio", { name: "English (en)" })).toBeChecked()
+    })
+    expect(
+      view.getByRole("radio", { name: "Indonesian (id)" })
+    ).toBeInTheDocument()
+    expect(view.getByText("🇮🇩")).toBeInTheDocument()
+    expect(view.getAllByText("Utility")).toHaveLength(2)
     view.unmount()
   })
 
