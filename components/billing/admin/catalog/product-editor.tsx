@@ -210,9 +210,7 @@ export function ProductEditor({
       } else {
         // Admin editing must include active plans that have no offers yet.
         const response: CatalogProductDetailResponse =
-          productCode === "VPN"
-            ? await getAdminCatalogProduct(productCode)
-            : await getCatalogProduct(productCode)
+          await getAdminCatalogProduct(productCode)
         if (!response?.product) {
           setError("Product not found in catalog.")
           return
