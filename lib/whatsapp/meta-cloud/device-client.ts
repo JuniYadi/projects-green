@@ -34,17 +34,20 @@ export class WhatsAppDeviceClient {
   private readonly httpClient: MetaCloudHttpClient
   private readonly phoneNumberId: string
   private readonly wabaId: string
+  private readonly metaAppId?: string
   private readonly organizationId?: string
 
   constructor(options: {
     accessToken: string
     phoneNumberId: string
     wabaId: string
+    metaAppId?: string
     organizationId?: string
     timeoutMs?: number
   }) {
     this.phoneNumberId = options.phoneNumberId
     this.wabaId = options.wabaId
+    this.metaAppId = options.metaAppId
     this.organizationId = options.organizationId
     this.httpClient = new MetaCloudHttpClient({
       accessToken: options.accessToken,
@@ -58,6 +61,7 @@ export class WhatsAppDeviceClient {
     accessToken: string
     phoneNumberId: string
     wabaId: string
+    metaAppId?: string
     organizationId?: string
   }) {
     const token = await decryptWhatsAppToken(device.accessToken)
@@ -65,6 +69,7 @@ export class WhatsAppDeviceClient {
       accessToken: token,
       phoneNumberId: device.phoneNumberId,
       wabaId: device.wabaId,
+      metaAppId: device.metaAppId,
       organizationId: device.organizationId,
     })
   }
@@ -333,40 +338,44 @@ export class WhatsAppDeviceClient {
     mimeType: string
     fileName: string
   }): Promise<{ handle: string }> {
-    // ponytail: Resumable Upload — single-session for files <16MB.
-    // Meta's Resumable Upload API uses a 3-step flow for large files
-    // but for profile pictures (typically <5MB) single part upload works.
-    const uploadEndpoint = ENDPOINTS.BUSINESS_PROFILE(
-      this.phoneNumberId
-    ).replace("/whatsapp_business_profile", "/uploads")
+    if (!this.metaAppId) {
+      throw new Error("Meta app ID is required to upload a profile picture")
+    }
 
-    const formData = new FormData()
-    formData.append("file_length", String(file.data.byteLength))
-    formData.append("file_type", file.mimeType)
-    formData.append("file_name", file.fileName)
-    formData.append("messaging_product", "whatsapp")
+    const uploadEndpoint = new URL(ENDPOINTS.UPLOAD_SESSION(this.metaAppId))
+    uploadEndpoint.searchParams.set("file_name", file.fileName)
+    uploadEndpoint.searchParams.set("file_length", String(file.data.byteLength))
+    uploadEndpoint.searchParams.set("file_type", file.mimeType)
 
     const session = await this.httpClient.request<{ id: string }>(
       "CREATE_UPLOAD_SESSION",
-      uploadEndpoint,
-      "POST",
-      formData
+      uploadEndpoint.toString(),
+      "POST"
     )
 
-    // Append file data to the session
     const blob = new Blob([file.data], { type: file.mimeType })
-    const appendForm = new FormData()
-    appendForm.append("file", blob, file.fileName)
-    appendForm.append("messaging_product", "whatsapp")
 
-    const result = await this.httpClient.request<{ handle: string }>(
+    const result = await this.httpClient.request<{
+      h?: string
+      handle?: string
+    }>(
       "UPLOAD_FILE_PART",
-      `${uploadEndpoint}/${session.id}`,
+      ENDPOINTS.UPLOAD_SESSION_PART(session.id),
       "POST",
-      appendForm
+      blob,
+      3,
+      {
+        "Content-Type": file.mimeType,
+        file_offset: "0",
+      }
     )
 
-    return { handle: result.handle }
+    const handle = result.h ?? result.handle
+    if (!handle) {
+      throw new Error("Meta Cloud API returned no profile picture handle")
+    }
+
+    return { handle }
   }
 
   async sendSingleProduct(

@@ -16,6 +16,14 @@ export class DeviceNoPhoneIdError extends Error {
   }
 }
 
+export class DeviceNoMetaAppIdError extends Error {
+  readonly code = "DEVICE_NO_META_APP_ID" as const
+  constructor() {
+    super("Device has no Meta app ID linked for media uploads.")
+    this.name = "DeviceNoMetaAppIdError"
+  }
+}
+
 export class ProfileNotFoundError extends Error {
   readonly code = "PROFILE_NOT_FOUND" as const
   constructor(deviceId: string) {
@@ -27,6 +35,7 @@ export class ProfileNotFoundError extends Error {
 async function getDeviceById(deviceId: string, organizationId?: string) {
   const device = await prisma.whatsappDevice.findUnique({
     where: { id: deviceId },
+    include: { whatsappMetaApp: { select: { metaAppId: true } } },
   })
   if (!device) throw new DeviceNotFoundError(deviceId)
   if (organizationId && device.organizationId !== organizationId) {
@@ -112,6 +121,53 @@ export async function updateProfile(
   if (!updatedProfile) throw new ProfileNotFoundError(deviceId)
 
   // Persist to DB
+  await prisma.whatsappDevice.update({
+    where: { id: deviceId },
+    data: {
+      whatsappProfile: updatedProfile as Prisma.InputJsonValue,
+    },
+  })
+
+  return updatedProfile as BusinessProfileFields
+}
+
+export async function uploadProfilePicture(
+  deviceId: string,
+  file: {
+    data: ArrayBuffer
+    mimeType: string
+    fileName: string
+  },
+  organizationId: string
+): Promise<BusinessProfileFields> {
+  const device = await getDeviceById(deviceId, organizationId)
+  const phoneId = requirePhoneId(device)
+  const metaAppId =
+    device.whatsappMetaApp?.metaAppId ?? device.whatsappApplicationId
+
+  if (!metaAppId) throw new DeviceNoMetaAppIdError()
+
+  const client = await WhatsAppDeviceClient.fromDevice({
+    accessToken: device.tokenEncrypted ?? device.token ?? "",
+    phoneNumberId: phoneId,
+    wabaId: device.whatsappBusinessAccountId ?? "",
+    metaAppId,
+    organizationId: device.organizationId,
+  })
+
+  const { handle } = await client.uploadProfilePicture(file)
+  const result = await client.updateBusinessProfile({
+    messaging_product: "whatsapp",
+    profile_picture_handle: handle,
+  })
+
+  if (!result.success) {
+    throw new Error("Meta returned success: false for profile picture update")
+  }
+
+  const updatedProfile = await client.getBusinessProfile()
+  if (!updatedProfile) throw new ProfileNotFoundError(deviceId)
+
   await prisma.whatsappDevice.update({
     where: { id: deviceId },
     data: {

@@ -6,6 +6,7 @@ import {
 import type { WhatsappMessagePricingDTO } from "@/modules/whatsapp/messages/message-pricing.dto"
 import { eden, getApiBaseUrl } from "@/lib/eden"
 import { z } from "zod"
+import type { BusinessProfileDTO } from "@/modules/whatsapp/devices/business-profile.dto"
 
 // --- Response Types for other entities (inferred from routes until schemas are extracted) ---
 
@@ -185,14 +186,37 @@ export const whatsappClient = {
     },
     profile: {
       get: (id: string) =>
-        serverFetch<{ ok: boolean; profile: Record<string, unknown> }>(
+        serverFetch<{ ok: boolean; profile: BusinessProfileDTO }>(
           `/api/whatsapp/devices/${id}/profile`
         ),
       update: (id: string, input: Record<string, unknown>) =>
-        serverFetch<{ ok: boolean; profile: Record<string, unknown> }>(
+        serverFetch<{ ok: boolean; profile: BusinessProfileDTO }>(
           `/api/whatsapp/devices/${id}/profile`,
           { method: "PATCH", body: JSON.stringify(input) }
         ),
+      uploadPicture: async (id: string, file: File) => {
+        const formData = new FormData()
+        formData.append("file", file)
+
+        const res = await fetch(`/api/whatsapp/devices/${id}/profile/picture`, {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        })
+        const body = (await res.json().catch(() => ({}))) as {
+          ok?: boolean
+          profile?: BusinessProfileDTO
+          message?: string
+        }
+
+        if (!res.ok || !body.ok || !body.profile) {
+          throw new Error(
+            body.message ?? `Upload failed with status ${res.status}`
+          )
+        }
+
+        return { ok: true, profile: body.profile }
+      },
     },
   },
 

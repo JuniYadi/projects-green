@@ -92,6 +92,19 @@ describe("whatsappClient", () => {
     await whatsappClient.devices.profile.update("device-1", { about: "Hello" })
     expect(calls[6]?.init?.method).toBe("PATCH")
     expect(bodyOf(calls[6]!)).toEqual({ about: "Hello" })
+    queueJson({
+      ok: true,
+      profile: { profile_picture_url: "https://example.com/profile.png" },
+    })
+    await whatsappClient.devices.profile.uploadPicture(
+      "device-1",
+      new File(["image"], "profile.png", { type: "image/png" })
+    )
+    expect(calls[7]?.input).toContain(
+      "/api/whatsapp/devices/device-1/profile/picture"
+    )
+    expect(calls[7]?.init?.method).toBe("POST")
+    expect(calls[7]?.init?.body).toBeInstanceOf(FormData)
     queueJson({ ok: true, message: "queued" })
     await whatsappClient.devices.syncTemplates("device-1")
     responses.push(jsonResponse({ message: "sync failed" }, 500))
@@ -368,6 +381,25 @@ describe("whatsappClient", () => {
     responses.push(new Response("not json", { status: 500 }))
     await expect(
       whatsappClient.media.upload(new File(["hello"], "hello.txt"), "device-1")
+    ).rejects.toThrow("Upload failed with status 500")
+  })
+
+  it("handles profile picture upload failures", async () => {
+    const whatsappClient = await client()
+    queueJson({ ok: false, message: "File too large" }, 400)
+    await expect(
+      whatsappClient.devices.profile.uploadPicture(
+        "device-1",
+        new File(["too big"], "avatar.png", { type: "image/png" })
+      )
+    ).rejects.toThrow("File too large")
+
+    responses.push(new Response("not json", { status: 500 }))
+    await expect(
+      whatsappClient.devices.profile.uploadPicture(
+        "device-1",
+        new File(["avatar"], "avatar.png", { type: "image/png" })
+      )
     ).rejects.toThrow("Upload failed with status 500")
   })
 })

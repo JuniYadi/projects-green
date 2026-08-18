@@ -32,6 +32,7 @@ const device = {
   whatsappProfile: {
     name: "Green Support",
     about: "Loaded profile about text",
+    profile_picture_url: "https://example.com/profile.png",
     description: "Official support channel for Green platform",
     email: "support@green.local",
     address: "123 Green Way",
@@ -120,6 +121,35 @@ describe("ConsoleWhatsAppDeviceDetailPage", () => {
       return url.includes("/api/whatsapp/devices/cmqoeiclj0006x94c6ofe0wti")
     })
     expect(deviceCall).toBeTruthy()
+    expect(
+      within(view.getByTestId("whatsapp-profile-preview")).getByText("GS")
+    ).toBeTruthy()
+  })
+
+  it("offers an image picker and preview instead of a profile URL field", async () => {
+    const { default: ConsoleWhatsAppDeviceDetailPage } = await import("./page")
+
+    const view = render(React.createElement(ConsoleWhatsAppDeviceDetailPage))
+    await waitFor(() => {
+      expect(view.getByTestId("whatsapp-profile-preview")).toBeTruthy()
+    })
+    fireEvent.click(view.getByRole("button", { name: "Edit WhatsApp Profile" }))
+
+    const fileInput = view.getByLabelText("Profile picture")
+    expect(fileInput).toHaveAttribute("accept", "image/jpeg,image/png")
+    expect(view.queryByLabelText("Profile Picture URL")).toBeNull()
+
+    fireEvent.change(fileInput, {
+      target: {
+        files: [
+          new File([new Uint8Array([1, 2, 3])], "new-profile.png", {
+            type: "image/png",
+          }),
+        ],
+      },
+    })
+
+    expect(view.getByText("new-profile.png")).toBeTruthy()
   })
 
   it("updates the preview from the saved profile response", async () => {

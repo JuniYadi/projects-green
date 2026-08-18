@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useParams } from "next/navigation"
 
-import { CheckCircle, PencilSimple, Phone } from "@phosphor-icons/react"
+import { CheckCircle, Image, PencilSimple, Phone } from "@phosphor-icons/react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Card,
@@ -44,6 +44,9 @@ import {
   type Vertical,
 } from "@/lib/whatsapp/meta-cloud/types/business-profile"
 type PageState = "loading" | "error" | "loaded"
+const PROFILE_PICTURE_TYPES = ["image/jpeg", "image/png"]
+const PROFILE_PICTURE_SIZE_LIMIT = 5 * 1024 * 1024
+
 type ProfileFormState = {
   about: string
   description: string
@@ -207,8 +210,47 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
   const [errorMessage, setErrorMessage] = React.useState("")
   const [profileDialogOpen, setProfileDialogOpen] = React.useState(false)
   const [profileSubmitting, setProfileSubmitting] = React.useState(false)
+  const [profilePictureFile, setProfilePictureFile] =
+    React.useState<File | null>(null)
+  const [profilePicturePreviewUrl, setProfilePicturePreviewUrl] =
+    React.useState("")
   const [profileForm, setProfileForm] =
     React.useState<ProfileFormState>(EMPTY_PROFILE_FORM)
+
+  React.useEffect(() => {
+    return () => {
+      if (profilePicturePreviewUrl) {
+        URL.revokeObjectURL(profilePicturePreviewUrl)
+      }
+    }
+  }, [profilePicturePreviewUrl])
+
+  const clearProfilePictureSelection = () => {
+    setProfilePictureFile(null)
+    setProfilePicturePreviewUrl("")
+  }
+
+  const handleProfilePictureChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0] ?? null
+    if (!file) {
+      clearProfilePictureSelection()
+      return
+    }
+    if (!PROFILE_PICTURE_TYPES.includes(file.type)) {
+      toast("Profile pictures must be JPEG or PNG images.")
+      event.target.value = ""
+      return
+    }
+    if (file.size > PROFILE_PICTURE_SIZE_LIMIT) {
+      toast("Profile pictures must be 5 MB or smaller.")
+      event.target.value = ""
+      return
+    }
+    setProfilePictureFile(file)
+    setProfilePicturePreviewUrl(URL.createObjectURL(file))
+  }
 
   const loadDevice = React.useCallback(async () => {
     if (!deviceId) {
@@ -231,6 +273,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
           response.device.whatsappProfile as Record<string, unknown> | null
         )
       )
+      clearProfilePictureSelection()
       setPageState("loaded")
     } catch (err) {
       const message =
@@ -296,6 +339,11 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
 
   // Overview tab content (basic device info, read-only)
   const profile = device.whatsappProfile as Record<string, unknown> | null
+  const currentProfilePictureUrl =
+    typeof profile?.profile_picture_url === "string"
+      ? profile.profile_picture_url
+      : undefined
+  const profilePictureUrl = profilePicturePreviewUrl || currentProfilePictureUrl
 
   const overviewContent = (
     <div className="grid gap-6 md:grid-cols-2">
@@ -409,7 +457,6 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       const trimmedDescription = profileForm.description.trim()
       const trimmedAddress = profileForm.address.trim()
       const trimmedEmail = profileForm.email.trim()
-      const trimmedUrl = profileForm.profile_picture_url.trim()
       const trimmedWebsite1 = profileForm.website1.trim()
       const trimmedWebsite2 = profileForm.website2.trim()
 
@@ -417,28 +464,43 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       if (trimmedDescription) payload.description = trimmedDescription
       if (trimmedAddress) payload.address = trimmedAddress
       if (trimmedEmail) payload.email = trimmedEmail
-      if (trimmedUrl) payload.profile_picture_url = trimmedUrl
       if (trimmedWebsite1 || trimmedWebsite2) {
         payload.websites = [trimmedWebsite1, trimmedWebsite2].filter(Boolean)
       }
       if (profileForm.vertical) payload.vertical = profileForm.vertical
 
-      const response = await whatsappClient.devices.profile.update(
-        deviceId,
-        payload
+      let response: { ok: boolean; profile: Record<string, unknown> } | null =
+        null
+      const hasTextFields = Object.keys(payload).some(
+        (key) => key !== "messaging_product"
       )
-      if (!response.ok) {
-        throw new Error(
-          (response as unknown as { message?: string }).message ||
-            "Failed to update profile"
+
+      if (hasTextFields || !profilePictureFile) {
+        response = await whatsappClient.devices.profile.update(
+          deviceId,
+          payload
+        )
+        if (!response.ok) {
+          throw new Error("Failed to update profile")
+        }
+      }
+
+      if (profilePictureFile) {
+        response = await whatsappClient.devices.profile.uploadPicture(
+          deviceId,
+          profilePictureFile
         )
       }
+
+      if (!response) throw new Error("Failed to update profile")
+
       setDevice((prev) =>
         prev ? { ...prev, whatsappProfile: response.profile } : prev
       )
       setProfileForm(
         toProfileForm(response.profile as Record<string, unknown> | null)
       )
+      clearProfilePictureSelection()
       setProfileDialogOpen(false)
       toast("WhatsApp profile updated")
     } catch (err) {
@@ -449,7 +511,13 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
   }
 
   const profileDialog = (
-    <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+    <Dialog
+      open={profileDialogOpen}
+      onOpenChange={(open) => {
+        setProfileDialogOpen(open)
+        if (!open) clearProfilePictureSelection()
+      }}
+    >
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <PencilSimple className="mr-2 size-4" />
@@ -511,19 +579,38 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="profile-url">Profile Picture URL</Label>
-            <Input
-              id="profile-url"
-              type="url"
-              value={profileForm.profile_picture_url}
-              onChange={(e) =>
-                setProfileForm((f) => ({
-                  ...f,
-                  profile_picture_url: e.target.value,
-                }))
-              }
-              placeholder="https://example.com/image.jpg"
-            />
+            <Label htmlFor="profile-picture-file">Profile picture</Label>
+            <div className="flex items-center gap-3">
+              <Avatar size="lg">
+                <AvatarImage
+                  src={profilePictureUrl}
+                  alt="WhatsApp profile picture preview"
+                />
+                <AvatarFallback>
+                  {/* eslint-disable-next-line jsx-a11y/alt-text -- decorative placeholder icon */}
+                  <Image
+                    className="size-5 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                </AvatarFallback>
+              </Avatar>
+              <div className="grid flex-1 gap-1">
+                <Input
+                  id="profile-picture-file"
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  onChange={handleProfilePictureChange}
+                />
+                <p className="text-xs text-muted-foreground">
+                  JPEG or PNG, up to 5 MB. The preview updates before saving.
+                </p>
+                {profilePictureFile && (
+                  <p className="truncate text-xs font-medium">
+                    {profilePictureFile.name}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="profile-website1">Website 1</Label>

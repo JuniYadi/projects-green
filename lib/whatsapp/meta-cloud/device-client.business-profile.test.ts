@@ -109,4 +109,86 @@ describe("WhatsAppDeviceClient business profile", () => {
 
     expect(result.success).toBe(false)
   })
+
+  it("uploadProfilePicture throws if metaAppId is missing", async () => {
+    const client = createClient()
+    await expect(
+      client.uploadProfilePicture({
+        data: new ArrayBuffer(8),
+        mimeType: "image/png",
+        fileName: "test.png",
+      })
+    ).rejects.toThrow("Meta app ID is required")
+  })
+
+  it("uploadProfilePicture creates session and uploads file part", async () => {
+    const client = new WhatsAppDeviceClient({
+      accessToken: TEST_ACCESS_TOKEN,
+      phoneNumberId: PHONE_ID,
+      wabaId: WABA_ID,
+      metaAppId: "app-123",
+    })
+
+    let requestCount = 0
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      requestCount++
+      const urlStr = url.toString()
+      if (urlStr.includes("/app-123/uploads")) {
+        return new Response(JSON.stringify({ id: "session-123" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+      if (
+        urlStr.includes("upload:session-123") ||
+        urlStr.includes("session-123")
+      ) {
+        return new Response(JSON.stringify({ h: "handle-456" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+      return new Response("Not found", { status: 404 })
+    }) as unknown as typeof globalThis.fetch
+
+    const res = await client.uploadProfilePicture({
+      data: new ArrayBuffer(16),
+      mimeType: "image/png",
+      fileName: "avatar.png",
+    })
+
+    expect(res).toEqual({ handle: "handle-456" })
+    expect(requestCount).toBe(2)
+  })
+
+  it("uploadProfilePicture throws if no handle returned", async () => {
+    const client = new WhatsAppDeviceClient({
+      accessToken: TEST_ACCESS_TOKEN,
+      phoneNumberId: PHONE_ID,
+      wabaId: WABA_ID,
+      metaAppId: "app-123",
+    })
+
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      const urlStr = url.toString()
+      if (urlStr.includes("/app-123/uploads")) {
+        return new Response(JSON.stringify({ id: "session-123" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+      return new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    }) as unknown as typeof globalThis.fetch
+
+    await expect(
+      client.uploadProfilePicture({
+        data: new ArrayBuffer(16),
+        mimeType: "image/png",
+        fileName: "avatar.png",
+      })
+    ).rejects.toThrow("no profile picture handle")
+  })
 })
