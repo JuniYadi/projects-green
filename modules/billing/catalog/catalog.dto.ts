@@ -55,6 +55,11 @@ export type CatalogPlanDTO = {
   code: string
   name: string
   resources: Record<string, unknown>
+  billingStrategy: "PRO_RATA" | "FIXED_CYCLE"
+  stockControl: "UNLIMITED" | "TRACKED"
+  stockCount: number | null
+  allowBackorder: boolean
+  isActive: boolean
   offers: CatalogOfferDTO[]
 }
 
@@ -79,6 +84,11 @@ export function toCatalogPlanDTO(
     code: plan.code,
     name: plan.name,
     resources: plan.resources as Record<string, unknown>,
+    billingStrategy: plan.billingStrategy,
+    stockControl: plan.stockControl,
+    stockCount: plan.stockCount,
+    allowBackorder: plan.allowBackorder,
+    isActive: plan.isActive,
     offers: plan.pricings.map(toCatalogOfferDTO),
   }
 }
