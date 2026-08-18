@@ -110,4 +110,39 @@ describe("product publish pricing contract", () => {
 
     expect(result).toEqual({ valid: true, invalidTabs: [], missingPrices: [] })
   })
+
+  it("blocks publish when plan names or codes are blank or duplicated", () => {
+    const result = validateProductPublish(
+      {
+        basics: {
+          name: "App Hosting",
+          description: "Managed hosting",
+        },
+        plans: [
+          plan([
+            {
+              id: "offer-1",
+              billingPeriod: "MONTHLY",
+              periodPrice: "100",
+              currency: "IDR",
+              chargeUnit: "SUBSCRIPTION",
+              effectiveFrom: "2026-01-01",
+              effectiveTo: "",
+              isActive: true,
+            },
+          ]),
+          {
+            ...plan([]),
+            id: "plan-2",
+            code: "STANDARD",
+            name: "",
+          },
+        ],
+      },
+      ["IDR"]
+    )
+
+    expect(result.valid).toBe(false)
+    expect(result.invalidTabs).toContain("plans")
+  })
 })

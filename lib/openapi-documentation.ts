@@ -365,6 +365,22 @@ function enrichRequestBody(requestBody: JsonObject): void {
   enrichContent(requestBody.content)
 }
 
+function formatTagSegment(segment: string): string {
+  if (segment.toLowerCase() === "vpn") {
+    return "VPN"
+  }
+  return segment
+    .split(/[-_]/g)
+    .filter(Boolean)
+    .map((part) => {
+      if (part.toLowerCase() === "vpn") {
+        return "VPN"
+      }
+      return part.charAt(0).toUpperCase() + part.slice(1)
+    })
+    .join(" ")
+}
+
 function operationTag(path: string): string {
   const segments = path.split("/").filter(Boolean)
   const apiIndex = segments.findIndex(
@@ -382,16 +398,66 @@ function operationTag(path: string): string {
     return "API"
   }
 
-  return resource
-    .split(/[-_]/g)
-    .filter(Boolean)
-    .map((part) => {
-      if (part.toLowerCase() === "vpn") {
-        return "VPN"
-      }
-      return part.charAt(0).toUpperCase() + part.slice(1)
-    })
-    .join(" ")
+  // Granular sub-resource grouping for large modules (e.g. WhatsApp, Mobile VPN)
+  if (resource.toLowerCase() === "whatsapp" && resourceSegments.length > 1) {
+    const subResource = resourceSegments[1]
+    // Ignore parameters like {id} or {webhookKey}
+    if (!subResource.startsWith("{") && !subResource.startsWith(":")) {
+      return `WhatsApp ${formatTagSegment(subResource)}`
+    }
+    return "WhatsApp"
+  }
+
+  if (resource.toLowerCase() === "vpn" && resourceSegments.length > 1) {
+    const subResource = resourceSegments[1]
+    if (!subResource.startsWith("{") && !subResource.startsWith(":")) {
+      return `VPN ${formatTagSegment(subResource)}`
+    }
+    return "VPN"
+  }
+
+  return formatTagSegment(resource)
+}
+
+const INTERNAL_PATH_PATTERNS = [
+  /\/admin\b/i,
+  /\/dead-letter\b/i,
+  /\/mark-paid$/i,
+  /\/platform-role\b/i,
+  /\/integrations\b/i,
+  /\/github-event-log\b/i,
+]
+
+export type OpenApiDocScope = "public" | "admin"
+
+export type EnrichOpenApiOptions = {
+  scope?: OpenApiDocScope
+}
+
+function isPublicPathAndOperation(
+  path: string,
+  operation: JsonObject
+): boolean {
+  if (INTERNAL_PATH_PATTERNS.some((pattern) => pattern.test(path))) {
+    return false
+  }
+
+  const tags = Array.isArray(operation.tags) ? (operation.tags as string[]) : []
+  if (
+    tags.some(
+      (tag) =>
+        tag.toLowerCase().includes("admin") ||
+        tag.toLowerCase().includes("internal")
+    )
+  ) {
+    return false
+  }
+
+  if (operation["x-internal"] === true || operation.hide === true) {
+    return false
+  }
+
+  return true
 }
 
 function enrichOperation(
@@ -440,24 +506,53 @@ function enrichOperation(
 }
 
 /** Return cloned document enriched with deterministic, explicitly marked fallbacks. */
-export function enrichOpenApiDocument(document: unknown): OpenApiDocument {
+export function enrichOpenApiDocument(
+  document: unknown,
+  options: EnrichOpenApiOptions = {}
+): OpenApiDocument {
   const enriched = cloneValue(document)
   if (!isRecord(enriched) || !isRecord(enriched.paths)) {
     return enriched as OpenApiDocument
   }
+
+  const scope = options.scope ?? "admin"
+  const filteredPaths: Record<string, OpenApiPathItem> = {}
 
   for (const [path, pathItem] of Object.entries(enriched.paths)) {
     if (!isRecord(pathItem)) {
       continue
     }
 
-    for (const method of OPERATION_METHODS) {
-      const operation = pathItem[method]
-      if (isRecord(operation)) {
-        enrichOperation(operation, method, path)
+    const filteredPathItem: OpenApiPathItem = {}
+    let hasOperations = false
+
+    for (const [key, value] of Object.entries(pathItem)) {
+      if (
+        !OPERATION_METHODS.includes(key as (typeof OPERATION_METHODS)[number])
+      ) {
+        filteredPathItem[key] = value as OpenApiOperation
+        continue
       }
+
+      if (!isRecord(value)) {
+        continue
+      }
+
+      enrichOperation(value, key, path)
+
+      if (scope === "public" && !isPublicPathAndOperation(path, value)) {
+        continue
+      }
+
+      filteredPathItem[key] = value as OpenApiOperation
+      hasOperations = true
+    }
+
+    if (hasOperations || Object.keys(filteredPathItem).length > 0) {
+      filteredPaths[path] = filteredPathItem
     }
   }
 
+  enriched.paths = filteredPaths
   return enriched as OpenApiDocument
 }

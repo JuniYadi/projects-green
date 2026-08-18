@@ -186,6 +186,54 @@ export interface ProductPublishValidation {
     billingPeriod: BillingPeriod
   }>
 }
+
+export type ProductPlanIdentityErrors = Record<
+  string,
+  {
+    name?: string
+    code?: string
+  }
+>
+
+export function validateProductPlanIdentities(
+  plans: ProductPlanEditorForm[]
+): ProductPlanIdentityErrors {
+  const errors: ProductPlanIdentityErrors = {}
+  const codeCounts = new Map<string, number>()
+
+  for (const plan of plans) {
+    const code = plan.code.trim()
+
+    if (!plan.name.trim()) {
+      errors[plan.id] = {
+        ...errors[plan.id],
+        name: "Name is required.",
+      }
+    }
+
+    if (!code) {
+      errors[plan.id] = {
+        ...errors[plan.id],
+        code: "Code is required.",
+      }
+    } else {
+      codeCounts.set(code, (codeCounts.get(code) ?? 0) + 1)
+    }
+  }
+
+  for (const plan of plans) {
+    const code = plan.code.trim()
+    if (code && codeCounts.get(code)! > 1) {
+      errors[plan.id] = {
+        ...errors[plan.id],
+        code: "Code must be unique within this product.",
+      }
+    }
+  }
+
+  return errors
+}
+
 export function validateProductPublish(
   input: {
     basics: Pick<ProductBasicsForm, "name" | "description">
@@ -198,6 +246,10 @@ export function validateProductPublish(
 
   if (!input.basics.name.trim() || !input.basics.description.trim()) {
     invalidTabs.add("basics")
+  }
+
+  if (Object.keys(validateProductPlanIdentities(input.plans)).length > 0) {
+    invalidTabs.add("plans")
   }
 
   const activePlans = input.plans.filter((plan) => plan.isActive)

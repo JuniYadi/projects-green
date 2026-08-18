@@ -409,14 +409,17 @@ describe("enrichOpenApiDocument", () => {
       paths: { "/items": { patch: { responses: {} } } },
     })
   })
-  it("assigns resource tags and groups admin routes", () => {
+  it("assigns granular sub-resource tags and groups admin routes", () => {
     const enriched = enrichOpenApiDocument({
       paths: {
         "/api/vouchers": { get: { responses: { "200": {} } } },
         "/api/admin/vouchers": { get: { responses: { "200": {} } } },
+        "/api/whatsapp/messages": { post: { responses: { "200": {} } } },
+        "/api/whatsapp/templates": { get: { responses: { "200": {} } } },
         "/api/whatsapp/admin/devices": {
           get: { responses: { "200": {} } },
         },
+        "/api/vpn/mobile/pairing": { get: { responses: { "200": {} } } },
         "/api/portal/vpn": { get: { responses: { "200": {} } } },
         "/api": { get: { responses: { "200": {} } } },
       },
@@ -426,10 +429,42 @@ describe("enrichOpenApiDocument", () => {
     expect(enriched.paths["/api/admin/vouchers"].get.tags).toEqual([
       "API Admin",
     ])
+    expect(enriched.paths["/api/whatsapp/messages"].post.tags).toEqual([
+      "WhatsApp Messages",
+    ])
+    expect(enriched.paths["/api/whatsapp/templates"].get.tags).toEqual([
+      "WhatsApp Templates",
+    ])
     expect(enriched.paths["/api/whatsapp/admin/devices"].get.tags).toEqual([
       "API Admin",
     ])
+    expect(enriched.paths["/api/vpn/mobile/pairing"].get.tags).toEqual([
+      "VPN Mobile",
+    ])
     expect(enriched.paths["/api/portal/vpn"].get.tags).toEqual(["Portal"])
     expect(enriched.paths["/api"].get.tags).toEqual(["API"])
+  })
+
+  it("filters out internal and admin routes when scope is public", () => {
+    const enriched = enrichOpenApiDocument(
+      {
+        paths: {
+          "/api/whatsapp/messages": { post: { responses: { "200": {} } } },
+          "/api/admin/whatsapp/webhooks": { get: { responses: { "200": {} } } },
+          "/api/invoices/123/mark-paid": { post: { responses: { "200": {} } } },
+          "/api/whatsapp/webhooks/dead-letter": {
+            get: { responses: { "200": {} } },
+          },
+          "/api/invoices/123": { get: { responses: { "200": {} } } },
+        },
+      },
+      { scope: "public" }
+    )
+
+    expect(enriched.paths["/api/whatsapp/messages"]).toBeDefined()
+    expect(enriched.paths["/api/invoices/123"]).toBeDefined()
+    expect(enriched.paths["/api/admin/whatsapp/webhooks"]).toBeUndefined()
+    expect(enriched.paths["/api/invoices/123/mark-paid"]).toBeUndefined()
+    expect(enriched.paths["/api/whatsapp/webhooks/dead-letter"]).toBeUndefined()
   })
 })
