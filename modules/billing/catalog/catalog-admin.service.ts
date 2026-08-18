@@ -36,6 +36,16 @@ export type UpsertPlanInput = {
   stockCount?: number | null
   allowBackorder?: boolean
   isActive?: boolean
+  prices?: Array<{
+    regionId?: string
+    billingPeriod: RecurringBillingPeriod
+    chargeUnit?: "SUBSCRIPTION" | "DEVICE"
+    periodPrice: number
+    currency: string
+    effectiveFrom?: Date | string
+    effectiveTo?: Date | string | null
+    isActive?: boolean
+  }>
 }
 export type UpsertPlanPricingInput = {
   planId: string
@@ -145,6 +155,14 @@ export class CatalogPlanNotFoundError extends Error {
   }
 }
 
+export class CatalogPlanReferencedError extends Error {
+  constructor(code: string, activeSubscriptionCount: number) {
+    super(
+      `Cannot delete product plan "${code}" because it is referenced by ${activeSubscriptionCount} active or historical subscription(s). Deactivate or archive it instead.`
+    )
+    this.name = "CatalogPlanReferencedError"
+  }
+}
 export class CatalogAddonNotFoundError extends Error {
   constructor(code: string) {
     super(`Addon not found: ${code}`)
@@ -166,6 +184,7 @@ export type CatalogAdminDb = Pick<
   | "servicePackage"
   | "servicePlan"
   | "servicePricing"
+  | "serviceSubscription"
   | "serviceAddon"
   | "serviceAddonPricing"
   | "servicePlanAddon"
@@ -266,7 +285,7 @@ export class CatalogAdminService {
     })
     if (!pkg) return null
     const plan = await this.db.servicePlan.findFirst({
-      where: { packageId: pkg.id, code: planCode, isActive: true },
+      where: { packageId: pkg.id, code: planCode },
       include: {
         pricings: {
           where: {
@@ -334,7 +353,7 @@ export class CatalogAdminService {
     })
 
     if (existing) {
-      return this.db.servicePlan.update({
+      const updatedPlan = await this.db.servicePlan.update({
         where: { id: existing.id },
         data: {
           name: input.name,
@@ -349,9 +368,45 @@ export class CatalogAdminService {
           isActive: input.isActive ?? existing.isActive,
         },
       })
+
+      if (input.prices && input.prices.length > 0) {
+        const defaultRegion = await this.db.serviceRegion.findFirst({
+          where: { isActive: true },
+          orderBy: { createdAt: "asc" },
+        })
+        for (const price of input.prices) {
+          const regionId = price.regionId ?? defaultRegion?.id
+          if (!regionId) {
+            throw new CatalogRegionNotFoundError()
+          }
+          await this.upsertPlanPricing({
+            planId: updatedPlan.id,
+            regionId,
+            billingPeriod: price.billingPeriod,
+            chargeUnit: price.chargeUnit ?? "SUBSCRIPTION",
+            periodPrice: price.periodPrice,
+            currency: price.currency,
+            effectiveFrom:
+              price.effectiveFrom instanceof Date
+                ? price.effectiveFrom
+                : price.effectiveFrom
+                  ? new Date(price.effectiveFrom)
+                  : new Date(),
+            effectiveTo:
+              price.effectiveTo instanceof Date
+                ? price.effectiveTo
+                : price.effectiveTo
+                  ? new Date(price.effectiveTo)
+                  : null,
+            isActive: price.isActive ?? true,
+          })
+        }
+      }
+
+      return updatedPlan
     }
 
-    return this.db.servicePlan.create({
+    const createdPlan = await this.db.servicePlan.create({
       data: {
         packageId: pkg.id,
         code: input.code,
@@ -363,6 +418,76 @@ export class CatalogAdminService {
         allowBackorder: input.allowBackorder ?? false,
         isActive: input.isActive ?? true,
       },
+    })
+
+    if (input.prices && input.prices.length > 0) {
+      const defaultRegion = await this.db.serviceRegion.findFirst({
+        where: { isActive: true },
+        orderBy: { createdAt: "asc" },
+      })
+      for (const price of input.prices) {
+        const regionId = price.regionId ?? defaultRegion?.id
+        if (!regionId) {
+          throw new CatalogRegionNotFoundError()
+        }
+        await this.upsertPlanPricing({
+          planId: createdPlan.id,
+          regionId,
+          billingPeriod: price.billingPeriod,
+          chargeUnit: price.chargeUnit ?? "SUBSCRIPTION",
+          periodPrice: price.periodPrice,
+          currency: price.currency,
+          effectiveFrom:
+            price.effectiveFrom instanceof Date
+              ? price.effectiveFrom
+              : price.effectiveFrom
+                ? new Date(price.effectiveFrom)
+                : new Date(),
+          effectiveTo:
+            price.effectiveTo instanceof Date
+              ? price.effectiveTo
+              : price.effectiveTo
+                ? new Date(price.effectiveTo)
+                : null,
+          isActive: price.isActive ?? true,
+        })
+      }
+    }
+
+    return createdPlan
+  }
+
+  // ─── Delete Plan ──────────────────────────────────────────────────
+
+  async deleteCatalogPlan(
+    packageCode: string,
+    planCode: string
+  ): Promise<void> {
+    const pkg = await this.db.servicePackage.findFirst({
+      where: { code: packageCode as never },
+    })
+    if (!pkg) throw new CatalogPackageNotFoundError(packageCode)
+
+    const plan = await this.db.servicePlan.findFirst({
+      where: { packageId: pkg.id, code: planCode },
+    })
+    if (!plan) throw new CatalogPlanNotFoundError(planCode)
+
+    // Preflight check: prevent hard deletion if subscriptions reference this plan
+    const subscriptionCount = await this.db.serviceSubscription.count({
+      where: { planId: plan.id },
+    })
+
+    if (subscriptionCount > 0) {
+      throw new CatalogPlanReferencedError(planCode, subscriptionCount)
+    }
+
+    // Safe to delete attached pricings and the plan
+    await this.db.servicePricing.deleteMany({
+      where: { planId: plan.id },
+    })
+    await this.db.servicePlan.delete({
+      where: { id: plan.id },
     })
   }
 
