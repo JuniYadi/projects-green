@@ -1024,6 +1024,11 @@ export type CatalogPlan = {
   code: string
   name: string
   resources: Record<string, unknown>
+  billingStrategy?: "PRO_RATA" | "FIXED_CYCLE"
+  stockControl?: "UNLIMITED" | "TRACKED"
+  stockCount?: number | null
+  allowBackorder?: boolean
+  isActive?: boolean
   offers: CatalogOffer[]
 }
 
@@ -1067,6 +1072,46 @@ export async function getAdminCatalogProduct(
 ): Promise<CatalogProductDetailResponse> {
   return fetchBilling<CatalogProductDetailResponse>(
     `/api/billing/admin/catalog/products/${encodeURIComponent(code)}`
+  )
+}
+
+export async function getAdminCatalogProductsList(
+  catalogCode: string
+): Promise<{ ok: true; products: CatalogPlan[] }> {
+  return fetchBilling<{ ok: true; products: CatalogPlan[] }>(
+    `/api/billing/admin/catalog/${encodeURIComponent(catalogCode)}/products`
+  )
+}
+
+export async function getAdminCatalogProductDetail(
+  catalogCode: string,
+  productCode: string
+): Promise<{ ok: true; product: CatalogPlan }> {
+  return fetchBilling<{ ok: true; product: CatalogPlan }>(
+    `/api/billing/admin/catalog/${encodeURIComponent(catalogCode)}/products/${encodeURIComponent(productCode)}`
+  )
+}
+
+export async function upsertAdminCatalogProduct(
+  catalogCode: string,
+  productCode: string,
+  input: {
+    name: string
+    code?: string
+    resources?: Record<string, unknown>
+    billingStrategy?: "PRO_RATA" | "FIXED_CYCLE"
+    stockControl?: "UNLIMITED" | "TRACKED"
+    stockCount?: number | null
+    allowBackorder?: boolean
+    isActive?: boolean
+  }
+): Promise<{ ok: true; data: unknown }> {
+  return fetchBilling<{ ok: true; data: unknown }>(
+    `/api/billing/admin/catalog/${encodeURIComponent(catalogCode)}/products/${encodeURIComponent(productCode)}`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    }
   )
 }
 
