@@ -193,6 +193,84 @@ describe("CatalogAdminService", () => {
 
   // ─── upsertPackage ──────────────────────────────────────────────────
 
+  describe("getCatalogPlan", () => {
+    it("returns null when package does not exist", async () => {
+      db.servicePackage.findFirst.mockReturnValueOnce(null)
+      const service = createService()
+      const result = await service.getCatalogPlan("VPN", "BASIC")
+      expect(result).toBeNull()
+    })
+
+    it("returns null when plan does not exist", async () => {
+      db.servicePackage.findFirst.mockReturnValueOnce({
+        id: "pkg-1",
+        code: "VPN",
+      })
+      db.servicePlan.findFirst.mockReturnValueOnce(null)
+      const service = createService()
+      const result = await service.getCatalogPlan("VPN", "BASIC")
+      expect(result).toBeNull()
+    })
+
+    it("returns mapped plan DTO when found", async () => {
+      db.servicePackage.findFirst.mockReturnValueOnce({
+        id: "pkg-1",
+        code: "VPN",
+      })
+      db.servicePlan.findFirst.mockReturnValueOnce({
+        id: "plan-1",
+        code: "BASIC",
+        name: "Basic Plan",
+        resources: {},
+        billingStrategy: "FIXED_CYCLE",
+        stockControl: "UNLIMITED",
+        stockCount: null,
+        allowBackorder: false,
+        isActive: true,
+        pricings: [],
+      })
+      const service = createService()
+      const result = await service.getCatalogPlan("VPN", "BASIC")
+      expect(result).not.toBeNull()
+      expect(result?.code).toBe("BASIC")
+      expect(result?.name).toBe("Basic Plan")
+    })
+  })
+
+  describe("listCatalogPlans", () => {
+    it("returns empty array when package is not found", async () => {
+      db.servicePackage.findFirst.mockReturnValueOnce(null)
+      const service = createService()
+      const result = await service.listCatalogPlans("MISSING")
+      expect(result).toEqual([])
+    })
+
+    it("returns mapped list of plans under package", async () => {
+      db.servicePackage.findFirst.mockReturnValueOnce({
+        id: "pkg-1",
+        code: "VPN",
+        plans: [
+          {
+            id: "plan-1",
+            code: "BASIC",
+            name: "Basic Plan",
+            resources: {},
+            billingStrategy: "FIXED_CYCLE",
+            stockControl: "UNLIMITED",
+            stockCount: null,
+            allowBackorder: false,
+            isActive: true,
+            pricings: [],
+          },
+        ],
+      })
+      const service = createService()
+      const result = await service.listCatalogPlans("VPN")
+      expect(result).toHaveLength(1)
+      expect(result[0].code).toBe("BASIC")
+    })
+  })
+
   describe("upsertPackage", () => {
     it("creates a new package when none exists", async () => {
       db.servicePackage.create.mockReturnValue({
