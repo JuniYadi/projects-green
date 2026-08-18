@@ -166,8 +166,6 @@ export const BILLING_PERIODS: BillingPeriod[] = [
   "QUARTERLY",
   "SEMI_ANNUAL",
   "ANNUAL",
-  "YEARLY",
-  "CUSTOM",
 ]
 
 export const SERVICE_ADDON_BILLING_MODES: ServiceAddonBillingMode[] = [
