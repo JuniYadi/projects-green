@@ -1,6 +1,11 @@
 import type { Prisma, PrismaClient, VpnServerHealth } from "@prisma/client"
 
 import { prisma as defaultPrisma } from "@/lib/prisma"
+import {
+  emitVpnHealthCycleCompleted,
+  emitVpnHealthCycleFailed,
+  emitVpnHealthServerFailed,
+} from "@/lib/worker-health-logging"
 
 import {
   scanVpnServerConnection,
@@ -90,7 +95,7 @@ export class VpnHealthService {
           result.updated++
         } catch (error) {
           result.errors++
-          console.error(`[vpn-health] server=${server.id} failed:`, error)
+          emitVpnHealthServerFailed(error)
           await this.prisma.vpnServer
             .update({ where: { id: server.id }, data: { health: "DOWN" } })
             .catch(() => {})
@@ -107,11 +112,9 @@ export class VpnHealthService {
     const run = async () => {
       try {
         const result = await this.checkAllActive()
-        console.info(
-          `[vpn-health] checked=${result.checked} updated=${result.updated} errors=${result.errors}`
-        )
+        emitVpnHealthCycleCompleted(result)
       } catch (error) {
-        console.error("[vpn-health] cycle failed:", error)
+        emitVpnHealthCycleFailed(error)
       }
     }
 
