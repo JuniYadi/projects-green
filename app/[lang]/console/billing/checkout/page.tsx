@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -59,11 +60,17 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmed, setConfirmed] = useState(false)
+  const [phoneNumber, setPhoneNumber] = useState("")
+  const [displayName, setDisplayName] = useState("")
+  const [profilePictureUrl, setProfilePictureUrl] = useState("")
   const [idempotencyKey] = useState(
     () =>
       `checkout:${pricingId}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`
   )
 
+  const isWhatsApp =
+    quotePreview?.packageCode === "WHATSAPP" ||
+    (!quotePreview && productName?.toUpperCase() === "WHATSAPP")
   const hasPricing = Boolean(pricingId)
 
   const requestQuote = useCallback(
@@ -89,7 +96,7 @@ export default function CheckoutPage() {
       }
       setQuoteLoading(false)
     },
-    [idempotencyKey, pricingId]
+    [idempotencyKey, pricingId, setQuoteError, setQuoteLoading, setQuotePreview]
   )
 
   useEffect(() => {
@@ -114,23 +121,32 @@ export default function CheckoutPage() {
   }
 
   const handleCheckout = async (): Promise<void> => {
-    if (!pricingId || !quotePreview) return
+    if (!pricingId) return
     setIsLoading(true)
     setError(null)
-    setQuote(null)
-
     try {
       const result = await submitCheckout({
         pricingId,
         addonIds,
         voucherCode: voucherCode || undefined,
-        quoteToken: quotePreview.quoteToken,
+        quoteToken: quotePreview?.quoteToken,
         idempotencyKey,
+        device:
+          isWhatsApp && phoneNumber.trim()
+            ? {
+                phoneNumber: phoneNumber.trim(),
+                displayName: displayName.trim() || undefined,
+                profilePictureUrl: profilePictureUrl.trim() || undefined,
+              }
+            : undefined,
       })
       setQuote(result)
+      if (!result.ok) {
+        setError(result.message)
+      }
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "An unexpected error occurred."
+        err instanceof Error ? err.message : "Checkout submission failed"
       setError(message)
     } finally {
       setIsLoading(false)
@@ -200,6 +216,52 @@ export default function CheckoutPage() {
               <span className="text-muted-foreground">Billing Period</span>
               <span>{billingPeriod || quotePreview.billingPeriod}</span>
             </div>
+            {isWhatsApp && (
+              <div className="space-y-3 rounded-md border p-3">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-medium">Device Configuration</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Provide details for the WhatsApp Business device to activate
+                    upon payment.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wa-phone-number">
+                    Phone Number <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="wa-phone-number"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    onInput={(e) =>
+                      setPhoneNumber((e.target as HTMLInputElement).value)
+                    }
+                    placeholder="e.g. +6281234567890"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wa-display-name">Business Display Name</Label>
+                  <Input
+                    id="wa-display-name"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="e.g. My Business Support"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wa-profile-url">
+                    Profile Picture URL (Optional)
+                  </Label>
+                  <Input
+                    id="wa-profile-url"
+                    value={profilePictureUrl}
+                    onChange={(e) => setProfilePictureUrl(e.target.value)}
+                    placeholder="https://example.com/avatar.png"
+                  />
+                </div>
+              </div>
+            )}
 
             {addonOptions.length > 0 && (
               <fieldset className="space-y-2 rounded-md border p-3">
@@ -282,7 +344,6 @@ export default function CheckoutPage() {
                 <span>{formatDate(quotePreview.nextRenewal)}</span>
               </div>
             </div>
-
             <div className="mt-4 space-y-3">
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -298,7 +359,12 @@ export default function CheckoutPage() {
 
               <Button
                 onClick={() => void handleCheckout()}
-                disabled={!confirmed || isLoading || quoteLoading}
+                disabled={
+                  !confirmed ||
+                  isLoading ||
+                  quoteLoading ||
+                  (isWhatsApp && phoneNumber.trim().length === 0)
+                }
                 className="w-full"
               >
                 Confirm and pay

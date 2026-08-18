@@ -74,6 +74,12 @@ export type CheckoutError = {
 
 export type CheckoutResult = CheckoutSuccess | CheckoutError
 
+export interface CheckoutDeviceInput {
+  phoneNumber: string
+  displayName?: string
+  profilePictureUrl?: string
+}
+
 export interface CheckoutInput {
   pricingId: string
   quantity?: number
@@ -83,8 +89,9 @@ export interface CheckoutInput {
   mode?: "PURCHASE" | "UPGRADE" | "CHANGE_TERM"
   subscriptionId?: string
   idempotencyKey: string
+  device?: CheckoutDeviceInput
+  metadata?: Record<string, unknown>
 }
-
 type BillingCheckoutApi = {
   quote: {
     post(input: CheckoutInput): Promise<{

@@ -66,7 +66,7 @@ const createPrismaMock = () => {
       update: mock(),
     },
     vpnServerAccount: { create: mock(), update: mock() },
-    whatsappDevice: { findMany: mock(), update: mock() },
+    whatsappDevice: { findMany: mock(), update: mock(), upsert: mock() },
   }
   prisma.$transaction.mockImplementation(
     async (fn: (tx: typeof prisma) => unknown) => fn(prisma)
@@ -503,6 +503,46 @@ describe("WhatsApp fulfillment adapter", () => {
     metadata: Record<string, unknown>
   ): BillingFulfillmentInput =>
     fulfillmentInput({ packageCode: "WHATSAPP", metadata })
+
+  it("creates pending WhatsApp device and subscription when new device metadata is provided", async () => {
+    const prisma = createPrismaMock()
+    prisma.servicePricing.findUnique.mockResolvedValue(whatsappPricing)
+    prisma.whatsappDevice.upsert.mockResolvedValue({
+      id: "device-new-1",
+      phoneNumber: "+6281234567890",
+      status: "NON_ACTIVE",
+      quotaBase: decimal("1000"),
+    })
+    prisma.serviceSubscription.create.mockResolvedValue({
+      id: "service-sub-new",
+      organizationId: "org-1",
+      packageId: "package-whatsapp",
+      planId: "plan-1",
+    })
+    const whatsapp = createWhatsappFulfillmentAdapter(
+      prisma as unknown as PrismaClient
+    )
+    const metadata = {
+      device: {
+        phoneNumber: "+6281234567890",
+        displayName: "My Business",
+        profilePictureUrl: "https://example.com/avatar.png",
+      },
+    }
+
+    const result = await whatsapp.create(whatsappInput(metadata))
+    expect(result).toEqual({ subscriptionId: "service-sub-new" })
+    expect(prisma.whatsappDevice.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { phoneNumber: "+6281234567890" },
+        create: expect.objectContaining({
+          organizationId: "org-1",
+          phoneNumber: "+6281234567890",
+          status: "NON_ACTIVE",
+        }),
+      })
+    )
+  })
 
   it("creates and renews allowances for active devices while merging metadata", async () => {
     const prisma = createPrismaMock()

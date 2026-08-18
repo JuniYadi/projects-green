@@ -330,6 +330,11 @@ export default function WhatsAppDevicesPage() {
               <p className="mt-1 text-xs text-muted-foreground">
                 {messages.console.whatsapp.devices.noDevicesDescription}
               </p>
+              <Button asChild className="mt-4" size="sm">
+                <Link href="/console/billing/services/whatsapp">
+                  Subscribe to Add Device
+                </Link>
+              </Button>
             </div>
           ) : (
             <DataTable

@@ -471,6 +471,50 @@ export function createVpnFulfillmentAdapter(
   }
 }
 
+type WhatsappDeviceInput = {
+  phoneNumber?: string
+  name?: string
+  displayName?: string
+  profilePictureUrl?: string
+}
+
+function extractNewDeviceMetadata(
+  metadata: Record<string, unknown>
+): WhatsappDeviceInput | null {
+  const raw =
+    typeof metadata.device === "object" && metadata.device !== null
+      ? (metadata.device as Record<string, unknown>)
+      : metadata
+
+  const phoneNumber =
+    typeof raw.phoneNumber === "string" && raw.phoneNumber.trim().length > 0
+      ? raw.phoneNumber.trim()
+      : typeof raw.phone === "string" && raw.phone.trim().length > 0
+        ? raw.phone.trim()
+        : undefined
+
+  if (!phoneNumber) return null
+
+  const displayName =
+    typeof raw.displayName === "string" && raw.displayName.trim().length > 0
+      ? raw.displayName.trim()
+      : typeof raw.name === "string" && raw.name.trim().length > 0
+        ? raw.name.trim()
+        : undefined
+
+  const profilePictureUrl =
+    typeof raw.profilePictureUrl === "string" &&
+    raw.profilePictureUrl.trim().length > 0
+      ? raw.profilePictureUrl.trim()
+      : undefined
+
+  return {
+    phoneNumber,
+    displayName,
+    profilePictureUrl,
+  }
+}
+
 function allowanceMetadata(metadata: Record<string, unknown>): {
   deviceIds: string[]
   allowanceByDevice: Record<string, Prisma.Decimal>
@@ -526,6 +570,58 @@ async function applyWhatsappFulfillment(
       ...metadataObject(existing?.metadata),
       ...input.metadata,
     }
+
+    const newDevice = extractNewDeviceMetadata(metadata)
+    if (newDevice && newDevice.phoneNumber) {
+      const phoneNumber = newDevice.phoneNumber
+      const planResources = metadataObject(
+        (pricing.servicePlan as Record<string, unknown>).resources as
+          | Prisma.JsonValue
+          | undefined
+      )
+      const planQuota =
+        typeof planResources.quota === "number" ||
+        typeof planResources.quota === "string"
+          ? new Prisma.Decimal(String(planResources.quota))
+          : new Prisma.Decimal(1000)
+
+      // Create pending / non-active device
+      const createdDevice = await tx.whatsappDevice.upsert({
+        where: { phoneNumber },
+        create: {
+          organizationId: input.organizationId,
+          phoneNumber,
+          status: "NON_ACTIVE",
+          quotaBase: planQuota,
+          quotaBaseOut: planQuota,
+          whatsappProfile:
+            newDevice.displayName || newDevice.profilePictureUrl
+              ? {
+                  name: newDevice.displayName,
+                  profile_picture_url: newDevice.profilePictureUrl,
+                }
+              : undefined,
+        },
+        update: {
+          organizationId: input.organizationId,
+          quotaBase: planQuota,
+          quotaBaseOut: planQuota,
+        },
+      })
+
+      const serviceSubscription = await upsertServiceSubscription(
+        tx,
+        input,
+        pricing,
+        {
+          ...metadata,
+          deviceIds: [createdDevice.id],
+          allowanceByDevice: { [createdDevice.id]: planQuota.toString() },
+        }
+      )
+      return serviceSubscription.id
+    }
+
     const { deviceIds, allowanceByDevice } = allowanceMetadata(metadata)
     const devices = (await tx.whatsappDevice.findMany({
       where: {
