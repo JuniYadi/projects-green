@@ -456,6 +456,10 @@ describe("enrichOpenApiDocument", () => {
             get: { responses: { "200": {} } },
           },
           "/api/invoices/123": { get: { responses: { "200": {} } } },
+          "/api/auth/login": { post: { responses: { "200": {} } } },
+          "/api/tenants/bootstrap": { get: { responses: { "200": {} } } },
+          "/api/echo": { post: { responses: { "200": {} } } },
+          "/api/portal/payments": { get: { responses: { "200": {} } } },
         },
       },
       { scope: "public" }
@@ -466,5 +470,9 @@ describe("enrichOpenApiDocument", () => {
     expect(enriched.paths["/api/admin/whatsapp/webhooks"]).toBeUndefined()
     expect(enriched.paths["/api/invoices/123/mark-paid"]).toBeUndefined()
     expect(enriched.paths["/api/whatsapp/webhooks/dead-letter"]).toBeUndefined()
+    expect(enriched.paths["/api/auth/login"]).toBeUndefined()
+    expect(enriched.paths["/api/tenants/bootstrap"]).toBeUndefined()
+    expect(enriched.paths["/api/echo"]).toBeUndefined()
+    expect(enriched.paths["/api/portal/payments"]).toBeUndefined()
   })
 })

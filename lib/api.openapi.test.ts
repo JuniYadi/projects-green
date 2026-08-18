@@ -83,6 +83,15 @@ describe("OpenAPI documentation", () => {
     expect(
       operations.some(({ operation }) => operation.tags?.includes("Api"))
     ).toBe(false)
+    expect(
+      operations.some(({ operation }) => operation.tags?.includes("Auth"))
+    ).toBe(false)
+    expect(
+      operations.some(({ operation }) => operation.tags?.includes("Tenants"))
+    ).toBe(false)
+    expect(
+      operations.some(({ operation }) => operation.tags?.includes("Echo"))
+    ).toBe(false)
     // WhatsApp sub-resource tags should be present
     expect(
       operations.some(({ operation }) =>
@@ -127,13 +136,9 @@ describe("OpenAPI documentation", () => {
       }
     }
 
-    const echo = document.paths?.["/api/echo"]?.post
-    const echoSchema = echo?.requestBody?.content?.["application/json"]?.schema
-    expect(echoSchema?.type).toBe("object")
-    expect(echoSchema?.properties).toMatchObject({
-      message: { type: "string" },
-    })
-    expect(document.paths?.["/api/vouchers/portal/"]?.get?.tags).toEqual([
+    expect(document.paths?.["/api/auth/login"]).toBeUndefined()
+    expect(document.paths?.["/api/tenants/bootstrap"]).toBeUndefined()
+    expect(document.paths?.["/api/vouchers/redeem"]?.post?.tags).toEqual([
       "Vouchers",
     ])
     expect(document.paths?.["/api/admin/organizations"]).toBeUndefined()
@@ -160,8 +165,9 @@ describe("OpenAPI documentation", () => {
     expect(adminDoc.paths?.["/api/admin/organizations"]?.get?.tags).toEqual([
       "API Admin",
     ])
+    expect(adminDoc.paths?.["/api/auth/login"]?.post).toBeDefined()
+    expect(adminDoc.paths?.["/api/tenants/bootstrap"]?.get).toBeDefined()
   })
-
   describe("Production WhatsApp webhook routing", () => {
     it("mounts canonical GET/POST routes without legacy global-secret route", () => {
       expect(app.routes).toEqual(
