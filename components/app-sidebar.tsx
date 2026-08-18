@@ -928,6 +928,14 @@ const buildNavSecondary = (input: {
     },
   ]
 
+  if (input.surface === "console" || input.surface === "portal") {
+    items.unshift({
+      title: "API Reference",
+      url: "/api/openapi",
+      icon: <BookOpenIcon />,
+    })
+  }
+
   if (input.surface === "console") {
     items.unshift({
       title: "Thunder AI Help",

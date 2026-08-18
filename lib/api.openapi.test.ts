@@ -45,7 +45,7 @@ const operationsOf = (document: OpenApiDocument) =>
 describe("OpenAPI documentation", () => {
   it("serves the UI and complete generated specification", async () => {
     const html = await app.handle(
-      new Request("http://localhost/api/docs", { method: "GET" })
+      new Request("http://localhost/api/openapi", { method: "GET" })
     )
     expect(html.status).toBe(200)
     expect(html.headers.get("content-type")).toContain("text/html")
@@ -57,7 +57,7 @@ describe("OpenAPI documentation", () => {
     expect(Array.isArray(healthBody.endpoints)).toBe(true)
 
     const response = await app.handle(
-      new Request("http://localhost/api/docs/json", { method: "GET" })
+      new Request("http://localhost/api/openapi/json", { method: "GET" })
     )
     expect(response.status).toBe(200)
     expect(response.headers.get("content-type")).toContain("application/json")
@@ -135,6 +135,11 @@ describe("OpenAPI documentation", () => {
       "API Admin",
     ])
     expect(document.paths?.["/api/knowledge/docs"]?.get).toBeDefined()
+
+    const legacyDocs = await app.handle(
+      new Request("http://localhost/api/docs", { method: "GET" })
+    )
+    expect(legacyDocs.status).not.toBe(200)
   })
 
   describe("Production WhatsApp webhook routing", () => {

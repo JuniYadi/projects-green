@@ -119,7 +119,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(createApiLoggingPlugin())
   .use(serverTiming())
   .onAfterHandle({ as: "global" }, ({ request, response }) => {
-    if (new URL(request.url).pathname !== "/api/docs/json") {
+    if (new URL(request.url).pathname !== "/api/openapi/json") {
       return
     }
 
@@ -131,8 +131,8 @@ export const app = new Elysia({ prefix: "/api" })
   })
   .use(
     openapi({
-      path: "/docs",
-      specPath: "/docs/json",
+      path: "/openapi",
+      specPath: "/openapi/json",
       mapJsonSchema: {
         zod: toOpenApiJsonSchema,
       },
