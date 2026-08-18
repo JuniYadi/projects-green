@@ -57,6 +57,7 @@ import type {
 import {
   PRODUCT_OPTIONS,
   SUPPORTED_CURRENCIES,
+  validateProductPlanIdentities,
   validateProductPublish,
 } from "@/components/billing/admin/catalog/catalog-editor.types"
 import { toast } from "sonner"
@@ -291,6 +292,8 @@ export function ProductEditor({
     state,
     state.basics.enabledCurrencies
   )
+  const planIdentityErrors = validateProductPlanIdentities(state.plans)
+  const hasPlanIdentityErrors = Object.keys(planIdentityErrors).length > 0
 
   const buildPublishPayload = (): PublishCatalogProductInput => {
     const now = new Date().toISOString()
@@ -323,6 +326,11 @@ export function ProductEditor({
   }
 
   const handleSaveDraft = async () => {
+    if (hasPlanIdentityErrors) {
+      setInvalidTabs((previous) => new Set([...previous, "plans"]))
+      return
+    }
+
     setSaving(true)
     try {
       const payload = buildPublishPayload()
@@ -459,7 +467,7 @@ export function ProductEditor({
               variant="outline"
               size="sm"
               onClick={handleSaveDraft}
-              disabled={saving}
+              disabled={saving || hasPlanIdentityErrors}
             >
               {saving ? "Saving…" : "Save draft"}
             </Button>

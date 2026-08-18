@@ -248,6 +248,35 @@ describe("business profile routes", () => {
     expect(res.status).toBe(400)
     expect((await res.json()).error).toBe("UNSUPPORTED_MEDIA_TYPE")
   })
+  it("returns 403 when user does not own the device on POST /picture", async () => {
+    ;(
+      prisma.whatsappDevice.findUnique as ReturnType<typeof mock>
+    ).mockImplementation(async () =>
+      createMockDevice({ organizationId: "other_org" })
+    )
+
+    const formData = new FormData()
+    formData.append(
+      "file",
+      new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "profile.png", {
+        type: "image/png",
+      })
+    )
+
+    const app = createTestApp()
+    const res = await app.handle(
+      new Request(
+        "http://localhost/api/whatsapp/devices/dev_1/profile/picture",
+        {
+          method: "POST",
+          body: formData,
+        }
+      )
+    )
+
+    expect(res.status).toBe(403)
+    expect((await res.json()).error).toBe("FORBIDDEN")
+  })
 
   it("PATCH returns 422 for invalid vertical", async () => {
     const app = createTestApp()

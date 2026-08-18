@@ -3,6 +3,7 @@ import {
   type DeviceDetail,
   updateDeviceSchema,
 } from "@/modules/whatsapp/devices/devices.schemas"
+import type { WhatsappMessagePricingDTO } from "@/modules/whatsapp/messages/message-pricing.dto"
 import { eden, getApiBaseUrl } from "@/lib/eden"
 import { z } from "zod"
 import type { BusinessProfileDTO } from "@/modules/whatsapp/devices/business-profile.dto"
@@ -222,6 +223,10 @@ export const whatsappClient = {
   // templates: migrated to Eden (@/modules/whatsapp/templates/api/templates.hooks.ts)
 
   messages: {
+    pricing: () =>
+      serverFetch<{ ok: boolean } & WhatsappMessagePricingDTO>(
+        "/api/whatsapp/messages/pricing"
+      ),
     list: (params?: {
       conversationId?: string
       direction?: string

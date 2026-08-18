@@ -213,4 +213,122 @@ describe("ProductEditor", () => {
       view.container.querySelector('input[aria-label="IDR MONTHLY price"]')
     ).toBeTruthy()
   })
+
+  it("disables draft save when a plan identity is incomplete", async () => {
+    localStorage.setItem(
+      "catalog-draft-VPN",
+      JSON.stringify({
+        basics: {
+          code: "VPN",
+          name: "VPN",
+          description: "VPN product",
+          currency: "IDR",
+          enabledCurrencies: ["IDR"],
+          isActive: true,
+        },
+        plans: [
+          {
+            id: "plan-incomplete",
+            code: "",
+            name: "",
+            resources: {},
+            isActive: true,
+            enabledTerms: ["MONTHLY"],
+            offers: [],
+          },
+        ],
+        addons: [],
+        publishState: "draft",
+        preview: false,
+      })
+    )
+    mockSearchParams.get.mockReturnValue("plans")
+
+    const view = render(<ProductEditor productCode="VPN" isNew />)
+
+    await waitFor(() =>
+      expect(view.getByText("Name is required.")).toBeTruthy()
+    )
+    expect(view.getByText("Code is required.")).toBeTruthy()
+    expect(view.getByRole("button", { name: "Save draft" })).toBeDisabled()
+    expect(mockPublishCatalogProduct).not.toHaveBeenCalled()
+  })
+
+  it("saves a custom plan identity and reloads it in the Plans tab", async () => {
+    localStorage.setItem(
+      "catalog-draft-VPN",
+      JSON.stringify({
+        basics: {
+          code: "VPN",
+          name: "VPN",
+          description: "VPN product",
+          currency: "IDR",
+          enabledCurrencies: ["IDR"],
+          isActive: true,
+        },
+        plans: [
+          {
+            id: "plan-private",
+            code: "PRIVATE",
+            name: "Private",
+            resources: {},
+            isActive: true,
+            enabledTerms: ["MONTHLY"],
+            offers: [],
+          },
+        ],
+        addons: [],
+        publishState: "draft",
+        preview: false,
+      })
+    )
+    mockSearchParams.get.mockReturnValue("plans")
+
+    const firstView = render(<ProductEditor productCode="VPN" isNew />)
+
+    await waitFor(() =>
+      expect(firstView.getByDisplayValue("Private")).toBeTruthy()
+    )
+    fireEvent.click(firstView.getByRole("button", { name: "Save draft" }))
+
+    await waitFor(() => {
+      expect(mockPublishCatalogProduct).toHaveBeenCalledWith(
+        "VPN",
+        expect.objectContaining({
+          plans: [
+            expect.objectContaining({ code: "PRIVATE", name: "Private" }),
+          ],
+        })
+      )
+    })
+    firstView.unmount()
+
+    mockGetAdminCatalogProduct.mockResolvedValue({
+      product: {
+        code: "VPN",
+        name: "VPN",
+        description: "VPN product",
+        isActive: true,
+        plans: [
+          {
+            id: "plan-private",
+            code: "PRIVATE",
+            name: "Private",
+            resources: {},
+            offers: [],
+          },
+        ],
+      },
+      currency: "IDR",
+    })
+
+    const reloadedView = render(
+      <ProductEditor productCode="VPN" isNew={false} />
+    )
+
+    await waitFor(() => {
+      expect(reloadedView.getByText("Private")).toBeTruthy()
+      expect(reloadedView.getByDisplayValue("PRIVATE")).toBeTruthy()
+    })
+  })
 })

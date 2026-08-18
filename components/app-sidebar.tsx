@@ -917,6 +917,11 @@ const buildNavSecondary = (input: {
 
   const items: NavSecondaryItem[] = [
     {
+      title: "API Reference",
+      url: input.surface === "portal" ? "/api/admin/docs" : "/api/openapi",
+      icon: <BookOpenIcon />,
+    },
+    {
       title: "Support",
       url: "#",
       icon: <LifebuoyIcon />,
@@ -927,15 +932,6 @@ const buildNavSecondary = (input: {
       icon: <PaperPlaneTiltIcon />,
     },
   ]
-
-  if (input.surface === "console" || input.surface === "portal") {
-    items.unshift({
-      title: "API Reference",
-      url: "/api/openapi",
-      icon: <BookOpenIcon />,
-    })
-  }
-
   if (input.surface === "console") {
     items.unshift({
       title: "Thunder AI Help",

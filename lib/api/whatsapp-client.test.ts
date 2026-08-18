@@ -204,11 +204,14 @@ describe("whatsappClient", () => {
     await whatsappClient.conversations.getLabels()
     queueJson({ ok: true, label: {} })
     await whatsappClient.conversations.createLabel({ name: "VIP", color: null })
+    queueJson({ ok: true, devices: [], overage: {} })
+    await whatsappClient.messages.pricing()
     expect(calls[8]?.input).toContain("contactPhone=%2B6281234567890")
     expect(calls[11]?.init?.method).toBe("PATCH")
     expect(calls[12]?.init?.method).toBe("DELETE")
     expect(calls[13]?.input).toContain("/conversations/labels")
     expect(calls[14]?.init?.method).toBe("POST")
+    expect(calls[15]?.input).toContain("/messages/pricing")
   })
 
   it("covers contacts, media, usage, catalogs, analytics and webhooks", async () => {

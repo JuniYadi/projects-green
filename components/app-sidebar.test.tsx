@@ -378,7 +378,9 @@ describe("resolveSidebarMenu", () => {
       })
       const apiReference = items.find((item) => item.title === "API Reference")
 
-      expect(apiReference?.url).toBe("/api/openapi")
+      expect(apiReference?.url).toBe(
+        surface === "portal" ? "/api/admin/docs" : "/api/openapi"
+      )
       expect(apiReference?.icon).toBeDefined()
     }
   })
@@ -681,5 +683,29 @@ describe("resolveSidebarMenu", () => {
     // Overview nav item is active for detail route
     const overviewItem = navMain.find((item) => item.title === "Overview")
     expect(overviewItem?.isActive).toBe(true)
+  })
+})
+
+describe("resolveSidebarSecondaryLinks", () => {
+  it("includes API Reference link with /api/openapi for console surface", () => {
+    const links = resolveSidebarSecondaryLinks({
+      surface: "console",
+      currentPathname: "/console/whatsapp/dashboard",
+    })
+
+    const apiDocsLink = links.find((link) => link.title === "API Reference")
+    expect(apiDocsLink).toBeDefined()
+    expect(apiDocsLink?.url).toBe("/api/openapi")
+  })
+
+  it("includes API Reference link with /api/admin/docs for portal surface", () => {
+    const links = resolveSidebarSecondaryLinks({
+      surface: "portal",
+      currentPathname: "/portal",
+    })
+
+    const apiDocsLink = links.find((link) => link.title === "API Reference")
+    expect(apiDocsLink).toBeDefined()
+    expect(apiDocsLink?.url).toBe("/api/admin/docs")
   })
 })

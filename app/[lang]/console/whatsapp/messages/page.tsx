@@ -33,6 +33,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { FieldLegend, FieldSet } from "@/components/ui/field"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,8 +49,13 @@ import { Label } from "@/components/ui/label"
 import { FilterPills } from "@/components/ui/filter-pills"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { cn } from "@/lib/utils"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
-import type { WhatsAppTemplateLanguage } from "@/lib/api/whatsapp-client"
+import type {
+  WhatsAppTemplate,
+  WhatsAppTemplateLanguage,
+} from "@/lib/api/whatsapp-client"
+import type { WhatsappMessagePricingDTO } from "@/modules/whatsapp/messages/message-pricing.dto"
 import { useTemplates } from "@/modules/whatsapp/templates/api/templates.hooks"
 import { MessageStatusBadge } from "@/modules/whatsapp/messages/ui/message-status-badge"
 import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
@@ -167,6 +173,62 @@ const findConversationByPhone = (
     ) ?? null
   )
 }
+
+type TemplateCategory = NonNullable<WhatsAppTemplate["category"]>
+
+type LanguagePresentation = {
+  flag: string
+  name: string
+}
+
+const TEMPLATE_CATEGORY_LABELS: Record<TemplateCategory, string> = {
+  AUTHENTICATION: "Authentication",
+  MARKETING: "Marketing",
+  UTILITY: "Utility",
+}
+
+const LANGUAGE_PRESENTATIONS: Record<string, LanguagePresentation> = {
+  ar: { flag: "🇸🇦", name: "Arabic" },
+  de: { flag: "🇩🇪", name: "German" },
+  en: { flag: "🇬🇧", name: "English" },
+  en_gb: { flag: "🇬🇧", name: "English (United Kingdom)" },
+  en_us: { flag: "🇺🇸", name: "English (United States)" },
+  es: { flag: "🇪🇸", name: "Spanish" },
+  es_mx: { flag: "🇲🇽", name: "Spanish (Mexico)" },
+  fr: { flag: "🇫🇷", name: "French" },
+  hi: { flag: "🇮🇳", name: "Hindi" },
+  id: { flag: "🇮🇩", name: "Indonesian" },
+  it: { flag: "🇮🇹", name: "Italian" },
+  ja: { flag: "🇯🇵", name: "Japanese" },
+  ko: { flag: "🇰🇷", name: "Korean" },
+  ms: { flag: "🇲🇾", name: "Malay" },
+  nl: { flag: "🇳🇱", name: "Dutch" },
+  pl: { flag: "🇵🇱", name: "Polish" },
+  pt_br: { flag: "🇧🇷", name: "Portuguese (Brazil)" },
+  pt_pt: { flag: "🇵🇹", name: "Portuguese (Portugal)" },
+  ru: { flag: "🇷🇺", name: "Russian" },
+  th: { flag: "🇹🇭", name: "Thai" },
+  tr: { flag: "🇹🇷", name: "Turkish" },
+  vi: { flag: "🇻🇳", name: "Vietnamese" },
+  zh_cn: { flag: "🇨🇳", name: "Chinese (Simplified)" },
+  zh_tw: { flag: "🇹🇼", name: "Chinese (Traditional)" },
+}
+
+function getTemplateCategoryLabel(category: WhatsAppTemplate["category"]) {
+  return category ? TEMPLATE_CATEGORY_LABELS[category] : "Uncategorized"
+}
+
+function getLanguagePresentation(code: string): LanguagePresentation {
+  const rawCode = code.trim()
+  const normalizedCode = rawCode.toLowerCase().replace(/-/g, "_")
+  return (
+    LANGUAGE_PRESENTATIONS[normalizedCode] ?? {
+      flag: "🌐",
+      name: rawCode || "Unknown language",
+    }
+  )
+}
+
 // ─── Conversation List Item ───────────────────────────────────────────────────
 
 function ConversationItem({
@@ -329,6 +391,147 @@ function MessageBubble({ message }: { message: Message }) {
   )
 }
 
+function formatQuotaCredit(value: string): string {
+  const amount = Number(value)
+  if (!Number.isFinite(amount)) return value
+
+  return new Intl.NumberFormat(undefined, {
+    maximumFractionDigits: 2,
+  }).format(amount)
+}
+
+function formatMessagePrice(value: string, currency: string | null): string {
+  const amount = Number(value)
+  if (!currency || !Number.isFinite(amount)) {
+    return currency ? `${currency} ${value}` : value
+  }
+
+  try {
+    return new Intl.NumberFormat(currency === "IDR" ? "id-ID" : "en-US", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 2,
+    }).format(amount)
+  } catch {
+    return `${currency} ${value}`
+  }
+}
+
+function QuotaPricingPanel({
+  pricing,
+  isLoading,
+  error,
+  deviceId,
+}: {
+  pricing?: WhatsappMessagePricingDTO
+  isLoading: boolean
+  error: Error | null
+  deviceId: string
+}) {
+  const selectedDevice = pricing?.devices.find(
+    (device) => device.deviceId === deviceId
+  )
+
+  return (
+    <section
+      className="rounded-lg border bg-card"
+      aria-labelledby="quota-pricing-title"
+    >
+      <div className="border-b px-4 py-3">
+        <h4 id="quota-pricing-title" className="text-sm font-semibold">
+          Quota & Pricing
+        </h4>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Quota credits are deducted per outbound message. PAYG applies after
+          available quota runs out.
+        </p>
+      </div>
+      <div className="space-y-4 p-4">
+        {isLoading ? (
+          <div className="space-y-2" aria-label="Loading quota and pricing">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ) : error ? (
+          <p className="text-sm text-destructive">
+            Pricing information is unavailable right now.
+          </p>
+        ) : !selectedDevice ? (
+          <p className="text-sm text-muted-foreground">
+            {pricing?.devices.length
+              ? "Select an active device to see its category rates."
+              : "No active WhatsApp devices have pricing rates to show."}
+          </p>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground">
+              Rates for {formatPhone(selectedDevice.phoneNumber)} (country:{" "}
+              {selectedDevice.country})
+            </p>
+            <div className="overflow-x-auto rounded-md border">
+              <table className="w-full text-xs">
+                <caption className="sr-only">
+                  WhatsApp quota credits per message by category
+                </caption>
+                <thead className="bg-muted/50 text-left text-muted-foreground">
+                  <tr>
+                    <th scope="col" className="px-3 py-2 font-medium">
+                      Category
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-2 text-right font-medium"
+                    >
+                      Quota / message
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedDevice.categories.map((category) => (
+                    <tr key={category.category} className="border-t">
+                      <th
+                        scope="row"
+                        className="px-3 py-2 text-left font-medium"
+                      >
+                        {category.category}
+                      </th>
+                      <td className="px-3 py-2 text-right">
+                        <div>{formatQuotaCredit(category.quotaCredit)}</div>
+                        {!category.configured && (
+                          <div className="text-[10px] text-muted-foreground">
+                            Default; rate not configured
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        {pricing && !isLoading && !error && (
+          <dl className="border-t pt-3 text-sm">
+            <div className="flex items-start justify-between gap-3">
+              <dt className="text-muted-foreground">PAYG overage</dt>
+              <dd className="text-right font-medium">
+                {pricing.overage.configured &&
+                pricing.overage.unitPrice !== null
+                  ? `${formatMessagePrice(
+                      pricing.overage.unitPrice,
+                      pricing.overage.currency
+                    )} per message`
+                  : "Not configured for this WhatsApp plan"}
+              </dd>
+            </div>
+          </dl>
+        )}
+      </div>
+    </section>
+  )
+}
+
 // ─── Page Component ──────────────────────────────────────────────────────────
 
 export default function WhatsAppMessagesPage() {
@@ -406,6 +609,20 @@ export default function WhatsAppMessagesPage() {
       const payload = await whatsappClient.devices.list()
       return payload.ok ? payload.devices : []
     },
+  })
+  const {
+    data: messagePricing,
+    isLoading: messagePricingLoading,
+    error: messagePricingError,
+  } = useQuery({
+    queryKey: ["whatsapp", "messages", "pricing"],
+    queryFn: async () => {
+      const payload = await whatsappClient.messages.pricing()
+      if (!payload.ok) throw new Error("Pricing information is unavailable")
+      return payload
+    },
+    enabled: sendDialogOpen,
+    staleTime: 30_000,
   })
   const { data: allLabels = [] } = useQuery({
     queryKey: ["whatsapp", "conversations", "labels"],
@@ -961,9 +1178,17 @@ export default function WhatsAppMessagesPage() {
                           return (
                             <div className="flex items-center justify-between gap-2">
                               <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium">
-                                  {tpl.name}
-                                </p>
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <p className="truncate text-sm font-medium">
+                                    {tpl.name}
+                                  </p>
+                                  <Badge
+                                    variant="outline"
+                                    className="shrink-0 text-[10px]"
+                                  >
+                                    {getTemplateCategoryLabel(tpl.category)}
+                                  </Badge>
+                                </div>
                                 <p className="truncate text-xs text-muted-foreground">
                                   {tpl.slug}
                                 </p>
@@ -1030,9 +1255,17 @@ export default function WhatsAppMessagesPage() {
                                 }`}
                               >
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="truncate text-sm font-medium">
-                                    {tpl.name}
-                                  </span>
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <span className="truncate text-sm font-medium">
+                                      {tpl.name}
+                                    </span>
+                                    <Badge
+                                      variant="outline"
+                                      className="shrink-0 text-[10px]"
+                                    >
+                                      {getTemplateCategoryLabel(tpl.category)}
+                                    </Badge>
+                                  </div>
                                   <Badge
                                     variant="secondary"
                                     className="shrink-0 text-[10px]"
@@ -1068,24 +1301,64 @@ export default function WhatsAppMessagesPage() {
                       )
                       if (!tpl) return null
                       return (
-                        <div className="grid gap-2">
-                          <Label htmlFor="send-language">Language *</Label>
-                          <Select
-                            value={selectedTemplateLanguage}
-                            onValueChange={setSelectedTemplateLanguage}
-                          >
-                            <SelectTrigger id="send-language">
-                              <SelectValue placeholder="Select language..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {tpl.languages.map((lang) => (
-                                <SelectItem key={lang.lang} value={lang.lang}>
-                                  {lang.lang}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        <FieldSet className="gap-2">
+                          <FieldLegend variant="label">Language *</FieldLegend>
+                          <div className="flex flex-col gap-2">
+                            {tpl.languages.map((lang, index) => {
+                              const presentation = getLanguagePresentation(
+                                lang.lang
+                              )
+                              const languageId = `send-language-${index}-${lang.lang.replace(
+                                /[^a-zA-Z0-9_-]/g,
+                                "-"
+                              )}`
+                              const isSelected =
+                                selectedTemplateLanguage === lang.lang
+
+                              return (
+                                <label
+                                  key={lang.lang}
+                                  htmlFor={languageId}
+                                  className={cn(
+                                    "flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+                                    isSelected
+                                      ? "border-primary bg-primary/5"
+                                      : "border-border hover:bg-muted/50"
+                                  )}
+                                >
+                                  <input
+                                    id={languageId}
+                                    type="radio"
+                                    name="send-language"
+                                    value={lang.lang}
+                                    checked={isSelected}
+                                    onChange={(event) =>
+                                      setSelectedTemplateLanguage(
+                                        event.target.value
+                                      )
+                                    }
+                                    className="size-4 shrink-0 accent-primary"
+                                    aria-label={`${presentation.name} (${lang.lang})`}
+                                  />
+                                  <span
+                                    className="text-xl leading-none"
+                                    aria-hidden="true"
+                                  >
+                                    {presentation.flag}
+                                  </span>
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block text-sm font-medium">
+                                      {presentation.name}
+                                    </span>
+                                    <span className="block text-xs text-muted-foreground">
+                                      {lang.lang}
+                                    </span>
+                                  </span>
+                                </label>
+                              )
+                            })}
+                          </div>
+                        </FieldSet>
                       )
                     })()}
 
@@ -1127,6 +1400,12 @@ export default function WhatsAppMessagesPage() {
 
                 {/* ── Right Column: Preview Panel ─────────────────────── */}
                 <div className="space-y-4 lg:sticky lg:top-0">
+                  <QuotaPricingPanel
+                    pricing={messagePricing}
+                    isLoading={messagePricingLoading}
+                    error={messagePricingError}
+                    deviceId={sendDeviceId}
+                  />
                   <div className="rounded-lg border bg-card">
                     <div className="border-b px-4 py-3">
                       <h4 className="text-sm font-semibold">Message Preview</h4>
@@ -1144,17 +1423,39 @@ export default function WhatsAppMessagesPage() {
                                 <p className="text-xs text-muted-foreground">
                                   Template
                                 </p>
-                                <p className="text-sm font-medium">
-                                  {tpl.name}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-medium">
+                                    {tpl.name}
+                                  </p>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px]"
+                                  >
+                                    {getTemplateCategoryLabel(tpl.category)}
+                                  </Badge>
+                                </div>
                               </div>
                               {selectedTemplateLanguage && (
                                 <div>
                                   <p className="text-xs text-muted-foreground">
                                     Language
                                   </p>
-                                  <p className="text-sm">
-                                    {selectedTemplateLanguage}
+                                  <p className="flex items-center gap-2 text-sm">
+                                    <span aria-hidden="true">
+                                      {
+                                        getLanguagePresentation(
+                                          selectedTemplateLanguage
+                                        ).flag
+                                      }
+                                    </span>
+                                    {
+                                      getLanguagePresentation(
+                                        selectedTemplateLanguage
+                                      ).name
+                                    }
+                                    <span className="text-xs text-muted-foreground">
+                                      ({selectedTemplateLanguage})
+                                    </span>
                                   </p>
                                 </div>
                               )}

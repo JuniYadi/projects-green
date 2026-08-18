@@ -111,6 +111,68 @@ describe("MessageCostService", () => {
     })
   })
 
+  describe("getMessagePricing", () => {
+    it("returns the configured unit price, currency, and status", async () => {
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
+        planId: "plan-1",
+        plan: { resources: {} },
+      })
+      ;(
+        mockPrisma.servicePricing.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
+        id: "price-1",
+        planId: "plan-1",
+        regionId: "reg-1",
+        type: "PAYG",
+        billingMode: "PAYG",
+        currency: "IDR",
+        basePriceIdr: new Decimal(0),
+        monthlyCapIdr: null,
+        unitRateCpu: null,
+        unitRateMem: null,
+        unitRateMessage: new Decimal(150),
+        servicePlan: { code: "STANDARD", packageId: "WHATSAPP", resources: {} },
+        region: { code: "GLOBAL" },
+      })
+
+      await expect(
+        service.getMessagePricing({
+          organizationId: "org-1",
+          messageType: "template",
+        })
+      ).resolves.toEqual({
+        unitPrice: new Decimal(150),
+        currency: "IDR",
+        configured: true,
+      })
+    })
+
+    it("marks missing PAYG pricing as unconfigured", async () => {
+      ;(
+        mockPrisma.serviceSubscription.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
+        planId: "plan-1",
+        plan: { resources: {} },
+      })
+      ;(
+        mockPrisma.servicePricing.findFirst as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(null)
+
+      await expect(
+        service.getMessagePricing({
+          organizationId: "org-1",
+          messageType: "template",
+        })
+      ).resolves.toEqual({
+        unitPrice: null,
+        currency: null,
+        configured: false,
+      })
+    })
+  })
+
   describe("checkBalanceForMessage", () => {
     it("returns sufficient=true when balance >= estimated cost", async () => {
       ;(

@@ -39,6 +39,37 @@ const mockSendTemplate = mock(() =>
     status: "sent" as const,
   })
 )
+const mockMessagePricing = mock(() =>
+  Promise.resolve({
+    ok: true,
+    devices: [
+      {
+        deviceId: "device_1",
+        phoneNumber: "+6281234567890",
+        country: "ID",
+        categories: [
+          {
+            category: "MARKETING",
+            quotaCredit: "2",
+            configured: true,
+            description: "Marketing credit",
+          },
+          {
+            category: "UTILITY",
+            quotaCredit: "1",
+            configured: false,
+            description: null,
+          },
+        ],
+      },
+    ],
+    overage: {
+      unitPrice: "150",
+      currency: "IDR",
+      configured: true,
+    },
+  })
+)
 const mockConversationsList = mock(() =>
   Promise.resolve({
     ok: true,
@@ -75,6 +106,7 @@ const mockTemplatesData: Array<{
   id: string
   name: string
   slug: string
+  category?: "MARKETING" | "UTILITY" | "AUTHENTICATION" | null
   metaStatus: string | null
   syncStatus: string
   headerText?: string | null
@@ -101,6 +133,7 @@ const mockTemplatesData: Array<{
     id: "tpl_1",
     name: "hello_world",
     slug: "hello_world",
+    category: "UTILITY",
     metaStatus: "APPROVED",
     syncStatus: "SYNCED",
     languages: [
@@ -116,6 +149,13 @@ const mockTemplatesData: Array<{
         },
         isApproved: true,
         metaStatus: "APPROVED",
+      },
+      {
+        lang: "id",
+        body: "Halo {{1}}, Anda memiliki {{2}} pesan baru.",
+        footer: "Balas STOP",
+        isApproved: false,
+        metaStatus: "PENDING",
       },
     ],
     organizationId: "org_1",
@@ -136,6 +176,7 @@ mock.module("next/navigation", () => ({
 mock.module("@/lib/api/whatsapp-client", () => ({
   whatsappClient: {
     messages: {
+      pricing: mockMessagePricing,
       sendTemplate: mockSendTemplate,
       send: mock(() => Promise.resolve({ ok: true })),
       sendInteractive: mock(() => Promise.resolve({ ok: true })),
@@ -194,6 +235,7 @@ describe("WhatsAppMessagesPage", () => {
     mockConversationsList.mockClear()
     mockConversationsGet.mockClear()
     mockSendTemplate.mockClear()
+    mockMessagePricing.mockClear()
     mockDevicesList.mockClear()
     mockSearchParams = new URLSearchParams()
     mockConversationsList.mockResolvedValue({ ok: true, conversations: [] })
@@ -232,6 +274,35 @@ describe("WhatsAppMessagesPage", () => {
       messageId: "msg_123",
       waMessageId: "wa_123",
       status: "sent",
+    })
+    mockMessagePricing.mockResolvedValue({
+      ok: true,
+      devices: [
+        {
+          deviceId: "device_1",
+          phoneNumber: "+6281234567890",
+          country: "ID",
+          categories: [
+            {
+              category: "MARKETING",
+              quotaCredit: "2",
+              configured: true,
+              description: "Marketing credit",
+            },
+            {
+              category: "UTILITY",
+              quotaCredit: "1",
+              configured: false,
+              description: null,
+            },
+          ],
+        },
+      ],
+      overage: {
+        unitPrice: "150",
+        currency: "IDR",
+        configured: true,
+      },
     })
   })
 
@@ -274,6 +345,57 @@ describe("WhatsAppMessagesPage", () => {
     expect(
       view.getByRole("button", { name: /send template message/i })
     ).not.toBeDisabled()
+    view.unmount()
+  })
+
+  it("shows template categories and flagged language choices", async () => {
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
+    await waitFor(() => {
+      expect(
+        view.getByRole("button", { name: /send message/i })
+      ).not.toBeDisabled()
+    })
+    fireEvent.click(view.getByRole("button", { name: /send message/i }))
+    await waitFor(() => {
+      expect(
+        view.getByRole("heading", { name: "Send Template Message" })
+      ).toBeInTheDocument()
+    })
+
+    expect(
+      view.getByRole("button", { name: /hello_world.*Utility/i })
+    ).toBeInTheDocument()
+    expect(view.getAllByText("Utility")).toHaveLength(1)
+
+    fireEvent.click(view.getByRole("button", { name: /hello_world.*Utility/i }))
+
+    await waitFor(() => {
+      expect(view.getByRole("radio", { name: "English (en)" })).toBeChecked()
+    })
+    expect(
+      view.getByRole("radio", { name: "Indonesian (id)" })
+    ).toBeInTheDocument()
+    expect(view.getByText("🇮🇩")).toBeInTheDocument()
+    expect(view.getAllByText("Utility")).toHaveLength(2)
+    view.unmount()
+  })
+
+  it("shows quota credits and PAYG pricing for the selected device", async () => {
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
+    await waitFor(() => {
+      expect(
+        view.getByRole("button", { name: /send message/i })
+      ).not.toBeDisabled()
+    })
+
+    fireEvent.click(view.getByRole("button", { name: /send message/i }))
+
+    await waitFor(() => {
+      expect(view.getByText("Quota & Pricing")).toBeInTheDocument()
+      expect(view.getByText("MARKETING")).toBeInTheDocument()
+      expect(view.getByText(/150.*per message/)).toBeInTheDocument()
+    })
+    expect(view.getByText("Default; rate not configured")).toBeInTheDocument()
     view.unmount()
   })
 
