@@ -38,7 +38,7 @@ describe("logVaultSecretReveal", () => {
     expect(JSON.stringify(create.mock.calls[0])).not.toContain("secret-value")
   })
 
-  it("swallows audit persistence failures", async () => {
+  it("propagates audit persistence failures to caller", async () => {
     create.mockRejectedValue(new Error("database unavailable"))
 
     await expect(
@@ -49,6 +49,6 @@ describe("logVaultSecretReveal", () => {
         environment: "prod",
         secretKey: "API_KEY",
       })
-    ).resolves.toBeUndefined()
+    ).rejects.toThrow("database unavailable")
   })
 })

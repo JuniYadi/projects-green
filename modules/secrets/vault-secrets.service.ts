@@ -165,7 +165,7 @@ const toReference = (input: {
   updatedAt: string
 }): VaultSecretReference => {
   const existing = input.existing ?? {}
-  const { value: _value, ...metadata } = existing
+  const { value: _value, scope: _scope, id: _id, ...metadata } = existing
 
   return {
     ...metadata,
@@ -176,6 +176,8 @@ const toReference = (input: {
     vaultKey: input.key,
     version: input.version,
     updatedAt: input.updatedAt,
+    ...(existing.scope ? { scope: existing.scope } : {}),
+    ...(existing.id ? { id: existing.id } : {}),
   } as VaultSecretReference
 }
 

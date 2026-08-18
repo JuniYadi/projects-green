@@ -86,6 +86,47 @@ describe("VaultSecretsService", () => {
     expect(stored).not.toContain("postgres://new-secret")
   })
 
+  it("preserves scope and id when updating existing secret references", async () => {
+    const dependencies = createDependencies([
+      {
+        id: "env-id-1",
+        key: "DATABASE_URL",
+        type: "secret_ref",
+        environment: "prod",
+        vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+        vaultKey: "DATABASE_URL",
+        version: 1,
+        updatedAt: "2026-08-17T12:00:00.000Z",
+        scope: "runtime",
+      },
+    ])
+    const service = new VaultSecretsService({
+      ...dependencies,
+      now: () => new Date("2026-08-18T12:00:00.000Z"),
+    } as never)
+
+    const result = await service.writeSecrets({
+      organizationId: "org-1",
+      stackId: "stack-1",
+      environment: "prod",
+      secrets: { DATABASE_URL: "postgres://new-secret" },
+    })
+
+    expect(result.references).toEqual([
+      {
+        id: "env-id-1",
+        key: "DATABASE_URL",
+        type: "secret_ref",
+        environment: "prod",
+        vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+        vaultKey: "DATABASE_URL",
+        version: 4,
+        updatedAt: "2026-08-18T12:00:00.000Z",
+        scope: "runtime",
+      },
+    ])
+  })
+
   it("returns metadata only and audits successful reveals", async () => {
     const dependencies = createDependencies([
       {
