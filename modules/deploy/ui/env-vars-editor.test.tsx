@@ -159,6 +159,47 @@ describe("EnvVarsEditor", () => {
       })
     })
   })
+  it("preserves shared secret reference metadata when editing in local persistence mode", async () => {
+    const user = userEvent.setup()
+    const changes: EnvVar[][] = []
+    const row: EnvVar = {
+      id: "shared-1",
+      key: "DATABASE_URL",
+      value: "",
+      type: "secret_shared_ref",
+      source: "managed_service",
+      serviceCredentialId: "credential-postgres",
+      vaultPath: "tenants/org-1/shared/managed-services/credential-postgres",
+      vaultKey: "CONNECTION_STRING",
+      referenceLabel: "Managed PostgreSQL / production",
+      lastUpdatedAt: "2026-05-20T00:00:00.000Z",
+      isStoredSecret: true,
+    }
+    const view = render(
+      <EnvVarsEditor
+        envVars={[row]}
+        onChange={(nextRows) => changes.push(nextRows)}
+        persistence="local"
+        sharedSecretOptions={[]}
+      />
+    )
+
+    await user.click(view.getByRole("button", { name: "Edit" }))
+    await user.click(view.getByRole("button", { name: "Save changes" }))
+
+    await waitFor(() => {
+      expect(changes.at(-1)?.[0]).toMatchObject({
+        key: "DATABASE_URL",
+        type: "secret_shared_ref",
+        source: "managed_service",
+        serviceCredentialId: "credential-postgres",
+        vaultPath: "tenants/org-1/shared/managed-services/credential-postgres",
+        vaultKey: "CONNECTION_STRING",
+        referenceLabel: "Managed PostgreSQL / production",
+        lastUpdatedAt: "2026-05-20T00:00:00.000Z",
+      })
+    })
+  })
 
   it("previews imported secrets as masked and saves only the masked row", async () => {
     const user = userEvent.setup()

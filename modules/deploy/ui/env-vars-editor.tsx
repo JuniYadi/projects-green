@@ -220,19 +220,47 @@ const preserveStoredSecretMetadata = (
   next: EnvVar,
   form: EnvVarFormState
 ): EnvVar => {
-  if (!current || form.type !== "secret_ref" || form.value.trim()) {
+  if (!current) {
     return next
   }
 
-  return {
-    ...next,
-    source: current.source ?? next.source,
-    vaultPath: current.vaultPath ?? next.vaultPath,
-    vaultKey: current.vaultKey ?? next.vaultKey,
-    version: current.version ?? next.version,
-    referenceLabel: current.referenceLabel ?? next.referenceLabel,
-    lastUpdatedAt: current.lastUpdatedAt ?? next.lastUpdatedAt,
+  if (form.type === "secret_ref") {
+    if (form.value.trim()) {
+      return next
+    }
+
+    return {
+      ...next,
+      source: current.source ?? next.source,
+      vaultPath: current.vaultPath ?? next.vaultPath,
+      vaultKey: current.vaultKey ?? next.vaultKey,
+      version: current.version ?? next.version,
+      referenceLabel: current.referenceLabel ?? next.referenceLabel,
+      lastUpdatedAt: current.lastUpdatedAt ?? next.lastUpdatedAt,
+    }
   }
+
+  if (form.type === "secret_shared_ref") {
+    const isNewSelection =
+      Boolean(next.serviceCredentialId) &&
+      next.serviceCredentialId !== current.serviceCredentialId
+
+    return {
+      ...next,
+      source: next.source ?? current.source ?? "managed_service",
+      serviceCredentialId:
+        next.serviceCredentialId ?? current.serviceCredentialId,
+      vaultPath: next.vaultPath ?? current.vaultPath,
+      vaultKey: next.vaultKey ?? current.vaultKey,
+      version: next.version ?? current.version,
+      referenceLabel: next.referenceLabel ?? current.referenceLabel,
+      lastUpdatedAt: isNewSelection
+        ? next.lastUpdatedAt
+        : (current.lastUpdatedAt ?? next.lastUpdatedAt),
+    }
+  }
+
+  return next
 }
 
 const toEnvVarFromApiRecord = (record: EnvVariableRecord): EnvVar => {
@@ -457,9 +485,16 @@ export function EnvVarsEditor({
     }
 
     if (state.type === "secret_shared_ref") {
+      const hasExistingMetadata =
+        mode === "edit" &&
+        Boolean(
+          currentRow && (currentRow.serviceCredentialId || currentRow.vaultPath)
+        )
+
       if (
-        !state.sharedSecretOptionId ||
-        !sharedSecretById.has(state.sharedSecretOptionId)
+        !hasExistingMetadata &&
+        (!state.sharedSecretOptionId ||
+          !sharedSecretById.has(state.sharedSecretOptionId))
       ) {
         return "Choose a managed service secret reference."
       }

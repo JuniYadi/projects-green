@@ -20,7 +20,7 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     name: "deploy",
     sourcePrefixes: [
       "modules/deploy/",
-      "app/[lang]/console/app/deploy/",
+      "app/[lang]/console/app/",
       "app/api/deploy/",
       "app/api/integrations/github/",
     ],
