@@ -33,7 +33,6 @@ import {
 } from "@/components/ui/phosphor-icons"
 import {
   getAdminCatalogProduct,
-  getCatalogProduct,
   publishCatalogProduct,
 } from "@/lib/billing-client"
 import type {
