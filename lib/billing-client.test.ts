@@ -30,6 +30,9 @@ import {
   getAdminOrgs,
   getAdminOrders,
   getAdminPricing,
+  getAdminCatalogProductsList,
+  getAdminCatalogProductDetail,
+  upsertAdminCatalogProduct,
   getAdminPromotion,
   getAdminPromotionClaims,
   getAdminPromotions,
@@ -844,5 +847,38 @@ describe("subscription lifecycle helpers", () => {
     expect(billingPeriodLabel("ANNUAL")).toBe("Annual")
     expect(billingPeriodLabel("CUSTOM")).toBe("CUSTOM")
     expect(billingPeriodLabel(null as never)).toBe("Unknown period")
+  })
+
+  it("calls admin catalog products list, detail, and upsert endpoints", async () => {
+    await getAdminCatalogProductsList("APP_HOSTING")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/admin/catalog/APP_HOSTING/products"
+    )
+
+    await getAdminCatalogProductDetail("APP_HOSTING", "STARTER")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/admin/catalog/APP_HOSTING/products/STARTER"
+    )
+
+    await upsertAdminCatalogProduct("APP_HOSTING", "STARTER", {
+      name: "Starter Plan",
+      billingStrategy: "FIXED_CYCLE",
+      stockControl: "TRACKED",
+      stockCount: 10,
+      allowBackorder: false,
+    })
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/admin/catalog/APP_HOSTING/products/STARTER"
+    )
+    expect(calledRequest().init?.method).toBe("POST")
+    expect(calledRequest().init?.body).toBe(
+      JSON.stringify({
+        name: "Starter Plan",
+        billingStrategy: "FIXED_CYCLE",
+        stockControl: "TRACKED",
+        stockCount: 10,
+        allowBackorder: false,
+      })
+    )
   })
 })
