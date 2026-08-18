@@ -14,6 +14,12 @@ import {
   type CheckoutQuote,
 } from "../checkout/quote.service"
 
+const deviceDetailsSchema = z.object({
+  phoneNumber: z.string().trim().min(5).max(32),
+  displayName: z.string().trim().min(1).max(128).optional(),
+  profilePictureUrl: z.string().trim().url().optional(),
+})
+
 const checkoutSchema = z.object({
   pricingId: z.string().min(1).max(128),
   quantity: z.number().int().min(1).max(9999).optional(),
@@ -23,6 +29,8 @@ const checkoutSchema = z.object({
   mode: z.enum(["PURCHASE", "UPGRADE", "CHANGE_TERM"]).optional(),
   subscriptionId: z.string().min(1).max(128).optional(),
   idempotencyKey: z.string().min(1).max(128),
+  device: deviceDetailsSchema.optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 type CheckoutSuccess = {
@@ -164,7 +172,6 @@ export const createBillingCheckoutRoutes = (
         if (!parsed.success) {
           return toError(set, 400, "VALIDATION_ERROR", parsed.error.message)
         }
-
         const {
           pricingId,
           quantity,
@@ -174,6 +181,8 @@ export const createBillingCheckoutRoutes = (
           mode,
           subscriptionId,
           idempotencyKey,
+          device,
+          metadata: customMetadata,
         } = parsed.data
 
         let quote: CheckoutQuote | null = null
@@ -220,13 +229,17 @@ export const createBillingCheckoutRoutes = (
             voucherExchangeRate: quote?.voucher?.exchangeRate
               ? new Prisma.Decimal(quote.voucher.exchangeRate)
               : undefined,
-            metadata: quote
-              ? {
-                  checkoutQuote: quote,
-                  addons: quote.addons,
-                  voucher: quote.voucher,
-                }
-              : undefined,
+            metadata: {
+              ...(customMetadata ?? {}),
+              ...(device ? { device } : {}),
+              ...(quote
+                ? {
+                    checkoutQuote: quote,
+                    addons: quote.addons,
+                    voucher: quote.voucher,
+                  }
+                : {}),
+            },
             idempotencyKey,
           })
         } catch (err) {
