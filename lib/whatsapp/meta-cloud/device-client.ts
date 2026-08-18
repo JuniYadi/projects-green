@@ -19,6 +19,17 @@ import type {
   AnalyticsDataItem,
 } from "./types/analytics"
 
+function getProviderMessageId(result: unknown): string {
+  const messageId = (result as { messages?: Array<{ id?: unknown }> })
+    ?.messages?.[0]?.id
+
+  if (typeof messageId !== "string" || messageId.length === 0) {
+    throw new Error("Meta Cloud API returned no message ID")
+  }
+
+  return messageId
+}
+
 export class WhatsAppDeviceClient {
   private readonly httpClient: MetaCloudHttpClient
   private readonly phoneNumberId: string
@@ -74,7 +85,7 @@ export class WhatsAppDeviceClient {
     )
 
     return {
-      providerMessageId: result.messages[0].id,
+      providerMessageId: getProviderMessageId(result),
       accepted: true,
     }
   }
@@ -134,7 +145,7 @@ export class WhatsAppDeviceClient {
     )
 
     return {
-      providerMessageId: result.messages[0].id,
+      providerMessageId: getProviderMessageId(result),
       accepted: true,
     }
   }
@@ -157,7 +168,7 @@ export class WhatsAppDeviceClient {
     )
 
     return {
-      providerMessageId: result.messages[0].id,
+      providerMessageId: getProviderMessageId(result),
       accepted: true,
     }
   }
@@ -387,7 +398,7 @@ export class WhatsAppDeviceClient {
     )
 
     return {
-      providerMessageId: result.messages[0].id,
+      providerMessageId: getProviderMessageId(result),
       accepted: true,
     }
   }
@@ -430,7 +441,7 @@ export class WhatsAppDeviceClient {
     )
 
     return {
-      providerMessageId: result.messages[0].id,
+      providerMessageId: getProviderMessageId(result),
       accepted: true,
     }
   }
@@ -514,7 +525,7 @@ export class WhatsAppDeviceClient {
     )
 
     return {
-      providerMessageId: result.messages[0].id,
+      providerMessageId: getProviderMessageId(result),
       accepted: true,
     }
   }

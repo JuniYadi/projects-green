@@ -201,8 +201,8 @@ export type SendMessageInput = {
 export type SendMessageResult = {
   jobId: string
   messageId: string
-  waMessageId?: string | null
-  status: string
+  waMessageId: string
+  status: "sent"
 }
 
 // ─── Group Types ──────────────────────────────────────────────────────────

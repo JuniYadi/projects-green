@@ -3,8 +3,11 @@ import type { InteractivePayload } from "@/lib/whatsapp/meta-cloud/types"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { messageService } from "../messages.service"
-import { toWhatsappMessageDTO } from "../messages.dto"
-import { WhatsappSendFailedError } from "../messages.errors"
+import { toWhatsappMessageDTO, toWhatsappSendResultDTO } from "../messages.dto"
+import {
+  WhatsappSendFailedError,
+  WhatsappSessionWindowClosedError,
+} from "../messages.errors"
 import type { WhatsAppTemplateLanguage } from "@/lib/api/whatsapp-client"
 import { InsufficientQuotaError } from "../quota.service"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
@@ -363,6 +366,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           address,
           deviceId,
         })
+        const response = toWhatsappSendResultDTO(result)
 
         logWhatsappAuditEvent({
           action: "MESSAGE_SENT",
@@ -372,7 +376,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           message: `Message sent to ${normalizedPhone}`,
           status: "OK",
           details: {
-            waMessageId: result.waMessageId,
+            waMessageId: response.waMessageId,
             phoneNumber: normalizedPhone,
             type: type ?? "text",
           },
@@ -380,10 +384,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
 
         return {
           ok: true,
-          jobId: result.jobId,
-          messageId: result.messageId,
-          waMessageId: result.waMessageId,
-          status: result.status,
+          ...response,
         }
       } catch (error) {
         // Handle billing-related errors with appropriate HTTP status codes
@@ -404,6 +405,15 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
             error: "WHATSAPP_SEND_FAILED",
             message: error.message,
             messageId: error.messageId,
+          }
+        }
+
+        if (error instanceof WhatsappSessionWindowClosedError) {
+          set.status = 422
+          return {
+            ok: false,
+            error: "WHATSAPP_TEMPLATE_REQUIRED",
+            message: error.message,
           }
         }
 
@@ -590,6 +600,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           billingCategory: template.category ?? undefined,
           templateLanguageData: language as unknown as WhatsAppTemplateLanguage,
         })
+        const response = toWhatsappSendResultDTO(result)
 
         logWhatsappAuditEvent({
           action: "MESSAGE_SENT",
@@ -599,7 +610,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           message: `Template message sent to ${normalizedPhone}`,
           status: "OK",
           details: {
-            waMessageId: result.waMessageId,
+            waMessageId: response.waMessageId,
             phoneNumber: normalizedPhone,
             templateName: template.name,
             templateLanguage,
@@ -608,10 +619,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
 
         return {
           ok: true,
-          jobId: result.jobId,
-          messageId: result.messageId,
-          waMessageId: result.waMessageId,
-          status: result.status,
+          ...response,
         }
       } catch (error) {
         logWhatsappAuditEvent({
@@ -733,6 +741,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           interactivePayload: interactive as unknown as InteractivePayload,
           deviceId,
         })
+        const response = toWhatsappSendResultDTO(result)
 
         logWhatsappAuditEvent({
           action: "MESSAGE_SENT",
@@ -742,7 +751,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           message: `Interactive message sent to ${normalizedPhone}`,
           status: "OK",
           details: {
-            waMessageId: result.waMessageId,
+            waMessageId: response.waMessageId,
             phoneNumber: normalizedPhone,
             interactiveType: interactive.type,
           },
@@ -750,10 +759,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
 
         return {
           ok: true,
-          jobId: result.jobId,
-          messageId: result.messageId,
-          waMessageId: result.waMessageId,
-          status: result.status,
+          ...response,
         }
       } catch (error) {
         logWhatsappAuditEvent({
@@ -765,6 +771,25 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           errorMessage: error instanceof Error ? error.message : String(error),
           status: "FAILED",
         })
+
+        if (error instanceof WhatsappSessionWindowClosedError) {
+          set.status = 422
+          return {
+            ok: false,
+            error: "WHATSAPP_TEMPLATE_REQUIRED",
+            message: error.message,
+          }
+        }
+
+        if (error instanceof WhatsappSendFailedError) {
+          set.status = 502
+          return {
+            ok: false,
+            error: "WHATSAPP_SEND_FAILED",
+            message: error.message,
+            messageId: error.messageId,
+          }
+        }
 
         if (error instanceof InsufficientBalanceError) {
           set.status = 402

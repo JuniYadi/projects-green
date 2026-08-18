@@ -238,25 +238,31 @@ export const whatsappClient = {
       message: string
       deviceId?: string
     }) =>
-      serverFetch<{ ok: boolean; messageId: string; status: string }>(
-        "/api/whatsapp/messages/send",
-        {
-          method: "POST",
-          body: JSON.stringify(input),
-        }
-      ),
+      serverFetch<{
+        ok: boolean
+        jobId: string
+        messageId: string
+        waMessageId: string
+        status: "sent"
+      }>("/api/whatsapp/messages/send", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
     sendInteractive: (input: {
       phoneNumber: string
       deviceId?: string
       interactive: unknown
     }) =>
-      serverFetch<{ ok: boolean; messageId: string; status: string }>(
-        "/api/whatsapp/messages/send-interactive",
-        {
-          method: "POST",
-          body: JSON.stringify(input),
-        }
-      ),
+      serverFetch<{
+        ok: boolean
+        jobId: string
+        messageId: string
+        waMessageId: string
+        status: "sent"
+      }>("/api/whatsapp/messages/send-interactive", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
     sendTemplate: (input: {
       phoneNumber: string
       templateId: string
@@ -266,10 +272,10 @@ export const whatsappClient = {
     }) =>
       serverFetch<{
         ok: boolean
+        jobId: string
         messageId: string
-        status: string
-        jobId?: string
-        waMessageId?: string
+        waMessageId: string
+        status: "sent"
       }>("/api/whatsapp/messages/send-template", {
         method: "POST",
         body: JSON.stringify(input),

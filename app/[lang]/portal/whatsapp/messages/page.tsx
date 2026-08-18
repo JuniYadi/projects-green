@@ -370,7 +370,7 @@ export default function WhatsAppMessagesPage() {
         deviceId: sendDeviceId || undefined,
       })
 
-      toast.success("Message queued for delivery")
+      toast.success("Message sent")
       // Refresh conversations list
       whatsappClient.conversations
         .list()

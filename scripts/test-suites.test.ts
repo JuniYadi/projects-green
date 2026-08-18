@@ -34,6 +34,19 @@ describe("selectSmokeProjects", () => {
     })
   })
 
+  test("selects the WhatsApp messages portal smoke project", () => {
+    const selection = selectSmokeProjects([
+      "app/[lang]/console/whatsapp/messages/page.tsx",
+      "app/[lang]/portal/whatsapp/messages/page.tsx",
+      "modules/whatsapp/messages/ui/interactive-composer.tsx",
+    ])
+
+    expect(selection).toEqual({
+      projects: ["smoke-portal"],
+      unmappedUiPaths: [],
+    })
+  })
+
   test("reports an unmapped UI feature instead of running nothing", () => {
     const selection = selectSmokeProjects([
       "modules/new-feature/ui/new-page.tsx",

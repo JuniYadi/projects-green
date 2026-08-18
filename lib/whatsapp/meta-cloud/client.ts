@@ -144,6 +144,10 @@ export class MetaCloudHttpClient {
           error: lastError?.message,
         })
 
+        if (error instanceof MetaCloudError) {
+          break
+        }
+
         if (attempt >= retries) break
 
         await new Promise((resolve) =>

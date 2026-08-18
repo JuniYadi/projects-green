@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { WhatsAppDeviceClient } from "./device-client"
+
+mock.module("@/modules/whatsapp/rate-limit/rate-limit.service", () => ({
+  apiCallTracker: { recordCall: mock(async () => {}) },
+}))
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -25,6 +28,8 @@ mock.module("../crypto", () => ({
   decryptWhatsAppToken: async (token: string) => token,
 }))
 
+const { WhatsAppDeviceClient } = await import("./device-client")
+
 function createClient() {
   return new WhatsAppDeviceClient({
     accessToken: "mock-token",
@@ -32,6 +37,168 @@ function createClient() {
     wabaId: "waba-1",
   })
 }
+
+describe("WhatsAppDeviceClient message methods", () => {
+  beforeEach(() => {
+    mockRequest.mockClear()
+  })
+
+  it("sends an in-window text reply with Meta's body payload", async () => {
+    const client = createClient()
+
+    const result = await client.sendReply({
+      to: "628123456789",
+      type: "text",
+      payload: { body: "Hello" },
+    })
+
+    expect(result.providerMessageId).toBe("wamid.mock")
+    expect(mockRequest).toHaveBeenCalledWith(
+      "SEND_REPLY",
+      expect.any(String),
+      "POST",
+      {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: "628123456789",
+        type: "text",
+        text: { body: "Hello" },
+      }
+    )
+  })
+  it("sends image and document replies", async () => {
+    const client = createClient()
+
+    await client.sendReply({
+      to: "628123456789",
+      type: "image",
+      payload: { link: "https://example.com/image.jpg", caption: "Image" },
+    })
+    expect(mockRequest).toHaveBeenLastCalledWith(
+      "SEND_REPLY",
+      expect.any(String),
+      "POST",
+      {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: "628123456789",
+        type: "image",
+        image: { link: "https://example.com/image.jpg", caption: "Image" },
+      }
+    )
+
+    await client.sendReply({
+      to: "628123456789",
+      type: "document",
+      payload: {
+        link: "https://example.com/document.pdf",
+        caption: "Document",
+        filename: "document.pdf",
+      },
+    })
+    expect(mockRequest).toHaveBeenLastCalledWith(
+      "SEND_REPLY",
+      expect.any(String),
+      "POST",
+      {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: "628123456789",
+        type: "document",
+        document: {
+          link: "https://example.com/document.pdf",
+          caption: "Document",
+          filename: "document.pdf",
+        },
+      }
+    )
+  })
+
+  it("returns provider IDs from sendMessage, sendLocation, and interactive messages", async () => {
+    const client = createClient()
+
+    await expect(
+      client.sendMessage({
+        to: "628123456789",
+        type: "text",
+        payload: { body: "Hello" },
+      })
+    ).resolves.toMatchObject({ providerMessageId: "wamid.mock" })
+
+    await expect(
+      client.sendMessage({
+        to: "628123456789",
+        type: "location",
+        payload: { latitude: -6.2, longitude: 106.8 },
+      })
+    ).resolves.toMatchObject({ providerMessageId: "wamid.mock" })
+
+    await expect(
+      client.sendMessage({
+        to: "628123456789",
+        type: "interactive",
+        payload: {
+          type: "button",
+          body: { text: "Choose" },
+          action: {
+            buttons: [{ type: "reply", reply: { id: "yes", title: "Yes" } }],
+          },
+        },
+      })
+    ).resolves.toMatchObject({ providerMessageId: "wamid.mock" })
+
+    expect(mockRequest).toHaveBeenLastCalledWith(
+      "SEND_MESSAGE",
+      expect.any(String),
+      "POST",
+      expect.objectContaining({
+        type: "interactive",
+        interactive: expect.objectContaining({ type: "button" }),
+      })
+    )
+  })
+
+  it("returns provider IDs from template messages", async () => {
+    const client = createClient()
+
+    const result = await client.sendTemplateMessage({
+      to: "628123456789",
+      templateName: "hello_world",
+      templateLanguage: "en",
+      fields: ["John"],
+    })
+
+    expect(result.providerMessageId).toBe("wamid.mock")
+    expect(mockRequest).toHaveBeenCalledWith(
+      "SEND_TEMPLATE",
+      expect.any(String),
+      "POST",
+      expect.objectContaining({ type: "template" })
+    )
+  })
+
+  it("rejects every malformed Meta response without a message ID", async () => {
+    const responses = [
+      {},
+      { messages: [] },
+      { messages: [{ id: "" }] },
+      { messages: [{ id: 123 }] },
+    ]
+
+    for (const response of responses) {
+      mockRequest.mockImplementationOnce(async () => response)
+      const client = createClient()
+
+      await expect(
+        client.sendMessage({
+          to: "628123456789",
+          type: "text",
+          payload: { body: "Hello" },
+        })
+      ).rejects.toThrow("Meta Cloud API returned no message ID")
+    }
+  })
+})
 
 // ─── Catalog tests ───────────────────────────────────────────────────────────
 

@@ -31,7 +31,13 @@ const mockConversationsGet = mock(() => {
 // ─── Mock functions ─────────────────────────────────────────────────────────
 
 const mockSendTemplate = mock(() =>
-  Promise.resolve({ ok: true, messageId: "msg_123", status: "queued" })
+  Promise.resolve({
+    ok: true,
+    jobId: "job_123",
+    messageId: "msg_123",
+    waMessageId: "wa_123",
+    status: "sent" as const,
+  })
 )
 const mockConversationsList = mock(() =>
   Promise.resolve({
@@ -222,8 +228,10 @@ describe("WhatsAppMessagesPage", () => {
     })
     mockSendTemplate.mockResolvedValue({
       ok: true,
+      jobId: "job_123",
       messageId: "msg_123",
-      status: "queued",
+      waMessageId: "wa_123",
+      status: "sent",
     })
   })
 

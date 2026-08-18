@@ -557,7 +557,7 @@ export function InteractiveComposer({
         deviceId: deviceId || undefined,
         interactive: payload,
       })
-      toast.success(`Interactive message queued for delivery`)
+      toast.success("Interactive message sent")
       setOpen(false)
       resetForm()
     } catch (err) {
