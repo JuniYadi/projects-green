@@ -5,11 +5,11 @@ import type { ResolvedRecurringPrice } from "../pricing/pricing.types"
 
 const mockPrisma = {
   servicePlanAddon: { findMany: mock() },
+  servicePlan: { findUnique: mock() },
   voucher: { findUnique: mock() },
   billingOrder: { count: mock() },
   billingAccount: { findUnique: mock() },
 }
-
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
 const { CheckoutQuoteService } = await import("./quote.service")
@@ -39,12 +39,18 @@ function buildService() {
 
 beforeEach(() => {
   mockPrisma.servicePlanAddon.findMany.mockReset()
+  mockPrisma.servicePlan.findUnique.mockReset()
   mockPrisma.voucher.findUnique.mockReset()
   mockPrisma.billingOrder.count.mockReset()
   mockPrisma.billingAccount.findUnique.mockReset()
   mockPrisma.billingAccount.findUnique.mockResolvedValue({ currency: "IDR" })
+  mockPrisma.servicePlan.findUnique.mockResolvedValue({
+    stockControl: "UNLIMITED",
+    stockCount: null,
+    allowBackorder: false,
+    billingStrategy: "FIXED_CYCLE",
+  })
 })
-
 describe("CheckoutQuoteService", () => {
   it("quotes selected addons and a percentage promotion", async () => {
     mockPrisma.servicePlanAddon.findMany.mockResolvedValueOnce([
@@ -210,5 +216,46 @@ describe("CheckoutQuoteService", () => {
         idempotencyKey: "quote-2",
       })
     ).rejects.toMatchObject({ code: "BILLING_CURRENCY_MISMATCH" })
+  })
+
+  it("throws OUT_OF_STOCK error when product is tracked and out of stock without backorder", async () => {
+    mockPrisma.servicePlan.findUnique.mockResolvedValueOnce({
+      stockControl: "TRACKED",
+      stockCount: 0,
+      allowBackorder: false,
+      billingStrategy: "FIXED_CYCLE",
+    })
+
+    const service = buildService()
+    await expect(
+      service.createQuote({
+        organizationId: "org-1",
+        pricingId: "pricing-1",
+        idempotencyKey: "idem-stock-1",
+      })
+    ).rejects.toThrow("out of stock")
+  })
+
+  it("calculates prorated day-rate when billingStrategy is PRO_RATA on monthly term", async () => {
+    mockPrisma.servicePlanAddon.findMany.mockResolvedValueOnce([])
+    mockPrisma.servicePlan.findUnique.mockResolvedValueOnce({
+      stockControl: "UNLIMITED",
+      stockCount: null,
+      allowBackorder: false,
+      billingStrategy: "PRO_RATA",
+    })
+
+    const service = buildService()
+    const quote = await service.createQuote({
+      organizationId: "org-1",
+      pricingId: "pricing-1",
+      idempotencyKey: "idem-prorata-1",
+    })
+
+    expect(quote.isProrated).toBe(true)
+    expect(quote.proratedDays).toBe(26) // Aug 6 to Aug 31 = 26 days
+    expect(quote.totalDaysInPeriod).toBe(31)
+    expect(Number(quote.subtotal)).toBeLessThan(100000)
+    expect(quote.periodEnd).toContain("2026-08-31")
   })
 })
