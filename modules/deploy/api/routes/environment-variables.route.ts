@@ -48,15 +48,27 @@ const createRouteGuard =
 const createSchema = z.object({
   key: z.string(),
   value: z.string(),
-  type: z.enum(["plain", "secret"]).optional(),
+  type: z
+    .enum(["plain", "secret", "secret_ref", "secret_shared_ref"])
+    .optional(),
   scope: z.enum(["all", "build", "runtime"]).optional(),
+  serviceCredentialId: z.string().optional(),
+  vaultPath: z.string().optional(),
+  vaultKey: z.string().optional(),
+  referenceLabel: z.string().optional(),
 })
 
 const updateSchema = z.object({
   key: z.string(),
   value: z.string().optional(),
-  type: z.enum(["plain", "secret"]).optional(),
+  type: z
+    .enum(["plain", "secret", "secret_ref", "secret_shared_ref"])
+    .optional(),
   scope: z.enum(["all", "build", "runtime"]).optional(),
+  serviceCredentialId: z.string().optional(),
+  vaultPath: z.string().optional(),
+  vaultKey: z.string().optional(),
+  referenceLabel: z.string().optional(),
 })
 
 const importSchema = z.object({
@@ -95,6 +107,10 @@ export const createEnvironmentVariablesRoutes = (
           value: body.value,
           type: body.type,
           scope: body.scope,
+          serviceCredentialId: body.serviceCredentialId,
+          vaultPath: body.vaultPath,
+          vaultKey: body.vaultKey,
+          referenceLabel: body.referenceLabel,
         })
       },
       {
@@ -116,6 +132,10 @@ export const createEnvironmentVariablesRoutes = (
           value: body.value,
           type: body.type,
           scope: body.scope,
+          serviceCredentialId: body.serviceCredentialId,
+          vaultPath: body.vaultPath,
+          vaultKey: body.vaultKey,
+          referenceLabel: body.referenceLabel,
         })
       },
       {

@@ -110,6 +110,69 @@ describe("buildDeployConfig — happy path", () => {
     })
   })
 
+  it("retains Vault and shared-reference metadata", () => {
+    const result = buildDeployConfig({
+      ...baseState(),
+      environment: {
+        ...validEnvironment,
+        envVars: [
+          {
+            id: "e1",
+            key: "DATABASE_URL",
+            value: "",
+            type: "secret_ref",
+            isStoredSecret: true,
+            source: "vault",
+            vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+            vaultKey: "DATABASE_URL",
+            version: 3,
+            lastUpdatedAt: "2026-08-18T10:00:00.000Z",
+          },
+          {
+            id: "e2",
+            key: "REDIS_URL",
+            value: "",
+            type: "secret_shared_ref",
+            source: "managed_service",
+            serviceCredentialId: "credential-redis",
+            vaultPath: "tenants/org-1/shared/managed-services/credential-redis",
+            vaultKey: "CONNECTION_STRING",
+            referenceLabel: "Managed Redis",
+          },
+        ],
+      },
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.config.environment.envVars).toEqual([
+      {
+        key: "DATABASE_URL",
+        value: "",
+        type: "secret_ref",
+        scope: "all",
+        isStoredSecret: true,
+        source: "vault",
+        vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+        vaultKey: "DATABASE_URL",
+        version: 3,
+        lastUpdatedAt: "2026-08-18T10:00:00.000Z",
+      },
+      {
+        key: "REDIS_URL",
+        value: "",
+        type: "secret_shared_ref",
+        scope: "all",
+        isStoredSecret: false,
+        source: "managed_service",
+        serviceCredentialId: "credential-redis",
+        vaultPath: "tenants/org-1/shared/managed-services/credential-redis",
+        vaultKey: "CONNECTION_STRING",
+        referenceLabel: "Managed Redis",
+      },
+    ])
+  })
+
   it("treats build inputs as optional when detection is high confidence", () => {
     const result = buildDeployConfig({
       ...baseState(),

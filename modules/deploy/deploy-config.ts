@@ -10,6 +10,7 @@ import type {
   DeployWizardState,
   DetectionResult,
   EnvVar,
+  EnvVarType,
 } from "@/modules/deploy/deploy.types"
 import { isManualOverrideRequired } from "@/modules/deploy/deploy.schema"
 
@@ -39,8 +40,19 @@ export type DeployConfigBuild = {
   useDockerfile: boolean
 }
 
-export type DeployConfigEnvVar = Pick<EnvVar, "key" | "value"> & {
-  type: "plain" | "secret"
+export type DeployConfigEnvVar = Pick<
+  EnvVar,
+  | "key"
+  | "value"
+  | "source"
+  | "serviceCredentialId"
+  | "vaultPath"
+  | "vaultKey"
+  | "version"
+  | "referenceLabel"
+  | "lastUpdatedAt"
+> & {
+  type: EnvVarType
   scope: "all" | "build" | "runtime"
   isStoredSecret: boolean
 }
@@ -88,6 +100,15 @@ const normalizeEnvVar = (item: EnvVar): DeployConfigEnvVar => {
     type: item.type ?? "plain",
     scope: item.scope ?? "all",
     isStoredSecret: Boolean(item.isStoredSecret),
+    ...(item.source ? { source: item.source } : {}),
+    ...(item.serviceCredentialId
+      ? { serviceCredentialId: item.serviceCredentialId }
+      : {}),
+    ...(item.vaultPath ? { vaultPath: item.vaultPath } : {}),
+    ...(item.vaultKey ? { vaultKey: item.vaultKey } : {}),
+    ...(item.version !== undefined ? { version: item.version } : {}),
+    ...(item.referenceLabel ? { referenceLabel: item.referenceLabel } : {}),
+    ...(item.lastUpdatedAt ? { lastUpdatedAt: item.lastUpdatedAt } : {}),
   }
 }
 

@@ -1,4 +1,6 @@
-export type EnvVariableType = "plain" | "secret"
+import type { EnvVarType } from "@/modules/deploy/deploy.types"
+
+export type EnvVariableType = EnvVarType
 export type EnvVariableScope = "all" | "build" | "runtime"
 
 export type EnvVariableRecord = {
@@ -10,6 +12,12 @@ export type EnvVariableRecord = {
   masked: boolean
   isStoredSecret: boolean
   lastUpdatedAt: string
+  source?: "vault" | "managed_service"
+  serviceCredentialId?: string
+  vaultPath?: string
+  vaultKey?: string
+  version?: number
+  referenceLabel?: string
 }
 
 export type EnvVariableActivity = {

@@ -11,12 +11,14 @@ import type {
   DetectionResult,
   EnvVar,
 } from "@/modules/deploy/deploy.types"
-import { ENV_VAR_MAX_VALUE_SIZE } from "@/modules/deploy/environment-vars"
+import {
+  ENV_VAR_KEY_PATTERN,
+  ENV_VAR_MAX_VALUE_SIZE,
+  isSecretEnvVarType,
+} from "@/modules/deploy/environment-vars"
 
 export const CUSTOM_DOMAIN_PATTERN =
   /^(?=.{1,253}$)(?!-)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i
-
-export const ENV_VAR_KEY_PATTERN = /^[A-Z][A-Z0-9_]*$/
 
 export const isValidCustomDomain = (value: string) => {
   const normalizedValue = value.trim().toLowerCase()
@@ -89,11 +91,19 @@ const envVarSchema = z.object({
       ENV_VAR_MAX_VALUE_SIZE,
       `Environment value cannot exceed ${ENV_VAR_MAX_VALUE_SIZE} characters.`
     ),
-  type: z.enum(["plain", "secret"]).optional(),
+  type: z
+    .enum(["plain", "secret", "secret_ref", "secret_shared_ref"])
+    .optional(),
   scope: z.enum(["all", "build", "runtime"]).optional(),
   lastUpdatedAt: z.string().optional(),
   isStoredSecret: z.boolean().optional(),
   masked: z.boolean().optional(),
+  source: z.enum(["vault", "managed_service"]).optional(),
+  serviceCredentialId: z.string().optional(),
+  vaultPath: z.string().optional(),
+  vaultKey: z.string().optional(),
+  version: z.number().optional(),
+  referenceLabel: z.string().optional(),
 })
 
 export const environmentStepSchema = z
@@ -150,7 +160,12 @@ export const environmentStepSchema = z
     }
 
     const missingValue = value.envVars.find((item) => {
-      const hasStoredSecret = item.type === "secret" && item.isStoredSecret
+      if (item.type === "secret_shared_ref") {
+        return !item.serviceCredentialId
+      }
+
+      const hasStoredSecret =
+        isSecretEnvVarType(item.type) && item.isStoredSecret
       if (hasStoredSecret) {
         return false
       }

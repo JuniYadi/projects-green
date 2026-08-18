@@ -7,6 +7,7 @@ import {
 } from "@/modules/deploy/api/environment-variables.stub"
 import type {
   EnvVariableRecord,
+  EnvVariableType,
   EnvVariablesMutationResponse,
 } from "@/modules/deploy/api/environment-variables.contract"
 
@@ -14,8 +15,12 @@ type MutateCreateInput = {
   environmentId: string
   key: string
   value: string
-  type?: "plain" | "secret"
+  type?: EnvVariableType
   scope?: "all" | "build" | "runtime"
+  serviceCredentialId?: string
+  vaultPath?: string
+  vaultKey?: string
+  referenceLabel?: string
 }
 
 type MutateUpdateInput = {
@@ -23,8 +28,12 @@ type MutateUpdateInput = {
   variableId: string
   key: string
   value?: string
-  type?: "plain" | "secret"
+  type?: EnvVariableType
   scope?: "all" | "build" | "runtime"
+  serviceCredentialId?: string
+  vaultPath?: string
+  vaultKey?: string
+  referenceLabel?: string
 }
 
 type ImportInput = {

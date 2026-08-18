@@ -45,10 +45,26 @@ const slugify = (value: string): string => {
 const envVarSchema = t.Object({
   key: t.String(),
   value: t.String(),
-  type: t.Optional(t.Union([t.Literal("plain"), t.Literal("secret")])),
+  type: t.Optional(
+    t.Union([
+      t.Literal("plain"),
+      t.Literal("secret"),
+      t.Literal("secret_ref"),
+      t.Literal("secret_shared_ref"),
+    ])
+  ),
   scope: t.Optional(
     t.Union([t.Literal("all"), t.Literal("build"), t.Literal("runtime")])
   ),
+  source: t.Optional(
+    t.Union([t.Literal("vault"), t.Literal("managed_service")])
+  ),
+  serviceCredentialId: t.Optional(t.String()),
+  vaultPath: t.Optional(t.String()),
+  vaultKey: t.Optional(t.String()),
+  version: t.Optional(t.Number()),
+  referenceLabel: t.Optional(t.String()),
+  lastUpdatedAt: t.Optional(t.String()),
 })
 
 export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
