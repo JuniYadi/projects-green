@@ -316,11 +316,14 @@ export const createCatalogAdminRoutes = (deps: CatalogAdminRouteDeps = {}) => {
           if (!parsed.success) return validationError(set)
 
           try {
+            if (!parsed.data.code) {
+              return validationError(set, "Plan code is required.")
+            }
             const plan = await service.upsertPlan({
               packageCode: params.code as string,
               ...parsed.data,
+              code: parsed.data.code,
             })
-            set.status = 200
             return { ok: true as const, data: plan }
           } catch (error) {
             return handleServiceError(set, error)
