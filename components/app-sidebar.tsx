@@ -20,6 +20,7 @@ import {
   BuildingsIcon,
   CaretLeftIcon,
   ChartLineIcon,
+  CodeIcon,
   CrosshairIcon,
   DeviceMobileIcon,
   GaugeIcon,
@@ -916,6 +917,11 @@ const buildNavSecondary = (input: {
   const pathWithoutSearch = getPathnameWithoutSearch(pathnameWithoutLocale)
 
   const items: NavSecondaryItem[] = [
+    {
+      title: "API Docs",
+      url: input.surface === "portal" ? "/api/admin/docs" : "/api/openapi",
+      icon: <CodeIcon />,
+    },
     {
       title: "Support",
       url: "#",
