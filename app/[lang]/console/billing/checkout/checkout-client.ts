@@ -34,11 +34,15 @@ export type CheckoutPreview = {
   pricingId: string
   packageCode: string
   planCode: string
+  billingStrategy?: "PRO_RATA" | "FIXED_CYCLE"
   currency: string
   billingPeriod: string
   quantity: string
   periodStart: string
   periodEnd: string
+  isProrated?: boolean
+  proratedDays?: number
+  totalDaysInPeriod?: number
   subtotal: string
   discount: string
   firstPayment: string
