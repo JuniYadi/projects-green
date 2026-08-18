@@ -10,6 +10,7 @@ import {
   CatalogAdminService,
   CatalogPackageNotFoundError,
   CatalogPlanNotFoundError,
+  CatalogPlanReferencedError,
   CatalogAddonNotFoundError,
   CatalogRegionNotFoundError,
 } from "./catalog-admin.service"
@@ -29,6 +30,36 @@ const upsertProductSchema = z.object({
   isActive: z.boolean().optional(),
 })
 
+const offerSchema = z
+  .object({
+    regionId: z.string().trim().min(1).optional(),
+    billingPeriod: z.enum(periods),
+    chargeUnit: z.enum(chargeUnits).optional().default("SUBSCRIPTION"),
+    periodPrice: z.coerce.number().finite().min(0),
+    currency: z
+      .string()
+      .trim()
+      .min(1)
+      .max(8)
+      .transform((v) => v.toUpperCase()),
+    effectiveFrom: z.coerce.date().default(() => new Date()),
+    effectiveTo: z.coerce.date().optional().nullable(),
+    isActive: z.boolean().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (
+      val.effectiveFrom &&
+      val.effectiveTo &&
+      val.effectiveTo <= val.effectiveFrom
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["effectiveTo"],
+        message: "effectiveTo must be later than effectiveFrom.",
+      })
+    }
+  })
+
 const upsertPlanSchema = z.object({
   code: z.string().trim().min(1).optional(),
   name: z.string().trim().min(1),
@@ -38,6 +69,7 @@ const upsertPlanSchema = z.object({
   stockCount: z.number().int().min(0).nullable().optional(),
   allowBackorder: z.boolean().optional(),
   isActive: z.boolean().optional(),
+  prices: z.array(offerSchema).optional(),
 })
 
 const effectiveDateRefinement = (
@@ -89,24 +121,6 @@ const upsertAddonPricingSchema = z
       .max(8)
       .transform((v) => v.toUpperCase()),
     amount: z.coerce.number().finite().min(0),
-    effectiveFrom: z.coerce.date(),
-    effectiveTo: z.coerce.date().optional().nullable(),
-    isActive: z.boolean().optional(),
-  })
-  .superRefine(effectiveDateRefinement)
-
-const offerSchema = z
-  .object({
-    regionId: z.string().trim().min(1).optional(),
-    billingPeriod: z.enum(periods),
-    chargeUnit: z.enum(chargeUnits),
-    periodPrice: z.coerce.number().finite().min(0),
-    currency: z
-      .string()
-      .trim()
-      .min(1)
-      .max(8)
-      .transform((v) => v.toUpperCase()),
     effectiveFrom: z.coerce.date(),
     effectiveTo: z.coerce.date().optional().nullable(),
     isActive: z.boolean().optional(),
@@ -181,6 +195,14 @@ function handleServiceError(set: RouteSet, error: unknown) {
   }
   if (error instanceof CatalogPlanNotFoundError) {
     return notFound(set, error.message)
+  }
+  if (error instanceof CatalogPlanReferencedError) {
+    set.status = 409
+    return {
+      ok: false as const,
+      error: "CANNOT_DELETE_REFERENCED_PRODUCT",
+      message: error.message,
+    }
   }
   if (error instanceof CatalogAddonNotFoundError) {
     return notFound(set, error.message)
@@ -282,6 +304,29 @@ export const createCatalogAdminRoutes = (deps: CatalogAdminRouteDeps = {}) => {
             })
             set.status = 200
             return { ok: true as const, data: plan }
+          } catch (error) {
+            return handleServiceError(set, error)
+          }
+        }
+      )
+
+      // ─── DELETE /admin/catalog/:catalogCode/products/:productCode ──────
+      .delete(
+        "/admin/catalog/:catalogCode/products/:productCode",
+        async ({ params, set }) => {
+          const actor = await guard(set)
+          if ("ok" in actor && !actor.ok) return actor as AdminApiError
+
+          try {
+            await service.deleteCatalogPlan(
+              params.catalogCode as string,
+              params.productCode as string
+            )
+            set.status = 200
+            return {
+              ok: true as const,
+              message: "Product deleted successfully.",
+            }
           } catch (error) {
             return handleServiceError(set, error)
           }

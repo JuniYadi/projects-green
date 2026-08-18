@@ -1,10 +1,10 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
-
 import { createCatalogAdminRoutes } from "./catalog-admin.route"
 import {
   CatalogPackageNotFoundError,
   CatalogPlanNotFoundError,
+  CatalogPlanReferencedError,
   CatalogRegionNotFoundError,
 } from "./catalog-admin.service"
 import type {
@@ -33,6 +33,7 @@ const service = {
     },
   })),
   getCatalogPlan: mock<() => Promise<unknown>>(async () => null),
+  deleteCatalogPlan: mock<() => Promise<void>>(async () => {}),
   listCatalogPlans: mock<() => Promise<unknown[]>>(async () => []),
   upsertPackage: mock(async () => ({
     id: "pkg-1",
@@ -276,6 +277,39 @@ describe("catalog admin routes", () => {
 
       expect(response.status).toBe(422)
       expect(service.upsertPlan).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("DELETE /admin/catalog/:catalogCode/products/:productCode", () => {
+    it("deletes unreferenced product successfully", async () => {
+      service.deleteCatalogPlan.mockResolvedValueOnce(undefined)
+
+      const response = await app().handle(
+        new Request("http://localhost/admin/catalog/VPN/products/BASIC", {
+          method: "DELETE",
+        })
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(service.deleteCatalogPlan).toHaveBeenCalledWith("VPN", "BASIC")
+    })
+
+    it("returns 409 conflict when product has subscription references", async () => {
+      service.deleteCatalogPlan.mockRejectedValueOnce(
+        new CatalogPlanReferencedError("BASIC", 2)
+      )
+
+      const response = await app().handle(
+        new Request("http://localhost/admin/catalog/VPN/products/BASIC", {
+          method: "DELETE",
+        })
+      )
+      expect(response.status).toBe(409)
+      const body = await response.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("CANNOT_DELETE_REFERENCED_PRODUCT")
     })
   })
 

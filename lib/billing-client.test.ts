@@ -32,6 +32,8 @@ import {
   getAdminPricing,
   getAdminCatalogProductsList,
   getAdminCatalogProductDetail,
+  deleteAdminCatalogProduct,
+  upsertAdminCatalogPackage,
   upsertAdminCatalogProduct,
   getAdminPromotion,
   getAdminPromotionClaims,
@@ -515,6 +517,76 @@ describe("admin billing fetch helpers", () => {
 
     mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true }, 503, false))
     await expect(getAdminStats()).rejects.toThrow("Billing API error: 503")
+  })
+
+  it("sends catalog product and package administration requests", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true, products: [] }))
+    await getAdminCatalogProductsList("VPN")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/admin/catalog/VPN/products"
+    )
+
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ ok: true, product: { code: "BASIC" } })
+    )
+    await getAdminCatalogProductDetail("VPN", "BASIC")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/admin/catalog/VPN/products/BASIC"
+    )
+
+    const productInput = {
+      name: "Basic Plan",
+      prices: [
+        {
+          billingPeriod: "MONTHLY",
+          currency: "IDR",
+          periodPrice: 50000,
+        },
+      ],
+    }
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ ok: true, data: { code: "BASIC" } })
+    )
+    await upsertAdminCatalogProduct("VPN", "BASIC", productInput)
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/admin/catalog/VPN/products/BASIC"
+    )
+    expect(calledRequest().init).toEqual({
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+      body: JSON.stringify(productInput),
+    })
+
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ ok: true, message: "Deleted" })
+    )
+    await deleteAdminCatalogProduct("VPN", "BASIC")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/admin/catalog/VPN/products/BASIC"
+    )
+    expect(calledRequest().init).toEqual({
+      headers: { "Content-Type": "application/json" },
+      method: "DELETE",
+    })
+
+    const pkgInput = {
+      code: "WHATSAPP",
+      name: "WhatsApp Service",
+      description: "WhatsApp hosting",
+      isActive: true,
+    }
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ ok: true, data: { code: "WHATSAPP" } })
+    )
+    await upsertAdminCatalogPackage(pkgInput)
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/admin/catalog/products"
+    )
+    expect(calledRequest().init).toEqual({
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+      body: JSON.stringify(pkgInput),
+    })
   })
 })
 
