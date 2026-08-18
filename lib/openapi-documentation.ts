@@ -426,6 +426,10 @@ const INTERNAL_PATH_PATTERNS = [
   /\/platform-role\b/i,
   /\/integrations\b/i,
   /\/github-event-log\b/i,
+  /\/auth\b/i,
+  /\/tenants\b/i,
+  /\/echo\b/i,
+  /\/portal\b/i,
 ]
 
 export type OpenApiDocScope = "public" | "admin"
