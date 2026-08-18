@@ -199,6 +199,90 @@ function PlanCard({
             )}
           </div>
         </div>
+
+        {/* Billing Strategy & Stock Controls */}
+        <div className="grid gap-4 rounded-md border p-3 sm:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <Label className="text-xs">Billing Strategy</Label>
+            <div className="flex gap-4">
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name={`plan-${plan.id}-billing-strategy`}
+                  value="FIXED_CYCLE"
+                  checked={plan.billingStrategy !== "PRO_RATA"}
+                  onChange={() =>
+                    onUpdate({ ...plan, billingStrategy: "FIXED_CYCLE" })
+                  }
+                />
+                Fixed Cycle (30-day term)
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name={`plan-${plan.id}-billing-strategy`}
+                  value="PRO_RATA"
+                  checked={plan.billingStrategy === "PRO_RATA"}
+                  onChange={() =>
+                    onUpdate({ ...plan, billingStrategy: "PRO_RATA" })
+                  }
+                />
+                Pro-rata (Calendar month)
+              </label>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Inventory & Stock</Label>
+              <label className="flex items-center gap-2 text-xs">
+                <Switch
+                  checked={plan.stockControl === "TRACKED"}
+                  onCheckedChange={(checked) =>
+                    onUpdate({
+                      ...plan,
+                      stockControl: checked ? "TRACKED" : "UNLIMITED",
+                      stockCount: checked ? (plan.stockCount ?? 0) : null,
+                    })
+                  }
+                />
+                Track stock
+              </label>
+            </div>
+            {plan.stockControl === "TRACKED" && (
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={plan.stockCount ?? 0}
+                    onChange={(event) =>
+                      onUpdate({
+                        ...plan,
+                        stockCount:
+                          Number.parseInt(event.target.value, 10) || 0,
+                      })
+                    }
+                    placeholder="Available count"
+                  />
+                </div>
+                <label className="flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(plan.allowBackorder)}
+                    onChange={(event) =>
+                      onUpdate({
+                        ...plan,
+                        allowBackorder: event.target.checked,
+                      })
+                    }
+                  />
+                  Allow backorders
+                </label>
+              </div>
+            )}
+          </div>
+        </div>
         {plan.offers.length === 0 && (
           <p className="rounded-md border border-dashed p-3 text-sm text-amber-700">
             Pricing required before this plan can be published.
