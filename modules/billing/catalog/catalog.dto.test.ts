@@ -54,6 +54,11 @@ describe("catalog DTO mappers", () => {
       code: "STANDARD",
       name: "Standard",
       resources: { devices: 5 },
+      billingStrategy: "PRO_RATA",
+      stockControl: "TRACKED",
+      stockCount: 10,
+      allowBackorder: false,
+      isActive: true,
       pricings: [pricing("MONTHLY"), pricing("ANNUAL")],
     } as unknown as Parameters<typeof toCatalogPlanDTO>[0]
 
@@ -62,6 +67,11 @@ describe("catalog DTO mappers", () => {
       code: "STANDARD",
       name: "Standard",
       resources: { devices: 5 },
+      billingStrategy: "PRO_RATA",
+      stockControl: "TRACKED",
+      stockCount: 10,
+      allowBackorder: false,
+      isActive: true,
       offers: [
         expect.objectContaining({ billingPeriod: "MONTHLY", periodMonths: 1 }),
         expect.objectContaining({ billingPeriod: "ANNUAL", periodMonths: 12 }),
