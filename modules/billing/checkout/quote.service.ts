@@ -60,11 +60,15 @@ export type CheckoutQuote = {
   pricingId: string
   packageCode: string
   planCode: string
+  billingStrategy?: "PRO_RATA" | "FIXED_CYCLE"
   currency: string
   billingPeriod: RecurringBillingPeriod
   quantity: string
   periodStart: string
   periodEnd: string
+  isProrated?: boolean
+  proratedDays?: number
+  totalDaysInPeriod?: number
   subtotal: string
   discount: string
   firstPayment: string
@@ -92,7 +96,11 @@ type QuoteDependencies = {
 
 type QuoteDb = Pick<
   PrismaClient,
-  "servicePlanAddon" | "voucher" | "billingOrder" | "billingAccount"
+  | "servicePlanAddon"
+  | "servicePlan"
+  | "voucher"
+  | "billingOrder"
+  | "billingAccount"
 >
 
 export class CheckoutQuoteError extends Error {
@@ -185,6 +193,30 @@ export class CheckoutQuoteService {
       )
     }
 
+    // Check product stock and strategy
+    const plan = await this.db.servicePlan.findUnique({
+      where: { id: price.planId },
+      select: {
+        stockControl: true,
+        stockCount: true,
+        allowBackorder: true,
+        billingStrategy: true,
+      },
+    })
+
+    if (
+      plan?.stockControl === "TRACKED" &&
+      !plan.allowBackorder &&
+      (plan.stockCount ?? 0) < Number(quantity)
+    ) {
+      throw new CheckoutQuoteError(
+        "OUT_OF_STOCK",
+        "The selected product is currently out of stock."
+      )
+    }
+
+    const isProRata =
+      plan?.billingStrategy === "PRO_RATA" && price.billingPeriod === "MONTHLY"
     const attachments = await this.db.servicePlanAddon.findMany({
       where: { planId: price.planId, isActive: true },
       include: {
@@ -257,13 +289,30 @@ export class CheckoutQuoteService {
         },
       ]
     })
+    const utcYear = now.getUTCFullYear()
+    const utcMonth = now.getUTCMonth()
+    const monthEnd = new Date(
+      Date.UTC(utcYear, utcMonth + 1, 0, 23, 59, 59, 999)
+    )
+    const totalDaysInMonth = monthEnd.getUTCDate()
+    const remainingDays = totalDaysInMonth - now.getUTCDate() + 1
 
-    const subtotal = price.periodPrice
-      .mul(quantity)
-      .add(
-        addons.reduce((sum, addon) => sum.add(decimal(addon.price)), decimal(0))
-      )
+    let basePriceCalculated = price.periodPrice.mul(quantity)
+    let isProrated = false
+
+    if (isProRata && remainingDays < totalDaysInMonth) {
+      basePriceCalculated = price.periodPrice
+        .mul(remainingDays)
+        .div(totalDaysInMonth)
+        .mul(quantity)
+      isProrated = true
+    }
+
+    const subtotal = basePriceCalculated.add(
+      addons.reduce((sum, addon) => sum.add(decimal(addon.price)), decimal(0))
+    )
     const expiresAt = new Date(now.getTime() + this.quoteTtlMinutes * 60_000)
+    const quoteId = `${input.idempotencyKey}:${now.getTime()}:${randomUUID()}`
     const voucher = input.voucherCode
       ? await this.resolveVoucher(
           input.voucherCode,
@@ -278,8 +327,9 @@ export class CheckoutQuoteService {
       : null
     const discount = voucher ? decimal(voucher.discountAmount) : decimal(0)
     const firstPayment = subtotal.sub(discount)
-    const periodEnd = addMonths(now, PERIOD_MONTHS[price.billingPeriod])
-    const quoteId = `${input.idempotencyKey}:${now.getTime()}:${randomUUID()}`
+    const periodEnd = isProRata
+      ? monthEnd
+      : addMonths(now, PERIOD_MONTHS[price.billingPeriod])
 
     return {
       quoteId,
@@ -287,11 +337,15 @@ export class CheckoutQuoteService {
       pricingId: price.pricingId,
       packageCode: price.packageCode,
       planCode: price.planCode,
+      billingStrategy: plan?.billingStrategy ?? "FIXED_CYCLE",
       currency: price.currency,
       billingPeriod: price.billingPeriod,
       quantity: quantity.toString(),
       periodStart: now.toISOString(),
       periodEnd: periodEnd.toISOString(),
+      isProrated,
+      proratedDays: isProrated ? remainingDays : undefined,
+      totalDaysInPeriod: isProrated ? totalDaysInMonth : undefined,
       subtotal: subtotal.toString(),
       discount: discount.toString(),
       firstPayment: firstPayment.toString(),
