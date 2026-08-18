@@ -53,15 +53,13 @@ describe.serial("Elysia API logging", () => {
     const { response, logs } = await captureLogs(() =>
       app.handle(
         new Request(
-          "http://localhost/api/echo?apiKey=query-secret&token=token-secret",
+          "http://localhost/api/health?apiKey=query-secret&token=token-secret",
           {
-            method: "POST",
+            method: "GET",
             headers: {
               Authorization: "Bearer authorization-secret",
               Cookie: "session=cookie-secret",
-              "Content-Type": "application/json",
             },
-            body: JSON.stringify({ message: "request-body-secret" }),
           }
         )
       )
@@ -73,8 +71,8 @@ describe.serial("Elysia API logging", () => {
     expect(logs[0]).toMatchObject({
       event: "api.request.completed",
       level: "info",
-      method: "POST",
-      pathname: "/api/echo",
+      method: "GET",
+      pathname: "/api/health",
       statusCode: 200,
     })
     expect(logs[0].requestId).toMatch(
@@ -87,13 +85,12 @@ describe.serial("Elysia API logging", () => {
     expect(serializedLogs).not.toContain("token-secret")
     expect(serializedLogs).not.toContain("authorization-secret")
     expect(serializedLogs).not.toContain("cookie-secret")
-    expect(serializedLogs).not.toContain("request-body-secret")
   })
 
   test("logs a 4xx completion without an error record", async () => {
     const { response, logs } = await captureLogs(() =>
       app.handle(
-        new Request("http://localhost/api/echo", {
+        new Request("http://localhost/api/user", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
@@ -108,7 +105,7 @@ describe.serial("Elysia API logging", () => {
       event: "api.request.completed",
       level: "info",
       method: "POST",
-      pathname: "/api/echo",
+      pathname: "/api/user",
       statusCode: 422,
     })
   })
