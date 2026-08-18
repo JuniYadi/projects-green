@@ -271,6 +271,21 @@ model ApplicationStack {
   @@index([clusterId])
 }
 
+model VaultSecretAuditLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  stackId        String
+  workosUserId   String
+  environment    String
+  secretKey      String
+  action         String   @default("SECRET_REVEALED")
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([stackId, createdAt(sort: Desc)])
+  @@index([workosUserId, createdAt(sort: Desc)])
+}
+
 model ApplicationDeployment {
   id               String       @id @default(cuid())
   stackId          String

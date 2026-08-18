@@ -1,5 +1,9 @@
-import { describe, expect, it } from "bun:test"
+import { describe, expect, it, mock } from "bun:test"
 import { z } from "zod"
+
+mock.module("@/modules/vpn/sessions/stale-cleanup", () => ({
+  startStaleSessionCleanup: mock(),
+}))
 
 import { app, toOpenApiJsonSchema } from "@/lib/api"
 type OpenApiMediaType = {
@@ -66,8 +70,8 @@ describe("OpenAPI documentation", () => {
     expect(document.openapi).toBe("3.0.3")
 
     const operations = operationsOf(document)
-    expect(Object.keys(document.paths ?? {}).length).toBe(380)
-    expect(operations.length).toBe(478)
+    expect(Object.keys(document.paths ?? {}).length).toBe(383)
+    expect(operations.length).toBe(481)
     expect(
       operations.every(
         ({ operation }) =>
