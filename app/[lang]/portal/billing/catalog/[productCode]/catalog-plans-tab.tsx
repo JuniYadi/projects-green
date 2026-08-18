@@ -21,7 +21,11 @@ import type {
   ProductPlanOfferForm,
   SupportedCurrency,
 } from "@/components/billing/admin/catalog/catalog-editor.types"
-import { BILLING_PERIODS } from "@/components/billing/admin/catalog/catalog-editor.types"
+import {
+  BILLING_PERIODS,
+  validateProductPlanIdentities,
+} from "@/components/billing/admin/catalog/catalog-editor.types"
+import type { ProductPlanIdentityErrors } from "@/components/billing/admin/catalog/catalog-editor.types"
 import { billingPeriodLabel } from "@/lib/billing-client"
 import { formatBillingMoney } from "@/modules/billing/format-money"
 
@@ -39,18 +43,33 @@ const newOffer = (
   isActive: true,
 })
 
+function newPlanCode(plans: ProductPlanEditorForm[]) {
+  const usedCodes = new Set(plans.map((plan) => plan.code.trim()))
+  let suffix = 1
+  let code = `NEW_PLAN_${suffix}`
+
+  while (usedCodes.has(code)) {
+    suffix += 1
+    code = `NEW_PLAN_${suffix}`
+  }
+
+  return code
+}
+
 function PlanCard({
   plan,
   currencies,
   onUpdate,
   onRemove,
   selectedPlanId,
+  identityErrors,
 }: Readonly<{
   plan: ProductPlanEditorForm
   currencies: SupportedCurrency[]
   onUpdate: (plan: ProductPlanEditorForm) => void
   onRemove: () => void
   selectedPlanId?: string | null
+  identityErrors?: ProductPlanIdentityErrors[string]
 }>) {
   const isSelected = selectedPlanId === plan.id
   const enabledTerms = plan.enabledTerms
@@ -126,6 +145,60 @@ function PlanCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={`catalog-plan-${plan.id}-name`}>Name *</Label>
+            <Input
+              id={`catalog-plan-${plan.id}-name`}
+              value={plan.name}
+              onChange={(event) =>
+                onUpdate({ ...plan, name: event.target.value })
+              }
+              placeholder="Plan display name"
+              aria-invalid={Boolean(identityErrors?.name)}
+              aria-describedby={
+                identityErrors?.name
+                  ? `catalog-plan-${plan.id}-name-error`
+                  : undefined
+              }
+            />
+            {identityErrors?.name && (
+              <p
+                id={`catalog-plan-${plan.id}-name-error`}
+                className="text-xs text-destructive"
+                role="alert"
+              >
+                {identityErrors.name}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={`catalog-plan-${plan.id}-code`}>Code *</Label>
+            <Input
+              id={`catalog-plan-${plan.id}-code`}
+              value={plan.code}
+              onChange={(event) =>
+                onUpdate({ ...plan, code: event.target.value })
+              }
+              placeholder="e.g. PRIVATE"
+              aria-invalid={Boolean(identityErrors?.code)}
+              aria-describedby={
+                identityErrors?.code
+                  ? `catalog-plan-${plan.id}-code-error`
+                  : undefined
+              }
+            />
+            {identityErrors?.code && (
+              <p
+                id={`catalog-plan-${plan.id}-code-error`}
+                className="text-xs text-destructive"
+                role="alert"
+              >
+                {identityErrors.code}
+              </p>
+            )}
+          </div>
+        </div>
         {plan.offers.length === 0 && (
           <p className="rounded-md border border-dashed p-3 text-sm text-amber-700">
             Pricing required before this plan can be published.
@@ -239,12 +312,14 @@ export function CatalogPlansTab({
   showPreview?: boolean
   selectedPlanId?: string | null
 }>) {
+  const identityErrors = validateProductPlanIdentities(plans)
+
   const handleAddPlan = () => {
     onChange([
       ...plans,
       {
         id: `new-plan-${crypto.randomUUID()}`,
-        code: "",
+        code: newPlanCode(plans),
         name: "",
         resources: {},
         isActive: true,
@@ -296,6 +371,7 @@ export function CatalogPlansTab({
               onChange(plans.filter((item) => item.id !== plan.id))
             }
             selectedPlanId={selectedPlanId}
+            identityErrors={identityErrors[plan.id]}
           />
         ))
       )}
