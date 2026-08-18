@@ -471,7 +471,26 @@ export class CatalogAdminService {
         isActive: input.isActive,
       })
 
-      // 2. Upsert each plan and its pricing
+      // 2. Deactivate any existing plans and pricings not included in input.plans
+      const submittedPlanCodes = input.plans.map((p) => p.code)
+      await tx.servicePlan.updateMany({
+        where: {
+          packageId: pkg.id,
+          code: { notIn: submittedPlanCodes },
+        },
+        data: { isActive: false },
+      })
+      await tx.servicePricing.updateMany({
+        where: {
+          servicePlan: {
+            packageId: pkg.id,
+            code: { notIn: submittedPlanCodes },
+          },
+        },
+        data: { isActive: false },
+      })
+
+      // 3. Upsert each plan and its pricing
       for (const planInput of input.plans) {
         const plan = await txService.upsertPlan({
           packageCode: input.code,
@@ -480,7 +499,6 @@ export class CatalogAdminService {
           resources: planInput.resources,
           isActive: planInput.isActive,
         })
-
         // Get a default region if not specified
         const defaultRegion = await tx.serviceRegion.findFirst({
           where: { isActive: true },
