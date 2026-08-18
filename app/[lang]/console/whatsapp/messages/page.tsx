@@ -33,6 +33,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { FieldLegend, FieldSet } from "@/components/ui/field"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,8 +49,12 @@ import { Label } from "@/components/ui/label"
 import { FilterPills } from "@/components/ui/filter-pills"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { cn } from "@/lib/utils"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
-import type { WhatsAppTemplateLanguage } from "@/lib/api/whatsapp-client"
+import type {
+  WhatsAppTemplate,
+  WhatsAppTemplateLanguage,
+} from "@/lib/api/whatsapp-client"
 import { useTemplates } from "@/modules/whatsapp/templates/api/templates.hooks"
 import { MessageStatusBadge } from "@/modules/whatsapp/messages/ui/message-status-badge"
 import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
@@ -167,6 +172,62 @@ const findConversationByPhone = (
     ) ?? null
   )
 }
+
+type TemplateCategory = NonNullable<WhatsAppTemplate["category"]>
+
+type LanguagePresentation = {
+  flag: string
+  name: string
+}
+
+const TEMPLATE_CATEGORY_LABELS: Record<TemplateCategory, string> = {
+  AUTHENTICATION: "Authentication",
+  MARKETING: "Marketing",
+  UTILITY: "Utility",
+}
+
+const LANGUAGE_PRESENTATIONS: Record<string, LanguagePresentation> = {
+  ar: { flag: "🇸🇦", name: "Arabic" },
+  de: { flag: "🇩🇪", name: "German" },
+  en: { flag: "🇬🇧", name: "English" },
+  en_gb: { flag: "🇬🇧", name: "English (United Kingdom)" },
+  en_us: { flag: "🇺🇸", name: "English (United States)" },
+  es: { flag: "🇪🇸", name: "Spanish" },
+  es_mx: { flag: "🇲🇽", name: "Spanish (Mexico)" },
+  fr: { flag: "🇫🇷", name: "French" },
+  hi: { flag: "🇮🇳", name: "Hindi" },
+  id: { flag: "🇮🇩", name: "Indonesian" },
+  it: { flag: "🇮🇹", name: "Italian" },
+  ja: { flag: "🇯🇵", name: "Japanese" },
+  ko: { flag: "🇰🇷", name: "Korean" },
+  ms: { flag: "🇲🇾", name: "Malay" },
+  nl: { flag: "🇳🇱", name: "Dutch" },
+  pl: { flag: "🇵🇱", name: "Polish" },
+  pt_br: { flag: "🇧🇷", name: "Portuguese (Brazil)" },
+  pt_pt: { flag: "🇵🇹", name: "Portuguese (Portugal)" },
+  ru: { flag: "🇷🇺", name: "Russian" },
+  th: { flag: "🇹🇭", name: "Thai" },
+  tr: { flag: "🇹🇷", name: "Turkish" },
+  vi: { flag: "🇻🇳", name: "Vietnamese" },
+  zh_cn: { flag: "🇨🇳", name: "Chinese (Simplified)" },
+  zh_tw: { flag: "🇹🇼", name: "Chinese (Traditional)" },
+}
+
+function getTemplateCategoryLabel(category: WhatsAppTemplate["category"]) {
+  return category ? TEMPLATE_CATEGORY_LABELS[category] : "Uncategorized"
+}
+
+function getLanguagePresentation(code: string): LanguagePresentation {
+  const rawCode = code.trim()
+  const normalizedCode = rawCode.toLowerCase().replace(/-/g, "_")
+  return (
+    LANGUAGE_PRESENTATIONS[normalizedCode] ?? {
+      flag: "🌐",
+      name: rawCode || "Unknown language",
+    }
+  )
+}
+
 // ─── Conversation List Item ───────────────────────────────────────────────────
 
 function ConversationItem({
@@ -961,9 +1022,17 @@ export default function WhatsAppMessagesPage() {
                           return (
                             <div className="flex items-center justify-between gap-2">
                               <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium">
-                                  {tpl.name}
-                                </p>
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <p className="truncate text-sm font-medium">
+                                    {tpl.name}
+                                  </p>
+                                  <Badge
+                                    variant="outline"
+                                    className="shrink-0 text-[10px]"
+                                  >
+                                    {getTemplateCategoryLabel(tpl.category)}
+                                  </Badge>
+                                </div>
                                 <p className="truncate text-xs text-muted-foreground">
                                   {tpl.slug}
                                 </p>
@@ -1030,9 +1099,17 @@ export default function WhatsAppMessagesPage() {
                                 }`}
                               >
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="truncate text-sm font-medium">
-                                    {tpl.name}
-                                  </span>
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <span className="truncate text-sm font-medium">
+                                      {tpl.name}
+                                    </span>
+                                    <Badge
+                                      variant="outline"
+                                      className="shrink-0 text-[10px]"
+                                    >
+                                      {getTemplateCategoryLabel(tpl.category)}
+                                    </Badge>
+                                  </div>
                                   <Badge
                                     variant="secondary"
                                     className="shrink-0 text-[10px]"
@@ -1068,24 +1145,64 @@ export default function WhatsAppMessagesPage() {
                       )
                       if (!tpl) return null
                       return (
-                        <div className="grid gap-2">
-                          <Label htmlFor="send-language">Language *</Label>
-                          <Select
-                            value={selectedTemplateLanguage}
-                            onValueChange={setSelectedTemplateLanguage}
-                          >
-                            <SelectTrigger id="send-language">
-                              <SelectValue placeholder="Select language..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {tpl.languages.map((lang) => (
-                                <SelectItem key={lang.lang} value={lang.lang}>
-                                  {lang.lang}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        <FieldSet className="gap-2">
+                          <FieldLegend variant="label">Language *</FieldLegend>
+                          <div className="flex flex-col gap-2">
+                            {tpl.languages.map((lang, index) => {
+                              const presentation = getLanguagePresentation(
+                                lang.lang
+                              )
+                              const languageId = `send-language-${index}-${lang.lang.replace(
+                                /[^a-zA-Z0-9_-]/g,
+                                "-"
+                              )}`
+                              const isSelected =
+                                selectedTemplateLanguage === lang.lang
+
+                              return (
+                                <label
+                                  key={lang.lang}
+                                  htmlFor={languageId}
+                                  className={cn(
+                                    "flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+                                    isSelected
+                                      ? "border-primary bg-primary/5"
+                                      : "border-border hover:bg-muted/50"
+                                  )}
+                                >
+                                  <input
+                                    id={languageId}
+                                    type="radio"
+                                    name="send-language"
+                                    value={lang.lang}
+                                    checked={isSelected}
+                                    onChange={(event) =>
+                                      setSelectedTemplateLanguage(
+                                        event.target.value
+                                      )
+                                    }
+                                    className="size-4 shrink-0 accent-primary"
+                                    aria-label={`${presentation.name} (${lang.lang})`}
+                                  />
+                                  <span
+                                    className="text-xl leading-none"
+                                    aria-hidden="true"
+                                  >
+                                    {presentation.flag}
+                                  </span>
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block text-sm font-medium">
+                                      {presentation.name}
+                                    </span>
+                                    <span className="block text-xs text-muted-foreground">
+                                      {lang.lang}
+                                    </span>
+                                  </span>
+                                </label>
+                              )
+                            })}
+                          </div>
+                        </FieldSet>
                       )
                     })()}
 
@@ -1144,17 +1261,39 @@ export default function WhatsAppMessagesPage() {
                                 <p className="text-xs text-muted-foreground">
                                   Template
                                 </p>
-                                <p className="text-sm font-medium">
-                                  {tpl.name}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-medium">
+                                    {tpl.name}
+                                  </p>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px]"
+                                  >
+                                    {getTemplateCategoryLabel(tpl.category)}
+                                  </Badge>
+                                </div>
                               </div>
                               {selectedTemplateLanguage && (
                                 <div>
                                   <p className="text-xs text-muted-foreground">
                                     Language
                                   </p>
-                                  <p className="text-sm">
-                                    {selectedTemplateLanguage}
+                                  <p className="flex items-center gap-2 text-sm">
+                                    <span aria-hidden="true">
+                                      {
+                                        getLanguagePresentation(
+                                          selectedTemplateLanguage
+                                        ).flag
+                                      }
+                                    </span>
+                                    {
+                                      getLanguagePresentation(
+                                        selectedTemplateLanguage
+                                      ).name
+                                    }
+                                    <span className="text-xs text-muted-foreground">
+                                      ({selectedTemplateLanguage})
+                                    </span>
                                   </p>
                                 </div>
                               )}
