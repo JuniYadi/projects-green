@@ -50,6 +50,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type { WhatsAppTemplateLanguage } from "@/lib/api/whatsapp-client"
+import type { WhatsappMessagePricingDTO } from "@/modules/whatsapp/messages/message-pricing.dto"
 import { useTemplates } from "@/modules/whatsapp/templates/api/templates.hooks"
 import { MessageStatusBadge } from "@/modules/whatsapp/messages/ui/message-status-badge"
 import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
@@ -329,6 +330,147 @@ function MessageBubble({ message }: { message: Message }) {
   )
 }
 
+function formatQuotaCredit(value: string): string {
+  const amount = Number(value)
+  if (!Number.isFinite(amount)) return value
+
+  return new Intl.NumberFormat(undefined, {
+    maximumFractionDigits: 2,
+  }).format(amount)
+}
+
+function formatMessagePrice(value: string, currency: string | null): string {
+  const amount = Number(value)
+  if (!currency || !Number.isFinite(amount)) {
+    return currency ? `${currency} ${value}` : value
+  }
+
+  try {
+    return new Intl.NumberFormat(currency === "IDR" ? "id-ID" : "en-US", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 2,
+    }).format(amount)
+  } catch {
+    return `${currency} ${value}`
+  }
+}
+
+function QuotaPricingPanel({
+  pricing,
+  isLoading,
+  error,
+  deviceId,
+}: {
+  pricing?: WhatsappMessagePricingDTO
+  isLoading: boolean
+  error: Error | null
+  deviceId: string
+}) {
+  const selectedDevice = pricing?.devices.find(
+    (device) => device.deviceId === deviceId
+  )
+
+  return (
+    <section
+      className="rounded-lg border bg-card"
+      aria-labelledby="quota-pricing-title"
+    >
+      <div className="border-b px-4 py-3">
+        <h4 id="quota-pricing-title" className="text-sm font-semibold">
+          Quota & Pricing
+        </h4>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Quota credits are deducted per outbound message. PAYG applies after
+          available quota runs out.
+        </p>
+      </div>
+      <div className="space-y-4 p-4">
+        {isLoading ? (
+          <div className="space-y-2" aria-label="Loading quota and pricing">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ) : error ? (
+          <p className="text-sm text-destructive">
+            Pricing information is unavailable right now.
+          </p>
+        ) : !selectedDevice ? (
+          <p className="text-sm text-muted-foreground">
+            {pricing?.devices.length
+              ? "Select an active device to see its category rates."
+              : "No active WhatsApp devices have pricing rates to show."}
+          </p>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground">
+              Rates for {formatPhone(selectedDevice.phoneNumber)} (country:{" "}
+              {selectedDevice.country})
+            </p>
+            <div className="overflow-x-auto rounded-md border">
+              <table className="w-full text-xs">
+                <caption className="sr-only">
+                  WhatsApp quota credits per message by category
+                </caption>
+                <thead className="bg-muted/50 text-left text-muted-foreground">
+                  <tr>
+                    <th scope="col" className="px-3 py-2 font-medium">
+                      Category
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-2 text-right font-medium"
+                    >
+                      Quota / message
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedDevice.categories.map((category) => (
+                    <tr key={category.category} className="border-t">
+                      <th
+                        scope="row"
+                        className="px-3 py-2 text-left font-medium"
+                      >
+                        {category.category}
+                      </th>
+                      <td className="px-3 py-2 text-right">
+                        <div>{formatQuotaCredit(category.quotaCredit)}</div>
+                        {!category.configured && (
+                          <div className="text-[10px] text-muted-foreground">
+                            Default; rate not configured
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        {pricing && !isLoading && !error && (
+          <dl className="border-t pt-3 text-sm">
+            <div className="flex items-start justify-between gap-3">
+              <dt className="text-muted-foreground">PAYG overage</dt>
+              <dd className="text-right font-medium">
+                {pricing.overage.configured &&
+                pricing.overage.unitPrice !== null
+                  ? `${formatMessagePrice(
+                      pricing.overage.unitPrice,
+                      pricing.overage.currency
+                    )} per message`
+                  : "Not configured for this WhatsApp plan"}
+              </dd>
+            </div>
+          </dl>
+        )}
+      </div>
+    </section>
+  )
+}
+
 // ─── Page Component ──────────────────────────────────────────────────────────
 
 export default function WhatsAppMessagesPage() {
@@ -406,6 +548,20 @@ export default function WhatsAppMessagesPage() {
       const payload = await whatsappClient.devices.list()
       return payload.ok ? payload.devices : []
     },
+  })
+  const {
+    data: messagePricing,
+    isLoading: messagePricingLoading,
+    error: messagePricingError,
+  } = useQuery({
+    queryKey: ["whatsapp", "messages", "pricing"],
+    queryFn: async () => {
+      const payload = await whatsappClient.messages.pricing()
+      if (!payload.ok) throw new Error("Pricing information is unavailable")
+      return payload
+    },
+    enabled: sendDialogOpen,
+    staleTime: 30_000,
   })
   const { data: allLabels = [] } = useQuery({
     queryKey: ["whatsapp", "conversations", "labels"],
@@ -1127,6 +1283,12 @@ export default function WhatsAppMessagesPage() {
 
                 {/* ── Right Column: Preview Panel ─────────────────────── */}
                 <div className="space-y-4 lg:sticky lg:top-0">
+                  <QuotaPricingPanel
+                    pricing={messagePricing}
+                    isLoading={messagePricingLoading}
+                    error={messagePricingError}
+                    deviceId={sendDeviceId}
+                  />
                   <div className="rounded-lg border bg-card">
                     <div className="border-b px-4 py-3">
                       <h4 className="text-sm font-semibold">Message Preview</h4>

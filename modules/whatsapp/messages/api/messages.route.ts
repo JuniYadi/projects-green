@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { messageService } from "../messages.service"
 import { toWhatsappMessageDTO, toWhatsappSendResultDTO } from "../messages.dto"
+import { toWhatsappMessagePricingDTO } from "../message-pricing.dto"
+import { whatsappMessagePricingService } from "../message-pricing.service"
 import {
   WhatsappSendFailedError,
   WhatsappSessionWindowClosedError,
@@ -158,6 +160,19 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       }
     }
   )
+  .get("/pricing", async ({ request, set }: { request: any; set: any }) => {
+    const whatsappAuth = await resolveAuthContext(request)
+    if (!whatsappAuth) {
+      set.status = 401
+      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+    }
+
+    const pricing = await whatsappMessagePricingService.getPricing(
+      whatsappAuth.organizationId!
+    )
+
+    return { ok: true, ...toWhatsappMessagePricingDTO(pricing) }
+  })
   .get(
     "/:id",
     async ({
