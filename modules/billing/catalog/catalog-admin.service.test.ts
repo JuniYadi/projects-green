@@ -5,6 +5,7 @@ import {
   CatalogAdminService,
   CatalogPackageNotFoundError,
   CatalogPlanNotFoundError,
+  CatalogPlanReferencedError,
   CatalogRegionNotFoundError,
 } from "./catalog-admin.service"
 
@@ -47,6 +48,7 @@ const db = {
       name: "Basic Updated",
     })),
     updateMany: mock<MockFunction>(() => ({ count: 0 })),
+    delete: mock<MockFunction>(() => ({ id: "plan-1" })),
   },
   servicePricing: {
     findFirst: mock<MockFunction>(() => null),
@@ -61,6 +63,10 @@ const db = {
       regionId: "region-1",
     })),
     updateMany: mock<MockFunction>(() => ({ count: 0 })),
+    deleteMany: mock<MockFunction>(() => ({ count: 0 })),
+  },
+  serviceSubscription: {
+    count: mock<MockFunction>(() => 0),
   },
   serviceAddon: {
     findFirst: mock<MockFunction>(() => null),
@@ -212,7 +218,7 @@ describe("CatalogAdminService", () => {
       expect(result).toBeNull()
     })
 
-    it("returns mapped plan DTO when found", async () => {
+    it("returns mapped plan DTO when found and active", async () => {
       db.servicePackage.findFirst.mockReturnValueOnce({
         id: "pkg-1",
         code: "VPN",
@@ -234,6 +240,89 @@ describe("CatalogAdminService", () => {
       expect(result).not.toBeNull()
       expect(result?.code).toBe("BASIC")
       expect(result?.name).toBe("Basic Plan")
+      expect(result?.isActive).toBe(true)
+    })
+
+    it("returns mapped plan DTO when found and inactive (admin access)", async () => {
+      db.servicePackage.findFirst.mockReturnValueOnce({
+        id: "pkg-1",
+        code: "WHATSAPP",
+      })
+      db.servicePlan.findFirst.mockReturnValueOnce({
+        id: "plan-2",
+        code: "LITE",
+        name: "Lite Plan",
+        resources: {},
+        billingStrategy: "FIXED_CYCLE",
+        stockControl: "UNLIMITED",
+        stockCount: null,
+        allowBackorder: false,
+        isActive: false,
+        pricings: [],
+      })
+      const service = createService()
+      const result = await service.getCatalogPlan("WHATSAPP", "LITE")
+      expect(result).not.toBeNull()
+      expect(result?.code).toBe("LITE")
+      expect(result?.name).toBe("Lite Plan")
+      expect(result?.isActive).toBe(false)
+      expect(db.servicePlan.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { packageId: "pkg-1", code: "LITE" },
+        })
+      )
+    })
+  })
+
+  // ─── deleteCatalogPlan ──────────────────────────────────────────────
+
+  describe("deleteCatalogPlan", () => {
+    it("throws CatalogPackageNotFoundError when package not found", async () => {
+      db.servicePackage.findFirst.mockReturnValueOnce(null)
+      const service = createService()
+      await expect(
+        service.deleteCatalogPlan("MISSING", "BASIC")
+      ).rejects.toThrow(CatalogPackageNotFoundError)
+    })
+
+    it("throws CatalogPlanNotFoundError when plan not found", async () => {
+      db.servicePackage.findFirst.mockReturnValueOnce({ id: "pkg-1" })
+      db.servicePlan.findFirst.mockReturnValueOnce(null)
+      const service = createService()
+      await expect(
+        service.deleteCatalogPlan("VPN", "MISSING_PLAN")
+      ).rejects.toThrow(CatalogPlanNotFoundError)
+    })
+
+    it("throws CatalogPlanReferencedError when subscriptions reference the plan", async () => {
+      db.servicePackage.findFirst.mockReturnValueOnce({ id: "pkg-1" })
+      db.servicePlan.findFirst.mockReturnValueOnce({
+        id: "plan-1",
+        code: "BASIC",
+      })
+      db.serviceSubscription.count.mockReturnValueOnce(3)
+      const service = createService()
+      await expect(service.deleteCatalogPlan("VPN", "BASIC")).rejects.toThrow(
+        CatalogPlanReferencedError
+      )
+      expect(db.servicePlan.delete).not.toHaveBeenCalled()
+    })
+
+    it("deletes pricings and plan when no subscriptions reference it", async () => {
+      db.servicePackage.findFirst.mockReturnValueOnce({ id: "pkg-1" })
+      db.servicePlan.findFirst.mockReturnValueOnce({
+        id: "plan-1",
+        code: "BASIC",
+      })
+      db.serviceSubscription.count.mockReturnValueOnce(0)
+      const service = createService()
+      await service.deleteCatalogPlan("VPN", "BASIC")
+      expect(db.servicePricing.deleteMany).toHaveBeenCalledWith({
+        where: { planId: "plan-1" },
+      })
+      expect(db.servicePlan.delete).toHaveBeenCalledWith({
+        where: { id: "plan-1" },
+      })
     })
   })
 
