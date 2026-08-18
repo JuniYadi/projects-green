@@ -28,9 +28,12 @@ export type UpsertPlanInput = {
   code: string
   name: string
   resources?: Record<string, unknown>
+  billingStrategy?: "PRO_RATA" | "FIXED_CYCLE"
+  stockControl?: "UNLIMITED" | "TRACKED"
+  stockCount?: number | null
+  allowBackorder?: boolean
   isActive?: boolean
 }
-
 export type UpsertPlanPricingInput = {
   planId: string
   regionId: string
@@ -81,6 +84,10 @@ export type PublishProductInput = {
     code: string
     name: string
     resources?: Record<string, unknown>
+    billingStrategy?: "PRO_RATA" | "FIXED_CYCLE"
+    stockControl?: "UNLIMITED" | "TRACKED"
+    stockCount?: number | null
+    allowBackorder?: boolean
     isActive?: boolean
     offers: Array<{
       regionId?: string
@@ -264,6 +271,13 @@ export class CatalogAdminService {
         data: {
           name: input.name,
           resources: (input.resources ?? existing.resources) as never,
+          billingStrategy: input.billingStrategy ?? existing.billingStrategy,
+          stockControl: input.stockControl ?? existing.stockControl,
+          stockCount:
+            input.stockCount !== undefined
+              ? input.stockCount
+              : existing.stockCount,
+          allowBackorder: input.allowBackorder ?? existing.allowBackorder,
           isActive: input.isActive ?? existing.isActive,
         },
       })
@@ -275,6 +289,10 @@ export class CatalogAdminService {
         code: input.code,
         name: input.name,
         resources: (input.resources ?? {}) as never,
+        billingStrategy: input.billingStrategy ?? "FIXED_CYCLE",
+        stockControl: input.stockControl ?? "UNLIMITED",
+        stockCount: input.stockCount ?? null,
+        allowBackorder: input.allowBackorder ?? false,
         isActive: input.isActive ?? true,
       },
     })
@@ -497,6 +515,10 @@ export class CatalogAdminService {
           code: planInput.code,
           name: planInput.name,
           resources: planInput.resources,
+          billingStrategy: planInput.billingStrategy,
+          stockControl: planInput.stockControl,
+          stockCount: planInput.stockCount,
+          allowBackorder: planInput.allowBackorder,
           isActive: planInput.isActive,
         })
         // Get a default region if not specified
