@@ -3,7 +3,8 @@
 import * as React from "react"
 import { useParams } from "next/navigation"
 
-import { PencilSimple, Phone } from "@phosphor-icons/react"
+import { CheckCircle, PencilSimple, Phone } from "@phosphor-icons/react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Card,
   CardContent,
@@ -102,6 +103,91 @@ function InfoRow({ label, value }: InfoRowProps) {
     <div className="flex items-center justify-between border-b pb-3 last:border-0 last:pb-0">
       <dt className="text-sm text-muted-foreground">{label}</dt>
       <dd className="text-sm font-medium">{value}</dd>
+    </div>
+  )
+}
+
+const getProfileString = (
+  profile: Record<string, unknown> | null,
+  key: string
+) => {
+  const value = profile?.[key]
+  return typeof value === "string" ? value.trim() : ""
+}
+
+const getInitials = (value: string) =>
+  value
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word.charAt(0))
+    .join("")
+    .toUpperCase() || "WA"
+
+type WhatsAppProfilePreviewProps = {
+  device: Pick<DeviceDetail, "name" | "phoneNumber" | "status">
+  profile: Record<string, unknown> | null
+}
+
+function WhatsAppProfilePreview({
+  device,
+  profile,
+}: WhatsAppProfilePreviewProps) {
+  const displayName =
+    getProfileString(profile, "name") || device.name || "WhatsApp Business"
+  const about = getProfileString(profile, "about") || "Available on WhatsApp"
+  const profilePictureUrl = getProfileString(profile, "profile_picture_url")
+  const availability = device.status === "ACTIVE" ? "Online" : "Offline"
+
+  return (
+    <div
+      data-testid="whatsapp-profile-preview"
+      className="overflow-hidden rounded-xl border bg-muted/20"
+    >
+      <div className="flex items-center justify-between gap-3 border-b bg-emerald-700 px-4 py-3 text-white dark:bg-emerald-900">
+        <div>
+          <p className="text-xs font-medium tracking-[0.16em] text-white/70 uppercase">
+            WhatsApp profile
+          </p>
+          <p className="text-sm font-medium">Customer-facing preview</p>
+        </div>
+        <span className="rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[11px] font-medium">
+          Preview
+        </span>
+      </div>
+
+      <div className="bg-emerald-50/70 px-4 py-5 dark:bg-emerald-950/20">
+        <div className="mx-auto max-w-sm overflow-hidden rounded-2xl border bg-background shadow-sm">
+          <div className="flex items-center gap-3 px-4 py-4">
+            <Avatar className="size-12 border-2 border-emerald-500/20">
+              {profilePictureUrl ? (
+                <AvatarImage
+                  src={profilePictureUrl}
+                  alt={`${displayName} profile`}
+                />
+              ) : null}
+              <AvatarFallback className="bg-emerald-100 font-semibold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
+                {getInitials(displayName)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-semibold">{displayName}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {device.phoneNumber}
+              </p>
+              <p className="mt-1 flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                <CheckCircle weight="fill" className="size-3" />
+                {availability}
+              </p>
+            </div>
+          </div>
+
+          <div className="border-t bg-muted/20 px-4 py-4">
+            <p className="text-xs font-medium text-muted-foreground">About</p>
+            <p className="mt-1 text-sm leading-6">{about}</p>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -264,42 +350,52 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="md:col-span-2">
         <CardHeader>
           <CardTitle className="text-base">WhatsApp Profile</CardTitle>
           <CardDescription>Meta business profile information</CardDescription>
         </CardHeader>
-        <CardContent>
-          <dl className="space-y-3">
-            <InfoRow
-              label="About"
-              value={(profile?.about as string) || "Not set"}
-            />
-            <InfoRow
-              label="Description"
-              value={(profile?.description as string) || "Not set"}
-            />
-            <InfoRow
-              label="Email"
-              value={(profile?.email as string) || "Not set"}
-            />
-            <InfoRow
-              label="Website"
-              value={
-                (profile?.websites as string[])?.length
-                  ? (profile?.websites as string[]).join(", ")
-                  : "Not set"
-              }
-            />
-            <InfoRow
-              label="Vertical"
-              value={(profile?.vertical as string) || "Not set"}
-            />
-            <InfoRow
-              label="Address"
-              value={(profile?.address as string) || "Not set"}
-            />
-          </dl>
+        <CardContent className="space-y-6">
+          <WhatsAppProfilePreview device={device} profile={profile} />
+
+          <div className="border-t pt-6">
+            <div className="mb-3">
+              <p className="text-sm font-medium">Profile fields</p>
+              <p className="text-xs text-muted-foreground">
+                Raw information returned by Meta
+              </p>
+            </div>
+            <dl className="space-y-3">
+              <InfoRow
+                label="About"
+                value={(profile?.about as string) || "Not set"}
+              />
+              <InfoRow
+                label="Description"
+                value={(profile?.description as string) || "Not set"}
+              />
+              <InfoRow
+                label="Email"
+                value={(profile?.email as string) || "Not set"}
+              />
+              <InfoRow
+                label="Website"
+                value={
+                  (profile?.websites as string[])?.length
+                    ? (profile?.websites as string[]).join(", ")
+                    : "Not set"
+                }
+              />
+              <InfoRow
+                label="Vertical"
+                value={(profile?.vertical as string) || "Not set"}
+              />
+              <InfoRow
+                label="Address"
+                value={(profile?.address as string) || "Not set"}
+              />
+            </dl>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
+import { fireEvent, render, waitFor, within } from "@testing-library/react"
 import React from "react"
 
 const ORIGINAL_FETCH = globalThis.fetch
@@ -30,7 +30,11 @@ const device = {
   expiredAt: null,
   features: null,
   whatsappProfile: {
+    name: "Green Support",
     about: "Loaded profile about text",
+    description: "Official support channel for Green platform",
+    email: "support@green.local",
+    address: "123 Green Way",
     websites: ["https://example.com"],
     vertical: "OTHER",
   },
@@ -43,7 +47,7 @@ mock.module("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-const mockFetch = mock((input: string | URL | Request) => {
+const mockFetch = mock((input: string | URL | Request, init?: RequestInit) => {
   const url =
     typeof input === "string" || input instanceof URL
       ? input.toString()
@@ -52,6 +56,23 @@ const mockFetch = mock((input: string | URL | Request) => {
 
   if (pathname === "/api/whatsapp/devices/cmqoeiclj0006x94c6ofe0wti") {
     return Promise.resolve(jsonResponse({ ok: true, device }))
+  }
+
+  if (
+    pathname === "/api/whatsapp/devices/cmqoeiclj0006x94c6ofe0wti/profile" &&
+    init?.method === "PATCH"
+  ) {
+    return Promise.resolve(
+      jsonResponse({
+        ok: true,
+        profile: {
+          name: "Green Support",
+          about: "Saved profile about text",
+          websites: ["https://example.com"],
+          vertical: "OTHER",
+        },
+      })
+    )
   }
 
   if (pathname === "/api/whatsapp/templates") {
@@ -83,7 +104,11 @@ describe("ConsoleWhatsAppDeviceDetailPage", () => {
     const view = render(React.createElement(ConsoleWhatsAppDeviceDetailPage))
 
     await waitFor(() => {
-      expect(view.getByText("Loaded profile about text")).toBeTruthy()
+      const preview = view.getByTestId("whatsapp-profile-preview")
+      expect(within(preview).getByText("Green Support")).toBeTruthy()
+      expect(
+        within(preview).getByText("Loaded profile about text")
+      ).toBeTruthy()
     })
 
     const calls = mockFetch.mock.calls
@@ -95,5 +120,26 @@ describe("ConsoleWhatsAppDeviceDetailPage", () => {
       return url.includes("/api/whatsapp/devices/cmqoeiclj0006x94c6ofe0wti")
     })
     expect(deviceCall).toBeTruthy()
+  })
+
+  it("updates the preview from the saved profile response", async () => {
+    const { default: ConsoleWhatsAppDeviceDetailPage } = await import("./page")
+
+    const view = render(React.createElement(ConsoleWhatsAppDeviceDetailPage))
+
+    await waitFor(() => {
+      expect(view.getByTestId("whatsapp-profile-preview")).toBeTruthy()
+    })
+
+    fireEvent.click(view.getByRole("button", { name: "Edit WhatsApp Profile" }))
+    fireEvent.change(await view.findByLabelText("About"), {
+      target: { value: "Edited profile about text" },
+    })
+    fireEvent.click(view.getByRole("button", { name: "Save" }))
+
+    await waitFor(() => {
+      const preview = view.getByTestId("whatsapp-profile-preview")
+      expect(within(preview).getByText("Saved profile about text")).toBeTruthy()
+    })
   })
 })
