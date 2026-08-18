@@ -101,6 +101,12 @@ const authRequest = (path: string, options: RequestInit = {}) => {
     },
   })
 }
+const postJson = (path: string, body: unknown) =>
+  authRequest(path, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+  })
 
 describe("messagesRoutes", () => {
   beforeEach(() => {
@@ -287,9 +293,13 @@ describe("messagesRoutes", () => {
       )
 
       expect(res.status).toBe(200)
-      const body = await res.json()
-      expect(body.ok).toBe(true)
-      expect(body.jobId).toBe("job-1")
+      expect(await res.json()).toEqual({
+        ok: true,
+        jobId: "job-1",
+        messageId: "msg-1",
+        waMessageId: "wa-123",
+        status: "sent",
+      })
     })
 
     it("returns the Meta failure and records a failed audit event", async () => {
@@ -431,10 +441,72 @@ describe("messagesRoutes", () => {
       )
 
       expect(res.status).toBe(429)
+
       const body = await res.json()
       expect(body.error).toBe("DAILY_QUOTA_EXCEEDED")
       expect(body.resetAt).toBeDefined()
       expect(body.resetAt).toContain("T")
+    })
+
+    it("returns 500 for an unexpected send error", async () => {
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new Error("unexpected provider failure")
+      )
+
+      const app = createTestApp()
+      const res = await app.handle(
+        postJson("/messages/send", {
+          phoneNumber: "+1234567890",
+          message: "Hello",
+        })
+      )
+
+      expect(res.status).toBe(500)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "INTERNAL_ERROR",
+        message: "Failed to send message",
+      })
+    })
+
+    it("returns 400 when billing is not configured", async () => {
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new Error("NO_BILLING_ACCOUNT")
+      )
+
+      const res = await createTestApp().handle(
+        postJson("/messages/send", {
+          phoneNumber: "+1234567890",
+          message: "Hello",
+        })
+      )
+
+      expect(res.status).toBe(400)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "BILLING_NOT_CONFIGURED",
+        message: "No billing account configured for this organization.",
+      })
+    })
+
+    it("returns 422 when message quota is insufficient", async () => {
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new InsufficientQuotaError("Quota is exhausted")
+      )
+
+      const res = await createTestApp().handle(
+        postJson("/messages/send", {
+          phoneNumber: "+1234567890",
+          message: "Hello",
+        })
+      )
+
+      expect(res.status).toBe(422)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "INSUFFICIENT_QUOTA",
+        message: "Quota is exhausted",
+      })
     })
 
     it("returns 422 with invalid phone number", async () => {
@@ -460,6 +532,22 @@ describe("messagesRoutes", () => {
   })
 
   describe("POST /messages/send-interactive", () => {
+    const interactiveBody = {
+      phoneNumber: "+1234567890",
+      interactive: {
+        type: "button",
+        body: { text: "test" },
+        action: {
+          buttons: [{ type: "reply", reply: { id: "b1", title: "OK" } }],
+        },
+      },
+    }
+
+    const sendInteractiveRequest = () =>
+      createTestApp().handle(
+        postJson("/messages/send-interactive", interactiveBody)
+      )
+
     it("returns 200 on successful button interactive send", async () => {
       const app = createTestApp()
       const res = await app.handle(
@@ -483,7 +571,13 @@ describe("messagesRoutes", () => {
 
       expect(res.status).toBe(200)
       const body = await res.json()
-      expect(body.ok).toBe(true)
+      expect(body).toEqual({
+        ok: true,
+        jobId: "job-1",
+        messageId: "msg-1",
+        waMessageId: "wa-123",
+        status: "sent",
+      })
     })
 
     it("returns 200 on successful list interactive send", async () => {
@@ -640,6 +734,85 @@ describe("messagesRoutes", () => {
       expect(body.error).toBe("INSUFFICIENT_BALANCE")
     })
 
+    it("returns 422 when the interactive session window is closed", async () => {
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new WhatsappSessionWindowClosedError()
+      )
+
+      const res = await sendInteractiveRequest()
+
+      expect(res.status).toBe(422)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "WHATSAPP_TEMPLATE_REQUIRED",
+        message:
+          "Template required outside the 24-hour customer service window. " +
+          "Use /messages/send-template.",
+      })
+    })
+
+    it("returns 502 when interactive sending fails at Meta", async () => {
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new WhatsappSendFailedError(
+          "Meta rejected interactive message",
+          "wa-err"
+        )
+      )
+
+      const res = await sendInteractiveRequest()
+
+      expect(res.status).toBe(502)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "WHATSAPP_SEND_FAILED",
+        message: "Meta rejected interactive message",
+        messageId: "wa-err",
+      })
+    })
+
+    it("returns 429 on interactive monthly quota exceeded", async () => {
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new QuotaExceededError("org-1", "device-1", "OUT", 1000, 1000)
+      )
+
+      const res = await sendInteractiveRequest()
+
+      expect(res.status).toBe(429)
+      const body = await res.json()
+      expect(body.error).toBe("MONTHLY_QUOTA_EXCEEDED")
+      expect(body.message).toContain("Limit: 1000, Used: 1000")
+      expect(body.resetAt).toContain("T")
+    })
+
+    it("returns 429 on interactive daily quota exceeded", async () => {
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new DailyLimitExceededError("org-1", "device-1", 100, 100)
+      )
+
+      const res = await sendInteractiveRequest()
+
+      expect(res.status).toBe(429)
+      const body = await res.json()
+      expect(body.error).toBe("DAILY_QUOTA_EXCEEDED")
+      expect(body.message).toContain("Limit: 100, Used: 100")
+      expect(body.resetAt).toContain("T")
+    })
+
+    it("returns 500 for an unexpected interactive send error", async () => {
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new Error("unexpected interactive provider failure")
+      )
+
+      const res = await sendInteractiveRequest()
+
+      expect(res.status).toBe(500)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "INTERNAL_ERROR",
+        message: "Failed to send interactive message",
+      })
+    })
+
     it("returns 422 with invalid phone number", async () => {
       const app = createTestApp()
       const res = await app.handle(
@@ -694,6 +867,22 @@ describe("messagesRoutes", () => {
         },
       ],
     }
+    const templateBody = {
+      phoneNumber: "+1234567890",
+      templateId: "tpl-1",
+      templateLanguage: "en",
+      fields: ["John", "Acme Corp"],
+      deviceId: "device-1",
+    }
+
+    const sendTemplateRequest = () => {
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(
+        mockTemplate as any
+      )
+      return createTestApp().handle(
+        postJson("/messages/send-template", templateBody)
+      )
+    }
 
     it("sends template message successfully with deviceId", async () => {
       mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(
@@ -716,10 +905,13 @@ describe("messagesRoutes", () => {
       )
 
       expect(res.status).toBe(200)
-      const body = await res.json()
-      expect(body.ok).toBe(true)
-      expect(body.messageId).toBe("mock-id")
-      expect(body.status).toBe("sent")
+      expect(await res.json()).toEqual({
+        ok: true,
+        jobId: "job-template-1",
+        messageId: "mock-id",
+        waMessageId: "wa-template-1",
+        status: "sent",
+      })
       expect(mockPrisma.whatsappTemplate.findFirst).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ id: "tpl-1" }),
@@ -778,6 +970,100 @@ describe("messagesRoutes", () => {
           errorMessage: "Template is not approved for this phone number",
         })
       )
+    })
+
+    it("returns 402 with balance details on insufficient balance", async () => {
+      const { Prisma } = await import("@prisma/client")
+      mockMessageService.sendTemplateMessage.mockRejectedValueOnce(
+        new InsufficientBalanceError(
+          new Prisma.Decimal(500),
+          new Prisma.Decimal(100)
+        )
+      )
+
+      const res = await sendTemplateRequest()
+
+      expect(res.status).toBe(402)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "INSUFFICIENT_BALANCE",
+        message: "Insufficient balance for WhatsApp messaging.",
+        balance: "100",
+        estimatedCost: "500",
+      })
+    })
+
+    it("returns 429 on monthly quota exceeded", async () => {
+      mockMessageService.sendTemplateMessage.mockRejectedValueOnce(
+        new QuotaExceededError("org-1", "device-1", "OUT", 1000, 1000)
+      )
+
+      const res = await sendTemplateRequest()
+
+      expect(res.status).toBe(429)
+      const body = await res.json()
+      expect(body.error).toBe("MONTHLY_QUOTA_EXCEEDED")
+      expect(body.message).toContain("Limit: 1000, Used: 1000")
+      expect(body.resetAt).toContain("T")
+    })
+
+    it("returns 429 on daily quota exceeded", async () => {
+      mockMessageService.sendTemplateMessage.mockRejectedValueOnce(
+        new DailyLimitExceededError("org-1", "device-1", 100, 100)
+      )
+
+      const res = await sendTemplateRequest()
+
+      expect(res.status).toBe(429)
+      const body = await res.json()
+      expect(body.error).toBe("DAILY_QUOTA_EXCEEDED")
+      expect(body.message).toContain("Limit: 100, Used: 100")
+      expect(body.resetAt).toContain("T")
+    })
+
+    it("returns 500 for an unexpected template send error", async () => {
+      mockMessageService.sendTemplateMessage.mockRejectedValueOnce(
+        new Error("unexpected template provider failure")
+      )
+
+      const res = await sendTemplateRequest()
+
+      expect(res.status).toBe(500)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "INTERNAL_ERROR",
+        message: "Failed to send template message",
+      })
+    })
+
+    it("returns 400 when template billing is not configured", async () => {
+      mockMessageService.sendTemplateMessage.mockRejectedValueOnce(
+        new Error("BILLING_ACCOUNT_NOT_FOUND")
+      )
+
+      const res = await sendTemplateRequest()
+
+      expect(res.status).toBe(400)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "BILLING_NOT_CONFIGURED",
+        message: "No billing account configured for this organization.",
+      })
+    })
+
+    it("returns 422 when template quota is insufficient", async () => {
+      mockMessageService.sendTemplateMessage.mockRejectedValueOnce(
+        new InsufficientQuotaError("Template quota is exhausted")
+      )
+
+      const res = await sendTemplateRequest()
+
+      expect(res.status).toBe(422)
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: "INSUFFICIENT_QUOTA",
+        message: "Template quota is exhausted",
+      })
     })
 
     it("returns 422 when deviceId is missing", async () => {

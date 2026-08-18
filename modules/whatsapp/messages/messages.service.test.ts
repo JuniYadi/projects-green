@@ -142,8 +142,17 @@ const mockPrisma = {
   billingUsageLedger: {
     create: mock(async () => ({ id: "ledger-1" })),
   },
-  whatsappWebhook: {
+  billingContact: {
     findMany: mock(async () => []),
+  },
+  whatsappWebhook: {
+    findMany: mock(async () => [
+      {
+        id: "webhook-1",
+        organizationId: "org-1",
+        whatsappDeviceId: "device-1",
+      },
+    ]),
   },
   whatsappQuotaCreditRate: {
     findUnique: mock(async () => null),
@@ -156,8 +165,17 @@ const mockDeviceClient = {
   sendReply: mock(async () => ({ providerMessageId: "wa-msg-123" })),
   sendTemplateMessage: mock(async () => ({ providerMessageId: "wa-tmpl-123" })),
 }
-
 const mockEnqueue = mock(async () => {})
+const mockEnqueueQuotaReconciliation = mock(async () => {})
+const mockEnqueueWebhook = mock(async () => {})
+
+mock.module("@/lib/queue/quota-reconciliation", () => ({
+  enqueueQuotaReconciliation: mockEnqueueQuotaReconciliation,
+}))
+
+mock.module("@/lib/queue/whatsapp-webhook-outgoing", () => ({
+  enqueueOutgoingWebhook: mockEnqueueWebhook,
+}))
 
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
@@ -216,6 +234,7 @@ describe("messageService", () => {
     mockPrisma.whatsappDailyCount.upsert.mockClear()
     mockPrisma.whatsappBillingLedger.create.mockClear()
     mockPrisma.billingAccount.findUnique.mockClear()
+    mockPrisma.billingContact.findMany.mockClear()
     mockPrisma.serviceSubscription.findFirst.mockClear()
     mockPrisma.servicePricing.findFirst.mockClear()
     mockPrisma.billingUsageLedger.create.mockClear()
@@ -229,9 +248,12 @@ describe("messageService", () => {
     mockTx.whatsappMonthlyCount.findFirst.mockClear()
     mockTx.whatsappMonthlyCount.create.mockClear()
     mockTx.whatsappMonthlyCount.update.mockClear()
+    mockPrisma.whatsappWebhook.findMany.mockClear()
     mockTx.whatsappMonthlyCount.upsert.mockClear()
     mockTx.billingAccount.findUnique.mockClear()
     mockTx.billingAccount.update.mockClear()
+    mockEnqueueQuotaReconciliation.mockClear()
+    mockEnqueueWebhook.mockClear()
     mockTx.billingAdjustment.findFirst.mockClear()
     mockTx.billingAdjustment.create.mockClear()
     mockTx.billingInvoice.findFirst.mockClear()
@@ -369,6 +391,15 @@ describe("messageService", () => {
         type: "text",
         payload: { body: "Hello world" },
       })
+      expect(mockEnqueueWebhook).toHaveBeenCalledWith(
+        expect.objectContaining({
+          webhookId: "webhook-1",
+          organizationId: "org-1",
+          deviceId: "device-1",
+          eventType: "message_sent",
+          eventId: "msg-1",
+        })
+      )
     })
 
     it("checks quota before sending", async () => {
@@ -425,6 +456,51 @@ describe("messageService", () => {
       expect(mockDeviceClient.sendReply).not.toHaveBeenCalled()
       expect(mockDeviceClient.sendMessage).not.toHaveBeenCalled()
       expect(mockPrisma.whatsappMessage.create).not.toHaveBeenCalled()
+    })
+    it("rejects when the conversation is not found", async () => {
+      mockPrisma.whatsappConversation.findFirst.mockResolvedValue(null)
+
+      await expect(sendMessageTestHelper()).rejects.toBeInstanceOf(
+        WhatsappSessionWindowClosedError
+      )
+    })
+
+    it("rejects when lastMessageAt is null, undefined, or too old", async () => {
+      for (const lastMessageAt of [
+        null,
+        undefined,
+        new Date(Date.now() - 25 * 60 * 60 * 1000),
+      ]) {
+        mockPrisma.whatsappConversation.findFirst.mockResolvedValueOnce({
+          id: "conv-1",
+          organizationId: "org-1",
+          contactPhone: "+1234567890",
+          lastDirection: "INBOX",
+          lastMessageAt,
+          whatsappDeviceId: "device-1",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as never)
+        await expect(sendMessageTestHelper()).rejects.toBeInstanceOf(
+          WhatsappSessionWindowClosedError
+        )
+      }
+    })
+
+    it("allows an inbound conversation updated within 24 hours", async () => {
+      mockPrisma.whatsappConversation.findFirst.mockResolvedValue({
+        id: "conv-1",
+        organizationId: "org-1",
+        contactPhone: "+1234567890",
+        lastDirection: "INBOX",
+        lastMessageAt: new Date(Date.now() - 60 * 60 * 1000),
+        whatsappDeviceId: "device-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as never)
+      await expect(sendMessageTestHelper()).resolves.toMatchObject({
+        status: "sent",
+      })
     })
 
     it("deducts quota after sending", async () => {
@@ -517,6 +593,54 @@ describe("messageService", () => {
           longitude: 106.8,
           name: "Jakarta",
           address: "Jakarta, ID",
+        },
+      })
+    })
+    it("sends document messages with filename and caption", async () => {
+      await sendMessageTestHelper({
+        type: "document",
+        mediaUrl: "https://example.com/document.pdf",
+        caption: "Document caption",
+        filename: "document.pdf",
+      })
+
+      expect(mockDeviceClient.sendReply).toHaveBeenCalledWith({
+        to: "+1234567890",
+        type: "document",
+        payload: {
+          link: "https://example.com/document.pdf",
+          caption: "Document caption",
+          filename: "document.pdf",
+        },
+      })
+    })
+
+    it("sends audio messages through the generic message method", async () => {
+      await sendMessageTestHelper({
+        type: "audio",
+        mediaUrl: "https://example.com/audio.mp3",
+      })
+
+      expect(mockDeviceClient.sendMessage).toHaveBeenCalledWith({
+        to: "+1234567890",
+        type: "audio",
+        payload: { link: "https://example.com/audio.mp3" },
+      })
+    })
+
+    it("sends an unrecognized custom type through the generic method", async () => {
+      await sendMessageTestHelper({
+        type: "custom" as never,
+        mediaUrl: "https://example.com/custom",
+        caption: "Custom payload",
+      })
+
+      expect(mockDeviceClient.sendMessage).toHaveBeenCalledWith({
+        to: "+1234567890",
+        type: "custom",
+        payload: {
+          link: "https://example.com/custom",
+          caption: "Custom payload",
         },
       })
     })
@@ -631,6 +755,62 @@ describe("messageService", () => {
       const result = await sendMessageTestHelper()
       expect(result).toHaveProperty("jobId")
     })
+    it("records usage and reconciles when subscription quota deduction fails", async () => {
+      mockPrisma.serviceSubscription.findFirst.mockResolvedValue({
+        id: "subscription-1",
+        organizationId: "org-1",
+        status: "ACTIVE",
+        planId: "plan-1",
+        plan: { code: "WHATSAPP", resources: { unlimited: true } },
+      } as never)
+      mockPrisma.servicePricing.findFirst.mockResolvedValue({
+        planId: "plan-1",
+        type: "PAYG",
+        billingMode: "PAYG",
+        billingPeriod: null,
+        currency: "IDR",
+        effectiveFrom: new Date("2026-01-01"),
+        effectiveTo: null,
+        chargeUnit: "MESSAGE",
+        basePriceIdr: new Prisma.Decimal("0"),
+        monthlyCapIdr: null,
+        unitRateCpu: null,
+        unitRateMem: null,
+        unitRateMessage: new Prisma.Decimal("50"),
+        servicePlan: { code: "WHATSAPP", packageId: "WHATSAPP", resources: {} },
+        region: { code: "GLOBAL" },
+      } as never)
+      mockPrisma.whatsappDevice.update.mockResolvedValue({
+        id: "device-1",
+        currentQuotaUsed: new Prisma.Decimal("50"),
+      } as never)
+      let transactionCount = 0
+      mockPrisma.$transaction.mockImplementation(async (fn: unknown) => {
+        transactionCount++
+        if (transactionCount === 1) {
+          return await (fn as (tx: typeof mockTx) => Promise<unknown>)(mockTx)
+        }
+        throw new Error("quota deduction failed")
+      })
+
+      const result = await sendMessageTestHelper()
+
+      expect(result.status).toBe("sent")
+      expect(mockEnqueueQuotaReconciliation).toHaveBeenCalledWith(
+        "org-1",
+        "device-1",
+        "OUT",
+        expect.any(String),
+        expect.any(Date)
+      )
+      expect(mockPrisma.billingUsageLedger.create).toHaveBeenCalled()
+      expect(mockPrisma.whatsappDevice.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "device-1" },
+          data: { currentQuotaUsed: { increment: expect.any(Object) } },
+        })
+      )
+    })
 
     // ── WhatsApp Billing Integration Tests ────────────────────────────────
 
@@ -657,6 +837,26 @@ describe("messageService", () => {
       expect(mockDeviceClient.sendReply).toHaveBeenCalled()
       // billingAdjustment.create is called inside the $transaction (via debitServiceBalance)
       expect(mockTx.billingAdjustment.create).toHaveBeenCalled()
+    })
+    it("uses addon allowance when the default allowance is exhausted", async () => {
+      mockTx.whatsappDevice.findUnique.mockResolvedValue({
+        id: "device-1",
+        quotaBaseOut: new Prisma.Decimal("0"),
+        addonQuota: new Prisma.Decimal("1000"),
+      } as never)
+      const result = await sendMessageTestHelper()
+
+      expect(result.status).toBe("sent")
+      expect(mockTx.billingAdjustment.create).not.toHaveBeenCalled()
+      expect(mockTx.whatsappDevice.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "device-1" },
+          data: expect.objectContaining({
+            quotaBaseOut: new Prisma.Decimal("0"),
+            addonQuota: { decrement: expect.any(Object) },
+          }),
+        })
+      )
     })
 
     it("does not call Meta API when overage balance is insufficient", async () => {
@@ -817,6 +1017,30 @@ describe("messageService", () => {
         templateLanguage: "en",
         fields: ["John"],
       })
+      expect(mockEnqueueWebhook).toHaveBeenCalledWith(
+        expect.objectContaining({
+          webhookId: "webhook-1",
+          eventType: "message_sent",
+          eventId: "msg-1",
+        })
+      )
+    })
+    it("does not fail when the sent-message webhook dispatch rejects", async () => {
+      mockEnqueueWebhook.mockRejectedValueOnce(new Error("Webhook offline"))
+
+      const result = await messageService.sendTemplateMessage({
+        organizationId: "org-1",
+        phoneNumber: "+1234567890",
+        templateName: "hello_world",
+        templateLanguage: "en",
+        fields: ["John"],
+        renderedBody: "Hello John",
+        templateLanguageData: mockTemplateLanguage,
+      })
+
+      await Promise.resolve()
+      expect(result.status).toBe("sent")
+      expect(mockEnqueueWebhook).toHaveBeenCalled()
     })
 
     it("creates message with messageType template", async () => {
@@ -893,6 +1117,14 @@ describe("messageService", () => {
                 error: "Template rejected by Meta",
               }),
             },
+          }),
+        })
+      )
+      expect(mockPrisma.whatsappDevice.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "device-1" },
+          data: expect.objectContaining({
+            quotaBaseOut: { increment: expect.any(Object) },
           }),
         })
       )
