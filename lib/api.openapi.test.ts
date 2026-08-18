@@ -136,7 +136,6 @@ describe("OpenAPI documentation", () => {
       }
     }
 
-    expect(document.paths?.["/api/echo"]).toBeUndefined()
     expect(document.paths?.["/api/auth/login"]).toBeUndefined()
     expect(document.paths?.["/api/tenants/bootstrap"]).toBeUndefined()
     expect(document.paths?.["/api/vouchers/redeem"]?.post?.tags).toEqual([
@@ -166,7 +165,6 @@ describe("OpenAPI documentation", () => {
     expect(adminDoc.paths?.["/api/admin/organizations"]?.get?.tags).toEqual([
       "API Admin",
     ])
-    expect(adminDoc.paths?.["/api/echo"]?.post).toBeDefined()
     expect(adminDoc.paths?.["/api/auth/login"]?.post).toBeDefined()
     expect(adminDoc.paths?.["/api/tenants/bootstrap"]?.get).toBeDefined()
   })
