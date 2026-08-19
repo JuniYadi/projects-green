@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { getBillingAccount, updateBillingCurrency } from "@/lib/billing-client"
 import { Spinner } from "@phosphor-icons/react"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
@@ -119,7 +120,7 @@ export default function BillingSettingsPage() {
             className="mt-2"
             onClick={() => void fetchSettings()}
           >
-            {messages.console.billing.contacts.retry}
+            {messages.console.billing.services.retryButton}
           </Button>
         </header>
       </main>
