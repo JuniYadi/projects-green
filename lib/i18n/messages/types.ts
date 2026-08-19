@@ -535,6 +535,30 @@ export type AppMessages = {
         srOpenMenu: string
         editPhoneNumber: string
       }
+      webhookLogs: {
+        heading: string
+        description: string
+        cardTitle: string
+        cardDescription: string
+        noDevices: string
+        retry: string
+        loadError: string
+      }
+      events: {
+        heading: string
+        description: string
+        deviceTitle: string
+        deviceDescription: string
+        deviceLabel: string
+        selectDevice: string
+        cardTitle: string
+        selectedDeviceDescription: string
+        noDeviceDescription: string
+        noDevices: string
+        retry: string
+        selectDevicePrompt: string
+        loadError: string
+      }
       messages: {
         heading: string
         description: string
@@ -596,6 +620,50 @@ export type AppMessages = {
         expiresLabel: string
         revokeKey: string
         copiedNotice: string
+      }
+      analytics: {
+        heading: string
+        description: string
+        comparison: string
+        costReconciliation: string
+        syncFromMeta: string
+        generateReport: string
+        runReconciliation: string
+        to: string
+        syncResult: string
+        syncedRecords: string
+        discrepanciesFound: string
+        comparisonReport: string
+        meta: string
+        local: string
+        delta: string
+        discrepantRows: string
+        noData: string
+        date: string
+        metric: string
+        status: string
+        category: string
+        metaCost: string
+        localCost: string
+        noCostData: string
+        noDataLoaded: string
+        noDataLoadedDescription: string
+      }
+      auditLogs: {
+        heading: string
+        description: string
+        action: string
+        status: string
+        all: string
+        deviceId: string
+        search: string
+        searchPlaceholder: string
+        from: string
+        to: string
+        apply: string
+        reset: string
+        cardTitle: string
+        cardDescription: string
       }
       webhookLogs: {
         heading: string
