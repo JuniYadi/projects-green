@@ -8,6 +8,9 @@ import {
   ChartLine,
   Warning,
 } from "@phosphor-icons/react"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -59,7 +62,7 @@ function WebhookAlertBadge({ rate }: { rate: number }) {
     return (
       <Badge variant="destructive">
         <Warning className="mr-1 size-3" weight="fill" />
-        Alert
+        {t.disconnected}
       </Badge>
     )
   }
@@ -97,6 +100,10 @@ function formatRelativeTime(dateString: string): string {
 }
 
 export default function WhatsAppDashboardPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.console.whatsapp.dashboard
   const [state, setState] = React.useState<DashboardState>("loading")
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
   const [conversations, setConversations] = React.useState<
@@ -222,28 +229,28 @@ export default function WhatsAppDashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            WhatsApp Dashboard
+            {t.heading}
           </h1>
           <p className="text-muted-foreground">
-            Overview of your WhatsApp Business activities
+            {t.description}
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
             <Link href="/console/billing/services/whatsapp">
-              Subscribe Plan
+              {t.viewDevices}
             </Link>
           </Button>
           <Button variant="outline" asChild>
             <Link href="/console/whatsapp/devices">
               <Phone className="mr-2 size-4" />
-              Manage Devices
+              {t.viewDevices}
             </Link>
           </Button>
           <Button asChild>
             <Link href="/console/whatsapp/messages">
               <PaperPlaneTilt className="mr-2 size-4" />
-              Send Template Message
+              {t.statMessagesSent}
             </Link>
           </Button>
         </div>
@@ -254,7 +261,7 @@ export default function WhatsAppDashboardPage() {
           <CardContent className="flex flex-col items-center justify-between gap-4 p-6 sm:flex-row">
             <div className="space-y-1 text-center sm:text-left">
               <h3 className="text-base font-semibold">
-                Activate your WhatsApp Business Account
+                {t.heading}
               </h3>
               <p className="text-sm text-muted-foreground">
                 You have no active WhatsApp devices. Choose a plan to register
@@ -263,7 +270,7 @@ export default function WhatsAppDashboardPage() {
             </div>
             <Button asChild className="shrink-0">
               <Link href="/console/billing/services/whatsapp">
-                View Plans & Subscribe
+                {t.viewDevices}
               </Link>
             </Button>
           </CardContent>
@@ -282,7 +289,7 @@ export default function WhatsAppDashboardPage() {
               {errorMessage}
             </p>
             <Button className="mt-3" variant="outline" onClick={loadData}>
-              Try Again
+              {t.viewDevices}
             </Button>
           </CardContent>
         </Card>
@@ -304,7 +311,7 @@ export default function WhatsAppDashboardPage() {
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                      Total Devices
+                      {t.statActiveDevices}
                     </CardTitle>
                     <Phone
                       className="size-4 text-muted-foreground"
@@ -314,7 +321,7 @@ export default function WhatsAppDashboardPage() {
                   <CardContent>
                     <div className="text-2xl font-bold">{devices.length}</div>
                     <p className="text-xs text-muted-foreground">
-                      Connected devices
+                      {t.connected}
                     </p>
                   </CardContent>
                 </Card>
@@ -322,7 +329,7 @@ export default function WhatsAppDashboardPage() {
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                      Messages In
+                      {t.statTotalConversations}
                     </CardTitle>
                     <ChatCircle
                       className="size-4 text-muted-foreground"
@@ -333,14 +340,14 @@ export default function WhatsAppDashboardPage() {
                     <div className="text-2xl font-bold">
                       {messageInTotal.toLocaleString()}
                     </div>
-                    <p className="text-xs text-muted-foreground">This month</p>
+                    <p className="text-xs text-muted-foreground">{t.active}</p>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                      Messages Out
+                      {t.statMessagesSent}
                     </CardTitle>
                     <PaperPlaneTilt
                       className="size-4 text-muted-foreground"
@@ -351,14 +358,14 @@ export default function WhatsAppDashboardPage() {
                     <div className="text-2xl font-bold">
                       {messageOutTotal.toLocaleString()}
                     </div>
-                    <p className="text-xs text-muted-foreground">This month</p>
+                    <p className="text-xs text-muted-foreground">{t.active}</p>
                   </CardContent>
                 </Card>
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                      Broadcasts
+                      {t.statMessagesSent}
                     </CardTitle>
                     <ChartLine
                       className="size-4 text-muted-foreground"
@@ -368,7 +375,7 @@ export default function WhatsAppDashboardPage() {
                   <CardContent>
                     <div className="text-2xl font-bold">{broadcastTotal}</div>
                     <p className="text-xs text-muted-foreground">
-                      Total campaigns
+                      {t.statTotalConversations}
                     </p>
                   </CardContent>
                 </Card>
@@ -376,7 +383,7 @@ export default function WhatsAppDashboardPage() {
             )}
           </div>
 
-          {/* Operational Health Card */}
+          {/* {t.deviceHealthTitle} Card */}
           <Card
             className={
               webhookStats && webhookStats.failureRate > 5
@@ -386,7 +393,7 @@ export default function WhatsAppDashboardPage() {
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Operational Health
+                {t.deviceHealthTitle}
               </CardTitle>
               <ChartLine
                 className="size-4 text-muted-foreground"
@@ -411,7 +418,7 @@ export default function WhatsAppDashboardPage() {
                 <p className="text-xs text-muted-foreground">
                   {webhookStats
                     ? `${webhookStats.failedEvents}/${webhookStats.totalEvents} failed (1h)`
-                    : "No webhook data"}
+                    : "{t.deviceHealthDesc}"}
                 </p>
                 {webhookStats && (
                   <WebhookAlertBadge rate={webhookStats.failureRate} />
@@ -420,14 +427,14 @@ export default function WhatsAppDashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Recent Conversations */}
+          {/* {t.conversationsCardTitle} */}
           <Card>
             <CardHeader>
-              <CardTitle>Recent Conversations</CardTitle>
+              <CardTitle>{t.conversationsCardTitle}</CardTitle>
               <CardDescription>
                 {state === "loading"
-                  ? "Loading conversations..."
-                  : "Latest message activity"}
+                  ? "{t.deviceHealthDesc}"
+                  : "{t.conversationsCardDesc}"}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -444,11 +451,11 @@ export default function WhatsAppDashboardPage() {
                     weight="fill"
                   />
                   <p className="text-sm text-muted-foreground">
-                    No recent conversations
+                    {t.disconnected}
                   </p>
                   <Button variant="outline" className="mt-3" asChild>
                     <Link href="/console/whatsapp/messages">
-                      View all messages
+                      {t.viewDevices}
                     </Link>
                   </Button>
                 </div>
@@ -473,8 +480,8 @@ export default function WhatsAppDashboardPage() {
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {conversation.lastDirection === "INBOX"
-                              ? "Inbound"
-                              : "Outbound"}
+                              ? "{t.connected}"
+                              : "{t.disconnected}"}
                             {` | ${conversation._count.whatsappMessages} messages`}
                           </p>
                         </div>
@@ -482,11 +489,11 @@ export default function WhatsAppDashboardPage() {
                       <div className="flex flex-col items-end gap-1">
                         {conversation.lastDirection === "INBOX" ? (
                           <Badge variant="secondary" className="text-[10px]">
-                            Inbound
+                            {t.connected}
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="text-[10px]">
-                            Outbound
+                            {t.disconnected}
                           </Badge>
                         )}
                         {conversation.lastMessageAt && (
