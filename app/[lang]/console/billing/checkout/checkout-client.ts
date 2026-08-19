@@ -35,6 +35,7 @@ export type CheckoutPreview = {
   packageCode: string
   planCode: string
   billingStrategy?: "PRO_RATA" | "FIXED_CYCLE"
+  resources?: Record<string, unknown>
   currency: string
   billingPeriod: string
   quantity: string
