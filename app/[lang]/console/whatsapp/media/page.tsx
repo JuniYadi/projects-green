@@ -173,7 +173,7 @@ export default function WhatsAppMediaPage() {
     setUploading(true)
     try {
       await whatsappClient.media.upload(file, deviceId)
-      toast.success(messages.console.whatsapp.media.heading)
+      toast.success(messages.console.whatsapp.media.uploadSuccess)
       void loadMedia()
     } catch (error) {
       toast.error(
@@ -192,7 +192,7 @@ export default function WhatsAppMediaPage() {
     setIsDeleting(true)
     try {
       await whatsappClient.media.delete(deleteDialog.id)
-      toast.success(messages.console.whatsapp.media.heading)
+      toast.success(messages.console.whatsapp.media.deleteSuccess)
       setDeleteDialog(null)
       void loadMedia()
     } catch (error) {
@@ -232,8 +232,8 @@ export default function WhatsAppMediaPage() {
               <label htmlFor="media-upload-input" className="cursor-pointer">
                 <Upload weight="bold" className="mr-2 size-4" />
                 {uploading
-                  ? messages.console.whatsapp.media.notDownloaded
-                  : messages.console.whatsapp.media.heading}
+                  ? messages.console.whatsapp.media.uploading
+                  : messages.console.whatsapp.media.uploadButton}
               </label>
             </Button>
           </div>
@@ -283,7 +283,7 @@ export default function WhatsAppMediaPage() {
                 className="mt-3"
                 onClick={() => void loadMedia()}
               >
-                {messages.console.whatsapp.media.heading}
+                {messages.console.whatsapp.media.retryButton}
               </Button>
             </div>
           )}
@@ -306,7 +306,7 @@ export default function WhatsAppMediaPage() {
                     className="cursor-pointer"
                   >
                     <Upload className="mr-2 size-4" />
-                    {messages.console.whatsapp.media.heading}
+                    {messages.console.whatsapp.media.uploadFirstFile}
                   </label>
                 </Button>
               )}
@@ -358,7 +358,7 @@ export default function WhatsAppMediaPage() {
                             download
                           >
                             <Download className="mr-2 size-4" />
-                            {messages.console.whatsapp.media.heading}
+                            {messages.console.whatsapp.media.downloadButton}
                           </a>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
@@ -367,7 +367,7 @@ export default function WhatsAppMediaPage() {
                           onClick={() => setDeleteDialog(item)}
                         >
                           <Trash className="mr-2 size-4" />
-                          {messages.console.whatsapp.media.heading}
+                          {messages.console.whatsapp.media.deleteButton}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -388,7 +388,9 @@ export default function WhatsAppMediaPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{messages.console.whatsapp.media.heading}</DialogTitle>
+            <DialogTitle>
+              {messages.console.whatsapp.media.deleteButton}
+            </DialogTitle>
             <DialogDescription>
               {messages.console.whatsapp.media.description}
             </DialogDescription>
@@ -399,7 +401,7 @@ export default function WhatsAppMediaPage() {
               onClick={() => setDeleteDialog(null)}
               disabled={isDeleting}
             >
-              {messages.console.whatsapp.media.heading}
+              {messages.console.whatsapp.media.cancelButton}
             </Button>
             <Button
               variant="destructive"
@@ -407,8 +409,8 @@ export default function WhatsAppMediaPage() {
               disabled={isDeleting}
             >
               {isDeleting
-                ? messages.console.whatsapp.media.notDownloaded
-                : messages.console.whatsapp.media.heading}
+                ? messages.console.whatsapp.media.deleting
+                : messages.console.whatsapp.media.deleteButton}
             </Button>
           </DialogFooter>
         </DialogContent>
