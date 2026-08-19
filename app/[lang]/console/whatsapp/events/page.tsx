@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import {
@@ -66,6 +67,7 @@ function makeDeviceLabel(device: DeviceListItem): string {
 export default function WhatsAppWebhookEventsPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const basePath = localizePathname({
     pathname: "/console/whatsapp/events",
     locale,
@@ -150,7 +152,9 @@ export default function WhatsAppWebhookEventsPage() {
       })
 
       if (error) {
-        throw new Error(error.message ?? "Failed to load events")
+        throw new Error(
+          error.message ?? messages.console.whatsapp.events.loadError
+        )
       }
 
       const result = data as unknown as EventsApiResponse
@@ -159,7 +163,9 @@ export default function WhatsAppWebhookEventsPage() {
       setPageState("loaded")
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to load webhook events"
+        err instanceof Error
+          ? err.message
+          : messages.console.whatsapp.events.loadError
       setErrorMessage(message)
       setPageState("error")
     }
@@ -200,30 +206,36 @@ export default function WhatsAppWebhookEventsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Webhook Events</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {messages.console.whatsapp.events.heading}
+        </h1>
         <p className="text-muted-foreground">
-          View and inspect incoming WhatsApp webhook events for your devices.
+          {messages.console.whatsapp.events.description}
         </p>
       </div>
 
       {/* Device Selector */}
       <Card>
         <CardHeader>
-          <CardTitle>Device</CardTitle>
+          <CardTitle>{messages.console.whatsapp.events.deviceTitle}</CardTitle>
           <CardDescription>
-            Select a device to view its webhook events.
+            {messages.console.whatsapp.events.deviceDescription}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-end gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="device-select">WhatsApp Device</Label>
+              <Label htmlFor="device-select">
+                {messages.console.whatsapp.events.deviceLabel}
+              </Label>
               <Select
                 value={selectedDeviceId}
                 onValueChange={handleDeviceChange}
               >
                 <SelectTrigger id="device-select" className="w-72">
-                  <SelectValue placeholder="Select a device…" />
+                  <SelectValue
+                    placeholder={messages.console.whatsapp.events.selectDevice}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {devices.map((device) => (
@@ -259,11 +271,11 @@ export default function WhatsAppWebhookEventsPage() {
       {/* Events Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Event Log</CardTitle>
+          <CardTitle>{messages.console.whatsapp.events.cardTitle}</CardTitle>
           <CardDescription>
             {selectedDeviceId
-              ? "Webhook events for the selected device"
-              : "Select a device above to view its webhook events"}
+              ? messages.console.whatsapp.events.selectedDeviceDescription
+              : messages.console.whatsapp.events.noDeviceDescription}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -274,8 +286,7 @@ export default function WhatsAppWebhookEventsPage() {
                 weight="fill"
               />
               <p className="text-sm text-muted-foreground">
-                No devices available. Please contact your admin to add a
-                WhatsApp device.
+                {messages.console.whatsapp.events.noDevices}
               </p>
               <Button
                 variant="outline"
@@ -283,7 +294,7 @@ export default function WhatsAppWebhookEventsPage() {
                 onClick={handleRetryDevices}
               >
                 <ArrowsClockwise className="mr-2 size-4" />
-                Retry
+                {messages.console.whatsapp.events.retry}
               </Button>
             </div>
           ) : !selectedDeviceId ? (
@@ -293,7 +304,7 @@ export default function WhatsAppWebhookEventsPage() {
                 weight="fill"
               />
               <p className="text-sm text-muted-foreground">
-                Select a device to view its webhook events.
+                {messages.console.whatsapp.events.selectDevicePrompt}
               </p>
             </div>
           ) : (
