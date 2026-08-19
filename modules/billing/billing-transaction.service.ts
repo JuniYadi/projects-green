@@ -53,6 +53,8 @@ export type ServiceLineInput = {
 
 export type ServiceBalanceInput = BalanceMutationInput & {
   line: ServiceLineInput
+  subtotalAmount?: Prisma.Decimal
+  discountAmount?: Prisma.Decimal
 }
 
 const MAX_BALANCE = new Prisma.Decimal("999999999.99")
@@ -166,9 +168,9 @@ export class BillingTransactionService {
           periodEnd,
           issuedAt: now,
           paidAt: now,
-          subtotalAmount: input.amount,
+          subtotalAmount: input.subtotalAmount ?? input.amount,
           taxAmount: new Prisma.Decimal(0),
-          discountAmount: new Prisma.Decimal(0),
+          discountAmount: input.discountAmount ?? new Prisma.Decimal(0),
           totalAmount: input.amount,
           metadataJson: {
             isUpfront: true,
