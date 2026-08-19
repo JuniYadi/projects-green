@@ -63,17 +63,19 @@ type ProvisioningFieldDef = {
 
 export default function CheckoutPage() {
   const searchParams = useSearchParams()
-  const pricingId = searchParams.get("pricingId") || ""
+  const pricingIdParam = searchParams.get("pricingId") || ""
+  const [selectedPricingId, setSelectedPricingId] = useState<string | null>(
+    null
+  )
+  const activePricingId = selectedPricingId ?? pricingIdParam
+
   const [idempotencyKey] = useState(
     () =>
-      `checkout:${pricingId}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`
+      `checkout:${pricingIdParam}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`
   )
   const [quote, setQuote] = useState<CheckoutResult | null>(null)
   const [quotePreview, setQuotePreview] = useState<CheckoutPreview | null>(null)
   const [quoteLoading, setQuoteLoading] = useState(false)
-  const [quoteError, setQuoteError] = useState<string | null>(null)
-  const [addonIds, setAddonIds] = useState<string[]>([])
-  const [voucherCode, setVoucherCode] = useState("")
   const [voucherInput, setVoucherInput] = useState("")
   const [confirmed, setConfirmed] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -100,15 +102,20 @@ export default function CheckoutPage() {
         ? phoneNumber.trim()
         : formData[f.name]?.trim())
   )
-  const hasPricing = Boolean(pricingId)
+  const hasPricing = Boolean(activePricingId)
 
   const requestQuote = useCallback(
-    async (nextAddonIds: string[], nextVoucherCode: string) => {
-      if (!pricingId) return
+    async (
+      nextAddonIds: string[],
+      nextVoucherCode: string,
+      pricingToQuote?: string
+    ) => {
+      const targetPricingId = pricingToQuote || activePricingId
+      if (!targetPricingId) return
       setQuoteLoading(true)
       setQuoteError(null)
       const result = await getCheckoutQuote({
-        pricingId,
+        pricingId: targetPricingId,
         addonIds: nextAddonIds,
         voucherCode: nextVoucherCode || undefined,
         idempotencyKey,
@@ -125,19 +132,18 @@ export default function CheckoutPage() {
       }
       setQuoteLoading(false)
     },
-    [idempotencyKey, pricingId, setQuoteError, setQuoteLoading, setQuotePreview]
+    [activePricingId, idempotencyKey]
   )
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      void requestQuote([], "")
+      void requestQuote(addonIds, voucherCode)
     }, 0)
     return () => window.clearTimeout(timer)
-  }, [requestQuote])
-
+  }, [requestQuote, addonIds, voucherCode])
   const handleAddonChange = (addonId: string, checked: boolean) => {
     const nextAddonIds = checked
-      ? [...addonIds, addonId]
+      ? [...new Set([...addonIds, addonId])]
       : addonIds.filter((id) => id !== addonId)
     setAddonIds(nextAddonIds)
     void requestQuote(nextAddonIds, voucherCode)
@@ -150,7 +156,7 @@ export default function CheckoutPage() {
   }
 
   const handleCheckout = async (): Promise<void> => {
-    if (!pricingId) return
+    if (!activePricingId) return
     setIsLoading(true)
     setError(null)
     try {
@@ -164,7 +170,7 @@ export default function CheckoutPage() {
         undefined
 
       const result = await submitCheckout({
-        pricingId,
+        pricingId: activePricingId,
         addonIds,
         voucherCode: voucherCode || undefined,
         quoteToken: quotePreview?.quoteToken,
@@ -236,265 +242,378 @@ export default function CheckoutPage() {
       )}
 
       {hasPricing && quotePreview && !quote && !isLoading && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Order Summary</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Product</span>
-              <span className="font-medium">{quotePreview.packageCode}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Plan</span>
-              <span className="font-medium">{quotePreview.planCode}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Billing Period</span>
-              <span className="font-medium">{quotePreview.billingPeriod}</span>
-            </div>
+        <div className="grid gap-6 lg:grid-cols-12">
+          {/* Left Column: Plan Details, Dynamic Provisioning Form, Addons, Vouchers */}
+          <div className="space-y-6 lg:col-span-7 xl:col-span-8">
+            {/* Plan Info Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Plan & Specification</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-md border bg-muted/20 p-3">
+                    <span className="text-xs text-muted-foreground">
+                      Product
+                    </span>
+                    <p className="text-sm font-semibold">
+                      {quotePreview.packageCode}
+                    </p>
+                  </div>
+                  <div className="rounded-md border bg-muted/20 p-3">
+                    <span className="text-xs text-muted-foreground">
+                      Plan Tier
+                    </span>
+                    <p className="text-sm font-semibold">
+                      {quotePreview.planCode}
+                    </p>
+                  </div>
+                  <div className="rounded-md border bg-muted/20 p-3">
+                    <span className="text-xs text-muted-foreground">
+                      Billing Period
+                    </span>
+                    <p className="text-sm font-semibold">
+                      {quotePreview.billingPeriod}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Term Switcher if plan has multiple pricing terms */}
+                {(quotePreview.availableTerms ?? []).length > 1 && (
+                  <div className="space-y-2 border-t pt-3">
+                    <Label className="text-xs font-medium">
+                      Switch Billing Cycle
+                    </Label>
+                    <div className="flex flex-wrap gap-2">
+                      {(quotePreview.availableTerms ?? []).map((term) => (
+                        <Button
+                          key={term.pricingId}
+                          type="button"
+                          size="sm"
+                          variant={
+                            activePricingId === term.pricingId
+                              ? "default"
+                              : "outline"
+                          }
+                          onClick={() => {
+                            setSelectedPricingId(term.pricingId)
+                            void requestQuote(
+                              addonIds,
+                              voucherCode,
+                              term.pricingId
+                            )
+                          }}
+                          disabled={quoteLoading}
+                          className="text-xs"
+                        >
+                          {term.billingPeriod} (
+                          {formatCurrency(term.periodPrice, term.currency)})
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Dynamic Custom Provisioning Form Fields */}
             {showDynamicForm && (
-              <div className="space-y-4 rounded-md border bg-card p-4">
-                <div className="space-y-1">
-                  <h3 className="text-sm font-medium">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">
                     Device & Service Provisioning Configuration
-                  </h3>
+                  </CardTitle>
                   <p className="text-xs text-muted-foreground">
                     Configure details required to activate and provision your
                     service upon payment.
                   </p>
-                </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-3.5 sm:grid-cols-2">
+                    {dynamicFields.map((field) => {
+                      const val =
+                        field.name === "phoneNumber"
+                          ? phoneNumber
+                          : field.name === "displayName"
+                            ? displayName
+                            : field.name === "profilePictureUrl"
+                              ? profilePictureUrl
+                              : (formData[field.name] ?? "")
 
-                <div className="grid gap-3.5 sm:grid-cols-2">
-                  {dynamicFields.map((field) => {
-                    const val =
-                      field.name === "phoneNumber"
-                        ? phoneNumber
-                        : field.name === "displayName"
-                          ? displayName
-                          : field.name === "profilePictureUrl"
-                            ? profilePictureUrl
-                            : (formData[field.name] ?? "")
+                      const onChangeVal = (nextVal: string) => {
+                        if (field.name === "phoneNumber")
+                          setPhoneNumber(nextVal)
+                        else if (field.name === "displayName")
+                          setDisplayName(nextVal)
+                        else if (field.name === "profilePictureUrl")
+                          setProfilePictureUrl(nextVal)
+                        else
+                          setFormData((prev) => ({
+                            ...prev,
+                            [field.name]: nextVal,
+                          }))
+                      }
 
-                    const onChangeVal = (nextVal: string) => {
-                      if (field.name === "phoneNumber") setPhoneNumber(nextVal)
-                      else if (field.name === "displayName")
-                        setDisplayName(nextVal)
-                      else if (field.name === "profilePictureUrl")
-                        setProfilePictureUrl(nextVal)
-                      else
-                        setFormData((prev) => ({
-                          ...prev,
-                          [field.name]: nextVal,
-                        }))
-                    }
-
-                    return (
-                      <div
-                        key={field.id}
-                        className={
-                          field.type === "radio" || dynamicFields.length === 1
-                            ? "space-y-1.5 sm:col-span-2"
-                            : "space-y-1.5"
-                        }
-                      >
-                        <Label
-                          htmlFor={`field-${field.id}`}
-                          className="text-xs font-medium"
+                      return (
+                        <div
+                          key={field.id}
+                          className={
+                            field.type === "radio" || dynamicFields.length === 1
+                              ? "space-y-1.5 sm:col-span-2"
+                              : "space-y-1.5"
+                          }
                         >
-                          {field.label}{" "}
-                          {field.required && (
-                            <span className="text-destructive">*</span>
-                          )}
-                        </Label>
+                          <Label
+                            htmlFor={`field-${field.id}`}
+                            className="text-xs font-medium"
+                          >
+                            {field.label}{" "}
+                            {field.required && (
+                              <span className="text-destructive">*</span>
+                            )}
+                          </Label>
 
-                        {field.type === "select" ? (
-                          <Select value={val} onValueChange={onChangeVal}>
-                            <SelectTrigger
-                              id={`field-${field.id}`}
-                              className="w-full text-xs"
-                            >
-                              <SelectValue
-                                placeholder={
-                                  field.placeholder || "Select an option"
-                                }
-                              />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {(field.options ?? []).map((opt) => (
-                                <SelectItem
-                                  key={opt}
-                                  value={opt}
-                                  className="text-xs"
-                                >
-                                  {opt}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : field.type === "radio" ? (
-                          <div className="flex flex-wrap gap-4 pt-1">
-                            {(field.options ?? []).map((opt) => (
-                              <label
-                                key={opt}
-                                className="flex cursor-pointer items-center gap-2 text-xs"
+                          {field.type === "select" ? (
+                            <Select value={val} onValueChange={onChangeVal}>
+                              <SelectTrigger
+                                id={`field-${field.id}`}
+                                className="w-full text-xs"
                               >
-                                <input
-                                  type="radio"
-                                  name={`field-${field.id}`}
-                                  value={opt}
-                                  checked={val === opt}
-                                  onChange={() => onChangeVal(opt)}
+                                <SelectValue
+                                  placeholder={
+                                    field.placeholder || "Select an option"
+                                  }
                                 />
-                                {opt}
-                              </label>
-                            ))}
-                          </div>
-                        ) : (
-                          <Input
-                            id={`field-${field.id}`}
-                            type={field.type}
-                            value={val}
-                            onChange={(e) => onChangeVal(e.target.value)}
-                            onInput={(e) =>
-                              onChangeVal((e.target as HTMLInputElement).value)
-                            }
-                            placeholder={field.placeholder || undefined}
-                            required={field.required}
-                            className="text-xs"
-                          />
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-            {addonOptions.length > 0 && (
-              <fieldset className="space-y-2 rounded-md border p-3">
-                <legend className="px-1 text-sm font-medium">Add-ons</legend>
-                {addonOptions.map((addon) => (
-                  <div key={addon.id} className="flex items-start gap-2">
-                    <Checkbox
-                      id={`addon-${addon.id}`}
-                      checked={
-                        addon.selected === true || addonIds.includes(addon.id)
-                      }
-                      disabled={addon.required === true || quoteLoading}
-                      onCheckedChange={(checked) =>
-                        handleAddonChange(addon.id, checked === true)
-                      }
-                    />
-                    <Label htmlFor={`addon-${addon.id}`}>
-                      <span className="font-medium">{addon.name}</span>
-                      <span className="ml-2 text-muted-foreground">
-                        {formatCurrency(addon.price, addon.currency)}
-                        {addon.required ? " · Required" : ""}
-                      </span>
-                    </Label>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(field.options ?? []).map((opt) => (
+                                  <SelectItem
+                                    key={opt}
+                                    value={opt}
+                                    className="text-xs"
+                                  >
+                                    {opt}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : field.type === "radio" ? (
+                            <div className="flex flex-wrap gap-4 pt-1">
+                              {(field.options ?? []).map((opt) => (
+                                <label
+                                  key={opt}
+                                  className="flex cursor-pointer items-center gap-2 text-xs"
+                                >
+                                  <input
+                                    type="radio"
+                                    name={`field-${field.id}`}
+                                    value={opt}
+                                    checked={val === opt}
+                                    onChange={() => onChangeVal(opt)}
+                                  />
+                                  {opt}
+                                </label>
+                              ))}
+                            </div>
+                          ) : (
+                            <Input
+                              id={`field-${field.id}`}
+                              type={field.type}
+                              value={val}
+                              onChange={(e) => onChangeVal(e.target.value)}
+                              onInput={(e) =>
+                                onChangeVal(
+                                  (e.target as HTMLInputElement).value
+                                )
+                              }
+                              placeholder={field.placeholder || undefined}
+                              required={field.required}
+                              className="text-xs"
+                            />
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
-                ))}
-              </fieldset>
+                </CardContent>
+              </Card>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="voucher-code">Voucher code</Label>
-              <div className="flex gap-2">
-                <input
-                  id="voucher-code"
-                  value={voucherInput}
-                  onChange={(event) => setVoucherInput(event.target.value)}
-                  className="min-w-0 flex-1 rounded-md border bg-background px-3 py-2 text-sm"
-                  placeholder="Optional voucher"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleApplyVoucher}
-                  disabled={quoteLoading}
-                >
-                  Apply voucher
-                </Button>
-              </div>
-              {quotePreview.voucher && (
-                <p className="text-xs text-muted-foreground">
-                  {quotePreview.voucher.code} expires{" "}
-                  {formatDate(quotePreview.voucher.quoteExpiresAt)}
-                </p>
-              )}
-            </div>
-
-            {quotePreview.isProrated && (
-              <div className="rounded-md border border-sky-200 bg-sky-50 p-2.5 text-xs text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-200">
-                <p className="font-semibold">
-                  Prorated Billing (Calendar Month)
-                </p>
-                <p className="mt-0.5">
-                  Charged for {quotePreview.proratedDays} remaining days in this
-                  month (out of {quotePreview.totalDaysInPeriod} days). Your
-                  first regular full renewal begins on{" "}
-                  {formatDate(quotePreview.nextRenewal)}.
-                </p>
-              </div>
+            {/* Add-ons Section */}
+            {addonOptions.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Available Add-ons</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {addonOptions.map((addon) => (
+                    <div
+                      key={addon.id}
+                      className="flex items-start gap-2.5 rounded-md border bg-card p-3"
+                    >
+                      <Checkbox
+                        id={`addon-${addon.id}`}
+                        checked={
+                          addon.selected === true || addonIds.includes(addon.id)
+                        }
+                        disabled={addon.required === true || quoteLoading}
+                        onCheckedChange={(checked) =>
+                          handleAddonChange(addon.id, checked === true)
+                        }
+                      />
+                      <Label
+                        htmlFor={`addon-${addon.id}`}
+                        className="cursor-pointer"
+                      >
+                        <span className="text-sm font-medium">
+                          {addon.name}
+                        </span>
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {formatCurrency(addon.price, addon.currency)}
+                          {addon.required ? " · Required" : ""}
+                        </span>
+                      </Label>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
             )}
 
-            <div className="space-y-2 border-t pt-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">
-                  {quotePreview.isProrated ? "Prorated Subtotal" : "Subtotal"}
-                </span>
-                <span>
-                  {formatCurrency(quotePreview.subtotal, quotePreview.currency)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Discount</span>
-                <span>
-                  {formatCurrency(quotePreview.discount, quotePreview.currency)}
-                </span>
-              </div>
-              <div className="flex justify-between text-base font-semibold">
-                <span>First payment</span>
-                <span>
-                  {formatCurrency(
-                    quotePreview.firstPayment,
-                    quotePreview.currency
+            {/* Voucher Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  Promotions & Vouchers
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    id="voucher-code"
+                    value={voucherInput}
+                    onChange={(event) => setVoucherInput(event.target.value)}
+                    className="min-w-0 flex-1 rounded-md border bg-background px-3 py-2 text-sm"
+                    placeholder="Optional voucher"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleApplyVoucher}
+                    disabled={quoteLoading}
+                  >
+                    Apply voucher
+                  </Button>
+                </div>
+                {quotePreview.voucher && (
+                  <p className="text-xs text-muted-foreground">
+                    {quotePreview.voucher.code} expires{" "}
+                    {formatDate(quotePreview.voucher.quoteExpiresAt)}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column: Sticky Summary & Total Billing Breakdown */}
+          <div className="space-y-6 lg:col-span-5 xl:col-span-4">
+            <div className="sticky top-6 space-y-4">
+              <Card className="border-primary/20 shadow-md">
+                <CardHeader>
+                  <CardTitle className="text-lg">Order Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {quotePreview.isProrated && (
+                    <div className="rounded-md border border-sky-200 bg-sky-50 p-2.5 text-xs text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-200">
+                      <p className="font-semibold">
+                        Prorated Billing (Calendar Month)
+                      </p>
+                      <p className="mt-0.5">
+                        Charged for {quotePreview.proratedDays} remaining days
+                        in this month (out of {quotePreview.totalDaysInPeriod}{" "}
+                        days). Your first regular full renewal begins on{" "}
+                        {formatDate(quotePreview.nextRenewal)}.
+                      </p>
+                    </div>
                   )}
-                </span>
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Next renewal</span>
-                <span>{formatDate(quotePreview.nextRenewal)}</span>
-              </div>
-            </div>
-            <div className="mt-4 space-y-3">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="confirm-terms"
-                  checked={confirmed}
-                  onCheckedChange={(checked) => setConfirmed(checked === true)}
-                />
-                <Label htmlFor="confirm-terms" className="text-xs">
-                  I confirm this purchase and agree to the recurring billing
-                  terms.
-                </Label>
-              </div>
 
-              <Button
-                type="button"
-                onClick={() => void handleCheckout()}
-                disabled={
-                  !confirmed || quoteLoading || hasMissingRequiredFields
-                }
-                className="w-full"
-              >
-                Confirm and pay
-              </Button>
+                  <div className="space-y-2.5 border-t pt-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        {quotePreview.isProrated
+                          ? "Prorated Subtotal"
+                          : "Subtotal"}
+                      </span>
+                      <span className="font-medium">
+                        {formatCurrency(
+                          quotePreview.subtotal,
+                          quotePreview.currency
+                        )}
+                      </span>
+                    </div>
+                    {Number(quotePreview.discount) > 0 && (
+                      <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+                        <span>Discount</span>
+                        <span>
+                          -{" "}
+                          {formatCurrency(
+                            quotePreview.discount,
+                            quotePreview.currency
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-baseline justify-between border-t pt-2.5 text-base font-bold">
+                      <span>First payment</span>
+                      <span className="text-xl text-primary">
+                        {formatCurrency(
+                          quotePreview.firstPayment,
+                          quotePreview.currency
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Next renewal</span>
+                      <span>{formatDate(quotePreview.nextRenewal)}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 border-t pt-4">
+                    <div className="flex items-start space-x-2">
+                      <Checkbox
+                        id="confirm-terms"
+                        checked={confirmed}
+                        onCheckedChange={(checked) =>
+                          setConfirmed(checked === true)
+                        }
+                        className="mt-0.5"
+                      />
+                      <Label
+                        htmlFor="confirm-terms"
+                        className="text-xs leading-snug"
+                      >
+                        I confirm this purchase and agree to the recurring
+                        billing terms.
+                      </Label>
+                    </div>
+
+                    <Button
+                      type="button"
+                      onClick={() => void handleCheckout()}
+                      disabled={
+                        !confirmed || quoteLoading || hasMissingRequiredFields
+                      }
+                      className="w-full text-sm font-semibold"
+                      size="lg"
+                    >
+                      {quoteLoading ? "Updating quote..." : "Confirm and pay"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
-
       {(isLoading || quoteLoading) && (
         <Card>
           <CardContent className="py-6">
