@@ -603,12 +603,28 @@ export type AppMessages = {
       catalogs: {
         heading: string
         description: string
+        addCatalog: string
         emptyTitle: string
         emptyDescription: string
         searchPlaceholder: string
         columnName: string
         columnProductCount: string
         columnStatus: string
+        createDialogTitle: string
+        createDialogDescription: string
+        metaCatalogIdLabel: string
+        deviceIdLabel: string
+        deviceIdPlaceholder: string
+        viewProducts: string
+        deleteCatalog: string
+        cancelButton: string
+        createButton: string
+        creatingButton: string
+        createSuccess: string
+        deleteSuccess: string
+        loadError: string
+        createError: string
+        deleteError: string
       }
       apiKeys: {
         heading: string
