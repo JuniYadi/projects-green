@@ -11,8 +11,10 @@ export type BillingAccount = {
   isAboveWarn: boolean
   isPositive: boolean
   accountAge: string
+  businessName?: string | null
+  name?: string | null
+  email?: string | null
 }
-
 export type SubscriptionItem = {
   id: string
   packageCode: string
@@ -99,8 +101,15 @@ export type InvoiceListItem = {
   currency: string
   orders?: InvoiceOrderItem[]
   lines?: InvoiceLineItem[]
+  billingEntity?: {
+    name?: string | null
+    email?: string | null
+  } | null
+  organization?: {
+    name?: string | null
+    email?: string | null
+  } | null
 }
-
 export type BillingInvoices = {
   ok: true
   invoices: InvoiceListItem[]

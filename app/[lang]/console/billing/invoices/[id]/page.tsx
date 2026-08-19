@@ -444,7 +444,7 @@ export default function InvoiceDetailPage() {
                       P
                     </div>
                     <span className="text-lg font-bold tracking-tight">
-                      PFNApp
+                      {account?.businessName ?? account?.name ?? "PFNApp"}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -485,11 +485,22 @@ export default function InvoiceDetailPage() {
                   </span>
                   <div className="flex items-center gap-1.5 font-medium text-foreground">
                     <BuildingsIcon className="h-4 w-4 text-muted-foreground" />
-                    <span>Juniyadisocial Org</span>
+                    <span>
+                      {invoice.billingEntity?.name ??
+                        invoice.organization?.name ??
+                        account?.businessName ??
+                        account?.name ??
+                        "—"}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <UserIcon className="h-3.5 w-3.5" />
-                    <span>juniyadisocial@gmail.com</span>
+                    <span>
+                      {invoice.billingEntity?.email ??
+                        invoice.organization?.email ??
+                        account?.email ??
+                        "—"}
+                    </span>
                   </div>
                 </div>
 

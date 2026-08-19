@@ -10,7 +10,7 @@ mock.module("next/navigation", () => ({
 }))
 
 import userEvent from "@testing-library/user-event"
-import { fireEvent, render, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
 import InvoiceDetailPage from "./page"
 
 const originalFetch = globalThis.fetch
@@ -107,6 +107,7 @@ describe("Billing InvoiceDetailPage", () => {
     }) as unknown as typeof fetch
   })
   afterEach(() => {
+    cleanup()
     globalThis.fetch = originalFetch
     document.body.innerHTML = ""
     document.body.style.pointerEvents = "auto"
