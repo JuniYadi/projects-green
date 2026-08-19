@@ -490,6 +490,9 @@ export default function CheckoutPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
+                <Label htmlFor="voucher-code" className="text-xs">
+                  Voucher code
+                </Label>
                 <div className="flex gap-2">
                   <input
                     id="voucher-code"
