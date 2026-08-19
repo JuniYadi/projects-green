@@ -25,13 +25,7 @@ import type {
 } from "@/lib/billing-client"
 import { cn } from "@/lib/utils"
 
-const BILLING_PERIODS = [
-  "MONTHLY",
-  "QUARTERLY",
-  "SEMI_ANNUAL",
-  "ANNUAL",
-] as const
-type BillingPeriod = (typeof BILLING_PERIODS)[number]
+type BillingPeriod = "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL"
 
 const TERM_LABELS: Record<BillingPeriod, string> = {
   MONTHLY: "Monthly",

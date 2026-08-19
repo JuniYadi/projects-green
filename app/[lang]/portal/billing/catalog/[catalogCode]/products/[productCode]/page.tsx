@@ -41,7 +41,6 @@ import {
   PlusIcon,
   TrashIcon,
   WarningIcon,
-  InfoIcon,
 } from "@/components/ui/phosphor-icons"
 import {
   getAdminCatalogProductDetail,
