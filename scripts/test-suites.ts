@@ -91,6 +91,7 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     name: "whatsapp-devices",
     sourcePrefixes: [
       "app/[lang]/console/whatsapp/devices/",
+      "app/[lang]/portal/whatsapp/devices/",
       "lib/whatsapp/meta-cloud/",
       "modules/whatsapp/devices/",
     ],
@@ -98,6 +99,18 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
       "app/[lang]/console/whatsapp/devices/",
       "lib/whatsapp/meta-cloud/",
       "modules/whatsapp/devices/",
+    ],
+    smokeProjects: ["smoke-portal"],
+  },
+  {
+    name: "whatsapp-pricing",
+    sourcePrefixes: [
+      "app/[lang]/portal/whatsapp/pricing/",
+      "scripts/seed-whatsapp-pricing.ts",
+    ],
+    testPrefixes: [
+      "modules/whatsapp/messages/api/admin-pricing.route.test.ts",
+      "modules/whatsapp/messages/message-pricing.service.test.ts",
     ],
     smokeProjects: ["smoke-portal"],
   },
