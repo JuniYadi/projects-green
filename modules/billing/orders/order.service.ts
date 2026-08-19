@@ -301,6 +301,8 @@ export class BillingOrderService {
     const chargeInput = {
       organizationId: order.organizationId,
       amount: order.totalAmount,
+      subtotalAmount: order.subtotalAmount,
+      discountAmount: order.discountAmount,
       currency: order.currency,
       source: line.packageCode as BillingChargeSource,
       reason: `Subscription order ${order.id}`,
@@ -507,6 +509,63 @@ export class BillingOrderService {
           }
         }
       }
+      // Record voucher claim and update voucher status if voucher applied
+      if (order.voucherId) {
+        const orderMetadata = metadataObject(order.metadataJson)
+        const workosUserId =
+          typeof orderMetadata.workosUserId === "string"
+            ? orderMetadata.workosUserId
+            : typeof orderMetadata.userId === "string"
+              ? orderMetadata.userId
+              : undefined
+
+        if (workosUserId) {
+          const existingClaim = await tx.voucherClaim.findFirst({
+            where: {
+              voucherId: order.voucherId,
+              workosUserId,
+            },
+          })
+
+          if (!existingClaim) {
+            await tx.voucherClaim.create({
+              data: {
+                voucherId: order.voucherId,
+                workosUserId,
+                organizationId: order.organizationId,
+                orderId: order.id,
+                discountAmount: order.discountAmount,
+                discountCurrency: order.voucherCurrency ?? order.currency,
+                exchangeRate: order.voucherExchangeRate,
+                rateAt: order.voucherRateAt,
+                quoteExpiresAt: order.voucherQuoteExpiresAt,
+              },
+            })
+
+            await tx.voucher.updateMany({
+              where: {
+                id: order.voucherId,
+              },
+              data: {
+                claimedCount: { increment: 1 },
+              },
+            })
+
+            const voucher = await tx.voucher.findUnique({
+              where: { id: order.voucherId },
+              select: { id: true, claimedCount: true, maxClaims: true },
+            })
+
+            if (voucher && voucher.claimedCount >= voucher.maxClaims) {
+              await tx.voucher.update({
+                where: { id: voucher.id },
+                data: { status: "DEPLETED" },
+              })
+            }
+          }
+        }
+      }
+
       await txClient.billingOrder.update({
         where: { id: order.id },
         data: {

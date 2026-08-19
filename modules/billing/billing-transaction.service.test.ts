@@ -426,6 +426,63 @@ describe("BillingTransactionService", () => {
       expect(result.alreadyProcessed).toBe(false)
     })
 
+    it("records subtotalAmount and discountAmount when provided", async () => {
+      const account = billingAccount({ balance: decimal("200.00") })
+      mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
+      mockPrisma.billingAdjustment.findFirst.mockResolvedValue(null)
+      mockPrisma.billingInvoice.create.mockResolvedValue({
+        id: "inv_upfront_discount",
+        invoiceNumber: "INV-20260819-DISC",
+        status: "PAID",
+      })
+      mockPrisma.billingInvoiceLine.create.mockResolvedValue({
+        id: "line_discount",
+        invoiceId: "inv_upfront_discount",
+        amount: decimal("80.00"),
+        currency: "IDR",
+      })
+      mockPrisma.billingAccount.update.mockResolvedValue({
+        ...account,
+        balance: decimal("120.00"),
+      })
+      mockPrisma.billingInvoice.count.mockResolvedValue(0)
+      mockPrisma.billingAdjustment.create.mockResolvedValue({
+        id: "adj_upfront_discount",
+        billingAccountId: "ba_1",
+        adjustmentType: "DEBIT",
+        amount: decimal("80.00"),
+        currency: "IDR",
+      })
+
+      await service.debitUpfrontSubscription({
+        ...baseInput({
+          amount: decimal("80.00"),
+          source: "VPN",
+          reason: "Subscription order order_discount",
+          metadata: { orderId: "order_discount" },
+        }),
+        subtotalAmount: decimal("100.00"),
+        discountAmount: decimal("20.00"),
+        line: {
+          description: "VPN Pro subscription",
+          quantity: decimal("1"),
+          unitPrice: decimal("100.00"),
+          lineType: "SUBSCRIPTION",
+          category: "vpn",
+        },
+      })
+
+      expect(mockPrisma.billingInvoice.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            subtotalAmount: decimal("100.00"),
+            discountAmount: decimal("20.00"),
+            totalAmount: decimal("80.00"),
+          }),
+        })
+      )
+    })
+
     it("returns alreadyProcessed if idempotency key is already used", async () => {
       const account = billingAccount({ balance: decimal("200.00") })
       mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
