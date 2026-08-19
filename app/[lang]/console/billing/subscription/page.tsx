@@ -122,7 +122,7 @@ export default function SubscriptionPage() {
                   <div key={sub.id} className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">
-                        {messages.console.billing.subscriptions.columnTerm}
+                        {messages.console.billing.subscriptions.columnRegion}
                       </span>
                       <span className="font-medium">{sub.regionCode}</span>
                     </div>
@@ -134,7 +134,10 @@ export default function SubscriptionPage() {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">
-                        {messages.console.billing.subscriptions.columnTerm}
+                        {
+                          messages.console.billing.subscriptions
+                            .columnMonthlyRate
+                        }
                       </span>
                       <span className="font-medium">
                         {new Intl.NumberFormat("id-ID", {
@@ -190,7 +193,7 @@ export default function SubscriptionPage() {
                     {sub.quotaIn != null && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">
-                          {messages.console.billing.subscriptions.columnTerm}
+                          {messages.console.billing.subscriptions.columnQuotaIn}
                         </span>
                         <span className="font-medium">
                           {sub.quotaIn.toLocaleString("id-ID")}
@@ -200,7 +203,10 @@ export default function SubscriptionPage() {
                     {sub.quotaOut != null && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">
-                          {messages.console.billing.subscriptions.columnTerm}
+                          {
+                            messages.console.billing.subscriptions
+                              .columnQuotaOut
+                          }
                         </span>
                         <span className="font-medium">
                           {sub.quotaOut.toLocaleString("id-ID")}
