@@ -253,8 +253,15 @@ export default function ProductDetailPage() {
                               }
                             </p>
                             <div className="flex flex-wrap gap-1.5">
-                              {Object.entries(plan.resources).map(
-                                ([name, value]) => (
+                              {Object.entries(plan.resources)
+                                .filter(
+                                  ([name, value]) =>
+                                    name !== "provisioningFields" &&
+                                    typeof value !== "object" &&
+                                    value !== null &&
+                                    value !== undefined
+                                )
+                                .map(([name, value]) => (
                                   <Badge
                                     key={name}
                                     variant="secondary"
@@ -262,8 +269,7 @@ export default function ProductDetailPage() {
                                   >
                                     {name}: {String(value)}
                                   </Badge>
-                                )
-                              )}
+                                ))}
                             </div>
                           </div>
                         )}
