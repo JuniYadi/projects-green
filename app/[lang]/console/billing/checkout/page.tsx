@@ -321,7 +321,12 @@ export default function CheckoutPage() {
                   </div>
                 )}
                 {/* Term Switcher if plan has multiple pricing terms */}
-                {(quotePreview.availableTerms ?? []).length > 1 && (
+                {/* Term Switcher if plan has multiple distinct pricing terms */}
+                {new Set(
+                  (quotePreview.availableTerms ?? []).map(
+                    (t) => t.billingPeriod
+                  )
+                ).size > 1 && (
                   <div className="space-y-2 border-t pt-3">
                     <Label className="text-xs font-medium">
                       Switch Billing Cycle
