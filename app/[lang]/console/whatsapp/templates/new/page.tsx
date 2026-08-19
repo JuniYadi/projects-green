@@ -6,14 +6,8 @@ import { ArrowLeft } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { useCreateTemplate } from "@/modules/whatsapp/templates/api/templates.hooks"
+import type { TemplateFormInput } from "@/modules/whatsapp/templates/api/templates.hooks"
 import { TemplateForm } from "@/modules/whatsapp/templates/ui/template-form"
 
 export default function ConsoleNewTemplatePage() {
@@ -24,16 +18,20 @@ export default function ConsoleNewTemplatePage() {
     name: string
     slug: string
     description?: string
+    category?: string
     languages: Array<{
       lang: string
       headerType: string
       headerText: string
+      headerUrl: string
       body: string
       footer: string
+      parameters?: unknown
+      buttons?: unknown
     }>
   }) => {
     try {
-      const template = await create(data)
+      const template = await create(data as unknown as TemplateFormInput)
       toast.success("Template created successfully.")
       router.push(`./${template.id}`)
     } catch {
@@ -51,24 +49,14 @@ export default function ConsoleNewTemplatePage() {
           </Link>
         </Button>
         <h1 className="mt-2 text-2xl font-bold tracking-tight">
-          Create Template
+          Create WhatsApp Template
         </h1>
         <p className="text-muted-foreground">
-          Create a new WhatsApp message template
+          Configure template details, variables, and verify live preview.
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Template Details</CardTitle>
-          <CardDescription>
-            Fill in the template details and language variants
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <TemplateForm submitting={creating} onSubmit={handleSubmit} />
-        </CardContent>
-      </Card>
+      <TemplateForm submitting={creating} onSubmit={handleSubmit} />
     </div>
   )
 }
