@@ -47,6 +47,7 @@ import { credentialsRoutes } from "@/modules/credentials/api/credentials.route"
 import { webhookDeadLetterRoutes } from "@/modules/whatsapp/webhooks/api/webhook-dead-letter.route"
 import { vaultSecretsRoutes } from "@/modules/secrets/api"
 import { adminWhatsappPricingRoutes } from "@/modules/whatsapp/messages/api/admin-pricing.route"
+import { wireguardRoutes } from "@/modules/wireguard/api/wireguard.route"
 const parseErrorPath = (
   value: string | Array<string | number> | undefined
 ): string | null => {
@@ -301,6 +302,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(webhookDeadLetterRoutes)
   .use(adminWhatsappPricingRoutes)
   .use(whatsappRoutes)
+  .use(wireguardRoutes)
   .get("/health", ({ request }) => {
     const url = new URL(request.url)
     const base = url.origin
