@@ -179,23 +179,32 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
 
     return { ok: true, device: toDeviceDetail(device) }
   })
-  .post("/", ({ set }: any) =>
-    toMethodNotAllowed(
-      set,
-      "WhatsApp devices can only be created by admins from the portal."
-    )
+  .post(
+    "/",
+    ({ set }: any) =>
+      toMethodNotAllowed(
+        set,
+        "WhatsApp devices can only be created by admins from the portal."
+      ),
+    { detail: { hide: true } }
   )
-  .patch("/:id", ({ params: { id }, set }: any) =>
-    toMethodNotAllowed(
-      set,
-      "WhatsApp device system fields cannot be updated from the console API. Update the WhatsApp profile instead."
-    )
+  .patch(
+    "/:id",
+    ({ params: { id }, set }: any) =>
+      toMethodNotAllowed(
+        set,
+        "WhatsApp device system fields cannot be updated from the console API. Update the WhatsApp profile instead."
+      ),
+    { detail: { hide: true } }
   )
-  .delete("/:id", ({ set }: any) =>
-    toMethodNotAllowed(
-      set,
-      "WhatsApp devices cannot be deleted from the console API."
-    )
+  .delete(
+    "/:id",
+    ({ set }: any) =>
+      toMethodNotAllowed(
+        set,
+        "WhatsApp devices cannot be deleted from the console API."
+      ),
+    { detail: { hide: true } }
   )
   .post("/:id/verify", async ({ request, params: { id }, set }: any) => {
     const whatsappAuth = await resolveDeviceAuth(request)
