@@ -8,10 +8,16 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ArrowCounterClockwise, WalletIcon } from "@phosphor-icons/react"
-
 import {
   getCheckoutQuote,
   submitCheckout,
@@ -45,13 +51,26 @@ function isRetryable(errorCode: string): boolean {
   )
 }
 
+type ProvisioningFieldDef = {
+  id: string
+  name: string
+  label: string
+  type: "text" | "number" | "email" | "url" | "select" | "radio"
+  placeholder?: string
+  required: boolean
+  options?: string[]
+}
+
 export default function CheckoutPage() {
   const searchParams = useSearchParams()
-  const pricingId = searchParams.get("pricingId") ?? ""
-  const productName = searchParams.get("product") ?? ""
-  const planName = searchParams.get("plan") ?? ""
-  const billingPeriod = searchParams.get("billingPeriod") ?? ""
-
+  const pricingId = searchParams.get("pricingId") || ""
+  const productName = searchParams.get("product") || ""
+  const planName = searchParams.get("plan") || ""
+  const billingPeriod = searchParams.get("billingPeriod") || ""
+  const [idempotencyKey] = useState(
+    () =>
+      `checkout:${pricingId}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`
+  )
   const [quote, setQuote] = useState<CheckoutResult | null>(null)
   const [quotePreview, setQuotePreview] = useState<CheckoutPreview | null>(null)
   const [quoteLoading, setQuoteLoading] = useState(false)
@@ -59,26 +78,59 @@ export default function CheckoutPage() {
   const [addonIds, setAddonIds] = useState<string[]>([])
   const [voucherCode, setVoucherCode] = useState("")
   const [voucherInput, setVoucherInput] = useState("")
+  const [confirmed, setConfirmed] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [confirmed, setConfirmed] = useState(false)
+
+  // Dynamic custom form field values map
+  const [formData, setFormData] = useState<Record<string, string>>({})
   const [phoneNumber, setPhoneNumber] = useState("")
   const [displayName, setDisplayName] = useState("")
   const [profilePictureUrl, setProfilePictureUrl] = useState("")
-  const [idempotencyKey] = useState(
-    () =>
-      `checkout:${pricingId}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`
-  )
 
   const resources = (quotePreview?.resources ?? {}) as Record<string, unknown>
-  const showDeviceProvisioning =
-    resources.deviceSetup !== false &&
-    (quotePreview?.packageCode === "WHATSAPP" ||
-      (!quotePreview && productName?.toUpperCase() === "WHATSAPP") ||
-      Boolean(resources.requireDeviceSetup))
-  const phoneRequired = resources.phoneRequired !== false
-  const showDisplayName = resources.displayNameEnabled !== false
-  const showProfileUrl = resources.profileUrlEnabled !== false
+  const dynamicFields: ProvisioningFieldDef[] = Array.isArray(
+    resources.provisioningFields
+  )
+    ? (resources.provisioningFields as ProvisioningFieldDef[])
+    : quotePreview?.packageCode === "WHATSAPP" ||
+        (!quotePreview && productName?.toUpperCase() === "WHATSAPP")
+      ? [
+          {
+            id: "phone",
+            name: "phoneNumber",
+            label: "Phone Number",
+            type: "text",
+            placeholder: "e.g. +6281234567890",
+            required: true,
+          },
+          {
+            id: "display_name",
+            name: "displayName",
+            label: "Business Display Name",
+            type: "text",
+            placeholder: "e.g. My Business Support",
+            required: false,
+          },
+          {
+            id: "avatar_url",
+            name: "profilePictureUrl",
+            label: "Profile Picture URL",
+            type: "url",
+            placeholder: "https://example.com/avatar.png",
+            required: false,
+          },
+        ]
+      : []
+
+  const showDynamicForm = dynamicFields.length > 0
+  const hasMissingRequiredFields = dynamicFields.some(
+    (f) =>
+      f.required &&
+      !(f.name === "phoneNumber"
+        ? phoneNumber.trim()
+        : formData[f.name]?.trim())
+  )
   const hasPricing = Boolean(pricingId)
 
   const requestQuote = useCallback(
@@ -133,20 +185,28 @@ export default function CheckoutPage() {
     setIsLoading(true)
     setError(null)
     try {
+      const effectivePhone =
+        phoneNumber.trim() || formData.phoneNumber?.trim() || ""
+      const effectiveDisplayName =
+        displayName.trim() || formData.displayName?.trim() || undefined
+      const effectiveProfileUrl =
+        profilePictureUrl.trim() ||
+        formData.profilePictureUrl?.trim() ||
+        undefined
+
       const result = await submitCheckout({
         pricingId,
         addonIds,
         voucherCode: voucherCode || undefined,
         quoteToken: quotePreview?.quoteToken,
         idempotencyKey,
-        device:
-          showDeviceProvisioning && phoneNumber.trim()
-            ? {
-                phoneNumber: phoneNumber.trim(),
-                displayName: displayName.trim() || undefined,
-                profilePictureUrl: profilePictureUrl.trim() || undefined,
-              }
-            : undefined,
+        device: effectivePhone
+          ? {
+              phoneNumber: effectivePhone,
+              displayName: effectiveDisplayName,
+              profilePictureUrl: effectiveProfileUrl,
+            }
+          : undefined,
       })
       setQuote(result)
       if (!result.ok) {
@@ -224,58 +284,118 @@ export default function CheckoutPage() {
               <span className="text-muted-foreground">Billing Period</span>
               <span>{billingPeriod || quotePreview.billingPeriod}</span>
             </div>
-            {showDeviceProvisioning && (
-              <div className="space-y-3 rounded-md border p-3">
+            {showDynamicForm && (
+              <div className="space-y-4 rounded-md border bg-card p-4">
                 <div className="space-y-1">
-                  <h3 className="text-sm font-medium">Device Configuration</h3>
+                  <h3 className="text-sm font-medium">
+                    Device & Service Provisioning Configuration
+                  </h3>
                   <p className="text-xs text-muted-foreground">
-                    Provide details for the device to activate upon payment.
+                    Configure details required to activate and provision your
+                    service upon payment.
                   </p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wa-phone-number">
-                    Phone Number{" "}
-                    {phoneRequired && (
-                      <span className="text-destructive">*</span>
-                    )}
-                  </Label>
-                  <Input
-                    id="wa-phone-number"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    onInput={(e) =>
-                      setPhoneNumber((e.target as HTMLInputElement).value)
+
+                <div className="grid gap-3.5 sm:grid-cols-2">
+                  {dynamicFields.map((field) => {
+                    const val =
+                      field.name === "phoneNumber"
+                        ? phoneNumber
+                        : field.name === "displayName"
+                          ? displayName
+                          : field.name === "profilePictureUrl"
+                            ? profilePictureUrl
+                            : (formData[field.name] ?? "")
+
+                    const onChangeVal = (nextVal: string) => {
+                      if (field.name === "phoneNumber") setPhoneNumber(nextVal)
+                      else if (field.name === "displayName")
+                        setDisplayName(nextVal)
+                      else if (field.name === "profilePictureUrl")
+                        setProfilePictureUrl(nextVal)
+                      else
+                        setFormData((prev) => ({
+                          ...prev,
+                          [field.name]: nextVal,
+                        }))
                     }
-                    placeholder="e.g. +6281234567890"
-                    required={phoneRequired}
-                  />
+
+                    return (
+                      <div
+                        key={field.id}
+                        className={
+                          field.type === "radio" || dynamicFields.length === 1
+                            ? "space-y-1.5 sm:col-span-2"
+                            : "space-y-1.5"
+                        }
+                      >
+                        <Label
+                          htmlFor={`field-${field.id}`}
+                          className="text-xs font-medium"
+                        >
+                          {field.label}{" "}
+                          {field.required && (
+                            <span className="text-destructive">*</span>
+                          )}
+                        </Label>
+
+                        {field.type === "select" ? (
+                          <Select value={val} onValueChange={onChangeVal}>
+                            <SelectTrigger
+                              id={`field-${field.id}`}
+                              className="w-full text-xs"
+                            >
+                              <SelectValue
+                                placeholder={
+                                  field.placeholder || "Select an option"
+                                }
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(field.options ?? []).map((opt) => (
+                                <SelectItem
+                                  key={opt}
+                                  value={opt}
+                                  className="text-xs"
+                                >
+                                  {opt}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : field.type === "radio" ? (
+                          <div className="flex flex-wrap gap-4 pt-1">
+                            {(field.options ?? []).map((opt) => (
+                              <label
+                                key={opt}
+                                className="flex cursor-pointer items-center gap-2 text-xs"
+                              >
+                                <input
+                                  type="radio"
+                                  name={`field-${field.id}`}
+                                  value={opt}
+                                  checked={val === opt}
+                                  onChange={() => onChangeVal(opt)}
+                                />
+                                {opt}
+                              </label>
+                            ))}
+                          </div>
+                        ) : (
+                          <Input
+                            id={`field-${field.id}`}
+                            type={field.type}
+                            value={val}
+                            onChange={(e) => onChangeVal(e.target.value)}
+                            placeholder={field.placeholder || undefined}
+                            required={field.required}
+                            className="text-xs"
+                          />
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
-                {showDisplayName && (
-                  <div className="space-y-2">
-                    <Label htmlFor="wa-display-name">
-                      Business Display Name
-                    </Label>
-                    <Input
-                      id="wa-display-name"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder="e.g. My Business Support"
-                    />
-                  </div>
-                )}
-                {showProfileUrl && (
-                  <div className="space-y-2">
-                    <Label htmlFor="wa-profile-url">
-                      Profile Picture URL (Optional)
-                    </Label>
-                    <Input
-                      id="wa-profile-url"
-                      value={profilePictureUrl}
-                      onChange={(e) => setProfilePictureUrl(e.target.value)}
-                      placeholder="https://example.com/avatar.png"
-                    />
-                  </div>
-                )}
               </div>
             )}
             {addonOptions.length > 0 && (
@@ -378,25 +498,23 @@ export default function CheckoutPage() {
             <div className="mt-4 space-y-3">
               <div className="flex items-center space-x-2">
                 <Checkbox
-                  id="confirmation"
+                  id="confirm-terms"
                   checked={confirmed}
                   onCheckedChange={(checked) => setConfirmed(checked === true)}
                 />
-                <Label htmlFor="confirmation">
+                <Label htmlFor="confirm-terms" className="text-xs">
                   I confirm this purchase and agree to the recurring billing
                   terms.
                 </Label>
               </div>
 
               <Button
+                type="button"
                 onClick={() => void handleCheckout()}
                 disabled={
-                  !confirmed ||
-                  quoteLoading ||
-                  (showDeviceProvisioning &&
-                    phoneRequired &&
-                    phoneNumber.trim().length === 0)
+                  !confirmed || quoteLoading || hasMissingRequiredFields
                 }
+                className="w-full"
               >
                 Confirm and pay
               </Button>
