@@ -25,6 +25,9 @@ import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import { QuotaProgressBar } from "@/components/whatsapp/quota-progress-bar"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type PageState = "loading" | "error" | "loaded"
 
@@ -147,6 +150,9 @@ function getLast6Months(): { year: number; month: number }[] {
 }
 
 export default function WhatsAppUsagePage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const t = getMessages(locale).console.whatsapp
   const [state, setState] = React.useState<PageState>("loading")
   const [error, setError] = React.useState("")
   const [overview, setOverview] = React.useState<OverviewData | null>(null)
@@ -260,10 +266,9 @@ export default function WhatsAppUsagePage() {
       <header className="space-y-1">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold">Usage Analytics</h1>
+            <h1 className="text-2xl font-semibold">{t.usage.heading}</h1>
             <p className="text-sm text-muted-foreground">
-              Track message volumes, costs, and trends for your WhatsApp
-              Business account.
+              {t.usage.description}
             </p>
           </div>
           {devices.length > 1 && (

@@ -15,6 +15,9 @@ import {
   DotsThreeVertical,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -393,6 +396,10 @@ function MessageBubble({ message }: { message: Message }) {
 // ─── Page Component ──────────────────────────────────────────────────────────
 
 export default function WhatsAppMessagesPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.console.whatsapp.messages
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -888,16 +895,14 @@ export default function WhatsAppMessagesPage() {
     <main className="flex min-h-0 flex-1 flex-col gap-6">
       <div className="flex shrink-0 items-center gap-2">
         <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">Messages</h1>
-          <p className="text-muted-foreground">
-            View and manage your WhatsApp message history.
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">{t.heading}</h1>
+          <p className="text-muted-foreground">{t.description}</p>
         </div>
         <Dialog open={sendDialogOpen} onOpenChange={handleDialogOpenChange}>
           <DialogTrigger asChild>
             <Button disabled={devices.length > 0 && !hasActiveDevice}>
               <PaperPlaneTilt className="mr-2 size-4" weight="bold" />
-              Send Message
+              {t.sendMessage}
             </Button>
           </DialogTrigger>
           <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-5xl">

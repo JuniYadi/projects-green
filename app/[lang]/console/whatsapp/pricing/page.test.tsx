@@ -69,8 +69,7 @@ describe("WhatsAppPricingPage", () => {
 
   it("renders heading and pricing details", async () => {
     const view = renderWithQuery(<WhatsAppPricingPage />)
-
-    expect(view.getByText("Quota & Pricing")).toBeInTheDocument()
+    expect(view.getByText("WhatsApp Pricing")).toBeInTheDocument()
 
     await waitFor(() => {
       expect(view.getByText("MARKETING")).toBeInTheDocument()

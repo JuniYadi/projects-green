@@ -219,7 +219,7 @@ describe("Billing InvoiceDetailPage", () => {
       expect(view.getByText("Subtotal")).toBeInTheDocument()
       expect(view.getByText("Tax")).toBeInTheDocument()
       expect(view.getByText("Discount")).toBeInTheDocument()
-      expect(view.getByText("Total")).toBeInTheDocument()
+      expect(view.getAllByText("Total").length).toBeGreaterThan(0)
       expect(view.getAllByText("$100.00").length).toBeGreaterThan(0)
       expect(view.getAllByText("$10.00").length).toBeGreaterThan(0)
       expect(view.getAllByText("$5.00").length).toBeGreaterThan(0)

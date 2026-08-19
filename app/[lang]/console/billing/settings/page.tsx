@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,14 +13,20 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Spinner } from "@phosphor-icons/react"
 import { getBillingAccount, updateBillingCurrency } from "@/lib/billing-client"
+import { Spinner } from "@phosphor-icons/react"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type Currency = "USD" | "IDR"
 
 type PageState = "loading" | "loaded" | "error"
 
 export default function BillingSettingsPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.console.billing.settingsPage
   const [state, setState] = useState<PageState>("loading")
   const [currency, setCurrency] = useState<Currency>("USD")
   const [isSaving, setIsSaving] = useState(false)
@@ -88,10 +95,8 @@ export default function BillingSettingsPage() {
     return (
       <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
         <header className="space-y-1">
-          <h1 className="text-2xl font-semibold">Billing Settings</h1>
-          <p className="text-sm text-muted-foreground">
-            Configure billing preferences.
-          </p>
+          <h1 className="text-2xl font-semibold">{t.heading}</h1>
+          <p className="text-sm text-muted-foreground">{t.description}</p>
         </header>
         <Card>
           <CardContent className="py-8">
@@ -107,21 +112,17 @@ export default function BillingSettingsPage() {
     return (
       <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
         <header className="space-y-1">
-          <h1 className="text-2xl font-semibold">Billing Settings</h1>
-        </header>
-        <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
-          <p className="text-sm text-red-600 dark:text-red-400">
-            Failed to load billing settings.
-          </p>
+          <h1 className="text-2xl font-semibold">{t.heading}</h1>
+          <p className="text-sm text-muted-foreground">{t.loadError}</p>
           <Button
             variant="outline"
             size="sm"
             className="mt-2"
             onClick={() => void fetchSettings()}
           >
-            Retry
+            {messages.console.billing.services.retryButton}
           </Button>
-        </div>
+        </header>
       </main>
     )
   }
@@ -129,24 +130,18 @@ export default function BillingSettingsPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Billing Settings</h1>
-        <p className="text-sm text-muted-foreground">
-          Configure billing preferences for your organization.
-        </p>
+        <h1 className="text-2xl font-semibold">{t.heading}</h1>
+        <p className="text-sm text-muted-foreground">{t.description}</p>
       </header>
 
       {/* Currency preference */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Preferred Currency</CardTitle>
+          <CardTitle className="text-base">{t.currencyCardTitle}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Your organization&apos;s default currency for invoices and billing
-            display.{" "}
-            {hasInvoices
-              ? "This setting is locked because invoices already exist."
-              : "Once an invoice is created, this preference is locked."}
+            {t.currencyCardDesc} {hasInvoices ? t.currencyLockedWarning : ""}
           </p>
 
           <div className="flex items-center gap-3">
@@ -171,10 +166,10 @@ export default function BillingSettingsPage() {
               {isSaving ? (
                 <>
                   <Spinner className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  {t.saving}
                 </>
               ) : (
-                "Save"
+                t.saveChanges
               )}
             </Button>
           </div>
@@ -193,8 +188,7 @@ export default function BillingSettingsPage() {
 
           {hasInvoices && (
             <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
-              Currency cannot be changed because invoices have been issued for
-              this account. The current currency is locked for consistency.
+              {t.currencyLockedWarning}
             </div>
           )}
         </CardContent>

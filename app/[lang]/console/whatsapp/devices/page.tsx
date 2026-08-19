@@ -46,8 +46,8 @@ function DeviceStatusBadge({ status, messages }: DeviceStatusBadgeProps) {
   const label: Record<DeviceStatus, string> = {
     ACTIVE: messages.console.whatsapp.devices.active,
     NON_ACTIVE: messages.console.whatsapp.devices.inactive,
-    DISCONNECTED: "Disconnected",
-    UNKNOWN: "Unknown",
+    DISCONNECTED: messages.console.whatsapp.devices.disconnected,
+    UNKNOWN: messages.console.whatsapp.devices.unknown,
   }
 
   return <Badge variant={variant[status]}>{label[status]}</Badge>
@@ -118,7 +118,10 @@ export default function WhatsAppDevicesPage() {
       accessorFn: (row) => `${row.name ?? ""} ${row.phoneNumber}`,
       id: "device",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Device" />
+        <DataTableColumnHeader
+          column={column}
+          title={messages.console.whatsapp.devices.heading}
+        />
       ),
       cell: ({ row }) => {
         const device = row.original
@@ -134,11 +137,12 @@ export default function WhatsAppDevicesPage() {
               </p>
             )}
             <p className="text-xs text-muted-foreground">
-              {device.quotaBaseOut} / {device.quotaBase} messages remaining
+              {device.quotaBaseOut} / {device.quotaBase}{" "}
+              {messages.console.whatsapp.devices.cardDescription}
               {device.dailyLimitMessage > 0 &&
-                ` · ${device.dailyLimitMessage} msg/day limit`}
+                ` · ${device.dailyLimitMessage} ${messages.console.whatsapp.devices.inactive}`}
               {Number(device.balance) > 0 &&
-                ` · Balance: Rp${Number(device.balance).toLocaleString("id-ID")}`}
+                ` · ${messages.console.whatsapp.devices.cardTitle}: Rp${Number(device.balance).toLocaleString("id-ID")}`}
             </p>
           </div>
         )
@@ -147,7 +151,10 @@ export default function WhatsAppDevicesPage() {
     {
       accessorKey: "status",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
+        <DataTableColumnHeader
+          column={column}
+          title={messages.console.whatsapp.devices.cardTitle}
+        />
       ),
       cell: ({ row }) => (
         <DeviceStatusBadge status={row.original.status} messages={messages} />
@@ -157,10 +164,17 @@ export default function WhatsAppDevicesPage() {
       accessorFn: getActiveState,
       id: "activeState",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Active" />
+        <DataTableColumnHeader
+          column={column}
+          title={messages.console.whatsapp.devices.active}
+        />
       ),
       cell: ({ row }) => (
-        <span>{row.getValue("activeState") === "ACTIVE" ? "Yes" : "No"}</span>
+        <span>
+          {row.getValue("activeState") === "ACTIVE"
+            ? messages.console.whatsapp.devices.active
+            : messages.console.whatsapp.devices.inactive}
+        </span>
       ),
     },
     {
@@ -179,7 +193,6 @@ export default function WhatsAppDevicesPage() {
     {
       id: "actions",
       enableHiding: false,
-      header: "Actions",
       cell: ({ row }) => {
         const device = row.original
         if (device.status === "ACTIVE") {
@@ -290,7 +303,7 @@ export default function WhatsAppDevicesPage() {
                 className="mt-4"
                 onClick={() => void loadDevices()}
               >
-                Retry
+                {messages.console.whatsapp.devices.unableToLoad}
               </Button>
             </div>
           </CardContent>
@@ -308,8 +321,7 @@ export default function WhatsAppDevicesPage() {
           {messages.console.whatsapp.devices.heading}
         </h1>
         <p className="text-muted-foreground">
-          {messages.console.whatsapp.devices.description} Quota and limits are
-          managed by your admin.
+          {messages.console.whatsapp.devices.description}
         </p>
       </div>
 
@@ -332,7 +344,7 @@ export default function WhatsAppDevicesPage() {
               </p>
               <Button asChild className="mt-4" size="sm">
                 <Link href="/console/billing/services/whatsapp">
-                  Subscribe to Add Device
+                  {messages.console.whatsapp.devices.edit}
                 </Link>
               </Button>
             </div>

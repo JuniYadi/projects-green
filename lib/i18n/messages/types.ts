@@ -163,6 +163,149 @@ export type AppMessages = {
       maxTopUp: string
       balanceUpdatedAfterVerification: string
       manualTransfer24h: string
+      overview: {
+        whatsappCardTitle: string
+        whatsappCardDesc: string
+        whatsappCardCta: string
+      }
+      alertsPage: {
+        heading: string
+        description: string
+        lowBalanceTitle: string
+        lowBalanceDesc: string
+        enableLowBalance: string
+        balanceThresholdLabel: string
+        currentSettingBalance: string
+        usageThresholdTitle: string
+        usageThresholdDesc: string
+        enableUsageThreshold: string
+        usageThresholdLabel: string
+        currentSettingUsage: string
+        invoiceRemindersTitle: string
+        invoiceRemindersDesc: string
+        invoiceRemindersNotice: string
+        contactsLink: string
+        savePreferences: string
+        saving: string
+        savedSuccess: string
+        loadError: string
+        saveError: string
+      }
+      checkout: {
+        heading: string
+        description: string
+        includedResources: string
+        switchBillingCycle: string
+        provisioningTitle: string
+        provisioningDesc: string
+        availableAddons: string
+        promotionsTitle: string
+        voucherCodeLabel: string
+        voucherPlaceholder: string
+        applyVoucher: string
+        orderSummary: string
+        proratedTitle: string
+        proratedDesc: string
+        proratedSubtotal: string
+        subtotal: string
+        confirmAndPay: string
+        updatingQuote: string
+        submitting: string
+        selectOptionPlaceholder: string
+      }
+      contacts: {
+        heading: string
+        description: string
+        ownerBannerTitle: string
+        ownerBannerDesc: string
+        addContact: string
+        addDialogTitle: string
+        editDialogTitle: string
+        deactivateDialogTitle: string
+        emailLabel: string
+        nameLabel: string
+        namePlaceholder: string
+        roleLabel: string
+        roleFinance: string
+        roleAccounting: string
+        roleGeneral: string
+        notificationsLabel: string
+        notifyInvoices: string
+        notifyAlerts: string
+        notifySupport: string
+        cancel: string
+        save: string
+        deactivate: string
+        deactivating: string
+        saving: string
+        emptyTitle: string
+        emptyDescription: string
+        loadError: string
+      }
+      paymentMethods: {
+        heading: string
+        description: string
+        addMethod: string
+        emptyTitle: string
+        emptyDescription: string
+        setDefault: string
+        defaultBadge: string
+        deleteTitle: string
+        deleteDescription: string
+        deleteButton: string
+        deleting: string
+        cancel: string
+      }
+      paymentsConfirm: {
+        heading: string
+        description: string
+        successHeading: string
+        successDesc: string
+        backToBilling: string
+        viewInvoices: string
+        transferDetails: string
+        senderDetails: string
+        verificationProcessTitle: string
+        step1: string
+        step2: string
+        step3: string
+        dropzonePrompt: string
+        dropzoneHint: string
+        uploading: string
+        submitButton: string
+        submitting: string
+        cancel: string
+      }
+      settingsPage: {
+        heading: string
+        description: string
+        currencyCardTitle: string
+        currencyCardDesc: string
+        currencyLockedWarning: string
+        saveChanges: string
+        saving: string
+        savedSuccess: string
+        loadError: string
+      }
+      singleSubscription: {
+        heading: string
+        description: string
+        appHostingTitle: string
+        vpnTitle: string
+        whatsappTitle: string
+        noAppHosting: string
+        noVpn: string
+        noWhatsapp: string
+        adminNotice: string
+      }
+      transactionsPage: {
+        heading: string
+        description: string
+        cardTitle: string
+        typeTopUp: string
+        typeInvoice: string
+        typeAdjustment: string
+      }
       subscriptions: {
         heading: string
         description: string
@@ -176,6 +319,10 @@ export type AppMessages = {
         columnPlan: string
         columnStatus: string
         columnTerm: string
+        columnRegion: string
+        columnMonthlyRate: string
+        columnQuotaIn: string
+        columnQuotaOut: string
         columnRenewal: string
         columnInvoice: string
         columnNextAction: string
@@ -292,6 +439,14 @@ export type AppMessages = {
         active: string
         hasWhatsApp: string
         viewDevices: string
+        statActiveDevices: string
+        statTotalConversations: string
+        statDeliveryRate: string
+        statMessagesSent: string
+        conversationsCardTitle: string
+        conversationsCardDesc: string
+        deviceHealthTitle: string
+        deviceHealthDesc: string
       }
       contacts: {
         heading: string
@@ -367,6 +522,8 @@ export type AppMessages = {
         cardDescription: string
         active: string
         inactive: string
+        disconnected: string
+        unknown: string
         edit: string
         editDialogTitle: string
         editDialogDescription: string
@@ -383,6 +540,32 @@ export type AppMessages = {
         notifyAdmin: string
         srOpenMenu: string
         editPhoneNumber: string
+        invalidFileType: string
+        fileTooLarge: string
+      }
+      webhookLogs: {
+        heading: string
+        description: string
+        cardTitle: string
+        cardDescription: string
+        noDevices: string
+        retry: string
+        loadError: string
+      }
+      events: {
+        heading: string
+        description: string
+        deviceTitle: string
+        deviceDescription: string
+        deviceLabel: string
+        selectDevice: string
+        cardTitle: string
+        selectedDeviceDescription: string
+        noDeviceDescription: string
+        noDevices: string
+        retry: string
+        selectDevicePrompt: string
+        loadError: string
       }
       messages: {
         heading: string
@@ -405,6 +588,133 @@ export type AppMessages = {
         heading: string
         description: string
         notDownloaded: string
+        uploadSuccess: string
+        deleteSuccess: string
+        uploadButton: string
+        downloadButton: string
+        deleteButton: string
+        cancelButton: string
+        uploading: string
+        deleting: string
+        retryButton: string
+        uploadFirstFile: string
+      }
+      broadcasts: {
+        heading: string
+        description: string
+        createBroadcast: string
+        emptyTitle: string
+        emptyDescription: string
+        searchPlaceholder: string
+        statusAll: string
+        columnName: string
+        columnTemplate: string
+        columnStatus: string
+        columnProgress: string
+        columnCreatedAt: string
+        newBroadcastTitle: string
+        newBroadcastDescription: string
+        wizardStep1: string
+        wizardStep2: string
+        wizardStep3: string
+      }
+      catalogs: {
+        heading: string
+        description: string
+        addCatalog: string
+        emptyTitle: string
+        emptyDescription: string
+        searchPlaceholder: string
+        columnName: string
+        columnProductCount: string
+        columnStatus: string
+        createDialogTitle: string
+        createDialogDescription: string
+        metaCatalogIdLabel: string
+        deviceIdLabel: string
+        deviceIdPlaceholder: string
+        viewProducts: string
+        deleteCatalog: string
+        cancelButton: string
+        createButton: string
+        creatingButton: string
+        syncing: string
+        syncProducts: string
+        createSuccess: string
+        deleteSuccess: string
+        loadError: string
+        createError: string
+        deleteError: string
+      }
+      apiKeys: {
+        heading: string
+        description: string
+        createKey: string
+        emptyTitle: string
+        emptyDescription: string
+        keyNameLabel: string
+        expiresLabel: string
+        revokeKey: string
+        copiedNotice: string
+      }
+      analytics: {
+        heading: string
+        description: string
+        comparison: string
+        costReconciliation: string
+        syncFromMeta: string
+        generateReport: string
+        runReconciliation: string
+        to: string
+        syncResult: string
+        syncedRecords: string
+        discrepanciesFound: string
+        comparisonReport: string
+        meta: string
+        local: string
+        delta: string
+        discrepantRows: string
+        noData: string
+        date: string
+        metric: string
+        status: string
+        category: string
+        metaCost: string
+        localCost: string
+        noCostData: string
+        noDataLoaded: string
+        noDataLoadedDescription: string
+      }
+      auditLogs: {
+        heading: string
+        description: string
+        action: string
+        status: string
+        all: string
+        deviceId: string
+        search: string
+        searchPlaceholder: string
+        from: string
+        to: string
+        apply: string
+        reset: string
+        cardTitle: string
+        cardDescription: string
+      }
+      pricing: {
+        heading: string
+        description: string
+        categoryMarketing: string
+        categoryUtility: string
+        categoryAuthentication: string
+        categoryService: string
+      }
+      usage: {
+        heading: string
+        description: string
+        quotaTitle: string
+        usedLabel: string
+        remainingLabel: string
       }
       credentials: {
         heading: string

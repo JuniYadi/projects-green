@@ -11,6 +11,8 @@ import {
 } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -57,6 +59,9 @@ function getDefaultPaymentDateTime(): string {
 }
 
 function ConfirmationPageContent() {
+  const params = useParams<{ lang?: string }>()
+  const t = getMessages(resolveLocaleOrDefault(params?.lang)).console.billing
+    .paymentsConfirm
   const searchParams = useSearchParams()
 
   const invoiceId = searchParams.get("invoiceId") || ""
@@ -312,7 +317,7 @@ function ConfirmationPageContent() {
                 <ArrowLeftIcon className="h-4 w-4" />
               </Link>
             </Button>
-            <h1 className="text-2xl font-semibold">Payment Confirmed</h1>
+            <h1 className="text-2xl font-semibold">{t.successHeading}</h1>
           </div>
         </header>
 
@@ -321,13 +326,8 @@ function ConfirmationPageContent() {
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
               <CheckCircleIcon className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
-            <h2 className="mt-4 text-xl font-semibold">
-              Payment Confirmation Submitted
-            </h2>
-            <p className="mt-2 text-muted-foreground">
-              Your payment confirmation has been submitted successfully. We will
-              verify your payment and update your balance shortly.
-            </p>
+            <h2 className="mt-4 text-xl font-semibold">{t.successHeading}</h2>
+            <p className="mt-2 text-muted-foreground">{t.successDesc}</p>
 
             <div className="mt-6 w-full max-w-sm rounded-lg border bg-muted/30 p-4">
               <div className="space-y-2 text-sm">
@@ -348,10 +348,10 @@ function ConfirmationPageContent() {
 
             <div className="mt-6 flex gap-3">
               <Button variant="outline" asChild>
-                <Link href="/console/billing">Back to Billing</Link>
+                <Link href="/console/billing">{t.backToBilling}</Link>
               </Button>
               <Button asChild>
-                <Link href="/console/billing/invoices">View Invoices</Link>
+                <Link href="/console/billing/invoices">{t.viewInvoices}</Link>
               </Button>
             </div>
           </CardContent>
@@ -392,18 +392,16 @@ function ConfirmationPageContent() {
               <ArrowLeftIcon className="h-4 w-4" />
             </Link>
           </Button>
-          <h1 className="text-2xl font-semibold">Confirm Payment</h1>
+          <h1 className="text-2xl font-semibold">{t.heading}</h1>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Submit your manual bank transfer details for verification.
-        </p>
+        <p className="text-sm text-muted-foreground">{t.description}</p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Transfer Details</CardTitle>
+              <CardTitle className="text-base">{t.transferDetails}</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -476,9 +474,7 @@ function ConfirmationPageContent() {
 
                 {/* Sender Details (Optional) */}
                 <div className="space-y-4">
-                  <h3 className="text-sm font-medium">
-                    Sender Details (Optional)
-                  </h3>
+                  <h3 className="text-sm font-medium">{t.senderDetails}</h3>
 
                   <Field>
                     <FieldLabel>Sender Bank Name</FieldLabel>
@@ -572,17 +568,17 @@ function ConfirmationPageContent() {
                         <>
                           <SpinnerGap className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
                           <p className="mt-2 text-sm text-muted-foreground">
-                            Uploading...
+                            {t.uploading}
                           </p>
                         </>
                       ) : (
                         <>
                           <UploadIcon className="mx-auto h-8 w-8 text-muted-foreground" />
                           <p className="mt-2 text-sm text-muted-foreground">
-                            Drag and drop or click to upload
+                            {t.dropzonePrompt}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            PNG, JPG up to 10MB
+                            {t.dropzoneHint}
                           </p>
                         </>
                       )}
@@ -630,30 +626,28 @@ function ConfirmationPageContent() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Verification Process</CardTitle>
+              <CardTitle className="text-base">
+                {t.verificationProcessTitle}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="flex gap-3">
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
                   1
                 </div>
-                <p className="text-muted-foreground">
-                  Submit your transfer details
-                </p>
+                <p className="text-muted-foreground">{t.step1}</p>
               </div>
               <div className="flex gap-3">
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
                   2
                 </div>
-                <p className="text-muted-foreground">We verify your payment</p>
+                <p className="text-muted-foreground">{t.step2}</p>
               </div>
               <div className="flex gap-3">
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
                   3
                 </div>
-                <p className="text-muted-foreground">
-                  Balance updated automatically
-                </p>
+                <p className="text-muted-foreground">{t.step3}</p>
               </div>
             </CardContent>
           </Card>
@@ -681,7 +675,6 @@ function ConfirmationPageContent() {
 }
 
 export default function ConfirmPaymentPage() {
-  void useParams<{ lang?: string }>()
   return (
     <Suspense
       fallback={

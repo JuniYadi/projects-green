@@ -1,19 +1,18 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import * as React from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  WalletIcon,
-  LightningIcon,
-  Envelope,
-  Spinner,
-} from "@phosphor-icons/react"
+import { Spinner } from "@phosphor-icons/react"
 import {
   getBillingAccount,
   updateBillingAlerts,
@@ -29,6 +28,9 @@ const defaultPreferences: AlertPreferences = {
 }
 
 export function BillingAlertsForm() {
+  const params = useParams<{ lang?: string }>()
+  const page = getMessages(resolveLocaleOrDefault(params?.lang)).console.billing
+    .alertsPage
   const [preferences, setPreferences] =
     useState<AlertPreferences>(defaultPreferences)
   const [initialPrefs, setInitialPrefs] =
@@ -164,12 +166,9 @@ export function BillingAlertsForm() {
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/10">
-              <WalletIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-            </div>
-            <div>
-              <CardTitle>Low Balance Alert</CardTitle>
+              <CardTitle>{page.lowBalanceTitle}</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Get notified when your balance falls below a threshold.
+                {page.lowBalanceDesc}
               </p>
             </div>
           </div>
@@ -184,12 +183,14 @@ export function BillingAlertsForm() {
               }
             />
             <Label htmlFor="balance-threshold" className="cursor-pointer">
-              Enable low balance alert
+              {page.enableLowBalance}
             </Label>
           </div>
           {preferences.balanceThresholdEnabled && (
             <div className="ml-7 space-y-2">
-              <Label htmlFor="balance-amount">Alert when balance below</Label>
+              <Label htmlFor="balance-amount">
+                {page.balanceThresholdLabel}
+              </Label>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Rp</span>
                 <Input
@@ -208,8 +209,10 @@ export function BillingAlertsForm() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Current setting: Alert when balance falls below Rp{" "}
-                {preferences.balanceThresholdAmount.toLocaleString()}
+                {page.currentSettingBalance.replace(
+                  "{amount}",
+                  preferences.balanceThresholdAmount.toLocaleString()
+                )}
               </p>
             </div>
           )}
@@ -221,12 +224,9 @@ export function BillingAlertsForm() {
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
-              <LightningIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <CardTitle>Usage Threshold Alert</CardTitle>
+              <CardTitle>{page.usageThresholdTitle}</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Get notified when daily usage exceeds a limit.
+                {page.usageThresholdDesc}
               </p>
             </div>
           </div>
@@ -241,14 +241,12 @@ export function BillingAlertsForm() {
               }
             />
             <Label htmlFor="usage-threshold" className="cursor-pointer">
-              Enable usage threshold alert
+              {page.enableUsageThreshold}
             </Label>
           </div>
           {preferences.usageThresholdEnabled && (
             <div className="ml-7 space-y-2">
-              <Label htmlFor="usage-amount">
-                Alert when daily usage exceeds
-              </Label>
+              <Label htmlFor="usage-amount">{page.usageThresholdLabel}</Label>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Rp</span>
                 <Input
@@ -267,8 +265,10 @@ export function BillingAlertsForm() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Current setting: Alert when daily usage exceeds Rp{" "}
-                {preferences.usageThresholdAmount.toLocaleString()}
+                {page.currentSettingUsage.replace(
+                  "{amount}",
+                  preferences.usageThresholdAmount.toLocaleString()
+                )}
               </p>
             </div>
           )}
@@ -280,12 +280,9 @@ export function BillingAlertsForm() {
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10">
-              <Envelope className="h-5 w-5 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <CardTitle>Invoice Reminders</CardTitle>
+              <CardTitle>{page.invoiceRemindersTitle}</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Manage who receives invoice notifications.
+                {page.invoiceRemindersDesc}
               </p>
             </div>
           </div>

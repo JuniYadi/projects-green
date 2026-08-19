@@ -23,6 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
+import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
 
 function formatPhone(phone: string): string {
@@ -59,6 +60,7 @@ function formatMessagePrice(value: string, currency: string | null): string {
 export default function WhatsAppPricingPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const t = getMessages(locale).console.whatsapp
   const [selectedDeviceId, setSelectedDeviceId] = React.useState<string>("all")
 
   const {
@@ -87,12 +89,9 @@ export default function WhatsAppPricingPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            Quota &amp; Pricing
+            {t.pricing.heading}
           </h1>
-          <p className="text-muted-foreground">
-            Understand WhatsApp message rates, category quota deductions, and
-            PAYG overage charges.
-          </p>
+          <p className="text-muted-foreground">{t.pricing.description}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" asChild>
@@ -102,7 +101,7 @@ export default function WhatsAppPricingPage() {
                 locale,
               })}
             >
-              View Usage
+              {t.usage.heading}
             </Link>
           </Button>
           <Button asChild>
@@ -113,7 +112,7 @@ export default function WhatsAppPricingPage() {
               })}
             >
               <PaperPlaneTilt className="mr-2 size-4" />
-              Send Template Message
+              {t.messages.sendMessage}
             </Link>
           </Button>
         </div>

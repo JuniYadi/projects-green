@@ -9,17 +9,28 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { useParams } from "next/navigation"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { getMessages } from "@/lib/i18n/messages"
 
 export default function CatalogsPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+
   return (
     <div className="flex flex-col gap-6">
       <div>
         <div className="mb-2 flex items-center gap-2">
-          <h1 className="text-2xl font-bold">Catalogs</h1>
-          <Badge variant="secondary">Coming soon</Badge>
+          <h1 className="text-2xl font-bold">
+            {messages.console.whatsapp.catalogs.heading}
+          </h1>
+          <Badge variant="secondary">
+            {locale === "id" ? "Segera Hadir" : "Coming soon"}
+          </Badge>
         </div>
         <p className="text-sm text-muted-foreground">
-          Connect your WhatsApp catalog to bring products into conversations.
+          {messages.console.whatsapp.catalogs.description}
         </p>
       </div>
 
@@ -30,22 +41,32 @@ export default function CatalogsPage() {
               <ShoppingBagOpen className="size-6" weight="duotone" />
             </div>
             <div>
-              <CardTitle>WhatsApp Catalogs &amp; Commerce</CardTitle>
+              <CardTitle>
+                {locale === "id"
+                  ? "Katalog WhatsApp & Commerce"
+                  : "WhatsApp Catalogs & Commerce"}
+              </CardTitle>
               <CardDescription className="mt-1">
-                Showcase products and make it easier for customers to shop.
+                {locale === "id"
+                  ? "Tampilkan produk dan permudah pelanggan berbelanja."
+                  : "Showcase products and make it easier for customers to shop."}
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="flex flex-col items-center px-6 py-14 text-center">
-          <Badge className="mb-4">Coming soon</Badge>
+          <Badge className="mb-4">
+            {locale === "id" ? "Segera Hadir" : "Coming soon"}
+          </Badge>
           <h2 className="text-xl font-semibold tracking-tight">
-            Commerce integration is on its way
+            {locale === "id"
+              ? "Integrasi Commerce sedang disiapkan"
+              : "Commerce integration is on its way"}
           </h2>
           <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-            We’re preparing a simple way to connect Facebook Commerce Manager,
-            sync your products, and share them in WhatsApp conversations. This
-            will be available in an upcoming release.
+            {locale === "id"
+              ? "Kami sedang menyiapkan cara mudah untuk menghubungkan Facebook Commerce Manager, menyinkronkan produk, dan membagikannya dalam percakapan WhatsApp. Fitur ini akan tersedia pada pembaruan mendatang."
+              : "We’re preparing a simple way to connect Facebook Commerce Manager, sync your products, and share them in WhatsApp conversations. This will be available in an upcoming release."}
           </p>
         </CardContent>
       </Card>
