@@ -145,6 +145,7 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
       const message =
         err instanceof Error ? err.message : "Failed to load webhook events"
       setErrorMessage(message)
+      setPageState("error")
     }
   }, [filters, page])
 
