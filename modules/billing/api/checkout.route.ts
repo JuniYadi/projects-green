@@ -232,6 +232,8 @@ export const createBillingCheckoutRoutes = (
             metadata: {
               ...(customMetadata ?? {}),
               ...(device ? { device } : {}),
+              userId: auth.user.id,
+              workosUserId: auth.user.id,
               ...(quote
                 ? {
                     checkoutQuote: quote,
