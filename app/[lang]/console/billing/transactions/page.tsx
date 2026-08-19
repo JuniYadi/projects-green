@@ -5,6 +5,8 @@ import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { type ColumnDef } from "@tanstack/react-table"
 import { useEffect, useState, useMemo } from "react"
 import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { eden } from "@/lib/eden"
 import Link from "next/link"
 
@@ -30,7 +32,10 @@ interface Transaction {
 type FilterStatus = "ALL" | "OPEN" | "PAID" | "VOID"
 
 export default function TransactionsPage() {
-  void useParams<{ lang?: string }>()
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const transactionMessages = messages.console.billing.transactionsPage
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [filter] = useState<FilterStatus>("ALL")
@@ -95,6 +100,19 @@ export default function TransactionsPage() {
     }
   }
 
+  function formatTransactionType(type: string): string {
+    switch (type) {
+      case "TOP_UP":
+        return transactionMessages.typeTopUp
+      case "INVOICE":
+        return transactionMessages.typeInvoice
+      case "ADJUSTMENT":
+        return transactionMessages.typeAdjustment
+      default:
+        return type
+    }
+  }
+
   const columns = useMemo<ColumnDef<Transaction>[]>(() => {
     return [
       {
@@ -111,7 +129,7 @@ export default function TransactionsPage() {
               {row.original.invoiceNumber}
             </Link>
             <p className="text-xs text-muted-foreground">
-              {row.original.type === "TOP_UP" ? "Top Up" : row.original.type}
+              {formatTransactionType(row.original.type)}
             </p>
           </div>
         ),
@@ -161,7 +179,11 @@ export default function TransactionsPage() {
         ),
       },
     ]
-  }, [])
+  }, [
+    transactionMessages.typeAdjustment,
+    transactionMessages.typeInvoice,
+    transactionMessages.typeTopUp,
+  ])
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -172,16 +194,20 @@ export default function TransactionsPage() {
               <ArrowLeftIcon className="h-4 w-4" />
             </Link>
           </Button>
-          <h1 className="text-2xl font-semibold">Transaction History</h1>
+          <h1 className="text-2xl font-semibold">
+            {transactionMessages.heading}
+          </h1>
         </div>
         <p className="text-sm text-muted-foreground">
-          View all your top-up transactions and payment history.
+          {transactionMessages.description}
         </p>
       </header>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Transactions</CardTitle>
+          <CardTitle className="text-base">
+            {transactionMessages.cardTitle}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
