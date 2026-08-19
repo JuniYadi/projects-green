@@ -64,9 +64,6 @@ type ProvisioningFieldDef = {
 export default function CheckoutPage() {
   const searchParams = useSearchParams()
   const pricingId = searchParams.get("pricingId") || ""
-  const productName = searchParams.get("product") || ""
-  const planName = searchParams.get("plan") || ""
-  const billingPeriod = searchParams.get("billingPeriod") || ""
   const [idempotencyKey] = useState(
     () =>
       `checkout:${pricingId}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`
@@ -246,15 +243,15 @@ export default function CheckoutPage() {
           <CardContent className="space-y-4">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Product</span>
-              <span>{productName || quotePreview.packageCode}</span>
+              <span className="font-medium">{quotePreview.packageCode}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Plan</span>
-              <span>{planName || quotePreview.planCode}</span>
+              <span className="font-medium">{quotePreview.planCode}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Billing Period</span>
-              <span>{billingPeriod || quotePreview.billingPeriod}</span>
+              <span className="font-medium">{quotePreview.billingPeriod}</span>
             </div>
             {showDynamicForm && (
               <div className="space-y-4 rounded-md border bg-card p-4">
