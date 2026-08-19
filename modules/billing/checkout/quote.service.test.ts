@@ -48,10 +48,15 @@ beforeEach(() => {
   mockPrisma.billingAccount.findUnique.mockResolvedValue({ currency: "IDR" })
   mockPrisma.servicePricing.findMany.mockResolvedValue([])
   mockPrisma.servicePlan.findUnique.mockResolvedValue({
+    name: "Pro",
     stockControl: "UNLIMITED",
     stockCount: null,
     allowBackorder: false,
     billingStrategy: "FIXED_CYCLE",
+    package: {
+      name: "Pro VPN",
+      description: "Fast VPN",
+    },
   })
 })
 describe("CheckoutQuoteService", () => {
