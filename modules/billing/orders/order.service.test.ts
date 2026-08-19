@@ -36,6 +36,7 @@ mock.module("../pricing/pricing.service", () => ({
 mock.module("../billing-transaction.service", () => ({
   BillingTransactionService: class {
     debitServiceBalance = mockDebitServiceBalance
+    debitUpfrontSubscription = mockDebitServiceBalance
   },
 }))
 
