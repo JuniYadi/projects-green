@@ -15,34 +15,37 @@ COPY prisma ./prisma
 ENV DATABASE_URL=postgresql://localhost:5432/dummy
 RUN bun prisma generate
 
-# Bundle app code only — all npm packages stay as runtime imports
-#   --packages=external → keeps bullmq, ioredis, etc. in node_modules
-#   Result: 392 KB bundle, no dependency duplication
+# Bundle worker code with inlined JS dependencies (BullMQ, ioredis, AI SDK, etc.)
+# Keep only native/engine packages external (@prisma/client, @prisma/adapter-pg, pg)
 COPY scripts ./scripts
 COPY lib ./lib
 COPY modules ./modules
 RUN bun build ./scripts/workers.ts \
   --target=bun \
-  --outfile=./dist/workers.js \
-  --packages=external
+  --outdir=./dist \
+  --external @prisma/client \
+  --external @prisma/adapter-pg \
+  --external pg
 
 # ── Production stage ────────────────────────────────────────────────────────
 FROM oven/bun:1-alpine
 
 WORKDIR /app
 
-# Install production deps (resolves all external imports in the bundle)
-COPY package.json bun.lock ./
-RUN bun install --production --frozen-lockfile --ignore-scripts
+# Install ONLY runtime native database dependencies (no heavy web/frontend packages)
+RUN bun add --exact --ignore-scripts \
+  @prisma/client@7.8.0 \
+  @prisma/adapter-pg@7.8.0 \
+  pg@8.18.0
 
-# Copy generated Prisma client from builder (schema-specific types)
+# Copy generated Prisma client from builder (schema-specific types & engine)
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Copy Prisma schema (needed for runtime introspection / migration status)
 COPY --from=builder /app/prisma ./prisma
 
-# Copy the bundled worker (single JS file, no TS left)
-COPY --from=builder /app/dist/workers.js ./dist/workers.js
+# Copy the bundled worker and native assets
+COPY --from=builder /app/dist ./dist
 
 ENV NODE_ENV=production
 

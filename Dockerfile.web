@@ -31,33 +31,23 @@ FROM oven/bun:1-alpine
 
 WORKDIR /app
 
-# Install only production dependencies
-COPY package.json bun.lock ./
+# Copy standalone build and static assets
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
 
-# Install with --production flag
-RUN bun install --production --ignore-scripts
-
-# Copy generated Prisma client from builder
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-
-# Copy Prisma schema for migrations
+# Copy Prisma schema for runtime migrations/introspection
 COPY prisma ./prisma
 
-# Copy built application
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./
-
-# Expose port
-EXPOSE 3300
-
-# Set production environment
+# Set production environment and expose port
 ENV NODE_ENV=production
+ENV PORT=3300
+ENV HOSTNAME="0.0.0.0"
+EXPOSE 3300
 
 # Expose the HTTP liveness endpoint to local container tooling.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD ["bun", "-e", "fetch('http://127.0.0.1:3300/api/healthz/live').then((response) => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))"]
 
-# Start Next.js
-# Keep stdout and stderr attached to the container runtime for log collection.
-CMD ["bun", "run", "start"]
+# Start Next.js standalone server
+CMD ["bun", "server.js"]

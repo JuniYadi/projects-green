@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
   serverExternalPackages: ["ssh2"],
   turbopack: {
     root: process.cwd(),
