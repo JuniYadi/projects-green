@@ -18,6 +18,12 @@ import {
   type BillingFulfillmentInput,
   type BillingFulfillmentRegistry,
 } from "./fulfillment-adapters"
+import { calculateProration } from "../proration"
+import { resolveInvoiceEmailRecipients } from "../email-recipients"
+import {
+  invoiceEmailService,
+  type InvoiceEmailService,
+} from "@/modules/invoices/email.service"
 export type BillingOrderResult = {
   orderId: string
   status: "PENDING" | "CHARGED" | "FULFILLED" | "FAILED" | "CANCELLED"
@@ -134,10 +140,13 @@ export class BillingOrderService {
   private readonly transactions: BillingTransactionService
   private readonly resolvePrice: ResolvePrice
   private readonly registry: BillingFulfillmentRegistry
+  private readonly emailService?: InvoiceEmailService
 
   constructor(
     private readonly prisma: PrismaClient = defaultPrisma,
-    dependencies: BillingOrderServiceDependencies = {},
+    dependencies: BillingOrderServiceDependencies & {
+      emailService?: InvoiceEmailService
+    } = {},
     registry?: BillingFulfillmentRegistry
   ) {
     this.transactions =
@@ -147,6 +156,7 @@ export class BillingOrderService {
       registry ??
       dependencies.registry ??
       createBillingFulfillmentRegistry(undefined, prisma)
+    this.emailService = dependencies.emailService ?? invoiceEmailService
   }
 
   async createOrder(input: {
@@ -185,22 +195,26 @@ export class BillingOrderService {
     await this.validateQuantity(input.organizationId, price, quantity)
 
     const periodStart = input.periodStart ?? now
-    const monthEnd = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999)
-    )
+    const plan = await this.prisma.servicePlan.findUnique({
+      where: { id: price.planId },
+      select: { billingStrategy: true },
+    })
+    const billingStrategy =
+      plan?.billingStrategy ??
+      (input.prorateMonthly ? "PRO_RATA" : "FIXED_CYCLE")
+    const proration = calculateProration({
+      billingStrategy,
+      billingPeriod: price.billingPeriod,
+      periodPrice: price.periodPrice,
+      quantity,
+      now,
+    })
     const periodEnd =
       input.periodEnd ??
-      (input.prorateMonthly && price.billingPeriod === "MONTHLY"
-        ? monthEnd
+      (proration.isProrated
+        ? proration.cycleEnd
         : addMonths(periodStart, price.periodMonths))
-    const amount =
-      input.amount ??
-      (input.prorateMonthly && price.billingPeriod === "MONTHLY"
-        ? price.periodPrice
-            .mul(monthEnd.getUTCDate() - now.getUTCDate() + 1)
-            .div(monthEnd.getUTCDate())
-            .mul(quantity)
-        : price.periodPrice.mul(quantity))
+    const amount = input.amount ?? proration.proratedAmount
     const discountAmount = input.discountAmount ?? new Prisma.Decimal(0)
     if (discountAmount.isNegative() || discountAmount.gt(amount)) {
       throw new Error("ORDER_DISCOUNT_INVALID")
@@ -300,15 +314,17 @@ export class BillingOrderService {
         quantity: line.quantity,
         unitPrice: line.unitPrice,
         lineType: "SUBSCRIPTION" as const,
+        periodStart: line.periodStart,
+        periodEnd: line.periodEnd,
         category: line.packageCode.toLowerCase(),
       },
     }
     const charge = transactionClient
-      ? await this.transactions.debitServiceBalance(
+      ? await this.transactions.debitUpfrontSubscription(
           chargeInput,
           transactionClient
         )
-      : await this.transactions.debitServiceBalance(chargeInput)
+      : await this.transactions.debitUpfrontSubscription(chargeInput)
 
     await client.billingOrder.update({
       where: { id: order.id },
@@ -322,6 +338,61 @@ export class BillingOrderService {
         }),
       },
     })
+
+    if (this.emailService && charge.invoiceId) {
+      const emailService = this.emailService
+      const invoiceId = charge.invoiceId
+      const orgId = order.organizationId
+      const totalAmount = Number(order.totalAmount.toString())
+      const currency = order.currency
+      const pStart = line.periodStart.toISOString()
+      const pEnd = line.periodEnd.toISOString()
+
+      void resolveInvoiceEmailRecipients(orgId)
+        .then(async (recipients) => {
+          if (!recipients.length) return
+          const invoice = client.billingInvoice
+            ? await client.billingInvoice.findUnique({
+                where: { id: invoiceId },
+                select: { invoiceNumber: true },
+              })
+            : null
+          const invoiceNumber = invoice?.invoiceNumber ?? invoiceId
+          await Promise.allSettled(
+            recipients.map((r) =>
+              emailService
+                .sendInvoicePaid(
+                  {
+                    id: invoiceId,
+                    invoiceNumber,
+                    totalAmount,
+                    currency,
+                    status: "paid",
+                    periodStart: pStart,
+                    periodEnd: pEnd,
+                    issuedAt: new Date().toISOString(),
+                    dueAt: null,
+                  },
+                  r.email,
+                  orgId
+                )
+                .catch((err) => {
+                  console.error(
+                    "[BillingOrderService] Failed to send invoice paid email to recipient:",
+                    err
+                  )
+                })
+            )
+          )
+        })
+        .catch((err) => {
+          console.error(
+            "[BillingOrderService] Failed to send invoice paid email:",
+            err
+          )
+        })
+    }
+
     return toResult({
       ...order,
       status: "CHARGED",

@@ -20,13 +20,22 @@ const mockPrisma = {
   },
   servicePlan: {
     findFirst: mock<() => Promise<unknown>>(async () => null),
+    findUnique: mock<() => Promise<unknown>>(async () => null),
     update: mock(),
   },
   whatsappDevice: { count: mock() },
+  billingInvoice: { findUnique: mock() },
 }
 const mockResolveRecurringPrice = mock()
 const mockDebitServiceBalance = mock()
 
+const mockResolveInvoiceEmailRecipients = mock(async () => [
+  { email: "billing@example.com" },
+])
+
+mock.module("../email-recipients", () => ({
+  resolveInvoiceEmailRecipients: mockResolveInvoiceEmailRecipients,
+}))
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 mock.module("../pricing/pricing.service", () => ({
   resolveRecurringPrice: mockResolveRecurringPrice,
@@ -35,6 +44,7 @@ mock.module("../pricing/pricing.service", () => ({
 mock.module("../billing-transaction.service", () => ({
   BillingTransactionService: class {
     debitServiceBalance = mockDebitServiceBalance
+    debitUpfrontSubscription = mockDebitServiceBalance
   },
 }))
 
@@ -423,6 +433,112 @@ describe("BillingOrderService", () => {
         line: expect.objectContaining({ lineType: "SUBSCRIPTION" }),
       })
     )
+  })
+
+  it("dispatches sendInvoicePaid email receipt when emailService is provided", async () => {
+    mockPrisma.billingOrder.findUnique.mockResolvedValue(orderFixture())
+    mockPrisma.billingOrder.update.mockResolvedValue(
+      orderFixture({ status: "CHARGED", billingInvoiceId: "invoice-1" })
+    )
+    mockPrisma.billingInvoice = {
+      findUnique: mock(async () => ({ invoiceNumber: "INV-20260819-0001" })),
+    }
+    mockPrisma.billingAccount.findUnique.mockResolvedValue({
+      ...account,
+      contacts: [{ email: "billing@example.com", name: "Billing Manager" }],
+    })
+
+    const { promise, resolve } = Promise.withResolvers<void>()
+    const mockSendInvoicePaid = mock(async () => {
+      resolve()
+    })
+    const emailService = {
+      sendInvoicePaid: mockSendInvoicePaid,
+    }
+
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      { emailService: emailService as never }
+    )
+
+    await service.chargeOrder("order-1")
+    await promise
+
+    expect(mockSendInvoicePaid).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "invoice-1",
+        invoiceNumber: "INV-20260819-0001",
+        status: "paid",
+        totalAmount: 100,
+        currency: "IDR",
+      }),
+      "billing@example.com",
+      "org-1"
+    )
+  })
+
+  it("handles and logs email send errors gracefully without failing chargeOrder", async () => {
+    mockPrisma.billingOrder.findUnique.mockResolvedValue(orderFixture())
+    mockPrisma.billingOrder.update.mockResolvedValue(
+      orderFixture({ status: "CHARGED", billingInvoiceId: "invoice-1" })
+    )
+    mockPrisma.billingInvoice = {
+      findUnique: mock(async () => ({ invoiceNumber: "INV-20260819-0001" })),
+    }
+    mockPrisma.billingAccount.findUnique.mockResolvedValue({
+      ...account,
+      contacts: [{ email: "billing@example.com", name: "Billing Manager" }],
+    })
+
+    const { promise, resolve } = Promise.withResolvers<void>()
+    const mockSendInvoicePaid = mock(async () => {
+      resolve()
+      throw new Error("SMTP service unavailable")
+    })
+    const emailService = {
+      sendInvoicePaid: mockSendInvoicePaid,
+    }
+
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      { emailService: emailService as never }
+    )
+    const result = await service.chargeOrder("order-1")
+    expect(result.status).toBe("CHARGED")
+
+    await promise
+    expect(mockSendInvoicePaid).toHaveBeenCalled()
+  })
+
+  it("catches and logs errors when resolveInvoiceEmailRecipients rejects", async () => {
+    mockPrisma.billingOrder.findUnique.mockResolvedValue(orderFixture())
+    mockPrisma.billingOrder.update.mockResolvedValue(
+      orderFixture({ status: "CHARGED", billingInvoiceId: "invoice-1" })
+    )
+    mockResolveInvoiceEmailRecipients.mockRejectedValueOnce(
+      new Error("Recipient resolution failed")
+    )
+
+    const consoleSpy = mock()
+    const originalError = console.error
+    console.error = consoleSpy
+
+    const { promise, resolve } = Promise.withResolvers<void>()
+    consoleSpy.mockImplementation(() => {
+      resolve()
+    })
+
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      { emailService: { sendInvoicePaid: mock() } as never }
+    )
+
+    const result = await service.chargeOrder("order-1")
+    expect(result.status).toBe("CHARGED")
+
+    await promise
+    console.error = originalError
+    expect(consoleSpy).toHaveBeenCalled()
   })
 
   it("marks failed fulfillment without deleting the paid order or invoice", async () => {

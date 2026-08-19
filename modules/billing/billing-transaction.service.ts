@@ -44,6 +44,9 @@ export type ServiceLineInput = {
   quantity: Prisma.Decimal
   unitPrice: Prisma.Decimal
   lineType?: "USAGE" | "SUBSCRIPTION"
+  /** Exact subscription coverage dates (e.g. for upfront pro-rata/quarterly terms). */
+  periodStart?: Date
+  periodEnd?: Date
   /** Category for grouped invoice display (e.g. "vpn", "app-hosting", "whatsapp"). */
   category?: string
 }
@@ -87,6 +90,132 @@ export class BillingTransactionService {
     input: BalanceMutationInput
   ): Promise<BalanceMutationResult> {
     return this.mutateBalance(input, "DEBIT")
+  }
+
+  /**
+   * Debit balance for an upfront subscription order and create an instant PAID invoice.
+   * Stamped with exact coverage dates and paymentMethod = "BALANCE".
+   */
+  async debitUpfrontSubscription(
+    input: ServiceBalanceInput,
+    transactionClient: PrismaClient | TxClient = this.prisma
+  ): Promise<BalanceMutationResult> {
+    const run = async (tx: PrismaClient | TxClient) => {
+      const account = await tx.billingAccount.findUnique({
+        where: { organizationId: input.organizationId },
+      })
+      if (!account) throw new Error("BILLING_ACCOUNT_NOT_FOUND")
+      if (account.currency !== input.currency)
+        throw new Error("CURRENCY_MISMATCH")
+
+      await tx.$queryRaw(
+        Prisma.sql`SELECT id FROM "BillingAccount" WHERE id = ${account.id} FOR UPDATE`
+      )
+      const lockedAccount = await tx.billingAccount.findUnique({
+        where: { id: account.id },
+      })
+      if (!lockedAccount) throw new Error("BILLING_ACCOUNT_NOT_FOUND")
+      if (lockedAccount.currency !== input.currency)
+        throw new Error("CURRENCY_MISMATCH")
+
+      const existing = await tx.billingAdjustment.findFirst({
+        where: {
+          billingAccountId: lockedAccount.id,
+          metadataJson: {
+            path: ["_internal", "idempotencyKey"],
+            equals: input.idempotencyKey,
+          },
+        },
+      })
+      if (existing) {
+        const metadata = (existing.metadataJson ?? {}) as {
+          invoiceLineId?: unknown
+        }
+        return {
+          billingAccountId: lockedAccount.id,
+          adjustmentId: existing.id,
+          balanceBefore: lockedAccount.balance,
+          balanceAfter: lockedAccount.balance,
+          amount: input.amount,
+          currency: lockedAccount.currency,
+          alreadyProcessed: true,
+          invoiceId: existing.invoiceId ?? null,
+          invoiceLineId:
+            typeof metadata.invoiceLineId === "string"
+              ? metadata.invoiceLineId
+              : null,
+        }
+      }
+
+      const now = new Date()
+      const periodStart = input.line.periodStart ?? now
+      const periodEnd = input.line.periodEnd ?? now
+      const dateStr = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, "0")}${String(now.getUTCDate()).padStart(2, "0")}`
+      const randomSuffix = Math.random().toString(36).slice(2, 6).toUpperCase()
+      const invoiceNumber = `INV-${dateStr}-${randomSuffix}`
+
+      const invoice = await tx.billingInvoice.create({
+        data: {
+          billingAccountId: lockedAccount.id,
+          invoiceNumber,
+          type: "SERVICE",
+          status: "PAID",
+          paymentMethod: "BALANCE",
+          currency: lockedAccount.currency,
+          periodStart,
+          periodEnd,
+          issuedAt: now,
+          paidAt: now,
+          subtotalAmount: input.amount,
+          taxAmount: new Prisma.Decimal(0),
+          discountAmount: new Prisma.Decimal(0),
+          totalAmount: input.amount,
+          metadataJson: {
+            isUpfront: true,
+            orderId:
+              typeof (input.metadata as Record<string, unknown> | undefined)
+                ?.orderId === "string"
+                ? ((input.metadata as Record<string, unknown>)
+                    .orderId as string)
+                : undefined,
+          },
+        },
+      })
+
+      const line = await tx.billingInvoiceLine.create({
+        data: {
+          invoiceId: invoice.id,
+          lineType: "SUBSCRIPTION",
+          description: input.line.description,
+          quantity: input.line.quantity,
+          unitPrice: input.line.unitPrice,
+          amount: input.amount,
+          currency: lockedAccount.currency,
+          periodStart,
+          periodEnd,
+          metadataJson: {
+            source: input.source,
+            category:
+              input.line.category ?? inferCategory(input.line.description),
+            _internal: { idempotencyKey: input.idempotencyKey },
+          },
+        },
+      })
+
+      return this.executeMutation(
+        tx,
+        lockedAccount,
+        input,
+        "DEBIT",
+        invoice.id,
+        line.id
+      )
+    }
+
+    if (transactionClient === this.prisma) {
+      return this.prisma.$transaction(run)
+    }
+    return run(transactionClient)
   }
 
   /**
@@ -166,8 +295,8 @@ export class BillingTransactionService {
           unitPrice: input.line.unitPrice,
           amount: input.amount,
           currency: lockedAccount.currency,
-          periodStart: invoice.periodStart,
-          periodEnd: invoice.periodEnd,
+          periodStart: input.line.periodStart ?? invoice.periodStart,
+          periodEnd: input.line.periodEnd ?? invoice.periodEnd,
           metadataJson: {
             source: input.source,
             category:

@@ -100,7 +100,7 @@ describe("SubscriptionsRoute", () => {
       expect(body.subscriptions).toEqual([])
       expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { organizationId: "tenant-1" },
+          where: { organizationId: { in: ["org-1", "tenant-1"] } },
         })
       )
     })
@@ -224,9 +224,9 @@ describe("SubscriptionsRoute", () => {
       // currentPeriodEnd null should come through as null
       expect(body.subscriptions[0].currentPeriodEnd).toBeNull()
     })
-
-    it("returns empty subscriptions when billingAccount is found but tenantId is null", async () => {
+    it("returns subscriptions when billingAccount is found even if tenantId is null", async () => {
       mockFindBillingAccount.mockResolvedValueOnce({ tenantId: null })
+      mockFindMany.mockResolvedValueOnce([])
 
       const app = new Elysia()
         .use(
@@ -250,10 +250,12 @@ describe("SubscriptionsRoute", () => {
       const body = await response.json()
       expect(body.ok).toBe(true)
       expect(body.subscriptions).toEqual([])
-      // Should not have called findMany
-      expect(mockFindMany).not.toHaveBeenCalled()
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { organizationId: { in: ["org-1"] } },
+        })
+      )
     })
-
     it("returns 500 on database error", async () => {
       mockFindBillingAccount.mockRejectedValueOnce(
         new Error("Database connection failed")
