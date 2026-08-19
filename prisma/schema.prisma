@@ -77,6 +77,10 @@ model DocsKnowledgeDocument {
   path                  String
   title                 String
   purpose               String
+  category              String   @default("General")
+  contentMarkdown       String?  @db.Text
+  contentHash           String?  @db.VarChar(64)
+  isPublic              Boolean  @default(true)
   howTo                 String[]
   notes                 String[]
   searchText            String
@@ -86,6 +90,7 @@ model DocsKnowledgeDocument {
   updatedAt             DateTime @updatedAt
 
   @@index([organizationId, path])
+  @@index([isPublic, category])
   @@index([organizationId, updatedAt(sort: Desc)])
   @@index([updatedAt(sort: Desc)])
   @@map("KnowledgeDocument")
