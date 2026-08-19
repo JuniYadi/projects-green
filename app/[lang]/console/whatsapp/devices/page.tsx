@@ -193,7 +193,6 @@ export default function WhatsAppDevicesPage() {
     {
       id: "actions",
       enableHiding: false,
-      header: messages.console.whatsapp.devices.cardDescription,
       cell: ({ row }) => {
         const device = row.original
         if (device.status === "ACTIVE") {
@@ -205,7 +204,7 @@ export default function WhatsAppDevicesPage() {
                   locale,
                 })}
               >
-                {messages.console.whatsapp.devices.edit}
+                Details
               </Link>
             </Button>
           )
@@ -354,7 +353,7 @@ export default function WhatsAppDevicesPage() {
               columns={columns}
               data={devices}
               tableId="console-whatsapp-devices"
-              searchPlaceholder={messages.console.whatsapp.devices.description}
+              searchPlaceholder="Search devices by name or phone..."
               searchableColumns={["device"]}
               initialSorting={[{ id: "device", desc: false }]}
               pageSize={10}
