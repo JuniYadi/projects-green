@@ -1,16 +1,10 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "passed",
-    "steps",
-    "failure_reason",
-    "playwright_spec",
-    "vault_update",
-    "ui_ux_notes"
-  ],
+  "required": ["passed", "ui_ux_notes", "steps", "failure_reason", "playwright_spec", "vault_update"],
   "properties": {
     "passed": { "type": "boolean" },
+    "ui_ux_notes": { "type": ["string", "null"] },
     "steps": {
       "type": "array",
       "items": {
@@ -25,17 +19,7 @@
       }
     },
     "failure_reason": { "type": ["string", "null"] },
-    "playwright_spec": {
-      "type": ["string", "null"],
-      "description": "Complete @playwright/test spec file (TypeScript) reproducing every verified step"
-    },
-    "vault_update": {
-      "type": ["string", "null"],
-      "description": "Vault note path + row/field changed when a tracked feature_key was verified, per Skill - E2E Feature Verification; null if no vault tracking was requested"
-    },
-    "ui_ux_notes": {
-      "type": ["string", "null"],
-      "description": "Observations on visual design, clarity of labeling/copy, consistency with the rest of the admin UI, empty/loading/error states, and any usability friction encountered — beyond pass/fail functional correctness. Null only if there was truly nothing to observe (e.g. navigation failed before any UI rendered)."
-    }
+    "playwright_spec": { "type": ["string", "null"] },
+    "vault_update": { "type": ["string", "null"] }
   }
 }
