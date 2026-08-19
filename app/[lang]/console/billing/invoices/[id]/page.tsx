@@ -171,7 +171,7 @@ export default function InvoiceDetailPage() {
       const result = await getInvoice(invoiceId)
       setData(result)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Payment failed")
+      setError(err instanceof Error ? err.message : billing.paymentFailed)
     } finally {
       setIsProcessing(false)
     }
@@ -245,7 +245,7 @@ export default function InvoiceDetailPage() {
         </header>
         <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
           <p className="text-sm text-red-600 dark:text-red-400">
-            {error || "Invoice not found"}
+            {error || billing.invoiceNotFound}
           </p>
         </div>
       </main>
@@ -462,7 +462,7 @@ export default function InvoiceDetailPage() {
 
                 <div className="space-y-1 text-left sm:text-right">
                   <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                    Tax Invoice / Tagihan
+                    {billing.invoiceDetail}
                   </p>
                   <p className="font-mono text-base font-bold text-foreground">
                     {invoice.invoiceNumber}
@@ -859,7 +859,7 @@ export default function InvoiceDetailPage() {
                     {paymentSuccess ? (
                       <div className="flex items-center gap-2 text-xs font-medium text-green-600 dark:text-green-400">
                         <CheckCircleIcon className="h-4 w-4" />
-                        <span>Payment successful!</span>
+                        <span>{billing.paymentSuccessLabel}</span>
                       </div>
                     ) : (
                       <div className="flex flex-col gap-2">
