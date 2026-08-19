@@ -89,10 +89,16 @@ export default function ProductDetailPage() {
   const [stockCount, setStockCount] = useState<number>(0)
   const [allowBackorder, setAllowBackorder] = useState(false)
   const [isActive, setIsActive] = useState(true)
+
+  // Device Provisioning at Checkout configuration
+  const [deviceSetupEnabled, setDeviceSetupEnabled] = useState(true)
+  const [phoneRequired, setPhoneRequired] = useState(true)
+  const [displayNameEnabled, setDisplayNameEnabled] = useState(true)
+  const [profileUrlEnabled, setProfileUrlEnabled] = useState(true)
+
   const [resourceEntries, setResourceEntries] = useState<
     Array<{ key: string; value: string }>
   >([])
-
   const [prices, setPrices] = useState<AddonPricingForm[]>([])
   const [defaultCurrency, setDefaultCurrency] = useState<string>("IDR")
 
@@ -115,12 +121,30 @@ export default function ProductDetailPage() {
         setIsActive(p.isActive ?? true)
 
         const resObj = (p.resources ?? {}) as Record<string, unknown>
-        const entries = Object.entries(resObj).map(([k, v]) => ({
-          key: k,
-          value: typeof v === "object" ? JSON.stringify(v) : String(v),
-        }))
-        setResourceEntries(entries)
+        // Parse provisioning controls
+        setDeviceSetupEnabled(
+          resObj.deviceSetup !== false &&
+            (catalogCode === "WHATSAPP" || Boolean(resObj.requireDeviceSetup))
+        )
+        setPhoneRequired(resObj.phoneRequired !== false)
+        setDisplayNameEnabled(resObj.displayNameEnabled !== false)
+        setProfileUrlEnabled(resObj.profileUrlEnabled !== false)
 
+        // Filter out internal provisioning flags from the custom key-value quota list
+        const reservedKeys = new Set([
+          "deviceSetup",
+          "requireDeviceSetup",
+          "phoneRequired",
+          "displayNameEnabled",
+          "profileUrlEnabled",
+        ])
+        const entries = Object.entries(resObj)
+          .filter(([k]) => !reservedKeys.has(k))
+          .map(([k, v]) => ({
+            key: k,
+            value: typeof v === "object" ? JSON.stringify(v) : String(v),
+          }))
+        setResourceEntries(entries)
         const initialPrices: AddonPricingForm[] = (p.offers ?? []).map(
           (offer) => ({
             id: offer.id,
@@ -250,27 +274,34 @@ export default function ProductDetailPage() {
         stockCount: stockControl === "TRACKED" ? stockCount : null,
         allowBackorder,
         isActive,
-        resources: resourceEntries.reduce<Record<string, unknown>>(
-          (acc, { key, value }) => {
-            const trimmedKey = key.trim()
-            if (!trimmedKey) return acc
-            const trimmedVal = value.trim()
-            const num = Number(trimmedVal)
-            if (!Number.isNaN(num) && trimmedVal !== "") {
-              acc[trimmedKey] = num
-            } else if (trimmedVal === "true" || trimmedVal === "false") {
-              acc[trimmedKey] = trimmedVal === "true"
-            } else {
-              try {
-                acc[trimmedKey] = JSON.parse(trimmedVal)
-              } catch {
-                acc[trimmedKey] = trimmedVal
+        resources: {
+          deviceSetup: deviceSetupEnabled,
+          requireDeviceSetup: deviceSetupEnabled,
+          phoneRequired,
+          displayNameEnabled,
+          profileUrlEnabled,
+          ...resourceEntries.reduce<Record<string, unknown>>(
+            (acc, { key, value }) => {
+              const trimmedKey = key.trim()
+              if (!trimmedKey) return acc
+              const trimmedVal = value.trim()
+              const num = Number(trimmedVal)
+              if (!Number.isNaN(num) && trimmedVal !== "") {
+                acc[trimmedKey] = num
+              } else if (trimmedVal === "true" || trimmedVal === "false") {
+                acc[trimmedKey] = trimmedVal === "true"
+              } else {
+                try {
+                  acc[trimmedKey] = JSON.parse(trimmedVal)
+                } catch {
+                  acc[trimmedKey] = trimmedVal
+                }
               }
-            }
-            return acc
-          },
-          {}
-        ),
+              return acc
+            },
+            {}
+          ),
+        },
         prices: prices.map((p) => ({
           billingPeriod: p.billingPeriod,
           currency: p.currency,
@@ -668,6 +699,76 @@ export default function ProductDetailPage() {
           </CardContent>
         </Card>
 
+        {/* Device Provisioning & Checkout Configuration */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Device Provisioning & Checkout Form</CardTitle>
+            <CardDescription>
+              Control what device configuration fields appear to customers
+              during checkout for this plan tier.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <Label className="text-sm font-medium">
+                  Prompt Device Configuration at Checkout
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  When enabled, customers must configure their device details
+                  during checkout.
+                </p>
+              </div>
+              <Switch
+                checked={deviceSetupEnabled}
+                onCheckedChange={setDeviceSetupEnabled}
+              />
+            </div>
+
+            {deviceSetupEnabled && (
+              <div className="grid gap-4 pt-1 sm:grid-cols-3">
+                <div className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
+                  <div>
+                    <p className="text-xs font-medium">Phone Number</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {phoneRequired ? "Required (*)" : "Optional"}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={phoneRequired}
+                    onCheckedChange={setPhoneRequired}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
+                  <div>
+                    <p className="text-xs font-medium">Business Display Name</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {displayNameEnabled ? "Visible" : "Hidden"}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={displayNameEnabled}
+                    onCheckedChange={setDisplayNameEnabled}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
+                  <div>
+                    <p className="text-xs font-medium">Profile Picture URL</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {profileUrlEnabled ? "Visible" : "Hidden"}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={profileUrlEnabled}
+                    onCheckedChange={setProfileUrlEnabled}
+                  />
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
         {/* Resource Specs & Quotas */}
         <Card className="md:col-span-2">
           <CardHeader>
