@@ -387,6 +387,9 @@ export default function CheckoutPage() {
                             type={field.type}
                             value={val}
                             onChange={(e) => onChangeVal(e.target.value)}
+                            onInput={(e) =>
+                              onChangeVal((e.target as HTMLInputElement).value)
+                            }
                             placeholder={field.placeholder || undefined}
                             required={field.required}
                             className="text-xs"
