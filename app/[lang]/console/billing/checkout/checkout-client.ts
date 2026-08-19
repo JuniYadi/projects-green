@@ -33,7 +33,10 @@ export type CheckoutPreview = {
   quoteToken: string
   pricingId: string
   packageCode: string
+  packageName?: string
+  packageDescription?: string
   planCode: string
+  planName?: string
   billingStrategy?: "PRO_RATA" | "FIXED_CYCLE"
   resources?: Record<string, unknown>
   currency: string

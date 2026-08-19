@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -248,39 +249,77 @@ export default function CheckoutPage() {
         <div className="grid gap-6 lg:grid-cols-12">
           {/* Left Column: Plan Details, Dynamic Provisioning Form, Addons, Vouchers */}
           <div className="space-y-6 lg:col-span-7 xl:col-span-8">
-            {/* Plan Info Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Plan & Specification</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-md border bg-muted/20 p-3">
-                    <span className="text-xs text-muted-foreground">
-                      Product
+            {/* Plan Info Card - Natural Product & Specification Card with Benefits */}
+            <Card className="overflow-hidden">
+              <CardHeader className="border-b bg-muted/20 pb-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                      {quotePreview.packageName || quotePreview.packageCode}
                     </span>
-                    <p className="text-sm font-semibold">
-                      {quotePreview.packageCode}
-                    </p>
+                    <CardTitle className="text-xl">
+                      {quotePreview.planName || quotePreview.planCode}
+                    </CardTitle>
                   </div>
-                  <div className="rounded-md border bg-muted/20 p-3">
-                    <span className="text-xs text-muted-foreground">
-                      Plan Tier
-                    </span>
-                    <p className="text-sm font-semibold">
-                      {quotePreview.planCode}
-                    </p>
-                  </div>
-                  <div className="rounded-md border bg-muted/20 p-3">
-                    <span className="text-xs text-muted-foreground">
-                      Billing Period
-                    </span>
-                    <p className="text-sm font-semibold">
-                      {quotePreview.billingPeriod}
-                    </p>
-                  </div>
+                  <Badge
+                    variant="outline"
+                    className="px-2.5 py-1 text-xs font-medium"
+                  >
+                    {quotePreview.billingPeriod} Cycle
+                  </Badge>
                 </div>
+                {quotePreview.packageDescription && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {quotePreview.packageDescription}
+                  </p>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-4 pt-4">
+                {/* Plan Resources & Included Benefits */}
+                {Object.keys(resources).filter(
+                  (k) =>
+                    k !== "provisioningFields" &&
+                    typeof resources[k] !== "object" &&
+                    resources[k] !== null &&
+                    resources[k] !== undefined
+                ).length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                      Included Resources & Specifications
+                    </Label>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {Object.entries(resources)
+                        .filter(
+                          ([name, value]) =>
+                            name !== "provisioningFields" &&
+                            typeof value !== "object" &&
+                            value !== null &&
+                            value !== undefined
+                        )
+                        .map(([name, value]) => {
+                          const formatKey = (key: string) =>
+                            key
+                              .replace(/([A-Z])/g, " $1")
+                              .replace(/_/g, " ")
+                              .replace(/^\w/, (c) => c.toUpperCase())
 
+                          return (
+                            <div
+                              key={name}
+                              className="flex items-center justify-between rounded-md border bg-card px-3 py-2 text-xs"
+                            >
+                              <span className="text-muted-foreground">
+                                {formatKey(name)}
+                              </span>
+                              <span className="font-medium text-foreground">
+                                {String(value)}
+                              </span>
+                            </div>
+                          )
+                        })}
+                    </div>
+                  </div>
+                )}
                 {/* Term Switcher if plan has multiple pricing terms */}
                 {(quotePreview.availableTerms ?? []).length > 1 && (
                   <div className="space-y-2 border-t pt-3">

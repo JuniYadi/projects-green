@@ -59,7 +59,10 @@ export type CheckoutQuote = {
   quoteToken: string
   pricingId: string
   packageCode: string
+  packageName?: string
+  packageDescription?: string
   planCode: string
+  planName?: string
   billingStrategy?: "PRO_RATA" | "FIXED_CYCLE"
   resources?: Record<string, unknown>
   billingPeriod: RecurringBillingPeriod
@@ -204,18 +207,21 @@ export class CheckoutQuoteService {
     const plan = await this.db.servicePlan.findUnique({
       where: { id: price.planId },
       select: {
+        name: true,
         stockControl: true,
         stockCount: true,
         allowBackorder: true,
         billingStrategy: true,
         resources: true,
+        package: {
+          select: {
+            name: true,
+            description: true,
+          },
+        },
       },
     })
-    if (
-      plan?.stockControl === "TRACKED" &&
-      !plan.allowBackorder &&
-      (plan.stockCount ?? 0) < Number(quantity)
-    ) {
+    if (!plan.allowBackorder && (plan.stockCount ?? 0) < Number(quantity)) {
       throw new CheckoutQuoteError(
         "OUT_OF_STOCK",
         "The selected product is currently out of stock."
@@ -363,13 +369,15 @@ export class CheckoutQuoteService {
       quoteToken: quoteId,
       pricingId: price.pricingId,
       packageCode: price.packageCode,
+      packageName: plan?.package?.name,
+      packageDescription: plan?.package?.description ?? undefined,
       planCode: price.planCode,
+      planName: plan?.name,
       billingStrategy: plan?.billingStrategy ?? "FIXED_CYCLE",
       resources: (plan?.resources ?? {}) as Record<string, unknown>,
       billingPeriod: price.billingPeriod,
       quantity: quantity.toString(),
       periodStart: now.toISOString(),
-      periodEnd: periodEnd.toISOString(),
       isProrated,
       proratedDays: isProrated ? remainingDays : undefined,
       totalDaysInPeriod: isProrated ? totalDaysInMonth : undefined,
