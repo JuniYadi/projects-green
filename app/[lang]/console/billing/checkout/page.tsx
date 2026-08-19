@@ -76,8 +76,10 @@ export default function CheckoutPage() {
   const [quote, setQuote] = useState<CheckoutResult | null>(null)
   const [quotePreview, setQuotePreview] = useState<CheckoutPreview | null>(null)
   const [quoteLoading, setQuoteLoading] = useState(false)
+  const [quoteError, setQuoteError] = useState<string | null>(null)
+  const [addonIds, setAddonIds] = useState<string[]>([])
+  const [voucherCode, setVoucherCode] = useState("")
   const [voucherInput, setVoucherInput] = useState("")
-  const [confirmed, setConfirmed] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
