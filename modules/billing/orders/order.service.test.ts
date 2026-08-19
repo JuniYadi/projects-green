@@ -25,6 +25,15 @@ const mockPrisma = {
   },
   whatsappDevice: { count: mock() },
   billingInvoice: { findUnique: mock() },
+  voucher: {
+    findUnique: mock<() => Promise<unknown>>(async () => null),
+    update: mock(),
+    updateMany: mock(),
+  },
+  voucherClaim: {
+    findFirst: mock<() => Promise<unknown>>(async () => null),
+    create: mock(),
+  },
 }
 const mockResolveRecurringPrice = mock()
 const mockDebitServiceBalance = mock()
@@ -646,6 +655,97 @@ describe("BillingOrderService", () => {
     expect(mockPrisma.billingOrder.update).toHaveBeenLastCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: "FAILED" }),
+      })
+    )
+  })
+  it("creates a voucher claim and updates voucher status to DEPLETED when maxClaims reached on fulfillOrder", async () => {
+    mockPrisma.billingOrder.findUnique.mockResolvedValue(
+      orderFixture({
+        status: "CHARGED",
+        billingInvoiceId: "invoice-1",
+        voucherId: "voucher-1",
+        discountAmount: decimal("10.00"),
+        voucherCurrency: "IDR",
+        voucherExchangeRate: decimal("1.0"),
+        metadataJson: {
+          workosUserId: "user-1",
+        },
+      })
+    )
+    mockPrisma.voucherClaim.findFirst.mockResolvedValue(null)
+    mockPrisma.voucherClaim.create.mockResolvedValue({ id: "claim-1" })
+    mockPrisma.voucher.updateMany.mockResolvedValue({ count: 1 })
+    mockPrisma.voucher.findUnique.mockResolvedValue({
+      id: "voucher-1",
+      claimedCount: 1,
+      maxClaims: 1,
+    })
+    mockPrisma.voucher.update.mockResolvedValue({
+      id: "voucher-1",
+      status: "DEPLETED",
+    })
+    mockPrisma.billingOrder.update.mockResolvedValue(
+      orderFixture({
+        status: "FULFILLED",
+        billingInvoiceId: "invoice-1",
+        serviceSubscriptionId: "subscription-1",
+      })
+    )
+
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      undefined,
+      new BillingFulfillmentRegistry([adapter])
+    )
+
+    const result = await service.fulfillOrder("order-1")
+
+    expect(result.status).toBe("FULFILLED")
+    expect(mockPrisma.voucherClaim.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          voucherId: "voucher-1",
+          workosUserId: "user-1",
+          organizationId: "org-1",
+          orderId: "order-1",
+          discountAmount: decimal("10.00"),
+          discountCurrency: "IDR",
+        }),
+      })
+    )
+    expect(mockPrisma.voucher.updateMany).toHaveBeenCalledWith({
+      where: { id: "voucher-1" },
+      data: { claimedCount: { increment: 1 } },
+    })
+    expect(mockPrisma.voucher.update).toHaveBeenCalledWith({
+      where: { id: "voucher-1" },
+      data: { status: "DEPLETED" },
+    })
+  })
+
+  it("passes subtotalAmount and discountAmount to debitUpfrontSubscription in chargeOrder", async () => {
+    mockPrisma.billingOrder.findUnique.mockResolvedValue(
+      orderFixture({
+        subtotalAmount: decimal("100.00"),
+        discountAmount: decimal("20.00"),
+        totalAmount: decimal("80.00"),
+      })
+    )
+    mockPrisma.billingOrder.update.mockResolvedValue(
+      orderFixture({ status: "CHARGED", billingInvoiceId: "invoice-1" })
+    )
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient
+    )
+
+    const result = await service.chargeOrder("order-1")
+
+    expect(result.status).toBe("CHARGED")
+    expect(mockDebitServiceBalance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: decimal("80.00"),
+        subtotalAmount: decimal("100.00"),
+        discountAmount: decimal("20.00"),
       })
     )
   })
