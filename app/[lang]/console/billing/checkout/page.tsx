@@ -68,9 +68,13 @@ export default function CheckoutPage() {
       `checkout:${pricingId}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`
   )
 
-  const isWhatsApp =
-    quotePreview?.packageCode === "WHATSAPP" ||
-    (!quotePreview && productName?.toUpperCase() === "WHATSAPP")
+  const resources = (quotePreview?.resources ?? {}) as Record<string, unknown>
+  const showDeviceProvisioning =
+    resources.deviceSetup !== false &&
+    (quotePreview?.packageCode === "WHATSAPP" ||
+      (!quotePreview && productName?.toUpperCase() === "WHATSAPP") ||
+      Boolean(resources.requireDeviceSetup))
+  const phoneRequired = resources.phoneRequired !== false
   const hasPricing = Boolean(pricingId)
 
   const requestQuote = useCallback(
@@ -132,7 +136,7 @@ export default function CheckoutPage() {
         quoteToken: quotePreview?.quoteToken,
         idempotencyKey,
         device:
-          isWhatsApp && phoneNumber.trim()
+          showDeviceProvisioning && phoneNumber.trim()
             ? {
                 phoneNumber: phoneNumber.trim(),
                 displayName: displayName.trim() || undefined,
@@ -216,18 +220,20 @@ export default function CheckoutPage() {
               <span className="text-muted-foreground">Billing Period</span>
               <span>{billingPeriod || quotePreview.billingPeriod}</span>
             </div>
-            {isWhatsApp && (
+            {showDeviceProvisioning && (
               <div className="space-y-3 rounded-md border p-3">
                 <div className="space-y-1">
                   <h3 className="text-sm font-medium">Device Configuration</h3>
                   <p className="text-xs text-muted-foreground">
-                    Provide details for the WhatsApp Business device to activate
-                    upon payment.
+                    Provide details for the device to activate upon payment.
                   </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="wa-phone-number">
-                    Phone Number <span className="text-destructive">*</span>
+                    Phone Number{" "}
+                    {phoneRequired && (
+                      <span className="text-destructive">*</span>
+                    )}
                   </Label>
                   <Input
                     id="wa-phone-number"
@@ -237,7 +243,7 @@ export default function CheckoutPage() {
                       setPhoneNumber((e.target as HTMLInputElement).value)
                     }
                     placeholder="e.g. +6281234567890"
-                    required
+                    required={phoneRequired}
                   />
                 </div>
                 <div className="space-y-2">
@@ -262,7 +268,6 @@ export default function CheckoutPage() {
                 </div>
               </div>
             )}
-
             {addonOptions.length > 0 && (
               <fieldset className="space-y-2 rounded-md border p-3">
                 <legend className="px-1 text-sm font-medium">Add-ons</legend>
@@ -377,11 +382,11 @@ export default function CheckoutPage() {
                 onClick={() => void handleCheckout()}
                 disabled={
                   !confirmed ||
-                  isLoading ||
                   quoteLoading ||
-                  (isWhatsApp && phoneNumber.trim().length === 0)
+                  (showDeviceProvisioning &&
+                    phoneRequired &&
+                    phoneNumber.trim().length === 0)
                 }
-                className="w-full"
               >
                 Confirm and pay
               </Button>
