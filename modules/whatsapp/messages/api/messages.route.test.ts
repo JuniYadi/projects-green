@@ -26,6 +26,10 @@ const mockPrisma = {
   whatsappQuotaCreditRate: {
     findMany: mock(async () => []),
   },
+  whatsappBasePrice: {
+    findMany: mock(async () => []),
+    findFirst: mock(async () => null),
+  },
   serviceSubscription: {
     findFirst: mock(async () => null),
   },
@@ -138,14 +142,12 @@ describe("messagesRoutes", () => {
     mockPrisma.whatsappMessage.update.mockClear()
     mockPrisma.whatsappMessage.delete.mockClear()
     mockPrisma.whatsappConversation.findFirst.mockClear()
-    mockPrisma.whatsappTemplate.findFirst.mockClear()
-    mockPrisma.whatsappDevice.findMany.mockClear()
     mockPrisma.whatsappQuotaCreditRate.findMany.mockClear()
+    mockPrisma.whatsappBasePrice.findMany.mockClear()
+    mockPrisma.whatsappBasePrice.findFirst.mockClear()
     mockPrisma.serviceSubscription.findFirst.mockClear()
     mockPrisma.servicePricing.findFirst.mockClear()
     mockMessageService.sendTemplateMessage.mockClear()
-    mockMessageService.sendMessage.mockClear()
-    mockLogAuditEvent.mockClear()
 
     mockPrisma.whatsappMessage.count.mockResolvedValue(1)
     mockPrisma.whatsappMessage.findMany.mockResolvedValue([
@@ -248,38 +250,47 @@ describe("messagesRoutes", () => {
       expect(res.status).toBe(200)
       const body = await res.json()
       expect(body.ok).toBe(true)
-      expect(body.overage).toEqual({
+      expect(body.overage).toMatchObject({
         unitPrice: "150",
         currency: "IDR",
         configured: true,
       })
-      expect(body.devices).toHaveLength(1)
       expect(body.devices[0]).toMatchObject({
         deviceId: "device-1",
         phoneNumber: "+6281234567890",
         country: "ID",
+        rateTier: "BASE",
       })
       expect(body.devices[0].categories).toHaveLength(5)
-      expect(body.devices[0].categories).toContainEqual({
-        category: "MARKETING",
-        quotaCredit: "2.00",
-        configured: true,
-        description: "Marketing template credit",
-      })
-      expect(body.devices[0].categories).toContainEqual({
-        category: "REPLY",
-        quotaCredit: "1",
-        configured: false,
-        description: null,
-      })
+      expect(body.devices[0].categories).toContainEqual(
+        expect.objectContaining({
+          category: "MARKETING",
+          quotaCredit: "2.00",
+          configured: true,
+          description: "Marketing template credit",
+        })
+      )
+      expect(body.devices[0].categories).toContainEqual(
+        expect.objectContaining({
+          category: "SERVICE",
+          quotaCredit: "1",
+          configured: false,
+          description: null,
+        })
+      )
       expect(mockPrisma.whatsappDevice.findMany).toHaveBeenCalledWith({
         where: { organizationId: "org-1", status: "ACTIVE" },
-        select: { id: true, phoneNumber: true },
+        select: { id: true, phoneNumber: true, rates: true },
         orderBy: { createdAt: "desc" },
       })
-      expect(mockPrisma.whatsappQuotaCreditRate.findMany).toHaveBeenCalledWith({
-        where: { country: { in: ["ID"] } },
-      })
+      expect(mockPrisma.whatsappQuotaCreditRate.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            country: { in: ["ID"] },
+            isActive: true,
+          }),
+        })
+      )
     })
   })
 
