@@ -19,13 +19,15 @@ import {
   type CheckoutResult,
 } from "./checkout-client"
 
-function formatCurrency(amount: string, currency: string): string {
+function formatCurrency(amount: string, currency: string = "IDR"): string {
+  const safeCurrency =
+    currency && currency.trim() ? currency.trim().toUpperCase() : "IDR"
   const value = Number(amount)
-  return new Intl.NumberFormat(currency === "USD" ? "en-US" : "id-ID", {
+  return new Intl.NumberFormat(safeCurrency === "USD" ? "en-US" : "id-ID", {
     style: "currency",
-    currency,
-    minimumFractionDigits: currency === "USD" ? 2 : 0,
-  }).format(value)
+    currency: safeCurrency,
+    minimumFractionDigits: safeCurrency === "USD" ? 2 : 0,
+  }).format(Number.isNaN(value) ? 0 : value)
 }
 
 function formatDate(iso: string | null): string {
