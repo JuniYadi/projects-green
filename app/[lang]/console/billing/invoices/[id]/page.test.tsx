@@ -1,9 +1,16 @@
-import userEvent from "@testing-library/user-event"
 import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { useParams } from "next/navigation"
-import { fireEvent, render, waitFor } from "@testing-library/react"
 
+const mockUseParams = mock(() => ({ id: "inv-1", lang: "en" }))
+const mockUseSearchParams = mock(() => new URLSearchParams())
+
+mock.module("next/navigation", () => ({
+  useParams: mockUseParams,
+  useSearchParams: mockUseSearchParams,
+}))
+
+import userEvent from "@testing-library/user-event"
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
 import InvoiceDetailPage from "./page"
 
 const originalFetch = globalThis.fetch
@@ -55,10 +62,10 @@ const invoicePayload = (overrides: Record<string, unknown> = {}) => ({
     ...overrides,
   },
 })
-
 describe("Billing InvoiceDetailPage", () => {
   beforeEach(() => {
-    ;(useParams as ReturnType<typeof mock>).mockReturnValue({ id: "inv-1" })
+    mockUseParams.mockReturnValue({ id: "inv-1", lang: "en" })
+    mockUseSearchParams.mockReturnValue(new URLSearchParams())
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {
       const url = String(input)
 
@@ -99,9 +106,11 @@ describe("Billing InvoiceDetailPage", () => {
       return jsonResponse({ ok: false, message: "Unhandled" }, 500)
     }) as unknown as typeof fetch
   })
-
   afterEach(() => {
+    cleanup()
     globalThis.fetch = originalFetch
+    document.body.innerHTML = ""
+    document.body.style.pointerEvents = "auto"
   })
 
   it("shows working PDF download action", async () => {

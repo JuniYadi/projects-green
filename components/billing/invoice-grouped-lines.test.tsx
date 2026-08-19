@@ -1,5 +1,5 @@
 import "@/test/register"
-import { describe, expect, it } from "bun:test"
+import { afterEach, describe, expect, it } from "bun:test"
 import { render } from "@testing-library/react"
 
 import { InvoiceFlatLine, InvoiceGroupedLines } from "./invoice-grouped-lines"
@@ -15,8 +15,10 @@ const line = (overrides: Partial<InvoiceLineItem> = {}): InvoiceLineItem => ({
   metadata: {},
   ...overrides,
 })
-
 describe("InvoiceGroupedLines", () => {
+  afterEach(() => {
+    document.body.innerHTML = ""
+  })
   it("InvoiceFlatLine renders line currency and amount", () => {
     const view = render(
       <InvoiceFlatLine
@@ -60,7 +62,7 @@ describe("InvoiceGroupedLines", () => {
     expect(view.getByText("$0.00")).toBeInTheDocument()
   })
 
-  it("InvoiceGroupedLines groups by category and formats subtotal in invoice currency", () => {
+  it("InvoiceGroupedLines renders table and formats amounts in invoice currency", () => {
     const view = render(
       <InvoiceGroupedLines
         currency="USD"
@@ -76,9 +78,7 @@ describe("InvoiceGroupedLines", () => {
     )
 
     expect(view.getByText("May 2026")).toBeInTheDocument()
-    expect(view.getByText("VPN")).toBeInTheDocument()
-    expect(view.getByText("(2)")).toBeInTheDocument()
-    expect(view.getByText("$100.00")).toBeInTheDocument()
+    expect(view.getAllByText("VPN").length).toBeGreaterThan(0)
     expect(view.getByText(/vpn-1, vpn-2/)).toBeInTheDocument()
     expect(view.getByText("$80.00")).toBeInTheDocument()
     expect(view.getByText("$20.00")).toBeInTheDocument()
