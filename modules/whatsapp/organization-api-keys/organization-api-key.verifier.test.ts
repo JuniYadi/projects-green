@@ -97,7 +97,11 @@ describe("verifyWhatsappOrganizationApiKey", () => {
       expect.any(String)
     )
     expect(updateMany).toHaveBeenCalledWith({
-      where: { id: "key-1", status: "ACTIVE" },
+      where: {
+        id: "key-1",
+        status: "ACTIVE",
+        OR: [{ lastUsedAt: null }, { lastUsedAt: { lt: expect.any(Date) } }],
+      },
       data: {
         lastUsedAt: expect.any(Date),
         lastUsedIp: "203.0.113.10",

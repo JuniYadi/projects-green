@@ -7,6 +7,7 @@ import {
   isWellFormedWhatsappOrganizationApiKey,
   WHATSAPP_ORGANIZATION_API_KEY_PREFIX,
 } from "./organization-api-key.crypto"
+export const WHATSAPP_API_KEY_LAST_USED_UPDATE_INTERVAL_MS = 60 * 60 * 1000
 
 export type WhatsappOrganizationApiKeyAuthContext = {
   keyId: string
@@ -59,9 +60,17 @@ export async function verifyWhatsappOrganizationApiKey(
     )
 
     // Authentication remains available if this best-effort usage telemetry fails.
+    // Throttle updates to at most once per hour to prevent high request throughput from draining the DB.
+    const lastUsedThreshold = new Date(
+      Date.now() - WHATSAPP_API_KEY_LAST_USED_UPDATE_INTERVAL_MS
+    )
     void database.whatsappOrganizationApiKey
       .updateMany({
-        where: { id: key.id, status: "ACTIVE" },
+        where: {
+          id: key.id,
+          status: "ACTIVE",
+          OR: [{ lastUsedAt: null }, { lastUsedAt: { lt: lastUsedThreshold } }],
+        },
         data: {
           lastUsedAt: new Date(),
           lastUsedIp: normalizedClientIp,
@@ -69,7 +78,6 @@ export async function verifyWhatsappOrganizationApiKey(
         },
       })
       .catch(() => undefined)
-
     return {
       keyId: key.id,
       organizationId: key.organizationId,
