@@ -89,6 +89,9 @@ export default function ProductDetailPage() {
   const [stockCount, setStockCount] = useState<number>(0)
   const [allowBackorder, setAllowBackorder] = useState(false)
   const [isActive, setIsActive] = useState(true)
+  const [resourceEntries, setResourceEntries] = useState<
+    Array<{ key: string; value: string }>
+  >([])
 
   const [prices, setPrices] = useState<AddonPricingForm[]>([])
   const [defaultCurrency, setDefaultCurrency] = useState<string>("IDR")
@@ -110,6 +113,13 @@ export default function ProductDetailPage() {
         setStockCount(p.stockCount ?? 0)
         setAllowBackorder(Boolean(p.allowBackorder))
         setIsActive(p.isActive ?? true)
+
+        const resObj = (p.resources ?? {}) as Record<string, unknown>
+        const entries = Object.entries(resObj).map(([k, v]) => ({
+          key: k,
+          value: typeof v === "object" ? JSON.stringify(v) : String(v),
+        }))
+        setResourceEntries(entries)
 
         const initialPrices: AddonPricingForm[] = (p.offers ?? []).map(
           (offer) => ({
@@ -231,7 +241,6 @@ export default function ProductDetailPage() {
       )
       return
     }
-
     setSaving(true)
     try {
       await upsertAdminCatalogProduct(catalogCode, targetCode, {
@@ -241,6 +250,27 @@ export default function ProductDetailPage() {
         stockCount: stockControl === "TRACKED" ? stockCount : null,
         allowBackorder,
         isActive,
+        resources: resourceEntries.reduce<Record<string, unknown>>(
+          (acc, { key, value }) => {
+            const trimmedKey = key.trim()
+            if (!trimmedKey) return acc
+            const trimmedVal = value.trim()
+            const num = Number(trimmedVal)
+            if (!Number.isNaN(num) && trimmedVal !== "") {
+              acc[trimmedKey] = num
+            } else if (trimmedVal === "true" || trimmedVal === "false") {
+              acc[trimmedKey] = trimmedVal === "true"
+            } else {
+              try {
+                acc[trimmedKey] = JSON.parse(trimmedVal)
+              } catch {
+                acc[trimmedKey] = trimmedVal
+              }
+            }
+            return acc
+          },
+          {}
+        ),
         prices: prices.map((p) => ({
           billingPeriod: p.billingPeriod,
           currency: p.currency,
@@ -660,8 +690,107 @@ export default function ProductDetailPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
 
+        {/* Resource Specs & Quotas */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Resources & Quotas</CardTitle>
+                <CardDescription>
+                  Commercial quotas and specs allocated to this product tier
+                  (e.g. devices, conversations, quotaIn, quotaOut,
+                  dailyPerDevice).
+                </CardDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setResourceEntries((prev) => [
+                    ...prev,
+                    { key: "", value: "" },
+                  ])
+                }
+              >
+                <PlusIcon className="mr-1.5 h-4 w-4" />
+                Add Resource
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {resourceEntries.length === 0 ? (
+              <p className="py-2 text-xs text-muted-foreground">
+                No resources or quotas configured for this plan tier. Click
+                &quot;Add Resource&quot; to configure quotas.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {resourceEntries.map((entry, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-3 rounded-md border bg-background p-2.5"
+                  >
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground">
+                        Key / Attribute
+                      </Label>
+                      <Input
+                        value={entry.key}
+                        onChange={(e) =>
+                          setResourceEntries((prev) =>
+                            prev.map((item, i) =>
+                              i === idx
+                                ? { ...item, key: e.target.value }
+                                : item
+                            )
+                          )
+                        }
+                        placeholder="e.g. devices, quotaIn, conversations"
+                        className="h-8 font-mono text-xs"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground">
+                        Allocated Value
+                      </Label>
+                      <Input
+                        value={entry.value}
+                        onChange={(e) =>
+                          setResourceEntries((prev) =>
+                            prev.map((item, i) =>
+                              i === idx
+                                ? { ...item, value: e.target.value }
+                                : item
+                            )
+                          )
+                        }
+                        placeholder="e.g. 5, 1000, 500"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="mt-5 h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() =>
+                        setResourceEntries((prev) =>
+                          prev.filter((_, i) => i !== idx)
+                        )
+                      }
+                      aria-label="Remove resource"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
       {/* Per-Product Pricing Table (Addon Parity) */}
       <Card>
         <CardHeader>
