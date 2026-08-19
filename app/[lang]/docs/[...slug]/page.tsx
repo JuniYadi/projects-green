@@ -87,8 +87,7 @@ export default async function PublicDocDetailPage({ params }: Props) {
   const renderedHtml = injectHeadingIds(rawHtml)
 
   return (
-    <div className="flex w-full flex-col gap-10 xl:flex-row xl:items-start xl:gap-12">
-      {/* Center Reading Content - Expanded Width */}
+    <div className="relative flex w-full flex-col gap-10 xl:flex-row xl:items-start xl:gap-12">
       <div className="min-w-0 flex-1 space-y-10">
         {/* Navigation Breadcrumb */}
         <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
@@ -149,8 +148,8 @@ export default async function PublicDocDetailPage({ params }: Props) {
 
       {/* Right Column: Sticky Table of Contents */}
       {toc.length > 0 && (
-        <aside className="hidden w-64 shrink-0 xl:block">
-          <div className="sticky top-24 space-y-3 rounded-2xl border border-border/40 bg-card/40 p-5 backdrop-blur-sm">
+        <aside className="sticky top-24 hidden w-64 shrink-0 self-start xl:block">
+          <div className="space-y-3 rounded-2xl border border-border/40 bg-card/40 p-5 shadow-sm backdrop-blur-sm">
             <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               <ListNumbers size={14} className="text-emerald-500" />
               <span>On this page</span>
