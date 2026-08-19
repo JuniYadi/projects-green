@@ -1,8 +1,10 @@
 "use client"
 
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { useEffect, useState } from "react"
 import Link from "next/link"
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -27,9 +29,9 @@ function formatCurrency(value: number, currency: "IDR" | "USD"): string {
   }).format(value)
 }
 
-function TopupFormSkeleton() {
+function TopupFormSkeleton({ loadingLabel }: { loadingLabel: string }) {
   return (
-    <div className="space-y-6" aria-label="Loading top up details">
+    <div className="space-y-6" aria-label={loadingLabel}>
       <div className="space-y-3">
         <Skeleton className="h-4 w-24" />
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -49,9 +51,9 @@ function TopupFormSkeleton() {
   )
 }
 
-function ImportantNotesSkeleton() {
+function ImportantNotesSkeleton({ loadingLabel }: { loadingLabel: string }) {
   return (
-    <div className="space-y-2" aria-label="Loading important notes">
+    <div className="space-y-2" aria-label={loadingLabel}>
       {Array.from({ length: 4 }).map((_, index) => (
         <Skeleton key={index} className="h-4 w-full" />
       ))}
@@ -60,12 +62,15 @@ function ImportantNotesSkeleton() {
 }
 
 export default function TopupPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const billing = messages.console.billing
   const [currency, setCurrency] = useState<"IDR" | "USD">("IDR")
   const [isLoadingCurrency, setIsLoadingCurrency] = useState(true)
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig | null>(
     null
   )
-
   useEffect(() => {
     let cancelled = false
     void getAccount()
@@ -99,11 +104,10 @@ export default function TopupPage() {
               <ArrowLeftIcon className="h-4 w-4" />
             </Link>
           </Button>
-          <h1 className="text-2xl font-semibold">Top Up Balance</h1>
+          <h1 className="text-2xl font-semibold">{billing.topUpHeading}</h1>
         </div>
         <p className="text-sm text-muted-foreground">
-          Add funds to your billing account. Choose your preferred payment
-          method.
+          {billing.topUpDescription}
         </p>
       </header>
 
@@ -111,11 +115,13 @@ export default function TopupPage() {
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Top Up Details</CardTitle>
+              <CardTitle className="text-base">
+                {billing.topUpDetails}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {isLoadingCurrency ? (
-                <TopupFormSkeleton />
+                <TopupFormSkeleton loadingLabel={billing.topUpDetails} />
               ) : (
                 <TopupFormEnhanced
                   currency={currency}
@@ -129,31 +135,31 @@ export default function TopupPage() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Payment Instructions</CardTitle>
+              <CardTitle className="text-base">
+                {billing.paymentInstructions}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <h4 className="font-medium">Manual Bank Transfer</h4>
+                <h4 className="font-medium">{billing.manualBankTransfer}</h4>
                 <div className="space-y-1 text-sm text-muted-foreground">
-                  <p>1. Create invoice using the form</p>
-                  <p>2. Transfer to the destination account</p>
-                  <p>3. Confirm payment on the next page</p>
+                  <p>{billing.transferInstructions}</p>
+                  <p>{billing.topUpInstructionDetail}</p>
+                  <p>{billing.confirmPayment}</p>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <h4 className="font-medium">Virtual Account</h4>
+                <h4 className="font-medium">{billing.virtualAccount}</h4>
                 <p className="text-sm text-muted-foreground">
-                  Pay via your bank&apos;s virtual account. Instructions will be
-                  provided after invoice creation.
+                  {billing.autoUpdateDesc}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <h4 className="font-medium">QRIS</h4>
+                <h4 className="font-medium">{billing.qris}</h4>
                 <p className="text-sm text-muted-foreground">
-                  Scan the QR code with any QRIS-enabled app. Quick and instant
-                  confirmation.
+                  {billing.paymentOptions}
                 </p>
               </div>
             </CardContent>
@@ -161,29 +167,33 @@ export default function TopupPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Important Notes</CardTitle>
+              <CardTitle className="text-base">
+                {billing.importantNotes}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {isLoadingCurrency ? (
-                <ImportantNotesSkeleton />
+                <ImportantNotesSkeleton loadingLabel={billing.importantNotes} />
               ) : (
                 <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
                   <li>
-                    Minimum topup amount is{" "}
-                    {currencyConfig
-                      ? formatCurrency(currencyConfig.minTopup, currency)
-                      : "—"}
+                    {billing.minTopUp.replace(
+                      "{amount}",
+                      currencyConfig
+                        ? formatCurrency(currencyConfig.minTopup, currency)
+                        : "—"
+                    )}
                   </li>
                   <li>
-                    Maximum topup amount is{" "}
-                    {currencyConfig
-                      ? formatCurrency(currencyConfig.maxTopup, currency)
-                      : "—"}
+                    {billing.maxTopUp.replace(
+                      "{amount}",
+                      currencyConfig
+                        ? formatCurrency(currencyConfig.maxTopup, currency)
+                        : "—"
+                    )}
                   </li>
-                  <li>Balance will be updated after payment verification</li>
-                  <li>
-                    For manual transfer, please confirm payment within 24 hours
-                  </li>
+                  <li>{billing.balanceUpdatedAfterVerification}</li>
+                  <li>{billing.manualTransfer24h}</li>
                 </ul>
               )}
             </CardContent>
