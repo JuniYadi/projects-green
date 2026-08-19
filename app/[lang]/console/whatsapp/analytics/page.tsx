@@ -1,6 +1,6 @@
 "use client"
 
-import * as React from "react"
+import { useParams } from "next/navigation"
 import {
   ChartLine,
   Funnel,
@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type PageState = "idle" | "loading" | "error" | "loaded"
 
@@ -91,6 +93,10 @@ function deltaBadgeCost(delta: number) {
 }
 
 export default function WhatsAppAnalyticsPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.console.whatsapp.analytics
   const [state, setState] = React.useState<PageState>("idle")
   const [error, setError] = React.useState("")
   const [tab, setTab] = React.useState<"comparison" | "cost">("comparison")
