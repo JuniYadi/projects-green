@@ -7,8 +7,10 @@ import {
   Folder,
   ListNumbers,
   CheckCircle,
+  Code,
 } from "@phosphor-icons/react/dist/ssr"
 import { prisma } from "@/lib/prisma"
+import { OnThisPage } from "../components/on-this-page"
 
 type Props = {
   params: Promise<{ lang: string; slug: string[] }>
@@ -70,7 +72,7 @@ export default async function PublicDocDetailPage({ params }: Props) {
   const renderedHtml = Bun.markdown.html(cleanedMarkdown)
 
   return (
-    <div className="flex flex-col gap-10 lg:flex-row lg:items-start">
+    <div className="flex flex-col gap-10 xl:flex-row xl:items-start">
       {/* Center Reading Content */}
       <div className="min-w-0 flex-1 space-y-10">
         {/* Navigation Breadcrumb */}
@@ -109,7 +111,7 @@ export default async function PublicDocDetailPage({ params }: Props) {
             {doc.purpose}
           </p>
 
-          <div className="flex items-center gap-4 pt-2 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-4 pt-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <Clock size={14} />
               <span>
@@ -120,6 +122,16 @@ export default async function PublicDocDetailPage({ params }: Props) {
             <span className="font-mono text-[11px] text-muted-foreground/80">
               {doc.path}
             </span>
+            <span>•</span>
+            <a
+              href="/api/openapi"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-medium text-blue-500 hover:underline"
+            >
+              <Code size={13} />
+              <span>OpenAPI Spec</span>
+            </a>
           </div>
         </header>
 
@@ -130,25 +142,15 @@ export default async function PublicDocDetailPage({ params }: Props) {
         />
       </div>
 
-      {/* Right Column: On-Page Table of Contents */}
+      {/* Right Column: Dynamic Scroll-Spy Table of Contents */}
       {toc.length > 0 && (
-        <aside className="hidden w-64 shrink-0 lg:block">
-          <div className="sticky top-24 space-y-4 rounded-2xl border border-border/40 bg-card/40 p-5 backdrop-blur-sm">
+        <aside className="hidden w-64 shrink-0 xl:block">
+          <div className="sticky top-24 space-y-3 rounded-2xl border border-border/40 bg-card/40 p-5 backdrop-blur-sm">
             <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               <ListNumbers size={14} className="text-emerald-500" />
               <span>On this page</span>
             </div>
-            <nav className="space-y-2">
-              {toc.map((heading) => (
-                <a
-                  key={heading.id}
-                  href={`#${heading.id}`}
-                  className="block text-xs leading-relaxed text-muted-foreground transition-colors hover:text-emerald-500"
-                >
-                  {heading.text}
-                </a>
-              ))}
-            </nav>
+            <OnThisPage toc={toc} />
           </div>
         </aside>
       )}

@@ -11,6 +11,7 @@ import {
   CheckCircle,
 } from "@phosphor-icons/react/dist/ssr"
 import { prisma } from "@/lib/prisma"
+import { DocsSearch } from "./components/docs-search"
 
 type Props = {
   params: Promise<{ lang: string }>
@@ -80,21 +81,34 @@ export default async function PublicDocsIndexPage({ params }: Props) {
     {}
   )
 
+  const searchableDocs = allDocs.map((d) => ({
+    path: d.path,
+    title: d.title,
+    purpose: d.purpose,
+    category: d.category || "General",
+  }))
+
   return (
     <div className="space-y-12 pb-12">
-      {/* Hero Header */}
-      <div className="space-y-4">
-        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-          <Sparkle size={14} weight="fill" />
-          <span>PFNApp Knowledge Base & Guides</span>
+      {/* Hero Header & Search */}
+      <div className="space-y-6">
+        <div className="space-y-3">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+            <Sparkle size={14} weight="fill" />
+            <span>PFNApp Knowledge Base & Guides</span>
+          </div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
+            Documentation & Tutorials
+          </h1>
+          <p className="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+            Step-by-step guides with real visual screenshots, OpenAPI
+            specifications, and practical code examples to help you integrate
+            and scale.
+          </p>
         </div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
-          Documentation & Tutorials
-        </h1>
-        <p className="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-          Step-by-step guides with real visual screenshots, API references, and
-          practical code examples to help you integrate and scale.
-        </p>
+
+        {/* Live Search Component */}
+        <DocsSearch lang={lang} documents={searchableDocs} />
       </div>
 
       {/* Quick Start Pillars */}
@@ -127,20 +141,22 @@ export default async function PublicDocsIndexPage({ params }: Props) {
               <CodeBlock size={20} weight="duotone" />
             </div>
             <h2 className="text-sm font-semibold text-foreground">
-              SDKs & Integration
+              OpenAPI & REST Endpoints
             </h2>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Copy-paste code samples for Node.js, Python, cURL, and webhook
-              receivers.
+              Explore interactive Swagger / OpenAPI 3.0 specifications for all
+              WhatsApp & Cloud APIs.
             </p>
           </div>
-          <Link
-            href={`/${lang}/docs/whatsapp/api-keys#4-authenticating-api-requests`}
+          <a
+            href="/api/openapi"
+            target="_blank"
+            rel="noopener noreferrer"
             className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-blue-500 transition-colors hover:text-blue-400"
           >
-            <span>View code examples</span>
+            <span>Open /api/openapi</span>
             <ArrowRight size={12} />
-          </Link>
+          </a>
         </div>
 
         <div className="flex flex-col justify-between rounded-xl border bg-card/60 p-5 backdrop-blur-sm">
@@ -149,7 +165,7 @@ export default async function PublicDocsIndexPage({ params }: Props) {
               <CheckCircle size={20} weight="duotone" />
             </div>
             <h2 className="text-sm font-semibold text-foreground">
-              Visual Guides
+              Visual Step-by-Step
             </h2>
             <p className="text-xs leading-relaxed text-muted-foreground">
               Every workflow includes actual screenshots from the console
