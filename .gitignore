@@ -59,6 +59,8 @@ docs/
 !modules/docs/**
 !app/\[lang\]/console/docs/
 !app/\[lang\]/console/docs/**
+!app/\[lang\]/docs/
+!app/\[lang\]/docs/**
 .mavis/
 .opencode/
 .superpowers/
