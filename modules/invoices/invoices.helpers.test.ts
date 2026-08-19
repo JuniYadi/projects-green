@@ -6,6 +6,7 @@ import {
   formatInvoiceDate,
   getInvoiceStatusLabel,
   getInvoiceStatusToneClass,
+  getNextRenewalDate,
   INVOICE_STATUS_FILTER_OPTIONS,
 } from "@/modules/invoices/invoices.helpers"
 
@@ -61,5 +62,13 @@ describe("invoice helpers", () => {
       expect(getInvoiceStatusLabel(status as never)).not.toBe("Unknown")
       expect(getInvoiceStatusToneClass(status as never)).toContain("border-")
     }
+  })
+
+  it("computes next renewal date correctly from periodEnd", () => {
+    expect(getNextRenewalDate(null)).toBeNull()
+    expect(getNextRenewalDate("2026-09-30T23:59:59.999Z")).toBe(
+      "2026-10-01T00:00:00.000Z"
+    )
+    expect(getNextRenewalDate("2026-09-30")).toBe("2026-10-01T00:00:00.000Z")
   })
 })
