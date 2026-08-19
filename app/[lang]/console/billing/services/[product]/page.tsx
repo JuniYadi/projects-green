@@ -4,7 +4,13 @@ import { useEffect, useMemo, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeftIcon } from "@phosphor-icons/react"
-
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,6 +40,11 @@ const TERM_LABELS: Record<BillingPeriod, string> = {
   ANNUAL: "Annual",
 }
 
+const CURRENCY_OPTIONS = [
+  { code: "IDR", flag: "🇮🇩", label: "IDR" },
+  { code: "USD", flag: "🇺🇸", label: "USD" },
+] as const
+
 function formatPrice(price: string, currency: string): string {
   const amount = Number.parseFloat(price)
   return new Intl.NumberFormat("en-US", {
@@ -60,7 +71,7 @@ export default function ProductDetailPage() {
   const params = useParams<{ lang?: string; product?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
-
+  const [selectedCurrency, setSelectedCurrency] = useState<string>("IDR")
   const [data, setData] = useState<CatalogProductDetailResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -68,9 +79,13 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     async function loadData() {
+      setIsLoading(true)
       try {
-        const result = await getCatalogProduct(productCode)
+        const result = await getCatalogProduct(productCode, selectedCurrency)
         setData(result)
+        if (result?.currency) {
+          setSelectedCurrency(result.currency)
+        }
       } catch {
         setError(messages.console.billing.services.errorDescription)
       } finally {
@@ -81,7 +96,11 @@ export default function ProductDetailPage() {
     if (productCode) {
       void loadData()
     }
-  }, [productCode, messages.console.billing.services.errorDescription])
+  }, [
+    productCode,
+    selectedCurrency,
+    messages.console.billing.services.errorDescription,
+  ])
 
   const productName = useMemo(() => {
     if (!data?.product) return productCode
@@ -136,32 +155,51 @@ export default function ProductDetailPage() {
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
-      <header className="flex flex-col gap-2">
+      <header className="flex flex-col gap-4">
         <Button variant="ghost" size="sm" asChild className="w-fit">
           <Link href="/console/billing/services">
             <ArrowLeftIcon className="mr-1 size-4" />
             {messages.console.billing.services.product.backToServices}
           </Link>
         </Button>
-        <h1 className="text-2xl font-semibold">
-          {messages.console.billing.services.product.heading.replace(
-            "{product}",
-            productName
-          )}
-        </h1>
-        {data && (
-          <p className="text-sm text-muted-foreground">
-            {messages.console.billing.services.product.description.replace(
-              "{product}",
-              productName
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold">
+              {messages.console.billing.services.product.heading.replace(
+                "{product}",
+                productName
+              )}
+            </h1>
+            {data && (
+              <p className="text-sm text-muted-foreground">
+                {messages.console.billing.services.product.description.replace(
+                  "{product}",
+                  productName
+                )}
+              </p>
             )}
-          </p>
-        )}
-        {data && (
-          <p className="text-xs font-medium text-muted-foreground">
-            {data.currency}
-          </p>
-        )}
+          </div>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <Select
+              value={selectedCurrency}
+              onValueChange={(val) => setSelectedCurrency(val)}
+            >
+              <SelectTrigger className="w-[120px] bg-background">
+                <SelectValue placeholder="Currency" />
+              </SelectTrigger>
+              <SelectContent align="end">
+                {CURRENCY_OPTIONS.map((c) => (
+                  <SelectItem key={c.code} value={c.code}>
+                    <span className="flex items-center gap-1.5">
+                      <span>{c.flag}</span>
+                      <span className="font-medium">{c.label}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </header>
 
       {error && (
