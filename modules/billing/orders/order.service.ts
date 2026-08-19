@@ -360,21 +360,28 @@ export class BillingOrderService {
           const invoiceNumber = invoice?.invoiceNumber ?? invoiceId
           await Promise.allSettled(
             recipients.map((r) =>
-              emailService.sendInvoicePaid(
-                {
-                  id: invoiceId,
-                  invoiceNumber,
-                  totalAmount,
-                  currency,
-                  status: "paid",
-                  periodStart: pStart,
-                  periodEnd: pEnd,
-                  issuedAt: new Date().toISOString(),
-                  dueAt: null,
-                },
-                r.email,
-                orgId
-              )
+              emailService
+                .sendInvoicePaid(
+                  {
+                    id: invoiceId,
+                    invoiceNumber,
+                    totalAmount,
+                    currency,
+                    status: "paid",
+                    periodStart: pStart,
+                    periodEnd: pEnd,
+                    issuedAt: new Date().toISOString(),
+                    dueAt: null,
+                  },
+                  r.email,
+                  orgId
+                )
+                .catch((err) => {
+                  console.error(
+                    "[BillingOrderService] Failed to send invoice paid email to recipient:",
+                    err
+                  )
+                })
             )
           )
         })

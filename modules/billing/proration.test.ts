@@ -50,12 +50,20 @@ describe("getCalendarCycleBoundaries", () => {
     expect(boundaries.end.toISOString()).toBe("2026-12-31T23:59:59.999Z")
     expect(boundaries.totalDays).toBe(365)
   })
-  it("computes remainingDays on the last day of cycle (Dec 31) as 1 day remaining", () => {
+  it("computes remainingDays on boundary condition correctly", () => {
     const dec31 = new Date("2026-12-31T12:00:00.000Z")
     const boundaries = getCalendarCycleBoundaries("ANNUAL", dec31)
 
     expect(boundaries.totalDays).toBe(365)
     expect(boundaries.remainingDays).toBe(1)
+  })
+
+  it("treats expired / past cycle end as full cycle (not prorated)", () => {
+    // When now exceeds cycle end date (e.g. out of bound calculation)
+    const future = new Date("2027-01-01T00:00:00.000Z")
+    const boundaries = getCalendarCycleBoundaries("ANNUAL", future)
+
+    expect(boundaries.remainingDays).toBe(boundaries.totalDays)
   })
 })
 

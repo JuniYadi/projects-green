@@ -76,8 +76,13 @@ export function getCalendarCycleBoundaries(
   const todayUtcMidnight = Date.UTC(year, month, now.getUTCDate(), 0, 0, 0, 0)
   const remainingDaysRaw =
     Math.round((endUtcMidnight - todayUtcMidnight) / DAY_MS) + 1
+  // When remainingDaysRaw <= 0, the cycle is complete — treat as entering next cycle (no pro-rata)
   const remainingDays =
-    remainingDaysRaw >= totalDays ? totalDays : Math.max(1, remainingDaysRaw)
+    remainingDaysRaw >= totalDays
+      ? totalDays
+      : remainingDaysRaw <= 0
+        ? totalDays
+        : remainingDaysRaw
 
   return { start, end, totalDays, remainingDays }
 }
