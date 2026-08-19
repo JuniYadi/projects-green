@@ -23,7 +23,14 @@ export function renderMarkdownToHtml(markdown: string): string {
     ).markdown.html(markdown)
   }
 
-  // Pure TypeScript fallback renderer for Next.js Node/Turbopack runtime
+  return renderMarkdownFallback(markdown)
+}
+
+/**
+ * Pure-TypeScript fallback renderer used in Next.js Node/Turbopack runtime
+ * where Bun.markdown is unavailable. Exported for unit-testing.
+ */
+export function renderMarkdownFallback(markdown: string): string {
   const lines = markdown.split(/\r?\n/)
   const html: string[] = []
   let inCodeBlock = false
@@ -72,7 +79,7 @@ export function renderMarkdownToHtml(markdown: string): string {
     }
 
     // Horizontal rule ---
-    if (/^---|\*\*\*|___$/.test(line.trim())) {
+    if (/^---|^\*\*\*|^___$/.test(line.trim())) {
       html.push("<hr />")
       continue
     }
