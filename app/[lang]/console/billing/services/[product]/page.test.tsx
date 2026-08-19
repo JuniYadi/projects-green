@@ -120,10 +120,11 @@ describe("ProductDetailPage", () => {
     ).toBeInTheDocument()
   })
 
-  it("displays the currency from the API response", async () => {
+  it("displays the currency selector with flag in the header", async () => {
     const view = render(<ProductDetailPage />)
 
-    await waitFor(() => expect(view.getByText("IDR")).toBeInTheDocument())
+    await waitFor(() => expect(view.getByText(/🇮🇩/)).toBeInTheDocument())
+    expect(view.getByText("IDR")).toBeInTheDocument()
   })
 
   it("renders plan cards with names and prices", async () => {
