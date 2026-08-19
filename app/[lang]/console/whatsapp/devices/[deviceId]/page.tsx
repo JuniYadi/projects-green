@@ -141,11 +141,11 @@ function WhatsAppProfilePreview({
   messages: ReturnType<typeof getMessages>["console"]["whatsapp"]["devices"]
 }) {
   const displayName =
-    getProfileString(profile, "name") || device.name || deviceMessages.cardTitle
-  const about = getProfileString(profile, "about") || deviceMessages.description
+    getProfileString(profile, "name") || device.name || messages.cardTitle
+  const about = getProfileString(profile, "about") || messages.description
   const profilePictureUrl = getProfileString(profile, "profile_picture_url")
   const availability =
-    device.status === "ACTIVE" ? deviceMessages.active : deviceMessages.inactive
+    device.status === "ACTIVE" ? messages.active : messages.inactive
 
   return (
     <div
@@ -550,8 +550,8 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="profile-about">{messages.edit}</Label>
-            <Textarea
+            <Label htmlFor="profile-about">About</Label>
+            <Input
               id="profile-about"
               maxLength={139}
               value={profileForm.about}
@@ -684,7 +684,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
           <Button onClick={handleSaveProfile} disabled={profileSubmitting}>
             {profileSubmitting
               ? deviceMessages.saving
-              : deviceMessages.saveChanges}
+              : deviceMessages.saveChanges || "Save"}
           </Button>
         </DialogFooter>
       </DialogContent>
