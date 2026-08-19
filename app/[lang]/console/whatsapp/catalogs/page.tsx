@@ -71,7 +71,7 @@ export default function CatalogsPage() {
       toast.error(
         err instanceof Error
           ? err.message
-          : messages.console.whatsapp.catalogs.emptyDescription
+          : messages.console.whatsapp.catalogs.loadError
       )
     } finally {
       setIsLoading(false)
@@ -86,7 +86,7 @@ export default function CatalogsPage() {
 
   const handleCreate = async () => {
     if (!createForm.name || !createForm.metaCatalogId) {
-      toast.error(messages.console.whatsapp.catalogs.description)
+      toast.error(messages.console.whatsapp.catalogs.createError)
       return
     }
     setIsSubmitting(true)
@@ -95,7 +95,7 @@ export default function CatalogsPage() {
         { name: createForm.name, metaCatalogId: createForm.metaCatalogId }
       if (createForm.deviceId) input.deviceId = createForm.deviceId
       await whatsappClient.catalogs.create(input)
-      toast.success(messages.console.whatsapp.catalogs.heading)
+      toast.success(messages.console.whatsapp.catalogs.createSuccess)
       setCreateOpen(false)
       setCreateForm({ name: "", metaCatalogId: "", deviceId: "" })
       await loadCatalogs()
@@ -103,7 +103,7 @@ export default function CatalogsPage() {
       toast.error(
         err instanceof Error
           ? err.message
-          : messages.console.whatsapp.catalogs.description
+          : messages.console.whatsapp.catalogs.createError
       )
     } finally {
       setIsSubmitting(false)
@@ -113,13 +113,13 @@ export default function CatalogsPage() {
   const handleDelete = async (id: string) => {
     try {
       await whatsappClient.catalogs.delete(id)
-      toast.success(messages.console.whatsapp.catalogs.heading)
+      toast.success(messages.console.whatsapp.catalogs.deleteSuccess)
       await loadCatalogs()
     } catch (err: unknown) {
       toast.error(
         err instanceof Error
           ? err.message
-          : messages.console.whatsapp.catalogs.description
+          : messages.console.whatsapp.catalogs.deleteError
       )
     }
   }
@@ -137,7 +137,7 @@ export default function CatalogsPage() {
         </div>
         <Button onClick={() => setCreateOpen(true)}>
           <Plus className="mr-2 size-4" />
-          {messages.console.whatsapp.catalogs.columnName}
+          {messages.console.whatsapp.catalogs.addCatalog}
         </Button>
       </div>
 
@@ -205,17 +205,14 @@ export default function CatalogsPage() {
                             )
                           }
                         >
-                          {
-                            messages.console.whatsapp.catalogs
-                              .columnProductCount
-                          }
+                          {messages.console.whatsapp.catalogs.viewProducts}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
                           onClick={() => handleDelete(cat.id)}
                         >
                           <Trash className="mr-2 size-4" />
-                          {messages.console.whatsapp.catalogs.emptyTitle}
+                          {messages.console.whatsapp.catalogs.deleteCatalog}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -231,10 +228,10 @@ export default function CatalogsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {messages.console.whatsapp.catalogs.heading}
+              {messages.console.whatsapp.catalogs.createDialogTitle}
             </DialogTitle>
             <DialogDescription>
-              {messages.console.whatsapp.catalogs.description}
+              {messages.console.whatsapp.catalogs.createDialogDescription}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -253,7 +250,7 @@ export default function CatalogsPage() {
             </div>
             <div>
               <Label htmlFor="metaCatalogId">
-                {messages.console.whatsapp.catalogs.columnStatus}
+                {messages.console.whatsapp.catalogs.metaCatalogIdLabel}
               </Label>
               <Input
                 id="metaCatalogId"
@@ -264,12 +261,14 @@ export default function CatalogsPage() {
                     metaCatalogId: e.target.value,
                   }))
                 }
-                placeholder={messages.console.whatsapp.catalogs.columnStatus}
+                placeholder={
+                  messages.console.whatsapp.catalogs.metaCatalogIdLabel
+                }
               />
             </div>
             <div>
               <Label htmlFor="deviceId">
-                {messages.console.whatsapp.catalogs.columnStatus}
+                {messages.console.whatsapp.catalogs.deviceIdLabel}
               </Label>
               <Input
                 id="deviceId"
@@ -277,18 +276,20 @@ export default function CatalogsPage() {
                 onChange={(e) =>
                   setCreateForm((f) => ({ ...f, deviceId: e.target.value }))
                 }
-                placeholder={messages.console.whatsapp.catalogs.description}
+                placeholder={
+                  messages.console.whatsapp.catalogs.deviceIdPlaceholder
+                }
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
-              {messages.console.whatsapp.catalogs.emptyTitle}
+              {messages.console.whatsapp.catalogs.cancelButton}
             </Button>
             <Button onClick={handleCreate} disabled={isSubmitting}>
               {isSubmitting
-                ? messages.console.whatsapp.catalogs.columnStatus
-                : messages.console.whatsapp.catalogs.heading}
+                ? messages.console.whatsapp.catalogs.creatingButton
+                : messages.console.whatsapp.catalogs.createButton}
             </Button>
           </DialogFooter>
         </DialogContent>
