@@ -128,3 +128,30 @@ export const formatInvoiceDate = (
     year: "numeric",
   })
 }
+
+/**
+ * Computes the first day of the renewal cycle following a periodEnd date.
+ * E.g., for periodEnd 2026-09-30 (or 2026-09-30T23:59:59.999Z), returns 2026-10-01.
+ */
+export const getNextRenewalDate = (periodEnd: string | null): string | null => {
+  if (!periodEnd) return null
+  const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/
+  let year: number
+  let month: number
+  let day: number
+
+  if (dateOnlyPattern.test(periodEnd)) {
+    const parts = periodEnd.split("-").map(Number)
+    year = parts[0]
+    month = parts[1] - 1
+    day = parts[2]
+  } else {
+    const parsed = new Date(periodEnd)
+    year = parsed.getUTCFullYear()
+    month = parsed.getUTCMonth()
+    day = parsed.getUTCDate()
+  }
+
+  const nextRenewalUtc = new Date(Date.UTC(year, month, day + 1, 0, 0, 0, 0))
+  return nextRenewalUtc.toISOString()
+}
