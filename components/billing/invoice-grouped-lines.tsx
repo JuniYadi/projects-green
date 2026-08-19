@@ -1,39 +1,50 @@
 "use client"
 
-import { useState } from "react"
 import {
   GlobeIcon,
   RocketLaunchIcon,
   WhatsappLogoIcon,
   DotsThreeIcon,
-  CaretDownIcon,
-  CaretRightIcon,
+  HardDrivesIcon,
+  DeviceMobileIcon,
+  PackageIcon,
 } from "@phosphor-icons/react"
+import { Badge } from "@/components/ui/badge"
 import type { InvoiceLineItem } from "@/lib/billing-client"
 import { formatInvoiceCurrency } from "@/modules/invoices/invoices.helpers"
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 
 type Category = "vpn" | "app-hosting" | "whatsapp" | "other"
-type Grouped = Record<
-  Category,
-  { label: string; icon: React.ReactNode; items: InvoiceLineItem[] }
->
 
 const CATEGORY_META: Record<
   Category,
-  { label: string; icon: React.ReactNode }
+  {
+    label: string
+    icon: React.ReactNode
+    variant: "default" | "secondary" | "outline"
+  }
 > = {
-  vpn: { label: "VPN", icon: <GlobeIcon className="h-4 w-4" /> },
+  vpn: {
+    label: "VPN",
+    icon: <GlobeIcon className="h-3.5 w-3.5" />,
+    variant: "secondary",
+  },
   "app-hosting": {
     label: "App Hosting",
-    icon: <RocketLaunchIcon className="h-4 w-4" />,
+    icon: <RocketLaunchIcon className="h-3.5 w-3.5" />,
+    variant: "secondary",
   },
   whatsapp: {
     label: "WhatsApp API",
-    icon: <WhatsappLogoIcon className="h-4 w-4" />,
+    icon: <WhatsappLogoIcon className="h-3.5 w-3.5" />,
+    variant: "secondary",
   },
-  other: { label: "Other", icon: <DotsThreeIcon className="h-4 w-4" /> },
+  other: {
+    label: "Other",
+    icon: <DotsThreeIcon className="h-3.5 w-3.5" />,
+    variant: "outline",
+  },
 }
 
 const toMoneyNumber = (amount: string): number => {
@@ -51,123 +62,50 @@ function getCategory(item: InvoiceLineItem): Category {
   return "other"
 }
 
-function extractDetail(line: InvoiceLineItem): string | null {
+function renderDetailBadges(line: InvoiceLineItem) {
   const meta = line.metadata ?? {}
+  const badges: React.ReactNode[] = []
+
   if (meta.servers && Array.isArray(meta.servers)) {
-    return `🖥️ ${(meta.servers as string[]).join(", ")}`
-  }
-  if (meta.appName) return `📦 ${meta.appName}`
-  if (meta.deviceId) return `📱 ${meta.deviceId}`
-  return null
-}
-
-function groupLines(lines: InvoiceLineItem[]): Grouped {
-  const grouped: Partial<Grouped> = {}
-  for (const line of lines) {
-    const cat = getCategory(line)
-    if (!grouped[cat]) {
-      grouped[cat] = { ...CATEGORY_META[cat], items: [] }
-    }
-    grouped[cat]!.items.push(line)
-  }
-  return grouped as Grouped
-}
-
-// ─── Group Section ─────────────────────────────────────────────────────
-
-function GroupSection({
-  label,
-  icon,
-  items,
-  defaultOpen,
-  currency,
-}: {
-  label: string
-  icon: React.ReactNode
-  items: InvoiceLineItem[]
-  defaultOpen: boolean
-  currency: string
-}) {
-  const [open, setOpen] = useState(defaultOpen)
-  const subtotal = items.reduce(
-    (sum, item) => sum + toMoneyNumber(item.amountIdr),
-    0
-  )
-
-  return (
-    <div className="rounded-lg border">
-      {/* Accordion header */}
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm font-medium hover:bg-muted/50"
+    badges.push(
+      <span
+        key="servers"
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground"
       >
-        <div className="flex items-center gap-2">
-          {open ? (
-            <CaretDownIcon className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <CaretRightIcon className="h-4 w-4 text-muted-foreground" />
-          )}
-          {icon}
-          <span>{label}</span>
-          <span className="text-muted-foreground">({items.length})</span>
-        </div>
-        <span className="font-semibold">
-          {formatInvoiceCurrency(subtotal, currency)}
-        </span>
-      </button>
+        <HardDrivesIcon className="h-3.5 w-3.5" />
+        {(meta.servers as string[]).join(", ")}
+      </span>
+    )
+  }
+  if (meta.appName) {
+    badges.push(
+      <span
+        key="app"
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground"
+      >
+        <PackageIcon className="h-3.5 w-3.5" />
+        {String(meta.appName)}
+      </span>
+    )
+  }
+  if (meta.deviceId) {
+    badges.push(
+      <span
+        key="device"
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground"
+      >
+        <DeviceMobileIcon className="h-3.5 w-3.5" />
+        {String(meta.deviceId)}
+      </span>
+    )
+  }
 
-      {/* Expanded content */}
-      {open && (
-        <div className="border-t">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b bg-muted/30">
-                <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">
-                  Description
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">
-                  Qty
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">
-                  Amount
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item, idx) => {
-                const detail = extractDetail(item)
-                return (
-                  <tr key={idx} className="border-b last:border-b-0">
-                    <td className="px-4 py-2.5">
-                      <p className="text-sm">{item.description}</p>
-                      {detail && (
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                          {detail}
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5 text-right text-sm">
-                      {Number.parseFloat(item.quantity).toLocaleString("id-ID")}
-                    </td>
-                    <td className="px-4 py-2.5 text-right text-sm font-medium">
-                      {formatLineAmount(
-                        item.amountIdr,
-                        item.currency || currency
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  )
+  if (badges.length === 0) return null
+
+  return <div className="mt-1 flex flex-wrap items-center gap-2">{badges}</div>
 }
 
-// ─── Root Component ────────────────────────────────────────────────────
+// ─── Table Display ─────────────────────────────────────────────────────
 
 type InvoiceGroupedLinesProps = {
   lines: InvoiceLineItem[]
@@ -180,31 +118,74 @@ export function InvoiceGroupedLines({
   currency,
   periodLabel,
 }: InvoiceGroupedLinesProps) {
-  const grouped = groupLines(lines)
-  const categories = Object.entries(grouped) as [
-    Category,
-    { label: string; icon: React.ReactNode; items: InvoiceLineItem[] },
-  ][]
-
-  // Default: open VPN if present, otherwise first category
-  const defaultOpen = categories.length > 0 ? categories[0][0] : null
-
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       {periodLabel && (
-        <p className="mb-3 text-sm text-muted-foreground">{periodLabel}</p>
+        <p className="text-xs text-muted-foreground">{periodLabel}</p>
       )}
-      <div className="space-y-2">
-        {categories.map(([cat, data]) => (
-          <GroupSection
-            key={cat}
-            label={data.label}
-            icon={data.icon}
-            items={data.items}
-            defaultOpen={cat === defaultOpen}
-            currency={currency}
-          />
-        ))}
+      <div className="overflow-hidden rounded-lg border border-border/70">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-border/70 bg-muted/40 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              <tr>
+                <th className="px-4 py-3">Description</th>
+                <th className="px-4 py-3">Category</th>
+                <th className="px-4 py-3 text-right">Qty</th>
+                <th className="px-4 py-3 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60 bg-card">
+              {lines.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="px-4 py-6 text-center text-sm text-muted-foreground"
+                  >
+                    No line items found.
+                  </td>
+                </tr>
+              ) : (
+                lines.map((item, idx) => {
+                  const category = getCategory(item)
+                  const meta = CATEGORY_META[category]
+                  return (
+                    <tr
+                      key={idx}
+                      className="transition-colors hover:bg-muted/20"
+                    >
+                      <td className="px-4 py-3.5 align-top">
+                        <p className="font-medium text-foreground">
+                          {item.description}
+                        </p>
+                        {renderDetailBadges(item)}
+                      </td>
+                      <td className="px-4 py-3.5 align-top">
+                        <Badge
+                          variant={meta.variant}
+                          className="inline-flex items-center gap-1 font-normal"
+                        >
+                          {meta.icon}
+                          <span>{meta.label}</span>
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3.5 text-right align-top font-mono text-sm text-muted-foreground">
+                        {Number.parseFloat(item.quantity || "1").toLocaleString(
+                          "id-ID"
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5 text-right align-top font-medium text-foreground">
+                        {formatLineAmount(
+                          item.amountIdr,
+                          item.currency || currency
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )
@@ -220,29 +201,49 @@ export function InvoiceFlatLine({
   currency: string
 }) {
   return (
-    <table className="w-full">
-      <thead>
-        <tr className="border-b bg-muted/50">
-          <th className="px-4 py-3 text-left text-sm font-medium">
-            Description
-          </th>
-          <th className="px-4 py-3 text-right text-sm font-medium">Qty</th>
-          <th className="px-4 py-3 text-right text-sm font-medium">Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        {lines.map((line, idx) => (
-          <tr key={idx} className="border-b last:border-b-0">
-            <td className="px-4 py-3 text-sm">{line.description}</td>
-            <td className="px-4 py-3 text-right text-sm">
-              {Number.parseFloat(line.quantity).toLocaleString("id-ID")}
-            </td>
-            <td className="px-4 py-3 text-right text-sm font-medium">
-              {formatLineAmount(line.amountIdr, line.currency || currency)}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="overflow-hidden rounded-lg border border-border/70">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-border/70 bg-muted/40 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+            <tr>
+              <th className="px-4 py-3">Description</th>
+              <th className="px-4 py-3 text-right">Qty</th>
+              <th className="px-4 py-3 text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/60 bg-card">
+            {lines.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={3}
+                  className="px-4 py-6 text-center text-sm text-muted-foreground"
+                >
+                  No line items found.
+                </td>
+              </tr>
+            ) : (
+              lines.map((line, idx) => (
+                <tr key={idx} className="transition-colors hover:bg-muted/20">
+                  <td className="px-4 py-3.5 text-sm font-medium text-foreground">
+                    {line.description}
+                  </td>
+                  <td className="px-4 py-3.5 text-right font-mono text-sm text-muted-foreground">
+                    {Number.parseFloat(line.quantity || "1").toLocaleString(
+                      "id-ID"
+                    )}
+                  </td>
+                  <td className="px-4 py-3.5 text-right font-medium text-foreground">
+                    {formatLineAmount(
+                      line.amountIdr,
+                      line.currency || currency
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }
