@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { render, screen } from "@testing-library/react"
+import { render } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { TemplateForm } from "./template-form"
@@ -9,7 +9,7 @@ describe("TemplateForm", () => {
     const user = userEvent.setup()
     let submittedData: Record<string, unknown> | null = null
 
-    render(
+    const { getByLabelText, getByRole } = render(
       <TemplateForm
         initialData={{
           name: "Welcome Message",
@@ -34,16 +34,17 @@ describe("TemplateForm", () => {
       />
     )
 
-    expect(screen.getByLabelText(/template name/i)).toBeDefined()
-    expect(screen.getByLabelText(/template slug/i)).toBeDefined()
-    expect(screen.getByLabelText(/body text/i)).toBeDefined()
+    expect(getByLabelText(/template name/i)).toBeDefined()
+    expect(getByLabelText(/template slug/i)).toBeDefined()
+    expect(getByLabelText(/body text/i)).toBeDefined()
 
     // Dynamic variable sample input should appear for {{1}}
     const sampleInput = document.getElementById("sample-1") as HTMLInputElement
     expect(sampleInput).not.toBeNull()
     await user.type(sampleInput, "Budi")
+
     // Submit form
-    await user.click(screen.getByRole("button", { name: /save template/i }))
+    await user.click(getByRole("button", { name: /save template/i }))
 
     expect(submittedData).not.toBeNull()
     const data = submittedData as unknown as {
@@ -66,22 +67,26 @@ describe("TemplateForm", () => {
   it("allows switching between Bubble and Config JSON preview tabs", async () => {
     const user = userEvent.setup()
 
-    render(<TemplateForm submitting={false} onSubmit={async () => {}} />)
+    const { getByRole, getByText } = render(
+      <TemplateForm submitting={false} onSubmit={async () => {}} />
+    )
 
-    const jsonTabBtn = screen.getByRole("button", { name: /config json/i })
+    const jsonTabBtn = getByRole("button", { name: /config json/i })
     await user.click(jsonTabBtn)
 
-    expect(screen.getByText(/"category": "UTILITY"/i)).toBeDefined()
+    expect(getByText(/"category": "UTILITY"/i)).toBeDefined()
   })
 
   it("handles adding interactive buttons", async () => {
     const user = userEvent.setup()
 
-    render(<TemplateForm submitting={false} onSubmit={async () => {}} />)
+    const { getByRole, getByDisplayValue } = render(
+      <TemplateForm submitting={false} onSubmit={async () => {}} />
+    )
 
-    const addUrlBtn = screen.getByRole("button", { name: /url cta/i })
+    const addUrlBtn = getByRole("button", { name: /url cta/i })
     await user.click(addUrlBtn)
 
-    expect(screen.getByDisplayValue("Visit Website")).toBeDefined()
+    expect(getByDisplayValue("Visit Website")).toBeDefined()
   })
 })
