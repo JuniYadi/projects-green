@@ -1,6 +1,6 @@
 import {
   WhatsappBillingCategory,
-  type Prisma,
+  Prisma,
   type PrismaClient,
 } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
