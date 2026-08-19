@@ -35,6 +35,28 @@ bun run dev
 - `bun run prisma:migrate:dev`: Apply database migrations
 - `bun run grant:super-admin -- --workos-user-id=<id>`: Grant platform super-admin role
 - `bun run seed:workos-roles`: Seed required WorkOS organization roles
+## Documentation & Knowledge Base
+
+Public platform documentation is served dynamically at `/en/docs` (or `/id/docs`), powered by database-backed markdown, vector embeddings, and MCP-captured visual screenshots.
+
+### Knowledge Base Architecture
+- **Markdown Sources**: `content/knowledge-base/**/*.md` (raw Markdown files with YAML frontmatter).
+- **Static Screenshots**: `public/kb-assets/**/*.png` (retina UI captures).
+- **Database Sync & Embeddings**: Synchronized into PostgreSQL table `KnowledgeDocument` with vector embeddings for semantic and AI search.
+
+### Knowledge Base Commands
+
+```bash
+# 1. Capture real visual screenshots & documentation via MCP (chrome-devtools-mcp)
+./scripts/kb-agent.sh user /whatsapp/api-keys "Capture WhatsApp API Key flow"
+
+# 2. Sync / seed all markdown docs from content/knowledge-base/ into database
+bun run scripts/seed-runner.ts --seed=KnowledgeDocs
+
+# 3. Run all system seeders (includes KnowledgeDocs, currencies, billing plans)
+bun run seed:system
+```
+
 ## Database & Seed Data
 
 ### Dumping seed data
