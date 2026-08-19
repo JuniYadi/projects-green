@@ -1,7 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import {
   KnowledgeDocsSeeder,
-  CANONICAL_DOCUMENTS,
+  loadAllKnowledgeDocs,
+  parseKnowledgeMarkdown,
 } from "./knowledge-docs.seeder"
 
 describe("KnowledgeDocsSeeder", () => {
@@ -11,18 +12,40 @@ describe("KnowledgeDocsSeeder", () => {
     expect(KnowledgeDocsSeeder.runOrder).toBe(15)
   })
 
-  it("contains valid canonical documents with markdown and screenshots", () => {
-    expect(CANONICAL_DOCUMENTS.length).toBeGreaterThan(0)
-    const apiKeyDoc = CANONICAL_DOCUMENTS.find(
-      (d) => d.path === "/whatsapp/api-keys"
-    )
+  it("parses yaml frontmatter and markdown body correctly", () => {
+    const raw = `---
+path: /test/feature
+title: Test Feature
+category: Testing
+purpose: Testing markdown parser
+howTo:
+  - Step 1
+  - Step 2
+notes:
+  - Note 1
+---
+
+# Test Feature
+This is body content with ![Image](/kb-assets/test.png).
+`
+    const parsed = parseKnowledgeMarkdown(raw)
+    expect(parsed).not.toBeNull()
+    expect(parsed?.path).toBe("/test/feature")
+    expect(parsed?.title).toBe("Test Feature")
+    expect(parsed?.category).toBe("Testing")
+    expect(parsed?.howTo).toEqual(["Step 1", "Step 2"])
+    expect(parsed?.notes).toEqual(["Note 1"])
+    expect(parsed?.markdown).toContain("This is body content")
+  })
+
+  it("discovers markdown files from content/knowledge-base", () => {
+    const docs = loadAllKnowledgeDocs()
+    expect(docs.length).toBeGreaterThan(0)
+    const apiKeyDoc = docs.find((d) => d.path === "/whatsapp/api-keys")
     expect(apiKeyDoc).toBeDefined()
     expect(apiKeyDoc?.category).toBe("WhatsApp")
     expect(apiKeyDoc?.markdown).toContain(
       "/kb-assets/whatsapp/api-keys/01-initial-empty-state.png"
-    )
-    expect(apiKeyDoc?.markdown).toContain(
-      "/kb-assets/whatsapp/api-keys/02-key-generated-with-secret.png"
     )
   })
 })

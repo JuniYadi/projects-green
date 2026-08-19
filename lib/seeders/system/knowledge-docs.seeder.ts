@@ -1,15 +1,19 @@
 /**
  * Knowledge Base Docs Seeder (System)
  *
- * Seeds canonical knowledge base documentation, screenshots mappings,
- * and vector embeddings for public /docs and AI help search.
+ * Scans all raw Markdown files in content/knowledge-base directory,
+ * extracts YAML frontmatter & markdown content, and synchronizes
+ * documents and vector embeddings into Postgres table `KnowledgeDocument`.
  */
 
 import { BaseSeeder, registerSeeder } from "@/lib/seeders"
 import { embedDocument } from "@/modules/docs/docs-embedding.service"
 import { createHash } from "node:crypto"
+import { readdirSync, readFileSync, statSync } from "node:fs"
+import { join } from "node:path"
+import yaml from "js-yaml"
 
-export interface KnowledgeDocSeed {
+export interface KnowledgeDocParsed {
   path: string
   title: string
   purpose: string
@@ -19,174 +23,88 @@ export interface KnowledgeDocSeed {
   markdown: string
 }
 
-export const CANONICAL_DOCUMENTS: KnowledgeDocSeed[] = [
-  {
-    path: "/whatsapp/api-keys",
-    title: "WhatsApp API Key Management & Integration Guide",
-    purpose:
-      "Generate, rotate, and securely use your organization's static WhatsApp API key to integrate with the WhatsApp Business Platform.",
-    category: "WhatsApp",
-    howTo: [
-      "Navigate to Console > WhatsApp > API Key (/console/whatsapp/api-keys).",
-      "Click Generate API key and copy the one-time API secret immediately.",
-      "Store the secret in your password manager or backend environment vault.",
-      "Authenticate requests using the Authorization: Bearer <API_KEY> header.",
-    ],
-    notes: [
-      "The plaintext API secret is displayed only once upon creation or rotation.",
-      "Each organization has at most one ACTIVE key at a time.",
-      "Key rotation immediately invalidates the previous API key.",
-    ],
-    markdown: `
-# WhatsApp API Key Management & Integration Guide
+type Frontmatter = {
+  path?: string
+  title?: string
+  purpose?: string
+  category?: string
+  howTo?: string[]
+  notes?: string[]
+}
 
-This guide explains how to generate, rotate, and securely use your organization's static WhatsApp API key to integrate with the WhatsApp Business Platform APIs.
+export function parseKnowledgeMarkdown(raw: string): KnowledgeDocParsed | null {
+  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/)
+  if (!match) return null
 
----
+  const [, frontmatterRaw, markdownBody] = match
+  const meta = yaml.load(frontmatterRaw) as Frontmatter
 
-## 1. Overview & Security Model
-
-The WhatsApp API key allows backend services to authenticate API requests on behalf of your organization.
-
-- **Zero-Trust Token Visibility**: The plaintext API secret is **displayed only once** upon creation or rotation. It is never stored in plaintext and cannot be retrieved again once dismissed.
-- **Single Active Key Model**: Each organization has at most one \`ACTIVE\` key at a time.
-- **Safe Metadata**: Fingerprints (\`wa_key_...\`) and lifecycle timestamps (Created, Rotated, Revoked, Last Used) can be safely shared for auditing without exposing secret material.
-
----
-
-## 2. Generating Your API Key
-
-### Step 1: Navigate to API Keys Console
-Go to **Console** > **WhatsApp** > **API Key** (\`/console/whatsapp/api-keys\`).
-
-If your organization does not yet have an active API key, the status badge will indicate **Not generated**.
-
-![Initial Not Generated State](/kb-assets/whatsapp/api-keys/01-initial-empty-state.png)
-
----
-
-### Step 2: Generate the API Key
-1. Click the **"Generate API key"** button.
-2. The system immediately provisions the key and presents the **One-time API secret** banner.
-3. Click **"Copy secret"** to copy your secret key to your password manager or environment secrets vault.
-
-![Key Generated with One-Time Secret](/kb-assets/whatsapp/api-keys/02-key-generated-with-secret.png)
-
-> ⚠️ **Important:**
-> Once you navigate away or refresh the page, the secret cannot be shown again. If you lose the secret, you must rotate the key.
-
----
-
-## 3. Key Lifecycle Management
-
-### Rotating an API Key
-If you suspect your key has been leaked or your security policy requires periodic rotation:
-1. Click **"Rotate API key"**.
-2. Read the confirmation dialog: **The current key will stop working immediately**.
-3. Confirm rotation to generate a new key and receive a fresh one-time secret.
-
-![Rotate API Key Confirmation Dialog](/kb-assets/whatsapp/api-keys/03-rotate-key-dialog.png)
-
----
-
-### Revoking an API Key
-To immediately terminate all API access without issuing a replacement key:
-1. Click **"Revoke API key"**.
-2. Confirm the revocation dialog.
-3. The key status switches to **Revoked**, and incoming requests using this key will receive \`401 Unauthorized\`.
-
-![Revoke API Key Confirmation Dialog](/kb-assets/whatsapp/api-keys/04-revoke-key-dialog.png)
-
----
-
-## 4. Authenticating API Requests
-
-To authenticate requests to the WhatsApp API endpoints, provide your API key in standard \`Authorization: Bearer <API_KEY>\` header or \`x-api-key\` header.
-
-### Example: Send WhatsApp Template Message
-
-\`\`\`bash
-curl -X POST "https://api.pfnapp.my.id/api/whatsapp/messages" \\
-  -H "Authorization: Bearer pfn_wa_sec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "to": "+6281234567890",
-    "type": "template",
-    "template": {
-      "name": "order_notification",
-      "language": {
-        "code": "id"
-      },
-      "components": [
-        {
-          "type": "body",
-          "parameters": [
-            { "type": "text", "text": "Budi" },
-            { "type": "text", "text": "INV-20260820-001" }
-          ]
-        }
-      ]
-    }
-  }'
-\`\`\`
-
-### Example: Node.js / TypeScript Integration
-
-\`\`\`typescript
-const API_KEY = process.env.WHATSAPP_ORG_API_KEY!
-const BASE_URL = "https://api.pfnapp.my.id"
-
-async function sendWhatsAppMessage(to: string, templateName: string) {
-  const response = await fetch(\`\${BASE_URL}/api/whatsapp/messages\`, {
-    method: "POST",
-    headers: {
-      "Authorization": \`Bearer \${API_KEY}\`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      to,
-      type: "template",
-      template: {
-        name: templateName,
-        language: { code: "id" },
-      },
-    }),
-  })
-
-  if (!response.ok) {
-    const errorBody = await response.json()
-    throw new Error(\`API Error [\${response.status}]: \${JSON.stringify(errorBody)}\`)
+  if (!meta || !meta.path || !meta.title || !meta.purpose) {
+    return null
   }
 
-  return response.json()
+  return {
+    path: meta.path,
+    title: meta.title,
+    purpose: meta.purpose,
+    category: meta.category || "General",
+    howTo: Array.isArray(meta.howTo) ? meta.howTo : [],
+    notes: Array.isArray(meta.notes) ? meta.notes : [],
+    markdown: markdownBody.trim(),
+  }
 }
-\`\`\`
 
----
+export function loadAllKnowledgeDocs(dirPath?: string): KnowledgeDocParsed[] {
+  const rootDir = dirPath || join(process.cwd(), "content", "knowledge-base")
+  const results: KnowledgeDocParsed[] = []
 
-## 5. Audit & Compliance
+  function scan(dir: string) {
+    let entries: string[] = []
+    try {
+      entries = readdirSync(dir)
+    } catch {
+      return
+    }
 
-All API key lifecycle events are recorded in the immutable audit log:
-- \`ORGANIZATION_API_KEY_GENERATED\`
-- \`ORGANIZATION_API_KEY_ROTATED\`
-- \`ORGANIZATION_API_KEY_REVOKED\`
+    for (const entry of entries) {
+      const fullPath = join(dir, entry)
+      const stat = statSync(fullPath)
 
-Organization administrators can view historical activity and fingerprint records under the **Audit Logs** tab in the management console.
-    `.trim(),
-  },
-]
+      if (stat.isDirectory()) {
+        scan(fullPath)
+      } else if (entry.endsWith(".md") || entry.endsWith(".mdx")) {
+        const raw = readFileSync(fullPath, "utf8")
+        const parsed = parseKnowledgeMarkdown(raw)
+        if (parsed) {
+          results.push(parsed)
+        }
+      }
+    }
+  }
+
+  scan(rootDir)
+  return results
+}
 
 export class KnowledgeDocsSeeder extends BaseSeeder {
   static override readonly seederName = "KnowledgeDocs"
   static override readonly classification = "system" as const
   static override readonly runOrder = 15
   static override readonly description =
-    "Seeds and synchronizes public knowledge base documentation and vector embeddings"
+    "Scans content/knowledge-base/**/*.md and synchronizes knowledge base docs & vector embeddings"
 
   async seed(): Promise<void> {
-    this.log("Starting KnowledgeDocs seeder...")
+    this.log("Scanning content/knowledge-base for markdown documentation...")
+    const docs = loadAllKnowledgeDocs()
 
-    for (const doc of CANONICAL_DOCUMENTS) {
+    if (docs.length === 0) {
+      this.log("No markdown files found in content/knowledge-base. Skipping.")
+      return
+    }
+
+    this.log(`Found ${docs.length} knowledge base document(s) to process.`)
+
+    for (const doc of docs) {
       const contentHash = createHash("sha256")
         .update(doc.title + doc.purpose + doc.markdown)
         .digest("hex")
