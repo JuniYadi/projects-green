@@ -93,35 +93,7 @@ export default function CheckoutPage() {
     resources.provisioningFields
   )
     ? (resources.provisioningFields as ProvisioningFieldDef[])
-    : quotePreview?.packageCode === "WHATSAPP" ||
-        (!quotePreview && productName?.toUpperCase() === "WHATSAPP")
-      ? [
-          {
-            id: "phone",
-            name: "phoneNumber",
-            label: "Phone Number",
-            type: "text",
-            placeholder: "e.g. +6281234567890",
-            required: true,
-          },
-          {
-            id: "display_name",
-            name: "displayName",
-            label: "Business Display Name",
-            type: "text",
-            placeholder: "e.g. My Business Support",
-            required: false,
-          },
-          {
-            id: "avatar_url",
-            name: "profilePictureUrl",
-            label: "Profile Picture URL",
-            type: "url",
-            placeholder: "https://example.com/avatar.png",
-            required: false,
-          },
-        ]
-      : []
+    : []
 
   const showDynamicForm = dynamicFields.length > 0
   const hasMissingRequiredFields = dynamicFields.some(
