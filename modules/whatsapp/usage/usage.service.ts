@@ -87,53 +87,90 @@ export class WhatsappUsageService {
   }
 
   /**
-   * Aggregate cost from BillingUsageLedger for WhatsApp categories in a
-   * given period. Returns total amount and per-category breakdown.
+   * Aggregate WhatsApp costs from adjustments and usage ledger for a period.
    */
   async getCostSummary(
     organizationId: string,
     period: string
   ): Promise<CostSummaryDTO> {
-    // Query BillingAdjustment for WHATSAPP source in the period
     const account = await prisma.billingAccount.findUnique({
       where: { organizationId },
       select: { id: true },
     })
 
-    const adjustments = account
-      ? await prisma.billingAdjustment.findMany({
-          where: {
-            billingAccountId: account.id,
-            createdAt: {
-              gte: new Date(`${period}-01`),
-              lt: new Date(
-                Number(period.split("-")[1]) === 12
-                  ? Number(period.split("-")[0]) + 1
-                  : Number(period.split("-")[0]),
-                Number(period.split("-")[1]) === 12
-                  ? 0
-                  : Number(period.split("-")[1]),
-                1
-              ),
+    const [adjustments, ledgerEntries] = await Promise.all([
+      account
+        ? prisma.billingAdjustment.findMany({
+            where: {
+              billingAccountId: account.id,
+              createdAt: {
+                gte: new Date(`${period}-01`),
+                lt: new Date(
+                  Number(period.split("-")[1]) === 12
+                    ? Number(period.split("-")[0]) + 1
+                    : Number(period.split("-")[0]),
+                  Number(period.split("-")[1]) === 12
+                    ? 0
+                    : Number(period.split("-")[1]),
+                  1
+                ),
+              },
             },
-          },
-        })
-      : []
+          })
+        : Promise.resolve([]),
+      prisma.billingUsageLedger.findMany({
+        where: {
+          organizationId,
+          period,
+          OR: [
+            { category: { in: WHATSAPP_CATEGORIES } },
+            { subscription: { package: { code: "WHATSAPP" } } },
+          ],
+        },
+      }),
+    ])
 
     const whatsappAdjustments = adjustments.filter((adj) => {
       const meta = adj.metadataJson as Record<string, unknown> | null
       return meta?.source === "WHATSAPP"
     })
 
+    const categoryMap = new Map<string, { count: number; total: number }>()
+    const addCategory = (category: string, amount: number) => {
+      const current = categoryMap.get(category)
+      if (current) {
+        current.count++
+        current.total += amount
+      } else {
+        categoryMap.set(category, { count: 1, total: amount })
+      }
+    }
+
     let total = 0
     for (const adj of whatsappAdjustments) {
-      total += toNum(adj.amount)
+      const amount = toNum(adj.amount)
+      total += amount
+      const metadata = adj.metadataJson as Record<string, unknown> | null
+      const category =
+        typeof metadata?.category === "string"
+          ? metadata.category
+          : "WHATSAPP_ADJUSTMENT"
+      addCategory(category, amount)
+    }
+    for (const row of ledgerEntries) {
+      const amount = toNum(row.amountIdr)
+      total += amount
+      addCategory(row.category ?? "UNKNOWN", amount)
     }
 
     return {
       totalAmount: total,
-      totalEntries: whatsappAdjustments.length,
-      byCategory: [], // Category breakdown requires WhatsappBillingLedger; not included in summary
+      totalEntries: whatsappAdjustments.length + ledgerEntries.length,
+      byCategory: Array.from(categoryMap.entries()).map(([category, data]) => ({
+        category,
+        count: data.count,
+        totalCost: data.total,
+      })),
     }
   }
 

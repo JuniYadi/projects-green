@@ -231,7 +231,13 @@ describe("WhatsappUsageService", () => {
       const result = await service.getCostSummary("org-1", "2026-06")
       expect(result.totalAmount).toBe(800)
       expect(result.totalEntries).toBe(2)
-      expect(result.byCategory).toEqual([])
+      expect(result.byCategory).toEqual([
+        {
+          category: "WHATSAPP_ADJUSTMENT",
+          count: 2,
+          totalCost: 800,
+        },
+      ])
     })
 
     it("filters adjustments without WHATSAPP source", async () => {

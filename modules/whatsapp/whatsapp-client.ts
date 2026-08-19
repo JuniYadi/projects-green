@@ -282,6 +282,13 @@ export type Broadcast = {
   updatedAt: string
 }
 
+export type BroadcastSummary = {
+  total: number
+  active: number
+  sent: number
+  failed: number
+}
+
 export type CreateBroadcastInput = {
   templateName: string
   templateLanguage: string
@@ -741,6 +748,23 @@ export const createWhatsAppClient = () => {
     },
 
     // ── Broadcasts ──────────────────────────────────────────────────────
+
+    async summary(orgId?: string) {
+      const searchParams = new URLSearchParams()
+      if (orgId) searchParams.set("organizationId", orgId)
+      const query = searchParams.toString()
+      const payload = await requestJson<ApiSuccess<BroadcastSummary>>(
+        `${API_BASE}/broadcasts/summary${query ? `?${query}` : ""}`,
+        undefined,
+        "Unable to load WhatsApp broadcast summary."
+      )
+      return {
+        total: payload.total,
+        active: payload.active,
+        sent: payload.sent,
+        failed: payload.failed,
+      }
+    },
 
     async listBroadcasts() {
       const payload = await requestJson<

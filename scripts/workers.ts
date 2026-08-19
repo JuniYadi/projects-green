@@ -111,6 +111,7 @@ import { vpnHealthService } from "@/modules/vpn/admin/vpn-health.service"
 import { EmailJob } from "@/lib/queue/email"
 import { registerWhatsAppHealthWorkerLogging } from "@/lib/worker-health-logging"
 
+import { processWhatsAppBroadcastJob } from "./whatsapp-broadcast-worker"
 // ══════════════════════════════════════════════════════════════════════════
 // BullMQ Workers
 // ══════════════════════════════════════════════════════════════════════════
@@ -375,31 +376,9 @@ const quotaWorker = new Worker<QuotaReconciliationJobData>(
 )
 allWorkers.push(quotaWorker)
 
-// ── WhatsApp Broadcast Worker ───────────────────────────────────────────────
 const whatsappBroadcastWorker = new Worker<WhatsAppBroadcastJobData>(
   WHATSAPP_BROADCAST_QUEUE_NAME,
-  async (job: Job<WhatsAppBroadcastJobData>) => {
-    if (job.data.method === "dispatch") {
-      console.info(
-        `[whatsapp-broadcast] would dispatch campaign=${job.data.campaignId} recipient=${job.data.recipientId}`
-      )
-      return
-    }
-
-    if (job.data.method === "throttle") {
-      console.info(
-        `[whatsapp-broadcast] throttle campaign=${job.data.campaignId} recipient=${job.data.recipientId}`
-      )
-      return
-    }
-
-    if (job.data.method === "status-update") {
-      console.info(
-        `[whatsapp-broadcast] status-update campaign=${job.data.campaignId} recipient=${job.data.recipientId}`
-      )
-      return
-    }
-  },
+  processWhatsAppBroadcastJob,
   {
     connection: redisConnection,
     prefix,

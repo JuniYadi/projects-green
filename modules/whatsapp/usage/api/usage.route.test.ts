@@ -312,7 +312,13 @@ describe("Usage Routes", () => {
       expect(body.ok).toBe(true)
       expect(body.totalAmount).toBe(800)
       expect(body.totalEntries).toBe(2)
-      expect(body.byCategory).toEqual([])
+      expect(body.byCategory).toEqual([
+        {
+          category: "WHATSAPP_ADJUSTMENT",
+          count: 2,
+          totalCost: 800,
+        },
+      ])
     })
 
     it("returns 422 when period is missing", async () => {

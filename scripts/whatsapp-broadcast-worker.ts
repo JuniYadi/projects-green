@@ -500,59 +500,69 @@ async function throttleBroadcast(data: WhatsAppBroadcastJobData) {
   await dispatchBroadcast(data, true)
 }
 
-const worker = new Worker<WhatsAppBroadcastJobData>(
-  WHATSAPP_BROADCAST_QUEUE_NAME,
-  async (job: Job<WhatsAppBroadcastJobData>) => {
-    if (job.data.method === "dispatch") {
-      await dispatchBroadcast(job.data)
-      return
-    }
-
-    if (job.data.method === "throttle") {
-      await throttleBroadcast(job.data)
-      return
-    }
-
-    if (job.data.method === "status-update") {
-      await updateCampaignStatus(job.data.campaignId)
-      return
-    }
-  },
-  {
-    connection: redisConnection,
-    concurrency: 4,
-  }
-)
-
-worker.on("active", (job) => {
-  console.info(
-    `[whatsapp-broadcast-worker] processing ${job.name} id=${job.id} campaign=${job.data.campaignId}`
-  )
-})
-
-worker.on("completed", (job) => {
-  console.info(`[whatsapp-broadcast-worker] completed ${job.name} id=${job.id}`)
-})
-
-worker.on("failed", (job, error) => {
-  if (!job) {
-    console.error(
-      "[whatsapp-broadcast-worker] failed job missing payload",
-      error
-    )
+export async function processWhatsAppBroadcastJob(
+  job: Job<WhatsAppBroadcastJobData>
+) {
+  if (job.data.method === "dispatch") {
+    await dispatchBroadcast(job.data)
     return
   }
 
-  console.error(
-    `[whatsapp-broadcast-worker] failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`,
-    error
-  )
-})
+  if (job.data.method === "throttle") {
+    await throttleBroadcast(job.data)
+    return
+  }
+
+  if (job.data.method === "status-update") {
+    await updateCampaignStatus(job.data.campaignId)
+  }
+}
+
+const isUnifiedWorker = process.argv[1]?.endsWith("scripts/workers.ts")
+const worker =
+  isUnifiedWorker || process.env.UNIFIED_WORKER_PROCESS === "true"
+    ? null
+    : new Worker<WhatsAppBroadcastJobData>(
+        WHATSAPP_BROADCAST_QUEUE_NAME,
+        processWhatsAppBroadcastJob,
+        {
+          connection: redisConnection,
+          concurrency: 4,
+        }
+      )
+if (worker) {
+  worker.on("active", (job) => {
+    console.info(
+      `[whatsapp-broadcast-worker] processing ${job.name} id=${job.id} campaign=${job.data.campaignId}`
+    )
+  })
+
+  worker.on("completed", (job) => {
+    console.info(
+      `[whatsapp-broadcast-worker] completed ${job.name} id=${job.id}`
+    )
+  })
+
+  worker.on("failed", (job, error) => {
+    if (!job) {
+      console.error(
+        "[whatsapp-broadcast-worker] failed job missing payload",
+        error
+      )
+      return
+    }
+
+    console.error(
+      `[whatsapp-broadcast-worker] failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`,
+      error
+    )
+  })
+}
 
 let shuttingDown = false
 
 const shutdown = async (signal: string) => {
-  if (shuttingDown) {
+  if (shuttingDown || !worker) {
     return
   }
 
@@ -562,7 +572,6 @@ const shutdown = async (signal: string) => {
   try {
     await worker.close()
     await broadcastQueue.close()
-    process.exit(0)
   } catch (error) {
     console.error(
       "[whatsapp-broadcast-worker] shutdown failed while closing worker",
