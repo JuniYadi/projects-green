@@ -382,6 +382,7 @@ export class CheckoutQuoteService {
       billingPeriod: price.billingPeriod,
       quantity: quantity.toString(),
       periodStart: now.toISOString(),
+      periodEnd: periodEnd.toISOString(),
       isProrated,
       proratedDays: isProrated ? remainingDays : undefined,
       totalDaysInPeriod: isProrated ? totalDaysInMonth : undefined,
