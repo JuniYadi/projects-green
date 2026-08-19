@@ -30,9 +30,35 @@ export type ResolveQuotaCreditResult = {
 }
 
 /**
+ * Check if a destination country is configured and active in the database rates.
+ */
+export async function isDestinationCountrySupported(
+  phoneNumber: string,
+  effectiveAt?: Date
+): Promise<{ supported: boolean; country: string }> {
+  const country = resolveWhatsappCountry(phoneNumber)
+  if (country === "UNKNOWN") {
+    return { supported: false, country }
+  }
+
+  const targetDate = effectiveAt ?? new Date()
+
+  const hasRate = await prisma.whatsappQuotaCreditRate.findFirst({
+    where: {
+      country,
+      isActive: true,
+      effectiveFrom: { lte: targetDate },
+      OR: [{ effectiveTo: null }, { effectiveTo: { gt: targetDate } }],
+    },
+    select: { id: true },
+  })
+
+  return { supported: Boolean(hasRate), country }
+}
+
+/**
  * Resolve the quota credit for a given billing category and phone number at a specific date.
- * Queries the WhatsappQuotaCreditRate table for the active effective date range;
- * falls back to DEFAULT_WHATSAPP_QUOTA_CREDIT with description: null when no rate exists.
+ * Queries the WhatsappQuotaCreditRate table for the active effective date range.
  */
 export async function resolveWhatsappQuotaCredit(input: {
   category: WhatsappBillingCategory
