@@ -452,6 +452,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         isActive: startsWithRoute(path, "/portal/whatsapp/usage"),
       },
       {
+        title: "Pricing",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/pricing",
+          locale,
+        }),
+        icon: <ReceiptIcon />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/pricing"),
+      },
+      {
         title: "Contacts",
         url: localizePathname({
           pathname: "/portal/whatsapp/contacts",
