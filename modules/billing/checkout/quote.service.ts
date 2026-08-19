@@ -9,6 +9,7 @@ import type {
   RecurringBillingPeriod,
   ResolvedRecurringPrice,
 } from "../pricing/pricing.types"
+import { calculateProration } from "../proration"
 
 export type CheckoutQuoteInput = {
   organizationId: string
@@ -230,9 +231,6 @@ export class CheckoutQuoteService {
         "The selected product is currently out of stock."
       )
     }
-
-    const isProRata =
-      plan?.billingStrategy === "PRO_RATA" && price.billingPeriod === "MONTHLY"
     const attachments = await this.db.servicePlanAddon.findMany({
       where: { planId: price.planId, isActive: true },
       include: {
@@ -305,24 +303,18 @@ export class CheckoutQuoteService {
         },
       ]
     })
-    const utcYear = now.getUTCFullYear()
-    const utcMonth = now.getUTCMonth()
-    const monthEnd = new Date(
-      Date.UTC(utcYear, utcMonth + 1, 0, 23, 59, 59, 999)
-    )
-    const totalDaysInMonth = monthEnd.getUTCDate()
-    const remainingDays = totalDaysInMonth - now.getUTCDate() + 1
+    const proration = calculateProration({
+      billingStrategy: plan?.billingStrategy ?? "FIXED_CYCLE",
+      billingPeriod: price.billingPeriod,
+      periodPrice: price.periodPrice,
+      quantity,
+      now,
+    })
 
-    let basePriceCalculated = price.periodPrice.mul(quantity)
-    let isProrated = false
-
-    if (isProRata && remainingDays < totalDaysInMonth) {
-      basePriceCalculated = price.periodPrice
-        .mul(remainingDays)
-        .div(totalDaysInMonth)
-        .mul(quantity)
-      isProrated = true
-    }
+    const basePriceCalculated = proration.proratedAmount
+    const isProrated = proration.isProrated
+    const remainingDays = proration.remainingDays
+    const totalDaysInPeriod = proration.totalDaysInPeriod
 
     const subtotal = basePriceCalculated.add(
       addons.reduce((sum, addon) => sum.add(decimal(addon.price)), decimal(0))
@@ -343,15 +335,22 @@ export class CheckoutQuoteService {
       : null
     const discount = voucher ? decimal(voucher.discountAmount) : decimal(0)
     const firstPayment = subtotal.sub(discount)
-    const periodEnd = isProRata
-      ? monthEnd
+    const periodEnd = isProrated
+      ? proration.cycleEnd
       : addMonths(now, PERIOD_MONTHS[price.billingPeriod])
 
     // Find all active pricing terms for this plan in the same currency
+    // Find all active pricing terms for this plan in the same currency and region
+    const currentPricing = await this.db.servicePricing.findUnique({
+      where: { id: price.pricingId },
+      select: { regionId: true },
+    })
+
     const siblingPricings = await this.db.servicePricing.findMany({
       where: {
         planId: price.planId,
         currency: price.currency,
+        regionId: currentPricing?.regionId,
         isActive: true,
         periodPrice: { gt: 0 },
         effectiveFrom: { lte: now },
@@ -384,7 +383,7 @@ export class CheckoutQuoteService {
       periodEnd: periodEnd.toISOString(),
       isProrated,
       proratedDays: isProrated ? remainingDays : undefined,
-      totalDaysInPeriod: isProrated ? totalDaysInMonth : undefined,
+      totalDaysInPeriod: isProrated ? totalDaysInPeriod : undefined,
       subtotal: subtotal.toString(),
       discount: discount.toString(),
       firstPayment: firstPayment.toString(),

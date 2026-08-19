@@ -6,7 +6,7 @@ import type { ResolvedRecurringPrice } from "../pricing/pricing.types"
 const mockPrisma = {
   servicePlanAddon: { findMany: mock() },
   servicePlan: { findUnique: mock() },
-  servicePricing: { findMany: mock() },
+  servicePricing: { findMany: mock(), findUnique: mock() },
   voucher: { findUnique: mock() },
   billingOrder: { count: mock() },
   billingAccount: { findUnique: mock() },
@@ -42,6 +42,8 @@ beforeEach(() => {
   mockPrisma.servicePlanAddon.findMany.mockReset()
   mockPrisma.servicePlan.findUnique.mockReset()
   mockPrisma.servicePricing.findMany.mockReset()
+  mockPrisma.servicePricing.findUnique.mockReset()
+  mockPrisma.servicePricing.findUnique.mockResolvedValue({ regionId: "reg-1" })
   mockPrisma.voucher.findUnique.mockReset()
   mockPrisma.billingOrder.count.mockReset()
   mockPrisma.billingAccount.findUnique.mockReset()
