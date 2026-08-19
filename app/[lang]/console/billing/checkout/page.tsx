@@ -77,6 +77,8 @@ export default function CheckoutPage() {
       (!quotePreview && productName?.toUpperCase() === "WHATSAPP") ||
       Boolean(resources.requireDeviceSetup))
   const phoneRequired = resources.phoneRequired !== false
+  const showDisplayName = resources.displayNameEnabled !== false
+  const showProfileUrl = resources.profileUrlEnabled !== false
   const hasPricing = Boolean(pricingId)
 
   const requestQuote = useCallback(
@@ -248,26 +250,32 @@ export default function CheckoutPage() {
                     required={phoneRequired}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wa-display-name">Business Display Name</Label>
-                  <Input
-                    id="wa-display-name"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="e.g. My Business Support"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wa-profile-url">
-                    Profile Picture URL (Optional)
-                  </Label>
-                  <Input
-                    id="wa-profile-url"
-                    value={profilePictureUrl}
-                    onChange={(e) => setProfilePictureUrl(e.target.value)}
-                    placeholder="https://example.com/avatar.png"
-                  />
-                </div>
+                {showDisplayName && (
+                  <div className="space-y-2">
+                    <Label htmlFor="wa-display-name">
+                      Business Display Name
+                    </Label>
+                    <Input
+                      id="wa-display-name"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      placeholder="e.g. My Business Support"
+                    />
+                  </div>
+                )}
+                {showProfileUrl && (
+                  <div className="space-y-2">
+                    <Label htmlFor="wa-profile-url">
+                      Profile Picture URL (Optional)
+                    </Label>
+                    <Input
+                      id="wa-profile-url"
+                      value={profilePictureUrl}
+                      onChange={(e) => setProfilePictureUrl(e.target.value)}
+                      placeholder="https://example.com/avatar.png"
+                    />
+                  </div>
+                )}
               </div>
             )}
             {addonOptions.length > 0 && (
