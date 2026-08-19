@@ -1,8 +1,11 @@
 "use client"
 
 import * as React from "react"
+import { useParams } from "next/navigation"
 import { ArrowsClockwise } from "@phosphor-icons/react"
 
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   Card,
   CardContent,
@@ -52,6 +55,9 @@ function makeDeviceLabel(device: DeviceListItem): string {
 // ─── Page Component ───────────────────────────────────────────────────────────
 
 export default function ConsoleWhatsAppWebhookLogsPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   // Device list (for filter dropdown)
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
 
@@ -125,7 +131,9 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
       })
 
       if (error) {
-        throw new Error(error.message ?? "Failed to load events")
+        throw new Error(
+          error.message ?? messages.console.whatsapp.webhookLogs.loadError
+        )
       }
 
       const result = data as unknown as EventsApiResponse
@@ -134,7 +142,9 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
       setPageState("loaded")
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to load webhook events"
+        err instanceof Error
+          ? err.message
+          : messages.console.whatsapp.webhookLogs.loadError
       setErrorMessage(message)
       setPageState("error")
     }
@@ -166,9 +176,11 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold tracking-tight">Webhook Logs</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {messages.console.whatsapp.webhookLogs.heading}
+        </h1>
         <p className="text-muted-foreground">
-          View and inspect incoming WhatsApp webhook events across your devices.
+          {messages.console.whatsapp.webhookLogs.description}
         </p>
       </div>
 
@@ -188,14 +200,18 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
       {/* Events Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Event Log</CardTitle>
-          <CardDescription>Webhook events for your devices.</CardDescription>
+          <CardTitle>
+            {messages.console.whatsapp.webhookLogs.cardTitle}
+          </CardTitle>
+          <CardDescription>
+            {messages.console.whatsapp.webhookLogs.cardDescription}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {!devices.length && pageState !== "error" ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <p className="text-sm text-muted-foreground">
-                No devices found. Add a WhatsApp device first.
+                {messages.console.whatsapp.webhookLogs.noDevices}
               </p>
               <Button
                 variant="outline"
@@ -203,7 +219,7 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
                 onClick={() => void loadDevices()}
               >
                 <ArrowsClockwise className="mr-2 size-4" />
-                Retry
+                {messages.console.whatsapp.webhookLogs.retry}
               </Button>
             </div>
           ) : (
