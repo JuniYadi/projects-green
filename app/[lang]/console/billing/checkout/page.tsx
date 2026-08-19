@@ -80,6 +80,7 @@ export default function CheckoutPage() {
   const [addonIds, setAddonIds] = useState<string[]>([])
   const [voucherCode, setVoucherCode] = useState("")
   const [voucherInput, setVoucherInput] = useState("")
+  const [confirmed, setConfirmed] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
