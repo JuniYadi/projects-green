@@ -570,6 +570,7 @@ describe("resolveSidebarMenu", () => {
       "Messages",
       "Broadcasts",
       "Usage",
+      "Pricing",
       "Contacts",
       "Catalogs",
       "Webhook Logs",
@@ -580,6 +581,19 @@ describe("resolveSidebarMenu", () => {
     )
 
     expect(projects.map((project) => project.name)).toEqual(["Back to Portal"])
+  })
+
+  it("includes and marks Pricing active for its portal WhatsApp route", () => {
+    const { navMain, navMainLabel } = resolveSidebarMenu({
+      surface: "portal",
+      pathname: "/portal/whatsapp/pricing",
+      locale: "en",
+    })
+
+    const pricing = navMain.find((item) => item.title === "Pricing")
+    expect(navMainLabel).toBe("WhatsApp")
+    expect(pricing?.url).toContain("/portal/whatsapp/pricing")
+    expect(pricing?.isActive).toBe(true)
   })
 
   it("marks API Keys active for its route", () => {
