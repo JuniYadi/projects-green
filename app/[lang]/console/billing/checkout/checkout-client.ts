@@ -50,6 +50,12 @@ export type CheckoutPreview = {
   nextRenewal: string
   addons: CheckoutAddonOption[]
   availableAddons?: CheckoutAddonOption[]
+  availableTerms?: Array<{
+    pricingId: string
+    billingPeriod: string
+    periodPrice: string
+    currency: string
+  }>
   voucher: CheckoutVoucher | null
   expiresAt: string
 }
