@@ -48,7 +48,7 @@ export const createCatalogRoutes = (deps: Partial<CatalogRouteDeps> = {}) => {
   return (
     new Elysia({ prefix: "/catalog" })
       // ─── GET /billing/catalog ────────────────────────────
-      .get("/", async ({ set }) => {
+      .get("/", async ({ set, query }) => {
         const auth = await authenticate()
 
         if (!auth.user) {
@@ -79,9 +79,14 @@ export const createCatalogRoutes = (deps: Partial<CatalogRouteDeps> = {}) => {
             )
           }
 
+          const currency =
+            typeof query?.currency === "string" && query.currency.trim()
+              ? query.currency.trim().toUpperCase()
+              : account.currency
+
           return {
             ok: true as const,
-            ...(await catalogService.getCatalog(account.currency)),
+            ...(await catalogService.getCatalog(currency)),
           }
         } catch (err) {
           console.error("[Catalog] GET /billing/catalog error:", err)
@@ -90,7 +95,7 @@ export const createCatalogRoutes = (deps: Partial<CatalogRouteDeps> = {}) => {
       })
 
       // ─── GET /billing/catalog/:code ──────────────────────
-      .get("/:code", async ({ set, params }) => {
+      .get("/:code", async ({ set, params, query }) => {
         const auth = await authenticate()
 
         if (!auth.user) {
@@ -121,8 +126,13 @@ export const createCatalogRoutes = (deps: Partial<CatalogRouteDeps> = {}) => {
             )
           }
 
+          const currency =
+            typeof query?.currency === "string" && query.currency.trim()
+              ? query.currency.trim().toUpperCase()
+              : account.currency
+
           const result = await catalogService.getProduct(
-            account.currency,
+            currency,
             params.code as string
           )
 
@@ -131,7 +141,7 @@ export const createCatalogRoutes = (deps: Partial<CatalogRouteDeps> = {}) => {
               set,
               404,
               "PRODUCT_NOT_FOUND",
-              `No catalog product found for code "${params.code}" in ${account.currency}.`
+              `No catalog product found for code "${params.code}" in ${currency}.`
             )
           }
 
