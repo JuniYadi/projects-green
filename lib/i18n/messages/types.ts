@@ -665,17 +665,6 @@ export type AppMessages = {
         cardTitle: string
         cardDescription: string
       }
-      webhookLogs: {
-        heading: string
-        description: string
-        emptyTitle: string
-        emptyDescription: string
-        columnEvent: string
-        columnStatus: string
-        columnAttempts: string
-        columnTimestamp: string
-        retryPayload: string
-      }
       pricing: {
         heading: string
         description: string
@@ -690,21 +679,6 @@ export type AppMessages = {
         quotaTitle: string
         usedLabel: string
         remainingLabel: string
-      }
-      analytics: {
-        heading: string
-        description: string
-        dateRangeLabel: string
-        deliveryRateChart: string
-        responseTimeChart: string
-      }
-      auditLogs: {
-        heading: string
-        description: string
-        columnAction: string
-        columnActor: string
-        columnTimestamp: string
-        emptyTitle: string
       }
       credentials: {
         heading: string
