@@ -37,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { TabsDeviceDetail } from "@/modules/whatsapp/webhooks/ui/tabs-device-detail"
 import { type DeviceDetail } from "@/modules/whatsapp/devices/devices.schemas"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
+import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
 import { toast } from "sonner"
 import {
@@ -135,12 +136,16 @@ type WhatsAppProfilePreviewProps = {
 function WhatsAppProfilePreview({
   device,
   profile,
-}: WhatsAppProfilePreviewProps) {
+  messages,
+}: WhatsAppProfilePreviewProps & {
+  messages: ReturnType<typeof getMessages>["console"]["whatsapp"]["devices"]
+}) {
   const displayName =
-    getProfileString(profile, "name") || device.name || "WhatsApp Business"
-  const about = getProfileString(profile, "about") || "Available on WhatsApp"
+    getProfileString(profile, "name") || device.name || deviceMessages.cardTitle
+  const about = getProfileString(profile, "about") || deviceMessages.description
   const profilePictureUrl = getProfileString(profile, "profile_picture_url")
-  const availability = device.status === "ACTIVE" ? "Online" : "Offline"
+  const availability =
+    device.status === "ACTIVE" ? deviceMessages.active : deviceMessages.inactive
 
   return (
     <div
@@ -152,7 +157,7 @@ function WhatsAppProfilePreview({
           <p className="text-xs font-medium tracking-[0.16em] text-white/70 uppercase">
             WhatsApp profile
           </p>
-          <p className="text-sm font-medium">Customer-facing preview</p>
+          <p className="text-sm font-medium">{messages.cardDescription}</p>
         </div>
         <span className="rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[11px] font-medium">
           Preview
@@ -186,7 +191,9 @@ function WhatsAppProfilePreview({
           </div>
 
           <div className="border-t bg-muted/20 px-4 py-4">
-            <p className="text-xs font-medium text-muted-foreground">About</p>
+            <p className="text-xs font-medium text-muted-foreground">
+              {messages.edit}
+            </p>
             <p className="mt-1 text-sm leading-6">{about}</p>
           </div>
         </div>
@@ -198,8 +205,9 @@ function WhatsAppProfilePreview({
 export default function ConsoleWhatsAppDeviceDetailPage() {
   const params = useParams<{ deviceId: string; lang?: string }>()
   const deviceId = params?.deviceId
-
   const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const deviceMessages = messages.console.whatsapp.devices
   const devicesPath = localizePathname({
     pathname: "/console/whatsapp/devices",
     locale,
@@ -239,12 +247,12 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       return
     }
     if (!PROFILE_PICTURE_TYPES.includes(file.type)) {
-      toast("Profile pictures must be JPEG or PNG images.")
+      toast(deviceMessages.editDialogDescription)
       event.target.value = ""
       return
     }
     if (file.size > PROFILE_PICTURE_SIZE_LIMIT) {
-      toast("Profile pictures must be 5 MB or smaller.")
+      toast(deviceMessages.noDevicesDescription)
       event.target.value = ""
       return
     }
@@ -254,7 +262,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
 
   const loadDevice = React.useCallback(async () => {
     if (!deviceId) {
-      setErrorMessage("Device ID is missing")
+      setErrorMessage(deviceMessages.unableToLoad)
       setPageState("error")
       return
     }
@@ -265,7 +273,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
     try {
       const response = await whatsappClient.devices.get(deviceId)
       if (!response.ok) {
-        throw new Error("Device not found")
+        throw new Error(deviceMessages.unableToLoad)
       }
       setDevice(response.device)
       setProfileForm(
@@ -277,7 +285,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       setPageState("loaded")
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to load device"
+        err instanceof Error ? err.message : deviceMessages.unableToLoad
       setErrorMessage(message)
       setPageState("error")
     }
@@ -330,7 +338,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <Phone className="mb-3 size-10 text-muted-foreground" weight="fill" />
           <p className="text-sm text-destructive">
-            {errorMessage || "Device not found"}
+            {errorMessage || deviceMessages.unableToLoad}
           </p>
         </div>
       </main>
@@ -354,7 +362,10 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
         </CardHeader>
         <CardContent>
           <dl className="space-y-3">
-            <InfoRow label="Phone Number" value={device.phoneNumber} />
+            <InfoRow
+              label={deviceMessages.phoneNumber}
+              value={device.phoneNumber}
+            />
             <InfoRow label="Name" value={device.name || "-"} />
             <InfoRow
               label="Status"
@@ -404,7 +415,11 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
           <CardDescription>Meta business profile information</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <WhatsAppProfilePreview device={device} profile={profile} />
+          <WhatsAppProfilePreview
+            device={device}
+            profile={profile}
+            messages={deviceMessages}
+          />
 
           <div className="border-t pt-6">
             <div className="mb-3">
@@ -416,31 +431,33 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
             <dl className="space-y-3">
               <InfoRow
                 label="About"
-                value={(profile?.about as string) || "Not set"}
+                value={(profile?.about as string) || deviceMessages.inactive}
               />
               <InfoRow
                 label="Description"
-                value={(profile?.description as string) || "Not set"}
+                value={
+                  (profile?.description as string) || deviceMessages.inactive
+                }
               />
               <InfoRow
                 label="Email"
-                value={(profile?.email as string) || "Not set"}
+                value={(profile?.email as string) || deviceMessages.inactive}
               />
               <InfoRow
                 label="Website"
                 value={
                   (profile?.websites as string[])?.length
                     ? (profile?.websites as string[]).join(", ")
-                    : "Not set"
+                    : deviceMessages.inactive
                 }
               />
               <InfoRow
                 label="Vertical"
-                value={(profile?.vertical as string) || "Not set"}
+                value={(profile?.vertical as string) || deviceMessages.inactive}
               />
               <InfoRow
                 label="Address"
-                value={(profile?.address as string) || "Not set"}
+                value={(profile?.address as string) || deviceMessages.inactive}
               />
             </dl>
           </div>
@@ -481,7 +498,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
           payload
         )
         if (!response.ok) {
-          throw new Error("Failed to update profile")
+          throw new Error(deviceMessages.unableToUpdate)
         }
       }
 
@@ -492,7 +509,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
         )
       }
 
-      if (!response) throw new Error("Failed to update profile")
+      if (!response) throw new Error(deviceMessages.unableToUpdate)
 
       setDevice((prev) =>
         prev ? { ...prev, whatsappProfile: response.profile } : prev
@@ -502,9 +519,9 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       )
       clearProfilePictureSelection()
       setProfileDialogOpen(false)
-      toast("WhatsApp profile updated")
+      toast(deviceMessages.updated)
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Failed to update profile")
+      toast(err instanceof Error ? err.message : deviceMessages.unableToUpdate)
     } finally {
       setProfileSubmitting(false)
     }
@@ -533,7 +550,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="profile-about">About</Label>
+            <Label htmlFor="profile-about">{messages.edit}</Label>
             <Textarea
               id="profile-about"
               maxLength={139}
@@ -665,7 +682,9 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
             Cancel
           </Button>
           <Button onClick={handleSaveProfile} disabled={profileSubmitting}>
-            {profileSubmitting ? "Saving..." : "Save"}
+            {profileSubmitting
+              ? deviceMessages.saving
+              : deviceMessages.saveChanges}
           </Button>
         </DialogFooter>
       </DialogContent>
