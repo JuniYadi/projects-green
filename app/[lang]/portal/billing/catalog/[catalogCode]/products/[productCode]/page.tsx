@@ -130,38 +130,11 @@ export default function ProductDetailPage() {
 
         const resObj = (p.resources ?? {}) as Record<string, unknown>
         // Parse dynamic custom form fields
+        // Pure database driven: load whatever provisioningFields array is stored in DB
         if (Array.isArray(resObj.provisioningFields)) {
           setProvisioningFields(
             resObj.provisioningFields as ProvisioningField[]
           )
-        } else if (catalogCode === "WHATSAPP") {
-          // Default WhatsApp fields if none configured
-          setProvisioningFields([
-            {
-              id: "phone",
-              name: "phoneNumber",
-              label: "Phone Number",
-              type: "text",
-              placeholder: "e.g. +6281234567890",
-              required: true,
-            },
-            {
-              id: "display_name",
-              name: "displayName",
-              label: "Business Display Name",
-              type: "text",
-              placeholder: "e.g. My Business Support",
-              required: false,
-            },
-            {
-              id: "avatar_url",
-              name: "profilePictureUrl",
-              label: "Profile Picture URL",
-              type: "url",
-              placeholder: "https://example.com/avatar.png",
-              required: false,
-            },
-          ])
         } else {
           setProvisioningFields([])
         }
