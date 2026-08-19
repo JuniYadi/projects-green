@@ -26,11 +26,14 @@ import {
 } from "@/modules/billing/types"
 import { quotaAlertService } from "./quota-alert.service"
 import { upsertWhatsappContactFromMessage } from "@/modules/whatsapp/contacts/contacts.service"
-import { resolveWhatsappQuotaCredit } from "./quota-credit.service"
 import {
-  getWhatsappSendErrorMessage,
+  resolveWhatsappQuotaCredit,
+  isDestinationCountrySupported,
+} from "./quota-credit.service"
+import {
   WhatsappSendFailedError,
   WhatsappSessionWindowClosedError,
+  UnsupportedDestinationCountryError,
 } from "./messages.errors"
 export type SendMessageResult = {
   jobId: string
@@ -143,6 +146,15 @@ export const messageService: MessageService = {
       throw new Error("WhatsApp device not found")
     }
 
+    // Validate destination country is supported in pricing table
+    const destinationCheck = await isDestinationCountrySupported(phoneNumber)
+    if (!destinationCheck.supported) {
+      throw new UnsupportedDestinationCountryError(
+        destinationCheck.country,
+        phoneNumber
+      )
+    }
+
     await assertCustomerServiceWindowOpen(organizationId, phoneNumber)
 
     // Initialize billing services
@@ -154,7 +166,6 @@ export const messageService: MessageService = {
       prisma,
       new BillingTransactionService(prisma)
     )
-
     // 1. Check WhatsApp allowance or charge overage BEFORE Meta API call
     const unitPrice = await messageCostService.estimateMessageCost({
       organizationId,
@@ -564,6 +575,15 @@ export const messageService: MessageService = {
       : await prisma.whatsappDevice.findFirst({ where: { organizationId } })
     if (!device) {
       throw new Error("WhatsApp device not found")
+    }
+
+    // Validate destination country is supported in pricing table
+    const destinationCheck = await isDestinationCountrySupported(phoneNumber)
+    if (!destinationCheck.supported) {
+      throw new UnsupportedDestinationCountryError(
+        destinationCheck.country,
+        phoneNumber
+      )
     }
 
     // Billing checks (same as sendMessage)

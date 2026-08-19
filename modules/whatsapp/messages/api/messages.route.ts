@@ -5,10 +5,11 @@ import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { messageService } from "../messages.service"
 import { toWhatsappMessageDTO, toWhatsappSendResultDTO } from "../messages.dto"
 import { toWhatsappMessagePricingDTO } from "../message-pricing.dto"
-import { whatsappMessagePricingService } from "../message-pricing.service"
+import { WhatsappMessagePricingService } from "../message-pricing.service"
 import {
   WhatsappSendFailedError,
   WhatsappSessionWindowClosedError,
+  UnsupportedDestinationCountryError,
 } from "../messages.errors"
 import type { WhatsAppTemplateLanguage } from "@/lib/api/whatsapp-client"
 import { InsufficientQuotaError } from "../quota.service"
@@ -167,10 +168,9 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
     }
 
-    const pricing = await whatsappMessagePricingService.getPricing(
+    const pricing = await new WhatsappMessagePricingService(prisma).getPricing(
       whatsappAuth.organizationId!
     )
-
     return { ok: true, ...toWhatsappMessagePricingDTO(pricing) }
   })
   .get(
@@ -477,6 +477,15 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
             message: "No billing account configured for this organization.",
           }
         }
+        if (error instanceof UnsupportedDestinationCountryError) {
+          set.status = 422
+          return {
+            ok: false,
+            error: "UNSUPPORTED_DESTINATION_COUNTRY",
+            message: error.message,
+            country: error.country,
+          }
+        }
 
         if (error instanceof InsufficientQuotaError) {
           set.status = 422
@@ -702,6 +711,16 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           }
         }
 
+        if (error instanceof UnsupportedDestinationCountryError) {
+          set.status = 422
+          return {
+            ok: false,
+            error: "UNSUPPORTED_DESTINATION_COUNTRY",
+            message: error.message,
+            country: error.country,
+          }
+        }
+
         if (error instanceof InsufficientQuotaError) {
           set.status = 422
           return {
@@ -710,7 +729,6 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
             message: error.message,
           }
         }
-
         console.error("[messages] send-template error:", error)
         set.status = 500
         return {
