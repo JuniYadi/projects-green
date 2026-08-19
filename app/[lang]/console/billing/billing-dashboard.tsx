@@ -255,16 +255,18 @@ export function BillingDashboard() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium">
-            WhatsApp Usage & Costs
+            {messages.console.billing.overview.whatsappCardTitle}
           </CardTitle>
           <ChatCircle className="size-4 text-muted-foreground" weight="fill" />
         </CardHeader>
         <CardContent className="space-y-2">
           <p className="text-sm text-muted-foreground">
-            Track per-device costs, usage forecasts, and quota alerts.
+            {messages.console.billing.overview.whatsappCardDesc}
           </p>
           <Button asChild variant="outline" size="sm">
-            <Link href="/console/whatsapp/usage">View WhatsApp Usage</Link>
+            <Link href="/console/whatsapp/usage">
+              {messages.console.billing.overview.whatsappCardCta}
+            </Link>
           </Button>
         </CardContent>
       </Card>
