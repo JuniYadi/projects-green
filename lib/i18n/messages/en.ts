@@ -729,6 +729,8 @@ export const enMessages: AppMessages = {
           "Connect your Meta catalog ID to display products in WhatsApp.",
         metaCatalogIdLabel: "Meta Catalog ID",
         deviceIdLabel: "Device (optional)",
+        syncing: "Syncing...",
+        syncProducts: "Sync Products",
         deviceIdPlaceholder: "Select device",
         viewProducts: "View Products",
         deleteCatalog: "Delete Catalog",
