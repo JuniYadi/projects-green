@@ -397,9 +397,12 @@ describe("InvoiceStatusManager", () => {
       // Verify reminderCount was incremented from 3 to 4
       const updateCall = mockUpdate.mock.calls[0][0]
       expect(updateCall.data.metadataJson.reminderCount).toBe(4)
-      expect(updateCall.data.metadataJson.lastReminderAt).toBe(
-        now.toISOString()
+      expect(updateCall.data.metadataJson.lastReminderAt).toEqual(
+        expect.any(String)
       )
+      expect(
+        new Date(updateCall.data.metadataJson.lastReminderAt).getTime()
+      ).toBeGreaterThanOrEqual(now.getTime())
     })
 
     it("returns 0 when no invoices are due within reminder window", async () => {

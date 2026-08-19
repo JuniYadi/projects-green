@@ -12,6 +12,7 @@ import {
   formatInvoiceCurrency,
   formatInvoiceDate,
   getInvoiceStatusLabel,
+  getNextRenewalDate,
 } from "@/modules/invoices/invoices.helpers"
 import type { InvoiceDetail } from "@/modules/invoices/invoices.types"
 import { formatPaymentMethod } from "@/modules/billing/user-labels"
@@ -429,12 +430,29 @@ const InvoicePdfDocument = ({
             value={formatInvoiceDate(invoice.issuedAt)}
           />
           <MetaRow label="Due:" value={formatInvoiceDate(invoice.dueAt)} />
+          {invoice.periodStart && invoice.periodEnd ? (
+            <MetaRow
+              label="Service Period:"
+              value={`${formatInvoiceDate(invoice.periodStart)} - ${formatInvoiceDate(invoice.periodEnd)}`}
+            />
+          ) : null}
+          {invoice.periodEnd ? (
+            <>
+              <MetaRow
+                label="Service Ends:"
+                value={formatInvoiceDate(invoice.periodEnd)}
+              />
+              <MetaRow
+                label="Next Renewal Date:"
+                value={formatInvoiceDate(getNextRenewalDate(invoice.periodEnd))}
+              />
+            </>
+          ) : null}
           <MetaRow
             label="Payment Method:"
             value={formatPaymentMethod(invoice.paymentMethod)}
           />
         </View>
-
         <BillToBlock organization={organization} />
 
         <Text style={styles.sectionLabel}>LINE ITEMS</Text>

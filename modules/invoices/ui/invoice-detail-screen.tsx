@@ -26,6 +26,7 @@ import {
   formatInvoiceCurrency,
   formatInvoiceDate,
   getInvoiceStatusLabel,
+  getNextRenewalDate,
 } from "@/modules/invoices/invoices.helpers"
 import type {
   InvoiceDetail,
@@ -287,20 +288,42 @@ export function InvoiceDetailScreen({
             </div>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Period</p>
+            <p className="text-xs text-muted-foreground">
+              {locale === "id" ? "Periode Layanan" : "Service Period"}
+            </p>
             <p className="font-medium">
               {formatInvoiceDate(invoice.periodStart, locale)} -{" "}
               {formatInvoiceDate(invoice.periodEnd, locale)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Issued Date</p>
+            <p className="text-xs text-muted-foreground">
+              {locale === "id" ? "Layanan Berakhir" : "Service Ends"}
+            </p>
+            <p className="font-medium">
+              {formatInvoiceDate(invoice.periodEnd, locale)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">
+              {locale === "id" ? "Tanggal Perpanjangan" : "Next Renewal Date"}
+            </p>
+            <p className="font-medium">
+              {formatInvoiceDate(getNextRenewalDate(invoice.periodEnd), locale)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">
+              {locale === "id" ? "Tanggal Diterbitkan" : "Issued Date"}
+            </p>
             <p className="font-medium">
               {formatInvoiceDate(invoice.issuedAt, locale)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Due Date</p>
+            <p className="text-xs text-muted-foreground">
+              {locale === "id" ? "Jatuh Tempo" : "Due Date"}
+            </p>
             <p className="font-medium">
               {formatInvoiceDate(invoice.dueAt, locale)}
             </p>
