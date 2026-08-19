@@ -61,7 +61,7 @@ export type CheckoutQuote = {
   packageCode: string
   planCode: string
   billingStrategy?: "PRO_RATA" | "FIXED_CYCLE"
-  currency: string
+  resources?: Record<string, unknown>
   billingPeriod: RecurringBillingPeriod
   quantity: string
   periodStart: string
@@ -201,9 +201,9 @@ export class CheckoutQuoteService {
         stockCount: true,
         allowBackorder: true,
         billingStrategy: true,
+        resources: true,
       },
     })
-
     if (
       plan?.stockControl === "TRACKED" &&
       !plan.allowBackorder &&
@@ -338,7 +338,7 @@ export class CheckoutQuoteService {
       packageCode: price.packageCode,
       planCode: price.planCode,
       billingStrategy: plan?.billingStrategy ?? "FIXED_CYCLE",
-      currency: price.currency,
+      resources: (plan?.resources ?? {}) as Record<string, unknown>,
       billingPeriod: price.billingPeriod,
       quantity: quantity.toString(),
       periodStart: now.toISOString(),
