@@ -332,7 +332,7 @@ export default function CheckoutPage() {
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid gap-3.5 sm:grid-cols-2">
+                  <div className="space-y-4">
                     {dynamicFields.map((field) => {
                       const val =
                         field.name === "phoneNumber"
