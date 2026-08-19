@@ -37,7 +37,6 @@ import {
   vpnSubscriptionRoutes,
   adminVpnSubscriptionRoutes,
 } from "@/modules/vpn/subscriptions/api"
-import { wireguardRoutes } from "@/modules/wireguard/api/wireguard.route"
 import { startStaleSessionCleanup } from "@/modules/vpn/sessions/stale-cleanup"
 import { voucherRoutes } from "@/modules/vouchers/api"
 import { healthRoutes } from "@/modules/health/api/health.route"
@@ -47,7 +46,8 @@ import { metaWebhookRoutes } from "@/modules/whatsapp/meta-apps/api/meta-webhook
 import { credentialsRoutes } from "@/modules/credentials/api/credentials.route"
 import { webhookDeadLetterRoutes } from "@/modules/whatsapp/webhooks/api/webhook-dead-letter.route"
 import { vaultSecretsRoutes } from "@/modules/secrets/api"
-
+import { adminWhatsappPricingRoutes } from "@/modules/whatsapp/messages/api/admin-pricing.route"
+import { wireguardRoutes } from "@/modules/wireguard/api/wireguard.route"
 const parseErrorPath = (
   value: string | Array<string | number> | undefined
 ): string | null => {
@@ -300,6 +300,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(healthRoutes)
   .use(metaWebhookRoutes)
   .use(webhookDeadLetterRoutes)
+  .use(adminWhatsappPricingRoutes)
   .use(whatsappRoutes)
   .use(wireguardRoutes)
   .get("/health", ({ request }) => {

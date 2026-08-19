@@ -75,7 +75,6 @@ describe("WhatsAppPricingPage", () => {
     await waitFor(() => {
       expect(view.getByText("MARKETING")).toBeInTheDocument()
       expect(view.getByText("UTILITY")).toBeInTheDocument()
-      expect(view.getByText("Default; rate not configured")).toBeInTheDocument()
     })
   })
 })

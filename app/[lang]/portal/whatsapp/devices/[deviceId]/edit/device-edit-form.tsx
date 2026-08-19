@@ -444,12 +444,21 @@ export function DeviceEditForm({
           </div>
 
           <div className="grid gap-2 md:col-span-2">
-            <Label htmlFor="rates">Rates</Label>
-            <Input
-              id="rates"
-              value={form.rates}
-              onChange={(event) => updateForm({ rates: event.target.value })}
-            />
+            <Label htmlFor="rates">Rate Tier (Fee Margin)</Label>
+            <Select
+              value={form.rates || "BASE"}
+              onValueChange={(value) => updateForm({ rates: value })}
+            >
+              <SelectTrigger id="rates">
+                <SelectValue placeholder="Select rate tier" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="BASE">BASE (20% Fee Margin)</SelectItem>
+                <SelectItem value="TIER_1">TIER_1 (15% Fee Margin)</SelectItem>
+                <SelectItem value="TIER_2">TIER_2 (10% Fee Margin)</SelectItem>
+                <SelectItem value="TIER_3">TIER_3 (5% Fee Margin)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid gap-2">

@@ -1904,13 +1904,34 @@ model WhatsappDevice {
 }
 
 model WhatsappQuotaCreditRate {
-  category    WhatsappBillingCategory
-  country     String                  @db.VarChar(2)
-  quotaCredit Decimal                 @map("quota_credit") @db.Decimal(12, 2)
-  description String                  @db.VarChar(255)
+  id            String                  @id @default(cuid())
+  category      WhatsappBillingCategory
+  country       String                  @default("ID") @db.VarChar(2)
+  quotaCredit   Decimal                 @map("quota_credit") @db.Decimal(12, 2)
+  description   String?                 @db.VarChar(255)
+  effectiveFrom DateTime                @default(now())
+  effectiveTo   DateTime?
+  isActive      Boolean                 @default(true)
+  createdAt     DateTime                @default(now())
 
-  @@id([category, country])
+  @@index([category, country, effectiveFrom(sort: Desc), isActive])
   @@map("WhatsappQuotaCreditRate")
+}
+
+model WhatsappBasePrice {
+  id            String                  @id @default(cuid())
+  category      WhatsappBillingCategory
+  country       String                  @default("ID") @db.VarChar(2)
+  basePrice     Decimal                 @db.Decimal(12, 2)
+  metaCost      Decimal?                @db.Decimal(12, 2)
+  currency      String                  @default("IDR") @db.VarChar(3)
+  effectiveFrom DateTime                @default(now())
+  effectiveTo   DateTime?
+  isActive      Boolean                 @default(true)
+  createdAt     DateTime                @default(now())
+
+  @@index([category, country, effectiveFrom(sort: Desc), isActive])
+  @@map("WhatsappBasePrice")
 }
 
 model WhatsappContactGroup {

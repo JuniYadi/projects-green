@@ -1,7 +1,12 @@
-"use client"
-
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { WizardData } from "./device-create-wizard"
 
 type Props = {
@@ -78,21 +83,25 @@ export function StepQuotas({ data, updateData, errors }: Props) {
           )}
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="rates">Rates</Label>
-          <Input
-            id="rates"
-            value={data.rates}
-            onChange={(e) => updateData({ rates: e.target.value })}
-            placeholder="Rate config"
-            aria-invalid={!!errors.rates}
-          />
+          <Label htmlFor="rates">Rate Tier (Fee Margin)</Label>
+          <Select
+            value={data.rates || "BASE"}
+            onValueChange={(value) => updateData({ rates: value })}
+          >
+            <SelectTrigger id="rates">
+              <SelectValue placeholder="Select rate tier" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="BASE">BASE (20% Fee Margin)</SelectItem>
+              <SelectItem value="TIER_1">TIER_1 (15% Fee Margin)</SelectItem>
+              <SelectItem value="TIER_2">TIER_2 (10% Fee Margin)</SelectItem>
+              <SelectItem value="TIER_3">TIER_3 (5% Fee Margin)</SelectItem>
+            </SelectContent>
+          </Select>
           {errors.rates && (
             <p className="text-xs text-destructive">{errors.rates}</p>
           )}
         </div>
-      </div>
-      <div className="grid gap-2">
-        <Label htmlFor="expired-at">Expires At</Label>
         <Input
           id="expired-at"
           type="date"
