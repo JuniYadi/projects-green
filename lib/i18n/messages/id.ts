@@ -705,6 +705,7 @@ export const idMessages: AppMessages = {
       catalogs: {
         heading: "Katalog",
         description: "Sinkronkan katalog produk dengan WhatsApp Commerce.",
+        addCatalog: "Tambah Katalog",
         emptyTitle: "Tidak ada katalog ditemukan",
         emptyDescription:
           "Hubungkan katalog untuk menampilkan produk di WhatsApp.",
@@ -712,6 +713,22 @@ export const idMessages: AppMessages = {
         columnName: "Nama Katalog",
         columnProductCount: "Produk",
         columnStatus: "Status",
+        createDialogTitle: "Buat Katalog",
+        createDialogDescription:
+          "Hubungkan ID katalog Meta Anda untuk menampilkan produk di WhatsApp.",
+        metaCatalogIdLabel: "ID Katalog Meta",
+        deviceIdLabel: "Perangkat (opsional)",
+        deviceIdPlaceholder: "Pilih perangkat",
+        viewProducts: "Lihat Produk",
+        deleteCatalog: "Hapus Katalog",
+        cancelButton: "Batal",
+        createButton: "Buat Katalog",
+        creatingButton: "Membuat...",
+        createSuccess: "Katalog berhasil dibuat",
+        deleteSuccess: "Katalog berhasil dihapus",
+        loadError: "Gagal memuat katalog",
+        createError: "Gagal membuat katalog",
+        deleteError: "Gagal menghapus katalog",
       },
       apiKeys: {
         heading: "Kunci API",
