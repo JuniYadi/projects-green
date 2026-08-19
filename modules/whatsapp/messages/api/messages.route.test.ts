@@ -1,4 +1,5 @@
 import { mock, describe, it, expect, beforeEach } from "bun:test"
+import { Elysia } from "elysia"
 import {
   WhatsappSendFailedError,
   WhatsappSessionWindowClosedError,
@@ -70,8 +71,6 @@ mock.module("@/modules/whatsapp/audit/whatsapp-audit.service", () => ({
   logWhatsappAuditEvent: mockLogAuditEvent,
 }))
 
-import { describe, expect, it, beforeEach } from "bun:test"
-import { Elysia } from "elysia"
 import { setMockAuthContext } from "@/lib/whatsapp/__tests__/auth-mock"
 import {
   InsufficientBalanceError,
@@ -103,8 +102,6 @@ mock.module("@/lib/auth/resolve-proxy-auth", () => ({
 }))
 
 const { messagesRoutes } = await import("./messages.route")
-const { WhatsappSendFailedError, WhatsappSessionWindowClosedError } =
-  await import("../messages.errors")
 
 const createTestApp = () => new Elysia().use(messagesRoutes).compile()
 

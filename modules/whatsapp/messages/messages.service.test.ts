@@ -412,7 +412,9 @@ describe("messageService", () => {
 
   describe("sendMessage", () => {
     it("rejects message when destination country is unconfigured in pricing", async () => {
-      mockPrisma.whatsappQuotaCreditRate.findFirst.mockResolvedValueOnce(null)
+      mockPrisma.whatsappQuotaCreditRate.findFirst.mockResolvedValueOnce(
+        null as any
+      )
       expect(
         sendMessageTestHelper({ phoneNumber: "+14155550100" })
       ).rejects.toThrow(
