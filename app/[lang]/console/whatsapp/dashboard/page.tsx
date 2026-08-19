@@ -57,12 +57,12 @@ type ConversationListItem = {
   _count: { whatsappMessages: number }
 }
 
-function WebhookAlertBadge({ rate }: { rate: number }) {
+function WebhookAlertBadge({ rate, label }: { rate: number; label: string }) {
   if (rate > 5) {
     return (
       <Badge variant="destructive">
         <Warning className="mr-1 size-3" weight="fill" />
-        {t.disconnected}
+        {label}
       </Badge>
     )
   }
@@ -418,10 +418,10 @@ export default function WhatsAppDashboardPage() {
                 <p className="text-xs text-muted-foreground">
                   {webhookStats
                     ? `${webhookStats.failedEvents}/${webhookStats.totalEvents} failed (1h)`
-                    : "{t.deviceHealthDesc}"}
+                    : {t.deviceHealthDesc}}
                 </p>
                 {webhookStats && (
-                  <WebhookAlertBadge rate={webhookStats.failureRate} />
+                  <WebhookAlertBadge rate={webhookStats.failureRate} label={t.disconnected} />
                 )}
               </div>
             </CardContent>
@@ -433,8 +433,8 @@ export default function WhatsAppDashboardPage() {
               <CardTitle>{t.conversationsCardTitle}</CardTitle>
               <CardDescription>
                 {state === "loading"
-                  ? "{t.deviceHealthDesc}"
-                  : "{t.conversationsCardDesc}"}
+                  ? {t.deviceHealthDesc}
+                  : {t.conversationsCardDesc}}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -480,8 +480,8 @@ export default function WhatsAppDashboardPage() {
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {conversation.lastDirection === "INBOX"
-                              ? "{t.connected}"
-                              : "{t.disconnected}"}
+                              ? {t.connected}
+                              : {t.disconnected}}
                             {` | ${conversation._count.whatsappMessages} messages`}
                           </p>
                         </div>
