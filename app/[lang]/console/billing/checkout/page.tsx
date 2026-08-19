@@ -75,16 +75,16 @@ export default function CheckoutPage() {
       `checkout:${pricingIdParam}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`
   )
   const [quote, setQuote] = useState<CheckoutResult | null>(null)
-  const [quotePreview, setQuotePreview] = useState<CheckoutPreview | null>(null)
-  const [quoteLoading, setQuoteLoading] = useState(false)
-  const [quoteError, setQuoteError] = useState<string | null>(null)
-  const [addonIds, setAddonIds] = useState<string[]>([])
   const [voucherCode, setVoucherCode] = useState("")
   const [voucherInput, setVoucherInput] = useState("")
+  const [voucherError, setVoucherError] = useState<string | null>(null)
+  const [quotePreview, setQuotePreview] = useState<CheckoutPreview | null>(null)
+  const [quoteError, setQuoteError] = useState<string | null>(null)
+  const [quoteLoading, setQuoteLoading] = useState(false)
+  const [addonIds, setAddonIds] = useState<string[]>([])
   const [confirmed, setConfirmed] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
   // Dynamic custom form field values map
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [phoneNumber, setPhoneNumber] = useState("")
@@ -108,6 +108,12 @@ export default function CheckoutPage() {
   )
   const hasPricing = Boolean(activePricingId)
 
+  const isVoucherError = (code?: string) =>
+    Boolean(
+      code &&
+      (code.startsWith("VOUCHER_") || code === "BILLING_CURRENCY_MISMATCH")
+    )
+
   const requestQuote = useCallback(
     async (
       nextAddonIds: string[],
@@ -126,13 +132,27 @@ export default function CheckoutPage() {
       })
       if (result.ok) {
         setQuotePreview(result)
-      } else {
-        setQuotePreview(null)
-        setQuoteError(
+        setVoucherCode(nextVoucherCode)
+        setVoucherError(null)
+      } else if (isVoucherError(result.error)) {
+        // Display error inside the voucher section and keep/preserve base quote.
+        setVoucherError(
           result.error === "BILLING_CURRENCY_MISMATCH"
             ? "This balance-credit voucher must match your billing account currency. The voucher claim was not consumed."
             : result.message
         )
+        setQuotePreview((prev) => {
+          if (prev) {
+            return {
+              ...prev,
+              voucher: null,
+            }
+          }
+          return null
+        })
+      } else {
+        setQuotePreview(null)
+        setQuoteError(result.message)
       }
       setQuoteLoading(false)
     },
@@ -145,6 +165,7 @@ export default function CheckoutPage() {
     }, 0)
     return () => window.clearTimeout(timer)
   }, [requestQuote, addonIds, voucherCode])
+
   const handleAddonChange = (addonId: string, checked: boolean) => {
     const nextAddonIds = checked
       ? [...new Set([...addonIds, addonId])]
@@ -155,7 +176,7 @@ export default function CheckoutPage() {
 
   const handleApplyVoucher = () => {
     const nextVoucherCode = voucherInput.trim().toUpperCase()
-    setVoucherCode(nextVoucherCode)
+    setVoucherError(null)
     void requestQuote(addonIds, nextVoucherCode)
   }
 
@@ -541,7 +562,10 @@ export default function CheckoutPage() {
                   <input
                     id="voucher-code"
                     value={voucherInput}
-                    onChange={(event) => setVoucherInput(event.target.value)}
+                    onChange={(event) => {
+                      setVoucherInput(event.target.value)
+                      if (voucherError) setVoucherError(null)
+                    }}
                     className="min-w-0 flex-1 rounded-md border bg-background px-3 py-2 text-sm"
                     placeholder="Optional voucher"
                   />
@@ -554,7 +578,12 @@ export default function CheckoutPage() {
                     Apply voucher
                   </Button>
                 </div>
-                {quotePreview.voucher && (
+                {voucherError && (
+                  <p className="text-xs font-medium text-destructive">
+                    {voucherError}
+                  </p>
+                )}
+                {quotePreview.voucher && !voucherError && (
                   <p className="text-xs text-muted-foreground">
                     {quotePreview.voucher.code} expires{" "}
                     {formatDate(quotePreview.voucher.quoteExpiresAt)}

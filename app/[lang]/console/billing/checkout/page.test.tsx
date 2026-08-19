@@ -195,6 +195,40 @@ describe("Billing CheckoutPage", () => {
       ).toBeInTheDocument()
     )
   })
+  it("shows invalid voucher error inside the voucher box without destroying the checkout page", async () => {
+    globalThis.fetch = mockCheckoutFetch(
+      {
+        ok: false,
+        error: "VOUCHER_NOT_FOUND",
+        message: "Voucher not found.",
+      },
+      404
+    )
+
+    const view = render(<CheckoutPage />)
+    await waitFor(() =>
+      expect(
+        view.getByRole("button", { name: /apply voucher/i })
+      ).toBeInTheDocument()
+    )
+
+    // Confirm checkout elements are present initially
+    expect(view.getByLabelText(/i confirm this purchase/i)).toBeInTheDocument()
+
+    fireEvent.change(view.getByLabelText("Voucher code"), {
+      target: { value: "INVALID-CODE" },
+    })
+    fireEvent.click(view.getByRole("button", { name: /apply voucher/i }))
+
+    // Inline error message appears in the voucher section
+    await waitFor(() =>
+      expect(view.getByText("Voucher not found.")).toBeInTheDocument()
+    )
+
+    // Checkout page grid and confirmation checkbox must STILL be intact and visible!
+    expect(view.getByLabelText(/i confirm this purchase/i)).toBeInTheDocument()
+    expect(view.getByRole("button", { name: /confirm/i })).toBeInTheDocument()
+  })
   it("does not render a Back control", async () => {
     const view = render(<CheckoutPage />)
 
