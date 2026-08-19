@@ -96,6 +96,70 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
     }
   )
   .get(
+    "/summary",
+    async ({
+      request,
+      query,
+      set,
+    }: {
+      request: Request
+      query: { organizationId?: string }
+      set: { status?: number | string }
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+
+      const isSuperAdmin =
+        whatsappAuth.type === "workos" &&
+        whatsappAuth.platformRole === "super_admin"
+      if (
+        whatsappAuth.type === "workos" &&
+        !whatsappAuth.organizationId &&
+        !isSuperAdmin
+      ) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "BAD_REQUEST",
+          message: "Organization ID required.",
+        }
+      }
+
+      const organizationId = isSuperAdmin
+        ? query.organizationId
+        : whatsappAuth.organizationId
+      const where = organizationId ? { organizationId } : {}
+      const [total, active, sent, failed] = await Promise.all([
+        prisma.whatsappBroadcastCampaign.count({ where }),
+        prisma.whatsappBroadcastCampaign.count({
+          where: {
+            ...where,
+            status: { in: ["QUEUED", "PROCESSING"] },
+          },
+        }),
+        prisma.whatsappBroadcastCampaign.aggregate({
+          where,
+          _sum: { sent: true },
+        }),
+        prisma.whatsappBroadcastCampaign.aggregate({
+          where,
+          _sum: { failed: true },
+        }),
+      ])
+
+      return {
+        ok: true,
+        total,
+        active,
+        sent: sent._sum.sent ?? 0,
+        failed: failed._sum.failed ?? 0,
+      }
+    }
+  )
+  .get(
     "/:id",
     async ({
       request,

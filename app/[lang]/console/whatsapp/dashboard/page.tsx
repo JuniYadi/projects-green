@@ -151,16 +151,15 @@ export default function WhatsAppDashboardPage() {
             }
           )
         }
-        // Try broadcasts summary if available
+        // Load broadcast totals independently so unavailable metrics do not
+        // block the rest of the dashboard.
         try {
-          if (whatsappClient.broadcasts?.summary) {
-            const broadcastResponse = await whatsappClient.broadcasts.summary()
-            if (broadcastResponse?.total !== undefined) {
-              setBroadcastTotal(broadcastResponse.total)
-            }
+          const broadcastResponse = await whatsappClient.broadcasts.summary()
+          if (broadcastResponse?.total !== undefined) {
+            setBroadcastTotal(broadcastResponse.total)
           }
         } catch {
-          // broadcasts not available yet
+          // Broadcast metrics are optional for dashboard rendering.
         }
         setState("loaded")
       } catch (err) {

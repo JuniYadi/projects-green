@@ -131,6 +131,35 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     smokeProjects: ["smoke-portal"],
   },
   {
+    name: "whatsapp-broadcasts",
+    sourcePrefixes: [
+      "app/[lang]/console/whatsapp/broadcasts/",
+      "lib/queue/whatsapp-broadcast.ts",
+      "modules/whatsapp/broadcasts/",
+      "scripts/whatsapp-broadcast-worker.ts",
+    ],
+    testPrefixes: ["modules/whatsapp/broadcasts/"],
+    smokeProjects: [],
+  },
+  {
+    name: "whatsapp-catalogs",
+    sourcePrefixes: [
+      "app/[lang]/console/whatsapp/catalogs/",
+      "modules/whatsapp/catalogs/",
+    ],
+    testPrefixes: ["modules/whatsapp/catalogs/"],
+    smokeProjects: [],
+  },
+  {
+    name: "whatsapp-usage",
+    sourcePrefixes: [
+      "app/[lang]/console/whatsapp/usage/",
+      "modules/whatsapp/usage/",
+    ],
+    testPrefixes: ["modules/whatsapp/usage/"],
+    smokeProjects: [],
+  },
+  {
     name: "i18n",
     sourcePrefixes: ["lib/i18n/"],
     testPrefixes: ["lib/i18n/messages.test.ts"],
