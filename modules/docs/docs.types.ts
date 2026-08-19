@@ -2,6 +2,10 @@ export type UiDocEntry = {
   path: string
   title: string
   purpose: string
+  category?: string
+  contentMarkdown?: string | null
+  contentHash?: string | null
+  isPublic?: boolean
   howTo: string[]
   notes?: string[]
   updatedAt: string

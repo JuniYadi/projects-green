@@ -15,6 +15,10 @@ type DocsKnowledgeDocumentRecord = {
   path: string
   title: string
   purpose: string
+  category: string
+  contentMarkdown: string | null
+  contentHash: string | null
+  isPublic: boolean
   howTo: string[]
   notes: string[]
   searchText: string
@@ -29,6 +33,10 @@ export type UpsertDocInput = {
   path: string
   title: string
   purpose: string
+  category?: string
+  contentMarkdown?: string | null
+  contentHash?: string | null
+  isPublic?: boolean
   howTo: string[]
   notes?: string[]
   updatedByWorkosUserId: string
@@ -61,6 +69,10 @@ const toUiDocEntry = (doc: DocsKnowledgeDocumentRecord): UiDocEntry => ({
   path: doc.path,
   title: doc.title,
   purpose: doc.purpose,
+  category: doc.category,
+  contentMarkdown: doc.contentMarkdown,
+  contentHash: doc.contentHash,
+  isPublic: doc.isPublic,
   howTo: doc.howTo,
   notes: doc.notes.length ? doc.notes : undefined,
   updatedAt: doc.updatedAt.toISOString().slice(0, 10),
@@ -191,6 +203,10 @@ export const upsertDocByPath = async (
         data: {
           title: input.title.trim(),
           purpose: input.purpose.trim(),
+          category: input.category ?? existingDoc.category ?? "General",
+          contentMarkdown: input.contentMarkdown ?? existingDoc.contentMarkdown,
+          contentHash: input.contentHash ?? existingDoc.contentHash,
+          isPublic: input.isPublic ?? existingDoc.isPublic ?? true,
           howTo: normalizedHowTo,
           notes: normalizedNotes,
           searchText,
@@ -204,6 +220,10 @@ export const upsertDocByPath = async (
           path: normalizedPath,
           title: input.title.trim(),
           purpose: input.purpose.trim(),
+          category: input.category ?? "General",
+          contentMarkdown: input.contentMarkdown ?? null,
+          contentHash: input.contentHash ?? null,
+          isPublic: input.isPublic ?? true,
           howTo: normalizedHowTo,
           notes: normalizedNotes,
           searchText,
@@ -211,7 +231,6 @@ export const upsertDocByPath = async (
           updatedByWorkosUserId: input.updatedByWorkosUserId,
         },
       })
-
   return toUiDocEntry(savedDoc as DocsKnowledgeDocumentRecord)
 }
 
