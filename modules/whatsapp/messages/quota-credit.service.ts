@@ -1,3 +1,4 @@
+import { detectCountryFromPhone } from "./phone-number"
 import { Prisma, type WhatsappBillingCategory } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 
@@ -5,23 +6,24 @@ export const DEFAULT_WHATSAPP_QUOTA_CREDIT = new Prisma.Decimal(1)
 
 /**
  * Resolve the country code from a phone number.
- * Returns "ID" for Indonesian numbers (+62, 62, 0xx), otherwise "UNKNOWN".
+ * Returns "ID" for Indonesian numbers (+62, 62, 0xx), "+1" -> "US", etc.
  */
 export function resolveWhatsappCountry(phoneNumber: string): string {
-  const digits = phoneNumber.replace(/\D/g, "")
+  const detected = detectCountryFromPhone(phoneNumber)
+  if (detected) {
+    return detected.iso
+  }
 
-  // +62 prefix
-  if (digits.startsWith("62")) {
+  const digits = phoneNumber.replace(/\D/g, "")
+  if (digits.startsWith("62") || digits.startsWith("0")) {
     return "ID"
   }
-  // Local 0xx prefix (e.g., 0812, 0813)
-  if (digits.startsWith("0")) {
-    return "ID"
+  if (digits.startsWith("1")) {
+    return "US"
   }
 
   return "UNKNOWN"
 }
-
 export type ResolveQuotaCreditResult = {
   category: WhatsappBillingCategory
   country: string
@@ -37,10 +39,6 @@ export async function isDestinationCountrySupported(
   effectiveAt?: Date
 ): Promise<{ supported: boolean; country: string }> {
   const country = resolveWhatsappCountry(phoneNumber)
-  if (country === "UNKNOWN") {
-    return { supported: false, country }
-  }
-
   const targetDate = effectiveAt ?? new Date()
 
   const hasRate = await prisma.whatsappQuotaCreditRate.findFirst({
