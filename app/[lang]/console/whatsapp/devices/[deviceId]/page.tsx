@@ -247,12 +247,12 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       return
     }
     if (!PROFILE_PICTURE_TYPES.includes(file.type)) {
-      toast(deviceMessages.editDialogDescription)
+      toast(deviceMessages.invalidFileType)
       event.target.value = ""
       return
     }
     if (file.size > PROFILE_PICTURE_SIZE_LIMIT) {
-      toast(deviceMessages.noDevicesDescription)
+      toast(deviceMessages.fileTooLarge)
       event.target.value = ""
       return
     }

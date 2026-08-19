@@ -589,6 +589,8 @@ export const enMessages: AppMessages = {
         notifyAdmin: "Device inactive — contact admin",
         srOpenMenu: "Open menu",
         editPhoneNumber: "Edit Phone Number",
+        invalidFileType: "Profile pictures must be JPEG or PNG images.",
+        fileTooLarge: "Profile pictures must be 5 MB or smaller.",
       },
       webhookLogs: {
         heading: "Webhook Logs",

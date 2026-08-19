@@ -540,6 +540,8 @@ export type AppMessages = {
         notifyAdmin: string
         srOpenMenu: string
         editPhoneNumber: string
+        invalidFileType: string
+        fileTooLarge: string
       }
       webhookLogs: {
         heading: string

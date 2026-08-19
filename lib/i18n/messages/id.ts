@@ -591,6 +591,8 @@ export const idMessages: AppMessages = {
         notifyAdmin: "Perangkat tidak aktif — hubungi admin",
         srOpenMenu: "Buka menu",
         editPhoneNumber: "Ubah Nomor Telepon",
+        invalidFileType: "Foto profil harus berupa gambar JPEG atau PNG.",
+        fileTooLarge: "Foto profil harus 5 MB atau lebih kecil.",
       },
       webhookLogs: {
         heading: "Log Webhook",
