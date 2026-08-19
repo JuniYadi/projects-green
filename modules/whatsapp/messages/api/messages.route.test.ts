@@ -1,15 +1,16 @@
-import { mock } from "bun:test"
+import { mock, describe, it, expect, beforeEach } from "bun:test"
+import {
+  WhatsappSendFailedError,
+  WhatsappSessionWindowClosedError,
+  UnsupportedDestinationCountryError,
+} from "../messages.errors"
 
 // Mock prisma
 const mockPrisma = {
   whatsappMessage: {
     count: mock(async () => 1),
     findMany: mock(async () => [{ id: "msg-1" }]),
-    findFirst: mock(async () => ({
-      id: "msg-1",
-      body: "Test message",
-      conversation: { organizationId: "org-1" },
-    })),
+    findFirst: mock(async () => ({ id: "msg-1" })),
     create: mock(async () => ({ id: "msg-new" })),
     update: mock(async () => ({ id: "msg-1", body: "Updated body" })),
     delete: mock(async () => ({ id: "msg-1" })),
@@ -179,6 +180,8 @@ describe("messagesRoutes", () => {
     mockPrisma.whatsappTemplate.findFirst.mockResolvedValue(null)
     mockPrisma.whatsappDevice.findMany.mockResolvedValue([])
     mockPrisma.whatsappQuotaCreditRate.findMany.mockResolvedValue([])
+    mockPrisma.whatsappBasePrice.findMany.mockResolvedValue([])
+    mockPrisma.whatsappBasePrice.findFirst.mockResolvedValue(null)
     mockPrisma.serviceSubscription.findFirst.mockResolvedValue(null)
     mockPrisma.servicePricing.findFirst.mockResolvedValue(null)
     mockMessageService.sendTemplateMessage.mockResolvedValue({
@@ -215,7 +218,7 @@ describe("messagesRoutes", () => {
   describe("GET /messages/pricing", () => {
     it("returns device quota credits and PAYG overage pricing", async () => {
       mockPrisma.whatsappDevice.findMany.mockResolvedValue([
-        { id: "device-1", phoneNumber: "+6281234567890" },
+        { id: "device-1", phoneNumber: "+6281234567890", rates: "BASE" },
       ] as any)
       mockPrisma.whatsappQuotaCreditRate.findMany.mockResolvedValue([
         {
@@ -225,6 +228,18 @@ describe("messagesRoutes", () => {
           description: "Marketing template credit",
         },
       ] as any)
+      mockPrisma.whatsappBasePrice.findMany.mockResolvedValue([
+        {
+          category: "UTILITY",
+          country: "ID",
+          basePrice: "150",
+          currency: "IDR",
+        },
+      ] as any)
+      mockPrisma.whatsappBasePrice.findFirst.mockResolvedValue({
+        basePrice: "150",
+        currency: "IDR",
+      } as any)
       mockPrisma.serviceSubscription.findFirst.mockResolvedValue({
         planId: "plan-1",
         plan: { resources: {} },
@@ -251,7 +266,7 @@ describe("messagesRoutes", () => {
       const body = await res.json()
       expect(body.ok).toBe(true)
       expect(body.overage).toMatchObject({
-        unitPrice: "150",
+        unitPrice: "197",
         currency: "IDR",
         configured: true,
       })
@@ -550,6 +565,25 @@ describe("messagesRoutes", () => {
       expect(body.error).toBe("DAILY_QUOTA_EXCEEDED")
       expect(body.resetAt).toBeDefined()
       expect(body.resetAt).toContain("T")
+    })
+
+    it("returns 422 with UNSUPPORTED_DESTINATION_COUNTRY when destination country is not configured", async () => {
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new UnsupportedDestinationCountryError("US", "+14155550100")
+      )
+
+      const app = createTestApp()
+      const res = await app.handle(
+        postJson("/messages/send", {
+          phoneNumber: "+14155550100",
+          type: "text",
+          message: "Hello world",
+        })
+      )
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.error).toBe("UNSUPPORTED_DESTINATION_COUNTRY")
+      expect(body.country).toBe("US")
     })
 
     it("returns 500 for an unexpected send error", async () => {

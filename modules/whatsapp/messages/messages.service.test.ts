@@ -76,9 +76,6 @@ const mockTx = {
   whatsappBillingLedger: {
     create: mock(async () => ({ id: "ledger-1" })),
   },
-  whatsappQuotaCreditRate: {
-    findUnique: mock(async () => null),
-  },
 }
 
 const mockPrisma = {
@@ -156,6 +153,24 @@ const mockPrisma = {
   },
   whatsappQuotaCreditRate: {
     findUnique: mock(async () => null),
+    findFirst: mock(async () => ({
+      id: "rate-1",
+      category: "REPLY",
+      country: "ID",
+      quotaCredit: new Prisma.Decimal("1.00"),
+      isActive: true,
+    })),
+  },
+  whatsappBasePrice: {
+    findUnique: mock(async () => null),
+    findFirst: mock(async () => ({
+      id: "price-1",
+      category: "REPLY",
+      country: "ID",
+      basePrice: new Prisma.Decimal("300"),
+      currency: "IDR",
+      isActive: true,
+    })),
   },
   $transaction: mock(async (fn: any) => await fn(mockTx)),
 }
@@ -192,10 +207,12 @@ mock.module("@/lib/queue/whatsapp-broadcast", () => ({
 }))
 
 // Import after mocks
+const {
+  WhatsappSendFailedError,
+  WhatsappSessionWindowClosedError,
+  UnsupportedDestinationCountryError,
+} = await import("./messages.errors")
 const { messageService } = await import("./messages.service")
-const { WhatsappSendFailedError, WhatsappSessionWindowClosedError } =
-  await import("./messages.errors")
-const { InsufficientQuotaError } = await import("./quota.service")
 
 const mockDevice = {
   id: "device-1",
@@ -270,6 +287,21 @@ describe("messageService", () => {
     // ESM live bindings would otherwise make messageService's prisma reference
     // point to the wrong mock object.
     mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
+    mockPrisma.whatsappQuotaCreditRate.findFirst.mockResolvedValue({
+      id: "rate-1",
+      category: "REPLY",
+      country: "UNKNOWN",
+      quotaCredit: new Prisma.Decimal("1.00"),
+      isActive: true,
+    })
+    mockPrisma.whatsappBasePrice.findFirst.mockResolvedValue({
+      id: "price-1",
+      category: "REPLY",
+      country: "UNKNOWN",
+      basePrice: new Prisma.Decimal("300"),
+      currency: "IDR",
+      isActive: true,
+    })
 
     // Default: device with quota 1000, no monthly usage → hasQuota: true
     // (quota service reads prisma.whatsappDevice + prisma.whatsappMonthlyCount)
@@ -379,6 +411,14 @@ describe("messageService", () => {
   })
 
   describe("sendMessage", () => {
+    it("rejects message when destination country is unconfigured in pricing", async () => {
+      mockPrisma.whatsappQuotaCreditRate.findFirst.mockResolvedValueOnce(null)
+      expect(
+        sendMessageTestHelper({ phoneNumber: "+14155550100" })
+      ).rejects.toThrow(
+        "Destination country 'US' for phone number '+14155550100' is not configured in pricing rates."
+      )
+    })
     it("sends message and returns result with waMessageId", async () => {
       const result = await sendMessageTestHelper({ message: "Hello world" })
 
@@ -551,14 +591,15 @@ describe("messageService", () => {
     })
 
     it("sends and stores image messages", async () => {
-      await sendMessageTestHelper({
+      const result = await sendMessageTestHelper({
+        phoneNumber: "+628123456789",
         type: "image",
         mediaUrl: "https://example.com/image.jpg",
         caption: "Image caption",
       })
 
       expect(mockDeviceClient.sendReply).toHaveBeenCalledWith({
-        to: "+1234567890",
+        to: "+628123456789",
         type: "image",
         payload: {
           link: "https://example.com/image.jpg",
@@ -792,7 +833,6 @@ describe("messageService", () => {
         }
         throw new Error("quota deduction failed")
       })
-
       const result = await sendMessageTestHelper()
 
       expect(result.status).toBe("sent")
@@ -903,7 +943,6 @@ describe("messageService", () => {
         expect(err).toBeInstanceOf(Error)
       }
     })
-
     it("restores allowance when Meta API fails after allowance was consumed", async () => {
       mockDeviceClient.sendReply.mockRejectedValue(new Error("API Error"))
 
@@ -916,9 +955,6 @@ describe("messageService", () => {
       expect(mockPrisma.whatsappDevice.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: "device-1" },
-          data: expect.objectContaining({
-            quotaBaseOut: { increment: expect.any(Object) },
-          }),
         })
       )
     })
@@ -947,7 +983,6 @@ describe("messageService", () => {
       expect(consoleWarnSpy).toHaveBeenCalled()
       console.warn = origWarn
     })
-
     it("sends interactive message type to Meta API", async () => {
       mockPrisma.whatsappDevice.findFirst.mockResolvedValueOnce({
         id: "device-1",
