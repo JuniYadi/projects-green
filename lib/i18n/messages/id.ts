@@ -568,6 +568,8 @@ export const idMessages: AppMessages = {
         cardDescription: "Kelola koneksi perangkat WhatsApp Anda",
         active: "Aktif",
         inactive: "Nonaktif",
+        disconnected: "Terputus",
+        unknown: "Tidak Diketahui",
         edit: "Sunting",
         editDialogTitle: "Sunting Perangkat",
         editDialogDescription: "Perbarui nomor telepon perangkat.",
