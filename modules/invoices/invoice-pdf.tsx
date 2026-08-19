@@ -437,7 +437,7 @@ const InvoicePdfDocument = ({
           ) : null}
           {invoice.periodEnd ? (
             <MetaRow
-              label="Next Renewal:"
+              label="Service Ends:"
               value={formatInvoiceDate(invoice.periodEnd)}
             />
           ) : null}
