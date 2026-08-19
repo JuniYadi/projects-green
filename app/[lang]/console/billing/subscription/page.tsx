@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getSubscriptions } from "@/lib/billing-client"
 import type { BillingSubscriptions } from "@/lib/billing-client"
 import { GlobeIcon, RocketLaunchIcon } from "@phosphor-icons/react"
@@ -82,24 +83,28 @@ export default function SubscriptionPage() {
                 {appHostingSubs.map((sub) => (
                   <div key={sub.id} className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{messages.console.billing.subscriptions.columnPlan}</span>
+                      <span className="text-muted-foreground">
+                        {messages.console.billing.subscriptions.columnPlan}
+                      </span>
                       <span className="font-medium">{sub.planCode}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{messages.console.billing.subscriptions.columnStatus}</span>
+                      <span className="text-muted-foreground">
+                        {messages.console.billing.subscriptions.columnStatus}
+                      </span>
                       <span className="font-medium">{sub.status}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{messages.console.billing.subscriptions.columnTerm}</span>
+                      <span className="text-muted-foreground">
+                        {messages.console.billing.subscriptions.columnTerm}
+                      </span>
                       <span className="font-medium">{sub.billingMode}</span>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                {t.noAppHosting}
-              </p>
+              <p className="text-sm text-muted-foreground">{t.noAppHosting}</p>
             )}
           </CardContent>
         </Card>
@@ -116,15 +121,21 @@ export default function SubscriptionPage() {
                 {vpnSubs.map((sub) => (
                   <div key={sub.id} className="space-y-2">
                     <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">{messages.console.billing.subscriptions.columnTerm}</span>
+                      <span className="text-muted-foreground">
+                        {messages.console.billing.subscriptions.columnTerm}
+                      </span>
                       <span className="font-medium">{sub.regionCode}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{messages.console.billing.subscriptions.columnStatus}</span>
+                      <span className="text-muted-foreground">
+                        {messages.console.billing.subscriptions.columnStatus}
+                      </span>
                       <span className="font-medium">{sub.status}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{messages.console.billing.subscriptions.columnTerm}</span>
+                      <span className="text-muted-foreground">
+                        {messages.console.billing.subscriptions.columnTerm}
+                      </span>
                       <span className="font-medium">
                         {new Intl.NumberFormat("id-ID", {
                           style: "currency",
@@ -141,9 +152,7 @@ export default function SubscriptionPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                {t.noVpn}
-              </p>
+              <p className="text-sm text-muted-foreground">{t.noVpn}</p>
             )}
           </CardContent>
         </Card>
@@ -167,16 +176,22 @@ export default function SubscriptionPage() {
                 {whatsappSubs.map((sub) => (
                   <div key={sub.id} className="space-y-2">
                     <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">{messages.console.billing.subscriptions.columnPlan}</span>
+                      <span className="text-muted-foreground">
+                        {messages.console.billing.subscriptions.columnPlan}
+                      </span>
                       <span className="font-medium">{sub.planCode}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{messages.console.billing.subscriptions.columnStatus}</span>
+                      <span className="text-muted-foreground">
+                        {messages.console.billing.subscriptions.columnStatus}
+                      </span>
                       <span className="font-medium">{sub.status}</span>
                     </div>
                     {sub.quotaIn != null && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">{messages.console.billing.subscriptions.columnTerm}</span>
+                        <span className="text-muted-foreground">
+                          {messages.console.billing.subscriptions.columnTerm}
+                        </span>
                         <span className="font-medium">
                           {sub.quotaIn.toLocaleString("id-ID")}
                         </span>
@@ -184,7 +199,9 @@ export default function SubscriptionPage() {
                     )}
                     {sub.quotaOut != null && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">{messages.console.billing.subscriptions.columnTerm}</span>
+                        <span className="text-muted-foreground">
+                          {messages.console.billing.subscriptions.columnTerm}
+                        </span>
                         <span className="font-medium">
                           {sub.quotaOut.toLocaleString("id-ID")}
                         </span>
@@ -194,9 +211,7 @@ export default function SubscriptionPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                {t.noWhatsapp}
-              </p>
+              <p className="text-sm text-muted-foreground">{t.noWhatsapp}</p>
             )}
           </CardContent>
         </Card>
@@ -204,7 +219,8 @@ export default function SubscriptionPage() {
 
       <div className="rounded-lg border border-muted bg-muted/50 p-4">
         <p className="text-sm text-muted-foreground">
-          <strong>{messages.console.billing.subscriptions.columnStatus}</strong> {t.adminNotice}
+          <strong>{messages.console.billing.subscriptions.columnStatus}</strong>{" "}
+          {t.adminNotice}
         </p>
       </div>
     </main>
