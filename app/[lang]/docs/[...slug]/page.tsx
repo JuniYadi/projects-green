@@ -7,7 +7,6 @@ import {
   Folder,
   ListNumbers,
   CheckCircle,
-  Code,
 } from "@phosphor-icons/react/dist/ssr"
 import { prisma } from "@/lib/prisma"
 import { OnThisPage } from "../components/on-this-page"
@@ -37,19 +36,34 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+function slugifyHeading(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/&amp;/g, "")
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+}
+
 // Extract H2 sections for on-page Table of Contents
 function extractToc(markdown: string) {
   const headingMatches = markdown.matchAll(/^##\s+(.+)$/gm)
   const headings = []
   for (const match of headingMatches) {
     const text = match[1].trim()
-    const id = text
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, "")
-      .replace(/\s+/g, "-")
+    const id = slugifyHeading(text)
     headings.push({ text, id })
   }
   return headings
+}
+
+// Inject id attributes to <h2> tags in rendered HTML so anchor links jump correctly
+function injectHeadingIds(html: string): string {
+  return html.replace(/<h2(.*?)>(.*?)<\/h2>/gi, (_match, attrs, text) => {
+    const rawText = text.replace(/<[^>]*>/g, "")
+    const id = slugifyHeading(rawText)
+    return `<h2${attrs} id="${id}">${text}</h2>`
+  })
 }
 
 export default async function PublicDocDetailPage({ params }: Props) {
@@ -69,7 +83,8 @@ export default async function PublicDocDetailPage({ params }: Props) {
 
   // Strip initial redundant markdown # Title if present to prevent double heading
   const cleanedMarkdown = rawMarkdown.replace(/^#\s+.+\r?\n/, "")
-  const renderedHtml = Bun.markdown.html(cleanedMarkdown)
+  const rawHtml = Bun.markdown.html(cleanedMarkdown)
+  const renderedHtml = injectHeadingIds(rawHtml)
 
   return (
     <div className="flex w-full flex-col gap-10 xl:flex-row xl:items-start xl:gap-12">
@@ -122,16 +137,6 @@ export default async function PublicDocDetailPage({ params }: Props) {
             <span className="font-mono text-[11px] text-muted-foreground/80">
               {doc.path}
             </span>
-            <span>•</span>
-            <a
-              href="/api/openapi"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 font-medium text-blue-500 hover:underline"
-            >
-              <Code size={13} />
-              <span>OpenAPI Spec</span>
-            </a>
           </div>
         </header>
 
@@ -144,7 +149,7 @@ export default async function PublicDocDetailPage({ params }: Props) {
 
       {/* Right Column: Sticky Table of Contents */}
       {toc.length > 0 && (
-        <aside className="hidden w-60 shrink-0 xl:block">
+        <aside className="hidden w-64 shrink-0 xl:block">
           <div className="sticky top-24 space-y-3 rounded-2xl border border-border/40 bg-card/40 p-5 backdrop-blur-sm">
             <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               <ListNumbers size={14} className="text-emerald-500" />

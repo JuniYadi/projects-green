@@ -10,7 +10,6 @@ import {
   Cloud,
   ShieldCheck,
   FileText,
-  Code,
   SidebarSimple,
 } from "@phosphor-icons/react"
 
@@ -75,18 +74,6 @@ export function DocsSidebar({ lang, categories }: SidebarProps) {
                 <span className="flex items-center gap-2">
                   <BookOpen size={16} />
                   <span>Overview & Guides</span>
-                </span>
-                <CaretRight size={14} className="text-muted-foreground/60" />
-              </Link>
-              <Link
-                href="/api/openapi"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <span className="flex items-center gap-2">
-                  <Code size={16} className="text-blue-500" />
-                  <span>OpenAPI Spec</span>
                 </span>
                 <CaretRight size={14} className="text-muted-foreground/60" />
               </Link>
