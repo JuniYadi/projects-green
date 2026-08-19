@@ -1,26 +1,11 @@
 import Link from "next/link"
-import {
-  Lightning,
-  BookOpen,
-  CaretRight,
-  ChatCircleDots,
-  Cloud,
-  ShieldCheck,
-  FileText,
-  Code,
-} from "@phosphor-icons/react/dist/ssr"
+import { Lightning, BookOpen, Code } from "@phosphor-icons/react/dist/ssr"
 import { prisma } from "@/lib/prisma"
+import { DocsSidebar } from "./components/docs-sidebar"
 
 type Props = {
   children: React.ReactNode
   params: Promise<{ lang: string }>
-}
-
-const CATEGORY_ICONS: Record<string, typeof ChatCircleDots> = {
-  WhatsApp: ChatCircleDots,
-  "App Hosting": Cloud,
-  Security: ShieldCheck,
-  General: FileText,
 }
 
 export default async function PublicDocsLayout({ children, params }: Props) {
@@ -52,7 +37,7 @@ export default async function PublicDocsLayout({ children, params }: Props) {
     <div className="flex min-h-screen flex-col bg-background text-foreground antialiased selection:bg-emerald-500/20 selection:text-emerald-400">
       {/* Top Header */}
       <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/90 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-6">
             <Link
               href={`/${lang}`}
@@ -99,68 +84,13 @@ export default async function PublicDocsLayout({ children, params }: Props) {
         </div>
       </header>
 
-      {/* Main Container */}
-      <div className="mx-auto flex w-full max-w-7xl flex-1 px-4 sm:px-6 lg:px-8">
+      {/* Main Wide Container (up to 1440px) */}
+      <div className="mx-auto flex w-full max-w-[1440px] flex-1 px-4 sm:px-6 lg:px-8">
         <div className="flex w-full flex-col gap-8 py-8 md:flex-row md:gap-8 lg:gap-10">
-          {/* Left Navigation Sidebar */}
-          <aside className="w-full shrink-0 md:w-56 lg:w-64">
-            <div className="sticky top-24 space-y-6">
-              <div className="space-y-1">
-                <Link
-                  href={`/${lang}/docs`}
-                  className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <span className="flex items-center gap-2">
-                    <BookOpen size={16} />
-                    <span>Overview & Guides</span>
-                  </span>
-                  <CaretRight size={14} className="text-muted-foreground/60" />
-                </Link>
-                <Link
-                  href="/api/openapi"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <span className="flex items-center gap-2">
-                    <Code size={16} className="text-blue-500" />
-                    <span>OpenAPI Spec</span>
-                  </span>
-                  <CaretRight size={14} className="text-muted-foreground/60" />
-                </Link>
-              </div>
+          {/* Collapsible Left Navigation Sidebar */}
+          <DocsSidebar lang={lang} categories={categories} />
 
-              <div className="space-y-5">
-                {Object.entries(categories).map(([categoryName, docs]) => {
-                  const CategoryIcon = CATEGORY_ICONS[categoryName] || FileText
-                  return (
-                    <div key={categoryName} className="space-y-1.5">
-                      <div className="flex items-center gap-2 px-3 text-[11px] font-semibold tracking-wider text-muted-foreground/80 uppercase">
-                        <CategoryIcon size={13} className="text-emerald-500" />
-                        <span>{categoryName}</span>
-                      </div>
-                      <nav className="space-y-0.5">
-                        {docs.map((doc) => {
-                          const docSlug = doc.path.replace(/^\//, "")
-                          return (
-                            <Link
-                              key={doc.path}
-                              href={`/${lang}/docs/${docSlug}`}
-                              className="group block rounded-lg px-3 py-1.5 text-xs leading-relaxed font-normal text-muted-foreground transition-all hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400"
-                            >
-                              <span className="line-clamp-2">{doc.title}</span>
-                            </Link>
-                          )
-                        })}
-                      </nav>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </aside>
-
-          {/* Main Content Area */}
+          {/* Main Content Area (Expansive Width) */}
           <main className="min-w-0 flex-1">{children}</main>
         </div>
       </div>

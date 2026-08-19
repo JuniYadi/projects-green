@@ -72,8 +72,8 @@ export default async function PublicDocDetailPage({ params }: Props) {
   const renderedHtml = Bun.markdown.html(cleanedMarkdown)
 
   return (
-    <div className="flex flex-col gap-10 xl:flex-row xl:items-start">
-      {/* Center Reading Content */}
+    <div className="flex w-full flex-col gap-10 xl:flex-row xl:items-start xl:gap-12">
+      {/* Center Reading Content - Expanded Width */}
       <div className="min-w-0 flex-1 space-y-10">
         {/* Navigation Breadcrumb */}
         <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
@@ -103,7 +103,7 @@ export default async function PublicDocDetailPage({ params }: Props) {
             </span>
           </div>
 
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
             {doc.title}
           </h1>
 
@@ -135,16 +135,16 @@ export default async function PublicDocDetailPage({ params }: Props) {
           </div>
         </header>
 
-        {/* Prose Markdown Body with High Contrast & Polished Spacing */}
+        {/* Prose Markdown Body with Wide, Readable Spacing */}
         <article
-          className="prose dark:prose-invert max-w-none [&_blockquote]:my-6 [&_blockquote]:rounded-xl [&_blockquote]:border-l-4 [&_blockquote]:border-emerald-500 [&_blockquote]:bg-emerald-500/10 [&_blockquote]:p-4 [&_blockquote]:text-sm [&_blockquote]:text-foreground [&_code]:rounded-md [&_code]:border [&_code]:border-emerald-500/20 [&_code]:bg-emerald-500/10 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_code]:font-medium [&_code]:text-emerald-600 dark:[&_code]:text-emerald-400 [&_h2]:mt-12 [&_h2]:mb-4 [&_h2]:scroll-mt-28 [&_h2]:border-b [&_h2]:border-border/50 [&_h2]:pb-2 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:tracking-tight [&_h2]:text-foreground [&_h3]:mt-8 [&_h3]:mb-3 [&_h3]:scroll-mt-28 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-foreground [&_hr]:my-10 [&_hr]:border-border/40 [&_img]:my-8 [&_img]:w-full [&_img]:rounded-2xl [&_img]:border [&_img]:border-border/70 [&_img]:bg-muted/30 [&_img]:p-1.5 [&_img]:shadow-xl [&_img]:shadow-black/30 [&_li]:text-base [&_li]:leading-7 [&_li]:text-zinc-700 dark:[&_li]:text-zinc-200 [&_p]:my-4 [&_p]:text-base [&_p]:leading-7 [&_p]:text-zinc-700 dark:[&_p]:text-zinc-200 [&_pre]:my-6 [&_pre]:rounded-2xl [&_pre]:border [&_pre]:border-border/70 [&_pre]:bg-zinc-950 [&_pre]:p-5 [&_pre]:shadow-lg [&_pre]:shadow-black/20 [&_pre_code]:border-none [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-zinc-100 [&_strong]:font-semibold [&_strong]:text-foreground"
+          className="prose dark:prose-invert max-w-none [&_blockquote]:my-6 [&_blockquote]:rounded-xl [&_blockquote]:border-l-4 [&_blockquote]:border-emerald-500 [&_blockquote]:bg-emerald-500/10 [&_blockquote]:p-4 [&_blockquote]:text-sm [&_blockquote]:text-foreground [&_code]:rounded-md [&_code]:border [&_code]:border-emerald-500/20 [&_code]:bg-emerald-500/10 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_code]:font-medium [&_code]:text-emerald-600 dark:[&_code]:text-emerald-400 [&_h2]:mt-12 [&_h2]:mb-4 [&_h2]:scroll-mt-28 [&_h2]:border-b [&_h2]:border-border/50 [&_h2]:pb-2 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:tracking-tight [&_h2]:text-foreground [&_h3]:mt-8 [&_h3]:mb-3 [&_h3]:scroll-mt-28 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-foreground [&_hr]:my-10 [&_hr]:border-border/40 [&_img]:my-8 [&_img]:w-full [&_img]:max-w-4xl [&_img]:rounded-2xl [&_img]:border [&_img]:border-border/70 [&_img]:bg-muted/30 [&_img]:p-1.5 [&_img]:shadow-xl [&_img]:shadow-black/30 [&_li]:text-base [&_li]:leading-7 [&_li]:text-zinc-700 dark:[&_li]:text-zinc-200 [&_p]:my-4 [&_p]:text-base [&_p]:leading-7 [&_p]:text-zinc-700 dark:[&_p]:text-zinc-200 [&_pre]:my-6 [&_pre]:rounded-2xl [&_pre]:border [&_pre]:border-border/70 [&_pre]:bg-zinc-950 [&_pre]:p-5 [&_pre]:shadow-lg [&_pre]:shadow-black/20 [&_pre_code]:border-none [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-zinc-100 [&_strong]:font-semibold [&_strong]:text-foreground"
           dangerouslySetInnerHTML={{ __html: renderedHtml }}
         />
       </div>
 
-      {/* Right Column: Dynamic Scroll-Spy Table of Contents */}
+      {/* Right Column: Sticky Table of Contents */}
       {toc.length > 0 && (
-        <aside className="hidden w-64 shrink-0 xl:block">
+        <aside className="hidden w-60 shrink-0 xl:block">
           <div className="sticky top-24 space-y-3 rounded-2xl border border-border/40 bg-card/40 p-5 backdrop-blur-sm">
             <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               <ListNumbers size={14} className="text-emerald-500" />
