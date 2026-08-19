@@ -1,7 +1,14 @@
 import Link from "next/link"
-import { Lightning, BookOpen, Code } from "@phosphor-icons/react/dist/ssr"
+import {
+  Lightning,
+  BookOpen,
+  Code,
+  TerminalWindow,
+} from "@phosphor-icons/react/dist/ssr"
 import { prisma } from "@/lib/prisma"
 import { DocsSidebar } from "./components/docs-sidebar"
+import { LanguageFlags } from "./components/language-flags"
+import { NavbarSearch } from "./components/navbar-search"
 
 type Props = {
   children: React.ReactNode
@@ -11,12 +18,13 @@ type Props = {
 export default async function PublicDocsLayout({ children, params }: Props) {
   const { lang } = await params
 
-  // Fetch all public categories and documents for navigation
+  // Fetch all public categories and documents for navigation & global search
   const documents = await prisma.docsKnowledgeDocument.findMany({
     where: { organizationId: null, isPublic: true },
     select: {
       path: true,
       title: true,
+      purpose: true,
       category: true,
     },
     orderBy: [{ category: "asc" }, { path: "asc" }],
@@ -33,11 +41,19 @@ export default async function PublicDocsLayout({ children, params }: Props) {
     {}
   )
 
+  const searchableDocs = documents.map((d) => ({
+    path: d.path,
+    title: d.title,
+    purpose: d.purpose,
+    category: d.category || "General",
+  }))
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground antialiased selection:bg-emerald-500/20 selection:text-emerald-400">
       {/* Top Header */}
       <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/90 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between px-4 sm:px-6 lg:px-8">
+          {/* Brand Logo & Section */}
           <div className="flex items-center gap-6">
             <Link
               href={`/${lang}`}
@@ -64,21 +80,32 @@ export default async function PublicDocsLayout({ children, params }: Props) {
             </Link>
           </div>
 
+          {/* Right Action Bar */}
           <div className="flex items-center gap-3">
+            {/* Global Search Button with Animated Modal */}
+            <NavbarSearch lang={lang} documents={searchableDocs} />
+
+            {/* OpenAPI Spec Reference Button */}
             <Link
               href="/api/openapi"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 text-xs font-semibold text-foreground shadow-sm transition-all hover:bg-muted"
+              className="hidden h-9 items-center gap-1.5 rounded-xl border border-border/60 bg-card/60 px-3 text-xs font-semibold text-foreground shadow-sm backdrop-blur-sm transition-all hover:bg-muted md:inline-flex"
             >
               <Code size={15} className="text-blue-500" />
               <span>OpenAPI Reference</span>
             </Link>
+
+            {/* Language Switcher Flags (Icon Only) */}
+            <LanguageFlags currentLang={lang} />
+
+            {/* Console Action Button with Icon */}
             <Link
               href={`/${lang}/console`}
-              className="inline-flex h-9 items-center justify-center rounded-lg bg-emerald-600 px-4 text-xs font-semibold text-white shadow-sm shadow-emerald-600/25 transition-all hover:bg-emerald-500 active:scale-95"
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 text-xs font-semibold text-white shadow-sm shadow-emerald-600/25 transition-all hover:bg-emerald-500 active:scale-95"
             >
-              Console
+              <TerminalWindow size={16} weight="bold" />
+              <span>Console</span>
             </Link>
           </div>
         </div>
