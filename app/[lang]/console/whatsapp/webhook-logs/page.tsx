@@ -132,7 +132,8 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
 
       if (error) {
         throw new Error(
-          error.message ?? messages.console.whatsapp.webhookLogs.loadError
+          (error as { message?: string })?.message ??
+            "Failed to load webhook events"
         )
       }
 
@@ -142,11 +143,8 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
       setPageState("loaded")
     } catch (err) {
       const message =
-        err instanceof Error
-          ? err.message
-          : messages.console.whatsapp.webhookLogs.loadError
+        err instanceof Error ? err.message : "Failed to load webhook events"
       setErrorMessage(message)
-      setPageState("error")
     }
   }, [filters, page])
 
