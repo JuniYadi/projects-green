@@ -83,9 +83,6 @@ export default function ProductDetailPage() {
       try {
         const result = await getCatalogProduct(productCode, selectedCurrency)
         setData(result)
-        if (result?.currency) {
-          setSelectedCurrency(result.currency)
-        }
       } catch {
         setError(messages.console.billing.services.errorDescription)
       } finally {
