@@ -19,6 +19,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { useParams, useRouter } from "next/navigation"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type CatalogProduct = {
   id: string
@@ -33,8 +35,8 @@ type CatalogProduct = {
 
 export default function CatalogDetailPage() {
   const params = useParams<{ lang?: string; catalogId: string }>()
-  const router = useRouter()
-  const catalogId = params.catalogId!
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
 
   const [catalog, setCatalog] = React.useState<Record<string, unknown> | null>(
     null
@@ -54,7 +56,9 @@ export default function CatalogDetailPage() {
       setProducts(prodRes.data ?? [])
     } catch (err: unknown) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to load catalog."
+        err instanceof Error
+          ? err.message
+          : messages.console.whatsapp.catalogs.description
       )
     } finally {
       setIsLoading(false)
@@ -71,10 +75,16 @@ export default function CatalogDetailPage() {
     setSyncing(true)
     try {
       const res = await whatsappClient.catalogs.sync(catalogId)
-      toast.success(`Synced ${res.data.synced} products.`)
+      toast.success(
+        `${messages.console.whatsapp.catalogs.columnProductCount}: ${res.data.synced}`
+      )
       await load()
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Sync failed.")
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : messages.console.whatsapp.catalogs.description
+      )
     } finally {
       setSyncing(false)
     }
@@ -93,9 +103,12 @@ export default function CatalogDetailPage() {
     return (
       <div className="flex flex-col items-center gap-4 py-16">
         <ShoppingBagOpen className="size-16 text-muted-foreground/40" />
-        <p className="text-muted-foreground">Catalog not found.</p>
+        <p className="text-muted-foreground">
+          {messages.console.whatsapp.catalogs.emptyTitle}
+        </p>
         <Button variant="outline" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 size-4" /> Back
+          <ArrowLeft className="mr-2 size-4" />{" "}
+          {messages.console.whatsapp.catalogs.heading}
         </Button>
       </div>
     )
@@ -110,23 +123,28 @@ export default function CatalogDetailPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold">{catalog.name as string}</h1>
           <p className="text-sm text-muted-foreground">
-            Meta ID: {catalog.metaCatalogId as string} &middot;{" "}
-            {products.length} products
+            {messages.console.whatsapp.catalogs.columnName}:{" "}
+            {catalog.metaCatalogId as string} &middot; {products.length}{" "}
+            {messages.console.whatsapp.catalogs.columnProductCount.toLowerCase()}
           </p>
         </div>
         <Button onClick={handleSync} disabled={syncing}>
           <ArrowClockwise
             className={`mr-2 size-4 ${syncing ? "animate-spin" : ""}`}
           />
-          {syncing ? "Syncing..." : "Sync Products"}
+          {syncing
+            ? messages.console.whatsapp.catalogs.columnStatus
+            : messages.console.whatsapp.catalogs.columnProductCount}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Products</CardTitle>
+          <CardTitle>
+            {messages.console.whatsapp.catalogs.columnProductCount}
+          </CardTitle>
           <CardDescription>
-            Products cached from Meta Commerce Manager. Click sync to refresh.
+            {messages.console.whatsapp.catalogs.description}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -134,7 +152,7 @@ export default function CatalogDetailPage() {
             <div className="flex flex-col items-center gap-2 py-12 text-center">
               <ShoppingBagOpen className="size-12 text-muted-foreground/40" />
               <p className="text-sm text-muted-foreground">
-                No products synced yet.
+                {messages.console.whatsapp.catalogs.emptyTitle}
               </p>
               <Button
                 variant="outline"
@@ -142,7 +160,7 @@ export default function CatalogDetailPage() {
                 onClick={handleSync}
                 disabled={syncing}
               >
-                Sync Now
+                {messages.console.whatsapp.catalogs.columnProductCount}
               </Button>
             </div>
           ) : (
@@ -167,7 +185,8 @@ export default function CatalogDetailPage() {
                   <CardContent className="p-4">
                     <h3 className="truncate font-medium">{p.name}</h3>
                     <p className="truncate text-xs text-muted-foreground">
-                      SKU: {p.productRetailerId}
+                      {messages.console.whatsapp.catalogs.columnName}:{" "}
+                      {p.productRetailerId}
                     </p>
                     {p.price && (
                       <p className="mt-1 text-sm font-semibold">
