@@ -78,9 +78,7 @@ describe("ConsoleWhatsAppWebhookLogsPage", () => {
 
     await waitFor(() => {
       expect(
-        view.getByText(
-          "View and inspect incoming WhatsApp webhook events across your devices."
-        )
+        view.getByText("Inspect inbound and outbound webhook delivery events.")
       ).toBeTruthy()
     })
   })
