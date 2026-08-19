@@ -222,15 +222,7 @@ export default function ProductDetailPage() {
                 const checkoutUrl = offer
                   ? `/console/billing/checkout?pricingId=${encodeURIComponent(
                       offer.id
-                    )}&product=${encodeURIComponent(
-                      data.product.code
-                    )}&plan=${encodeURIComponent(
-                      plan.code
-                    )}&billingPeriod=${encodeURIComponent(
-                      offer.billingPeriod
-                    )}&price=${encodeURIComponent(
-                      offer.periodPrice
-                    )}&currency=${encodeURIComponent(offer.currency)}`
+                    )}`
                   : "#"
 
                 return (
