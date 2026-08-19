@@ -586,6 +586,16 @@ export type AppMessages = {
         heading: string
         description: string
         notDownloaded: string
+        uploadSuccess: string
+        deleteSuccess: string
+        uploadButton: string
+        downloadButton: string
+        deleteButton: string
+        cancelButton: string
+        uploading: string
+        deleting: string
+        retryButton: string
+        uploadFirstFile: string
       }
       broadcasts: {
         heading: string
