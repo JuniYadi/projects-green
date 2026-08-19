@@ -67,7 +67,7 @@ export class MessageCostService {
     const country = options.country ?? "ID"
     const targetDate = options.effectiveAt ?? new Date()
 
-    return this.prisma.whatsappBasePrice.findFirst({
+    const specific = await this.prisma.whatsappBasePrice.findFirst({
       where: {
         category: options.category,
         country,
@@ -77,11 +77,18 @@ export class MessageCostService {
       },
       orderBy: { effectiveFrom: "desc" },
     })
-  }
+    if (specific) return specific
 
-  /**
-   * Resolve the configured PAYG unit price and currency for WhatsApp.
-   */
+    return this.prisma.whatsappBasePrice.findFirst({
+      where: {
+        category: options.category,
+        isActive: true,
+        effectiveFrom: { lte: targetDate },
+        OR: [{ effectiveTo: null }, { effectiveTo: { gt: targetDate } }],
+      },
+      orderBy: { effectiveFrom: "desc" },
+    })
+  }
   async getMessagePricing(options: {
     organizationId: string
     messageType: MessageType
