@@ -44,6 +44,13 @@ function formatPrice(price: string, currency: string): string {
   }).format(amount)
 }
 
+const PERIOD_ORDER: Record<BillingPeriod, number> = {
+  MONTHLY: 1,
+  QUARTERLY: 2,
+  SEMI_ANNUAL: 3,
+  ANNUAL: 4,
+}
+
 type PlanOffer = {
   plan: CatalogPlan
   offer: CatalogOffer | undefined
@@ -57,10 +64,6 @@ export default function ProductDetailPage() {
   const [data, setData] = useState<CatalogProductDetailResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedTerm, setSelectedTerm] = useState<BillingPeriod>(
-    BILLING_PERIODS[0]
-  )
-
   const productCode = params?.product?.toUpperCase() ?? ""
 
   useEffect(() => {
@@ -93,29 +96,21 @@ export default function ProductDetailPage() {
   const plansWithOffer = useMemo<PlanOffer[]>(() => {
     if (!data?.product) return []
     return data.product.plans
-      .map((plan) => ({
-        plan,
-        offer: plan.offers.find((o) => o.billingPeriod === selectedTerm),
-      }))
-      .filter((item) => item.offer !== undefined)
-  }, [data, selectedTerm])
-
-  const availableTerms = useMemo<BillingPeriod[]>(() => {
-    if (!data?.product) return []
-    const terms = new Set<BillingPeriod>()
-    for (const plan of data.product.plans) {
-      for (const offer of plan.offers) {
-        if (
-          offer.billingPeriod === "MONTHLY" ||
-          offer.billingPeriod === "QUARTERLY" ||
-          offer.billingPeriod === "SEMI_ANNUAL" ||
-          offer.billingPeriod === "ANNUAL"
-        ) {
-          terms.add(offer.billingPeriod as BillingPeriod)
+      .map((plan) => {
+        const sortedOffers = [...plan.offers].sort((a, b) => {
+          const orderA = PERIOD_ORDER[a.billingPeriod as BillingPeriod] ?? 99
+          const orderB = PERIOD_ORDER[b.billingPeriod as BillingPeriod] ?? 99
+          if (orderA !== orderB) return orderA - orderB
+          return (
+            Number.parseFloat(a.periodPrice) - Number.parseFloat(b.periodPrice)
+          )
+        })
+        return {
+          plan,
+          offer: sortedOffers[0],
         }
-      }
-    }
-    return BILLING_PERIODS.filter((t) => terms.has(t))
+      })
+      .filter((item) => item.offer !== undefined)
   }, [data])
 
   if (isLoading) {
@@ -177,36 +172,6 @@ export default function ProductDetailPage() {
 
       {!error && data && (
         <>
-          {/* Term selector */}
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium">
-              {messages.console.billing.services.product.selectTerm}
-            </p>
-            <div className="flex flex-wrap gap-2" role="group">
-              {BILLING_PERIODS.map((term) => {
-                const hasTerm = availableTerms.includes(term)
-                return (
-                  <Button
-                    key={term}
-                    variant={selectedTerm === term ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedTerm(term)}
-                    disabled={!hasTerm}
-                    aria-pressed={selectedTerm === term}
-                    aria-disabled={!hasTerm}
-                  >
-                    {TERM_LABELS[term]}
-                  </Button>
-                )
-              })}
-            </div>
-            {!availableTerms.includes(selectedTerm) && (
-              <p className="text-xs text-muted-foreground">
-                {messages.console.billing.services.product.unavailableTerm}
-              </p>
-            )}
-          </div>
-
           {/* Plan cards */}
           {plansWithOffer.length === 0 ? (
             <Card>
