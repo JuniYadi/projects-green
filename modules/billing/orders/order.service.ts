@@ -18,6 +18,7 @@ import {
   type BillingFulfillmentInput,
   type BillingFulfillmentRegistry,
 } from "./fulfillment-adapters"
+import { calculateProration } from "../proration"
 export type BillingOrderResult = {
   orderId: string
   status: "PENDING" | "CHARGED" | "FULFILLED" | "FAILED" | "CANCELLED"
@@ -185,22 +186,26 @@ export class BillingOrderService {
     await this.validateQuantity(input.organizationId, price, quantity)
 
     const periodStart = input.periodStart ?? now
-    const monthEnd = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999)
-    )
+    const plan = await this.prisma.servicePlan.findUnique({
+      where: { id: price.planId },
+      select: { billingStrategy: true },
+    })
+    const billingStrategy =
+      plan?.billingStrategy ??
+      (input.prorateMonthly ? "PRO_RATA" : "FIXED_CYCLE")
+    const proration = calculateProration({
+      billingStrategy,
+      billingPeriod: price.billingPeriod,
+      periodPrice: price.periodPrice,
+      quantity,
+      now,
+    })
     const periodEnd =
       input.periodEnd ??
-      (input.prorateMonthly && price.billingPeriod === "MONTHLY"
-        ? monthEnd
+      (proration.isProrated
+        ? proration.cycleEnd
         : addMonths(periodStart, price.periodMonths))
-    const amount =
-      input.amount ??
-      (input.prorateMonthly && price.billingPeriod === "MONTHLY"
-        ? price.periodPrice
-            .mul(monthEnd.getUTCDate() - now.getUTCDate() + 1)
-            .div(monthEnd.getUTCDate())
-            .mul(quantity)
-        : price.periodPrice.mul(quantity))
+    const amount = input.amount ?? proration.proratedAmount
     const discountAmount = input.discountAmount ?? new Prisma.Decimal(0)
     if (discountAmount.isNegative() || discountAmount.gt(amount)) {
       throw new Error("ORDER_DISCOUNT_INVALID")
