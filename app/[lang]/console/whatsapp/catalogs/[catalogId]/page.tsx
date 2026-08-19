@@ -35,9 +35,10 @@ type CatalogProduct = {
 
 export default function CatalogDetailPage() {
   const params = useParams<{ lang?: string; catalogId: string }>()
+  const router = useRouter()
+  const catalogId = params?.catalogId ?? ""
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
-
   const [catalog, setCatalog] = React.useState<Record<string, unknown> | null>(
     null
   )
