@@ -34,7 +34,9 @@ import {
   WhatsappSendFailedError,
   WhatsappSessionWindowClosedError,
   UnsupportedDestinationCountryError,
+  getWhatsappSendErrorMessage,
 } from "./messages.errors"
+
 export type SendMessageResult = {
   jobId: string
   messageId: string
