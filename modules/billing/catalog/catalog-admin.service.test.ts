@@ -476,6 +476,59 @@ describe("CatalogAdminService", () => {
       expect(db.servicePlan.update).toHaveBeenCalled()
       expect(db.servicePlan.create).not.toHaveBeenCalled()
     })
+
+    it("deactivates removed pricings when updating plan with new pricing list", async () => {
+      db.servicePackage.findFirst.mockReturnValue({ id: "pkg-1" })
+      db.servicePlan.findFirst.mockReturnValue({
+        id: "plan-1",
+        code: "PRIVATESHARE",
+        name: "Private Shared Business",
+        resources: {},
+        isActive: true,
+      })
+      db.servicePlan.update.mockReturnValue({
+        id: "plan-1",
+        code: "PRIVATESHARE",
+        name: "Private Shared Business",
+      })
+      db.serviceRegion.findFirst.mockReturnValue({
+        id: "region-1",
+        isActive: true,
+      })
+      db.servicePricing.findFirst.mockReturnValue(null)
+      db.servicePricing.create.mockReturnValue({
+        id: "pricing-quarterly",
+        planId: "plan-1",
+      })
+      db.servicePricing.updateMany.mockReturnValue({ count: 1 })
+
+      const service = createService()
+      await service.upsertPlan({
+        packageCode: "WHATSAPP",
+        code: "PRIVATESHARE",
+        name: "Private Shared Business",
+        prices: [
+          {
+            billingPeriod: "QUARTERLY",
+            currency: "IDR",
+            periodPrice: 1800000,
+          },
+        ],
+      })
+
+      expect(db.servicePricing.updateMany).toHaveBeenCalledWith({
+        where: {
+          planId: "plan-1",
+          type: "BUNDLE",
+          billingMode: "PACKAGE",
+          id: { notIn: ["pricing-quarterly"] },
+          isActive: true,
+        },
+        data: {
+          isActive: false,
+        },
+      })
+    })
   })
 
   // ─── upsertPlanPricing ──────────────────────────────────────────────
