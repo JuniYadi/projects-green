@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
 import {
   Select,
   SelectContent,
@@ -35,6 +36,11 @@ import {
   CheckCircleIcon,
   ClockIcon,
   XCircleIcon,
+  ReceiptIcon,
+  CalendarBlankIcon,
+  CreditCardIcon,
+  BuildingsIcon,
+  UserIcon,
 } from "@phosphor-icons/react"
 import { InvoiceDownloadPdfAction } from "@/modules/invoices/ui/invoice-download-pdf-action"
 import { formatInvoiceCurrency } from "@/modules/invoices/invoices.helpers"
@@ -108,6 +114,7 @@ export default function InvoiceDetailPage() {
       controller.abort()
     }
   }, [invoiceId])
+
   useEffect(() => {
     if (!data?.invoice || !account) return
 
@@ -128,17 +135,13 @@ export default function InvoiceDetailPage() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedPaymentMethodId(defaultMethod.id)
     }
-    // selectedPaymentMethodId is intentionally omitted: this effect only
-    // syncs the default selection when payment methods first load. Including
-    // it in deps would cause an infinite update loop.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentMethods])
+  }, [data, account, paymentMethods, selectedPaymentMethodId])
 
   function formatDate(dateStr: string | null | undefined): string {
     if (!dateStr) return "N/A"
     return new Intl.DateTimeFormat("id-ID", {
       day: "numeric",
-      month: "long",
+      month: "short",
       year: "numeric",
     }).format(new Date(dateStr))
   }
@@ -147,7 +150,7 @@ export default function InvoiceDetailPage() {
   function formatPeriodDate(dateStr: string): string {
     return new Intl.DateTimeFormat("id-ID", {
       day: "numeric",
-      month: "long",
+      month: "short",
       year: "numeric",
       timeZone: "UTC",
     }).format(new Date(dateStr))
@@ -159,7 +162,6 @@ export default function InvoiceDetailPage() {
     try {
       await payWithBalance(invoiceId)
       setPaymentSuccess(true)
-      // Refresh data
       const result = await getInvoice(invoiceId)
       setData(result)
     } catch (err) {
@@ -197,14 +199,29 @@ export default function InvoiceDetailPage() {
   if (isLoading) {
     return (
       <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
-        <header className="space-y-1">
-          <Skeleton className="h-8 w-64" />
+        <header className="space-y-2">
+          <Skeleton className="h-4 w-48" />
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-9 w-32" />
+          </div>
         </header>
-        <Card>
-          <CardContent className="p-6">
-            <Skeleton className="h-48" />
-          </CardContent>
-        </Card>
+        <div className="grid gap-6 lg:grid-cols-12">
+          <div className="space-y-6 lg:col-span-8">
+            <Card>
+              <CardContent className="p-6">
+                <Skeleton className="h-80" />
+              </CardContent>
+            </Card>
+          </div>
+          <div className="space-y-6 lg:col-span-4">
+            <Card>
+              <CardContent className="p-6">
+                <Skeleton className="h-48" />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </main>
     )
   }
@@ -231,6 +248,10 @@ export default function InvoiceDetailPage() {
 
   const invoice = data.invoice
   const isTopUp = invoice.type === "TOP_UP"
+  const isPaid = invoice.status === "PAID"
+  const isOpen = invoice.status === "OPEN"
+  const isDraft = invoice.status === "DRAFT"
+  const isVoid = invoice.status === "VOID"
   const issueDate = invoice.issuedAt ?? invoice.createdAt ?? null
   const dueDate = invoice.dueAt ?? invoice.dueDate ?? null
   const invoiceCurrency = invoice.currency || account?.currency || "USD"
@@ -239,17 +260,17 @@ export default function InvoiceDetailPage() {
   const subtotalAmount = invoice.subtotalAmountIdr ?? invoice.totalAmountIdr
   const taxAmount = invoice.taxAmountIdr ?? "0"
   const discountAmount = invoice.discountAmountIdr ?? "0"
-  const confirmations =
-    (
-      data as unknown as {
-        confirmations?: Array<{
-          id: string
-          status: string
-          createdAt: string
-          amount: number
-        }>
-      }
-    ).confirmations ?? []
+
+  const rawData: Record<string, unknown> = data
+  const rawConfirmations = rawData.confirmations
+  const confirmations = Array.isArray(rawConfirmations)
+    ? (rawConfirmations as Array<{
+        id: string
+        status: string
+        createdAt: string
+        amount: number
+      }>)
+    : []
   const latestConfirmation =
     confirmations.length > 0 ? confirmations[confirmations.length - 1] : null
   const activeConfirmation =
@@ -258,6 +279,7 @@ export default function InvoiceDetailPage() {
       latestConfirmation.status === "APPROVED")
       ? latestConfirmation
       : null
+
   const supportsInvoiceCurrency = (method: PaymentMethod) => {
     const supported = method.supportedCurrencies ?? []
     return supported.length === 0 || supported.includes(invoiceCurrency)
@@ -277,6 +299,7 @@ export default function InvoiceDetailPage() {
   const finalConfirmHref = selectedPaymentMethod
     ? `${confirmPaymentHref}&paymentMethodId=${selectedPaymentMethod.id}`
     : confirmPaymentHref
+
   const isManualPayment =
     invoice.paymentMethod === "MANUAL_BANK" ||
     invoice.paymentMethod === "manual_bank_transfer"
@@ -286,23 +309,45 @@ export default function InvoiceDetailPage() {
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
-      <header className="space-y-1">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" asChild>
+      {/* Header bar */}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="icon" className="h-9 w-9" asChild>
             <Link href="/console/billing/invoices">
               <ArrowLeftIcon className="h-4 w-4" />
             </Link>
           </Button>
-          <h1 className="text-2xl font-semibold">
-            Invoice {invoice.invoiceNumber}
-          </h1>
-          <InvoiceStatusBadge
-            status={invoice.status as "OPEN" | "PENDING" | "PAID" | "VOID"}
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+                Invoice {invoice.invoiceNumber}
+              </h1>
+              <InvoiceStatusBadge
+                status={
+                  invoice.status as
+                    | "OPEN"
+                    | "PENDING"
+                    | "PAID"
+                    | "VOID"
+                    | "DRAFT"
+                }
+              />
+            </div>
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Issued on {formatDate(issueDate)}
+              {dueDate ? ` • Due on ${formatDate(dueDate)}` : ""}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <InvoiceDownloadPdfAction
+            invoiceId={invoice.id}
+            invoiceNumber={invoice.invoiceNumber}
           />
         </div>
       </header>
 
-      {/* Payment Status Banner (after Duitku redirect) */}
+      {/* Payment Status Notifications */}
       {paymentStatus === "success" && (
         <div className="flex items-center gap-3 rounded-lg border border-green-500/20 bg-green-500/10 p-4">
           <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -346,6 +391,7 @@ export default function InvoiceDetailPage() {
           </Button>
         </div>
       )}
+
       {latestConfirmation && (
         <div
           className={`flex items-center gap-3 rounded-lg border p-4 ${
@@ -384,254 +430,449 @@ export default function InvoiceDetailPage() {
         </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Invoice Details</CardTitle>
-            <InvoiceDownloadPdfAction
-              invoiceId={invoice.id}
-              invoiceNumber={invoice.invoiceNumber}
-            />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Invoice Info */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Invoice Number</p>
-              <p className="font-medium">{invoice.invoiceNumber}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Billing Period</p>
-              <p className="font-medium">
-                {formatPeriodDate(invoice.periodStart)} —{" "}
-                {formatPeriodDate(invoice.periodEnd)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Issued Date</p>
-              <p className="font-medium">{formatDate(issueDate)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Due Date</p>
-              <p className="font-medium">{formatDate(dueDate)}</p>
-            </div>
-          </div>
-
-          {/* Line Items */}
-          <div>
-            <h3 className="mb-4 font-medium">
-              {invoice.type === "TOP_UP" ? "Top-Up Details" : "Service Charges"}
-            </h3>
-            {invoice.type === "TOP_UP" ? (
-              <div className="rounded-lg border">
-                <InvoiceFlatLine
-                  lines={invoice.lines ?? []}
-                  currency={invoiceCurrency}
-                />
-              </div>
-            ) : (
-              <InvoiceGroupedLines
-                lines={invoice.lines ?? []}
-                currency={invoiceCurrency}
-                periodLabel={
-                  formatPeriodDate(invoice.periodStart) +
-                  " — " +
-                  formatPeriodDate(invoice.periodEnd)
-                }
-              />
-            )}
-          </div>
-
-          <div className="flex justify-end">
-            <div className="w-64 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>{formatInvoiceAmount(subtotalAmount)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax</span>
-                <span>{formatInvoiceAmount(taxAmount)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Discount</span>
-                <span>{formatInvoiceAmount(discountAmount)}</span>
-              </div>
-              <div className="flex justify-between border-t pt-2 font-semibold">
-                <span>Total</span>
-                <span>{formatInvoiceAmount(invoice.totalAmountIdr)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Payment Actions - top-up invoices show payment-method instructions */}
-          {invoice.status === "OPEN" && isTopUp && (
-            <div className="border-t pt-4">
-              <h3 className="mb-4 font-medium">Complete Your Top-Up</h3>
-              {isManualPayment ? (
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Transfer the exact total amount{" "}
-                    <span className="font-medium text-foreground">
-                      {formatInvoiceAmount(invoice.totalAmountIdr)}
-                    </span>{" "}
-                    to the destination bank account, then confirm your payment.
+      {/* Main 2-Column Responsive Workspace */}
+      <div className="grid gap-6 lg:grid-cols-12">
+        {/* Left Column: Printable Invoice Document (8 cols) */}
+        <div className="space-y-6 lg:col-span-8">
+          <Card className="border-border/80 shadow-sm">
+            <CardContent className="p-6 sm:p-8">
+              {/* Document Header */}
+              <div className="flex flex-col justify-between gap-4 border-b border-border/60 pb-6 sm:flex-row sm:items-start">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
+                      P
+                    </div>
+                    <span className="text-lg font-bold tracking-tight">
+                      PFNApp
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    PT PFN Digital Solusindo
                   </p>
-                  {currencyCompatibleMethods.length > 0 ? (
-                    <div className="space-y-3">
-                      <div className="grid gap-2">
-                        <Label
-                          htmlFor="payment-method"
-                          className="text-xs font-semibold text-muted-foreground"
-                        >
-                          Payment method
-                        </Label>
-                        <Select
-                          value={selectedPaymentMethod?.id ?? ""}
-                          onValueChange={(value) =>
-                            setSelectedPaymentMethodId(value)
-                          }
-                        >
-                          <SelectTrigger
-                            id="payment-method"
-                            className="border-border bg-background/50 text-foreground"
-                          >
-                            <SelectValue placeholder="Select payment method" />
-                          </SelectTrigger>
-                          <SelectContent className="border-border bg-popover">
-                            {currencyCompatibleMethods.map((method) => (
-                              <SelectItem
-                                key={method.id}
-                                value={method.id}
-                                className="text-foreground hover:bg-muted"
+                  <p className="text-xs text-muted-foreground">
+                    billing@pfnapp.my.id
+                  </p>
+                </div>
+
+                <div className="space-y-1 text-left sm:text-right">
+                  <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                    Tax Invoice / Tagihan
+                  </p>
+                  <p className="font-mono text-base font-bold text-foreground">
+                    {invoice.invoiceNumber}
+                  </p>
+                  <div className="inline-block pt-1">
+                    <InvoiceStatusBadge
+                      status={
+                        invoice.status as
+                          | "OPEN"
+                          | "PENDING"
+                          | "PAID"
+                          | "VOID"
+                          | "DRAFT"
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Billed To & Metadata Grid */}
+              <div className="grid gap-6 border-b border-border/60 py-6 text-sm sm:grid-cols-2">
+                <div className="space-y-1">
+                  <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                    Billed To
+                  </span>
+                  <div className="flex items-center gap-1.5 font-medium text-foreground">
+                    <BuildingsIcon className="h-4 w-4 text-muted-foreground" />
+                    <span>Juniyadisocial Org</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <UserIcon className="h-3.5 w-3.5" />
+                    <span>juniyadisocial@gmail.com</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div className="space-y-1">
+                    <span className="font-semibold tracking-wider text-muted-foreground uppercase">
+                      Issue Date
+                    </span>
+                    <p className="font-medium text-foreground">
+                      {formatDate(issueDate)}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="font-semibold tracking-wider text-muted-foreground uppercase">
+                      Due Date
+                    </span>
+                    <p className="font-medium text-foreground">
+                      {dueDate ? formatDate(dueDate) : "—"}
+                    </p>
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <span className="font-semibold tracking-wider text-muted-foreground uppercase">
+                      Billing Period
+                    </span>
+                    <p className="font-medium text-foreground">
+                      {formatPeriodDate(invoice.periodStart)} —{" "}
+                      {formatPeriodDate(invoice.periodEnd)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Line Items Table */}
+              <div className="py-6">
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-foreground">
+                    {invoice.type === "TOP_UP"
+                      ? "Top-Up Details"
+                      : "Service Charges & Usage"}
+                  </h2>
+                  <span className="text-xs text-muted-foreground">
+                    Currency: {invoiceCurrency}
+                  </span>
+                </div>
+
+                {invoice.type === "TOP_UP" ? (
+                  <InvoiceFlatLine
+                    lines={invoice.lines ?? []}
+                    currency={invoiceCurrency}
+                  />
+                ) : (
+                  <InvoiceGroupedLines
+                    lines={invoice.lines ?? []}
+                    currency={invoiceCurrency}
+                  />
+                )}
+              </div>
+
+              {/* Calculation Summary */}
+              <div className="flex justify-end pt-2">
+                <div className="w-full max-w-xs space-y-2 text-sm">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Subtotal</span>
+                    <span className="font-medium text-foreground">
+                      {formatInvoiceAmount(subtotalAmount)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Tax</span>
+                    <span className="font-medium text-foreground">
+                      {formatInvoiceAmount(taxAmount)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Discount</span>
+                    <span className="font-medium text-foreground">
+                      {formatInvoiceAmount(discountAmount)}
+                    </span>
+                  </div>
+                  <Separator className="my-2" />
+                  <div className="flex justify-between text-base font-bold">
+                    <span>Total</span>
+                    <span className="font-mono text-primary">
+                      {formatInvoiceAmount(invoice.totalAmountIdr)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column: Status Summary & Payment Action Cards (4 cols) */}
+        <div className="space-y-6 lg:col-span-4">
+          {/* Status & Summary Card */}
+          <Card className="border-border/80 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">
+                Payment Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    Invoice State
+                  </span>
+                  <InvoiceStatusBadge
+                    status={
+                      invoice.status as
+                        | "OPEN"
+                        | "PENDING"
+                        | "PAID"
+                        | "VOID"
+                        | "DRAFT"
+                    }
+                  />
+                </div>
+                <div className="mt-3">
+                  <span className="text-xs text-muted-foreground">
+                    Total Due
+                  </span>
+                  <p className="font-mono text-2xl font-bold tracking-tight text-foreground">
+                    {formatInvoiceAmount(invoice.totalAmountIdr)}
+                  </p>
+                </div>
+              </div>
+
+              {isPaid && (
+                <div className="flex items-start gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3.5 text-xs text-emerald-800 dark:text-emerald-300">
+                  <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="space-y-0.5">
+                    <p className="font-semibold">Invoice is Paid</p>
+                    <p className="text-muted-foreground">
+                      This transaction has been settled. No further action is
+                      required.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {isDraft && (
+                <div className="flex items-start gap-3 rounded-lg border border-muted bg-muted/40 p-3.5 text-xs text-muted-foreground">
+                  <ClockIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="space-y-0.5">
+                    <p className="font-semibold text-foreground">Draft State</p>
+                    <p>
+                      This invoice is being prepared and will be finalized at
+                      the end of the billing cycle.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {isVoid && (
+                <div className="flex items-start gap-3 rounded-lg border border-red-500/20 bg-red-500/10 p-3.5 text-xs text-red-800 dark:text-red-300">
+                  <XCircleIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="space-y-0.5">
+                    <p className="font-semibold">Invoice Voided</p>
+                    <p className="text-muted-foreground">
+                      This invoice has been cancelled and is no longer valid.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2 pt-2 text-xs">
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <ReceiptIcon className="h-3.5 w-3.5" />
+                    Invoice No
+                  </span>
+                  <span className="font-mono text-foreground">
+                    {invoice.invoiceNumber}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <CalendarBlankIcon className="h-3.5 w-3.5" />
+                    Issued Date
+                  </span>
+                  <span className="text-foreground">
+                    {formatDate(issueDate)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <CreditCardIcon className="h-3.5 w-3.5" />
+                    Payment Type
+                  </span>
+                  <span className="text-foreground capitalize">
+                    {invoice.type?.toLowerCase().replace("_", " ") ??
+                      "Standard"}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Payment Action Box (When status is OPEN) */}
+          {isOpen && (
+            <Card className="border-primary/40 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold tracking-wider text-primary uppercase">
+                  Payment Options
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isTopUp ? (
+                  isManualPayment ? (
+                    <div className="space-y-3 text-xs">
+                      <p className="leading-relaxed text-muted-foreground">
+                        Transfer the exact amount{" "}
+                        <span className="font-mono font-semibold text-foreground">
+                          {formatInvoiceAmount(invoice.totalAmountIdr)}
+                        </span>{" "}
+                        to the destination bank account:
+                      </p>
+                      {currencyCompatibleMethods.length > 0 ? (
+                        <div className="space-y-3">
+                          <div className="grid gap-1.5">
+                            <Label
+                              htmlFor="payment-method"
+                              className="text-xs font-semibold text-muted-foreground"
+                            >
+                              Payment method
+                            </Label>
+                            <Select
+                              value={selectedPaymentMethod?.id ?? ""}
+                              onValueChange={(value) =>
+                                setSelectedPaymentMethodId(value)
+                              }
+                            >
+                              <SelectTrigger
+                                id="payment-method"
+                                className="border-border bg-background text-xs text-foreground"
                               >
-                                {method.bankName} — {method.accountNumber}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {selectedPaymentMethod ? (
-                        <div className="grid gap-2 rounded-lg border bg-muted/40 p-3 text-sm">
-                          <div className="flex justify-between gap-4">
-                            <span className="text-muted-foreground">Bank</span>
-                            <span className="font-medium">
-                              {selectedPaymentMethod.bankName}
-                            </span>
+                                <SelectValue placeholder="Select payment method" />
+                              </SelectTrigger>
+                              <SelectContent className="border-border bg-popover">
+                                {currencyCompatibleMethods.map((method) => (
+                                  <SelectItem
+                                    key={method.id}
+                                    value={method.id}
+                                    className="text-xs text-foreground hover:bg-muted"
+                                  >
+                                    {method.bankName} — {method.accountNumber}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
-                          <div className="flex justify-between gap-4">
-                            <span className="text-muted-foreground">
-                              Account Number
-                            </span>
-                            <span className="font-medium">
-                              {selectedPaymentMethod.accountNumber}
-                            </span>
-                          </div>
-                          <div className="flex justify-between gap-4">
-                            <span className="text-muted-foreground">
-                              Account Name
-                            </span>
-                            <span className="font-medium">
-                              {selectedPaymentMethod.accountName}
-                            </span>
-                          </div>
+                          {selectedPaymentMethod && (
+                            <div className="space-y-2 rounded-lg border bg-muted/40 p-3 text-xs">
+                              <div className="flex justify-between gap-2">
+                                <span className="text-muted-foreground">
+                                  Bank
+                                </span>
+                                <span className="font-medium text-foreground">
+                                  {selectedPaymentMethod.bankName}
+                                </span>
+                              </div>
+                              <div className="flex justify-between gap-2">
+                                <span className="text-muted-foreground">
+                                  Account No.
+                                </span>
+                                <span className="font-mono font-medium text-foreground">
+                                  {selectedPaymentMethod.accountNumber}
+                                </span>
+                              </div>
+                              <div className="flex justify-between gap-2">
+                                <span className="text-muted-foreground">
+                                  Account Name
+                                </span>
+                                <span className="font-medium text-foreground">
+                                  {selectedPaymentMethod.accountName}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                          <Button
+                            asChild
+                            className="w-full"
+                            disabled={!!activeConfirmation}
+                          >
+                            <Link href={finalConfirmHref}>
+                              <CheckCircleIcon className="mr-2 h-4 w-4" />
+                              {activeConfirmation
+                                ? "Already confirmed — pending review"
+                                : "Confirm Payment"}
+                            </Link>
+                          </Button>
                         </div>
-                      ) : null}
+                      ) : (
+                        <p className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-xs text-yellow-700 dark:text-yellow-300">
+                          No active payment method supports {invoiceCurrency}.
+                          Contact support before transferring this payment.
+                        </p>
+                      )}
+                    </div>
+                  ) : isGatewayPayment ? (
+                    <div className="space-y-3 text-xs">
+                      <p className="leading-relaxed text-muted-foreground">
+                        Complete your payment through the payment gateway. Your
+                        balance will be updated automatically once the payment
+                        is confirmed.
+                      </p>
+                      {invoice.paymentUrl ? (
+                        <Button asChild className="w-full">
+                          <Link
+                            href={invoice.paymentUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Continue to Payment Gateway
+                          </Link>
+                        </Button>
+                      ) : (
+                        <p className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-xs text-yellow-700 dark:text-yellow-300">
+                          The payment gateway link is not available for this
+                          invoice. Please create a new top-up or contact
+                          support.
+                        </p>
+                      )}
                     </div>
                   ) : (
-                    <p className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-sm text-yellow-700 dark:text-yellow-300">
-                      No active payment method supports {invoiceCurrency}.
-                      Contact support before transferring this payment.
+                    <p className="text-xs text-muted-foreground">
+                      No payment method selected yet.
                     </p>
-                  )}
-                  {currencyCompatibleMethods.length > 0 ? (
-                    <Button asChild disabled={!!activeConfirmation}>
-                      <Link href={finalConfirmHref}>
-                        <CheckCircleIcon className="mr-2 h-4 w-4" />
-                        {activeConfirmation
-                          ? "Already confirmed — pending review"
-                          : "Confirm Payment"}
-                      </Link>
-                    </Button>
-                  ) : null}
-                </div>
-              ) : isGatewayPayment ? (
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    Complete your payment through the payment gateway. Your
-                    balance will be updated automatically once the payment is
-                    confirmed.
-                  </p>
-                  {invoice.paymentUrl ? (
-                    <Button asChild>
-                      <Link
-                        href={invoice.paymentUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Continue to Payment Gateway
-                      </Link>
-                    </Button>
-                  ) : (
-                    <p className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3 text-sm text-yellow-700 dark:text-yellow-300">
-                      The payment gateway link is not available for this
-                      invoice. Please create a new top-up or contact support.
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  This invoice does not have a payment method selected yet.
-                </p>
-              )}
-            </div>
+                  )
+                ) : (
+                  /* Standard Service Invoice: Balance options */
+                  <div className="space-y-3">
+                    {account && (
+                      <div className="rounded-lg border bg-muted/40 p-3 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">
+                            Available Balance
+                          </span>
+                          <span className="font-mono font-semibold text-foreground">
+                            {account.formattedBalance}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {error && (
+                      <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-600 dark:text-red-400">
+                        {error}
+                      </div>
+                    )}
+                    {paymentSuccess ? (
+                      <div className="flex items-center gap-2 text-xs font-medium text-green-600 dark:text-green-400">
+                        <CheckCircleIcon className="h-4 w-4" />
+                        <span>Payment successful!</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          onClick={handlePayWithBalance}
+                          disabled={isProcessing}
+                          className="w-full"
+                        >
+                          <WalletIcon className="mr-2 h-4 w-4" />
+                          {isProcessing ? "Processing..." : "Pay with Balance"}
+                        </Button>
+                        <Button
+                          onClick={handleTopupAndPay}
+                          disabled={isProcessing}
+                          variant="outline"
+                          className="w-full"
+                        >
+                          <PlusIcon className="mr-2 h-4 w-4" />
+                          {isProcessing ? "Processing..." : "Top Up + Pay"}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           )}
-
-          {/* Payment Actions - balance options only for non-top-up OPEN invoices */}
-          {invoice.status === "OPEN" && !isTopUp && account && (
-            <div className="border-t pt-4">
-              <h3 className="mb-4 font-medium">Payment Options</h3>
-              {error && (
-                <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 p-3">
-                  <p className="text-sm text-red-600 dark:text-red-400">
-                    {error}
-                  </p>
-                </div>
-              )}
-              {paymentSuccess ? (
-                <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                  <CheckCircleIcon className="h-5 w-5" />
-                  <span className="font-medium">Payment successful!</span>
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    onClick={handlePayWithBalance}
-                    disabled={isProcessing}
-                    variant="default"
-                  >
-                    <WalletIcon className="mr-2 h-4 w-4" />
-                    {isProcessing ? "Processing..." : "Pay with Balance"}
-                  </Button>
-                  <Button
-                    onClick={handleTopupAndPay}
-                    disabled={isProcessing}
-                    variant="outline"
-                  >
-                    <PlusIcon className="mr-2 h-4 w-4" />
-                    {isProcessing ? "Processing..." : "Top Up + Pay"}
-                  </Button>
-                </div>
-              )}
-              {account && (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Your current balance: {account.formattedBalance}
-                </p>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Top-up Required Dialog */}
       <Dialog open={showTopupDialog} onOpenChange={setShowTopupDialog}>
