@@ -110,7 +110,9 @@ async function capture() {
 
   // 1. Screenshot: Initial Empty / Not generated state
   console.log("Capturing 01-initial-empty-state.png...")
-  let shot = await client.send("Page.captureScreenshot", { format: "png" })
+  let shot = await client.send<{ data: string }>("Page.captureScreenshot", {
+    format: "png",
+  })
   fs.writeFileSync(
     path.join(outputDir, "01-initial-empty-state.png"),
     Buffer.from(shot.data, "base64")
@@ -131,7 +133,9 @@ async function capture() {
 
   // Screenshot: Generated API Key with One-time secret
   console.log("Capturing 02-key-generated-with-secret.png...")
-  shot = await client.send("Page.captureScreenshot", { format: "png" })
+  shot = await client.send<{ data: string }>("Page.captureScreenshot", {
+    format: "png",
+  })
   fs.writeFileSync(
     path.join(outputDir, "02-key-generated-with-secret.png"),
     Buffer.from(shot.data, "base64")
@@ -152,7 +156,9 @@ async function capture() {
 
   // Screenshot: Rotate Dialog
   console.log("Capturing 03-rotate-key-dialog.png...")
-  shot = await client.send("Page.captureScreenshot", { format: "png" })
+  shot = await client.send<{ data: string }>("Page.captureScreenshot", {
+    format: "png",
+  })
   fs.writeFileSync(
     path.join(outputDir, "03-rotate-key-dialog.png"),
     Buffer.from(shot.data, "base64")
@@ -185,7 +191,9 @@ async function capture() {
 
   // Screenshot: Revoke Dialog
   console.log("Capturing 04-revoke-key-dialog.png...")
-  shot = await client.send("Page.captureScreenshot", { format: "png" })
+  shot = await client.send<{ data: string }>("Page.captureScreenshot", {
+    format: "png",
+  })
   fs.writeFileSync(
     path.join(outputDir, "04-revoke-key-dialog.png"),
     Buffer.from(shot.data, "base64")
