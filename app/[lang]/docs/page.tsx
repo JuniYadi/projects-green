@@ -27,29 +27,36 @@ const CATEGORY_META: Record<
   string,
   {
     icon: typeof ChatCircleDots
-    description: string
+    descriptionEn: string
+    descriptionId: string
     color: string
     bg: string
   }
 > = {
   WhatsApp: {
     icon: ChatCircleDots,
-    description:
+    descriptionEn:
       "Cloud API integration, template management, webhook callbacks, and broadcasting.",
+    descriptionId:
+      "Integrasi Cloud API, pengelolaan template pesan, callback webhook, dan broadcast massal.",
     color: "text-emerald-500",
     bg: "bg-emerald-500/10 border-emerald-500/20",
   },
   "App Hosting": {
     icon: Cloud,
-    description:
+    descriptionEn:
       "Zero-config Docker deployment, custom domains, automated SSL, and health checks.",
+    descriptionId:
+      "Deploy Docker otomatis tanpa konfigurasi, domain kustom, SSL gratis, dan health checks.",
     color: "text-blue-500",
     bg: "bg-blue-500/10 border-blue-500/20",
   },
   Security: {
     icon: ShieldCheck,
-    description:
+    descriptionEn:
       "Authentication tokens, static API key lifecycle, WorkOS SSO, and audit trails.",
+    descriptionId:
+      "Token otentikasi, siklus hidup API key statis, WorkOS SSO, dan riwayat audit keamanan.",
     color: "text-purple-500",
     bg: "bg-purple-500/10 border-purple-500/20",
   },
@@ -58,8 +65,9 @@ const CATEGORY_META: Record<
 export default async function PublicDocsIndexPage({ params }: Props) {
   const { lang } = await params
 
-  const allDocs = await prisma.docsKnowledgeDocument.findMany({
-    where: { organizationId: null, isPublic: true },
+  // 1. Fetch docs for active locale
+  let allDocs = await prisma.docsKnowledgeDocument.findMany({
+    where: { organizationId: null, isPublic: true, locale: lang },
     select: {
       path: true,
       title: true,
@@ -69,6 +77,21 @@ export default async function PublicDocsIndexPage({ params }: Props) {
     },
     orderBy: [{ category: "asc" }, { path: "asc" }],
   })
+
+  // 2. Fallback to 'en' if no docs in this locale
+  if (allDocs.length === 0 && lang !== "en") {
+    allDocs = await prisma.docsKnowledgeDocument.findMany({
+      where: { organizationId: null, isPublic: true, locale: "en" },
+      select: {
+        path: true,
+        title: true,
+        purpose: true,
+        category: true,
+        updatedAt: true,
+      },
+      orderBy: [{ category: "asc" }, { path: "asc" }],
+    })
+  }
 
   // Group by category
   const categories = allDocs.reduce<Record<string, typeof allDocs>>(
@@ -88,6 +111,8 @@ export default async function PublicDocsIndexPage({ params }: Props) {
     category: d.category || "General",
   }))
 
+  const isId = lang === "id"
+
   return (
     <div className="space-y-12 pb-12">
       {/* Hero Header & Search */}
@@ -95,15 +120,19 @@ export default async function PublicDocsIndexPage({ params }: Props) {
         <div className="space-y-3">
           <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
             <Sparkle size={14} weight="fill" />
-            <span>PFNApp Knowledge Base & Guides</span>
+            <span>
+              {isId
+                ? "Knowledge Base & Panduan PFNApp"
+                : "PFNApp Knowledge Base & Guides"}
+            </span>
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
-            Documentation & Tutorials
+            {isId ? "Dokumentasi & Tutorial" : "Documentation & Tutorials"}
           </h1>
           <p className="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Step-by-step guides with real visual screenshots, OpenAPI
-            specifications, and practical code examples to help you integrate
-            and scale.
+            {isId
+              ? "Panduan langkah demi langkah dengan tangkapan layar antarmuka asli, spesifikasi OpenAPI, dan contoh kode praktis untuk integrasi cepat."
+              : "Step-by-step guides with real visual screenshots, OpenAPI specifications, and practical code examples to help you integrate and scale."}
           </p>
         </div>
 
@@ -119,18 +148,19 @@ export default async function PublicDocsIndexPage({ params }: Props) {
               <Key size={20} weight="duotone" />
             </div>
             <h2 className="text-sm font-semibold text-foreground">
-              API Keys & Auth
+              {isId ? "API Key & Autentikasi" : "API Keys & Auth"}
             </h2>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Generate static organization keys and authenticate your backend
-              services securely.
+              {isId
+                ? "Buat static API key organisasi dan lakukan otentikasi backend secara aman."
+                : "Generate static organization keys and authenticate your backend services securely."}
             </p>
           </div>
           <Link
             href={`/${lang}/docs/whatsapp/api-keys`}
             className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-emerald-500 transition-colors hover:text-emerald-400"
           >
-            <span>Read guide</span>
+            <span>{isId ? "Baca panduan" : "Read guide"}</span>
             <ArrowRight size={12} />
           </Link>
         </div>
@@ -141,11 +171,12 @@ export default async function PublicDocsIndexPage({ params }: Props) {
               <CodeBlock size={20} weight="duotone" />
             </div>
             <h2 className="text-sm font-semibold text-foreground">
-              OpenAPI & REST Endpoints
+              {isId ? "Spesifikasi OpenAPI" : "OpenAPI & REST Endpoints"}
             </h2>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Explore interactive Swagger / OpenAPI 3.0 specifications for all
-              WhatsApp & Cloud APIs.
+              {isId
+                ? "Jelajahi spesifikasi OpenAPI 3.0 interaktif untuk seluruh REST API WhatsApp & Cloud."
+                : "Explore interactive Swagger / OpenAPI 3.0 specifications for all WhatsApp & Cloud APIs."}
             </p>
           </div>
           <a
@@ -154,7 +185,7 @@ export default async function PublicDocsIndexPage({ params }: Props) {
             rel="noopener noreferrer"
             className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-blue-500 transition-colors hover:text-blue-400"
           >
-            <span>Open /api/openapi</span>
+            <span>{isId ? "Buka /api/openapi" : "Open /api/openapi"}</span>
             <ArrowRight size={12} />
           </a>
         </div>
@@ -165,15 +196,18 @@ export default async function PublicDocsIndexPage({ params }: Props) {
               <CheckCircle size={20} weight="duotone" />
             </div>
             <h2 className="text-sm font-semibold text-foreground">
-              Visual Step-by-Step
+              {isId ? "Panduan Visual" : "Visual Step-by-Step"}
             </h2>
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Every workflow includes actual screenshots from the console
-              dashboard.
+              {isId
+                ? "Setiap tutorial dilengkapi dengan tangkapan layar asli dari dashboard console."
+                : "Every workflow includes actual screenshots from the console dashboard."}
             </p>
           </div>
           <span className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
-            <span>Verified with live UI</span>
+            <span>
+              {isId ? "Terverifikasi dengan UI live" : "Verified with live UI"}
+            </span>
           </span>
         </div>
       </div>
@@ -181,14 +215,15 @@ export default async function PublicDocsIndexPage({ params }: Props) {
       {/* Categorized Documentation List */}
       <div className="space-y-8">
         <h2 className="text-xl font-bold tracking-tight text-foreground">
-          Explore by Category
+          {isId ? "Jelajahi Berdasarkan Kategori" : "Explore by Category"}
         </h2>
 
         <div className="space-y-8">
           {Object.entries(categories).map(([categoryName, docs]) => {
             const meta = CATEGORY_META[categoryName] || {
               icon: ChatCircleDots,
-              description: "Guides and documentation for this module.",
+              descriptionEn: "Guides and documentation for this module.",
+              descriptionId: "Panduan dan dokumentasi untuk modul ini.",
               color: "text-foreground",
               bg: "bg-muted border-border",
             }
@@ -211,7 +246,7 @@ export default async function PublicDocsIndexPage({ params }: Props) {
                         {categoryName}
                       </h3>
                       <p className="text-xs text-muted-foreground">
-                        {meta.description}
+                        {isId ? meta.descriptionId : meta.descriptionEn}
                       </p>
                     </div>
                   </div>
@@ -235,7 +270,7 @@ export default async function PublicDocsIndexPage({ params }: Props) {
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2 text-xs font-semibold text-emerald-500">
-                          <span>Read article</span>
+                          <span>{isId ? "Baca artikel" : "Read article"}</span>
                           <ArrowRight
                             size={14}
                             className="transition-transform group-hover:translate-x-1"

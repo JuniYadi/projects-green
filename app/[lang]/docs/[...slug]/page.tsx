@@ -7,6 +7,7 @@ import {
   Folder,
   ListNumbers,
   CheckCircle,
+  Translate,
 } from "@phosphor-icons/react/dist/ssr"
 import { prisma } from "@/lib/prisma"
 import { OnThisPage } from "../components/on-this-page"
@@ -16,13 +17,31 @@ type Props = {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params
+  const { lang, slug } = await params
   const docPath = `/${slug.join("/")}`
 
-  const doc = await prisma.docsKnowledgeDocument.findFirst({
-    where: { path: docPath, organizationId: null, isPublic: true },
+  // Query requested locale first, fallback to 'en'
+  let doc = await prisma.docsKnowledgeDocument.findFirst({
+    where: {
+      path: docPath,
+      locale: lang,
+      organizationId: null,
+      isPublic: true,
+    },
     select: { title: true, purpose: true },
   })
+
+  if (!doc && lang !== "en") {
+    doc = await prisma.docsKnowledgeDocument.findFirst({
+      where: {
+        path: docPath,
+        locale: "en",
+        organizationId: null,
+        isPublic: true,
+      },
+      select: { title: true, purpose: true },
+    })
+  }
 
   if (!doc) {
     return {
@@ -70,9 +89,30 @@ export default async function PublicDocDetailPage({ params }: Props) {
   const { lang, slug } = await params
   const docPath = `/${slug.join("/")}`
 
-  const doc = await prisma.docsKnowledgeDocument.findFirst({
-    where: { path: docPath, organizationId: null, isPublic: true },
+  // 1. Fetch document matching the active locale
+  let doc = await prisma.docsKnowledgeDocument.findFirst({
+    where: {
+      path: docPath,
+      locale: lang,
+      organizationId: null,
+      isPublic: true,
+    },
   })
+
+  let isFallback = false
+
+  // 2. If translation is missing, fallback smoothly to English
+  if (!doc && lang !== "en") {
+    doc = await prisma.docsKnowledgeDocument.findFirst({
+      where: {
+        path: docPath,
+        locale: "en",
+        organizationId: null,
+        isPublic: true,
+      },
+    })
+    if (doc) isFallback = true
+  }
 
   if (!doc) {
     notFound()
@@ -87,7 +127,8 @@ export default async function PublicDocDetailPage({ params }: Props) {
   const renderedHtml = injectHeadingIds(rawHtml)
 
   return (
-    <div className="relative flex w-full flex-col gap-10 xl:flex-row xl:items-start xl:gap-12">
+    <div className="flex w-full flex-col gap-10 xl:flex-row xl:items-start xl:gap-12">
+      {/* Center Reading Content - Expanded Width */}
       <div className="min-w-0 flex-1 space-y-10">
         {/* Navigation Breadcrumb */}
         <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
@@ -96,7 +137,7 @@ export default async function PublicDocDetailPage({ params }: Props) {
             className="flex items-center gap-1 transition-colors hover:text-foreground"
           >
             <ArrowLeft size={12} />
-            <span>Documentation</span>
+            <span>{lang === "id" ? "Dokumentasi" : "Documentation"}</span>
           </Link>
           <span>/</span>
           <span className="flex items-center gap-1 text-foreground">
@@ -105,15 +146,32 @@ export default async function PublicDocDetailPage({ params }: Props) {
           </span>
         </div>
 
+        {/* Fallback Language Notice */}
+        {isFallback && (
+          <div className="flex items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-600 dark:text-amber-400">
+            <Translate size={18} className="shrink-0" />
+            <span>
+              {lang === "id"
+                ? "Artikel ini belum diterjemahkan ke Bahasa Indonesia. Menampilkan versi Bahasa Inggris."
+                : "This article is not yet available in your selected language. Showing English version."}
+            </span>
+          </div>
+        )}
+
         {/* Hero Header */}
         <header className="space-y-4 border-b border-border/40 pb-8">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
               <CheckCircle size={13} weight="fill" />
-              <span>Verified Guide</span>
+              <span>
+                {lang === "id" ? "Panduan Terverifikasi" : "Verified Guide"}
+              </span>
             </span>
             <span className="rounded-md bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
               {doc.category}
+            </span>
+            <span className="rounded-md border border-border/60 bg-card px-2 py-0.5 text-[11px] font-semibold text-foreground uppercase">
+              {doc.locale.toUpperCase()}
             </span>
           </div>
 
@@ -129,7 +187,10 @@ export default async function PublicDocDetailPage({ params }: Props) {
             <span className="flex items-center gap-1.5">
               <Clock size={14} />
               <span>
-                Last updated {new Date(doc.updatedAt).toLocaleDateString()}
+                {lang === "id" ? "Diperbarui" : "Last updated"}{" "}
+                {new Date(doc.updatedAt).toLocaleDateString(
+                  lang === "id" ? "id-ID" : "en-US"
+                )}
               </span>
             </span>
             <span>•</span>
@@ -152,7 +213,7 @@ export default async function PublicDocDetailPage({ params }: Props) {
           <div className="space-y-3 rounded-2xl border border-border/40 bg-card/40 p-5 shadow-sm backdrop-blur-sm">
             <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               <ListNumbers size={14} className="text-emerald-500" />
-              <span>On this page</span>
+              <span>{lang === "id" ? "Daftar Isi" : "On this page"}</span>
             </div>
             <OnThisPage toc={toc} />
           </div>

@@ -18,9 +18,9 @@ type Props = {
 export default async function PublicDocsLayout({ children, params }: Props) {
   const { lang } = await params
 
-  // Fetch all public categories and documents for navigation & global search
-  const documents = await prisma.docsKnowledgeDocument.findMany({
-    where: { organizationId: null, isPublic: true },
+  // 1. Fetch documents matching active locale
+  let documents = await prisma.docsKnowledgeDocument.findMany({
+    where: { organizationId: null, isPublic: true, locale: lang },
     select: {
       path: true,
       title: true,
@@ -29,6 +29,20 @@ export default async function PublicDocsLayout({ children, params }: Props) {
     },
     orderBy: [{ category: "asc" }, { path: "asc" }],
   })
+
+  // 2. If no docs found for this locale, fallback to 'en'
+  if (documents.length === 0 && lang !== "en") {
+    documents = await prisma.docsKnowledgeDocument.findMany({
+      where: { organizationId: null, isPublic: true, locale: "en" },
+      select: {
+        path: true,
+        title: true,
+        purpose: true,
+        category: true,
+      },
+      orderBy: [{ category: "asc" }, { path: "asc" }],
+    })
+  }
 
   // Group by category
   const categories = documents.reduce<Record<string, typeof documents>>(
@@ -76,7 +90,7 @@ export default async function PublicDocsLayout({ children, params }: Props) {
                 weight="duotone"
                 className="text-emerald-500"
               />
-              <span>Documentation</span>
+              <span>{lang === "id" ? "Dokumentasi" : "Documentation"}</span>
             </Link>
           </div>
 
