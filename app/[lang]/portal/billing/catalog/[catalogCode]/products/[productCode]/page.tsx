@@ -90,12 +90,20 @@ export default function ProductDetailPage() {
   const [allowBackorder, setAllowBackorder] = useState(false)
   const [isActive, setIsActive] = useState(true)
 
-  // Device Provisioning at Checkout configuration
-  const [deviceSetupEnabled, setDeviceSetupEnabled] = useState(true)
-  const [phoneRequired, setPhoneRequired] = useState(true)
-  const [displayNameEnabled, setDisplayNameEnabled] = useState(true)
-  const [profileUrlEnabled, setProfileUrlEnabled] = useState(true)
+  // Dynamic Checkout / Provisioning Form Field Definitions
+  type ProvisioningField = {
+    id: string
+    name: string
+    label: string
+    type: "text" | "number" | "email" | "url" | "select" | "radio"
+    placeholder?: string
+    required: boolean
+    options?: string[] // For select and radio types
+  }
 
+  const [provisioningFields, setProvisioningFields] = useState<
+    ProvisioningField[]
+  >([])
   const [resourceEntries, setResourceEntries] = useState<
     Array<{ key: string; value: string }>
   >([])
@@ -121,17 +129,46 @@ export default function ProductDetailPage() {
         setIsActive(p.isActive ?? true)
 
         const resObj = (p.resources ?? {}) as Record<string, unknown>
-        // Parse provisioning controls
-        setDeviceSetupEnabled(
-          resObj.deviceSetup !== false &&
-            (catalogCode === "WHATSAPP" || Boolean(resObj.requireDeviceSetup))
-        )
-        setPhoneRequired(resObj.phoneRequired !== false)
-        setDisplayNameEnabled(resObj.displayNameEnabled !== false)
-        setProfileUrlEnabled(resObj.profileUrlEnabled !== false)
+        // Parse dynamic custom form fields
+        if (Array.isArray(resObj.provisioningFields)) {
+          setProvisioningFields(
+            resObj.provisioningFields as ProvisioningField[]
+          )
+        } else if (catalogCode === "WHATSAPP") {
+          // Default WhatsApp fields if none configured
+          setProvisioningFields([
+            {
+              id: "phone",
+              name: "phoneNumber",
+              label: "Phone Number",
+              type: "text",
+              placeholder: "e.g. +6281234567890",
+              required: true,
+            },
+            {
+              id: "display_name",
+              name: "displayName",
+              label: "Business Display Name",
+              type: "text",
+              placeholder: "e.g. My Business Support",
+              required: false,
+            },
+            {
+              id: "avatar_url",
+              name: "profilePictureUrl",
+              label: "Profile Picture URL",
+              type: "url",
+              placeholder: "https://example.com/avatar.png",
+              required: false,
+            },
+          ])
+        } else {
+          setProvisioningFields([])
+        }
 
         // Filter out internal provisioning flags from the custom key-value quota list
         const reservedKeys = new Set([
+          "provisioningFields",
           "deviceSetup",
           "requireDeviceSetup",
           "phoneRequired",
@@ -265,6 +302,7 @@ export default function ProductDetailPage() {
       )
       return
     }
+
     setSaving(true)
     try {
       await upsertAdminCatalogProduct(catalogCode, targetCode, {
@@ -275,11 +313,7 @@ export default function ProductDetailPage() {
         allowBackorder,
         isActive,
         resources: {
-          deviceSetup: deviceSetupEnabled,
-          requireDeviceSetup: deviceSetupEnabled,
-          phoneRequired,
-          displayNameEnabled,
-          profileUrlEnabled,
+          provisioningFields,
           ...resourceEntries.reduce<Record<string, unknown>>(
             (acc, { key, value }) => {
               const trimmedKey = key.trim()
@@ -700,71 +734,200 @@ export default function ProductDetailPage() {
         </Card>
 
         {/* Device Provisioning & Checkout Configuration */}
+        {/* Dynamic Checkout Form Builder */}
         <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle>Device Provisioning & Checkout Form</CardTitle>
-            <CardDescription>
-              Control what device configuration fields appear to customers
-              during checkout for this plan tier.
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Checkout & Provisioning Form Fields</CardTitle>
+                <CardDescription>
+                  Define dynamic custom form fields (text, number, email, URL,
+                  dropdown, radio) that users must fill out when checking out
+                  this plan.
+                </CardDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setProvisioningFields((prev) => [
+                    ...prev,
+                    {
+                      id: `field-${crypto.randomUUID()}`,
+                      name: "",
+                      label: "",
+                      type: "text",
+                      placeholder: "",
+                      required: false,
+                    },
+                  ])
+                }
+              >
+                <PlusIcon className="mr-1.5 h-4 w-4" />
+                Add Form Field
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between border-b pb-3">
-              <div>
-                <Label className="text-sm font-medium">
-                  Prompt Device Configuration at Checkout
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  When enabled, customers must configure their device details
-                  during checkout.
-                </p>
-              </div>
-              <Switch
-                checked={deviceSetupEnabled}
-                onCheckedChange={setDeviceSetupEnabled}
-              />
-            </div>
+            {provisioningFields.length === 0 ? (
+              <p className="py-2 text-xs text-muted-foreground">
+                No custom form fields configured. Checkout will proceed without
+                prompting extra fields.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {provisioningFields.map((field, idx) => (
+                  <div
+                    key={field.id || idx}
+                    className="space-y-3 rounded-lg border bg-background p-3.5 shadow-xs"
+                  >
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="min-w-[140px] flex-1 space-y-1">
+                        <Label className="text-xs">Field Label *</Label>
+                        <Input
+                          value={field.label}
+                          onChange={(e) =>
+                            setProvisioningFields((prev) =>
+                              prev.map((item, i) =>
+                                i === idx
+                                  ? { ...item, label: e.target.value }
+                                  : item
+                              )
+                            )
+                          }
+                          placeholder="e.g. Phone Number, Domain"
+                          className="h-8 text-xs"
+                        />
+                      </div>
 
-            {deviceSetupEnabled && (
-              <div className="grid gap-4 pt-1 sm:grid-cols-3">
-                <div className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
-                  <div>
-                    <p className="text-xs font-medium">Phone Number</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {phoneRequired ? "Required (*)" : "Optional"}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={phoneRequired}
-                    onCheckedChange={setPhoneRequired}
-                  />
-                </div>
+                      <div className="min-w-[140px] flex-1 space-y-1">
+                        <Label className="text-xs">
+                          Attribute Key / Name *
+                        </Label>
+                        <Input
+                          value={field.name}
+                          onChange={(e) =>
+                            setProvisioningFields((prev) =>
+                              prev.map((item, i) =>
+                                i === idx
+                                  ? { ...item, name: e.target.value }
+                                  : item
+                              )
+                            )
+                          }
+                          placeholder="e.g. phoneNumber, domain"
+                          className="h-8 font-mono text-xs"
+                        />
+                      </div>
 
-                <div className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
-                  <div>
-                    <p className="text-xs font-medium">Business Display Name</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {displayNameEnabled ? "Visible" : "Hidden"}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={displayNameEnabled}
-                    onCheckedChange={setDisplayNameEnabled}
-                  />
-                </div>
+                      <div className="w-[130px] space-y-1">
+                        <Label className="text-xs">Input Type</Label>
+                        <Select
+                          value={field.type}
+                          onValueChange={(val: ProvisioningField["type"]) =>
+                            setProvisioningFields((prev) =>
+                              prev.map((item, i) =>
+                                i === idx ? { ...item, type: val } : item
+                              )
+                            )
+                          }
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="text">Text</SelectItem>
+                            <SelectItem value="number">Number</SelectItem>
+                            <SelectItem value="email">Email</SelectItem>
+                            <SelectItem value="url">Link / URL</SelectItem>
+                            <SelectItem value="select">Dropdown</SelectItem>
+                            <SelectItem value="radio">Radio Group</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                <div className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
-                  <div>
-                    <p className="text-xs font-medium">Profile Picture URL</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {profileUrlEnabled ? "Visible" : "Hidden"}
-                    </p>
+                      <div className="flex items-center gap-2 pt-5">
+                        <Switch
+                          id={`req-${idx}`}
+                          checked={field.required}
+                          onCheckedChange={(checked) =>
+                            setProvisioningFields((prev) =>
+                              prev.map((item, i) =>
+                                i === idx
+                                  ? { ...item, required: checked }
+                                  : item
+                              )
+                            )
+                          }
+                        />
+                        <Label htmlFor={`req-${idx}`} className="text-xs">
+                          Required
+                        </Label>
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="mt-5 h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() =>
+                          setProvisioningFields((prev) =>
+                            prev.filter((_, i) => i !== idx)
+                          )
+                        }
+                        aria-label="Delete field"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {/* Placeholder for text inputs or options for dropdown / radio */}
+                    {field.type === "select" || field.type === "radio" ? (
+                      <div className="space-y-1">
+                        <Label className="text-[11px] text-muted-foreground">
+                          Comma-separated Options
+                        </Label>
+                        <Input
+                          value={(field.options ?? []).join(", ")}
+                          onChange={(e) => {
+                            const opts = e.target.value
+                              .split(",")
+                              .map((o) => o.trim())
+                              .filter(Boolean)
+                            setProvisioningFields((prev) =>
+                              prev.map((item, i) =>
+                                i === idx ? { ...item, options: opts } : item
+                              )
+                            )
+                          }}
+                          placeholder="e.g. Option A, Option B, Option C"
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <Label className="text-[11px] text-muted-foreground">
+                          Placeholder Text
+                        </Label>
+                        <Input
+                          value={field.placeholder ?? ""}
+                          onChange={(e) =>
+                            setProvisioningFields((prev) =>
+                              prev.map((item, i) =>
+                                i === idx
+                                  ? { ...item, placeholder: e.target.value }
+                                  : item
+                              )
+                            )
+                          }
+                          placeholder="e.g. Enter value..."
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                    )}
                   </div>
-                  <Switch
-                    checked={profileUrlEnabled}
-                    onCheckedChange={setProfileUrlEnabled}
-                  />
-                </div>
+                ))}
               </div>
             )}
           </CardContent>
