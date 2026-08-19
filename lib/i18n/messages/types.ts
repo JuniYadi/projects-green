@@ -636,6 +636,8 @@ export type AppMessages = {
         cancelButton: string
         createButton: string
         creatingButton: string
+        syncing: string
+        syncProducts: string
         createSuccess: string
         deleteSuccess: string
         loadError: string
