@@ -4,6 +4,9 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, useSearchParams } from "next/navigation"
 
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -58,8 +61,11 @@ import {
 } from "@/components/ui/dialog"
 
 export default function InvoiceDetailPage() {
-  const params = useParams()
+  const params = useParams<{ lang?: string; id: string }>()
   const searchParams = useSearchParams()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const billing = messages.console.billing
   const invoiceId = params.id as string
   const paymentStatus = searchParams.get("payment")
 
@@ -235,7 +241,7 @@ export default function InvoiceDetailPage() {
               <ArrowLeftIcon className="h-4 w-4" />
             </Link>
           </Button>
-          <h1 className="text-2xl font-semibold">Invoice Not Found</h1>
+          <h1 className="text-2xl font-semibold">{billing.invoiceNotFound}</h1>
         </header>
         <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
           <p className="text-sm text-red-600 dark:text-red-400">
@@ -353,11 +359,10 @@ export default function InvoiceDetailPage() {
           <CheckCircleIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
           <div>
             <p className="font-medium text-green-600 dark:text-green-400">
-              Payment Successful
+              {billing.paymentSuccessful}
             </p>
             <p className="text-sm text-muted-foreground">
-              Your payment has been processed. The balance will be updated
-              shortly.
+              {billing.paymentSuccessDesc}
             </p>
           </div>
         </div>
@@ -367,10 +372,10 @@ export default function InvoiceDetailPage() {
           <ClockIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
           <div>
             <p className="font-medium text-yellow-600 dark:text-yellow-400">
-              Payment Pending
+              {billing.paymentPending}
             </p>
             <p className="text-sm text-muted-foreground">
-              Your payment is being processed. This may take a few minutes.
+              {billing.paymentPendingDesc}
             </p>
           </div>
         </div>
@@ -380,14 +385,14 @@ export default function InvoiceDetailPage() {
           <XCircleIcon className="h-5 w-5 text-red-600 dark:text-red-400" />
           <div>
             <p className="font-medium text-red-600 dark:text-red-400">
-              Payment Failed
+              {billing.paymentFailed}
             </p>
             <p className="text-sm text-muted-foreground">
-              The payment could not be processed. Please try again.
+              {billing.paymentFailedDesc}
             </p>
           </div>
           <Button asChild variant="outline" size="sm" className="ml-auto">
-            <Link href="/console/billing/topup">Retry Payment</Link>
+            <Link href="/console/billing/topup">{billing.retryPayment}</Link>
           </Button>
         </div>
       )}
@@ -515,7 +520,7 @@ export default function InvoiceDetailPage() {
                   </div>
                   <div className="space-y-1">
                     <span className="font-semibold tracking-wider text-muted-foreground uppercase">
-                      Due Date
+                      {billing.dueDate}
                     </span>
                     <p className="font-medium text-foreground">
                       {dueDate ? formatDate(dueDate) : "—"}
@@ -563,7 +568,7 @@ export default function InvoiceDetailPage() {
               <div className="flex justify-end pt-2">
                 <div className="w-full max-w-xs space-y-2 text-sm">
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Subtotal</span>
+                    <span>{billing.subtotal}</span>
                     <span className="font-medium text-foreground">
                       {formatInvoiceAmount(subtotalAmount)}
                     </span>
@@ -582,7 +587,7 @@ export default function InvoiceDetailPage() {
                   </div>
                   <Separator className="my-2" />
                   <div className="flex justify-between text-base font-bold">
-                    <span>Total</span>
+                    <span>{billing.total}</span>
                     <span className="font-mono text-primary">
                       {formatInvoiceAmount(invoice.totalAmountIdr)}
                     </span>
@@ -621,7 +626,7 @@ export default function InvoiceDetailPage() {
                 </div>
                 <div className="mt-3">
                   <span className="text-xs text-muted-foreground">
-                    Total Due
+                    {billing.total}
                   </span>
                   <p className="font-mono text-2xl font-bold tracking-tight text-foreground">
                     {formatInvoiceAmount(invoice.totalAmountIdr)}
@@ -680,7 +685,7 @@ export default function InvoiceDetailPage() {
                 <div className="flex items-center justify-between text-muted-foreground">
                   <span className="flex items-center gap-1.5">
                     <CalendarBlankIcon className="h-3.5 w-3.5" />
-                    Issued Date
+                    {billing.issuedDate}
                   </span>
                   <span className="text-foreground">
                     {formatDate(issueDate)}
