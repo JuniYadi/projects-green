@@ -75,6 +75,12 @@ export type CheckoutQuote = {
   nextRenewal: string
   addons: CheckoutQuoteAddon[]
   availableAddons?: CheckoutQuoteAddon[]
+  availableTerms?: Array<{
+    pricingId: string
+    billingPeriod: RecurringBillingPeriod
+    periodPrice: string
+    currency: string
+  }>
   voucher: CheckoutQuoteVoucher | null
   expiresAt: string
 }
@@ -98,6 +104,7 @@ type QuoteDb = Pick<
   PrismaClient,
   | "servicePlanAddon"
   | "servicePlan"
+  | "servicePricing"
   | "voucher"
   | "billingOrder"
   | "billingAccount"
@@ -331,6 +338,26 @@ export class CheckoutQuoteService {
       ? monthEnd
       : addMonths(now, PERIOD_MONTHS[price.billingPeriod])
 
+    // Find all active pricing terms for this plan in the same currency
+    const siblingPricings = await this.db.servicePricing.findMany({
+      where: {
+        planId: price.planId,
+        currency: price.currency,
+        isActive: true,
+        periodPrice: { gt: 0 },
+        effectiveFrom: { lte: now },
+        OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }],
+      },
+      orderBy: { billingPeriod: "asc" },
+    })
+
+    const availableTerms = siblingPricings.map((p) => ({
+      pricingId: p.id,
+      billingPeriod: p.billingPeriod as RecurringBillingPeriod,
+      periodPrice: p.periodPrice ? p.periodPrice.toString() : "0",
+      currency: p.currency,
+    }))
+
     return {
       quoteId,
       quoteToken: quoteId,
@@ -352,6 +379,7 @@ export class CheckoutQuoteService {
       nextRenewal: periodEnd.toISOString(),
       addons,
       availableAddons,
+      availableTerms,
       voucher,
       expiresAt: expiresAt.toISOString(),
     }
