@@ -149,24 +149,33 @@ export const app = new Elysia({ prefix: "/api" })
         },
         tags: [
           {
-            name: "VPN Mobile Auth",
-            description: "Device authentication and session token exchange",
+            name: "WhatsApp Messages",
+            description:
+              "Send text, media, template, and interactive WhatsApp messages",
           },
           {
-            name: "VPN Mobile Pairing",
-            description: "QR-code pairing flow",
+            name: "WhatsApp Templates",
+            description: "Manage message templates",
           },
           {
-            name: "VPN Mobile Profiles",
-            description: "VPN profile listing and config download",
+            name: "WhatsApp Webhooks",
+            description: "Webhook management and deliveries",
           },
           {
-            name: "VPN Mobile Devices",
-            description: "Device management",
+            name: "WhatsApp Devices",
+            description: "Connected WhatsApp devices and profiles",
           },
           {
-            name: "VPN Mobile Sessions",
-            description: "Active session tracking and heartbeats",
+            name: "WhatsApp Catalogs",
+            description: "Product catalogs and catalog messages",
+          },
+          {
+            name: "WhatsApp Contacts",
+            description: "Contact management and sync",
+          },
+          {
+            name: "WhatsApp Broadcasts",
+            description: "Broadcast campaigns and delivery tracking",
           },
         ],
         components: {
