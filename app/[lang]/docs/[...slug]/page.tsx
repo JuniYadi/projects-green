@@ -10,6 +10,7 @@ import {
   Translate,
 } from "@phosphor-icons/react/dist/ssr"
 import { prisma } from "@/lib/prisma"
+import { renderMarkdownToHtml } from "@/lib/markdown"
 import { OnThisPage } from "../components/on-this-page"
 
 type Props = {
@@ -123,7 +124,7 @@ export default async function PublicDocDetailPage({ params }: Props) {
 
   // Strip initial redundant markdown # Title if present to prevent double heading
   const cleanedMarkdown = rawMarkdown.replace(/^#\s+.+\r?\n/, "")
-  const rawHtml = Bun.markdown.html(cleanedMarkdown)
+  const rawHtml = renderMarkdownToHtml(cleanedMarkdown)
   const renderedHtml = injectHeadingIds(rawHtml)
 
   return (
