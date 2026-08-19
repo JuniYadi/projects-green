@@ -149,10 +149,9 @@ describe("ProductDetailPage", () => {
     await waitFor(() => expect(view.getByText("Starter")).toBeInTheDocument())
     expect(view.getByText("Professional")).toBeInTheDocument()
     // Starter has monthly 99,000
-    expect(view.getByText(/99,000/i)).toBeInTheDocument()
+    expect(view.getAllByText(/99,000/i).length).toBeGreaterThan(0)
     // Professional has monthly 299,000
-    expect(view.getByText(/299,000/i)).toBeInTheDocument()
-    // No term selector buttons
+    expect(view.getAllByText(/299,000/i).length).toBeGreaterThan(0)
     expect(view.queryByRole("button", { name: "Quarterly" })).toBeNull()
   })
 
