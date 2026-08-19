@@ -1,14 +1,17 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
 import { adminWhatsappPricingRoutes } from "./admin-pricing.route"
-import { prisma } from "@/lib/prisma"
 
 describe("adminWhatsappPricingRoutes", () => {
-  let app: Elysia
+  let app: ReturnType<typeof createTestApp>
+
+  function createTestApp() {
+    return new Elysia().use(adminWhatsappPricingRoutes)
+  }
 
   beforeEach(() => {
     mock.restore()
-    app = new Elysia().use(adminWhatsappPricingRoutes)
+    app = createTestApp()
   })
 
   it("returns 403 or 401 when actor is not super admin", async () => {

@@ -6,10 +6,9 @@ import { requireSuperAdmin } from "@/modules/admin/api/admin.guards"
 export const adminWhatsappPricingRoutes = new Elysia({
   prefix: "/admin/whatsapp/pricing",
 })
-  .get("/rates", async ({ request, set }) => {
-    const guard = await requireSuperAdmin(set, request)
+  .get("/rates", async ({ set }) => {
+    const guard = await requireSuperAdmin(set)
     if ("ok" in guard && !guard.ok) return guard
-
     const [quotaRates, basePrices] = await Promise.all([
       prisma.whatsappQuotaCreditRate.findMany({
         orderBy: [{ country: "asc" }, { effectiveFrom: "desc" }],
@@ -48,10 +47,9 @@ export const adminWhatsappPricingRoutes = new Elysia({
   })
   .post(
     "/base-price",
-    async ({ request, body, set }) => {
-      const guard = await requireSuperAdmin(set, request)
+    async ({ body, set }) => {
+      const guard = await requireSuperAdmin(set)
       if ("ok" in guard && !guard.ok) return guard
-
       const effectiveFrom = new Date(body.effectiveFrom)
       if (isNaN(effectiveFrom.getTime())) {
         set.status = 400
@@ -99,8 +97,8 @@ export const adminWhatsappPricingRoutes = new Elysia({
   )
   .post(
     "/quota-rate",
-    async ({ request, body, set }) => {
-      const guard = await requireSuperAdmin(set, request)
+    async ({ body, set }) => {
+      const guard = await requireSuperAdmin(set)
       if ("ok" in guard && !guard.ok) return guard
 
       const effectiveFrom = new Date(body.effectiveFrom)

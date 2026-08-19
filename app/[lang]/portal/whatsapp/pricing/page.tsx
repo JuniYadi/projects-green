@@ -50,7 +50,7 @@ export default function PortalWhatsappPricingPage() {
     queryKey: ["admin", "whatsapp", "pricing", "rates"],
     queryFn: async () => {
       const { data: response, error } =
-        await eden.admin.whatsapp.pricing.rates.get()
+        await eden.api.admin.whatsapp.pricing.rates.get()
       if (error || !response) {
         throw new Error("Failed to load WhatsApp pricing rates")
       }
