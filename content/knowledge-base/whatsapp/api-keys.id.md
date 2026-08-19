@@ -15,7 +15,6 @@ notes:
   - Rotasi API key akan langsung menonaktifkan API key sebelumnya.
 ---
 
-
 Panduan ini menjelaskan cara membuat, melakukan rotasi, dan menggunakan
 WhatsApp API key organisasi Anda secara aman untuk mengintegrasikan layanan
 backend dengan WhatsApp Business Platform API.

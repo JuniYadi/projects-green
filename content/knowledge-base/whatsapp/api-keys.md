@@ -14,7 +14,6 @@ notes:
   - Key rotation immediately invalidates the previous API key.
 ---
 
-
 This guide explains how to generate, rotate, and securely use your organization's static WhatsApp API key to integrate with the WhatsApp Business Platform APIs.
 
 ---
