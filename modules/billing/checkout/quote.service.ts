@@ -221,11 +221,10 @@ export class CheckoutQuoteService {
         },
       },
     })
-    if (
-      plan?.stockControl === "TRACKED" &&
-      !plan.allowBackorder &&
-      (plan.stockCount ?? 0) < Number(quantity)
-    ) {
+
+    const isTracked = plan?.stockControl === "TRACKED"
+    const isUnderStock = (plan?.stockCount ?? 0) < Number(quantity)
+    if (isTracked && !plan?.allowBackorder && isUnderStock) {
       throw new CheckoutQuoteError(
         "OUT_OF_STOCK",
         "The selected product is currently out of stock."
