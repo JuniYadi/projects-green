@@ -1,0 +1,28 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "passed",
+    "screenshots",
+    "markdown_content",
+    "summary"
+  ],
+  "properties": {
+    "passed": { "type": "boolean" },
+    "screenshots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["step", "caption", "file_path"],
+        "properties": {
+          "step": { "type": "number" },
+          "caption": { "type": "string" },
+          "file_path": { "type": "string" }
+        }
+      }
+    },
+    "markdown_content": { "type": "string" },
+    "summary": { "type": "string" }
+  }
+}
