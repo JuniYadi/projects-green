@@ -228,17 +228,13 @@ export default function WhatsAppDashboardPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            {t.heading}
-          </h1>
-          <p className="text-muted-foreground">
-            {t.description}
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">{t.heading}</h1>
+          <p className="text-muted-foreground">{t.description}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
             <Link href="/console/billing/services/whatsapp">
-              {t.viewDevices}
+              Subscribe Plan
             </Link>
           </Button>
           <Button variant="outline" asChild>
@@ -250,18 +246,17 @@ export default function WhatsAppDashboardPage() {
           <Button asChild>
             <Link href="/console/whatsapp/messages">
               <PaperPlaneTilt className="mr-2 size-4" />
-              {t.statMessagesSent}
+              Send Message
             </Link>
           </Button>
         </div>
       </div>
-
       {state === "loaded" && devices.length === 0 && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="flex flex-col items-center justify-between gap-4 p-6 sm:flex-row">
             <div className="space-y-1 text-center sm:text-left">
               <h3 className="text-base font-semibold">
-                {t.heading}
+                Activate your WhatsApp Business Account
               </h3>
               <p className="text-sm text-muted-foreground">
                 You have no active WhatsApp devices. Choose a plan to register
@@ -270,7 +265,7 @@ export default function WhatsAppDashboardPage() {
             </div>
             <Button asChild className="shrink-0">
               <Link href="/console/billing/services/whatsapp">
-                {t.viewDevices}
+                View Plans & Subscribe
               </Link>
             </Button>
           </CardContent>
@@ -418,10 +413,13 @@ export default function WhatsAppDashboardPage() {
                 <p className="text-xs text-muted-foreground">
                   {webhookStats
                     ? `${webhookStats.failedEvents}/${webhookStats.totalEvents} failed (1h)`
-                    : {t.deviceHealthDesc}}
+                    : t.deviceHealthDesc}
                 </p>
                 {webhookStats && (
-                  <WebhookAlertBadge rate={webhookStats.failureRate} label={t.disconnected} />
+                  <WebhookAlertBadge
+                    rate={webhookStats.failureRate}
+                    label={t.disconnected}
+                  />
                 )}
               </div>
             </CardContent>
@@ -433,8 +431,8 @@ export default function WhatsAppDashboardPage() {
               <CardTitle>{t.conversationsCardTitle}</CardTitle>
               <CardDescription>
                 {state === "loading"
-                  ? {t.deviceHealthDesc}
-                  : {t.conversationsCardDesc}}
+                  ? t.deviceHealthDesc
+                  : t.conversationsCardDesc}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -479,10 +477,10 @@ export default function WhatsAppDashboardPage() {
                             {conversation.contactPhone}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {conversation.lastDirection === "INBOX"
-                              ? {t.connected}
-                              : {t.disconnected}}
-                            {` | ${conversation._count.whatsappMessages} messages`}
+                            {(conversation.lastDirection === "INBOX"
+                              ? t.connected
+                              : t.disconnected) +
+                              ` | ${conversation._count.whatsappMessages} messages`}
                           </p>
                         </div>
                       </div>
