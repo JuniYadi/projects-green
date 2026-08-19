@@ -445,12 +445,20 @@ describe("enrichOpenApiDocument", () => {
     expect(enriched.paths["/api"].get.tags).toEqual(["API"])
   })
 
-  it("filters out internal and admin routes when scope is public", () => {
+  it("filters out internal, non-whitelisted, and hidden routes when scope is public", () => {
     const enriched = enrichOpenApiDocument(
       {
         paths: {
           "/api/whatsapp/messages": { post: { responses: { "200": {} } } },
+          "/api/whatsapp/devices/123": {
+            get: { responses: { "200": {} } },
+            delete: { hide: true, responses: { "200": {} } },
+          },
           "/api/admin/whatsapp/webhooks": { get: { responses: { "200": {} } } },
+          "/api/vpn/mobile/pairing/generate": {
+            post: { responses: { "200": {} } },
+          },
+          "/api/deploy/apps": { get: { responses: { "200": {} } } },
           "/api/invoices/123/mark-paid": { post: { responses: { "200": {} } } },
           "/api/whatsapp/webhooks/dead-letter": {
             get: { responses: { "200": {} } },
@@ -466,7 +474,11 @@ describe("enrichOpenApiDocument", () => {
     )
 
     expect(enriched.paths["/api/whatsapp/messages"]).toBeDefined()
-    expect(enriched.paths["/api/invoices/123"]).toBeDefined()
+    expect(enriched.paths["/api/whatsapp/devices/123"]?.get).toBeDefined()
+    expect(enriched.paths["/api/whatsapp/devices/123"]?.delete).toBeUndefined()
+    expect(enriched.paths["/api/invoices/123"]).toBeUndefined()
+    expect(enriched.paths["/api/vpn/mobile/pairing/generate"]).toBeUndefined()
+    expect(enriched.paths["/api/deploy/apps"]).toBeUndefined()
     expect(enriched.paths["/api/admin/whatsapp/webhooks"]).toBeUndefined()
     expect(enriched.paths["/api/invoices/123/mark-paid"]).toBeUndefined()
     expect(enriched.paths["/api/whatsapp/webhooks/dead-letter"]).toBeUndefined()

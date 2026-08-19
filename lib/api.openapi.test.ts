@@ -138,12 +138,20 @@ describe("OpenAPI documentation", () => {
 
     expect(document.paths?.["/api/auth/login"]).toBeUndefined()
     expect(document.paths?.["/api/tenants/bootstrap"]).toBeUndefined()
-    expect(document.paths?.["/api/vouchers/redeem"]?.post?.tags).toEqual([
-      "Vouchers",
-    ])
+    expect(document.paths?.["/api/vouchers/redeem"]).toBeUndefined()
+    expect(document.paths?.["/api/vpn/mobile/pairing/generate"]).toBeUndefined()
+    expect(document.paths?.["/api/deploy/apps/"]).toBeUndefined()
     expect(document.paths?.["/api/admin/organizations"]).toBeUndefined()
-    expect(document.paths?.["/api/knowledge/docs"]?.get).toBeDefined()
-
+    expect(document.paths?.["/api/knowledge/docs"]).toBeUndefined()
+    expect(document.paths?.["/api/whatsapp/devices/"]?.get).toBeDefined()
+    expect(document.paths?.["/api/whatsapp/devices/"]?.post).toBeUndefined()
+    expect(
+      document.paths?.["/api/whatsapp/devices/{id}"]?.delete
+    ).toBeUndefined()
+    expect(
+      document.paths?.["/api/whatsapp/devices/{id}"]?.patch
+    ).toBeUndefined()
+    expect(document.paths?.["/api/whatsapp/messages/send"]?.post).toBeDefined()
     const legacyDocs = await app.handle(
       new Request("http://localhost/api/docs", { method: "GET" })
     )
