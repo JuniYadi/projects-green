@@ -575,13 +575,15 @@ export default function CheckoutPage() {
                   {quotePreview.isProrated && (
                     <div className="rounded-md border border-sky-200 bg-sky-50 p-2.5 text-xs text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-200">
                       <p className="font-semibold">
-                        Prorated Billing (Calendar Month)
+                        Prorated Billing (Calendar Alignment)
                       </p>
                       <p className="mt-0.5">
                         Charged for {quotePreview.proratedDays} remaining days
-                        in this month (out of {quotePreview.totalDaysInPeriod}{" "}
-                        days). Your first regular full renewal begins on{" "}
-                        {formatDate(quotePreview.nextRenewal)}.
+                        in the current month (out of{" "}
+                        {quotePreview.totalDaysInPeriod} days) aligned to
+                        regular calendar renewal. Your first regular full
+                        renewal begins on {formatDate(quotePreview.nextRenewal)}
+                        .
                       </p>
                     </div>
                   )}
