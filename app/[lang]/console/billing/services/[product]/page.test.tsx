@@ -210,13 +210,10 @@ describe("ProductDetailPage", () => {
       l.closest("a")?.href.includes("offer-wa-starter-monthly")
     )
     expect(starterLink).toBeTruthy()
-    const href = starterLink?.closest("a")?.href ?? ""
-    expect(href).toContain("pricingId=offer-wa-starter-monthly")
-    expect(href).toContain("product=WHATSAPP")
-    expect(href).toContain("plan=WA_STARTER")
-    expect(href).toContain("billingPeriod=MONTHLY")
-    expect(href).toContain("price=99000")
-    expect(href).toContain("currency=IDR")
+    const href = starterLink?.closest("a")?.getAttribute("href") ?? ""
+    expect(href).toBe(
+      "/console/billing/checkout?pricingId=offer-wa-starter-monthly"
+    )
   })
 
   it("shows error state on fetch failure", async () => {
