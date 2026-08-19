@@ -248,13 +248,16 @@ export default function WhatsAppPricingPage() {
                       <Badge variant="outline" className="text-xs">
                         Country: {device.country}
                       </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        Rate Tier: {device.rateTier ?? "BASE"}
+                      </Badge>
                     </div>
                   </div>
 
                   <div className="overflow-x-auto rounded-md border">
                     <table className="w-full text-sm">
                       <caption className="sr-only">
-                        WhatsApp quota credits per message for{" "}
+                        WhatsApp pricing and quota breakdown for{" "}
                         {device.phoneNumber}
                       </caption>
                       <thead className="bg-muted/50 text-left text-muted-foreground">
@@ -264,9 +267,33 @@ export default function WhatsAppPricingPage() {
                           </th>
                           <th
                             scope="col"
+                            className="px-4 py-2.5 text-center font-medium"
+                          >
+                            Quota Deduction
+                          </th>
+                          <th
+                            scope="col"
                             className="px-4 py-2.5 text-right font-medium"
                           >
-                            Quota Deduction / Message
+                            Base Price
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-4 py-2.5 text-right font-medium"
+                          >
+                            Fee ({device.categories[0]?.feePercent ?? 20}%)
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-4 py-2.5 text-right font-medium"
+                          >
+                            PPN (11%)
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-4 py-2.5 text-right font-medium"
+                          >
+                            PAYG Overage / Msg
                           </th>
                         </tr>
                       </thead>
@@ -282,15 +309,28 @@ export default function WhatsAppPricingPage() {
                             >
                               {category.category}
                             </th>
-                            <td className="px-4 py-2.5 text-right">
-                              <div className="font-semibold">
-                                {formatQuotaCredit(category.quotaCredit)}
-                              </div>
-                              {!category.configured && (
-                                <div className="text-xs text-muted-foreground">
-                                  Default; rate not configured
-                                </div>
-                              )}
+                            <td className="px-4 py-2.5 text-center font-semibold text-primary">
+                              -{formatQuotaCredit(category.quotaCredit)}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-mono text-xs text-muted-foreground">
+                              {category.basePrice
+                                ? `Rp ${category.basePrice}`
+                                : "-"}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-mono text-xs text-muted-foreground">
+                              {category.feeAmount
+                                ? `Rp ${category.feeAmount}`
+                                : "-"}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-mono text-xs text-muted-foreground">
+                              {category.ppnAmount
+                                ? `Rp ${category.ppnAmount}`
+                                : "-"}
+                            </td>
+                            <td className="px-4 py-2.5 text-right font-semibold">
+                              {category.overagePrice
+                                ? `Rp ${category.overagePrice}`
+                                : "-"}
                             </td>
                           </tr>
                         ))}
