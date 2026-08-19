@@ -302,7 +302,7 @@ describe("BillingTransactionService", () => {
         currency: "IDR",
       })
 
-      const result = await service.debitServiceBalance({
+      await service.debitServiceBalance({
         ...baseInput({
           amount: decimal("60.00"),
           source: "APP_HOSTING",
@@ -333,6 +333,220 @@ describe("BillingTransactionService", () => {
       await service.creditBalance(baseInput())
 
       expect(mockPrisma.$queryRaw).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe("debitUpfrontSubscription", () => {
+    it("creates an instant PAID invoice, invoice line, and debits balance", async () => {
+      const account = billingAccount({ balance: decimal("200.00") })
+      const _now = new Date("2026-08-19T00:00:00.000Z")
+      const periodStart = new Date("2026-08-01T00:00:00.000Z")
+      const periodEnd = new Date("2026-08-31T23:59:59.999Z")
+
+      mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
+      mockPrisma.billingAdjustment.findFirst.mockResolvedValue(null)
+      mockPrisma.billingInvoice.create.mockResolvedValue({
+        id: "inv_upfront_1",
+        billingAccountId: "ba_1",
+        invoiceNumber: "INV-20260819-ABCD",
+        type: "SERVICE",
+        status: "PAID",
+        paymentMethod: "BALANCE",
+        currency: "IDR",
+        periodStart,
+        periodEnd,
+        subtotalAmount: decimal("100.00"),
+        totalAmount: decimal("100.00"),
+      })
+      mockPrisma.billingInvoiceLine.create.mockResolvedValue({
+        id: "line_upfront_1",
+        invoiceId: "inv_upfront_1",
+        lineType: "SUBSCRIPTION",
+        description: "VPN Pro subscription",
+        quantity: decimal("1"),
+        unitPrice: decimal("100.00"),
+        amount: decimal("100.00"),
+        currency: "IDR",
+      })
+      mockPrisma.billingAccount.update.mockResolvedValue({
+        ...account,
+        balance: decimal("100.00"),
+      })
+      mockPrisma.billingInvoice.count.mockResolvedValue(0)
+      mockPrisma.billingAdjustment.create.mockResolvedValue({
+        id: "adj_upfront_1",
+        billingAccountId: "ba_1",
+        adjustmentType: "DEBIT",
+        amount: decimal("100.00"),
+        currency: "IDR",
+      })
+
+      const result = await service.debitUpfrontSubscription({
+        ...baseInput({
+          amount: decimal("100.00"),
+          source: "VPN",
+          reason: "Subscription order order_1",
+          metadata: { orderId: "order_1" },
+        }),
+        line: {
+          description: "VPN Pro subscription",
+          quantity: decimal("1"),
+          unitPrice: decimal("100.00"),
+          lineType: "SUBSCRIPTION",
+          periodStart,
+          periodEnd,
+          category: "vpn",
+        },
+      })
+
+      expect(mockPrisma.billingInvoice.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            type: "SERVICE",
+            status: "PAID",
+            paymentMethod: "BALANCE",
+            metadataJson: expect.objectContaining({
+              isUpfront: true,
+              orderId: "order_1",
+            }),
+          }),
+        })
+      )
+      expect(mockPrisma.billingInvoiceLine.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            invoiceId: "inv_upfront_1",
+            lineType: "SUBSCRIPTION",
+            description: "VPN Pro subscription",
+          }),
+        })
+      )
+      expect(result.invoiceId).toBe("inv_upfront_1")
+      expect(result.invoiceLineId).toBe("line_upfront_1")
+      expect(result.alreadyProcessed).toBe(false)
+    })
+
+    it("returns alreadyProcessed if idempotency key is already used", async () => {
+      const account = billingAccount({ balance: decimal("200.00") })
+      mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
+      mockPrisma.billingAdjustment.findFirst.mockResolvedValue({
+        id: "adj_existing",
+        invoiceId: "inv_existing",
+        metadataJson: { invoiceLineId: "line_existing" },
+      })
+
+      const result = await service.debitUpfrontSubscription({
+        ...baseInput({ amount: decimal("100.00"), source: "VPN" }),
+        line: {
+          description: "VPN Pro subscription",
+          quantity: decimal("1"),
+          unitPrice: decimal("100.00"),
+        },
+      })
+
+      expect(result.alreadyProcessed).toBe(true)
+      expect(result.invoiceId).toBe("inv_existing")
+      expect(result.invoiceLineId).toBe("line_existing")
+      expect(mockPrisma.billingInvoice.create).not.toHaveBeenCalled()
+    })
+
+    it("throws when billing account not found", async () => {
+      mockPrisma.billingAccount.findUnique.mockResolvedValue(null)
+
+      await expect(
+        service.debitUpfrontSubscription({
+          ...baseInput(),
+          line: {
+            description: "VPN Pro",
+            quantity: decimal("1"),
+            unitPrice: decimal("100.00"),
+          },
+        })
+      ).rejects.toThrow("BILLING_ACCOUNT_NOT_FOUND")
+    })
+
+    it("throws when currency mismatch", async () => {
+      const account = billingAccount({ currency: "USD" })
+      mockPrisma.billingAccount.findUnique.mockResolvedValue(account)
+
+      await expect(
+        service.debitUpfrontSubscription({
+          ...baseInput({ currency: "IDR" }),
+          line: {
+            description: "VPN Pro",
+            quantity: decimal("1"),
+            unitPrice: decimal("100.00"),
+          },
+        })
+      ).rejects.toThrow("CURRENCY_MISMATCH")
+    })
+
+    it("executes within an external transaction client when provided", async () => {
+      const account = billingAccount({ balance: decimal("200.00") })
+      const txClient = {
+        billingAccount: {
+          findUnique: vi.fn().mockResolvedValue(account),
+          update: vi.fn().mockResolvedValue({
+            ...account,
+            balance: decimal("100.00"),
+          }),
+        },
+        billingAdjustment: {
+          findFirst: vi.fn().mockResolvedValue(null),
+          create: vi.fn().mockResolvedValue({
+            id: "adj_tx_1",
+            billingAccountId: "ba_1",
+            adjustmentType: "DEBIT",
+            amount: decimal("100.00"),
+            currency: "IDR",
+          }),
+        },
+        billingInvoice: {
+          create: vi.fn().mockResolvedValue({
+            id: "inv_tx_1",
+            billingAccountId: "ba_1",
+            invoiceNumber: "INV-20260819-TX01",
+            type: "SERVICE",
+            status: "PAID",
+            paymentMethod: "BALANCE",
+            currency: "IDR",
+            periodStart: new Date(),
+            periodEnd: new Date(),
+            subtotalAmount: decimal("100.00"),
+            totalAmount: decimal("100.00"),
+          }),
+          count: vi.fn().mockResolvedValue(0),
+        },
+        billingInvoiceLine: {
+          create: vi.fn().mockResolvedValue({
+            id: "line_tx_1",
+            invoiceId: "inv_tx_1",
+            lineType: "SUBSCRIPTION",
+            description: "VPN Pro subscription",
+            quantity: decimal("1"),
+            unitPrice: decimal("100.00"),
+            amount: decimal("100.00"),
+            currency: "IDR",
+          }),
+        },
+        $queryRaw: vi.fn().mockResolvedValue([]),
+      }
+
+      const result = await service.debitUpfrontSubscription(
+        {
+          ...baseInput({ amount: decimal("100.00"), source: "VPN" }),
+          line: {
+            description: "VPN Pro subscription",
+            quantity: decimal("1"),
+            unitPrice: decimal("100.00"),
+          },
+        },
+        txClient as unknown as PrismaClient
+      )
+
+      expect(txClient.billingInvoice.create).toHaveBeenCalled()
+      expect(result.invoiceId).toBe("inv_tx_1")
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled()
     })
   })
 })

@@ -50,6 +50,13 @@ describe("getCalendarCycleBoundaries", () => {
     expect(boundaries.end.toISOString()).toBe("2026-12-31T23:59:59.999Z")
     expect(boundaries.totalDays).toBe(365)
   })
+  it("computes remainingDays on the last day of cycle (Dec 31) as 1 day remaining", () => {
+    const dec31 = new Date("2026-12-31T12:00:00.000Z")
+    const boundaries = getCalendarCycleBoundaries("ANNUAL", dec31)
+
+    expect(boundaries.totalDays).toBe(365)
+    expect(boundaries.remainingDays).toBe(1)
+  })
 })
 
 describe("calculateProration", () => {
@@ -114,5 +121,22 @@ describe("calculateProration", () => {
     expect(result.totalDaysInPeriod).toBe(31)
     expect(result.remainingDays).toBe(26) // Aug 6 to Aug 31
     expect(result.proratedAmount.toNumber()).toBeCloseTo(83870.97, 1)
+  })
+
+  it("calculates pro-rata on the last day of cycle (1 day charged)", () => {
+    const aug31 = new Date("2026-08-31T10:00:00.000Z")
+    const result = calculateProration({
+      billingStrategy: "PRO_RATA",
+      billingPeriod: "MONTHLY",
+      periodPrice: new Prisma.Decimal("310000"),
+      quantity: 1,
+      now: aug31,
+    })
+
+    expect(result.isProrated).toBe(true)
+    expect(result.totalDaysInPeriod).toBe(31)
+    expect(result.remainingDays).toBe(1)
+    // 310,000 * 1 / 31 = 10,000
+    expect(result.proratedAmount.toString()).toBe("10000")
   })
 })

@@ -350,6 +350,7 @@ export class BillingOrderService {
 
       void resolveInvoiceEmailRecipients(orgId)
         .then(async (recipients) => {
+          if (!recipients.length) return
           const invoice = client.billingInvoice
             ? await client.billingInvoice.findUnique({
                 where: { id: invoiceId },
