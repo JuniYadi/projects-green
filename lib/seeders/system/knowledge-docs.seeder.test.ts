@@ -5,7 +5,9 @@ import { join } from "node:path"
 
 // ── Mocks — must be declared before module imports ────────────────────────
 
-const docsKnowledgeDocumentFindFirst = mock(async () => null as unknown)
+const docsKnowledgeDocumentFindFirst: Mock<
+  (args?: unknown) => Promise<unknown>
+> = mock(async () => null as unknown)
 const docsKnowledgeDocumentCreate = mock(
   async (args: { data: unknown }) => args.data
 )
