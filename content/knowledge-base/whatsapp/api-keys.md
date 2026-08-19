@@ -4,10 +4,10 @@ title: WhatsApp API Key Management & Integration Guide
 category: WhatsApp
 purpose: Generate, rotate, and securely use your organization's static WhatsApp API key to integrate with the WhatsApp Business Platform.
 howTo:
-  - Navigate to Console > WhatsApp > API Key (/console/whatsapp/api-keys).
-  - Click Generate API key and copy the one-time API secret immediately.
-  - Store the secret in your password manager or backend environment vault.
-  - Authenticate requests using the Authorization: Bearer <API_KEY> header.
+  - "Navigate to Console > WhatsApp > API Key (/console/whatsapp/api-keys)."
+  - "Click Generate API key and copy the one-time API secret immediately."
+  - "Store the secret in your password manager or backend environment vault."
+  - "Authenticate requests using the Authorization: Bearer <API_KEY> header."
 notes:
   - The plaintext API secret is displayed only once upon creation or rotation.
   - Each organization has at most one ACTIVE key at a time.
@@ -79,64 +79,18 @@ To immediately terminate all API access without issuing a replacement key:
 
 To authenticate requests to the WhatsApp API endpoints, provide your API key in standard `Authorization: Bearer <API_KEY>` header or `x-api-key` header.
 
-### Example: Send WhatsApp Template Message
+### Example: Checking WhatsApp Devices Status
+
+Verify your API key and inspect connected WhatsApp phone numbers and device health:
 
 ```bash
-curl -X POST "https://api.pfnapp.my.id/api/whatsapp/messages" \
-  -H "Authorization: Bearer pfn_wa_sec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "to": "+6281234567890",
-    "type": "template",
-    "template": {
-      "name": "order_notification",
-      "language": {
-        "code": "id"
-      },
-      "components": [
-        {
-          "type": "body",
-          "parameters": [
-            { "type": "text", "text": "Budi" },
-            { "type": "text", "text": "INV-20260820-001" }
-          ]
-        }
-      ]
-    }
-  }'
+curl -X GET "https://api.pfnapp.my.id/api/whatsapp/devices/" \
+  -H "Authorization: Bearer pfn_wa_sec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ```
 
-### Example: Node.js / TypeScript Integration
-
-```typescript
-const API_KEY = process.env.WHATSAPP_ORG_API_KEY!
-const BASE_URL = "https://api.pfnapp.my.id"
-
-async function sendWhatsAppMessage(to: string, templateName: string) {
-  const response = await fetch(`${BASE_URL}/api/whatsapp/messages`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      to,
-      type: "template",
-      template: {
-        name: templateName,
-        language: { code: "id" },
-      },
-    }),
-  })
-
-  if (!response.ok) {
-    const errorBody = await response.json()
-    throw new Error(`API Error [${response.status}]: ${JSON.stringify(errorBody)}`)
-  }
-
-  return response.json()
-}
-```
+### OpenAPI Specification & SDK Reference
+For detailed request/response schemas, query parameters, error codes, and SDK generation, refer to the interactive OpenAPI documentation:
+- [WhatsApp Devices OpenAPI Reference](/api/openapi#tag/whatsapp-devices/GET/api/whatsapp/devices/)
 
 ---
 

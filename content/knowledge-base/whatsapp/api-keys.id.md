@@ -80,64 +80,18 @@ Untuk mematikan seluruh akses integrasi API seketika tanpa menerbitkan key baru:
 
 Sertakan API key Anda pada header standar `Authorization: Bearer <API_KEY>` atau header `x-api-key`.
 
-### Contoh: Mengirim WhatsApp Template Message via cURL
+### Contoh: Memeriksa Status Perangkat WhatsApp (Device Check)
+
+Lakukan verifikasi API key dan periksa status koneksi nomor WhatsApp terdaftar:
 
 ```bash
-curl -X POST "https://api.pfnapp.my.id/api/whatsapp/messages" \
-  -H "Authorization: Bearer pfn_wa_sec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "to": "+6281234567890",
-    "type": "template",
-    "template": {
-      "name": "order_notification",
-      "language": {
-        "code": "id"
-      },
-      "components": [
-        {
-          "type": "body",
-          "parameters": [
-            { "type": "text", "text": "Budi" },
-            { "type": "text", "text": "INV-20260820-001" }
-          ]
-        }
-      ]
-    }
-  }'
+curl -X GET "https://api.pfnapp.my.id/api/whatsapp/devices/" \
+  -H "Authorization: Bearer pfn_wa_sec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ```
 
-### Contoh: Integrasi Node.js / TypeScript
-
-```typescript
-const API_KEY = process.env.WHATSAPP_ORG_API_KEY!
-const BASE_URL = "https://api.pfnapp.my.id"
-
-async function sendWhatsAppMessage(to: string, templateName: string) {
-  const response = await fetch(`${BASE_URL}/api/whatsapp/messages`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      to,
-      type: "template",
-      template: {
-        name: templateName,
-        language: { code: "id" },
-      },
-    }),
-  })
-
-  if (!response.ok) {
-    const errorBody = await response.json()
-    throw new Error(`API Error [${response.status}]: ${JSON.stringify(errorBody)}`)
-  }
-
-  return response.json()
-}
-```
+### Spesifikasi OpenAPI & Referensi SDK
+Untuk rincian skema request/response, parameter filter, kode status error, dan SDK generator untuk berbagai bahasa pemrograman (TypeScript, Python, Go, Java, dll), silakan kunjungi dokumentasi interaktif OpenAPI:
+- [Referensi OpenAPI WhatsApp Devices](/api/openapi#tag/whatsapp-devices/GET/api/whatsapp/devices/)
 
 ---
 
