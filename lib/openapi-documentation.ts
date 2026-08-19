@@ -419,6 +419,8 @@ function operationTag(path: string): string {
   return formatTagSegment(resource)
 }
 
+const PUBLIC_PATH_PATTERNS = [/^\/api\/whatsapp\b/i, /^\/whatsapp\b/i]
+
 const INTERNAL_PATH_PATTERNS = [
   /\/admin\b/i,
   /\/dead-letter\b/i,
@@ -442,6 +444,10 @@ function isPublicPathAndOperation(
   path: string,
   operation: JsonObject
 ): boolean {
+  if (!PUBLIC_PATH_PATTERNS.some((pattern) => pattern.test(path))) {
+    return false
+  }
+
   if (INTERNAL_PATH_PATTERNS.some((pattern) => pattern.test(path))) {
     return false
   }
@@ -556,7 +562,26 @@ export function enrichOpenApiDocument(
       filteredPaths[path] = filteredPathItem
     }
   }
-
   enriched.paths = filteredPaths
+
+  if (Array.isArray(enriched.tags)) {
+    const usedTags = new Set<string>()
+    for (const pathItem of Object.values(filteredPaths)) {
+      for (const op of Object.values(pathItem)) {
+        if (isRecord(op) && Array.isArray(op.tags)) {
+          for (const t of op.tags) {
+            if (typeof t === "string") usedTags.add(t)
+          }
+        }
+      }
+    }
+    enriched.tags = enriched.tags.filter(
+      (tagItem) =>
+        isRecord(tagItem) &&
+        typeof tagItem.name === "string" &&
+        usedTags.has(tagItem.name)
+    )
+  }
+
   return enriched as OpenApiDocument
 }
