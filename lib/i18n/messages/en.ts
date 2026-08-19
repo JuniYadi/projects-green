@@ -720,17 +720,6 @@ export const enMessages: AppMessages = {
         revokeKey: "Revoke Key",
         copiedNotice: "API Key copied to clipboard",
       },
-      webhookLogs: {
-        heading: "Webhook Logs",
-        description: "Inspect inbound and outbound webhook delivery events.",
-        emptyTitle: "No webhook logs",
-        emptyDescription: "Webhook deliveries will appear here in real-time.",
-        columnEvent: "Event",
-        columnStatus: "Status",
-        columnAttempts: "Attempts",
-        columnTimestamp: "Timestamp",
-        retryPayload: "Retry Webhook",
-      },
       pricing: {
         heading: "WhatsApp Pricing",
         description:
@@ -746,21 +735,6 @@ export const enMessages: AppMessages = {
         quotaTitle: "Message Quotas",
         usedLabel: "Used",
         remainingLabel: "Remaining",
-      },
-      analytics: {
-        heading: "WhatsApp Analytics",
-        description: "Analyze message delivery performance and response times.",
-        dateRangeLabel: "Date Range",
-        deliveryRateChart: "Delivery Rate Over Time",
-        responseTimeChart: "Average Response Time",
-      },
-      auditLogs: {
-        heading: "WhatsApp Audit Logs",
-        description: "Track configuration changes and critical account events.",
-        columnAction: "Action",
-        columnActor: "Actor",
-        columnTimestamp: "Timestamp",
-        emptyTitle: "No audit logs found",
       },
       credentials: {
         heading: "Credentials",
