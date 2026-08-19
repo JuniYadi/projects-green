@@ -429,12 +429,23 @@ const InvoicePdfDocument = ({
             value={formatInvoiceDate(invoice.issuedAt)}
           />
           <MetaRow label="Due:" value={formatInvoiceDate(invoice.dueAt)} />
+          {invoice.periodStart && invoice.periodEnd ? (
+            <MetaRow
+              label="Service Period:"
+              value={`${formatInvoiceDate(invoice.periodStart)} - ${formatInvoiceDate(invoice.periodEnd)}`}
+            />
+          ) : null}
+          {invoice.periodEnd ? (
+            <MetaRow
+              label="Next Renewal:"
+              value={formatInvoiceDate(invoice.periodEnd)}
+            />
+          ) : null}
           <MetaRow
             label="Payment Method:"
             value={formatPaymentMethod(invoice.paymentMethod)}
           />
         </View>
-
         <BillToBlock organization={organization} />
 
         <Text style={styles.sectionLabel}>LINE ITEMS</Text>
