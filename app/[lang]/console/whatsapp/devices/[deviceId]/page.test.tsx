@@ -47,6 +47,38 @@ mock.module("next/navigation", () => ({
   usePathname: () => "/en/console/whatsapp/devices/cmqoeiclj0006x94c6ofe0wti",
   useSearchParams: () => new URLSearchParams(),
 }))
+mock.module("@/lib/i18n/messages", () => ({
+  getMessages: () => ({
+    console: {
+      whatsapp: {
+        devices: {
+          heading: "Devices",
+          description: "Connected WhatsApp devices",
+          cardTitle: "Devices",
+          cardDescription: "Manage your WhatsApp devices",
+          active: "Active",
+          inactive: "Inactive",
+          edit: "Edit",
+          editDialogTitle: "Edit Profile",
+          editDialogDescription: "Update device profile",
+          phoneNumber: "Phone Number",
+          phoneNumberRequired: "Phone number is required",
+          updated: "Updated",
+          unableToUpdate: "Unable to update",
+          noDevices: "No devices",
+          noDevicesDescription: "No devices available",
+          unableToLoad: "Unable to load",
+          cancel: "Cancel",
+          saving: "Saving...",
+          saveChanges: "Save",
+          notifyAdmin: "Notify admin",
+          srOpenMenu: "Open menu",
+          editPhoneNumber: "Edit phone number",
+        },
+      },
+    },
+  }),
+}))
 
 const mockFetch = mock((input: string | URL | Request, init?: RequestInit) => {
   const url =
