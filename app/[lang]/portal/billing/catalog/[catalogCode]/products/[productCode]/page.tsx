@@ -202,12 +202,12 @@ export default function ProductDetailPage() {
     [prices, enabledBillingPeriods]
   )
 
-  const hasPricingErrors = useMemo(
-    () =>
-      priceValidations.some((e) => e.length > 0) ||
-      missingPriceCells.length > 0,
-    [priceValidations, missingPriceCells]
-  )
+  const hasPricingErrors = useMemo(() => {
+    if (prices.length === 0) return true
+    return (
+      priceValidations.some((e) => e.length > 0) || missingPriceCells.length > 0
+    )
+  }, [prices.length, priceValidations, missingPriceCells])
 
   const handleSave = async () => {
     const targetCode = isNew ? customCode.trim().toUpperCase() : productCode
@@ -217,6 +217,11 @@ export default function ProductDetailPage() {
     }
     if (!name.trim()) {
       toast.error("Product name is required")
+      return
+    }
+
+    if (prices.length === 0) {
+      toast.error("At least one pricing term is required.")
       return
     }
 
