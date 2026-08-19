@@ -59,9 +59,12 @@ export type CheckoutQuote = {
   quoteToken: string
   pricingId: string
   packageCode: string
+  packageName?: string
+  packageDescription?: string
   planCode: string
+  planName?: string
   billingStrategy?: "PRO_RATA" | "FIXED_CYCLE"
-  currency: string
+  resources?: Record<string, unknown>
   billingPeriod: RecurringBillingPeriod
   quantity: string
   periodStart: string
@@ -75,6 +78,12 @@ export type CheckoutQuote = {
   nextRenewal: string
   addons: CheckoutQuoteAddon[]
   availableAddons?: CheckoutQuoteAddon[]
+  availableTerms?: Array<{
+    pricingId: string
+    billingPeriod: RecurringBillingPeriod
+    periodPrice: string
+    currency: string
+  }>
   voucher: CheckoutQuoteVoucher | null
   expiresAt: string
 }
@@ -98,6 +107,7 @@ type QuoteDb = Pick<
   PrismaClient,
   | "servicePlanAddon"
   | "servicePlan"
+  | "servicePricing"
   | "voucher"
   | "billingOrder"
   | "billingAccount"
@@ -197,18 +207,24 @@ export class CheckoutQuoteService {
     const plan = await this.db.servicePlan.findUnique({
       where: { id: price.planId },
       select: {
+        name: true,
         stockControl: true,
         stockCount: true,
         allowBackorder: true,
         billingStrategy: true,
+        resources: true,
+        package: {
+          select: {
+            name: true,
+            description: true,
+          },
+        },
       },
     })
 
-    if (
-      plan?.stockControl === "TRACKED" &&
-      !plan.allowBackorder &&
-      (plan.stockCount ?? 0) < Number(quantity)
-    ) {
+    const isTracked = plan?.stockControl === "TRACKED"
+    const isUnderStock = (plan?.stockCount ?? 0) < Number(quantity)
+    if (isTracked && !plan?.allowBackorder && isUnderStock) {
       throw new CheckoutQuoteError(
         "OUT_OF_STOCK",
         "The selected product is currently out of stock."
@@ -331,14 +347,37 @@ export class CheckoutQuoteService {
       ? monthEnd
       : addMonths(now, PERIOD_MONTHS[price.billingPeriod])
 
+    // Find all active pricing terms for this plan in the same currency
+    const siblingPricings = await this.db.servicePricing.findMany({
+      where: {
+        planId: price.planId,
+        currency: price.currency,
+        isActive: true,
+        periodPrice: { gt: 0 },
+        effectiveFrom: { lte: now },
+        OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }],
+      },
+      orderBy: { billingPeriod: "asc" },
+    })
+
+    const availableTerms = siblingPricings.map((p) => ({
+      pricingId: p.id,
+      billingPeriod: p.billingPeriod as RecurringBillingPeriod,
+      periodPrice: p.periodPrice ? p.periodPrice.toString() : "0",
+      currency: p.currency,
+    }))
+
     return {
       quoteId,
       quoteToken: quoteId,
       pricingId: price.pricingId,
       packageCode: price.packageCode,
+      packageName: plan?.package?.name,
+      packageDescription: plan?.package?.description ?? undefined,
       planCode: price.planCode,
+      planName: plan?.name,
       billingStrategy: plan?.billingStrategy ?? "FIXED_CYCLE",
-      currency: price.currency,
+      resources: (plan?.resources ?? {}) as Record<string, unknown>,
       billingPeriod: price.billingPeriod,
       quantity: quantity.toString(),
       periodStart: now.toISOString(),
@@ -352,6 +391,7 @@ export class CheckoutQuoteService {
       nextRenewal: periodEnd.toISOString(),
       addons,
       availableAddons,
+      availableTerms,
       voucher,
       expiresAt: expiresAt.toISOString(),
     }

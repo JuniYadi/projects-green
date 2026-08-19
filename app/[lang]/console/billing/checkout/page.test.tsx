@@ -213,6 +213,18 @@ describe("Billing CheckoutPage", () => {
       ...checkoutPreview,
       packageCode: "WHATSAPP",
       planCode: "WA_STARTER",
+      resources: {
+        provisioningFields: [
+          {
+            id: "phone",
+            name: "phoneNumber",
+            label: "Phone Number",
+            type: "text",
+            placeholder: "e.g. +6281234567890",
+            required: true,
+          },
+        ],
+      },
     }
     globalThis.fetch = mock(async () =>
       jsonResponse(waQuote)

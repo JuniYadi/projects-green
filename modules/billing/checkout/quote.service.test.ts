@@ -6,6 +6,7 @@ import type { ResolvedRecurringPrice } from "../pricing/pricing.types"
 const mockPrisma = {
   servicePlanAddon: { findMany: mock() },
   servicePlan: { findUnique: mock() },
+  servicePricing: { findMany: mock() },
   voucher: { findUnique: mock() },
   billingOrder: { count: mock() },
   billingAccount: { findUnique: mock() },
@@ -40,15 +41,22 @@ function buildService() {
 beforeEach(() => {
   mockPrisma.servicePlanAddon.findMany.mockReset()
   mockPrisma.servicePlan.findUnique.mockReset()
+  mockPrisma.servicePricing.findMany.mockReset()
   mockPrisma.voucher.findUnique.mockReset()
   mockPrisma.billingOrder.count.mockReset()
   mockPrisma.billingAccount.findUnique.mockReset()
   mockPrisma.billingAccount.findUnique.mockResolvedValue({ currency: "IDR" })
+  mockPrisma.servicePricing.findMany.mockResolvedValue([])
   mockPrisma.servicePlan.findUnique.mockResolvedValue({
+    name: "Pro",
     stockControl: "UNLIMITED",
     stockCount: null,
     allowBackorder: false,
     billingStrategy: "FIXED_CYCLE",
+    package: {
+      name: "Pro VPN",
+      description: "Fast VPN",
+    },
   })
 })
 describe("CheckoutQuoteService", () => {

@@ -29,6 +29,19 @@ const CATALOG_LABELS: Record<string, string> = {
   WHATSAPP: "WhatsApp",
 }
 
+const PERIOD_ORDER: Record<string, number> = {
+  MONTHLY: 1,
+  QUARTERLY: 2,
+  SEMI_ANNUAL: 3,
+  ANNUAL: 4,
+}
+
+const PERIOD_SUFFIX: Record<string, string> = {
+  MONTHLY: "mo",
+  QUARTERLY: "quarter",
+  SEMI_ANNUAL: "6-mo",
+  ANNUAL: "yr",
+}
 export default function CatalogProductsListPage() {
   const { catalogCode: rawCatalogCode } = useParams<{ catalogCode: string }>()
   const catalogCode = (rawCatalogCode || "").toUpperCase()
@@ -132,9 +145,20 @@ export default function CatalogProductsListPage() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {products.map((product) => {
-            const minMonthlyOffer = product.offers.find(
-              (o) => o.billingPeriod === "MONTHLY"
-            )
+            const sortedOffers = [...(product.offers ?? [])].sort((a, b) => {
+              const orderA = PERIOD_ORDER[a.billingPeriod] ?? 99
+              const orderB = PERIOD_ORDER[b.billingPeriod] ?? 99
+              if (orderA !== orderB) return orderA - orderB
+              return (
+                Number.parseFloat(a.periodPrice) -
+                Number.parseFloat(b.periodPrice)
+              )
+            })
+            const lowestOffer = sortedOffers[0]
+            const suffix = lowestOffer
+              ? (PERIOD_SUFFIX[lowestOffer.billingPeriod] ??
+                lowestOffer.billingPeriod.toLowerCase())
+              : ""
             return (
               <Card key={product.id} className="flex flex-col justify-between">
                 <CardHeader>
@@ -179,8 +203,8 @@ export default function CatalogProductsListPage() {
                       Starting from
                     </p>
                     <p className="text-lg font-bold text-foreground">
-                      {minMonthlyOffer
-                        ? `${formatBillingMoney(minMonthlyOffer.periodPrice, minMonthlyOffer.currency)} / mo`
+                      {lowestOffer
+                        ? `${formatBillingMoney(lowestOffer.periodPrice, lowestOffer.currency)} / ${suffix}`
                         : "Unpriced"}
                     </p>
                   </div>

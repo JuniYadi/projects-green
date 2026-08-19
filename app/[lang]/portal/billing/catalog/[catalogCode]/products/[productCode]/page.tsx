@@ -41,7 +41,6 @@ import {
   PlusIcon,
   TrashIcon,
   WarningIcon,
-  InfoIcon,
 } from "@/components/ui/phosphor-icons"
 import {
   getAdminCatalogProductDetail,
@@ -90,6 +89,23 @@ export default function ProductDetailPage() {
   const [allowBackorder, setAllowBackorder] = useState(false)
   const [isActive, setIsActive] = useState(true)
 
+  // Dynamic Checkout / Provisioning Form Field Definitions
+  type ProvisioningField = {
+    id: string
+    name: string
+    label: string
+    type: "text" | "number" | "email" | "url" | "select" | "radio"
+    placeholder?: string
+    required: boolean
+    options?: string[] // For select and radio types
+  }
+
+  const [provisioningFields, setProvisioningFields] = useState<
+    ProvisioningField[]
+  >([])
+  const [resourceEntries, setResourceEntries] = useState<
+    Array<{ key: string; value: string }>
+  >([])
   const [prices, setPrices] = useState<AddonPricingForm[]>([])
   const [defaultCurrency, setDefaultCurrency] = useState<string>("IDR")
 
@@ -111,6 +127,33 @@ export default function ProductDetailPage() {
         setAllowBackorder(Boolean(p.allowBackorder))
         setIsActive(p.isActive ?? true)
 
+        const resObj = (p.resources ?? {}) as Record<string, unknown>
+        // Parse dynamic custom form fields
+        // Pure database driven: load whatever provisioningFields array is stored in DB
+        if (Array.isArray(resObj.provisioningFields)) {
+          setProvisioningFields(
+            resObj.provisioningFields as ProvisioningField[]
+          )
+        } else {
+          setProvisioningFields([])
+        }
+
+        // Filter out internal provisioning flags from the custom key-value quota list
+        const reservedKeys = new Set([
+          "provisioningFields",
+          "deviceSetup",
+          "requireDeviceSetup",
+          "phoneRequired",
+          "displayNameEnabled",
+          "profileUrlEnabled",
+        ])
+        const entries = Object.entries(resObj)
+          .filter(([k]) => !reservedKeys.has(k))
+          .map(([k, v]) => ({
+            key: k,
+            value: typeof v === "object" ? JSON.stringify(v) : String(v),
+          }))
+        setResourceEntries(entries)
         const initialPrices: AddonPricingForm[] = (p.offers ?? []).map(
           (offer) => ({
             id: offer.id,
@@ -202,12 +245,12 @@ export default function ProductDetailPage() {
     [prices, enabledBillingPeriods]
   )
 
-  const hasPricingErrors = useMemo(
-    () =>
-      priceValidations.some((e) => e.length > 0) ||
-      missingPriceCells.length > 0,
-    [priceValidations, missingPriceCells]
-  )
+  const hasPricingErrors = useMemo(() => {
+    if (prices.length === 0) return true
+    return (
+      priceValidations.some((e) => e.length > 0) || missingPriceCells.length > 0
+    )
+  }, [prices.length, priceValidations, missingPriceCells])
 
   const handleSave = async () => {
     const targetCode = isNew ? customCode.trim().toUpperCase() : productCode
@@ -217,6 +260,11 @@ export default function ProductDetailPage() {
     }
     if (!name.trim()) {
       toast.error("Product name is required")
+      return
+    }
+
+    if (prices.length === 0) {
+      toast.error("At least one pricing term is required.")
       return
     }
 
@@ -236,6 +284,30 @@ export default function ProductDetailPage() {
         stockCount: stockControl === "TRACKED" ? stockCount : null,
         allowBackorder,
         isActive,
+        resources: {
+          provisioningFields,
+          ...resourceEntries.reduce<Record<string, unknown>>(
+            (acc, { key, value }) => {
+              const trimmedKey = key.trim()
+              if (!trimmedKey) return acc
+              const trimmedVal = value.trim()
+              const num = Number(trimmedVal)
+              if (!Number.isNaN(num) && trimmedVal !== "") {
+                acc[trimmedKey] = num
+              } else if (trimmedVal === "true" || trimmedVal === "false") {
+                acc[trimmedKey] = trimmedVal === "true"
+              } else {
+                try {
+                  acc[trimmedKey] = JSON.parse(trimmedVal)
+                } catch {
+                  acc[trimmedKey] = trimmedVal
+                }
+              }
+              return acc
+            },
+            {}
+          ),
+        },
         prices: prices.map((p) => ({
           billingPeriod: p.billingPeriod,
           currency: p.currency,
@@ -509,29 +581,6 @@ export default function ProductDetailPage() {
           </Button>
         </div>
       </header>
-
-      {/* WhatsApp Domain Boundary Helper */}
-      {catalogCode === "WHATSAPP" && (
-        <div className="flex items-start gap-3 rounded-md border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground">
-          <InfoIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-          <div className="space-y-1">
-            <p className="font-medium text-foreground">
-              WhatsApp Catalog SKU vs. Device Provisioning Boundary
-            </p>
-            <p className="text-xs">
-              This product tier defines commercial quotas, throughput specs, and
-              subscription pricing. Customer-specific phone numbers, Meta
-              credentials, display names, and avatars are captured at checkout
-              and managed under the tenant&apos;s Console Device Profile (
-              <span className="font-mono">
-                /console/whatsapp/devices/[deviceId]
-              </span>
-              ), not here in the catalog.
-            </p>
-          </div>
-        </div>
-      )}
-
       <div className="grid gap-6 md:grid-cols-2">
         {/* Product Identity */}
         <Card>
@@ -655,8 +704,306 @@ export default function ProductDetailPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
 
+        {/* Device Provisioning & Checkout Configuration */}
+        {/* Dynamic Checkout Form Builder */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Checkout & Provisioning Form Fields</CardTitle>
+                <CardDescription>
+                  Define dynamic custom form fields (text, number, email, URL,
+                  dropdown, radio) that users must fill out when checking out
+                  this plan.
+                </CardDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setProvisioningFields((prev) => [
+                    ...prev,
+                    {
+                      id: `field-${crypto.randomUUID()}`,
+                      name: "",
+                      label: "",
+                      type: "text",
+                      placeholder: "",
+                      required: false,
+                    },
+                  ])
+                }
+              >
+                <PlusIcon className="mr-1.5 h-4 w-4" />
+                Add Form Field
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {provisioningFields.length === 0 ? (
+              <p className="py-2 text-xs text-muted-foreground">
+                No custom form fields configured. Checkout will proceed without
+                prompting extra fields.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {provisioningFields.map((field, idx) => (
+                  <div
+                    key={field.id || idx}
+                    className="space-y-3 rounded-lg border bg-background p-3.5 shadow-xs"
+                  >
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="min-w-[140px] flex-1 space-y-1">
+                        <Label className="text-xs">Field Label *</Label>
+                        <Input
+                          value={field.label}
+                          onChange={(e) =>
+                            setProvisioningFields((prev) =>
+                              prev.map((item, i) =>
+                                i === idx
+                                  ? { ...item, label: e.target.value }
+                                  : item
+                              )
+                            )
+                          }
+                          placeholder="e.g. Phone Number, Domain"
+                          className="h-8 text-xs"
+                        />
+                      </div>
+
+                      <div className="min-w-[140px] flex-1 space-y-1">
+                        <Label className="text-xs">
+                          Attribute Key / Name *
+                        </Label>
+                        <Input
+                          value={field.name}
+                          onChange={(e) =>
+                            setProvisioningFields((prev) =>
+                              prev.map((item, i) =>
+                                i === idx
+                                  ? { ...item, name: e.target.value }
+                                  : item
+                              )
+                            )
+                          }
+                          placeholder="e.g. phoneNumber, domain"
+                          className="h-8 font-mono text-xs"
+                        />
+                      </div>
+
+                      <div className="w-[130px] space-y-1">
+                        <Label className="text-xs">Input Type</Label>
+                        <Select
+                          value={field.type}
+                          onValueChange={(val: ProvisioningField["type"]) =>
+                            setProvisioningFields((prev) =>
+                              prev.map((item, i) =>
+                                i === idx ? { ...item, type: val } : item
+                              )
+                            )
+                          }
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="text">Text</SelectItem>
+                            <SelectItem value="number">Number</SelectItem>
+                            <SelectItem value="email">Email</SelectItem>
+                            <SelectItem value="url">Link / URL</SelectItem>
+                            <SelectItem value="select">Dropdown</SelectItem>
+                            <SelectItem value="radio">Radio Group</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-5">
+                        <Switch
+                          id={`req-${idx}`}
+                          checked={field.required}
+                          onCheckedChange={(checked) =>
+                            setProvisioningFields((prev) =>
+                              prev.map((item, i) =>
+                                i === idx
+                                  ? { ...item, required: checked }
+                                  : item
+                              )
+                            )
+                          }
+                        />
+                        <Label htmlFor={`req-${idx}`} className="text-xs">
+                          Required
+                        </Label>
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="mt-5 h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() =>
+                          setProvisioningFields((prev) =>
+                            prev.filter((_, i) => i !== idx)
+                          )
+                        }
+                        aria-label="Delete field"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {/* Placeholder for text inputs or options for dropdown / radio */}
+                    {field.type === "select" || field.type === "radio" ? (
+                      <div className="space-y-1">
+                        <Label className="text-[11px] text-muted-foreground">
+                          Comma-separated Options
+                        </Label>
+                        <Input
+                          value={(field.options ?? []).join(", ")}
+                          onChange={(e) => {
+                            const opts = e.target.value
+                              .split(",")
+                              .map((o) => o.trim())
+                              .filter(Boolean)
+                            setProvisioningFields((prev) =>
+                              prev.map((item, i) =>
+                                i === idx ? { ...item, options: opts } : item
+                              )
+                            )
+                          }}
+                          placeholder="e.g. Option A, Option B, Option C"
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <Label className="text-[11px] text-muted-foreground">
+                          Placeholder Text
+                        </Label>
+                        <Input
+                          value={field.placeholder ?? ""}
+                          onChange={(e) =>
+                            setProvisioningFields((prev) =>
+                              prev.map((item, i) =>
+                                i === idx
+                                  ? { ...item, placeholder: e.target.value }
+                                  : item
+                              )
+                            )
+                          }
+                          placeholder="e.g. Enter value..."
+                          className="h-7 text-xs"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        {/* Resource Specs & Quotas */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Resources & Quotas</CardTitle>
+                <CardDescription>
+                  Commercial quotas and specs allocated to this product tier
+                  (e.g. devices, conversations, quotaIn, quotaOut,
+                  dailyPerDevice).
+                </CardDescription>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setResourceEntries((prev) => [
+                    ...prev,
+                    { key: "", value: "" },
+                  ])
+                }
+              >
+                <PlusIcon className="mr-1.5 h-4 w-4" />
+                Add Resource
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {resourceEntries.length === 0 ? (
+              <p className="py-2 text-xs text-muted-foreground">
+                No resources or quotas configured for this plan tier. Click
+                &quot;Add Resource&quot; to configure quotas.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {resourceEntries.map((entry, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-3 rounded-md border bg-background p-2.5"
+                  >
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground">
+                        Key / Attribute
+                      </Label>
+                      <Input
+                        value={entry.key}
+                        onChange={(e) =>
+                          setResourceEntries((prev) =>
+                            prev.map((item, i) =>
+                              i === idx
+                                ? { ...item, key: e.target.value }
+                                : item
+                            )
+                          )
+                        }
+                        placeholder="e.g. devices, quotaIn, conversations"
+                        className="h-8 font-mono text-xs"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs text-muted-foreground">
+                        Allocated Value
+                      </Label>
+                      <Input
+                        value={entry.value}
+                        onChange={(e) =>
+                          setResourceEntries((prev) =>
+                            prev.map((item, i) =>
+                              i === idx
+                                ? { ...item, value: e.target.value }
+                                : item
+                            )
+                          )
+                        }
+                        placeholder="e.g. 5, 1000, 500"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="mt-5 h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() =>
+                        setResourceEntries((prev) =>
+                          prev.filter((_, i) => i !== idx)
+                        )
+                      }
+                      aria-label="Remove resource"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
       {/* Per-Product Pricing Table (Addon Parity) */}
       <Card>
         <CardHeader>

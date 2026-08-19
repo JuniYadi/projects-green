@@ -369,17 +369,18 @@ export class CatalogAdminService {
         },
       })
 
-      if (input.prices && input.prices.length > 0) {
+      if (input.prices !== undefined) {
         const defaultRegion = await this.db.serviceRegion.findFirst({
           where: { isActive: true },
           orderBy: { createdAt: "asc" },
         })
+        const upsertedPricingIds: string[] = []
         for (const price of input.prices) {
           const regionId = price.regionId ?? defaultRegion?.id
           if (!regionId) {
             throw new CatalogRegionNotFoundError()
           }
-          await this.upsertPlanPricing({
+          const pricing = await this.upsertPlanPricing({
             planId: updatedPlan.id,
             regionId,
             billingPeriod: price.billingPeriod,
@@ -400,7 +401,23 @@ export class CatalogAdminService {
                   : null,
             isActive: price.isActive ?? true,
           })
+          if (pricing && pricing.id) {
+            upsertedPricingIds.push(pricing.id)
+          }
         }
+        // Deactivate or remove any existing active pricings that were deleted in the UI
+        await this.db.servicePricing.updateMany({
+          where: {
+            planId: updatedPlan.id,
+            type: "BUNDLE",
+            billingMode: "PACKAGE",
+            id: { notIn: upsertedPricingIds },
+            isActive: true,
+          },
+          data: {
+            isActive: false,
+          },
+        })
       }
 
       return updatedPlan

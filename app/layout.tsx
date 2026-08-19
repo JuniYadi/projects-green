@@ -8,6 +8,7 @@ import { QueryProvider } from "@/components/query-provider"
 import { localeCookieName } from "@/lib/i18n/config"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils"
 
 const jetbrainsMonoHeading = JetBrains_Mono({
@@ -55,7 +56,10 @@ export default async function RootLayout({
         <AuthKitProvider>
           <QueryProvider>
             <ThemeProvider>
-              <TooltipProvider>{children}</TooltipProvider>
+              <TooltipProvider>
+                {children}
+                <Toaster />
+              </TooltipProvider>
             </ThemeProvider>
           </QueryProvider>
         </AuthKitProvider>

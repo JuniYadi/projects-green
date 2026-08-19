@@ -120,10 +120,11 @@ describe("ProductDetailPage", () => {
     ).toBeInTheDocument()
   })
 
-  it("displays the currency from the API response", async () => {
+  it("displays the currency selector with flag in the header", async () => {
     const view = render(<ProductDetailPage />)
 
-    await waitFor(() => expect(view.getByText("IDR")).toBeInTheDocument())
+    await waitFor(() => expect(view.getByText(/🇮🇩/)).toBeInTheDocument())
+    expect(view.getByText("IDR")).toBeInTheDocument()
   })
 
   it("renders plan cards with names and prices", async () => {
@@ -143,46 +144,56 @@ describe("ProductDetailPage", () => {
     expect(view.getByText(/conversations: 500/i)).toBeInTheDocument()
   })
 
-  it("renders billing term selector buttons", async () => {
+  it("renders all plans with their lowest available billing term without requiring term selection", async () => {
     const view = render(<ProductDetailPage />)
 
     await waitFor(() => expect(view.getByText("Starter")).toBeInTheDocument())
-    expect(view.getByRole("button", { name: "Monthly" })).toBeInTheDocument()
-    expect(view.getByRole("button", { name: "Quarterly" })).toBeInTheDocument()
-    expect(
-      view.getByRole("button", { name: "Semi-Annual" })
-    ).toBeInTheDocument()
-    expect(view.getByRole("button", { name: "Annual" })).toBeInTheDocument()
-  })
-
-  it("updates displayed price when billing term changes", async () => {
-    const view = render(<ProductDetailPage />)
-
-    await waitFor(() => expect(view.getByText("Starter")).toBeInTheDocument())
-
-    // Monthly selected by default — Starter monthly price
+    expect(view.getByText("Professional")).toBeInTheDocument()
+    // Starter has monthly 99,000
     expect(view.getAllByText(/99,000/i).length).toBeGreaterThan(0)
-
-    // Switch to Quarterly — Starter quarterly price
-    const quarterlyBtn = view.getByRole("button", { name: "Quarterly" })
-    await quarterlyBtn.click()
-
-    await waitFor(() => {
-      expect(view.getByText(/267,300/i)).toBeInTheDocument()
-    })
+    // Professional has monthly 299,000
+    expect(view.getAllByText(/299,000/i).length).toBeGreaterThan(0)
+    expect(view.queryByRole("button", { name: "Quarterly" })).toBeNull()
   })
 
-  it("disables billing term button when no plans have that term", async () => {
+  it("renders lowest available term when a plan only has quarterly pricing", async () => {
+    const customResponse = {
+      product: {
+        code: "WHATSAPP",
+        name: "WhatsApp",
+        description: "WhatsApp Business messaging platform",
+        plans: [
+          {
+            id: "plan-wa-starter",
+            code: "WA_STARTER",
+            name: "Starter",
+            resources: {},
+            offers: [
+              {
+                id: "offer-wa-starter-quarterly",
+                billingPeriod: "QUARTERLY",
+                periodMonths: 3,
+                periodPrice: "267300",
+                currency: "IDR",
+                chargeUnit: "SUBSCRIPTION",
+                effectiveFrom: "2026-01-01T00:00:00.000Z",
+                effectiveTo: null,
+              },
+            ],
+          },
+        ],
+      },
+      currency: "IDR",
+    }
+
+    globalThis.fetch = mock(async () =>
+      jsonResponse(customResponse)
+    ) as unknown as typeof fetch
     const view = render(<ProductDetailPage />)
 
     await waitFor(() => expect(view.getByText("Starter")).toBeInTheDocument())
-
-    // Annual is available (from another plan's offer)
-    // Semi-Annual may be unavailable — check aria-disabled
-    const semiAnnualBtn = view.getByRole("button", { name: "Semi-Annual" })
-    // The button may or may not be disabled depending on data
-    // Just verify the button is present
-    expect(semiAnnualBtn).toBeInTheDocument()
+    expect(view.getByText(/267,300/i)).toBeInTheDocument()
+    expect(view.getByText(/\/ quarterly/i)).toBeInTheDocument()
   })
 
   it("renders checkout links with correct query params on plan cards", async () => {
@@ -199,13 +210,10 @@ describe("ProductDetailPage", () => {
       l.closest("a")?.href.includes("offer-wa-starter-monthly")
     )
     expect(starterLink).toBeTruthy()
-    const href = starterLink?.closest("a")?.href ?? ""
-    expect(href).toContain("pricingId=offer-wa-starter-monthly")
-    expect(href).toContain("product=WHATSAPP")
-    expect(href).toContain("plan=WA_STARTER")
-    expect(href).toContain("billingPeriod=MONTHLY")
-    expect(href).toContain("price=99000")
-    expect(href).toContain("currency=IDR")
+    const href = starterLink?.closest("a")?.getAttribute("href") ?? ""
+    expect(href).toBe(
+      "/console/billing/checkout?pricingId=offer-wa-starter-monthly"
+    )
   })
 
   it("shows error state on fetch failure", async () => {
@@ -218,24 +226,5 @@ describe("ProductDetailPage", () => {
     await waitFor(() =>
       expect(view.getByText(/something went wrong/i)).toBeInTheDocument()
     )
-  })
-
-  it("shows unavailable term message when selected term has no plans", async () => {
-    const view = render(<ProductDetailPage />)
-
-    await waitFor(() => expect(view.getByText("Starter")).toBeInTheDocument())
-
-    // Select a term that has no offers
-    // Annual button — click if available and check messaging
-    const annualBtn = view.getByRole("button", { name: "Annual" })
-    if (!(annualBtn as HTMLButtonElement).disabled) {
-      await annualBtn.click()
-      // If Annual is available, no unavailable message shown
-    }
-    // Otherwise Monthly is default and plans are shown
-    expect(
-      view.queryByText(/not available for any plan/i) ||
-        view.getByText("Starter")
-    ).toBeTruthy()
   })
 })
