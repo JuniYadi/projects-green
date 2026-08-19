@@ -544,29 +544,6 @@ export default function ProductDetailPage() {
           </Button>
         </div>
       </header>
-
-      {/* WhatsApp Domain Boundary Helper */}
-      {catalogCode === "WHATSAPP" && (
-        <div className="flex items-start gap-3 rounded-md border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground">
-          <InfoIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-          <div className="space-y-1">
-            <p className="font-medium text-foreground">
-              WhatsApp Catalog SKU vs. Device Provisioning Boundary
-            </p>
-            <p className="text-xs">
-              This product tier defines commercial quotas, throughput specs, and
-              subscription pricing. Customer-specific phone numbers, Meta
-              credentials, display names, and avatars are captured at checkout
-              and managed under the tenant&apos;s Console Device Profile (
-              <span className="font-mono">
-                /console/whatsapp/devices/[deviceId]
-              </span>
-              ), not here in the catalog.
-            </p>
-          </div>
-        </div>
-      )}
-
       <div className="grid gap-6 md:grid-cols-2">
         {/* Product Identity */}
         <Card>
