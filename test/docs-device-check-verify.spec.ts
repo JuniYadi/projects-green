@@ -1,11 +1,11 @@
-import { test, expect } from "@playwright/test"
+import { test, expect, type Page } from "@playwright/test"
 
 test.describe("WhatsApp API key docs @e2e/docs/public/api-keys", () => {
   const openApiHash =
     "/api/openapi#tag/whatsapp-devices/GET/api/whatsapp/devices/"
 
   async function verifyPage(
-    page: Parameters<Parameters<typeof test>[1]>[0]["page"],
+    page: Page,
     path: string,
     sectionHeading: RegExp,
     openApiLabel: RegExp

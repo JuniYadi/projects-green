@@ -95,14 +95,14 @@ test.describe("Documentation navigation @e2e/docs/public/documentation-navigatio
 
     await expect(
       page.getByRole("heading", {
-        name: "Example: Send WhatsApp Template Message",
+        name: "Example: Checking WhatsApp Devices Status",
         level: 3,
       })
     ).toBeVisible()
 
     await expect(
       page.getByRole("heading", {
-        name: "Example: Node.js / TypeScript Integration",
+        name: "OpenAPI Specification & SDK Reference",
         level: 3,
       })
     ).toBeVisible()

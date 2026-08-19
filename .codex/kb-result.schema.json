@@ -1,12 +1,7 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "passed",
-    "screenshots",
-    "markdown_content",
-    "summary"
-  ],
+  "required": ["passed", "screenshots", "markdown_content", "summary"],
   "properties": {
     "passed": { "type": "boolean" },
     "screenshots": {

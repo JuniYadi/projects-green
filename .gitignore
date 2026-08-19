@@ -64,7 +64,6 @@ docs/
 .mavis/
 .opencode/
 .superpowers/
-.worktrees/
 .worktree/
 
 .local/
@@ -79,7 +78,6 @@ plan.md
 
 # Playwright E2E auth state
 .auth/
-.worktrees/
 
 # pi-crew runtime state
 .crew/state/
@@ -92,7 +90,6 @@ plan.md
 whatsapp-broadcast-worker
 
 # git worktree artifacts — not submodules, break CI checkout cleanup
-.worktrees/
 
 # local file storage (media, uploads)
 /storage/

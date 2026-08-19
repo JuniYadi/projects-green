@@ -1,18 +1,24 @@
-import { describe, expect, it } from "bun:test"
-import {
-  KnowledgeDocsSeeder,
-  loadAllKnowledgeDocs,
-  parseKnowledgeMarkdown,
-} from "./knowledge-docs.seeder"
+import { describe, expect, it, mock } from "bun:test"
 
+const mockPrisma = {}
+
+mock.module("@/lib/prisma", () => ({
+  prisma: mockPrisma,
+}))
+
+mock.module("@/modules/docs/docs-embedding.service", () => ({
+  embedDocument: mock(async () => []),
+}))
 describe("KnowledgeDocsSeeder", () => {
-  it("defines proper system classification and metadata", () => {
+  it("defines proper system classification and metadata", async () => {
+    const { KnowledgeDocsSeeder } = await import("./knowledge-docs.seeder")
     expect(KnowledgeDocsSeeder.seederName).toBe("KnowledgeDocs")
     expect(KnowledgeDocsSeeder.classification).toBe("system")
     expect(KnowledgeDocsSeeder.runOrder).toBe(15)
   })
 
-  it("parses yaml frontmatter and locale correctly", () => {
+  it("parses yaml frontmatter and locale correctly", async () => {
+    const { parseKnowledgeMarkdown } = await import("./knowledge-docs.seeder")
     const raw = `---
 path: /test/feature
 locale: id
@@ -40,7 +46,8 @@ Konten dokumen dalam Bahasa Indonesia.
     expect(parsed?.markdown).toContain("Konten dokumen dalam Bahasa Indonesia")
   })
 
-  it("discovers both English and Indonesian markdown files", () => {
+  it("discovers both English and Indonesian markdown files", async () => {
+    const { loadAllKnowledgeDocs } = await import("./knowledge-docs.seeder")
     const docs = loadAllKnowledgeDocs()
     expect(docs.length).toBeGreaterThanOrEqual(2)
 

@@ -165,6 +165,24 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     testPrefixes: ["lib/i18n/messages.test.ts"],
     smokeProjects: [],
   },
+  {
+    name: "docs-publishing",
+    sourcePrefixes: ["app/[lang]/docs/", "scripts/capture-api-key-kb.ts"],
+    testPrefixes: ["lib/seeders/system/knowledge-docs.seeder.test.ts"],
+    smokeProjects: [],
+  },
+  {
+    name: "docs-markdown",
+    sourcePrefixes: ["lib/markdown.ts"],
+    testPrefixes: ["lib/markdown.test.ts"],
+    smokeProjects: [],
+  },
+  {
+    name: "docs-module",
+    sourcePrefixes: ["modules/docs/docs.types.ts"],
+    testPrefixes: ["modules/docs/docs.service.test.ts"],
+    smokeProjects: [],
+  },
 ]
 
 export const SHARED_UI_PREFIXES = [
