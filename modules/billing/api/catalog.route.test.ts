@@ -480,6 +480,32 @@ describe("GET /billing/catalog/:code", () => {
     expect(body.error).toBe("PRODUCT_NOT_FOUND")
   })
 
+  it("passes query currency to catalogService when provided", async () => {
+    mockFindUnique.mockResolvedValueOnce({ currency: "IDR" })
+
+    const catalogService = {
+      getCatalog: vi.fn(),
+      getProduct: vi.fn().mockResolvedValue({
+        product: { code: "WHATSAPP", name: "WhatsApp", plans: [] },
+        currency: "USD",
+      }),
+    }
+
+    const app = makeApp({
+      authenticate: async () => mockAuth(),
+      catalogService,
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/catalog/WHATSAPP?currency=USD")
+    )
+
+    expect(response.status).toBe(200)
+    expect(catalogService.getProduct).toHaveBeenCalledWith("USD", "WHATSAPP")
+    const body = await response.json()
+    expect(body.ok).toBe(true)
+    expect(body.currency).toBe("USD")
+  })
   it("returns 500 when catalog service throws", async () => {
     mockFindUnique.mockResolvedValueOnce({ currency: "USD" })
 
