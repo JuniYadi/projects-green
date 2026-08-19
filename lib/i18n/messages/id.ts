@@ -726,18 +726,6 @@ export const idMessages: AppMessages = {
         revokeKey: "Cabut Kunci",
         copiedNotice: "Kunci API disalin ke papan klip",
       },
-      webhookLogs: {
-        heading: "Log Webhook",
-        description: "Periksa peristiwa pengiriman webhook masuk dan keluar.",
-        emptyTitle: "Tidak ada log webhook",
-        emptyDescription:
-          "Pengiriman webhook akan muncul di sini secara real-time.",
-        columnEvent: "Peristiwa",
-        columnStatus: "Status",
-        columnAttempts: "Percobaan",
-        columnTimestamp: "Waktu",
-        retryPayload: "Coba Ulang Webhook",
-      },
       pricing: {
         heading: "Harga WhatsApp",
         description:
@@ -753,21 +741,6 @@ export const idMessages: AppMessages = {
         quotaTitle: "Kuota Pesan",
         usedLabel: "Terpakai",
         remainingLabel: "Tersisa",
-      },
-      analytics: {
-        heading: "Analitik WhatsApp",
-        description: "Analisis performa pengiriman pesan dan waktu respons.",
-        dateRangeLabel: "Rentang Tanggal",
-        deliveryRateChart: "Tingkat Pengiriman dari Waktu ke Waktu",
-        responseTimeChart: "Rata-rata Waktu Respons",
-      },
-      auditLogs: {
-        heading: "Log Audit WhatsApp",
-        description: "Lacak perubahan konfigurasi dan peristiwa akun penting.",
-        columnAction: "Tindakan",
-        columnActor: "Pelaku",
-        columnTimestamp: "Waktu",
-        emptyTitle: "Tidak ada log audit ditemukan",
       },
       credentials: {
         heading: "Kredensial",
