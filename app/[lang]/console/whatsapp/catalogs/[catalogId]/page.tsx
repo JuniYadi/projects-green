@@ -134,8 +134,8 @@ export default function CatalogDetailPage() {
             className={`mr-2 size-4 ${syncing ? "animate-spin" : ""}`}
           />
           {syncing
-            ? messages.console.whatsapp.catalogs.columnStatus
-            : messages.console.whatsapp.catalogs.columnProductCount}
+            ? messages.console.whatsapp.catalogs.syncing
+            : messages.console.whatsapp.catalogs.syncProducts}
         </Button>
       </div>
 
