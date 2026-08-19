@@ -46,8 +46,8 @@ function DeviceStatusBadge({ status, messages }: DeviceStatusBadgeProps) {
   const label: Record<DeviceStatus, string> = {
     ACTIVE: messages.console.whatsapp.devices.active,
     NON_ACTIVE: messages.console.whatsapp.devices.inactive,
-    DISCONNECTED: messages.console.whatsapp.devices.inactive,
-    UNKNOWN: messages.console.whatsapp.devices.inactive,
+    DISCONNECTED: messages.console.whatsapp.devices.disconnected,
+    UNKNOWN: messages.console.whatsapp.devices.unknown,
   }
 
   return <Badge variant={variant[status]}>{label[status]}</Badge>
