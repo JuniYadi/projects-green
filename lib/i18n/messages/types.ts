@@ -319,6 +319,10 @@ export type AppMessages = {
         columnPlan: string
         columnStatus: string
         columnTerm: string
+        columnRegion: string
+        columnMonthlyRate: string
+        columnQuotaIn: string
+        columnQuotaOut: string
         columnRenewal: string
         columnInvoice: string
         columnNextAction: string
