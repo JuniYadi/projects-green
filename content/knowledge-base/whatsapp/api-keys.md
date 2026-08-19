@@ -14,7 +14,6 @@ notes:
   - Key rotation immediately invalidates the previous API key.
 ---
 
-# WhatsApp API Key Management & Integration Guide
 
 This guide explains how to generate, rotate, and securely use your organization's static WhatsApp API key to integrate with the WhatsApp Business Platform APIs.
 
@@ -33,6 +32,7 @@ The WhatsApp API key allows backend services to authenticate API requests on beh
 ## 2. Generating Your API Key
 
 ### Step 1: Navigate to API Keys Console
+
 Go to **Console** > **WhatsApp** > **API Key** (`/console/whatsapp/api-keys`).
 
 If your organization does not yet have an active API key, the status badge will indicate **Not generated**.
@@ -42,6 +42,7 @@ If your organization does not yet have an active API key, the status badge will 
 ---
 
 ### Step 2: Generate the API Key
+
 1. Click the **"Generate API key"** button.
 2. The system immediately provisions the key and presents the **One-time API secret** banner.
 3. Click **"Copy secret"** to copy your secret key to your password manager or environment secrets vault.
@@ -56,7 +57,9 @@ If your organization does not yet have an active API key, the status badge will 
 ## 3. Key Lifecycle Management
 
 ### Rotating an API Key
+
 If you suspect your key has been leaked or your security policy requires periodic rotation:
+
 1. Click **"Rotate API key"**.
 2. Read the confirmation dialog: **The current key will stop working immediately**.
 3. Confirm rotation to generate a new key and receive a fresh one-time secret.
@@ -66,7 +69,9 @@ If you suspect your key has been leaked or your security policy requires periodi
 ---
 
 ### Revoking an API Key
+
 To immediately terminate all API access without issuing a replacement key:
+
 1. Click **"Revoke API key"**.
 2. Confirm the revocation dialog.
 3. The key status switches to **Revoked**, and incoming requests using this key will receive `401 Unauthorized`.
@@ -89,7 +94,9 @@ curl -X GET "https://api.pfnapp.my.id/api/whatsapp/devices/" \
 ```
 
 ### OpenAPI Specification & SDK Reference
+
 For detailed request/response schemas, query parameters, error codes, and SDK generation, refer to the interactive OpenAPI documentation:
+
 - [WhatsApp Devices OpenAPI Reference](/api/openapi#tag/whatsapp-devices/GET/api/whatsapp/devices/)
 
 ---
@@ -97,6 +104,7 @@ For detailed request/response schemas, query parameters, error codes, and SDK ge
 ## 5. Audit & Compliance
 
 All API key lifecycle events are recorded in the immutable audit log:
+
 - `ORGANIZATION_API_KEY_GENERATED`
 - `ORGANIZATION_API_KEY_ROTATED`
 - `ORGANIZATION_API_KEY_REVOKED`

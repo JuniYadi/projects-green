@@ -39,7 +39,7 @@ bun run dev
 ## Documentation & Knowledge Base
 
 Public platform documentation is served dynamically at `/en/docs` (or
-`/id/docs`), powered by database-backed markdown, vector embeddings, and
+`/id/docs`), powered by database-backed Markdown, vector embeddings, and
 MCP-captured visual screenshots.
 
 ### Knowledge Base Architecture

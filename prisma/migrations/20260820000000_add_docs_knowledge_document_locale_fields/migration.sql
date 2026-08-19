@@ -11,12 +11,12 @@ DROP INDEX "KnowledgeDocument_organizationId_path_idx";
 
 -- CreateIndex
 CREATE UNIQUE INDEX "KnowledgeDocument_path_locale_organizationId_key"
-ON "KnowledgeDocument"("path", "locale", "organizationId");
+ON "KnowledgeDocument" ("path", "locale", "organizationId");
 
 -- CreateIndex
 CREATE INDEX "KnowledgeDocument_organizationId_path_locale_idx"
-ON "KnowledgeDocument"("organizationId", "path", "locale");
+ON "KnowledgeDocument" ("organizationId", "path", "locale");
 
 -- CreateIndex
 CREATE INDEX "KnowledgeDocument_isPublic_category_locale_idx"
-ON "KnowledgeDocument"("isPublic", "category", "locale");
+ON "KnowledgeDocument" ("isPublic", "category", "locale");
