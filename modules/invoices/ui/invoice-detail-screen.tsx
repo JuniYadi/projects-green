@@ -26,6 +26,7 @@ import {
   formatInvoiceCurrency,
   formatInvoiceDate,
   getInvoiceStatusLabel,
+  getNextRenewalDate,
 } from "@/modules/invoices/invoices.helpers"
 import type {
   InvoiceDetail,
@@ -301,6 +302,14 @@ export function InvoiceDetailScreen({
             </p>
             <p className="font-medium">
               {formatInvoiceDate(invoice.periodEnd, locale)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">
+              {locale === "id" ? "Tanggal Perpanjangan" : "Next Renewal Date"}
+            </p>
+            <p className="font-medium">
+              {formatInvoiceDate(getNextRenewalDate(invoice.periodEnd), locale)}
             </p>
           </div>
           <div>
