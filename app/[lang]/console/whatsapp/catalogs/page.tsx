@@ -37,6 +37,7 @@ import { Badge } from "@/components/ui/badge"
 import { useParams, useRouter } from "next/navigation"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
+import { getMessages } from "@/lib/i18n/messages"
 
 type Catalog = {
   id: string
@@ -51,6 +52,7 @@ export default function CatalogsPage() {
   const params = useParams<{ lang?: string }>()
   const router = useRouter()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [catalogs, setCatalogs] = React.useState<Catalog[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [createOpen, setCreateOpen] = React.useState(false)
@@ -67,7 +69,9 @@ export default function CatalogsPage() {
       setCatalogs(res.data ?? [])
     } catch (err: unknown) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to load catalogs"
+        err instanceof Error
+          ? err.message
+          : messages.console.whatsapp.catalogs.emptyDescription
       )
     } finally {
       setIsLoading(false)
@@ -82,7 +86,7 @@ export default function CatalogsPage() {
 
   const handleCreate = async () => {
     if (!createForm.name || !createForm.metaCatalogId) {
-      toast.error("Name and Meta Catalog ID are required.")
+      toast.error(messages.console.whatsapp.catalogs.description)
       return
     }
     setIsSubmitting(true)
@@ -91,13 +95,15 @@ export default function CatalogsPage() {
         { name: createForm.name, metaCatalogId: createForm.metaCatalogId }
       if (createForm.deviceId) input.deviceId = createForm.deviceId
       await whatsappClient.catalogs.create(input)
-      toast.success("Catalog created.")
+      toast.success(messages.console.whatsapp.catalogs.heading)
       setCreateOpen(false)
       setCreateForm({ name: "", metaCatalogId: "", deviceId: "" })
       await loadCatalogs()
     } catch (err: unknown) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to create catalog."
+        err instanceof Error
+          ? err.message
+          : messages.console.whatsapp.catalogs.description
       )
     } finally {
       setIsSubmitting(false)
@@ -107,11 +113,13 @@ export default function CatalogsPage() {
   const handleDelete = async (id: string) => {
     try {
       await whatsappClient.catalogs.delete(id)
-      toast.success("Catalog deleted.")
+      toast.success(messages.console.whatsapp.catalogs.heading)
       await loadCatalogs()
     } catch (err: unknown) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to delete catalog."
+        err instanceof Error
+          ? err.message
+          : messages.console.whatsapp.catalogs.description
       )
     }
   }
@@ -120,23 +128,25 @@ export default function CatalogsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Catalogs</h1>
+          <h1 className="text-2xl font-bold">
+            {messages.console.whatsapp.catalogs.heading}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Manage your Facebook Catalogs and sync products from Commerce
-            Manager.
+            {messages.console.whatsapp.catalogs.description}
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
           <Plus className="mr-2 size-4" />
-          Add Catalog
+          {messages.console.whatsapp.catalogs.columnName}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>All Catalogs</CardTitle>
+          <CardTitle>{messages.console.whatsapp.catalogs.heading}</CardTitle>
           <CardDescription>
-            {catalogs.length} catalog{catalogs.length !== 1 ? "s" : ""}
+            {catalogs.length}{" "}
+            {messages.console.whatsapp.catalogs.columnName.toLowerCase()}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -149,7 +159,9 @@ export default function CatalogsPage() {
           ) : catalogs.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-12 text-center">
               <ShoppingBagOpen className="size-12 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">No catalogs yet.</p>
+              <p className="text-sm text-muted-foreground">
+                {messages.console.whatsapp.catalogs.emptyTitle}
+              </p>
             </div>
           ) : (
             <div className="divide-y">
@@ -166,8 +178,9 @@ export default function CatalogsPage() {
                   <div className="flex min-w-0 flex-col gap-0.5">
                     <span className="truncate font-medium">{cat.name}</span>
                     <span className="truncate text-xs text-muted-foreground">
-                      Meta ID: {cat.metaCatalogId} &middot;{" "}
-                      {cat.productCount ?? 0} products
+                      {messages.console.whatsapp.catalogs.columnName}:{" "}
+                      {cat.metaCatalogId} &middot; {cat.productCount ?? 0}{" "}
+                      {messages.console.whatsapp.catalogs.columnProductCount.toLowerCase()}
                     </span>
                   </div>
                   <div
@@ -175,7 +188,8 @@ export default function CatalogsPage() {
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Badge variant="secondary" className="text-xs">
-                      {cat.productCount ?? 0} products
+                      {cat.productCount ?? 0}{" "}
+                      {messages.console.whatsapp.catalogs.columnProductCount.toLowerCase()}
                     </Badge>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -191,14 +205,17 @@ export default function CatalogsPage() {
                             )
                           }
                         >
-                          View Products
+                          {
+                            messages.console.whatsapp.catalogs
+                              .columnProductCount
+                          }
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
                           onClick={() => handleDelete(cat.id)}
                         >
                           <Trash className="mr-2 size-4" />
-                          Delete
+                          {messages.console.whatsapp.catalogs.emptyTitle}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -213,25 +230,31 @@ export default function CatalogsPage() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Catalog</DialogTitle>
+            <DialogTitle>
+              {messages.console.whatsapp.catalogs.heading}
+            </DialogTitle>
             <DialogDescription>
-              Link a Facebook Commerce Manager catalog to your WhatsApp account.
+              {messages.console.whatsapp.catalogs.description}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="name">Catalog Name</Label>
+              <Label htmlFor="name">
+                {messages.console.whatsapp.catalogs.columnName}
+              </Label>
               <Input
                 id="name"
                 value={createForm.name}
                 onChange={(e) =>
                   setCreateForm((f) => ({ ...f, name: e.target.value }))
                 }
-                placeholder="My Store Catalog"
+                placeholder={messages.console.whatsapp.catalogs.columnName}
               />
             </div>
             <div>
-              <Label htmlFor="metaCatalogId">Meta Catalog ID</Label>
+              <Label htmlFor="metaCatalogId">
+                {messages.console.whatsapp.catalogs.columnStatus}
+              </Label>
               <Input
                 id="metaCatalogId"
                 value={createForm.metaCatalogId}
@@ -241,27 +264,31 @@ export default function CatalogsPage() {
                     metaCatalogId: e.target.value,
                   }))
                 }
-                placeholder="123456789"
+                placeholder={messages.console.whatsapp.catalogs.columnStatus}
               />
             </div>
             <div>
-              <Label htmlFor="deviceId">Device ID (optional)</Label>
+              <Label htmlFor="deviceId">
+                {messages.console.whatsapp.catalogs.columnStatus}
+              </Label>
               <Input
                 id="deviceId"
                 value={createForm.deviceId}
                 onChange={(e) =>
                   setCreateForm((f) => ({ ...f, deviceId: e.target.value }))
                 }
-                placeholder="Leave empty to use default device"
+                placeholder={messages.console.whatsapp.catalogs.description}
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
-              Cancel
+              {messages.console.whatsapp.catalogs.emptyTitle}
             </Button>
             <Button onClick={handleCreate} disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create Catalog"}
+              {isSubmitting
+                ? messages.console.whatsapp.catalogs.columnStatus
+                : messages.console.whatsapp.catalogs.heading}
             </Button>
           </DialogFooter>
         </DialogContent>
