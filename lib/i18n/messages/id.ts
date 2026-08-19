@@ -728,6 +728,8 @@ export const idMessages: AppMessages = {
         searchPlaceholder: "Cari katalog...",
         columnName: "Nama Katalog",
         columnProductCount: "Produk",
+        syncing: "Menyinkronkan...",
+        syncProducts: "Sinkronkan Produk",
         columnStatus: "Status",
         createDialogTitle: "Buat Katalog",
         createDialogDescription:
