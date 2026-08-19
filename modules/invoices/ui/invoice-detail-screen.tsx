@@ -297,7 +297,7 @@ export function InvoiceDetailScreen({
           </div>
           <div>
             <p className="text-xs text-muted-foreground">
-              {locale === "id" ? "Tanggal Perpanjangan" : "Next Renewal Date"}
+              {locale === "id" ? "Layanan Berakhir" : "Service Ends"}
             </p>
             <p className="font-medium">
               {formatInvoiceDate(invoice.periodEnd, locale)}
