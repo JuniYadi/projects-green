@@ -518,6 +518,8 @@ export type AppMessages = {
         cardDescription: string
         active: string
         inactive: string
+        disconnected: string
+        unknown: string
         edit: string
         editDialogTitle: string
         editDialogDescription: string
