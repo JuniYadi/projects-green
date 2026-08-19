@@ -11,8 +11,8 @@ const jsonResponse = (payload: unknown, status = 200) =>
     headers: { "content-type": "application/json" },
   })
 
-const requestCall = () => {
-  const call = fetchMock.mock.calls[0]
+const requestCall = (index = 0) => {
+  const call = fetchMock.mock.calls[index]
   if (!call) throw new Error("Expected fetch to be called")
   return call as unknown as [string, RequestInit | undefined]
 }
@@ -196,6 +196,12 @@ describe("createWhatsAppClient", () => {
     respond()
     await client.deleteGroup("group-1")
 
+    respond({ total: 7, active: 2, sent: 5, failed: 1 })
+    await client.summary("org-1")
+    expect(requestCall(fetchMock.mock.calls.length - 1)[0]).toBe(
+      "/api/whatsapp/broadcasts/summary?organizationId=org-1"
+    )
+
     respond({ broadcasts: [] })
     await client.listBroadcasts()
     respond({ broadcast: {} })
@@ -262,7 +268,7 @@ describe("createWhatsAppClient", () => {
       productRetailerId: "product-1",
     })
 
-    expect(fetchMock).toHaveBeenCalledTimes(48)
+    expect(fetchMock).toHaveBeenCalledTimes(49)
   })
 
   it("handles invalid and incomplete API error payloads", async () => {

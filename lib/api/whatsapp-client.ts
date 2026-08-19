@@ -510,11 +510,17 @@ export const whatsappClient = {
     summary: async () => {
       const payload = await serverFetch<{
         ok: boolean
-        data?: unknown[]
-        campaigns?: unknown[]
-        meta: { total: number; page: number; limit: number; totalPages: number }
-      }>("/api/whatsapp/broadcasts", { params: { limit: 1 } })
-      return { total: payload.meta.total }
+        total: number
+        active: number
+        sent: number
+        failed: number
+      }>("/api/whatsapp/broadcasts/summary")
+      return {
+        total: payload.total,
+        active: payload.active,
+        sent: payload.sent,
+        failed: payload.failed,
+      }
     },
   },
 

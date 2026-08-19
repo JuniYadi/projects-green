@@ -433,52 +433,52 @@ export const messageService: MessageService = {
             console.error("[messageService] Quota alert failed:", err)
           )
       }
-    } else {
-      // Non-subscription: count messages manually
-      if (waMessageId) {
-        const today = new Date(
-          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-        )
-        const year = now.getUTCFullYear()
-        const month = now.getUTCMonth() + 1
+    }
 
-        await Promise.all([
-          prisma.whatsappDailyCount.upsert({
-            where: {
-              organizationId_date_whatsappDeviceId: {
-                organizationId,
-                date: today,
-                whatsappDeviceId: device.id,
-              },
-            },
-            update: { messageOutboxCount: { increment: 1 } },
-            create: {
+    // Count every successful outbound message, including subscription sends.
+    if (waMessageId) {
+      const today = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+      )
+      const year = now.getUTCFullYear()
+      const month = now.getUTCMonth() + 1
+
+      await Promise.all([
+        prisma.whatsappDailyCount.upsert({
+          where: {
+            organizationId_date_whatsappDeviceId: {
               organizationId,
               date: today,
               whatsappDeviceId: device.id,
-              messageOutboxCount: 1,
             },
-          }),
-          prisma.whatsappMonthlyCount.upsert({
-            where: {
-              organizationId_year_month_whatsappDeviceId: {
-                organizationId,
-                year,
-                month,
-                whatsappDeviceId: device.id,
-              },
-            },
-            update: { messageOutboxCount: { increment: 1 } },
-            create: {
+          },
+          update: { messageOutboxCount: { increment: 1 } },
+          create: {
+            organizationId,
+            date: today,
+            whatsappDeviceId: device.id,
+            messageOutboxCount: 1,
+          },
+        }),
+        prisma.whatsappMonthlyCount.upsert({
+          where: {
+            organizationId_year_month_whatsappDeviceId: {
               organizationId,
               year,
               month,
               whatsappDeviceId: device.id,
-              messageOutboxCount: 1,
             },
-          }),
-        ])
-      }
+          },
+          update: { messageOutboxCount: { increment: 1 } },
+          create: {
+            organizationId,
+            year,
+            month,
+            whatsappDeviceId: device.id,
+            messageOutboxCount: 1,
+          },
+        }),
+      ])
     }
 
     // Get or create conversation
@@ -794,52 +794,52 @@ export const messageService: MessageService = {
           )
           .catch(() => {})
       }
-    } else {
-      // Non-subscription: count messages manually
-      if (waMessageId) {
-        const today = new Date(
-          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-        )
-        const year = now.getUTCFullYear()
-        const month = now.getUTCMonth() + 1
+    }
 
-        await Promise.all([
-          prisma.whatsappDailyCount.upsert({
-            where: {
-              organizationId_date_whatsappDeviceId: {
-                organizationId,
-                date: today,
-                whatsappDeviceId: device.id,
-              },
-            },
-            update: { messageOutboxCount: { increment: 1 } },
-            create: {
+    // Count every successful outbound message, including subscription sends.
+    if (waMessageId) {
+      const today = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+      )
+      const year = now.getUTCFullYear()
+      const month = now.getUTCMonth() + 1
+
+      await Promise.all([
+        prisma.whatsappDailyCount.upsert({
+          where: {
+            organizationId_date_whatsappDeviceId: {
               organizationId,
               date: today,
               whatsappDeviceId: device.id,
-              messageOutboxCount: 1,
             },
-          }),
-          prisma.whatsappMonthlyCount.upsert({
-            where: {
-              organizationId_year_month_whatsappDeviceId: {
-                organizationId,
-                year,
-                month,
-                whatsappDeviceId: device.id,
-              },
-            },
-            update: { messageOutboxCount: { increment: 1 } },
-            create: {
+          },
+          update: { messageOutboxCount: { increment: 1 } },
+          create: {
+            organizationId,
+            date: today,
+            whatsappDeviceId: device.id,
+            messageOutboxCount: 1,
+          },
+        }),
+        prisma.whatsappMonthlyCount.upsert({
+          where: {
+            organizationId_year_month_whatsappDeviceId: {
               organizationId,
               year,
               month,
               whatsappDeviceId: device.id,
-              messageOutboxCount: 1,
             },
-          }),
-        ])
-      }
+          },
+          update: { messageOutboxCount: { increment: 1 } },
+          create: {
+            organizationId,
+            year,
+            month,
+            whatsappDeviceId: device.id,
+            messageOutboxCount: 1,
+          },
+        }),
+      ])
     }
 
     // Conversation
