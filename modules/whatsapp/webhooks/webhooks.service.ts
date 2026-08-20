@@ -3,6 +3,7 @@ import { Prisma, WhatsappMessageDeliveryStatus } from "@prisma/client"
 
 import { toWebhookEventDTO, type WhatsappWebhookEventDTO } from "./webhooks.dto"
 import { webhookDispatcher } from "./webhook-dispatcher.service"
+import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
 import { downloadAndSave } from "@/modules/whatsapp/media/media.service"
 import { upsertWhatsappContactFromMessage } from "@/modules/whatsapp/contacts/contacts.service"
 
@@ -50,6 +51,7 @@ export async function processInboundMessage(
     throw new Error("Invalid message payload: missing 'from' or 'id'")
   }
 
+  const normalizedPhone = normalizeIndonesianPhoneNumber(from) ?? from
   // Determine message body and media type
   const body = extractMessageBody(payload)
   const mediaUrl = extractMediaUrl(payload)
@@ -59,7 +61,7 @@ export async function processInboundMessage(
   let conversation = await prisma.whatsappConversation.findFirst({
     where: {
       organizationId,
-      contactPhone: from,
+      contactPhone: { in: [normalizedPhone, from] },
     },
   })
 
@@ -69,7 +71,7 @@ export async function processInboundMessage(
     conversation = await prisma.whatsappConversation.create({
       data: {
         organizationId,
-        contactPhone: from,
+        contactPhone: normalizedPhone,
         lastDirection: "INBOX",
         lastMessageAt: new Date(),
         whatsappDeviceId: deviceId,
@@ -80,6 +82,7 @@ export async function processInboundMessage(
     await prisma.whatsappConversation.update({
       where: { id: conversation.id },
       data: {
+        contactPhone: normalizedPhone,
         lastDirection: "INBOX",
         lastMessageAt: new Date(),
       },
@@ -106,7 +109,7 @@ export async function processInboundMessage(
   // Upsert contact from this inbound message — mark isWhatsapp: true
   await upsertWhatsappContactFromMessage({
     organizationId,
-    phoneNumber: from,
+    phoneNumber: normalizedPhone,
     whatsappDeviceId: deviceId,
     messageAt: whatsappMessage.createdAt,
     isWhatsapp: true,
