@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Spinner } from "@phosphor-icons/react"
+import { Spinner, Warning, ChartLineUp, Receipt } from "@phosphor-icons/react"
 import {
   getBillingAccount,
   updateBillingAlerts,
@@ -164,8 +164,11 @@ export function BillingAlertsForm() {
       {/* Balance Threshold Alert */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/10">
+          <div className="flex items-start gap-4">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <Warning size={20} weight="fill" />
+            </div>
+            <div className="space-y-1">
               <CardTitle>{page.lowBalanceTitle}</CardTitle>
               <p className="text-sm text-muted-foreground">
                 {page.lowBalanceDesc}
@@ -222,8 +225,11 @@ export function BillingAlertsForm() {
       {/* Usage Threshold Alert */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
+          <div className="flex items-start gap-4">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+              <ChartLineUp size={20} weight="bold" />
+            </div>
+            <div className="space-y-1">
               <CardTitle>{page.usageThresholdTitle}</CardTitle>
               <p className="text-sm text-muted-foreground">
                 {page.usageThresholdDesc}
@@ -278,8 +284,11 @@ export function BillingAlertsForm() {
       {/* Invoice Reminders — now handled by Billing Contacts */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10">
+          <div className="flex items-start gap-4">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <Receipt size={20} weight="bold" />
+            </div>
+            <div className="space-y-1">
               <CardTitle>{page.invoiceRemindersTitle}</CardTitle>
               <p className="text-sm text-muted-foreground">
                 {page.invoiceRemindersDesc}
