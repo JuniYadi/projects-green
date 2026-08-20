@@ -93,7 +93,7 @@ export default function PortalWhatsAppWebhookEventsPage() {
         setDevices(response.devices)
 
         const orgRes = await eden.api.admin.organizations.get({
-          $query: { limit: "100" },
+          $query: { limit: 100 },
         })
         const orgBody = orgRes.data as unknown as {
           ok: boolean
@@ -202,7 +202,7 @@ export default function PortalWhatsAppWebhookEventsPage() {
         }))}
         organizations={organizations.map((o) => ({
           id: o.id,
-          label: makeOrganizationLabel(o),
+          name: makeOrganizationLabel(o),
         }))}
         onFilterChange={handleFilterChange}
         initialFilters={filters}

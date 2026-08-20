@@ -130,6 +130,9 @@ export default function PortalWhatsAppAuditLogsPage() {
     setFilterTo("")
     setPage(1)
   }
+  const handleApplyFilters = () => {
+    setPage(1)
+  }
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage)

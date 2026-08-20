@@ -188,20 +188,28 @@ export default function WebhookDeadLetterPage({
           $query: {
             page: "1",
             limit: "100",
-            organizationId: selectedOrgId === "all" ? undefined : selectedOrgId,
           },
         })
 
         if (cancelled) return
 
-        if (deadLetterRes.status === 200 && deadLetterRes.data) {
+        if (
+          deadLetterRes.status === 200 &&
+          deadLetterRes.data &&
+          "data" in deadLetterRes.data
+        ) {
           setData(deadLetterRes.data.data as DeadLetter[])
           setMeta(deadLetterRes.data.meta as DeadLetterListMeta)
           setState("loaded")
         } else {
-          setError(
-            deadLetterRes.error?.value?.message ?? "Failed to load dead letters"
-          )
+          const errVal: unknown = deadLetterRes.error?.value
+          const message =
+            typeof errVal === "string"
+              ? errVal
+              : errVal && typeof errVal === "object" && "message" in errVal
+                ? String(errVal.message)
+                : "Failed to load dead letters"
+          setError(message)
           setState("error")
         }
       } catch (err) {
@@ -216,7 +224,7 @@ export default function WebhookDeadLetterPage({
     return () => {
       cancelled = true
     }
-  }, [selectedOrgId])
+  }, [])
 
   React.useEffect(() => {
     return loadData()
@@ -224,16 +232,14 @@ export default function WebhookDeadLetterPage({
 
   React.useEffect(() => {
     let cancelled = false
-    eden.api.admin.organizations
-      .get({ $query: { limit: "100" } })
-      .then((res) => {
-        if (cancelled) return
-        const body = res.data as unknown as {
-          ok: boolean
-          organizations: OrganizationListItem[]
-        }
-        if (body.ok) setOrganizations(body.organizations)
-      })
+    eden.api.admin.organizations.get({ $query: { limit: 100 } }).then((res) => {
+      if (cancelled) return
+      const body = res.data as unknown as {
+        ok: boolean
+        organizations: OrganizationListItem[]
+      }
+      if (body.ok) setOrganizations(body.organizations)
+    })
     return () => {
       cancelled = true
     }
@@ -327,7 +333,13 @@ export default function WebhookDeadLetterPage({
         tableId="webhook-dead-letters"
         columns={getColumns(lang, handleReplay)}
         data={data}
-        isLoading={state === "loading"}
+        searchableColumns={[
+          "deviceId",
+          "eventType",
+          "errorMessage",
+          "replayStatus",
+        ]}
+        searchPlaceholder="Search dead letters..."
       />
     </main>
   )

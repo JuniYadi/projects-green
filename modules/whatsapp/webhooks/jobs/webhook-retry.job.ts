@@ -6,6 +6,7 @@
  */
 
 import type { Job } from "bullmq"
+import { prisma } from "@/lib/prisma"
 import { BaseJob } from "@/lib/queue/base-job"
 import {
   recordProcessingResult,
