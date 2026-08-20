@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
+import { act, render, waitFor } from "@testing-library/react"
 
 // ─── Mocked responses ─────────────────────────────────────────────────────────
 
@@ -102,11 +102,11 @@ describe("PortalWhatsAppWebhookLogsPage", () => {
     mockFetch.mockImplementation((input: string | Request) => {
       const url = typeof input === "string" ? input : input.url
       const pathname = new URL(url, "http://localhost:3300").pathname
-      if (
-        pathname.startsWith("/api/admin/devices") ||
-        pathname.startsWith("/api/admin/organizations")
-      ) {
+      if (pathname.startsWith("/api/admin/devices")) {
         return Promise.resolve(mockDevicesResponse())
+      }
+      if (pathname.startsWith("/api/admin/organizations")) {
+        return Promise.resolve(mockOrganizationsResponse())
       }
       return Promise.reject(new Error("Failed to load webhook events"))
     })

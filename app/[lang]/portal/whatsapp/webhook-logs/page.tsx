@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { eden } from "@/lib/eden"
+import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import {
   WebhookEventTable,
   type WebhookEventDTO,
@@ -88,7 +89,7 @@ export default function PortalWhatsAppWebhookLogsPage() {
       try {
         const [deviceRes, orgRes] = await Promise.all([
           eden.api.admin.devices.get({ $query: { take: "200" } }),
-          eden.api.admin.organizations.get({ $query: { limit: "100" } }),
+          eden.api.admin.organizations.get({ $query: { limit: 100 } }),
         ])
 
         const deviceBody = deviceRes.data as unknown as {
@@ -205,9 +206,9 @@ export default function PortalWhatsAppWebhookLogsPage() {
           id: d.id,
           label: makeDeviceLabel(d),
         }))}
-        organizations={organizations.map((o) => ({
+        organizations={(organizations ?? []).map((o) => ({
           id: o.id,
-          label: makeOrganizationLabel(o),
+          name: makeOrganizationLabel(o),
         }))}
         onFilterChange={handleFilterChange}
         initialFilters={filters}
