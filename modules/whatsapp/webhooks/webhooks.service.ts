@@ -718,12 +718,18 @@ export async function listWebhookEvents(
     prisma.whatsappWebhookEvent.count({ where }),
     prisma.whatsappWebhookEvent.findMany({
       where,
+      include: {
+        whatsappDevice: {
+          select: {
+            phoneNumber: true,
+          },
+        },
+      },
       orderBy: { createdAt: "desc" },
       skip,
       take: limit,
     }),
   ])
-
   return {
     data: events.map(toWebhookEventDTO),
     meta: {
