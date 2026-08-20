@@ -32,7 +32,7 @@ Mengaktifkan **Peringatan Saldo (Billing Alerts)** menjamin tim finansial dan te
 
 Buka **Console** > **Billing** > **Alerts** (`/console/billing/alerts`).
 
-![Konfigurasi Billing Alerts](/kb-assets/billing/07-billing-alerts.png)
+![Konfigurasi Billing Alerts](/kb-assets/billing/07-billing-alerts.png?v=2)
 
 ### Langkah Konfigurasi:
 1. **Low Balance Threshold**: Masukkan angka saldo minimal yang memicu pengiriman email darurat.
