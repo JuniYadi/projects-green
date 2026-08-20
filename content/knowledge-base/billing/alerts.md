@@ -32,7 +32,7 @@ Configuring **Billing Alerts** (`/console/billing/alerts`) ensures your finance 
 
 Navigate to **Console** > **Billing** > **Alerts**.
 
-![Billing Alerts Configuration](/kb-assets/billing/07-billing-alerts.png?v=2)
+![Billing Alerts Configuration](/kb-assets/billing/07-billing-alerts.png?v=3)
 
 ### Setup Steps:
 1. **Low Balance Threshold**: Enter the minimum balance amount that triggers an automated alert.
