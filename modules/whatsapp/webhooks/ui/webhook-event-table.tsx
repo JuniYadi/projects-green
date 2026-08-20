@@ -16,11 +16,20 @@ import {
   Broadcast,
   CaretDown,
   CaretRight,
+  Copy,
+  Check,
 } from "@phosphor-icons/react"
+import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   Table,
   TableBody,
@@ -140,6 +149,14 @@ function getDeliveryBadgeConfig(status: string | null | undefined): {
       }
   }
 }
+function maskWaMessageId(id: string | null): string {
+  if (!id) return "—"
+  if (id.length <= 16) return id
+  const prefix = id.slice(0, 10)
+  const suffix = id.slice(-6)
+  return `${prefix}...${suffix}`
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function WebhookEventTable({
@@ -153,6 +170,25 @@ export function WebhookEventTable({
   showPayload = false,
 }: WebhookEventTableProps) {
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const handleCopyMessageId = useCallback(
+    async (e: React.MouseEvent, waMessageId: string) => {
+      e.stopPropagation()
+      try {
+        await navigator.clipboard.writeText(waMessageId)
+        setCopiedId(waMessageId)
+        toast.success("WA Message ID copied to clipboard")
+        setTimeout(
+          () => setCopiedId((curr) => (curr === waMessageId ? null : curr)),
+          2000
+        )
+      } catch {
+        toast.error("Failed to copy ID")
+      }
+    },
+    []
+  )
 
   const handleRowToggle = useCallback(
     (eventId: string) => {
@@ -161,7 +197,6 @@ export function WebhookEventTable({
     },
     [showPayload]
   )
-
   const formatTimestamp = (iso: string) => {
     try {
       return new Date(iso).toLocaleString()
@@ -260,127 +295,154 @@ export function WebhookEventTable({
       </div>
     )
   }
-
-  // ── Data table ────────────────────────────────────────────────────────
-
   return (
-    <div className="space-y-0">
-      <div className="overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {showPayload && <TableHead className="w-10" />}
-              <TableHead>Device</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>WA Message ID</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Event</TableHead>
-              <TableHead>Timestamp</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {events.map((event) => {
-              const isExpanded = showPayload && expandedRowId === event.id
-              const typeConfig = getTypeBadgeConfig(event.eventType)
-              const deliveryConfig = getDeliveryBadgeConfig(
-                event.deliveryStatus || event.processingStatus
-              )
+    <TooltipProvider delayDuration={200}>
+      <div className="space-y-0">
+        <div className="overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {showPayload && <TableHead className="w-10" />}
+                <TableHead>Device</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>WA Message ID</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Event</TableHead>
+                <TableHead>Timestamp</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {events.map((event) => {
+                const isExpanded = showPayload && expandedRowId === event.id
+                const typeConfig = getTypeBadgeConfig(event.eventType)
+                const deliveryConfig = getDeliveryBadgeConfig(
+                  event.deliveryStatus || event.processingStatus
+                )
 
-              return (
-                <React.Fragment key={event.id}>
-                  <TableRow
-                    className={cn(
-                      showPayload && "cursor-pointer hover:bg-muted/50"
-                    )}
-                    onClick={() => handleRowToggle(event.id)}
-                  >
-                    {showPayload && (
-                      <TableCell>
-                        {isExpanded ? (
-                          <CaretDown className="size-4 text-muted-foreground" />
+                return (
+                  <React.Fragment key={event.id}>
+                    <TableRow
+                      className={cn(
+                        showPayload && "cursor-pointer hover:bg-muted/50"
+                      )}
+                      onClick={() => handleRowToggle(event.id)}
+                    >
+                      {showPayload && (
+                        <TableCell>
+                          {isExpanded ? (
+                            <CaretDown className="size-4 text-muted-foreground" />
+                          ) : (
+                            <CaretRight className="size-4 text-muted-foreground" />
+                          )}
+                        </TableCell>
+                      )}
+                      <TableCell className="font-mono text-xs font-medium">
+                        {event.deviceLabel ?? "—"}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-foreground">
+                        {event.phoneNumber ?? "—"}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {event.waMessageId ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                className="group/wamid inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
+                                onClick={(e) =>
+                                  handleCopyMessageId(e, event.waMessageId!)
+                                }
+                              >
+                                <span>
+                                  {maskWaMessageId(event.waMessageId)}
+                                </span>
+                                {copiedId === event.waMessageId ? (
+                                  <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                                ) : (
+                                  <Copy className="size-3.5 opacity-60 transition-opacity group-hover/wamid:opacity-100" />
+                                )}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-sm font-mono text-xs break-all">
+                              <p>{event.waMessageId}</p>
+                              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                                Click to copy full ID
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
                         ) : (
-                          <CaretRight className="size-4 text-muted-foreground" />
+                          <span className="px-1.5 text-muted-foreground">
+                            —
+                          </span>
                         )}
                       </TableCell>
-                    )}
-                    <TableCell className="font-mono text-xs font-medium">
-                      {event.deviceLabel ?? "—"}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-foreground">
-                      {event.phoneNumber ?? "—"}
-                    </TableCell>
-                    <TableCell
-                      className="max-w-[180px] truncate font-mono text-xs text-muted-foreground"
-                      title={event.waMessageId ?? undefined}
-                    >
-                      {event.waMessageId ?? "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={deliveryConfig.variant}
-                        className={deliveryConfig.className}
-                      >
-                        {deliveryConfig.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={cn(
-                          "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-                          typeConfig.className
-                        )}
-                      >
-                        {typeConfig.label}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
-                      {formatTimestamp(event.createdAt)}
-                    </TableCell>
-                  </TableRow>
-                  {showPayload && isExpanded && (
-                    <TableRow className="bg-muted/30 hover:bg-muted/30">
-                      <TableCell colSpan={7} className="p-4">
-                        {event.metaPayload ? (
-                          <RawPayloadViewer payload={event.metaPayload} />
-                        ) : (
-                          <p className="text-xs text-muted-foreground italic">
-                            No raw payload data available for this event.
-                          </p>
-                        )}
+                      <TableCell>
+                        <Badge
+                          variant={deliveryConfig.variant}
+                          className={deliveryConfig.className}
+                        >
+                          {deliveryConfig.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={cn(
+                            "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+                            typeConfig.className
+                          )}
+                        >
+                          {typeConfig.label}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                        {formatTimestamp(event.createdAt)}
                       </TableCell>
                     </TableRow>
-                  )}
-                </React.Fragment>
-              )
-            })}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Pagination */}
-      {pagination && pagination.totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={pagination.page <= 1}
-            onClick={() => pagination.onPageChange(pagination.page - 1)}
-          >
-            Previous
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            Page {pagination.page} of {pagination.totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={pagination.page >= pagination.totalPages}
-            onClick={() => pagination.onPageChange(pagination.page + 1)}
-          >
-            Next
-          </Button>
+                    {showPayload && isExpanded && (
+                      <TableRow className="bg-muted/30 hover:bg-muted/30">
+                        <TableCell colSpan={7} className="p-4">
+                          {event.metaPayload ? (
+                            <RawPayloadViewer payload={event.metaPayload} />
+                          ) : (
+                            <p className="text-xs text-muted-foreground italic">
+                              No raw payload data available for this event.
+                            </p>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
+                )
+              })}
+            </TableBody>
+          </Table>
         </div>
-      )}
-    </div>
+
+        {/* Pagination */}
+        {pagination && pagination.totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pagination.page <= 1}
+              onClick={() => pagination.onPageChange(pagination.page - 1)}
+            >
+              Previous
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Page {pagination.page} of {pagination.totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pagination.page >= pagination.totalPages}
+              onClick={() => pagination.onPageChange(pagination.page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        )}
+      </div>
+    </TooltipProvider>
   )
 }
