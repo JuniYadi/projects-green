@@ -13,16 +13,26 @@ const mockPrisma = {
     findMany: mock(async () => []),
   },
   whatsappConversation: {
-    findFirst: mock(async () => null),
-    create: mock(async (args: any) => ({ id: "conv-1", ...args.data })),
-    update: mock(async (args: any) => ({ id: "conv-1", ...args.data })),
+    findFirst: mock(async () => null) as ReturnType<typeof mock>,
+    create: mock(async (args: any) => ({
+      id: "conv-1",
+      ...args.data,
+    })) as ReturnType<typeof mock>,
+    update: mock(async (args: any) => ({
+      id: "conv-1",
+      ...args.data,
+    })) as ReturnType<typeof mock>,
   },
   whatsappMessage: {
+    findFirst: mock(async () => null) as ReturnType<typeof mock>,
     create: mock(async (args: any) => ({
       id: "msg-1",
       ...args.data,
       createdAt: new Date(),
     })),
+  },
+  whatsappMessageStatus: {
+    create: mock(async () => ({ id: "status-1" })) as ReturnType<typeof mock>,
   },
   whatsappContact: {
     upsert: mock(async () => ({})),
@@ -42,6 +52,11 @@ const mockPrisma = {
   whatsappWebhook: {
     findMany: mock(async () => []),
   },
+  whatsappBillingLedger: {
+    findFirst: mock(async () => null) as ReturnType<typeof mock>,
+    update: mock(async () => ({})) as ReturnType<typeof mock>,
+    updateMany: mock(async () => ({ count: 1 })) as ReturnType<typeof mock>,
+  },
 }
 
 mock.module("@/lib/prisma", () => ({
@@ -54,6 +69,7 @@ const {
   listWebhookEvents,
   extractMessageBody,
   processInboundMessage,
+  processDeliveryStatus,
 } = await import("./webhooks.service")
 
 // ---------------------------------------------------------------------------
@@ -595,6 +611,109 @@ describe("processInboundMessage", () => {
       data: expect.objectContaining({
         contactPhone: "+6285708296482",
         lastDirection: "INBOX",
+      }),
+    })
+  })
+})
+describe("processDeliveryStatus", () => {
+  beforeEach(() => {
+    mockPrisma.whatsappMessage.findFirst = mock(async () => null)
+    mockPrisma.whatsappMessageStatus.create = mock(async () => ({
+      id: "status-1",
+    }))
+    mockPrisma.whatsappBillingLedger.findFirst = mock(async () => null)
+    mockPrisma.whatsappBillingLedger.update = mock(async () => ({}))
+    mockPrisma.whatsappBillingLedger.updateMany = mock(async () => ({
+      count: 1,
+    }))
+    mockPrisma.whatsappConversation.update = mock(async () => ({}))
+  })
+
+  it("confirms billing ledger on successful delivery", async () => {
+    mockPrisma.whatsappMessage.findFirst = mock(async () => ({
+      id: "msg-1",
+      conversationId: "conv-1",
+      conversation: {
+        contactPhone: "6281234567890",
+        organizationId: "org-1",
+        whatsappDeviceId: "dev-1",
+      },
+    }))
+    mockPrisma.whatsappBillingLedger.findFirst = mock(async () => ({
+      id: "ledger-1",
+      waMessageId: "wamid.ok.1",
+      status: "CHARGED_PENDING_VERIFY",
+    }))
+
+    const result = await processDeliveryStatus(
+      {
+        id: "wamid.ok.1",
+        status: "delivered",
+        timestamp: "1723456789",
+        recipient_id: "6281234567890",
+      },
+      "dev-1",
+      "org-1"
+    )
+
+    expect(result.status).toBe("DELIVERED")
+    expect(mockPrisma.whatsappBillingLedger.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          waMessageId: "wamid.ok.1",
+          status: "CHARGED_PENDING_VERIFY",
+        },
+        data: {
+          status: "CONFIRMED",
+          lastStatus: "DELIVERED",
+        },
+      })
+    )
+  })
+
+  it("reverts billing ledger on failed delivery", async () => {
+    mockPrisma.whatsappMessage.findFirst = mock(async () => ({
+      id: "msg-1",
+      conversationId: "conv-1",
+      conversation: {
+        contactPhone: "6281234567890",
+        organizationId: "org-1",
+        whatsappDeviceId: "dev-1",
+      },
+    }))
+    mockPrisma.whatsappBillingLedger.findFirst = mock(async () => ({
+      id: "ledger-1",
+      waMessageId: "wamid.fail.1",
+      status: "CHARGED_PENDING_VERIFY",
+      quotaValue: 1,
+      whatsappDeviceId: "dev-1",
+    }))
+
+    const result = await processDeliveryStatus(
+      {
+        id: "wamid.fail.1",
+        status: "failed",
+        timestamp: "1723456789",
+        errors: [
+          {
+            code: 131026,
+            title: "Message Undeliverable",
+            error_data: { details: "User not found" },
+          },
+        ],
+        recipient_id: "6281234567890",
+      },
+      "dev-1",
+      "org-1"
+    )
+
+    expect(result.status).toBe("FAILED")
+    expect(mockPrisma.whatsappBillingLedger.update).toHaveBeenCalledWith({
+      where: { id: "ledger-1" },
+      data: expect.objectContaining({
+        isReverted: true,
+        status: "REVERTED_FAILED",
+        lastStatus: "FAILED",
       }),
     })
   })
