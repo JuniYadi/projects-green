@@ -62,6 +62,12 @@ CREATE TYPE "VoucherCurrencyPolicy" AS ENUM ('MATCH_CURRENCY_ONLY', 'CONVERT_AT_
 CREATE TYPE "ServiceAddonBillingMode" AS ENUM ('RECURRING', 'ONE_TIME', 'USAGE');
 
 -- CreateEnum
+CREATE TYPE "BillingStrategy" AS ENUM ('PRO_RATA', 'FIXED_CYCLE');
+
+-- CreateEnum
+CREATE TYPE "StockControl" AS ENUM ('UNLIMITED', 'TRACKED');
+
+-- CreateEnum
 CREATE TYPE "MeterAggregation" AS ENUM ('SUM', 'MAX', 'LAST', 'COUNT');
 
 -- CreateEnum
@@ -273,8 +279,13 @@ CREATE TABLE "KnowledgeDocument" (
     "id" TEXT NOT NULL,
     "organizationId" TEXT,
     "path" TEXT NOT NULL,
+    "locale" VARCHAR(10) NOT NULL DEFAULT 'en',
     "title" TEXT NOT NULL,
     "purpose" TEXT NOT NULL,
+    "category" TEXT NOT NULL DEFAULT 'General',
+    "contentMarkdown" TEXT,
+    "contentHash" VARCHAR(64),
+    "isPublic" BOOLEAN NOT NULL DEFAULT true,
     "howTo" TEXT[],
     "notes" TEXT[],
     "searchText" TEXT NOT NULL,
@@ -426,6 +437,20 @@ CREATE TABLE "ApplicationStack" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "ApplicationStack_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "VaultSecretAuditLog" (
+    "id" TEXT NOT NULL,
+    "organizationId" TEXT NOT NULL,
+    "stackId" TEXT NOT NULL,
+    "workosUserId" TEXT NOT NULL,
+    "environment" TEXT NOT NULL,
+    "secretKey" TEXT NOT NULL,
+    "action" TEXT NOT NULL DEFAULT 'SECRET_REVEALED',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "VaultSecretAuditLog_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -943,6 +968,10 @@ CREATE TABLE "ServicePlan" (
     "code" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "resources" JSONB NOT NULL,
+    "billingStrategy" "BillingStrategy" NOT NULL DEFAULT 'FIXED_CYCLE',
+    "stockControl" "StockControl" NOT NULL DEFAULT 'UNLIMITED',
+    "stockCount" INTEGER,
+    "allowBackorder" BOOLEAN NOT NULL DEFAULT false,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -1357,12 +1386,33 @@ CREATE TABLE "WhatsappDevice" (
 
 -- CreateTable
 CREATE TABLE "WhatsappQuotaCreditRate" (
+    "id" TEXT NOT NULL,
     "category" "WhatsappBillingCategory" NOT NULL,
-    "country" VARCHAR(2) NOT NULL,
+    "country" VARCHAR(2) NOT NULL DEFAULT 'ID',
     "quota_credit" DECIMAL(12,2) NOT NULL,
-    "description" VARCHAR(255) NOT NULL,
+    "description" VARCHAR(255),
+    "effectiveFrom" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "effectiveTo" TIMESTAMP(3),
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "WhatsappQuotaCreditRate_pkey" PRIMARY KEY ("category","country")
+    CONSTRAINT "WhatsappQuotaCreditRate_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "WhatsappBasePrice" (
+    "id" TEXT NOT NULL,
+    "category" "WhatsappBillingCategory" NOT NULL,
+    "country" VARCHAR(2) NOT NULL DEFAULT 'ID',
+    "basePrice" DECIMAL(12,2) NOT NULL,
+    "metaCost" DECIMAL(12,2),
+    "currency" VARCHAR(3) NOT NULL DEFAULT 'IDR',
+    "effectiveFrom" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "effectiveTo" TIMESTAMP(3),
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "WhatsappBasePrice_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -2220,13 +2270,19 @@ CREATE UNIQUE INDEX "PlatformUserRole_workosUserId_key" ON "PlatformUserRole"("w
 CREATE UNIQUE INDEX "PlatformUserRole_email_key" ON "PlatformUserRole"("email");
 
 -- CreateIndex
-CREATE INDEX "KnowledgeDocument_organizationId_path_idx" ON "KnowledgeDocument"("organizationId", "path");
+CREATE INDEX "KnowledgeDocument_organizationId_path_locale_idx" ON "KnowledgeDocument"("organizationId", "path", "locale");
+
+-- CreateIndex
+CREATE INDEX "KnowledgeDocument_isPublic_category_locale_idx" ON "KnowledgeDocument"("isPublic", "category", "locale");
 
 -- CreateIndex
 CREATE INDEX "KnowledgeDocument_organizationId_updatedAt_idx" ON "KnowledgeDocument"("organizationId", "updatedAt" DESC);
 
 -- CreateIndex
 CREATE INDEX "KnowledgeDocument_updatedAt_idx" ON "KnowledgeDocument"("updatedAt" DESC);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "KnowledgeDocument_path_locale_organizationId_key" ON "KnowledgeDocument"("path", "locale", "organizationId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "GithubInstallStateNonce_nonceHash_key" ON "GithubInstallStateNonce"("nonceHash");
@@ -2296,6 +2352,15 @@ CREATE INDEX "ApplicationStack_clusterId_idx" ON "ApplicationStack"("clusterId")
 
 -- CreateIndex
 CREATE UNIQUE INDEX "ApplicationStack_organizationId_slug_key" ON "ApplicationStack"("organizationId", "slug");
+
+-- CreateIndex
+CREATE INDEX "VaultSecretAuditLog_organizationId_createdAt_idx" ON "VaultSecretAuditLog"("organizationId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "VaultSecretAuditLog_stackId_createdAt_idx" ON "VaultSecretAuditLog"("stackId", "createdAt" DESC);
+
+-- CreateIndex
+CREATE INDEX "VaultSecretAuditLog_workosUserId_createdAt_idx" ON "VaultSecretAuditLog"("workosUserId", "createdAt" DESC);
 
 -- CreateIndex
 CREATE INDEX "Deployment_stackId_idx" ON "Deployment"("stackId");
@@ -2791,6 +2856,12 @@ CREATE INDEX "WhatsappDevice_whatsappPhoneId_idx" ON "WhatsappDevice"("whatsappP
 
 -- CreateIndex
 CREATE UNIQUE INDEX "WhatsappDevice_whatsappMetaAppId_whatsappPhoneId_key" ON "WhatsappDevice"("whatsappMetaAppId", "whatsappPhoneId");
+
+-- CreateIndex
+CREATE INDEX "WhatsappQuotaCreditRate_category_country_effectiveFrom_isAc_idx" ON "WhatsappQuotaCreditRate"("category", "country", "effectiveFrom" DESC, "isActive");
+
+-- CreateIndex
+CREATE INDEX "WhatsappBasePrice_category_country_effectiveFrom_isActive_idx" ON "WhatsappBasePrice"("category", "country", "effectiveFrom" DESC, "isActive");
 
 -- CreateIndex
 CREATE INDEX "WhatsappContactGroup_organizationId_status_idx" ON "WhatsappContactGroup"("organizationId", "status");
