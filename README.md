@@ -35,6 +35,34 @@ bun run dev
 - `bun run prisma:migrate:dev`: Apply database migrations
 - `bun run grant:super-admin -- --workos-user-id=<id>`: Grant platform super-admin role
 - `bun run seed:workos-roles`: Seed required WorkOS organization roles
+
+## Documentation & Knowledge Base
+
+Public platform documentation is served dynamically at `/en/docs` (or
+`/id/docs`), powered by database-backed Markdown, vector embeddings, and
+MCP-captured visual screenshots.
+
+### Knowledge Base Architecture
+
+- **Markdown Sources**: `content/knowledge-base/**/*.md` (raw Markdown files
+  with YAML frontmatter).
+- **Static Screenshots**: `public/kb-assets/**/*.png` (retina UI captures).
+- **Database Sync & Embeddings**: Synchronized into PostgreSQL table
+  `KnowledgeDocument` with vector embeddings for semantic and AI search.
+
+### Knowledge Base Commands
+
+```bash
+# 1. Capture real visual screenshots & documentation via MCP (chrome-devtools-mcp)
+./scripts/kb-agent.sh user /whatsapp/api-keys "Capture WhatsApp API Key flow"
+
+# 2. Sync / seed all markdown docs from content/knowledge-base/ into database
+bun run scripts/seed-runner.ts --seed=KnowledgeDocs
+
+# 3. Run all system seeders (includes KnowledgeDocs, currencies, billing plans)
+bun run seed:system
+```
+
 ## Database & Seed Data
 
 ### Dumping seed data
@@ -55,11 +83,14 @@ The SQL files use `INSERT ... ON CONFLICT DO NOTHING`, so restores are idempoten
 ```bash
 bun run db:reset               # interactive — will prompt before each step
 bun run db:reset --yes        # non-interactive (skips confirmation prompt, restore still runs)
+```
 
 `db:reset` runs through all steps, including seed restore. Use `--yes` to skip
 interactive confirmation prompts (restore:seeds still runs automatically).
+
 1. **Drop & recreate DB** — destroys all data
-2. **Regenerate migrations?** — say `y` if migration history is broken (removes `prisma/migrations`, runs `migrate dev`)
+2. **Regenerate migrations?** — say `y` if migration history is broken
+   (removes `prisma/migrations`, runs `migrate dev`)
 3. **Run migrations?** — applies existing migrations via `migrate deploy`
 4. **Generate Prisma client**
 5. **Restore seeds** — replays `prisma/seeds/*.sql`
@@ -75,12 +106,12 @@ Use this when you want to manually fix migrations before running `db:reset`.
 
 ### Individual seed operations
 
-| Command | What it does |
-|---|---|
-| `bun run restore:seeds` | Replay `prisma/seeds/*.sql` via `SqlRestoreSeeder` |
-| `bun run seed:system` | Run all system seeders (currencies, billing plans, etc.) |
-| `bun run seed:dummy` | Run dummy seeders (test orgs, fake invoices, etc.) |
-| `bun run seed:all` | Run all seeders (system + dummy) |
+| Command                 | What it does                                             |
+| ----------------------- | -------------------------------------------------------- |
+| `bun run restore:seeds` | Replay `prisma/seeds/*.sql` via `SqlRestoreSeeder`       |
+| `bun run seed:system`   | Run all system seeders (currencies, billing plans, etc.) |
+| `bun run seed:dummy`    | Run dummy seeders (test orgs, fake invoices, etc.)       |
+| `bun run seed:all`      | Run all seeders (system + dummy)                         |
 
 ### Manual workflow (step-by-step)
 
@@ -104,19 +135,18 @@ bun run db:reset
 
 ### Seed file overview
 
-| File | Purpose |
-|---|---|
-| `prisma/seeds/manifest.ts` | List of tables to dump/restore, in FK-safe order |
-| `prisma/seeds/*.sql` | Dumped data (gitignored — local only) |
-| `lib/seeders/system/sql-restore.seeder.ts` | Seeder that replays `.sql` files |
-| `lib/seeders/system/` | Other system seeders (billing, currency, etc.) |
-| `lib/seeders/dummy/` | Dev-only seeders with fake/test data |
-| `scripts/db-reset.ts` | Interactive DB reset workflow |
-| `scripts/db-drop.ts` | Just drop the database |
-| `scripts/dump-seed-data.ts` | Dump live data to `.sql` files |
+| File                                       | Purpose                                          |
+| ------------------------------------------ | ------------------------------------------------ |
+| `prisma/seeds/manifest.ts`                 | List of tables to dump/restore, in FK-safe order |
+| `prisma/seeds/*.sql`                       | Dumped data (gitignored — local only)            |
+| `lib/seeders/system/sql-restore.seeder.ts` | Seeder that replays `.sql` files                 |
+| `lib/seeders/system/`                      | Other system seeders (billing, currency, etc.)   |
+| `lib/seeders/dummy/`                       | Dev-only seeders with fake/test data             |
+| `scripts/db-reset.ts`                      | Interactive DB reset workflow                    |
+| `scripts/db-drop.ts`                       | Just drop the database                           |
+| `scripts/dump-seed-data.ts`                | Dump live data to `.sql` files                   |
 
 **Gitignore:** `prisma/seeds/*.sql` are local-only and not committed.
-
 
 ## Testing
 
@@ -136,6 +166,7 @@ GitHub's merge queue. Component and deterministic legacy browser suites run
 nightly, outside the pull request critical path.
 
 ### Coverage
+
 Coverage is logic-only and enforced by Bun and Codecov:
 
 - Project line coverage: at least 85%
@@ -147,6 +178,7 @@ Coverage is logic-only and enforced by Bun and Codecov:
 - Changed-only LCOV is not uploaded as project coverage
 
 ### Excluded from coverage
+
 - `**/*.tsx` — Presentation and component rendering
 - `**/*.test.ts(x)`, declarations, fixtures, and generated output
 - `**/prisma/**` — Generated Prisma client
@@ -154,6 +186,7 @@ Coverage is logic-only and enforced by Bun and Codecov:
   `scripts/test-suites.ts`
 
 ### Mocking rules
+
 See `AGENTS.md` for Bun `mock.module` rules. Full component and browser suites
 run nightly or by manual dispatch; small affected-feature Playwright smoke
 flows are the automated UI gate for pull requests.

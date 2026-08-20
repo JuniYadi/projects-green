@@ -75,8 +75,13 @@ model DocsKnowledgeDocument {
   id                    String   @id @default(cuid())
   organizationId        String?
   path                  String
+  locale                String   @default("en") @db.VarChar(10)
   title                 String
   purpose               String
+  category              String   @default("General")
+  contentMarkdown       String?  @db.Text
+  contentHash           String?  @db.VarChar(64)
+  isPublic              Boolean  @default(true)
   howTo                 String[]
   notes                 String[]
   searchText            String
@@ -85,7 +90,9 @@ model DocsKnowledgeDocument {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  @@index([organizationId, path])
+  @@unique([path, locale, organizationId])
+  @@index([organizationId, path, locale])
+  @@index([isPublic, category, locale])
   @@index([organizationId, updatedAt(sort: Desc)])
   @@index([updatedAt(sort: Desc)])
   @@map("KnowledgeDocument")
