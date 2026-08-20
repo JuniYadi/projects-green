@@ -7,8 +7,8 @@
 
 import type { Job } from "bullmq"
 import { BaseJob } from "@/lib/queue/base-job"
-import { prisma } from "@/lib/prisma"
 import {
+  recordProcessingResult,
   processInboundMessage,
   processDeliveryStatus,
 } from "../webhooks.service"
@@ -61,12 +61,14 @@ export class WebhookRetryJob extends BaseJob {
       } else {
         await processDeliveryStatus(payload as any, deviceId, organizationId)
       }
+      await recordProcessingResult(eventId, "SUCCESS")
     } catch (error) {
       const maxAttempts =
         typeof job.opts.attempts === "number" ? job.opts.attempts : 3
       const isFinalAttempt = job.attemptsMade + 1 >= maxAttempts
 
       if (isFinalAttempt) {
+        await recordProcessingResult(eventId, "FAILED", String(error))
         await createDeadLetter({
           deviceId,
           organizationId,

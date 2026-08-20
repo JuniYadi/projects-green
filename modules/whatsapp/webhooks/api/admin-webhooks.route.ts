@@ -18,7 +18,12 @@ import {
   toDeliveryLogDTO,
   type WebhookDeliveryLogDTO,
 } from "../webhook-dispatcher.service"
-
+import { listWebhookEvents } from "../webhooks.service"
+import {
+  listDeadLetters,
+  getDeadLetterById,
+  replayDeadLetter,
+} from "../services/webhook-dead-letter.service"
 type RouteSet = { status?: number | string }
 type AdminGuard = (set: RouteSet) => Promise<AdminActorContext | AdminApiError>
 
@@ -33,11 +38,145 @@ export const createAdminWebhooksRoutes = (
 
   return (
     new Elysia({ prefix: "/admin/whatsapp/webhooks" })
+      // GET /events — list all webhook events (super admin, with org/device filter)
+      .get("/events", async ({ query, set }: any) => {
+        const actor = await guard(set)
+        if (isAdminError(actor)) return actor
+
+        const page = Math.max(Number(query.page) || 1, 1)
+        const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100)
+
+        const result = await listWebhookEvents({
+          organizationId: query.organizationId || undefined,
+          whatsappDeviceId: query.deviceId || undefined,
+          eventType: query.type,
+          processingStatus: query.status,
+          from: query.from,
+          to: query.to,
+          page,
+          limit,
+        })
+
+        return { ok: true, data: result.data, meta: result.meta }
+      })
+
+      // GET /dead-letter — list dead letters (super admin, with optional org/device filter)
+      .get("/dead-letter", async ({ query, set }: any) => {
+        const actor = await guard(set)
+        if (isAdminError(actor)) return actor
+
+        const page = Math.max(Number(query.page) || 1, 1)
+        const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100)
+
+        const result = await listDeadLetters({
+          organizationId: query.organizationId || undefined,
+          deviceId: query.deviceId || undefined,
+          eventType: query.eventType,
+          replayStatus: query.replayStatus,
+          from: query.from,
+          to: query.to,
+          page,
+          limit,
+        })
+
+        return { ok: true, data: result.data, meta: result.meta }
+      })
+
+      // GET /dead-letter/stats — webhook dead letter stats (super admin)
+      .get("/dead-letter/stats", async ({ query, set }: any) => {
+        const actor = await guard(set)
+        if (isAdminError(actor)) return actor
+
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+        const where: Prisma.WhatsappWebhookDeadLetterWhereInput = {
+          failedAt: { gte: oneHourAgo },
+        }
+        if (query.organizationId) {
+          where.organizationId = query.organizationId
+        }
+        if (query.deviceId) {
+          where.deviceId = query.deviceId
+        }
+
+        const recentFailures = await prisma.whatsappWebhookDeadLetter.count({
+          where,
+        })
+
+        return {
+          ok: true,
+          data: {
+            recentFailures,
+            windowMinutes: 60,
+          },
+        }
+      })
+
+      // GET /dead-letter/:id — get single dead letter detail (super admin)
+      .get("/dead-letter/:id", async ({ params: { id }, set }: any) => {
+        const actor = await guard(set)
+        if (isAdminError(actor)) return actor
+
+        const deadLetter = await getDeadLetterById(id)
+        if (!deadLetter) {
+          set.status = 404
+          return {
+            ok: false,
+            error: "NOT_FOUND",
+            message: "Dead letter not found",
+          }
+        }
+
+        return {
+          ok: true,
+          data: {
+            id: deadLetter.id,
+            deviceId: deadLetter.deviceId,
+            eventType: deadLetter.eventType,
+            rawPayload: deadLetter.rawPayload as object,
+            errorMessage: deadLetter.errorMessage,
+            attemptCount: deadLetter.attemptCount,
+            failedAt: deadLetter.failedAt,
+            replayedAt: deadLetter.replayedAt,
+            replayStatus: deadLetter.replayStatus,
+          },
+        }
+      })
+
+      // POST /dead-letter/:id/replay — replay dead letter (super admin)
+      .post("/dead-letter/:id/replay", async ({ params: { id }, set }: any) => {
+        const actor = await guard(set)
+        if (isAdminError(actor)) return actor
+
+        const deadLetter = await getDeadLetterById(id)
+        if (!deadLetter) {
+          set.status = 404
+          return {
+            ok: false,
+            error: "NOT_FOUND",
+            message: "Dead letter not found",
+          }
+        }
+
+        try {
+          await replayDeadLetter(id)
+          return {
+            ok: true,
+            message: "Webhook re-enqueued for processing",
+          }
+        } catch (error) {
+          set.status = 500
+          return {
+            ok: false,
+            error: "REPLAY_FAILED",
+            message: String(error),
+          }
+        }
+      })
+
       // GET / — list all webhooks (super admin, with org/device filter)
       .get("/", async ({ query, set }: any) => {
         const actor = await guard(set)
         if (isAdminError(actor)) return actor
-
         const page = Math.max(Number(query.page) || 1, 1)
         const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100)
         const skip = (page - 1) * limit

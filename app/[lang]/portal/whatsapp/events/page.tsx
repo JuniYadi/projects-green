@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Phone, ArrowsClockwise } from "@phosphor-icons/react"
+import { Phone } from "@phosphor-icons/react"
 
 import {
   Card,
@@ -10,15 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
 import { eden } from "@/lib/eden"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import {
@@ -31,6 +22,11 @@ import {
   type WebhookEventFilterState,
 } from "@/modules/whatsapp/webhooks/ui/webhook-event-filter"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
+
+type OrganizationListItem = {
+  id: string
+  name: string
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,12 +55,19 @@ function makeDeviceLabel(device: DeviceListItem): string {
   return `${device.phoneNumber}${device.environment === "SANDBOX" ? " (Sandbox)" : ""}`
 }
 
+function makeOrganizationLabel(org: OrganizationListItem): string {
+  return org.name
+}
+
 // ─── Page Component ───────────────────────────────────────────────────────────
 
 export default function PortalWhatsAppWebhookEventsPage() {
   // Device list
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
-  const [selectedDeviceId, setSelectedDeviceId] = React.useState<string>("")
+  // Organizations list (for filter dropdown)
+  const [organizations, setOrganizations] = React.useState<
+    OrganizationListItem[]
+  >([])
 
   // Events
   const [events, setEvents] = React.useState<WebhookEventDTO[]>([])
@@ -81,33 +84,31 @@ export default function PortalWhatsAppWebhookEventsPage() {
     React.useState<WebhookEventFilterState>(DEFAULT_FILTER_STATE)
   const [page, setPage] = React.useState(1)
 
-  // ── Load devices on mount ────────────────────────────────────────────────
-
-  const loadDevices = React.useCallback(async () => {
-    try {
-      const response = await whatsappClient.devices.list()
-      setDevices(response.devices)
-    } catch (err) {
-      console.error("Failed to load devices:", err)
-    }
-  }, [])
+  // ── Load data on mount ────────────────────────────────────────────────
 
   React.useEffect(() => {
     ;(async () => {
-      await loadDevices()
-    })()
-  }, [loadDevices])
+      try {
+        const response = await whatsappClient.devices.list()
+        setDevices(response.devices)
 
-  // ── Load events when device, filters, or page changes ────────────────────
+        const orgRes = await eden.api.admin.organizations.get({
+          $query: { limit: "100" },
+        })
+        const orgBody = orgRes.data as unknown as {
+          ok: boolean
+          organizations: OrganizationListItem[]
+        }
+        if (orgBody.ok) setOrganizations(orgBody.organizations)
+      } catch (err) {
+        console.error("Failed to load filters:", err)
+      }
+    })()
+  }, [])
+
+  // ── Load events on mount + filter/page change ────────────────────────────
 
   const loadEvents = React.useCallback(async () => {
-    if (!selectedDeviceId) {
-      setPageState("loaded")
-      setEvents([])
-      setMeta({ total: 0, page: 1, totalPages: 0 })
-      return
-    }
-
     setPageState("loading")
     setErrorMessage("")
 
@@ -117,6 +118,12 @@ export default function PortalWhatsAppWebhookEventsPage() {
         limit: "20",
       }
 
+      if (filters.organizationId && filters.organizationId !== "all") {
+        query.organizationId = filters.organizationId
+      }
+      if (filters.deviceId !== "all") {
+        query.deviceId = filters.deviceId
+      }
       if (filters.eventType !== "all") {
         query.type = filters.eventType
       }
@@ -130,14 +137,17 @@ export default function PortalWhatsAppWebhookEventsPage() {
         query.to = filters.dateTo
       }
 
-      const { data, error } = await eden.api.whatsapp.webhooks[
-        selectedDeviceId
-      ].events.get({
-        $query: query,
-      })
+      const { data, error } = await eden.api.admin.whatsapp.webhooks.events.get(
+        {
+          $query: query,
+        }
+      )
 
       if (error) {
-        throw new Error(error.message ?? "Failed to load events")
+        throw new Error(
+          (error as { message?: string })?.message ??
+            "Failed to load webhook events"
+        )
       }
 
       const result = data as unknown as EventsApiResponse
@@ -150,21 +160,13 @@ export default function PortalWhatsAppWebhookEventsPage() {
       setErrorMessage(message)
       setPageState("error")
     }
-  }, [selectedDeviceId, filters, page])
+  }, [filters, page])
 
   React.useEffect(() => {
     ;(async () => {
       await loadEvents()
     })()
   }, [loadEvents])
-
-  // ── Handlers ─────────────────────────────────────────────────────────────
-
-  const handleDeviceChange = (deviceId: string) => {
-    setSelectedDeviceId(deviceId)
-    setPage(1)
-  }
-
   const handleFilterChange = (newFilters: WebhookEventFilterState) => {
     setFilters(newFilters)
     setPage(1)
@@ -190,93 +192,41 @@ export default function PortalWhatsAppWebhookEventsPage() {
         </p>
       </div>
 
-      {/* Device Selector */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Device</CardTitle>
-          <CardDescription>
-            Select a device to view its webhook events.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-end gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="device-select">WhatsApp Device</Label>
-              <Select
-                value={selectedDeviceId}
-                onValueChange={handleDeviceChange}
-              >
-                <SelectTrigger id="device-select" className="w-80">
-                  <SelectValue placeholder="Select a device…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {devices.map((device) => (
-                    <SelectItem key={device.id} value={device.id}>
-                      <span className="flex items-center gap-2">
-                        <Phone className="size-3.5" />
-                        {makeDeviceLabel(device)}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Filter Bar */}
-      {selectedDeviceId && (
-        <WebhookEventFilter
-          eventTypes={EVENT_TYPES}
-          statuses={PROCESSING_STATUSES}
-          devices={devices.map((d) => ({
-            id: d.id,
-            label: makeDeviceLabel(d),
-          }))}
-          onFilterChange={handleFilterChange}
-          initialFilters={filters}
-          showDeviceFilter={false}
-        />
-      )}
+      <WebhookEventFilter
+        eventTypes={EVENT_TYPES}
+        statuses={PROCESSING_STATUSES}
+        devices={devices.map((d) => ({
+          id: d.id,
+          label: makeDeviceLabel(d),
+        }))}
+        organizations={organizations.map((o) => ({
+          id: o.id,
+          label: makeOrganizationLabel(o),
+        }))}
+        onFilterChange={handleFilterChange}
+        initialFilters={filters}
+        showDeviceFilter={true}
+        showOrganizationFilter={true}
+      />
 
       {/* Events Table */}
       <Card>
         <CardHeader>
           <CardTitle>Event Log</CardTitle>
           <CardDescription>
-            {selectedDeviceId
-              ? "Webhook events for the selected device"
-              : "Select a device above to view its webhook events"}
+            Webhook events across all devices and organizations.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!devices.length && pageState !== "error" ? (
+          {!devices.length && !organizations.length && pageState !== "error" ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Phone
                 className="mb-3 size-10 text-muted-foreground"
                 weight="fill"
               />
               <p className="text-sm text-muted-foreground">
-                No devices found. Add a WhatsApp device first.
-              </p>
-              <Button
-                variant="outline"
-                className="mt-3"
-                onClick={() => void loadDevices()}
-              >
-                <ArrowsClockwise className="mr-2 size-4" />
-                Retry
-              </Button>
-            </div>
-          ) : !selectedDeviceId ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Phone
-                className="mb-3 size-10 text-muted-foreground"
-                weight="fill"
-              />
-              <p className="text-sm text-muted-foreground">
-                Select a device to view its webhook events.
+                No devices or organizations found.
               </p>
             </div>
           ) : (

@@ -22,6 +22,7 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type WebhookEventFilterState = {
+  organizationId?: string
   eventType: string
   processingStatus: string
   deviceId: string
@@ -30,6 +31,7 @@ export type WebhookEventFilterState = {
 }
 
 export const DEFAULT_FILTER_STATE: WebhookEventFilterState = {
+  organizationId: "all",
   eventType: "all",
   processingStatus: "all",
   deviceId: "all",
@@ -41,9 +43,11 @@ export type WebhookEventFilterProps = {
   eventTypes: string[]
   statuses: string[]
   devices: { id: string; label: string }[]
+  organizations?: { id: string; name: string }[]
   onFilterChange: (filters: WebhookEventFilterState) => void
   initialFilters: WebhookEventFilterState
   showDeviceFilter: boolean
+  showOrganizationFilter?: boolean
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -52,21 +56,24 @@ export function WebhookEventFilter({
   eventTypes,
   statuses,
   devices,
+  organizations,
   onFilterChange,
   initialFilters,
   showDeviceFilter,
+  showOrganizationFilter,
 }: WebhookEventFilterProps) {
   // Local state for date inputs — avoids stale closure over initialFilters
   const [localDateFrom, setLocalDateFrom] = useState(initialFilters.dateFrom)
   const [localDateTo, setLocalDateTo] = useState(initialFilters.dateTo)
 
   const hasActiveFilters =
+    (initialFilters.organizationId &&
+      initialFilters.organizationId !== "all") ||
     initialFilters.eventType !== "all" ||
     initialFilters.processingStatus !== "all" ||
     initialFilters.deviceId !== "all" ||
     initialFilters.dateFrom !== "" ||
     initialFilters.dateTo !== ""
-
   const updateFilter = useCallback(
     (key: keyof WebhookEventFilterState, value: string) => {
       onFilterChange({ ...initialFilters, [key]: value })
@@ -81,9 +88,36 @@ export function WebhookEventFilter({
   }, [onFilterChange])
 
   const showDeviceDropdown = showDeviceFilter && devices.length > 0
+  const showOrganizationDropdown =
+    showOrganizationFilter && organizations && organizations.length > 0
 
   return (
     <div className="flex flex-wrap items-end gap-3">
+      {/* Organization */}
+      {showOrganizationDropdown && (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted-foreground">
+            Organization
+          </label>
+          <Select
+            value={initialFilters.organizationId}
+            onValueChange={(val) => updateFilter("organizationId", val)}
+          >
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="All organizations" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              {organizations.map((org) => (
+                <SelectItem key={org.id} value={org.id}>
+                  {org.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {/* Event Type */}
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-medium text-muted-foreground">

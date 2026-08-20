@@ -6,6 +6,8 @@ import { webhookDispatcher } from "./webhook-dispatcher.service"
 import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
 import { downloadAndSave } from "@/modules/whatsapp/media/media.service"
 import { upsertWhatsappContactFromMessage } from "@/modules/whatsapp/contacts/contacts.service"
+import { WhatsappBillingService } from "@/modules/whatsapp/billing/whatsapp-billing.service"
+import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 
 export type ParsedMessagePayload = {
   from: string
@@ -431,12 +433,71 @@ export async function processDeliveryStatus(
       error: errorDetails,
     },
   })
+
   // Upsert contact on successful delivery statuses (SENT, DELIVERED, READ)
   const DELIVERY_STATUSES_FOR_UPSERT = new Set<WhatsappMessageDeliveryStatus>([
     WhatsappMessageDeliveryStatus.SENT,
     WhatsappMessageDeliveryStatus.DELIVERED,
     WhatsappMessageDeliveryStatus.READ,
   ])
+
+  // Reconcile and refund/revert billing ledger on delivery failure
+  if (mappedStatus === WhatsappMessageDeliveryStatus.FAILED && waMessageId) {
+    try {
+      const billingLedger = await prisma.whatsappBillingLedger.findFirst({
+        where: { waMessageId, isReverted: false },
+      })
+      if (billingLedger) {
+        await prisma.whatsappBillingLedger.update({
+          where: { id: billingLedger.id },
+          data: {
+            isReverted: true,
+            status: "REVERTED_FAILED",
+            revertReason: errorDetails ?? "Meta delivery failed",
+            revertedAt: new Date(),
+            lastStatus: "FAILED",
+          },
+        })
+
+        // Automatically restore device allowance quota
+        if (billingLedger.whatsappDeviceId && billingLedger.quotaValue) {
+          const billing = new WhatsappBillingService(
+            prisma,
+            new BillingTransactionService(prisma)
+          )
+          await billing
+            .restoreAllowance(billingLedger.whatsappDeviceId, {
+              default: billingLedger.quotaValue,
+            })
+            .catch((restoreErr: unknown) => {
+              console.warn(
+                `[whatsapp-webhook] failed to restore allowance for ledger ${billingLedger.id}:`,
+                restoreErr
+              )
+            })
+        }
+      }
+    } catch (ledgerErr) {
+      console.warn(
+        `[whatsapp-webhook] failed to update billing ledger for failed message ${waMessageId}:`,
+        ledgerErr
+      )
+    }
+  } else if (
+    mappedStatus &&
+    DELIVERY_STATUSES_FOR_UPSERT.has(mappedStatus) &&
+    waMessageId
+  ) {
+    // Confirm billing ledger on successful delivery
+    await prisma.whatsappBillingLedger
+      .updateMany({
+        where: { waMessageId, status: "CHARGED_PENDING_VERIFY" },
+        data: { status: "CONFIRMED", lastStatus: mappedStatus },
+      })
+      .catch(() => {
+        // Non-critical
+      })
+  }
   if (
     mappedStatus &&
     DELIVERY_STATUSES_FOR_UPSERT.has(mappedStatus) &&
@@ -548,7 +609,7 @@ export async function handleIncomingWebhook(
  * Params for listing webhook events.
  */
 export type ListWebhookEventsParams = {
-  organizationId: string
+  organizationId?: string
   whatsappDeviceId?: string
   eventType?: string
   processingStatus?: string
@@ -627,8 +688,11 @@ export async function listWebhookEvents(
     limit = 20,
   } = params
 
-  const where: Prisma.WhatsappWebhookEventWhereInput = { organizationId }
+  const where: Prisma.WhatsappWebhookEventWhereInput = {}
 
+  if (organizationId) {
+    where.organizationId = organizationId
+  }
   if (whatsappDeviceId) {
     where.whatsappDeviceId = whatsappDeviceId
   }

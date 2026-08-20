@@ -138,9 +138,14 @@ export const createAdminDevicesRoutes = (
 
       const take = Math.min(Number(query.take) || 50, 100)
       const skip = Number(query.skip) || 0
+      const where: Prisma.WhatsappDeviceWhereInput = {}
+      if (query.organizationId) {
+        where.organizationId = query.organizationId
+      }
 
       const [devices, total] = await Promise.all([
         prisma.whatsappDevice.findMany({
+          where,
           orderBy: { createdAt: "desc" },
           take,
           skip,
@@ -150,7 +155,7 @@ export const createAdminDevicesRoutes = (
             },
           },
         }),
-        prisma.whatsappDevice.count(),
+        prisma.whatsappDevice.count({ where }),
       ])
 
       return {
@@ -751,4 +756,12 @@ export const createAdminDevicesRoutes = (
         return toServerError(set, "Unable to top up addon quota.")
       }
     })
+}
+
+export const createAdminWhatsappDevicesRoutes = (
+  deps: { requireSuperAdmin?: AdminGuard } = {}
+) => {
+  return new Elysia({ prefix: "/admin/whatsapp" }).use(
+    createAdminDevicesRoutes(deps)
+  )
 }
