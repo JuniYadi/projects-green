@@ -9,6 +9,9 @@ import {
   ArrowRight,
 } from "@phosphor-icons/react"
 
+import { useParams } from "next/navigation"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+
 const footerLinks = {
   Product: [
     { label: "App Hosting", href: "#hosting" },
@@ -34,8 +37,9 @@ const footerLinks = {
     { label: "Contact", href: "#contact" },
   ],
   Legal: [
-    { label: "Privacy Policy", href: "#privacy" },
-    { label: "Terms of Service", href: "#terms" },
+    { label: "Terms of Service", href: "/terms", isRoute: true },
+    { label: "Privacy Policy", href: "/privacy", isRoute: true },
+    { label: "Acceptable Use Policy", href: "/acceptable-use", isRoute: true },
     { label: "Cookie Policy", href: "#cookies" },
     { label: "DPA", href: "#dpa" },
   ],
@@ -95,6 +99,9 @@ export function CTASection() {
 }
 
 export function Footer() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+
   return (
     <footer className="border-t border-border bg-card">
       <div className="mx-auto max-w-7xl px-6 py-16">
@@ -145,16 +152,22 @@ export function Footer() {
                 {category}
               </h4>
               <ul className="space-y-2.5">
-                {links.map((link) => (
-                  <li key={link.label}>
-                    <a
-                      href={link.href}
-                      className="text-sm text-muted-foreground/70 transition-colors hover:text-foreground"
-                    >
-                      {link.label}
-                    </a>
-                  </li>
-                ))}
+                {links.map((link) => {
+                  const href =
+                    "isRoute" in link && link.isRoute
+                      ? `/${locale}${link.href}`
+                      : link.href
+                  return (
+                    <li key={link.label}>
+                      <Link
+                        href={href}
+                        className="text-sm text-muted-foreground/70 transition-colors hover:text-foreground"
+                      >
+                        {link.label}
+                      </Link>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           ))}
