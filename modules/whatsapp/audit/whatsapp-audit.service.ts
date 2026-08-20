@@ -31,7 +31,8 @@ export type WhatsappAuditAction =
   | "CONTACT_IMPORTED"
   | "CONTACT_GROUP_CREATED"
   | "CONTACT_GROUP_UPDATED"
-  // Webhook (outgoing — system to user)
+  // Webhook (incoming from Meta / outgoing — system to user)
+  | "WEBHOOK_REJECTED"
   | "WEBHOOK_SENT"
   | "WEBHOOK_DELIVERED"
   | "WEBHOOK_FAILED"

@@ -50,6 +50,7 @@ const mockDispatch = mock<Dispatch>(async () => undefined)
 const mockHandleEvent = mock<
   (payload: unknown, options: { rawBody: string }) => Promise<HandleResult>
 >(async () => ({ code: 200, message: "EVENT_RECEIVED", entries: [] }))
+const mockLogAudit = mock(async () => undefined)
 
 mock.module("../meta-apps.service", () => ({
   metaAppsService: {
@@ -60,12 +61,16 @@ mock.module("../meta-apps.service", () => ({
 mock.module("@/modules/whatsapp/webhooks/webhooks.service", () => ({
   createWebhookEvent: mockCreateWebhookEvent,
   recordProcessingResult: mockRecordProcessingResult,
+  handleIncomingWebhook: mock(async () => undefined),
 }))
 mock.module("@/modules/whatsapp/webhooks/jobs/webhook-retry.job", () => ({
   WebhookRetryJob: { dispatch: mockDispatch },
 }))
 mock.module("@/lib/whatsapp/handle-event", () => ({
   handleEventUseCase: mockHandleEvent,
+}))
+mock.module("@/modules/whatsapp/audit/whatsapp-audit.service", () => ({
+  logWhatsappAuditEvent: mockLogAudit,
 }))
 
 const { metaWebhookRoutes } = await import("./meta-webhook.route")
@@ -116,6 +121,7 @@ beforeEach(() => {
   mockRecordProcessingResult.mockReset()
   mockDispatch.mockReset()
   mockHandleEvent.mockReset()
+  mockLogAudit.mockReset()
   eventCounter = 0
   mockCreateWebhookEvent.mockImplementation(
     async () => `event-${++eventCounter}`
@@ -127,8 +133,8 @@ beforeEach(() => {
     message: "EVENT_RECEIVED",
     entries: [],
   })
+  mockLogAudit.mockResolvedValue(undefined)
 })
-
 describe("canonical Meta webhook ingress", () => {
   it("returns challenge only for matching active app token", async () => {
     mockResolveCredentials.mockResolvedValue(appCredentials)
@@ -376,5 +382,68 @@ describe("canonical Meta webhook ingress", () => {
     expect(response.status).toBe(500)
     expect(text).not.toContain("app-secret-1")
     expect(text).not.toContain("verify-token-1")
+  })
+  it("logs WEBHOOK_REJECTED audit event when signature is missing", async () => {
+    mockResolveCredentials.mockResolvedValue(appCredentials)
+
+    const response = await createTestApp().handle(
+      new Request("http://localhost/whatsapp/meta-webhook/key-1", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ object: "whatsapp_business_account" }),
+      })
+    )
+
+    expect(response.status).toBe(401)
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "WEBHOOK_REJECTED",
+        status: "FAILED",
+        organizationId: "system",
+        errorMessage: "MISSING_SIGNATURE",
+        details: expect.objectContaining({
+          webhookKey: "key-1",
+          metaAppId: "waba-1",
+        }),
+      })
+    )
+  })
+  it("logs WEBHOOK_REJECTED audit event when device is unmapped", async () => {
+    mockResolveCredentials.mockResolvedValue(appCredentials)
+    mockResolveDevice.mockResolvedValue(null)
+    const body = JSON.stringify({
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "entry-1",
+          changes: [
+            {
+              value: {
+                metadata: { phone_number_id: "unmapped-phone-999" },
+                messages: [{ id: "m-1" }],
+              },
+            },
+          ],
+        },
+      ],
+    })
+
+    const response = await createTestApp().handle(signedRequest(body))
+
+    expect(response.status).toBe(422)
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "WEBHOOK_REJECTED",
+        status: "FAILED",
+        organizationId: "system",
+        errorMessage: "UNKNOWN_DEVICE",
+        details: expect.objectContaining({
+          webhookKey: "key-1",
+          metaAppId: "waba-1",
+          phoneIds: ["unmapped-phone-999"],
+          unmappedPhoneIds: ["unmapped-phone-999"],
+        }),
+      })
+    )
   })
 })

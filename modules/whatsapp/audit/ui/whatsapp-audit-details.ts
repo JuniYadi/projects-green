@@ -8,7 +8,7 @@ export type ActionTone = "success" | "danger" | "warning" | "neutral"
 export function actionTone(action: string): ActionTone {
   if (/SYNCED|CREATED|UPDATED|SENT|DELIVERED|IMPORTED/.test(action))
     return "success"
-  if (/FAILED|CANCELLED|DELETED/.test(action)) return "danger"
+  if (/FAILED|CANCELLED|DELETED|REJECTED/.test(action)) return "danger"
   if (/REQUESTED|RETRIED|STATUS_CHANGED/.test(action)) return "warning"
   return "neutral"
 }
