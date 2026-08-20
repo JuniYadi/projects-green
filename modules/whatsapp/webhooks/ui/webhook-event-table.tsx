@@ -7,7 +7,7 @@
  */
 
 "use client"
-
+import Link from "next/link"
 import * as React from "react"
 import { useState, useCallback } from "react"
 import {
@@ -344,32 +344,38 @@ export function WebhookEventTable({
                       </TableCell>
                       <TableCell className="font-mono text-xs">
                         {event.waMessageId ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                className="group/wamid inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-                                onClick={(e) =>
-                                  handleCopyMessageId(e, event.waMessageId!)
-                                }
-                              >
-                                <span>
-                                  {maskWaMessageId(event.waMessageId)}
-                                </span>
-                                {copiedId === event.waMessageId ? (
-                                  <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                                ) : (
-                                  <Copy className="size-3.5 opacity-60 transition-opacity group-hover/wamid:opacity-100" />
-                                )}
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-sm font-mono text-xs break-all">
-                              <p>{event.waMessageId}</p>
-                              <p className="mt-0.5 text-[10px] text-muted-foreground">
-                                Click to copy full ID
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
+                          <div className="flex items-center gap-1">
+                            <Link
+                              href={`/console/whatsapp/messages/${encodeURIComponent(event.waMessageId)}`}
+                              className="font-mono text-xs text-primary hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {maskWaMessageId(event.waMessageId)}
+                            </Link>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="inline-flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                                  onClick={(e) =>
+                                    handleCopyMessageId(e, event.waMessageId!)
+                                  }
+                                >
+                                  {copiedId === event.waMessageId ? (
+                                    <Check className="size-3 text-emerald-600 dark:text-emerald-400" />
+                                  ) : (
+                                    <Copy className="size-3 opacity-60 hover:opacity-100" />
+                                  )}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-sm font-mono text-xs break-all">
+                                <p>{event.waMessageId}</p>
+                                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                                  Click to copy full ID
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
                         ) : (
                           <span className="px-1.5 text-muted-foreground">
                             —

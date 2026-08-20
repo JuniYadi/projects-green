@@ -157,10 +157,14 @@ describe("WebhookEventTable", () => {
         <WebhookEventTable events={sampleEvents} isLoading={false} />
       )
 
-      const copyBtn = getByText("wamid_abc123").closest("button")!
-      expect(copyBtn).toBeTruthy()
-      fireEvent.click(copyBtn)
+      const link = getByText("wamid_abc123")
+      expect(link.getAttribute("href")).toContain("wamid_abc123")
 
+      const parent = link.parentElement
+      expect(parent).toBeTruthy()
+      const copyBtn = parent?.querySelector("button")
+      expect(copyBtn).toBeTruthy()
+      if (copyBtn) fireEvent.click(copyBtn)
       expect(writeTextMock).toHaveBeenCalledWith("wamid_abc123")
     })
 
