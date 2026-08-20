@@ -87,37 +87,40 @@ export class WhatsappUsageService {
   }
 
   /**
-   * Aggregate WhatsApp costs from adjustments and usage ledger for a period.
+   * Aggregate WhatsApp costs and message categories for a period.
+   * Priority 1: WhatsappBillingLedger (Meta conversation categories: UTILITY, MARKETING, AUTHENTICATION, SERVICE, REPLY).
+   * Priority 2: Fallback to BillingAdjustment / BillingUsageLedger if no billing ledger rows exist.
    */
   async getCostSummary(
     organizationId: string,
     period: string
   ): Promise<CostSummaryDTO> {
-    const account = await prisma.billingAccount.findUnique({
-      where: { organizationId },
-      select: { id: true },
-    })
+    const [yearStr, monthStr] = period.split("-")
+    const year = Number(yearStr)
+    const month = Number(monthStr)
 
-    const [adjustments, ledgerEntries] = await Promise.all([
-      account
-        ? prisma.billingAdjustment.findMany({
-            where: {
-              billingAccountId: account.id,
-              createdAt: {
-                gte: new Date(`${period}-01`),
-                lt: new Date(
-                  Number(period.split("-")[1]) === 12
-                    ? Number(period.split("-")[0]) + 1
-                    : Number(period.split("-")[0]),
-                  Number(period.split("-")[1]) === 12
-                    ? 0
-                    : Number(period.split("-")[1]),
-                  1
-                ),
-              },
-            },
-          })
-        : Promise.resolve([]),
+    const startDate = new Date(`${period}-01`)
+    const endDate = new Date(
+      month === 12 ? year + 1 : year,
+      month === 12 ? 0 : month,
+      1
+    )
+
+    const [whatsappLedgerRows, account, ledgerEntries] = await Promise.all([
+      prisma.whatsappBillingLedger.findMany({
+        where: {
+          organizationId,
+          isReverted: false,
+          createdAt: {
+            gte: startDate,
+            lt: endDate,
+          },
+        },
+      }),
+      prisma.billingAccount.findUnique({
+        where: { organizationId },
+        select: { id: true },
+      }),
       prisma.billingUsageLedger.findMany({
         where: {
           organizationId,
@@ -129,11 +132,6 @@ export class WhatsappUsageService {
         },
       }),
     ])
-
-    const whatsappAdjustments = adjustments.filter((adj) => {
-      const meta = adj.metadataJson as Record<string, unknown> | null
-      return meta?.source === "WHATSAPP"
-    })
 
     const categoryMap = new Map<string, { count: number; total: number }>()
     const addCategory = (category: string, amount: number) => {
@@ -147,25 +145,54 @@ export class WhatsappUsageService {
     }
 
     let total = 0
-    for (const adj of whatsappAdjustments) {
-      const amount = toNum(adj.amount)
-      total += amount
-      const metadata = adj.metadataJson as Record<string, unknown> | null
-      const category =
-        typeof metadata?.category === "string"
-          ? metadata.category
-          : "WHATSAPP_ADJUSTMENT"
-      addCategory(category, amount)
-    }
-    for (const row of ledgerEntries) {
-      const amount = toNum(row.amountIdr)
-      total += amount
-      addCategory(row.category ?? "UNKNOWN", amount)
+
+    if (whatsappLedgerRows.length > 0) {
+      for (const row of whatsappLedgerRows) {
+        const cat = row.category ?? "UTILITY"
+        const cost = toNum(row.quotaValue)
+        total += cost
+        addCategory(cat, cost)
+      }
+    } else {
+      const adjustments = account
+        ? await prisma.billingAdjustment.findMany({
+            where: {
+              billingAccountId: account.id,
+              createdAt: {
+                gte: startDate,
+                lt: endDate,
+              },
+            },
+          })
+        : []
+
+      const whatsappAdjustments = adjustments.filter((adj) => {
+        const meta = adj.metadataJson as Record<string, unknown> | null
+        return meta?.source === "WHATSAPP"
+      })
+
+      for (const adj of whatsappAdjustments) {
+        const amount = toNum(adj.amount)
+        total += amount
+        const metadata = adj.metadataJson as Record<string, unknown> | null
+        const category =
+          typeof metadata?.category === "string" ? metadata.category : "UTILITY"
+        addCategory(category, amount)
+      }
+
+      for (const row of ledgerEntries) {
+        const amount = toNum(row.amountIdr)
+        total += amount
+        addCategory(row.category ?? "UTILITY", amount)
+      }
     }
 
     return {
       totalAmount: total,
-      totalEntries: whatsappAdjustments.length + ledgerEntries.length,
+      totalEntries:
+        whatsappLedgerRows.length > 0
+          ? whatsappLedgerRows.length
+          : categoryMap.size,
       byCategory: Array.from(categoryMap.entries()).map(([category, data]) => ({
         category,
         count: data.count,
