@@ -151,8 +151,8 @@ function getDeliveryBadgeConfig(status: string | null | undefined): {
 }
 function maskWaMessageId(id: string | null): string {
   if (!id) return "—"
-  if (id.length <= 16) return id
-  const prefix = id.slice(0, 10)
+  if (id.length <= 26) return id
+  const prefix = id.slice(0, 18)
   const suffix = id.slice(-6)
   return `${prefix}...${suffix}`
 }
