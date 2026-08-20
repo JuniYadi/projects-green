@@ -145,6 +145,25 @@ describe("WebhookEventTable", () => {
       expect(container.textContent).toContain("—")
     })
 
+    it("copies full WA Message ID to clipboard when clicked", async () => {
+      const writeTextMock = mock(() => Promise.resolve())
+      Object.defineProperty(navigator, "clipboard", {
+        value: { writeText: writeTextMock },
+        writable: true,
+        configurable: true,
+      })
+
+      const { getByText } = render(
+        <WebhookEventTable events={sampleEvents} isLoading={false} />
+      )
+
+      const copyBtn = getByText("wamid_abc123").closest("button")!
+      expect(copyBtn).toBeTruthy()
+      fireEvent.click(copyBtn)
+
+      expect(writeTextMock).toHaveBeenCalledWith("wamid_abc123")
+    })
+
     it("maps deliveryStatus to correct Badge variant classes", () => {
       const { container } = render(
         <WebhookEventTable events={sampleEvents} isLoading={false} />
