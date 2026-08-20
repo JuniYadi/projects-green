@@ -294,12 +294,17 @@ describe("Usage Routes", () => {
 
   describe("GET /usage/cost", () => {
     it("returns cost breakdown for period", async () => {
-      mockFindUniqueBillingAccount.mockImplementation(async () => ({
-        id: "ba-1",
-      }))
-      mockFindManyAdjustments.mockImplementation(async () => [
-        makeAdjustmentRow({ id: "adj-1", amount: new Decimal(500) }),
-        makeAdjustmentRow({ id: "adj-2", amount: new Decimal(300) }),
+      mockFindManyWhatsappLedger.mockImplementation(async () => [
+        makeWhatsappLedgerRow({
+          id: "wl-1",
+          category: "UTILITY",
+          quotaValue: new Decimal(2),
+        }),
+        makeWhatsappLedgerRow({
+          id: "wl-2",
+          category: "MARKETING",
+          quotaValue: new Decimal(5),
+        }),
       ])
 
       const app = createTestApp()
@@ -310,14 +315,11 @@ describe("Usage Routes", () => {
       expect(res.status).toBe(200)
       const body = await res.json()
       expect(body.ok).toBe(true)
-      expect(body.totalAmount).toBe(800)
+      expect(body.totalAmount).toBe(7)
       expect(body.totalEntries).toBe(2)
       expect(body.byCategory).toEqual([
-        {
-          category: "WHATSAPP_ADJUSTMENT",
-          count: 2,
-          totalCost: 800,
-        },
+        { category: "UTILITY", count: 1, totalCost: 2 },
+        { category: "MARKETING", count: 1, totalCost: 5 },
       ])
     })
 
