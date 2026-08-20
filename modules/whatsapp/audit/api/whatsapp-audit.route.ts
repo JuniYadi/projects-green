@@ -99,7 +99,7 @@ export const createWhatsappAuditRoutes = (
       const { page, limit, skip } = getPagination(query as any)
       const where = buildWhere(query as any)
 
-      const [total, logs] = await Promise.all([
+      const [total, rawLogs] = await Promise.all([
         prisma.whatsappAuditLog.count({ where }),
         prisma.whatsappAuditLog.findMany({
           where,
@@ -108,6 +108,29 @@ export const createWhatsappAuditRoutes = (
           take: limit,
         }),
       ])
+
+      const deviceIds = [
+        ...new Set(
+          rawLogs
+            .map((l) => l.deviceId)
+            .filter((id): id is string => Boolean(id))
+        ),
+      ]
+      const devices =
+        deviceIds.length > 0
+          ? await prisma.whatsappDevice.findMany({
+              where: { id: { in: deviceIds } },
+              select: { id: true, phoneNumber: true },
+            })
+          : []
+      const deviceMap = new Map(devices.map((d) => [d.id, d.phoneNumber]))
+
+      const logs = rawLogs.map((log) => ({
+        ...log,
+        deviceLabel: log.deviceId
+          ? (deviceMap.get(log.deviceId) ?? log.deviceId)
+          : null,
+      }))
 
       return {
         ok: true,
@@ -182,7 +205,7 @@ export const consoleWhatsappAuditRoutes = new Elysia({ prefix: "/audit" })
     const { page, limit, skip } = getPagination(query)
     const where = buildWhere(query, auth.organizationId)
 
-    const [total, logs] = await Promise.all([
+    const [total, rawLogs] = await Promise.all([
       prisma.whatsappAuditLog.count({ where }),
       prisma.whatsappAuditLog.findMany({
         where,
@@ -191,6 +214,27 @@ export const consoleWhatsappAuditRoutes = new Elysia({ prefix: "/audit" })
         take: limit,
       }),
     ])
+
+    const deviceIds = [
+      ...new Set(
+        rawLogs.map((l) => l.deviceId).filter((id): id is string => Boolean(id))
+      ),
+    ]
+    const devices =
+      deviceIds.length > 0
+        ? await prisma.whatsappDevice.findMany({
+            where: { id: { in: deviceIds } },
+            select: { id: true, phoneNumber: true },
+          })
+        : []
+    const deviceMap = new Map(devices.map((d) => [d.id, d.phoneNumber]))
+
+    const logs = rawLogs.map((log) => ({
+      ...log,
+      deviceLabel: log.deviceId
+        ? (deviceMap.get(log.deviceId) ?? log.deviceId)
+        : null,
+    }))
 
     return {
       ok: true,
