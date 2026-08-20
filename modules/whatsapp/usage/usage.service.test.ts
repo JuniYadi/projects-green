@@ -220,23 +220,26 @@ describe("WhatsappUsageService", () => {
   // ── getCostSummary ───────────────────────────────────────────────────────
 
   describe("getCostSummary", () => {
-    it("returns total amount from billing adjustments with WHATSAPP source", async () => {
-      mockFindUniqueBillingAccount.mockImplementation(async () => ({
-        id: "ba-1",
-      }))
-      mockFindManyAdjustments.mockImplementation(async () => [
-        makeAdjustmentRow({ id: "adj-1", amount: new Decimal(500) }),
-        makeAdjustmentRow({ id: "adj-2", amount: new Decimal(300) }),
+    it("aggregates Meta conversation categories from WhatsappBillingLedger", async () => {
+      mockFindManyWhatsappLedger.mockImplementation(async () => [
+        makeWhatsappLedgerRow({
+          id: "wl-1",
+          category: "UTILITY",
+          quotaValue: new Decimal(2),
+        }),
+        makeWhatsappLedgerRow({
+          id: "wl-2",
+          category: "MARKETING",
+          quotaValue: new Decimal(5),
+        }),
       ])
+
       const result = await service.getCostSummary("org-1", "2026-06")
-      expect(result.totalAmount).toBe(800)
+      expect(result.totalAmount).toBe(7)
       expect(result.totalEntries).toBe(2)
       expect(result.byCategory).toEqual([
-        {
-          category: "WHATSAPP_ADJUSTMENT",
-          count: 2,
-          totalCost: 800,
-        },
+        { category: "UTILITY", count: 1, totalCost: 2 },
+        { category: "MARKETING", count: 1, totalCost: 5 },
       ])
     })
 
