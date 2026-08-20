@@ -151,6 +151,7 @@ export default function WhatsAppLedgerPage() {
   ])
 
   React.useEffect(() => {
+    let cancelled = false
     whatsappClient.devices
       .list()
       .then(
@@ -158,6 +159,7 @@ export default function WhatsAppLedgerPage() {
           ok: boolean
           devices?: { id: string; phoneNumber: string }[]
         }) => {
+          if (cancelled) return
           if (res && res.ok && Array.isArray(res.devices)) {
             setDevices(
               res.devices.map((d) => ({
@@ -169,6 +171,9 @@ export default function WhatsAppLedgerPage() {
         }
       )
       .catch(() => {})
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const handleSearch = (e: React.FormEvent) => {

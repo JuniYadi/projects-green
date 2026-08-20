@@ -182,13 +182,17 @@ export default function WebhookDeadLetterPage({
     const run = async () => {
       setState("loading")
       try {
+        const query: Record<string, string> = {
+          page: "1",
+          limit: "100",
+        }
+        if (selectedOrgId !== "all") {
+          query.organizationId = selectedOrgId
+        }
         const deadLetterRes = await eden.api.admin.whatsapp.webhooks[
           "dead-letter"
         ].get({
-          $query: {
-            page: "1",
-            limit: "100",
-          },
+          $query: query,
         })
 
         if (cancelled) return
@@ -224,7 +228,7 @@ export default function WebhookDeadLetterPage({
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [selectedOrgId])
 
   React.useEffect(() => {
     return loadData()
