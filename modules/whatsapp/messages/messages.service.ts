@@ -36,7 +36,7 @@ import {
   UnsupportedDestinationCountryError,
   getWhatsappSendErrorMessage,
 } from "./messages.errors"
-
+import { normalizeIndonesianPhoneNumber } from "./phone-number"
 export type SendMessageResult = {
   jobId: string
   messageId: string
@@ -99,11 +99,15 @@ async function assertCustomerServiceWindowOpen(
   organizationId: string,
   phoneNumber: string
 ) {
+  const normalizedPhone =
+    normalizeIndonesianPhoneNumber(phoneNumber) ?? phoneNumber
   const conversation = await prisma.whatsappConversation.findFirst({
-    where: { organizationId, contactPhone: phoneNumber },
+    where: {
+      organizationId,
+      contactPhone: { in: [normalizedPhone, phoneNumber] },
+    },
     select: { lastDirection: true, lastMessageAt: true },
   })
-
   const windowStart = new Date(Date.now() - CUSTOMER_SERVICE_WINDOW_MS)
   const isOpen =
     conversation?.lastDirection === "INBOX" &&
@@ -928,18 +932,19 @@ export const messageService: MessageService = {
     phoneNumber: string,
     deviceId?: string
   ) {
+    const normalizedPhone =
+      normalizeIndonesianPhoneNumber(phoneNumber) ?? phoneNumber
     let conversation = await prisma.whatsappConversation.findFirst({
       where: {
         organizationId,
-        contactPhone: phoneNumber,
+        contactPhone: { in: [normalizedPhone, phoneNumber] },
       },
     })
-
     if (!conversation) {
       conversation = await prisma.whatsappConversation.create({
         data: {
           organizationId,
-          contactPhone: phoneNumber,
+          contactPhone: normalizedPhone,
           lastDirection: "OUTBOX",
           lastMessageAt: new Date(),
           whatsappDeviceId: deviceId,
@@ -950,6 +955,7 @@ export const messageService: MessageService = {
       await prisma.whatsappConversation.update({
         where: { id: conversation.id },
         data: {
+          contactPhone: normalizedPhone,
           lastDirection: "OUTBOX",
           lastMessageAt: new Date(),
           ...(deviceId ? { whatsappDeviceId: deviceId } : {}),
