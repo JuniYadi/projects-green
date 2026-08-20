@@ -34,7 +34,7 @@ export default async function AcceptableUsePage({
 
   return (
     <LegalPageLayout locale={locale} activeDoc="acceptable-use">
-      <LegalDocumentView locale={locale} docKey="acceptableUse" />
+      <LegalDocumentView locale={locale} docKey="acceptable-use" />
     </LegalPageLayout>
   )
 }

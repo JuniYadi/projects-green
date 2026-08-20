@@ -43,6 +43,11 @@ describe("LegalPageLayout Component", () => {
     })
     expect(aupLink.getAttribute("aria-current")).toBeNull()
     expect(aupLink.getAttribute("href")).toBe("/en/acceptable-use")
+
+    const localeSwitchLink = view.getByRole("link", {
+      name: /Bahasa Indonesia/i,
+    })
+    expect(localeSwitchLink.getAttribute("href")).toBe("/id/terms")
   })
 
   it("renders Indonesian layout and active indicator for privacy", () => {
@@ -61,6 +66,11 @@ describe("LegalPageLayout Component", () => {
     })
     expect(privacyLink.getAttribute("aria-current")).toBe("page")
     expect(privacyLink.getAttribute("href")).toBe("/id/privacy")
+
+    const localeSwitchLink = view.getByRole("link", {
+      name: /English/i,
+    })
+    expect(localeSwitchLink.getAttribute("href")).toBe("/en/privacy")
   })
 })
 
@@ -94,7 +104,7 @@ describe("LegalDocumentView Component", () => {
 
   it("renders Acceptable Use document sections in English", () => {
     const view = render(
-      <LegalDocumentView locale="en" docKey="acceptableUse" />
+      <LegalDocumentView locale="en" docKey="acceptable-use" />
     )
 
     expect(

@@ -1,6 +1,10 @@
 import Link from "next/link"
-import { Lightning, ArrowLeft, ShieldCheck } from "@phosphor-icons/react"
-import { type AppLocale } from "@/lib/i18n/config"
+import {
+  Lightning,
+  ArrowLeft,
+  ShieldCheck,
+} from "@phosphor-icons/react/dist/ssr"
+import { locales, type AppLocale } from "@/lib/i18n/config"
 import { getMessages } from "@/lib/i18n/messages"
 import { Footer } from "@/app/[lang]/(home)/components/footer"
 
@@ -42,14 +46,10 @@ export function LegalPageLayout({
     },
   ]
 
-  const otherLocale: AppLocale = locale === "en" ? "id" : "en"
-  const currentPathSegment =
-    activeDoc === "terms"
-      ? "terms"
-      : activeDoc === "privacy"
-        ? "privacy"
-        : "acceptable-use"
-  const switchLocaleHref = `/${otherLocale}/${currentPathSegment}`
+  const currentLocaleIndex = locales.indexOf(locale)
+  const otherLocale =
+    locales[(currentLocaleIndex + 1) % locales.length] ?? locale
+  const switchLocaleHref = `/${otherLocale}/${activeDoc}`
 
   return (
     <div

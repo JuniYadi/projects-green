@@ -1,16 +1,24 @@
 import { type AppLocale } from "@/lib/i18n/config"
 import { getMessages } from "@/lib/i18n/messages"
-import { ShieldCheck, CalendarBlank } from "@phosphor-icons/react"
+import { type AppMessages } from "@/lib/i18n/messages/types"
+import { ShieldCheck, CalendarBlank } from "@phosphor-icons/react/dist/ssr"
+import { type LegalDocType } from "./legal-page-layout"
+
+const legalDocumentKeys = {
+  terms: "terms",
+  privacy: "privacy",
+  "acceptable-use": "acceptableUse",
+} as const satisfies Record<LegalDocType, keyof AppMessages["legal"]>
 
 interface LegalDocumentViewProps {
   locale: AppLocale
-  docKey: "terms" | "privacy" | "acceptableUse"
+  docKey: LegalDocType
 }
 
 export function LegalDocumentView({ locale, docKey }: LegalDocumentViewProps) {
   const messages = getMessages(locale)
   const legal = messages.legal
-  const doc = legal[docKey]
+  const doc = legal[legalDocumentKeys[docKey]]
 
   return (
     <article className="prose max-w-none dark:prose-invert">
