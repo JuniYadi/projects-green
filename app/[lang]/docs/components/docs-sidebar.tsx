@@ -8,6 +8,7 @@ import {
   CaretRight,
   ChatCircleDots,
   Cloud,
+  CreditCard,
   ShieldCheck,
   FileText,
   SidebarSimple,
@@ -26,6 +27,7 @@ interface SidebarProps {
 }
 
 const CATEGORY_ICONS: Record<string, typeof ChatCircleDots> = {
+  Billing: CreditCard,
   WhatsApp: ChatCircleDots,
   "App Hosting": Cloud,
   Security: ShieldCheck,

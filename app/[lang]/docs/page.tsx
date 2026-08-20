@@ -5,6 +5,7 @@ import {
   Sparkle,
   ChatCircleDots,
   Cloud,
+  CreditCard,
   Key,
   ShieldCheck,
   CodeBlock,
@@ -33,6 +34,15 @@ const CATEGORY_META: Record<
     bg: string
   }
 > = {
+  Billing: {
+    icon: CreditCard,
+    descriptionEn:
+      "Organization deposit balance, automated subscription renewals, invoices, and payment methods.",
+    descriptionId:
+      "Saldo deposit organisasi, pembaruan langganan otomatis, faktur tagihan, dan metode pembayaran.",
+    color: "text-amber-500",
+    bg: "bg-amber-500/10 border-amber-500/20",
+  },
   WhatsApp: {
     icon: ChatCircleDots,
     descriptionEn:
