@@ -9,6 +9,10 @@ const mockFindManyWhatsappLedger = mock(async () => [] as unknown[])
 const mockFindUniqueBillingAccount = mock(async () => null as unknown)
 const mockFindManyAdjustments = mock(async () => [] as unknown[])
 const mockLedgerCount = mock(async () => 0)
+const mockLedgerAggregate = mock(async () => ({
+  _sum: { quotaValue: 0 as number | null },
+  _count: 0,
+}))
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -27,6 +31,7 @@ mock.module("@/lib/prisma", () => ({
     whatsappBillingLedger: {
       findMany: mockFindManyWhatsappLedger,
       count: mockLedgerCount,
+      aggregate: mockLedgerAggregate,
     },
     billingAccount: {
       findUnique: mockFindUniqueBillingAccount,
@@ -345,6 +350,18 @@ describe("WhatsappUsageService", () => {
 })
 
 describe("getLedgerEntries", () => {
+  beforeEach(() => {
+    mockFindManyWhatsappLedger.mockReset()
+    mockFindManyWhatsappLedger.mockImplementation(async () => [])
+    mockLedgerCount.mockReset()
+    mockLedgerCount.mockImplementation(async () => 0)
+    mockLedgerAggregate.mockReset()
+    mockLedgerAggregate.mockImplementation(async () => ({
+      _sum: { quotaValue: 0 as number | null },
+      _count: 0,
+    }))
+  })
+
   it("returns paginated ledger entries with summary", async () => {
     const ledgerData = [
       makeWhatsappLedgerRow({
@@ -366,10 +383,17 @@ describe("getLedgerEntries", () => {
       }),
     ]
 
-    mockFindManyWhatsappLedger
-      .mockResolvedValueOnce(ledgerData)
-      .mockResolvedValueOnce(ledgerData)
+    mockFindManyWhatsappLedger.mockResolvedValueOnce(ledgerData)
     mockLedgerCount.mockResolvedValueOnce(2)
+    mockLedgerAggregate
+      .mockResolvedValueOnce({
+        _sum: { quotaValue: new Decimal(1) as unknown as number },
+        _count: 1,
+      })
+      .mockResolvedValueOnce({
+        _sum: { quotaValue: new Decimal(1) as unknown as number },
+        _count: 1,
+      })
 
     const service = new WhatsappUsageService()
     const result = await service.getLedgerEntries("org-1", {
@@ -398,10 +422,14 @@ describe("getLedgerEntries", () => {
       }),
     ]
 
-    mockFindManyWhatsappLedger
-      .mockResolvedValueOnce(ledgerData)
-      .mockResolvedValueOnce(ledgerData)
+    mockFindManyWhatsappLedger.mockResolvedValueOnce(ledgerData)
     mockLedgerCount.mockResolvedValueOnce(1)
+    mockLedgerAggregate
+      .mockResolvedValueOnce({ _sum: { quotaValue: null }, _count: 0 })
+      .mockResolvedValueOnce({
+        _sum: { quotaValue: new Decimal(1) as unknown as number },
+        _count: 1,
+      })
 
     const service = new WhatsappUsageService()
     const result = await service.getLedgerEntries("org-1", {
@@ -421,6 +449,10 @@ describe("getLedgerEntries", () => {
   it("returns empty when no records", async () => {
     mockFindManyWhatsappLedger.mockResolvedValue([])
     mockLedgerCount.mockResolvedValue(0)
+    mockLedgerAggregate.mockResolvedValue({
+      _sum: { quotaValue: null },
+      _count: 0,
+    })
 
     const service = new WhatsappUsageService()
     const result = await service.getLedgerEntries("org-1")

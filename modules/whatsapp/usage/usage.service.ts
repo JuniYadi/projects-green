@@ -531,7 +531,7 @@ export class WhatsappUsageService {
       where.createdAt = dateFilter
     }
 
-    const [total, rows, allRowsForSummary] = await Promise.all([
+    const [total, rows, summaryAgg, refundedAgg] = await Promise.all([
       prisma.whatsappBillingLedger.count({ where }),
       prisma.whatsappBillingLedger.findMany({
         where,
@@ -544,22 +544,22 @@ export class WhatsappUsageService {
           },
         },
       }),
-      prisma.whatsappBillingLedger.findMany({
-        where: { organizationId },
-        select: { quotaValue: true, isReverted: true },
+      prisma.whatsappBillingLedger.aggregate({
+        where: { organizationId, isReverted: false },
+        _sum: { quotaValue: true },
+        _count: true,
+      }),
+      prisma.whatsappBillingLedger.aggregate({
+        where: { organizationId, isReverted: true },
+        _sum: { quotaValue: true },
+        _count: true,
       }),
     ])
 
-    let totalCredits = 0
-    let totalRefundedCredits = 0
-
-    for (const r of allRowsForSummary) {
-      const val = toNum(r.quotaValue)
-      totalCredits += val
-      if (r.isReverted) {
-        totalRefundedCredits += val
-      }
-    }
+    const totalCredits =
+      toNum(summaryAgg._sum.quotaValue ?? 0) +
+      toNum(refundedAgg._sum.quotaValue ?? 0)
+    const totalRefundedCredits = toNum(refundedAgg._sum.quotaValue ?? 0)
 
     return {
       data: rows.map((r) => ({

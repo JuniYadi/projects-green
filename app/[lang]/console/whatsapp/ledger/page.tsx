@@ -93,6 +93,7 @@ export default function WhatsAppLedgerPage() {
   const [total, setTotal] = React.useState(0)
   const [page, setPage] = React.useState(1)
   const [totalPages, setTotalPages] = React.useState(1)
+  const [refreshKey, setRefreshKey] = React.useState(0)
 
   const [statusFilter, setStatusFilter] = React.useState(
     searchParams.get("status") || "all"
@@ -140,7 +141,14 @@ export default function WhatsAppLedgerPage() {
     return () => {
       cancelled = true
     }
-  }, [page, statusFilter, categoryFilter, selectedDevice, searchQuery])
+  }, [
+    page,
+    statusFilter,
+    categoryFilter,
+    selectedDevice,
+    searchQuery,
+    refreshKey,
+  ])
 
   React.useEffect(() => {
     whatsappClient.devices
@@ -184,7 +192,7 @@ export default function WhatsAppLedgerPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage((p) => p)}
+            onClick={() => setRefreshKey((k) => k + 1)}
             disabled={loading}
             className="gap-1.5"
           >

@@ -245,10 +245,6 @@ export default function WebhookDeadLetterPage({
     }
   }, [])
 
-  React.useEffect(() => {
-    return loadData()
-  }, [loadData])
-
   const handleReplay = async (id: string) => {
     try {
       const response = await eden.api.admin.whatsapp.webhooks["dead-letter"][
