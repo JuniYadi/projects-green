@@ -178,9 +178,9 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
       "modules/docs/",
       "lib/markdown.ts",
       "lib/seeders/system/knowledge-docs.seeder.ts",
+      "scripts/capture-all-billing-kb.ts",
       "scripts/capture-api-key-kb.ts",
       "scripts/capture-billing-kb.ts",
-      "scripts/kb-agent.sh",
       "content/knowledge-base/",
     ],
     testPrefixes: [
