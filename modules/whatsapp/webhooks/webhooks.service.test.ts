@@ -459,7 +459,7 @@ describe("webhookEventService", () => {
       )
     })
 
-    it("excludes metaPayload from list DTO response", async () => {
+    it("includes metaPayload and metadata in list DTO response", async () => {
       mockPrisma.whatsappWebhookEvent.count.mockResolvedValue(1)
       mockPrisma.whatsappWebhookEvent.findMany.mockResolvedValue([
         {
@@ -473,12 +473,13 @@ describe("webhookEventService", () => {
         organizationId: "org-1",
       })
 
-      expect(result.data[0]).not.toHaveProperty("metaPayload")
+      expect(result.data[0]).toHaveProperty("metaPayload")
       // DTO fields should be present
       expect(result.data[0]).toHaveProperty("id")
       expect(result.data[0]).toHaveProperty("eventType")
       expect(result.data[0]).toHaveProperty("processingStatus")
       expect(result.data[0]).toHaveProperty("createdAt")
+      expect(result.data[0]).toHaveProperty("deliveryStatus")
     })
   })
 })
