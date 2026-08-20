@@ -1,18 +1,15 @@
-import { describe, expect, it, mock } from "bun:test"
+import { describe, expect, it } from "bun:test"
 import { render } from "@testing-library/react"
 
-mock.module("@/modules/deploy/ui/deploy-wizard-v2", () => {
-  return {
-    DeployWizardV2: () => <div>Deploy Wizard Mock</div>,
-  }
-})
-
 describe("DeployPage", () => {
-  it("renders deploy wizard", async () => {
+  it("renders AI deployment assistant feed", async () => {
     const deployPageModule =
       await import("@/app/[lang]/console/app/deploy/page")
     const view = render(<deployPageModule.default />)
 
-    expect(view.getByText("Deploy Wizard Mock")).toBeTruthy()
+    expect(view.getByText("AI deployment assistant")).toBeTruthy()
+    expect(
+      view.getByPlaceholderText("Paste a GitHub repository URL to deploy…")
+    ).toBeTruthy()
   })
 })

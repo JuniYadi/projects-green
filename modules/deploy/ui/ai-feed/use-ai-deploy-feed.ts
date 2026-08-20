@@ -29,6 +29,7 @@ type AiDeployFeedState = {
 
 type Action =
   | { type: "push"; item: FeedItem }
+  | { type: "upsert"; item: FeedItem }
   | { type: "session"; session: AiDeploymentSessionDTO | null }
   | { type: "inspecting"; value: boolean }
   | { type: "github"; value: boolean }
@@ -48,6 +49,20 @@ const initialState: AiDeployFeedState = {
 function reducer(state: AiDeployFeedState, action: Action): AiDeployFeedState {
   if (action.type === "push")
     return { ...state, items: [...state.items, action.item] }
+  if (action.type === "upsert") {
+    const existingIndex = state.items.findIndex(
+      (existing) =>
+        existing.id === action.item.id ||
+        (existing.kind === action.item.kind &&
+          existing.deployId === action.item.deployId)
+    )
+    if (existingIndex >= 0) {
+      const updated = [...state.items]
+      updated[existingIndex] = { ...updated[existingIndex], ...action.item }
+      return { ...state, items: updated }
+    }
+    return { ...state, items: [...state.items, action.item] }
+  }
   if (action.type === "session") {
     return {
       ...state,
@@ -256,22 +271,28 @@ export function useAiDeployFeed() {
       updateSession(confirmed)
       if (!confirmed.deploymentId) return
       const started = Date.now()
+      let lastReportedStatus: string | null = null
       const poll = async () => {
         const status = await getDeploymentStatus(confirmed.deploymentId!)
-        dispatch({
-          type: "push",
-          item: item("build_step", {
-            deployStatus: status.status,
-            deployId: confirmed.deploymentId!,
-          }),
-        })
-        dispatch({
-          type: "push",
-          item: item("deploy_step", {
-            deployStatus: status.status,
-            deployId: confirmed.deploymentId!,
-          }),
-        })
+        if (status.status !== lastReportedStatus) {
+          lastReportedStatus = status.status
+          dispatch({
+            type: "upsert",
+            item: item("build_step", {
+              id: `build-step-${confirmed.deploymentId}`,
+              deployStatus: status.status,
+              deployId: confirmed.deploymentId!,
+            }),
+          })
+          dispatch({
+            type: "upsert",
+            item: item("deploy_step", {
+              id: `deploy-step-${confirmed.deploymentId}`,
+              deployStatus: status.status,
+              deployId: confirmed.deploymentId!,
+            }),
+          })
+        }
         if (status.status === "DEPLOYED") {
           if (statusTimer.current) clearInterval(statusTimer.current)
           dispatch({

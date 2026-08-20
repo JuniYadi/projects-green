@@ -68,6 +68,14 @@ export default function DeployPage() {
                 <Button size="sm" onClick={feed.connectGithub}>
                   Connect GitHub
                 </Button>
+              ) : entry.kind === "detection_success" ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setDetectionOpen(true)}
+                >
+                  View detection details
+                </Button>
               ) : entry.kind === "plan_ready" ? (
                 <>
                   <Button
