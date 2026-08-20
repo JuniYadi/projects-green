@@ -28,6 +28,7 @@ const routerPushMock = mock(() => {})
 
 mock.module("next/navigation", () => ({
   useRouter: () => ({ push: routerPushMock }),
+  useParams: () => ({ lang: "en" }),
 }))
 
 // ── Mock window.location.assign for hard navigation after OTP success ───
