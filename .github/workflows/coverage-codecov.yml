@@ -2,6 +2,12 @@ name: Fast PR Tests
 
 on:
   pull_request:
+  push:
+    branches:
+      - main
+  merge_group:
+    types:
+      - checks_requested
   workflow_dispatch:
 
 permissions:
@@ -54,10 +60,16 @@ jobs:
         run: bun run db:generate
 
       - name: Run changed logic and feature dependents
+        if: ${{ github.event_name == 'pull_request' }}
         run: bun run test:changed
 
       - name: Enforce changed logic coverage
+        if: ${{ github.event_name == 'pull_request' }}
         run: bun run test:coverage:changed
+
+      - name: Run full logic coverage
+        if: ${{ github.event_name != 'pull_request' }}
+        run: bun run test:coverage
 
       - name: Check LCOV output
         id: lcov
@@ -67,23 +79,21 @@ jobs:
             ls -lh coverage/lcov.info
           else
             echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "No non-empty LCOV output was generated for this changed"
-            echo "test set."
+            echo "No non-empty LCOV output was generated for this test set."
           fi
 
-      - name: Upload changed logic coverage to Codecov
+      - name: Upload coverage to Codecov
         if: ${{ steps.lcov.outputs.available == 'true' }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
         with:
           files: coverage/lcov.info
           flags: logic
-          name: logic-coverage
+          name: ${{ github.event_name == 'pull_request' && 'changed-logic' || 'full-logic' }}
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Enforce test policy
         run: bun run test:policy
-
   functional-smoke:
     name: Affected Functional Smoke
     if: ${{ github.event_name == 'workflow_dispatch' }}
