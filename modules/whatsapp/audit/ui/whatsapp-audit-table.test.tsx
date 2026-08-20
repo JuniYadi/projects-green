@@ -44,6 +44,6 @@ describe("AuditLogTable", () => {
 
   it("renders empty state", () => {
     const html = renderToString(<AuditLogTable logs={[]} isLoading={false} />)
-    expect(html).toContain("No audit entries")
+    expect(html).toContain("No audit logs found")
   })
 })
