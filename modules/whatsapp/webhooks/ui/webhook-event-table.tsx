@@ -8,6 +8,7 @@
 
 "use client"
 
+import * as React from "react"
 import { useState, useCallback } from "react"
 import {
   WarningCircle,
@@ -38,9 +39,12 @@ export type WebhookEventDTO = {
   id: string
   eventType: string
   processingStatus: string
+  deliveryStatus?: string | null
+  phoneNumber?: string | null
+  deviceLabel?: string | null
   createdAt: string
   waMessageId: string | null
-  metaPayload?: Record<string, unknown>
+  metaPayload?: Record<string, unknown> | null
 }
 
 export type WebhookEventTableProps = {
@@ -83,21 +87,59 @@ function getTypeBadgeConfig(eventType: string) {
   )
 }
 
-const STATUS_BADGE_VARIANT: Record<
-  string,
-  "success" | "destructive" | "warning" | "default"
-> = {
-  SUCCESS: "success",
-  FAILED: "destructive",
-  PENDING: "warning",
+function getDeliveryBadgeConfig(status: string | null | undefined): {
+  label: string
+  variant:
+    | "success"
+    | "destructive"
+    | "warning"
+    | "default"
+    | "secondary"
+    | "outline"
+  className?: string
+} {
+  const s = (status || "").toUpperCase()
+  switch (s) {
+    case "READ":
+      return {
+        label: "READ",
+        variant: "success",
+        className:
+          "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+      }
+    case "DELIVERED":
+      return {
+        label: "DELIVERED",
+        variant: "default",
+        className:
+          "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30",
+      }
+    case "SENT":
+      return {
+        label: "SENT",
+        variant: "secondary",
+        className:
+          "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30",
+      }
+    case "RECEIVED":
+      return {
+        label: "RECEIVED",
+        variant: "default",
+        className:
+          "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30",
+      }
+    case "FAILED":
+      return {
+        label: "FAILED",
+        variant: "destructive",
+      }
+    default:
+      return {
+        label: s || "PENDING",
+        variant: "warning",
+      }
+  }
 }
-
-function getStatusBadgeVariant(
-  status: string
-): "success" | "destructive" | "warning" | "default" {
-  return STATUS_BADGE_VARIANT[status] ?? "default"
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function WebhookEventTable({
@@ -213,71 +255,88 @@ export function WebhookEventTable({
           <TableHeader>
             <TableRow>
               <TableHead className="w-10" />
-              <TableHead>Type</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Timestamp</TableHead>
+              <TableHead>Device</TableHead>
+              <TableHead>Phone</TableHead>
               <TableHead>WA Message ID</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Event</TableHead>
+              <TableHead>Timestamp</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {events.map((event) => {
               const isExpanded = expandedRowId === event.id
               const typeConfig = getTypeBadgeConfig(event.eventType)
-              const statusVariant = getStatusBadgeVariant(
-                event.processingStatus
+              const deliveryConfig = getDeliveryBadgeConfig(
+                event.deliveryStatus || event.processingStatus
               )
 
               return (
-                <TableRow
-                  key={event.id}
-                  className="cursor-pointer"
-                  onClick={() => handleRowToggle(event.id)}
-                >
-                  <TableCell>
-                    {isExpanded ? (
-                      <CaretDown className="size-4 text-muted-foreground" />
-                    ) : (
-                      <CaretRight className="size-4 text-muted-foreground" />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-                        typeConfig.className
+                <React.Fragment key={event.id}>
+                  <TableRow
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleRowToggle(event.id)}
+                  >
+                    <TableCell>
+                      {isExpanded ? (
+                        <CaretDown className="size-4 text-muted-foreground" />
+                      ) : (
+                        <CaretRight className="size-4 text-muted-foreground" />
                       )}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs font-medium">
+                      {event.deviceLabel ?? "—"}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-foreground">
+                      {event.phoneNumber ?? "—"}
+                    </TableCell>
+                    <TableCell
+                      className="max-w-[180px] truncate font-mono text-xs text-muted-foreground"
+                      title={event.waMessageId ?? undefined}
                     >
-                      {typeConfig.label}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={statusVariant}>
-                      {event.processingStatus}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatTimestamp(event.createdAt)}
-                  </TableCell>
-                  <TableCell className="max-w-[180px] truncate font-mono text-xs text-muted-foreground">
-                    {event.waMessageId ?? "—"}
-                  </TableCell>
-                </TableRow>
+                      {event.waMessageId ?? "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={deliveryConfig.variant}
+                        className={deliveryConfig.className}
+                      >
+                        {deliveryConfig.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+                          typeConfig.className
+                        )}
+                      >
+                        {typeConfig.label}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                      {formatTimestamp(event.createdAt)}
+                    </TableCell>
+                  </TableRow>
+                  {isExpanded && (
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                      <TableCell colSpan={7} className="p-4">
+                        {event.metaPayload ? (
+                          <RawPayloadViewer payload={event.metaPayload} />
+                        ) : (
+                          <p className="text-xs text-muted-foreground italic">
+                            No raw payload data available for this event.
+                          </p>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
               )
             })}
           </TableBody>
         </Table>
       </div>
-
-      {/* Expanded row content */}
-      {expandedRowId && (
-        <div className="mt-2">
-          {(() => {
-            const event = events.find((e) => e.id === expandedRowId)
-            if (!event?.metaPayload) return null
-            return <RawPayloadViewer payload={event.metaPayload} />
-          })()}
-        </div>
-      )}
 
       {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (
