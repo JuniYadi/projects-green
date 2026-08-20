@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import {
+  ArrowsClockwise,
   CaretDown,
   CaretRight,
   CheckCircle,
@@ -27,7 +28,11 @@ export type AuditLogDTO = {
   id: string
   organizationId: string
   deviceId: string | null
+  deviceLabel?: string | null
+  phoneNumber?: string | null
   adminId: string | null
+  actorName?: string | null
+  actorEmail?: string | null
   correlationId: string | null
   action: string
   status: string | null
@@ -52,6 +57,7 @@ export type AuditLogTableProps = {
   error?: string
   onRetry?: () => void
   pagination?: PaginationMeta & { onPageChange: (page: number) => void }
+  showPayload?: boolean
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -148,35 +154,40 @@ export function AuditLogTable({
   error,
   onRetry,
   pagination,
+  showPayload = false,
 }: AuditLogTableProps) {
   const [expandedRowId, setExpandedRowId] = React.useState<string | null>(null)
 
-  // ── Loading ───────────────────────────────────────────────────────────
-
   if (isLoading) {
     return (
-      <div className="space-y-0">
+      <div className="space-y-4">
         <div className="overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-10" />
-                <TableHead>Time</TableHead>
+                {showPayload && <TableHead className="w-10" />}
+                <TableHead>Device</TableHead>
+                <TableHead>Phone</TableHead>
                 <TableHead>Action</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Message</TableHead>
                 <TableHead>Actor</TableHead>
-                <TableHead>Duration</TableHead>
+                <TableHead>Time</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}>
+              {Array.from({ length: 5 }).map((_, index) => (
+                <TableRow key={index}>
+                  {showPayload && (
+                    <TableCell>
+                      <Skeleton className="size-4" />
+                    </TableCell>
+                  )}
                   <TableCell>
-                    <Skeleton className="size-4" />
+                    <Skeleton className="h-4 w-28" />
                   </TableCell>
                   <TableCell>
-                    <Skeleton className="h-4 w-36" />
+                    <Skeleton className="h-4 w-28" />
                   </TableCell>
                   <TableCell>
                     <Skeleton className="h-5 w-28 rounded-full" />
@@ -185,13 +196,13 @@ export function AuditLogTable({
                     <Skeleton className="h-5 w-16 rounded-full" />
                   </TableCell>
                   <TableCell>
-                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-4 w-40" />
                   </TableCell>
                   <TableCell>
                     <Skeleton className="h-4 w-20" />
                   </TableCell>
                   <TableCell>
-                    <Skeleton className="h-4 w-12" />
+                    <Skeleton className="h-4 w-28" />
                   </TableCell>
                 </TableRow>
               ))}
@@ -202,16 +213,16 @@ export function AuditLogTable({
     )
   }
 
-  // ── Error ─────────────────────────────────────────────────────────────
-
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <WarningCircle className="mb-3 size-10 text-destructive" />
-        <p className="mb-1 text-sm font-medium">Failed to load audit logs</p>
-        <p className="mb-4 text-xs text-muted-foreground">{error}</p>
+        <p className="mb-2 text-sm text-destructive" role="alert">
+          {error}
+        </p>
         {onRetry && (
-          <Button variant="outline" size="sm" onClick={onRetry}>
+          <Button variant="outline" onClick={onRetry}>
+            <ArrowsClockwise className="mr-2 size-4" />
             Retry
           </Button>
         )}
@@ -219,17 +230,13 @@ export function AuditLogTable({
     )
   }
 
-  // ── Empty ─────────────────────────────────────────────────────────────
-
   if (logs.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <p className="text-sm text-muted-foreground">No audit entries</p>
+        <p className="text-sm text-muted-foreground">No audit logs found</p>
       </div>
     )
   }
-
-  // ── Data ─────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-4">
@@ -237,43 +244,57 @@ export function AuditLogTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-10" />
-              <TableHead>Time</TableHead>
+              {showPayload && <TableHead className="w-10" />}
+              <TableHead>Device</TableHead>
+              <TableHead>Phone</TableHead>
               <TableHead>Action</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Message</TableHead>
               <TableHead>Actor</TableHead>
-              <TableHead>Duration</TableHead>
+              <TableHead>Time</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {logs.map((log) => {
-              const isExpanded = expandedRowId === log.id
+              const isExpanded = showPayload && expandedRowId === log.id
               return (
                 <React.Fragment key={log.id}>
                   <TableRow
-                    className="cursor-pointer"
-                    onClick={() => setExpandedRowId(isExpanded ? null : log.id)}
+                    className={
+                      showPayload
+                        ? "cursor-pointer hover:bg-muted/50"
+                        : undefined
+                    }
+                    onClick={
+                      showPayload
+                        ? () => setExpandedRowId(isExpanded ? null : log.id)
+                        : undefined
+                    }
                   >
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-6"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setExpandedRowId(isExpanded ? null : log.id)
-                        }}
-                      >
-                        {isExpanded ? (
-                          <CaretDown className="size-4" />
-                        ) : (
-                          <CaretRight className="size-4" />
-                        )}
-                      </Button>
+                    {showPayload && (
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-6"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setExpandedRowId(isExpanded ? null : log.id)
+                          }}
+                        >
+                          {isExpanded ? (
+                            <CaretDown className="size-4" />
+                          ) : (
+                            <CaretRight className="size-4" />
+                          )}
+                        </Button>
+                      </TableCell>
+                    )}
+                    <TableCell className="font-mono text-xs font-medium">
+                      {log.deviceLabel ?? log.deviceId ?? "—"}
                     </TableCell>
-                    <TableCell className="text-xs whitespace-nowrap">
-                      {formatTime(log.createdAt)}
+                    <TableCell className="font-mono text-xs text-foreground">
+                      {log.phoneNumber ?? "—"}
                     </TableCell>
                     <TableCell>
                       <Badge variant={actionVariant(actionTone(log.action))}>
@@ -285,19 +306,20 @@ export function AuditLogTable({
                         {log.status ?? "—"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="max-w-xs truncate text-sm">
+                    <TableCell className="max-w-xs truncate text-xs text-muted-foreground">
                       {log.message ?? "—"}
                     </TableCell>
                     <TableCell className="font-mono text-xs">
-                      {log.adminId ? log.adminId.slice(0, 8) : "—"}
+                      {log.actorName ??
+                        (log.adminId ? log.adminId.slice(0, 10) : "System")}
                     </TableCell>
-                    <TableCell className="text-xs">
-                      {log.durationMs != null ? `${log.durationMs}ms` : "—"}
+                    <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                      {formatTime(log.createdAt)}
                     </TableCell>
                   </TableRow>
-                  {isExpanded && (
+                  {showPayload && isExpanded && (
                     <TableRow>
-                      <TableCell colSpan={7} className="bg-muted/30 p-4">
+                      <TableCell colSpan={8} className="bg-muted/30 p-4">
                         <div className="grid grid-cols-2 gap-3 text-sm">
                           <div>
                             <span className="font-medium">Message:</span>{" "}
