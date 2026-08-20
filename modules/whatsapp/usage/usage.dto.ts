@@ -91,6 +91,39 @@ export type CostBreakdownResponseDTO = {
   currency: string
 }
 
+// ─── Ledger DTOs ─────────────────────────────────────────────────────────────────
+
+export type WhatsappBillingLedgerEntryDTO = {
+  id: string
+  organizationId: string
+  waMessageId: string
+  phoneNumber: string
+  category: string
+  quotaKey: string
+  quotaValue: number
+  status: string
+  isReverted: boolean
+  revertReason: string | null
+  revertedAt: Date | null
+  lastStatus: string | null
+  whatsappDeviceId: string | null
+  createdAt: Date
+  updatedAt: Date
+  devicePhoneNumber?: string | null
+}
+
+export type WhatsappBillingLedgerListResponseDTO = {
+  data: WhatsappBillingLedgerEntryDTO[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+  summary: {
+    totalCredits: number
+    totalRefundedCredits: number
+    activeCredits: number
+  }
+}
 // ─── Mapper Functions ──────────────────────────────────────────────────────────
 
 export function toDailyCountDTO(
