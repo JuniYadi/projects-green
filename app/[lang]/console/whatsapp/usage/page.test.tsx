@@ -40,6 +40,6 @@ describe("WhatsAppUsagePage — loading state", () => {
 
     // At least one data-testid skeleton exists
     const skeletons = view.getAllByTestId("usage-value-skeleton")
-    expect(skeletons.length).toBeGreaterThanOrEqual(8)
+    expect(skeletons.length).toBeGreaterThanOrEqual(4)
   })
 })

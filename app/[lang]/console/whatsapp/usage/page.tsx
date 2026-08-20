@@ -8,12 +8,23 @@ import {
   ChartLine,
   Calendar,
   Funnel,
-  Warning,
+  CheckCircle,
+  Clock,
+  ArrowCounterClockwise,
+  ArrowRight,
 } from "@phosphor-icons/react"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import {
   ChartContainer,
   ChartTooltip,
@@ -28,6 +39,7 @@ import { Button } from "@/components/ui/button"
 import { useParams } from "next/navigation"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import type { WhatsappBillingLedgerEntryDTO } from "@/modules/whatsapp/usage/usage.dto"
 
 type PageState = "loading" | "error" | "loaded"
 
@@ -96,57 +108,46 @@ interface CostBreakdownData {
   currency: string
 }
 
-const dailyChartConfig = {
-  inbound: {
-    label: "Inbound",
-    color: "var(--chart-1)",
-  },
-  outbound: {
-    label: "Outbound",
-    color: "var(--chart-2)",
-  },
-} satisfies ChartConfig
-
-function formatCurrency(amount: number): string {
-  return `Rp ${amount.toLocaleString("id-ID")}`
+function getLast30DaysRange(): { from: string; to: string } {
+  const now = new Date()
+  const to = now.toISOString().slice(0, 10)
+  const from = new Date(now.getTime() - 30 * 86400000)
+    .toISOString()
+    .slice(0, 10)
+  return { from, to }
 }
 
 function getMonthName(month: number): string {
-  const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ]
-  return months[month - 1] ?? ""
+  return new Date(2026, month - 1).toLocaleString("en", { month: "short" })
 }
 
-function getLast30DaysRange(): { from: string; to: string } {
-  const to = new Date()
-  const from = new Date()
-  from.setDate(from.getDate() - 30)
-  return {
-    from: from.toISOString().slice(0, 10),
-    to: to.toISOString().slice(0, 10),
-  }
-}
+const DAILY_CHART_CONFIG = {
+  in: { label: "Inbound", color: "hsl(var(--chart-1))" },
+  out: { label: "Outbound", color: "hsl(var(--chart-2))" },
+} satisfies ChartConfig
 
 function getLast6Months(): { year: number; month: number }[] {
   const months: { year: number; month: number }[] = []
   const now = new Date()
-  for (let i = 0; i < 6; i++) {
+  for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
     months.push({ year: d.getFullYear(), month: d.getMonth() + 1 })
   }
   return months
+}
+
+function formatLedgerDate(iso: string | Date): string {
+  try {
+    const d = typeof iso === "string" ? new Date(iso) : iso
+    return d.toLocaleString("id-ID", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  } catch {
+    return String(iso)
+  }
 }
 
 export default function WhatsAppUsagePage() {
@@ -154,7 +155,7 @@ export default function WhatsAppUsagePage() {
   const locale = resolveLocaleOrDefault(params?.lang)
   const t = getMessages(locale).console.whatsapp
   const [state, setState] = React.useState<PageState>("loading")
-  const [error, setError] = React.useState("")
+  const [_error, setError] = React.useState("")
   const [overview, setOverview] = React.useState<OverviewData | null>(null)
   const [costBreakdown, setCostBreakdown] =
     React.useState<CostBreakdownData | null>(null)
@@ -162,7 +163,11 @@ export default function WhatsAppUsagePage() {
   const [monthlyCounts, setMonthlyCounts] = React.useState<MonthlyCount[]>([])
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
   const [selectedDevice, setSelectedDevice] = React.useState<string>("all")
-  const [dateRange, setDateRange] = React.useState(getLast30DaysRange)
+  const [dateRange, _setDateRange] = React.useState(getLast30DaysRange)
+  const [recentLedger, setRecentLedger] = React.useState<
+    WhatsappBillingLedgerEntryDTO[]
+  >([])
+  const [recentLedgerLoading, setRecentLedgerLoading] = React.useState(true)
 
   const deviceId = selectedDevice === "all" ? undefined : selectedDevice
 
@@ -178,6 +183,7 @@ export default function WhatsAppUsagePage() {
           dailyRes,
           deviceRes,
           costBreakdownRes,
+          ledgerRes,
           ...monthlyResults
         ] = await Promise.all([
           whatsappClient.usage.overview(),
@@ -188,6 +194,7 @@ export default function WhatsAppUsagePage() {
           }),
           whatsappClient.devices.list(),
           whatsappClient.usage.costBreakdown({ deviceId }),
+          whatsappClient.usage.ledger({ limit: 5 }),
           ...last6.map((m) =>
             whatsappClient.usage.monthly({
               year: m.year,
@@ -210,6 +217,12 @@ export default function WhatsAppUsagePage() {
         )
         setDevices(deviceRes.devices)
 
+        if (ledgerRes && ledgerRes.ok) {
+          setRecentLedger(
+            (ledgerRes.data as unknown as WhatsappBillingLedgerEntryDTO[]) ?? []
+          )
+        }
+
         const allMonthly: MonthlyCount[] = []
         for (const res of monthlyResults) {
           for (const c of res.counts as unknown as MonthlyCount[]) {
@@ -225,6 +238,8 @@ export default function WhatsAppUsagePage() {
           err instanceof Error ? err.message : "Failed to load usage data."
         setError(message)
         setState("error")
+      } finally {
+        setRecentLedgerLoading(false)
       }
     }
 
@@ -271,60 +286,40 @@ export default function WhatsAppUsagePage() {
               {t.usage.description}
             </p>
           </div>
-          {devices.length > 1 && (
-            <div className="flex items-center gap-2">
-              <Funnel className="size-4 text-muted-foreground" />
-              <select
-                value={selectedDevice}
-                onChange={(e) => setSelectedDevice(e.target.value)}
-                className="rounded-md border bg-background px-3 py-1.5 text-sm"
-              >
-                <option value="all">All Devices</option>
-                {devices.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.phoneNumber ?? d.id}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <Button variant="outline" size="sm" asChild className="gap-1.5">
+            <Link href="/console/whatsapp/ledger">
+              View Full Ledger
+              <ArrowRight className="size-4" />
+            </Link>
+          </Button>
         </div>
       </header>
 
-      {state === "error" && (
-        <Card className="border-destructive">
-          <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-            <p className="text-sm font-medium text-destructive">{error}</p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Device Filter */}
+      <div className="flex items-center gap-3">
+        <Funnel className="size-4 text-muted-foreground" />
+        <select
+          value={selectedDevice}
+          onChange={(e) => setSelectedDevice(e.target.value)}
+          className="rounded-md border bg-background px-3 py-1.5 text-sm"
+        >
+          <option value="all">All Devices</option>
+          {devices.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.phoneNumber}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      {/* Quota Alert Banner */}
-      {state === "loaded" &&
-        costBreakdown &&
-        costBreakdown.byDevice.some(
-          (d) => d.quotaBase > 0 && d.quotaPercent >= 70
-        ) && (
-          <div className="flex items-start gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3">
-            <Warning className="mt-0.5 size-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
-            <div className="text-sm text-yellow-600 dark:text-yellow-400">
-              <strong>Quota Warning:</strong> One or more devices are
-              approaching their monthly limit.
-              <span className="ml-1">
-                Review the per-device breakdown below.
-              </span>
-            </div>
-          </div>
-        )}
-
-      {/* Stat Cards — always render card shells, skeletonize only values during loading */}
+      {/* KPI Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Total Messages
             </CardTitle>
-            <ChartLine className="size-4 text-muted-foreground" weight="fill" />
+            <ChatCircle className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {state === "loading" ? (
@@ -333,23 +328,18 @@ export default function WhatsAppUsagePage() {
                 data-testid="usage-value-skeleton"
               />
             ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  {totalMessages.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">This month</p>
-              </>
+              <div className="text-2xl font-bold">
+                {totalMessages.toLocaleString()}
+              </div>
             )}
+            <p className="text-xs text-muted-foreground">This month</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Inbound Count</CardTitle>
-            <ChatCircle
-              className="size-4 text-muted-foreground"
-              weight="fill"
-            />
+            <ChatCircle className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {state === "loading" ? (
@@ -358,15 +348,11 @@ export default function WhatsAppUsagePage() {
                 data-testid="usage-value-skeleton"
               />
             ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  {totalInbound.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Messages received
-                </p>
-              </>
+              <div className="text-2xl font-bold">
+                {totalInbound.toLocaleString()}
+              </div>
             )}
+            <p className="text-xs text-muted-foreground">Messages received</p>
           </CardContent>
         </Card>
 
@@ -375,10 +361,7 @@ export default function WhatsAppUsagePage() {
             <CardTitle className="text-sm font-medium">
               Outbound Count
             </CardTitle>
-            <PaperPlaneTilt
-              className="size-4 text-muted-foreground"
-              weight="fill"
-            />
+            <PaperPlaneTilt className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {state === "loading" ? (
@@ -387,23 +370,18 @@ export default function WhatsAppUsagePage() {
                 data-testid="usage-value-skeleton"
               />
             ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  {totalOutbound.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">Messages sent</p>
-              </>
+              <div className="text-2xl font-bold">
+                {totalOutbound.toLocaleString()}
+              </div>
             )}
+            <p className="text-xs text-muted-foreground">Messages sent</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
-            <CurrencyDollar
-              className="size-4 text-muted-foreground"
-              weight="fill"
-            />
+            <CurrencyDollar className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {state === "loading" ? (
@@ -412,325 +390,260 @@ export default function WhatsAppUsagePage() {
                 data-testid="usage-value-skeleton"
               />
             ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  {formatCurrency(totalCost)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {costData?.totalEntries ?? 0} ledger entries
-                </p>
-              </>
+              <div className="text-2xl font-bold">
+                Rp{" "}
+                {totalCost.toLocaleString("id-ID", {
+                  minimumFractionDigits: 0,
+                })}
+              </div>
             )}
+            <p className="text-xs text-muted-foreground">
+              {costData?.totalEntries ?? 0} ledger entries
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Quota & Balance Summary */}
-      {state !== "error" && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Monthly Quota Used
-              </CardTitle>
-              <ChartLine
-                className="size-4 text-muted-foreground"
-                weight="fill"
-              />
-            </CardHeader>
-            <CardContent>
-              {state === "loading" || !costBreakdown ? (
-                <Skeleton
-                  className="h-7 w-20"
-                  data-testid="usage-value-skeleton"
-                />
-              ) : (
-                <>
-                  <div className="text-2xl font-bold">
-                    {costBreakdown.byDevice
-                      .reduce((s, d) => s + d.quotaUsed, 0)
-                      .toLocaleString()}{" "}
-                    /{" "}
-                    {costBreakdown.byDevice
-                      .reduce((s, d) => s + d.quotaBase + d.addonQuotaTotal, 0)
-                      .toLocaleString()}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Quota credits used this month
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Remaining Quota
-              </CardTitle>
-              <ChatCircle
-                className="size-4 text-muted-foreground"
-                weight="fill"
-              />
-            </CardHeader>
-            <CardContent>
-              {state === "loading" || !costBreakdown ? (
-                <Skeleton
-                  className="h-7 w-20"
-                  data-testid="usage-value-skeleton"
-                />
-              ) : (
-                <>
-                  <div className="text-2xl font-bold">
-                    {costBreakdown.byDevice
-                      .reduce((s, d) => s + d.quotaBaseOut + d.addonQuota, 0)
-                      .toLocaleString()}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Remaining credits this period
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Projected Cost
-              </CardTitle>
-              <CurrencyDollar
-                className="size-4 text-muted-foreground"
-                weight="fill"
-              />
-            </CardHeader>
-            <CardContent>
-              {state === "loading" || !costBreakdown ? (
-                <Skeleton
-                  className="h-7 w-20"
-                  data-testid="usage-value-skeleton"
-                />
-              ) : (
-                <>
-                  <div className="text-2xl font-bold">
-                    {costBreakdown.projectedCost.toLocaleString("id-ID", {
-                      style: "currency",
-                      currency: "IDR",
-                    }) || "—"}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Estimated monthly cost
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Balance</CardTitle>
-              <CurrencyDollar
-                className="size-4 text-muted-foreground"
-                weight="fill"
-              />
-            </CardHeader>
-            <CardContent>
-              {state === "loading" || !costBreakdown ? (
-                <Skeleton
-                  className="h-7 w-20"
-                  data-testid="usage-value-skeleton"
-                />
-              ) : (
-                <>
-                  <div className="text-2xl font-bold">
-                    {costBreakdown.balance !== null
-                      ? `Rp${costBreakdown.balance.toLocaleString("id-ID")}`
-                      : "—"}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Overage balance
-                  </p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Per-Device Cost Breakdown */}
-      {state === "loaded" && (
+      {/* Quota and Projected Cost Row */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Cost Breakdown by Device</CardTitle>
-              {costBreakdown && (
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="text-muted-foreground">
-                    Projected: {formatCurrency(costBreakdown.projectedCost)}
-                  </span>
-                  {costBreakdown.balance !== null && (
-                    <span className="text-muted-foreground">
-                      Balance: {formatCurrency(costBreakdown.balance)}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Monthly Quota Used
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {!costBreakdown || costBreakdown.byDevice.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <p className="text-sm text-muted-foreground">
-                  No cost data available for this period.
-                </p>
-                <Button variant="outline" asChild className="mt-3">
-                  <Link href="?doc=1">Open documentation</Link>
-                </Button>
-              </div>
+            {state === "loading" || !costBreakdown ? (
+              <Skeleton
+                className="h-7 w-20"
+                data-testid="usage-value-skeleton"
+              />
             ) : (
-              <div className="space-y-4">
-                {costBreakdown.byDevice.map((dev) => (
-                  <div
-                    key={dev.deviceId}
-                    className="space-y-2 rounded-lg border p-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">
-                          {dev.phoneNumber ?? dev.deviceId}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {dev.quotaUsed.toLocaleString()} credits used ·{" "}
-                          {dev.messageCount.toLocaleString()} messages
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold">
-                          {formatCurrency(dev.totalCost)}
-                        </p>
-                        {dev.byCategory.length > 0 && (
-                          <p className="text-xs text-muted-foreground">
-                            {dev.byCategory
-                              .map((c) =>
-                                c.category.replace("WHATSAPP_MESSAGE_", "")
-                              )
-                              .join(", ")}
-                          </p>
-                        )}
-                      </div>
+              <div className="text-2xl font-bold">
+                {costBreakdown.byDevice
+                  .reduce((s, d) => s + d.quotaUsed, 0)
+                  .toLocaleString()}{" "}
+                /{" "}
+                {costBreakdown.byDevice
+                  .reduce((s, d) => s + d.quotaBase + d.addonQuotaTotal, 0)
+                  .toLocaleString()}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Quota credits used this month
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Remaining Quota
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {state === "loading" || !costBreakdown ? (
+              <Skeleton
+                className="h-7 w-20"
+                data-testid="usage-value-skeleton"
+              />
+            ) : (
+              <div className="text-2xl font-bold">
+                {costBreakdown.byDevice
+                  .reduce((s, d) => s + d.quotaBaseOut + d.addonQuota, 0)
+                  .toLocaleString()}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Remaining credits this period
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Projected Cost
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {state === "loading" || !costBreakdown ? (
+              <Skeleton
+                className="h-7 w-20"
+                data-testid="usage-value-skeleton"
+              />
+            ) : (
+              <div className="text-2xl font-bold">
+                {costBreakdown.projectedCost.toLocaleString("id-ID", {
+                  style: "currency",
+                  currency: "IDR",
+                }) || "—"}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Estimated monthly cost
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Balance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {state === "loading" || !costBreakdown ? (
+              <Skeleton
+                className="h-7 w-20"
+                data-testid="usage-value-skeleton"
+              />
+            ) : (
+              <div className="text-2xl font-bold">
+                Rp{costBreakdown.balance?.toLocaleString("id-ID") ?? "0"}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">Overage balance</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Cost Breakdown by Device */}
+      {state === "loaded" && costBreakdown && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Cost Breakdown by Device</CardTitle>
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <span>
+                Projected:{" "}
+                {costBreakdown.projectedCost.toLocaleString("id-ID", {
+                  style: "currency",
+                  currency: "IDR",
+                })}
+              </span>
+              <span>
+                Balance: Rp
+                {costBreakdown.balance?.toLocaleString("id-ID") ?? "0"}
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {costBreakdown.byDevice.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                No device data available.
+              </p>
+            ) : (
+              costBreakdown.byDevice.map((dev) => (
+                <div key={dev.deviceId} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">
+                        {dev.phoneNumber ?? "Unknown"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {dev.quotaUsed} credits used · {dev.messageCount}{" "}
+                        messages
+                      </p>
                     </div>
-                    {dev.quotaBase + dev.addonQuotaTotal > 0 && (
-                      <QuotaProgressBar
-                        used={dev.quotaUsed}
-                        total={dev.quotaBase + dev.addonQuotaTotal}
-                      />
-                    )}
+                    <div className="text-right text-sm">
+                      Rp{" "}
+                      {dev.totalCost.toLocaleString("id-ID", {
+                        minimumFractionDigits: 0,
+                      })}
+                    </div>
                   </div>
-                ))}
-                <div className="flex justify-between rounded-lg bg-muted p-4 font-semibold">
-                  <span>Total</span>
-                  <span>{formatCurrency(costBreakdown.totalCost)}</span>
+                  <QuotaProgressBar
+                    used={dev.quotaUsed}
+                    total={dev.quotaBase + dev.addonQuotaTotal}
+                  />
                 </div>
+              ))
+            )}
+            {costBreakdown.byDevice.length > 0 && (
+              <div className="flex items-center justify-between border-t pt-3 text-sm font-medium">
+                <span>Total</span>
+                <span>
+                  Rp{" "}
+                  {costBreakdown.byDevice
+                    .reduce((s, d) => s + d.totalCost, 0)
+                    .toLocaleString("id-ID", { minimumFractionDigits: 0 })}
+                </span>
               </div>
             )}
           </CardContent>
         </Card>
       )}
 
-      {/* Daily Trend Chart */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Daily Message Trend</CardTitle>
-            <div className="flex items-center gap-2">
-              <Calendar className="size-4 text-muted-foreground" />
-              <input
-                type="date"
-                value={dateRange.from}
-                onChange={(e) =>
-                  setDateRange((prev) => ({
-                    ...prev,
-                    from: e.target.value,
-                  }))
-                }
-                className="rounded-md border bg-background px-2 py-1 text-sm"
-              />
-              <span className="text-sm text-muted-foreground">to</span>
-              <input
-                type="date"
-                value={dateRange.to}
-                onChange={(e) =>
-                  setDateRange((prev) => ({
-                    ...prev,
-                    to: e.target.value,
-                  }))
-                }
-                className="rounded-md border bg-background px-2 py-1 text-sm"
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {state === "loading" ? (
-            <Skeleton className="h-[300px] w-full" />
-          ) : dailyCounts.length === 0 ? (
-            <div className="flex h-[300px] items-center justify-center">
-              <p className="text-sm text-muted-foreground">
-                No message data for the selected date range.
-              </p>
-            </div>
-          ) : (
-            <ChartContainer config={dailyChartConfig} className="h-[300px]">
-              <BarChart data={dailyCounts}>
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(value: string) =>
-                    new Date(value).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  }
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis tickLine={false} axisLine={false} />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      labelFormatter={(label: string) =>
-                        new Date(label).toLocaleDateString("en-US", {
-                          weekday: "long",
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })
-                      }
-                    />
-                  }
-                />
-                <Bar
-                  dataKey="messageInboxCount"
-                  name="Inbound"
-                  fill="var(--color-inbound)"
-                  stackId="messages"
-                  radius={[0, 0, 0, 0]}
-                />
-                <Bar
-                  dataKey="messageOutboxCount"
-                  name="Outbound"
-                  fill="var(--color-outbound)"
-                  stackId="messages"
-                  radius={[4, 4, 0, 0]}
-                />
-              </BarChart>
-            </ChartContainer>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Category Breakdown + Monthly Comparison */}
+      {/* Daily Chart + Cost by Category + Monthly */}
       <div className="grid gap-4 md:grid-cols-2">
-        {/* Category Breakdown */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Daily Message Trend</CardTitle>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Calendar className="size-3" />
+              <span>
+                {dateRange.from} to {dateRange.to}
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {state === "loading" ? (
+              <Skeleton className="h-[240px] w-full" />
+            ) : dailyCounts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <ChatCircle
+                  className="mb-3 size-10 text-muted-foreground"
+                  weight="fill"
+                />
+                <p className="text-sm text-muted-foreground">
+                  No daily data for selected range.
+                </p>
+              </div>
+            ) : (
+              <ChartContainer
+                config={DAILY_CHART_CONFIG}
+                className="h-[240px] w-full"
+              >
+                <BarChart
+                  data={dailyCounts.map((c) => ({
+                    date: new Date(c.date).toLocaleDateString("en", {
+                      day: "numeric",
+                      month: "short",
+                    }),
+                    in: c.messageInboxCount,
+                    out: c.messageOutboxCount,
+                  }))}
+                >
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent className="border bg-background p-2 shadow-md" />
+                    }
+                  />
+                  <Bar
+                    dataKey="in"
+                    fill="var(--color-in)"
+                    radius={[2, 2, 0, 0]}
+                  />
+                  <Bar
+                    dataKey="out"
+                    fill="var(--color-out)"
+                    radius={[2, 2, 0, 0]}
+                  />
+                </BarChart>
+              </ChartContainer>
+            )}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Cost by Category</CardTitle>
@@ -738,18 +651,15 @@ export default function WhatsAppUsagePage() {
           <CardContent>
             {state === "loading" ? (
               <div className="space-y-3">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
               </div>
             ) : !costData || costData.byCategory.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <p className="text-sm text-muted-foreground">
-                  No cost data available for this period.
+                  No cost category data available for this period.
                 </p>
-                <Button variant="outline" asChild className="mt-3">
-                  <Link href="?doc=1">Open documentation</Link>
-                </Button>
               </div>
             ) : (
               <div className="space-y-4">
@@ -777,7 +687,7 @@ export default function WhatsAppUsagePage() {
                         </div>
                         <div className="text-right">
                           <span className="text-sm font-medium">
-                            {formatCurrency(cat.totalCost)}
+                            Rp {cat.totalCost.toLocaleString("id-ID")}
                           </span>
                           <span className="ml-2 text-xs text-muted-foreground">
                             {percentage.toFixed(1)}%
@@ -799,59 +709,177 @@ export default function WhatsAppUsagePage() {
             )}
           </CardContent>
         </Card>
-
-        {/* Monthly Comparison */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Monthly Comparison</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {state === "loading" ? (
-              <div className="space-y-3">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            ) : monthlyCounts.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                No monthly data available.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {monthlyCounts.map((m) => {
-                  const total = m.messageInboxCount + m.messageOutboxCount
-                  return (
-                    <div
-                      key={`${m.year}-${m.month}`}
-                      className="flex items-center justify-between rounded-lg border p-3"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">
-                          {getMonthName(m.month)} {m.year}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {m.messageInboxCount.toLocaleString()} in /{" "}
-                          {m.messageOutboxCount.toLocaleString()} out
-                          {m.messageFailedCount > 0 &&
-                            ` · ${m.messageFailedCount} failed`}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold">
-                          {total.toLocaleString()}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          total messages
-                        </p>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
+
+      {/* Monthly Comparison */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Monthly Comparison</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {state === "loading" ? (
+            <div className="space-y-3">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : monthlyCounts.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No monthly data available.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {monthlyCounts.map((m) => {
+                const total = m.messageInboxCount + m.messageOutboxCount
+                return (
+                  <div
+                    key={`${m.year}-${m.month}`}
+                    className="flex items-center justify-between rounded-lg border p-3"
+                  >
+                    <div>
+                      <p className="text-sm font-medium">
+                        {getMonthName(m.month)} {m.year}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {m.messageInboxCount.toLocaleString()} in /{" "}
+                        {m.messageOutboxCount.toLocaleString()} out
+                        {m.messageFailedCount > 0 &&
+                          ` · ${m.messageFailedCount} failed`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold">
+                        {total.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        total messages
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent 5 Deductions */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Recent Deductions</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Latest 5 quota/balance deduction entries
+            </p>
+          </div>
+          <Button variant="outline" size="sm" asChild className="gap-1.5">
+            <Link href="/console/whatsapp/ledger">
+              View full ledger
+              <ArrowRight className="size-4" />
+            </Link>
+          </Button>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Time</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Credits</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recentLedgerLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-28" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-16" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-12" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : recentLedger.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="h-20 text-center text-sm text-muted-foreground"
+                  >
+                    No deduction entries yet.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                recentLedger.map((row) => {
+                  const isRefunded =
+                    row.isReverted || row.status === "REVERTED_FAILED"
+                  const isConfirmed = row.status === "CONFIRMED"
+
+                  return (
+                    <TableRow key={row.id}>
+                      <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                        {formatLedgerDate(row.createdAt)}
+                      </TableCell>
+                      <TableCell className="text-sm font-medium">
+                        {row.phoneNumber}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] font-semibold"
+                        >
+                          {row.category}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm font-semibold">
+                        {row.quotaValue}
+                      </TableCell>
+                      <TableCell>
+                        {isRefunded ? (
+                          <Badge
+                            variant="destructive"
+                            className="gap-1 border-amber-500/30 bg-amber-500/15 text-[10px] text-amber-600 dark:text-amber-400"
+                          >
+                            <ArrowCounterClockwise className="size-3" />
+                            REFUNDED
+                          </Badge>
+                        ) : isConfirmed ? (
+                          <Badge
+                            variant="default"
+                            className="gap-1 bg-emerald-600 text-[10px] text-white"
+                          >
+                            <CheckCircle className="size-3" weight="fill" />
+                            CONFIRMED
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="secondary"
+                            className="gap-1 text-[10px]"
+                          >
+                            <Clock className="size-3" />
+                            PENDING
+                          </Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {/* Empty State Banner */}
       {state === "loaded" && !hasData && (
