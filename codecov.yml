@@ -22,6 +22,14 @@ coverage:
           - logic
         informational: false
 
+flags:
+  logic:
+    carryforward: true
+    carryforward_behavior: subset
+  unit:
+    carryforward: true
+    carryforward_behavior: subset
+
 ignore:
   - "**/*.test.ts"
   - "**/*.test.tsx"
