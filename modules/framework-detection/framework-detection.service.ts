@@ -54,10 +54,15 @@ const JS_LOCKFILES = [
 const DEFAULT_PORT_MAP: Record<string, number> = {
   nextjs: 3000,
   react: 3000,
+  nestjs: 3000,
+  express: 3000,
+  nuxt: 3000,
   laravel: 80,
   wordpress: 80,
   django: 8000,
+  fastapi: 8000,
   flask: 5000,
+  gin: 8080,
 }
 
 // --- GitHub API Tool-Calling Detection ---
@@ -816,6 +821,141 @@ const evaluateDeterministicCandidates = (inventory: Inventory) => {
     })
   }
 
+  let nestPoints = 0
+  const nestReasons: string[] = []
+  if (hasFile("nest-cli.json")) {
+    nestPoints += 45
+    nestReasons.push("nest-cli.json is present")
+  }
+  if (
+    inventory.packageJsonDependencies.has("@nestjs/core") ||
+    inventory.packageJsonDependencies.has("@nestjs/common")
+  ) {
+    nestPoints += 45
+    nestReasons.push("@nestjs dependencies are present")
+  }
+  if (hasFile("src/main.ts") && hasFile("tsconfig.json")) {
+    nestPoints += 15
+    nestReasons.push("NestJS standard TypeScript entrypoint exists")
+  }
+  if (nestPoints >= 35) {
+    candidates.push({
+      id: "nestjs",
+      name: "NestJS",
+      ecosystem: "node",
+      points: Math.min(100, nestPoints),
+      reasons: nestReasons,
+    })
+  }
+
+  let expressPoints = 0
+  const expressReasons: string[] = []
+  if (
+    inventory.packageJsonDependencies.has("express") &&
+    !inventory.packageJsonDependencies.has("@nestjs/core")
+  ) {
+    expressPoints += 50
+    expressReasons.push("express dependency is present")
+  }
+  if (
+    hasFile("app.js") ||
+    hasFile("server.js") ||
+    hasFile("index.js") ||
+    hasFile("src/index.ts") ||
+    hasFile("src/server.ts")
+  ) {
+    expressPoints += 25
+    expressReasons.push("Express standard server entrypoint exists")
+  }
+  if (expressPoints >= 35) {
+    candidates.push({
+      id: "express",
+      name: "Express",
+      ecosystem: "node",
+      points: Math.min(100, expressPoints),
+      reasons: expressReasons,
+    })
+  }
+
+  let nuxtPoints = 0
+  const nuxtReasons: string[] = []
+  if (hasFile("nuxt.config.js") || hasFile("nuxt.config.ts")) {
+    nuxtPoints += 45
+    nuxtReasons.push("nuxt.config file exists")
+  }
+  if (
+    inventory.packageJsonDependencies.has("nuxt") ||
+    inventory.packageJsonDependencies.has("nuxt3")
+  ) {
+    nuxtPoints += 45
+    nuxtReasons.push("nuxt dependency is present")
+  }
+  if (nuxtPoints >= 35) {
+    candidates.push({
+      id: "nuxt",
+      name: "Nuxt",
+      ecosystem: "node",
+      points: Math.min(100, nuxtPoints),
+      reasons: nuxtReasons,
+    })
+  }
+
+  let djangoPoints = 0
+  const djangoReasons: string[] = []
+  if (hasFile("manage.py")) {
+    djangoPoints += 45
+    djangoReasons.push("manage.py is present")
+  }
+  if (hasFile("wsgi.py") || hasFile("asgi.py")) {
+    djangoPoints += 25
+    djangoReasons.push("WSGI/ASGI entrypoint exists")
+  }
+  if (djangoPoints >= 40) {
+    candidates.push({
+      id: "django",
+      name: "Django",
+      ecosystem: "python",
+      points: Math.min(100, djangoPoints),
+      reasons: djangoReasons,
+    })
+  }
+
+  let fastapiPoints = 0
+  const fastapiReasons: string[] = []
+  if (hasFile("main.py") && !hasFile("manage.py")) {
+    fastapiPoints += 30
+    fastapiReasons.push("FastAPI main.py entrypoint exists")
+  }
+  if (fastapiPoints >= 30) {
+    candidates.push({
+      id: "fastapi",
+      name: "FastAPI",
+      ecosystem: "python",
+      points: Math.min(100, fastapiPoints),
+      reasons: fastapiReasons,
+    })
+  }
+
+  let ginPoints = 0
+  const ginReasons: string[] = []
+  if (
+    hasFile("go.mod") &&
+    (hasFile("main.go") ||
+      hasFile("cmd/main.go") ||
+      hasFile("cmd/server/main.go"))
+  ) {
+    ginPoints += 50
+    ginReasons.push("Go module and main entrypoint exist")
+  }
+  if (ginPoints >= 40) {
+    candidates.push({
+      id: "gin",
+      name: "Gin",
+      ecosystem: "go",
+      points: Math.min(100, ginPoints),
+      reasons: ginReasons,
+    })
+  }
   candidates.sort((left, right) => right.points - left.points)
 
   return candidates
@@ -1014,6 +1154,14 @@ const inferFrameworkName = (id: string) => {
     laravel: "Laravel",
     nextjs: "Next.js",
     react: "React",
+    nestjs: "NestJS",
+    express: "Express",
+    nuxt: "Nuxt",
+    django: "Django",
+    fastapi: "FastAPI",
+    flask: "Flask",
+    gin: "Gin",
+    rails: "Ruby on Rails",
   }
 
   return mapping[id] ?? id
@@ -1026,12 +1174,17 @@ const inferFrameworkEcosystem = (
     laravel: "php",
     nextjs: "node",
     react: "node",
+    nestjs: "node",
+    express: "node",
+    nuxt: "node",
     django: "python",
+    fastapi: "python",
     flask: "python",
+    gin: "go",
+    echo: "go",
     rails: "ruby",
     sinatra: "ruby",
     spring: "java",
-    echo: "go",
     actix: "rust",
   }
 
