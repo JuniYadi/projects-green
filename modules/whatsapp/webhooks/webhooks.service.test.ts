@@ -12,6 +12,36 @@ const mockPrisma = {
     count: mock(async () => 0),
     findMany: mock(async () => []),
   },
+  whatsappConversation: {
+    findFirst: mock(async () => null),
+    create: mock(async (args: any) => ({ id: "conv-1", ...args.data })),
+    update: mock(async (args: any) => ({ id: "conv-1", ...args.data })),
+  },
+  whatsappMessage: {
+    create: mock(async (args: any) => ({
+      id: "msg-1",
+      ...args.data,
+      createdAt: new Date(),
+    })),
+  },
+  whatsappContact: {
+    upsert: mock(async () => ({})),
+  },
+  whatsappContactGroup: {
+    findFirst: mock(async () => ({ id: "group-1" })),
+  },
+  whatsappDailyCount: {
+    upsert: mock(async () => ({})),
+  },
+  whatsappHourlyCount: {
+    upsert: mock(async () => ({})),
+  },
+  whatsappMonthlyCount: {
+    upsert: mock(async () => ({})),
+  },
+  whatsappWebhook: {
+    findMany: mock(async () => []),
+  },
 }
 
 mock.module("@/lib/prisma", () => ({
@@ -23,6 +53,7 @@ const {
   recordProcessingResult,
   listWebhookEvents,
   extractMessageBody,
+  processInboundMessage,
 } = await import("./webhooks.service")
 
 // ---------------------------------------------------------------------------
@@ -498,5 +529,73 @@ describe("extractMessageBody", () => {
       type: "interactive",
     })
     expect(result).toBeNull()
+  })
+})
+describe("processInboundMessage", () => {
+  beforeEach(() => {
+    mockPrisma.whatsappConversation.findFirst.mockClear()
+    mockPrisma.whatsappConversation.create.mockClear()
+    mockPrisma.whatsappConversation.update.mockClear()
+    mockPrisma.whatsappMessage.create.mockClear()
+    mockPrisma.whatsappContact.upsert.mockClear()
+  })
+
+  it("normalizes incoming Indonesian phone numbers to E.164 (+62...)", async () => {
+    mockPrisma.whatsappConversation.findFirst.mockResolvedValue(null)
+
+    await processInboundMessage(
+      {
+        from: "6285708296482",
+        id: "wamid.inbound.1",
+        timestamp: "1787218008",
+        type: "text",
+        text: { body: "Halo" },
+      },
+      "device-1",
+      "org-1"
+    )
+
+    expect(mockPrisma.whatsappConversation.findFirst).toHaveBeenCalledWith({
+      where: {
+        organizationId: "org-1",
+        contactPhone: { in: ["+6285708296482", "6285708296482"] },
+      },
+    })
+
+    expect(mockPrisma.whatsappConversation.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        organizationId: "org-1",
+        contactPhone: "+6285708296482",
+        lastDirection: "INBOX",
+        whatsappDeviceId: "device-1",
+      }),
+    })
+  })
+
+  it("updates existing conversation and keeps normalized phone", async () => {
+    mockPrisma.whatsappConversation.findFirst.mockResolvedValue({
+      id: "existing-conv",
+      contactPhone: "6285708296482",
+    } as any)
+
+    await processInboundMessage(
+      {
+        from: "6285708296482",
+        id: "wamid.inbound.2",
+        timestamp: "1787218009",
+        type: "text",
+        text: { body: "Halo lagi" },
+      },
+      "device-1",
+      "org-1"
+    )
+
+    expect(mockPrisma.whatsappConversation.update).toHaveBeenCalledWith({
+      where: { id: "existing-conv" },
+      data: expect.objectContaining({
+        contactPhone: "+6285708296482",
+        lastDirection: "INBOX",
+      }),
+    })
   })
 })
