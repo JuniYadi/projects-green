@@ -127,12 +127,17 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     sourcePrefixes: [
       "app/[lang]/console/whatsapp/messages/",
       "app/[lang]/portal/whatsapp/messages/",
+      "modules/whatsapp/conversations/",
       "modules/whatsapp/messages/",
+      "modules/whatsapp/webhooks/",
+      "scripts/fix-whatsapp-duplicate-conversations.ts",
     ],
     testPrefixes: [
       "app/[lang]/console/whatsapp/messages/",
       "app/[lang]/portal/whatsapp/messages/",
+      "modules/whatsapp/conversations/",
       "modules/whatsapp/messages/",
+      "modules/whatsapp/webhooks/",
     ],
     smokeProjects: ["smoke-portal"],
   },

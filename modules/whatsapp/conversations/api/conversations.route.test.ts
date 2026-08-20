@@ -82,7 +82,12 @@ describe("conversations routes", () => {
     }
     mockFindMany.mockImplementation(async (args: any) => {
       expect(args.where.organizationId).toBe("org_1")
-      expect(args.where.contactPhone?.contains).toBe("6285708296482")
+      expect(args.where.OR).toBeDefined()
+      expect(args.where.OR).toEqual([
+        { contactPhone: { contains: "6285708296482" } },
+        { contactPhone: { contains: "+6285708296482" } },
+        { contactPhone: { contains: "6285708296482" } },
+      ])
       expect(args.take).toBe(100)
       return []
     })

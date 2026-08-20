@@ -452,6 +452,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         isActive: startsWithRoute(path, "/portal/whatsapp/usage"),
       },
       {
+        title: "Ledger",
+        url: localizePathname({
+          pathname: "/portal/whatsapp/ledger",
+          locale,
+        }),
+        icon: <ReceiptIcon />,
+        isActive: startsWithRoute(path, "/portal/whatsapp/ledger"),
+      },
+      {
         title: "Pricing",
         url: localizePathname({
           pathname: "/portal/whatsapp/pricing",
@@ -690,6 +699,15 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <ChartLineIcon />,
         isActive: startsWithRoute(path, "/console/whatsapp/usage"),
+      },
+      {
+        title: "Ledger",
+        url: localizePathname({
+          pathname: "/console/whatsapp/ledger",
+          locale,
+        }),
+        icon: <ReceiptIcon />,
+        isActive: startsWithRoute(path, "/console/whatsapp/ledger"),
       },
       {
         title: "Pricing",

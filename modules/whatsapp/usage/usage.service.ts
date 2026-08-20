@@ -87,37 +87,40 @@ export class WhatsappUsageService {
   }
 
   /**
-   * Aggregate WhatsApp costs from adjustments and usage ledger for a period.
+   * Aggregate WhatsApp costs and message categories for a period.
+   * Priority 1: WhatsappBillingLedger (Meta conversation categories: UTILITY, MARKETING, AUTHENTICATION, SERVICE, REPLY).
+   * Priority 2: Fallback to BillingAdjustment / BillingUsageLedger if no billing ledger rows exist.
    */
   async getCostSummary(
     organizationId: string,
     period: string
   ): Promise<CostSummaryDTO> {
-    const account = await prisma.billingAccount.findUnique({
-      where: { organizationId },
-      select: { id: true },
-    })
+    const [yearStr, monthStr] = period.split("-")
+    const year = Number(yearStr)
+    const month = Number(monthStr)
 
-    const [adjustments, ledgerEntries] = await Promise.all([
-      account
-        ? prisma.billingAdjustment.findMany({
-            where: {
-              billingAccountId: account.id,
-              createdAt: {
-                gte: new Date(`${period}-01`),
-                lt: new Date(
-                  Number(period.split("-")[1]) === 12
-                    ? Number(period.split("-")[0]) + 1
-                    : Number(period.split("-")[0]),
-                  Number(period.split("-")[1]) === 12
-                    ? 0
-                    : Number(period.split("-")[1]),
-                  1
-                ),
-              },
-            },
-          })
-        : Promise.resolve([]),
+    const startDate = new Date(`${period}-01`)
+    const endDate = new Date(
+      month === 12 ? year + 1 : year,
+      month === 12 ? 0 : month,
+      1
+    )
+
+    const [whatsappLedgerRows, account, ledgerEntries] = await Promise.all([
+      prisma.whatsappBillingLedger.findMany({
+        where: {
+          organizationId,
+          isReverted: false,
+          createdAt: {
+            gte: startDate,
+            lt: endDate,
+          },
+        },
+      }),
+      prisma.billingAccount.findUnique({
+        where: { organizationId },
+        select: { id: true },
+      }),
       prisma.billingUsageLedger.findMany({
         where: {
           organizationId,
@@ -129,11 +132,6 @@ export class WhatsappUsageService {
         },
       }),
     ])
-
-    const whatsappAdjustments = adjustments.filter((adj) => {
-      const meta = adj.metadataJson as Record<string, unknown> | null
-      return meta?.source === "WHATSAPP"
-    })
 
     const categoryMap = new Map<string, { count: number; total: number }>()
     const addCategory = (category: string, amount: number) => {
@@ -147,25 +145,54 @@ export class WhatsappUsageService {
     }
 
     let total = 0
-    for (const adj of whatsappAdjustments) {
-      const amount = toNum(adj.amount)
-      total += amount
-      const metadata = adj.metadataJson as Record<string, unknown> | null
-      const category =
-        typeof metadata?.category === "string"
-          ? metadata.category
-          : "WHATSAPP_ADJUSTMENT"
-      addCategory(category, amount)
-    }
-    for (const row of ledgerEntries) {
-      const amount = toNum(row.amountIdr)
-      total += amount
-      addCategory(row.category ?? "UNKNOWN", amount)
+
+    if (whatsappLedgerRows.length > 0) {
+      for (const row of whatsappLedgerRows) {
+        const cat = row.category ?? "UTILITY"
+        const cost = toNum(row.quotaValue)
+        total += cost
+        addCategory(cat, cost)
+      }
+    } else {
+      const adjustments = account
+        ? await prisma.billingAdjustment.findMany({
+            where: {
+              billingAccountId: account.id,
+              createdAt: {
+                gte: startDate,
+                lt: endDate,
+              },
+            },
+          })
+        : []
+
+      const whatsappAdjustments = adjustments.filter((adj) => {
+        const meta = adj.metadataJson as Record<string, unknown> | null
+        return meta?.source === "WHATSAPP"
+      })
+
+      for (const adj of whatsappAdjustments) {
+        const amount = toNum(adj.amount)
+        total += amount
+        const metadata = adj.metadataJson as Record<string, unknown> | null
+        const category =
+          typeof metadata?.category === "string" ? metadata.category : "UTILITY"
+        addCategory(category, amount)
+      }
+
+      for (const row of ledgerEntries) {
+        const amount = toNum(row.amountIdr)
+        total += amount
+        addCategory(row.category ?? "UTILITY", amount)
+      }
     }
 
     return {
       totalAmount: total,
-      totalEntries: whatsappAdjustments.length + ledgerEntries.length,
+      totalEntries:
+        whatsappLedgerRows.length > 0
+          ? whatsappLedgerRows.length
+          : categoryMap.size,
       byCategory: Array.from(categoryMap.entries()).map(([category, data]) => ({
         category,
         count: data.count,
@@ -438,6 +465,131 @@ export class WhatsappUsageService {
       byDevice,
       balance: account ? toNum(account.balance) : null,
       currency: account?.currency ?? "IDR",
+    }
+  }
+
+  /**
+   * Query itemized WhatsappBillingLedger entries with pagination and filters.
+   */
+  async getLedgerEntries(
+    organizationId: string,
+    opts: {
+      deviceId?: string
+      category?: string
+      status?: string
+      search?: string
+      from?: string
+      to?: string
+      page?: number
+      limit?: number
+    } = {}
+  ) {
+    const page = Math.max(1, opts.page ?? 1)
+    const limit = Math.min(100, Math.max(1, opts.limit ?? 20))
+    const skip = (page - 1) * limit
+
+    const where: Prisma.WhatsappBillingLedgerWhereInput = {
+      organizationId,
+    }
+
+    if (opts.deviceId) {
+      where.whatsappDeviceId = opts.deviceId
+    }
+
+    if (opts.category && opts.category !== "all") {
+      where.category =
+        opts.category as Prisma.EnumWhatsappBillingCategoryFilter["equals"]
+    }
+
+    if (opts.status && opts.status !== "all") {
+      if (opts.status === "REFUNDED" || opts.status === "REVERTED") {
+        where.isReverted = true
+      } else if (opts.status === "CONFIRMED") {
+        where.isReverted = false
+        where.status = "CONFIRMED"
+      } else if (opts.status === "PENDING") {
+        where.isReverted = false
+        where.status = "CHARGED_PENDING_VERIFY"
+      } else {
+        where.status =
+          opts.status as Prisma.EnumWhatsappBillingStatusFilter["equals"]
+      }
+    }
+
+    if (opts.search?.trim()) {
+      const q = opts.search.trim()
+      where.OR = [
+        { phoneNumber: { contains: q } },
+        { waMessageId: { contains: q } },
+      ]
+    }
+
+    if (opts.from || opts.to) {
+      const dateFilter: Prisma.DateTimeFilter = {}
+      if (opts.from) dateFilter.gte = new Date(opts.from)
+      if (opts.to) dateFilter.lte = new Date(opts.to)
+      where.createdAt = dateFilter
+    }
+
+    const [total, rows, summaryAgg, refundedAgg] = await Promise.all([
+      prisma.whatsappBillingLedger.count({ where }),
+      prisma.whatsappBillingLedger.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+        include: {
+          whatsappDevice: {
+            select: { phoneNumber: true },
+          },
+        },
+      }),
+      prisma.whatsappBillingLedger.aggregate({
+        where: { organizationId, isReverted: false },
+        _sum: { quotaValue: true },
+        _count: true,
+      }),
+      prisma.whatsappBillingLedger.aggregate({
+        where: { organizationId, isReverted: true },
+        _sum: { quotaValue: true },
+        _count: true,
+      }),
+    ])
+
+    const totalCredits =
+      toNum(summaryAgg._sum.quotaValue ?? 0) +
+      toNum(refundedAgg._sum.quotaValue ?? 0)
+    const totalRefundedCredits = toNum(refundedAgg._sum.quotaValue ?? 0)
+
+    return {
+      data: rows.map((r) => ({
+        id: r.id,
+        organizationId: r.organizationId,
+        waMessageId: r.waMessageId,
+        phoneNumber: r.phoneNumber,
+        category: r.category,
+        quotaKey: r.quotaKey,
+        quotaValue: toNum(r.quotaValue),
+        status: r.status,
+        isReverted: r.isReverted,
+        revertReason: r.revertReason,
+        revertedAt: r.revertedAt,
+        lastStatus: r.lastStatus,
+        whatsappDeviceId: r.whatsappDeviceId,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        devicePhoneNumber: r.whatsappDevice?.phoneNumber ?? null,
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit) || 1,
+      summary: {
+        totalCredits: Math.round(totalCredits * 100) / 100,
+        totalRefundedCredits: Math.round(totalRefundedCredits * 100) / 100,
+        activeCredits:
+          Math.round((totalCredits - totalRefundedCredits) * 100) / 100,
+      },
     }
   }
 }

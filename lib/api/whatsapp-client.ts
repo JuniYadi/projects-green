@@ -504,6 +504,46 @@ export const whatsappClient = {
         balance: number | null
         currency: string
       }>("/api/whatsapp/usage/cost-breakdown", { params }),
+    ledger: (params?: {
+      deviceId?: string
+      category?: string
+      status?: string
+      search?: string
+      from?: string
+      to?: string
+      page?: number
+      limit?: number
+    }) =>
+      serverFetch<{
+        ok: boolean
+        data: {
+          id: string
+          organizationId: string
+          waMessageId: string
+          phoneNumber: string
+          category: string
+          quotaKey: string
+          quotaValue: number
+          status: string
+          isReverted: boolean
+          revertReason: string | null
+          revertedAt: string | null
+          lastStatus: string | null
+          whatsappDeviceId: string | null
+          createdAt: string
+          updatedAt: string
+          devicePhoneNumber?: string | null
+        }[]
+        total: number
+        page: number
+        limit: number
+        totalPages: number
+        summary: {
+          totalCredits: number
+          totalRefundedCredits: number
+          activeCredits: number
+        }
+      }>("/api/whatsapp/usage/ledger", { params }),
   },
 
   broadcasts: {

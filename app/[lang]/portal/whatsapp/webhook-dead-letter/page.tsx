@@ -9,6 +9,13 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   ArrowCounterClockwise,
   Warning,
   Clock,
@@ -20,6 +27,7 @@ import { toast } from "sonner"
 type DeadLetter = {
   id: string
   deviceId: string
+  organizationId?: string
   eventType: string
   rawPayload: object
   errorMessage: string
@@ -36,6 +44,10 @@ type DeadLetterListMeta = {
   totalPages: number
 }
 
+type OrganizationListItem = {
+  id: string
+  name: string
+}
 function ReplayStatusBadge({ status }: { status: string | null }) {
   if (!status) return null
 
@@ -156,6 +168,10 @@ export default function WebhookDeadLetterPage({
   const [error, setError] = React.useState("")
   const [data, setData] = React.useState<DeadLetter[]>([])
   const [meta, setMeta] = React.useState<DeadLetterListMeta | null>(null)
+  const [organizations, setOrganizations] = React.useState<
+    OrganizationListItem[]
+  >([])
+  const [selectedOrgId, setSelectedOrgId] = React.useState<string>("all")
 
   const resolvedParams = React.use(params)
   const lang = resolvedParams.lang
@@ -166,18 +182,38 @@ export default function WebhookDeadLetterPage({
     const run = async () => {
       setState("loading")
       try {
-        const response = await eden.api.whatsapp.webhooks["dead-letter"].get({
-          $query: { page: "1", limit: "100" },
+        const query: Record<string, string> = {
+          page: "1",
+          limit: "100",
+        }
+        if (selectedOrgId !== "all") {
+          query.organizationId = selectedOrgId
+        }
+        const deadLetterRes = await eden.api.admin.whatsapp.webhooks[
+          "dead-letter"
+        ].get({
+          $query: query,
         })
 
         if (cancelled) return
 
-        if (response.status === 200 && response.data) {
-          setData(response.data.data as DeadLetter[])
-          setMeta(response.data.meta as DeadLetterListMeta)
+        if (
+          deadLetterRes.status === 200 &&
+          deadLetterRes.data &&
+          "data" in deadLetterRes.data
+        ) {
+          setData(deadLetterRes.data.data as DeadLetter[])
+          setMeta(deadLetterRes.data.meta as DeadLetterListMeta)
           setState("loaded")
         } else {
-          setError(response.error?.value?.message ?? "Failed to load")
+          const errVal: unknown = deadLetterRes.error?.value
+          const message =
+            typeof errVal === "string"
+              ? errVal
+              : errVal && typeof errVal === "object" && "message" in errVal
+                ? String(errVal.message)
+                : "Failed to load dead letters"
+          setError(message)
           setState("error")
         }
       } catch (err) {
@@ -192,15 +228,30 @@ export default function WebhookDeadLetterPage({
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [selectedOrgId])
 
   React.useEffect(() => {
     return loadData()
   }, [loadData])
 
+  React.useEffect(() => {
+    let cancelled = false
+    eden.api.admin.organizations.get({ $query: { limit: 100 } }).then((res) => {
+      if (cancelled) return
+      const body = res.data as unknown as {
+        ok: boolean
+        organizations: OrganizationListItem[]
+      }
+      if (body.ok) setOrganizations(body.organizations)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const handleReplay = async (id: string) => {
     try {
-      const response = await eden.api.whatsapp.webhooks["dead-letter"][
+      const response = await eden.api.admin.whatsapp.webhooks["dead-letter"][
         id
       ].replay.post({})
 
@@ -253,14 +304,42 @@ export default function WebhookDeadLetterPage({
         )}
       </div>
 
+      {/* Organization Filter */}
+      <div className="flex items-end gap-4">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted-foreground">
+            Organization
+          </label>
+          <Select
+            value={selectedOrgId}
+            onValueChange={(val) => setSelectedOrgId(val)}
+          >
+            <SelectTrigger className="w-64">
+              <SelectValue placeholder="All organizations" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              {organizations.map((org) => (
+                <SelectItem key={org.id} value={org.id}>
+                  {org.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       <DataTable<DeadLetter>
         tableId="webhook-dead-letters"
         columns={getColumns(lang, handleReplay)}
         data={data}
+        searchableColumns={[
+          "deviceId",
+          "eventType",
+          "errorMessage",
+          "replayStatus",
+        ]}
         searchPlaceholder="Search dead letters..."
-        searchableColumns={["deviceId", "eventType", "errorMessage"]}
-        initialSorting={[{ id: "failedAt", desc: true }]}
-        emptyMessage="No dead letters found."
       />
     </main>
   )

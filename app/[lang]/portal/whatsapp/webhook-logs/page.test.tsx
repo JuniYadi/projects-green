@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
+import { act, render, waitFor } from "@testing-library/react"
 
 // ─── Mocked responses ─────────────────────────────────────────────────────────
 
@@ -8,9 +8,22 @@ const mockDevicesResponse = () =>
     JSON.stringify({
       ok: true,
       devices: [
-        { id: "d1", phoneNumber: "+6281212345678", environment: "PRODUCTION" },
-        { id: "d2", phoneNumber: "+6281398765432", environment: "SANDBOX" },
+        {
+          id: "device-1",
+          phoneNumber: "+1234567890",
+          environment: "PRODUCTION",
+          status: "ACTIVE",
+        },
       ],
+    }),
+    { status: 200, headers: { "Content-Type": "application/json" } }
+  )
+
+const mockOrganizationsResponse = () =>
+  new Response(
+    JSON.stringify({
+      ok: true,
+      organizations: [{ id: "org-1", name: "Test Organization" }],
     }),
     { status: 200, headers: { "Content-Type": "application/json" } }
   )
@@ -21,18 +34,22 @@ const mockEventsResponse = () =>
       ok: true,
       data: [
         {
-          id: "e1",
+          id: "evt-1",
           eventType: "inbound_message",
-          processingStatus: "SUCCESS",
-          createdAt: "2026-06-22T10:00:00Z",
-          waMessageId: "wamid_123",
+          processingStatus: "PENDING",
+          createdAt: new Date().toISOString(),
+          whatsappDeviceId: "device-1",
+          waMessageId: null,
+          errorMessage: null,
         },
         {
-          id: "e2",
+          id: "evt-2",
           eventType: "status_update",
-          processingStatus: "PENDING",
-          createdAt: "2026-06-22T11:00:00Z",
-          waMessageId: null,
+          processingStatus: "SUCCESS",
+          createdAt: new Date().toISOString(),
+          whatsappDeviceId: "device-1",
+          waMessageId: "wa-msg-1",
+          errorMessage: null,
         },
       ],
       meta: { total: 2, page: 1, limit: 20, totalPages: 1 },
@@ -40,13 +57,14 @@ const mockEventsResponse = () =>
     { status: 200, headers: { "Content-Type": "application/json" } }
   )
 
-// ─── Mock fetch — route by URL path ────────────────────────────────────────────
-
 const mockFetch = mock((input: string | Request) => {
   const url = typeof input === "string" ? input : input.url
   const pathname = new URL(url, "http://localhost:3300").pathname
-  if (pathname.startsWith("/api/whatsapp/devices")) {
+  if (pathname.startsWith("/api/admin/devices")) {
     return Promise.resolve(mockDevicesResponse())
+  }
+  if (pathname.startsWith("/api/admin/organizations")) {
+    return Promise.resolve(mockOrganizationsResponse())
   }
   return Promise.resolve(mockEventsResponse())
 })
@@ -84,8 +102,11 @@ describe("PortalWhatsAppWebhookLogsPage", () => {
     mockFetch.mockImplementation((input: string | Request) => {
       const url = typeof input === "string" ? input : input.url
       const pathname = new URL(url, "http://localhost:3300").pathname
-      if (pathname.startsWith("/api/whatsapp/devices")) {
+      if (pathname.startsWith("/api/admin/devices")) {
         return Promise.resolve(mockDevicesResponse())
+      }
+      if (pathname.startsWith("/api/admin/organizations")) {
+        return Promise.resolve(mockOrganizationsResponse())
       }
       return Promise.reject(new Error("Failed to load webhook events"))
     })
@@ -94,7 +115,7 @@ describe("PortalWhatsAppWebhookLogsPage", () => {
     const view = render(<Page />)
 
     await waitFor(() => {
-      expect(view.getByRole("button", { name: "Retry" })).toBeTruthy()
+      expect(view.getByText("Failed to load webhook events")).toBeTruthy()
     })
   })
 })

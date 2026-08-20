@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { ArrowsClockwise } from "@phosphor-icons/react"
 
 import {
   Card,
@@ -10,8 +9,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { eden } from "@/lib/eden"
+import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import {
   WebhookEventTable,
   type WebhookEventDTO,
@@ -21,7 +20,6 @@ import {
   DEFAULT_FILTER_STATE,
   type WebhookEventFilterState,
 } from "@/modules/whatsapp/webhooks/ui/webhook-event-filter"
-import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -38,6 +36,11 @@ type EventsApiResponse = {
   }
 }
 
+type OrganizationListItem = {
+  id: string
+  name: string
+}
+
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
 const EVENT_TYPES = ["inbound_message", "status_update"]
@@ -49,11 +52,19 @@ function makeDeviceLabel(device: DeviceListItem): string {
   return `${device.phoneNumber}${device.environment === "SANDBOX" ? " (Sandbox)" : ""}`
 }
 
+function makeOrganizationLabel(org: OrganizationListItem): string {
+  return org.name
+}
+
 // ─── Page Component ───────────────────────────────────────────────────────────
 
 export default function PortalWhatsAppWebhookLogsPage() {
   // Device list (for filter dropdown)
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
+  // Organizations list (for filter dropdown)
+  const [organizations, setOrganizations] = React.useState<
+    OrganizationListItem[]
+  >([])
 
   // Events
   const [events, setEvents] = React.useState<WebhookEventDTO[]>([])
@@ -69,28 +80,34 @@ export default function PortalWhatsAppWebhookLogsPage() {
   const [filters, setFilters] =
     React.useState<WebhookEventFilterState>(DEFAULT_FILTER_STATE)
   const [page, setPage] = React.useState(1)
-
   // ── Load devices on mount ────────────────────────────────────────────────
 
-  const loadDevices = React.useCallback(async () => {
-    try {
-      const { data, error } = await eden.api.whatsapp.devices.get()
-      if (error) throw new Error(String(error))
-      const result = data as unknown as {
-        ok: boolean
-        devices: DeviceListItem[]
-      }
-      setDevices(result.devices)
-    } catch (err) {
-      console.error("Failed to load devices:", err)
-    }
-  }, [])
+  // ── Load data on mount ────────────────────────────────────────────────
 
   React.useEffect(() => {
     ;(async () => {
-      await loadDevices()
+      try {
+        const [deviceRes, orgRes] = await Promise.all([
+          eden.api.admin.devices.get({ $query: { take: "200" } }),
+          eden.api.admin.organizations.get({ $query: { limit: 100 } }),
+        ])
+
+        const deviceBody = deviceRes.data as unknown as {
+          ok: boolean
+          devices: DeviceListItem[]
+        }
+        if (deviceBody.ok) setDevices(deviceBody.devices)
+
+        const orgBody = orgRes.data as unknown as {
+          ok: boolean
+          organizations: OrganizationListItem[]
+        }
+        if (orgBody.ok) setOrganizations(orgBody.organizations)
+      } catch (err) {
+        console.error("Failed to load filters:", err)
+      }
     })()
-  }, [loadDevices])
+  }, [])
 
   // ── Load events on mount + filter/page change ────────────────────────────
 
@@ -104,6 +121,9 @@ export default function PortalWhatsAppWebhookLogsPage() {
         limit: "20",
       }
 
+      if (filters.organizationId && filters.organizationId !== "all") {
+        query.organizationId = filters.organizationId
+      }
       if (filters.deviceId !== "all") {
         query.deviceId = filters.deviceId
       }
@@ -120,12 +140,17 @@ export default function PortalWhatsAppWebhookLogsPage() {
         query.to = filters.dateTo
       }
 
-      const { data, error } = await eden.api.whatsapp.webhooks.events.get({
-        $query: query,
-      })
+      const { data, error } = await eden.api.admin.whatsapp.webhooks.events.get(
+        {
+          $query: query,
+        }
+      )
 
       if (error) {
-        throw new Error(error.message ?? "Failed to load events")
+        throw new Error(
+          (error as { message?: string })?.message ??
+            "Failed to load webhook events"
+        )
       }
 
       const result = data as unknown as EventsApiResponse
@@ -173,6 +198,7 @@ export default function PortalWhatsAppWebhookLogsPage() {
       </div>
 
       {/* Filter Bar — device filter enabled */}
+      {/* Filter Bar — device and organization filters enabled */}
       <WebhookEventFilter
         eventTypes={EVENT_TYPES}
         statuses={PROCESSING_STATUSES}
@@ -180,9 +206,14 @@ export default function PortalWhatsAppWebhookLogsPage() {
           id: d.id,
           label: makeDeviceLabel(d),
         }))}
+        organizations={(organizations ?? []).map((o) => ({
+          id: o.id,
+          name: makeOrganizationLabel(o),
+        }))}
         onFilterChange={handleFilterChange}
         initialFilters={filters}
         showDeviceFilter={true}
+        showOrganizationFilter={true}
       />
 
       {/* Events Table */}
@@ -192,19 +223,11 @@ export default function PortalWhatsAppWebhookLogsPage() {
           <CardDescription>Webhook events for all devices</CardDescription>
         </CardHeader>
         <CardContent>
-          {!devices.length && pageState !== "error" ? (
+          {!organizations.length && !devices.length && pageState !== "error" ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <p className="text-sm text-muted-foreground">
-                No devices found. Add a WhatsApp device first.
+                No devices or organizations found.
               </p>
-              <Button
-                variant="outline"
-                className="mt-3"
-                onClick={() => void loadDevices()}
-              >
-                <ArrowsClockwise className="mr-2 size-4" />
-                Retry
-              </Button>
             </div>
           ) : (
             <WebhookEventTable

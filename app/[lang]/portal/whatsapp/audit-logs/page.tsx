@@ -87,27 +87,29 @@ export default function PortalWhatsAppAuditLogsPage() {
         const params = new URLSearchParams(q)
         // ponytail: audit routes aren't in Eden's type system yet — use raw fetch
         // eslint-disable-next-line no-restricted-globals
-        const res = await fetch(`/api/whatsapp/admin/whatsapp/audit?${params}`)
+        const res = await fetch(`/api/admin/whatsapp/audit?${params}`)
         const result = (await res.json()) as {
           ok: boolean
           data: AuditLogDTO[]
           pagination: { page: number; total: number; totalPages: number }
         }
-        if (!result.ok) throw new Error("Failed to load audit logs")
-        setLogs(result.data)
-        setTotal(result.pagination.total)
-        setTotalPages(result.pagination.totalPages)
-        setPageState("loaded")
+        if (result.ok) {
+          setLogs(result.data)
+          setTotal(result.pagination.total)
+          setTotalPages(result.pagination.totalPages)
+          setPage(result.pagination.page)
+          setPageState("loaded")
+        } else {
+          setErrorMessage("Failed to load logs")
+          setPageState("error")
+        }
       } catch (err) {
-        setErrorMessage(
-          err instanceof Error ? err.message : "Failed to load audit logs"
-        )
+        setErrorMessage(String(err))
         setPageState("error")
       }
     }
+
     fetchData()
-    // ponytail: only re-fetch when page or filters change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     page,
     filterAction,
@@ -116,11 +118,8 @@ export default function PortalWhatsAppAuditLogsPage() {
     filterQ,
     filterFrom,
     filterTo,
+    buildQuery,
   ])
-
-  const handleApplyFilters = () => {
-    setPage(1)
-  }
 
   const handleResetFilters = () => {
     setFilterAction("")
@@ -129,6 +128,9 @@ export default function PortalWhatsAppAuditLogsPage() {
     setFilterQ("")
     setFilterFrom("")
     setFilterTo("")
+    setPage(1)
+  }
+  const handleApplyFilters = () => {
     setPage(1)
   }
 
