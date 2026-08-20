@@ -157,3 +157,39 @@ export const usageRoutes = new Elysia({ prefix: "/usage" })
       return { ok: true, ...breakdown }
     }
   )
+  // GET /usage/ledger — itemized quota & balance deduction ledger
+  .get(
+    "/ledger",
+    async ({ request, set, query }: { request: any; set: any; query: any }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) return toUnauthorized(set)
+
+      const { deviceId, category, status, search, from, to, page, limit } =
+        query as {
+          deviceId?: string
+          category?: string
+          status?: string
+          search?: string
+          from?: string
+          to?: string
+          page?: string
+          limit?: string
+        }
+
+      const result = await whatsappUsageService.getLedgerEntries(
+        whatsappAuth.organizationId!,
+        {
+          deviceId,
+          category,
+          status,
+          search,
+          from,
+          to,
+          page: page ? Number(page) : undefined,
+          limit: limit ? Number(limit) : undefined,
+        }
+      )
+
+      return { ok: true, ...result }
+    }
+  )
