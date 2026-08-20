@@ -762,11 +762,14 @@ export default function WhatsAppUsagePage() {
                     <div key={cat.category} className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge
+                            variant="secondary"
+                            className="text-xs font-semibold"
+                          >
                             {cat.category
                               .replace("WHATSAPP_MESSAGE_", "")
-                              .toLowerCase()
-                              .replace(/^\w/, (c) => c.toUpperCase())}
+                              .replace("WHATSAPP_", "")
+                              .toUpperCase()}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
                             {cat.count.toLocaleString()} entries
