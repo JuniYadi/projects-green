@@ -1178,6 +1178,46 @@ export type AppMessages = {
       detector: string
     }
   }
+  legal: {
+    effectiveDateLabel: string
+    lastUpdatedLabel: string
+    effectiveDate: string
+    contactEmail: string
+    companyName: string
+    navigation: {
+      terms: string
+      privacy: string
+      acceptableUse: string
+      backToHome: string
+    }
+    terms: {
+      title: string
+      description: string
+      intro: string
+      sections: Array<{
+        title: string
+        content: string[]
+      }>
+    }
+    privacy: {
+      title: string
+      description: string
+      intro: string
+      sections: Array<{
+        title: string
+        content: string[]
+      }>
+    }
+    acceptableUse: {
+      title: string
+      description: string
+      intro: string
+      sections: Array<{
+        title: string
+        content: string[]
+      }>
+    }
+  }
 }
 
 export type DeployWizardMessages = AppMessages["console"]["app"]["deployWizard"]
