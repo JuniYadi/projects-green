@@ -1,8 +1,9 @@
 import { Elysia, t } from "elysia"
 import { Prisma } from "@prisma/client"
+
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
-
+import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
 const DEFAULT_CONVERSATION_LIMIT = 50
 const MAX_CONVERSATION_LIMIT = 100
 
@@ -56,7 +57,16 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
       }
 
       if (contactPhone) {
-        where.contactPhone = { contains: contactPhone }
+        const normalized = normalizeIndonesianPhoneNumber(contactPhone)
+        if (normalized) {
+          where.OR = [
+            { contactPhone: { contains: contactPhone } },
+            { contactPhone: { contains: normalized } },
+            { contactPhone: { contains: normalized.replace("+", "") } },
+          ]
+        } else {
+          where.contactPhone = { contains: contactPhone }
+        }
       }
 
       // Filter conversations that have messages with the given status
@@ -208,13 +218,15 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
       if (!whatsappAuth.organizationId) return toNoOrganization(set)
       const organizationId = whatsappAuth.organizationId
       try {
+        const normalizedPhone =
+          normalizeIndonesianPhoneNumber(body.contactPhone) ?? body.contactPhone
         const conversation = await prisma.whatsappConversation.create({
           data: {
             ...body,
+            contactPhone: normalizedPhone,
             organizationId,
           },
         })
-
         return { ok: true, conversation }
       } catch (error: any) {
         if (error.code === "P2002") {
