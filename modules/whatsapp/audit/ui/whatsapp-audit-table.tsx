@@ -1,8 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { CaretDown, CaretRight, WarningCircle } from "@phosphor-icons/react"
-
+import {
+  CaretDown,
+  CaretRight,
+  CheckCircle,
+  CopySimple,
+  WarningCircle,
+} from "@phosphor-icons/react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -81,6 +86,58 @@ function formatTime(iso: string) {
   } catch {
     return iso
   }
+}
+function DetailsViewer({ details }: { details: Record<string, unknown> }) {
+  const [copied, setCopied] = React.useState(false)
+  const jsonString = React.useMemo(
+    () => JSON.stringify(details, null, 2),
+    [details]
+  )
+
+  const handleCopy = React.useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(jsonString)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard unavailable
+    }
+  }, [jsonString])
+
+  return (
+    <div className="col-span-2 space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          Details
+        </span>
+        <Button
+          type="button"
+          variant="outline"
+          size="xs"
+          className="h-7 gap-1.5 text-xs"
+          onClick={(e) => {
+            e.stopPropagation()
+            handleCopy()
+          }}
+        >
+          {copied ? (
+            <>
+              <CheckCircle className="size-3.5 text-emerald-500" />
+              <span className="font-medium text-emerald-600">Copied</span>
+            </>
+          ) : (
+            <>
+              <CopySimple className="size-3.5" />
+              <span>Copy JSON</span>
+            </>
+          )}
+        </Button>
+      </div>
+      <pre className="max-h-96 overflow-auto rounded-md border bg-background/95 p-3 font-mono text-xs leading-relaxed text-foreground select-all">
+        {jsonString}
+      </pre>
+    </div>
+  )
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -277,12 +334,7 @@ export function AuditLogTable({
                               : "—"}
                           </div>
                           {log.details && (
-                            <div className="col-span-2">
-                              <span className="font-medium">Details:</span>
-                              <pre className="mt-1 max-h-40 overflow-auto rounded bg-background p-2 text-xs">
-                                {JSON.stringify(log.details, null, 2)}
-                              </pre>
-                            </div>
+                            <DetailsViewer details={log.details} />
                           )}
                         </div>
                       </TableCell>

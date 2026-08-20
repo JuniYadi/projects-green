@@ -93,7 +93,7 @@ const logWebhookRejection = (params: {
   ip?: string | null
   userAgent?: string | null
   details?: Record<string, unknown>
-  rawPayloadSnippet?: string
+  rawPayload?: unknown
 }) => {
   console.warn(
     `[WhatsApp Webhook] Rejected incoming webhook (${params.reason}): webhookKey=${params.webhookKey}, phoneIds=${JSON.stringify(params.phoneIds ?? [])}, metaAppId=${params.metaAppId ?? "unknown"}`
@@ -110,7 +110,7 @@ const logWebhookRejection = (params: {
       webhookKey: params.webhookKey,
       metaAppId: params.metaAppId,
       phoneIds: params.phoneIds,
-      rawPayloadSnippet: params.rawPayloadSnippet,
+      rawPayload: params.rawPayload,
       ...params.details,
     },
   }).catch(() => {})
@@ -258,8 +258,6 @@ export const metaWebhookRoutes = new Elysia({
       const userAgent = request.headers.get("user-agent") ?? null
       const rawBodyValue = (store as Record<string, unknown>).rawBody
       const rawBody = typeof rawBodyValue === "string" ? rawBodyValue : ""
-      const rawPayloadSnippet =
-        rawBody.length > 500 ? `${rawBody.slice(0, 500)}...` : rawBody
 
       const signature = request.headers.get("x-hub-signature-256")
       if (!signature) {
@@ -303,7 +301,8 @@ export const metaWebhookRoutes = new Elysia({
           metaAppId: credentials.metaAppId,
           ip,
           userAgent,
-          rawPayloadSnippet,
+          rawPayload:
+            rawBody.length > 5000 ? `${rawBody.slice(0, 5000)}...` : rawBody,
         })
         return invalidResponse(set, 422, "INVALID_PAYLOAD")
       }
@@ -315,7 +314,7 @@ export const metaWebhookRoutes = new Elysia({
           metaAppId: credentials.metaAppId,
           ip,
           userAgent,
-          rawPayloadSnippet,
+          rawPayload: payload,
         })
         return invalidResponse(set, 422, "INVALID_PAYLOAD")
       }
@@ -349,7 +348,7 @@ export const metaWebhookRoutes = new Elysia({
           ip,
           userAgent,
           details: { unmappedPhoneIds },
-          rawPayloadSnippet,
+          rawPayload: payload,
         })
         return invalidResponse(set, 422, "UNKNOWN_DEVICE")
       }
@@ -368,7 +367,7 @@ export const metaWebhookRoutes = new Elysia({
           phoneIds,
           ip,
           userAgent,
-          rawPayloadSnippet,
+          rawPayload: payload,
         })
         return invalidResponse(set, 422, "INVALID_PAYLOAD")
       }
@@ -383,7 +382,7 @@ export const metaWebhookRoutes = new Elysia({
           phoneIds,
           ip,
           userAgent,
-          rawPayloadSnippet,
+          rawPayload: payload,
         })
         return invalidResponse(set, 422, "INVALID_PAYLOAD")
       }
