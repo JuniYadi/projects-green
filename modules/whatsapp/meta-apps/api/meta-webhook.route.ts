@@ -9,11 +9,11 @@ import {
 } from "@/modules/whatsapp/webhooks/webhooks.service"
 import { verifyWebhookSignature } from "@/modules/whatsapp/webhooks/services/webhook-hmac.service"
 import { WebhookRetryJob } from "@/modules/whatsapp/webhooks/jobs/webhook-retry.job"
+import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 import {
   metaAppsService,
   type ResolvedMetaAppCredentials,
 } from "../meta-apps.service"
-
 type JsonRecord = Record<string, unknown>
 const MAX_RAW_BODY_BYTES = 1_048_576
 async function readBoundedBody(request: Request): Promise<string | null> {
@@ -83,6 +83,37 @@ const invalidResponse = (
 ) => {
   set.status = status
   return { ok: false, error }
+}
+
+const logWebhookRejection = (params: {
+  reason: string
+  webhookKey: string
+  metaAppId?: string
+  phoneIds?: string[]
+  ip?: string | null
+  userAgent?: string | null
+  details?: Record<string, unknown>
+  rawPayloadSnippet?: string
+}) => {
+  console.warn(
+    `[WhatsApp Webhook] Rejected incoming webhook (${params.reason}): webhookKey=${params.webhookKey}, phoneIds=${JSON.stringify(params.phoneIds ?? [])}, metaAppId=${params.metaAppId ?? "unknown"}`
+  )
+  logWhatsappAuditEvent({
+    action: "WEBHOOK_REJECTED",
+    status: "FAILED",
+    organizationId: "system",
+    message: `Incoming Meta WhatsApp webhook rejected: ${params.reason}`,
+    errorMessage: params.reason,
+    ip: params.ip ?? null,
+    userAgent: params.userAgent ?? null,
+    details: {
+      webhookKey: params.webhookKey,
+      metaAppId: params.metaAppId,
+      phoneIds: params.phoneIds,
+      rawPayloadSnippet: params.rawPayloadSnippet,
+      ...params.details,
+    },
+  }).catch(() => {})
 }
 
 function extractWebhookItems(payload: unknown): WebhookItem[] | null {
@@ -220,10 +251,27 @@ export const metaWebhookRoutes = new Elysia({
       }
       if (!credentials) return invalidResponse(set, 404, "NOT_FOUND")
 
-      const signature = request.headers.get("x-hub-signature-256")
-      if (!signature) return invalidResponse(set, 401, "UNAUTHORIZED")
+      const ip =
+        request.headers.get("x-forwarded-for") ??
+        request.headers.get("x-real-ip") ??
+        null
+      const userAgent = request.headers.get("user-agent") ?? null
       const rawBodyValue = (store as Record<string, unknown>).rawBody
       const rawBody = typeof rawBodyValue === "string" ? rawBodyValue : ""
+      const rawPayloadSnippet =
+        rawBody.length > 500 ? `${rawBody.slice(0, 500)}...` : rawBody
+
+      const signature = request.headers.get("x-hub-signature-256")
+      if (!signature) {
+        logWebhookRejection({
+          reason: "MISSING_SIGNATURE",
+          webhookKey: params.webhookKey,
+          metaAppId: credentials.metaAppId,
+          ip,
+          userAgent,
+        })
+        return invalidResponse(set, 401, "UNAUTHORIZED")
+      }
       let signatureValid = false
       try {
         signatureValid = verifyWebhookSignature(
@@ -235,6 +283,13 @@ export const metaWebhookRoutes = new Elysia({
         return invalidResponse(set, 500, "INTERNAL_ERROR")
       }
       if (!signatureValid) {
+        logWebhookRejection({
+          reason: "INVALID_SIGNATURE",
+          webhookKey: params.webhookKey,
+          metaAppId: credentials.metaAppId,
+          ip,
+          userAgent,
+        })
         return invalidResponse(set, 401, "UNAUTHORIZED")
       }
 
@@ -242,10 +297,28 @@ export const metaWebhookRoutes = new Elysia({
       try {
         payload = JSON.parse(rawBody) as unknown
       } catch {
+        logWebhookRejection({
+          reason: "MALFORMED_JSON",
+          webhookKey: params.webhookKey,
+          metaAppId: credentials.metaAppId,
+          ip,
+          userAgent,
+          rawPayloadSnippet,
+        })
         return invalidResponse(set, 422, "INVALID_PAYLOAD")
       }
       const items = extractWebhookItems(payload)
-      if (!items) return invalidResponse(set, 422, "INVALID_PAYLOAD")
+      if (!items) {
+        logWebhookRejection({
+          reason: "INVALID_ENVELOPE_OR_EMPTY_ITEMS",
+          webhookKey: params.webhookKey,
+          metaAppId: credentials.metaAppId,
+          ip,
+          userAgent,
+          rawPayloadSnippet,
+        })
+        return invalidResponse(set, 422, "INVALID_PAYLOAD")
+      }
 
       const phoneIds = [...new Set(items.map((item) => item.phoneNumberId))]
       const devices = new Map<string, { id: string; organizationId: string }>()
@@ -266,8 +339,20 @@ export const metaWebhookRoutes = new Elysia({
       } catch {
         return invalidResponse(set, 500, "INTERNAL_ERROR")
       }
-      if (devices.size !== phoneIds.length)
+      if (devices.size !== phoneIds.length) {
+        const unmappedPhoneIds = phoneIds.filter((id) => !devices.has(id))
+        logWebhookRejection({
+          reason: "UNKNOWN_DEVICE",
+          webhookKey: params.webhookKey,
+          metaAppId: credentials.metaAppId,
+          phoneIds,
+          ip,
+          userAgent,
+          details: { unmappedPhoneIds },
+          rawPayloadSnippet,
+        })
         return invalidResponse(set, 422, "UNKNOWN_DEVICE")
+      }
 
       let parsedEvent: ParsedEventResult
       try {
@@ -275,12 +360,31 @@ export const metaWebhookRoutes = new Elysia({
       } catch {
         return invalidResponse(set, 500, "INTERNAL_ERROR")
       }
-      if (!isRecord(parsedEvent))
+      if (!isRecord(parsedEvent)) {
+        logWebhookRejection({
+          reason: "UNEXPECTED_PARSE_RESULT",
+          webhookKey: params.webhookKey,
+          metaAppId: credentials.metaAppId,
+          phoneIds,
+          ip,
+          userAgent,
+          rawPayloadSnippet,
+        })
         return invalidResponse(set, 422, "INVALID_PAYLOAD")
+      }
       if (parsedEvent.duplicate === true) {
         return { ok: true, duplicate: true }
       }
       if (parsedEvent.code !== 200) {
+        logWebhookRejection({
+          reason: parsedEvent.message ?? "HANDLE_EVENT_FAILED",
+          webhookKey: params.webhookKey,
+          metaAppId: credentials.metaAppId,
+          phoneIds,
+          ip,
+          userAgent,
+          rawPayloadSnippet,
+        })
         return invalidResponse(set, 422, "INVALID_PAYLOAD")
       }
 
