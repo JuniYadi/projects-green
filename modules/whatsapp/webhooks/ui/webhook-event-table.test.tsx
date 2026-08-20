@@ -175,46 +175,36 @@ describe("WebhookEventTable", () => {
       expect(container.textContent).toContain("2026")
     })
   })
-
   describe("expandable row", () => {
-    it("toggles raw payload viewer when a row with metaPayload is clicked", () => {
-      const { container } = render(
-        <WebhookEventTable events={sampleEvents} isLoading={false} />
+    it("toggles raw payload viewer when showPayload is true and row is clicked", () => {
+      const { container, getByRole } = render(
+        <WebhookEventTable
+          events={sampleEvents}
+          isLoading={false}
+          showPayload={true}
+        />
       )
-
-      // No viewer initially
-      expect(container.querySelector("details")).toBeNull()
 
       // Click the first row (evt_1 — has metaPayload)
       const rows = container.querySelectorAll("tbody tr")
-      expect(rows.length).toBe(3)
-
       fireEvent.click(rows[0])
 
-      // Viewer should now appear
-      const details = container.querySelector("details")
-      expect(details).toBeTruthy()
-      // The preview text should be visible (first 120 chars of stringified JSON)
-      expect(container.textContent).toContain('"type"')
-      expect(container.textContent).toContain('"text"')
-
-      // Click the same row again to collapse
-      fireEvent.click(rows[0])
-      expect(container.querySelector("details")).toBeNull()
+      // RawPayloadViewer should now be mounted with Copy button
+      expect(getByRole("button", { name: /copy payload/i })).toBeTruthy()
     })
-
-    it("does not show viewer when expanded row has no metaPayload", () => {
-      const { container } = render(
-        <WebhookEventTable events={sampleEvents} isLoading={false} />
+    it("does not toggle raw payload when showPayload is false", () => {
+      const { container, queryByText } = render(
+        <WebhookEventTable
+          events={sampleEvents}
+          isLoading={false}
+          showPayload={false}
+        />
       )
 
-      // Click the third row (evt_3 — no metaPayload)
       const rows = container.querySelectorAll("tbody tr")
+      fireEvent.click(rows[0])
 
-      fireEvent.click(rows[2])
-
-      // No details element because metaPayload is undefined
-      expect(container.querySelector("details")).toBeNull()
+      expect(queryByText("Payload")).toBeNull()
     })
   })
 

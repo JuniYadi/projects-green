@@ -59,8 +59,8 @@ export type WebhookEventTableProps = {
   }
   emptyActionLabel?: string
   emptyActionHref?: string
+  showPayload?: boolean
 }
-
 // ─── Badge helpers ────────────────────────────────────────────────────────────
 
 const TYPE_BADGE_CONFIG: Record<string, { label: string; className: string }> =
@@ -150,12 +150,17 @@ export function WebhookEventTable({
   pagination,
   emptyActionLabel = "Verify Webhook Configuration",
   emptyActionHref,
+  showPayload = false,
 }: WebhookEventTableProps) {
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null)
 
-  const handleRowToggle = useCallback((eventId: string) => {
-    setExpandedRowId((prev) => (prev === eventId ? null : eventId))
-  }, [])
+  const handleRowToggle = useCallback(
+    (eventId: string) => {
+      if (!showPayload) return
+      setExpandedRowId((prev) => (prev === eventId ? null : eventId))
+    },
+    [showPayload]
+  )
 
   const formatTimestamp = (iso: string) => {
     try {
@@ -174,30 +179,40 @@ export function WebhookEventTable({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-10" />
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Timestamp</TableHead>
+                {showPayload && <TableHead className="w-10" />}
+                <TableHead>Device</TableHead>
+                <TableHead>Phone</TableHead>
                 <TableHead>WA Message ID</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Event</TableHead>
+                <TableHead>Timestamp</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.from({ length: 3 }).map((_, i) => (
-                <TableRow key={i}>
+              {Array.from({ length: 5 }).map((_, index) => (
+                <TableRow key={index}>
+                  {showPayload && (
+                    <TableCell>
+                      <Skeleton className="size-4" />
+                    </TableCell>
+                  )}
                   <TableCell>
-                    <Skeleton className="size-4" />
+                    <Skeleton className="h-4 w-28" />
                   </TableCell>
                   <TableCell>
-                    <Skeleton className="h-5 w-28 rounded-full" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-20 rounded-full" />
+                    <Skeleton className="h-4 w-28" />
                   </TableCell>
                   <TableCell>
                     <Skeleton className="h-4 w-36" />
                   </TableCell>
                   <TableCell>
-                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-24 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-28" />
                   </TableCell>
                 </TableRow>
               ))}
@@ -254,7 +269,7 @@ export function WebhookEventTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-10" />
+              {showPayload && <TableHead className="w-10" />}
               <TableHead>Device</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>WA Message ID</TableHead>
@@ -265,7 +280,7 @@ export function WebhookEventTable({
           </TableHeader>
           <TableBody>
             {events.map((event) => {
-              const isExpanded = expandedRowId === event.id
+              const isExpanded = showPayload && expandedRowId === event.id
               const typeConfig = getTypeBadgeConfig(event.eventType)
               const deliveryConfig = getDeliveryBadgeConfig(
                 event.deliveryStatus || event.processingStatus
@@ -274,16 +289,20 @@ export function WebhookEventTable({
               return (
                 <React.Fragment key={event.id}>
                   <TableRow
-                    className="cursor-pointer hover:bg-muted/50"
+                    className={cn(
+                      showPayload && "cursor-pointer hover:bg-muted/50"
+                    )}
                     onClick={() => handleRowToggle(event.id)}
                   >
-                    <TableCell>
-                      {isExpanded ? (
-                        <CaretDown className="size-4 text-muted-foreground" />
-                      ) : (
-                        <CaretRight className="size-4 text-muted-foreground" />
-                      )}
-                    </TableCell>
+                    {showPayload && (
+                      <TableCell>
+                        {isExpanded ? (
+                          <CaretDown className="size-4 text-muted-foreground" />
+                        ) : (
+                          <CaretRight className="size-4 text-muted-foreground" />
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell className="font-mono text-xs font-medium">
                       {event.deviceLabel ?? "—"}
                     </TableCell>
@@ -318,7 +337,7 @@ export function WebhookEventTable({
                       {formatTimestamp(event.createdAt)}
                     </TableCell>
                   </TableRow>
-                  {isExpanded && (
+                  {showPayload && isExpanded && (
                     <TableRow className="bg-muted/30 hover:bg-muted/30">
                       <TableCell colSpan={7} className="p-4">
                         {event.metaPayload ? (

@@ -240,6 +240,7 @@ export default function PortalWhatsAppWebhookLogsPage() {
               isLoading={pageState === "loading"}
               error={pageState === "error" ? errorMessage : undefined}
               onRetry={handleRetry}
+              showPayload={true}
               pagination={
                 meta.totalPages > 1
                   ? {
