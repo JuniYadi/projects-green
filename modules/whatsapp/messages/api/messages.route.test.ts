@@ -11,7 +11,7 @@ const mockPrisma = {
   whatsappMessage: {
     count: mock(async () => 1),
     findMany: mock(async () => [{ id: "msg-1" }]),
-    findFirst: mock(async () => ({ id: "msg-1" })),
+    findFirst: mock<() => Promise<unknown>>(async () => ({ id: "msg-1" })),
     create: mock(async () => ({ id: "msg-new" })),
     update: mock(async () => ({ id: "msg-1", body: "Updated body" })),
     delete: mock(async () => ({ id: "msg-1" })),
@@ -37,6 +37,15 @@ const mockPrisma = {
   },
   servicePricing: {
     findFirst: mock(async () => null),
+  },
+  whatsappBillingLedger: {
+    findFirst: mock<() => Promise<unknown>>(async () => null),
+  },
+  whatsappAuditLog: {
+    findFirst: mock<() => Promise<unknown>>(async () => null),
+  },
+  whatsappWebhookEvent: {
+    findMany: mock<() => Promise<unknown[]>>(async () => []),
   },
 }
 
@@ -100,6 +109,13 @@ mock.module("@/lib/auth/resolve-proxy-auth", () => ({
     source: "proxy_header",
   })),
 }))
+const mockGetCachedUser = mock<
+  () => Promise<{ name: string | null; email: string } | null>
+>(async () => null)
+
+mock.module("@/lib/workos-directory", () => ({
+  getCachedUser: mockGetCachedUser,
+}))
 
 const { messagesRoutes } = await import("./messages.route")
 
@@ -145,7 +161,11 @@ describe("messagesRoutes", () => {
     mockPrisma.whatsappBasePrice.findFirst.mockClear()
     mockPrisma.serviceSubscription.findFirst.mockClear()
     mockPrisma.servicePricing.findFirst.mockClear()
+    mockPrisma.whatsappBillingLedger.findFirst.mockClear()
+    mockPrisma.whatsappAuditLog.findFirst.mockClear()
+    mockPrisma.whatsappWebhookEvent.findMany.mockClear()
     mockMessageService.sendTemplateMessage.mockClear()
+    mockGetCachedUser.mockClear()
 
     mockPrisma.whatsappMessage.count.mockResolvedValue(1)
     mockPrisma.whatsappMessage.findMany.mockResolvedValue([
@@ -180,6 +200,10 @@ describe("messagesRoutes", () => {
     mockPrisma.whatsappBasePrice.findMany.mockResolvedValue([])
     mockPrisma.whatsappBasePrice.findFirst.mockResolvedValue(null)
     mockPrisma.serviceSubscription.findFirst.mockResolvedValue(null)
+    mockPrisma.whatsappBillingLedger.findFirst.mockResolvedValue(null)
+    mockPrisma.whatsappAuditLog.findFirst.mockResolvedValue(null)
+    mockPrisma.whatsappWebhookEvent.findMany.mockResolvedValue([])
+    mockGetCachedUser.mockResolvedValue(null)
     mockPrisma.servicePricing.findFirst.mockResolvedValue(null)
     mockMessageService.sendTemplateMessage.mockResolvedValue({
       ok: true,
@@ -1438,6 +1462,94 @@ describe("messagesRoutes", () => {
       const res = await app.handle(authRequest("/messages/not-found/media"))
 
       expect(res.status).toBe(404)
+    })
+  })
+  describe("GET /messages/journey/:waMessageId", () => {
+    it("returns a chronological timeline and resolves the actor once", async () => {
+      const messageCreatedAt = new Date("2026-08-20T12:03:00.000Z")
+      mockPrisma.whatsappMessage.findFirst.mockResolvedValueOnce({
+        id: "msg-journey",
+        conversationId: "conv-1",
+        direction: "OUTBOX",
+        messageType: "text",
+        body: "Hello",
+        mediaUrl: null,
+        waMessageId: "wamid.123",
+        metadata: null,
+        createdAt: messageCreatedAt,
+        conversation: {
+          contactPhone: "+628111111111",
+          whatsappDevice: {
+            id: "device-1",
+            phoneNumber: "+6281234567890",
+            whatsappProfile: null,
+          },
+        },
+        statusHistory: [
+          {
+            id: "status-1",
+            status: "DELIVERED",
+            timestamp: new Date("2026-08-20T12:04:00.000Z"),
+            createdAt: new Date("2026-08-20T12:04:00.000Z"),
+            error: null,
+          },
+        ],
+      })
+      mockPrisma.whatsappBillingLedger.findFirst.mockResolvedValueOnce({
+        id: "ledger-1",
+        status: "RECORDED",
+        createdAt: new Date("2026-08-20T12:02:00.000Z"),
+        category: "UTILITY",
+        quotaKey: "device-1",
+        phoneNumber: "+628111111111",
+      })
+      mockPrisma.whatsappAuditLog.findFirst.mockResolvedValueOnce({
+        adminId: "user-1",
+        action: "MESSAGE_SENT",
+        ip: null,
+        userAgent: null,
+        message: "Message sent",
+        details: { waMessageId: "wamid.123" },
+        createdAt: new Date("2026-08-20T12:01:00.000Z"),
+      })
+      mockPrisma.whatsappWebhookEvent.findMany.mockResolvedValueOnce([
+        {
+          id: "webhook-1",
+          eventType: "status_update",
+          processingStatus: "SUCCESS",
+          createdAt: new Date("2026-08-20T12:05:00.000Z"),
+          errorMessage: null,
+        },
+      ])
+      mockGetCachedUser.mockResolvedValueOnce({
+        name: null,
+        email: "actor@example.com",
+      })
+
+      const response = await createTestApp().handle(
+        authRequest("/messages/journey/wamid.123")
+      )
+      const body = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(body.data.timeline.map((step: { id: string }) => step.id)).toEqual(
+        [
+          "step-billing-ledger-1",
+          "step-initiation",
+          "status-1",
+          "step-webhook-webhook-1",
+        ]
+      )
+      expect(body.data.audit.actorName).toBe("actor@example.com")
+      expect(mockGetCachedUser).toHaveBeenCalledTimes(1)
+      expect(mockPrisma.whatsappAuditLog.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            organizationId: "org-1",
+            details: { path: ["waMessageId"], equals: "wamid.123" },
+          },
+        })
+      )
     })
   })
 })
