@@ -10,6 +10,7 @@ const mockPrisma = {
   },
   whatsappDevice: {
     findUnique: mock(),
+    findMany: mock(),
   },
 }
 
@@ -72,6 +73,8 @@ beforeEach(() => {
   mockPrisma.whatsappAuditLog.findMany.mockReset()
   mockPrisma.whatsappAuditLog.count.mockReset()
   mockPrisma.whatsappDevice.findUnique.mockReset()
+  mockPrisma.whatsappDevice.findMany.mockReset()
+  mockPrisma.whatsappDevice.findMany.mockResolvedValue([])
 })
 
 // ─── Helpers ────────────────────────────────────────────────────────────
