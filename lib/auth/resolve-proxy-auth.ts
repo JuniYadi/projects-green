@@ -93,11 +93,6 @@ export const resolveProxyAuth = async (
         (await resolveOrgRole(userId, firstOrg.organizationId)))
       : null
 
-    logger.debug(
-      { userId, orgId: firstOrg?.organizationId ?? null, orgRole },
-      "auth proxy header resolved"
-    )
-
     return {
       ok: true,
       scope: {
@@ -122,10 +117,6 @@ export const resolveAuthContext = async (
   const proxyResult = await resolveProxyAuth(request)
   if (proxyResult.ok) {
     const scope = proxyResult.scope
-    logger.debug(
-      { source: "proxy_header", userId: scope.userId },
-      "auth context resolved from proxy header"
-    )
     return { ...scope, source: "proxy_header" }
   }
 
@@ -138,10 +129,6 @@ export const resolveAuthContext = async (
       const orgRole = firstOrg
         ? await resolveOrgRole(workosUser.id, firstOrg.organizationId)
         : null
-      logger.debug(
-        { source: "direct_cookie", userId: workosUser.id },
-        "auth context resolved from direct cookie"
-      )
       return {
         type: "workos",
         userId: workosUser.id,
@@ -175,14 +162,6 @@ export const resolveAuthContext = async (
         userAgent: request.headers.get("user-agent"),
       })
       if (orgKeyScope) {
-        logger.debug(
-          {
-            source: "api_key",
-            keyId: orgKeyScope.keyId,
-            keyType: "whatsapp_org_key",
-          },
-          "auth context resolved from whatsapp org api key"
-        )
         return {
           type: "platform",
           keyId: orgKeyScope.keyId,
@@ -198,15 +177,10 @@ export const resolveAuthContext = async (
     // 4. Static API key (Bearer "live_xxx" / "test_xxx")
     const apiKeyScope = await resolveApiKey(bearerToken, clientIp ?? undefined)
     if (apiKeyScope) {
-      logger.debug(
-        { source: "api_key", keyId: apiKeyScope.keyId },
-        "auth context resolved from api key"
-      )
       return { ...apiKeyScope, source: "api_key" }
     }
   }
 
   // 5. No valid auth
-  logger.debug("auth context resolved: no valid auth")
   return null
 }
