@@ -66,19 +66,22 @@ Meta categorizes every message template into one of three categories. Pick the c
 
 ---
 
-### B. Authentication Template (OTP & Verification)
+### B. Authentication Template (Predefined Meta OTP Format)
 *Use for:* Secure identity verification via one-time passcodes (OTP).
 
-> 🔐 **Security Verification**
+> ⚠️ **Meta Predefined Constraint:**  
+> Under official Meta WhatsApp Business API rules, **Authentication template body text cannot be customized or edited with custom sentences**. Meta mandates strict, standardized fixed wording (`<CODE> is your verification code.`) and only permits specific button types:
+> 1. **Copy Code Button**: Adds a 1-tap clipboard copy button (`[📋 Copy Code]`).
+> 2. **One-Tap / Zero-Tap Autofill (Android)**: Handshake directly with your Android app (`[⚡ Autofill App]`).
+
+> 🔐 **Standard Authentication Message**
 >
-> **{{1}}** is your verification code for PFNApp.  
-> For security reasons, do not share this code with anyone.  
+> **{{1}}** is your verification code.  
+> For your security, do not share this code.  
 > Valid for **{{2}}** minutes.  
 >
-> *Security Alert*  
-> `[📋 Copy Code]` &nbsp; `[🔗 Verify Login]`
-
----
+> *Security Warning: Do not share.*  
+> `[📋 Copy Code]` &nbsp; `[⚡ One-Tap Autofill (App)]`
 
 ### C. Marketing Template (Promotional Broadcast)
 *Use for:* Driving sales, product announcements, discount offers, or newsletters.

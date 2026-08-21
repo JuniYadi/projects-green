@@ -66,23 +66,22 @@ Meta membagi setiap template ke dalam salah satu dari tiga kategori utama. Pilih
 > `[🔘 Quick Reply: Cek Status Resi]`
 
 ---
-
-### B. Template Autentikasi (OTP & Verifikasi)
+### B. Template Autentikasi (Format Baku / Predefined Meta OTP)
 *Tujuan:* Mengirimkan kode verifikasi identitas dan keamanan akun sekali pakai (OTP).
 
-> 🔐 **Verifikasi Keamanan Akun**
+> ⚠️ **Ketentuan Baku Resmi Meta:**  
+> Sesuai aturan resmi Meta WhatsApp Business API, **isi kalimat (body text) template Autentikasi tidak dapat dikustomisasi dengan kalimat bebas**. Meta mewajibkan teks standar yang telah ditentukan secara baku dan hanya memperbolehkan tipe tombol khusus:
+> 1. **Tombol Salin Kode (*Copy Code*)**: Menambahkan tombol sekali klik untuk menyalin OTP ke clipboard (`[📋 Copy Code]`).
+> 2. **Tombol Satu Ketuk / Autofill Aplikasi Android (*One-Tap Autofill*)**: Menghubungkan verifikasi langsung ke aplikasi Android Anda.
+
+> 🔐 **Pesan Autentikasi Baku**
 >
-> **{{1}}** adalah kode verifikasi akun PFNApp Anda.  
+> **{{1}}** adalah kode verifikasi Anda.  
 > Demi keamanan, jangan berikan kode ini kepada siapa pun.  
-> Kode berlaku selama **{{2}}** menit.  
+> Berlaku selama **{{2}}** menit.  
 >
 > *Peringatan Keamanan*  
-> `[📋 Copy Code]` &nbsp; `[🔗 Verifikasi Login]`
-
----
-
-### C. Template Marketing (Siaran Pesan Promosi)
-*Tujuan:* Meningkatkan transaksi belanja, mengumumkan produk baru, atau memberikan penawaran diskon khusus.
+> `[📋 Copy Code]` &nbsp; `[⚡ Autofill Aplikasi Android]`
 
 > 🎉 **Promo Spesial Gajian**
 >
