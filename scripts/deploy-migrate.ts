@@ -135,12 +135,19 @@ async function main(): Promise<void> {
 
   for (const seeder of seeders) {
     console.log(`-> Seeding ${seeder}...`)
-    await runCommand([
-      "bun",
-      "run",
-      "scripts/seed-runner.ts",
-      `--seed=${seeder}`,
-    ])
+    try {
+      await runCommand([
+        "bun",
+        "run",
+        "scripts/seed-runner.ts",
+        `--seed=${seeder}`,
+      ])
+    } catch (err) {
+      console.warn(`⚠️ Seeder ${seeder} failed or encountered an error:`, err)
+      if (seeder === "Billing" || seeder === "Currencies") {
+        throw err
+      }
+    }
   }
 
   // Standalone cluster & VPN coordinates
