@@ -358,18 +358,6 @@ export default function WhatsAppPricingPage() {
                         <Badge variant="outline" className="text-xs">
                           Country: {device.country}
                         </Badge>
-                        <Badge
-                          variant="secondary"
-                          className={
-                            hasQuota
-                              ? "bg-emerald-500/10 font-medium text-emerald-600 dark:text-emerald-400"
-                              : "bg-destructive/10 font-medium text-destructive"
-                          }
-                        >
-                          {hasQuota
-                            ? `Quota Active (${device.quotaRemaining.toLocaleString()} remaining)`
-                            : "Quota Exhausted (PAYG Active)"}
-                        </Badge>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">
@@ -393,137 +381,112 @@ export default function WhatsAppPricingPage() {
                               Category
                             </th>
                             <th scope="col" className="px-4 py-3 text-center">
-                              <div
-                                className={`inline-flex items-center rounded px-2 py-0.5 font-semibold ${
+                              <span
+                                className={`font-semibold ${
                                   hasQuota
-                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                                    : "bg-destructive/10 text-destructive line-through"
+                                    ? "text-emerald-600 dark:text-emerald-400"
+                                    : "text-destructive line-through"
                                 }`}
                               >
-                                Quota Credit{" "}
-                                {hasQuota ? "(Active)" : "(Exhausted)"}
-                              </div>
+                                Quota Credit
+                              </span>
                               <div className="mt-0.5 text-[10px] font-normal text-muted-foreground">
                                 In-Quota Allowance
                               </div>
                             </th>
-                            <th
-                              scope="col"
-                              className={`px-4 py-3 text-right ${activeTier === "BASE" ? (hasQuota ? "bg-amber-500/10" : "bg-emerald-500/10") : ""}`}
-                            >
-                              <div className="inline-flex items-center gap-1">
-                                {activeTier === "BASE" && (
-                                  <span
-                                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                                      hasQuota
-                                        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                                        : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                                    }`}
-                                  >
-                                    {hasQuota ? "Fallback" : "Active"}
-                                  </span>
-                                )}
-                                <span
-                                  className={
-                                    activeTier === "BASE"
-                                      ? `font-bold ${hasQuota ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`
-                                      : "font-semibold"
-                                  }
-                                >
-                                  BASE
-                                </span>
-                              </div>
-                              <div className="text-[10px] font-normal text-muted-foreground">
+                            <th scope="col" className="px-4 py-3 text-right">
+                              <span
+                                className={
+                                  activeTier === "BASE"
+                                    ? hasQuota
+                                      ? "font-bold text-amber-600 dark:text-amber-400"
+                                      : "font-bold text-emerald-600 dark:text-emerald-400"
+                                    : "font-semibold text-muted-foreground"
+                                }
+                              >
+                                BASE
+                              </span>
+                              <div
+                                className={`text-[10px] ${
+                                  activeTier === "BASE"
+                                    ? hasQuota
+                                      ? "font-medium text-amber-600 dark:text-amber-400"
+                                      : "font-medium text-emerald-600 dark:text-emerald-400"
+                                    : "font-normal text-muted-foreground"
+                                }`}
+                              >
                                 Min Top-Up: Rp 100k
                               </div>
                             </th>
-                            <th
-                              scope="col"
-                              className={`px-4 py-3 text-right ${activeTier === "TIER_1" ? (hasQuota ? "bg-amber-500/10" : "bg-emerald-500/10") : ""}`}
-                            >
-                              <div className="inline-flex items-center gap-1">
-                                {activeTier === "TIER_1" && (
-                                  <span
-                                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                                      hasQuota
-                                        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                                        : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                                    }`}
-                                  >
-                                    {hasQuota ? "Fallback" : "Active"}
-                                  </span>
-                                )}
-                                <span
-                                  className={
-                                    activeTier === "TIER_1"
-                                      ? `font-bold ${hasQuota ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`
-                                      : "font-semibold"
-                                  }
-                                >
-                                  TIER 1
-                                </span>
-                              </div>
-                              <div className="text-[10px] font-normal text-muted-foreground">
+                            <th scope="col" className="px-4 py-3 text-right">
+                              <span
+                                className={
+                                  activeTier === "TIER_1"
+                                    ? hasQuota
+                                      ? "font-bold text-amber-600 dark:text-amber-400"
+                                      : "font-bold text-emerald-600 dark:text-emerald-400"
+                                    : "font-semibold text-muted-foreground"
+                                }
+                              >
+                                TIER 1
+                              </span>
+                              <div
+                                className={`text-[10px] ${
+                                  activeTier === "TIER_1"
+                                    ? hasQuota
+                                      ? "font-medium text-amber-600 dark:text-amber-400"
+                                      : "font-medium text-emerald-600 dark:text-emerald-400"
+                                    : "font-normal text-muted-foreground"
+                                }`}
+                              >
                                 Min Top-Up: Rp 10M
                               </div>
                             </th>
-                            <th
-                              scope="col"
-                              className={`px-4 py-3 text-right ${activeTier === "TIER_2" ? (hasQuota ? "bg-amber-500/10" : "bg-emerald-500/10") : ""}`}
-                            >
-                              <div className="inline-flex items-center gap-1">
-                                {activeTier === "TIER_2" && (
-                                  <span
-                                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                                      hasQuota
-                                        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                                        : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                                    }`}
-                                  >
-                                    {hasQuota ? "Fallback" : "Active"}
-                                  </span>
-                                )}
-                                <span
-                                  className={
-                                    activeTier === "TIER_2"
-                                      ? `font-bold ${hasQuota ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`
-                                      : "font-semibold"
-                                  }
-                                >
-                                  TIER 2
-                                </span>
-                              </div>
-                              <div className="text-[10px] font-normal text-muted-foreground">
+                            <th scope="col" className="px-4 py-3 text-right">
+                              <span
+                                className={
+                                  activeTier === "TIER_2"
+                                    ? hasQuota
+                                      ? "font-bold text-amber-600 dark:text-amber-400"
+                                      : "font-bold text-emerald-600 dark:text-emerald-400"
+                                    : "font-semibold text-muted-foreground"
+                                }
+                              >
+                                TIER 2
+                              </span>
+                              <div
+                                className={`text-[10px] ${
+                                  activeTier === "TIER_2"
+                                    ? hasQuota
+                                      ? "font-medium text-amber-600 dark:text-amber-400"
+                                      : "font-medium text-emerald-600 dark:text-emerald-400"
+                                    : "font-normal text-muted-foreground"
+                                }`}
+                              >
                                 Min Top-Up: Rp 25M
                               </div>
                             </th>
-                            <th
-                              scope="col"
-                              className={`px-4 py-3 text-right ${activeTier === "TIER_3" ? (hasQuota ? "bg-amber-500/10" : "bg-emerald-500/10") : ""}`}
-                            >
-                              <div className="inline-flex items-center gap-1">
-                                {activeTier === "TIER_3" && (
-                                  <span
-                                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                                      hasQuota
-                                        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                                        : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                                    }`}
-                                  >
-                                    {hasQuota ? "Fallback" : "Active"}
-                                  </span>
-                                )}
-                                <span
-                                  className={
-                                    activeTier === "TIER_3"
-                                      ? `font-bold ${hasQuota ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`
-                                      : "font-semibold"
-                                  }
-                                >
-                                  TIER 3
-                                </span>
-                              </div>
-                              <div className="text-[10px] font-normal text-muted-foreground">
+                            <th scope="col" className="px-4 py-3 text-right">
+                              <span
+                                className={
+                                  activeTier === "TIER_3"
+                                    ? hasQuota
+                                      ? "font-bold text-amber-600 dark:text-amber-400"
+                                      : "font-bold text-emerald-600 dark:text-emerald-400"
+                                    : "font-semibold text-muted-foreground"
+                                }
+                              >
+                                TIER 3
+                              </span>
+                              <div
+                                className={`text-[10px] ${
+                                  activeTier === "TIER_3"
+                                    ? hasQuota
+                                      ? "font-medium text-amber-600 dark:text-amber-400"
+                                      : "font-medium text-emerald-600 dark:text-emerald-400"
+                                    : "font-normal text-muted-foreground"
+                                }`}
+                              >
                                 Min Top-Up: Rp 50M
                               </div>
                             </th>
@@ -567,7 +530,7 @@ export default function WhatsAppPricingPage() {
                                   className={`px-4 py-2.5 text-center font-semibold ${
                                     hasQuota
                                       ? "text-emerald-600 dark:text-emerald-400"
-                                      : "text-muted-foreground line-through"
+                                      : "text-destructive line-through"
                                   }`}
                                 >
                                   -{formatQuotaCredit(cat.quotaCredit)}
@@ -575,7 +538,9 @@ export default function WhatsAppPricingPage() {
                                 <td
                                   className={`px-4 py-2.5 text-right ${
                                     activeTier === "BASE"
-                                      ? "bg-muted/30 font-bold"
+                                      ? hasQuota
+                                        ? "font-bold text-amber-600 dark:text-amber-400"
+                                        : "font-bold text-emerald-600 dark:text-emerald-400"
                                       : "text-muted-foreground"
                                   }`}
                                 >
@@ -584,7 +549,9 @@ export default function WhatsAppPricingPage() {
                                 <td
                                   className={`px-4 py-2.5 text-right ${
                                     activeTier === "TIER_1"
-                                      ? "bg-muted/30 font-bold"
+                                      ? hasQuota
+                                        ? "font-bold text-amber-600 dark:text-amber-400"
+                                        : "font-bold text-emerald-600 dark:text-emerald-400"
                                       : "text-muted-foreground"
                                   }`}
                                 >
@@ -593,7 +560,9 @@ export default function WhatsAppPricingPage() {
                                 <td
                                   className={`px-4 py-2.5 text-right ${
                                     activeTier === "TIER_2"
-                                      ? "bg-muted/30 font-bold"
+                                      ? hasQuota
+                                        ? "font-bold text-amber-600 dark:text-amber-400"
+                                        : "font-bold text-emerald-600 dark:text-emerald-400"
                                       : "text-muted-foreground"
                                   }`}
                                 >
@@ -602,7 +571,9 @@ export default function WhatsAppPricingPage() {
                                 <td
                                   className={`px-4 py-2.5 text-right ${
                                     activeTier === "TIER_3"
-                                      ? "bg-muted/30 font-bold"
+                                      ? hasQuota
+                                        ? "font-bold text-amber-600 dark:text-amber-400"
+                                        : "font-bold text-emerald-600 dark:text-emerald-400"
                                       : "text-muted-foreground"
                                   }`}
                                 >
