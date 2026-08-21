@@ -5,7 +5,7 @@
  * endpoint need the same resolution logic.  This module extracts it so
  * bug fixes (try-catch, error handling) apply in one place.
  */
-
+import { logger } from "@/lib/logger"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { resolveOrgRole, type OrgRole } from "@/lib/auth/org-role"
 import { resolveFirstActiveOrganization } from "@/lib/whatsapp/resolvers"
@@ -93,11 +93,9 @@ export const resolveProxyAuth = async (
         (await resolveOrgRole(userId, firstOrg.organizationId)))
       : null
 
-    console.debug(
-      "[auth] proxy header: userId=%s orgId=%s orgRole=%s",
-      userId,
-      firstOrg?.organizationId ?? null,
-      orgRole
+    logger.debug(
+      { userId, orgId: firstOrg?.organizationId ?? null, orgRole },
+      "auth proxy header resolved"
     )
 
     return {
@@ -112,7 +110,7 @@ export const resolveProxyAuth = async (
       },
     }
   } catch (err) {
-    console.error("[auth] proxy header resolution failed", err)
+    logger.error({ err }, "auth proxy header resolution failed")
     return { ok: false }
   }
 }
@@ -124,9 +122,9 @@ export const resolveAuthContext = async (
   const proxyResult = await resolveProxyAuth(request)
   if (proxyResult.ok) {
     const scope = proxyResult.scope
-    console.debug(
-      "[auth] resolveAuthContext: source=proxy_header userId=%s",
-      scope.userId
+    logger.debug(
+      { source: "proxy_header", userId: scope.userId },
+      "auth context resolved from proxy header"
     )
     return { ...scope, source: "proxy_header" }
   }
@@ -140,9 +138,9 @@ export const resolveAuthContext = async (
       const orgRole = firstOrg
         ? await resolveOrgRole(workosUser.id, firstOrg.organizationId)
         : null
-      console.debug(
-        "[auth] resolveAuthContext: source=direct_cookie userId=%s",
-        workosUser.id
+      logger.debug(
+        { source: "direct_cookie", userId: workosUser.id },
+        "auth context resolved from direct cookie"
       )
       return {
         type: "workos",
@@ -155,7 +153,7 @@ export const resolveAuthContext = async (
       }
     }
   } catch (err) {
-    console.error("[auth] direct cookie resolution failed", err)
+    logger.error({ err }, "auth direct cookie resolution failed")
   }
 
   // 3. WhatsApp organization API key (Bearer "wa_live_xxx") — org-scoped,
@@ -177,9 +175,13 @@ export const resolveAuthContext = async (
         userAgent: request.headers.get("user-agent"),
       })
       if (orgKeyScope) {
-        console.debug(
-          "[auth] resolveAuthContext: source=api_key keyId=%s (whatsapp org key)",
-          orgKeyScope.keyId
+        logger.debug(
+          {
+            source: "api_key",
+            keyId: orgKeyScope.keyId,
+            keyType: "whatsapp_org_key",
+          },
+          "auth context resolved from whatsapp org api key"
         )
         return {
           type: "platform",
@@ -196,15 +198,15 @@ export const resolveAuthContext = async (
     // 4. Static API key (Bearer "live_xxx" / "test_xxx")
     const apiKeyScope = await resolveApiKey(bearerToken, clientIp ?? undefined)
     if (apiKeyScope) {
-      console.debug(
-        "[auth] resolveAuthContext: source=api_key keyId=%s",
-        apiKeyScope.keyId
+      logger.debug(
+        { source: "api_key", keyId: apiKeyScope.keyId },
+        "auth context resolved from api key"
       )
       return { ...apiKeyScope, source: "api_key" }
     }
   }
 
   // 5. No valid auth
-  console.debug("[auth] resolveAuthContext: no valid auth")
+  logger.debug("auth context resolved: no valid auth")
   return null
 }
