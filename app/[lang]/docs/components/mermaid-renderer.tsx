@@ -134,7 +134,13 @@ export function MermaidRenderer() {
         theme: resolvedTheme === "dark" ? "dark" : "default",
         securityLevel: "loose",
         fontFamily: "inherit",
-        fontSize: 14,
+        fontSize: 15,
+        flowchart: {
+          curve: "basis",
+          nodeSpacing: 50,
+          rankSpacing: 50,
+          useMaxWidth: false,
+        },
       })
 
       const elements = document.querySelectorAll<HTMLElement>("pre.mermaid")
@@ -154,13 +160,16 @@ export function MermaidRenderer() {
         await window.mermaid.run({ nodes: targets })
       }
 
-      // Ensure SVG is responsive and nicely sized
+      // Ensure SVG is responsive, legible and nicely scaled in the canvas
       document
         .querySelectorAll<SVGElement>(".mermaid-container svg")
         .forEach((svg) => {
+          svg.style.width = "auto"
           svg.style.maxWidth = "100%"
           svg.style.height = "auto"
-          svg.style.minHeight = "160px"
+          svg.style.minHeight = "200px"
+          svg.style.display = "block"
+          svg.style.margin = "0 auto"
         })
 
       attachToolbars()
@@ -200,7 +209,7 @@ export function MermaidRenderer() {
         open={!!modalSvg}
         onOpenChange={(open) => !open && setModalSvg(null)}
       >
-        <DialogContent className="flex max-h-[90vh] w-[92vw] max-w-5xl flex-col gap-4 p-6">
+        <DialogContent className="flex h-[80vh] w-[80vw] max-w-[85vw] flex-col gap-4 p-6 sm:max-w-[80vw]">
           <DialogHeader className="flex flex-row items-center justify-between border-b pb-3">
             <DialogTitle className="text-base font-semibold">
               Diagram Viewer
@@ -233,7 +242,7 @@ export function MermaidRenderer() {
             </div>
           </DialogHeader>
 
-          <div className="flex min-h-[360px] flex-1 items-center justify-center overflow-auto rounded-xl border border-border/40 bg-muted/10 p-4">
+          <div className="flex h-full flex-1 items-center justify-center overflow-auto rounded-xl border border-border/40 bg-muted/10 p-6">
             {modalSvg && (
               <div
                 style={{
@@ -241,7 +250,7 @@ export function MermaidRenderer() {
                   transformOrigin: "center center",
                   transition: "transform 0.15s ease-out",
                 }}
-                className="flex w-full justify-center"
+                className="flex min-h-[400px] w-full items-center justify-center [&_svg]:h-auto [&_svg]:max-w-none"
                 dangerouslySetInnerHTML={{ __html: modalSvg }}
               />
             )}
