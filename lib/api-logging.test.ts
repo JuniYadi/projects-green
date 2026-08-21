@@ -108,6 +108,43 @@ describe.serial("Elysia API logging", () => {
     expect(serializedLogs).not.toContain("cookie-secret")
   })
 
+  test("logs caller identity correctly when x-workos-session-roles array header is provided", async () => {
+    const testApp = new Elysia()
+      .use(createApiLoggingPlugin())
+      .get("/api/roles-test", () => ({ ok: true }))
+
+    const { response, logs } = await captureLogs(() =>
+      testApp.handle(
+        new Request("http://localhost/api/roles-test", {
+          method: "GET",
+          headers: {
+            "x-workos-authed": "true",
+            "x-workos-user-id": "user_789",
+            "x-workos-user-email": "admin@example.com",
+            "x-workos-organization-id": "org_999",
+            "x-workos-session-roles": JSON.stringify(["user_admin"]),
+          },
+        })
+      )
+    )
+
+    expect(response.status).toBe(200)
+    expect(logs).toHaveLength(1)
+    expect(logs[0]).toMatchObject({
+      event: "api.request.completed",
+      method: "GET",
+      pathname: "/api/roles-test",
+      statusCode: 200,
+      caller: {
+        type: "workos",
+        userId: "user_789",
+        email: "admin@example.com",
+        organizationId: "org_999",
+        orgRole: "admin",
+      },
+    })
+  })
+
   test("logs request body with sensitive fields redacted", async () => {
     const testApp = new Elysia()
       .use(createApiLoggingPlugin())
