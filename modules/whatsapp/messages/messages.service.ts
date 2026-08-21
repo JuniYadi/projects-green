@@ -179,9 +179,9 @@ export const messageService: MessageService = {
       deviceId,
     })
 
-    // Resolve quota credit for REPLY category (free-form messages)
+    // Resolve quota credit for SERVICE category (free-form customer service replies)
     const quotaCredit = await resolveWhatsappQuotaCredit({
-      category: WhatsappBillingCategory.REPLY,
+      category: WhatsappBillingCategory.SERVICE,
       phoneNumber,
     })
 
