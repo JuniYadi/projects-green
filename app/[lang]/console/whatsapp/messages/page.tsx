@@ -1,8 +1,13 @@
 "use client"
-
 import * as React from "react"
+import Link from "next/link"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+  useParams,
+} from "next/navigation"
 import {
   ChatCircle,
   PaperPlaneTilt,
@@ -13,9 +18,9 @@ import {
   FunnelSimple,
   CheckIcon,
   DotsThreeVertical,
+  ArrowSquareOut,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
-import { useParams } from "next/navigation"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
@@ -281,12 +286,12 @@ function ConversationItem({
             <span className="truncate text-xs text-muted-foreground">
               {conversation.lastDirection === "INBOX" ? "Received" : "Sent"}
             </span>
-            {conversation._count.whatsappMessages > 0 && (
+            {conversation.lastDirection === "INBOX" && (
               <Badge
-                variant="secondary"
-                className="ml-auto shrink-0 text-[10px]"
+                variant="outline"
+                className="ml-auto shrink-0 border-amber-500/30 bg-amber-500/15 text-[10px] text-amber-700 dark:text-amber-300"
               >
-                {conversation._count.whatsappMessages}
+                Needs Reply
               </Badge>
             )}
           </div>
@@ -327,7 +332,7 @@ function ConversationItem({
 function MessageBubble({ message }: { message: Message }) {
   const isInbox = message.direction === "INBOX"
 
-  // Template messages with stored language data render as full preview
+  // Template messages with stored language data render as full preview with footer
   if (
     message.messageType === "template" &&
     message.metadata?.templateLanguageData
@@ -342,12 +347,38 @@ function MessageBubble({ message }: { message: Message }) {
     )
 
     return (
-      <div className="flex justify-end">
+      <div className="flex flex-col items-end gap-1">
         <WhatsAppTemplatePreview
           language={meta.templateLanguageData!}
           values={values}
           mode="full"
         />
+        <div className="mr-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>{formatTime(message.createdAt)}</span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {formatLocalDateTime(message.createdAt)}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <MessageStatusBadge
+            statusHistory={message.statusHistory}
+            direction={message.direction}
+          />
+          {message.waMessageId && (
+            <Link
+              href={`/console/whatsapp/messages/${encodeURIComponent(message.waMessageId)}`}
+              className="ml-1 inline-flex items-center gap-0.5 font-medium text-primary hover:underline"
+              title="Inspect Message Journey"
+            >
+              <span>Journey</span>
+              <ArrowSquareOut className="size-3" />
+            </Link>
+          )}
+        </div>
       </div>
     )
   }
@@ -370,7 +401,7 @@ function MessageBubble({ message }: { message: Message }) {
             )}
           </p>
           <div
-            className={`mt-1 flex items-center justify-end gap-1 text-[10px] ${
+            className={`mt-1 flex items-center justify-end gap-1.5 text-[10px] ${
               isInbox ? "text-muted-foreground" : "text-primary-foreground/70"
             }`}
           >
@@ -386,6 +417,20 @@ function MessageBubble({ message }: { message: Message }) {
               statusHistory={message.statusHistory}
               direction={message.direction}
             />
+            {message.waMessageId && (
+              <Link
+                href={`/console/whatsapp/messages/${encodeURIComponent(message.waMessageId)}`}
+                className={`ml-1 inline-flex items-center gap-0.5 font-medium hover:underline ${
+                  isInbox
+                    ? "text-primary"
+                    : "text-primary-foreground/90 hover:text-white"
+                }`}
+                title="Inspect Message Journey"
+              >
+                <span>Journey</span>
+                <ArrowSquareOut className="size-3" />
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -407,6 +452,9 @@ export default function WhatsAppMessagesPage() {
   // State - filters
   const [searchQuery, setSearchQuery] = React.useState("")
   const [directionFilter, setDirectionFilter] = React.useState("all")
+  const [replyFilter, setReplyFilter] = React.useState<
+    "all" | "unreplied" | "replied"
+  >("all")
   const [statusFilter, setStatusFilter] = React.useState("all")
   // State - label filters
   const [labelFilterIds, setLabelFilterIds] = React.useState<string[]>([])
@@ -600,6 +648,12 @@ export default function WhatsAppMessagesPage() {
       result = result.filter((c) => c.lastDirection === directionFilter)
     }
 
+    if (replyFilter === "unreplied") {
+      result = result.filter((c) => c.lastDirection === "INBOX")
+    } else if (replyFilter === "replied") {
+      result = result.filter((c) => c.lastDirection === "OUTBOX")
+    }
+
     if (labelFilterIds.length > 0) {
       result = result.filter((c) => {
         const conversationLabelIds =
@@ -613,7 +667,7 @@ export default function WhatsAppMessagesPage() {
     }
 
     return result
-  }, [conversations, searchQuery, directionFilter, labelFilterIds])
+  }, [conversations, searchQuery, directionFilter, replyFilter, labelFilterIds])
 
   // Reverse messages to show oldest first (they come desc from API)
   const orderedMessages = React.useMemo(
@@ -1396,6 +1450,30 @@ export default function WhatsAppMessagesPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Reply State</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={replyFilter}
+                    onValueChange={(val) => {
+                      if (
+                        val === "all" ||
+                        val === "unreplied" ||
+                        val === "replied"
+                      ) {
+                        setReplyFilter(val)
+                      }
+                    }}
+                  >
+                    <DropdownMenuRadioItem value="all">
+                      All Conversations
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="unreplied">
+                      Needs Reply (Inbox)
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="replied">
+                      Replied (Outbox)
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
                   <DropdownMenuLabel>Direction</DropdownMenuLabel>
                   <DropdownMenuRadioGroup
                     value={directionFilter}
