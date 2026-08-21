@@ -1,56 +1,58 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { useRouter, usePathname, useSearchParams } from "next/navigation"
-import { render, act } from "@testing-library/react"
+import { render, act, type RenderResult } from "@testing-library/react"
 
 const mockReplace = mock(() => {})
+let currentPathname = "/en/console"
+let currentParams = ""
+
+mock.module("next/navigation", () => ({
+  useRouter: () => ({
+    replace: mockReplace,
+    push: mock(() => {}),
+  }),
+  usePathname: () => currentPathname,
+  useSearchParams: () => new URLSearchParams(currentParams),
+}))
+
 const mockFetch = mock(
   async () =>
     ({
       ok: true,
       status: 200,
       json: async () => ({
+        ok: true,
         path: "/console",
-        title: "Test Doc",
+        title: "Console Overview Guide",
         purpose: "Test purpose",
         howTo: ["Step 1", "Step 2"],
         notes: ["Note 1", "Note 2"],
-        updatedAt: "2024-01-01",
+        updatedAt: "2026-05-16",
       }),
       preconnect: mock(() => {}),
     }) as unknown as Response
 )
 const originalFetch = globalThis.fetch
 
-let currentParams = ""
-let ThunderAiHelpDrawer: React.ComponentType
+import { ThunderAiHelpDrawer } from "./thunder-ai-help-drawer"
 
 describe("ThunderAiHelpDrawer", () => {
-  beforeEach(async () => {
-    mock.restore()
+  beforeEach(() => {
     mockFetch.mockClear()
     mockReplace.mockClear()
     globalThis.fetch = mockFetch as unknown as typeof fetch
+    currentPathname = "/en/console"
     currentParams = ""
-    ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
-      replace: mockReplace,
-    })
-    ;(usePathname as ReturnType<typeof mock>).mockReturnValue("/en/console")
-    ;(useSearchParams as ReturnType<typeof mock>).mockImplementation(
-      () => new URLSearchParams(currentParams)
-    )
-
-    const mod = await import("./thunder-ai-help-drawer")
-    ThunderAiHelpDrawer = mod.ThunderAiHelpDrawer
   })
 
   afterEach(() => {
     globalThis.fetch = originalFetch
   })
 
-  async function renderDrawer(params = "doc=1") {
+  async function renderDrawer(params = "doc=1", pathname = "/en/console") {
     currentParams = params
+    currentPathname = pathname
 
-    let view: ReturnType<typeof render> | undefined
+    let view: RenderResult | undefined
 
     await act(async () => {
       view = render(<ThunderAiHelpDrawer />)
@@ -70,7 +72,7 @@ describe("ThunderAiHelpDrawer", () => {
       const view = await renderDrawer("doc=1")
 
       expect(
-        view.getByRole("heading", { name: "Thunder AI Help" })
+        view.getByRole("heading", { name: "AI Help & Knowledge" })
       ).toBeTruthy()
       expect(view.getByText("Page Guides")).toBeTruthy()
     })
@@ -79,11 +81,13 @@ describe("ThunderAiHelpDrawer", () => {
       const view = await renderDrawer("kb=1")
 
       expect(
-        view.getByRole("heading", { name: "Thunder AI Help" })
+        view.getByRole("heading", { name: "AI Help & Knowledge" })
       ).toBeTruthy()
-      expect(view.getByText("Thunder AI Assistant")).toBeTruthy()
+      expect(view.getByText("PFNApp AI Assistant")).toBeTruthy()
       expect(
-        view.getByPlaceholderText("Ask about this page or system workflows...")
+        view.getByPlaceholderText(
+          "Ask anything about this page or system workflows..."
+        )
       ).toBeTruthy()
     })
   })
@@ -92,26 +96,30 @@ describe("ThunderAiHelpDrawer", () => {
     it("renders both tab buttons in docs mode", async () => {
       const view = await renderDrawer("doc=1")
 
-      expect(view.getByText("Thunder AI Chat")).toBeTruthy()
+      expect(view.getByText("Ask AI")).toBeTruthy()
       expect(view.getByText("Page Guides")).toBeTruthy()
     })
 
     it("renders both tab buttons in chat mode", async () => {
       const view = await renderDrawer("kb=1")
 
-      expect(view.getByText("Thunder AI Chat")).toBeTruthy()
+      expect(view.getByText("Ask AI")).toBeTruthy()
       expect(view.getByText("Page Guides")).toBeTruthy()
     })
 
-    it("switches to chat tab when clicking Thunder AI Chat button", async () => {
+    it("switches to chat tab when clicking Ask AI button", async () => {
       const view = await renderDrawer("doc=1")
 
-      const chatTab = view.getByText("Thunder AI Chat")
+      const chatTab = view.getByText("Ask AI")
       await act(async () => {
         chatTab.click()
       })
 
       expect(mockReplace).toHaveBeenCalled()
+      expect(mockReplace).toHaveBeenCalledWith(
+        expect.stringContaining("kb=1"),
+        expect.any(Object)
+      )
     })
 
     it("switches to docs tab when clicking Page Guides button", async () => {
@@ -123,11 +131,15 @@ describe("ThunderAiHelpDrawer", () => {
       })
 
       expect(mockReplace).toHaveBeenCalled()
+      expect(mockReplace).toHaveBeenCalledWith(
+        expect.stringContaining("doc=1"),
+        expect.any(Object)
+      )
     })
   })
 
   describe("AI Help button", () => {
-    it("opens docs drawer when clicked", async () => {
+    it("opens chat drawer by default when clicked", async () => {
       const view = await renderDrawer("")
 
       const button = view.getByText("AI Help")
@@ -137,7 +149,7 @@ describe("ThunderAiHelpDrawer", () => {
 
       expect(mockReplace).toHaveBeenCalled()
       expect(mockReplace).toHaveBeenCalledWith(
-        expect.stringContaining("doc=1"),
+        expect.stringContaining("kb=1"),
         expect.any(Object)
       )
     })
@@ -150,54 +162,66 @@ describe("ThunderAiHelpDrawer", () => {
       expect(view.getByText("Suggested Questions")).toBeTruthy()
     })
 
-    it("renders starter prompt buttons", async () => {
-      const view = await renderDrawer("kb=1")
+    it("renders contextual starter prompt buttons for console overview", async () => {
+      const view = await renderDrawer("kb=1", "/en/console")
 
-      expect(view.getByText(/Tell me about/)).toBeTruthy()
       expect(
-        view.getByText("What are some common tasks I can do here?")
+        view.getByText("How do I top up my organization balance?")
       ).toBeTruthy()
       expect(
-        view.getByText("How does deployment work in this cluster?")
-      ).toBeTruthy()
-    })
-
-    it("renders input field", async () => {
-      const view = await renderDrawer("kb=1")
-
-      expect(
-        view.getByPlaceholderText("Ask about this page or system workflows...")
+        view.getByText("How do I connect and configure a WhatsApp number?")
       ).toBeTruthy()
     })
 
-    it("renders send button", async () => {
+    it("renders input field and send button", async () => {
       const view = await renderDrawer("kb=1")
+
+      expect(
+        view.getByPlaceholderText(
+          "Ask anything about this page or system workflows..."
+        )
+      ).toBeTruthy()
 
       const buttons = view.getAllByRole("button")
-      expect(buttons.length).toBeGreaterThan(3)
+      expect(buttons.length).toBeGreaterThan(2)
     })
   })
 
-  describe("drawer header", () => {
-    it("shows correct title", async () => {
-      const view = await renderDrawer("doc=1")
+  describe("related documentation section", () => {
+    it("renders related guides and full docs link in Page Guides tab", async () => {
+      const view = await renderDrawer("doc=1", "/en/console")
 
-      expect(view.getByText("Thunder AI Help")).toBeTruthy()
+      expect(
+        view.getByText("📖 Related Guides from Documentation")
+      ).toBeTruthy()
+      expect(
+        view.getByText("Browse Full Documentation Portal (/docs) ↗")
+      ).toBeTruthy()
     })
+  })
 
-    it("shows route path in description", async () => {
-      const view = await renderDrawer("doc=1")
+  describe("localization", () => {
+    it("renders Indonesian copy when locale is id", async () => {
+      const view = await renderDrawer("kb=1", "/id/console")
 
-      expect(view.getByText(/\/console/)).toBeTruthy()
+      expect(
+        view.getByRole("heading", { name: "Pusat Bantuan & AI" })
+      ).toBeTruthy()
+      expect(view.getByText("Tanya AI")).toBeTruthy()
+      expect(view.getByText("Artikel Panduan")).toBeTruthy()
+      expect(view.getByText("Pertanyaan Populer")).toBeTruthy()
+      expect(
+        view.getByText("Bagaimana cara isi ulang saldo deposit organisasi?")
+      ).toBeTruthy()
     })
   })
 
   describe("drawer closed state", () => {
-    it("does not render sheet when no params are set", async () => {
+    it("does not render sheet content when no params are set", async () => {
       const view = await renderDrawer("")
 
       expect(
-        view.queryByRole("heading", { name: "Thunder AI Help" })
+        view.queryByRole("heading", { name: "AI Help & Knowledge" })
       ).toBeNull()
     })
   })
@@ -224,7 +248,7 @@ describe("ThunderAiHelpDrawer", () => {
     it("sends a chat request when starter prompt is clicked", async () => {
       const view = await renderDrawer("kb=1")
 
-      const prompt = view.getByText(/Tell me about/)
+      const prompt = view.getByText("How do I top up my organization balance?")
       await act(async () => {
         prompt.click()
       })
