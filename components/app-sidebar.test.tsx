@@ -498,8 +498,7 @@ describe("resolveSidebarMenu", () => {
       "Dashboard",
       "API Keys",
       "Usage",
-      "Ledger",
-      "Pricing",
+      "Pricing & Ledger",
       "Devices",
       "Templates",
       "Messages",
@@ -523,9 +522,9 @@ describe("resolveSidebarMenu", () => {
     })
 
     expect(navMainLabel).toBe("WhatsApp")
-    expect(navMain.find((item) => item.title === "Pricing")?.isActive).toBe(
-      true
-    )
+    expect(
+      navMain.find((item) => item.title === "Pricing & Ledger")?.isActive
+    ).toBe(true)
   })
 
   it("marks devices active for its routes", () => {

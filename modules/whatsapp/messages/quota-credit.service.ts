@@ -1,5 +1,5 @@
 import { detectCountryFromPhone } from "./phone-number"
-import { Prisma, type WhatsappBillingCategory } from "@prisma/client"
+import { Prisma, WhatsappBillingCategory } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 
 export const DEFAULT_WHATSAPP_QUOTA_CREDIT = new Prisma.Decimal(1)
@@ -65,10 +65,14 @@ export async function resolveWhatsappQuotaCredit(input: {
 }): Promise<ResolveQuotaCreditResult> {
   const country = resolveWhatsappCountry(input.phoneNumber)
   const targetDate = input.effectiveAt ?? new Date()
+  const category =
+    input.category === "REPLY"
+      ? WhatsappBillingCategory.SERVICE
+      : input.category
 
   const rate = await prisma.whatsappQuotaCreditRate.findFirst({
     where: {
-      category: input.category,
+      category,
       country,
       isActive: true,
       effectiveFrom: { lte: targetDate },
@@ -76,7 +80,6 @@ export async function resolveWhatsappQuotaCredit(input: {
     },
     orderBy: { effectiveFrom: "desc" },
   })
-
   if (!rate) {
     return {
       category: input.category,

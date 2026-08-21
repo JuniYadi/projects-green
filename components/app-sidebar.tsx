@@ -701,22 +701,15 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         isActive: startsWithRoute(path, "/console/whatsapp/usage"),
       },
       {
-        title: "Ledger",
-        url: localizePathname({
-          pathname: "/console/whatsapp/ledger",
-          locale,
-        }),
-        icon: <ReceiptIcon />,
-        isActive: startsWithRoute(path, "/console/whatsapp/ledger"),
-      },
-      {
-        title: "Pricing",
+        title: "Pricing & Ledger",
         url: localizePathname({
           pathname: "/console/whatsapp/pricing",
           locale,
         }),
         icon: <ReceiptIcon />,
-        isActive: startsWithRoute(path, "/console/whatsapp/pricing"),
+        isActive:
+          startsWithRoute(path, "/console/whatsapp/pricing") ||
+          startsWithRoute(path, "/console/whatsapp/ledger"),
       },
       {
         title: "Devices",

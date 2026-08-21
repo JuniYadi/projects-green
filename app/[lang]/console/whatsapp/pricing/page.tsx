@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useQuery } from "@tanstack/react-query"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import {
   CurrencyDollar,
@@ -10,6 +10,13 @@ import {
   Warning,
   PaperPlaneTilt,
   Info,
+  Receipt,
+  CheckCircle,
+  Clock,
+  ArrowCounterClockwise,
+  MagnifyingGlass,
+  Funnel,
+  ArrowsClockwise,
 } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
@@ -21,10 +28,45 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
+
+type LedgerEntry = {
+  id: string
+  organizationId: string
+  waMessageId: string
+  phoneNumber: string
+  category: string
+  quotaKey: string
+  quotaValue: number
+  status: string
+  isReverted: boolean
+  revertReason: string | null
+  revertedAt: string | null
+  lastStatus: string | null
+  whatsappDeviceId: string | null
+  createdAt: string
+  updatedAt: string
+  devicePhoneNumber?: string | null
+}
 
 function formatPhone(phone: string): string {
   if (phone.startsWith("+")) return phone
@@ -40,34 +82,35 @@ function formatQuotaCredit(value: string): string {
   }).format(amount)
 }
 
-function formatMessagePrice(value: string, currency: string | null): string {
-  const amount = Number(value)
-  if (!currency || !Number.isFinite(amount)) {
-    return currency ? `${currency} ${value}` : value
-  }
-
+function formatDate(iso: string | Date): string {
   try {
-    return new Intl.NumberFormat(currency === "IDR" ? "id-ID" : "en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 2,
-    }).format(amount)
+    const d = typeof iso === "string" ? new Date(iso) : iso
+    if (!Number.isFinite(d.getTime())) return String(iso)
+    return d.toLocaleString("id-ID", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
   } catch {
-    return `${currency} ${value}`
+    return String(iso)
   }
 }
 
 export default function WhatsAppPricingPage() {
   const params = useParams<{ lang?: string }>()
+  const searchParams = useSearchParams()
   const locale = resolveLocaleOrDefault(params?.lang)
   const t = getMessages(locale).console.whatsapp
   const [selectedDeviceId, setSelectedDeviceId] = React.useState<string>("all")
 
+  // Pricing rates query
   const {
     data: pricing,
-    isLoading,
-    error,
-    refetch,
+    isLoading: isPricingLoading,
+    error: pricingError,
+    refetch: refetchPricing,
   } = useQuery({
     queryKey: ["whatsapp", "messages", "pricing"],
     queryFn: async () => {
@@ -78,6 +121,77 @@ export default function WhatsAppPricingPage() {
     staleTime: 30_000,
   })
 
+  // Ledger state & query
+  const [ledgerLoading, setLedgerLoading] = React.useState(true)
+  const [ledgerData, setLedgerData] = React.useState<LedgerEntry[]>([])
+  const [ledgerSummary, setLedgerSummary] = React.useState({
+    totalCredits: 0,
+    totalRefundedCredits: 0,
+    activeCredits: 0,
+  })
+  const [ledgerTotal, setLedgerTotal] = React.useState(0)
+  const [page, setPage] = React.useState(1)
+  const [totalPages, setTotalPages] = React.useState(1)
+  const [refreshKey, setRefreshKey] = React.useState(0)
+
+  const [statusFilter, setStatusFilter] = React.useState(
+    searchParams.get("status") || "all"
+  )
+  const [categoryFilter, setCategoryFilter] = React.useState(
+    searchParams.get("category") || "all"
+  )
+  const [searchQuery, setSearchQuery] = React.useState(
+    searchParams.get("search") || ""
+  )
+  const [ledgerSelectedDevice, setLedgerSelectedDevice] = React.useState(
+    searchParams.get("deviceId") || "all"
+  )
+
+  React.useEffect(() => {
+    let cancelled = false
+    const loadLedger = async () => {
+      setLedgerLoading(true)
+      try {
+        const res = await whatsappClient.usage.ledger({
+          page,
+          limit: 20,
+          status: statusFilter !== "all" ? statusFilter : undefined,
+          category: categoryFilter !== "all" ? categoryFilter : undefined,
+          deviceId:
+            ledgerSelectedDevice !== "all" ? ledgerSelectedDevice : undefined,
+          search: searchQuery.trim() || undefined,
+        })
+        if (cancelled) return
+        if (res && res.ok) {
+          setLedgerData((res.data as unknown as LedgerEntry[]) ?? [])
+          setLedgerTotal(res.total ?? 0)
+          setTotalPages(res.totalPages ?? 1)
+          if (res.summary) setLedgerSummary(res.summary)
+        }
+      } catch (err) {
+        console.error("Failed to load WhatsApp ledger:", err)
+      } finally {
+        if (!cancelled) setLedgerLoading(false)
+      }
+    }
+    loadLedger()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    page,
+    statusFilter,
+    categoryFilter,
+    ledgerSelectedDevice,
+    searchQuery,
+    refreshKey,
+  ])
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    setPage(1)
+  }
+
   const devices = pricing?.devices ?? []
   const filteredDevices =
     selectedDeviceId === "all"
@@ -85,16 +199,35 @@ export default function WhatsAppPricingPage() {
       : devices.filter((d) => d.deviceId === selectedDeviceId)
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
+      {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {t.pricing.heading}
+            {t.pricing.heading} & Ledger
           </h1>
-          <p className="text-muted-foreground">{t.pricing.description}</p>
+          <p className="text-sm text-muted-foreground">
+            Category rates, quota deduction policies, and itemized transaction
+            ledger.
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              refetchPricing()
+              setRefreshKey((k) => k + 1)
+            }}
+            disabled={ledgerLoading}
+            className="gap-1.5"
+          >
+            <ArrowsClockwise
+              className={`size-4 ${ledgerLoading ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
+          <Button variant="outline" size="sm" asChild>
             <Link
               href={localizePathname({
                 pathname: "/console/whatsapp/usage",
@@ -104,96 +237,114 @@ export default function WhatsAppPricingPage() {
               {t.usage.heading}
             </Link>
           </Button>
-          <Button asChild>
+          <Button size="sm" asChild>
             <Link
               href={localizePathname({
                 pathname: "/console/whatsapp/messages",
                 locale,
               })}
             >
-              <PaperPlaneTilt className="mr-2 size-4" />
+              <PaperPlaneTilt className="mr-1.5 size-4" />
               {t.messages.sendMessage}
             </Link>
           </Button>
         </div>
       </div>
 
-      {/* Overview Info Cards */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Quota Credit Policy
-            </CardTitle>
-            <Info className="size-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              Quota credits are deducted per outbound message based on the Meta
-              category of the template (Marketing, Utility, Authentication, or
-              Service).
-            </p>
-          </CardContent>
-        </Card>
+      {/* Dynamic Status Alert Banner */}
+      {(() => {
+        const targetDevices =
+          selectedDeviceId === "all"
+            ? devices
+            : devices.filter((d) => d.deviceId === selectedDeviceId)
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">PAYG Overage</CardTitle>
-            <CurrencyDollar
-              className="size-4 text-muted-foreground"
-              weight="fill"
-            />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-6 w-32" />
-            ) : error ? (
-              <p className="text-xs text-destructive">
-                Failed to load PAYG rates.
-              </p>
-            ) : pricing?.overage.configured &&
-              pricing.overage.unitPrice !== null ? (
-              <div>
-                <p className="text-lg font-bold">
-                  {formatMessagePrice(
-                    pricing.overage.unitPrice,
-                    pricing.overage.currency
-                  )}
-                  <span className="text-xs font-normal text-muted-foreground">
-                    {" "}
-                    / message
-                  </span>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Applied automatically after available monthly quota runs out.
-                </p>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Not configured for this WhatsApp plan.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+        if (targetDevices.length === 0) return null
 
-      {/* Category Rates per Device */}
+        const allActive =
+          targetDevices.length > 0 &&
+          targetDevices.every((d) => (d.quotaRemaining ?? 0) > 0)
+        const noneActive =
+          targetDevices.length > 0 &&
+          targetDevices.every((d) => (d.quotaRemaining ?? 0) <= 0)
+        const isMixed = !allActive && !noneActive
+
+        return (
+          <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Info className="size-4 shrink-0 text-primary" />
+              <span>
+                In-quota messages deduct from your plan quota allowance first (
+                <span
+                  className={`font-semibold ${
+                    allActive
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : isMixed
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-destructive line-through"
+                  }`}
+                >
+                  Quota Credit{" "}
+                  {allActive ? "" : isMixed ? "(Partial)" : "(Exhausted)"}
+                </span>
+                ). When monthly quota is exhausted, Pay-As-You-Go overage (
+                <span
+                  className={`font-semibold ${
+                    noneActive
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : isMixed
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-amber-600 dark:text-amber-400"
+                  }`}
+                >
+                  PAYG Overage{" "}
+                  {noneActive
+                    ? "(Active)"
+                    : isMixed
+                      ? "(Partial Fallback)"
+                      : "(Fallback)"}
+                </span>
+                ) rates apply directly from your prepaid wallet balance.
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="ml-3 h-7 shrink-0 text-xs"
+            >
+              <Link
+                href={localizePathname({
+                  pathname: "/console/billing/topup",
+                  locale,
+                })}
+              >
+                <CurrencyDollar className="mr-1 size-3.5" />
+                Top Up Balance
+              </Link>
+            </Button>
+          </div>
+        )
+      })()}
+
+      {/* Category Rates & Multi-Tier Comparison Table */}
       <Card>
-        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <CardHeader className="flex flex-col gap-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle>Device Category Rates</CardTitle>
-            <CardDescription>
-              Quota credits deducted per message category by WhatsApp device and
-              country.
+            <CardTitle className="text-base font-semibold">
+              WhatsApp Category Rates & Tier Comparison
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Compare in-quota deduction against Pay-As-You-Go (PAYG) overage
+              rates across volume tiers.
             </CardDescription>
           </div>
           {devices.length > 1 && (
             <div className="flex items-center gap-2">
-              <Phone className="size-4 text-muted-foreground" />
+              <Phone className="size-3.5 text-muted-foreground" />
               <select
                 value={selectedDeviceId}
                 onChange={(e) => setSelectedDeviceId(e.target.value)}
-                className="rounded-md border bg-background px-3 py-1.5 text-sm"
+                className="rounded-md border bg-background px-2.5 py-1 text-xs"
                 aria-label="Filter by WhatsApp device"
               >
                 <option value="all">All Devices ({devices.length})</option>
@@ -207,137 +358,603 @@ export default function WhatsAppPricingPage() {
           )}
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="space-y-3" aria-label="Loading pricing details">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-24 w-full" />
+          {isPricingLoading ? (
+            <div className="space-y-2 py-4">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-28 w-full" />
             </div>
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <Warning className="mb-3 size-8 text-destructive" weight="fill" />
-              <p className="text-sm font-medium text-destructive">
-                Pricing information is unavailable right now.
+          ) : pricingError ? (
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <Warning className="mb-2 size-6 text-destructive" weight="fill" />
+              <p className="text-xs font-medium text-destructive">
+                Pricing rates unavailable.
               </p>
               <Button
                 variant="outline"
                 size="sm"
-                className="mt-3"
-                onClick={() => refetch()}
+                className="mt-2 text-xs"
+                onClick={() => refetchPricing()}
               >
-                Try Again
+                Retry
               </Button>
             </div>
           ) : devices.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              No active WhatsApp devices found with pricing rates.
+            <div className="py-6 text-center text-xs text-muted-foreground">
+              No active WhatsApp devices found.
             </div>
           ) : (
             <div className="space-y-6">
-              {filteredDevices.map((device) => (
-                <div
-                  key={device.deviceId}
-                  className="rounded-lg border bg-card p-4"
-                >
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b pb-3">
-                    <div className="flex items-center gap-2">
-                      <Phone className="size-4 text-muted-foreground" />
-                      <span className="font-semibold">
-                        {formatPhone(device.phoneNumber)}
-                      </span>
-                      <Badge variant="outline" className="text-xs">
-                        Country: {device.country}
-                      </Badge>
-                      <Badge variant="secondary" className="text-xs">
-                        Rate Tier: {device.rateTier ?? "BASE"}
-                      </Badge>
+              {filteredDevices.map((device) => {
+                const activeTier = device.rateTier ?? "BASE"
+                const hasQuota = (device.quotaRemaining ?? 0) > 0
+                return (
+                  <div
+                    key={device.deviceId}
+                    className="overflow-hidden rounded-lg border text-xs"
+                  >
+                    <div className="flex items-center justify-between border-b bg-muted/40 px-4 py-2">
+                      <div className="flex items-center gap-2">
+                        <Phone className="size-3.5 text-muted-foreground" />
+                        <span className="text-sm font-semibold">
+                          {formatPhone(device.phoneNumber)}
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          Country: {device.country}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          Rate Tier:
+                        </span>
+                        <Badge variant="secondary" className="font-semibold">
+                          {activeTier}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <caption className="sr-only">
+                          Category deduction rates and multi-tier pricing for{" "}
+                          {device.phoneNumber}
+                        </caption>
+                        <thead className="border-b bg-muted/20 text-muted-foreground">
+                          <tr>
+                            <th scope="col" className="px-4 py-3 font-semibold">
+                              Category
+                            </th>
+                            <th scope="col" className="px-4 py-3 text-center">
+                              <span
+                                className={`font-semibold ${
+                                  hasQuota
+                                    ? "text-emerald-600 dark:text-emerald-400"
+                                    : "text-destructive line-through"
+                                }`}
+                              >
+                                Quota Credit
+                              </span>
+                              <div className="mt-0.5 text-[10px] font-normal text-muted-foreground">
+                                In-Quota Allowance
+                              </div>
+                            </th>
+                            <th scope="col" className="px-4 py-3 text-right">
+                              <span
+                                className={
+                                  activeTier === "BASE"
+                                    ? hasQuota
+                                      ? "font-bold text-amber-600 dark:text-amber-400"
+                                      : "font-bold text-emerald-600 dark:text-emerald-400"
+                                    : "font-semibold text-muted-foreground"
+                                }
+                              >
+                                BASE
+                              </span>
+                            </th>
+                            <th scope="col" className="px-4 py-3 text-right">
+                              <span
+                                className={
+                                  activeTier === "TIER_1"
+                                    ? hasQuota
+                                      ? "font-bold text-amber-600 dark:text-amber-400"
+                                      : "font-bold text-emerald-600 dark:text-emerald-400"
+                                    : "font-semibold text-muted-foreground"
+                                }
+                              >
+                                TIER 1
+                              </span>
+                            </th>
+                            <th scope="col" className="px-4 py-3 text-right">
+                              <span
+                                className={
+                                  activeTier === "TIER_2"
+                                    ? hasQuota
+                                      ? "font-bold text-amber-600 dark:text-amber-400"
+                                      : "font-bold text-emerald-600 dark:text-emerald-400"
+                                    : "font-semibold text-muted-foreground"
+                                }
+                              >
+                                TIER 2
+                              </span>
+                            </th>
+                            <th scope="col" className="px-4 py-3 text-right">
+                              <span
+                                className={
+                                  activeTier === "TIER_3"
+                                    ? hasQuota
+                                      ? "font-bold text-amber-600 dark:text-amber-400"
+                                      : "font-bold text-emerald-600 dark:text-emerald-400"
+                                    : "font-semibold text-muted-foreground"
+                                }
+                              >
+                                TIER 3
+                              </span>
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {device.categories.map((cat) => {
+                            const formatPrice = (
+                              val: string | null | undefined,
+                              curr: string | null | undefined
+                            ) => {
+                              if (!val) return "—"
+                              const num = Number(val)
+                              if (!Number.isFinite(num)) return "—"
+                              const currencyCode =
+                                curr && curr.trim()
+                                  ? curr.trim().toUpperCase()
+                                  : "IDR"
+                              const parts = val.split(".")
+                              const valueDecimals =
+                                parts.length > 1 ? parts[1].length : 0
+                              const isZeroDecimalDefault =
+                                currencyCode === "IDR" ||
+                                currencyCode === "JPY" ||
+                                currencyCode === "KRW"
+                              const minFractionDigits = isZeroDecimalDefault
+                                ? valueDecimals > 0
+                                  ? Math.min(valueDecimals, 4)
+                                  : 0
+                                : Math.max(2, Math.min(valueDecimals, 4))
+                              const maximumFractionDigits = Math.max(
+                                minFractionDigits,
+                                Math.min(valueDecimals, 4)
+                              )
+                              let locale = "en-US"
+                              if (currencyCode === "IDR") locale = "id-ID"
+                              else if (currencyCode === "EUR") locale = "de-DE"
+                              else if (currencyCode === "GBP") locale = "en-GB"
+                              else if (currencyCode === "JPY") locale = "ja-JP"
+                              else if (currencyCode === "AUD") locale = "en-AU"
+                              else if (currencyCode === "SGD") locale = "en-SG"
+                              else if (currencyCode === "MYR") locale = "ms-MY"
+                              try {
+                                return new Intl.NumberFormat(locale, {
+                                  style: "currency",
+                                  currency: currencyCode,
+                                  minimumFractionDigits: minFractionDigits,
+                                  maximumFractionDigits: maximumFractionDigits,
+                                }).format(num)
+                              } catch {
+                                return `${currencyCode} ${num}`
+                              }
+                            }
+
+                            const pBase = formatPrice(
+                              cat.tierPrices?.BASE ?? cat.overagePrice,
+                              cat.currency
+                            )
+                            const pTier1 = formatPrice(
+                              cat.tierPrices?.TIER_1,
+                              cat.currency
+                            )
+                            const pTier2 = formatPrice(
+                              cat.tierPrices?.TIER_2,
+                              cat.currency
+                            )
+                            const pTier3 = formatPrice(
+                              cat.tierPrices?.TIER_3,
+                              cat.currency
+                            )
+                            return (
+                              <tr
+                                key={cat.category}
+                                className="hover:bg-muted/20"
+                              >
+                                <th
+                                  scope="row"
+                                  className="px-4 py-2.5 font-medium"
+                                >
+                                  {cat.category}
+                                </th>
+                                <td
+                                  className={`px-4 py-2.5 text-center font-semibold ${
+                                    hasQuota
+                                      ? "text-emerald-600 dark:text-emerald-400"
+                                      : "text-destructive line-through"
+                                  }`}
+                                >
+                                  -{formatQuotaCredit(cat.quotaCredit)}
+                                </td>
+                                <td
+                                  className={`px-4 py-2.5 text-right ${
+                                    activeTier === "BASE"
+                                      ? hasQuota
+                                        ? "font-bold text-amber-600 dark:text-amber-400"
+                                        : "font-bold text-emerald-600 dark:text-emerald-400"
+                                      : "text-muted-foreground"
+                                  }`}
+                                >
+                                  {pBase}
+                                </td>
+                                <td
+                                  className={`px-4 py-2.5 text-right ${
+                                    activeTier === "TIER_1"
+                                      ? hasQuota
+                                        ? "font-bold text-amber-600 dark:text-amber-400"
+                                        : "font-bold text-emerald-600 dark:text-emerald-400"
+                                      : "text-muted-foreground"
+                                  }`}
+                                >
+                                  {pTier1}
+                                </td>
+                                <td
+                                  className={`px-4 py-2.5 text-right ${
+                                    activeTier === "TIER_2"
+                                      ? hasQuota
+                                        ? "font-bold text-amber-600 dark:text-amber-400"
+                                        : "font-bold text-emerald-600 dark:text-emerald-400"
+                                      : "text-muted-foreground"
+                                  }`}
+                                >
+                                  {pTier2}
+                                </td>
+                                <td
+                                  className={`px-4 py-2.5 text-right ${
+                                    activeTier === "TIER_3"
+                                      ? hasQuota
+                                        ? "font-bold text-amber-600 dark:text-amber-400"
+                                        : "font-bold text-emerald-600 dark:text-emerald-400"
+                                      : "text-muted-foreground"
+                                  }`}
+                                >
+                                  {pTier3}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription className="text-xs">
+              Total Deducted Credits
+            </CardDescription>
+            <CardTitle className="text-xl font-bold">
+              {ledgerSummary.totalCredits.toLocaleString()} Credits
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-[11px] text-muted-foreground">
+              Total quota credits reserved/debited across all dispatches
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription className="text-xs">
+              Refunded / Reverted
+            </CardDescription>
+            <CardTitle className="text-xl font-bold text-amber-500">
+              {ledgerSummary.totalRefundedCredits.toLocaleString()} Credits
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-[11px] text-muted-foreground">
+              Automatically refunded due to Meta delivery rejection
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription className="text-xs">
+              Net Billed Credits
+            </CardDescription>
+            <CardTitle className="text-xl font-bold text-emerald-600">
+              {ledgerSummary.activeCredits.toLocaleString()} Credits
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-[11px] text-muted-foreground">
+              Confirmed delivered message quota
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-                  <div className="overflow-x-auto rounded-md border">
-                    <table className="w-full text-sm">
-                      <caption className="sr-only">
-                        WhatsApp pricing and quota breakdown for{" "}
-                        {device.phoneNumber}
-                      </caption>
-                      <thead className="bg-muted/50 text-left text-muted-foreground">
-                        <tr>
-                          <th scope="col" className="px-4 py-2.5 font-medium">
-                            Category
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-4 py-2.5 text-center font-medium"
+      {/* Bottom Section: Deduction & Refund Ledger */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="text-base font-semibold">
+                Transaction & Deduction Ledger
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Real-time record of all quota deductions, deliveries, and
+                refunds.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Ledger Filters */}
+          <form
+            onSubmit={handleSearch}
+            className="flex flex-wrap items-center gap-3"
+          >
+            <div className="relative min-w-[200px] flex-1">
+              <MagnifyingGlass className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search phone or wamid..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 text-xs"
+              />
+            </div>
+
+            <div className="w-[140px]">
+              <Select
+                value={statusFilter}
+                onValueChange={(val) => {
+                  setStatusFilter(val)
+                  setPage(1)
+                }}
+              >
+                <SelectTrigger className="text-xs">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="CONFIRMED">Confirmed</SelectItem>
+                  <SelectItem value="PENDING">Pending Verify</SelectItem>
+                  <SelectItem value="REFUNDED">Refunded / Reverted</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-[150px]">
+              <Select
+                value={categoryFilter}
+                onValueChange={(val) => {
+                  setCategoryFilter(val)
+                  setPage(1)
+                }}
+              >
+                <SelectTrigger className="text-xs">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="MARKETING">MARKETING</SelectItem>
+                  <SelectItem value="UTILITY">UTILITY</SelectItem>
+                  <SelectItem value="AUTHENTICATION">AUTHENTICATION</SelectItem>
+                  <SelectItem value="SERVICE">SERVICE</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-[150px]">
+              <Select
+                value={ledgerSelectedDevice}
+                onValueChange={(val) => {
+                  setLedgerSelectedDevice(val)
+                  setPage(1)
+                }}
+              >
+                <SelectTrigger className="text-xs">
+                  <SelectValue placeholder="Device" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Devices</SelectItem>
+                  {devices.map((d) => (
+                    <SelectItem key={d.deviceId} value={d.deviceId}>
+                      {formatPhone(d.phoneNumber)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button
+              type="submit"
+              variant="secondary"
+              size="sm"
+              className="h-9 gap-1.5 text-xs"
+            >
+              <Funnel className="size-3.5" />
+              Apply Filter
+            </Button>
+          </form>
+          {/* Ledger Table */}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Time</TableHead>
+                  <TableHead className="text-xs">Recipient</TableHead>
+                  <TableHead className="text-xs">Category</TableHead>
+                  <TableHead className="text-xs">Source Type</TableHead>
+                  <TableHead className="text-xs">Deduction</TableHead>
+                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs">
+                    Meta Message ID / Note
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ledgerLoading &&
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-28" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-16" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-20" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-14" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-16" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-32" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                {!ledgerLoading && ledgerData.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="h-28 text-center text-xs text-muted-foreground"
+                    >
+                      <Receipt className="mx-auto mb-2 size-6 opacity-40" />
+                      No deduction ledger entries found.
+                    </TableCell>
+                  </TableRow>
+                )}
+                {!ledgerLoading &&
+                  ledgerData.map((row) => {
+                    const isRefunded =
+                      row.isReverted || row.status === "REVERTED_FAILED"
+                    const isConfirmed = row.status === "CONFIRMED"
+                    return (
+                      <TableRow key={row.id}>
+                        <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                          {formatDate(row.createdAt)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5 text-xs font-medium">
+                            <Phone className="size-3 text-muted-foreground" />
+                            <span>{row.phoneNumber}</span>
+                          </div>
+                          {row.devicePhoneNumber && (
+                            <span className="text-[10px] text-muted-foreground">
+                              via {row.devicePhoneNumber}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className="px-1.5 py-0 text-[10px] font-semibold"
                           >
-                            Quota Deduction
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-4 py-2.5 text-right font-medium"
+                            {row.category}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="secondary"
+                            className="bg-blue-500/10 px-1.5 py-0 text-[10px] text-blue-600 dark:text-blue-400"
                           >
-                            Base Price
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-4 py-2.5 text-right font-medium"
-                          >
-                            Fee ({device.categories[0]?.feePercent ?? 20}%)
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-4 py-2.5 text-right font-medium"
-                          >
-                            PPN (11%)
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-4 py-2.5 text-right font-medium"
-                          >
-                            PAYG Overage / Msg
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {device.categories.map((category) => (
-                          <tr
-                            key={category.category}
-                            className="border-t hover:bg-muted/30"
-                          >
-                            <th
-                              scope="row"
-                              className="px-4 py-2.5 text-left font-medium"
+                            QUOTA_ALLOWANCE
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs font-semibold whitespace-nowrap">
+                          {isRefunded ? (
+                            <span className="text-muted-foreground line-through">
+                              {row.quotaValue} credits
+                            </span>
+                          ) : (
+                            <span>{row.quotaValue} credits</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isRefunded ? (
+                            <Badge
+                              variant="destructive"
+                              className="gap-1 border-amber-500/30 bg-amber-500/15 px-1.5 py-0 text-[10px] text-amber-600 dark:text-amber-400"
                             >
-                              {category.category}
-                            </th>
-                            <td className="px-4 py-2.5 text-center font-semibold text-primary">
-                              -{formatQuotaCredit(category.quotaCredit)}
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-mono text-xs text-muted-foreground">
-                              {category.basePrice
-                                ? `Rp ${category.basePrice}`
-                                : "-"}
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-mono text-xs text-muted-foreground">
-                              {category.feeAmount
-                                ? `Rp ${category.feeAmount}`
-                                : "-"}
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-mono text-xs text-muted-foreground">
-                              {category.ppnAmount
-                                ? `Rp ${category.ppnAmount}`
-                                : "-"}
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-semibold">
-                              {category.overagePrice
-                                ? `Rp ${category.overagePrice}`
-                                : "-"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
+                              <ArrowCounterClockwise className="size-2.5" />
+                              REFUNDED
+                            </Badge>
+                          ) : isConfirmed ? (
+                            <Badge
+                              variant="default"
+                              className="gap-1 bg-emerald-600 px-1.5 py-0 text-[10px] text-white"
+                            >
+                              <CheckCircle className="size-2.5" weight="fill" />
+                              CONFIRMED
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="secondary"
+                              className="gap-1 px-1.5 py-0 text-[10px]"
+                            >
+                              <Clock className="size-2.5" />
+                              PENDING
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-[200px] truncate font-mono text-[11px] text-muted-foreground">
+                            {row.waMessageId}
+                          </div>
+                          {row.revertReason && (
+                            <div className="max-w-[200px] truncate text-[10px] text-amber-600 dark:text-amber-400">
+                              {row.revertReason}
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-xs text-muted-foreground">
+                Showing page {page} of {totalPages} ({ledgerTotal} entries)
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1 || ledgerLoading}
+                  className="text-xs"
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages || ledgerLoading}
+                  className="text-xs"
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
