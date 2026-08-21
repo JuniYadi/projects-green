@@ -227,19 +227,21 @@ const getRouteContext = (routePath: string): RouteContextConfig => {
       ],
       relatedDocs: [
         {
-          titleEn: "API & Swagger Reference",
-          titleId: "Dokumentasi REST API & Swagger",
-          descriptionEn: "Interactive OpenAPI documentation and API payloads",
-          descriptionId: "Eksplorasi dokumentasi REST API dan skema payload",
-          slug: "whatsapp/developer-api",
+          titleEn: "Application Deployment Guide",
+          titleId: "Panduan Deploy Aplikasi",
+          descriptionEn: "Step-by-step container deployment and configuration",
+          descriptionId: "Panduan langkah demi langkah deploy container",
+          slug: "app/deployment",
           icon: RocketLaunch,
         },
         {
-          titleEn: "Security & API Keys",
-          titleId: "Keamanan & API Key",
-          descriptionEn: "Secret tokens and authentication guidelines",
-          descriptionId: "Token rahasia dan panduan autentikasi API",
-          slug: "whatsapp/api-keys",
+          titleEn: "Custom Domains & SSL",
+          titleId: "Custom Domain & SSL",
+          descriptionEn:
+            "Configure custom domains and automated SSL certificates",
+          descriptionId:
+            "Konfigurasi custom domain dan sertifikat SSL otomatis",
+          slug: "app/domains",
           icon: Key,
         },
       ],
