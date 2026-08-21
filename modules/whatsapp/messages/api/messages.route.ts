@@ -1056,14 +1056,13 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         },
       })
 
-      // 3. Query audit log
+      // 3. Query audit log by structured message ID.
+      // Message text can contain a wamid from an unrelated message and create
+      // a false journey link.
       const auditLog = await prisma.whatsappAuditLog.findFirst({
         where: {
           organizationId: auth.organizationId,
-          OR: [
-            { details: { path: ["waMessageId"], equals: decodedWamid } },
-            { message: { contains: decodedWamid } },
-          ],
+          details: { path: ["waMessageId"], equals: decodedWamid },
         },
         orderBy: { createdAt: "asc" },
       })
@@ -1097,7 +1096,8 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         description?: string
       }> = []
 
-      // Initiation Step
+      // The message record is the initiation event. Billing may be reserved
+      // before it, so sorting below can intentionally place billing first.
       const createdAt =
         message?.createdAt ??
         auditLog?.createdAt ??
@@ -1153,6 +1153,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           description: `Processing: ${we.processingStatus}`,
         })
       }
+      timeline.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp))
 
       const device = message?.conversation.whatsappDevice
       const auditDetails =
@@ -1185,6 +1186,9 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           ? (device.whatsappProfile as Record<string, unknown>)
           : null
 
+      const auditActor = auditLog?.adminId
+        ? await getCachedUser(auditLog.adminId)
+        : null
       return {
         ok: true,
         data: {
@@ -1240,8 +1244,8 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
             ? {
                 adminId: auditLog.adminId,
                 actorName: auditLog.adminId
-                  ? ((await getCachedUser(auditLog.adminId))?.name ??
-                    (await getCachedUser(auditLog.adminId))?.email ??
+                  ? (auditActor?.name ??
+                    auditActor?.email ??
                     auditLog.adminId.slice(0, 10))
                   : "System",
                 action: auditLog.action,
