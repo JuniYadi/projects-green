@@ -195,6 +195,24 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     ],
     smokeProjects: [],
   },
+  {
+    name: "legal",
+    sourcePrefixes: [
+      "app/[lang]/terms/",
+      "app/[lang]/privacy/",
+      "app/[lang]/acceptable-use/",
+      "components/legal/",
+      "app/[lang]/(home)/components/footer.tsx",
+    ],
+    testPrefixes: [
+      "app/[lang]/terms/page.test.tsx",
+      "app/[lang]/privacy/page.test.tsx",
+      "app/[lang]/acceptable-use/page.test.tsx",
+      "components/legal/legal-components.test.tsx",
+      "app/[lang]/(home)/components/footer.test.tsx",
+    ],
+    smokeProjects: [],
+  },
 ]
 export const SHARED_UI_PREFIXES = [
   "components/",

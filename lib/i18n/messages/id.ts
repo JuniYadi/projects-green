@@ -1,4 +1,5 @@
 import type { AppMessages } from "@/lib/i18n/messages/types"
+import { legalId } from "@/lib/i18n/messages/legal-id"
 
 export const idMessages: AppMessages = {
   navOrganization: {
@@ -1296,4 +1297,5 @@ export const idMessages: AppMessages = {
       detector: "Kontrol Detector",
     },
   },
+  legal: legalId,
 }

@@ -1,4 +1,5 @@
 import type { AppMessages } from "@/lib/i18n/messages/types"
+import { legalEn } from "@/lib/i18n/messages/legal-en"
 
 export const enMessages: AppMessages = {
   navOrganization: {
@@ -1290,4 +1291,5 @@ export const enMessages: AppMessages = {
       detector: "Detector Control",
     },
   },
+  legal: legalEn,
 }

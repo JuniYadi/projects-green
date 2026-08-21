@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react"
 import { eden } from "@/lib/eden"
 import { z } from "zod"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
+import Link from "next/link"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { CheckCircleIcon, XCircleIcon } from "@phosphor-icons/react"
 
 import { cn } from "@/lib/utils"
@@ -84,6 +86,8 @@ export function LoginForm({
   errorMessage,
   ...props
 }: LoginFormProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
   const router = useRouter()
   const encodedNext = encodeURIComponent(nextPath)
   const signInWithGooglePath = `/login/start?next=${encodedNext}&provider=google`
@@ -481,8 +485,21 @@ export function LoginForm({
         </FieldGroup>
       </form>
       <FieldDescription className="px-6 text-center">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
-        and <a href="#">Privacy Policy</a>.
+        By clicking continue, you agree to our{" "}
+        <Link
+          href={`/${locale}/terms`}
+          className="text-primary underline-offset-4 hover:underline"
+        >
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link
+          href={`/${locale}/privacy`}
+          className="text-primary underline-offset-4 hover:underline"
+        >
+          Privacy Policy
+        </Link>
+        .
       </FieldDescription>
     </div>
   )
