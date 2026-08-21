@@ -250,38 +250,56 @@ export default function WhatsAppPricingPage() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <Info className="size-4 shrink-0 text-primary" />
-          <span>
-            In-quota messages deduct from your plan quota allowance first (
-            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-              Quota Credit
-            </span>
-            ). When monthly quota is exhausted, Pay-As-You-Go overage (
-            <span className="font-semibold text-amber-600 dark:text-amber-400">
-              PAYG Overage
-            </span>
-            ) rates apply directly from your prepaid wallet balance.
-          </span>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          asChild
-          className="ml-3 h-7 shrink-0 text-xs"
-        >
-          <Link
-            href={localizePathname({
-              pathname: "/console/billing/topup",
-              locale,
-            })}
-          >
-            <CurrencyDollar className="mr-1 size-3.5" />
-            Top Up Balance
-          </Link>
-        </Button>
-      </div>
+      {/* Dynamic Status Alert Banner */}
+      {(() => {
+        const anyQuotaActive = devices.some((d) => (d.quotaRemaining ?? 0) > 0)
+        return (
+          <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Info className="size-4 shrink-0 text-primary" />
+              <span>
+                In-quota messages deduct from your plan quota allowance first (
+                <span
+                  className={`font-semibold ${
+                    anyQuotaActive
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-destructive line-through"
+                  }`}
+                >
+                  Quota Credit {anyQuotaActive ? "" : "(Exhausted)"}
+                </span>
+                ). When monthly quota is exhausted, Pay-As-You-Go overage (
+                <span
+                  className={`font-semibold ${
+                    anyQuotaActive
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-emerald-600 dark:text-emerald-400"
+                  }`}
+                >
+                  PAYG Overage {anyQuotaActive ? "(Fallback)" : "(Active)"}
+                </span>
+                ) rates apply directly from your prepaid wallet balance.
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="ml-3 h-7 shrink-0 text-xs"
+            >
+              <Link
+                href={localizePathname({
+                  pathname: "/console/billing/topup",
+                  locale,
+                })}
+              >
+                <CurrencyDollar className="mr-1 size-3.5" />
+                Top Up Balance
+              </Link>
+            </Button>
+          </div>
+        )
+      })()}
 
       {/* Category Rates & Multi-Tier Comparison Table */}
       <Card>
