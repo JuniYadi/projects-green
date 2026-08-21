@@ -67,21 +67,28 @@ export function MessageStatusBadge({
     return null
   }
 
-  // Prefer READ > DELIVERED > SENT > FAILED
-  const statusRank: Record<DeliveryStatus, number> = {
-    READ: 4,
-    DELIVERED: 3,
-    SENT: 2,
-    FAILED: 1,
+  // If there's any terminal FAILED status, prioritize FAILED so error details are visible.
+  // Otherwise prefer READ > DELIVERED > SENT.
+  const failedRecord = statusHistory.find((s) => s.status === "FAILED")
+  let topStatusRecord: StatusHistory | undefined
+
+  if (failedRecord) {
+    topStatusRecord = failedRecord
+  } else {
+    const statusRank: Record<DeliveryStatus, number> = {
+      READ: 3,
+      DELIVERED: 2,
+      SENT: 1,
+      FAILED: 0,
+    }
+    const sorted = [...statusHistory].sort(
+      (a, b) => (statusRank[b.status] ?? 0) - (statusRank[a.status] ?? 0)
+    )
+    topStatusRecord = sorted[0]
   }
 
-  const sorted = [...statusHistory].sort(
-    (a, b) => (statusRank[b.status] ?? 0) - (statusRank[a.status] ?? 0)
-  )
-  const topStatusRecord = sorted[0]
   const latestStatus = topStatusRecord?.status
   if (!latestStatus) return null
-
   const config = STATUS_CONFIG[latestStatus]
   const failureReason =
     latestStatus === "FAILED" ? topStatusRecord?.error : null
