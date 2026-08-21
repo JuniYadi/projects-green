@@ -3,6 +3,7 @@ import { OauthException } from "@workos-inc/node"
 import { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
+import { getRequestUrl } from "@/lib/request-url"
 import {
   INVITE_COOKIE_NAME,
   buildClearInviteCookieHeader,
@@ -33,6 +34,7 @@ const acceptInviteFromToken = async (invitationToken: string) => {
 }
 
 const authHandler = handleAuth({
+  baseURL: process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || undefined,
   onError: async ({ error, request }) => {
     const hasErrorObject =
       error && typeof error === "object" && !Array.isArray(error)
@@ -42,9 +44,8 @@ const authHandler = handleAuth({
       hasErrorObject && "pendingAuthenticationToken" in error
         ? (error.pendingAuthenticationToken as string | undefined)?.trim() || ""
         : ""
-
     if (code === "email_verification_required" && pendingAuthenticationToken) {
-      const verifyUrl = new URL("/auth/verify-email", request.url)
+      const verifyUrl = getRequestUrl("/auth/verify-email", request)
       verifyUrl.searchParams.set(
         "pendingAuthenticationToken",
         pendingAuthenticationToken
@@ -65,7 +66,7 @@ const authHandler = handleAuth({
       code === "organization_selection_required" &&
       pendingAuthenticationToken
     ) {
-      const selectOrgUrl = new URL("/auth/select-organization", request.url)
+      const selectOrgUrl = getRequestUrl("/auth/select-organization", request)
       selectOrgUrl.searchParams.set(
         "pendingAuthenticationToken",
         pendingAuthenticationToken
@@ -135,7 +136,7 @@ const authHandler = handleAuth({
       }
     }
 
-    const loginUrl = new URL("/login", request.url)
+    const loginUrl = getRequestUrl("/login", request)
     loginUrl.searchParams.set("error", errorMessage)
     return NextResponse.redirect(loginUrl)
   },
@@ -147,10 +148,7 @@ export async function GET(request: NextRequest) {
 
   if (inviteToken) {
     await acceptInviteFromToken(inviteToken)
-    response.headers.append(
-      "Set-Cookie",
-      buildClearInviteCookieHeader(request.url)
-    )
+    response.headers.append("Set-Cookie", buildClearInviteCookieHeader(request))
   }
 
   return response

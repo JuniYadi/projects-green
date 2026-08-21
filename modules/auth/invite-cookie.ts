@@ -1,4 +1,6 @@
-import type { NextResponse } from "next/server"
+import type { NextRequest, NextResponse } from "next/server"
+
+import { isSecureRequest } from "@/lib/request-url"
 
 // Short-lived httpOnly cookie that carries a WorkOS invitation token from the
 // branded /invite accept screen through whichever auth method the invitee uses
@@ -6,19 +8,14 @@ import type { NextResponse } from "next/server"
 export const INVITE_COOKIE_NAME = "pg-invite-token"
 export const INVITE_COOKIE_MAX_AGE = 60 * 30 // 30 minutes
 
-const isHttps = (requestUrl?: string) => {
-  if (!requestUrl) {
-    return false
-  }
+const isHttps = (
+  request?: NextRequest | Request | { headers?: Headers; url?: string } | string
+) => isSecureRequest(request)
 
-  try {
-    return new URL(requestUrl).protocol === "https:"
-  } catch {
-    return false
-  }
-}
-
-export const buildInviteCookieHeader = (token: string, requestUrl?: string) => {
+export const buildInviteCookieHeader = (
+  token: string,
+  request?: NextRequest | Request | { headers?: Headers; url?: string } | string
+) => {
   const parts = [
     `${INVITE_COOKIE_NAME}=${encodeURIComponent(token)}`,
     "Path=/",
@@ -27,14 +24,16 @@ export const buildInviteCookieHeader = (token: string, requestUrl?: string) => {
     `Max-Age=${INVITE_COOKIE_MAX_AGE}`,
   ]
 
-  if (isHttps(requestUrl)) {
+  if (isHttps(request)) {
     parts.push("Secure")
   }
 
   return parts.join("; ")
 }
 
-export const buildClearInviteCookieHeader = (requestUrl?: string) => {
+export const buildClearInviteCookieHeader = (
+  request?: NextRequest | Request | { headers?: Headers; url?: string } | string
+) => {
   const parts = [
     `${INVITE_COOKIE_NAME}=`,
     "Path=/",
@@ -43,7 +42,7 @@ export const buildClearInviteCookieHeader = (requestUrl?: string) => {
     "Max-Age=0",
   ]
 
-  if (isHttps(requestUrl)) {
+  if (isHttps(request)) {
     parts.push("Secure")
   }
 
@@ -53,26 +52,26 @@ export const buildClearInviteCookieHeader = (requestUrl?: string) => {
 export const setInviteCookie = (
   response: NextResponse,
   token: string,
-  requestUrl?: string
+  request?: NextRequest | Request | { headers?: Headers; url?: string } | string
 ) => {
   response.cookies.set(INVITE_COOKIE_NAME, token, {
     httpOnly: true,
     path: "/",
     sameSite: "lax",
-    secure: isHttps(requestUrl),
+    secure: isHttps(request),
     maxAge: INVITE_COOKIE_MAX_AGE,
   })
 }
 
 export const clearInviteCookie = (
   response: NextResponse,
-  requestUrl?: string
+  request?: NextRequest | Request | { headers?: Headers; url?: string } | string
 ) => {
   response.cookies.set(INVITE_COOKIE_NAME, "", {
     httpOnly: true,
     path: "/",
     sameSite: "lax",
-    secure: isHttps(requestUrl),
+    secure: isHttps(request),
     maxAge: 0,
   })
 }

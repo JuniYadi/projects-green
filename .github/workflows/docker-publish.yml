@@ -20,7 +20,7 @@ jobs:
           - file: Dockerfile.web
             suffix: web
             build_args: |
-              NEXT_PUBLIC_WORKOS_REDIRECT_URI=https://pfnapp.my.id/callback
+              NEXT_PUBLIC_WORKOS_REDIRECT_URI=https://pfnapp.id/callback
           - file: Dockerfile.workers
             suffix: workers
             build_args: ""

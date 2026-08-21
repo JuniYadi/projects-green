@@ -1,4 +1,5 @@
 import { Elysia } from "elysia"
+import { getRequestOrigin } from "@/lib/request-url"
 import { openapi } from "@elysia/openapi"
 import { serverTiming } from "@elysia/server-timing"
 import { z } from "zod"
@@ -312,9 +313,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(whatsappRoutes)
   .use(wireguardRoutes)
   .get("/health", ({ request }) => {
-    const url = new URL(request.url)
-    const base = url.origin
-
+    const base = getRequestOrigin(request)
     return {
       endpoints: [
         { name: "self", href: `${base}/api/health` },

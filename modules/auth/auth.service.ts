@@ -1,4 +1,5 @@
 import { getWorkOS } from "@workos-inc/authkit-nextjs"
+import { isSecureRequest } from "@/lib/request-url"
 import {
   AuthenticationException,
   BadRequestException,
@@ -49,7 +50,10 @@ const getCookieMaxAge = () => {
   return Number.isFinite(parsed) ? parsed : 60 * 60 * 24 * 400
 }
 
-const getSessionCookieHeader = (sessionData: string, requestUrl: string) => {
+const getSessionCookieHeader = (
+  sessionData: string,
+  requestUrlOrRequest?: string | Request | { headers?: Headers; url?: string }
+) => {
   const cookieName = process.env.WORKOS_COOKIE_NAME?.trim() || "wos-session"
   const cookieDomain = process.env.WORKOS_COOKIE_DOMAIN?.trim()
   const sameSite = (
@@ -60,9 +64,7 @@ const getSessionCookieHeader = (sessionData: string, requestUrl: string) => {
       ? sameSite
       : "lax"
 
-  const protocol = new URL(requestUrl).protocol
-  const secure = safeSameSite === "none" || protocol === "https:"
-
+  const secure = safeSameSite === "none" || isSecureRequest(requestUrlOrRequest)
   const parts = [
     `${cookieName}=${sessionData}`,
     "Path=/",
@@ -108,7 +110,7 @@ const getAuthConfig = () => {
 const toSessionResponse = (
   status: number,
   sealedSession: string,
-  requestUrl: string
+  requestUrl?: string | Request | { headers?: Headers; url?: string }
 ) => {
   return new Response(JSON.stringify({ ok: true as const }), {
     status,

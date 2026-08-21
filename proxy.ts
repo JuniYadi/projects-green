@@ -5,6 +5,7 @@ import {
 } from "@workos-inc/authkit-nextjs"
 import { NextRequest, NextResponse } from "next/server"
 
+import { getRequestUrl } from "@/lib/request-url"
 import { localeCookieName, type AppLocale } from "@/lib/i18n/config"
 import { resolveRequestLocale } from "@/lib/i18n/request-locale"
 import { getLocaleFromPathname, localizePathname } from "@/lib/i18n/pathname"
@@ -117,7 +118,7 @@ export default async function proxy(request: NextRequest) {
       const localizedPathname = withLocalePrefix(normalizedPathname, locale)
       return withLocaleCookie(
         NextResponse.redirect(
-          new URL(`${localizedPathname}${search}`, request.url)
+          getRequestUrl(`${localizedPathname}${search}`, request)
         ),
         locale
       )
@@ -129,7 +130,7 @@ export default async function proxy(request: NextRequest) {
     ) {
       return withLocaleCookie(
         NextResponse.redirect(
-          new URL(withLocalePrefix(expectedArea, locale), request.url)
+          getRequestUrl(withLocalePrefix(expectedArea, locale), request)
         ),
         locale
       )
@@ -218,7 +219,7 @@ export default async function proxy(request: NextRequest) {
 
   if (!localeFromPathname && !shouldSkipLocaleRouting(normalizedPathname)) {
     const localizedPathname = withLocalePrefix(normalizedPathname, locale)
-    const redirectUrl = new URL(`${localizedPathname}${search}`, request.url)
+    const redirectUrl = getRequestUrl(`${localizedPathname}${search}`, request)
 
     return withLocaleCookie(NextResponse.redirect(redirectUrl), locale)
   }
