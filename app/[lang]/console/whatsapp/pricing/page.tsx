@@ -547,20 +547,40 @@ export default function WhatsAppPricingPage() {
                                 curr && curr.trim()
                                   ? curr.trim().toUpperCase()
                                   : "IDR"
-                              const isIdr = currencyCode === "IDR"
-                              const localeForCurrency = isIdr
-                                ? "id-ID"
-                                : currencyCode === "EUR"
-                                  ? "de-DE"
-                                  : currencyCode === "GBP"
-                                    ? "en-GB"
-                                    : "en-US"
-                              return new Intl.NumberFormat(localeForCurrency, {
-                                style: "currency",
-                                currency: currencyCode,
-                                minimumFractionDigits: isIdr ? 0 : 2,
-                                maximumFractionDigits: isIdr ? 0 : 2,
-                              }).format(num)
+                              const parts = val.split(".")
+                              const valueDecimals =
+                                parts.length > 1 ? parts[1].length : 0
+                              const isZeroDecimalDefault =
+                                currencyCode === "IDR" ||
+                                currencyCode === "JPY" ||
+                                currencyCode === "KRW"
+                              const minFractionDigits = isZeroDecimalDefault
+                                ? valueDecimals > 0
+                                  ? Math.min(valueDecimals, 4)
+                                  : 0
+                                : Math.max(2, Math.min(valueDecimals, 4))
+                              const maximumFractionDigits = Math.max(
+                                minFractionDigits,
+                                Math.min(valueDecimals, 4)
+                              )
+                              let locale = "en-US"
+                              if (currencyCode === "IDR") locale = "id-ID"
+                              else if (currencyCode === "EUR") locale = "de-DE"
+                              else if (currencyCode === "GBP") locale = "en-GB"
+                              else if (currencyCode === "JPY") locale = "ja-JP"
+                              else if (currencyCode === "AUD") locale = "en-AU"
+                              else if (currencyCode === "SGD") locale = "en-SG"
+                              else if (currencyCode === "MYR") locale = "ms-MY"
+                              try {
+                                return new Intl.NumberFormat(locale, {
+                                  style: "currency",
+                                  currency: currencyCode,
+                                  minimumFractionDigits: minFractionDigits,
+                                  maximumFractionDigits: maximumFractionDigits,
+                                }).format(num)
+                              } catch {
+                                return `${currencyCode} ${num}`
+                              }
                             }
 
                             const pBase = formatPrice(
