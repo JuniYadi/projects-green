@@ -11,6 +11,13 @@ export type ApiRequestContext = {
 
 const requestContexts = new WeakMap<Request, ApiRequestContext>()
 
+export const attachRequestAuth = (request: Request, auth: ResolvedAuth) => {
+  const context = requestContexts.get(request)
+  if (context) {
+    context.auth = auth
+  }
+}
+
 const safeErrorCodes = new Set<string>([
   "UNKNOWN",
   "PARSE",
@@ -178,31 +185,7 @@ const extractCallerFromHeaders = (request?: Request): ResolvedAuth | null => {
     }
   }
 
-  // Fast synchronous extraction from API key headers if present
-  const authHeader = request.headers.get("authorization")
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.slice(7).trim()
-    if (
-      token.startsWith("wa_live_") ||
-      token.startsWith("live_") ||
-      token.startsWith("test_")
-    ) {
-      const keyId =
-        token.length > 16
-          ? `${token.slice(0, 8)}...${token.slice(-4)}`
-          : "api_key"
-      return {
-        type: "platform",
-        keyId,
-        keyName: "API Key",
-        organizationId: "",
-        environment: token.startsWith("test_") ? "SANDBOX" : "LIVE",
-        scopes: [],
-        source: "api_key",
-      }
-    }
-  }
-
+  // Non-proxy requests leave caller anonymous until route-level auth resolution attaches validated context
   return null
 }
 
