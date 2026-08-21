@@ -121,12 +121,48 @@ const statusCodeOf = (
 const errorCodeOf = (code: unknown) =>
   typeof code === "string" && safeErrorCodes[code] ? code : "UNKNOWN"
 
-const extractCaller = (auth?: ResolvedAuth | null, request?: Request) => {
+const extractCallerFromHeaders = (request?: Request): ResolvedAuth | null => {
+  if (!request) return null
+
+  // Fast synchronous extraction from proxy headers (populated by AuthKit middleware / proxy)
+  if (request.headers.get("x-workos-authed") === "true") {
+    const userId = request.headers.get("x-workos-user-id") ?? ""
+    const email = request.headers.get("x-workos-user-email") ?? null
+    const organizationId =
+      request.headers.get("x-workos-organization-id")?.trim() || null
+    const singleRole = request.headers.get("x-workos-session-role")
+    const roleSlug = singleRole?.toLowerCase()
+    const orgRole =
+      roleSlug === "owner" || roleSlug === "user_owner"
+        ? ("owner" as const)
+        : roleSlug === "admin" || roleSlug === "user_admin"
+          ? ("admin" as const)
+          : roleSlug === "member" || roleSlug === "user_member"
+            ? ("member" as const)
+            : null
+
+    return {
+      type: "workos",
+      userId,
+      email,
+      organizationId,
+      orgRole,
+      platformRole: "none",
+      source: "proxy_header",
+    }
+  }
+
+  return null
+}
+
+const extractCaller = (context: ApiRequestContext, request?: Request) => {
   const clientIp =
     request?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     request?.headers.get("cf-connecting-ip")?.trim() ??
     null
   const userAgent = request?.headers.get("user-agent") ?? null
+
+  const auth = context.auth ?? extractCallerFromHeaders(request)
 
   if (!auth) {
     return {
@@ -177,7 +213,7 @@ const emitCompletion = (
   response: unknown
 ) => {
   const statusCode = statusCodeOf(set, response, 200)
-  const caller = extractCaller(context.auth, request)
+  const caller = extractCaller(context, request)
   const pathname = pathnameOf(request)
   const durationMs = durationSince(context.startedAt)
 
@@ -203,7 +239,7 @@ const emitError = (
   context: ApiRequestContext,
   code: unknown
 ) => {
-  const caller = extractCaller(context.auth, request)
+  const caller = extractCaller(context, request)
   const pathname = pathnameOf(request)
   const durationMs = durationSince(context.startedAt)
   const errorCode = errorCodeOf(code)
@@ -231,12 +267,20 @@ const emitError = (
 
 export const createApiLoggingPlugin = () =>
   new Elysia({ name: "api-logging" })
-    .onRequest(async ({ request }) => {
+    .onRequest(({ request }) => {
       const context = contextFor(request)
-      try {
-        context.auth = await resolveAuthContext(request)
-      } catch {
-        // Ignored — auth fallback
+      // Synchronously capture fast proxy auth if present, or initiate background resolution
+      const fastAuth = extractCallerFromHeaders(request)
+      if (fastAuth) {
+        context.auth = fastAuth
+      } else {
+        resolveAuthContext(request)
+          .then((auth) => {
+            if (auth) context.auth = auth
+          })
+          .catch(() => {
+            // Ignore background resolution failures
+          })
       }
     })
     .onTransform(({ request, body }) => {
