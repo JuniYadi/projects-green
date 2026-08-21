@@ -45,7 +45,9 @@ const mockGetOrganization = mock(async () => ({
 const mockRedirect = mock((url: string) => {
   throw new Error(`REDIRECT:${url}`)
 })
-
+mock.module("next/headers", () => ({
+  headers: mock(async () => new Headers()),
+}))
 const mockGetPlatformAccessForUser = mock(
   async (): Promise<import("@/lib/platform-role").PlatformAccess> => ({
     exists: true,
@@ -181,7 +183,7 @@ describe("PortalLayout", () => {
     expect(
       view.getByText("Sidebar:portal:Jane Doe:Acme Inc")
     ).toBeInTheDocument()
-    expect(view.getByText("AI Help")).toBeInTheDocument()
+    expect(view.getByText("Ask P")).toBeInTheDocument()
     expect(view.getByText("Portal")).toBeInTheDocument()
     expect(view.getByText("Documentation")).toBeInTheDocument()
     expect(view.queryByText("Workspace")).not.toBeInTheDocument()
