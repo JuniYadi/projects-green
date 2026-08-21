@@ -20,6 +20,7 @@ import { DocsSearch } from "./components/docs-search"
 type Props = {
   params: Promise<{ lang: string }>
 }
+export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
   title: "Documentation & Knowledge Base — PFNApp",

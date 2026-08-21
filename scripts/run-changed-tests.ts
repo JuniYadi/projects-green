@@ -31,8 +31,8 @@ const isProductionPath = (path: string) =>
   !path.endsWith(".d.ts") &&
   !isTestFile(path) &&
   !path.startsWith("test/") &&
-  !path.startsWith("e2e/")
-
+  !path.startsWith("e2e/") &&
+  !path.startsWith("scripts/")
 const sourcePathForTest = (path: string) =>
   path.replace(/\.test\.(ts|tsx)$/, ".$1")
 
