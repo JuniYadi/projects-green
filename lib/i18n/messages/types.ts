@@ -1182,6 +1182,7 @@ export type AppMessages = {
     centerTitle: string
     badgeLabel: string
     policiesHeading: string
+    navigationLabel: string
     entityLabel: string
     contactLabel: string
     legalEntityLabel: string

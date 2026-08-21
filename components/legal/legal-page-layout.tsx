@@ -104,10 +104,7 @@ export function LegalPageLayout({
               <p className="mb-3 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 {legal.policiesHeading}
               </p>
-              <nav
-                aria-label="Legal document navigation"
-                className="space-y-1.5"
-              >
+              <nav aria-label={legal.navigationLabel} className="space-y-1.5">
                 {docNavItems.map((item) => {
                   const isActive = item.type === activeDoc
                   return (

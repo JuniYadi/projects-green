@@ -4,6 +4,7 @@ export const legalId: AppMessages["legal"] = {
   centerTitle: "Pusat Hukum",
   badgeLabel: "Kebijakan Hukum Resmi",
   policiesHeading: "Kebijakan & Perjanjian",
+  navigationLabel: "Navigasi dokumen hukum",
   entityLabel: "Entitas",
   contactLabel: "Kontak",
   legalEntityLabel: "Entitas Hukum",

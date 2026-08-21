@@ -65,7 +65,7 @@ describe("LegalPageLayout Component", () => {
     expect(view.getByText("Entitas:")).toBeInTheDocument()
     expect(view.getByText("Kontak:")).toBeInTheDocument()
     const sidebarNav = view.getByRole("navigation", {
-      name: "Legal document navigation",
+      name: "Navigasi dokumen hukum",
     })
     const privacyLink = within(sidebarNav).getByRole("link", {
       name: "Kebijakan Privasi",

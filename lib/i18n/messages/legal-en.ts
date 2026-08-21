@@ -4,6 +4,7 @@ export const legalEn: AppMessages["legal"] = {
   centerTitle: "Legal Center",
   badgeLabel: "Official Legal Policy",
   policiesHeading: "Policies & Agreements",
+  navigationLabel: "Legal document navigation",
   entityLabel: "Entity",
   contactLabel: "Contact",
   legalEntityLabel: "Legal Entity",
