@@ -31,6 +31,7 @@ export type WhatsappMessagePricing = {
     phoneNumber: string
     country: string
     rateTier: string
+    quotaRemaining: number
     categories: Array<QuotaCreditRate & { configured: boolean }>
   }>
   overage: MessagePricing
@@ -49,7 +50,13 @@ export class WhatsappMessagePricingService {
     const [devices, overage] = await Promise.all([
       this.prisma.whatsappDevice.findMany({
         where: { organizationId, status: "ACTIVE" },
-        select: { id: true, phoneNumber: true, rates: true },
+        select: {
+          id: true,
+          phoneNumber: true,
+          rates: true,
+          quotaBaseOut: true,
+          addonQuota: true,
+        },
         orderBy: { createdAt: "desc" },
       }),
       messageCostService.getMessagePricing({
@@ -59,13 +66,18 @@ export class WhatsappMessagePricingService {
       }),
     ])
 
-    const deviceCountries = devices.map((device) => ({
-      ...device,
-      country: resolveWhatsappCountry(device.phoneNumber),
-      rateTier: device.rates?.trim()
-        ? device.rates.trim().toUpperCase()
-        : "BASE",
-    }))
+    const deviceCountries = devices.map((device) => {
+      const defaultRemaining = Number(device.quotaBaseOut ?? 0)
+      const addonRemaining = Number(device.addonQuota ?? 0)
+      return {
+        ...device,
+        country: resolveWhatsappCountry(device.phoneNumber),
+        quotaRemaining: defaultRemaining + addonRemaining,
+        rateTier: device.rates?.trim()
+          ? device.rates.trim().toUpperCase()
+          : "BASE",
+      }
+    })
     const countries = [
       ...new Set(deviceCountries.map((device) => device.country)),
     ]
@@ -108,6 +120,7 @@ export class WhatsappMessagePricingService {
         phoneNumber: device.phoneNumber,
         country: device.country,
         rateTier: device.rateTier,
+        quotaRemaining: device.quotaRemaining,
         categories: (
           [
             WhatsappBillingCategory.MARKETING,

@@ -14,6 +14,7 @@ export type WhatsappMessagePricingDeviceDTO = {
   phoneNumber: string
   country: string
   rateTier: string
+  quotaRemaining: number
   categories: WhatsappMessagePricingCategoryDTO[]
 }
 
@@ -36,6 +37,7 @@ export function toWhatsappMessagePricingDTO(
       phoneNumber: device.phoneNumber,
       country: device.country,
       rateTier: device.rateTier,
+      quotaRemaining: device.quotaRemaining,
       categories: device.categories.map((category) => ({
         category: category.category,
         quotaCredit: category.quotaCredit.toString(),
