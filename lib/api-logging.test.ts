@@ -2,6 +2,7 @@ import { describe, expect, mock, test } from "bun:test"
 import { Elysia } from "elysia"
 
 import { createApiLoggingPlugin } from "@/lib/api-logging"
+import { logger } from "@/lib/logger"
 
 mock.module("@/modules/vpn/sessions/stale-cleanup", () => ({
   startStaleSessionCleanup: mock(),
@@ -11,16 +12,28 @@ const { app } = await import("@/lib/api")
 
 type ApiLog = Record<string, unknown>
 
-const waitForAfterResponse = () =>
-  new Promise<void>((resolve) => setTimeout(resolve, 10))
+const waitForAfterResponse = () => {
+  const { promise, resolve } = Promise.withResolvers<void>()
+  setTimeout(resolve, 20)
+  return promise
+}
 
 const captureLogs = async (operation: () => Promise<Response>) => {
-  const lines: string[] = []
-  const originalError = console.error
+  const logs: ApiLog[] = []
+  const originalInfo = logger.info.bind(logger)
+  const originalError = logger.error.bind(logger)
 
-  console.error = (...args: unknown[]) => {
-    lines.push(args.map((arg) => String(arg)).join(" "))
-  }
+  logger.info = ((obj: unknown, msg?: string) => {
+    if (typeof obj === "object" && obj !== null) {
+      logs.push({ ...(obj as Record<string, unknown>), msg })
+    }
+  }) as unknown as typeof logger.info
+
+  logger.error = ((obj: unknown, msg?: string) => {
+    if (typeof obj === "object" && obj !== null) {
+      logs.push({ ...(obj as Record<string, unknown>), msg })
+    }
+  }) as unknown as typeof logger.error
 
   try {
     const response = await operation()
@@ -28,28 +41,29 @@ const captureLogs = async (operation: () => Promise<Response>) => {
 
     return {
       response,
-      logs: lines.map((line) => JSON.parse(line) as ApiLog),
+      logs,
     }
   } finally {
-    console.error = originalError
+    logger.info = originalInfo
+    logger.error = originalError
   }
 }
 
 const completedLogKeys = [
+  "caller",
   "durationMs",
   "event",
-  "level",
   "method",
+  "msg",
   "pathname",
   "requestId",
   "statusCode",
-  "timestamp",
 ]
 
 const errorLogKeys = [...completedLogKeys, "errorCode"]
 
 describe.serial("Elysia API logging", () => {
-  test("logs a safe JSON completion record for a 2xx request", async () => {
+  test("logs a safe JSON completion record with caller identity for a 2xx request", async () => {
     const { response, logs } = await captureLogs(() =>
       app.handle(
         new Request(
@@ -59,6 +73,11 @@ describe.serial("Elysia API logging", () => {
             headers: {
               Authorization: "Bearer authorization-secret",
               Cookie: "session=cookie-secret",
+              "x-workos-authed": "true",
+              "x-workos-user-id": "user_123",
+              "x-workos-user-email": "user@example.com",
+              "x-workos-organization-id": "org_456",
+              "x-workos-session-role": "owner",
             },
           }
         )
@@ -70,10 +89,16 @@ describe.serial("Elysia API logging", () => {
     expect(Object.keys(logs[0]).sort()).toEqual([...completedLogKeys].sort())
     expect(logs[0]).toMatchObject({
       event: "api.request.completed",
-      level: "info",
       method: "GET",
       pathname: "/api/health",
       statusCode: 200,
+      caller: {
+        type: "workos",
+        userId: "user_123",
+        email: "user@example.com",
+        organizationId: "org_456",
+        orgRole: "owner",
+      },
     })
     expect(logs[0].requestId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
@@ -85,6 +110,53 @@ describe.serial("Elysia API logging", () => {
     expect(serializedLogs).not.toContain("token-secret")
     expect(serializedLogs).not.toContain("authorization-secret")
     expect(serializedLogs).not.toContain("cookie-secret")
+  })
+
+  test("logs request body with sensitive fields redacted", async () => {
+    const testApp = new Elysia()
+      .use(createApiLoggingPlugin())
+      .post("/test-body", ({ body }) => ({ ok: true, data: body }))
+
+    const { response, logs } = await captureLogs(() =>
+      testApp.handle(
+        new Request("http://localhost/test-body", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: "john_doe",
+            password: "super-secret-password",
+            apiKey: "my-api-key",
+            meta: {
+              nestedSecret: "classified-token",
+              visibleData: "hello",
+            },
+          }),
+        })
+      )
+    )
+
+    expect(response.status).toBe(200)
+    expect(logs).toHaveLength(1)
+    expect(logs[0]).toMatchObject({
+      event: "api.request.completed",
+      method: "POST",
+      pathname: "/test-body",
+      statusCode: 200,
+      body: {
+        username: "john_doe",
+        password: "[REDACTED]",
+        apiKey: "[REDACTED]",
+        meta: {
+          nestedSecret: "[REDACTED]",
+          visibleData: "hello",
+        },
+      },
+    })
+
+    const serializedLogs = JSON.stringify(logs)
+    expect(serializedLogs).not.toContain("super-secret-password")
+    expect(serializedLogs).not.toContain("my-api-key")
+    expect(serializedLogs).not.toContain("classified-token")
   })
 
   test("logs a 4xx completion without an error record", async () => {
@@ -100,17 +172,15 @@ describe.serial("Elysia API logging", () => {
 
     expect(response.status).toBe(422)
     expect(logs).toHaveLength(1)
-    expect(Object.keys(logs[0]).sort()).toEqual([...completedLogKeys].sort())
     expect(logs[0]).toMatchObject({
       event: "api.request.completed",
-      level: "info",
       method: "POST",
       pathname: "/api/user",
       statusCode: 422,
     })
   })
 
-  test("logs unexpected 5xx errors without serializing the error", async () => {
+  test("logs unexpected 5xx errors with caller info without leaking stack/error secrets", async () => {
     const errorApp = new Elysia()
       .use(createApiLoggingPlugin())
       .onError(({ set }) => {
@@ -153,14 +223,12 @@ describe.serial("Elysia API logging", () => {
     expect(errorLog).toMatchObject({
       errorCode: "UNKNOWN",
       event: "api.request.error",
-      level: "error",
       method: "GET",
       pathname: "/webhook/[REDACTED]",
       statusCode: 500,
     })
     expect(completedLog).toMatchObject({
       event: "api.request.completed",
-      level: "info",
       method: "GET",
       pathname: "/webhook/[REDACTED]",
       statusCode: 500,
