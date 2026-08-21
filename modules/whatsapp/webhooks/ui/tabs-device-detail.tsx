@@ -659,6 +659,7 @@ function AuditLogTabContent({ deviceId }: { deviceId: string }) {
       isLoading={pageState === "loading"}
       error={pageState === "error" ? errorMessage : undefined}
       onRetry={handleRetry}
+      messageJourneyBasePath="/portal/whatsapp/messages"
       pagination={
         totalPages > 1
           ? { page, totalPages, total, onPageChange: handlePageChange }
