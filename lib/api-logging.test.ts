@@ -238,4 +238,28 @@ describe.serial("Elysia API logging", () => {
     expect(serializedLogs).not.toContain("authorization-secret")
     expect(serializedLogs).not.toContain("cookie-secret")
   })
+
+  test("logs anonymous caller and does not block when auth is unauthenticated or delayed", async () => {
+    const publicApp = new Elysia()
+      .use(createApiLoggingPlugin())
+      .get("/public", () => ({ ok: true }))
+
+    const { response, logs } = await captureLogs(() =>
+      publicApp.handle(
+        new Request("http://localhost/public", { method: "GET" })
+      )
+    )
+
+    expect(response.status).toBe(200)
+    expect(logs).toHaveLength(1)
+    expect(logs[0]).toMatchObject({
+      event: "api.request.completed",
+      method: "GET",
+      pathname: "/public",
+      statusCode: 200,
+      caller: {
+        type: "anonymous",
+      },
+    })
+  })
 })
