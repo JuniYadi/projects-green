@@ -30,20 +30,18 @@ graph TD
 
 ---
 
-## 1. Template Categories, Purpose & Pricing Comparison
+## 1. Template Categories, Purpose & Quota Multiplier Comparison
 
-Meta divides WhatsApp Business templates into **three distinct categories**, each with different pricing tiers, quota multipliers, and allowed messaging scopes.
+Meta divides WhatsApp Business templates into **three distinct categories**, each with specific purpose scopes and quota consumption multipliers.
 
-| Category | Primary Purpose | Base Pricing (IDR / msg) | Quota Multiplier | Example Use Cases |
-| :--- | :--- | :--- | :--- | :--- |
-| **`UTILITY`** | Transactional updates triggered by a specific user action or ongoing transaction. | **Rp 357** | **1.0x** | Order confirmations, shipping tracking, billing invoices, appointment reminders. |
-| **`AUTHENTICATION`** | Secure identity verification via one-time passcodes (OTP). | **Rp 357** | **1.5x** | Account verification codes, password resets, multi-factor authentication (MFA). |
-| **`MARKETING`** | Promotional messaging, announcements, upsells, retargeting, and offers. | **Rp 587** | **2.0x** | Product launches, discount vouchers, abandoned cart recovery, seasonal campaigns. |
+| Category | Primary Purpose | Quota Credit Multiplier | Example Use Cases |
+| :--- | :--- | :--- | :--- |
+| **`UTILITY`** | Transactional updates triggered by a specific user action or ongoing transaction. | **1.0x** | Order confirmations, shipping tracking, billing invoices, appointment reminders. |
+| **`AUTHENTICATION`** | Secure identity verification via one-time passcodes (OTP). | **1.5x** | Account verification codes, password resets, multi-factor authentication (MFA). |
+| **`MARKETING`** | Promotional messaging, announcements, upsells, retargeting, and offers. | **2.0x** | Product launches, discount vouchers, abandoned cart recovery, seasonal campaigns. |
 
-> 💡 **Pricing & Billing Note:**
-> Outbound messages deduct quota based on destination country and category rates. `MARKETING` templates have higher rates than `UTILITY` and `AUTHENTICATION`.
-
----
+> 💡 **Pricing & Live Rates:**
+> Real-time per-message rates across different destination countries and currency rates are managed dynamically. You can inspect live rates at any time in the console at [**WhatsApp Pricing Table**](/console/whatsapp/pricing).
 
 ## 2. Template Structure & Real-World Examples by Category
 
