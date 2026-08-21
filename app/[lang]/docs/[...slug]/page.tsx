@@ -3,16 +3,21 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import {
   ArrowLeft,
+  ArrowRight,
   Clock,
   Folder,
   ListNumbers,
   CheckCircle,
   Translate,
+  BookOpenText,
+  ThumbsUp,
+  ThumbsDown,
 } from "@phosphor-icons/react/dist/ssr"
 import { prisma } from "@/lib/prisma"
 import { renderMarkdownToHtml } from "@/lib/markdown"
 import { MermaidRenderer } from "../components/mermaid-renderer"
-import { OnThisPage } from "../components/on-this-page"
+import { OnThisPage, type TocItem } from "../components/on-this-page"
+
 type Props = {
   params: Promise<{ lang: string; slug: string[] }>
 }
@@ -21,7 +26,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang, slug } = await params
   const docPath = `/${slug.join("/")}`
 
-  // Query requested locale first, fallback to 'en'
   let doc = await prisma.docsKnowledgeDocument.findFirst({
     where: {
       path: docPath,
@@ -65,25 +69,39 @@ function slugifyHeading(text: string): string {
     .replace(/\s+/g, "-")
 }
 
-// Extract H2 sections for on-page Table of Contents
-function extractToc(markdown: string) {
-  const headingMatches = markdown.matchAll(/^##\s+(.+)$/gm)
-  const headings = []
+// Extract H2 (##) and H3 (###) sections for on-page Table of Contents
+function extractToc(markdown: string): TocItem[] {
+  const headingMatches = markdown.matchAll(/^(#{2,3})\s+(.+)$/gm)
+  const headings: TocItem[] = []
   for (const match of headingMatches) {
-    const text = match[1].trim()
+    const level = match[1].length === 2 ? 2 : 3
+    const text = match[2].trim()
     const id = slugifyHeading(text)
-    headings.push({ text, id })
+    headings.push({ text, id, level })
   }
   return headings
 }
 
-// Inject id attributes to <h2> tags in rendered HTML so anchor links jump correctly
+// Inject id attributes to <h2> and <h3> tags in rendered HTML so anchor links jump correctly
 function injectHeadingIds(html: string): string {
-  return html.replace(/<h2(.*?)>(.*?)<\/h2>/gi, (_match, attrs, text) => {
+  let result = html.replace(/<h2(.*?)>(.*?)<\/h2>/gi, (_match, attrs, text) => {
     const rawText = text.replace(/<[^>]*>/g, "")
     const id = slugifyHeading(rawText)
     return `<h2${attrs} id="${id}">${text}</h2>`
   })
+
+  result = result.replace(/<h3(.*?)>(.*?)<\/h3>/gi, (_match, attrs, text) => {
+    const rawText = text.replace(/<[^>]*>/g, "")
+    const id = slugifyHeading(rawText)
+    return `<h3${attrs} id="${id}">${text}</h3>`
+  })
+
+  return result
+}
+
+function estimateReadingTime(text: string): number {
+  const words = text.trim().split(/\s+/).length
+  return Math.max(1, Math.ceil(words / 180))
 }
 
 export default async function PublicDocDetailPage({ params }: Props) {
@@ -119,8 +137,32 @@ export default async function PublicDocDetailPage({ params }: Props) {
     notFound()
   }
 
+  // Fetch all docs in the same category for continuous bottom pagination (Prev / Next)
+  const categoryDocs = await prisma.docsKnowledgeDocument.findMany({
+    where: {
+      category: doc.category,
+      locale: isFallback ? "en" : lang,
+      organizationId: null,
+      isPublic: true,
+    },
+    select: {
+      path: true,
+      title: true,
+      purpose: true,
+    },
+    orderBy: { path: "asc" },
+  })
+
+  const currentIndex = categoryDocs.findIndex((d) => d.path === doc.path)
+  const prevDoc = currentIndex > 0 ? categoryDocs[currentIndex - 1] : null
+  const nextDoc =
+    currentIndex >= 0 && currentIndex < categoryDocs.length - 1
+      ? categoryDocs[currentIndex + 1]
+      : null
+
   const rawMarkdown = doc.contentMarkdown || ""
   const toc = extractToc(rawMarkdown)
+  const readTimeMinutes = estimateReadingTime(rawMarkdown)
 
   // Strip initial redundant markdown # Title if present to prevent double heading
   const cleanedMarkdown = rawMarkdown.replace(/^#\s+.+\r?\n/, "")
@@ -129,7 +171,7 @@ export default async function PublicDocDetailPage({ params }: Props) {
 
   return (
     <div className="flex w-full flex-col gap-10 xl:flex-row xl:items-start xl:gap-12">
-      {/* Center Reading Content - Expanded Width */}
+      {/* Center Reading Content */}
       <div className="min-w-0 flex-1 space-y-10">
         {/* Navigation Breadcrumb */}
         <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
@@ -186,6 +228,13 @@ export default async function PublicDocDetailPage({ params }: Props) {
 
           <div className="flex flex-wrap items-center gap-4 pt-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
+              <BookOpenText size={14} className="text-emerald-500" />
+              <span>
+                {readTimeMinutes} {lang === "id" ? "menit baca" : "min read"}
+              </span>
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1.5">
               <Clock size={14} />
               <span>
                 {lang === "id" ? "Diperbarui" : "Last updated"}{" "}
@@ -201,23 +250,101 @@ export default async function PublicDocDetailPage({ params }: Props) {
           </div>
         </header>
 
-        {/* Prose Markdown Body with Wide, Readable Spacing */}
+        {/* Prose Markdown Body */}
         <article
-          className="prose max-w-none dark:prose-invert [&_blockquote]:my-6 [&_blockquote]:rounded-xl [&_blockquote]:border-l-4 [&_blockquote]:border-emerald-500 [&_blockquote]:bg-emerald-500/10 [&_blockquote]:p-4 [&_blockquote]:text-sm [&_blockquote]:text-foreground [&_code]:rounded-md [&_code]:border [&_code]:border-emerald-500/20 [&_code]:bg-emerald-500/10 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_code]:font-medium [&_code]:text-emerald-600 dark:[&_code]:text-emerald-400 [&_h2]:mt-12 [&_h2]:mb-4 [&_h2]:scroll-mt-28 [&_h2]:border-b [&_h2]:border-border/50 [&_h2]:pb-2 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:tracking-tight [&_h2]:text-foreground [&_h3]:mt-8 [&_h3]:mb-3 [&_h3]:scroll-mt-28 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-foreground [&_hr]:my-10 [&_hr]:border-border/40 [&_img]:my-8 [&_img]:w-full [&_img]:max-w-4xl [&_img]:rounded-2xl [&_img]:border [&_img]:border-border/70 [&_img]:bg-muted/30 [&_img]:p-1.5 [&_img]:shadow-xl [&_img]:shadow-black/30 [&_li]:text-base [&_li]:leading-7 [&_li]:text-zinc-700 dark:[&_li]:text-zinc-200 [&_p]:my-4 [&_p]:text-base [&_p]:leading-7 [&_p]:text-zinc-700 dark:[&_p]:text-zinc-200 [&_pre]:my-6 [&_pre]:rounded-2xl [&_pre]:border [&_pre]:border-border/70 [&_pre]:bg-zinc-950 [&_pre]:p-5 [&_pre]:shadow-lg [&_pre]:shadow-black/20 [&_pre_code]:border-none [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-zinc-100 [&_strong]:font-semibold [&_strong]:text-foreground"
+          className="prose max-w-none dark:prose-invert [&_blockquote]:my-6 [&_blockquote]:rounded-xl [&_blockquote]:border-l-4 [&_blockquote]:border-emerald-500 [&_blockquote]:bg-emerald-500/10 [&_blockquote]:p-4 [&_blockquote]:text-sm [&_blockquote]:text-foreground [&_code]:rounded-md [&_code]:border [&_code]:border-emerald-500/20 [&_code]:bg-emerald-500/10 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_code]:font-medium [&_code]:text-emerald-600 dark:[&_code]:text-emerald-400 [&_h2]:mt-12 [&_h2]:mb-4 [&_h2]:scroll-mt-28 [&_h2]:border-b [&_h2]:border-border/50 [&_h2]:pb-2 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:tracking-tight [&_h2]:text-foreground [&_h3]:mt-8 [&_h3]:mb-3 [&_h3]:scroll-mt-28 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-foreground [&_hr]:my-8 [&_hr]:border-border/40 [&_img]:rounded-xl [&_img]:border [&_img]:border-border/50 [&_img]:shadow-md [&_li]:text-sm [&_li]:leading-relaxed [&_p]:text-sm [&_p]:leading-relaxed [&_p]:text-muted-foreground sm:[&_p]:text-base [&_table]:my-6 [&_table]:w-full [&_table]:border-collapse [&_table]:overflow-hidden [&_table]:rounded-xl [&_table]:border [&_table]:border-border/60 [&_td]:border-b [&_td]:border-border/40 [&_td]:p-3 [&_td]:text-xs sm:[&_td]:text-sm [&_th]:border-b [&_th]:border-border/60 [&_th]:bg-muted/50 [&_th]:p-3 [&_th]:text-left [&_th]:text-xs [&_th]:font-semibold [&_th]:text-foreground sm:[&_th]:text-sm [&_tr:last-child_td]:border-b-0"
           dangerouslySetInnerHTML={{ __html: renderedHtml }}
         />
         <MermaidRenderer />
+
+        {/* Feedback Section */}
+        <div className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-border/40 bg-card/40 p-5 backdrop-blur-sm sm:flex-row">
+          <div className="space-y-0.5 text-center sm:text-left">
+            <h4 className="text-sm font-semibold text-foreground">
+              {lang === "id"
+                ? "Apakah panduan ini membantu?"
+                : "Was this guide helpful?"}
+            </h4>
+            <p className="text-xs text-muted-foreground">
+              {lang === "id"
+                ? "Bantu kami menyempurnakan dokumentasi produk ini."
+                : "Help us refine and improve our developer documentation."}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400"
+            >
+              <ThumbsUp size={14} />
+              <span>{lang === "id" ? "Ya, membantu" : "Yes, helpful"}</span>
+            </button>
+            <button
+              type="button"
+              className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <ThumbsDown size={14} />
+              <span>{lang === "id" ? "Perlu perbaikan" : "Needs work"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Bottom Pagination Flow (Previous / Next Article Cards) */}
+        {(prevDoc || nextDoc) && (
+          <nav
+            aria-label="Document Pagination"
+            className="grid grid-cols-1 gap-4 pt-4 sm:grid-cols-2"
+          >
+            {prevDoc ? (
+              <Link
+                href={`/${lang}/docs/${prevDoc.path.replace(/^\//, "")}`}
+                className="group flex flex-col gap-1.5 rounded-2xl border border-border/50 bg-card/40 p-5 transition-all hover:border-emerald-500/40 hover:bg-card/80 hover:shadow-sm"
+              >
+                <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground group-hover:text-emerald-500">
+                  <ArrowLeft size={12} />
+                  <span>{lang === "id" ? "SEBELUMNYA" : "PREVIOUS"}</span>
+                </div>
+                <span className="text-sm font-semibold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+                  {prevDoc.title}
+                </span>
+                <span className="line-clamp-1 text-xs text-muted-foreground">
+                  {prevDoc.purpose}
+                </span>
+              </Link>
+            ) : (
+              <div />
+            )}
+
+            {nextDoc && (
+              <Link
+                href={`/${lang}/docs/${nextDoc.path.replace(/^\//, "")}`}
+                className="group flex flex-col items-end gap-1.5 rounded-2xl border border-border/50 bg-card/40 p-5 text-right transition-all hover:border-emerald-500/40 hover:bg-card/80 hover:shadow-sm"
+              >
+                <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground group-hover:text-emerald-500">
+                  <span>{lang === "id" ? "SELANJUTNYA" : "NEXT"}</span>
+                  <ArrowRight size={12} />
+                </div>
+                <span className="text-sm font-semibold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+                  {nextDoc.title}
+                </span>
+                <span className="line-clamp-1 text-xs text-muted-foreground">
+                  {nextDoc.purpose}
+                </span>
+              </Link>
+            )}
+          </nav>
+        )}
       </div>
 
       {/* Right Column: Sticky Table of Contents */}
       {toc.length > 0 && (
         <aside className="sticky top-24 hidden w-64 shrink-0 self-start xl:block">
           <div className="space-y-3 rounded-2xl border border-border/40 bg-card/40 p-5 shadow-sm backdrop-blur-sm">
-            <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+            <div className="flex items-center gap-2 text-xs font-bold tracking-wider text-muted-foreground uppercase">
               <ListNumbers size={14} className="text-emerald-500" />
               <span>{lang === "id" ? "Daftar Isi" : "On this page"}</span>
             </div>
-            <OnThisPage toc={toc} />
+            <OnThisPage toc={toc} lang={lang} />
           </div>
         </aside>
       )}

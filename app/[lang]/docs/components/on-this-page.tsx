@@ -1,13 +1,22 @@
 "use client"
 
 import * as React from "react"
+import { ArrowUp, Link as LinkIcon, Check } from "@phosphor-icons/react"
 
-interface OnThisPageProps {
-  toc: Array<{ id: string; text: string }>
+export interface TocItem {
+  id: string
+  text: string
+  level: 2 | 3
 }
 
-export function OnThisPage({ toc }: OnThisPageProps) {
+interface OnThisPageProps {
+  toc: TocItem[]
+  lang: string
+}
+
+export function OnThisPage({ toc, lang }: OnThisPageProps) {
   const [activeId, setActiveId] = React.useState<string>("")
+  const [copied, setCopied] = React.useState(false)
 
   React.useEffect(() => {
     if (toc.length === 0) return
@@ -19,8 +28,7 @@ export function OnThisPage({ toc }: OnThisPageProps) {
 
       if (headingElements.length === 0) return
 
-      // Offset from top of viewport for trigger boundary
-      const scrollPosition = window.scrollY + 160
+      const scrollPosition = window.scrollY + 140
 
       for (let i = headingElements.length - 1; i >= 0; i--) {
         const el = headingElements[i]
@@ -33,14 +41,13 @@ export function OnThisPage({ toc }: OnThisPageProps) {
 
       if (
         window.scrollY <
-        headingElements[0].getBoundingClientRect().top + window.scrollY - 160
+        headingElements[0].getBoundingClientRect().top + window.scrollY - 140
       ) {
         setActiveId("")
       }
     }
 
     window.addEventListener("scroll", handleScroll, { passive: true })
-    // Initial check
     const timeout = setTimeout(handleScroll, 100)
 
     return () => {
@@ -56,7 +63,7 @@ export function OnThisPage({ toc }: OnThisPageProps) {
     e.preventDefault()
     const target = document.getElementById(id)
     if (target) {
-      const headerOffset = 100
+      const headerOffset = 90
       const elementPosition = target.getBoundingClientRect().top
       const offsetPosition = elementPosition + window.pageYOffset - headerOffset
 
@@ -69,27 +76,88 @@ export function OnThisPage({ toc }: OnThisPageProps) {
     }
   }
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  const copyPageLink = () => {
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
   if (toc.length === 0) return null
 
   return (
-    <nav className="space-y-1 text-xs">
-      {toc.map((heading) => {
-        const isActive = activeId === heading.id
-        return (
-          <a
-            key={heading.id}
-            href={`#${heading.id}`}
-            onClick={(e) => scrollToHeading(e, heading.id)}
-            className={`block rounded-lg px-2.5 py-1.5 leading-relaxed transition-all ${
-              isActive
-                ? "bg-emerald-500/15 font-semibold text-emerald-600 dark:text-emerald-400"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-            }`}
-          >
-            {heading.text}
-          </a>
-        )
-      })}
-    </nav>
+    <div className="space-y-4">
+      {/* Nested TOC Tree */}
+      <nav className="relative space-y-1 text-xs">
+        {/* Left vertical subtle guide rail */}
+        <div className="absolute top-1 bottom-1 left-1 w-px bg-border/50" />
+
+        {toc.map((heading) => {
+          const isActive = activeId === heading.id
+          const isH3 = heading.level === 3
+
+          return (
+            <a
+              key={heading.id}
+              href={`#${heading.id}`}
+              onClick={(e) => scrollToHeading(e, heading.id)}
+              className={`group relative block rounded-md py-1 transition-all ${
+                isH3 ? "pl-5 text-[11px]" : "pl-3 text-xs"
+              } ${
+                isActive
+                  ? "font-semibold text-emerald-600 dark:text-emerald-400"
+                  : "font-normal text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {/* Active node pip on the rail */}
+              {isActive && (
+                <span className="absolute top-1/2 left-[3px] size-1.5 -translate-y-1/2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
+              )}
+              <span className="line-clamp-2 leading-relaxed">
+                {heading.text}
+              </span>
+            </a>
+          )
+        })}
+      </nav>
+
+      {/* Utility Actions (Back to Top & Copy Link) */}
+      <div className="space-y-1 border-t border-border/40 pt-3 text-[11px] text-muted-foreground">
+        <button
+          type="button"
+          onClick={scrollToTop}
+          className="flex w-full items-center gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <ArrowUp size={13} />
+          <span>{lang === "id" ? "Kembali ke Atas" : "Back to top"}</span>
+        </button>
+        <button
+          type="button"
+          onClick={copyPageLink}
+          className="flex w-full items-center gap-1.5 rounded-lg px-2 py-1 transition-colors hover:bg-muted hover:text-foreground"
+        >
+          {copied ? (
+            <>
+              <Check size={13} className="text-emerald-500" />
+              <span className="text-emerald-600 dark:text-emerald-400">
+                {lang === "id" ? "Tautan Tersalin!" : "Link Copied!"}
+              </span>
+            </>
+          ) : (
+            <>
+              <LinkIcon size={13} />
+              <span>
+                {lang === "id" ? "Salin Tautan Halaman" : "Copy page link"}
+              </span>
+            </>
+          )}
+        </button>
+      </div>
+    </div>
   )
 }
