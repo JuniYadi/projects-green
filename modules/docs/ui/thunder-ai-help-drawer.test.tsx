@@ -204,6 +204,7 @@ describe("ThunderAiHelpDrawer", () => {
     it("renders Indonesian copy when locale is id", async () => {
       const view = await renderDrawer("kb=1", "/id/console")
 
+      expect(view.getByText("Bantuan AI")).toBeTruthy()
       expect(
         view.getByRole("heading", { name: "Pusat Bantuan & AI" })
       ).toBeTruthy()
