@@ -164,7 +164,6 @@ function isDetailSegment(segment: string): boolean {
     /^\d+$/.test(segment) ||
     /^[a-z0-9]+_[a-z0-9]+$/i.test(segment) ||
     /^wamid\./i.test(segment) ||
-    segment.length > 25 ||
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
       segment
     )
