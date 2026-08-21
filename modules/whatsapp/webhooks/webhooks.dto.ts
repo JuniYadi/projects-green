@@ -37,7 +37,33 @@ export function extractEventMetadata(
     return { waMessageId: null, phoneNumber: null, deliveryStatus: null }
   }
 
-  const p = payload as Record<string, unknown>
+  let p = payload as Record<string, unknown>
+
+  // Normalize Meta envelope: { entry: [{ changes: [{ value: { messages, statuses } }] }] }
+  if ("entry" in p && Array.isArray(p.entry)) {
+    const entry = p.entry as Record<string, unknown>[]
+    const changes = entry[0]?.changes as Record<string, unknown>[] | undefined
+    const value = changes?.[0]?.value as Record<string, unknown> | undefined
+    if (value && typeof value === "object") {
+      if (
+        eventType === "inbound_message" &&
+        Array.isArray(value.messages) &&
+        value.messages.length > 0 &&
+        typeof value.messages[0] === "object" &&
+        value.messages[0] !== null
+      ) {
+        p = value.messages[0] as Record<string, unknown>
+      } else if (
+        eventType === "status_update" &&
+        Array.isArray(value.statuses) &&
+        value.statuses.length > 0 &&
+        typeof value.statuses[0] === "object" &&
+        value.statuses[0] !== null
+      ) {
+        p = value.statuses[0] as Record<string, unknown>
+      }
+    }
+  }
 
   // Case 1: Status payload directly (e.g. { id, status, recipient_id })
   if (eventType === "status_update") {

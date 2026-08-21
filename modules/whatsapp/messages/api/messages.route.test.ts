@@ -98,8 +98,8 @@ mock.module("@/modules/whatsapp/messages/quota.service", () => ({
   InsufficientQuotaError,
 }))
 
-mock.module("@/lib/auth/resolve-proxy-auth", () => ({
-  resolveAuthContext: mock(async () => ({
+const mockResolveAuthContext: { current: any } = {
+  current: {
     type: "workos",
     userId: "user-1",
     email: "admin@example.com",
@@ -107,7 +107,11 @@ mock.module("@/lib/auth/resolve-proxy-auth", () => ({
     orgRole: "admin",
     platformRole: "none",
     source: "proxy_header",
-  })),
+  },
+}
+
+mock.module("@/lib/auth/resolve-proxy-auth", () => ({
+  resolveAuthContext: mock(async () => mockResolveAuthContext.current),
 }))
 const mockGetCachedUser = mock<
   () => Promise<{ name: string | null; email: string } | null>
@@ -140,6 +144,15 @@ const postJson = (path: string, body: unknown) =>
 
 describe("messagesRoutes", () => {
   beforeEach(() => {
+    mockResolveAuthContext.current = {
+      type: "workos",
+      userId: "user-1",
+      email: "admin@example.com",
+      organizationId: "org-1",
+      orgRole: "admin",
+      platformRole: "none",
+      source: "proxy_header",
+    }
     setMockAuthContext({
       type: "workos",
       userId: "user-1",
@@ -148,10 +161,6 @@ describe("messagesRoutes", () => {
       orgRole: "admin",
       platformRole: "none",
     })
-
-    mockPrisma.whatsappMessage.count.mockClear()
-    mockPrisma.whatsappMessage.findMany.mockClear()
-    mockPrisma.whatsappMessage.findFirst.mockClear()
     mockPrisma.whatsappMessage.create.mockClear()
     mockPrisma.whatsappMessage.update.mockClear()
     mockPrisma.whatsappMessage.delete.mockClear()
@@ -1549,6 +1558,186 @@ describe("messagesRoutes", () => {
             details: { path: ["waMessageId"], equals: "wamid.123" },
           },
         })
+      )
+    })
+
+    it("returns 401 when unauthenticated", async () => {
+      mockResolveAuthContext.current = null
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request("http://localhost/messages/journey/wamid.123")
+      )
+      expect(res.status).toBe(401)
+      const body = await res.json()
+      expect(body.error).toBe("UNAUTHORIZED")
+    })
+
+    it("returns 403 when organization is missing", async () => {
+      mockResolveAuthContext.current = {
+        type: "workos",
+        userId: "user-1",
+        organizationId: null,
+        orgRole: "admin",
+        platformRole: "none",
+      }
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request("http://localhost/messages/journey/wamid.123")
+      )
+      expect(res.status).toBe(403)
+      const body = await res.json()
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns 404 when no records are found across all sources", async () => {
+      mockPrisma.whatsappMessage.findFirst.mockResolvedValueOnce(null as never)
+      mockPrisma.whatsappBillingLedger.findFirst.mockResolvedValueOnce(
+        null as never
+      )
+      mockPrisma.whatsappAuditLog.findFirst.mockResolvedValueOnce(null as never)
+      mockPrisma.whatsappWebhookEvent.findMany.mockResolvedValueOnce([])
+
+      const response = await createTestApp().handle(
+        authRequest("/messages/journey/wamid.unknown")
+      )
+      expect(response.status).toBe(404)
+      const body = await response.json()
+      expect(body.error).toBe("NOT_FOUND")
+    })
+
+    it("returns journey data from webhook events only and applies fallbacks", async () => {
+      mockPrisma.whatsappMessage.findFirst.mockResolvedValueOnce(null as never)
+      mockPrisma.whatsappBillingLedger.findFirst.mockResolvedValueOnce(
+        null as never
+      )
+      mockPrisma.whatsappAuditLog.findFirst.mockResolvedValueOnce(null as never)
+      mockPrisma.whatsappWebhookEvent.findMany.mockResolvedValueOnce([
+        {
+          id: "webhook-only-1",
+          eventType: "inbound_message",
+          processingStatus: "RECEIVED",
+          createdAt: new Date("2026-08-20T12:00:00.000Z"),
+          errorMessage: "Failed to dispatch",
+        },
+      ])
+
+      const response = await createTestApp().handle(
+        authRequest("/messages/journey/wamid%3Ainbound%3A123")
+      )
+      const body = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.data.message.waMessageId).toBe("wamid:inbound:123")
+      expect(body.data.message.direction).toBe("OUTBOX")
+      expect(body.data.device).toBeNull()
+      expect(body.data.contact).toBeNull()
+      expect(body.data.billing).toBeNull()
+      expect(body.data.audit).toBeNull()
+      expect(body.data.timeline).toHaveLength(2)
+      const initiationStep = body.data.timeline.find(
+        (step: { id: string }) => step.id === "step-initiation"
+      )
+      const webhookStep = body.data.timeline.find(
+        (step: { id: string }) => step.id === "step-webhook-webhook-only-1"
+      )
+      expect(initiationStep?.description).toBe("Webhook event received")
+      expect(webhookStep?.error).toBe("Failed to dispatch")
+      expect(mockPrisma.whatsappWebhookEvent.findMany).toHaveBeenCalledWith({
+        where: {
+          waMessageId: "wamid:inbound:123",
+          organizationId: "org-1",
+        },
+        orderBy: { createdAt: "asc" },
+      })
+    })
+
+    it("resolves audit-only journey with console UI origin and phone fallback", async () => {
+      mockPrisma.whatsappMessage.findFirst.mockResolvedValueOnce(null as never)
+      mockPrisma.whatsappBillingLedger.findFirst.mockResolvedValueOnce(
+        null as never
+      )
+      mockPrisma.whatsappWebhookEvent.findMany.mockResolvedValueOnce([])
+      mockPrisma.whatsappAuditLog.findFirst.mockResolvedValueOnce({
+        adminId: null,
+        action: "BROADCAST_SENT",
+        ip: "127.0.0.1",
+        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        message: "Broadcast queued",
+        details: {
+          waMessageId: "wamid.audit.broadcast",
+          phoneNumber: "+628199999999",
+        },
+        createdAt: new Date("2026-08-20T12:00:00.000Z"),
+      })
+
+      const response = await createTestApp().handle(
+        authRequest("/messages/journey/wamid.audit.broadcast")
+      )
+      const body = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(body.data.contact.phoneNumber).toBe("+628199999999")
+      expect(body.data.audit.actorName).toBe("System")
+      expect(body.data.audit.origin).toBe("Console UI")
+    })
+
+    it("handles broadcast campaign origin, device name profile, and status history errors/null timestamp", async () => {
+      mockPrisma.whatsappMessage.findFirst.mockResolvedValueOnce({
+        id: "msg-journey-2",
+        conversationId: "conv-1",
+        direction: "OUTBOX",
+        messageType: "text",
+        body: "Campaign message",
+        mediaUrl: null,
+        waMessageId: "wamid.campaign.1",
+        metadata: null,
+        createdAt: new Date("2026-08-20T12:00:00.000Z"),
+        conversation: {
+          contactPhone: "+628111111111",
+          whatsappDevice: {
+            id: "device-1",
+            phoneNumber: "+6281234567890",
+            whatsappProfile: { name: "Official Support" },
+          },
+        },
+        statusHistory: [
+          {
+            id: "status-err-1",
+            status: "FAILED",
+            timestamp: null,
+            createdAt: new Date("2026-08-20T12:01:00.000Z"),
+            error: "Destination unreachable",
+          },
+        ],
+      })
+      mockPrisma.whatsappBillingLedger.findFirst.mockResolvedValueOnce(
+        null as never
+      )
+      mockPrisma.whatsappWebhookEvent.findMany.mockResolvedValueOnce([])
+      mockPrisma.whatsappAuditLog.findFirst.mockResolvedValueOnce({
+        adminId: "anon_admin_without_user",
+        action: "BROADCAST_SENT",
+        ip: null,
+        userAgent: null,
+        message: "Campaign queued",
+        details: { waMessageId: "wamid.campaign.1" },
+        createdAt: new Date("2026-08-20T11:59:00.000Z"),
+      })
+      mockGetCachedUser.mockResolvedValueOnce(null)
+
+      const response = await createTestApp().handle(
+        authRequest("/messages/journey/wamid.campaign.1")
+      )
+      const body = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(body.data.device.name).toBe("Official Support")
+      expect(body.data.audit.origin).toBe("Broadcast Campaign")
+      expect(body.data.audit.actorName).toBe("anon_admin")
+      expect(body.data.timeline[1].error).toBe("Destination unreachable")
+      expect(body.data.timeline[1].description).toBe(
+        "Error: Destination unreachable"
       )
     })
   })

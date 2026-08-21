@@ -3,6 +3,14 @@ import { Elysia } from "elysia"
 
 // ─── Mocks ──────────────────────────────────────────────────────────────
 
+const mockGetCachedUser = mock<
+  () => Promise<{ name: string | null; email: string | null } | null>
+>(async () => null)
+
+mock.module("@/lib/workos-directory", () => ({
+  getCachedUser: mockGetCachedUser,
+}))
+
 const mockPrisma = {
   whatsappAuditLog: {
     findMany: mock(),
@@ -21,7 +29,6 @@ import {
   consoleWhatsappAuditRoutes,
 } from "./whatsapp-audit.route"
 import { type AdminActorContext } from "@/modules/admin/api/admin.guards"
-
 const okAdmin: AdminActorContext = {
   ok: true,
   userId: "admin-1",
@@ -70,15 +77,14 @@ const sampleRows = [
 ]
 
 beforeEach(() => {
+  mockGetCachedUser.mockReset()
+  mockGetCachedUser.mockResolvedValue(null)
   mockPrisma.whatsappAuditLog.findMany.mockReset()
   mockPrisma.whatsappAuditLog.count.mockReset()
   mockPrisma.whatsappDevice.findUnique.mockReset()
   mockPrisma.whatsappDevice.findMany.mockReset()
   mockPrisma.whatsappDevice.findMany.mockResolvedValue([])
 })
-
-// ─── Helpers ────────────────────────────────────────────────────────────
-
 const mockUnauthorized = (set: any) => {
   set.status = 401
   return {
@@ -141,6 +147,42 @@ describe("Admin WhatsApp Audit Routes", () => {
         total: 1,
         totalPages: 1,
       })
+    })
+    it("resolves WorkOS actor and device labels when adminId starts with user_", async () => {
+      mockPrisma.whatsappAuditLog.count.mockResolvedValue(1)
+      mockPrisma.whatsappAuditLog.findMany.mockResolvedValue([
+        {
+          ...sampleRows[0],
+          adminId: "user_admin_123",
+          deviceId: "dev-1",
+        },
+      ])
+      mockPrisma.whatsappDevice.findMany.mockResolvedValue([
+        { id: "dev-1", phoneNumber: "+628123456789" },
+      ])
+      mockGetCachedUser.mockResolvedValue({
+        name: "Admin User",
+        email: "admin@example.com",
+      })
+
+      const app = buildApp()
+      const res = await app.handle(new Request(`${BASE}/`))
+      const body = (await res.json()) as {
+        ok: boolean
+        data: Array<{
+          id: string
+          actorName: string | null
+          actorEmail: string | null
+          deviceLabel: string | null
+        }>
+      }
+
+      expect(res.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.data[0].actorName).toBe("Admin User")
+      expect(body.data[0].actorEmail).toBe("admin@example.com")
+      expect(body.data[0].deviceLabel).toBe("+628123456789")
+      expect(mockGetCachedUser).toHaveBeenCalledWith("user_admin_123")
     })
 
     it("returns empty list when no entries", async () => {
@@ -307,6 +349,42 @@ describe("Console WhatsApp Audit Routes", () => {
           where: expect.objectContaining({ organizationId: "org-1" }),
         })
       )
+    })
+    it("resolves WorkOS actor and device labels in console audit list", async () => {
+      mockPrisma.whatsappAuditLog.count.mockResolvedValue(1)
+      mockPrisma.whatsappAuditLog.findMany.mockResolvedValue([
+        {
+          ...sampleRows[0],
+          adminId: "user_console_123",
+          deviceId: "dev-1",
+        },
+      ])
+      mockPrisma.whatsappDevice.findMany.mockResolvedValue([
+        { id: "dev-1", phoneNumber: "+628123456789" },
+      ])
+      mockGetCachedUser.mockResolvedValue({
+        name: "Console User",
+        email: "console@example.com",
+      })
+
+      const app = buildConsoleApp()
+      const res = await app.handle(new Request(`${CONSOLE_BASE}/`))
+      const body = (await res.json()) as {
+        ok: boolean
+        data: Array<{
+          id: string
+          actorName: string | null
+          actorEmail: string | null
+          deviceLabel: string | null
+        }>
+      }
+
+      expect(res.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.data[0].actorName).toBe("Console User")
+      expect(body.data[0].actorEmail).toBe("console@example.com")
+      expect(body.data[0].deviceLabel).toBe("+628123456789")
+      expect(mockGetCachedUser).toHaveBeenCalledWith("user_console_123")
     })
   })
 
