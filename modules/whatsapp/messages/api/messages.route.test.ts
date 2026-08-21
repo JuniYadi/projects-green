@@ -306,7 +306,7 @@ describe("messagesRoutes", () => {
         country: "ID",
         rateTier: "BASE",
       })
-      expect(body.devices[0].categories).toHaveLength(5)
+      expect(body.devices[0].categories).toHaveLength(4)
       expect(body.devices[0].categories).toContainEqual(
         expect.objectContaining({
           category: "MARKETING",

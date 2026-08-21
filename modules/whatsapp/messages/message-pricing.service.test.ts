@@ -106,7 +106,7 @@ describe("WhatsappMessagePricingService", () => {
     const pricing = await service.getPricing("org-id")
     const categories = pricing.devices[0]?.categories ?? []
 
-    expect(categories).toHaveLength(5)
+    expect(categories).toHaveLength(4)
     expect(categories.every((category) => !category.configured)).toBe(true)
     expect(
       categories.every((category) => category.quotaCredit.toString() === "1")
