@@ -205,6 +205,7 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
       "scripts/capture-all-billing-kb.ts",
       "scripts/capture-api-key-kb.ts",
       "scripts/capture-billing-kb.ts",
+      "scripts/capture-whatsapp-guide-kb.ts",
       "content/knowledge-base/",
     ],
     testPrefixes: [
