@@ -69,6 +69,7 @@ export type WebhookEventTableProps = {
   emptyActionLabel?: string
   emptyActionHref?: string
   showPayload?: boolean
+  messageJourneyBasePath?: string
 }
 // ─── Badge helpers ────────────────────────────────────────────────────────────
 
@@ -168,6 +169,7 @@ export function WebhookEventTable({
   emptyActionLabel = "Verify Webhook Configuration",
   emptyActionHref,
   showPayload = false,
+  messageJourneyBasePath = "/console/whatsapp/messages",
 }: WebhookEventTableProps) {
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -346,7 +348,7 @@ export function WebhookEventTable({
                         {event.waMessageId ? (
                           <div className="flex items-center gap-1">
                             <Link
-                              href={`/console/whatsapp/messages/${encodeURIComponent(event.waMessageId)}`}
+                              href={`${messageJourneyBasePath}/${encodeURIComponent(event.waMessageId)}`}
                               className="font-mono text-xs text-primary hover:underline"
                               onClick={(e) => e.stopPropagation()}
                             >

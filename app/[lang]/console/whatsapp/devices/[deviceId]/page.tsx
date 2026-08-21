@@ -703,6 +703,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
         updatedAt: device.updatedAt,
       }}
       backHref={devicesPath}
+      messageJourneyBasePath="/console/whatsapp/messages"
       overviewChildren={overviewContent}
       actions={profileDialog}
     />

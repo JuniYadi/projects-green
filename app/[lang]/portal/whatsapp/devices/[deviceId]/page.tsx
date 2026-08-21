@@ -187,6 +187,7 @@ export default async function PortalWhatsAppDeviceDetailPage({
         updatedAt: device.updatedAt,
       }}
       backHref={devicesPath}
+      messageJourneyBasePath="/portal/whatsapp/messages"
       overviewChildren={overviewContent}
       metaWebhook={metaWebhook}
       actions={

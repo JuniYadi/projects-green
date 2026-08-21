@@ -1,7 +1,11 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma, WhatsappMessageDeliveryStatus } from "@prisma/client"
 
-import { toWebhookEventDTO, type WhatsappWebhookEventDTO } from "./webhooks.dto"
+import {
+  extractEventMetadata,
+  toWebhookEventDTO,
+  type WhatsappWebhookEventDTO,
+} from "./webhooks.dto"
 import { webhookDispatcher } from "./webhook-dispatcher.service"
 import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
 import { downloadAndSave } from "@/modules/whatsapp/media/media.service"
@@ -648,6 +652,7 @@ export async function createWebhookEvent(
       whatsappDeviceId: deviceId,
       eventType,
       metaPayload,
+      waMessageId: extractEventMetadata(metaPayload, eventType).waMessageId,
     },
   })
   return event.id

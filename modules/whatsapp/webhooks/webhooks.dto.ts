@@ -25,7 +25,7 @@ export type WhatsappWebhookEventDTO = {
  */
 export type WhatsappWebhookEventDetailDTO = WhatsappWebhookEventDTO
 
-function extractEventMetadata(
+export function extractEventMetadata(
   payload: unknown,
   eventType: string
 ): {

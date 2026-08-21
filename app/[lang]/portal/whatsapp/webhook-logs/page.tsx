@@ -241,6 +241,7 @@ export default function PortalWhatsAppWebhookLogsPage() {
               error={pageState === "error" ? errorMessage : undefined}
               onRetry={handleRetry}
               showPayload={true}
+              messageJourneyBasePath="/portal/whatsapp/messages"
               pagination={
                 meta.totalPages > 1
                   ? {

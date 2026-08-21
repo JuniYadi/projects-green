@@ -145,6 +145,20 @@ describe("WebhookEventTable", () => {
       expect(container.textContent).toContain("—")
     })
 
+    it("uses the supplied journey base path", () => {
+      const { getByText } = render(
+        <WebhookEventTable
+          events={sampleEvents}
+          isLoading={false}
+          messageJourneyBasePath="/portal/whatsapp/messages"
+        />
+      )
+
+      expect(getByText("wamid_abc123").getAttribute("href")).toBe(
+        "/portal/whatsapp/messages/wamid_abc123"
+      )
+    })
+
     it("copies full WA Message ID to clipboard when clicked", async () => {
       const writeTextMock = mock(() => Promise.resolve())
       Object.defineProperty(navigator, "clipboard", {

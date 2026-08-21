@@ -146,6 +146,31 @@ describe("webhookEventService", () => {
           whatsappDeviceId: "device-1",
           eventType: "inbound_message",
           metaPayload: { test: "payload" },
+          waMessageId: null,
+        },
+      })
+    })
+
+    it("persists the message ID extracted from webhook payloads", async () => {
+      mockPrisma.whatsappWebhookEvent.create.mockResolvedValue({
+        id: "event-with-message-id",
+      } as any)
+
+      await createWebhookEvent("org-1", "device-1", "inbound_message", {
+        id: "wamid_persisted",
+        from: "+628123456789",
+      })
+
+      expect(mockPrisma.whatsappWebhookEvent.create).toHaveBeenCalledWith({
+        data: {
+          organizationId: "org-1",
+          whatsappDeviceId: "device-1",
+          eventType: "inbound_message",
+          metaPayload: {
+            id: "wamid_persisted",
+            from: "+628123456789",
+          },
+          waMessageId: "wamid_persisted",
         },
       })
     })
@@ -184,6 +209,7 @@ describe("webhookEventService", () => {
           whatsappDeviceId: "device-1",
           eventType: "unknown",
           metaPayload: null,
+          waMessageId: null,
         },
       })
     })
