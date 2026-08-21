@@ -946,28 +946,16 @@ const buildNavSecondary = (input: {
 
   const items: NavSecondaryItem[] = [
     {
+      title: "Documentation",
+      url: localizePathname({ pathname: "/docs", locale }),
+      icon: <BookOpenIcon />,
+    },
+    {
       title: "API Reference",
       url: input.surface === "portal" ? "/api/admin/docs" : "/api/openapi",
       icon: <BookOpenIcon />,
     },
-    {
-      title: "Support",
-      url: "#",
-      icon: <LifebuoyIcon />,
-    },
-    {
-      title: "Feedback",
-      url: "#",
-      icon: <PaperPlaneTiltIcon />,
-    },
   ]
-  if (input.surface === "console") {
-    items.unshift({
-      title: "Thunder AI Help",
-      url: `${input.currentPathname}?kb=1`,
-      icon: <Lightning />,
-    })
-  }
 
   if (input.surface === "portal") {
     items.push({
