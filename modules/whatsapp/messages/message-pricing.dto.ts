@@ -7,6 +7,12 @@ export type WhatsappMessagePricingCategoryDTO = {
   configured: boolean
   description: string | null
   overagePrice: string | null
+  tierPrices: {
+    BASE: string | null
+    TIER_1: string | null
+    TIER_2: string | null
+    TIER_3: string | null
+  }
 }
 
 export type WhatsappMessagePricingDeviceDTO = {
@@ -44,6 +50,12 @@ export function toWhatsappMessagePricingDTO(
         configured: category.configured,
         description: category.description,
         overagePrice: category.overagePrice?.toString() ?? null,
+        tierPrices: {
+          BASE: category.tierPrices?.BASE?.toString() ?? null,
+          TIER_1: category.tierPrices?.TIER_1?.toString() ?? null,
+          TIER_2: category.tierPrices?.TIER_2?.toString() ?? null,
+          TIER_3: category.tierPrices?.TIER_3?.toString() ?? null,
+        },
       })),
     })),
     overage: {

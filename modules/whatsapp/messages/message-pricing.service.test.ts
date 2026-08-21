@@ -92,11 +92,18 @@ describe("WhatsappMessagePricingService", () => {
     expect(utility?.overagePrice?.toString()).toBe("451")
     expect(utility?.feeAmount?.toString()).toBe("54")
     expect(utility?.ppnAmount?.toString()).toBe("40")
-
+    expect(utility?.tierPrices?.BASE?.toString()).toBe("469")
+    expect(utility?.tierPrices?.TIER_1?.toString()).toBe("451")
+    expect(utility?.tierPrices?.TIER_2?.toString()).toBe("433")
+    expect(utility?.tierPrices?.TIER_3?.toString()).toBe("415")
     expect(marketing?.quotaCredit.toString()).toBe("2.00")
     expect(marketing?.overagePrice?.toString()).toBe("741")
     expect(marketing?.feeAmount?.toString()).toBe("89")
     expect(marketing?.ppnAmount?.toString()).toBe("65")
+    expect(marketing?.tierPrices?.BASE?.toString()).toBe("770")
+    expect(marketing?.tierPrices?.TIER_1?.toString()).toBe("741")
+    expect(marketing?.tierPrices?.TIER_2?.toString()).toBe("711")
+    expect(marketing?.tierPrices?.TIER_3?.toString()).toBe("682")
   })
   it("marks missing rates and PAYG pricing instead of hiding them", async () => {
     prismaMock.mock.whatsappDevice.findMany.mockResolvedValue([

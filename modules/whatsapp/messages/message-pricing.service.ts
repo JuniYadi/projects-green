@@ -23,6 +23,12 @@ type QuotaCreditRate = {
   feePercent?: number
   feeAmount?: Prisma.Decimal | null
   ppnAmount?: Prisma.Decimal | null
+  tierPrices?: {
+    BASE: Prisma.Decimal | null
+    TIER_1: Prisma.Decimal | null
+    TIER_2: Prisma.Decimal | null
+    TIER_3: Prisma.Decimal | null
+  }
 }
 
 export type WhatsappMessagePricing = {
@@ -141,6 +147,12 @@ export class WhatsappMessagePricingService {
           let feeAmount = null
           let ppnAmount = null
           let overagePrice = null
+          let tierPrices = {
+            BASE: null as Prisma.Decimal | null,
+            TIER_1: null as Prisma.Decimal | null,
+            TIER_2: null as Prisma.Decimal | null,
+            TIER_3: null as Prisma.Decimal | null,
+          }
 
           if (basePrice) {
             const feeMap: Record<string, number> = {
@@ -156,6 +168,19 @@ export class WhatsappMessagePricingService {
             feeAmount = new Prisma.Decimal(fee)
             ppnAmount = new Prisma.Decimal(ppn)
             overagePrice = new Prisma.Decimal(baseNum + fee + ppn)
+
+            const calcForMargin = (marginPct: number) => {
+              const marginFee = Math.ceil((baseNum * marginPct) / 100)
+              const marginPpn = Math.ceil((baseNum * 11) / 100)
+              return new Prisma.Decimal(baseNum + marginFee + marginPpn)
+            }
+
+            tierPrices = {
+              BASE: calcForMargin(20),
+              TIER_1: calcForMargin(15),
+              TIER_2: calcForMargin(10),
+              TIER_3: calcForMargin(5),
+            }
           }
 
           return {
@@ -169,6 +194,7 @@ export class WhatsappMessagePricingService {
             feePercent,
             feeAmount,
             ppnAmount,
+            tierPrices,
           }
         }),
       })),

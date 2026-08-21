@@ -11,16 +11,34 @@ const mockPricing = mock(() =>
         deviceId: "device-1",
         phoneNumber: "+6281234567890",
         country: "ID",
+        rateTier: "BASE",
+        quotaRemaining: 10,
         categories: [
           {
             category: "MARKETING",
             quotaCredit: "1.50",
             configured: true,
+            description: "Marketing template",
+            overagePrice: "770",
+            tierPrices: {
+              BASE: "770",
+              TIER_1: "741",
+              TIER_2: "711",
+              TIER_3: "682",
+            },
           },
           {
             category: "UTILITY",
             quotaCredit: "1.00",
             configured: false,
+            description: null,
+            overagePrice: "469",
+            tierPrices: {
+              BASE: "469",
+              TIER_1: "451",
+              TIER_2: "433",
+              TIER_3: "415",
+            },
           },
         ],
       },
@@ -92,8 +110,35 @@ describe("WhatsAppPricingPage", () => {
       view.getByText(/Transaction & Deduction Ledger/i)
     ).toBeInTheDocument()
     await waitFor(() => {
-      expect(view.getByText("MARKETING")).toBeInTheDocument()
-      expect(view.getByText("UTILITY")).toBeInTheDocument()
+      expect(view.getAllByText("MARKETING").length).toBeGreaterThanOrEqual(1)
+      expect(view.getAllByText("UTILITY").length).toBeGreaterThanOrEqual(1)
+      expect(view.getByText("Rp 770")).toBeInTheDocument()
+      expect(view.getByText("Rp 741")).toBeInTheDocument()
+    })
+  })
+
+  it("handles exhausted device quota banner display", async () => {
+    mockPricing.mockResolvedValueOnce({
+      ok: true,
+      devices: [
+        {
+          deviceId: "device-1",
+          phoneNumber: "+6281234567890",
+          country: "ID",
+          rateTier: "BASE",
+          quotaRemaining: 0,
+          categories: [],
+        },
+      ],
+      overage: {
+        unitPrice: "",
+        currency: "",
+        configured: false,
+      },
+    })
+    const view = renderWithQuery(<WhatsAppPricingPage />)
+    await waitFor(() => {
+      expect(view.getByText(/Quota Credit \(Exhausted\)/i)).toBeInTheDocument()
     })
   })
 })

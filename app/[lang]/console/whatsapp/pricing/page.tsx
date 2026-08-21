@@ -252,7 +252,21 @@ export default function WhatsAppPricingPage() {
 
       {/* Dynamic Status Alert Banner */}
       {(() => {
-        const anyQuotaActive = devices.some((d) => (d.quotaRemaining ?? 0) > 0)
+        const targetDevices =
+          selectedDeviceId === "all"
+            ? devices
+            : devices.filter((d) => d.deviceId === selectedDeviceId)
+
+        if (targetDevices.length === 0) return null
+
+        const allActive =
+          targetDevices.length > 0 &&
+          targetDevices.every((d) => (d.quotaRemaining ?? 0) > 0)
+        const noneActive =
+          targetDevices.length > 0 &&
+          targetDevices.every((d) => (d.quotaRemaining ?? 0) <= 0)
+        const isMixed = !allActive && !noneActive
+
         return (
           <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
@@ -261,22 +275,32 @@ export default function WhatsAppPricingPage() {
                 In-quota messages deduct from your plan quota allowance first (
                 <span
                   className={`font-semibold ${
-                    anyQuotaActive
+                    allActive
                       ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-destructive line-through"
+                      : isMixed
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-destructive line-through"
                   }`}
                 >
-                  Quota Credit {anyQuotaActive ? "" : "(Exhausted)"}
+                  Quota Credit{" "}
+                  {allActive ? "" : isMixed ? "(Partial)" : "(Exhausted)"}
                 </span>
                 ). When monthly quota is exhausted, Pay-As-You-Go overage (
                 <span
                   className={`font-semibold ${
-                    anyQuotaActive
-                      ? "text-amber-600 dark:text-amber-400"
-                      : "text-emerald-600 dark:text-emerald-400"
+                    noneActive
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : isMixed
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-amber-600 dark:text-amber-400"
                   }`}
                 >
-                  PAYG Overage {anyQuotaActive ? "(Fallback)" : "(Active)"}
+                  PAYG Overage{" "}
+                  {noneActive
+                    ? "(Active)"
+                    : isMixed
+                      ? "(Partial Fallback)"
+                      : "(Fallback)"}
                 </span>
                 ) rates apply directly from your prepaid wallet balance.
               </span>
@@ -512,26 +536,21 @@ export default function WhatsAppPricingPage() {
                         </thead>
                         <tbody className="divide-y">
                           {device.categories.map((cat) => {
-                            const basePriceNum =
-                              cat.category === "MARKETING"
-                                ? 587
-                                : cat.category === "UTILITY" ||
-                                    cat.category === "AUTHENTICATION"
-                                  ? 357
-                                  : 300
-
-                            const calcTierPrice = (feePct: number) => {
-                              const fee = Math.ceil(
-                                (basePriceNum * feePct) / 100
-                              )
-                              const ppn = Math.ceil((basePriceNum * 11) / 100)
-                              return basePriceNum + fee + ppn
+                            const formatPrice = (
+                              val: string | null | undefined
+                            ) => {
+                              if (!val) return "—"
+                              const num = Number(val)
+                              if (!Number.isFinite(num)) return "—"
+                              return `Rp ${num.toLocaleString("id-ID")}`
                             }
 
-                            const pBase = calcTierPrice(20)
-                            const pTier1 = calcTierPrice(15)
-                            const pTier2 = calcTierPrice(10)
-                            const pTier3 = calcTierPrice(5)
+                            const pBase = formatPrice(
+                              cat.tierPrices?.BASE ?? cat.overagePrice
+                            )
+                            const pTier1 = formatPrice(cat.tierPrices?.TIER_1)
+                            const pTier2 = formatPrice(cat.tierPrices?.TIER_2)
+                            const pTier3 = formatPrice(cat.tierPrices?.TIER_3)
 
                             return (
                               <tr
@@ -562,7 +581,7 @@ export default function WhatsAppPricingPage() {
                                       : "text-muted-foreground"
                                   }`}
                                 >
-                                  Rp {pBase.toLocaleString("id-ID")}
+                                  {pBase}
                                 </td>
                                 <td
                                   className={`px-4 py-2.5 text-right ${
@@ -573,7 +592,7 @@ export default function WhatsAppPricingPage() {
                                       : "text-muted-foreground"
                                   }`}
                                 >
-                                  Rp {pTier1.toLocaleString("id-ID")}
+                                  {pTier1}
                                 </td>
                                 <td
                                   className={`px-4 py-2.5 text-right ${
@@ -584,7 +603,7 @@ export default function WhatsAppPricingPage() {
                                       : "text-muted-foreground"
                                   }`}
                                 >
-                                  Rp {pTier2.toLocaleString("id-ID")}
+                                  {pTier2}
                                 </td>
                                 <td
                                   className={`px-4 py-2.5 text-right ${
@@ -595,7 +614,7 @@ export default function WhatsAppPricingPage() {
                                       : "text-muted-foreground"
                                   }`}
                                 >
-                                  Rp {pTier3.toLocaleString("id-ID")}
+                                  {pTier3}
                                 </td>
                               </tr>
                             )

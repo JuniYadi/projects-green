@@ -248,7 +248,13 @@ describe("messagesRoutes", () => {
   describe("GET /messages/pricing", () => {
     it("returns device quota credits and PAYG overage pricing", async () => {
       mockPrisma.whatsappDevice.findMany.mockResolvedValue([
-        { id: "device-1", phoneNumber: "+6281234567890", rates: "BASE" },
+        {
+          id: "device-1",
+          phoneNumber: "+6281234567890",
+          rates: "BASE",
+          quotaBaseOut: 50,
+          addonQuota: 25,
+        },
       ] as any)
       mockPrisma.whatsappQuotaCreditRate.findMany.mockResolvedValue([
         {
@@ -305,6 +311,7 @@ describe("messagesRoutes", () => {
         phoneNumber: "+6281234567890",
         country: "ID",
         rateTier: "BASE",
+        quotaRemaining: 75,
       })
       expect(body.devices[0].categories).toHaveLength(4)
       expect(body.devices[0].categories).toContainEqual(
@@ -325,7 +332,13 @@ describe("messagesRoutes", () => {
       )
       expect(mockPrisma.whatsappDevice.findMany).toHaveBeenCalledWith({
         where: { organizationId: "org-1", status: "ACTIVE" },
-        select: { id: true, phoneNumber: true, rates: true },
+        select: {
+          id: true,
+          phoneNumber: true,
+          rates: true,
+          quotaBaseOut: true,
+          addonQuota: true,
+        },
         orderBy: { createdAt: "desc" },
       })
       expect(mockPrisma.whatsappQuotaCreditRate.findMany).toHaveBeenCalledWith(
