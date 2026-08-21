@@ -274,24 +274,6 @@ export default function WhatsAppPricingPage() {
                             scope="col"
                             className="px-4 py-2.5 text-right font-medium"
                           >
-                            Base Price
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-4 py-2.5 text-right font-medium"
-                          >
-                            Fee ({device.categories[0]?.feePercent ?? 20}%)
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-4 py-2.5 text-right font-medium"
-                          >
-                            PPN (11%)
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-4 py-2.5 text-right font-medium"
-                          >
                             PAYG Overage / Msg
                           </th>
                         </tr>
@@ -310,21 +292,6 @@ export default function WhatsAppPricingPage() {
                             </th>
                             <td className="px-4 py-2.5 text-center font-semibold text-primary">
                               -{formatQuotaCredit(category.quotaCredit)}
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-mono text-xs text-muted-foreground">
-                              {category.basePrice
-                                ? `Rp ${category.basePrice}`
-                                : "-"}
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-mono text-xs text-muted-foreground">
-                              {category.feeAmount
-                                ? `Rp ${category.feeAmount}`
-                                : "-"}
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-mono text-xs text-muted-foreground">
-                              {category.ppnAmount
-                                ? `Rp ${category.ppnAmount}`
-                                : "-"}
                             </td>
                             <td className="px-4 py-2.5 text-right font-semibold">
                               {category.overagePrice
