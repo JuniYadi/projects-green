@@ -7,7 +7,8 @@
  */
 
 "use client"
-
+import Link from "next/link"
+import * as React from "react"
 import { useState, useCallback } from "react"
 import {
   WarningCircle,
@@ -15,11 +16,20 @@ import {
   Broadcast,
   CaretDown,
   CaretRight,
+  Copy,
+  Check,
 } from "@phosphor-icons/react"
+import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   Table,
   TableBody,
@@ -38,9 +48,12 @@ export type WebhookEventDTO = {
   id: string
   eventType: string
   processingStatus: string
+  deliveryStatus?: string | null
+  phoneNumber?: string | null
+  deviceLabel?: string | null
   createdAt: string
   waMessageId: string | null
-  metaPayload?: Record<string, unknown>
+  metaPayload?: Record<string, unknown> | null
 }
 
 export type WebhookEventTableProps = {
@@ -55,8 +68,9 @@ export type WebhookEventTableProps = {
   }
   emptyActionLabel?: string
   emptyActionHref?: string
+  showPayload?: boolean
+  messageJourneyBasePath?: string
 }
-
 // ─── Badge helpers ────────────────────────────────────────────────────────────
 
 const TYPE_BADGE_CONFIG: Record<string, { label: string; className: string }> =
@@ -83,19 +97,65 @@ function getTypeBadgeConfig(eventType: string) {
   )
 }
 
-const STATUS_BADGE_VARIANT: Record<
-  string,
-  "success" | "destructive" | "warning" | "default"
-> = {
-  SUCCESS: "success",
-  FAILED: "destructive",
-  PENDING: "warning",
+function getDeliveryBadgeConfig(status: string | null | undefined): {
+  label: string
+  variant:
+    | "success"
+    | "destructive"
+    | "warning"
+    | "default"
+    | "secondary"
+    | "outline"
+  className?: string
+} {
+  const s = (status || "").toUpperCase()
+  switch (s) {
+    case "READ":
+      return {
+        label: "READ",
+        variant: "success",
+        className:
+          "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+      }
+    case "DELIVERED":
+      return {
+        label: "DELIVERED",
+        variant: "default",
+        className:
+          "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30",
+      }
+    case "SENT":
+      return {
+        label: "SENT",
+        variant: "secondary",
+        className:
+          "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30",
+      }
+    case "RECEIVED":
+      return {
+        label: "RECEIVED",
+        variant: "default",
+        className:
+          "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30",
+      }
+    case "FAILED":
+      return {
+        label: "FAILED",
+        variant: "destructive",
+      }
+    default:
+      return {
+        label: s || "PENDING",
+        variant: "warning",
+      }
+  }
 }
-
-function getStatusBadgeVariant(
-  status: string
-): "success" | "destructive" | "warning" | "default" {
-  return STATUS_BADGE_VARIANT[status] ?? "default"
+function maskWaMessageId(id: string | null): string {
+  if (!id) return "—"
+  if (id.length <= 26) return id
+  const prefix = id.slice(0, 18)
+  const suffix = id.slice(-6)
+  return `${prefix}...${suffix}`
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -108,13 +168,37 @@ export function WebhookEventTable({
   pagination,
   emptyActionLabel = "Verify Webhook Configuration",
   emptyActionHref,
+  showPayload = false,
+  messageJourneyBasePath = "/console/whatsapp/messages",
 }: WebhookEventTableProps) {
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
-  const handleRowToggle = useCallback((eventId: string) => {
-    setExpandedRowId((prev) => (prev === eventId ? null : eventId))
-  }, [])
+  const handleCopyMessageId = useCallback(
+    async (e: React.MouseEvent, waMessageId: string) => {
+      e.stopPropagation()
+      try {
+        await navigator.clipboard.writeText(waMessageId)
+        setCopiedId(waMessageId)
+        toast.success("WA Message ID copied to clipboard")
+        setTimeout(
+          () => setCopiedId((curr) => (curr === waMessageId ? null : curr)),
+          2000
+        )
+      } catch {
+        toast.error("Failed to copy ID")
+      }
+    },
+    []
+  )
 
+  const handleRowToggle = useCallback(
+    (eventId: string) => {
+      if (!showPayload) return
+      setExpandedRowId((prev) => (prev === eventId ? null : eventId))
+    },
+    [showPayload]
+  )
   const formatTimestamp = (iso: string) => {
     try {
       return new Date(iso).toLocaleString()
@@ -132,30 +216,40 @@ export function WebhookEventTable({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-10" />
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Timestamp</TableHead>
+                {showPayload && <TableHead className="w-10" />}
+                <TableHead>Device</TableHead>
+                <TableHead>Phone</TableHead>
                 <TableHead>WA Message ID</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Event</TableHead>
+                <TableHead>Timestamp</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.from({ length: 3 }).map((_, i) => (
-                <TableRow key={i}>
+              {Array.from({ length: 5 }).map((_, index) => (
+                <TableRow key={index}>
+                  {showPayload && (
+                    <TableCell>
+                      <Skeleton className="size-4" />
+                    </TableCell>
+                  )}
                   <TableCell>
-                    <Skeleton className="size-4" />
+                    <Skeleton className="h-4 w-28" />
                   </TableCell>
                   <TableCell>
-                    <Skeleton className="h-5 w-28 rounded-full" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-20 rounded-full" />
+                    <Skeleton className="h-4 w-28" />
                   </TableCell>
                   <TableCell>
                     <Skeleton className="h-4 w-36" />
                   </TableCell>
                   <TableCell>
-                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-24 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-28" />
                   </TableCell>
                 </TableRow>
               ))}
@@ -203,106 +297,160 @@ export function WebhookEventTable({
       </div>
     )
   }
-
-  // ── Data table ────────────────────────────────────────────────────────
-
   return (
-    <div className="space-y-0">
-      <div className="overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-10" />
-              <TableHead>Type</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Timestamp</TableHead>
-              <TableHead>WA Message ID</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {events.map((event) => {
-              const isExpanded = expandedRowId === event.id
-              const typeConfig = getTypeBadgeConfig(event.eventType)
-              const statusVariant = getStatusBadgeVariant(
-                event.processingStatus
-              )
+    <TooltipProvider delayDuration={200}>
+      <div className="space-y-0">
+        <div className="overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {showPayload && <TableHead className="w-10" />}
+                <TableHead>Device</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>WA Message ID</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Event</TableHead>
+                <TableHead>Timestamp</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {events.map((event) => {
+                const isExpanded = showPayload && expandedRowId === event.id
+                const typeConfig = getTypeBadgeConfig(event.eventType)
+                const deliveryConfig = getDeliveryBadgeConfig(
+                  event.deliveryStatus || event.processingStatus
+                )
 
-              return (
-                <TableRow
-                  key={event.id}
-                  className="cursor-pointer"
-                  onClick={() => handleRowToggle(event.id)}
-                >
-                  <TableCell>
-                    {isExpanded ? (
-                      <CaretDown className="size-4 text-muted-foreground" />
-                    ) : (
-                      <CaretRight className="size-4 text-muted-foreground" />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span
+                return (
+                  <React.Fragment key={event.id}>
+                    <TableRow
                       className={cn(
-                        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-                        typeConfig.className
+                        showPayload && "cursor-pointer hover:bg-muted/50"
                       )}
+                      onClick={() => handleRowToggle(event.id)}
                     >
-                      {typeConfig.label}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={statusVariant}>
-                      {event.processingStatus}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatTimestamp(event.createdAt)}
-                  </TableCell>
-                  <TableCell className="max-w-[180px] truncate font-mono text-xs text-muted-foreground">
-                    {event.waMessageId ?? "—"}
-                  </TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
+                      {showPayload && (
+                        <TableCell>
+                          {isExpanded ? (
+                            <CaretDown className="size-4 text-muted-foreground" />
+                          ) : (
+                            <CaretRight className="size-4 text-muted-foreground" />
+                          )}
+                        </TableCell>
+                      )}
+                      <TableCell className="font-mono text-xs font-medium">
+                        {event.deviceLabel ?? "—"}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-foreground">
+                        {event.phoneNumber ?? "—"}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {event.waMessageId ? (
+                          <div className="flex items-center gap-1">
+                            <Link
+                              href={`${messageJourneyBasePath}/${encodeURIComponent(event.waMessageId)}`}
+                              className="font-mono text-xs text-primary hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {maskWaMessageId(event.waMessageId)}
+                            </Link>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="inline-flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                                  onClick={(e) =>
+                                    handleCopyMessageId(e, event.waMessageId!)
+                                  }
+                                >
+                                  {copiedId === event.waMessageId ? (
+                                    <Check className="size-3 text-emerald-600 dark:text-emerald-400" />
+                                  ) : (
+                                    <Copy className="size-3 opacity-60 hover:opacity-100" />
+                                  )}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-sm font-mono text-xs break-all">
+                                <p>{event.waMessageId}</p>
+                                <p className="mt-0.5 text-[10px] text-muted-foreground">
+                                  Click to copy full ID
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                        ) : (
+                          <span className="px-1.5 text-muted-foreground">
+                            —
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={deliveryConfig.variant}
+                          className={deliveryConfig.className}
+                        >
+                          {deliveryConfig.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={cn(
+                            "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+                            typeConfig.className
+                          )}
+                        >
+                          {typeConfig.label}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                        {formatTimestamp(event.createdAt)}
+                      </TableCell>
+                    </TableRow>
+                    {showPayload && isExpanded && (
+                      <TableRow className="bg-muted/30 hover:bg-muted/30">
+                        <TableCell colSpan={7} className="p-4">
+                          {event.metaPayload ? (
+                            <RawPayloadViewer payload={event.metaPayload} />
+                          ) : (
+                            <p className="text-xs text-muted-foreground italic">
+                              No raw payload data available for this event.
+                            </p>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Pagination */}
+        {pagination && pagination.totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pagination.page <= 1}
+              onClick={() => pagination.onPageChange(pagination.page - 1)}
+            >
+              Previous
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Page {pagination.page} of {pagination.totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pagination.page >= pagination.totalPages}
+              onClick={() => pagination.onPageChange(pagination.page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        )}
       </div>
-
-      {/* Expanded row content */}
-      {expandedRowId && (
-        <div className="mt-2">
-          {(() => {
-            const event = events.find((e) => e.id === expandedRowId)
-            if (!event?.metaPayload) return null
-            return <RawPayloadViewer payload={event.metaPayload} />
-          })()}
-        </div>
-      )}
-
-      {/* Pagination */}
-      {pagination && pagination.totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={pagination.page <= 1}
-            onClick={() => pagination.onPageChange(pagination.page - 1)}
-          >
-            Previous
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            Page {pagination.page} of {pagination.totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={pagination.page >= pagination.totalPages}
-            onClick={() => pagination.onPageChange(pagination.page + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      )}
-    </div>
+    </TooltipProvider>
   )
 }

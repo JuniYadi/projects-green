@@ -100,9 +100,14 @@ export default function PortalWhatsAppWebhookLogsPage() {
 
         const orgBody = orgRes.data as unknown as {
           ok: boolean
-          organizations: OrganizationListItem[]
+          data?: { organizations: OrganizationListItem[] }
+          organizations?: OrganizationListItem[]
         }
-        if (orgBody.ok) setOrganizations(orgBody.organizations)
+        if (orgBody.ok) {
+          const orgList =
+            orgBody.data?.organizations ?? orgBody.organizations ?? []
+          setOrganizations(orgList)
+        }
       } catch (err) {
         console.error("Failed to load filters:", err)
       }
@@ -235,6 +240,8 @@ export default function PortalWhatsAppWebhookLogsPage() {
               isLoading={pageState === "loading"}
               error={pageState === "error" ? errorMessage : undefined}
               onRetry={handleRetry}
+              showPayload={true}
+              messageJourneyBasePath="/portal/whatsapp/messages"
               pagination={
                 meta.totalPages > 1
                   ? {

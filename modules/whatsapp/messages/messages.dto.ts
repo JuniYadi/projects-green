@@ -77,3 +77,56 @@ export function toWhatsappMessageDTO(
         : undefined,
   }
 }
+
+export type WhatsappMessageJourneyDTO = {
+  message: {
+    id: string
+    conversationId: string
+    direction: string
+    messageType: string
+    body: string | null
+    mediaUrl: string | null
+    waMessageId: string | null
+    metadata: Record<string, unknown> | null
+    createdAt: string
+  }
+  device: {
+    id: string
+    phoneNumber: string
+    name?: string | null
+    environment?: string | null
+  } | null
+  contact: {
+    phoneNumber: string
+    waId?: string | null
+  } | null
+  billing: {
+    category: string
+    quotaKey: string
+    status: string
+    createdAt: string
+  } | null
+  audit: {
+    adminId: string | null
+    actorName: string | null
+    action: string
+    ip: string | null
+    userAgent: string | null
+    origin: string
+    createdAt: string
+  } | null
+  timeline: Array<{
+    id: string
+    status: string
+    timestamp: string
+    error: string | null
+    label: string
+    description?: string
+  }>
+  webhooks: Array<{
+    id: string
+    eventType: string
+    processingStatus: string
+    createdAt: string
+  }>
+}

@@ -146,6 +146,80 @@ describe("webhookEventService", () => {
           whatsappDeviceId: "device-1",
           eventType: "inbound_message",
           metaPayload: { test: "payload" },
+          waMessageId: null,
+        },
+      })
+    })
+
+    it("persists the message ID extracted from webhook payloads", async () => {
+      mockPrisma.whatsappWebhookEvent.create.mockResolvedValue({
+        id: "event-with-message-id",
+      } as any)
+
+      await createWebhookEvent("org-1", "device-1", "inbound_message", {
+        id: "wamid_persisted",
+        from: "+628123456789",
+      })
+
+      expect(mockPrisma.whatsappWebhookEvent.create).toHaveBeenCalledWith({
+        data: {
+          organizationId: "org-1",
+          whatsappDeviceId: "device-1",
+          eventType: "inbound_message",
+          metaPayload: {
+            id: "wamid_persisted",
+            from: "+628123456789",
+          },
+          waMessageId: "wamid_persisted",
+        },
+      })
+    })
+    it("persists the message ID extracted from a full Meta webhook envelope", async () => {
+      mockPrisma.whatsappWebhookEvent.create.mockResolvedValue({
+        id: "event-with-envelope-message-id",
+      } as never)
+
+      const envelopePayload = {
+        object: "whatsapp_business_account",
+        entry: [
+          {
+            id: "waba-1",
+            changes: [
+              {
+                field: "messages",
+                value: {
+                  messaging_product: "whatsapp",
+                  metadata: {
+                    phone_number_id: "phone-1",
+                  },
+                  messages: [
+                    {
+                      id: "wamid_from_envelope",
+                      from: "+628123456789",
+                      type: "text",
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      }
+
+      await createWebhookEvent(
+        "org-1",
+        "device-1",
+        "inbound_message",
+        envelopePayload
+      )
+
+      expect(mockPrisma.whatsappWebhookEvent.create).toHaveBeenCalledWith({
+        data: {
+          organizationId: "org-1",
+          whatsappDeviceId: "device-1",
+          eventType: "inbound_message",
+          metaPayload: envelopePayload,
+          waMessageId: "wamid_from_envelope",
         },
       })
     })
@@ -184,6 +258,7 @@ describe("webhookEventService", () => {
           whatsappDeviceId: "device-1",
           eventType: "unknown",
           metaPayload: null,
+          waMessageId: null,
         },
       })
     })
@@ -459,7 +534,7 @@ describe("webhookEventService", () => {
       )
     })
 
-    it("excludes metaPayload from list DTO response", async () => {
+    it("includes metaPayload and metadata in list DTO response", async () => {
       mockPrisma.whatsappWebhookEvent.count.mockResolvedValue(1)
       mockPrisma.whatsappWebhookEvent.findMany.mockResolvedValue([
         {
@@ -473,12 +548,13 @@ describe("webhookEventService", () => {
         organizationId: "org-1",
       })
 
-      expect(result.data[0]).not.toHaveProperty("metaPayload")
+      expect(result.data[0]).toHaveProperty("metaPayload")
       // DTO fields should be present
       expect(result.data[0]).toHaveProperty("id")
       expect(result.data[0]).toHaveProperty("eventType")
       expect(result.data[0]).toHaveProperty("processingStatus")
       expect(result.data[0]).toHaveProperty("createdAt")
+      expect(result.data[0]).toHaveProperty("deliveryStatus")
     })
   })
 })

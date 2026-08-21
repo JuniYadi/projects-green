@@ -1,3 +1,4 @@
+import { getCachedUser } from "@/lib/workos-directory"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { Elysia } from "elysia"
 import { prisma } from "@/lib/prisma"
@@ -99,7 +100,7 @@ export const createWhatsappAuditRoutes = (
       const { page, limit, skip } = getPagination(query as any)
       const where = buildWhere(query as any)
 
-      const [total, logs] = await Promise.all([
+      const [total, rawLogs] = await Promise.all([
         prisma.whatsappAuditLog.count({ where }),
         prisma.whatsappAuditLog.findMany({
           where,
@@ -108,7 +109,55 @@ export const createWhatsappAuditRoutes = (
           take: limit,
         }),
       ])
+      const deviceIds = [
+        ...new Set(
+          rawLogs
+            .map((l) => l.deviceId)
+            .filter((id): id is string => Boolean(id))
+        ),
+      ]
+      const adminIds = [
+        ...new Set(
+          rawLogs
+            .map((l) => l.adminId)
+            .filter((id): id is string => Boolean(id && id.startsWith("user_")))
+        ),
+      ]
 
+      const [devices, userEntries] = await Promise.all([
+        deviceIds.length > 0
+          ? prisma.whatsappDevice.findMany({
+              where: { id: { in: deviceIds } },
+              select: { id: true, phoneNumber: true },
+            })
+          : [],
+        Promise.all(
+          adminIds.map(async (id) => {
+            const u = await getCachedUser(id)
+            return [id, u] as const
+          })
+        ),
+      ])
+
+      const deviceMap = new Map(devices.map((d) => [d.id, d.phoneNumber]))
+      const userMap = new Map(
+        userEntries.filter(([, u]) => Boolean(u)).map(([id, u]) => [id, u!])
+      )
+
+      const logs = rawLogs.map((log) => {
+        const user = log.adminId ? userMap.get(log.adminId) : null
+        return {
+          ...log,
+          deviceLabel: log.deviceId
+            ? (deviceMap.get(log.deviceId) ?? log.deviceId)
+            : null,
+          actorName:
+            user?.name ??
+            user?.email ??
+            (log.adminId ? log.adminId.slice(0, 10) : null),
+          actorEmail: user?.email ?? null,
+        }
+      })
       return {
         ok: true,
         data: logs.map(toWhatsappAuditLogDTO),
@@ -182,7 +231,7 @@ export const consoleWhatsappAuditRoutes = new Elysia({ prefix: "/audit" })
     const { page, limit, skip } = getPagination(query)
     const where = buildWhere(query, auth.organizationId)
 
-    const [total, logs] = await Promise.all([
+    const [total, rawLogs] = await Promise.all([
       prisma.whatsappAuditLog.count({ where }),
       prisma.whatsappAuditLog.findMany({
         where,
@@ -191,6 +240,54 @@ export const consoleWhatsappAuditRoutes = new Elysia({ prefix: "/audit" })
         take: limit,
       }),
     ])
+
+    const deviceIds = [
+      ...new Set(
+        rawLogs.map((l) => l.deviceId).filter((id): id is string => Boolean(id))
+      ),
+    ]
+    const adminIds = [
+      ...new Set(
+        rawLogs
+          .map((l) => l.adminId)
+          .filter((id): id is string => Boolean(id && id.startsWith("user_")))
+      ),
+    ]
+
+    const [devices, userEntries] = await Promise.all([
+      deviceIds.length > 0
+        ? prisma.whatsappDevice.findMany({
+            where: { id: { in: deviceIds } },
+            select: { id: true, phoneNumber: true },
+          })
+        : [],
+      Promise.all(
+        adminIds.map(async (id) => {
+          const u = await getCachedUser(id)
+          return [id, u] as const
+        })
+      ),
+    ])
+
+    const deviceMap = new Map(devices.map((d) => [d.id, d.phoneNumber]))
+    const userMap = new Map(
+      userEntries.filter(([, u]) => Boolean(u)).map(([id, u]) => [id, u!])
+    )
+
+    const logs = rawLogs.map((log) => {
+      const user = log.adminId ? userMap.get(log.adminId) : null
+      return {
+        ...log,
+        deviceLabel: log.deviceId
+          ? (deviceMap.get(log.deviceId) ?? log.deviceId)
+          : null,
+        actorName:
+          user?.name ??
+          user?.email ??
+          (log.adminId ? log.adminId.slice(0, 10) : null),
+        actorEmail: user?.email ?? null,
+      }
+    })
 
     return {
       ok: true,

@@ -80,13 +80,14 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
 
   const loadDevices = React.useCallback(async () => {
     try {
-      const { data, error } = await eden.api.whatsapp.devices.get()
-      if (error) throw new Error(String(error))
-      const result = data as unknown as {
+      const res = await eden.api.whatsapp.devices.get()
+      const body = res.data as unknown as {
         ok: boolean
-        devices: DeviceListItem[]
+        devices?: DeviceListItem[]
+      } | null
+      if (body?.ok && Array.isArray(body.devices)) {
+        setDevices(body.devices)
       }
-      setDevices(result.devices)
     } catch (err) {
       console.error("Failed to load devices:", err)
     }
@@ -207,7 +208,7 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!devices.length && pageState !== "error" ? (
+          {pageState === "loaded" && !devices.length && !events.length ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <p className="text-sm text-muted-foreground">
                 {messages.console.whatsapp.webhookLogs.noDevices}

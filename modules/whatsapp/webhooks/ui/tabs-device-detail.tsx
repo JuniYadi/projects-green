@@ -84,11 +84,18 @@ type TabsDeviceDetailProps = {
   overviewChildren: React.ReactNode
   actions?: React.ReactNode
   metaWebhook?: MetaWebhookInfo | null
+  messageJourneyBasePath?: string
 }
 
 // ─── Webhook Log Tab Content ─────────────────────────────────────────────────
 
-function WebhookLogTabContent({ deviceId }: { deviceId: string }) {
+function WebhookLogTabContent({
+  deviceId,
+  messageJourneyBasePath,
+}: {
+  deviceId: string
+  messageJourneyBasePath: string
+}) {
   const [events, setEvents] = React.useState<WebhookEventDTO[]>([])
   const [meta, setMeta] = React.useState<{
     total: number
@@ -181,6 +188,7 @@ function WebhookLogTabContent({ deviceId }: { deviceId: string }) {
         isLoading={pageState === "loading"}
         error={pageState === "error" ? errorMessage : undefined}
         onRetry={handleRetry}
+        messageJourneyBasePath={messageJourneyBasePath}
         pagination={
           meta.totalPages > 1
             ? {
@@ -203,6 +211,7 @@ export function TabsDeviceDetail({
   overviewChildren,
   actions,
   metaWebhook,
+  messageJourneyBasePath = "/console/whatsapp/messages",
 }: TabsDeviceDetailProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -290,7 +299,10 @@ export function TabsDeviceDetail({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <WebhookLogTabContent deviceId={device.id} />
+              <WebhookLogTabContent
+                deviceId={device.id}
+                messageJourneyBasePath={messageJourneyBasePath}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -320,7 +332,10 @@ export function TabsDeviceDetail({
               <CardDescription>Admin actions for this device.</CardDescription>
             </CardHeader>
             <CardContent>
-              <AuditLogTabContent deviceId={device.id} />
+              <AuditLogTabContent
+                deviceId={device.id}
+                messageJourneyBasePath={messageJourneyBasePath}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -609,7 +624,13 @@ function TemplateTabContent({ deviceId }: { deviceId: string }) {
   )
 }
 
-function AuditLogTabContent({ deviceId }: { deviceId: string }) {
+function AuditLogTabContent({
+  deviceId,
+  messageJourneyBasePath,
+}: {
+  deviceId: string
+  messageJourneyBasePath: string
+}) {
   const [logs, setLogs] = React.useState<AuditLogDTO[]>([])
   const [page, setPage] = React.useState(1)
   const [totalPages, setTotalPages] = React.useState(0)
@@ -659,6 +680,7 @@ function AuditLogTabContent({ deviceId }: { deviceId: string }) {
       isLoading={pageState === "loading"}
       error={pageState === "error" ? errorMessage : undefined}
       onRetry={handleRetry}
+      messageJourneyBasePath={messageJourneyBasePath}
       pagination={
         totalPages > 1
           ? { page, totalPages, total, onPageChange: handlePageChange }

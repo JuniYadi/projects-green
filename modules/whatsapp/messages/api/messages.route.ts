@@ -1,3 +1,4 @@
+import { getCachedUser } from "@/lib/workos-directory"
 import { Elysia, t } from "elysia"
 import type { InteractivePayload } from "@/lib/whatsapp/meta-cloud/types"
 import { prisma } from "@/lib/prisma"
@@ -1005,6 +1006,263 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       return {
         ok: true,
         mediaUrl: message.mediaUrl,
+      }
+    }
+  )
+  .get(
+    "/journey/:waMessageId",
+    async ({ request, params: { waMessageId }, set }: any) => {
+      const auth = await resolveAuthContext(request)
+      if (!auth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      if (!auth.organizationId) {
+        set.status = 403
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "Organization required.",
+        }
+      }
+
+      const decodedWamid = decodeURIComponent(waMessageId)
+
+      // 1. Query message record
+      const message = await prisma.whatsappMessage.findFirst({
+        where: {
+          waMessageId: decodedWamid,
+          conversation: {
+            organizationId: auth.organizationId,
+          },
+        },
+        include: {
+          conversation: {
+            include: {
+              whatsappDevice: true,
+            },
+          },
+          statusHistory: {
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      })
+
+      // 2. Query billing ledger
+      const billingLedger = await prisma.whatsappBillingLedger.findFirst({
+        where: {
+          waMessageId: decodedWamid,
+          organizationId: auth.organizationId,
+        },
+      })
+
+      // 3. Query audit log by structured message ID.
+      // Message text can contain a wamid from an unrelated message and create
+      // a false journey link.
+      const auditLog = await prisma.whatsappAuditLog.findFirst({
+        where: {
+          organizationId: auth.organizationId,
+          details: { path: ["waMessageId"], equals: decodedWamid },
+        },
+        orderBy: { createdAt: "asc" },
+      })
+
+      // 4. Query webhook events
+      const webhookEvents = await prisma.whatsappWebhookEvent.findMany({
+        where: {
+          waMessageId: decodedWamid,
+          organizationId: auth.organizationId,
+        },
+        orderBy: { createdAt: "asc" },
+      })
+
+      if (
+        !message &&
+        !billingLedger &&
+        webhookEvents.length === 0 &&
+        !auditLog
+      ) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Message not found" }
+      }
+
+      // Build chronological timeline
+      const timeline: Array<{
+        id: string
+        status: string
+        timestamp: string
+        error: string | null
+        label: string
+        description?: string
+      }> = []
+
+      // The message record is the initiation event. Billing may be reserved
+      // before it, so sorting below can intentionally place billing first.
+      const createdAt =
+        message?.createdAt ??
+        auditLog?.createdAt ??
+        billingLedger?.createdAt ??
+        new Date()
+      timeline.push({
+        id: "step-initiation",
+        status: "INITIATED",
+        timestamp: createdAt.toISOString(),
+        error: null,
+        label: "Message Initiated",
+        description:
+          auditLog?.message ??
+          (message
+            ? `Direction: ${message.direction}`
+            : "Webhook event received"),
+      })
+
+      // Billing Step
+      if (billingLedger) {
+        timeline.push({
+          id: `step-billing-${billingLedger.id}`,
+          status: billingLedger.status,
+          timestamp: billingLedger.createdAt.toISOString(),
+          error: null,
+          label: "Quota & Billing Recorded",
+          description: `Category: ${billingLedger.category} · Status: ${billingLedger.status}`,
+        })
+      }
+
+      // Status History Steps
+      if (message?.statusHistory && message.statusHistory.length > 0) {
+        for (const st of message.statusHistory) {
+          timeline.push({
+            id: st.id,
+            status: st.status,
+            timestamp: (st.timestamp ?? st.createdAt).toISOString(),
+            error: st.error ?? null,
+            label: `Delivery Status: ${st.status}`,
+            description: st.error ? `Error: ${st.error}` : undefined,
+          })
+        }
+      }
+
+      // Webhook Dispatch Steps
+      for (const we of webhookEvents) {
+        timeline.push({
+          id: `step-webhook-${we.id}`,
+          status: we.processingStatus,
+          timestamp: we.createdAt.toISOString(),
+          error: we.errorMessage ?? null,
+          label: `Webhook Received (${we.eventType})`,
+          description: `Processing: ${we.processingStatus}`,
+        })
+      }
+      timeline.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp))
+
+      const device = message?.conversation.whatsappDevice
+      const auditDetails =
+        auditLog?.details && typeof auditLog.details === "object"
+          ? (auditLog.details as Record<string, unknown>)
+          : null
+      const contactPhone =
+        message?.conversation.contactPhone ??
+        billingLedger?.phoneNumber ??
+        (typeof auditDetails?.phoneNumber === "string"
+          ? auditDetails.phoneNumber
+          : "")
+
+      let origin = "Direct API"
+      if (auditLog) {
+        if (
+          auditLog.userAgent &&
+          /mozilla|chrome|safari|firefox/i.test(auditLog.userAgent)
+        ) {
+          origin = "Console UI"
+        } else if (auditLog.action === "BROADCAST_SENT") {
+          origin = "Broadcast Campaign"
+        } else {
+          origin = "API Key Request"
+        }
+      }
+
+      const deviceProfile =
+        device?.whatsappProfile && typeof device.whatsappProfile === "object"
+          ? (device.whatsappProfile as Record<string, unknown>)
+          : null
+
+      const auditActor = auditLog?.adminId
+        ? await getCachedUser(auditLog.adminId)
+        : null
+      return {
+        ok: true,
+        data: {
+          message: message
+            ? {
+                id: message.id,
+                conversationId: message.conversationId,
+                direction: message.direction,
+                messageType: message.messageType,
+                body: message.body,
+                mediaUrl: message.mediaUrl,
+                waMessageId: message.waMessageId,
+                metadata: message.metadata as Record<string, unknown> | null,
+                createdAt: message.createdAt.toISOString(),
+              }
+            : {
+                id: "",
+                conversationId: "",
+                direction: "OUTBOX",
+                messageType: "template",
+                body: auditLog?.message ?? "Message",
+                mediaUrl: null,
+                waMessageId: decodedWamid,
+                metadata: auditDetails,
+                createdAt: createdAt.toISOString(),
+              },
+          device: device
+            ? {
+                id: device.id,
+                phoneNumber: device.phoneNumber,
+                name:
+                  typeof deviceProfile?.name === "string"
+                    ? deviceProfile.name
+                    : null,
+                environment: null,
+              }
+            : null,
+          contact: contactPhone
+            ? {
+                phoneNumber: contactPhone,
+                waId: null,
+              }
+            : null,
+          billing: billingLedger
+            ? {
+                category: billingLedger.category,
+                quotaKey: billingLedger.quotaKey,
+                status: billingLedger.status,
+                createdAt: billingLedger.createdAt.toISOString(),
+              }
+            : null,
+          audit: auditLog
+            ? {
+                adminId: auditLog.adminId,
+                actorName: auditLog.adminId
+                  ? (auditActor?.name ??
+                    auditActor?.email ??
+                    auditLog.adminId.slice(0, 10))
+                  : "System",
+                action: auditLog.action,
+                ip: auditLog.ip,
+                userAgent: auditLog.userAgent,
+                origin,
+                createdAt: auditLog.createdAt.toISOString(),
+              }
+            : null,
+          timeline,
+          webhooks: webhookEvents.map((w) => ({
+            id: w.id,
+            eventType: w.eventType,
+            processingStatus: w.processingStatus,
+            createdAt: w.createdAt.toISOString(),
+          })),
+        },
       }
     }
   )

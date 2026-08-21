@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { selectSmokeProjects } from "./test-suites"
+import { findFeatureMappings, selectSmokeProjects } from "./test-suites"
 
 describe("selectSmokeProjects", () => {
   test("selects the mapped Deploy smoke project", () => {
@@ -47,6 +47,28 @@ describe("selectSmokeProjects", () => {
     })
   })
 
+  test("maps WhatsApp audit sources to their route tests", () => {
+    expect(
+      findFeatureMappings("app/[lang]/portal/whatsapp/audit-logs/page.tsx")
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "whatsapp-audit-logs",
+          sourcePrefixes: [
+            "app/[lang]/console/whatsapp/audit-logs/",
+            "app/[lang]/portal/whatsapp/audit-logs/",
+            "modules/whatsapp/audit/",
+          ],
+          testPrefixes: [
+            "app/[lang]/console/whatsapp/audit-logs/",
+            "app/[lang]/portal/whatsapp/audit-logs/",
+            "modules/whatsapp/audit/",
+          ],
+          smokeProjects: ["smoke-portal"],
+        }),
+      ])
+    )
+  })
   test("reports an unmapped UI feature instead of running nothing", () => {
     const selection = selectSmokeProjects([
       "modules/new-feature/ui/new-page.tsx",

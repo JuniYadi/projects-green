@@ -38,6 +38,21 @@ describe("buildAppBreadcrumbItems", () => {
     ])
   })
 
+  it("labels WhatsApp message wamid detail route as Message Journey", () => {
+    expect(
+      buildAppBreadcrumbItems({
+        pathname:
+          "/en/console/whatsapp/messages/wamid.HBgNNjI4NTcwODI5NjQ4MhUCABEYEjQ0OTIwNDE3N0U2N0VGQkY5NAA=",
+        rootSegment: "console",
+      })
+    ).toEqual([
+      { label: "Console", href: "/en/console" },
+      { label: "WhatsApp", href: "/en/console/whatsapp" },
+      { label: "Messages", href: "/en/console/whatsapp/messages" },
+      { label: "Message Journey", href: undefined },
+    ])
+  })
+
   it("labels the portal VPN subscriptions route as operations", () => {
     expect(
       buildAppBreadcrumbItems({
@@ -98,6 +113,19 @@ describe("buildAppBreadcrumbItems", () => {
       { label: "Admin", href: "/en/portal/admin" },
       { label: "Organizations", href: "/en/portal/admin/organizations" },
       { label: "Organization Detail", href: undefined },
+    ])
+  })
+  it("keeps long named route segments as readable page labels", () => {
+    expect(
+      buildAppBreadcrumbItems({
+        pathname:
+          "/en/portal/whatsapp/super-long-page-name-that-is-not-a-detail",
+        rootSegment: "portal",
+      })
+    ).toEqual([
+      { label: "Portal", href: "/en/portal" },
+      { label: "WhatsApp", href: "/en/portal/whatsapp" },
+      { label: "Super Long Page Name That Is Not A Detail", href: undefined },
     ])
   })
 

@@ -13,6 +13,9 @@ const sampleEvents: WebhookEventDTO[] = [
     id: "evt_1",
     eventType: "inbound_message",
     processingStatus: "SUCCESS",
+    deliveryStatus: "RECEIVED",
+    phoneNumber: "+628123456789",
+    deviceLabel: "+6283138855774",
     createdAt: "2026-06-17T12:00:00.000Z",
     waMessageId: "wamid_abc123",
     metaPayload: { type: "text", text: "Hello", sender: "user_1" },
@@ -21,6 +24,9 @@ const sampleEvents: WebhookEventDTO[] = [
     id: "evt_2",
     eventType: "status_update",
     processingStatus: "FAILED",
+    deliveryStatus: "FAILED",
+    phoneNumber: "+628123456789",
+    deviceLabel: "+6283138855774",
     createdAt: "2026-06-17T12:01:00.000Z",
     waMessageId: null,
     metaPayload: { error: "timeout", code: 504 },
@@ -29,6 +35,9 @@ const sampleEvents: WebhookEventDTO[] = [
     id: "evt_3",
     eventType: "unknown_type",
     processingStatus: "PENDING",
+    deliveryStatus: "READ",
+    phoneNumber: "+628123456789",
+    deviceLabel: "+6283138855774",
     createdAt: "2026-06-17T12:02:00.000Z",
     waMessageId: "wamid_def456",
     // metaPayload intentionally omitted — row has no payload to show
@@ -115,15 +124,14 @@ describe("WebhookEventTable", () => {
       expect(getByText("Status Update")).toBeTruthy()
       expect(getByText("unknown_type")).toBeTruthy()
     })
-
     it("renders all events with correct status badges", () => {
       const { getByText } = render(
         <WebhookEventTable events={sampleEvents} isLoading={false} />
       )
 
-      expect(getByText("SUCCESS")).toBeTruthy()
+      expect(getByText("RECEIVED")).toBeTruthy()
       expect(getByText("FAILED")).toBeTruthy()
-      expect(getByText("PENDING")).toBeTruthy()
+      expect(getByText("READ")).toBeTruthy()
     })
 
     it("displays WA message IDs and placeholder for missing ones", () => {
@@ -137,7 +145,44 @@ describe("WebhookEventTable", () => {
       expect(container.textContent).toContain("—")
     })
 
-    it("maps processingStatus to correct Badge variant classes", () => {
+    it("uses the supplied journey base path", () => {
+      const { getByText } = render(
+        <WebhookEventTable
+          events={sampleEvents}
+          isLoading={false}
+          messageJourneyBasePath="/portal/whatsapp/messages"
+        />
+      )
+
+      expect(getByText("wamid_abc123").getAttribute("href")).toBe(
+        "/portal/whatsapp/messages/wamid_abc123"
+      )
+    })
+
+    it("copies full WA Message ID to clipboard when clicked", async () => {
+      const writeTextMock = mock(() => Promise.resolve())
+      Object.defineProperty(navigator, "clipboard", {
+        value: { writeText: writeTextMock },
+        writable: true,
+        configurable: true,
+      })
+
+      const { getByText } = render(
+        <WebhookEventTable events={sampleEvents} isLoading={false} />
+      )
+
+      const link = getByText("wamid_abc123")
+      expect(link.getAttribute("href")).toContain("wamid_abc123")
+
+      const parent = link.parentElement
+      expect(parent).toBeTruthy()
+      const copyBtn = parent?.querySelector("button")
+      expect(copyBtn).toBeTruthy()
+      if (copyBtn) fireEvent.click(copyBtn)
+      expect(writeTextMock).toHaveBeenCalledWith("wamid_abc123")
+    })
+
+    it("maps deliveryStatus to correct Badge variant classes", () => {
       const { container } = render(
         <WebhookEventTable events={sampleEvents} isLoading={false} />
       )
@@ -146,16 +191,17 @@ describe("WebhookEventTable", () => {
       const badges = container.querySelectorAll('[class*="group/badge"]')
       expect(badges.length).toBe(3)
 
-      // evt_1: SUCCESS → success variant → bg-emerald-500/10
-      expect(badges[0].className).toContain("emerald")
+      // evt_1: RECEIVED
+      expect(badges[0].textContent).toContain("RECEIVED")
 
-      // evt_2: FAILED → destructive variant → bg-destructive
+      // evt_2: FAILED → destructive variant
       expect(badges[1].className).toContain("destructive")
+      expect(badges[1].textContent).toContain("FAILED")
 
-      // evt_3: PENDING → warning variant → bg-amber-500/10
-      expect(badges[2].className).toContain("amber")
+      // evt_3: READ → success variant with emerald
+      expect(badges[2].className).toContain("emerald")
+      expect(badges[2].textContent).toContain("READ")
     })
-
     it("renders formatted timestamps", () => {
       const { container } = render(
         <WebhookEventTable events={sampleEvents} isLoading={false} />
@@ -166,46 +212,36 @@ describe("WebhookEventTable", () => {
       expect(container.textContent).toContain("2026")
     })
   })
-
   describe("expandable row", () => {
-    it("toggles raw payload viewer when a row with metaPayload is clicked", () => {
-      const { container } = render(
-        <WebhookEventTable events={sampleEvents} isLoading={false} />
+    it("toggles raw payload viewer when showPayload is true and row is clicked", () => {
+      const { container, getByRole } = render(
+        <WebhookEventTable
+          events={sampleEvents}
+          isLoading={false}
+          showPayload={true}
+        />
       )
-
-      // No viewer initially
-      expect(container.querySelector("details")).toBeNull()
 
       // Click the first row (evt_1 — has metaPayload)
       const rows = container.querySelectorAll("tbody tr")
-      expect(rows.length).toBe(3)
-
       fireEvent.click(rows[0])
 
-      // Viewer should now appear
-      const details = container.querySelector("details")
-      expect(details).toBeTruthy()
-      // The preview text should be visible (first 120 chars of stringified JSON)
-      expect(container.textContent).toContain('"type"')
-      expect(container.textContent).toContain('"text"')
-
-      // Click the same row again to collapse
-      fireEvent.click(rows[0])
-      expect(container.querySelector("details")).toBeNull()
+      // RawPayloadViewer should now be mounted with Copy button
+      expect(getByRole("button", { name: /copy payload/i })).toBeTruthy()
     })
-
-    it("does not show viewer when expanded row has no metaPayload", () => {
-      const { container } = render(
-        <WebhookEventTable events={sampleEvents} isLoading={false} />
+    it("does not toggle raw payload when showPayload is false", () => {
+      const { container, queryByText } = render(
+        <WebhookEventTable
+          events={sampleEvents}
+          isLoading={false}
+          showPayload={false}
+        />
       )
 
-      // Click the third row (evt_3 — no metaPayload)
       const rows = container.querySelectorAll("tbody tr")
+      fireEvent.click(rows[0])
 
-      fireEvent.click(rows[2])
-
-      // No details element because metaPayload is undefined
-      expect(container.querySelector("details")).toBeNull()
+      expect(queryByText("Payload")).toBeNull()
     })
   })
 

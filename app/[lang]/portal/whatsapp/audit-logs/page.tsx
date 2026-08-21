@@ -251,6 +251,8 @@ export default function PortalWhatsAppAuditLogsPage() {
         isLoading={pageState === "loading"}
         error={pageState === "error" ? errorMessage : undefined}
         onRetry={retry}
+        showPayload={true}
+        messageJourneyBasePath="/portal/whatsapp/messages"
         pagination={
           totalPages > 1
             ? { page, totalPages, total, onPageChange: handlePageChange }

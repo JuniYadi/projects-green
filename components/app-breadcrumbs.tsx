@@ -59,8 +59,8 @@ const DETAIL_LABELS_BY_PARENT: Record<string, string> = {
   organizations: "Organization Detail",
   "support-tickets": "Support Ticket Detail",
   templates: "Template Detail",
+  messages: "Message Journey",
 }
-
 const NEW_LABELS_BY_PARENT: Record<string, string> = {
   templates: "New Template",
 }
@@ -163,12 +163,12 @@ function isDetailSegment(segment: string): boolean {
   return (
     /^\d+$/.test(segment) ||
     /^[a-z0-9]+_[a-z0-9]+$/i.test(segment) ||
+    /^wamid\./i.test(segment) ||
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
       segment
     )
   )
 }
-
 function toTitleCase(segment: string): string {
   return segment
     .split("-")
