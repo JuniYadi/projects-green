@@ -547,16 +547,20 @@ export default function WhatsAppPricingPage() {
                                 curr && curr.trim()
                                   ? curr.trim().toUpperCase()
                                   : "IDR"
-                              const isUsd = currencyCode === "USD"
-                              return new Intl.NumberFormat(
-                                isUsd ? "en-US" : "id-ID",
-                                {
-                                  style: "currency",
-                                  currency: currencyCode,
-                                  minimumFractionDigits: isUsd ? 2 : 0,
-                                  maximumFractionDigits: isUsd ? 2 : 0,
-                                }
-                              ).format(num)
+                              const isIdr = currencyCode === "IDR"
+                              const localeForCurrency = isIdr
+                                ? "id-ID"
+                                : currencyCode === "EUR"
+                                  ? "de-DE"
+                                  : currencyCode === "GBP"
+                                    ? "en-GB"
+                                    : "en-US"
+                              return new Intl.NumberFormat(localeForCurrency, {
+                                style: "currency",
+                                currency: currencyCode,
+                                minimumFractionDigits: isIdr ? 0 : 2,
+                                maximumFractionDigits: isIdr ? 0 : 2,
+                              }).format(num)
                             }
 
                             const pBase = formatPrice(

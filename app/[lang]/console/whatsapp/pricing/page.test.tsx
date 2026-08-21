@@ -184,4 +184,45 @@ describe("WhatsAppPricingPage", () => {
       expect(view.getByText("$0.04")).toBeInTheDocument()
     })
   })
+
+  it("formats EUR and GBP currencies appropriately with fractional precision", async () => {
+    mockPricing.mockResolvedValueOnce({
+      ok: true,
+      devices: [
+        {
+          deviceId: "device-eu",
+          phoneNumber: "+4915123456789",
+          country: "DE",
+          rateTier: "BASE",
+          quotaRemaining: 10,
+          categories: [
+            {
+              category: "MARKETING",
+              quotaCredit: "1.50",
+              configured: true,
+              description: "Marketing template",
+              currency: "EUR",
+              overagePrice: "12.50",
+              tierPrices: {
+                BASE: "12.50",
+                TIER_1: "11.25",
+                TIER_2: "10.00",
+                TIER_3: "8.75",
+              },
+            },
+          ],
+        },
+      ],
+      overage: {
+        unitPrice: "12.50",
+        currency: "EUR",
+        configured: true,
+      },
+    })
+    const view = renderWithQuery(<WhatsAppPricingPage />)
+    await waitFor(() => {
+      expect(view.getByText(/12,50\s*€/)).toBeInTheDocument()
+      expect(view.getByText(/11,25\s*€/)).toBeInTheDocument()
+    })
+  })
 })
