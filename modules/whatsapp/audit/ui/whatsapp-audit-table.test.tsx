@@ -46,4 +46,15 @@ describe("AuditLogTable", () => {
     const html = renderToString(<AuditLogTable logs={[]} isLoading={false} />)
     expect(html).toContain("No audit logs found")
   })
+  it("uses the portal message journey path when provided", () => {
+    const html = renderToString(
+      <AuditLogTable
+        logs={[{ ...mockLog, details: { waMessageId: "wamid.123" } }]}
+        isLoading={false}
+        messageJourneyBasePath="/portal/whatsapp/messages"
+      />
+    )
+
+    expect(html).toContain('href="/portal/whatsapp/messages/wamid.123"')
+  })
 })
