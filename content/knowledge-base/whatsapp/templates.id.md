@@ -31,18 +31,18 @@ graph TD
 
 ---
 
-## 1. Perbandingan Kategori Template, Tujuan & Tarif Harga
+## 1. Perbandingan Kategori Template, Tujuan & Pengali Kuota
 
-Meta membagi template pesan WhatsApp Business ke dalam **tiga kategori utama**, masing-masing dengan tarif biaya, pengali kuota saldo, dan batasan penggunaan yang berbeda:
+Meta membagi template pesan WhatsApp Business ke dalam **tiga kategori utama**, masing-masing dengan cakupan tujuan khusus dan pengali pemotongan kuota (*quota credit multiplier*):
 
-| Kategori | Tujuan Utama | Tarif Dasar (IDR / pesan) | Pengali Kuota | Contoh Penggunaan |
-| :--- | :--- | :--- | :--- | :--- |
-| **`UTILITY`** | Notifikasi transaksi spesifik yang dipicu oleh tindakan pengguna atau transaksi berjalan. | **Rp 357** | **1.0x** | Konfirmasi pesanan, nomor resi pengiriman, tagihan invoice, pengingat janji temu. |
-| **`AUTHENTICATION`** | Verifikasi identitas dan keamanan akun menggunakan kode OTP (*One-Time Password*). | **Rp 357** | **1.5x** | Kode verifikasi login, reset password, autentikasi dua faktor (2FA). |
-| **`MARKETING`** | Pesan promosi, pengumuman produk baru, penawaran diskon, retargeting, dan pesan sambutan. | **Rp 587** | **2.0x** | Peluncuran produk, voucher belanja, abandoned cart recovery, promo akhir bulan. |
+| Kategori | Tujuan Utama | Pengali Kuota Saldo | Contoh Penggunaan |
+| :--- | :--- | :--- | :--- |
+| **`UTILITY`** | Notifikasi transaksi spesifik yang dipicu oleh tindakan pengguna atau transaksi berjalan. | **1.0x** | Konfirmasi pesanan, nomor resi pengiriman, tagihan invoice, pengingat janji temu. |
+| **`AUTHENTICATION`** | Verifikasi identitas dan keamanan akun menggunakan kode OTP (*One-Time Password*). | **1.5x** | Kode verifikasi login, reset password, autentikasi dua faktor (2FA). |
+| **`MARKETING`** | Pesan promosi, pengumuman produk baru, penawaran diskon, retargeting, dan pesan sambutan. | **2.0x** | Peluncuran produk, voucher belanja, abandoned cart recovery, promo akhir bulan. |
 
-> 💡 **Catatan Penagihan & Biaya:**
-> Pengurangan kuota saldo dihitung berdasarkan negara tujuan dan tarif kategori pesan. Template `MARKETING` memiliki tarif yang lebih tinggi dibandingkan `UTILITY` dan `AUTHENTICATION`.
+> 💡 **Informasi Tarif & Harga Real-Time:**
+> Rincian tarif harga per pesan aktual untuk setiap negara tujuan dan mata uang dikelola secara dinamis. Anda dapat melihat daftar harga resmi terkini langsung di Console melalui [**Tabel Harga WhatsApp**](/console/whatsapp/pricing).
 
 ---
 
