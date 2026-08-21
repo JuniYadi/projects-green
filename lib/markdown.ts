@@ -12,18 +12,29 @@ function escapeHtml(str: string): string {
 }
 
 export function renderMarkdownToHtml(markdown: string): string {
+  let htmlResult: string
+
   // If running in Bun runtime natively, use high-speed Bun.markdown.html
   if (
     typeof Bun !== "undefined" &&
     typeof (Bun as unknown as { markdown?: { html?: (s: string) => string } })
       .markdown?.html === "function"
   ) {
-    return (
+    htmlResult = (
       Bun as unknown as { markdown: { html: (s: string) => string } }
     ).markdown.html(markdown)
+  } else {
+    htmlResult = renderMarkdownFallback(markdown)
   }
 
-  return renderMarkdownFallback(markdown)
+  // Transform mermaid code blocks to pre.mermaid containers
+  htmlResult = htmlResult.replace(
+    /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/gi,
+    (_match, code) =>
+      `<div class="mermaid-container my-6 flex justify-center overflow-x-auto rounded-lg border border-border/50 bg-muted/20 p-4"><pre class="mermaid">${code}</pre></div>`
+  )
+
+  return htmlResult
 }
 
 /**
@@ -49,10 +60,17 @@ export function renderMarkdownFallback(markdown: string): string {
         codeContent = []
       } else {
         inCodeBlock = false
-        const escaped = escapeHtml(codeContent.join("\n"))
-        html.push(
-          `<pre><code class="language-${codeBlockLang}">${escaped}</code></pre>`
-        )
+        const rawCode = codeContent.join("\n")
+        if (codeBlockLang === "mermaid") {
+          html.push(
+            `<div class="mermaid-container my-6 flex justify-center overflow-x-auto rounded-lg border border-border/50 bg-muted/20 p-4"><pre class="mermaid">${escapeHtml(rawCode)}</pre></div>`
+          )
+        } else {
+          const escaped = escapeHtml(rawCode)
+          html.push(
+            `<pre><code class="language-${codeBlockLang}">${escaped}</code></pre>`
+          )
+        }
       }
       continue
     }
