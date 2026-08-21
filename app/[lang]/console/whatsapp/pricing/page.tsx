@@ -537,21 +537,44 @@ export default function WhatsAppPricingPage() {
                         <tbody className="divide-y">
                           {device.categories.map((cat) => {
                             const formatPrice = (
-                              val: string | null | undefined
+                              val: string | null | undefined,
+                              curr: string | null | undefined
                             ) => {
                               if (!val) return "—"
                               const num = Number(val)
                               if (!Number.isFinite(num)) return "—"
-                              return `Rp ${num.toLocaleString("id-ID")}`
+                              const currencyCode =
+                                curr && curr.trim()
+                                  ? curr.trim().toUpperCase()
+                                  : "IDR"
+                              const isUsd = currencyCode === "USD"
+                              return new Intl.NumberFormat(
+                                isUsd ? "en-US" : "id-ID",
+                                {
+                                  style: "currency",
+                                  currency: currencyCode,
+                                  minimumFractionDigits: isUsd ? 2 : 0,
+                                  maximumFractionDigits: isUsd ? 2 : 0,
+                                }
+                              ).format(num)
                             }
 
                             const pBase = formatPrice(
-                              cat.tierPrices?.BASE ?? cat.overagePrice
+                              cat.tierPrices?.BASE ?? cat.overagePrice,
+                              cat.currency
                             )
-                            const pTier1 = formatPrice(cat.tierPrices?.TIER_1)
-                            const pTier2 = formatPrice(cat.tierPrices?.TIER_2)
-                            const pTier3 = formatPrice(cat.tierPrices?.TIER_3)
-
+                            const pTier1 = formatPrice(
+                              cat.tierPrices?.TIER_1,
+                              cat.currency
+                            )
+                            const pTier2 = formatPrice(
+                              cat.tierPrices?.TIER_2,
+                              cat.currency
+                            )
+                            const pTier3 = formatPrice(
+                              cat.tierPrices?.TIER_3,
+                              cat.currency
+                            )
                             return (
                               <tr
                                 key={cat.category}

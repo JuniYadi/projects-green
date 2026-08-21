@@ -6,6 +6,7 @@ export type WhatsappMessagePricingCategoryDTO = {
   quotaCredit: string
   configured: boolean
   description: string | null
+  currency: string | null
   overagePrice: string | null
   tierPrices: {
     BASE: string | null
@@ -49,6 +50,7 @@ export function toWhatsappMessagePricingDTO(
         quotaCredit: category.quotaCredit.toString(),
         configured: category.configured,
         description: category.description,
+        currency: category.currency ?? "IDR",
         overagePrice: category.overagePrice?.toString() ?? null,
         tierPrices: {
           BASE: category.tierPrices?.BASE?.toString() ?? null,

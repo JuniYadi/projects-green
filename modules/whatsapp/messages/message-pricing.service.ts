@@ -18,6 +18,7 @@ type QuotaCreditRate = {
   country: string
   quotaCredit: Prisma.Decimal
   description: string | null
+  currency?: string | null
   basePrice?: Prisma.Decimal | null
   overagePrice?: Prisma.Decimal | null
   feePercent?: number
@@ -182,13 +183,13 @@ export class WhatsappMessagePricingService {
               TIER_3: calcForMargin(5),
             }
           }
-
           return {
             category,
             country: device.country,
             quotaCredit: rate?.quotaCredit ?? DEFAULT_WHATSAPP_QUOTA_CREDIT,
             description: rate?.description ?? null,
             configured: Boolean(rate),
+            currency: bp?.currency ?? "IDR",
             basePrice,
             overagePrice,
             feePercent,

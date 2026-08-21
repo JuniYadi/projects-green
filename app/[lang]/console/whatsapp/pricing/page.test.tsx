@@ -19,6 +19,7 @@ const mockPricing = mock(() =>
             quotaCredit: "1.50",
             configured: true,
             description: "Marketing template",
+            currency: "IDR",
             overagePrice: "770",
             tierPrices: {
               BASE: "770",
@@ -32,6 +33,7 @@ const mockPricing = mock(() =>
             quotaCredit: "1.00",
             configured: false,
             description: null,
+            currency: "IDR",
             overagePrice: "469",
             tierPrices: {
               BASE: "469",
@@ -139,6 +141,47 @@ describe("WhatsAppPricingPage", () => {
     const view = renderWithQuery(<WhatsAppPricingPage />)
     await waitFor(() => {
       expect(view.getByText(/Quota Credit \(Exhausted\)/i)).toBeInTheDocument()
+    })
+  })
+
+  it("formats USD currency appropriately for non-IDR rates", async () => {
+    mockPricing.mockResolvedValueOnce({
+      ok: true,
+      devices: [
+        {
+          deviceId: "device-us",
+          phoneNumber: "+14155550100",
+          country: "US",
+          rateTier: "BASE",
+          quotaRemaining: 10,
+          categories: [
+            {
+              category: "MARKETING",
+              quotaCredit: "1.50",
+              configured: true,
+              description: "Marketing template",
+              currency: "USD",
+              overagePrice: "0.05",
+              tierPrices: {
+                BASE: "0.05",
+                TIER_1: "0.04",
+                TIER_2: "0.03",
+                TIER_3: "0.02",
+              },
+            },
+          ],
+        },
+      ],
+      overage: {
+        unitPrice: "0.05",
+        currency: "USD",
+        configured: true,
+      },
+    })
+    const view = renderWithQuery(<WhatsAppPricingPage />)
+    await waitFor(() => {
+      expect(view.getByText("$0.05")).toBeInTheDocument()
+      expect(view.getByText("$0.04")).toBeInTheDocument()
     })
   })
 })
