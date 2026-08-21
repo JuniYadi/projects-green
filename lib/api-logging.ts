@@ -1,23 +1,27 @@
 import { Elysia } from "elysia"
 import { logger } from "@/lib/logger"
-import type { ResolvedAuth } from "@/lib/auth/resolve-proxy-auth"
+import {
+  resolveAuthContext,
+  type ResolvedAuth,
+} from "@/lib/auth/resolve-proxy-auth"
 
 export type ApiRequestContext = {
   requestId: string
   startedAt: number
+  authPromise?: Promise<ResolvedAuth | null>
   auth?: ResolvedAuth | null
   body?: unknown
 }
 
 const requestContexts = new WeakMap<Request, ApiRequestContext>()
 
-const safeErrorCodes: Record<string, true> = {
-  UNKNOWN: true,
-  PARSE: true,
-  INTERNAL_SERVER_ERROR: true,
-  INVALID_COOKIE_SIGNATURE: true,
-  INVALID_FILE_TYPE: true,
-}
+const safeErrorCodes = new Set<string>([
+  "UNKNOWN",
+  "PARSE",
+  "INTERNAL_SERVER_ERROR",
+  "INVALID_COOKIE_SIGNATURE",
+  "INVALID_FILE_TYPE",
+])
 
 const sensitiveFieldMarker =
   /password|secret|token|key|authorization|cookie|credential|bearer|session/i
@@ -116,8 +120,7 @@ const statusCodeOf = (
 }
 
 const errorCodeOf = (code: unknown) =>
-  typeof code === "string" && safeErrorCodes[code] ? code : "UNKNOWN"
-
+  typeof code === "string" && safeErrorCodes.has(code) ? code : "UNKNOWN"
 const normalizeOrgRole = (role: string | null | undefined) => {
   if (!role) return null
   const slug = role.toLowerCase()
@@ -159,8 +162,11 @@ const extractCallerFromHeaders = (request?: Request): ResolvedAuth | null => {
 
   // Fast synchronous extraction from proxy headers (populated by AuthKit middleware / proxy)
   if (request.headers.get("x-workos-authed") === "true") {
-    const userId = request.headers.get("x-workos-user-id") ?? ""
-    const email = request.headers.get("x-workos-user-email") ?? null
+    const userId = request.headers.get("x-workos-user-id")?.trim()
+    if (!userId) {
+      return null
+    }
+    const email = request.headers.get("x-workos-user-email")?.trim() ?? null
     const organizationId =
       request.headers.get("x-workos-organization-id")?.trim() || null
     const orgRole = resolveOrgRoleFromHeaders(request)
@@ -293,10 +299,21 @@ export const createApiLoggingPlugin = () =>
   new Elysia({ name: "api-logging" })
     .onRequest(({ request }) => {
       const context = contextFor(request)
-      // Synchronously capture fast proxy auth if present
       const fastAuth = extractCallerFromHeaders(request)
       if (fastAuth) {
         context.auth = fastAuth
+      } else {
+        // Bounded background enrichment for direct cookie / API-key callers
+        const timeoutPromise = new Promise<null>((resolve) =>
+          setTimeout(() => resolve(null), 500)
+        )
+        context.authPromise = Promise.race([
+          resolveAuthContext(request).catch(() => null),
+          timeoutPromise,
+        ]).then((auth) => {
+          if (auth) context.auth = auth
+          return auth
+        })
       }
     })
     .onTransform(({ request, body }) => {
