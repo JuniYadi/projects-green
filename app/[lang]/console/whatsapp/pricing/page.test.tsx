@@ -1,8 +1,8 @@
+import "@/test/register"
 import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
 import * as React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-
 const mockPricing = mock(() =>
   Promise.resolve({
     ok: true,
@@ -44,6 +44,24 @@ mock.module("@/lib/api/whatsapp-client", () => ({
     messages: {
       pricing: mockPricing,
     },
+    usage: {
+      ledger: mock(() =>
+        Promise.resolve({
+          ok: true,
+          data: [],
+          total: 0,
+          totalPages: 1,
+          summary: {
+            totalCredits: 0,
+            totalRefundedCredits: 0,
+            activeCredits: 0,
+          },
+        })
+      ),
+    },
+    devices: {
+      list: mock(() => Promise.resolve({ ok: true, devices: [] })),
+    },
   },
 }))
 
@@ -67,10 +85,12 @@ describe("WhatsAppPricingPage", () => {
     mockPricing.mockClear()
   })
 
-  it("renders heading and pricing details", async () => {
+  it("renders heading, compact pricing details, and ledger section", async () => {
     const view = renderWithQuery(<WhatsAppPricingPage />)
-    expect(view.getByText("WhatsApp Pricing")).toBeInTheDocument()
-
+    expect(view.getByText(/WhatsApp Pricing/i)).toBeInTheDocument()
+    expect(
+      view.getByText(/Transaction & Deduction Ledger/i)
+    ).toBeInTheDocument()
     await waitFor(() => {
       expect(view.getByText("MARKETING")).toBeInTheDocument()
       expect(view.getByText("UTILITY")).toBeInTheDocument()
