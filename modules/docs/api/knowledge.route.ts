@@ -34,7 +34,7 @@ const STREAM_HEADERS = {
 
 const STRICT_KB_FALLBACK_MESSAGE =
   "I don't know from the current knowledgebase."
-const MIN_CONTEXT_SCORE = 12
+const MIN_CONTEXT_SCORE = 6
 
 export type KnowledgeAuthContext = {
   organizationId?: string | null
@@ -170,18 +170,24 @@ const streamKnowledgeAnswerDefault = (input: {
   return streamText({
     model: provider.chat(modelName),
     system: [
-      "You are a private product knowledgebase assistant.",
-      "Only answer from the provided knowledge documents.",
-      `If the documents are insufficient, reply exactly: "${STRICT_KB_FALLBACK_MESSAGE}"`,
-      "Keep answers concise and actionable.",
+      "You are 'Tanya P' (Ask P), the official intelligent docs and console assistant for PFNApp.",
+      "Answer accurately and directly using the provided knowledge documents.",
+      `If the documents are insufficient, reply politely or with "${STRICT_KB_FALLBACK_MESSAGE}".`,
+      "Formatting rules:",
+      "- When referencing console menus, pages, or guides, ALWAYS format them as markdown links, e.g. [Isi Ulang Saldo](/console/billing/topup) or [Panduan Billing](/docs/billing) or [Dasbor WhatsApp](/console/whatsapp/dashboard).",
+      "- Use step-by-step numbered lists (1., 2.) for action guides.",
+      "- Highlight key terms in **bold**.",
+      "- Keep answers concise, actionable, and friendly in the user's language.",
       "",
       "Knowledge documents:",
       createContextBlock(input.docs),
     ].join("\n"),
-    messages: input.messages.map((message) => ({
-      role: message.role,
-      content: message.content,
-    })),
+    messages: input.messages
+      .filter((msg) => Boolean(msg.content && msg.content.trim().length > 0))
+      .map((message) => ({
+        role: message.role,
+        content: message.content.trim(),
+      })),
   }).textStream
 }
 
@@ -226,7 +232,6 @@ export const createKnowledgeRoutes = (
         routePath,
         query: latestUserQuery,
       })
-      const citations = toCitations(docs)
       const highestScore = docs[0]?.score ?? 0
 
       if (!docs.length || highestScore < MIN_CONTEXT_SCORE) {
@@ -243,6 +248,7 @@ export const createKnowledgeRoutes = (
         ])
       }
 
+      const citations = toCitations(docs)
       const encoder = new TextEncoder()
       let fullAnswer = ""
 

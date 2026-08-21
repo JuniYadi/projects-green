@@ -45,7 +45,6 @@ const mockGetOrganization = mock(async () => ({
 const mockRedirect = mock((url: string) => {
   throw new Error(`REDIRECT:${url}`)
 })
-
 const mockGetPlatformAccessForUser = mock(
   async (): Promise<import("@/lib/platform-role").PlatformAccess> => ({
     exists: false,
@@ -177,7 +176,6 @@ describe("ConsoleLayout", () => {
       mockRedirect
     )
   })
-
   it("renders shared console shell around children", async () => {
     const layoutModule = await import("@/app/[lang]/console/layout")
     const ui = await layoutModule.default({
@@ -197,7 +195,7 @@ describe("ConsoleLayout", () => {
     ).toBeInTheDocument()
     const sidebar = view.getByText(/^Sidebar:/).closest("aside")
     expect(sidebar).toHaveAttribute("data-collapsible", "icon")
-    expect(view.getByText("AI Help")).toBeInTheDocument()
+    expect(view.getByText("Ask P")).toBeInTheDocument()
     expect(view.getByText("Console")).toBeInTheDocument()
     expect(view.queryByText("Workspace")).not.toBeInTheDocument()
     expect(view.getByText("Child Content")).toBeInTheDocument()
