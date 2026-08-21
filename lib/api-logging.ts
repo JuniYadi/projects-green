@@ -1,14 +1,10 @@
 import { Elysia } from "elysia"
 import { logger } from "@/lib/logger"
-import {
-  resolveAuthContext,
-  type ResolvedAuth,
-} from "@/lib/auth/resolve-proxy-auth"
+import type { ResolvedAuth } from "@/lib/auth/resolve-proxy-auth"
 
 export type ApiRequestContext = {
   requestId: string
   startedAt: number
-  authPromise?: Promise<ResolvedAuth | null>
   auth?: ResolvedAuth | null
   body?: unknown
 }
@@ -182,6 +178,31 @@ const extractCallerFromHeaders = (request?: Request): ResolvedAuth | null => {
     }
   }
 
+  // Fast synchronous extraction from API key headers if present
+  const authHeader = request.headers.get("authorization")
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7).trim()
+    if (
+      token.startsWith("wa_live_") ||
+      token.startsWith("live_") ||
+      token.startsWith("test_")
+    ) {
+      const keyId =
+        token.length > 16
+          ? `${token.slice(0, 8)}...${token.slice(-4)}`
+          : "api_key"
+      return {
+        type: "platform",
+        keyId,
+        keyName: "API Key",
+        organizationId: "",
+        environment: token.startsWith("test_") ? "SANDBOX" : "LIVE",
+        scopes: [],
+        source: "api_key",
+      }
+    }
+  }
+
   return null
 }
 
@@ -302,18 +323,6 @@ export const createApiLoggingPlugin = () =>
       const fastAuth = extractCallerFromHeaders(request)
       if (fastAuth) {
         context.auth = fastAuth
-      } else {
-        // Bounded background enrichment for direct cookie / API-key callers
-        const timeoutPromise = new Promise<null>((resolve) =>
-          setTimeout(() => resolve(null), 500)
-        )
-        context.authPromise = Promise.race([
-          resolveAuthContext(request).catch(() => null),
-          timeoutPromise,
-        ]).then((auth) => {
-          if (auth) context.auth = auth
-          return auth
-        })
       }
     })
     .onTransform(({ request, body }) => {
