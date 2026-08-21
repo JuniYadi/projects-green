@@ -668,10 +668,7 @@ export function ThunderAiHelpDrawer() {
             className="animate-pulse fill-amber-400 text-amber-400"
           />
         </span>
-        <span>AI Help</span>
-        <span className="ml-0.5 rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-zinc-300 group-hover:bg-amber-500/20 group-hover:text-amber-300">
-          {isId ? "Bantuan" : "Ask"}
-        </span>
+        <span>{isId ? "Bantuan AI" : "AI Help"}</span>
       </Button>
 
       <Sheet
