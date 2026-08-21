@@ -328,9 +328,8 @@ describe("resolveSidebarMenu", () => {
       currentPathname: "/id/portal/settings/invitations",
     })
     expect(items.map((item) => item.title)).toEqual([
+      "Documentation",
       "API Reference",
-      "Support",
-      "Feedback",
       "My Organization",
     ])
     const myOrg = items.find((item) => item.title === "My Organization")
@@ -361,12 +360,15 @@ describe("resolveSidebarMenu", () => {
     ).toBe(true)
     expect(items.map((item) => item.title)).not.toContain("Settings")
   })
-  it("console sidebar secondary does not include Settings or Email Templates", () => {
+  it("console sidebar secondary includes Documentation and API Reference, but not Settings or Email Templates", () => {
     const items = resolveSidebarSecondaryLinks({
       surface: "console",
       currentPathname: "/en/console",
     })
-    expect(items.map((item) => item.title)).toContain("Thunder AI Help")
+    expect(items.map((item) => item.title)).toEqual([
+      "Documentation",
+      "API Reference",
+    ])
     expect(items.map((item) => item.title)).not.toContain("Settings")
     expect(items.map((item) => item.title)).not.toContain("Email Templates")
   })
@@ -474,15 +476,15 @@ describe("resolveSidebarMenu", () => {
     )
   })
 
-  it("includes thunder AI help trigger link for console sidebar secondary links", () => {
+  it("includes documentation link for console sidebar secondary links", () => {
     const items = resolveSidebarSecondaryLinks({
       surface: "console",
       currentPathname: "/en/console",
     })
 
-    expect(items.map((item) => item.title)).toContain("Thunder AI Help")
-    expect(items.find((item) => item.title === "Thunder AI Help")?.url).toBe(
-      "/en/console?kb=1"
+    expect(items.map((item) => item.title)).toContain("Documentation")
+    expect(items.find((item) => item.title === "Documentation")?.url).toBe(
+      "/en/docs"
     )
   })
 
