@@ -1,7 +1,7 @@
 ---
 path: /billing/vouchers
 locale: id
-title: Panduan Klaim & Penggunaan Voucher Promo
+title: Voucher Promo & Diskon
 category: Billing
 purpose: Klaim kode voucher promosi, terapkan diskon komersial, dan lihat riwayat manfaat potongan tagihan.
 howTo:

@@ -1,7 +1,7 @@
 ---
 path: /whatsapp/api-keys
 locale: id
-title: Panduan Pengelolaan & Integrasi WhatsApp API Key
+title: Pengelolaan WhatsApp API Key
 category: WhatsApp
 purpose: Buat, rotasi, dan gunakan static API key organisasi Anda dengan aman untuk integrasi WhatsApp Business Platform.
 howTo:
@@ -15,26 +15,19 @@ notes:
   - Rotasi API key akan langsung menonaktifkan API key sebelumnya.
 ---
 
-Panduan ini menjelaskan cara membuat, melakukan rotasi, dan menggunakan
-WhatsApp API key organisasi Anda secara aman untuk mengintegrasikan layanan
-backend dengan WhatsApp Business Platform API.
+Panduan ini menjelaskan cara membuat, melakukan rotasi, dan menggunakan WhatsApp API key organisasi Anda secara aman untuk mengintegrasikan layanan WhatsApp Business Platform.
 
 ---
 
-## 1. Ikhtisar & Model Keamanan
+## 1. Apa itu WhatsApp API Key?
 
-WhatsApp API key memungkinkan backend server Anda melakukan otentikasi
-panggilan API atas nama organisasi Anda.
+WhatsApp API Key adalah **token rahasia** (seperti kata sandi) yang digunakan oleh aplikasi backend, server, atau skrip Anda untuk mengirim pesan WhatsApp secara aman.
 
-- **Zero-Trust Token Visibility**: Plaintext API secret **hanya ditampilkan satu
-  kali** saat pertama kali dibuat atau dirotasi. Secret tidak pernah disimpan
-  dalam bentuk plaintext di database dan tidak dapat dilihat kembali setelah
-  halaman ditutup.
-- **Single Active Key Model**: Setiap organisasi hanya memiliki satu key aktif
-  (`ACTIVE`) pada satu waktu.
-- **Metadata Aman**: Fingerprint (`wa_key_...`) dan riwayat lifecycle (Created,
-  Rotated, Revoked, Last Used) dapat dibagikan dengan aman untuk kebutuhan
-  audit log tanpa membocorkan token rahasia.
+### Aturan Keamanan Utama:
+
+- **Hanya Ditampilkan Sekali**: Saat membuat atau merotasi key, token rahasia hanya diperlihatkan satu kali. Segera simpan di password manager atau file konfigurasi server (`.env`).
+- **Satu Key Aktif**: Setiap organisasi memiliki 1 API key aktif dalam satu waktu.
+- **Aman untuk Audit**: Prefix key (contoh: `wa_key_...`) aman dibagikan ke tim tanpa membocorkan rahasia token sebenarnya.
 
 ---
 

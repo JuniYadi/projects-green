@@ -1,7 +1,7 @@
 ---
 path: /billing
 locale: id
-title: Panduan Penagihan & Manajemen Saldo Console
+title: Penagihan & Saldo Console
 category: Billing
 purpose: Kelola saldo organisasi, lihat estimasi biaya, pantau invoice, dan kelola langganan layanan di Console Penagihan.
 howTo:
@@ -58,12 +58,14 @@ Seluruh tagihan layanan yang diterbitkan sistem dicatat secara transparan di tab
 ![Daftar Riwayat Invoice](/kb-assets/billing/03-billing-invoices-list.png)
 
 ### Status Invoice:
+
 - **PAID**: Tagihan telah berhasil diselesaikan dan dicatat lunas.
 - **UNPAID / PENDING**: Menunggu pembayaran dari pengguna sebelum tanggal jatuh tempo.
 - **DRAFT**: Tagihan dalam tahap persiapan siklus penagihan sebelum finalisasi.
 - **VOID / CANCELLED**: Tagihan yang dibatalkan atau disesuaikan.
 
 ### Mengunduh Berkas PDF Invoice:
+
 Pada kolom tindakan di setiap baris invoice, klik tombol **"Download PDF"** untuk mengunduh bukti tanda terima atau faktur tagihan resmi yang sah untuk keperluan pembukuan akuntansi organisasi Anda.
 
 ---
@@ -75,7 +77,7 @@ Menu Langganan menampilkan seluruh layanan aktif (seperti App Hosting, WhatsApp 
 ![Manajemen Langganan](/kb-assets/billing/04-billing-subscriptions.png)
 
 - **Tier & Paket Aktif**: Informasi detail paket komputasi atau kuota yang sedang berjalan.
-- **Siklus Pembaruan**: Tanggal perpanjangan otomatis (*renewal date*) dan status auto-debit dari saldo organisasi.
+- **Siklus Pembaruan**: Tanggal perpanjangan otomatis (_renewal date_) dan status auto-debit dari saldo organisasi.
 - **Upgrade / Downgrade**: Penyesuaian paket layanan dapat dilakukan langsung dengan perhitungan prorata otomatis.
 
 ---
@@ -85,7 +87,7 @@ Menu Langganan menampilkan seluruh layanan aktif (seperti App Hosting, WhatsApp 
 Gunakan bilah menu di bagian atas dasbor untuk berpindah ke fitur penagihan lainnya:
 
 - **Penggunaan (Usage)**: Lacak rincian konsumsi sumber daya dan breakdown biaya per layanan.
-- **Peringatan (Alerts)**: Atur ambang batas peringatan (*threshold alerts*) saat saldo menipis agar notifikasi dikirimkan otomatis.
+- **Peringatan (Alerts)**: Atur ambang batas peringatan (_threshold alerts_) saat saldo menipis agar notifikasi dikirimkan otomatis.
 - **Transaksi (Transactions)**: Riwayat debit/kredit saldo yang mendetail dari setiap aktivitas layanan.
 - **Vouchers**: Klaim dan terapkan kode promo atau diskon komersial untuk potongan tagihan.
 - **Contacts**: Kelola daftar penerima email untuk notifikasi faktur dan invoice organisasi.

@@ -1,0 +1,11 @@
+# markdownlint configuration
+default: true
+MD013: false # Line length
+MD024: false # Multiple headers with same content
+MD025: false # Multiple top-level headings in frontmatter-backed markdown
+MD026: false # Trailing punctuation in headings (colons)
+MD028: false # Blank lines in blockquotes
+MD033: false # Inline HTML allowed
+MD034: false # Bare URLs / email addresses
+MD041: false # First line in file should be a top-level heading
+MD049: false # Emphasis style

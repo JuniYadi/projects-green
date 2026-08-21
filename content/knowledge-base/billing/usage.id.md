@@ -1,7 +1,7 @@
 ---
 path: /billing/usage
 locale: id
-title: Panduan Pelacakan Penggunaan & Analitik Biaya
+title: Penggunaan & Analitik Biaya
 category: Billing
 purpose: Pantau metrik penggunaan sumber daya, breakdown biaya per produk, dan tren pemakaian harian.
 howTo:
@@ -25,6 +25,7 @@ Halaman **Penggunaan** (`/console/billing/usage`) memberikan wawasan mendalam me
 ![Halaman Penggunaan & Analitik](/kb-assets/billing/06-billing-usage.png)
 
 ### Metrik yang Dilacak:
+
 - **WhatsApp Cloud API**: Jumlah pesan keluar (template & session messages), biaya per kategori pesan (marketing, utility, authentication, service), serta kuota perangkat aktif.
 - **App Hosting Compute**: Jam komputasi container (vCPU-hours), alokasi memori (RAM-GB-hours), dan transfer data keluar (egress bandwidth).
 - **WireGuard VPN**: Total transfer data terenkripsi dan jumlah peer aktif.
@@ -33,6 +34,6 @@ Halaman **Penggunaan** (`/console/billing/usage`) memberikan wawasan mendalam me
 
 ## 2. Analisis Biaya & Optimalisasi
 
-1. **Grafik Tren Harian**: Identifikasi lonjakan lalu lintas (*traffic spikes*) atau penggunaan tak terduga.
+1. **Grafik Tren Harian**: Identifikasi lonjakan lalu lintas (_traffic spikes_) atau penggunaan tak terduga.
 2. **Breakdown Biaya per Layanan**: Ketahui secara presisi layanan mana yang berkontribusi terbesar terhadap tagihan organisasi Anda.
 3. **Pemberitahuan Kuota**: Pastikan konsumsi tetap berada dalam batas rencana anggaran bulanan.

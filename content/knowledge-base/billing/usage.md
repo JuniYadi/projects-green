@@ -1,7 +1,7 @@
 ---
 path: /billing/usage
 locale: en
-title: Resource Usage Tracking & Cost Analytics Guide
+title: Resource Usage & Cost Analytics
 category: Billing
 purpose: Monitor resource usage metrics, inspect product-level cost breakdowns, and track daily consumption trends.
 howTo:
@@ -25,6 +25,7 @@ The **Usage** page (`/console/billing/usage`) provides granular insights into co
 ![Usage & Cost Analytics](/kb-assets/billing/06-billing-usage.png)
 
 ### Key Monitored Metrics:
+
 - **WhatsApp Cloud API**: Outbound message counts categorized by template tier (marketing, utility, authentication, service) and active device connections.
 - **App Hosting Compute**: Container runtime duration (vCPU-hours), memory allocation (RAM-GB-hours), and outbound network transfer (egress).
 - **WireGuard VPN**: Total encrypted throughput and concurrent active client sessions.

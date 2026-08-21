@@ -1,7 +1,7 @@
 ---
 path: /billing/alerts
 locale: id
-title: Panduan Konfigurasi Peringatan Saldo & Kuota
+title: Peringatan Saldo & Kuota
 category: Billing
 purpose: Atur ambang batas peringatan saldo menipis dan notifikasi pemakaian kuota otomatis untuk mencegah gangguan layanan.
 howTo:
@@ -21,7 +21,8 @@ Panduan ini menjelaskan cara mengonfigurasi sistem peringatan dini untuk saldo o
 ## 1. Mengapa Peringatan Saldo Penting?
 
 Layanan otomatis seperti perpanjangan langganan App Hosting dan pemotongan biaya pesan WhatsApp API mengandalkan saldo deposit organisasi. Jika saldo habis:
-- Layanan otomatis dapat ditangguhkan (*suspended*).
+
+- Layanan otomatis dapat ditangguhkan (_suspended_).
 - Pengiriman pesan WhatsApp API keluar dapat ditolak karena saldo tidak mencukupi.
 
 Mengaktifkan **Peringatan Saldo (Billing Alerts)** menjamin tim finansial dan teknis Anda mendapatkan notifikasi lebih awal sebelum dana habis.
@@ -35,6 +36,7 @@ Buka **Console** > **Billing** > **Alerts** (`/console/billing/alerts`).
 ![Konfigurasi Billing Alerts](/kb-assets/billing/07-billing-alerts.png?v=3)
 
 ### Langkah Konfigurasi:
+
 1. **Low Balance Threshold**: Masukkan angka saldo minimal yang memicu pengiriman email darurat.
 2. **Channel Notifikasi**: Pilih pengiriman ke seluruh anggota dengan role Admin, atau ke daftar kontak penagihan khusus.
 3. **Frekuensi Notifikasi**: Tentukan jeda pengiriman email pengingat (harian atau per kejadian pemotongan).

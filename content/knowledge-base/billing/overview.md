@@ -1,7 +1,7 @@
 ---
 path: /billing
 locale: en
-title: Billing Console & Balance Management Guide
+title: Billing Console & Balance
 category: Billing
 purpose: Manage organization balance, view estimated costs, track invoices, and manage service subscriptions in the Billing Console.
 howTo:
@@ -58,12 +58,14 @@ All issued service invoices are listed in the **Invoice Terbaru / Recent Invoice
 ![Recent Invoices List](/kb-assets/billing/03-billing-invoices-list.png)
 
 ### Invoice Status Lifecycle:
+
 - **PAID**: The invoice has been successfully paid and recorded.
 - **UNPAID / PENDING**: Awaiting payment before the stated due date.
 - **DRAFT**: Billing cycle preparation in progress prior to finalization.
 - **VOID / CANCELLED**: An invoice that was cancelled or adjusted.
 
 ### Downloading PDF Invoices:
+
 Click **"Download PDF"** in the action column of any invoice row to download official tax-compliant invoices for your accounting records.
 
 ---

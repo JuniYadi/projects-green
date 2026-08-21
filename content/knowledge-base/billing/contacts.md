@@ -1,7 +1,7 @@
 ---
 path: /billing/contacts
 locale: en
-title: Billing Contacts & Invoice Recipients Guide
+title: Billing Contacts & Invoices
 category: Billing
 purpose: Manage email recipients for automated invoice delivery, payment receipts, and balance threshold notices.
 howTo:
@@ -30,7 +30,7 @@ By default, transactional billing notices are sent only to the organization crea
 
 1. Click **"Add Contact"**.
 2. Complete the contact fields:
-   - **Name**: Individual name or department label (e.g. *Accounts Payable Department*).
+   - **Name**: Individual name or department label (e.g. _Accounts Payable Department_).
    - **Email**: Active corporate finance address (e.g. *billing@company.com*).
    - **Notification Types**: Choose subscribed message categories (New Invoices, Payment Confirmations, Critical Thresholds).
 3. Click **"Save Contact"**.
