@@ -38,6 +38,21 @@ describe("buildAppBreadcrumbItems", () => {
     ])
   })
 
+  it("labels WhatsApp message wamid detail route as Message Journey", () => {
+    expect(
+      buildAppBreadcrumbItems({
+        pathname:
+          "/en/console/whatsapp/messages/wamid.HBgNNjI4NTcwODI5NjQ4MhUCABEYEjQ0OTIwNDE3N0U2N0VGQkY5NAA=",
+        rootSegment: "console",
+      })
+    ).toEqual([
+      { label: "Console", href: "/en/console" },
+      { label: "WhatsApp", href: "/en/console/whatsapp" },
+      { label: "Messages", href: "/en/console/whatsapp/messages" },
+      { label: "Message Journey", href: undefined },
+    ])
+  })
+
   it("labels the portal VPN subscriptions route as operations", () => {
     expect(
       buildAppBreadcrumbItems({
