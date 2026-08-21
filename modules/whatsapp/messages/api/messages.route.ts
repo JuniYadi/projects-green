@@ -1,3 +1,4 @@
+import { getCachedUser } from "@/lib/workos-directory"
 import { Elysia, t } from "elysia"
 import type { InteractivePayload } from "@/lib/whatsapp/meta-cloud/types"
 import { prisma } from "@/lib/prisma"
@@ -1239,8 +1240,10 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
             ? {
                 adminId: auditLog.adminId,
                 actorName: auditLog.adminId
-                  ? auditLog.adminId.slice(0, 10)
-                  : null,
+                  ? ((await getCachedUser(auditLog.adminId))?.name ??
+                    (await getCachedUser(auditLog.adminId))?.email ??
+                    auditLog.adminId.slice(0, 10))
+                  : "System",
                 action: auditLog.action,
                 ip: auditLog.ip,
                 userAgent: auditLog.userAgent,
@@ -1248,7 +1251,6 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
                 createdAt: auditLog.createdAt.toISOString(),
               }
             : null,
-          timeline,
           webhooks: webhookEvents.map((w) => ({
             id: w.id,
             eventType: w.eventType,

@@ -1,3 +1,4 @@
+import { getCachedUser } from "@/lib/workos-directory"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { Elysia } from "elysia"
 import { prisma } from "@/lib/prisma"
@@ -108,7 +109,6 @@ export const createWhatsappAuditRoutes = (
           take: limit,
         }),
       ])
-
       const deviceIds = [
         ...new Set(
           rawLogs
@@ -116,22 +116,48 @@ export const createWhatsappAuditRoutes = (
             .filter((id): id is string => Boolean(id))
         ),
       ]
-      const devices =
+      const adminIds = [
+        ...new Set(
+          rawLogs
+            .map((l) => l.adminId)
+            .filter((id): id is string => Boolean(id && id.startsWith("user_")))
+        ),
+      ]
+
+      const [devices, userEntries] = await Promise.all([
         deviceIds.length > 0
-          ? await prisma.whatsappDevice.findMany({
+          ? prisma.whatsappDevice.findMany({
               where: { id: { in: deviceIds } },
               select: { id: true, phoneNumber: true },
             })
-          : []
+          : [],
+        Promise.all(
+          adminIds.map(async (id) => {
+            const u = await getCachedUser(id)
+            return [id, u] as const
+          })
+        ),
+      ])
+
       const deviceMap = new Map(devices.map((d) => [d.id, d.phoneNumber]))
+      const userMap = new Map(
+        userEntries.filter(([, u]) => Boolean(u)).map(([id, u]) => [id, u!])
+      )
 
-      const logs = rawLogs.map((log) => ({
-        ...log,
-        deviceLabel: log.deviceId
-          ? (deviceMap.get(log.deviceId) ?? log.deviceId)
-          : null,
-      }))
-
+      const logs = rawLogs.map((log) => {
+        const user = log.adminId ? userMap.get(log.adminId) : null
+        return {
+          ...log,
+          deviceLabel: log.deviceId
+            ? (deviceMap.get(log.deviceId) ?? log.deviceId)
+            : null,
+          actorName:
+            user?.name ??
+            user?.email ??
+            (log.adminId ? log.adminId.slice(0, 10) : null),
+          actorEmail: user?.email ?? null,
+        }
+      })
       return {
         ok: true,
         data: logs.map(toWhatsappAuditLogDTO),
@@ -220,21 +246,48 @@ export const consoleWhatsappAuditRoutes = new Elysia({ prefix: "/audit" })
         rawLogs.map((l) => l.deviceId).filter((id): id is string => Boolean(id))
       ),
     ]
-    const devices =
+    const adminIds = [
+      ...new Set(
+        rawLogs
+          .map((l) => l.adminId)
+          .filter((id): id is string => Boolean(id && id.startsWith("user_")))
+      ),
+    ]
+
+    const [devices, userEntries] = await Promise.all([
       deviceIds.length > 0
-        ? await prisma.whatsappDevice.findMany({
+        ? prisma.whatsappDevice.findMany({
             where: { id: { in: deviceIds } },
             select: { id: true, phoneNumber: true },
           })
-        : []
-    const deviceMap = new Map(devices.map((d) => [d.id, d.phoneNumber]))
+        : [],
+      Promise.all(
+        adminIds.map(async (id) => {
+          const u = await getCachedUser(id)
+          return [id, u] as const
+        })
+      ),
+    ])
 
-    const logs = rawLogs.map((log) => ({
-      ...log,
-      deviceLabel: log.deviceId
-        ? (deviceMap.get(log.deviceId) ?? log.deviceId)
-        : null,
-    }))
+    const deviceMap = new Map(devices.map((d) => [d.id, d.phoneNumber]))
+    const userMap = new Map(
+      userEntries.filter(([, u]) => Boolean(u)).map(([id, u]) => [id, u!])
+    )
+
+    const logs = rawLogs.map((log) => {
+      const user = log.adminId ? userMap.get(log.adminId) : null
+      return {
+        ...log,
+        deviceLabel: log.deviceId
+          ? (deviceMap.get(log.deviceId) ?? log.deviceId)
+          : null,
+        actorName:
+          user?.name ??
+          user?.email ??
+          (log.adminId ? log.adminId.slice(0, 10) : null),
+        actorEmail: user?.email ?? null,
+      }
+    })
 
     return {
       ok: true,
