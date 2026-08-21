@@ -73,11 +73,13 @@ export const resolveProxyAuth = async (
     return { ok: false }
   }
 
-  const userId = request.headers.get("x-workos-user-id") ?? ""
-  const email = request.headers.get("x-workos-user-email") ?? null
+  const userId = request.headers.get("x-workos-user-id")?.trim() ?? ""
+  if (!userId) {
+    return { ok: false }
+  }
+  const email = request.headers.get("x-workos-user-email")?.trim() ?? null
   const headerOrganizationId =
     request.headers.get("x-workos-organization-id")?.trim() || null
-
   try {
     const platformRole = await getPlatformRoleForUser({ id: userId, email })
 
