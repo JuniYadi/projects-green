@@ -1,9 +1,6 @@
 import { Elysia } from "elysia"
 import { logger } from "@/lib/logger"
-import {
-  resolveAuthContext,
-  type ResolvedAuth,
-} from "@/lib/auth/resolve-proxy-auth"
+import type { ResolvedAuth } from "@/lib/auth/resolve-proxy-auth"
 
 export type ApiRequestContext = {
   requestId: string
@@ -121,6 +118,42 @@ const statusCodeOf = (
 const errorCodeOf = (code: unknown) =>
   typeof code === "string" && safeErrorCodes[code] ? code : "UNKNOWN"
 
+const normalizeOrgRole = (role: string | null | undefined) => {
+  if (!role) return null
+  const slug = role.toLowerCase()
+  if (slug === "owner" || slug === "user_owner") return "owner" as const
+  if (slug === "admin" || slug === "user_admin") return "admin" as const
+  if (slug === "member" || slug === "user_member") return "member" as const
+  return null
+}
+
+const resolveOrgRoleFromHeaders = (request: Request) => {
+  const single = request.headers.get("x-workos-session-role")
+  if (single) {
+    const normalized = normalizeOrgRole(single)
+    if (normalized) return normalized
+  }
+
+  const raw = request.headers.get("x-workos-session-roles")
+  if (!raw) return null
+
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      for (const r of parsed) {
+        if (typeof r === "string") {
+          const normalized = normalizeOrgRole(r)
+          if (normalized) return normalized
+        }
+      }
+    }
+  } catch {
+    // Ignore malformed JSON
+  }
+
+  return null
+}
+
 const extractCallerFromHeaders = (request?: Request): ResolvedAuth | null => {
   if (!request) return null
 
@@ -130,16 +163,7 @@ const extractCallerFromHeaders = (request?: Request): ResolvedAuth | null => {
     const email = request.headers.get("x-workos-user-email") ?? null
     const organizationId =
       request.headers.get("x-workos-organization-id")?.trim() || null
-    const singleRole = request.headers.get("x-workos-session-role")
-    const roleSlug = singleRole?.toLowerCase()
-    const orgRole =
-      roleSlug === "owner" || roleSlug === "user_owner"
-        ? ("owner" as const)
-        : roleSlug === "admin" || roleSlug === "user_admin"
-          ? ("admin" as const)
-          : roleSlug === "member" || roleSlug === "user_member"
-            ? ("member" as const)
-            : null
+    const orgRole = resolveOrgRoleFromHeaders(request)
 
     return {
       type: "workos",
@@ -269,18 +293,10 @@ export const createApiLoggingPlugin = () =>
   new Elysia({ name: "api-logging" })
     .onRequest(({ request }) => {
       const context = contextFor(request)
-      // Synchronously capture fast proxy auth if present, or initiate background resolution
+      // Synchronously capture fast proxy auth if present
       const fastAuth = extractCallerFromHeaders(request)
       if (fastAuth) {
         context.auth = fastAuth
-      } else {
-        resolveAuthContext(request)
-          .then((auth) => {
-            if (auth) context.auth = auth
-          })
-          .catch(() => {
-            // Ignore background resolution failures
-          })
       }
     })
     .onTransform(({ request, body }) => {
