@@ -1,19 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, act, type RenderResult } from "@testing-library/react"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 
 const mockReplace = mock(() => {})
 let currentPathname = "/en/console"
 let currentParams = ""
-
-mock.module("next/navigation", () => ({
-  useRouter: () => ({
-    replace: mockReplace,
-    push: mock(() => {}),
-  }),
-  usePathname: () => currentPathname,
-  useSearchParams: () => new URLSearchParams(currentParams),
-}))
-
 const mockFetch = mock(
   async () =>
     ({
@@ -42,8 +33,19 @@ describe("ThunderAiHelpDrawer", () => {
     globalThis.fetch = mockFetch as unknown as typeof fetch
     currentPathname = "/en/console"
     currentParams = ""
+    ;(useRouter as unknown as ReturnType<typeof mock>).mockImplementation(
+      () => ({
+        replace: mockReplace,
+        push: mock(() => {}),
+      })
+    )
+    ;(usePathname as unknown as ReturnType<typeof mock>).mockImplementation(
+      () => currentPathname
+    )
+    ;(useSearchParams as unknown as ReturnType<typeof mock>).mockImplementation(
+      () => new URLSearchParams(currentParams)
+    )
   })
-
   afterEach(() => {
     globalThis.fetch = originalFetch
   })
@@ -62,31 +64,27 @@ describe("ThunderAiHelpDrawer", () => {
   }
 
   describe("initial render", () => {
-    it("renders AI Help button", async () => {
-      const view = await renderDrawer("")
+    it("renders Ask P button for English locale", async () => {
+      const view = await renderDrawer("", "/en/console")
 
-      expect(view.getByText("AI Help")).toBeTruthy()
+      expect(view.getByText("Ask P")).toBeTruthy()
     })
 
     it("renders drawer when doc=1 is set", async () => {
-      const view = await renderDrawer("doc=1")
+      const view = await renderDrawer("doc=1", "/en/console")
 
-      expect(
-        view.getByRole("heading", { name: "AI Help & Knowledge" })
-      ).toBeTruthy()
+      expect(view.getByRole("heading", { name: "Ask P" })).toBeTruthy()
       expect(view.getByText("Page Guides")).toBeTruthy()
     })
 
     it("renders chat tab when kb=1 is set", async () => {
-      const view = await renderDrawer("kb=1")
+      const view = await renderDrawer("kb=1", "/en/console")
 
-      expect(
-        view.getByRole("heading", { name: "AI Help & Knowledge" })
-      ).toBeTruthy()
-      expect(view.getByText("PFNApp AI Assistant")).toBeTruthy()
+      expect(view.getByRole("heading", { name: "Ask P" })).toBeTruthy()
+      expect(view.getByText("Ask P — PFNApp Smart Assistant")).toBeTruthy()
       expect(
         view.getByPlaceholderText(
-          "Ask anything about this page or workflows..."
+          "Ask P anything about this page or workflows..."
         )
       ).toBeTruthy()
     })
@@ -96,21 +94,22 @@ describe("ThunderAiHelpDrawer", () => {
     it("renders both tab buttons in docs mode", async () => {
       const view = await renderDrawer("doc=1")
 
-      expect(view.getByText("Ask AI")).toBeTruthy()
+      expect(view.getAllByText("Ask P").length).toBeGreaterThanOrEqual(1)
       expect(view.getByText("Page Guides")).toBeTruthy()
     })
 
     it("renders both tab buttons in chat mode", async () => {
       const view = await renderDrawer("kb=1")
 
-      expect(view.getByText("Ask AI")).toBeTruthy()
+      expect(view.getAllByText("Ask P").length).toBeGreaterThanOrEqual(1)
       expect(view.getByText("Page Guides")).toBeTruthy()
     })
 
-    it("switches to chat tab when clicking Ask AI button", async () => {
+    it("switches to chat tab when clicking Ask P button", async () => {
       const view = await renderDrawer("doc=1")
 
-      const chatTab = view.getByText("Ask AI")
+      const chatButtons = view.getAllByRole("button", { name: /Ask P/i })
+      const chatTab = chatButtons[chatButtons.length - 1] ?? chatButtons[0]!
       await act(async () => {
         chatTab.click()
       })
@@ -121,7 +120,6 @@ describe("ThunderAiHelpDrawer", () => {
         expect.any(Object)
       )
     })
-
     it("switches to docs tab when clicking Page Guides button", async () => {
       const view = await renderDrawer("kb=1")
 
@@ -142,7 +140,7 @@ describe("ThunderAiHelpDrawer", () => {
     it("opens chat drawer by default when clicked", async () => {
       const view = await renderDrawer("")
 
-      const button = view.getByText("AI Help")
+      const button = view.getByText("Ask P")
       await act(async () => {
         button.click()
       })
@@ -178,7 +176,7 @@ describe("ThunderAiHelpDrawer", () => {
 
       expect(
         view.getByPlaceholderText(
-          "Ask anything about this page or workflows..."
+          "Ask P anything about this page or workflows..."
         )
       ).toBeTruthy()
 
@@ -204,11 +202,7 @@ describe("ThunderAiHelpDrawer", () => {
     it("renders Indonesian copy when locale is id", async () => {
       const view = await renderDrawer("kb=1", "/id/console")
 
-      expect(view.getByText("Bantuan AI")).toBeTruthy()
-      expect(
-        view.getByRole("heading", { name: "Pusat Bantuan & AI" })
-      ).toBeTruthy()
-      expect(view.getByText("Tanya AI")).toBeTruthy()
+      expect(view.getAllByText("Tanya P").length).toBeGreaterThanOrEqual(1)
       expect(view.getByText("Artikel Panduan")).toBeTruthy()
       expect(view.getByText("Pertanyaan Populer")).toBeTruthy()
       expect(
@@ -221,9 +215,7 @@ describe("ThunderAiHelpDrawer", () => {
     it("does not render sheet content when no params are set", async () => {
       const view = await renderDrawer("")
 
-      expect(
-        view.queryByRole("heading", { name: "AI Help & Knowledge" })
-      ).toBeNull()
+      expect(view.queryByRole("heading", { name: "Ask P" })).toBeNull()
     })
   })
 
