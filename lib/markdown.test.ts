@@ -1,7 +1,23 @@
 import { describe, expect, it } from "bun:test"
-import { renderMarkdownFallback } from "./markdown"
+import { renderMarkdownFallback, renderMarkdownToHtml } from "./markdown"
 
-// All tests exercise renderMarkdownFallback directly — the pure-TS renderer
+describe("renderMarkdownToHtml", () => {
+  it("renders standard markdown using the main entrypoint", () => {
+    const md = "## Hello\n\nSome text with **bold**."
+    const html = renderMarkdownToHtml(md)
+    expect(html).toContain("<h2")
+    expect(html).toContain("Hello")
+    expect(html).toContain("<strong>bold</strong>")
+  })
+
+  it("transforms mermaid code blocks into mermaid-container elements", () => {
+    const md = "```mermaid\ngraph TD\n  A --> B\n```"
+    const html = renderMarkdownToHtml(md)
+    expect(html).toContain('<div class="mermaid-container')
+    expect(html).toContain('<pre class="mermaid">')
+    expect(html).toContain("graph TD")
+  })
+})
 // used in Next.js Node/Turbopack runtime. This guarantees the fallback path
 // is covered regardless of which runtime runs the tests.
 
