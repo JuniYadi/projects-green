@@ -14,10 +14,10 @@ import {
   ThumbsDown,
 } from "@phosphor-icons/react/dist/ssr"
 import { prisma } from "@/lib/prisma"
+import { renderMarkdownToHtml } from "@/lib/markdown"
 import { MermaidRenderer } from "../components/mermaid-renderer"
 import { CodeBlockCopyEnhancer } from "../components/code-copy-enhancer"
 import { OnThisPage, type TocItem } from "../components/on-this-page"
-
 type Props = {
   params: Promise<{ lang: string; slug: string[] }>
 }
