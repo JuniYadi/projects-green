@@ -14,6 +14,7 @@ type Props = {
   children: React.ReactNode
   params: Promise<{ lang: string }>
 }
+export const dynamic = "force-dynamic"
 
 export default async function PublicDocsLayout({ children, params }: Props) {
   const { lang } = await params
