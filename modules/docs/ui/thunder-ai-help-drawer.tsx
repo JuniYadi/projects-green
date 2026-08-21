@@ -13,8 +13,9 @@ import {
   CreditCard,
   RocketLaunch,
   Key,
+  Trash,
 } from "@phosphor-icons/react"
-
+import { ChatMarkdown } from "./chat-markdown"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -346,7 +347,19 @@ export function ThunderAiHelpDrawer() {
   const searchParams = useSearchParams()
 
   const [docState, setDocState] = useState<DocRequestState>({ status: "idle" })
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    if (typeof window === "undefined") return []
+    try {
+      const saved = sessionStorage.getItem("pfn_tanya_p_chat")
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) return parsed
+      }
+    } catch {
+      // Ignore sessionStorage error
+    }
+    return []
+  })
   const [input, setInput] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [chatError, setChatError] = useState<string | null>(null)
@@ -366,6 +379,26 @@ export function ThunderAiHelpDrawer() {
 
   const activeTab = isDocOpen ? "docs" : "chat"
 
+  // Persist chat on messages update
+  useEffect(() => {
+    try {
+      if (messages.length > 0) {
+        sessionStorage.setItem("pfn_tanya_p_chat", JSON.stringify(messages))
+      }
+    } catch {
+      // Ignore sessionStorage error
+    }
+  }, [messages])
+
+  const clearChatHistory = () => {
+    setMessages([])
+    try {
+      sessionStorage.removeItem("pfn_tanya_p_chat")
+    } catch {
+      // Ignore
+    }
+  }
+
   // Scroll to bottom on messages update
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -380,8 +413,6 @@ export function ThunderAiHelpDrawer() {
       return () => clearTimeout(timer)
     }
   }, [isOpen, activeTab])
-
-  // Load Page Documentation when "docs" is active and drawer is open
   useEffect(() => {
     if (!isOpen || activeTab !== "docs") {
       return
@@ -704,8 +735,7 @@ export function ThunderAiHelpDrawer() {
             </SheetDescription>
           </SheetHeader>
 
-          {/* Mode Switcher */}
-          <div className="border-b border-white/[0.06] bg-neutral-900/20 px-6 py-3">
+          <div className="flex items-center justify-between border-b border-white/[0.06] bg-neutral-900/20 px-6 py-3">
             <div className="grid grid-cols-2 gap-1 rounded-xl border border-white/[0.05] bg-neutral-900/60 p-1 text-muted-foreground">
               <button
                 type="button"
@@ -743,6 +773,19 @@ export function ThunderAiHelpDrawer() {
                 {isId ? "Artikel Panduan" : "Page Guides"}
               </button>
             </div>
+
+            {activeTab === "chat" && messages.length > 0 ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearChatHistory}
+                className="h-7 gap-1 px-2 text-[11px] text-zinc-400 hover:bg-neutral-800 hover:text-red-400"
+                title={isId ? "Hapus riwayat percakapan" : "Clear conversation"}
+              >
+                <Trash size={13} />
+                <span>{isId ? "Bersihkan" : "Clear"}</span>
+              </Button>
+            ) : null}
           </div>
 
           {/* Content Area */}
@@ -984,27 +1027,54 @@ export function ThunderAiHelpDrawer() {
                             : "max-w-[95%] space-y-3 rounded-2xl border border-white/[0.06] bg-neutral-900/40 px-4 py-3 text-xs text-zinc-200"
                         }
                       >
-                        <p className="leading-relaxed whitespace-pre-wrap">
-                          {message.content ||
-                            (isId ? "Sedang berpikir..." : "Thinking...")}
-                        </p>
+                        {message.role === "user" ? (
+                          <p className="leading-relaxed whitespace-pre-wrap">
+                            {message.content}
+                          </p>
+                        ) : message.content ? (
+                          <ChatMarkdown
+                            content={message.content}
+                            activeLocale={activeLocale}
+                          />
+                        ) : (
+                          <p className="leading-relaxed text-zinc-400 italic">
+                            {isId ? "Sedang mencari jawaban..." : "Thinking..."}
+                          </p>
+                        )}
 
                         {message.role === "assistant" &&
                         message.citations?.length ? (
                           <div className="flex flex-col gap-1.5 border-t border-white/[0.05] pt-2">
                             <span className="text-[9px] font-bold tracking-wider text-muted-foreground uppercase">
-                              {isId ? "Referensi Sumber" : "Citations"}
+                              {isId
+                                ? "Referensi Sumber Terkait"
+                                : "Citations & Sources"}
                             </span>
                             <div className="flex flex-wrap gap-1.5">
-                              {message.citations.map((citation) => (
-                                <span
-                                  key={citation.id}
-                                  className="inline-flex rounded-md border border-white/[0.05] bg-neutral-900/80 px-2 py-0.5 text-[10px] font-medium text-zinc-400"
-                                  title={`Path: ${citation.path} • Updated: ${citation.updatedAt}`}
-                                >
-                                  {citation.title}
-                                </span>
-                              ))}
+                              {message.citations.map((citation) => {
+                                const citationUrl = citation.path.startsWith(
+                                  "/"
+                                )
+                                  ? `/${activeLocale}${citation.path}`
+                                  : `/${activeLocale}/docs/${citation.path}`
+
+                                return (
+                                  <Link
+                                    key={citation.id}
+                                    href={citationUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="group inline-flex items-center gap-1 rounded-md border border-white/10 bg-neutral-900 px-2 py-1 text-[10px] font-medium text-amber-300 transition-all hover:border-amber-500/40 hover:bg-amber-500/10 hover:text-amber-200"
+                                    title={`Buka ${citation.title} • Path: ${citation.path}`}
+                                  >
+                                    <span>{citation.title}</span>
+                                    <ArrowSquareOut
+                                      size={10}
+                                      className="opacity-70 group-hover:opacity-100"
+                                    />
+                                  </Link>
+                                )
+                              })}
                             </div>
                           </div>
                         ) : null}
