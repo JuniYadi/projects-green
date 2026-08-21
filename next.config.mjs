@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
-  serverExternalPackages: ["ssh2"],
+  serverExternalPackages: ["pino", "pino-pretty", "ssh2"],
   turbopack: {
     root: process.cwd(),
   },

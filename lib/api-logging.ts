@@ -1,40 +1,24 @@
 import { Elysia } from "elysia"
+import { logger } from "@/lib/logger"
+import type { ResolvedAuth } from "@/lib/auth/resolve-proxy-auth"
 
-type ApiRequestContext = {
+export type ApiRequestContext = {
   requestId: string
   startedAt: number
-}
-
-type ApiRequestLog = {
-  timestamp: string
-  level: "info"
-  event: "api.request.completed"
-  requestId: string
-  method: string
-  pathname: string
-  statusCode: number
-  durationMs: number
-}
-
-type ApiErrorLog = {
-  timestamp: string
-  level: "error"
-  event: "api.request.error"
-  requestId: string
-  method: string
-  pathname: string
-  statusCode: number
-  durationMs: number
-  errorCode: string
-}
-
-type ApiLogStatus = {
-  status?: number | string
+  auth?: ResolvedAuth | null
+  body?: unknown
 }
 
 const requestContexts = new WeakMap<Request, ApiRequestContext>()
 
-const safeErrorCodes = new Set([
+export const attachRequestAuth = (request: Request, auth: ResolvedAuth) => {
+  const context = requestContexts.get(request)
+  if (context) {
+    context.auth = auth
+  }
+}
+
+const safeErrorCodes = new Set<string>([
   "UNKNOWN",
   "PARSE",
   "INTERNAL_SERVER_ERROR",
@@ -42,10 +26,13 @@ const safeErrorCodes = new Set([
   "INVALID_FILE_TYPE",
 ])
 
+const sensitiveFieldMarker =
+  /password|secret|token|key|authorization|cookie|credential|bearer|session/i
+
 const sensitivePathMarker =
   /(?:authorization|api[-_]?key|bearer|credential|secret|token|webhook)/i
 
-const redactSensitivePathname = (pathname: string) => {
+export const redactSensitivePathname = (pathname: string) => {
   let redactNext = false
 
   return pathname
@@ -65,16 +52,48 @@ const redactSensitivePathname = (pathname: string) => {
     .join("/")
 }
 
+export const redactSensitiveData = (data: unknown, depth = 0): unknown => {
+  if (depth > 5) return "[DEPTH_LIMIT]"
+  if (data === null || data === undefined) return data
+
+  if (typeof data === "string") {
+    if (data.length > 2000) {
+      return `${data.slice(0, 2000)}...[TRUNCATED]`
+    }
+    return data
+  }
+
+  if (Array.isArray(data)) {
+    return data.map((item) => redactSensitiveData(item, depth + 1))
+  }
+
+  if (typeof data === "object") {
+    const sanitized: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(
+      data as Record<string, unknown>
+    )) {
+      if (sensitiveFieldMarker.test(key)) {
+        sanitized[key] = "[REDACTED]"
+      } else {
+        sanitized[key] = redactSensitiveData(value, depth + 1)
+      }
+    }
+    return sanitized
+  }
+
+  return data
+}
+
 const pathnameOf = (request: Request) =>
   redactSensitivePathname(new URL(request.url).pathname)
 
-const contextFor = (request: Request): ApiRequestContext => {
+export const contextFor = (request: Request): ApiRequestContext => {
   const existing = requestContexts.get(request)
   if (existing) {
     return existing
   }
 
-  const context = {
+  const context: ApiRequestContext = {
     requestId: crypto.randomUUID(),
     startedAt: Date.now(),
   }
@@ -88,7 +107,7 @@ const isResponse = (value: unknown): value is Response =>
   typeof Response !== "undefined" && value instanceof Response
 
 const statusCodeOf = (
-  set: ApiLogStatus,
+  set: { status?: number | string },
   response: unknown,
   fallback: number
 ) => {
@@ -105,27 +124,148 @@ const statusCodeOf = (
 
 const errorCodeOf = (code: unknown) =>
   typeof code === "string" && safeErrorCodes.has(code) ? code : "UNKNOWN"
+const normalizeOrgRole = (role: string | null | undefined) => {
+  if (!role) return null
+  const slug = role.toLowerCase()
+  if (slug === "owner" || slug === "user_owner") return "owner" as const
+  if (slug === "admin" || slug === "user_admin") return "admin" as const
+  if (slug === "member" || slug === "user_member") return "member" as const
+  return null
+}
 
-const emit = (record: ApiRequestLog | ApiErrorLog) => {
-  console.error(JSON.stringify(record))
+const resolveOrgRoleFromHeaders = (request: Request) => {
+  const single = request.headers.get("x-workos-session-role")
+  if (single) {
+    const normalized = normalizeOrgRole(single)
+    if (normalized) return normalized
+  }
+
+  const raw = request.headers.get("x-workos-session-roles")
+  if (!raw) return null
+
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      for (const r of parsed) {
+        if (typeof r === "string") {
+          const normalized = normalizeOrgRole(r)
+          if (normalized) return normalized
+        }
+      }
+    }
+  } catch {
+    // Ignore malformed JSON
+  }
+
+  return null
+}
+
+const extractCallerFromHeaders = (request?: Request): ResolvedAuth | null => {
+  if (!request) return null
+
+  // Fast synchronous extraction from proxy headers (populated by AuthKit middleware / proxy)
+  if (request.headers.get("x-workos-authed") === "true") {
+    const userId = request.headers.get("x-workos-user-id")?.trim()
+    if (!userId) {
+      return null
+    }
+    const email = request.headers.get("x-workos-user-email")?.trim() ?? null
+    const organizationId =
+      request.headers.get("x-workos-organization-id")?.trim() || null
+    const orgRole = resolveOrgRoleFromHeaders(request)
+
+    return {
+      type: "workos",
+      userId,
+      email,
+      organizationId,
+      orgRole,
+      platformRole: "none",
+      source: "proxy_header",
+    }
+  }
+
+  // Non-proxy requests leave caller anonymous until route-level auth resolution attaches validated context
+  return null
+}
+
+const extractCaller = (context: ApiRequestContext, request?: Request) => {
+  const clientIp =
+    request?.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    request?.headers.get("cf-connecting-ip")?.trim() ??
+    null
+  const userAgent = request?.headers.get("user-agent") ?? null
+
+  const auth = context.auth ?? extractCallerFromHeaders(request)
+
+  if (!auth) {
+    return {
+      type: "anonymous",
+      ip: clientIp,
+      userAgent,
+    }
+  }
+
+  if (auth.type === "workos") {
+    return {
+      type: "workos",
+      userId: auth.userId,
+      email: auth.email,
+      organizationId: auth.organizationId,
+      orgRole: auth.orgRole,
+      platformRole: auth.platformRole,
+      source: auth.source,
+      ip: clientIp,
+      userAgent,
+    }
+  }
+
+  if (auth.type === "platform") {
+    return {
+      type: "platform",
+      keyId: auth.keyId,
+      keyName: auth.keyName,
+      organizationId: auth.organizationId,
+      environment: auth.environment,
+      source: auth.source,
+      ip: clientIp,
+      userAgent,
+    }
+  }
+
+  return {
+    type: "unknown",
+    ip: clientIp,
+    userAgent,
+  }
 }
 
 const emitCompletion = (
   request: Request,
   context: ApiRequestContext,
-  set: ApiLogStatus,
+  set: { status?: number | string },
   response: unknown
 ) => {
-  emit({
-    timestamp: new Date().toISOString(),
-    level: "info",
+  const statusCode = statusCodeOf(set, response, 200)
+  const caller = extractCaller(context, request)
+  const pathname = pathnameOf(request)
+  const durationMs = durationSince(context.startedAt)
+
+  const logPayload: Record<string, unknown> = {
     event: "api.request.completed",
     requestId: context.requestId,
     method: request.method,
-    pathname: pathnameOf(request),
-    statusCode: statusCodeOf(set, response, 200),
-    durationMs: durationSince(context.startedAt),
-  })
+    pathname,
+    statusCode,
+    durationMs,
+    caller,
+  }
+
+  if (context.body !== undefined && context.body !== null) {
+    logPayload.body = redactSensitiveData(context.body)
+  }
+
+  logger.info(logPayload, `API ${request.method} ${pathname} ${statusCode}`)
 }
 
 const emitError = (
@@ -133,23 +273,46 @@ const emitError = (
   context: ApiRequestContext,
   code: unknown
 ) => {
-  emit({
-    timestamp: new Date().toISOString(),
-    level: "error",
+  const caller = extractCaller(context, request)
+  const pathname = pathnameOf(request)
+  const durationMs = durationSince(context.startedAt)
+  const errorCode = errorCodeOf(code)
+
+  const logPayload: Record<string, unknown> = {
     event: "api.request.error",
     requestId: context.requestId,
     method: request.method,
-    pathname: pathnameOf(request),
+    pathname,
     statusCode: 500,
-    durationMs: durationSince(context.startedAt),
-    errorCode: errorCodeOf(code),
-  })
+    durationMs,
+    errorCode,
+    caller,
+  }
+
+  if (context.body !== undefined && context.body !== null) {
+    logPayload.body = redactSensitiveData(context.body)
+  }
+
+  logger.error(
+    logPayload,
+    `API Error ${request.method} ${pathname}: ${errorCode}`
+  )
 }
 
 export const createApiLoggingPlugin = () =>
   new Elysia({ name: "api-logging" })
     .onRequest(({ request }) => {
-      contextFor(request)
+      const context = contextFor(request)
+      const fastAuth = extractCallerFromHeaders(request)
+      if (fastAuth) {
+        context.auth = fastAuth
+      }
+    })
+    .onTransform(({ request, body }) => {
+      const context = contextFor(request)
+      if (body !== undefined) {
+        context.body = body
+      }
     })
     .onError(({ code, request }) => {
       if (code === "VALIDATION" || code === "NOT_FOUND") {
