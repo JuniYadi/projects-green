@@ -86,7 +86,7 @@ describe("ThunderAiHelpDrawer", () => {
       expect(view.getByText("PFNApp AI Assistant")).toBeTruthy()
       expect(
         view.getByPlaceholderText(
-          "Ask anything about this page or system workflows..."
+          "Ask anything about this page or workflows..."
         )
       ).toBeTruthy()
     })
@@ -178,7 +178,7 @@ describe("ThunderAiHelpDrawer", () => {
 
       expect(
         view.getByPlaceholderText(
-          "Ask anything about this page or system workflows..."
+          "Ask anything about this page or workflows..."
         )
       ).toBeTruthy()
 
