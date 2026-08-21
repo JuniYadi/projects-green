@@ -34,7 +34,7 @@ const STREAM_HEADERS = {
 
 const STRICT_KB_FALLBACK_MESSAGE =
   "I don't know from the current knowledgebase."
-const MIN_CONTEXT_SCORE = 1
+const MIN_CONTEXT_SCORE = 6
 
 export type KnowledgeAuthContext = {
   organizationId?: string | null
