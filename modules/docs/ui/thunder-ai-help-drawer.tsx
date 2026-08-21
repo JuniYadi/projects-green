@@ -507,10 +507,12 @@ export function ThunderAiHelpDrawer() {
 
   const normalizedMessages = useMemo(
     () =>
-      messages.map((message) => ({
-        role: message.role,
-        content: message.content,
-      })),
+      messages
+        .filter((message) => Boolean(message.content && message.content.trim()))
+        .map((message) => ({
+          role: message.role,
+          content: message.content.trim(),
+        })),
     [messages]
   )
 
@@ -615,42 +617,45 @@ export function ThunderAiHelpDrawer() {
             continue
           }
 
-          const frame = JSON.parse(line) as KnowledgeChatStreamFrame
+          try {
+            const frame = JSON.parse(line) as KnowledgeChatStreamFrame
 
-          if (frame.type === "delta") {
-            setMessages((current) =>
-              current.map((message) =>
-                message.id === assistantMessageId
-                  ? { ...message, content: `${message.content}${frame.text}` }
-                  : message
+            if (frame.type === "delta") {
+              setMessages((current) =>
+                current.map((message) =>
+                  message.id === assistantMessageId
+                    ? { ...message, content: `${message.content}${frame.text}` }
+                    : message
+                )
               )
-            )
-            continue
-          }
+              continue
+            }
 
-          if (frame.type === "done") {
-            finalAnswer = frame.answer
-            finalCitations = frame.citations
-            continue
-          }
+            if (frame.type === "done") {
+              finalAnswer = frame.answer
+              finalCitations = frame.citations
+              continue
+            }
 
-          if (frame.type === "error") {
-            setChatError(frame.message)
-            setMessages((current) =>
-              current.filter((message) => message.id !== assistantMessageId)
-            )
+            if (frame.type === "error") {
+              setChatError(frame.message)
+            }
+          } catch {
+            // Ignore partial NDJSON split across chunk boundaries
           }
         }
       }
 
-      if (finalAnswer) {
+      if (finalAnswer || finalCitations.length > 0) {
         setMessages((current) =>
           current.map((message) =>
             message.id === assistantMessageId
               ? {
                   ...message,
                   content: finalAnswer ?? message.content,
-                  citations: finalCitations,
+                  citations: finalCitations.length
+                    ? finalCitations
+                    : message.citations,
                 }
               : message
           )
