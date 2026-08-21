@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useQuery } from "@tanstack/react-query"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import {
   CurrencyDollar,
@@ -10,6 +10,13 @@ import {
   Warning,
   PaperPlaneTilt,
   Info,
+  Receipt,
+  CheckCircle,
+  Clock,
+  ArrowCounterClockwise,
+  MagnifyingGlass,
+  Funnel,
+  ArrowsClockwise,
 } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
@@ -21,10 +28,45 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
+
+type LedgerEntry = {
+  id: string
+  organizationId: string
+  waMessageId: string
+  phoneNumber: string
+  category: string
+  quotaKey: string
+  quotaValue: number
+  status: string
+  isReverted: boolean
+  revertReason: string | null
+  revertedAt: string | null
+  lastStatus: string | null
+  whatsappDeviceId: string | null
+  createdAt: string
+  updatedAt: string
+  devicePhoneNumber?: string | null
+}
 
 function formatPhone(phone: string): string {
   if (phone.startsWith("+")) return phone
@@ -57,17 +99,34 @@ function formatMessagePrice(value: string, currency: string | null): string {
   }
 }
 
+function formatDate(iso: string | Date): string {
+  try {
+    const d = typeof iso === "string" ? new Date(iso) : iso
+    return d.toLocaleString("id-ID", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  } catch {
+    return String(iso)
+  }
+}
+
 export default function WhatsAppPricingPage() {
   const params = useParams<{ lang?: string }>()
+  const searchParams = useSearchParams()
   const locale = resolveLocaleOrDefault(params?.lang)
   const t = getMessages(locale).console.whatsapp
   const [selectedDeviceId, setSelectedDeviceId] = React.useState<string>("all")
 
+  // Pricing rates query
   const {
     data: pricing,
-    isLoading,
-    error,
-    refetch,
+    isLoading: isPricingLoading,
+    error: pricingError,
+    refetch: refetchPricing,
   } = useQuery({
     queryKey: ["whatsapp", "messages", "pricing"],
     queryFn: async () => {
@@ -78,6 +137,77 @@ export default function WhatsAppPricingPage() {
     staleTime: 30_000,
   })
 
+  // Ledger state & query
+  const [ledgerLoading, setLedgerLoading] = React.useState(true)
+  const [ledgerData, setLedgerData] = React.useState<LedgerEntry[]>([])
+  const [ledgerSummary, setLedgerSummary] = React.useState({
+    totalCredits: 0,
+    totalRefundedCredits: 0,
+    activeCredits: 0,
+  })
+  const [ledgerTotal, setLedgerTotal] = React.useState(0)
+  const [page, setPage] = React.useState(1)
+  const [totalPages, setTotalPages] = React.useState(1)
+  const [refreshKey, setRefreshKey] = React.useState(0)
+
+  const [statusFilter, setStatusFilter] = React.useState(
+    searchParams.get("status") || "all"
+  )
+  const [categoryFilter, setCategoryFilter] = React.useState(
+    searchParams.get("category") || "all"
+  )
+  const [searchQuery, setSearchQuery] = React.useState(
+    searchParams.get("search") || ""
+  )
+  const [ledgerSelectedDevice, setLedgerSelectedDevice] = React.useState(
+    searchParams.get("deviceId") || "all"
+  )
+
+  React.useEffect(() => {
+    let cancelled = false
+    const loadLedger = async () => {
+      setLedgerLoading(true)
+      try {
+        const res = await whatsappClient.usage.ledger({
+          page,
+          limit: 20,
+          status: statusFilter !== "all" ? statusFilter : undefined,
+          category: categoryFilter !== "all" ? categoryFilter : undefined,
+          deviceId:
+            ledgerSelectedDevice !== "all" ? ledgerSelectedDevice : undefined,
+          search: searchQuery.trim() || undefined,
+        })
+        if (cancelled) return
+        if (res && res.ok) {
+          setLedgerData((res.data as unknown as LedgerEntry[]) ?? [])
+          setLedgerTotal(res.total ?? 0)
+          setTotalPages(res.totalPages ?? 1)
+          if (res.summary) setLedgerSummary(res.summary)
+        }
+      } catch (err) {
+        console.error("Failed to load WhatsApp ledger:", err)
+      } finally {
+        if (!cancelled) setLedgerLoading(false)
+      }
+    }
+    loadLedger()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    page,
+    statusFilter,
+    categoryFilter,
+    ledgerSelectedDevice,
+    searchQuery,
+    refreshKey,
+  ])
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    setPage(1)
+  }
+
   const devices = pricing?.devices ?? []
   const filteredDevices =
     selectedDeviceId === "all"
@@ -85,16 +215,35 @@ export default function WhatsAppPricingPage() {
       : devices.filter((d) => d.deviceId === selectedDeviceId)
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
+      {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {t.pricing.heading}
+            {t.pricing.heading} & Ledger
           </h1>
-          <p className="text-muted-foreground">{t.pricing.description}</p>
+          <p className="text-sm text-muted-foreground">
+            Category rates, quota deduction policies, and itemized transaction
+            ledger.
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              refetchPricing()
+              setRefreshKey((k) => k + 1)
+            }}
+            disabled={ledgerLoading}
+            className="gap-1.5"
+          >
+            <ArrowsClockwise
+              className={`size-4 ${ledgerLoading ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
+          <Button variant="outline" size="sm" asChild>
             <Link
               href={localizePathname({
                 pathname: "/console/whatsapp/usage",
@@ -104,198 +253,206 @@ export default function WhatsAppPricingPage() {
               {t.usage.heading}
             </Link>
           </Button>
-          <Button asChild>
+          <Button size="sm" asChild>
             <Link
               href={localizePathname({
                 pathname: "/console/whatsapp/messages",
                 locale,
               })}
             >
-              <PaperPlaneTilt className="mr-2 size-4" />
+              <PaperPlaneTilt className="mr-1.5 size-4" />
               {t.messages.sendMessage}
             </Link>
           </Button>
         </div>
       </div>
 
-      {/* Overview Info Cards */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Quota Credit Policy
-            </CardTitle>
-            <Info className="size-4 text-muted-foreground" />
+      {/* Top Section: Compact Policy / PAYG Rate and Category Rates Cards */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* Policy & PAYG Card */}
+        <Card className="flex flex-col justify-between">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-semibold">
+                PAYG & Quota Policy
+              </CardTitle>
+              <CurrencyDollar
+                className="size-5 text-muted-foreground"
+                weight="fill"
+              />
+            </div>
+            <CardDescription className="text-xs">
+              Quota credit deduction rules and Pay-As-You-Go overage rate per
+              message.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              Quota credits are deducted per outbound message based on the Meta
-              category of the template (Marketing, Utility, Authentication, or
-              Service).
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">PAYG Overage</CardTitle>
-            <CurrencyDollar
-              className="size-4 text-muted-foreground"
-              weight="fill"
-            />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-6 w-32" />
-            ) : error ? (
-              <p className="text-xs text-destructive">
-                Failed to load PAYG rates.
+          <CardContent className="space-y-4 text-sm">
+            <div className="rounded-md border bg-muted/40 p-3">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <Info className="size-3.5" />
+                <span>Deduction Policy</span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Quota credits are deducted per outbound message based on the
+                Meta template category (Marketing, Utility, Authentication,
+                Service).
               </p>
-            ) : pricing?.overage.configured &&
-              pricing.overage.unitPrice !== null ? (
-              <div>
-                <p className="text-lg font-bold">
-                  {formatMessagePrice(
-                    pricing.overage.unitPrice,
-                    pricing.overage.currency
-                  )}
-                  <span className="text-xs font-normal text-muted-foreground">
-                    {" "}
+            </div>
+
+            <div className="rounded-md border p-3">
+              <span className="text-xs text-muted-foreground">
+                PAYG Overage Rate
+              </span>
+              {isPricingLoading ? (
+                <Skeleton className="mt-1 h-6 w-28" />
+              ) : pricingError ? (
+                <p className="text-xs text-destructive">
+                  Failed to load PAYG rates.
+                </p>
+              ) : pricing?.overage.configured &&
+                pricing.overage.unitPrice !== null ? (
+                <div className="mt-1 flex items-baseline gap-1.5">
+                  <span className="text-lg font-bold">
+                    {formatMessagePrice(
+                      pricing.overage.unitPrice,
+                      pricing.overage.currency
+                    )}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
                     / message
                   </span>
+                </div>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Not configured for this plan.
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  Applied automatically after available monthly quota runs out.
-                </p>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Not configured for this WhatsApp plan.
-              </p>
-            )}
+              )}
+            </div>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Category Rates per Device */}
-      <Card>
-        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle>Device Category Rates</CardTitle>
-            <CardDescription>
-              Quota credits deducted per message category by WhatsApp device and
-              country.
-            </CardDescription>
-          </div>
-          {devices.length > 1 && (
-            <div className="flex items-center gap-2">
-              <Phone className="size-4 text-muted-foreground" />
-              <select
-                value={selectedDeviceId}
-                onChange={(e) => setSelectedDeviceId(e.target.value)}
-                className="rounded-md border bg-background px-3 py-1.5 text-sm"
-                aria-label="Filter by WhatsApp device"
-              >
-                <option value="all">All Devices ({devices.length})</option>
-                {devices.map((d) => (
-                  <option key={d.deviceId} value={d.deviceId}>
-                    {formatPhone(d.phoneNumber)} ({d.country})
-                  </option>
-                ))}
-              </select>
+        {/* Compact Category Rates Table */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-col gap-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="text-base font-semibold">
+                Category Deduction Rates
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Quota credits deducted and final PAYG overage per message
+                category.
+              </CardDescription>
             </div>
-          )}
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-3" aria-label="Loading pricing details">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-24 w-full" />
-            </div>
-          ) : error ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <Warning className="mb-3 size-8 text-destructive" weight="fill" />
-              <p className="text-sm font-medium text-destructive">
-                Pricing information is unavailable right now.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3"
-                onClick={() => refetch()}
-              >
-                Try Again
-              </Button>
-            </div>
-          ) : devices.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              No active WhatsApp devices found with pricing rates.
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {filteredDevices.map((device) => (
-                <div
-                  key={device.deviceId}
-                  className="rounded-lg border bg-card p-4"
+            {devices.length > 1 && (
+              <div className="flex items-center gap-2">
+                <Phone className="size-3.5 text-muted-foreground" />
+                <select
+                  value={selectedDeviceId}
+                  onChange={(e) => setSelectedDeviceId(e.target.value)}
+                  className="rounded-md border bg-background px-2.5 py-1 text-xs"
+                  aria-label="Filter by WhatsApp device"
                 >
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b pb-3">
-                    <div className="flex items-center gap-2">
-                      <Phone className="size-4 text-muted-foreground" />
-                      <span className="font-semibold">
-                        {formatPhone(device.phoneNumber)}
-                      </span>
-                      <Badge variant="outline" className="text-xs">
-                        Country: {device.country}
-                      </Badge>
-                      <Badge variant="secondary" className="text-xs">
-                        Rate Tier: {device.rateTier ?? "BASE"}
+                  <option value="all">All Devices ({devices.length})</option>
+                  {devices.map((d) => (
+                    <option key={d.deviceId} value={d.deviceId}>
+                      {formatPhone(d.phoneNumber)} ({d.country})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </CardHeader>
+          <CardContent className="pt-0">
+            {isPricingLoading ? (
+              <div className="space-y-2 py-2">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            ) : pricingError ? (
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <Warning
+                  className="mb-2 size-6 text-destructive"
+                  weight="fill"
+                />
+                <p className="text-xs font-medium text-destructive">
+                  Pricing rates unavailable.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 text-xs"
+                  onClick={() => refetchPricing()}
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : devices.length === 0 ? (
+              <div className="py-6 text-center text-xs text-muted-foreground">
+                No active WhatsApp devices found.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredDevices.map((device) => (
+                  <div
+                    key={device.deviceId}
+                    className="overflow-hidden rounded-md border text-xs"
+                  >
+                    <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-1.5">
+                      <div className="flex items-center gap-2">
+                        <Phone className="size-3 text-muted-foreground" />
+                        <span className="font-semibold">
+                          {formatPhone(device.phoneNumber)}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className="px-1.5 py-0 text-[10px]"
+                        >
+                          {device.country}
+                        </Badge>
+                      </div>
+                      <Badge
+                        variant="secondary"
+                        className="px-1.5 py-0 text-[10px]"
+                      >
+                        Tier: {device.rateTier ?? "BASE"}
                       </Badge>
                     </div>
-                  </div>
 
-                  <div className="overflow-x-auto rounded-md border">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-xs">
                       <caption className="sr-only">
-                        WhatsApp pricing and quota breakdown for{" "}
-                        {device.phoneNumber}
+                        WhatsApp pricing rates for {device.phoneNumber}
                       </caption>
-                      <thead className="bg-muted/50 text-left text-muted-foreground">
+                      <thead className="bg-muted/20 text-left text-muted-foreground">
                         <tr>
-                          <th scope="col" className="px-4 py-2.5 font-medium">
+                          <th scope="col" className="px-3 py-1.5 font-medium">
                             Category
                           </th>
                           <th
                             scope="col"
-                            className="px-4 py-2.5 text-center font-medium"
+                            className="px-3 py-1.5 text-center font-medium"
                           >
                             Quota Deduction
                           </th>
                           <th
                             scope="col"
-                            className="px-4 py-2.5 text-right font-medium"
+                            className="px-3 py-1.5 text-right font-medium"
                           >
-                            PAYG Overage / Msg
+                            PAYG Rate / Msg
                           </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {device.categories.map((category) => (
-                          <tr
-                            key={category.category}
-                            className="border-t hover:bg-muted/30"
-                          >
-                            <th
-                              scope="row"
-                              className="px-4 py-2.5 text-left font-medium"
-                            >
-                              {category.category}
+                        {device.categories.map((cat) => (
+                          <tr key={cat.category} className="border-t">
+                            <th scope="row" className="px-3 py-1.5 font-medium">
+                              {cat.category}
                             </th>
-                            <td className="px-4 py-2.5 text-center font-semibold text-primary">
-                              -{formatQuotaCredit(category.quotaCredit)}
+                            <td className="px-3 py-1.5 text-center font-semibold text-primary">
+                              -{formatQuotaCredit(cat.quotaCredit)}
                             </td>
-                            <td className="px-4 py-2.5 text-right font-semibold">
-                              {category.overagePrice
-                                ? `Rp ${category.overagePrice}`
+                            <td className="px-3 py-1.5 text-right font-medium">
+                              {cat.overagePrice
+                                ? `Rp ${cat.overagePrice}`
                                 : "-"}
                             </td>
                           </tr>
@@ -303,8 +460,331 @@ export default function WhatsAppPricingPage() {
                       </tbody>
                     </table>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Middle Section: Ledger KPI Summary */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription className="text-xs">
+              Total Deducted Credits
+            </CardDescription>
+            <CardTitle className="text-xl font-bold">
+              {ledgerSummary.totalCredits.toLocaleString()} Credits
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-[11px] text-muted-foreground">
+              Total quota credits reserved/debited across all dispatches
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription className="text-xs">
+              Refunded / Reverted
+            </CardDescription>
+            <CardTitle className="text-xl font-bold text-amber-500">
+              {ledgerSummary.totalRefundedCredits.toLocaleString()} Credits
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-[11px] text-muted-foreground">
+              Automatically refunded due to Meta delivery rejection
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription className="text-xs">
+              Net Billed Credits
+            </CardDescription>
+            <CardTitle className="text-xl font-bold text-emerald-600">
+              {ledgerSummary.activeCredits.toLocaleString()} Credits
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-[11px] text-muted-foreground">
+              Confirmed delivered message quota
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Bottom Section: Deduction & Refund Ledger */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="text-base font-semibold">
+                Transaction & Deduction Ledger
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Real-time record of all quota deductions, deliveries, and
+                refunds.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Ledger Filters */}
+          <form
+            onSubmit={handleSearch}
+            className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5"
+          >
+            <div className="relative">
+              <MagnifyingGlass className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search phone or wamid..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 text-xs"
+              />
+            </div>
+
+            <Select
+              value={statusFilter}
+              onValueChange={(val) => {
+                setStatusFilter(val)
+                setPage(1)
+              }}
+            >
+              <SelectTrigger className="text-xs">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="CONFIRMED">Confirmed</SelectItem>
+                <SelectItem value="PENDING">Pending Verify</SelectItem>
+                <SelectItem value="REFUNDED">Refunded / Reverted</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={categoryFilter}
+              onValueChange={(val) => {
+                setCategoryFilter(val)
+                setPage(1)
+              }}
+            >
+              <SelectTrigger className="text-xs">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="MARKETING">MARKETING</SelectItem>
+                <SelectItem value="UTILITY">UTILITY</SelectItem>
+                <SelectItem value="AUTHENTICATION">AUTHENTICATION</SelectItem>
+                <SelectItem value="SERVICE">SERVICE</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={ledgerSelectedDevice}
+              onValueChange={(val) => {
+                setLedgerSelectedDevice(val)
+                setPage(1)
+              }}
+            >
+              <SelectTrigger className="text-xs">
+                <SelectValue placeholder="Device" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Devices</SelectItem>
+                {devices.map((d) => (
+                  <SelectItem key={d.deviceId} value={d.deviceId}>
+                    {formatPhone(d.phoneNumber)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button
+              type="submit"
+              variant="secondary"
+              size="sm"
+              className="gap-1.5 text-xs"
+            >
+              <Funnel className="size-3.5" />
+              Apply Filter
+            </Button>
+          </form>
+
+          {/* Ledger Table */}
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Time</TableHead>
+                  <TableHead className="text-xs">Recipient</TableHead>
+                  <TableHead className="text-xs">Category</TableHead>
+                  <TableHead className="text-xs">Source Type</TableHead>
+                  <TableHead className="text-xs">Deduction</TableHead>
+                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs">
+                    Meta Message ID / Note
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ledgerLoading &&
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-28" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-16" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-20" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-14" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-16" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-32" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                {!ledgerLoading && ledgerData.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="h-28 text-center text-xs text-muted-foreground"
+                    >
+                      <Receipt className="mx-auto mb-2 size-6 opacity-40" />
+                      No deduction ledger entries found.
+                    </TableCell>
+                  </TableRow>
+                )}
+                {!ledgerLoading &&
+                  ledgerData.map((row) => {
+                    const isRefunded =
+                      row.isReverted || row.status === "REVERTED_FAILED"
+                    const isConfirmed = row.status === "CONFIRMED"
+                    return (
+                      <TableRow key={row.id}>
+                        <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                          {formatDate(row.createdAt)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5 text-xs font-medium">
+                            <Phone className="size-3 text-muted-foreground" />
+                            <span>{row.phoneNumber}</span>
+                          </div>
+                          {row.devicePhoneNumber && (
+                            <span className="text-[10px] text-muted-foreground">
+                              via {row.devicePhoneNumber}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className="px-1.5 py-0 text-[10px] font-semibold"
+                          >
+                            {row.category}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="secondary"
+                            className="bg-blue-500/10 px-1.5 py-0 text-[10px] text-blue-600 dark:text-blue-400"
+                          >
+                            QUOTA_ALLOWANCE
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs font-semibold whitespace-nowrap">
+                          {isRefunded ? (
+                            <span className="text-muted-foreground line-through">
+                              {row.quotaValue} credits
+                            </span>
+                          ) : (
+                            <span>{row.quotaValue} credits</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isRefunded ? (
+                            <Badge
+                              variant="destructive"
+                              className="gap-1 border-amber-500/30 bg-amber-500/15 px-1.5 py-0 text-[10px] text-amber-600 dark:text-amber-400"
+                            >
+                              <ArrowCounterClockwise className="size-2.5" />
+                              REFUNDED
+                            </Badge>
+                          ) : isConfirmed ? (
+                            <Badge
+                              variant="default"
+                              className="gap-1 bg-emerald-600 px-1.5 py-0 text-[10px] text-white"
+                            >
+                              <CheckCircle className="size-2.5" weight="fill" />
+                              CONFIRMED
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="secondary"
+                              className="gap-1 px-1.5 py-0 text-[10px]"
+                            >
+                              <Clock className="size-2.5" />
+                              PENDING
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-[200px] truncate font-mono text-[11px] text-muted-foreground">
+                            {row.waMessageId}
+                          </div>
+                          {row.revertReason && (
+                            <div className="max-w-[200px] truncate text-[10px] text-amber-600 dark:text-amber-400">
+                              {row.revertReason}
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-xs text-muted-foreground">
+                Showing page {page} of {totalPages} ({ledgerTotal} entries)
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1 || ledgerLoading}
+                  className="text-xs"
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages || ledgerLoading}
+                  className="text-xs"
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
