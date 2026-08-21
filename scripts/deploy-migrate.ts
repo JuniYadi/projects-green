@@ -66,7 +66,7 @@ async function verifyDatabase(databaseUrl: string): Promise<void> {
       currencies,
       knowledgeDocs,
       paymentGateways,
-      appHostingPolicies,
+      detectorRules,
     ] = await Promise.all([
       prisma.appHostingCluster.count(),
       prisma.vpnServer.count(),
@@ -88,7 +88,7 @@ async function verifyDatabase(databaseUrl: string): Promise<void> {
     console.log(`        - PaymentCurrencies:     ${currencies}`)
     console.log(`        - PaymentGateways:       ${paymentGateways}`)
     console.log(`        - DocsKnowledgeDocument: ${knowledgeDocs}`)
-    console.log(`        - AppHostingPolicies:    ${appHostingPolicies}`)
+    console.log(`        - DetectorRules:         ${detectorRules}`)
 
     console.log("  [4/4] Verification completed successfully.")
   } finally {
