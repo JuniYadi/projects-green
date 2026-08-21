@@ -57,19 +57,38 @@ async function verifyDatabase(databaseUrl: string): Promise<void> {
     }
 
     // 3. Check core table records count
-    const [appHostingClusters, vpnServers, servicePlans, currencies] =
-      await Promise.all([
-        prisma.appHostingCluster.count(),
-        prisma.vpnServer.count(),
-        prisma.servicePlan.count(),
-        prisma.paymentCurrency.count(),
-      ])
+    const [
+      appHostingClusters,
+      vpnServers,
+      servicePackages,
+      servicePlans,
+      servicePricings,
+      currencies,
+      knowledgeDocs,
+      paymentGateways,
+      appHostingPolicies,
+    ] = await Promise.all([
+      prisma.appHostingCluster.count(),
+      prisma.vpnServer.count(),
+      prisma.servicePackage.count(),
+      prisma.servicePlan.count(),
+      prisma.servicePricing.count(),
+      prisma.paymentCurrency.count(),
+      prisma.docsKnowledgeDocument.count(),
+      prisma.paymentGateway.count(),
+      prisma.detectorRule.count(),
+    ])
 
     console.log("  [3/4] Core Table Counts:")
-    console.log(`        - AppHostingCluster: ${appHostingClusters}`)
-    console.log(`        - VpnServer:         ${vpnServers}`)
-    console.log(`        - ServicePlan:       ${servicePlans}`)
-    console.log(`        - PaymentCurrency:   ${currencies}`)
+    console.log(`        - AppHostingCluster:     ${appHostingClusters}`)
+    console.log(`        - VpnServer:             ${vpnServers}`)
+    console.log(`        - ServicePackages:       ${servicePackages}`)
+    console.log(`        - ServicePlans:          ${servicePlans}`)
+    console.log(`        - ServicePricings:       ${servicePricings}`)
+    console.log(`        - PaymentCurrencies:     ${currencies}`)
+    console.log(`        - PaymentGateways:       ${paymentGateways}`)
+    console.log(`        - DocsKnowledgeDocument: ${knowledgeDocs}`)
+    console.log(`        - AppHostingPolicies:    ${appHostingPolicies}`)
 
     console.log("  [4/4] Verification completed successfully.")
   } finally {
@@ -101,8 +120,30 @@ async function main(): Promise<void> {
   await runCommand(["bun", "--bun", "prisma", "generate"])
 
   // 3. Targeted Seeders (Excluding seed:system)
-  console.log("\n🌱 Running Targeted Seeders (excluding seed:system)...")
+  console.log("\n🌱 Running Production Seeders...")
 
+  // Core system seeders run by exact name (avoids SqlRestore/sql dump wipe)
+  const seeders = [
+    "WorkosRoles",
+    "Currencies",
+    "Payment",
+    "Billing",
+    "WhatsappPricing",
+    "AppHostingPolicy",
+    "KnowledgeDocs",
+  ]
+
+  for (const seeder of seeders) {
+    console.log(`-> Seeding ${seeder}...`)
+    await runCommand([
+      "bun",
+      "run",
+      "scripts/seed-runner.ts",
+      `--seed=${seeder}`,
+    ])
+  }
+
+  // Standalone cluster & VPN coordinates
   if (await Bun.file("scripts/seed-app-hosting-cluster.ts").exists()) {
     console.log("-> Seeding App Hosting Cluster...")
     await runCommand(["bun", "run", "scripts/seed-app-hosting-cluster.ts"])
@@ -112,7 +153,6 @@ async function main(): Promise<void> {
     console.log("-> Seeding VPN Server Coordinates...")
     await runCommand(["bun", "run", "scripts/seed-vpn-server-coordinates.ts"])
   }
-
   // 4. Verify Database
   await verifyDatabase(databaseUrl)
 

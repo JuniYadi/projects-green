@@ -6,9 +6,19 @@
  * Only updates servers whose latitude/longitude is currently NULL.
  * Safe to re-run — skips servers that already have coordinates.
  */
+import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "@prisma/client"
 
-const prisma = new PrismaClient()
+const DATABASE_URL = process.env.DATABASE_URL?.trim()
+
+if (!DATABASE_URL) {
+  console.error("Missing DATABASE_URL environment variable")
+  process.exit(1)
+}
+
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: DATABASE_URL }),
+})
 
 // Known city coordinates keyed by region slug.
 const COORDS_BY_REGION_SLUG: Record<string, { lat: number; lng: number }> = {
