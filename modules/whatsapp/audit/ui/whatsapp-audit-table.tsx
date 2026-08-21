@@ -1,3 +1,5 @@
+"use client"
+
 import Link from "next/link"
 import {
   Tooltip,
@@ -6,7 +8,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { toast } from "sonner"
-import { Copy } from "@phosphor-icons/react"
 
 import * as React from "react"
 import {
@@ -15,6 +16,7 @@ import {
   CaretRight,
   CheckCircle,
   CopySimple,
+  Copy,
   WarningCircle,
 } from "@phosphor-icons/react"
 import { Badge } from "@/components/ui/badge"
@@ -66,7 +68,9 @@ export type AuditLogTableProps = {
   onRetry?: () => void
   pagination?: PaginationMeta & { onPageChange: (page: number) => void }
   showPayload?: boolean
+  messageJourneyBasePath?: string
 }
+
 function maskWaMessageId(id: string | null): string {
   if (!id) return "—"
   if (id.length <= 26) return id
@@ -168,6 +172,7 @@ export function AuditLogTable({
   onRetry,
   pagination,
   showPayload = false,
+  messageJourneyBasePath = "/console/whatsapp/messages",
 }: AuditLogTableProps) {
   const [expandedRowId, setExpandedRowId] = React.useState<string | null>(null)
 
@@ -317,7 +322,7 @@ export function AuditLogTable({
                         typeof log.details.waMessageId === "string" ? (
                           <div className="flex items-center gap-1">
                             <Link
-                              href={`/console/whatsapp/messages/${encodeURIComponent(log.details.waMessageId)}`}
+                              href={`${messageJourneyBasePath}/${encodeURIComponent(log.details.waMessageId)}`}
                               className="font-mono text-xs text-primary hover:underline"
                               onClick={(e) => e.stopPropagation()}
                             >
