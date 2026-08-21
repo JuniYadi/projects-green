@@ -1251,6 +1251,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
                 createdAt: auditLog.createdAt.toISOString(),
               }
             : null,
+          timeline,
           webhooks: webhookEvents.map((w) => ({
             id: w.id,
             eventType: w.eventType,
