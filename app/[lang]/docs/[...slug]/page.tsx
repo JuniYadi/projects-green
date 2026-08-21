@@ -10,8 +10,6 @@ import {
   CheckCircle,
   Translate,
   BookOpenText,
-  ThumbsUp,
-  ThumbsDown,
 } from "@phosphor-icons/react/dist/ssr"
 import { prisma } from "@/lib/prisma"
 import { renderMarkdownToHtml } from "@/lib/markdown"
@@ -257,38 +255,6 @@ export default async function PublicDocDetailPage({ params }: Props) {
         />
         <MermaidRenderer />
         <CodeBlockCopyEnhancer />
-
-        {/* Feedback Section */}
-        <div className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-border/40 bg-card/40 p-5 backdrop-blur-sm sm:flex-row">
-          <div className="space-y-0.5 text-center sm:text-left">
-            <h4 className="text-sm font-semibold text-foreground">
-              {lang === "id"
-                ? "Apakah panduan ini membantu?"
-                : "Was this guide helpful?"}
-            </h4>
-            <p className="text-xs text-muted-foreground">
-              {lang === "id"
-                ? "Bantu kami menyempurnakan dokumentasi produk ini."
-                : "Help us refine and improve our developer documentation."}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400"
-            >
-              <ThumbsUp size={14} />
-              <span>{lang === "id" ? "Ya, membantu" : "Yes, helpful"}</span>
-            </button>
-            <button
-              type="button"
-              className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <ThumbsDown size={14} />
-              <span>{lang === "id" ? "Perlu perbaikan" : "Needs work"}</span>
-            </button>
-          </div>
-        </div>
 
         {/* Bottom Pagination Flow (Previous / Next Article Cards) */}
         {(prevDoc || nextDoc) && (

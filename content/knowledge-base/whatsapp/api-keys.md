@@ -28,13 +28,19 @@ Your WhatsApp API Key is a **secret token** (like a password) that allows your b
 - **One Active Key**: Each organization uses one active key at a time.
 - **Safe Sharing**: You can safely share the key's prefix (e.g. `wa_key_...`) with colleagues for debugging without exposing the real secret.
 
+---
+
+## 2. Generating Your API Key
+
+### Step 1: Open the Console
+
+Navigate to **Console** > **WhatsApp** > **API Key** (`/console/whatsapp/api-keys`).
+
 If your organization does not yet have an active API key, the status badge will indicate **Not generated**.
 
 ![Initial Not Generated State](/kb-assets/whatsapp/api-keys/01-initial-empty-state.png)
 
----
-
-### Step 2: Generate the API Key
+### Step 2: Generate the Key
 
 1. Click the **"Generate API key"** button.
 2. The system immediately provisions the key and presents the **One-time API secret** banner.

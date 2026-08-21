@@ -132,7 +132,7 @@ export function MermaidRenderer() {
       window.mermaid.initialize({
         startOnLoad: false,
         theme: resolvedTheme === "dark" ? "dark" : "default",
-        securityLevel: "loose",
+        securityLevel: "strict",
         fontFamily: "inherit",
         fontSize: 15,
         flowchart: {
