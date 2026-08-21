@@ -22,7 +22,7 @@
  *     - app-hosting-billing (every hour)
  *     - whatsapp-monthly-billing (every hour)
  *     - vpn-renewal (every hour)
- *
+ *     - vpn-session-cleanup (every 5m)
  * Usage: bun run worker:all
  */
 
@@ -108,6 +108,10 @@ import {
 import { vpnProvisioningService } from "@/modules/vpn/provisioning/vpn-provisioning.service"
 import { vpnReconciliationService } from "@/modules/vpn/provisioning/vpn-reconciliation.service"
 import { vpnHealthService } from "@/modules/vpn/admin/vpn-health.service"
+import {
+  startStaleSessionCleanup,
+  stopStaleSessionCleanup,
+} from "@/modules/vpn/sessions/stale-cleanup"
 import { EmailJob } from "@/lib/queue/email"
 import { registerWhatsAppHealthWorkerLogging } from "@/lib/worker-health-logging"
 
@@ -659,6 +663,9 @@ intervals.push(vpnReconciliationInterval)
 const vpnHealthInterval = vpnHealthService.start()
 intervals.push(vpnHealthInterval)
 
+// ── VPN Stale Session Cleanup (every 5 minutes) ───────────────────────────
+startStaleSessionCleanup()
+
 // ══════════════════════════════════════════════════════════════════════════
 // Graceful Shutdown
 // ══════════════════════════════════════════════════════════════════════════
@@ -675,6 +682,7 @@ const shutdown = async (signal: string) => {
   for (const interval of intervals) {
     clearInterval(interval)
   }
+  stopStaleSessionCleanup()
 
   // Close all BullMQ workers (waits for active jobs to finish)
   await Promise.all(allWorkers.map((w) => w.close()))
@@ -719,5 +727,5 @@ console.info(
   `[workers] bullmq queues: ${GithubEventJob.queue}, ${BILLING_DAILY_RESET_QUEUE}, ${BILLING_MONTHLY_RESET_QUEUE}, ${BILLING_INVOICE_STATUS_QUEUE}, ${BILLING_PAYMENT_REMINDER_QUEUE}, ${OPENSEARCH_INGEST_QUEUE}, ${QUOTA_RECONCILIATION_QUEUE}, ${WHATSAPP_BROADCAST_QUEUE_NAME}, ${WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME}, ${EmailJob.queue}, ${WHATSAPP_WEBHOOK_OUTGOING_QUEUE}`
 )
 console.info(
-  "[workers] interval tasks: deploy-monitor (60s), app-hosting-billing (1h), whatsapp-billing (1h), vpn-renewal (1h), vpn-reconciliation (5m), vpn-health (15m)"
+  "[workers] interval tasks: deploy-monitor (60s), app-hosting-billing (1h), whatsapp-billing (1h), vpn-renewal (1h), vpn-reconciliation (5m), vpn-health (15m), vpn-session-cleanup (5m)"
 )
