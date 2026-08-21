@@ -1,8 +1,19 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Lightning, BookOpen, PaperPlane } from "@phosphor-icons/react"
+import {
+  Lightning,
+  BookOpen,
+  PaperPlane,
+  ArrowSquareOut,
+  Sparkle,
+  ChatCircleDots,
+  CreditCard,
+  RocketLaunch,
+  Key,
+} from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -34,6 +45,25 @@ type ChatMessage = KnowledgeChatMessage & {
   citations?: KnowledgeCitation[]
 }
 
+type RelatedDoc = {
+  titleEn: string
+  titleId: string
+  descriptionEn: string
+  descriptionId: string
+  slug: string
+  icon: typeof BookOpen
+}
+
+type RouteContextConfig = {
+  titleEn: string
+  titleId: string
+  descriptionEn: string
+  descriptionId: string
+  starterPromptsEn: string[]
+  starterPromptsId: string[]
+  relatedDocs: RelatedDoc[]
+}
+
 const DOC_QUERY_KEY = "doc"
 const KB_QUERY_KEY = "kb"
 const ACTIVE_VALUE = "1"
@@ -41,11 +71,273 @@ const ACTIVE_VALUE = "1"
 const toMessageId = () =>
   `msg_${Date.now()}_${Math.random().toString(36).slice(2)}`
 
-const getErrorMessage = (payload: UiDocErrorResponse | null) => {
+const getErrorMessage = (payload: UiDocErrorResponse | null, isId: boolean) => {
   if (payload?.message) {
     return payload.message
   }
-  return "Unable to load documentation right now."
+  return isId
+    ? "Tidak dapat memuat dokumentasi saat ini."
+    : "Unable to load documentation right now."
+}
+
+// Contextual mapping for console sections
+const getRouteContext = (routePath: string): RouteContextConfig => {
+  if (
+    routePath.startsWith("/console/whatsapp") ||
+    routePath.startsWith("/portal/whatsapp")
+  ) {
+    return {
+      titleEn: "WhatsApp Business API",
+      titleId: "WhatsApp Business & API",
+      descriptionEn:
+        "Cloud API devices, Meta message templates, and live broadcasts",
+      descriptionId:
+        "Perangkat Cloud API, template pesan Meta, dan pengiriman siaran",
+      starterPromptsEn: [
+        "How do I create and submit Meta message templates?",
+        "How do I generate and manage WhatsApp API keys?",
+        "How do WhatsApp webhooks and delivery logs work?",
+      ],
+      starterPromptsId: [
+        "Bagaimana cara membuat dan mengajukan template Meta?",
+        "Bagaimana cara membuat dan mengelola API key WhatsApp?",
+        "Bagaimana cara kerja webhook dan log pengiriman pesan?",
+      ],
+      relatedDocs: [
+        {
+          titleEn: "Message Templates & Approval",
+          titleId: "Template Pesan & Persetujuan Meta",
+          descriptionEn: "Step-by-step guide to submitting templates to Meta",
+          descriptionId: "Panduan 3 langkah membuat template resmi ke Meta",
+          slug: "whatsapp/templates",
+          icon: ChatCircleDots,
+        },
+        {
+          titleEn: "WhatsApp API Keys Management",
+          titleId: "Pengelolaan WhatsApp API Key",
+          descriptionEn:
+            "Generate secret tokens for backend and bot integration",
+          descriptionId:
+            "Generate token rahasia untuk integrasi backend dan bot",
+          slug: "whatsapp/api-keys",
+          icon: Key,
+        },
+        {
+          titleEn: "Live Chat & Broadcast Messages",
+          titleId: "Pengiriman Pesan & Live Chat",
+          descriptionEn: "Direct messaging, customer chat, and mass broadcast",
+          descriptionId: "Panduan kirim pesan pelanggan dan siaran massal",
+          slug: "whatsapp/messages",
+          icon: ChatCircleDots,
+        },
+        {
+          titleEn: "Webhooks & Audit Logs",
+          titleId: "Webhook WhatsApp & Jejak Audit",
+          descriptionEn:
+            "Delivery reports, status callbacks, and security logs",
+          descriptionId: "Laporan pengiriman, callback status, dan jejak audit",
+          slug: "whatsapp/webhooks-and-audits",
+          icon: RocketLaunch,
+        },
+      ],
+    }
+  }
+
+  if (
+    routePath.startsWith("/console/billing") ||
+    routePath.startsWith("/portal/billing")
+  ) {
+    return {
+      titleEn: "Billing & Subscriptions",
+      titleId: "Penagihan & Saldo Organisasi",
+      descriptionEn:
+        "Deposit balances, QRIS top-ups, invoices, and service subscriptions",
+      descriptionId:
+        "Saldo deposit, top up QRIS, faktur invoice, dan langganan layanan",
+      starterPromptsEn: [
+        "How do I top up my organization balance via QRIS?",
+        "How do automated subscription renewals work?",
+        "How do promo vouchers and discounts apply to invoices?",
+      ],
+      starterPromptsId: [
+        "Bagaimana cara isi ulang saldo deposit via QRIS?",
+        "Bagaimana sistem perpanjangan langganan otomatis bekerja?",
+        "Bagaimana cara menggunakan voucher promo dan diskon?",
+      ],
+      relatedDocs: [
+        {
+          titleEn: "Billing & Balance Overview",
+          titleId: "Penagihan & Saldo Console",
+          descriptionEn: "Deposit balance management and top-up guides",
+          descriptionId: "Panduan saldo deposit dan pengisian saldo",
+          slug: "billing",
+          icon: CreditCard,
+        },
+        {
+          titleEn: "Balance & Quota Alerts",
+          titleId: "Peringatan Saldo & Kuota",
+          descriptionEn:
+            "Configure low-balance email and webhook notifications",
+          descriptionId: "Konfigurasi notifikasi saat saldo deposit menipis",
+          slug: "billing/alerts",
+          icon: Sparkle,
+        },
+        {
+          titleEn: "Vouchers & Promotions",
+          titleId: "Voucher Promo & Diskon",
+          descriptionEn: "Redeem promotional codes and invoice credits",
+          descriptionId: "Klaim kode promosi dan diskon invoice",
+          slug: "billing/vouchers",
+          icon: BookOpen,
+        },
+        {
+          titleEn: "Transaction & Balance History",
+          titleId: "Riwayat Transaksi & Saldo",
+          descriptionEn:
+            "Audit deposits, deductions, and downloadable PDF invoices",
+          descriptionId: "Jejak mutasi saldo deposit dan unduh PDF invoice",
+          slug: "billing/transactions",
+          icon: CreditCard,
+        },
+      ],
+    }
+  }
+
+  if (
+    routePath.startsWith("/console/app") ||
+    routePath.startsWith("/portal/app")
+  ) {
+    return {
+      titleEn: "Applications & Deployments",
+      titleId: "Aplikasi & Deployment",
+      descriptionEn:
+        "Container deployment, custom domains, and environment secrets",
+      descriptionId:
+        "Deploy container Docker, custom domain, dan konfigurasi secrets",
+      starterPromptsEn: [
+        "How do I deploy an application to this cluster?",
+        "How do custom domains and automated SSL work?",
+        "How do I configure environment variables and secrets?",
+      ],
+      starterPromptsId: [
+        "Bagaimana cara deploy aplikasi baru?",
+        "Bagaimana cara setting custom domain dan SSL?",
+        "Bagaimana cara mengelola environment variables dan secret?",
+      ],
+      relatedDocs: [
+        {
+          titleEn: "API & Swagger Reference",
+          titleId: "Dokumentasi REST API & Swagger",
+          descriptionEn: "Interactive OpenAPI documentation and API payloads",
+          descriptionId: "Eksplorasi dokumentasi REST API dan skema payload",
+          slug: "whatsapp/developer-api",
+          icon: RocketLaunch,
+        },
+        {
+          titleEn: "Security & API Keys",
+          titleId: "Keamanan & API Key",
+          descriptionEn: "Secret tokens and authentication guidelines",
+          descriptionId: "Token rahasia dan panduan autentikasi API",
+          slug: "whatsapp/api-keys",
+          icon: Key,
+        },
+      ],
+    }
+  }
+
+  if (routePath.startsWith("/console/support-tickets")) {
+    return {
+      titleEn: "Support Tickets",
+      titleId: "Tiket Bantuan",
+      descriptionEn:
+        "Submit inquiries, report incidents, and monitor support responses",
+      descriptionId:
+        "Kirim pertanyaan, laporkan kendala, dan pantau respons teknis",
+      starterPromptsEn: [
+        "How do I submit a high-priority support ticket?",
+        "What is the typical response SLA for technical tickets?",
+        "How can I track the progress of my open tickets?",
+      ],
+      starterPromptsId: [
+        "Bagaimana cara membuat tiket bantuan baru?",
+        "Berapa estimasi waktu respons bantuan teknis?",
+        "Bagaimana cara memantau status penyelesaian tiket?",
+      ],
+      relatedDocs: [
+        {
+          titleEn: "Billing & Invoice Support",
+          titleId: "Bantuan Penagihan & Faktur",
+          descriptionEn: "Top-up issues, failed invoices, and refund workflows",
+          descriptionId: "Kendala top-up saldo, invoice gagal, dan mutasi",
+          slug: "billing",
+          icon: CreditCard,
+        },
+        {
+          titleEn: "WhatsApp Integration Guides",
+          titleId: "Panduan Integrasi WhatsApp",
+          descriptionEn: "Troubleshooting Meta templates and webhook issues",
+          descriptionId: "Panduan kendala template Meta dan webhook",
+          slug: "whatsapp",
+          icon: ChatCircleDots,
+        },
+      ],
+    }
+  }
+
+  // Default: Console Overview
+  return {
+    titleEn: "Console Overview",
+    titleId: "Ringkasan Konsol",
+    descriptionEn:
+      "Platform overview, billing balances, and service quickstarts",
+    descriptionId:
+      "Ringkasan status platform, saldo akun, dan panduan mulai cepat",
+    starterPromptsEn: [
+      "How do I top up my organization balance?",
+      "How do I connect and configure a WhatsApp number?",
+      "What services and features are available on PFNApp?",
+    ],
+    starterPromptsId: [
+      "Bagaimana cara isi ulang saldo deposit organisasi?",
+      "Bagaimana cara menghubungkan dan setting nomor WhatsApp?",
+      "Apa saja fitur dan layanan yang tersedia di PFNApp?",
+    ],
+    relatedDocs: [
+      {
+        titleEn: "Top Up Balance & Invoices",
+        titleId: "Isi Saldo & Faktur Invoice",
+        descriptionEn: "Deposit top-up guide, QRIS payments, and PDF receipts",
+        descriptionId:
+          "Panduan isi deposit, pembayaran QRIS, dan unduh invoice",
+        slug: "billing",
+        icon: CreditCard,
+      },
+      {
+        titleEn: "WhatsApp Business Quickstart",
+        titleId: "Mulai Cepat WhatsApp Business",
+        descriptionEn: "Cloud API dashboard, QR connection, and devices",
+        descriptionId: "Dasbor Cloud API, koneksi QR, dan perangkat",
+        slug: "whatsapp",
+        icon: ChatCircleDots,
+      },
+      {
+        titleEn: "Message Templates Approval",
+        titleId: "Persetujuan Template Pesan",
+        descriptionEn: "Create and register official templates with Meta",
+        descriptionId: "Buat dan daftarkan template resmi ke Meta",
+        slug: "whatsapp/templates",
+        icon: BookOpen,
+      },
+      {
+        titleEn: "Developer API Reference",
+        titleId: "Referensi API & Pengembang",
+        descriptionEn: "REST API endpoints, OpenAPI specs, and SDKs",
+        descriptionId: "Endpoint REST API, spesifikasi OpenAPI, dan SDK",
+        slug: "whatsapp/developer-api",
+        icon: RocketLaunch,
+      },
+    ],
+  }
 }
 
 export function ThunderAiHelpDrawer() {
@@ -61,15 +353,18 @@ export function ThunderAiHelpDrawer() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const { pathnameWithoutLocale } = getLocaleFromPathname(pathname)
+  const { locale, pathnameWithoutLocale } = getLocaleFromPathname(pathname)
+  const activeLocale = locale === "id" ? "id" : "en"
+  const isId = activeLocale === "id"
   const routePath = pathnameWithoutLocale || "/console"
+  const routeContext = getRouteContext(routePath)
 
   // URL state checking
   const isDocOpen = searchParams.get(DOC_QUERY_KEY) === ACTIVE_VALUE
   const isKbOpen = searchParams.get(KB_QUERY_KEY) === ACTIVE_VALUE
   const isOpen = isDocOpen || isKbOpen
 
-  const activeTab = isKbOpen ? "chat" : "docs"
+  const activeTab = isDocOpen ? "docs" : "chat"
 
   // Scroll to bottom on messages update
   useEffect(() => {
@@ -108,7 +403,10 @@ export function ThunderAiHelpDrawer() {
         if (!response.ok || !payload || payload.ok !== true) {
           setDocState({
             status: "error",
-            message: getErrorMessage(payload as UiDocErrorResponse | null),
+            message: getErrorMessage(
+              payload as UiDocErrorResponse | null,
+              isId
+            ),
             code: (payload as UiDocErrorResponse | null)?.error,
           })
           return
@@ -121,9 +419,7 @@ export function ThunderAiHelpDrawer() {
         }
 
         const message =
-          error instanceof Error
-            ? error.message
-            : "Unable to load documentation right now."
+          error instanceof Error ? error.message : getErrorMessage(null, isId)
 
         setDocState({
           status: "error",
@@ -138,9 +434,9 @@ export function ThunderAiHelpDrawer() {
       isActive = false
       controller.abort()
     }
-  }, [routePath, isOpen, activeTab])
+  }, [routePath, isOpen, activeTab, isId])
 
-  const openDrawer = (tab: "chat" | "docs" = "docs") => {
+  const openDrawer = (tab: "chat" | "docs" = "chat") => {
     const next = new URLSearchParams(searchParams.toString())
     if (tab === "chat") {
       next.set(KB_QUERY_KEY, ACTIVE_VALUE)
@@ -230,7 +526,12 @@ export function ThunderAiHelpDrawer() {
           message?: string
         } | null
 
-        setChatError(payload?.message ?? "Unable to send message.")
+        setChatError(
+          payload?.message ??
+            (isId
+              ? "Tidak dapat mengirim pesan ke asisten AI."
+              : "Unable to send message to AI assistant.")
+        )
         setMessages((current) =>
           current.filter((message) => message.id !== assistantMessageId)
         )
@@ -240,7 +541,11 @@ export function ThunderAiHelpDrawer() {
       const stream = response.body
 
       if (!stream) {
-        setChatError("No response body from knowledge chat.")
+        setChatError(
+          isId
+            ? "Tidak ada respons stream dari knowledge chat."
+            : "No response body from knowledge chat."
+        )
         setMessages((current) =>
           current.filter((message) => message.id !== assistantMessageId)
         )
@@ -311,7 +616,11 @@ export function ThunderAiHelpDrawer() {
         )
       }
     } catch {
-      setChatError("Network error while contacting knowledge chat.")
+      setChatError(
+        isId
+          ? "Terjadi kesalahan jaringan saat menghubungi asisten AI."
+          : "Network error while contacting AI assistant."
+      )
       setMessages((current) =>
         current.filter((message) => message.id !== assistantMessageId)
       )
@@ -325,18 +634,21 @@ export function ThunderAiHelpDrawer() {
     sendChatMessage(input)
   }
 
-  const starterPrompts = [
-    `Tell me about ${routePath === "/console" ? "the Console Overview" : routePath.split("/").pop() || "this page"}`,
-    "What are some common tasks I can do here?",
-    "How does deployment work in this cluster?",
-  ]
+  const starterPrompts = isId
+    ? routeContext.starterPromptsId
+    : routeContext.starterPromptsEn
+
+  const pageTitle = isId ? routeContext.titleId : routeContext.titleEn
+  const pageDescription = isId
+    ? routeContext.descriptionId
+    : routeContext.descriptionEn
 
   return (
     <>
       <Button
         variant="outline"
         size="sm"
-        onClick={() => openDrawer("docs")}
+        onClick={() => openDrawer("chat")}
         className="gap-2 border-white/[0.08] transition-all duration-200 hover:border-amber-500/30 hover:bg-neutral-900/60"
       >
         <Lightning
@@ -367,12 +679,16 @@ export function ThunderAiHelpDrawer() {
                 className="animate-pulse fill-amber-500 text-amber-500"
               />
               <SheetTitle className="text-lg font-bold text-white">
-                Thunder AI Help
+                {isId ? "Pusat Bantuan & AI" : "AI Help & Knowledge"}
               </SheetTitle>
             </div>
             <SheetDescription className="mt-1 text-xs text-muted-foreground">
-              Contextual guidance and intelligence for{" "}
-              <span className="font-mono text-zinc-300">{routePath}</span>
+              {isId
+                ? "Bantuan dan panduan cerdas untuk "
+                : "Guidance and smart assistance for "}
+              <span className="font-semibold text-zinc-200">{pageTitle}</span>
+              {" • "}
+              <span className="font-mono text-zinc-400">{routePath}</span>
             </SheetDescription>
           </SheetHeader>
 
@@ -396,7 +712,7 @@ export function ThunderAiHelpDrawer() {
                       : ""
                   }
                 />
-                Thunder AI Chat
+                {isId ? "Tanya AI" : "Ask AI"}
               </button>
               <button
                 type="button"
@@ -411,7 +727,7 @@ export function ThunderAiHelpDrawer() {
                   size={14}
                   className={activeTab === "docs" ? "text-primary" : ""}
                 />
-                Page Guides
+                {isId ? "Artikel Panduan" : "Page Guides"}
               </button>
             </div>
           </div>
@@ -430,26 +746,31 @@ export function ThunderAiHelpDrawer() {
 
                 {docState.status === "error" &&
                 docState.code === "DOC_NOT_FOUND" ? (
-                  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/[0.08] bg-neutral-900/10 px-4 py-12 text-center">
-                    <BookOpen size={48} className="mb-4 text-zinc-600" />
-                    <h3 className="mb-2 text-sm font-semibold text-white">
-                      No Published Guide
-                    </h3>
-                    <p className="mb-6 max-w-xs text-xs text-muted-foreground">
-                      There is no official documentation guide published for
-                      this page path yet.
-                    </p>
-                    <Button
-                      size="sm"
-                      onClick={() => handleTabChange("chat")}
-                      className="gap-2 rounded-lg bg-primary text-xs text-white hover:bg-primary/90"
-                    >
-                      <Lightning
-                        size={14}
-                        className="animate-pulse fill-amber-500 text-amber-500"
-                      />
-                      Ask Thunder AI instead
-                    </Button>
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-white/[0.08] bg-neutral-900/30 p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-sm font-semibold text-white">
+                            {pageTitle}
+                          </h3>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {pageDescription}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleTabChange("chat")}
+                          className="gap-1.5 text-xs"
+                        >
+                          <Lightning
+                            size={14}
+                            className="animate-pulse fill-amber-500 text-amber-500"
+                          />
+                          {isId ? "Tanya AI" : "Ask AI"}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 ) : docState.status === "error" ? (
                   <p className="text-sm text-destructive">{docState.message}</p>
@@ -468,7 +789,7 @@ export function ThunderAiHelpDrawer() {
 
                     <section className="space-y-3">
                       <h4 className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                        How To Use
+                        {isId ? "Cara Menggunakan" : "How To Use"}
                       </h4>
                       <ol className="list-decimal space-y-2 pl-4 text-sm text-zinc-300">
                         {docState.data.howTo.map((item, idx) => (
@@ -482,7 +803,7 @@ export function ThunderAiHelpDrawer() {
                     {docState.data.notes?.length ? (
                       <section className="space-y-3">
                         <h4 className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                          Notes
+                          {isId ? "Catatan Penting" : "Notes"}
                         </h4>
                         <ul className="list-disc space-y-2 pl-4 text-sm text-zinc-300">
                           {docState.data.notes.map((note, idx) => (
@@ -493,20 +814,82 @@ export function ThunderAiHelpDrawer() {
                         </ul>
                       </section>
                     ) : null}
-
-                    <div className="flex items-center justify-between border-t border-white/[0.06] pt-4 text-[10px] text-muted-foreground">
-                      <span>Documentation Registry</span>
-                      <span>Updated: {docState.data.updatedAt}</span>
-                    </div>
                   </div>
                 ) : null}
+
+                {/* Related Public Docs Section */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between border-t border-white/[0.06] pt-4">
+                    <h4 className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                      {isId
+                        ? "📖 Panduan Terkait dari Dokumentasi"
+                        : "📖 Related Guides from Documentation"}
+                    </h4>
+                  </div>
+
+                  <div className="grid gap-2">
+                    {routeContext.relatedDocs.map((doc, idx) => {
+                      const IconComponent = doc.icon
+                      const docTitle = isId ? doc.titleId : doc.titleEn
+                      const docDesc = isId
+                        ? doc.descriptionId
+                        : doc.descriptionEn
+                      const docUrl = `/${activeLocale}/docs/${doc.slug}`
+
+                      return (
+                        <Link
+                          key={idx}
+                          href={docUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group flex items-start gap-3 rounded-xl border border-white/[0.06] bg-neutral-900/40 p-3 transition-all duration-200 hover:border-amber-500/30 hover:bg-neutral-900/80"
+                        >
+                          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-neutral-950 text-amber-500 group-hover:border-amber-500/30">
+                            <IconComponent size={15} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <p className="text-xs font-semibold text-white group-hover:text-amber-400">
+                                {docTitle}
+                              </p>
+                              <ArrowSquareOut
+                                size={13}
+                                className="text-zinc-500 opacity-0 transition-opacity group-hover:text-amber-400 group-hover:opacity-100"
+                              />
+                            </div>
+                            <p className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
+                              {docDesc}
+                            </p>
+                          </div>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Bottom Full Docs Link */}
+                <div className="border-t border-white/[0.06] pt-4">
+                  <Link
+                    href={`/${activeLocale}/docs`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-neutral-900/60 px-4 py-2.5 text-xs font-medium text-zinc-300 transition-all hover:border-white/[0.15] hover:bg-neutral-800 hover:text-white"
+                  >
+                    <BookOpen size={15} className="text-primary" />
+                    <span>
+                      {isId
+                        ? "Buka Seluruh Pusat Dokumentasi (/docs) ↗"
+                        : "Browse Full Documentation Portal (/docs) ↗"}
+                    </span>
+                  </Link>
+                </div>
               </div>
             ) : (
               // Chat Interface
               <div className="flex flex-1 flex-col overflow-hidden">
                 <div className="flex-1 space-y-4 overflow-y-auto p-6">
                   {messages.length === 0 ? (
-                    <div className="space-y-6 py-6">
+                    <div className="space-y-6 py-4">
                       <div className="space-y-2 text-center">
                         <div className="mb-2 inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/[0.06] bg-neutral-900">
                           <Lightning
@@ -515,17 +898,18 @@ export function ThunderAiHelpDrawer() {
                           />
                         </div>
                         <h3 className="text-sm font-semibold text-white">
-                          Thunder AI Assistant
+                          {isId ? "Asisten AI PFNApp" : "PFNApp AI Assistant"}
                         </h3>
                         <p className="mx-auto max-w-sm text-xs text-muted-foreground">
-                          Ask questions about console pages, deployment
-                          guidelines, or internal workflows.
+                          {isId
+                            ? `Tanyakan panduan, kendala fitur, atau alur kerja untuk ${pageTitle}.`
+                            : `Ask questions about guides, features, or workflows for ${pageTitle}.`}
                         </p>
                       </div>
 
                       <div className="mx-auto max-w-md space-y-2">
                         <p className="mb-1 text-center text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                          Suggested Questions
+                          {isId ? "Pertanyaan Populer" : "Suggested Questions"}
                         </p>
                         {starterPrompts.map((prompt, idx) => (
                           <button
@@ -537,6 +921,38 @@ export function ThunderAiHelpDrawer() {
                             {prompt}
                           </button>
                         ))}
+                      </div>
+
+                      {/* Related Quick Links in Chat initial view */}
+                      <div className="mx-auto max-w-md border-t border-white/[0.06] pt-4">
+                        <p className="mb-2 text-center text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                          {isId
+                            ? "Panduan Populer Terkait"
+                            : "Popular Related Guides"}
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {routeContext.relatedDocs
+                            .slice(0, 2)
+                            .map((doc, idx) => {
+                              const docTitle = isId ? doc.titleId : doc.titleEn
+                              const docUrl = `/${activeLocale}/docs/${doc.slug}`
+                              return (
+                                <Link
+                                  key={idx}
+                                  href={docUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center justify-between rounded-lg border border-white/[0.05] bg-neutral-900/20 p-2 text-[11px] text-zinc-400 transition-colors hover:border-white/[0.1] hover:text-white"
+                                >
+                                  <span className="truncate">{docTitle}</span>
+                                  <ArrowSquareOut
+                                    size={12}
+                                    className="ml-1 shrink-0"
+                                  />
+                                </Link>
+                              )
+                            })}
+                        </div>
                       </div>
                     </div>
                   ) : null}
@@ -554,14 +970,15 @@ export function ThunderAiHelpDrawer() {
                         }
                       >
                         <p className="leading-relaxed whitespace-pre-wrap">
-                          {message.content || "Thinking..."}
+                          {message.content ||
+                            (isId ? "Sedang berpikir..." : "Thinking...")}
                         </p>
 
                         {message.role === "assistant" &&
                         message.citations?.length ? (
                           <div className="flex flex-col gap-1.5 border-t border-white/[0.05] pt-2">
                             <span className="text-[9px] font-bold tracking-wider text-muted-foreground uppercase">
-                              Citations
+                              {isId ? "Referensi Sumber" : "Citations"}
                             </span>
                             <div className="flex flex-wrap gap-1.5">
                               {message.citations.map((citation) => (
@@ -596,7 +1013,11 @@ export function ThunderAiHelpDrawer() {
                   <Input
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
-                    placeholder="Ask about this page or system workflows..."
+                    placeholder={
+                      isId
+                        ? "Tanyakan apa saja seputar fitur atau panduan halaman ini..."
+                        : "Ask anything about this page or system workflows..."
+                    }
                     disabled={isSending}
                     className="h-9 flex-1 rounded-xl border-white/[0.08] bg-neutral-950 text-xs placeholder:text-zinc-600 focus-visible:ring-1 focus-visible:ring-amber-500/50"
                   />
