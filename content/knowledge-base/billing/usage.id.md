@@ -1,7 +1,7 @@
 ---
 path: /billing/usage
 locale: id
-title: Panduan Pelacakan Penggunaan & Analitik Biaya
+title: Penggunaan & Analitik Biaya
 category: Billing
 purpose: Pantau metrik penggunaan sumber daya, breakdown biaya per produk, dan tren pemakaian harian.
 howTo:

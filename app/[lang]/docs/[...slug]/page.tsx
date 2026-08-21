@@ -14,8 +14,8 @@ import {
   ThumbsDown,
 } from "@phosphor-icons/react/dist/ssr"
 import { prisma } from "@/lib/prisma"
-import { renderMarkdownToHtml } from "@/lib/markdown"
 import { MermaidRenderer } from "../components/mermaid-renderer"
+import { CodeBlockCopyEnhancer } from "../components/code-copy-enhancer"
 import { OnThisPage, type TocItem } from "../components/on-this-page"
 
 type Props = {
@@ -256,6 +256,7 @@ export default async function PublicDocDetailPage({ params }: Props) {
           dangerouslySetInnerHTML={{ __html: renderedHtml }}
         />
         <MermaidRenderer />
+        <CodeBlockCopyEnhancer />
 
         {/* Feedback Section */}
         <div className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-border/40 bg-card/40 p-5 backdrop-blur-sm sm:flex-row">

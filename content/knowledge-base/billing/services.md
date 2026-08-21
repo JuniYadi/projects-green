@@ -1,7 +1,7 @@
 ---
 path: /billing/services
 locale: en
-title: Service Catalog & Compute Subscription Guide
+title: Service Catalog & Subscriptions
 category: Billing
 purpose: Explore cloud compute products, WhatsApp API plans, VPN servers, and manage organization service subscriptions.
 howTo:

@@ -1,7 +1,7 @@
 ---
 path: /billing/settings
 locale: id
-title: Panduan Pengaturan Penagihan, Mata Uang & Pajak
+title: Pengaturan Penagihan & Pajak
 category: Billing
 purpose: Kelola identitas legal perusahaan, nomor NPWP, alamat faktur resmi, dan konfigurasi mata uang penagihan default.
 howTo:

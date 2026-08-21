@@ -1,7 +1,7 @@
 ---
 path: /billing/alerts
 locale: en
-title: Balance Thresholds & Quota Alerts Guide
+title: Balance Alerts & Quotas
 category: Billing
 purpose: Set up low balance alerts and automated quota notifications to ensure uninterrupted service delivery.
 howTo:

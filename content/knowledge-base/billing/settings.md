@@ -1,7 +1,7 @@
 ---
 path: /billing/settings
 locale: en
-title: Billing Settings, Currency & Tax Configuration Guide
+title: Billing Settings, Currency & Tax
 category: Billing
 purpose: Configure legal entity details, tax identification numbers (NPWP), billing addresses, and default invoice currencies.
 howTo:

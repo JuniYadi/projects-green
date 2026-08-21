@@ -1,7 +1,7 @@
 ---
 path: /billing/vouchers
 locale: en
-title: Promotional Vouchers & Commercial Discounts Guide
+title: Promotional Vouchers & Discounts
 category: Billing
 purpose: Claim promo codes, apply commercial discount vouchers, and inspect applied billing credits.
 howTo:

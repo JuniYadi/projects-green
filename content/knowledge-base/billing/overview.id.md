@@ -1,7 +1,7 @@
 ---
 path: /billing
 locale: id
-title: Panduan Penagihan & Manajemen Saldo Console
+title: Penagihan & Saldo Console
 category: Billing
 purpose: Kelola saldo organisasi, lihat estimasi biaya, pantau invoice, dan kelola langganan layanan di Console Penagihan.
 howTo:

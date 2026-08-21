@@ -1,7 +1,7 @@
 ---
 path: /billing/services
 locale: id
-title: Panduan Katalog Layanan & Langganan Komputasi
+title: Katalog Layanan & Langganan
 category: Billing
 purpose: Jelajahi katalog produk komputasi, WhatsApp API, VPN, dan kelola paket layanan organisasi.
 howTo:

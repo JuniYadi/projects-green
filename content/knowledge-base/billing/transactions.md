@@ -1,7 +1,7 @@
 ---
 path: /billing/transactions
 locale: en
-title: Transaction History & Balance Ledger Guide
+title: Transactions & Balance Ledger
 category: Billing
 purpose: Review the complete audit ledger of credit deposits, service deductions, and financial transactions.
 howTo:

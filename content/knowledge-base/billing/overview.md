@@ -1,7 +1,7 @@
 ---
 path: /billing
 locale: en
-title: Billing Console & Balance Management Guide
+title: Billing Console & Balance
 category: Billing
 purpose: Manage organization balance, view estimated costs, track invoices, and manage service subscriptions in the Billing Console.
 howTo:

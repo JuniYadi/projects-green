@@ -1,7 +1,7 @@
 ---
 path: /billing/alerts
 locale: id
-title: Panduan Konfigurasi Peringatan Saldo & Kuota
+title: Peringatan Saldo & Kuota
 category: Billing
 purpose: Atur ambang batas peringatan saldo menipis dan notifikasi pemakaian kuota otomatis untuk mencegah gangguan layanan.
 howTo:

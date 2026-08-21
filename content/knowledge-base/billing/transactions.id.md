@@ -1,7 +1,7 @@
 ---
 path: /billing/transactions
 locale: id
-title: Panduan Riwayat Transaksi & Mutasi Saldo
+title: Riwayat Transaksi & Saldo
 category: Billing
 purpose: Telusuri seluruh riwayat mutasi kredit/debit saldo, top-up deposit, dan audit log finansial organisasi.
 howTo:

@@ -1,7 +1,7 @@
 ---
 path: /billing/contacts
 locale: id
-title: Panduan Kontak Penagihan & Penerima Faktur
+title: Kontak Penagihan & Faktur
 category: Billing
 purpose: Kelola daftar kontak email tim finansial untuk menerima salinan faktur invoice, notifikasi pembayaran, dan pengingat jatuh tempo.
 howTo:

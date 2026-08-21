@@ -1,7 +1,7 @@
 ---
 path: /billing/contacts
 locale: en
-title: Billing Contacts & Invoice Recipients Guide
+title: Billing Contacts & Invoices
 category: Billing
 purpose: Manage email recipients for automated invoice delivery, payment receipts, and balance threshold notices.
 howTo:

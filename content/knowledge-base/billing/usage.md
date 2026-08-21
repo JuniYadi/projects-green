@@ -1,7 +1,7 @@
 ---
 path: /billing/usage
 locale: en
-title: Resource Usage Tracking & Cost Analytics Guide
+title: Resource Usage & Cost Analytics
 category: Billing
 purpose: Monitor resource usage metrics, inspect product-level cost breakdowns, and track daily consumption trends.
 howTo:
