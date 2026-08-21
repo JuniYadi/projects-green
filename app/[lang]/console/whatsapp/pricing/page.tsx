@@ -85,6 +85,7 @@ function formatQuotaCredit(value: string): string {
 function formatDate(iso: string | Date): string {
   try {
     const d = typeof iso === "string" ? new Date(iso) : iso
+    if (!Number.isFinite(d.getTime())) return String(iso)
     return d.toLocaleString("id-ID", {
       year: "numeric",
       month: "short",
@@ -448,17 +449,6 @@ export default function WhatsAppPricingPage() {
                               >
                                 BASE
                               </span>
-                              <div
-                                className={`text-[10px] ${
-                                  activeTier === "BASE"
-                                    ? hasQuota
-                                      ? "font-medium text-amber-600 dark:text-amber-400"
-                                      : "font-medium text-emerald-600 dark:text-emerald-400"
-                                    : "font-normal text-muted-foreground"
-                                }`}
-                              >
-                                Min Top-Up: Rp 100k
-                              </div>
                             </th>
                             <th scope="col" className="px-4 py-3 text-right">
                               <span
@@ -472,17 +462,6 @@ export default function WhatsAppPricingPage() {
                               >
                                 TIER 1
                               </span>
-                              <div
-                                className={`text-[10px] ${
-                                  activeTier === "TIER_1"
-                                    ? hasQuota
-                                      ? "font-medium text-amber-600 dark:text-amber-400"
-                                      : "font-medium text-emerald-600 dark:text-emerald-400"
-                                    : "font-normal text-muted-foreground"
-                                }`}
-                              >
-                                Min Top-Up: Rp 10M
-                              </div>
                             </th>
                             <th scope="col" className="px-4 py-3 text-right">
                               <span
@@ -496,17 +475,6 @@ export default function WhatsAppPricingPage() {
                               >
                                 TIER 2
                               </span>
-                              <div
-                                className={`text-[10px] ${
-                                  activeTier === "TIER_2"
-                                    ? hasQuota
-                                      ? "font-medium text-amber-600 dark:text-amber-400"
-                                      : "font-medium text-emerald-600 dark:text-emerald-400"
-                                    : "font-normal text-muted-foreground"
-                                }`}
-                              >
-                                Min Top-Up: Rp 25M
-                              </div>
                             </th>
                             <th scope="col" className="px-4 py-3 text-right">
                               <span
@@ -520,17 +488,6 @@ export default function WhatsAppPricingPage() {
                               >
                                 TIER 3
                               </span>
-                              <div
-                                className={`text-[10px] ${
-                                  activeTier === "TIER_3"
-                                    ? hasQuota
-                                      ? "font-medium text-amber-600 dark:text-amber-400"
-                                      : "font-medium text-emerald-600 dark:text-emerald-400"
-                                    : "font-normal text-muted-foreground"
-                                }`}
-                              >
-                                Min Top-Up: Rp 50M
-                              </div>
                             </th>
                           </tr>
                         </thead>

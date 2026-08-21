@@ -80,9 +80,16 @@ export class WhatsappMessagePricingService {
         ...device,
         country: resolveWhatsappCountry(device.phoneNumber),
         quotaRemaining: defaultRemaining + addonRemaining,
-        rateTier: device.rates?.trim()
-          ? device.rates.trim().toUpperCase()
-          : "BASE",
+        rateTier: ((): string => {
+          const raw = device.rates?.trim().toUpperCase() ?? ""
+          const validTiers: Record<string, true> = {
+            BASE: true,
+            TIER_1: true,
+            TIER_2: true,
+            TIER_3: true,
+          }
+          return validTiers[raw] ? raw : "BASE"
+        })(),
       }
     })
     const countries = [
@@ -114,12 +121,21 @@ export class WhatsappMessagePricingService {
         : [],
     ])
 
-    const rateByCountryAndCategory = new Map(
-      rates.map((rate) => [`${rate.country}:${rate.category}`, rate])
-    )
-    const basePriceByCountryAndCategory = new Map(
-      basePrices.map((bp) => [`${bp.country}:${bp.category}`, bp])
-    )
+    const rateByCountryAndCategory = new Map<string, (typeof rates)[0]>()
+    for (const rate of rates) {
+      const key = `${rate.country}:${rate.category}`
+      if (!rateByCountryAndCategory.has(key))
+        rateByCountryAndCategory.set(key, rate)
+    }
+    const basePriceByCountryAndCategory = new Map<
+      string,
+      (typeof basePrices)[0]
+    >()
+    for (const bp of basePrices) {
+      const key = `${bp.country}:${bp.category}`
+      if (!basePriceByCountryAndCategory.has(key))
+        basePriceByCountryAndCategory.set(key, bp)
+    }
 
     return {
       devices: deviceCountries.map((device) => ({
