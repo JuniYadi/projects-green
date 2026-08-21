@@ -8,7 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { Clock, Check, X, CheckCircle } from "@phosphor-icons/react"
+import { Clock, Check, Checks, WarningCircle } from "@phosphor-icons/react"
 
 // ponytail: inline type, add shared type when used in >1 file
 type DeliveryStatus = "SENT" | "DELIVERED" | "READ" | "FAILED"
@@ -16,6 +16,7 @@ type DeliveryStatus = "SENT" | "DELIVERED" | "READ" | "FAILED"
 interface StatusHistory {
   status: DeliveryStatus
   error: string | null
+  timestamp?: Date | string | null
 }
 
 interface MessageStatusBadgeProps {
@@ -30,8 +31,8 @@ const STATUS_CONFIG: Record<
     variant: "secondary" | "outline" | "default" | "destructive" | "success"
   }
 > = {
-  SENT: { label: "Sent", variant: "outline" },
-  DELIVERED: { label: "Delivered", variant: "default" },
+  SENT: { label: "Sent", variant: "secondary" },
+  DELIVERED: { label: "Delivered", variant: "outline" },
   READ: { label: "Read", variant: "default" },
   FAILED: { label: "Failed", variant: "destructive" },
 }
@@ -45,17 +46,15 @@ function StatusIcon({
 }) {
   switch (status) {
     case "SENT":
-      return <Check weight="bold" className={className} />
+      return <Check className={className} />
     case "DELIVERED":
-      return <CheckCircle weight="fill" className={className} />
+      return <Checks className={className} />
     case "READ":
-      return (
-        <CheckCircle weight="fill" className={`${className} text-blue-500`} />
-      )
+      return <Checks className={`${className} text-sky-500`} />
     case "FAILED":
-      return <X weight="bold" className={className} />
+      return <WarningCircle className={className} />
     default:
-      return <Clock weight="fill" className={className} />
+      return <Clock className={className} />
   }
 }
 
@@ -68,13 +67,24 @@ export function MessageStatusBadge({
     return null
   }
 
-  // Get the latest status for OUTBOX messages
-  const latestStatus = statusHistory[0]?.status
+  // Prefer READ > DELIVERED > SENT > FAILED
+  const statusRank: Record<DeliveryStatus, number> = {
+    READ: 4,
+    DELIVERED: 3,
+    SENT: 2,
+    FAILED: 1,
+  }
+
+  const sorted = [...statusHistory].sort(
+    (a, b) => (statusRank[b.status] ?? 0) - (statusRank[a.status] ?? 0)
+  )
+  const topStatusRecord = sorted[0]
+  const latestStatus = topStatusRecord?.status
   if (!latestStatus) return null
 
   const config = STATUS_CONFIG[latestStatus]
   const failureReason =
-    latestStatus === "FAILED" ? statusHistory[0]?.error : null
+    latestStatus === "FAILED" ? topStatusRecord?.error : null
 
   if (failureReason) {
     return (
@@ -93,7 +103,6 @@ export function MessageStatusBadge({
       </TooltipProvider>
     )
   }
-
   return (
     <Badge variant={config.variant} className="ml-1 gap-1 text-[10px]">
       <StatusIcon status={latestStatus} className="size-3" />
