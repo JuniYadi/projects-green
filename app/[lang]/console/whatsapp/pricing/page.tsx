@@ -256,11 +256,11 @@ export default function WhatsAppPricingPage() {
           <span>
             In-quota messages deduct from your plan quota allowance first (
             <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-              🟢 Quota Credit
+              Quota Credit
             </span>
-            ). When monthly quota is exhausted, fallback Pay-As-You-Go (
+            ). When monthly quota is exhausted, Pay-As-You-Go overage (
             <span className="font-semibold text-amber-600 dark:text-amber-400">
-              🟡 PAYG Overage
+              PAYG Overage
             </span>
             ) rates apply directly from your prepaid wallet balance.
           </span>
@@ -343,6 +343,7 @@ export default function WhatsAppPricingPage() {
             <div className="space-y-6">
               {filteredDevices.map((device) => {
                 const activeTier = device.rateTier ?? "BASE"
+                const hasQuota = (device.quotaRemaining ?? 0) > 0
                 return (
                   <div
                     key={device.deviceId}
@@ -357,10 +358,22 @@ export default function WhatsAppPricingPage() {
                         <Badge variant="outline" className="text-xs">
                           Country: {device.country}
                         </Badge>
+                        <Badge
+                          variant="secondary"
+                          className={
+                            hasQuota
+                              ? "bg-emerald-500/10 font-medium text-emerald-600 dark:text-emerald-400"
+                              : "bg-destructive/10 font-medium text-destructive"
+                          }
+                        >
+                          {hasQuota
+                            ? `Quota Active (${device.quotaRemaining.toLocaleString()} remaining)`
+                            : "Quota Exhausted (PAYG Active)"}
+                        </Badge>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">
-                          Current Active Tier:
+                          Rate Tier:
                         </span>
                         <Badge variant="secondary" className="font-semibold">
                           {activeTier}
@@ -380,8 +393,15 @@ export default function WhatsAppPricingPage() {
                               Category
                             </th>
                             <th scope="col" className="px-4 py-3 text-center">
-                              <div className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-0.5 font-semibold text-emerald-600 dark:text-emerald-400">
-                                <span>🟢 Quota Credit</span>
+                              <div
+                                className={`inline-flex items-center rounded px-2 py-0.5 font-semibold ${
+                                  hasQuota
+                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                    : "bg-destructive/10 text-destructive line-through"
+                                }`}
+                              >
+                                Quota Credit{" "}
+                                {hasQuota ? "(Active)" : "(Exhausted)"}
                               </div>
                               <div className="mt-0.5 text-[10px] font-normal text-muted-foreground">
                                 In-Quota Allowance
@@ -389,18 +409,24 @@ export default function WhatsAppPricingPage() {
                             </th>
                             <th
                               scope="col"
-                              className={`px-4 py-3 text-right ${activeTier === "BASE" ? "bg-muted/40" : ""}`}
+                              className={`px-4 py-3 text-right ${activeTier === "BASE" ? (hasQuota ? "bg-amber-500/10" : "bg-emerald-500/10") : ""}`}
                             >
                               <div className="inline-flex items-center gap-1">
                                 {activeTier === "BASE" && (
-                                  <span className="py-0.2 rounded bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
-                                    🟡 Active
+                                  <span
+                                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                                      hasQuota
+                                        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                        : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                    }`}
+                                  >
+                                    {hasQuota ? "Fallback" : "Active"}
                                   </span>
                                 )}
                                 <span
                                   className={
                                     activeTier === "BASE"
-                                      ? "font-bold text-foreground"
+                                      ? `font-bold ${hasQuota ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`
                                       : "font-semibold"
                                   }
                                 >
@@ -413,18 +439,24 @@ export default function WhatsAppPricingPage() {
                             </th>
                             <th
                               scope="col"
-                              className={`px-4 py-3 text-right ${activeTier === "TIER_1" ? "bg-muted/40" : ""}`}
+                              className={`px-4 py-3 text-right ${activeTier === "TIER_1" ? (hasQuota ? "bg-amber-500/10" : "bg-emerald-500/10") : ""}`}
                             >
                               <div className="inline-flex items-center gap-1">
                                 {activeTier === "TIER_1" && (
-                                  <span className="py-0.2 rounded bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
-                                    🟡 Active
+                                  <span
+                                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                                      hasQuota
+                                        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                        : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                    }`}
+                                  >
+                                    {hasQuota ? "Fallback" : "Active"}
                                   </span>
                                 )}
                                 <span
                                   className={
                                     activeTier === "TIER_1"
-                                      ? "font-bold text-foreground"
+                                      ? `font-bold ${hasQuota ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`
                                       : "font-semibold"
                                   }
                                 >
@@ -437,18 +469,24 @@ export default function WhatsAppPricingPage() {
                             </th>
                             <th
                               scope="col"
-                              className={`px-4 py-3 text-right ${activeTier === "TIER_2" ? "bg-muted/40" : ""}`}
+                              className={`px-4 py-3 text-right ${activeTier === "TIER_2" ? (hasQuota ? "bg-amber-500/10" : "bg-emerald-500/10") : ""}`}
                             >
                               <div className="inline-flex items-center gap-1">
                                 {activeTier === "TIER_2" && (
-                                  <span className="py-0.2 rounded bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
-                                    🟡 Active
+                                  <span
+                                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                                      hasQuota
+                                        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                        : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                    }`}
+                                  >
+                                    {hasQuota ? "Fallback" : "Active"}
                                   </span>
                                 )}
                                 <span
                                   className={
                                     activeTier === "TIER_2"
-                                      ? "font-bold text-foreground"
+                                      ? `font-bold ${hasQuota ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`
                                       : "font-semibold"
                                   }
                                 >
@@ -461,18 +499,24 @@ export default function WhatsAppPricingPage() {
                             </th>
                             <th
                               scope="col"
-                              className={`px-4 py-3 text-right ${activeTier === "TIER_3" ? "bg-muted/40" : ""}`}
+                              className={`px-4 py-3 text-right ${activeTier === "TIER_3" ? (hasQuota ? "bg-amber-500/10" : "bg-emerald-500/10") : ""}`}
                             >
                               <div className="inline-flex items-center gap-1">
                                 {activeTier === "TIER_3" && (
-                                  <span className="py-0.2 rounded bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
-                                    🟡 Active
+                                  <span
+                                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                                      hasQuota
+                                        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                        : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                    }`}
+                                  >
+                                    {hasQuota ? "Fallback" : "Active"}
                                   </span>
                                 )}
                                 <span
                                   className={
                                     activeTier === "TIER_3"
-                                      ? "font-bold text-foreground"
+                                      ? `font-bold ${hasQuota ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`
                                       : "font-semibold"
                                   }
                                 >
@@ -519,26 +563,48 @@ export default function WhatsAppPricingPage() {
                                 >
                                   {cat.category}
                                 </th>
-                                <td className="px-4 py-2.5 text-center font-semibold text-emerald-600 dark:text-emerald-400">
+                                <td
+                                  className={`px-4 py-2.5 text-center font-semibold ${
+                                    hasQuota
+                                      ? "text-emerald-600 dark:text-emerald-400"
+                                      : "text-muted-foreground line-through"
+                                  }`}
+                                >
                                   -{formatQuotaCredit(cat.quotaCredit)}
                                 </td>
                                 <td
-                                  className={`px-4 py-2.5 text-right ${activeTier === "BASE" ? "bg-muted/30 font-bold" : "text-muted-foreground"}`}
+                                  className={`px-4 py-2.5 text-right ${
+                                    activeTier === "BASE"
+                                      ? "bg-muted/30 font-bold"
+                                      : "text-muted-foreground"
+                                  }`}
                                 >
                                   Rp {pBase.toLocaleString("id-ID")}
                                 </td>
                                 <td
-                                  className={`px-4 py-2.5 text-right ${activeTier === "TIER_1" ? "bg-muted/30 font-bold" : "text-muted-foreground"}`}
+                                  className={`px-4 py-2.5 text-right ${
+                                    activeTier === "TIER_1"
+                                      ? "bg-muted/30 font-bold"
+                                      : "text-muted-foreground"
+                                  }`}
                                 >
                                   Rp {pTier1.toLocaleString("id-ID")}
                                 </td>
                                 <td
-                                  className={`px-4 py-2.5 text-right ${activeTier === "TIER_2" ? "bg-muted/30 font-bold" : "text-muted-foreground"}`}
+                                  className={`px-4 py-2.5 text-right ${
+                                    activeTier === "TIER_2"
+                                      ? "bg-muted/30 font-bold"
+                                      : "text-muted-foreground"
+                                  }`}
                                 >
                                   Rp {pTier2.toLocaleString("id-ID")}
                                 </td>
                                 <td
-                                  className={`px-4 py-2.5 text-right ${activeTier === "TIER_3" ? "bg-muted/30 font-bold" : "text-muted-foreground"}`}
+                                  className={`px-4 py-2.5 text-right ${
+                                    activeTier === "TIER_3"
+                                      ? "bg-muted/30 font-bold"
+                                      : "text-muted-foreground"
+                                  }`}
                                 >
                                   Rp {pTier3.toLocaleString("id-ID")}
                                 </td>
@@ -622,9 +688,9 @@ export default function WhatsAppPricingPage() {
           {/* Ledger Filters */}
           <form
             onSubmit={handleSearch}
-            className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5"
+            className="flex flex-wrap items-center gap-3"
           >
-            <div className="relative">
+            <div className="relative min-w-[200px] flex-1">
               <MagnifyingGlass className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search phone or wamid..."
@@ -634,74 +700,79 @@ export default function WhatsAppPricingPage() {
               />
             </div>
 
-            <Select
-              value={statusFilter}
-              onValueChange={(val) => {
-                setStatusFilter(val)
-                setPage(1)
-              }}
-            >
-              <SelectTrigger className="text-xs">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="CONFIRMED">Confirmed</SelectItem>
-                <SelectItem value="PENDING">Pending Verify</SelectItem>
-                <SelectItem value="REFUNDED">Refunded / Reverted</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="w-[140px]">
+              <Select
+                value={statusFilter}
+                onValueChange={(val) => {
+                  setStatusFilter(val)
+                  setPage(1)
+                }}
+              >
+                <SelectTrigger className="text-xs">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="CONFIRMED">Confirmed</SelectItem>
+                  <SelectItem value="PENDING">Pending Verify</SelectItem>
+                  <SelectItem value="REFUNDED">Refunded / Reverted</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select
-              value={categoryFilter}
-              onValueChange={(val) => {
-                setCategoryFilter(val)
-                setPage(1)
-              }}
-            >
-              <SelectTrigger className="text-xs">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="MARKETING">MARKETING</SelectItem>
-                <SelectItem value="UTILITY">UTILITY</SelectItem>
-                <SelectItem value="AUTHENTICATION">AUTHENTICATION</SelectItem>
-                <SelectItem value="SERVICE">SERVICE</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="w-[150px]">
+              <Select
+                value={categoryFilter}
+                onValueChange={(val) => {
+                  setCategoryFilter(val)
+                  setPage(1)
+                }}
+              >
+                <SelectTrigger className="text-xs">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="MARKETING">MARKETING</SelectItem>
+                  <SelectItem value="UTILITY">UTILITY</SelectItem>
+                  <SelectItem value="AUTHENTICATION">AUTHENTICATION</SelectItem>
+                  <SelectItem value="SERVICE">SERVICE</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select
-              value={ledgerSelectedDevice}
-              onValueChange={(val) => {
-                setLedgerSelectedDevice(val)
-                setPage(1)
-              }}
-            >
-              <SelectTrigger className="text-xs">
-                <SelectValue placeholder="Device" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Devices</SelectItem>
-                {devices.map((d) => (
-                  <SelectItem key={d.deviceId} value={d.deviceId}>
-                    {formatPhone(d.phoneNumber)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="w-[150px]">
+              <Select
+                value={ledgerSelectedDevice}
+                onValueChange={(val) => {
+                  setLedgerSelectedDevice(val)
+                  setPage(1)
+                }}
+              >
+                <SelectTrigger className="text-xs">
+                  <SelectValue placeholder="Device" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Devices</SelectItem>
+                  {devices.map((d) => (
+                    <SelectItem key={d.deviceId} value={d.deviceId}>
+                      {formatPhone(d.phoneNumber)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             <Button
               type="submit"
               variant="secondary"
               size="sm"
-              className="gap-1.5 text-xs"
+              className="h-9 gap-1.5 text-xs"
             >
               <Funnel className="size-3.5" />
               Apply Filter
             </Button>
           </form>
-
           {/* Ledger Table */}
           <div className="rounded-md border">
             <Table>
