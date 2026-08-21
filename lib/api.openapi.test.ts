@@ -1,9 +1,5 @@
-import { describe, expect, it, mock } from "bun:test"
+import { describe, expect, it } from "bun:test"
 import { z } from "zod"
-
-mock.module("@/modules/vpn/sessions/stale-cleanup", () => ({
-  startStaleSessionCleanup: mock(),
-}))
 
 import { app, toOpenApiJsonSchema } from "@/lib/api"
 type OpenApiMediaType = {

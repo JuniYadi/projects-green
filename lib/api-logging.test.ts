@@ -1,12 +1,8 @@
-import { describe, expect, mock, test } from "bun:test"
+import { describe, expect, test } from "bun:test"
 import { Elysia } from "elysia"
 
 import { createApiLoggingPlugin } from "@/lib/api-logging"
 import { logger } from "@/lib/logger"
-
-mock.module("@/modules/vpn/sessions/stale-cleanup", () => ({
-  startStaleSessionCleanup: mock(),
-}))
 
 const { app } = await import("@/lib/api")
 
