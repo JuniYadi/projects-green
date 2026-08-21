@@ -40,7 +40,7 @@ function extractEventMetadata(
   const p = payload as Record<string, unknown>
 
   // Case 1: Status payload directly (e.g. { id, status, recipient_id })
-  if (eventType === "status_update" || p.status) {
+  if (eventType === "status_update") {
     const statusStr =
       typeof p.status === "string" ? p.status.toUpperCase() : null
     const recipientId =
@@ -54,7 +54,7 @@ function extractEventMetadata(
   }
 
   // Case 2: Inbound message payload directly (e.g. { id, from, type })
-  if (eventType === "inbound_message" || p.from) {
+  if (eventType === "inbound_message") {
     const from = typeof p.from === "string" ? p.from : null
     const id = typeof p.id === "string" ? p.id : null
     return {
