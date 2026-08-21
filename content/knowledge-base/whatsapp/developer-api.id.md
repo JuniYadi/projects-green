@@ -16,7 +16,7 @@ notes:
 
 # Panduan Integrasi WhatsApp API & Referensi OpenAPI
 
-Panduan pengembang (*developer guide*) ini menjelaskan langkah integrasi WhatsApp Business Platform API ke dalam sistem backend kustom Anda.
+Panduan pengembang (_developer guide_) ini menjelaskan langkah integrasi WhatsApp Business Platform API ke dalam sistem backend kustom Anda.
 
 ---
 
@@ -30,10 +30,13 @@ Untuk melakukan pemanggilan API terotentikasi, buat API Key statis organisasi te
 ![Manajemen API Key](/kb-assets/whatsapp/guides/07-journey2-api-keys.png)
 
 Kirimkan token tersebut pada header HTTP request Anda:
+
 ```http
 Authorization: Bearer pfn_wa_sec_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
+
 atau
+
 ```http
 x-api-key: pfn_wa_sec_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
@@ -47,6 +50,7 @@ Buka `/api/openapi` untuk mengakses dokumentasi interaktif OpenAPI lengkap denga
 ![Referensi OpenAPI](/kb-assets/whatsapp/guides/08-journey2-openapi-reference.png)
 
 ### Endpoint Utama WhatsApp:
+
 - `POST /api/whatsapp/messages` — Mengirimkan pesan template, teks bebas, atau pesan interaktif.
 - `GET /api/whatsapp/devices` — Mengambil daftar perangkat WhatsApp yang terhubung.
 - `GET /api/whatsapp/templates` — Mengambil daftar template pesan dan struktur parameternya.
@@ -96,7 +100,7 @@ curl -X POST "https://pfnapp.my.id/api/whatsapp/messages" \
 const response = await fetch("https://pfnapp.my.id/api/whatsapp/messages", {
   method: "POST",
   headers: {
-    "Authorization": `Bearer ${process.env.PFN_WHATSAPP_API_KEY}`,
+    Authorization: `Bearer ${process.env.PFN_WHATSAPP_API_KEY}`,
     "Content-Type": "application/json",
   },
   body: JSON.stringify({

@@ -45,7 +45,7 @@ graph LR
     SENT --> FAILED[FAILED: Gagal / Saldo Tidak Cukup]
 ```
 
-- **PENDING**: Pesan sedang dalam antrean pengiriman (*queue worker*).
+- **PENDING**: Pesan sedang dalam antrean pengiriman (_queue worker_).
 - **SENT**: Pesan berhasil diterima oleh server Meta Cloud API (centang satu abu-abu).
 - **DELIVERED**: Pesan telah berhasil sampai di perangkat penerima (centang dua abu-abu).
 - **READ**: Pesan telah dibuka dan dibaca oleh penerima (centang dua biru).

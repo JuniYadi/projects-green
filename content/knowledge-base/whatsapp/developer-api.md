@@ -29,10 +29,13 @@ To make authenticated API calls, generate an organization static API Key.
 ![API Keys Management](/kb-assets/whatsapp/guides/07-journey2-api-keys.png)
 
 Pass the key in your HTTP requests:
+
 ```http
 Authorization: Bearer pfn_wa_sec_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
+
 or
+
 ```http
 x-api-key: pfn_wa_sec_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
@@ -46,6 +49,7 @@ Visit `/api/openapi` to access the interactive OpenAPI documentation with schema
 ![OpenAPI Reference](/kb-assets/whatsapp/guides/08-journey2-openapi-reference.png)
 
 ### Key WhatsApp Endpoints:
+
 - `POST /api/whatsapp/messages` — Send template, text, or interactive messages.
 - `GET /api/whatsapp/devices` — List connected WhatsApp sender numbers.
 - `GET /api/whatsapp/templates` — List registered templates and dynamic parameters.
@@ -95,7 +99,7 @@ curl -X POST "https://pfnapp.my.id/api/whatsapp/messages" \
 const response = await fetch("https://pfnapp.my.id/api/whatsapp/messages", {
   method: "POST",
   headers: {
-    "Authorization": `Bearer ${process.env.PFN_WHATSAPP_API_KEY}`,
+    Authorization: `Bearer ${process.env.PFN_WHATSAPP_API_KEY}`,
     "Content-Type": "application/json",
   },
   body: JSON.stringify({

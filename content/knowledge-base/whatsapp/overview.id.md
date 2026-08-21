@@ -24,6 +24,7 @@ Halaman **Dasbor WhatsApp** (`/console/whatsapp/dashboard`) berfungsi sebagai pu
 ## 1. Kartu Metrik Utama & Status
 
 Dasbor menyajikan indikator performa utama secara instan:
+
 - **Perangkat Aktif**: Total nomor WhatsApp terhubung yang siap mengirim dan menerima pesan.
 - **Total Percakapan**: Jumlah keseluruhan utas percakapan dengan pelanggan.
 - **Pesan Terkirim**: Volume pesan keluar yang berhasil diproses pada periode berjalan.

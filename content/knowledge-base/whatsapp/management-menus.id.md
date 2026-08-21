@@ -22,6 +22,7 @@ Dokumentasi referensi ini merangkum seluruh modul operasional dan fungsionalitas
 ---
 
 ## 1. Perangkat / Devices (`/console/whatsapp/devices`)
+
 Kelola akun nomor WhatsApp bisnis, lakukan pairing via scan QR code, kelola token autentikasi Meta, dan pantau status koneksi socket real-time.
 
 ![Manajemen Perangkat](/kb-assets/whatsapp/guides/10-menu-devices.png)
@@ -29,6 +30,7 @@ Kelola akun nomor WhatsApp bisnis, lakukan pairing via scan QR code, kelola toke
 ---
 
 ## 2. Pesan Siaran / Broadcasts (`/console/whatsapp/broadcasts`)
+
 Rancang kampanye pesan siaran massal terjadwal atau instan, tentukan target kontak berdasarkan tag, dan pantau persentase keberhasilan pengiriman.
 
 ![Manajemen Pesan Siaran](/kb-assets/whatsapp/guides/11-menu-broadcasts.png)
@@ -36,13 +38,15 @@ Rancang kampanye pesan siaran massal terjadwal atau instan, tentukan target kont
 ---
 
 ## 3. Kontak / Contacts (`/console/whatsapp/contacts`)
-Kelola daftar kontak pelanggan, impor file kontak CSV, tambahkan tag khusus, dan kelola preferensi berhenti berlangganan (*opt-out*).
+
+Kelola daftar kontak pelanggan, impor file kontak CSV, tambahkan tag khusus, dan kelola preferensi berhenti berlangganan (_opt-out_).
 
 ![Manajemen Kontak](/kb-assets/whatsapp/guides/12-menu-contacts.png)
 
 ---
 
 ## 4. Katalog Produk / Catalogs (`/console/whatsapp/catalogs`)
+
 Integrasikan katalog produk e-commerce dengan Meta Commerce Manager untuk mengirimkan pesan produk tunggal maupun multi-produk interaktif di dalam chat WhatsApp.
 
 ![Manajemen Katalog](/kb-assets/whatsapp/guides/13-menu-catalogs.png)
@@ -50,6 +54,7 @@ Integrasikan katalog produk e-commerce dengan Meta Commerce Manager untuk mengir
 ---
 
 ## 5. Analitik Penggunaan / Usage (`/console/whatsapp/usage`)
+
 Pantau statistik volume pesan harian, tren distribusi kategori pesan (Utility vs Marketing), dan batas pemakaian kuota organisasi Anda.
 
 ![Analitik Penggunaan](/kb-assets/whatsapp/guides/14-menu-usage.png)
@@ -57,13 +62,15 @@ Pantau statistik volume pesan harian, tren distribusi kategori pesan (Utility vs
 ---
 
 ## 6. Buku Besar / Ledger (`/console/whatsapp/ledger`)
-Audit mutasi saldo organisasi, rekonsiliasi pengembalian dana (*refund*) otomatis saat pesan gagal dikirim, dan rincian biaya langganan bulanan.
+
+Audit mutasi saldo organisasi, rekonsiliasi pengembalian dana (_refund_) otomatis saat pesan gagal dikirim, dan rincian biaya langganan bulanan.
 
 ![Pembukuan Ledger](/kb-assets/whatsapp/guides/15-menu-ledger.png)
 
 ---
 
 ## 7. Daftar Harga / Pricing (`/console/whatsapp/pricing`)
+
 Lihat daftar tarif biaya resmi per negara tujuan dan kategori percakapan Meta WhatsApp.
 
 ![Daftar Harga](/kb-assets/whatsapp/guides/16-menu-pricing.png)

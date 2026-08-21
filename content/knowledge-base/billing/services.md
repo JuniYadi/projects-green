@@ -25,6 +25,7 @@ The **Services Catalog** (`/console/billing/services`) displays all available cl
 ![PFNApp Service Catalog](/kb-assets/billing/05-billing-services.png)
 
 ### Available Product Categories:
+
 1. **App Hosting (Container & Web Apps)**:
    - Automated Docker deployments with free SSL, custom domains, and integrated load balancing.
    - Tiered compute configurations from micro containers to dedicated multi-core nodes.
@@ -44,6 +45,7 @@ Each service product offers structured subscription tiers:
 - **Enterprise**: Large-scale compute capacity with custom quota allocations and priority support.
 
 ### Ordering Steps:
+
 1. Click **"Select Plan"** or **"Subscribe"** on the target service card.
 2. Select the billing term (Monthly or Annual with term discounts).
 3. Choose the payment method at checkout: **Organization Balance** or **External Gateway** (Virtual Account, QRIS, Credit Card).

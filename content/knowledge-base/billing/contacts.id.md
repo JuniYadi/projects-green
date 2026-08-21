@@ -30,7 +30,7 @@ Secara default, invoice hanya dikirimkan ke email pembuat organisasi. Dengan men
 
 1. Klik **"Tambah Kontak"**.
 2. Isi informasi formulir:
-   - **Nama Lengkap**: Nama penanggung jawab atau nama departemen (contoh: *Divisi Keuangan PT Maju Jaya*).
+   - **Nama Lengkap**: Nama penanggung jawab atau nama departemen (contoh: _Divisi Keuangan PT Maju Jaya_).
    - **Email**: Alamat email aktif penerima tagihan (contoh: *finance@company.com*).
    - **Jenis Notifikasi**: Pilih jenis pesan yang akan diterima (Invoice Baru, Tanda Terima Lunas, Peringatan Saldo Kritis).
 3. Klik **"Simpan"**.

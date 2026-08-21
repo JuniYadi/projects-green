@@ -25,6 +25,7 @@ Halaman **Billing Settings** (`/console/billing/settings`) memungkinkan Anda men
 ![Pengaturan Penagihan & Pajak](/kb-assets/billing/11-billing-settings.png)
 
 ### Bagian Pengaturan:
+
 1. **Nama Legal Perusahaan**: Nama entitas bisnis resmi yang tercatat di dokumen hukum.
 2. **NPWP / Tax Identification Number**: Nomor pokok wajib pajak untuk pelaporan pajak pertambahan nilai (PPN).
 3. **Alamat Lengkap Penagihan**: Alamat kantor resmi yang tertera pada faktur.
@@ -34,4 +35,4 @@ Halaman **Billing Settings** (`/console/billing/settings`) memungkinkan Anda men
 
 ## 2. Menyimpan & Memperbarui Data
 
-Pastikan seluruh data yang dimasukkan telah akurat sebelum disimpan, karena data tersebut digunakan secara langsung oleh mesin pembuat PDF invoice (*invoice rendering engine*) untuk penerbitan dokumen hukum keuangan.
+Pastikan seluruh data yang dimasukkan telah akurat sebelum disimpan, karena data tersebut digunakan secara langsung oleh mesin pembuat PDF invoice (_invoice rendering engine_) untuk penerbitan dokumen hukum keuangan.

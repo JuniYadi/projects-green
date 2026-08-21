@@ -26,6 +26,7 @@ Webhook Logs capture all raw events received from Meta Cloud API (inbound messag
 ![Webhook Logs](/kb-assets/whatsapp/guides/05-journey1-webhook-logs.png)
 
 ### Key Event Types:
+
 - `message.received`: Inbound text, media, or button response sent by a customer.
 - `message.sent`: Dispatch confirmation from Meta.
 - `message.delivered`: Delivery receipt confirmation.
@@ -33,6 +34,7 @@ Webhook Logs capture all raw events received from Meta Cloud API (inbound messag
 - `message.failed`: Delivery failure callback with Meta error codes.
 
 ### Inspecting Webhook Payloads:
+
 Click on any webhook log entry to expand the full JSON request and response payloads, HTTP status codes, latency in milliseconds, and retry attempt counters.
 
 ---
@@ -44,6 +46,7 @@ The Audit Logs console provides an immutable security ledger recording administr
 ![Audit Logs](/kb-assets/whatsapp/guides/06-journey1-audit-logs.png)
 
 ### Tracked Actions:
+
 - API Key generation, rotation, and revocation.
 - Template creation, modifications, and sync operations.
 - Device pairings, token updates, and disconnections.

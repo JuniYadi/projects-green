@@ -25,6 +25,7 @@ Halaman **Katalog Layanan** (`/console/billing/services`) menampilkan seluruh pe
 ![Katalog Layanan PFNApp](/kb-assets/billing/05-billing-services.png)
 
 ### Kategori Produk yang Tersedia:
+
 1. **App Hosting (Container & Web Apps)**:
    - Hosting aplikasi Docker otomatis dengan SSL gratis, custom domain, dan load balancing.
    - Pilihan paket mulai dari container micro hingga multi-core dedicated compute.
@@ -37,13 +38,14 @@ Halaman **Katalog Layanan** (`/console/billing/services`) menampilkan seluruh pe
 
 ## 2. Memilih Paket & Spesifikasi Layanan
 
-Setiap produk menyediakan beberapa tingkatan paket (*tier*):
+Setiap produk menyediakan beberapa tingkatan paket (_tier_):
 
 - **Starter / Entry**: Cocok untuk pengembangan (development) dan aplikasi tahap awal.
 - **Pro / Scale**: Dirancang untuk beban kerja produksi dengan jaminan uptime dan throughput tinggi.
 - **Enterprise**: Kapasitas komputasi besar dengan kuota kustom dan dukungan teknis prioritas.
 
 ### Langkah Pembelian Layanan:
+
 1. Klik tombol **"Pilih Paket"** atau **"Subscribe"** pada kartu layanan yang diinginkan.
 2. Tentukan periode penagihan (Bulanan / Tahunan dengan diskon khusus).
 3. Pada halaman checkout, pilih sumber pembayaran: **Saldo Organisasi** atau **Metode Pembayaran Eksternal** (QRIS, VA Bank, Kartu Kredit).

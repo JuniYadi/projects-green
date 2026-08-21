@@ -17,7 +17,9 @@ notes:
 This guide explains how to configure corporate identity details, tax IDs, and billing currencies.
 
 ---
+
 ![Billing & Tax Settings](/kb-assets/billing/11-billing-settings.png)
+
 ## 1. Legal Entity & Tax Compliance
 
 The **Billing Settings** page (`/console/billing/settings`) allows customization of corporate legal details rendered on official tax invoices and payment vouchers.
@@ -25,6 +27,7 @@ The **Billing Settings** page (`/console/billing/settings`) allows customization
 ![Billing & Tax Settings](/kb-assets/billing/11-billing-settings.md)
 
 ### Configuration Sections:
+
 1. **Legal Business Name**: Registered legal corporate name.
 2. **Tax ID / NPWP**: Official tax identification number for VAT/tax reporting.
 3. **Registered Billing Address**: Official physical address printed on invoices.

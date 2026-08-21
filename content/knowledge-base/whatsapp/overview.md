@@ -23,6 +23,7 @@ The **WhatsApp Dashboard** (`/console/whatsapp/dashboard`) serves as the central
 ## 1. Key Metrics & Status Cards
 
 The dashboard presents immediate high-level health indicators:
+
 - **Active Devices (Perangkat Aktif)**: Total connected WhatsApp numbers ready for sending and receiving messages.
 - **Total Conversations (Total Percakapan)**: Aggregate number of distinct customer threads handled.
 - **Messages Sent (Pesan Terkirim)**: Number of outbound messages successfully dispatched during the current billing period.

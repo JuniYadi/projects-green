@@ -27,6 +27,7 @@ Webhook Logs mencatat seluruh event mentah yang diterima dari Meta Cloud API (pe
 ![Log Webhook](/kb-assets/whatsapp/guides/05-journey1-webhook-logs.png)
 
 ### Jenis Event Utama:
+
 - `message.received`: Pesan masuk (teks, media, tombol) yang dikirim oleh pelanggan.
 - `message.sent`: Konfirmasi pengiriman pesan dari Meta.
 - `message.delivered`: Konfirmasi bahwa pesan telah sampai di perangkat penerima.
@@ -34,7 +35,8 @@ Webhook Logs mencatat seluruh event mentah yang diterima dari Meta Cloud API (pe
 - `message.failed`: Informasi kegagalan pengiriman beserta kode error dari Meta.
 
 ### Memeriksa Rincian Payload Webhook:
-Klik baris log webhook untuk melihat payload JSON request dan response secara lengkap, kode status HTTP, latensi jaringan dalam milidetik, dan riwayat percobaan ulang (*retry*).
+
+Klik baris log webhook untuk melihat payload JSON request dan response secara lengkap, kode status HTTP, latensi jaringan dalam milidetik, dan riwayat percobaan ulang (_retry_).
 
 ---
 
@@ -45,8 +47,9 @@ Menu Audit Logs menyediakan catatan audit permanen atas tindakan administratif d
 ![Log Audit](/kb-assets/whatsapp/guides/06-journey1-audit-logs.png)
 
 ### Aktivitas yang Dicatat:
+
 - Pembuatan, rotasi, dan pencabutan akses API Key.
 - Pembuatan, perubahan, dan sinkronisasi template pesan.
 - Pendaftaran perangkat WhatsApp baru, pembaruan token, atau pemutusan koneksi.
-- Pemicuan pengiriman pesan massal (*broadcast*).
-- Pemotongan kuota saldo dan pengembalian dana (*refund*).
+- Pemicuan pengiriman pesan massal (_broadcast_).
+- Pemotongan kuota saldo dan pengembalian dana (_refund_).

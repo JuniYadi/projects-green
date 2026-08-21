@@ -25,6 +25,7 @@ The **Transactions** page (`/console/billing/transactions`) provides a comprehen
 ![Transaction History & Balance Ledger](/kb-assets/billing/08-billing-transactions.png)
 
 ### Transaction Types:
+
 - **CREDIT (Top-ups & Deposits)**: Funds added via top-up invoices, promotional grants, or adjustment credits.
 - **DEBIT (Service Deductions)**: Automated charges for recurring subscription terms or on-demand resource usage.
 - **REFUND**: Balance credited back following service adjustments.
@@ -35,7 +36,8 @@ The **Transactions** page (`/console/billing/transactions`) provides a comprehen
 ## 2. Audit Trail & Accounting Reconciliation
 
 Each ledger record contains:
+
 1. **Transaction ID**: Unique identifier for tracking and support requests.
 2. **Timestamp**: Precision execution time.
-3. **Description**: Clear line-item context (e.g. *Renewal App Hosting Starter*, *Deposit via QRIS*).
+3. **Description**: Clear line-item context (e.g. _Renewal App Hosting Starter_, _Deposit via QRIS_).
 4. **Running Balance**: Exact account balance after the transaction settled.

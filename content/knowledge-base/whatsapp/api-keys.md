@@ -17,11 +17,13 @@ notes:
 This guide explains how to generate, rotate, and securely use your organization's static WhatsApp API key to integrate with the WhatsApp Business Platform APIs.
 
 ---
+
 ## 1. What is an API Key?
 
 Your WhatsApp API Key is a **secret token** (like a password) that allows your backend software or scripts to send messages and manage devices securely.
 
 ### Key Security Rules:
+
 - **Shown Only Once**: When you generate or rotate a key, the secret is displayed once. Copy it immediately to your password manager or environment file (`.env`).
 - **One Active Key**: Each organization uses one active key at a time.
 - **Safe Sharing**: You can safely share the key's prefix (e.g. `wa_key_...`) with colleagues for debugging without exposing the real secret.

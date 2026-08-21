@@ -21,6 +21,7 @@ This reference document covers all operational management modules in the WhatsAp
 ---
 
 ## 1. Devices (`/console/whatsapp/devices`)
+
 Manage your physical and cloud WhatsApp phone numbers, initiate pairing via QR codes, and inspect connection statuses.
 
 ![Devices Management](/kb-assets/whatsapp/guides/10-menu-devices.png)
@@ -28,6 +29,7 @@ Manage your physical and cloud WhatsApp phone numbers, initiate pairing via QR c
 ---
 
 ## 2. Broadcasts (`/console/whatsapp/broadcasts`)
+
 Create scheduled or instant bulk broadcast campaigns targeting contact lists and segments, with real-time delivery and open-rate metrics.
 
 ![Broadcasts Management](/kb-assets/whatsapp/guides/11-menu-broadcasts.png)
@@ -35,6 +37,7 @@ Create scheduled or instant bulk broadcast campaigns targeting contact lists and
 ---
 
 ## 3. Contacts (`/console/whatsapp/contacts`)
+
 Maintain customer contacts, import CSV lists, assign custom tags, and manage opt-out preferences.
 
 ![Contacts Management](/kb-assets/whatsapp/guides/12-menu-contacts.png)
@@ -42,6 +45,7 @@ Maintain customer contacts, import CSV lists, assign custom tags, and manage opt
 ---
 
 ## 4. Catalogs (`/console/whatsapp/catalogs`)
+
 Synchronize e-commerce product catalogs with Meta to send interactive single-product and multi-product cart messages directly in WhatsApp chats.
 
 ![Catalogs Management](/kb-assets/whatsapp/guides/13-menu-catalogs.png)
@@ -49,6 +53,7 @@ Synchronize e-commerce product catalogs with Meta to send interactive single-pro
 ---
 
 ## 5. Usage (`/console/whatsapp/usage`)
+
 Analyze daily message volume, track conversation tier distributions (Utility vs Marketing), and monitor quota allowances.
 
 ![Usage Analytics](/kb-assets/whatsapp/guides/14-menu-usage.png)
@@ -56,6 +61,7 @@ Analyze daily message volume, track conversation tier distributions (Utility vs 
 ---
 
 ## 6. Ledger (`/console/whatsapp/ledger`)
+
 Audit immutable credit/debit transaction records, auto-refunds for failed deliveries, and subscription renewal fees.
 
 ![Ledger Accounting](/kb-assets/whatsapp/guides/15-menu-ledger.png)
@@ -63,6 +69,7 @@ Audit immutable credit/debit transaction records, auto-refunds for failed delive
 ---
 
 ## 7. Pricing (`/console/whatsapp/pricing`)
+
 Review destination-specific per-conversation fees across all Meta message categories.
 
 ![Pricing Reference](/kb-assets/whatsapp/guides/16-menu-pricing.png)
