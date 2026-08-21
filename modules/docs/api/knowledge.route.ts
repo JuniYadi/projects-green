@@ -34,7 +34,7 @@ const STREAM_HEADERS = {
 
 const STRICT_KB_FALLBACK_MESSAGE =
   "I don't know from the current knowledgebase."
-const MIN_CONTEXT_SCORE = 12
+const MIN_CONTEXT_SCORE = 1
 
 export type KnowledgeAuthContext = {
   organizationId?: string | null
@@ -182,10 +182,12 @@ const streamKnowledgeAnswerDefault = (input: {
       "Knowledge documents:",
       createContextBlock(input.docs),
     ].join("\n"),
-    messages: input.messages.map((message) => ({
-      role: message.role,
-      content: message.content,
-    })),
+    messages: input.messages
+      .filter((msg) => Boolean(msg.content && msg.content.trim().length > 0))
+      .map((message) => ({
+        role: message.role,
+        content: message.content.trim(),
+      })),
   }).textStream
 }
 
@@ -230,7 +232,6 @@ export const createKnowledgeRoutes = (
         routePath,
         query: latestUserQuery,
       })
-      const citations = toCitations(docs)
       const highestScore = docs[0]?.score ?? 0
 
       if (!docs.length || highestScore < MIN_CONTEXT_SCORE) {
@@ -247,6 +248,7 @@ export const createKnowledgeRoutes = (
         ])
       }
 
+      const citations = toCitations(docs)
       const encoder = new TextEncoder()
       let fullAnswer = ""
 
