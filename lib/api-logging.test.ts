@@ -145,17 +145,25 @@ describe.serial("Elysia API logging", () => {
     })
   })
 
-  test("logs caller identity correctly when API key Bearer token is provided", async () => {
+  test("logs caller identity when route handler resolves and attaches auth context", async () => {
+    const { resolveAuthContext } = await import("@/lib/auth/resolve-proxy-auth")
     const testApp = new Elysia()
       .use(createApiLoggingPlugin())
-      .get("/api/api-key-test", () => ({ ok: true }))
+      .get("/api/api-key-test", async ({ request }) => {
+        const auth = await resolveAuthContext(request)
+        return { ok: true, auth: auth?.type ?? null }
+      })
 
     const { response, logs } = await captureLogs(() =>
       testApp.handle(
         new Request("http://localhost/api/api-key-test", {
           method: "GET",
           headers: {
-            Authorization: `Bearer live_1234567890abcdef1234567890`,
+            "x-workos-authed": "true",
+            "x-workos-user-id": "user_api_route",
+            "x-workos-user-email": "route@example.com",
+            "x-workos-organization-id": "org_route",
+            "x-workos-session-role": "admin",
           },
         })
       )
@@ -169,8 +177,11 @@ describe.serial("Elysia API logging", () => {
       pathname: "/api/api-key-test",
       statusCode: 200,
       caller: {
-        type: "platform",
-        environment: "LIVE",
+        type: "workos",
+        userId: "user_api_route",
+        email: "route@example.com",
+        organizationId: "org_route",
+        orgRole: "admin",
       },
     })
   })
