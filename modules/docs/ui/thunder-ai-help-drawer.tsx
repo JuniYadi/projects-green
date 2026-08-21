@@ -659,13 +659,19 @@ export function ThunderAiHelpDrawer() {
         variant="outline"
         size="sm"
         onClick={() => openDrawer("chat")}
-        className="gap-2 border-white/[0.08] transition-all duration-200 hover:border-amber-500/30 hover:bg-neutral-900/60"
+        className="group relative flex h-8 items-center gap-2 rounded-xl border border-amber-500/30 bg-neutral-900/90 px-3 text-xs font-semibold text-zinc-100 shadow-sm shadow-amber-500/10 transition-all duration-200 hover:border-amber-500/60 hover:bg-amber-500/10 hover:text-white hover:shadow-md hover:shadow-amber-500/20 active:scale-95"
       >
-        <Lightning
-          size={15}
-          className="animate-pulse fill-amber-500 text-amber-500"
-        />
+        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-500/20 text-amber-400 transition-transform group-hover:scale-110">
+          <Lightning
+            size={12}
+            weight="fill"
+            className="animate-pulse fill-amber-400 text-amber-400"
+          />
+        </span>
         <span>AI Help</span>
+        <span className="ml-0.5 rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-zinc-300 group-hover:bg-amber-500/20 group-hover:text-amber-300">
+          {isId ? "Bantuan" : "Ask"}
+        </span>
       </Button>
 
       <Sheet
