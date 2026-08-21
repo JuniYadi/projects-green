@@ -114,9 +114,14 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     name: "whatsapp-pricing",
     sourcePrefixes: [
       "app/[lang]/portal/whatsapp/pricing/",
+      "app/[lang]/console/whatsapp/pricing/",
+      "lib/seeders/system/whatsapp-pricing.seeder.ts",
       "scripts/seed-whatsapp-pricing.ts",
     ],
     testPrefixes: [
+      "app/[lang]/portal/whatsapp/pricing/",
+      "app/[lang]/console/whatsapp/pricing/",
+      "lib/seeders/system/whatsapp-pricing.seeder.test.ts",
       "modules/whatsapp/messages/api/admin-pricing.route.test.ts",
       "modules/whatsapp/messages/message-pricing.service.test.ts",
     ],
