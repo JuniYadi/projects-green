@@ -108,7 +108,14 @@ export class WhatsappMessagePricingService {
         phoneNumber: device.phoneNumber,
         country: device.country,
         rateTier: device.rateTier,
-        categories: Object.values(WhatsappBillingCategory).map((category) => {
+        categories: (
+          [
+            WhatsappBillingCategory.MARKETING,
+            WhatsappBillingCategory.UTILITY,
+            WhatsappBillingCategory.AUTHENTICATION,
+            WhatsappBillingCategory.SERVICE,
+          ] as const
+        ).map((category) => {
           const rate = rateByCountryAndCategory.get(
             `${device.country}:${category}`
           )
