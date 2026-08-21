@@ -662,13 +662,13 @@ export function ThunderAiHelpDrawer() {
         className="group relative flex h-8 items-center gap-2 rounded-xl border border-amber-500/30 bg-neutral-900/90 px-3 text-xs font-semibold text-zinc-100 shadow-sm shadow-amber-500/10 transition-all duration-200 hover:border-amber-500/60 hover:bg-amber-500/10 hover:text-white hover:shadow-md hover:shadow-amber-500/20 active:scale-95"
       >
         <span className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-500/20 text-amber-400 transition-transform group-hover:scale-110">
-          <Lightning
+          <Sparkle
             size={12}
             weight="fill"
             className="animate-pulse fill-amber-400 text-amber-400"
           />
         </span>
-        <span>{isId ? "Bantuan AI" : "AI Help"}</span>
+        <span>{isId ? "Tanya P" : "Ask P"}</span>
       </Button>
 
       <Sheet
@@ -687,18 +687,17 @@ export function ThunderAiHelpDrawer() {
         >
           <SheetHeader className="border-b border-white/[0.06] p-6 pb-4">
             <div className="flex items-center gap-2">
-              <Lightning
-                size={20}
-                className="animate-pulse fill-amber-500 text-amber-500"
-              />
+              <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/20 text-amber-400">
+                <Sparkle size={15} weight="fill" className="animate-pulse" />
+              </div>
               <SheetTitle className="text-lg font-bold text-white">
-                {isId ? "Pusat Bantuan & AI" : "AI Help & Knowledge"}
+                {isId ? "Tanya P" : "Ask P"}
               </SheetTitle>
             </div>
             <SheetDescription className="mt-1 text-xs text-muted-foreground">
               {isId
-                ? "Bantuan dan panduan cerdas untuk "
-                : "Guidance and smart assistance for "}
+                ? "Panduan & asisten cerdas untuk "
+                : "Smart guidance & assistance for "}
               <span className="font-semibold text-zinc-200">{pageTitle}</span>
               {" • "}
               <span className="font-mono text-zinc-400">{routePath}</span>
@@ -717,15 +716,16 @@ export function ThunderAiHelpDrawer() {
                     : "hover:text-white"
                 }`}
               >
-                <Lightning
+                <Sparkle
                   size={14}
+                  weight="fill"
                   className={
                     activeTab === "chat"
                       ? "animate-pulse fill-amber-500 text-amber-500"
                       : ""
                   }
                 />
-                {isId ? "Tanya AI" : "Ask AI"}
+                {isId ? "Tanya P" : "Ask P"}
               </button>
               <button
                 type="button"
@@ -904,22 +904,24 @@ export function ThunderAiHelpDrawer() {
                   {messages.length === 0 ? (
                     <div className="space-y-6 py-4">
                       <div className="space-y-2 text-center">
-                        <div className="mb-2 inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/[0.06] bg-neutral-900">
-                          <Lightning
+                        <div className="mb-2 inline-flex h-12 w-12 items-center justify-center rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 shadow-md shadow-amber-500/10">
+                          <Sparkle
                             size={24}
-                            className="animate-pulse fill-amber-500 text-amber-500"
+                            weight="fill"
+                            className="animate-pulse"
                           />
                         </div>
                         <h3 className="text-sm font-semibold text-white">
-                          {isId ? "Asisten AI PFNApp" : "PFNApp AI Assistant"}
+                          {isId
+                            ? "Tanya P — Asisten Cerdas PFNApp"
+                            : "Ask P — PFNApp Smart Assistant"}
                         </h3>
                         <p className="mx-auto max-w-sm text-xs text-muted-foreground">
                           {isId
-                            ? `Tanyakan panduan, kendala fitur, atau alur kerja untuk ${pageTitle}.`
-                            : `Ask questions about guides, features, or workflows for ${pageTitle}.`}
+                            ? `Tanyakan apa saja ke P seputar panduan, fitur, atau alur sistem untuk ${pageTitle}.`
+                            : `Ask P anything about guides, features, or workflows for ${pageTitle}.`}
                         </p>
                       </div>
-
                       <div className="mx-auto max-w-md space-y-2">
                         <p className="mb-1 text-center text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
                           {isId ? "Pertanyaan Populer" : "Suggested Questions"}
@@ -1033,8 +1035,8 @@ export function ThunderAiHelpDrawer() {
                       onChange={(event) => setInput(event.target.value)}
                       placeholder={
                         isId
-                          ? "Tanyakan apa saja seputar panduan halaman ini..."
-                          : "Ask anything about this page or workflows..."
+                          ? "Tanyakan sesuatu ke P seputar halaman ini..."
+                          : "Ask P anything about this page or workflows..."
                       }
                       disabled={isSending}
                       className="h-9 flex-1 border-0 bg-transparent px-2 text-xs text-white placeholder:text-zinc-400 focus-visible:ring-0 focus-visible:ring-offset-0"
@@ -1058,7 +1060,9 @@ export function ThunderAiHelpDrawer() {
                         : "Press Enter to send message"}
                     </span>
                     <span>
-                      {isId ? "Asisten AI Berbasis Docs" : "Docs-Grounded AI"}
+                      {isId
+                        ? "Asisten Tanya P • Pin Point Docs AI"
+                        : "Ask P Assistant • Pin Point Docs AI"}
                     </span>
                   </div>
                 </div>
