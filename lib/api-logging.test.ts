@@ -145,6 +145,36 @@ describe.serial("Elysia API logging", () => {
     })
   })
 
+  test("logs caller identity correctly when API key Bearer token is provided", async () => {
+    const testApp = new Elysia()
+      .use(createApiLoggingPlugin())
+      .get("/api/api-key-test", () => ({ ok: true }))
+
+    const { response, logs } = await captureLogs(() =>
+      testApp.handle(
+        new Request("http://localhost/api/api-key-test", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer live_1234567890abcdef1234567890`,
+          },
+        })
+      )
+    )
+
+    expect(response.status).toBe(200)
+    expect(logs).toHaveLength(1)
+    expect(logs[0]).toMatchObject({
+      event: "api.request.completed",
+      method: "GET",
+      pathname: "/api/api-key-test",
+      statusCode: 200,
+      caller: {
+        type: "platform",
+        environment: "LIVE",
+      },
+    })
+  })
+
   test("logs anonymous caller when x-workos-authed is true but user id is empty", async () => {
     const testApp = new Elysia()
       .use(createApiLoggingPlugin())
