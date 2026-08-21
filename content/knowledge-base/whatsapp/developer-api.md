@@ -1,6 +1,6 @@
 ---
 path: /whatsapp/developer-api
-title: WhatsApp API Developer Guide & OpenAPI Reference
+title: WhatsApp Developer API & OpenAPI
 category: WhatsApp
 purpose: Developer guide for static API key authentication, OpenAPI specification exploration, multi-language code snippets, and API testing.
 howTo:

@@ -1,6 +1,6 @@
 ---
 path: /whatsapp/management-menus
-title: WhatsApp Console Management Modules (Devices, Broadcasts, Contacts, Catalogs, Usage, Ledger & Pricing)
+title: WhatsApp Console Modules Guide
 category: WhatsApp
 purpose: Comprehensive reference guide for all additional WhatsApp Console management modules and operational views.
 howTo:

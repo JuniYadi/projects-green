@@ -187,12 +187,10 @@ describe("loadAllKnowledgeDocs", () => {
     )
 
     expect(enDoc).toBeDefined()
-    expect(enDoc?.title).toBe("WhatsApp API Key Management & Integration Guide")
+    expect(enDoc?.title).toBe("WhatsApp API Key Management")
 
     expect(idDoc).toBeDefined()
-    expect(idDoc?.title).toBe(
-      "Panduan Pengelolaan & Integrasi WhatsApp API Key"
-    )
+    expect(idDoc?.title).toBe("Pengelolaan WhatsApp API Key")
   })
 
   it("returns empty array for nonexistent directory", () => {

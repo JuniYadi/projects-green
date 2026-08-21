@@ -1,7 +1,7 @@
 ---
 path: /whatsapp/webhooks-and-audits
 locale: id
-title: Log Webhook WhatsApp & Jejak Audit Keamanan
+title: Webhook WhatsApp & Jejak Audit
 category: WhatsApp
 purpose: Pantau riwayat event webhook masuk dan keluar, tanda terima pengiriman payload, percobaan ulang error, dan log audit kepatuhan.
 howTo:

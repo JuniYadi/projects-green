@@ -1,158 +1,138 @@
 ---
 path: /whatsapp/templates
 locale: id
-title: Panduan Template Pesan WhatsApp, Perbandingan Kategori, Harga & Persetujuan Meta
+title: Panduan Template Pesan & Persetujuan Meta
 category: WhatsApp
-purpose: Panduan mendalam tentang template pesan WhatsApp, rincian biaya per kategori, tujuan penggunaan, contoh kode, alasan penolakan Meta, dan indikator marketing.
+purpose: Panduan pemula untuk merancang, mengajukan, dan mengelola template pesan WhatsApp resmi, memahami kategori, dan menghindari penolakan Meta.
 howTo:
-  - "Pahami tiga kategori template WhatsApp: UTILITY, MARKETING, dan AUTHENTICATION."
-  - "Periksa perbedaan tarif harga dan pengali kuota (multiplier) antar kategori."
-  - "Pelajari contoh nyata template notifikasi pesanan, OTP, dan pesan siaran promo."
-  - "Hindari penolakan umum Meta seperti mencampurkan kata-kata promosi ke dalam template utility."
-  - "Buat, pratinjau, ajukan, dan sinkronkan template di Console > WhatsApp > Templates (/console/whatsapp/templates)."
+  - "Buat dan ajukan template WhatsApp pertama Anda dalam 3 langkah mudah."
+  - "Pahami kategori template (Utility, Authentication, Marketing) dengan contoh visual."
+  - "Periksa pengali kuota dan tarif harga per negara tujuan secara dinamis."
+  - "Hindari penolakan umum Meta saat proses persetujuan template."
 notes:
-  - "Meta secara otomatis mengklasifikasikan ulang atau menolak template utility yang mengandung kata kunci promosi, upsell, atau link penawaran."
-  - "Template marketing dikenakan biaya per pesan yang lebih tinggi dibandingkan pesan utility atau autentikasi."
-  - "Template autentikasi harus secara ketat hanya berisi kode OTP dan peringatan keamanan tanpa teks promosi."
+  - "Semua pengiriman notifikasi bisnis WhatsApp ke pelanggan wajib menggunakan template resmi yang telah disetujui Meta."
+  - "Template utility wajib murni berisi pembaruan transaksi tanpa kata-kata promosi atau tautan diskon."
+  - "Template marketing dikenakan tarif per pesan yang lebih tinggi dibandingkan utility atau autentikasi."
 ---
 
-# Panduan Template Pesan WhatsApp, Perbandingan Kategori, Harga & Persetujuan Meta
+# Panduan Template Pesan & Persetujuan Meta
 
-Menu **Template** (`/console/whatsapp/templates`) memungkinkan bisnis untuk merancang, mengajukan, dan menyinkronkan template pesan WhatsApp yang telah disetujui secara resmi oleh Meta.
-
-```mermaid
-graph TD
-    A[Pengajuan Template Baru] --> B{Review Otomatis & Manual Meta}
-    B -->|Sesuai Panduan Kategori| C[APPROVED / SYNCED]
-    B -->|Ada Kata Promosi di Utility| D[REJECTED atau Diubah Otomatis ke MARKETING]
-    B -->|Kurang Nilai Contoh Variabel| E[REJECTED: Format Tidak Valid]
-    B -->|Pelanggaran Kebijakan Meta| F[REJECTED: Melanggar Kebijakan]
-```
+Template Pesan WhatsApp memungkinkan bisnis mengirim notifikasi proaktif, pembaruan status pesanan, kode verifikasi OTP, hingga siaran promosi ke pelanggan. Karena WhatsApp menjaga kenyamanan kotak masuk pengguna, **seluruh template wajib disetujui resmi oleh Meta** sebelum dapat dikirim.
 
 ---
 
-## 1. Perbandingan Kategori Template, Tujuan & Pengali Kuota
+## 1. Panduan Cepat: Buat Template Pertama dalam 3 Langkah
 
-Meta membagi template pesan WhatsApp Business ke dalam **tiga kategori utama**, masing-masing dengan cakupan tujuan khusus dan pengali pemotongan kuota (*quota credit multiplier*):
+Anda dapat merancang, mengajukan, dan memantau status template langsung dari **Console**:
 
-| Kategori | Tujuan Utama | Pengali Kuota Saldo | Contoh Penggunaan |
+1. **Buka Builder Template**: Masuk ke menu **Console** > **WhatsApp** > **Templates** (`/console/whatsapp/templates`) dan klik tombol **"Buat Template"**.
+2. **Atur Konten Template**:
+   - Tentukan **Nama Template** (contoh: `notifikasi_pengiriman_pesanan`), pilih **Kategori** (`UTILITY`), dan tentukan **Bahasa**.
+   - Tulis isi pesan dengan placeholder variabel `{{1}}`, `{{2}}` untuk data dinamis pelanggan.
+   - Isi **Nilai Contoh (*Sample Values*)** yang realistis (contoh: `Budi`, `INV-12345`) agar peninjau otomatis Meta memahami konteks pesan Anda.
+   - Tambahkan tombol opsional seperti **Quick Reply** atau **Call-to-Action** (*"Cek Resi"* atau *"Salin Kode"*).
+3. **Ajukan & Sinkronisasi**: Klik **Submit**. Meta biasanya meninjau template dalam hitungan detik hingga beberapa menit. Setelah disetujui, klik **"Sinkronisasi Template"** untuk memperbarui status di dasbor Anda.
+
+![Dialog Pembuatan Template](/kb-assets/whatsapp/guides/03-journey1-create-template-dialog.png)
+
+---
+
+## 2. Kategori Template & Contoh Visual
+
+Meta membagi setiap template ke dalam salah satu dari tiga kategori utama. Pilih kategori yang sesuai dengan tujuan utama pesan Anda:
+
+| Kategori | Cocok Untuk | Pengali Kuota | Aturan Utama |
 | :--- | :--- | :--- | :--- |
-| **`UTILITY`** | Notifikasi transaksi spesifik yang dipicu oleh tindakan pengguna atau transaksi berjalan. | **1.0x** | Konfirmasi pesanan, nomor resi pengiriman, tagihan invoice, pengingat janji temu. |
-| **`AUTHENTICATION`** | Verifikasi identitas dan keamanan akun menggunakan kode OTP (*One-Time Password*). | **1.5x** | Kode verifikasi login, reset password, autentikasi dua faktor (2FA). |
-| **`MARKETING`** | Pesan promosi, pengumuman produk baru, penawaran diskon, retargeting, dan pesan sambutan. | **2.0x** | Peluncuran produk, voucher belanja, abandoned cart recovery, promo akhir bulan. |
+| **`UTILITY`** | Resi pengiriman, konfirmasi pesanan, invoice tagihan, pengingat jadwal | **1.0x** | Dilarang mencantumkan kata promosi, diskon, atau upsell. |
+| **`AUTHENTICATION`** | Kode OTP login & verifikasi keamanan akun | **1.5x** | Wajib hanya berisi kode OTP & peringatan keamanan. Tanpa salam promosi. |
+| **`MARKETING`** | Promosi diskon, peluncuran produk, pesan sambutan, cart recovery | **2.0x** | Mengizinkan header gambar, emoji, dan link belanja eksternal. |
 
 > 💡 **Informasi Tarif & Harga Real-Time:**
-> Rincian tarif harga per pesan aktual untuk setiap negara tujuan dan mata uang dikelola secara dinamis. Anda dapat melihat daftar harga resmi terkini langsung di Console melalui [**Tabel Harga WhatsApp**](/console/whatsapp/pricing).
+> Rincian tarif per pesan aktual untuk setiap negara tujuan dan mata uang dikelola secara dinamis. Lihat daftar harga resmi terkini langsung di [**Tabel Harga WhatsApp**](/console/whatsapp/pricing).
 
 ---
 
-## 2. Struktur & Contoh Nyata Template Berdasarkan Kategori
+### A. Template Utility (Notifikasi Transaksi)
+*Tujuan:* Memberikan informasi status transaksi atau akun yang secara spesifik diminta oleh pelanggan.
 
-### A. Contoh Template Utility (Notifikasi Transaksi)
-- **Tujuan**: Memberikan informasi status transaksi atau pembaruan akun penting yang memang diminta/disetujui oleh pelanggan.
-- **Aturan Ketat**: **TIDAK BOLEH** mengandung kata-kata promosi, penawaran diskon, atau rekomendasi produk lain (*upsell*).
-
-```text
-Header: [Teks: Pesanan Telah Dikirim]
-Body:
-Halo {{1}}, pesanan Anda dengan nomor #{{2}} telah dikirim melalui kurir {{3}}.
-Nomor Resi: {{4}}
-Estimasi Tiba: {{5}}.
-Terima kasih telah berbelanja di toko kami.
-
-Footer: Logistik PFNApp
-Tombol:
-- Quick Reply: "Cek Status Resi"
-```
+> 📦 **Pembaruan Pengiriman Pesanan**
+>
+> Halo **{{1}}**, pesanan Anda dengan nomor **#{{2}}** telah dikirim melalui kurir **{{3}}**.  
+> **Nomor Resi:** {{4}}  
+> **Estimasi Tiba:** {{5}}.  
+> Terima kasih telah berbelanja di toko kami.  
+> 
+> *Logistik PFNApp*  
+> `[🔘 Quick Reply: Cek Status Resi]`
 
 ---
 
-### B. Contoh Template Autentikasi (OTP / Verifikasi Akun)
-- **Tujuan**: Mengirimkan kode keamanan sekali pakai untuk login, registrasi, atau konfirmasi transaksi.
-- **Aturan Ketat**: Hanya boleh berisi kode OTP, batas waktu kedaluwarsa, dan peringatan keamanan. Dilarang menambahkan slogan merek, sambutan panjang, atau tombol promosi.
+### B. Template Autentikasi (OTP & Verifikasi)
+*Tujuan:* Mengirimkan kode verifikasi identitas dan keamanan akun sekali pakai (OTP).
 
-```text
-Body:
-{{1}} adalah kode verifikasi akun PFNApp Anda.
-Demi keamanan, jangan berikan kode ini kepada siapa pun.
-Kode berlaku selama {{2}} menit.
-
-Footer: Peringatan Keamanan
-Tombol:
-- Salin Kode: "Copy Code"
-- URL: "Verifikasi Login" (https://pfnapp.my.id/auth/verify?code={{1}})
-```
+> 🔐 **Verifikasi Keamanan Akun**
+>
+> **{{1}}** adalah kode verifikasi akun PFNApp Anda.  
+> Demi keamanan, jangan berikan kode ini kepada siapa pun.  
+> Kode berlaku selama **{{2}}** menit.  
+>
+> *Peringatan Keamanan*  
+> `[📋 Copy Code]` &nbsp; `[🔗 Verifikasi Login]`
 
 ---
 
-### C. Contoh Template Marketing (Siaran Pesan Promosi)
-- **Tujuan**: Meningkatkan penjualan, mengumumkan fitur/produk baru, atau membangun retensi pelanggan.
-- **Aturan**: Mengizinkan header gambar menarik, emoji, kode voucher diskon, dan tautan belanja eksternal.
+### C. Template Marketing (Siaran Pesan Promosi)
+*Tujuan:* Meningkatkan transaksi belanja, mengumumkan produk baru, atau memberikan penawaran diskon khusus.
 
-```text
-Header: [Gambar: promo-gajian-banner.png]
-Body:
-🎉 Halo {{1}}, Promo Spesial Gajian telah dimulai!
-Dapatkan diskon hingga {{2}}% untuk seluruh paket cloud hosting dan add-on WhatsApp API dengan kode voucher {{3}}.
-Penawaran berlaku hingga {{4}}. Jangan sampai terlewat!
-
-Footer: Syarat & ketentuan berlaku.
-Tombol:
-- Call to Action (URL): "Ambil Diskon Sekarang" (https://pfnapp.my.id/promo/gajian)
-- Quick Reply: "Berhenti Menerima Promo"
-```
+> 🎉 **Promo Spesial Gajian**
+>
+> 🎉 Halo **{{1}}**, Promo Spesial Gajian telah dimulai!  
+> Dapatkan diskon hingga **{{2}}% OFF** untuk seluruh paket cloud hosting dan add-on WhatsApp API dengan kode voucher **{{3}}**.  
+> Penawaran berlaku hingga **{{4}}**. Jangan sampai terlewat!  
+>
+> *Syarat & ketentuan berlaku.*  
+> `[🔗 Ambil Diskon Sekarang]` &nbsp; `[🔘 Berhenti Menerima Promo]`
 
 ---
 
 ## 3. Penyebab Template Ditolak Meta (dan Solusinya)
 
-Meta mengevaluasi seluruh pengajuan template melalui algoritma AI dan peninjau manual. Berikut penyebab penolakan paling sering terjadi:
+Meta meninjau pengajuan template menggunakan sistem AI dan auditor manual. Jika template Anda ditolak atau dialihkan kategorinya, periksa 4 penyebab umum berikut:
 
-### 1. Ketidaksesuaian Kategori (Ada Konten Promosi di Utility)
-- **Pemicu**: Mengajukan template sebagai `UTILITY` padahal mengandung kata seperti *"diskon"*, *"coba gratis"*, *"rekomendasi untuk Anda"*, *"cashback"*, *"kupon potongan"*, atau tautan ke halaman katalog promosi.
-- **Tindakan Meta**: Ditolak langsung (`REJECTED`) atau otomatis dialihkan ke kategori `MARKETING`.
-- **Solusi**: Hapus seluruh kalimat penawaran/penjualan dari teks pesan utility, atau ajukan langsung sejak awal sebagai kategori `MARKETING`.
+```mermaid
+graph TD
+    A[Pengajuan Template Baru] --> B{Peninjauan Meta}
+    B -->|Sesuai Aturan Kategori| C[APPROVED & SYNCED]
+    B -->|Ada Kata Promosi di Utility| D[Dialihkan ke Kategori MARKETING]
+    B -->|Kurang Nilai Contoh Variabel| E[REJECTED: Format Tidak Valid]
+    B -->|Produk Terlarang / Phishing| F[REJECTED: Melanggar Kebijakan]
+```
 
-### 2. Kurang Memberikan Contoh Nilai Variabel (*Sample Values*)
-- **Pemicu**: Mendefinisikan parameter `{{1}}`, `{{2}}` tanpa memberikan contoh teks realistis saat formulir dibuat.
-- **Tindakan Meta**: Ditolak karena sistem review Meta tidak dapat memahami konteks kalimat Anda.
-- **Solusi**: Selalu isi kolom nilai contoh (*Sample Value*) untuk setiap variabel `{{1}}` (misal: diisi `"Budi"`).
+### 1. Memasukkan Kata Promosi pada Template Utility
+- **Penyebab**: Mengajukan template sebagai `UTILITY` padahal mengandung kata seperti *"diskon"*, *"coba gratis"*, *"rekomendasi produk"*, *"cashback"*, *"voucher"*, atau tautan landing page promosi.
+- **Tindakan Meta**: Ditolak langsung atau otomatis diubah menjadi `MARKETING`.
+- **Solusi**: Jaga pesan utility tetap faktual murni transaksi, atau ajukan sejak awal sebagai `MARKETING`.
 
-### 3. Variabel Menggantung / Tidak Jelas
-- **Pemicu**: Menempatkan variabel berurutan tanpa konteks kalimat yang jelas (contoh: `Kode Anda adalah {{1}} {{2}} {{3}}`).
-- **Solusi**: Jelaskan fungsi masing-masing variabel dalam kalimat: `Kode aktivasi Anda adalah {{1}}. Berlaku selama {{2}} menit.`
+### 2. Tidak Mengisi Contoh Nilai Variabel (*Sample Values*)
+- **Penyebab**: Menggunakan variabel `{{1}}`, `{{2}}` tanpa mengisi kolom contoh teks kalimat di formulir builder.
+- **Tindakan Meta**: Ditolak karena sistem review tidak dapat memahami konteks kalimat.
+- **Solusi**: Selalu isi contoh nilai variabel yang realistis (contoh: `Budi`, `INV-12345`) saat pembuatan template.
+
+### 3. Variabel Menggantung Tanpa Konteks
+- **Penyebab**: Menaruh variabel berurutan tanpa kalimat penjelas (contoh: `Kode Anda adalah {{1}} {{2}} {{3}}`).
+- **Solusi**: Beri penjelasan fungsi setiap variabel: `Kode aktivasi Anda adalah {{1}}. Berlaku selama {{2}} menit.`
 
 ### 4. Pelanggaran Kebijakan Perdagangan Meta
-- **Pemicu**: Template yang mempromosikan produk terlarang (obat tanpa resep, pinjaman ilegal, judi, tembakau) atau pesan bernada ancaman palsu (*"Akun Anda akan ditutup dalam 5 menit jika tidak klik link ini"*).
-- **Tindakan Meta**: Ditolak keras, dan pelanggaran berulang dapat menurunkan reputasi kualitas nomor WhatsApp Business (*Quality Rating*).
+- **Penyebab**: Mempromosikan produk terlarang (obat tanpa resep, pinjaman ilegal, judi, tembakau) atau pesan ancaman palsu (*"Akun Anda akan ditutup dalam 5 menit jika tidak klik link ini"*).
+- **Solusi**: Pastikan seluruh konten mematuhi Kebijakan Bisnis & Perdagangan WhatsApp resmi.
 
 ---
 
 ## 4. Indikator yang Mengubah Template Menjadi "Marketing"
 
-Meta akan otomatis menganggap template sebagai `MARKETING` jika ditemukan **salah satu** indikator berikut:
+Meta akan otomatis menganggap template sebagai **`MARKETING`** jika terdapat **salah satu** indikator berikut:
 
-```mermaid
-graph LR
-    A[Teks Pengajuan Template] --> B{Ada Indikator Promosi?}
-    B -->|Ya: Diskon / Voucher / Upsell / Welcome| C[Wajib Kategori MARKETING]
-    B -->|Tidak: Murni notifikasi pesanan & akun| D[Diterima Kategori UTILITY]
-```
-
-1. **Kata Kunci Penjualan & Upsell**: Menyebut diskon, potongan harga, cashback, atau penawaran produk tambahan (*"Ingin upgrade ke paket Pro?"*).
-2. **Pesan Sambutan Promotif**: Mengirim pesan pembuka yang mengarahkan pelanggan melihat-lihat katalog produk.
+1. **Penawaran Diskon & Upsell**: Menyebut promo, diskon, cashback, atau penawaran produk tambahan (*"Ingin upgrade ke paket Pro?"*).
+2. **Pesan Sambutan Promotif**: Pesan pembuka yang mengarahkan pengguna melihat-lihat katalog toko.
 3. **Permintaan Ulasan & Kuesioner**: Meminta rating bintang 5 atau review Google Maps setelah transaksi selesai (*"Bagaimana pesanan Anda? Berikan ulasan di sini!"*).
-4. **Aturan Konten Campuran (*Mixed Content Rule*)**: Jika pesan berisi **90% konfirmasi pesanan (Utility)** tetapi terselip **10% penawaran voucher belanja (Marketing)**, Meta **selalu mengkategorikan seluruh template tersebut sebagai MARKETING**.
-
----
-
-## 5. Mengelola Template di Console
-
-![Daftar Template](/kb-assets/whatsapp/guides/02-journey1-templates-list.png)
-
-1. Buka menu **Console** > **WhatsApp** > **Templates** (`/console/whatsapp/templates`).
-2. Klik tombol **"Buat Template"** untuk membuka builder template.
-3. Tentukan nama template, pilih kategori yang tepat, bahasa, dan susun komponen teks beserta tombolnya.
-4. Klik **Submit**. Setelah disetujui Meta, klik **"Sinkronisasi Template"** untuk memasukkan status persetujuan ke dasbor Anda.
-
-![Dialog Pembuatan Template](/kb-assets/whatsapp/guides/03-journey1-create-template-dialog.png)
+4. **Aturan Konten Campuran (*Mixed Content Rule*)**: Jika pesan berisi **90% konfirmasi pesanan** tetapi terselip **10% penawaran voucher**, Meta **selalu mengkategorikan seluruh template tersebut sebagai MARKETING**.

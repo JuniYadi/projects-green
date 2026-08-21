@@ -1,6 +1,6 @@
 ---
 path: /whatsapp/webhooks-and-audits
-title: WhatsApp Webhook Logs & Security Audit Trail
+title: WhatsApp Webhooks & Security Audits
 category: WhatsApp
 purpose: Inspect inbound and outbound webhook event logs, payload delivery receipts, error retries, and immutable audit logs.
 howTo:

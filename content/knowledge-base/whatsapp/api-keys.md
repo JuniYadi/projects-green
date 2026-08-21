@@ -1,6 +1,6 @@
 ---
 path: /whatsapp/api-keys
-title: WhatsApp API Key Management & Integration Guide
+title: WhatsApp API Key Management
 category: WhatsApp
 purpose: Generate, rotate, and securely use your organization's static WhatsApp API key to integrate with the WhatsApp Business Platform.
 howTo:

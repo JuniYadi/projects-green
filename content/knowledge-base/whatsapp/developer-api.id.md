@@ -1,7 +1,7 @@
 ---
 path: /whatsapp/developer-api
 locale: id
-title: Panduan Integrasi WhatsApp API & Referensi OpenAPI
+title: Developer API WhatsApp & OpenAPI
 category: WhatsApp
 purpose: Panduan developer untuk otentikasi API key statis, eksplorasi spesifikasi OpenAPI, contoh kode multi-bahasa, dan pengujian API.
 howTo:

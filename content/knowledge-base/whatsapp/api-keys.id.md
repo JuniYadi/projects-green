@@ -1,7 +1,7 @@
 ---
 path: /whatsapp/api-keys
 locale: id
-title: Panduan Pengelolaan & Integrasi WhatsApp API Key
+title: Pengelolaan WhatsApp API Key
 category: WhatsApp
 purpose: Buat, rotasi, dan gunakan static API key organisasi Anda dengan aman untuk integrasi WhatsApp Business Platform.
 howTo:

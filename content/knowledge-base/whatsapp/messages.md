@@ -1,6 +1,6 @@
 ---
 path: /whatsapp/messages
-title: WhatsApp Message Dispatch, Live Chat & Lifecycle Tracking
+title: WhatsApp Message Dispatch & Live Chat
 category: WhatsApp
 purpose: Send template and interactive messages, manage live chat conversations, and track delivery status lifecycles.
 howTo:

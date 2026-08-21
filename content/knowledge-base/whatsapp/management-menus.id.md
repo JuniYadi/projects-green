@@ -1,7 +1,7 @@
 ---
 path: /whatsapp/management-menus
 locale: id
-title: Modul Manajemen WhatsApp Console (Perangkat, Broadcast, Kontak, Katalog, Penggunaan, Buku Besar & Harga)
+title: Panduan Modul Console WhatsApp
 category: WhatsApp
 purpose: Panduan referensi lengkap untuk seluruh modul operasional dan menu manajemen tambahan di Console WhatsApp.
 howTo:

@@ -1,7 +1,7 @@
 ---
 path: /whatsapp
 locale: id
-title: Ikhtisar & Dasbor WhatsApp Business Platform
+title: Ikhtisar & Dasbor WhatsApp
 category: WhatsApp
 purpose: Ikhtisar kapabilitas WhatsApp Business Platform, dasbor metrik, kesehatan perangkat, dan pemantauan obrolan real-time.
 howTo:

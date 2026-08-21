@@ -1,7 +1,7 @@
 ---
 path: /whatsapp/messages
 locale: id
-title: Pengiriman Pesan WhatsApp, Live Chat & Pelacakan Status
+title: Pengiriman Pesan & Live Chat WhatsApp
 category: WhatsApp
 purpose: Kirim pesan template dan interaktif, kelola percakapan live chat, dan pantau siklus status pengiriman pesan.
 howTo:

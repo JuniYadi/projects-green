@@ -1,6 +1,6 @@
 ---
 path: /whatsapp
-title: WhatsApp Business Platform Overview & Dashboard
+title: WhatsApp Overview & Dashboard
 category: WhatsApp
 purpose: Overview of WhatsApp Business Platform capabilities, metrics dashboard, device health, and live conversation monitoring.
 howTo:
