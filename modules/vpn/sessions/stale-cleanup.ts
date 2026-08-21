@@ -4,6 +4,7 @@
  * Runs every 5 minutes via Bun timer.
  * Threshold: 15 minutes since lastPingAt.
  */
+import { logger } from "@/lib/logger"
 import { vpnMobileSessionService } from "./vpn-mobile-session.service"
 
 const CLEANUP_INTERVAL_MS = 5 * 60_000
@@ -17,14 +18,15 @@ async function runCleanup() {
       STALE_THRESHOLD_MINUTES
     )
     if (count > 0) {
-      console.log(
-        `[SessionCleanup] Marked ${count} session(s) as STALE (${STALE_THRESHOLD_MINUTES}min threshold)`
+      logger.info(
+        { count, staleThresholdMinutes: STALE_THRESHOLD_MINUTES },
+        `[SessionCleanup] Marked ${count} session(s) as STALE`
       )
     }
   } catch (error) {
-    console.error(
-      "[SessionCleanup] Error during stale session cleanup:",
-      error instanceof Error ? error.message : String(error)
+    logger.error(
+      { error: error instanceof Error ? error.message : String(error) },
+      "[SessionCleanup] Error during stale session cleanup"
     )
   }
 }
@@ -40,8 +42,12 @@ export function startStaleSessionCleanup(): void {
   runCleanup()
 
   timer = setInterval(runCleanup, CLEANUP_INTERVAL_MS)
-  console.log(
-    `[SessionCleanup] Started (interval: ${CLEANUP_INTERVAL_MS / 1000}s, threshold: ${STALE_THRESHOLD_MINUTES}min)`
+  logger.info(
+    {
+      intervalSeconds: CLEANUP_INTERVAL_MS / 1000,
+      staleThresholdMinutes: STALE_THRESHOLD_MINUTES,
+    },
+    "[SessionCleanup] Started"
   )
 }
 
@@ -52,6 +58,6 @@ export function stopStaleSessionCleanup(): void {
   if (timer) {
     clearInterval(timer)
     timer = null
-    console.log("[SessionCleanup] Stopped")
+    logger.info("[SessionCleanup] Stopped")
   }
 }
