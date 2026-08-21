@@ -245,17 +245,27 @@ const scoreDocument = (input: {
       ? 100
       : routePath.startsWith(`${input.doc.path}/`)
         ? 60
-        : 0
+        : input.doc.path.startsWith(routePath)
+          ? 40
+          : 0
+
+  const titleTokens = new Set(
+    tokenize(`${input.doc.title} ${input.doc.category}`)
+  )
+  const titleMatches = input.queryTokens.filter((token) =>
+    titleTokens.has(token)
+  ).length
 
   const docTokens = new Set(tokenize(input.doc.searchText))
   const lexicalMatches = input.queryTokens.filter((token) =>
     docTokens.has(token)
   ).length
 
-  const lexicalScore = lexicalMatches * 5
-  const pathScore = routePath.includes(input.doc.path) ? 10 : 0
+  const titleScore = titleMatches * 15
+  const lexicalScore = lexicalMatches * 8
+  const pathScore = routePath.includes(input.doc.path) ? 15 : 0
 
-  return routeScore + lexicalScore + pathScore
+  return routeScore + titleScore + lexicalScore + pathScore
 }
 
 /**
