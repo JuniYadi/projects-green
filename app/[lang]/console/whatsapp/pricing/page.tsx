@@ -82,23 +82,6 @@ function formatQuotaCredit(value: string): string {
   }).format(amount)
 }
 
-function formatMessagePrice(value: string, currency: string | null): string {
-  const amount = Number(value)
-  if (!currency || !Number.isFinite(amount)) {
-    return currency ? `${currency} ${value}` : value
-  }
-
-  try {
-    return new Intl.NumberFormat(currency === "IDR" ? "id-ID" : "en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 2,
-    }).format(amount)
-  } catch {
-    return `${currency} ${value}`
-  }
-}
-
 function formatDate(iso: string | Date): string {
   try {
     const d = typeof iso === "string" ? new Date(iso) : iso
@@ -267,207 +250,311 @@ export default function WhatsAppPricingPage() {
         </div>
       </div>
 
-      {/* Top Section: Compact Policy / PAYG Rate and Category Rates Cards */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Policy & PAYG Card */}
-        <Card className="flex flex-col justify-between">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold">
-                PAYG & Quota Policy
-              </CardTitle>
-              <CurrencyDollar
-                className="size-5 text-muted-foreground"
-                weight="fill"
-              />
-            </div>
-            <CardDescription className="text-xs">
-              Quota credit deduction rules and Pay-As-You-Go overage rate per
-              message.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <div className="rounded-md border bg-muted/40 p-3">
-              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                <Info className="size-3.5" />
-                <span>Deduction Policy</span>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Quota credits are deducted per outbound message based on the
-                Meta template category (Marketing, Utility, Authentication,
-                Service).
-              </p>
-            </div>
-
-            <div className="rounded-md border p-3">
-              <span className="text-xs text-muted-foreground">
-                PAYG Overage Rate
-              </span>
-              {isPricingLoading ? (
-                <Skeleton className="mt-1 h-6 w-28" />
-              ) : pricingError ? (
-                <p className="text-xs text-destructive">
-                  Failed to load PAYG rates.
-                </p>
-              ) : pricing?.overage.configured &&
-                pricing.overage.unitPrice !== null ? (
-                <div className="mt-1 flex items-baseline gap-1.5">
-                  <span className="text-lg font-bold">
-                    {formatMessagePrice(
-                      pricing.overage.unitPrice,
-                      pricing.overage.currency
-                    )}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    / message
-                  </span>
-                </div>
-              ) : (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Not configured for this plan.
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Compact Category Rates Table */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-col gap-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle className="text-base font-semibold">
-                Category Deduction Rates
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Quota credits deducted and final PAYG overage per message
-                category.
-              </CardDescription>
-            </div>
-            {devices.length > 1 && (
-              <div className="flex items-center gap-2">
-                <Phone className="size-3.5 text-muted-foreground" />
-                <select
-                  value={selectedDeviceId}
-                  onChange={(e) => setSelectedDeviceId(e.target.value)}
-                  className="rounded-md border bg-background px-2.5 py-1 text-xs"
-                  aria-label="Filter by WhatsApp device"
-                >
-                  <option value="all">All Devices ({devices.length})</option>
-                  {devices.map((d) => (
-                    <option key={d.deviceId} value={d.deviceId}>
-                      {formatPhone(d.phoneNumber)} ({d.country})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </CardHeader>
-          <CardContent className="pt-0">
-            {isPricingLoading ? (
-              <div className="space-y-2 py-2">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-20 w-full" />
-              </div>
-            ) : pricingError ? (
-              <div className="flex flex-col items-center justify-center py-6 text-center">
-                <Warning
-                  className="mb-2 size-6 text-destructive"
-                  weight="fill"
-                />
-                <p className="text-xs font-medium text-destructive">
-                  Pricing rates unavailable.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2 text-xs"
-                  onClick={() => refetchPricing()}
-                >
-                  Retry
-                </Button>
-              </div>
-            ) : devices.length === 0 ? (
-              <div className="py-6 text-center text-xs text-muted-foreground">
-                No active WhatsApp devices found.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {filteredDevices.map((device) => (
-                  <div
-                    key={device.deviceId}
-                    className="overflow-hidden rounded-md border text-xs"
-                  >
-                    <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-1.5">
-                      <div className="flex items-center gap-2">
-                        <Phone className="size-3 text-muted-foreground" />
-                        <span className="font-semibold">
-                          {formatPhone(device.phoneNumber)}
-                        </span>
-                        <Badge
-                          variant="outline"
-                          className="px-1.5 py-0 text-[10px]"
-                        >
-                          {device.country}
-                        </Badge>
-                      </div>
-                      <Badge
-                        variant="secondary"
-                        className="px-1.5 py-0 text-[10px]"
-                      >
-                        Tier: {device.rateTier ?? "BASE"}
-                      </Badge>
-                    </div>
-
-                    <table className="w-full text-xs">
-                      <caption className="sr-only">
-                        WhatsApp pricing rates for {device.phoneNumber}
-                      </caption>
-                      <thead className="bg-muted/20 text-left text-muted-foreground">
-                        <tr>
-                          <th scope="col" className="px-3 py-1.5 font-medium">
-                            Category
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-3 py-1.5 text-center font-medium"
-                          >
-                            Quota Deduction
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-3 py-1.5 text-right font-medium"
-                          >
-                            PAYG Rate / Msg
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {device.categories.map((cat) => (
-                          <tr key={cat.category} className="border-t">
-                            <th scope="row" className="px-3 py-1.5 font-medium">
-                              {cat.category}
-                            </th>
-                            <td className="px-3 py-1.5 text-center font-semibold text-primary">
-                              -{formatQuotaCredit(cat.quotaCredit)}
-                            </td>
-                            <td className="px-3 py-1.5 text-right font-medium">
-                              {cat.overagePrice
-                                ? `Rp ${cat.overagePrice}`
-                                : "-"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <Info className="size-4 shrink-0 text-primary" />
+          <span>
+            In-quota messages deduct from your plan quota allowance first (
+            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+              🟢 Quota Credit
+            </span>
+            ). When monthly quota is exhausted, fallback Pay-As-You-Go (
+            <span className="font-semibold text-amber-600 dark:text-amber-400">
+              🟡 PAYG Overage
+            </span>
+            ) rates apply directly from your prepaid wallet balance.
+          </span>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          asChild
+          className="ml-3 h-7 shrink-0 text-xs"
+        >
+          <Link
+            href={localizePathname({
+              pathname: "/console/billing/topup",
+              locale,
+            })}
+          >
+            <CurrencyDollar className="mr-1 size-3.5" />
+            Top Up Balance
+          </Link>
+        </Button>
       </div>
 
-      {/* Middle Section: Ledger KPI Summary */}
+      {/* Category Rates & Multi-Tier Comparison Table */}
+      <Card>
+        <CardHeader className="flex flex-col gap-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="text-base font-semibold">
+              WhatsApp Category Rates & Tier Comparison
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Compare in-quota deduction against Pay-As-You-Go (PAYG) overage
+              rates across volume tiers.
+            </CardDescription>
+          </div>
+          {devices.length > 1 && (
+            <div className="flex items-center gap-2">
+              <Phone className="size-3.5 text-muted-foreground" />
+              <select
+                value={selectedDeviceId}
+                onChange={(e) => setSelectedDeviceId(e.target.value)}
+                className="rounded-md border bg-background px-2.5 py-1 text-xs"
+                aria-label="Filter by WhatsApp device"
+              >
+                <option value="all">All Devices ({devices.length})</option>
+                {devices.map((d) => (
+                  <option key={d.deviceId} value={d.deviceId}>
+                    {formatPhone(d.phoneNumber)} ({d.country})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </CardHeader>
+        <CardContent>
+          {isPricingLoading ? (
+            <div className="space-y-2 py-4">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-28 w-full" />
+            </div>
+          ) : pricingError ? (
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <Warning className="mb-2 size-6 text-destructive" weight="fill" />
+              <p className="text-xs font-medium text-destructive">
+                Pricing rates unavailable.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 text-xs"
+                onClick={() => refetchPricing()}
+              >
+                Retry
+              </Button>
+            </div>
+          ) : devices.length === 0 ? (
+            <div className="py-6 text-center text-xs text-muted-foreground">
+              No active WhatsApp devices found.
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {filteredDevices.map((device) => {
+                const activeTier = device.rateTier ?? "BASE"
+                return (
+                  <div
+                    key={device.deviceId}
+                    className="overflow-hidden rounded-lg border text-xs"
+                  >
+                    <div className="flex items-center justify-between border-b bg-muted/40 px-4 py-2">
+                      <div className="flex items-center gap-2">
+                        <Phone className="size-3.5 text-muted-foreground" />
+                        <span className="text-sm font-semibold">
+                          {formatPhone(device.phoneNumber)}
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          Country: {device.country}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          Current Active Tier:
+                        </span>
+                        <Badge variant="secondary" className="font-semibold">
+                          {activeTier}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <caption className="sr-only">
+                          Category deduction rates and multi-tier pricing for{" "}
+                          {device.phoneNumber}
+                        </caption>
+                        <thead className="border-b bg-muted/20 text-muted-foreground">
+                          <tr>
+                            <th scope="col" className="px-4 py-3 font-semibold">
+                              Category
+                            </th>
+                            <th scope="col" className="px-4 py-3 text-center">
+                              <div className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-0.5 font-semibold text-emerald-600 dark:text-emerald-400">
+                                <span>🟢 Quota Credit</span>
+                              </div>
+                              <div className="mt-0.5 text-[10px] font-normal text-muted-foreground">
+                                In-Quota Allowance
+                              </div>
+                            </th>
+                            <th
+                              scope="col"
+                              className={`px-4 py-3 text-right ${activeTier === "BASE" ? "bg-muted/40" : ""}`}
+                            >
+                              <div className="inline-flex items-center gap-1">
+                                {activeTier === "BASE" && (
+                                  <span className="py-0.2 rounded bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                                    🟡 Active
+                                  </span>
+                                )}
+                                <span
+                                  className={
+                                    activeTier === "BASE"
+                                      ? "font-bold text-foreground"
+                                      : "font-semibold"
+                                  }
+                                >
+                                  BASE
+                                </span>
+                              </div>
+                              <div className="text-[10px] font-normal text-muted-foreground">
+                                Min Top-Up: Rp 100k
+                              </div>
+                            </th>
+                            <th
+                              scope="col"
+                              className={`px-4 py-3 text-right ${activeTier === "TIER_1" ? "bg-muted/40" : ""}`}
+                            >
+                              <div className="inline-flex items-center gap-1">
+                                {activeTier === "TIER_1" && (
+                                  <span className="py-0.2 rounded bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                                    🟡 Active
+                                  </span>
+                                )}
+                                <span
+                                  className={
+                                    activeTier === "TIER_1"
+                                      ? "font-bold text-foreground"
+                                      : "font-semibold"
+                                  }
+                                >
+                                  TIER 1
+                                </span>
+                              </div>
+                              <div className="text-[10px] font-normal text-muted-foreground">
+                                Min Top-Up: Rp 10M
+                              </div>
+                            </th>
+                            <th
+                              scope="col"
+                              className={`px-4 py-3 text-right ${activeTier === "TIER_2" ? "bg-muted/40" : ""}`}
+                            >
+                              <div className="inline-flex items-center gap-1">
+                                {activeTier === "TIER_2" && (
+                                  <span className="py-0.2 rounded bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                                    🟡 Active
+                                  </span>
+                                )}
+                                <span
+                                  className={
+                                    activeTier === "TIER_2"
+                                      ? "font-bold text-foreground"
+                                      : "font-semibold"
+                                  }
+                                >
+                                  TIER 2
+                                </span>
+                              </div>
+                              <div className="text-[10px] font-normal text-muted-foreground">
+                                Min Top-Up: Rp 25M
+                              </div>
+                            </th>
+                            <th
+                              scope="col"
+                              className={`px-4 py-3 text-right ${activeTier === "TIER_3" ? "bg-muted/40" : ""}`}
+                            >
+                              <div className="inline-flex items-center gap-1">
+                                {activeTier === "TIER_3" && (
+                                  <span className="py-0.2 rounded bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                                    🟡 Active
+                                  </span>
+                                )}
+                                <span
+                                  className={
+                                    activeTier === "TIER_3"
+                                      ? "font-bold text-foreground"
+                                      : "font-semibold"
+                                  }
+                                >
+                                  TIER 3
+                                </span>
+                              </div>
+                              <div className="text-[10px] font-normal text-muted-foreground">
+                                Min Top-Up: Rp 50M
+                              </div>
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {device.categories.map((cat) => {
+                            const basePriceNum =
+                              cat.category === "MARKETING"
+                                ? 587
+                                : cat.category === "UTILITY" ||
+                                    cat.category === "AUTHENTICATION"
+                                  ? 357
+                                  : 300
+
+                            const calcTierPrice = (feePct: number) => {
+                              const fee = Math.ceil(
+                                (basePriceNum * feePct) / 100
+                              )
+                              const ppn = Math.ceil((basePriceNum * 11) / 100)
+                              return basePriceNum + fee + ppn
+                            }
+
+                            const pBase = calcTierPrice(20)
+                            const pTier1 = calcTierPrice(15)
+                            const pTier2 = calcTierPrice(10)
+                            const pTier3 = calcTierPrice(5)
+
+                            return (
+                              <tr
+                                key={cat.category}
+                                className="hover:bg-muted/20"
+                              >
+                                <th
+                                  scope="row"
+                                  className="px-4 py-2.5 font-medium"
+                                >
+                                  {cat.category}
+                                </th>
+                                <td className="px-4 py-2.5 text-center font-semibold text-emerald-600 dark:text-emerald-400">
+                                  -{formatQuotaCredit(cat.quotaCredit)}
+                                </td>
+                                <td
+                                  className={`px-4 py-2.5 text-right ${activeTier === "BASE" ? "bg-muted/30 font-bold" : "text-muted-foreground"}`}
+                                >
+                                  Rp {pBase.toLocaleString("id-ID")}
+                                </td>
+                                <td
+                                  className={`px-4 py-2.5 text-right ${activeTier === "TIER_1" ? "bg-muted/30 font-bold" : "text-muted-foreground"}`}
+                                >
+                                  Rp {pTier1.toLocaleString("id-ID")}
+                                </td>
+                                <td
+                                  className={`px-4 py-2.5 text-right ${activeTier === "TIER_2" ? "bg-muted/30 font-bold" : "text-muted-foreground"}`}
+                                >
+                                  Rp {pTier2.toLocaleString("id-ID")}
+                                </td>
+                                <td
+                                  className={`px-4 py-2.5 text-right ${activeTier === "TIER_3" ? "bg-muted/30 font-bold" : "text-muted-foreground"}`}
+                                >
+                                  Rp {pTier3.toLocaleString("id-ID")}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
