@@ -145,6 +145,36 @@ describe.serial("Elysia API logging", () => {
     })
   })
 
+  test("logs anonymous caller when x-workos-authed is true but user id is empty", async () => {
+    const testApp = new Elysia()
+      .use(createApiLoggingPlugin())
+      .get("/api/empty-user-test", () => ({ ok: true }))
+
+    const { response, logs } = await captureLogs(() =>
+      testApp.handle(
+        new Request("http://localhost/api/empty-user-test", {
+          method: "GET",
+          headers: {
+            "x-workos-authed": "true",
+            "x-workos-user-id": "   ",
+          },
+        })
+      )
+    )
+
+    expect(response.status).toBe(200)
+    expect(logs).toHaveLength(1)
+    expect(logs[0]).toMatchObject({
+      event: "api.request.completed",
+      method: "GET",
+      pathname: "/api/empty-user-test",
+      statusCode: 200,
+      caller: {
+        type: "anonymous",
+      },
+    })
+  })
+
   test("logs request body with sensitive fields redacted", async () => {
     const testApp = new Elysia()
       .use(createApiLoggingPlugin())
@@ -298,5 +328,28 @@ describe.serial("Elysia API logging", () => {
         type: "anonymous",
       },
     })
+  })
+
+  test("maps inherited Object.prototype property error codes to UNKNOWN", async () => {
+    const errorApp = new Elysia()
+      .use(createApiLoggingPlugin())
+      .onError(({ set }) => {
+        set.status = 500
+        return { ok: false }
+      })
+      .get("/proto-error", () => {
+        const err = new Error("prototype error")
+        // @ts-expect-error - simulating framework error with prototype name code
+        err.code = "toString"
+        throw err
+      })
+
+    const { response, logs } = await captureLogs(() =>
+      errorApp.handle(new Request("http://localhost/proto-error"))
+    )
+
+    expect(response.status).toBe(500)
+    const errorLog = logs.find((log) => log.event === "api.request.error")
+    expect(errorLog?.errorCode).toBe("UNKNOWN")
   })
 })
