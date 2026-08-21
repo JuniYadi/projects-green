@@ -26,7 +26,7 @@ export function LegalDocumentView({ locale, docKey }: LegalDocumentViewProps) {
       <header className="mb-8 border-b border-border/80 pb-8">
         <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
           <ShieldCheck className="h-3.5 w-3.5" />
-          <span>Official Legal Policy</span>
+          <span>{legal.badgeLabel}</span>
         </div>
         <h1 className="mb-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
           {doc.title}
@@ -44,7 +44,7 @@ export function LegalDocumentView({ locale, docKey }: LegalDocumentViewProps) {
           </div>
           <div className="hidden h-3 w-px bg-border sm:block" />
           <div>
-            <strong>Legal Entity:</strong> {legal.companyName}
+            <strong>{legal.legalEntityLabel}:</strong> {legal.companyName}
           </div>
         </div>
       </header>

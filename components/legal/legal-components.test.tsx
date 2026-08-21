@@ -16,13 +16,16 @@ describe("LegalPageLayout Component", () => {
     )
 
     expect(view.getByText("Terms Content")).toBeInTheDocument()
+    expect(view.getByText("Legal Center")).toBeInTheDocument()
+    expect(view.getByText("Policies & Agreements")).toBeInTheDocument()
+    expect(view.getByText("Entity:")).toBeInTheDocument()
+    expect(view.getByText("Contact:")).toBeInTheDocument()
     expect(
       view.getAllByText("PT. Premium Fast Network").length
     ).toBeGreaterThan(0)
     expect(view.getAllByText("support@premiumfast.net").length).toBeGreaterThan(
       0
     )
-
     const sidebarNav = view.getByRole("navigation", {
       name: "Legal document navigation",
     })
@@ -56,8 +59,11 @@ describe("LegalPageLayout Component", () => {
         <div data-testid="legal-content">Konten Privasi</div>
       </LegalPageLayout>
     )
-
     expect(view.getByText("Konten Privasi")).toBeInTheDocument()
+    expect(view.getByText("Pusat Hukum")).toBeInTheDocument()
+    expect(view.getByText("Kebijakan & Perjanjian")).toBeInTheDocument()
+    expect(view.getByText("Entitas:")).toBeInTheDocument()
+    expect(view.getByText("Kontak:")).toBeInTheDocument()
     const sidebarNav = view.getByRole("navigation", {
       name: "Legal document navigation",
     })
@@ -85,6 +91,7 @@ describe("LegalDocumentView Component", () => {
     expect(
       view.getByRole("heading", { level: 1, name: "Terms of Service" })
     ).toBeInTheDocument()
+    expect(view.getByText("Official Legal Policy")).toBeInTheDocument()
     expect(view.getByText("1. Acceptance of Terms")).toBeInTheDocument()
     expect(
       view.getAllByText("PT. Premium Fast Network", { exact: false }).length
@@ -97,6 +104,7 @@ describe("LegalDocumentView Component", () => {
     expect(
       view.getByRole("heading", { level: 1, name: "Kebijakan Privasi" })
     ).toBeInTheDocument()
+    expect(view.getByText("Kebijakan Hukum Resmi")).toBeInTheDocument()
     expect(
       view.getByText("1. Informasi yang Kami Kumpulkan")
     ).toBeInTheDocument()
@@ -110,6 +118,7 @@ describe("LegalDocumentView Component", () => {
     expect(
       view.getByRole("heading", { level: 1, name: "Acceptable Use Policy" })
     ).toBeInTheDocument()
+    expect(view.getByText("Official Legal Policy")).toBeInTheDocument()
     expect(view.getByText("1. Purpose & Scope")).toBeInTheDocument()
   })
 })

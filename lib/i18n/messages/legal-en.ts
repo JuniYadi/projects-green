@@ -1,6 +1,12 @@
 import type { AppMessages } from "@/lib/i18n/messages/types"
 
 export const legalEn: AppMessages["legal"] = {
+  centerTitle: "Legal Center",
+  badgeLabel: "Official Legal Policy",
+  policiesHeading: "Policies & Agreements",
+  entityLabel: "Entity",
+  contactLabel: "Contact",
+  legalEntityLabel: "Legal Entity",
   effectiveDateLabel: "Effective Date",
   lastUpdatedLabel: "Last Updated",
   effectiveDate: "August 21, 2026",

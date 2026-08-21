@@ -74,10 +74,9 @@ export function LegalPageLayout({
             <div className="h-4 w-px bg-border" />
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <ShieldCheck className="h-4 w-4 text-emerald-500" />
-              <span className="font-medium">Legal Center</span>
+              <span className="font-medium">{legal.centerTitle}</span>
             </div>
           </div>
-
           <div className="flex items-center gap-3">
             <Link
               href={switchLocaleHref}
@@ -103,7 +102,7 @@ export function LegalPageLayout({
           <aside className="md:col-span-4 lg:col-span-3">
             <div className="sticky top-24 rounded-2xl border border-border/80 bg-card p-5 shadow-sm">
               <p className="mb-3 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                Policies & Agreements
+                {legal.policiesHeading}
               </p>
               <nav
                 aria-label="Legal document navigation"
@@ -132,12 +131,14 @@ export function LegalPageLayout({
 
               <div className="space-y-2 text-xs text-muted-foreground">
                 <p>
-                  <span className="font-semibold text-foreground">Entity:</span>{" "}
+                  <span className="font-semibold text-foreground">
+                    {legal.entityLabel}:
+                  </span>{" "}
                   {legal.companyName}
                 </p>
                 <p>
                   <span className="font-semibold text-foreground">
-                    Contact:
+                    {legal.contactLabel}:
                   </span>{" "}
                   <a
                     href={`mailto:${legal.contactEmail}`}

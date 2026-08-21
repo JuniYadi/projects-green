@@ -1,6 +1,12 @@
 import type { AppMessages } from "@/lib/i18n/messages/types"
 
 export const legalId: AppMessages["legal"] = {
+  centerTitle: "Pusat Hukum",
+  badgeLabel: "Kebijakan Hukum Resmi",
+  policiesHeading: "Kebijakan & Perjanjian",
+  entityLabel: "Entitas",
+  contactLabel: "Kontak",
+  legalEntityLabel: "Entitas Hukum",
   effectiveDateLabel: "Tanggal Berlaku",
   lastUpdatedLabel: "Terakhir Diperbarui",
   effectiveDate: "21 Agustus 2026",

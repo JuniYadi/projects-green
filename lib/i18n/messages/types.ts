@@ -1179,6 +1179,12 @@ export type AppMessages = {
     }
   }
   legal: {
+    centerTitle: string
+    badgeLabel: string
+    policiesHeading: string
+    entityLabel: string
+    contactLabel: string
+    legalEntityLabel: string
     effectiveDateLabel: string
     lastUpdatedLabel: string
     effectiveDate: string
