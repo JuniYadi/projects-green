@@ -115,6 +115,19 @@ describe("buildAppBreadcrumbItems", () => {
       { label: "Organization Detail", href: undefined },
     ])
   })
+  it("keeps long named route segments as readable page labels", () => {
+    expect(
+      buildAppBreadcrumbItems({
+        pathname:
+          "/en/portal/whatsapp/super-long-page-name-that-is-not-a-detail",
+        rootSegment: "portal",
+      })
+    ).toEqual([
+      { label: "Portal", href: "/en/portal" },
+      { label: "WhatsApp", href: "/en/portal/whatsapp" },
+      { label: "Super Long Page Name That Is Not A Detail", href: undefined },
+    ])
+  })
 
   it("renders route-specific labels for documentation and new template routes", () => {
     expect(
