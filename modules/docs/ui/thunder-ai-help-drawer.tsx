@@ -352,7 +352,7 @@ export function ThunderAiHelpDrawer() {
   const [chatError, setChatError] = useState<string | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
-
+  const inputRef = useRef<HTMLInputElement>(null)
   const { locale, pathnameWithoutLocale } = getLocaleFromPathname(pathname)
   const activeLocale = locale === "id" ? "id" : "en"
   const isId = activeLocale === "id"
@@ -370,6 +370,16 @@ export function ThunderAiHelpDrawer() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+
+  // Auto-focus input when chat drawer opens
+  useEffect(() => {
+    if (isOpen && activeTab === "chat") {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus()
+      }, 150)
+      return () => clearTimeout(timer)
+    }
+  }, [isOpen, activeTab])
 
   // Load Page Documentation when "docs" is active and drawer is open
   useEffect(() => {
@@ -1005,30 +1015,50 @@ export function ThunderAiHelpDrawer() {
                   </p>
                 ) : null}
 
-                {/* Form input */}
-                <form
-                  className="flex items-center gap-2 border-t border-white/[0.06] bg-neutral-900/20 p-4"
-                  onSubmit={onSubmit}
-                >
-                  <Input
-                    value={input}
-                    onChange={(event) => setInput(event.target.value)}
-                    placeholder={
-                      isId
-                        ? "Tanyakan apa saja seputar fitur atau panduan halaman ini..."
-                        : "Ask anything about this page or system workflows..."
-                    }
-                    disabled={isSending}
-                    className="h-9 flex-1 rounded-xl border-white/[0.08] bg-neutral-950 text-xs placeholder:text-zinc-600 focus-visible:ring-1 focus-visible:ring-amber-500/50"
-                  />
-                  <Button
-                    type="submit"
-                    disabled={isSending || !input.trim()}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 p-0 text-black transition-colors hover:bg-amber-600 disabled:bg-neutral-800 disabled:text-zinc-600"
+                {/* High-affordance chat form */}
+                <div className="border-t border-white/10 bg-neutral-900/90 p-4 shadow-2xl backdrop-blur-md">
+                  <form
+                    className="flex items-center gap-2 rounded-2xl border border-white/15 bg-neutral-950/80 p-1.5 transition-all duration-200 focus-within:border-amber-500/80 focus-within:ring-2 focus-within:ring-amber-500/20 hover:border-white/25"
+                    onSubmit={onSubmit}
                   >
-                    <PaperPlane size={15} weight="bold" />
-                  </Button>
-                </form>
+                    <div className="pl-2.5 text-amber-500/70">
+                      <Sparkle size={16} weight="fill" />
+                    </div>
+                    <Input
+                      ref={inputRef}
+                      value={input}
+                      onChange={(event) => setInput(event.target.value)}
+                      placeholder={
+                        isId
+                          ? "Tanyakan apa saja seputar panduan halaman ini..."
+                          : "Ask anything about this page or workflows..."
+                      }
+                      disabled={isSending}
+                      className="h-9 flex-1 border-0 bg-transparent px-2 text-xs text-white placeholder:text-zinc-400 focus-visible:ring-0 focus-visible:ring-offset-0"
+                    />
+                    <Button
+                      type="submit"
+                      disabled={isSending || !input.trim()}
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl p-0 transition-all duration-200 ${
+                        input.trim()
+                          ? "bg-amber-500 text-neutral-950 shadow-md shadow-amber-500/30 hover:bg-amber-400"
+                          : "bg-neutral-800 text-zinc-400 hover:bg-neutral-700 hover:text-white"
+                      }`}
+                    >
+                      <PaperPlane size={15} weight="bold" />
+                    </Button>
+                  </form>
+                  <div className="mt-2 flex items-center justify-between px-1 text-[10px] text-muted-foreground">
+                    <span>
+                      {isId
+                        ? "Tekan Enter untuk mengirim pesan"
+                        : "Press Enter to send message"}
+                    </span>
+                    <span>
+                      {isId ? "Asisten AI Berbasis Docs" : "Docs-Grounded AI"}
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
