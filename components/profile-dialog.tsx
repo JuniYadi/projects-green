@@ -467,16 +467,26 @@ export function ProfileDialog({
                             Started:{" "}
                             {(() => {
                               const d = new Date(session.createdAt)
-                              const pad = (n: number) =>
-                                n.toString().padStart(2, "0")
-                              return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+                              return new Intl.DateTimeFormat(undefined, {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: false,
+                              }).format(d)
                             })()}{" "}
                             • Expires:{" "}
                             {(() => {
                               const d = new Date(session.expiresAt)
-                              const pad = (n: number) =>
-                                n.toString().padStart(2, "0")
-                              return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+                              return new Intl.DateTimeFormat(undefined, {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: false,
+                              }).format(d)
                             })()}
                           </span>
                         </div>
