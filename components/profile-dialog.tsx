@@ -320,18 +320,45 @@ export function ProfileDialog({
                   Connected Identities
                 </div>
                 <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <Badge variant="secondary" className="gap-1 text-xs">
-                    {authMethodLabel}
-                  </Badge>
-                  {identities.map((id) => (
-                    <Badge
-                      key={id.provider}
-                      variant="outline"
-                      className="gap-1 text-xs font-normal"
-                    >
-                      {id.provider}
-                    </Badge>
-                  ))}
+                  {(() => {
+                    const formatProvider = (raw: string) =>
+                      raw.replace(/OAuth$/i, " OAuth").trim()
+
+                    const allProviders = new Set<string>()
+                    if (
+                      authMethodLabel &&
+                      authMethodLabel !== "N/A" &&
+                      authMethodLabel !== "Tidak tersedia"
+                    ) {
+                      allProviders.add(formatProvider(authMethodLabel))
+                    }
+                    identities.forEach((id) => {
+                      if (id.provider) {
+                        allProviders.add(formatProvider(id.provider))
+                      }
+                    })
+
+                    if (allProviders.size === 0) {
+                      return (
+                        <Badge
+                          variant="outline"
+                          className="text-xs font-normal"
+                        >
+                          Magic Link (Email Code)
+                        </Badge>
+                      )
+                    }
+
+                    return Array.from(allProviders).map((provider, index) => (
+                      <Badge
+                        key={provider}
+                        variant={index === 0 ? "secondary" : "outline"}
+                        className="gap-1 text-xs"
+                      >
+                        {provider}
+                      </Badge>
+                    ))
+                  })()}
                 </div>
               </div>
 
