@@ -25,9 +25,13 @@ describe("request-url utils", () => {
     }
   })
 
-  it("prefers APP_URL when configured", () => {
+  it("prefers APP_URL when configured over spoofed forwarded host", () => {
     process.env.APP_URL = "https://pfnapp.id"
-    const req = new NextRequest("http://0.0.0.0:3000/callback")
+    const headers = new Headers({
+      "x-forwarded-proto": "https",
+      "x-forwarded-host": "attacker.com",
+    })
+    const req = new NextRequest("http://0.0.0.0:3000/callback", { headers })
     expect(getRequestOrigin(req)).toBe("https://pfnapp.id")
     expect(getRequestUrl("/login", req).toString()).toBe(
       "https://pfnapp.id/login"

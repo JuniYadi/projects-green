@@ -49,7 +49,6 @@ const getCookieMaxAge = () => {
 
   return Number.isFinite(parsed) ? parsed : 60 * 60 * 24 * 400
 }
-
 const getSessionCookieHeader = (
   sessionData: string,
   requestUrlOrRequest?: string | Request | { headers?: Headers; url?: string }
@@ -162,30 +161,30 @@ export type AuthService = {
   verifyMagicCode(input: {
     email: string
     code: string
-    requestUrl: string
+    requestUrl: string | Request | { headers?: Headers; url?: string }
     invitationToken?: string
   }): Promise<Response>
   completeEmailVerification(input: {
     code: string
     pendingAuthenticationToken: string
-    requestUrl: string
+    requestUrl: string | Request | { headers?: Headers; url?: string }
   }): Promise<Response>
   completeOrganizationSelection(input: {
     organizationId: string
     pendingAuthenticationToken: string
-    requestUrl: string
+    requestUrl: string | Request | { headers?: Headers; url?: string }
   }): Promise<Response>
   signup(input: {
     name: string
     email: string
     password: string
-    requestUrl: string
+    requestUrl: string | Request | { headers?: Headers; url?: string }
     invitationToken?: string
   }): Promise<Response>
   login(input: {
     email: string
     password: string
-    requestUrl: string
+    requestUrl: string | Request | { headers?: Headers; url?: string }
     invitationToken?: string
   }): Promise<Response>
 }

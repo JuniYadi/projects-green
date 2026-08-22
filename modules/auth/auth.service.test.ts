@@ -209,6 +209,24 @@ describe("authService", () => {
       const call = calls.at(-1)?.[0]
       expect(call && "invitationToken" in call).toBe(false)
     })
+    it("sets Secure on session cookie when request has x-forwarded-proto https", async () => {
+      mockAuthenticateWithMagicAuth.mockImplementation(async () => ({
+        sealedSession: "sealed_session_token",
+      }))
+      const req = new Request("http://0.0.0.0:3000/api/auth/magic/verify", {
+        headers: {
+          "x-forwarded-proto": "https",
+          "x-forwarded-host": "pfnapp.id",
+        },
+      })
+      const res = await authService.verifyMagicCode({
+        email: "user@example.com",
+        code: "123456",
+        requestUrl: req,
+      })
+      const cookie = res.headers.get("set-cookie") || ""
+      expect(cookie).toContain("Secure")
+    })
 
     it("throws MissingAuthConfigurationError when env is missing", async () => {
       delete process.env.WORKOS_CLIENT_ID

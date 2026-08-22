@@ -113,7 +113,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
           return await service.verifyMagicCode({
             email: body.email,
             code: body.code,
-            requestUrl: request.url,
+            requestUrl: request,
             invitationToken: readInviteToken(request),
           })
         } catch (error) {
@@ -168,7 +168,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
           return await service.completeEmailVerification({
             code: body.code,
             pendingAuthenticationToken: body.pendingAuthenticationToken,
-            requestUrl: request.url,
+            requestUrl: request,
           })
         } catch (error) {
           if (error instanceof MissingAuthConfigurationError) {
@@ -222,7 +222,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
           return await service.completeOrganizationSelection({
             organizationId: body.organizationId,
             pendingAuthenticationToken: body.pendingAuthenticationToken,
-            requestUrl: request.url,
+            requestUrl: request,
           })
         } catch (error) {
           if (error instanceof MissingAuthConfigurationError) {
@@ -277,7 +277,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
             name: body.name,
             email: body.email,
             password: body.password,
-            requestUrl: request.url,
+            requestUrl: request,
             invitationToken: readInviteToken(request),
           })
         } catch (error) {
@@ -335,7 +335,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
           return await service.login({
             email: body.email,
             password: body.password,
-            requestUrl: request.url,
+            requestUrl: request,
             invitationToken: readInviteToken(request),
           })
         } catch (error) {
