@@ -40,6 +40,9 @@ import {
   TicketIcon,
   WalletIcon,
   WhatsappLogoIcon,
+  Robot as RobotIcon,
+  Brain as BrainIcon,
+  FileText as FileTextIcon,
 } from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 
@@ -835,6 +838,47 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
       },
     ],
   },
+  {
+    context: "ai",
+    matches: (path) => startsWithRoute(path, "/console/ai"),
+    navMainLabel: "AI Studio",
+    getProjects: (path, locale) => [
+      {
+        name: "Back to Console",
+        url: localizePathname({ pathname: "/console", locale }),
+        icon: <CaretLeftIcon />,
+      },
+    ],
+    getNavMain: (path, locale) => [
+      {
+        title: "AI Agents",
+        url: localizePathname({
+          pathname: "/console/ai/agents",
+          locale,
+        }),
+        icon: <RobotIcon />,
+        isActive: startsWithRoute(path, "/console/ai/agents"),
+      },
+      {
+        title: "Knowledge Base",
+        url: localizePathname({
+          pathname: "/console/ai/knowledge",
+          locale,
+        }),
+        icon: <FileTextIcon />,
+        isActive: startsWithRoute(path, "/console/ai/knowledge"),
+      },
+      {
+        title: "BYOK Providers",
+        url: localizePathname({
+          pathname: "/console/ai/providers",
+          locale,
+        }),
+        icon: <KeyIcon />,
+        isActive: startsWithRoute(path, "/console/ai/providers"),
+      },
+    ],
+  },
 ]
 
 const getHubMenu = (path: string, locale: AppLocale) => ({
@@ -879,6 +923,12 @@ const getHubMenu = (path: string, locale: AppLocale) => ({
       url: localizePathname({ pathname: "/console/vpn/dashboard", locale }),
       icon: <GlobeIcon />,
       isActive: startsWithRoute(path, "/console/vpn"),
+    },
+    {
+      title: "AI Studio",
+      url: localizePathname({ pathname: "/console/ai/agents", locale }),
+      icon: <BrainIcon />,
+      isActive: startsWithRoute(path, "/console/ai"),
     },
   ],
 })

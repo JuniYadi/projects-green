@@ -1,12 +1,12 @@
 import { describe, expect, it } from "bun:test"
-import { render } from "@testing-library/react"
+import { renderToString } from "react-dom/server"
 import AiProvidersPage from "./page"
 
 describe("AiProvidersPage", () => {
   it("renders BYOK Provider page and default managed provider card", () => {
-    const view = render(<AiProvidersPage />)
-    expect(view.getByText("AI Providers (BYOK)")).toBeTruthy()
-    expect(view.getByText("Tambah Provider BYOK")).toBeTruthy()
-    expect(view.getByText("PFNApp Managed Intelligence (Default)")).toBeTruthy()
+    const html = renderToString(<AiProvidersPage />)
+    expect(html).toContain("AI Providers (BYOK)")
+    expect(html).toContain("PFNApp Managed Intelligence (Default)")
+    expect(html).toContain("Tambah Provider BYOK")
   })
 })

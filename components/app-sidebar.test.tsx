@@ -108,6 +108,7 @@ describe("resolveSidebarMenu", () => {
       "Applications",
       "WhatsApp",
       "VPN",
+      "AI Studio",
     ])
     expect(navMain[0]?.isActive).toBe(false)
   })
@@ -127,6 +128,7 @@ describe("resolveSidebarMenu", () => {
       "Applications",
       "WhatsApp",
       "VPN",
+      "AI Studio",
     ])
     expect(projects.map((project) => project.name)).toEqual([
       "Overview",
@@ -136,6 +138,23 @@ describe("resolveSidebarMenu", () => {
     expect(
       projects.find((project) => project.name === "Support Tickets")?.isActive
     ).toBe(true)
+  })
+
+  it("returns AI Studio context navigation for /console/ai/agents", () => {
+    const { navMain, projects, navMainLabel } = resolveSidebarMenu({
+      surface: "console",
+      pathname: "/console/ai/agents",
+      locale: "en",
+    })
+
+    expect(navMainLabel).toBe("AI Studio")
+    expect(projects[0]?.name).toBe("Back to Console")
+    expect(navMain.map((item) => item.title)).toEqual([
+      "AI Agents",
+      "Knowledge Base",
+      "BYOK Providers",
+    ])
+    expect(navMain[0]?.isActive).toBe(true)
   })
 
   it("includes Events link in app-hosting context", () => {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useState, useTransition } from "react"
 import {
   FileText,
   UploadSimple,
@@ -8,9 +8,11 @@ import {
   Clock,
   Trash,
 } from "@phosphor-icons/react"
+import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -32,64 +34,97 @@ import {
 export type KnowledgeDoc = {
   id: string
   title: string
+  purpose?: string
   pageCount: number
-  status: "READY" | "PROCESSING" | "QUEUED"
+  status: "READY" | "PROCESSING" | "QUEUED" | "FAILED"
   category: string
-  updatedAt: string
+  sourceType?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export default function AiKnowledgePage() {
-  const [docs, setDocs] = useState<KnowledgeDoc[]>([
-    {
-      id: "doc_1",
-      title: "Katalog & Daftar Harga Produk 2026",
-      pageCount: 14,
-      status: "READY",
-      category: "Pricelist",
-      updatedAt: "Baru saja",
-    },
-    {
-      id: "doc_2",
-      title: "SOP Pengembalian & Garansi Toko",
-      pageCount: 3,
-      status: "READY",
-      category: "SOP",
-      updatedAt: "2 jam lalu",
-    },
-  ])
-
+  const [docs, setDocs] = useState<KnowledgeDoc[]>([])
   const [isUploading, setIsUploading] = useState(false)
-  const [filename, setFilename] = useState("")
+  const [title, setTitle] = useState("")
   const [category, setCategory] = useState("General")
+  const [contentMarkdown, setContentMarkdown] = useState("")
   const [isOpen, setIsOpen] = useState(false)
+  const [isPending, startTransition] = useTransition()
 
-  const totalPagesUsed = docs.reduce((sum, d) => sum + d.pageCount, 0)
+  const loadDocs = useCallback(async () => {
+    try {
+      const res = await eden.api.console.ai.knowledge.get()
+      if (res.data && res.data.ok && Array.isArray(res.data.data)) {
+        setDocs(res.data.data as KnowledgeDoc[])
+      }
+    } catch (err) {
+      console.warn("[ai-knowledge] load error:", err)
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await eden.api.console.ai.knowledge.get()
+        if (
+          !cancelled &&
+          res.data &&
+          res.data.ok &&
+          Array.isArray(res.data.data)
+        ) {
+          setDocs(res.data.data as KnowledgeDoc[])
+        }
+      } catch (err) {
+        console.warn("[ai-knowledge] initial load error:", err)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const totalPagesUsed = docs.reduce((sum, d) => sum + (d.pageCount || 1), 0)
   const maxQuota = 100 // Starter tier default
 
-  const handleUpload = () => {
-    if (!filename.trim()) return
+  const handleUpload = async () => {
+    if (!title.trim()) return
 
     setIsUploading(true)
-    const newDoc: KnowledgeDoc = {
-      id: `doc_${Date.now()}`,
-      title: filename.trim(),
-      pageCount: 5,
-      status: "PROCESSING",
-      category,
-      updatedAt: "Sedang diproses worker...",
+    startTransition(async () => {
+      try {
+        const res = await eden.api.console.ai.knowledge.upload.post({
+          title: title.trim(),
+          category: category.trim(),
+          purpose: "Tenant Knowledge Document",
+          sourceType: "MANUAL",
+          contentMarkdown: contentMarkdown.trim() || undefined,
+        })
+
+        if (res.data && res.data.ok) {
+          await loadDocs()
+          setIsOpen(false)
+          setTitle("")
+          setContentMarkdown("")
+        }
+      } catch (err) {
+        console.error("[ai-knowledge] upload error:", err)
+      } finally {
+        setIsUploading(false)
+      }
+    })
+  }
+
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await eden.api.console.ai.knowledge[id].delete()
+      if (res.data && res.data.ok) {
+        setDocs((prev) => prev.filter((d) => d.id !== id))
+      }
+    } catch (err) {
+      console.error("[ai-knowledge] delete error:", err)
     }
-
-    setDocs((prev) => [newDoc, ...prev])
-    setIsOpen(false)
-    setFilename("")
-    setIsUploading(false)
-
-    // Simulate BullMQ Worker completion
-    setTimeout(() => {
-      setDocs((prev) =>
-        prev.map((d) => (d.id === newDoc.id ? { ...d, status: "READY" } : d))
-      )
-    }, 2000)
   }
 
   return (
@@ -112,7 +147,7 @@ export default function AiKnowledgePage() {
               <span>Unggah Dokumen PDF/DOCX</span>
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Unggah Dokumen Knowledge Base</DialogTitle>
               <DialogDescription>
@@ -123,11 +158,11 @@ export default function AiKnowledgePage() {
 
             <div className="space-y-4 py-2">
               <div className="space-y-2">
-                <Label>Nama Dokumen / File</Label>
+                <Label>Judul Dokumen / Nama File</Label>
                 <Input
                   placeholder="Misal: Brosur_Promo_Agustus_2026.pdf"
-                  value={filename}
-                  onChange={(e) => setFilename(e.target.value)}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
 
@@ -139,6 +174,16 @@ export default function AiKnowledgePage() {
                   onChange={(e) => setCategory(e.target.value)}
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label>Konten Markdown / Teks (Opsional)</Label>
+                <Textarea
+                  placeholder="Ketik atau tempel teks/markdown dokumen..."
+                  rows={4}
+                  value={contentMarkdown}
+                  onChange={(e) => setContentMarkdown(e.target.value)}
+                />
+              </div>
             </div>
 
             <DialogFooter>
@@ -147,7 +192,7 @@ export default function AiKnowledgePage() {
               </Button>
               <Button
                 onClick={handleUpload}
-                disabled={isUploading || !filename.trim()}
+                disabled={isUploading || !title.trim() || isPending}
               >
                 {isUploading ? "Mengunggah..." : "Mulai Parsing Dokumen"}
               </Button>
@@ -190,59 +235,76 @@ export default function AiKnowledgePage() {
         <h2 className="text-sm font-semibold tracking-tight text-muted-foreground">
           Daftar Dokumen Aktif ({docs.length})
         </h2>
-        <div className="grid gap-3">
-          {docs.map((doc) => (
-            <Card
-              key={doc.id}
-              className="flex items-center justify-between border-border p-4"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
-                  <FileText size={22} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium">{doc.title}</h3>
-                  <div className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
-                    <Badge
-                      variant="outline"
-                      className="px-1.5 py-0 text-[10px]"
-                    >
-                      {doc.category}
-                    </Badge>
-                    <span>•</span>
-                    <span>{doc.pageCount} Halaman</span>
-                    <span>•</span>
-                    <span>{doc.updatedAt}</span>
+        {docs.length === 0 ? (
+          <Card className="flex flex-col items-center justify-center border-dashed p-8 text-center">
+            <FileText size={32} className="mb-2 text-muted-foreground" />
+            <p className="text-sm font-medium">Belum ada dokumen diunggah</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Klik tombol di atas untuk mengunggah dokumen knowledge base toko
+              Anda.
+            </p>
+          </Card>
+        ) : (
+          <div className="grid gap-3">
+            {docs.map((doc) => (
+              <Card
+                key={doc.id}
+                className="flex items-center justify-between border-border p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
+                    <FileText size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium">{doc.title}</h3>
+                    <div className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
+                      <Badge
+                        variant="outline"
+                        className="px-1.5 py-0 text-[10px]"
+                      >
+                        {doc.category}
+                      </Badge>
+                      <span>•</span>
+                      <span>{doc.pageCount || 1} Halaman</span>
+                      {doc.createdAt && (
+                        <>
+                          <span>•</span>
+                          <span>
+                            {new Date(doc.createdAt).toLocaleDateString(
+                              "id-ID"
+                            )}
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-3">
-                {doc.status === "READY" ? (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-500">
-                    <CheckCircle size={15} />
-                    Siap Digunakan
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-500">
-                    <Clock size={15} className="animate-spin" />
-                    Memproses di Worker...
-                  </span>
-                )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                  onClick={() =>
-                    setDocs((prev) => prev.filter((d) => d.id !== doc.id))
-                  }
-                >
-                  <Trash size={16} />
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
+                <div className="flex items-center gap-3">
+                  {doc.status === "READY" ? (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-500">
+                      <CheckCircle size={15} />
+                      Siap Digunakan
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-500">
+                      <Clock size={15} className="animate-spin" />
+                      Memproses di Worker...
+                    </span>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    onClick={() => handleDelete(doc.id)}
+                  >
+                    <Trash size={16} />
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useEffect, useState, useTransition } from "react"
 import { Key, Lightning, ShieldCheck, Plus, Trash } from "@phosphor-icons/react"
+import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -33,9 +34,10 @@ export type ProviderEntry = {
   id: string
   name: string
   providerType: "OPENAI_COMPATIBLE" | "ANTHROPIC" | "MANAGED"
-  baseUrl?: string
+  baseUrl?: string | null
   defaultModel: string
   isDefault: boolean
+  isConfigured?: boolean
 }
 
 export default function AiProvidersPage() {
@@ -60,32 +62,120 @@ export default function AiProvidersPage() {
   const [testStatus, setTestStatus] = useState<
     "idle" | "testing" | "success" | "failed"
   >("idle")
+  const [testMessage, setTestMessage] = useState("")
+  const [isPending, startTransition] = useTransition()
+
+  const loadProviders = useCallback(async () => {
+    try {
+      const res = await eden.api.console.ai.providers.get()
+      if (res.data && res.data.ok && Array.isArray(res.data.data)) {
+        setProviders([
+          {
+            id: "prov_managed",
+            name: "PFNApp Managed Intelligence (Default)",
+            providerType: "MANAGED",
+            defaultModel: "anthropic/claude-sonnet-4-5-20251120",
+            isDefault: true,
+          },
+          ...(res.data.data as ProviderEntry[]),
+        ])
+      }
+    } catch (err) {
+      console.warn("[ai-providers] load error:", err)
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await eden.api.console.ai.providers.get()
+        if (
+          !cancelled &&
+          res.data &&
+          res.data.ok &&
+          Array.isArray(res.data.data)
+        ) {
+          setProviders([
+            {
+              id: "prov_managed",
+              name: "PFNApp Managed Intelligence (Default)",
+              providerType: "MANAGED",
+              defaultModel: "anthropic/claude-sonnet-4-5-20251120",
+              isDefault: true,
+            },
+            ...(res.data.data as ProviderEntry[]),
+          ])
+        }
+      } catch (err) {
+        console.warn("[ai-providers] initial load error:", err)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handleTestConnection = async () => {
     setTestStatus("testing")
-    setTimeout(() => {
-      setTestStatus("success")
-    }, 800)
+    setTestMessage("")
+    try {
+      const res = await eden.api.console.ai.providers.test.post({
+        providerType,
+        baseUrl: providerType === "OPENAI_COMPATIBLE" ? baseUrl : undefined,
+        defaultModel,
+        apiKey,
+      })
+      if (res.data && res.data.ok) {
+        setTestStatus("success")
+        setTestMessage(res.data.reply || "Koneksi Berhasil")
+      } else {
+        setTestStatus("failed")
+        setTestMessage(res.data?.message || "Gagal menghubungi model API")
+      }
+    } catch {
+      setTestStatus("failed")
+      setTestMessage("Terjadi kesalahan jaringan saat menguji provider")
+    }
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim() || !apiKey.trim()) return
 
-    const newProvider: ProviderEntry = {
-      id: `prov_${Date.now()}`,
-      name: name.trim(),
-      providerType,
-      baseUrl:
-        providerType === "OPENAI_COMPATIBLE" ? baseUrl.trim() : undefined,
-      defaultModel: defaultModel.trim(),
-      isDefault: false,
-    }
+    startTransition(async () => {
+      try {
+        const res = await eden.api.console.ai.providers.post({
+          name: name.trim(),
+          providerType,
+          baseUrl:
+            providerType === "OPENAI_COMPATIBLE" ? baseUrl.trim() : undefined,
+          defaultModel: defaultModel.trim(),
+          apiKey: apiKey.trim(),
+          isDefault: false,
+        })
+        if (res.data && res.data.ok) {
+          await loadProviders()
+          setIsOpen(false)
+          setName("")
+          setApiKey("")
+          setTestStatus("idle")
+          setTestMessage("")
+        }
+      } catch (err) {
+        console.error("[ai-providers] save error:", err)
+      }
+    })
+  }
 
-    setProviders((prev) => [...prev, newProvider])
-    setIsOpen(false)
-    setName("")
-    setApiKey("")
-    setTestStatus("idle")
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await eden.api.console.ai.providers[id].delete()
+      if (res.data && res.data.ok) {
+        setProviders((prev) => prev.filter((item) => item.id !== id))
+      }
+    } catch (err) {
+      console.error("[ai-providers] delete error:", err)
+    }
   }
 
   return (
@@ -198,11 +288,18 @@ export default function AiProvidersPage() {
                     ? "Menguji..."
                     : testStatus === "success"
                       ? "✓ Koneksi Berhasil"
-                      : "Uji Koneksi"}
+                      : testStatus === "failed"
+                        ? "Uji Ulang"
+                        : "Uji Koneksi"}
                 </Button>
                 {testStatus === "success" && (
                   <span className="text-xs font-medium text-emerald-500">
-                    API Key Valid & Terhubung
+                    API Key Valid: &quot;{testMessage}&quot;
+                  </span>
+                )}
+                {testStatus === "failed" && (
+                  <span className="text-xs font-medium text-destructive">
+                    {testMessage || "Gagal"}
                   </span>
                 )}
               </div>
@@ -214,9 +311,9 @@ export default function AiProvidersPage() {
               </Button>
               <Button
                 onClick={handleSave}
-                disabled={!name.trim() || !apiKey.trim()}
+                disabled={!name.trim() || !apiKey.trim() || isPending}
               >
-                Simpan ke Vault
+                {isPending ? "Menyimpan..." : "Simpan ke Vault"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -260,11 +357,7 @@ export default function AiProvidersPage() {
                     variant="ghost"
                     size="sm"
                     className="h-8 text-xs text-destructive hover:bg-destructive/10"
-                    onClick={() =>
-                      setProviders((prev) =>
-                        prev.filter((item) => item.id !== p.id)
-                      )
-                    }
+                    onClick={() => handleDelete(p.id)}
                   >
                     <Trash size={14} className="mr-1" />
                     Hapus
