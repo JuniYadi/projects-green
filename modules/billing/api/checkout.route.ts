@@ -62,15 +62,27 @@ type BillingAuthContext = {
 }
 
 type BillingCheckoutRouteDeps = {
-  authenticate: () => Promise<BillingAuthContext>
+  authenticate: (request?: Request) => Promise<BillingAuthContext>
   orderService?: BillingOrderService
   quoteService?: Pick<CheckoutQuoteService, "createQuote">
 }
 
 const defaultDeps: BillingCheckoutRouteDeps = {
-  authenticate: () => withAuth(),
+  authenticate: async (request?: Request) => {
+    if (request) {
+      const { resolveAuthContext } =
+        await import("@/lib/auth/resolve-proxy-auth")
+      const auth = await resolveAuthContext(request)
+      if (auth && auth.type === "workos") {
+        return {
+          organizationId: auth.organizationId,
+          user: { id: auth.userId, email: auth.email },
+        }
+      }
+    }
+    return withAuth()
+  },
 }
-
 const toError = (
   set: { status?: number | string },
   httpStatus: number,
