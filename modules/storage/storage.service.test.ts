@@ -1,6 +1,7 @@
-import { describe, expect, it, beforeEach } from "bun:test"
+import { describe, expect, it, beforeEach, mock } from "bun:test"
 import { StorageService } from "./storage.service"
 import { prisma } from "@/lib/prisma"
+import * as s3Storage from "@/lib/storage/s3-storage"
 
 describe("modules/storage - StorageService Integration Tests", () => {
   const orgA = "org_tenant_a_123"
@@ -10,7 +11,18 @@ describe("modules/storage - StorageService Integration Tests", () => {
     process.env.APP_KEY = "test_master_secret_32_bytes_long_123456"
   })
 
-  it("should create presigned upload session with PENDING status", async () => {
+  it("should create presigned upload session, confirm, retrieve view, and check metrics", async () => {
+    // Mock statStorageFile to return exists: true with size: 1024 for integration test
+    const originalStat = s3Storage.statStorageFile
+    mock.module("@/lib/storage/s3-storage", () => ({
+      ...s3Storage,
+      statStorageFile: async () => ({
+        exists: true,
+        size: 1024,
+        type: "image/png",
+      }),
+    }))
+
     const presign = await StorageService.createPresignedUpload({
       organizationId: orgA,
       userId: "user_123",
@@ -45,6 +57,17 @@ describe("modules/storage - StorageService Integration Tests", () => {
     expect(confirmed.status).toBe("ACTIVE")
     expect(confirmed.confirmedAt).toBeDefined()
 
+    // Confirming already-ACTIVE record must throw status guard error
+    expect(
+      StorageService.confirmUpload({
+        organizationId: orgA,
+        input: {
+          fileId: presign.fileId,
+          sizeBytes: 1024,
+        },
+      })
+    ).rejects.toThrow("Cannot confirm file in ACTIVE status")
+
     // Retrieve view url
     const view = await StorageService.getTenantViewUrl({
       organizationId: orgA,
@@ -61,7 +84,7 @@ describe("modules/storage - StorageService Integration Tests", () => {
       })
     ).rejects.toThrow("Forbidden: file does not belong to your organization")
 
-    // Admin metrics check
+    // Admin metrics check with groupBy + aggregate
     const metrics = await StorageService.getAdminMetrics()
     expect(metrics.totalFiles).toBeGreaterThanOrEqual(1)
     expect(metrics.activeFiles).toBeGreaterThanOrEqual(1)

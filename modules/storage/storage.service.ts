@@ -27,7 +27,13 @@ export class StorageService {
     userId?: string
     input: PresignUploadRequest
   }): Promise<PresignUploadResponseDTO> {
-    const fileId = `cl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    // Generate unique cuid via cuid() helper from lib/utils or generate standard ID
+    // We can create record with auto cuid from prisma or generate cuid before creating storageKey
+    const { createId } = await import("@paralleldrive/cuid2").catch(() => ({
+      createId: () =>
+        `cl_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+    }))
+    const fileId = createId()
     const storageKey = buildS3StorageKey({
       organizationId: params.organizationId,
       fileId,
@@ -87,6 +93,10 @@ export class StorageService {
       throw new Error("Storage file record not found")
     }
 
+    if (file.status !== "PENDING") {
+      throw new Error(`Cannot confirm file in ${file.status} status`)
+    }
+
     if (file.organizationId !== params.organizationId) {
       throw new Error("Forbidden: file does not belong to your organization")
     }
@@ -97,18 +107,19 @@ export class StorageService {
       throw new Error("Forbidden: storage key organization mismatch")
     }
 
-    // Check physical file stats on S3
+    // Check physical file stats on S3 — reject if not actually uploaded
     const stat = await statStorageFile(file.storageKey)
-    const finalSize =
-      stat.exists && stat.size > 0
-        ? stat.size
-        : params.input.sizeBytes || Number(file.sizeBytes)
+    if (!stat.exists) {
+      throw new Error(
+        "Upload not found in storage — file may not have been uploaded"
+      )
+    }
 
     const confirmed = await prisma.storageFile.update({
       where: { id: file.id },
       data: {
         status: "ACTIVE",
-        sizeBytes: BigInt(finalSize),
+        sizeBytes: BigInt(stat.size),
         confirmedAt: new Date(),
         publicUrl: params.input.publicUrl || file.publicUrl,
       },
@@ -230,51 +241,38 @@ export class StorageService {
    * Admin: Get storage aggregated metrics
    */
   static async getAdminMetrics(): Promise<StorageMetricsDTO> {
-    const files = await prisma.storageFile.findMany({
-      select: {
-        status: true,
-        sizeBytes: true,
-        purpose: true,
-      },
-    })
+    const [statusCounts, purposeGroups, totalSum] = await Promise.all([
+      prisma.storageFile.groupBy({
+        by: ["status"],
+        _count: { _all: true },
+        _sum: { sizeBytes: true },
+      }),
+      prisma.storageFile.groupBy({
+        by: ["purpose"],
+        _count: { _all: true },
+        _sum: { sizeBytes: true },
+      }),
+      prisma.storageFile.aggregate({
+        _sum: { sizeBytes: true },
+        _count: { _all: true },
+      }),
+    ])
 
-    let totalBytes = 0
-    let activeFiles = 0
-    let pendingFiles = 0
-    let deletedFiles = 0
-
-    const purposeMap: Record<string, { count: number; totalBytes: number }> = {}
-
-    for (const f of files) {
-      const bytes = Number(f.sizeBytes)
-      totalBytes += bytes
-
-      if (f.status === "ACTIVE") activeFiles++
-      else if (f.status === "PENDING") pendingFiles++
-      else if (f.status === "DELETED") deletedFiles++
-
-      if (!purposeMap[f.purpose]) {
-        purposeMap[f.purpose] = { count: 0, totalBytes: 0 }
-      }
-      purposeMap[f.purpose].count++
-      purposeMap[f.purpose].totalBytes += bytes
-    }
-
-    const purposeBreakdown = Object.entries(purposeMap).map(
-      ([purpose, stat]) => ({
-        purpose,
-        count: stat.count,
-        totalBytes: stat.totalBytes,
-      })
+    const statusMap = Object.fromEntries(
+      statusCounts.map((s) => [s.status, s._count._all])
     )
 
     return {
-      totalFiles: files.length,
-      totalBytes,
-      activeFiles,
-      pendingFiles,
-      deletedFiles,
-      purposeBreakdown,
+      totalFiles: totalSum._count._all,
+      totalBytes: Number(totalSum._sum.sizeBytes ?? 0),
+      activeFiles: statusMap.ACTIVE ?? 0,
+      pendingFiles: statusMap.PENDING ?? 0,
+      deletedFiles: statusMap.DELETED ?? 0,
+      purposeBreakdown: purposeGroups.map((g) => ({
+        purpose: g.purpose,
+        count: g._count._all,
+        totalBytes: Number(g._sum.sizeBytes ?? 0),
+      })),
     }
   }
 
