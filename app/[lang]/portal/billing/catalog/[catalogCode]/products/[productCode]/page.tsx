@@ -203,15 +203,18 @@ export default function ProductDetailPage() {
     ])
   }
 
-  const removePrice = (index: number) => {
+  const removePrice = useCallback((index: number) => {
     setPrices((prev) => prev.filter((_, i) => i !== index))
-  }
+  }, [])
 
-  const updatePrice = (index: number, patch: Partial<AddonPricingForm>) => {
-    setPrices((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, ...patch } : item))
-    )
-  }
+  const updatePrice = useCallback(
+    (index: number, patch: Partial<AddonPricingForm>) => {
+      setPrices((prev) =>
+        prev.map((item, i) => (i === index ? { ...item, ...patch } : item))
+      )
+    },
+    []
+  )
 
   const priceValidations = useMemo(() => {
     return prices.map((price) => {
@@ -355,124 +358,129 @@ export default function ProductDetailPage() {
     }
   }
 
-  const pricingColumns: ColumnDef<AddonPricingForm>[] = [
-    {
-      accessorKey: "billingPeriod",
-      header: "Billing period",
-      cell: ({ row }) => (
-        <Select
-          value={row.original.billingPeriod}
-          onValueChange={(value) =>
-            updatePrice(row.index, {
-              billingPeriod: value as AddonPricingForm["billingPeriod"],
-            })
-          }
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {BILLING_PERIODS.map((period) => (
-              <SelectItem key={period} value={period}>
-                {billingPeriodLabel(period)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      ),
-    },
-    {
-      accessorKey: "currency",
-      header: "Currency",
-      cell: ({ row }) => (
-        <Select
-          value={row.original.currency}
-          onValueChange={(value) => updatePrice(row.index, { currency: value })}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {SUPPORTED_CURRENCIES.map((currency) => (
-              <SelectItem key={currency} value={currency}>
-                {currency}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      ),
-    },
-    {
-      accessorKey: "amount",
-      header: "Amount",
-      cell: ({ row }) => (
-        <Input
-          type="number"
-          min="0"
-          step="0.01"
-          value={row.original.amount}
-          onChange={(event) =>
-            updatePrice(row.index, { amount: event.target.value })
-          }
-          aria-invalid={!isValidAddonPriceAmount(row.original.amount)}
-        />
-      ),
-    },
-    {
-      accessorKey: "effectiveFrom",
-      header: "Effective from",
-      cell: ({ row }) => (
-        <Input
-          type="date"
-          value={row.original.effectiveFrom}
-          onChange={(event) =>
-            updatePrice(row.index, { effectiveFrom: event.target.value })
-          }
-        />
-      ),
-    },
-    {
-      accessorKey: "effectiveTo",
-      header: "Effective to",
-      cell: ({ row }) => (
-        <Input
-          type="date"
-          value={row.original.effectiveTo}
-          onChange={(event) =>
-            updatePrice(row.index, {
-              effectiveTo: event.target.value,
-            })
-          }
-        />
-      ),
-    },
-    {
-      accessorKey: "isActive",
-      header: "Active",
-      cell: ({ row }) => (
-        <Switch
-          checked={row.original.isActive}
-          onCheckedChange={(checked) =>
-            updatePrice(row.index, { isActive: checked })
-          }
-        />
-      ),
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => removePrice(row.index)}
-          aria-label="Remove price"
-        >
-          <TrashIcon className="h-4 w-4 text-destructive" />
-        </Button>
-      ),
-    },
-  ]
+  const pricingColumns = useMemo<ColumnDef<AddonPricingForm>[]>(
+    () => [
+      {
+        accessorKey: "billingPeriod",
+        header: "Billing period",
+        cell: ({ row }) => (
+          <Select
+            value={row.original.billingPeriod}
+            onValueChange={(value) =>
+              updatePrice(row.index, {
+                billingPeriod: value as AddonPricingForm["billingPeriod"],
+              })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {BILLING_PERIODS.map((period) => (
+                <SelectItem key={period} value={period}>
+                  {billingPeriodLabel(period)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ),
+      },
+      {
+        accessorKey: "currency",
+        header: "Currency",
+        cell: ({ row }) => (
+          <Select
+            value={row.original.currency}
+            onValueChange={(value) =>
+              updatePrice(row.index, { currency: value })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SUPPORTED_CURRENCIES.map((currency) => (
+                <SelectItem key={currency} value={currency}>
+                  {currency}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ),
+      },
+      {
+        accessorKey: "amount",
+        header: "Amount",
+        cell: ({ row }) => (
+          <Input
+            type="number"
+            min="0"
+            step="0.01"
+            value={row.original.amount}
+            onChange={(event) =>
+              updatePrice(row.index, { amount: event.target.value })
+            }
+            aria-invalid={!isValidAddonPriceAmount(row.original.amount)}
+          />
+        ),
+      },
+      {
+        accessorKey: "effectiveFrom",
+        header: "Effective from",
+        cell: ({ row }) => (
+          <Input
+            type="date"
+            value={row.original.effectiveFrom}
+            onChange={(event) =>
+              updatePrice(row.index, { effectiveFrom: event.target.value })
+            }
+          />
+        ),
+      },
+      {
+        accessorKey: "effectiveTo",
+        header: "Effective to",
+        cell: ({ row }) => (
+          <Input
+            type="date"
+            value={row.original.effectiveTo}
+            onChange={(event) =>
+              updatePrice(row.index, {
+                effectiveTo: event.target.value,
+              })
+            }
+          />
+        ),
+      },
+      {
+        accessorKey: "isActive",
+        header: "Active",
+        cell: ({ row }) => (
+          <Switch
+            checked={row.original.isActive}
+            onCheckedChange={(checked) =>
+              updatePrice(row.index, { isActive: checked })
+            }
+          />
+        ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => removePrice(row.index)}
+            aria-label="Remove price"
+          >
+            <TrashIcon className="h-4 w-4 text-destructive" />
+          </Button>
+        ),
+      },
+    ],
+    [updatePrice, removePrice]
+  )
 
   if (loading) {
     return (
