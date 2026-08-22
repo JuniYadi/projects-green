@@ -8,7 +8,6 @@ describe("ProfileDialog", () => {
       open: true,
       onOpenChange: () => {},
       user: {
-        id: "usr_123",
         name: "Test User",
         email: "test@example.com",
         avatarUrl: null,
