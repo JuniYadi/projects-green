@@ -65,13 +65,19 @@ const organizationSelectionCompleteSchema = z.object({
     .min(1, "Missing pending authentication token."),
 })
 
-export const createAuthRoutes = (service: AuthService = authService) =>
-  new Elysia()
+export const createAuthRoutes = (
+  service: Partial<AuthService> = authService
+) => {
+  const fullService: AuthService = {
+    ...authService,
+    ...service,
+  }
+  return new Elysia()
     .post(
       "/auth/magic/request",
       async ({ body, set }) => {
         try {
-          await service.requestMagicCode({
+          await fullService.requestMagicCode({
             email: body.email,
           })
 
@@ -110,7 +116,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
       "/auth/magic/verify",
       async ({ body, request, set }) => {
         try {
-          return await service.verifyMagicCode({
+          return await fullService.verifyMagicCode({
             email: body.email,
             code: body.code,
             requestUrl: request,
@@ -125,7 +131,6 @@ export const createAuthRoutes = (service: AuthService = authService) =>
               message: "Missing WorkOS auth configuration.",
             }
           }
-
           if (error instanceof InvalidAuthCredentialsError) {
             set.status = 401
             return {
@@ -165,7 +170,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
       "/auth/email-verification/complete",
       async ({ body, request, set }) => {
         try {
-          return await service.completeEmailVerification({
+          return await fullService.completeEmailVerification({
             code: body.code,
             pendingAuthenticationToken: body.pendingAuthenticationToken,
             requestUrl: request,
@@ -188,7 +193,6 @@ export const createAuthRoutes = (service: AuthService = authService) =>
               message: error.message,
             }
           }
-
           if (error instanceof AuthValidationError) {
             set.status = 422
             return {
@@ -219,7 +223,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
       "/auth/organization-selection/complete",
       async ({ body, request, set }) => {
         try {
-          return await service.completeOrganizationSelection({
+          return await fullService.completeOrganizationSelection({
             organizationId: body.organizationId,
             pendingAuthenticationToken: body.pendingAuthenticationToken,
             requestUrl: request,
@@ -273,7 +277,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
       "/auth/signup",
       async ({ body, request, set }) => {
         try {
-          return await service.signup({
+          return await fullService.signup({
             name: body.name,
             email: body.email,
             password: body.password,
@@ -332,7 +336,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
       "/auth/login",
       async ({ body, request, set }) => {
         try {
-          return await service.login({
+          return await fullService.login({
             email: body.email,
             password: body.password,
             requestUrl: request,
@@ -381,7 +385,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
           await import("@/lib/auth/resolve-proxy-auth")
         const authContext = await resolveAuthContext(request)
 
-        if (!authContext?.userId) {
+        if (!authContext || authContext.type !== "workos") {
           set.status = 401
           return {
             ok: false as const,
@@ -391,7 +395,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
         }
 
         try {
-          const profile = await service.updateProfile({
+          const profile = await fullService.updateProfile({
             userId: authContext.userId,
             firstName: body.firstName,
             lastName: body.lastName,
@@ -433,7 +437,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
         await import("@/lib/auth/resolve-proxy-auth")
       const authContext = await resolveAuthContext(request)
 
-      if (!authContext?.userId) {
+      if (!authContext || authContext.type !== "workos") {
         set.status = 401
         return {
           ok: false as const,
@@ -443,7 +447,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
       }
 
       try {
-        const details = await service.getUserDetails(authContext.userId)
+        const details = await fullService.getUserDetails(authContext.userId)
         return {
           ok: true as const,
           ...details,
@@ -467,7 +471,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
           await import("@/lib/auth/resolve-proxy-auth")
         const authContext = await resolveAuthContext(request)
 
-        if (!authContext?.userId) {
+        if (!authContext || authContext.type !== "workos") {
           set.status = 401
           return {
             ok: false as const,
@@ -477,7 +481,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
         }
 
         try {
-          await service.revokeUserSession(params.sessionId)
+          await fullService.revokeUserSession(params.sessionId)
           return {
             ok: true as const,
             message: "Session revoked successfully.",
@@ -495,5 +499,6 @@ export const createAuthRoutes = (service: AuthService = authService) =>
         }
       }
     )
+}
 
 export const authRoutes = createAuthRoutes()
