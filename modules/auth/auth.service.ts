@@ -111,13 +111,17 @@ const toSessionResponse = (
   sealedSession: string,
   requestUrl?: string | Request | { headers?: Headers; url?: string }
 ) => {
-  return new Response(JSON.stringify({ ok: true as const }), {
+  const response = new Response(JSON.stringify({ ok: true as const }), {
     status,
     headers: {
       "Content-Type": "application/json",
-      "Set-Cookie": getSessionCookieHeader(sealedSession, requestUrl),
     },
   })
+  response.headers.set(
+    "Set-Cookie",
+    getSessionCookieHeader(sealedSession, requestUrl)
+  )
+  return response
 }
 
 const ensureSealedSession = (sealedSession?: string | null) => {
