@@ -374,5 +374,59 @@ export const createAuthRoutes = (service: AuthService = authService) =>
         body: loginSchema,
       }
     )
+    .patch(
+      "/auth/profile",
+      async ({ body, request, set }) => {
+        const { resolveAuthContext } =
+          await import("@/lib/auth/resolve-proxy-auth")
+        const authContext = await resolveAuthContext(request)
+
+        if (!authContext?.userId) {
+          set.status = 401
+          return {
+            ok: false as const,
+            error: "UNAUTHORIZED" as const,
+            message: "You must be signed in to update your profile.",
+          }
+        }
+
+        try {
+          const profile = await service.updateProfile({
+            userId: authContext.userId,
+            firstName: body.firstName,
+            lastName: body.lastName,
+            profilePictureUrl: body.profilePictureUrl,
+          })
+
+          return {
+            ok: true as const,
+            user: profile,
+          }
+        } catch (error) {
+          if (error instanceof AuthValidationError) {
+            set.status = 422
+            return {
+              ok: false as const,
+              error: "VALIDATION_ERROR" as const,
+              message: error.message,
+            }
+          }
+
+          set.status = 500
+          return {
+            ok: false as const,
+            error: "INTERNAL_SERVER_ERROR" as const,
+            message: "Unable to update profile right now.",
+          }
+        }
+      },
+      {
+        body: z.object({
+          firstName: z.string().trim().max(100).optional(),
+          lastName: z.string().trim().max(100).optional(),
+          profilePictureUrl: z.string().trim().url().optional(),
+        }),
+      }
+    )
 
 export const authRoutes = createAuthRoutes()
