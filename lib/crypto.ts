@@ -60,7 +60,11 @@ export function getStorageTenantSubkey(): Buffer {
 }
 
 /**
- * Deterministically derives an IV for the given organizationId and key
+ * Deterministically derives an IV for the given organizationId and key.
+ *
+ * ponytail: deterministic IV enables frequency analysis on encrypted org paths.
+ * Acceptable here because S3 bucket is private (presigned-only access).
+ * Do NOT reuse this pattern for sensitive payloads where ciphertext volume leaks information.
  */
 function getDeterministicTenantIv(
   organizationId: string,
