@@ -310,7 +310,7 @@ describe("fetchFrameworkDetection", () => {
     }
   })
 
-  it("throws DetectionError with fallback message when error body is unparseable", async () => {
+  it("throws DetectionError with fallback message when error body is unparsable", async () => {
     mockFetch.mockResolvedValue({
       ok: false,
       status: 502,

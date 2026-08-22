@@ -1,28 +1,28 @@
-# Playwright E2E Tests
+# Playwright end-to-end Tests
 
 ## Projects
 
-| Project | Tests | Auth required |
-|---------|-------|---------------|
-| `public` | Landing page, public pages | No |
-| `console` | Console/billing features (user role) | Yes — needs `.auth/user.json` |
-| `admin` | Portal billing features (admin role) | Yes — needs `.auth/admin.json` |
-| `auth-setup` | Interactive user login helper (run once) | Needs you to sign in |
-| `admin-auth-setup` | Interactive admin login helper (run once) | Needs you to sign in as admin |
+| Project            | Tests                                     | Auth required                  |
+| ------------------ | ----------------------------------------- | ------------------------------ |
+| `public`           | Landing page, public pages                | No                             |
+| `console`          | Console/billing features (user role)      | Yes — needs `.auth/user.json`  |
+| `admin`            | Portal billing features (admin role)      | Yes — needs `.auth/admin.json` |
+| `auth-setup`       | Interactive user login helper (run once)  | Needs you to sign in           |
+| `admin-auth-setup` | Interactive admin login helper (run once) | Needs you to sign in as admin  |
 
 Tests are organized by directory path — `console/` dir → user auth, `admin/` dir → admin auth, `landing/` dir → no auth.
 
 ## Canonical Test Title Tags
 
-Every executable test title follows the contract `@e2e/<domain>/<role>/<scenario>`. Tags are the sync key to the Obsidian E2E checklist — no credentials belong in specs.
+Every executable test title follows the contract `@e2e/<domain>/<role>/<scenario>`. Tags are the sync key to the Obsidian end-to-end checklist — no credentials belong in specs.
 
-| Domain | Role | Scenario example | Title |
-|--------|------|-----------------|-------|
-| `billing` | `console` | invoices list | `@e2e/billing/console/invoices` |
-| `billing` | `admin` | org billing settings | `@e2e/billing/admin/org-settings` |
-| `whatsapp` | `console` | message compose | `@e2e/whatsapp/console/compose` |
-| `smoke` | `deploy` | deploy wizard | `@e2e/smoke/deploy/deploy-wizard` |
-| `landing` | — | hero section | `@e2e/landing/hero` |
+| Domain     | Role      | Scenario example     | Title                             |
+| ---------- | --------- | -------------------- | --------------------------------- |
+| `billing`  | `console` | invoices list        | `@e2e/billing/console/invoices`   |
+| `billing`  | `admin`   | org billing settings | `@e2e/billing/admin/org-settings` |
+| `whatsapp` | `console` | message compose      | `@e2e/whatsapp/console/compose`   |
+| `smoke`    | `deploy`  | deploy wizard        | `@e2e/smoke/deploy/deploy-wizard` |
+| `landing`  | —         | hero section         | `@e2e/landing/hero`               |
 
 Filter tests by tag with `--grep`:
 
@@ -72,36 +72,36 @@ bun run test:e2e:all       # public + console + admin
 
 Use cases are defined in `goals/use-case.md`. Each test is annotated with its UC number.
 
-| Dir | File | Use Cases |
-|-----|------|-----------|
-| `billing/admin/` | `overview.spec.ts` | UC-1, UC-2, UC-3, UC-22, UC-23 |
-| `billing/admin/` | `org-billing.spec.ts` | UC-4 to UC-16 |
-| `billing/admin/` | `voucher.spec.ts` | UC-17 to UC-21 |
-| `billing/admin/` | `invoices.spec.ts` | UC-9 |
-| `billing/console/` | `dashboard.spec.ts` | UC-1, UC-2 |
-| `billing/console/` | `topup.spec.ts` | UC-3 |
-| `billing/console/` | `invoices.spec.ts` | UC-4 to UC-8 |
-| `billing/console/` | `usage.spec.ts` | UC-9 to UC-11 |
-| `billing/console/` | `transactions.spec.ts` | UC-12 |
-| `billing/console/` | `subscription.spec.ts` | UC-13 |
-| `billing/console/` | `vouchers.spec.ts` | UC-14 to UC-15 |
-| `billing/console/` | `contacts.spec.ts` | UC-16 |
-| `billing/console/` | `alerts.spec.ts` | UC-17 |
-| `billing/console/` | `settings.spec.ts` | UC-18 |
-| `billing/console/` | `payment-confirm.spec.ts` | UC-19 |
+| Dir                | File                      | Use Cases                      |
+| ------------------ | ------------------------- | ------------------------------ |
+| `billing/admin/`   | `overview.spec.ts`        | UC-1, UC-2, UC-3, UC-22, UC-23 |
+| `billing/admin/`   | `org-billing.spec.ts`     | UC-4 to UC-16                  |
+| `billing/admin/`   | `voucher.spec.ts`         | UC-17 to UC-21                 |
+| `billing/admin/`   | `invoices.spec.ts`        | UC-9                           |
+| `billing/console/` | `dashboard.spec.ts`       | UC-1, UC-2                     |
+| `billing/console/` | `topup.spec.ts`           | UC-3                           |
+| `billing/console/` | `invoices.spec.ts`        | UC-4 to UC-8                   |
+| `billing/console/` | `usage.spec.ts`           | UC-9 to UC-11                  |
+| `billing/console/` | `transactions.spec.ts`    | UC-12                          |
+| `billing/console/` | `subscription.spec.ts`    | UC-13                          |
+| `billing/console/` | `vouchers.spec.ts`        | UC-14 to UC-15                 |
+| `billing/console/` | `contacts.spec.ts`        | UC-16                          |
+| `billing/console/` | `alerts.spec.ts`          | UC-17                          |
+| `billing/console/` | `settings.spec.ts`        | UC-18                          |
+| `billing/console/` | `payment-confirm.spec.ts` | UC-19                          |
 
 ## Useful Commands
 
-| Command | What it does |
-|---------|-------------|
-| `bun run test:e2e` | Run all tests (skips auth-required if no auth state) |
-| `bun run test:e2e:ui` | Open Playwright UI mode (interactive runner) |
-| `bun run test:e2e:auth` | Run user auth setup (interactive login) |
-| `bun run test:e2e:admin-auth` | Run admin auth setup (interactive login) |
-| `bun run test:e2e:console` | Run only console tests |
-| `bun run test:e2e:admin` | Run only admin tests |
-| `bun run test:e2e:public` | Run only public page tests |
-| `bun run test:e2e:all` | Run public + console + admin tests |
+| Command                       | What it does                                         |
+| ----------------------------- | ---------------------------------------------------- |
+| `bun run test:e2e`            | Run all tests (skips auth-required if no auth state) |
+| `bun run test:e2e:ui`         | Open Playwright UI mode (interactive runner)         |
+| `bun run test:e2e:auth`       | Run user auth setup (interactive login)              |
+| `bun run test:e2e:admin-auth` | Run admin auth setup (interactive login)             |
+| `bun run test:e2e:console`    | Run only console tests                               |
+| `bun run test:e2e:admin`      | Run only admin tests                                 |
+| `bun run test:e2e:public`     | Run only public page tests                           |
+| `bun run test:e2e:all`        | Run public + console + admin tests                   |
 
 ## Adding a New Spec
 

@@ -52,8 +52,8 @@ jobs:
           track_progress: false
           show_full_output: false
           display_report: true
-          plugin_marketplaces: 'https://github.com/DietrichGebert/ponytail.git'
-          plugins: 'ponytail@ponytail'
+          plugin_marketplaces: "https://github.com/DietrichGebert/ponytail.git"
+          plugins: "ponytail@ponytail"
           claude_args: >-
             --model ${{ secrets.PLAN_ANTHROPIC_MODEL }}
             --max-turns 125
@@ -152,8 +152,8 @@ jobs:
           track_progress: false
           show_full_output: false
           display_report: true
-          plugin_marketplaces: 'https://github.com/DietrichGebert/ponytail.git'
-          plugins: 'ponytail@ponytail'
+          plugin_marketplaces: "https://github.com/DietrichGebert/ponytail.git"
+          plugins: "ponytail@ponytail"
           claude_args: >-
             --model ${{ secrets.EXECUTE_ANTHROPIC_MODEL }}
             --max-turns 200
@@ -440,8 +440,8 @@ jobs:
           track_progress: false
           show_full_output: false
           display_report: true
-          plugin_marketplaces: 'https://github.com/DietrichGebert/ponytail.git'
-          plugins: 'ponytail@ponytail'
+          plugin_marketplaces: "https://github.com/DietrichGebert/ponytail.git"
+          plugins: "ponytail@ponytail"
           claude_args: >-
             --model ${{ secrets.FIX_ANTHROPIC_MODEL }}
             --max-turns 120
@@ -506,8 +506,8 @@ jobs:
           track_progress: false
           show_full_output: false
           display_report: true
-          plugin_marketplaces: 'https://github.com/DietrichGebert/ponytail.git'
-          plugins: 'ponytail@ponytail'
+          plugin_marketplaces: "https://github.com/DietrichGebert/ponytail.git"
+          plugins: "ponytail@ponytail"
           claude_args: >-
             --model ${{ secrets.FIX_ANTHROPIC_MODEL }}
             --max-turns 120

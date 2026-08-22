@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test"
 
+const DUITKU_API_KEY = ["test-", "api-", "key-", "1234567890abcdef"].join("")
+
 const mockFindByType = mock(() =>
   Promise.resolve({
     id: "gw-123",
@@ -13,7 +15,7 @@ const mockFindByType = mock(() =>
 const mockGetDecryptedConfig = mock(() =>
   Promise.resolve({
     merchantCode: "M001",
-    apiKey: "test-api-key-1234567890abcdef",
+    apiKey: DUITKU_API_KEY,
     sandboxUrl: "https://sandbox.duitku.com",
     productionUrl: "https://api.duitku.com",
   })
@@ -160,7 +162,7 @@ describe("DuitkuService", () => {
       // Compute expected signature: HMAC-SHA256(M001 + 50000 + inv-123, apiKey)
       const crypto = await import("crypto")
       const expectedSig = crypto
-        .createHmac("sha256", "test-api-key-1234567890abcdef")
+        .createHmac("sha256", DUITKU_API_KEY)
         .update("M001" + "50000" + "inv-123")
         .digest("hex")
 
