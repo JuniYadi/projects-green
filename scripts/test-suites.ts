@@ -144,6 +144,18 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     smokeProjects: ["smoke-portal"],
   },
   {
+    name: "portal-ai-governance",
+    sourcePrefixes: [
+      "app/[lang]/portal/ai/",
+      "modules/docs/api/admin-ai.route.ts",
+    ],
+    testPrefixes: [
+      "app/[lang]/portal/ai/",
+      "modules/docs/api/admin-ai.route.test.ts",
+    ],
+    smokeProjects: ["smoke-portal"],
+  },
+  {
     name: "whatsapp-messages",
     sourcePrefixes: [
       "app/[lang]/console/whatsapp/messages/",
