@@ -59,10 +59,6 @@ jobs:
       - name: Generate Prisma client
         run: bun run db:generate
 
-      - name: Run changed logic and feature dependents
-        if: ${{ github.event_name == 'pull_request' }}
-        run: bun run test:changed
-
       - name: Enforce changed logic coverage
         if: ${{ github.event_name == 'pull_request' }}
         run: bun run test:coverage:changed
@@ -87,13 +83,14 @@ jobs:
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
         with:
           files: coverage/lcov.info
-          flags: logic
-          name: ${{ github.event_name == 'pull_request' && 'changed-logic' || 'full-logic' }}
-          fail_ci_if_error: true
+          flags: ${{ github.event_name == 'push' && 'logic,full' || 'logic,changed' }}
+          name: ${{ github.event_name == 'push' && 'main-full-coverage' || 'pr-changed-coverage' }}
+          fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Enforce test policy
         run: bun run test:policy
+
   functional-smoke:
     name: Affected Functional Smoke
     if: ${{ github.event_name == 'workflow_dispatch' }}

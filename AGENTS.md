@@ -18,22 +18,18 @@
 
 ## Local validation matrix
 
-- Normal local work uses changed-path validation: run
-  `bun run lint -- <changed lintable paths>`, `bun run test:changed`, and, for
-  behavior changes, `bun run test:coverage:changed`. These commands are the
-  default local checks; do not run repository-wide tests or coverage after
-  every edit.
-- `test:changed` reports changed production paths that have no paired test or
-  feature mapping. Add a targeted test with
-  `bun run test:changed -- --test <path>` or record an intentional gap with
-  `--allow-unmapped`; neither path may be treated as silently validated.
-- The final pre-PR checkpoint runs the applicable changed-path lint/tests/
-  coverage commands and one full `bun run typecheck`. Typecheck has no safe
-  changed-file equivalent, so do not repeat it after each edit.
-- Run global `bun run test` and `bun run test:coverage` only for an explicit
-  user or CI request, or for a documented high-blast-radius change such as
-  shared test setup, test-selection tooling, or production code that cannot
-  be mapped to an affected module.
+- Normal local work MUST use fast, targeted validation:
+  - For single-file / unit edits: run targeted test directly with
+    `bun test <exact test file>` (e.g. `bun test modules/foo/foo.test.ts`).
+  - Never run full test suites or multi-module tests for local iterative edits.
+  - Do not run `typecheck` after every single edit; let IDE LSP handle real-time
+    errors and run `bun run typecheck` ONLY once as the final pre-PR gate.
+- For PR preparation or feature checkpoints:
+  - Run `bun run lint -- <changed paths>`, `bun run test:changed` (or `bun run test:coverage:changed`), and one final `bun run typecheck`.
+  - `test:changed` reports changed production paths without paired test mappings.
+    Target them via `bun run test:changed -- --test <path>` or `--allow-unmapped`.
+- Run global `bun run test` and `bun run test:coverage` ONLY for an explicit
+  user request or high-blast-radius changes (shared test setup, test engine).
 
 ## Local hard rules
 
