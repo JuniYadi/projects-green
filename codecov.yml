@@ -26,10 +26,15 @@ flags:
   logic:
     carryforward: true
     carryforward_behavior: subset
+  changed:
+    carryforward: true
+    carryforward_behavior: subset
+  full:
+    carryforward: true
+    carryforward_behavior: subset
   unit:
     carryforward: true
     carryforward_behavior: subset
-
 ignore:
   - "**/*.test.ts"
   - "**/*.test.tsx"
