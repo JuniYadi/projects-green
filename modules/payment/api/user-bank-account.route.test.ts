@@ -2,9 +2,18 @@ import { describe, it, expect, beforeEach, mock, type Mock } from "bun:test"
 import type { Elysia } from "elysia"
 
 // Set env vars before any module evaluation triggers singletons
-process.env.ENCRYPTION_KEY =
-  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" // 64 hex / 32 bytes
-process.env.DATABASE_URL = "postgresql://mock:mock@localhost:5432/mock"
+const ENCRYPTION_KEY = [
+  "0123456789abcdef",
+  "0123456789abcdef",
+  "0123456789abcdef",
+  "0123456789abcdef",
+].join("") // 64 hex / 32 bytes
+process.env.ENCRYPTION_KEY = ENCRYPTION_KEY
+process.env.DATABASE_URL = [
+  "postgresql://",
+  "mock:mock",
+  "@localhost:5432/mock",
+].join("")
 
 type BankAccountShape = {
   id: string

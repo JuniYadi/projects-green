@@ -174,6 +174,8 @@ describe("workosCacheService.getUser", () => {
       name: "John Doe",
       email: "john@example.com",
       avatarUrl: null,
+      createdAt: null,
+      lastSignInAt: null,
     })
   })
 

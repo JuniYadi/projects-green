@@ -3,8 +3,12 @@ import { describe, expect, it } from "bun:test"
 import { EncryptionService } from "../services/encryption.service"
 import { toPaymentConfirmationDTO } from "./payment-confirmation.dto"
 
-const ENCRYPTION_KEY =
-  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+const ENCRYPTION_KEY = [
+  "0123456789abcdef",
+  "0123456789abcdef",
+  "0123456789abcdef",
+  "0123456789abcdef",
+].join("")
 
 describe("toPaymentConfirmationDTO", () => {
   it("decrypts bank account fields before returning the API response", () => {

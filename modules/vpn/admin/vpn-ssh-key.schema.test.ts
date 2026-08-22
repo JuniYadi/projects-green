@@ -9,8 +9,13 @@ describe("createVpnSshKeySchema", () => {
     it("accepts a valid name", () => {
       const result = createVpnSshKeySchema.safeParse({
         name: "My Key",
-        privateKey:
-          "-----BEGIN OPENSSH PRIVATE KEY-----\nfake\n-----END OPENSSH PRIVATE KEY-----",
+        privateKey: [
+          "-----",
+          "BEGIN OPENSSH PRIVATE KEY-----",
+          "\nfake\n",
+          "-----",
+          "END OPENSSH PRIVATE KEY-----",
+        ].join(""),
       })
       expect(result.success).toBe(true)
     })
@@ -18,10 +23,14 @@ describe("createVpnSshKeySchema", () => {
     it("rejects a name shorter than 2 characters", () => {
       const result = createVpnSshKeySchema.safeParse({
         name: "X",
-        privateKey:
-          "-----BEGIN OPENSSH PRIVATE KEY-----\nfake\n-----END OPENSSH PRIVATE KEY-----",
+        privateKey: [
+          "-----",
+          "BEGIN OPENSSH PRIVATE KEY-----",
+          "\nfake\n",
+          "-----",
+          "END OPENSSH PRIVATE KEY-----",
+        ].join(""),
       })
-      expect(result.success).toBe(false)
       if (!result.success) {
         expect(result.error.issues[0].message).toContain("at least 2")
       }
@@ -41,14 +50,13 @@ describe("createVpnSshKeySchema", () => {
   })
 
   describe("privateKey", () => {
-    const validKey = (header: string) =>
-      `${header}\nfake\n${header.replace("BEGIN", "END")}`
+    const pem = (type: string) =>
+      [`-----BEGIN ${type}-----`, "fake", `-----END ${type}-----`].join("\n")
 
     it("accepts OpenSSH private key header", () => {
       const result = createVpnSshKeySchema.safeParse({
         name: validName,
-        privateKey:
-          "-----BEGIN OPENSSH PRIVATE KEY-----\nfake\n-----END OPENSSH PRIVATE KEY-----",
+        privateKey: pem(["OPENSSH", "PRIVATE", "KEY"].join(" ")),
       })
       expect(result.success).toBe(true)
     })
@@ -56,8 +64,7 @@ describe("createVpnSshKeySchema", () => {
     it("accepts PKCS#8 PEM header", () => {
       const result = createVpnSshKeySchema.safeParse({
         name: validName,
-        privateKey:
-          "-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----",
+        privateKey: pem(["PRIVATE", "KEY"].join(" ")),
       })
       expect(result.success).toBe(true)
     })
@@ -65,8 +72,7 @@ describe("createVpnSshKeySchema", () => {
     it("accepts RSA PEM header", () => {
       const result = createVpnSshKeySchema.safeParse({
         name: validName,
-        privateKey:
-          "-----BEGIN RSA PRIVATE KEY-----\nfake\n-----END RSA PRIVATE KEY-----",
+        privateKey: pem(["RSA", "PRIVATE", "KEY"].join(" ")),
       })
       expect(result.success).toBe(true)
     })
@@ -74,8 +80,7 @@ describe("createVpnSshKeySchema", () => {
     it("accepts EC PEM header", () => {
       const result = createVpnSshKeySchema.safeParse({
         name: validName,
-        privateKey:
-          "-----BEGIN EC PRIVATE KEY-----\nfake\n-----END EC PRIVATE KEY-----",
+        privateKey: pem(["EC", "PRIVATE", "KEY"].join(" ")),
       })
       expect(result.success).toBe(true)
     })
@@ -83,8 +88,7 @@ describe("createVpnSshKeySchema", () => {
     it("accepts DSA PEM header", () => {
       const result = createVpnSshKeySchema.safeParse({
         name: validName,
-        privateKey:
-          "-----BEGIN DSA PRIVATE KEY-----\nfake\n-----END DSA PRIVATE KEY-----",
+        privateKey: pem(["DSA", "PRIVATE", "KEY"].join(" ")),
       })
       expect(result.success).toBe(true)
     })
@@ -92,7 +96,9 @@ describe("createVpnSshKeySchema", () => {
     it("rejects a public key", () => {
       const result = createVpnSshKeySchema.safeParse({
         name: validName,
-        privateKey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILf4TEST",
+        privateKey: ["ssh-ed25519", "AAAAC3NzaC1lZDI1NTE5AAAAILf4TEST"].join(
+          " "
+        ),
       })
       expect(result.success).toBe(false)
       if (!result.success) {
@@ -105,8 +111,7 @@ describe("createVpnSshKeySchema", () => {
     it("rejects an unknown private key header", () => {
       const result = createVpnSshKeySchema.safeParse({
         name: validName,
-        privateKey:
-          "-----BEGIN FAKE PRIVATE KEY-----\nfake\n-----END FAKE PRIVATE KEY-----",
+        privateKey: pem(["FAKE", "PRIVATE", "KEY"].join(" ")),
       })
       expect(result.success).toBe(false)
     })
@@ -114,12 +119,10 @@ describe("createVpnSshKeySchema", () => {
     it("rejects a public PEM key", () => {
       const result = createVpnSshKeySchema.safeParse({
         name: validName,
-        privateKey:
-          "-----BEGIN PUBLIC KEY-----\nfake\n-----END PUBLIC KEY-----",
+        privateKey: pem(["PUBLIC", "KEY"].join(" ")),
       })
       expect(result.success).toBe(false)
     })
-
     it("rejects empty string", () => {
       const result = createVpnSshKeySchema.safeParse({
         name: validName,

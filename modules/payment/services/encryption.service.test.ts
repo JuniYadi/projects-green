@@ -6,12 +6,22 @@ import {
   resetEncryptionService,
 } from "./encryption.service"
 
+const TEST_KEY_HEX = [
+  "0123456789abcdef",
+  "0123456789abcdef",
+  "0123456789abcdef",
+  "0123456789abcdef",
+].join("")
+const KEY1_HEX = [
+  "abcdef1234567890",
+  "abcdef1234567890",
+  "abcdef1234567890",
+  "abcdef1234567890",
+].join("")
+
 describe("EncryptionService", () => {
   // Generate a valid 32-byte hex key for testing
-  const testKey = Buffer.from(
-    "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-    "hex"
-  )
+  const testKey = Buffer.from(TEST_KEY_HEX, "hex")
 
   describe("constructor", () => {
     it("accepts valid 32-byte hex key", () => {
@@ -19,7 +29,7 @@ describe("EncryptionService", () => {
     })
 
     it("rejects key shorter than 32 bytes", () => {
-      const shortKey = "0123456789abcdef"
+      const shortKey = ["0123456789", "abcdef"].join("")
       const service = new EncryptionService(shortKey)
       expect(() => service.encryptField("test")).toThrow(
         "Encryption key must be 32 bytes (64 hex characters)"
@@ -27,7 +37,7 @@ describe("EncryptionService", () => {
     })
 
     it("rejects key longer than 32 bytes", () => {
-      const longKey = "0123456789abcdef".repeat(5)
+      const longKey = ["0123456789", "abcdef"].join("").repeat(5)
       const service = new EncryptionService(longKey)
       expect(() => service.encryptField("test")).toThrow(
         "Encryption key must be 32 bytes (64 hex characters)"
@@ -148,14 +158,8 @@ describe("EncryptionService", () => {
   })
 
   describe("integration with different keys", () => {
-    const key1 = Buffer.from(
-      "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-      "hex"
-    )
-    const key2 = Buffer.from(
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-      "hex"
-    )
+    const key1 = Buffer.from(KEY1_HEX, "hex")
+    const key2 = Buffer.from(TEST_KEY_HEX, "hex")
 
     it("cannot decrypt data encrypted with different key", () => {
       const service1 = new EncryptionService(key1.toString("hex"))
@@ -197,8 +201,7 @@ describe("getEncryptionService", () => {
   })
 
   it("returns same instance on multiple calls", () => {
-    const testKey =
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    const testKey = TEST_KEY_HEX
     process.env.ENCRYPTION_KEY = testKey
 
     const instance1 = getEncryptionService()

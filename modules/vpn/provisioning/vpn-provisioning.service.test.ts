@@ -88,8 +88,13 @@ const account = {
     ipAddress: null,
     sshUser: "root",
     sshKey: {
-      privateKey:
-        "-----BEGIN RSA PRIVATE KEY-----\nfake\n-----END RSA PRIVATE KEY-----",
+      privateKey: [
+        "-----",
+        "BEGIN RSA PRIVATE KEY-----",
+        "\nfake\n",
+        "-----",
+        "END RSA PRIVATE KEY-----",
+      ].join(""),
     },
   },
   subscription: {

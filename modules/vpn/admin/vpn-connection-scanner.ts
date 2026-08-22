@@ -503,7 +503,7 @@ async function runExternalTcpCheck(
 /**
  * Resolve the key once and run `ss -ntulp` over each host candidate until one
  * yields parseable output. Returns the parsed listening ports, or `null` when
- * the key is missing, no host responds, or the output is unparseable.
+ * the key is missing, no host responds, or the output is unparsable.
  */
 async function runSsExec(
   server: VpnServerWithRelations,

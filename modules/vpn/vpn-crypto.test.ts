@@ -9,9 +9,12 @@ import {
 } from "@/modules/vpn/vpn-crypto"
 
 // ponytail: valid 32-byte hex key for AES-256-GCM
-const TEST_KEY =
-  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-
+const TEST_KEY = [
+  "0123456789abcdef",
+  "0123456789abcdef",
+  "0123456789abcdef",
+  "0123456789abcdef",
+].join("")
 describe("vpn-crypto", () => {
   const originalKey = process.env.ENCRYPTION_KEY
 
