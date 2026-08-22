@@ -10,11 +10,9 @@ import {
 import { promotePayloadSchema } from "@/modules/tenants/api/tenants.schema"
 import type {
   TenantApiError,
-  TenantMemberRemoveResponse,
   TenantMembersResponse,
   TenantMembershipMutationResponse,
 } from "@/modules/tenants/contracts/tenant-api.contract"
-import type { TenantActorContext } from "@/modules/tenants/api/tenants.guards"
 import {
   deleteTenantMembershipSafely,
   demoteTenantMembershipSafely,
@@ -400,9 +398,9 @@ export const createTenantsMembershipRoutes = (
           }
 
           return {
-            ok: true,
-            removedMemberId: targetMembership.id,
-          } satisfies TenantMemberRemoveResponse
+            ok: true as const,
+            removedMemberId: params.memberId,
+          }
         } catch (error) {
           return toWorkosApiError(set, error, {
             fallbackError: "TENANT_MEMBER_REMOVE_FAILED",
@@ -411,7 +409,46 @@ export const createTenantsMembershipRoutes = (
         }
       }
     )
-}
+    .get(
+      "/tenants/:orgId/members/:memberId/details",
+      async ({ params, set }) => {
+        const actorResult = await requireTenantActor(set)
+        if (isTenantApiError(actorResult)) {
+          return actorResult
+        }
 
-export const tenantsMembershipRoutes = createTenantsMembershipRoutes()
-export type App = ReturnType<typeof createTenantsMembershipRoutes>
+        const hasContextAccess = await ensureTenantContextAccess(
+          params.orgId,
+          actorResult,
+          set
+        )
+        if (hasContextAccess !== true) {
+          return hasContextAccess
+        }
+
+        try {
+          const membership = await getTenantMembershipById(params.memberId)
+          if (!membership) {
+            return toNotFoundError(set, "Membership not found.")
+          }
+
+          const { authService } = await import("@/modules/auth/auth.service")
+          const details = await authService.getUserDetails(membership.userId)
+
+          return {
+            ok: true as const,
+            membership,
+            ...details,
+          }
+        } catch (error) {
+          return toWorkosApiError(set, error, {
+            fallbackError: "TENANT_MEMBER_DETAILS_FAILED",
+            fallbackMessage: "Unable to load member details right now.",
+          })
+        }
+      }
+    )
+}
+export const tenantMembershipRoutes = createTenantsMembershipRoutes()
+export const tenantMembershipsRoutes = tenantMembershipRoutes
+export { createTenantsMembershipRoutes as createTenantMembershipRoutes }
