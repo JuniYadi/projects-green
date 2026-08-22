@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { OrganizationTabs } from "./organization-tabs"
+import { resolveFirstActiveOrganization } from "@/lib/whatsapp/resolvers"
 
 const ONBOARDING_PATH = "/onboarding/organization"
 
@@ -20,8 +21,16 @@ export default async function ConsoleOrganizationPage({
   const locale = resolveLocaleOrDefault(lang)
   const messages = getMessages(locale)
   const auth = await withAuth({ ensureSignedIn: true })
+  let activeOrgId = auth.organizationId
 
-  if (!auth.organizationId) {
+  if (!activeOrgId) {
+    const fallbackOrg = await resolveFirstActiveOrganization(auth.user.id)
+    if (fallbackOrg?.organizationId) {
+      activeOrgId = fallbackOrg.organizationId
+    }
+  }
+
+  if (!activeOrgId) {
     const onboardingPath = localizePathname({
       pathname: ONBOARDING_PATH,
       locale,
@@ -46,7 +55,7 @@ export default async function ConsoleOrganizationPage({
           {messages.console.organization.description}
         </p>
       </header>
-      <OrganizationTabs organizationId={auth.organizationId} />
+      <OrganizationTabs organizationId={activeOrgId} />
     </main>
   )
 }
