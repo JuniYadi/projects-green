@@ -7,8 +7,6 @@ import {
 } from "./crypto"
 
 describe("lib/crypto - Tenant Storage Path Encryption Guard", () => {
-  const originalAppKey = process.env.APP_KEY
-
   beforeEach(() => {
     process.env.APP_KEY = "test_master_secret_32_bytes_long_123456"
   })
@@ -20,15 +18,19 @@ describe("lib/crypto - Tenant Storage Path Encryption Guard", () => {
     expect(subkey1.toString("hex")).toBe(subkey2.toString("hex"))
   })
 
-  it("should encrypt organizationId to flat hex and decrypt successfully", () => {
+  it("should encrypt organizationId deterministically to flat hex and decrypt successfully", () => {
     const orgId = "org_1234567890abcdef"
-    const encrypted = encryptTenantStoragePath(orgId)
+    const encrypted1 = encryptTenantStoragePath(orgId)
+    const encrypted2 = encryptTenantStoragePath(orgId)
 
-    // Flat hex check: no dashes, no dots, valid hex
-    expect(/^[0-9a-fA-F]+$/.test(encrypted)).toBe(true)
-    expect(encrypted.length).toBeGreaterThanOrEqual(58)
+    // Deterministic guarantee: same orgId produces same encrypted path
+    expect(encrypted1).toBe(encrypted2)
 
-    const decrypted = decryptTenantStoragePath(encrypted)
+    // Flat hex check: valid hex format
+    expect(/^[0-9a-fA-F]+$/.test(encrypted1)).toBe(true)
+    expect(encrypted1.length).toBeGreaterThanOrEqual(58)
+
+    const decrypted = decryptTenantStoragePath(encrypted1)
     expect(decrypted).toBe(orgId)
   })
 
@@ -38,16 +40,6 @@ describe("lib/crypto - Tenant Storage Path Encryption Guard", () => {
 
     expect(verifyTenantStoragePath(encrypted, "org_alpha")).toBe(true)
     expect(verifyTenantStoragePath(encrypted, "org_beta")).toBe(false)
-  })
-
-  it("should produce different ciphertexts for the same org due to random IV", () => {
-    const orgId = "org_constant"
-    const enc1 = encryptTenantStoragePath(orgId)
-    const enc2 = encryptTenantStoragePath(orgId)
-
-    expect(enc1).not.toBe(enc2)
-    expect(decryptTenantStoragePath(enc1)).toBe(orgId)
-    expect(decryptTenantStoragePath(enc2)).toBe(orgId)
   })
 
   it("should throw on tampered ciphertext or auth tag", () => {

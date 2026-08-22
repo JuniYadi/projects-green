@@ -1,7 +1,6 @@
 import crypto from "node:crypto"
 
 const HKDF_INFO_TENANT_PATH = "storage:tenant-path"
-const IV_LENGTH = 12 // 96-bit IV for AES-GCM (24 hex characters)
 
 let cachedStorageKey: Buffer | null = null
 let cachedAppKeySource: string | null = null
@@ -61,8 +60,27 @@ export function getStorageTenantSubkey(): Buffer {
 }
 
 /**
- * Encrypts an organizationId into a compact flat hex string.
+ * Deterministically derives an IV for the given organizationId and key
+ */
+function getDeterministicTenantIv(
+  organizationId: string,
+  subkey: Buffer
+): Buffer {
+  return Buffer.from(
+    crypto.hkdfSync(
+      "sha256",
+      subkey,
+      Buffer.alloc(0),
+      Buffer.from(`storage:iv:${organizationId}`, "utf8"),
+      12
+    )
+  )
+}
+
+/**
+ * Encrypts an organizationId into a deterministic compact flat hex string.
  * Format: IV (24 hex = 12 bytes) + AuthTag (32 hex = 16 bytes) + Ciphertext (hex)
+ * Deterministic: encrypt(orgId) menghasilkan output yang sama secara konsisten.
  */
 export function encryptTenantStoragePath(organizationId: string): string {
   if (!organizationId || typeof organizationId !== "string") {
@@ -70,7 +88,7 @@ export function encryptTenantStoragePath(organizationId: string): string {
   }
 
   const key = getStorageTenantSubkey()
-  const iv = crypto.randomBytes(IV_LENGTH)
+  const iv = getDeterministicTenantIv(organizationId, key)
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv)
 
   const ciphertext = Buffer.concat([
