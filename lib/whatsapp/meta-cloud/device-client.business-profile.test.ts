@@ -189,6 +189,6 @@ describe("WhatsAppDeviceClient business profile", () => {
         mimeType: "image/png",
         fileName: "avatar.png",
       })
-    ).rejects.toThrow("no profile picture handle")
+    ).rejects.toThrow("Meta Cloud API returned no media handle")
   })
 })
