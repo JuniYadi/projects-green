@@ -8,31 +8,44 @@ import {
   INVITE_COOKIE_NAME,
   buildClearInviteCookieHeader,
 } from "@/modules/auth/invite-cookie"
+import * as tenantWorkosService from "@/modules/tenants/services/tenant-workos.service"
 
-const readInviteTokenFromRequest = (request: NextRequest) => {
-  const value = request.cookies.get(INVITE_COOKIE_NAME)?.value?.trim()
-  return value || undefined
+export const readInviteTokenFromRequest = (request: NextRequest | Request) => {
+  if ("cookies" in request && typeof request.cookies?.get === "function") {
+    const value = request.cookies.get(INVITE_COOKIE_NAME)?.value?.trim()
+    if (value) return value
+  }
+  const rawCookie = request.headers.get("cookie") ?? ""
+  for (const part of rawCookie.split(";")) {
+    const [name, ...val] = part.trim().split("=")
+    if (name === INVITE_COOKIE_NAME) {
+      const decoded = decodeURIComponent(val.join("=")).trim()
+      if (decoded) return decoded
+    }
+  }
+  return undefined
 }
 
-const acceptInviteFromToken = async (invitationToken: string) => {
+export const acceptInviteFromToken = async (
+  invitationToken: string,
+  deps = tenantWorkosService
+) => {
   try {
-    const { findTenantInvitationByToken, acceptTenantInvitation } =
-      await import("@/modules/tenants/services/tenant-workos.service")
-
-    const invitation = await findTenantInvitationByToken(invitationToken)
+    const invitation = await deps.findTenantInvitationByToken(invitationToken)
     if (!invitation || invitation.state !== "pending") {
-      return
+      return null
     }
 
-    await acceptTenantInvitation(invitation.id)
+    await deps.acceptTenantInvitation(invitation.id)
+    return invitation.organizationId
   } catch (error) {
     console.error(
       "[auth] /callback invitation accept —",
       error instanceof Error ? (error.stack ?? error.message) : error
     )
+    return null
   }
 }
-
 const authHandler = handleAuth({
   baseURL: process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || undefined,
   onError: async ({ error, request }) => {
@@ -142,14 +155,29 @@ const authHandler = handleAuth({
   },
 })
 
-export async function GET(request: NextRequest) {
+export const handleGetCallback = async (
+  request: NextRequest,
+  deps?: {
+    acceptInvite?: typeof acceptInviteFromToken
+    handleAuthRoute?: (req: NextRequest) => Promise<Response>
+  }
+) => {
+  const acceptInvite = deps?.acceptInvite ?? acceptInviteFromToken
+  const handleAuthRoute = deps?.handleAuthRoute ?? authHandler
   const inviteToken = readInviteTokenFromRequest(request)
-  const response = await authHandler(request)
+  if (inviteToken) {
+    await acceptInvite(inviteToken)
+  }
+  const response = await handleAuthRoute(request)
 
   if (inviteToken) {
-    await acceptInviteFromToken(inviteToken)
-    response.headers.append("Set-Cookie", buildClearInviteCookieHeader(request))
+    const clearCookieHeader = buildClearInviteCookieHeader(request)
+    response.headers.append("set-cookie", clearCookieHeader)
   }
 
   return response
+}
+
+export async function GET(request: NextRequest) {
+  return handleGetCallback(request)
 }
