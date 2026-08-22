@@ -583,14 +583,11 @@ export default function ProductDetailPage() {
                   </div>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="mt-4 gap-2 sm:gap-0">
-                  <AlertDialogCancel
-                    disabled={deleting}
-                    className="hover:bg-muted"
-                  >
+                  <AlertDialogCancel disabled={deleting}>
                     Cancel
                   </AlertDialogCancel>
                   <AlertDialogAction
-                    className="text-destructive-foreground bg-destructive shadow-sm hover:bg-destructive/90"
+                    variant="destructive"
                     onClick={(e) => {
                       e.preventDefault()
                       void handleDelete()
