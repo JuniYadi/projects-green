@@ -14,6 +14,7 @@ import { billingRoutes } from "@/modules/billing/api"
 import { docsConsoleRoutes } from "@/modules/docs/api/docs-console.route"
 import { docsRoutes } from "@/modules/docs/api/docs.route"
 import { knowledgeRoutes } from "@/modules/docs/api/knowledge.route"
+import { adminAiRoutes } from "@/modules/docs/api/admin-ai.route"
 import { deployRoutes } from "@/modules/deploy/api/deploy.route"
 import { frameworkDetectionRoutes } from "@/modules/framework-detection/api/framework-detection.route"
 import { githubRoutes } from "@/modules/github/api/github.route"
@@ -295,6 +296,7 @@ export const app = new Elysia({ prefix: "/api" })
   .use(paymentRoutes)
   .use(userPaymentRoutes)
   .use(adminRoutes)
+  .use(adminAiRoutes)
   .use(emailTemplateRoutes)
   .use(emailLogRoutes)
   .use(usersRoutes)
