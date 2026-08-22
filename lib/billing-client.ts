@@ -186,14 +186,14 @@ async function fetchBilling<T>(
   options?: RequestInit
 ): Promise<T> {
   const baseUrl = getApiBaseUrl()
+  const hasBody = options?.body !== undefined && options?.body !== null
   const response = await fetch(`${baseUrl}${endpoint}`, {
     headers: {
-      "Content-Type": "application/json",
+      ...(hasBody ? { "Content-Type": "application/json" } : {}),
       ...options?.headers,
     },
     ...options,
   })
-
   const data = (await response.json()) as T | ApiErrorResponse
 
   if (!response.ok || (data as ApiErrorResponse).ok === false) {
