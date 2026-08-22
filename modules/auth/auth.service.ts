@@ -203,6 +203,34 @@ export type AuthService = {
     lastName: string | null
     profilePictureUrl: string | null
   }>
+  getUserDetails(userId: string): Promise<{
+    user: {
+      id: string
+      email: string
+      emailVerified: boolean
+      firstName: string | null
+      lastName: string | null
+      name: string | null
+      profilePictureUrl: string | null
+      createdAt: string
+      lastSignInAt: string | null
+    }
+    identities: Array<{
+      type: string
+      provider: string
+      idpId?: string
+    }>
+    sessions: Array<{
+      id: string
+      status: string
+      authMethod: string | null
+      ipAddress: string | null
+      userAgent: string | null
+      createdAt: string
+      expiresAt: string
+    }>
+  }>
+  revokeUserSession(sessionId: string): Promise<void>
 }
 
 export const authService: AuthService = {
@@ -213,7 +241,6 @@ export const authService: AuthService = {
       })
     } catch (error) {
       if (error instanceof NotFoundException) {
-        return
       }
 
       if (error instanceof UnprocessableEntityException) {
@@ -435,5 +462,44 @@ export const authService: AuthService = {
       }
       throw error
     }
+  },
+  async getUserDetails(userId: string) {
+    const workos = getWorkOS()
+    const [user, identities, sessions] = await Promise.all([
+      workos.userManagement.getUser(userId),
+      workos.userManagement.getUserIdentities(userId).catch(() => []),
+      workos.userManagement.listSessions(userId).catch(() => ({ data: [] })),
+    ])
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        emailVerified: user.emailVerified,
+        firstName: user.firstName ?? null,
+        lastName: user.lastName ?? null,
+        name: user.name ?? null,
+        profilePictureUrl: user.profilePictureUrl ?? null,
+        createdAt: user.createdAt,
+        lastSignInAt: user.lastSignInAt ?? null,
+      },
+      identities: identities.map((id) => ({
+        type: id.type,
+        provider: id.provider,
+        idpId: id.idpId,
+      })),
+      sessions: (sessions.data || []).map((s) => ({
+        id: s.id,
+        status: s.status,
+        authMethod: s.authMethod ?? null,
+        ipAddress: s.ipAddress ?? null,
+        userAgent: s.userAgent ?? null,
+        createdAt: s.createdAt,
+        expiresAt: s.expiresAt,
+      })),
+    }
+  },
+  async revokeUserSession(sessionId: string) {
+    await getWorkOS().userManagement.revokeSession(sessionId)
   },
 }
