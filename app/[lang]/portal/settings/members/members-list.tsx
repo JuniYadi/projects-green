@@ -256,7 +256,13 @@ export function MembersList({ organizationId }: MembersListProps) {
         ),
         cell: ({ row }) => {
           const name = row.original.displayName
-          const displayTitle = name || row.original.email || "Unknown"
+          const rawIdentifier = row.original.email
+          const isRawUserId =
+            rawIdentifier?.startsWith("user_") || !rawIdentifier?.includes("@")
+          const displayEmail = isRawUserId
+            ? "User Account (No email)"
+            : rawIdentifier
+          const displayTitle = name || displayEmail || "Member"
 
           return (
             <div className="flex items-center gap-3">
@@ -267,17 +273,17 @@ export function MembersList({ organizationId }: MembersListProps) {
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col">
-                {name ? (
+                {name && name !== rawIdentifier ? (
                   <span className="font-medium text-foreground">{name}</span>
                 ) : null}
                 <span
                   className={
-                    name
+                    name && name !== rawIdentifier
                       ? "text-xs text-muted-foreground"
                       : "font-medium text-foreground"
                   }
                 >
-                  {row.original.email}
+                  {displayEmail}
                 </span>
               </div>
             </div>
