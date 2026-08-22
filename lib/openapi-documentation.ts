@@ -419,7 +419,12 @@ function operationTag(path: string): string {
   return formatTagSegment(resource)
 }
 
-const PUBLIC_PATH_PATTERNS = [/^\/api\/whatsapp\b/i, /^\/whatsapp\b/i]
+const PUBLIC_PATH_PATTERNS = [
+  /^\/api\/whatsapp\b/i,
+  /^\/whatsapp\b/i,
+  /^\/api\/storage\/s3\b/i,
+  /^\/storage\/s3\b/i,
+]
 
 const INTERNAL_PATH_PATTERNS = [
   /\/admin\b/i,
