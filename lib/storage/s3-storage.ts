@@ -17,7 +17,15 @@ export function getS3Config(): S3StorageConfig {
     process.env.S3_BUCKET ||
     process.env.AWS_BUCKET_NAME ||
     "projects-green-storage"
-  const endpoint = process.env.S3_ENDPOINT || process.env.AWS_ENDPOINT
+  let endpoint = process.env.S3_ENDPOINT || process.env.AWS_ENDPOINT
+  const cdnUrl = process.env.S3_CDN_URL || process.env.S3_CDN_DOMAIN
+  if (cdnUrl) {
+    try {
+      endpoint = cdnUrl.startsWith("http") ? new URL(cdnUrl).host : cdnUrl
+    } catch {
+      // Fallback to raw endpoint
+    }
+  }
   const region =
     process.env.S3_REGION || process.env.AWS_DEFAULT_REGION || "us-east-1"
   const accessKeyId =
