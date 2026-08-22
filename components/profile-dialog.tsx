@@ -321,8 +321,16 @@ export function ProfileDialog({
                 </div>
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   {(() => {
-                    const formatProvider = (raw: string) =>
-                      raw.replace(/OAuth$/i, " OAuth").trim()
+                    const normalizeProvider = (raw: string) => {
+                      const clean = raw.trim().toLowerCase()
+                      if (clean.includes("google")) return "Google OAuth"
+                      if (clean.includes("github")) return "GitHub OAuth"
+                      if (clean.includes("apple")) return "Apple OAuth"
+                      if (clean.includes("magic") || clean.includes("email"))
+                        return "Magic Link (Email Code)"
+                      if (clean.includes("password")) return "Password"
+                      return raw.replace(/OAuth$/i, " OAuth").trim()
+                    }
 
                     const allProviders = new Set<string>()
                     if (
@@ -330,11 +338,11 @@ export function ProfileDialog({
                       authMethodLabel !== "N/A" &&
                       authMethodLabel !== "Tidak tersedia"
                     ) {
-                      allProviders.add(formatProvider(authMethodLabel))
+                      allProviders.add(normalizeProvider(authMethodLabel))
                     }
                     identities.forEach((id) => {
                       if (id.provider) {
-                        allProviders.add(formatProvider(id.provider))
+                        allProviders.add(normalizeProvider(id.provider))
                       }
                     })
 
