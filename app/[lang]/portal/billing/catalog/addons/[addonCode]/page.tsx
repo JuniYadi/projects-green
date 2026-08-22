@@ -494,7 +494,7 @@ export default function AddonEditorPage() {
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
-                  className="text-destructive-foreground bg-destructive"
+                  variant="destructive"
                   onClick={handleArchive}
                 >
                   Archive
