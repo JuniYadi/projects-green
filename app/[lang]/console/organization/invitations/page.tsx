@@ -12,7 +12,5 @@ export default async function ConsoleOrganizationInvitationsPage({
 }: PageProps) {
   const { lang } = await params
   const locale = resolveLocaleOrDefault(lang)
-  redirect(
-    `${localizePathname({ pathname: "/console/organization", locale })}?tab=invitations`
-  )
+  redirect(localizePathname({ pathname: "/console/organization", locale }))
 }
