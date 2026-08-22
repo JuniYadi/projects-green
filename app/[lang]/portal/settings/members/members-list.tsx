@@ -255,35 +255,32 @@ export function MembersList({ organizationId }: MembersListProps) {
           <DataTableColumnHeader column={column} title="Member" />
         ),
         cell: ({ row }) => {
-          const name = row.original.displayName
-          const rawIdentifier = row.original.email
+          const rawEmail = row.original.email
           const isRawUserId =
-            rawIdentifier?.startsWith("user_") || !rawIdentifier?.includes("@")
-          const displayEmail = isRawUserId
-            ? "User Account (No email)"
-            : rawIdentifier
-          const displayTitle = name || displayEmail || "Member"
+            rawEmail?.startsWith("user_") || !rawEmail?.includes("@")
+          const email = isRawUserId ? null : rawEmail
+          const rawName = row.original.displayName
+          const name =
+            rawName && rawName !== rawEmail && !rawName.startsWith("user_")
+              ? rawName
+              : null
+
+          const primaryText =
+            name || (email ? email.split("@")[0] : null) || "Team Member"
+          const secondaryText = email || "No email provided"
 
           return (
             <div className="flex items-center gap-3">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={row.original.avatarUrl ?? undefined} />
-                <AvatarFallback>
-                  {toMemberInitials(displayTitle)}
-                </AvatarFallback>
+                <AvatarFallback>{toMemberInitials(primaryText)}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col">
-                {name && name !== rawIdentifier ? (
-                  <span className="font-medium text-foreground">{name}</span>
-                ) : null}
-                <span
-                  className={
-                    name && name !== rawIdentifier
-                      ? "text-xs text-muted-foreground"
-                      : "font-medium text-foreground"
-                  }
-                >
-                  {displayEmail}
+                <span className="font-medium text-foreground">
+                  {primaryText}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {secondaryText}
                 </span>
               </div>
             </div>
