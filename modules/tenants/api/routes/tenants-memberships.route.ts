@@ -433,6 +433,17 @@ export const createTenantsMembershipRoutes = (
             return toNotFoundError(set, "Membership not found.")
           }
 
+          const isManager = canManageTenant(actorResult)
+          const isSelf = actorResult.userId === membership.userId
+
+          if (!isManager && !isSelf) {
+            return toPolicyError(
+              set,
+              "TENANT_MEMBER_DETAILS_FORBIDDEN",
+              "You do not have permission to view member details."
+            )
+          }
+
           const { authService } = await import("@/modules/auth/auth.service")
           const details = await authService.getUserDetails(membership.userId)
 
