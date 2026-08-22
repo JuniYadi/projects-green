@@ -257,6 +257,7 @@ function subscriptionData(
   metadata: Record<string, unknown>
 ): Prisma.ServiceSubscriptionUncheckedCreateInput {
   return {
+    organizationId: input.organizationId,
     packageId: pricing.servicePlan.packageId,
     planId: input.planId,
     pricingId: pricing.id,
@@ -316,7 +317,6 @@ async function upsertServiceSubscription(
     ? tx.serviceSubscription.update({ where: { id: existing.id }, data })
     : tx.serviceSubscription.create({
         data: {
-          organizationId: input.organizationId,
           ...data,
           commitmentEndsAt: commitmentEndsAt(pricing, input.periodStart),
         },
