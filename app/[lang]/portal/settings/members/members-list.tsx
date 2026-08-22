@@ -200,10 +200,11 @@ export function MembersList({ organizationId }: MembersListProps) {
   )
 
   const unifiedData = useMemo<UnifiedMemberRow[]>(() => {
+    // eslint-disable-next-line react-hooks/purity
+    const now = Date.now()
     const existingMemberEmails = new Set(
       members.map((m) => m.email?.toLowerCase()).filter(Boolean)
     )
-
     const rows: UnifiedMemberRow[] = members.map((m) => ({
       id: `member-${m.id}`,
       membershipId: m.id,
@@ -229,7 +230,7 @@ export function MembersList({ organizationId }: MembersListProps) {
         /^user_/i,
         ""
       ) as TenantRole
-      const isExpired = inv.expiresAt ? Date.parse(inv.expiresAt) < 0 : false
+      const isExpired = inv.expiresAt ? Date.parse(inv.expiresAt) < now : false
 
       rows.push({
         id: `invitation-${inv.id}`,
