@@ -481,6 +481,21 @@ export const createAuthRoutes = (
         }
 
         try {
+          const userDetails = await fullService.getUserDetails(
+            authContext.userId
+          )
+          const ownsSession = userDetails.sessions.some(
+            (s) => s.id === params.sessionId
+          )
+          if (!ownsSession) {
+            set.status = 403
+            return {
+              ok: false as const,
+              error: "FORBIDDEN" as const,
+              message: "You can only revoke your own sessions.",
+            }
+          }
+
           await fullService.revokeUserSession(params.sessionId)
           return {
             ok: true as const,
