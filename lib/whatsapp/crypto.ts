@@ -19,7 +19,12 @@ const PBKDF2_ITERATIONS = 600_000
 export const getApiKeyHashSalt = (): string => {
   const salt = process.env.API_KEY_HASH_SALT?.trim()
   if (!salt) {
-    throw new Error("API_KEY_HASH_SALT environment variable is required")
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "API_KEY_HASH_SALT environment variable is required in production"
+      )
+    }
+    return "dev-salt-change-me"
   }
   return salt
 }
