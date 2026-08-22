@@ -25,6 +25,9 @@ function packageWithPricing() {
       },
     ],
     servicePlan: {
+      id: "plan-vpn",
+      isActive: true,
+      package: { code: "VPN", isActive: true },
       pricings: [
         {
           id: "price-monthly",
@@ -92,7 +95,19 @@ describe("VPN purchase order handoff", () => {
         findUnique: mock().mockResolvedValue({
           id: "price-annual",
           planId: "plan-vpn",
-          servicePlan: { id: "plan-vpn" },
+          type: "BUNDLE",
+          billingMode: "PACKAGE",
+          billingPeriod: "ANNUAL",
+          periodPrice: decimal("1000000"),
+          currency: "IDR",
+          effectiveFrom: new Date("2026-01-01T00:00:00Z"),
+          effectiveTo: null,
+          isActive: true,
+          servicePlan: {
+            id: "plan-vpn",
+            isActive: true,
+            package: { code: "VPN", isActive: true },
+          },
         }),
       },
       vpnSubscription: { findFirst },

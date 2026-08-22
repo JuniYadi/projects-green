@@ -30,23 +30,32 @@ const mockConversation: MockQuery = {
   update: mock(async () => ({ id: "conv-updated" })),
 }
 
-mock.module("@/lib/prisma", () => ({
-  prisma: {
-    whatsappMessage: mockMessage,
-    whatsappMessageStatus: mockStatus,
-    whatsappConversation: mockConversation,
-    whatsappWebhook: {
-      findMany: mock(async () => []),
+const mockBillingLedger = {
+  updateMany: mock(async () => ({ count: 1 })),
+}
+mock.module("@/lib/prisma", () => {
+  return {
+    prisma: {
+      whatsappMessage: mockMessage,
+      whatsappMessageStatus: mockStatus,
+      whatsappConversation: mockConversation,
+      whatsappWebhook: {
+        findMany: mock(async () => []),
+      },
+      whatsappContactGroup: {
+        findFirst: mock(async () => null),
+        create: mock(async () => ({ id: "group_default" })),
+      },
+      whatsappContact: {
+        upsert: mock(
+          async (args: { create?: unknown; update?: unknown }) =>
+            args.create ?? args.update ?? {}
+        ),
+      },
+      whatsappBillingLedger: mockBillingLedger,
     },
-    whatsappContactGroup: {
-      findFirst: mock(async () => null),
-      create: mock(async () => ({ id: "group_default" })),
-    },
-    whatsappContact: {
-      upsert: mock(async (args: any) => args.create ?? args.update ?? {}),
-    },
-  },
-}))
+  }
+})
 
 // ─── Imports under test ──────────────────────────────────────────────────────────
 
@@ -60,6 +69,8 @@ beforeEach(() => {
     m.create.mockClear()
     m.update.mockClear()
   }
+  mockBillingLedger.updateMany.mockClear()
+  mockBillingLedger.updateMany.mockResolvedValue({ count: 1 })
 
   // Silences console.warn during tests
   mockConsole()
@@ -155,6 +166,16 @@ describe("processDeliveryStatus", () => {
         }),
       })
     )
+    expect(mockBillingLedger.updateMany).toHaveBeenCalledWith({
+      where: {
+        waMessageId: sampleStatusSent.id,
+        status: "CHARGED_PENDING_VERIFY",
+      },
+      data: {
+        status: "CONFIRMED",
+        lastStatus: "SENT",
+      },
+    })
   })
 
   it("creates status record for 'delivered' status", async () => {
@@ -174,6 +195,16 @@ describe("processDeliveryStatus", () => {
         data: expect.objectContaining({ status: "DELIVERED" }),
       })
     )
+    expect(mockBillingLedger.updateMany).toHaveBeenCalledWith({
+      where: {
+        waMessageId: sampleStatusDelivered.id,
+        status: "CHARGED_PENDING_VERIFY",
+      },
+      data: {
+        status: "CONFIRMED",
+        lastStatus: "DELIVERED",
+      },
+    })
   })
 
   it("creates status record for 'read' status", async () => {
@@ -193,6 +224,16 @@ describe("processDeliveryStatus", () => {
         data: expect.objectContaining({ status: "READ" }),
       })
     )
+    expect(mockBillingLedger.updateMany).toHaveBeenCalledWith({
+      where: {
+        waMessageId: sampleStatusRead.id,
+        status: "CHARGED_PENDING_VERIFY",
+      },
+      data: {
+        status: "CONFIRMED",
+        lastStatus: "READ",
+      },
+    })
   })
 
   it("creates status record for 'failed' status with error details", async () => {

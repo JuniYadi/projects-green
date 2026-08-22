@@ -35,7 +35,7 @@ const args = [
   ...(coverage
     ? ["--coverage", "--coverage-reporter=text", "--coverage-reporter=lcov"]
     : []),
-  ...(suite === "component" ? testFiles : []),
+  ...testFiles,
   ...passthroughArgs,
 ]
 
