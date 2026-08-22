@@ -500,6 +500,6 @@ export const authService: AuthService = {
     }
   },
   async revokeUserSession(sessionId: string) {
-    await getWorkOS().userManagement.revokeSession(sessionId)
+    await getWorkOS().userManagement.revokeSession({ sessionId })
   },
 }
