@@ -14,6 +14,7 @@ import {
   findTenantInvitationByToken,
   getTenantOrganizationById,
 } from "@/modules/tenants/services/tenant-workos.service"
+import { APP_NAME } from "@/lib/app-config"
 
 type InvitePageProps = {
   params: Promise<{ lang: string }>
@@ -126,7 +127,7 @@ export default async function InvitePage({
             P
           </span>
           <span className="text-lg font-bold tracking-tight text-foreground">
-            PFN<span className="text-emerald-500">App</span>
+            {APP_NAME}
           </span>
         </a>
 
