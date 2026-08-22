@@ -230,6 +230,19 @@ export const createCatalogAdminRoutes = (deps: CatalogAdminRouteDeps = {}) => {
 
   return (
     new Elysia()
+      // ─── GET /admin/catalog/products ─────────────────────────────────
+      .get("/admin/catalog/products", async ({ set }) => {
+        const actor = await guard(set)
+        if ("ok" in actor && !actor.ok) return actor as AdminApiError
+
+        try {
+          const packages = await service.listAllPackages()
+          return { ok: true as const, products: packages }
+        } catch (error) {
+          return handleServiceError(set, error)
+        }
+      })
+
       // ─── GET /admin/catalog/products/:code ───────────────────────────
       .get("/admin/catalog/products/:code", async ({ params, set }) => {
         const actor = await guard(set)
