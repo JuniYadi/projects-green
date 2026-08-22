@@ -37,7 +37,17 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
   ArrowLeftIcon,
+  Copy,
   PlusIcon,
   TrashIcon,
   WarningIcon,
@@ -103,12 +113,23 @@ export default function ProductDetailPage() {
   const [provisioningFields, setProvisioningFields] = useState<
     ProvisioningField[]
   >([])
+  const [selectedFieldIndices, setSelectedFieldIndices] = useState<number[]>([])
+
   const [resourceEntries, setResourceEntries] = useState<
     Array<{ key: string; value: string }>
   >([])
+  const [selectedResourceIndices, setSelectedResourceIndices] = useState<
+    number[]
+  >([])
+
   const [prices, setPrices] = useState<AddonPricingForm[]>([])
   const [defaultCurrency, setDefaultCurrency] = useState<string>("IDR")
 
+  // Duplicate state
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false)
+  const [duplicateCode, setDuplicateCode] = useState("")
+  const [duplicateName, setDuplicateName] = useState("")
+  const [isDuplicating, setIsDuplicating] = useState(false)
   const loadProduct = useCallback(async () => {
     if (!catalogCode || !productCode || isNew) return
     setLoading(true)
@@ -358,6 +379,102 @@ export default function ProductDetailPage() {
     }
   }
 
+  const openDuplicateDialog = () => {
+    setDuplicateCode(`${productCode}_COPY`.toUpperCase())
+    setDuplicateName(`${name || productCode} (Copy)`)
+    setDuplicateDialogOpen(true)
+  }
+
+  const handleDuplicate = async () => {
+    const code = duplicateCode.trim().toUpperCase()
+    const newName = duplicateName.trim()
+    if (!code || !newName) {
+      toast.error("Product code and name are required.")
+      return
+    }
+    if (code === productCode) {
+      toast.error("New product code must be different from current product.")
+      return
+    }
+    setIsDuplicating(true)
+    try {
+      const resourcesObject: Record<string, unknown> = {}
+      for (const entry of resourceEntries) {
+        if (entry.key.trim()) {
+          const num = Number(entry.value)
+          resourcesObject[entry.key.trim()] = Number.isNaN(num)
+            ? entry.value
+            : num
+        }
+      }
+      if (provisioningFields.length > 0) {
+        resourcesObject._provisioningFields = provisioningFields
+      }
+
+      await upsertAdminCatalogProduct(catalogCode, code, {
+        name: newName,
+        code,
+        resources:
+          Object.keys(resourcesObject).length > 0 ? resourcesObject : undefined,
+        billingStrategy,
+        stockControl,
+        stockCount: stockControl === "TRACKED" ? stockCount : null,
+        allowBackorder,
+        isActive: true,
+        prices: prices.map((p) => ({
+          billingPeriod: p.billingPeriod,
+          currency: p.currency,
+          periodPrice: Number(p.amount) || 0,
+          effectiveFrom: new Date().toISOString().slice(0, 10),
+          effectiveTo: p.effectiveTo || null,
+          isActive: true,
+        })),
+      })
+      toast.success(`Product "${newName}" (${code}) duplicated successfully.`)
+      setDuplicateDialogOpen(false)
+      router.push(
+        `/portal/billing/catalog/${catalogCode.toLowerCase()}/products/${code.toLowerCase()}`
+      )
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to duplicate product"
+      toast.error(message)
+    } finally {
+      setIsDuplicating(false)
+    }
+  }
+
+  // Bulk delete handlers
+  const deleteSelectedFields = () => {
+    if (selectedFieldIndices.length === 0) return
+    const toRemove = new Set(selectedFieldIndices)
+    setProvisioningFields((prev) => prev.filter((_, idx) => !toRemove.has(idx)))
+    setSelectedFieldIndices([])
+  }
+
+  const toggleSelectAllFields = () => {
+    if (selectedFieldIndices.length === provisioningFields.length) {
+      setSelectedFieldIndices([])
+    } else {
+      setSelectedFieldIndices(provisioningFields.map((_, i) => i))
+    }
+  }
+
+  const deleteSelectedResources = () => {
+    if (selectedResourceIndices.length === 0) return
+    const toRemove = new Set(selectedResourceIndices)
+    setResourceEntries((prev) => prev.filter((_, idx) => !toRemove.has(idx)))
+    setSelectedResourceIndices([])
+  }
+
+  const toggleSelectAllResources = () => {
+    if (selectedResourceIndices.length === resourceEntries.length) {
+      setSelectedResourceIndices([])
+    } else {
+      setSelectedResourceIndices(resourceEntries.map((_, i) => i))
+    }
+  }
+
   const pricingColumns = useMemo<ColumnDef<AddonPricingForm>[]>(
     () => [
       {
@@ -535,70 +652,81 @@ export default function ProductDetailPage() {
         </div>
         <div className="flex items-center gap-3">
           {!isNew && (
-            <AlertDialog
-              open={deleteDialogOpen}
-              onOpenChange={setDeleteDialogOpen}
-            >
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  disabled={saving || deleting}
-                >
-                  <TrashIcon className="mr-1.5 h-4 w-4" />
-                  Delete Product
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="sm:max-w-md">
-                <AlertDialogHeader className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-                      <WarningIcon className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <AlertDialogTitle className="text-lg font-semibold">
-                        Delete product tier?
-                      </AlertDialogTitle>
-                      <p className="text-xs text-muted-foreground">
-                        Plan code:{" "}
-                        <span className="font-mono font-medium">
-                          {productCode}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                  <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
-                    This action will permanently delete product plan{" "}
-                    <strong className="font-semibold text-foreground">
-                      {product?.name || productCode}
-                    </strong>{" "}
-                    and all configured pricing terms.
-                  </AlertDialogDescription>
-                  <div className="rounded-md border border-amber-500/20 bg-amber-50/50 p-3 text-xs text-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
-                    <span className="font-semibold">Note:</span> If active
-                    subscriptions are using this plan, deletion will be blocked
-                    to protect historical ledger data. You should deactivate
-                    (archive) the product instead.
-                  </div>
-                </AlertDialogHeader>
-                <AlertDialogFooter className="mt-4 gap-2 sm:gap-0">
-                  <AlertDialogCancel disabled={deleting}>
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    variant="destructive"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      void handleDelete()
-                    }}
-                    disabled={deleting}
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openDuplicateDialog}
+                disabled={saving || deleting || isDuplicating}
+              >
+                <Copy className="mr-1.5 h-4 w-4" />
+                Duplicate
+              </Button>
+              <AlertDialog
+                open={deleteDialogOpen}
+                onOpenChange={setDeleteDialogOpen}
+              >
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    disabled={saving || deleting || isDuplicating}
                   >
-                    {deleting ? "Deleting..." : "Yes, Delete Plan"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                    <TrashIcon className="mr-1.5 h-4 w-4" />
+                    Delete Product
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="sm:max-w-md">
+                  <AlertDialogHeader className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                        <WarningIcon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <AlertDialogTitle className="text-lg font-semibold">
+                          Delete product tier?
+                        </AlertDialogTitle>
+                        <p className="text-xs text-muted-foreground">
+                          Plan code:{" "}
+                          <span className="font-mono font-medium">
+                            {productCode}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                    <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
+                      This action will permanently delete product plan{" "}
+                      <strong className="font-semibold text-foreground">
+                        {product?.name || productCode}
+                      </strong>{" "}
+                      and all configured pricing terms.
+                    </AlertDialogDescription>
+                    <div className="rounded-md border border-amber-500/20 bg-amber-50/50 p-3 text-xs text-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+                      <span className="font-semibold">Note:</span> If active
+                      subscriptions are using this plan, deletion will be
+                      blocked to protect historical ledger data. You should
+                      deactivate (archive) the product instead.
+                    </div>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="mt-4 gap-2 sm:gap-0">
+                    <AlertDialogCancel disabled={deleting}>
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        void handleDelete()
+                      }}
+                      disabled={deleting}
+                    >
+                      {deleting ? "Deleting..." : "Yes, Delete Plan"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
           )}
 
           <Button onClick={handleSave} disabled={saving || deleting}>
@@ -749,27 +877,41 @@ export default function ProductDetailPage() {
                   this plan.
                 </CardDescription>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setProvisioningFields((prev) => [
-                    ...prev,
-                    {
-                      id: `field-${crypto.randomUUID()}`,
-                      name: "",
-                      label: "",
-                      type: "text",
-                      placeholder: "",
-                      required: false,
-                    },
-                  ])
-                }
-              >
-                <PlusIcon className="mr-1.5 h-4 w-4" />
-                Add Form Field
-              </Button>
+              <div className="flex items-center gap-2">
+                {provisioningFields.length > 0 &&
+                  selectedFieldIndices.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={deleteSelectedFields}
+                    >
+                      <TrashIcon className="mr-1.5 h-4 w-4" />
+                      Delete Selected ({selectedFieldIndices.length})
+                    </Button>
+                  )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setProvisioningFields((prev) => [
+                      ...prev,
+                      {
+                        id: `field-${crypto.randomUUID()}`,
+                        name: "",
+                        label: "",
+                        type: "text",
+                        placeholder: "",
+                        required: false,
+                      },
+                    ])
+                  }
+                >
+                  <PlusIcon className="mr-1.5 h-4 w-4" />
+                  Add Form Field
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -780,12 +922,39 @@ export default function ProductDetailPage() {
               </p>
             ) : (
               <div className="space-y-3">
+                <div className="flex items-center justify-between border-b pb-2 text-xs text-muted-foreground">
+                  <label className="flex cursor-pointer items-center gap-2 font-medium">
+                    <Checkbox
+                      checked={
+                        selectedFieldIndices.length > 0 &&
+                        selectedFieldIndices.length ===
+                          provisioningFields.length
+                      }
+                      onCheckedChange={toggleSelectAllFields}
+                    />
+                    Select All Fields ({provisioningFields.length})
+                  </label>
+                </div>
                 {provisioningFields.map((field, idx) => (
                   <div
                     key={field.id || idx}
                     className="space-y-3 rounded-lg border bg-background p-3.5 shadow-xs"
                   >
                     <div className="flex flex-wrap items-center gap-3">
+                      <div className="pt-5">
+                        <Checkbox
+                          checked={selectedFieldIndices.includes(idx)}
+                          onCheckedChange={(checked) =>
+                            setSelectedFieldIndices((prev) =>
+                              checked
+                                ? [...prev, idx]
+                                : prev.filter((i) => i !== idx)
+                            )
+                          }
+                          aria-label={`Select field ${field.label || idx + 1}`}
+                        />
+                      </div>
+
                       <div className="min-w-[140px] flex-1 space-y-1">
                         <Label className="text-xs">Field Label *</Label>
                         <Input
@@ -874,11 +1043,16 @@ export default function ProductDetailPage() {
                         variant="ghost"
                         size="icon"
                         className="mt-5 h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() =>
+                        onClick={() => {
                           setProvisioningFields((prev) =>
                             prev.filter((_, i) => i !== idx)
                           )
-                        }
+                          setSelectedFieldIndices((prev) =>
+                            prev
+                              .filter((i) => i !== idx)
+                              .map((i) => (i > idx ? i - 1 : i))
+                          )
+                        }}
                         aria-label="Delete field"
                       >
                         <TrashIcon className="h-4 w-4" />
@@ -947,20 +1121,34 @@ export default function ProductDetailPage() {
                   dailyPerDevice).
                 </CardDescription>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setResourceEntries((prev) => [
-                    ...prev,
-                    { key: "", value: "" },
-                  ])
-                }
-              >
-                <PlusIcon className="mr-1.5 h-4 w-4" />
-                Add Resource
-              </Button>
+              <div className="flex items-center gap-2">
+                {resourceEntries.length > 0 &&
+                  selectedResourceIndices.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={deleteSelectedResources}
+                    >
+                      <TrashIcon className="mr-1.5 h-4 w-4" />
+                      Delete Selected ({selectedResourceIndices.length})
+                    </Button>
+                  )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setResourceEntries((prev) => [
+                      ...prev,
+                      { key: "", value: "" },
+                    ])
+                  }
+                >
+                  <PlusIcon className="mr-1.5 h-4 w-4" />
+                  Add Resource
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -971,11 +1159,38 @@ export default function ProductDetailPage() {
               </p>
             ) : (
               <div className="space-y-2">
+                <div className="flex items-center justify-between border-b pb-2 text-xs text-muted-foreground">
+                  <label className="flex cursor-pointer items-center gap-2 font-medium">
+                    <Checkbox
+                      checked={
+                        selectedResourceIndices.length > 0 &&
+                        selectedResourceIndices.length ===
+                          resourceEntries.length
+                      }
+                      onCheckedChange={toggleSelectAllResources}
+                    />
+                    Select All Resources ({resourceEntries.length})
+                  </label>
+                </div>
                 {resourceEntries.map((entry, idx) => (
                   <div
                     key={idx}
                     className="flex items-center gap-3 rounded-md border bg-background p-2.5"
                   >
+                    <div className="pt-5">
+                      <Checkbox
+                        checked={selectedResourceIndices.includes(idx)}
+                        onCheckedChange={(checked) =>
+                          setSelectedResourceIndices((prev) =>
+                            checked
+                              ? [...prev, idx]
+                              : prev.filter((i) => i !== idx)
+                          )
+                        }
+                        aria-label={`Select resource ${entry.key || idx + 1}`}
+                      />
+                    </div>
+
                     <div className="flex-1 space-y-1">
                       <Label className="text-xs text-muted-foreground">
                         Key / Attribute
@@ -1019,11 +1234,16 @@ export default function ProductDetailPage() {
                       variant="ghost"
                       size="icon"
                       className="mt-5 h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() =>
+                      onClick={() => {
                         setResourceEntries((prev) =>
                           prev.filter((_, i) => i !== idx)
                         )
-                      }
+                        setSelectedResourceIndices((prev) =>
+                          prev
+                            .filter((i) => i !== idx)
+                            .map((i) => (i > idx ? i - 1 : i))
+                        )
+                      }}
                       aria-label="Remove resource"
                     >
                       <TrashIcon className="h-4 w-4" />
@@ -1110,6 +1330,67 @@ export default function ProductDetailPage() {
           )}
         </CardContent>
       </Card>
+      {/* Modal Prompt for Duplicate Product */}
+      <Dialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Duplicate Product</DialogTitle>
+            <DialogDescription>
+              Create a clone of{" "}
+              <span className="font-semibold text-foreground">
+                {name || productCode}
+              </span>
+              . Enter a unique product code and name for the new copy.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleDuplicate()
+            }}
+            className="space-y-4 py-2"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="dup-product-code">New Product Code *</Label>
+              <Input
+                id="dup-product-code"
+                value={duplicateCode}
+                onChange={(e) => setDuplicateCode(e.target.value.toUpperCase())}
+                placeholder="e.g. STARTER_V2"
+                className="font-mono uppercase"
+                required
+                autoFocus
+              />
+              <p className="text-xs text-muted-foreground">
+                Must be unique within the {catalogCode} catalog.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dup-product-name">New Product Name *</Label>
+              <Input
+                id="dup-product-name"
+                value={duplicateName}
+                onChange={(e) => setDuplicateName(e.target.value)}
+                placeholder="e.g. Starter Plan (Copy)"
+                required
+              />
+            </div>
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDuplicateDialogOpen(false)}
+                disabled={isDuplicating}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isDuplicating}>
+                {isDuplicating ? "Duplicating..." : "Create Copy"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </main>
   )
 }
