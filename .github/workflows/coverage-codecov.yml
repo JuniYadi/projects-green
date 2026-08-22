@@ -87,8 +87,11 @@ jobs:
           name: ${{ github.event_name == 'push' && 'main-full-coverage' || 'pr-changed-coverage' }}
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+
       - name: Enforce test policy
         run: bun run test:policy
+
+  functional-smoke:
     name: Affected Functional Smoke
     if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
