@@ -59,10 +59,10 @@ type UnifiedMemberRow = {
   role: TenantRole | null
   status: "active" | "pending_invite" | "expired" | "inactive"
   date: string | null
+  lastSignInAt?: string | null
   invitationId?: string
   membershipId?: string
 }
-
 type MembersListProps = {
   organizationId: string
 }
@@ -216,6 +216,7 @@ export function MembersList({ organizationId }: MembersListProps) {
         ? "active"
         : "inactive") as UnifiedMemberRow["status"],
       date: m.createdAt,
+      lastSignInAt: m.lastSignInAt || m.profile?.lastSignInAt || null,
     }))
 
     invitations.forEach((inv) => {
@@ -240,12 +241,12 @@ export function MembersList({ organizationId }: MembersListProps) {
         role: roleSlugCleaned,
         status: isExpired ? "expired" : "pending_invite",
         date: inv.createdAt,
+        lastSignInAt: null,
       })
     })
 
     return rows
   }, [members, invitations])
-
   const columns = useMemo<ColumnDef<UnifiedMemberRow>[]>(
     () => [
       {
@@ -318,15 +319,29 @@ export function MembersList({ organizationId }: MembersListProps) {
         },
       },
       {
-        id: "date",
+        id: "createdAt",
         accessorKey: "date",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Date" />
+          <DataTableColumnHeader column={column} title="Created" />
         ),
         cell: ({ row }) => (
-          <span className="text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             {row.original.date
               ? new Date(row.original.date).toLocaleDateString()
+              : "-"}
+          </span>
+        ),
+      },
+      {
+        id: "lastSignInAt",
+        accessorKey: "lastSignInAt",
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Last Sign-in" />
+        ),
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">
+            {row.original.lastSignInAt
+              ? new Date(row.original.lastSignInAt).toLocaleDateString()
               : "-"}
           </span>
         ),
