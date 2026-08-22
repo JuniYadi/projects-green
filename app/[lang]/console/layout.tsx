@@ -26,6 +26,7 @@ import { BillingBalanceGateBanner } from "@/components/billing-balance-gate-bann
 import { formatBillingMoney } from "@/modules/billing/format-money"
 import { headers } from "next/headers"
 import { readFunctionalTestIdentity } from "@/lib/auth/functional-test-session"
+import { resolveFirstActiveOrganization } from "@/lib/whatsapp/resolvers"
 
 const ONBOARDING_PATH = "/onboarding/organization"
 
@@ -45,8 +46,16 @@ export default async function ConsoleLayout({
   const auth = functionalIdentity ?? (await withAuth({ ensureSignedIn: true }))
   const consolePath = localizePathname({ pathname: "/console", locale })
   const portalPath = localizePathname({ pathname: "/portal", locale })
+  let activeOrgId = auth.organizationId
 
-  if (!auth.organizationId) {
+  if (!activeOrgId && !functionalIdentity) {
+    const fallbackOrg = await resolveFirstActiveOrganization(auth.user.id)
+    if (fallbackOrg?.organizationId) {
+      activeOrgId = fallbackOrg.organizationId
+    }
+  }
+
+  if (!activeOrgId) {
     const onboardingPath = localizePathname({
       pathname: ONBOARDING_PATH,
       locale,
@@ -74,8 +83,8 @@ export default async function ConsoleLayout({
       }
     : resolveSidebarUser(await getLatestWorkOSUser(auth.user))
   const sidebarOrganization = functionalIdentity
-    ? { id: auth.organizationId, name: "Functional Test Organization" }
-    : await resolveSidebarOrganization(auth.organizationId)
+    ? { id: activeOrgId, name: "Functional Test Organization" }
+    : await resolveSidebarOrganization(activeOrgId)
 
   // JIT guarantee: every org reaching the console has a billing account, so the
   // "missing account" state is impossible by the time a purchase is attempted.
@@ -85,7 +94,7 @@ export default async function ConsoleLayout({
   if (!functionalIdentity) {
     try {
       const account = await ensureBillingAccountForOrg({
-        organizationId: auth.organizationId,
+        organizationId: activeOrgId,
         getOrganizationAction: (orgId) =>
           getWorkOS().organizations.getOrganization(orgId),
       })
@@ -102,7 +111,7 @@ export default async function ConsoleLayout({
       }
     } catch (error) {
       console.error("[ConsoleLayout] ensureBillingAccount failed", {
-        organizationId: auth.organizationId,
+        organizationId: activeOrgId,
         error: error instanceof Error ? error.message : "Unknown error",
       })
     }
