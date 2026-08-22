@@ -161,8 +161,11 @@ export const resolveApiKey = async (
 }
 
 export const extractBearerToken = (request: Request): string | null => {
-  const auth = request.headers.get("Authorization") ?? ""
-  if (!auth.startsWith("Bearer ")) return null
-  const token = auth.slice(7).trim()
-  return token || null
+  const auth =
+    request.headers.get("authorization") ??
+    request.headers.get("Authorization") ??
+    ""
+  const match = /^bearer\s+(.+)$/i.exec(auth.trim())
+  if (!match) return null
+  return match[1].trim() || null
 }
