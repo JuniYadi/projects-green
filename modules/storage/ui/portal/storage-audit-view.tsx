@@ -52,8 +52,7 @@ export function StorageAuditView() {
   const [statusFilter, setStatusFilter] = React.useState<string>("ALL")
   const [page, setPage] = React.useState(1)
   const [total, setTotal] = React.useState(0)
-
-  // Preview & Delete modals state
+  const [refreshKey, setRefreshKey] = React.useState(0)
   const [previewFile, setPreviewFile] = React.useState<StorageFileDTO | null>(
     null
   )
@@ -63,38 +62,6 @@ export function StorageAuditView() {
     null
   )
   const [deleting, setDeleting] = React.useState(false)
-
-  const reloadData = React.useCallback(() => {
-    fetch("/api/portal/storage/metrics")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data) setMetrics(data)
-      })
-      .catch(() => {})
-
-    setLoading(true)
-    const params = new URLSearchParams()
-    params.set("page", page.toString())
-    params.set("pageSize", "15")
-    if (search.trim()) params.set("search", search.trim())
-    if (statusFilter !== "ALL") params.set("status", statusFilter)
-
-    fetch(`/api/portal/storage/files?${params.toString()}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data) {
-          setFiles(data.items || [])
-          setTotal(data.total || 0)
-        }
-      })
-      .catch(() => {
-        toast.error("Failed to load storage files")
-      })
-      .finally(() => {
-        setLoading(false)
-      })
-  }, [page, search, statusFilter])
-
   React.useEffect(() => {
     let ignore = false
     const run = async () => {
@@ -124,7 +91,7 @@ export function StorageAuditView() {
     return () => {
       ignore = true
     }
-  }, [page, search, statusFilter])
+  }, [page, search, statusFilter, refreshKey])
 
   const handleOpenPreview = async (file: StorageFileDTO) => {
     setPreviewFile(file)
@@ -156,7 +123,7 @@ export function StorageAuditView() {
       if (res.ok) {
         toast.success(`File ${deleteTarget.originalFilename} deleted from S3`)
         setDeleteTarget(null)
-        reloadData()
+        setRefreshKey((k) => k + 1)
       } else {
         toast.error("Failed to force delete file")
       }
