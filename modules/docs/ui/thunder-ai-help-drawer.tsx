@@ -362,6 +362,18 @@ export function ThunderAiHelpDrawer() {
     }
     return []
   })
+  const [sessionId, setSessionId] = useState<string>(() => {
+    if (typeof window === "undefined") return ""
+    try {
+      const savedSessionId = sessionStorage.getItem("pfn_tanya_p_session_id")
+      if (savedSessionId) return savedSessionId
+      const newId = `sess_${crypto.randomUUID()}`
+      sessionStorage.setItem("pfn_tanya_p_session_id", newId)
+      return newId
+    } catch {
+      return `sess_${Date.now()}`
+    }
+  })
   const [input, setInput] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [chatError, setChatError] = useState<string | null>(null)
@@ -396,11 +408,13 @@ export function ThunderAiHelpDrawer() {
     setMessages([])
     try {
       sessionStorage.removeItem("pfn_tanya_p_chat")
+      const nextSessionId = `sess_${crypto.randomUUID()}`
+      sessionStorage.setItem("pfn_tanya_p_session_id", nextSessionId)
+      setSessionId(nextSessionId)
     } catch {
       // Ignore
     }
   }
-
   // Scroll to bottom on messages update
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -558,6 +572,7 @@ export function ThunderAiHelpDrawer() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          sessionId,
           messages: [
             ...normalizedMessages,
             { role: "user", content: trimmedInput },

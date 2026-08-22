@@ -234,6 +234,7 @@ describe("resolveSidebarMenu", () => {
       "App Hosting",
       "VPN",
       "WhatsApp",
+      "AI Governance",
       "Settings",
     ])
     expect(navMain.map((item) => item.title)).not.toContain("Documentation")
@@ -263,6 +264,7 @@ describe("resolveSidebarMenu", () => {
       "App Hosting",
       "VPN",
       "WhatsApp",
+      "AI Governance",
       "Settings",
     ])
   })

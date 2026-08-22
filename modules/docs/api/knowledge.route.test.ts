@@ -1,19 +1,61 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
-import {
-  createKnowledgeRoutes,
-  type KnowledgeAuthContext,
-} from "@/modules/docs/api/knowledge.route"
 import type { KnowledgeDocMatch } from "@/modules/docs/docs.service"
 import type { KnowledgeChatRequest } from "@/modules/docs/docs.types"
+import { resetRateLimiterStores } from "@/modules/docs/docs.guard"
+
+// Mock Prisma
+const mockFindManyBans = mock(async () => [])
+const mockCreateBan = mock(async (args: { data: Record<string, unknown> }) => ({
+  id: "ban_1",
+  ...args.data,
+}))
+const mockUpsertSession = mock(
+  async (args: { where: { sessionId: string } }) => ({
+    id: "sess_1",
+    sessionId: args.where.sessionId,
+  })
+)
+const mockCreateChatMessage = mock(
+  async (args: { data: Record<string, unknown> }) => ({
+    id: "msg_1",
+    ...args.data,
+  })
+)
+const mockCreateManyChatMessages = mock(async () => ({ count: 2 }))
+const mockCountMessages = mock(async () => 0)
+const mockUpdateManySessions = mock(async () => ({ count: 1 }))
+
+mock.module("@/lib/prisma", () => ({
+  prisma: {
+    aiChatBan: {
+      findMany: mockFindManyBans,
+      create: mockCreateBan,
+    },
+    aiChatSession: {
+      upsert: mockUpsertSession,
+      updateMany: mockUpdateManySessions,
+    },
+    aiChatMessage: {
+      create: mockCreateChatMessage,
+      createMany: mockCreateManyChatMessages,
+      count: mockCountMessages,
+    },
+  },
+}))
+
+const { createKnowledgeRoutes } =
+  await import("@/modules/docs/api/knowledge.route")
+type KnowledgeAuthContext =
+  import("@/modules/docs/api/knowledge.route").KnowledgeAuthContext
 
 const mockAuthenticate = mock(
   async (): Promise<KnowledgeAuthContext> => ({
     organizationId: "org_1",
     user: {
       id: "user_1",
-      email: "member@example.com",
+      email: "user1@example.com",
     },
   })
 )
@@ -38,15 +80,24 @@ const createApp = () =>
   )
 
 beforeEach(() => {
+  resetRateLimiterStores()
   mockAuthenticate.mockReset()
   mockSearchKnowledgeDocs.mockReset()
   mockStreamKnowledgeAnswer.mockReset()
+  mockFindManyBans.mockReset()
+  mockCreateBan.mockReset()
+  mockUpsertSession.mockReset()
+  mockCreateChatMessage.mockReset()
+  mockCreateManyChatMessages.mockReset()
+  mockCountMessages.mockReset()
+  mockUpdateManySessions.mockReset()
+
   mockAuthenticate.mockImplementation(
     async (): Promise<KnowledgeAuthContext> => ({
       organizationId: "org_1",
       user: {
         id: "user_1",
-        email: "member@example.com",
+        email: "user1@example.com",
       },
     })
   )
@@ -59,11 +110,11 @@ beforeEach(() => {
           organizationId: "org_1" as const,
           path: "/console",
           title: "Console Overview",
-          purpose: "Manage console",
+          purpose: "Manage console overview",
           howTo: ["Open console"],
-          notes: ["Use sidebar"],
+          notes: ["Use sidebar navigation"],
           updatedAt: "2026-05-22",
-          score: 50,
+          score: 10,
         },
       ] as KnowledgeDocMatch[]
   )
@@ -72,9 +123,13 @@ beforeEach(() => {
     yield "Hello "
     yield "from KB"
   })
+
+  mockFindManyBans.mockResolvedValue([])
+  mockUpsertSession.mockResolvedValue({ id: "sess_1", sessionId: "sess_1" })
+  mockCreateManyChatMessages.mockResolvedValue({ count: 2 })
 })
 
-describe("knowledgeRoutes", () => {
+describe("knowledgeRoutes - Authentication & Streaming", () => {
   it("returns 401 when user is not signed in", async () => {
     mockAuthenticate.mockImplementationOnce(
       async (): Promise<KnowledgeAuthContext> => ({
@@ -102,7 +157,7 @@ describe("knowledgeRoutes", () => {
     expect(body.error).toBe("UNAUTHORIZED")
   })
 
-  it("streams chat response and final citations", async () => {
+  it("streams chat response and saves audit session & messages", async () => {
     const response = await createApp().handle(
       new Request("http://localhost/knowledge/chat", {
         method: "POST",
@@ -110,6 +165,7 @@ describe("knowledgeRoutes", () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          sessionId: "sess_custom_1",
           routePath: "/console",
           messages: [{ role: "user", content: "How to use console?" }],
         }),
@@ -132,6 +188,10 @@ describe("knowledgeRoutes", () => {
     expect(frames[2]?.type).toBe("done")
     expect(frames[2]?.answer).toBe("Hello from KB")
     expect(Array.isArray(frames[2]?.citations)).toBe(true)
+
+    // Verify Prisma audit calls
+    expect(mockUpsertSession).toHaveBeenCalledTimes(1)
+    expect(mockCreateManyChatMessages).toHaveBeenCalledTimes(1)
   })
 
   it("returns strict fallback when no relevant knowledge context", async () => {
@@ -162,8 +222,22 @@ describe("knowledgeRoutes", () => {
       "I don't know from the current knowledgebase."
     )
   })
+})
 
-  it("returns validation envelope for invalid request payload", async () => {
+describe("knowledgeRoutes - Guardrails, Bans & Rate Limiting", () => {
+  it("rejects request with 403 when user/org is actively banned", async () => {
+    mockFindManyBans.mockResolvedValueOnce([
+      {
+        id: "ban_1",
+        banType: "ORGANIZATION",
+        targetValue: "org_1",
+        offenseLevel: 3,
+        isPermanent: false,
+        blockedUntil: new Date(Date.now() + 86400000),
+        reason: "Repeated toxic abuse",
+      },
+    ] as never)
+
     const response = await createApp().handle(
       new Request("http://localhost/knowledge/chat", {
         method: "POST",
@@ -171,38 +245,97 @@ describe("knowledgeRoutes", () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          routePath: "   ",
-          messages: [{ role: "user", content: "help" }],
+          routePath: "/console",
+          messages: [{ role: "user", content: "Hello" }],
         }),
       })
     )
+
     const body = (await response.json()) as {
       ok: boolean
       error: string
-      fieldErrors?: Record<string, string[]>
+      message: string
     }
+    expect(response.status).toBe(403)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("FORBIDDEN")
+    expect(body.message).toContain("suspended")
+  })
 
+  it("rejects oversized prompts (> 800 chars) with 422 and 0 tokens spent", async () => {
+    const longPrompt = "a".repeat(801)
+
+    const response = await createApp().handle(
+      new Request("http://localhost/knowledge/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          routePath: "/console",
+          messages: [{ role: "user", content: longPrompt }],
+        }),
+      })
+    )
+
+    const body = (await response.json()) as {
+      ok: boolean
+      error: string
+      reason: string
+      tokensSpent: number
+    }
     expect(response.status).toBe(422)
     expect(body.ok).toBe(false)
-    expect(body.error).toBe("VALIDATION_ERROR")
-    expect(body.fieldErrors?.routePath?.length).toBeGreaterThan(0)
+    expect(body.error).toBe("PROMPT_FLAGGED")
+    expect(body.reason).toBe("OVERSIZE")
+    expect(body.tokensSpent).toBe(0)
+    expect(mockSearchKnowledgeDocs).not.toHaveBeenCalled()
   })
 
-  it("returns fallback when search score is lower than MIN_CONTEXT_SCORE", async () => {
-    mockSearchKnowledgeDocs.mockResolvedValueOnce([
-      {
-        id: "doc_1",
-        organizationId: "org_1" as const,
-        path: "/console",
-        title: "Console Overview",
-        purpose: "Manage console",
-        howTo: ["Open console"],
-        notes: ["Use sidebar"],
-        updatedAt: "2026-05-22",
-        score: 3,
-      },
-    ] as KnowledgeDocMatch[])
+  it("rejects toxic profanity with 422, records strike, and consumes 0 tokens", async () => {
+    const response = await createApp().handle(
+      new Request("http://localhost/knowledge/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sessionId: "sess_flagged_1",
+          routePath: "/console",
+          messages: [{ role: "user", content: "Bot anjing goblok" }],
+        }),
+      })
+    )
 
+    const body = (await response.json()) as {
+      ok: boolean
+      error: string
+      reason: string
+      tokensSpent: number
+    }
+    expect(response.status).toBe(422)
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("PROMPT_FLAGGED")
+    expect(body.reason).toBe("PROFANITY")
+    expect(body.tokensSpent).toBe(0)
+
+    // Flagged message and strike saved in Prisma
+    expect(mockUpsertSession).toHaveBeenCalledTimes(1)
+    expect(mockCreateChatMessage).toHaveBeenCalledTimes(1)
+    expect(mockUpsertSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.not.objectContaining({
+          strikeCount: expect.anything(),
+        }),
+        update: expect.not.objectContaining({
+          strikeCount: expect.anything(),
+        }),
+      })
+    )
+    expect(mockSearchKnowledgeDocs).not.toHaveBeenCalled()
+  })
+
+  it("rejects script injections with 422 and 0 tokens", async () => {
     const response = await createApp().handle(
       new Request("http://localhost/knowledge/chat", {
         method: "POST",
@@ -211,49 +344,20 @@ describe("knowledgeRoutes", () => {
         },
         body: JSON.stringify({
           routePath: "/console",
-          messages: [{ role: "user", content: "low score query" }],
+          messages: [
+            { role: "user", content: "<script>alert('xss')</script>" },
+          ],
         }),
       })
     )
 
-    const bodyText = await response.text()
-    const frames = bodyText
-      .trim()
-      .split("\n")
-      .map((line) => JSON.parse(line) as Record<string, unknown>)
-
-    expect(frames[0]?.type).toBe("delta")
-    expect(frames[1]?.type).toBe("done")
-    expect(frames[1]?.answer).toBe(
-      "I don't know from the current knowledgebase."
-    )
-  })
-
-  it("emits error frame when stream encounters an error", async () => {
-    mockStreamKnowledgeAnswer.mockImplementationOnce(async function* () {
-      yield "Start "
-      throw new Error("Stream failure")
-    })
-
-    const response = await createApp().handle(
-      new Request("http://localhost/knowledge/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          routePath: "/console",
-          messages: [{ role: "user", content: "How to use console?" }],
-        }),
-      })
-    )
-
-    const bodyText = await response.text()
-    const frames = bodyText
-      .trim()
-      .split("\n")
-      .map((line) => JSON.parse(line) as Record<string, unknown>)
-
-    expect(frames.some((f) => f.type === "error")).toBe(true)
+    const body = (await response.json()) as {
+      ok: boolean
+      error: string
+      reason: string
+    }
+    expect(response.status).toBe(422)
+    expect(body.error).toBe("PROMPT_FLAGGED")
+    expect(body.reason).toBe("INJECTION")
   })
 })

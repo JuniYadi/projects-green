@@ -28,6 +28,19 @@ mock.module("@/lib/prisma", () => ({
       create: docsKnowledgeDocumentCreate,
       update: docsKnowledgeDocumentUpdate,
     },
+    aiChatBan: {
+      findMany: mock(async () => []),
+      create: mock(async (args: unknown) => args),
+    },
+    aiChatSession: {
+      upsert: mock(async (args: unknown) => args),
+      updateMany: mock(async () => ({ count: 1 })),
+    },
+    aiChatMessage: {
+      create: mock(async (args: unknown) => args),
+      createMany: mock(async () => ({ count: 1 })),
+      count: mock(async () => 0),
+    },
   },
 }))
 

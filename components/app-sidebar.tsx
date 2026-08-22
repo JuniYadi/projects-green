@@ -906,6 +906,12 @@ const buildPortalNavMain = (
     isActive: startsWithRoute(pathname, "/portal/whatsapp"),
   },
   {
+    title: "AI Governance",
+    url: localizePathname({ pathname: "/portal/ai", locale }),
+    icon: <ShieldCheckIcon />,
+    isActive: startsWithRoute(pathname, "/portal/ai"),
+  },
+  {
     title: "Settings",
     url: localizePathname({ pathname: "/portal/settings/emails", locale }),
     icon: <GearSixIcon />,

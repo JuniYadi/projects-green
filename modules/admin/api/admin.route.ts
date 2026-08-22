@@ -12,6 +12,7 @@ import { detectorAdminRoutes } from "@/modules/framework-detection/api/detector-
 import { createAdminAppHostingClusterRoutes } from "@/modules/admin/api/routes/admin-app-hosting-clusters.route"
 import { createAdminWhatsappOrganizationApiKeyRoutes } from "@/modules/whatsapp/organization-api-keys/api/organization-api-keys.route"
 import { createWhatsappAuditRoutes } from "@/modules/whatsapp/audit/api/whatsapp-audit.route"
+import { createAdminAiRoutes } from "@/modules/docs/api/admin-ai.route"
 export const adminRoutes = new Elysia()
   .use(createAdminOrganizationsRoutes())
   .use(createAdminInvitationsRoutes())
@@ -23,3 +24,4 @@ export const adminRoutes = new Elysia()
   .use(createWhatsappAuditRoutes())
   .use(detectorAdminRoutes)
   .use(createAdminAppHostingClusterRoutes())
+  .use(createAdminAiRoutes())

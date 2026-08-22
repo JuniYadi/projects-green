@@ -98,6 +98,186 @@ model DocsKnowledgeDocument {
   @@map("KnowledgeDocument")
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// AI & AGENT ENGINE (Enterprise Guardrails, Multi-Channel & Governance)
+// ══════════════════════════════════════════════════════════════════════════════
+
+model AiAgentProfile {
+  id                   String                 @id @default(cuid())
+  organizationId       String?                // NULL = Master Default / PFNApp Default, OrgID = Tenant Master
+  name                 String                 @default("Tanya P")
+  description          String?
+  systemPrompt         String                 @db.Text
+  fallbackMessage      String                 @default("Maaf, pertanyaan Anda akan kami teruskan ke tim CS kami.")
+  dailyUserLimit       Int                    @default(20)
+  maxCharLength        Int                    @default(800)
+  enableProfanityFilter Boolean               @default(true)
+  customBlockedWords   String[]               @default([])
+  enableIpProtection   Boolean                @default(true)
+  strikeEscalation     Boolean                @default(true)
+  isActive             Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  channelBindings      AiChannelBinding[]
+  knowledgeDocuments   AiKnowledgeDocument[]
+  chatSessions         AiChatSession[]
+
+  @@index([organizationId, isActive])
+  @@map("AiAgentProfile")
+}
+
+model AiKnowledgeDocument {
+  id              String           @id @default(cuid())
+  organizationId  String?          // NULL = PFNApp internal console docs, OrgID = Tenant doc
+  agentProfileId  String?
+  title           String
+  purpose         String
+  category        String           @default("General")
+  sourceType      String           @default("PDF") // "PDF" | "DOCX" | "URL_FIRECRAWL" | "MANUAL"
+  sourceUrl       String?
+  status          String           @default("READY") // "QUEUED" | "PROCESSING" | "READY" | "FAILED"
+  errorMessage    String?
+  contentMarkdown String?          @db.Text
+  contentHash     String?
+  pageCount       Int              @default(1)
+  chunkIndex      Int              @default(0)
+  parentChunkId   String?
+  isPublic        Boolean          @default(true)
+  howTo           String[]         @default([])
+  notes           String[]         @default([])
+  searchText      String           @db.Text
+  embedding       Float[]          @default([])
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  agentProfile    AiAgentProfile?  @relation(fields: [agentProfileId], references: [id], onDelete: Cascade)
+
+  @@index([agentProfileId])
+  @@index([organizationId, status])
+  @@map("AiKnowledgeDocument")
+}
+
+model AiChannelBinding {
+  id                   String           @id @default(cuid())
+  organizationId       String
+  agentProfileId       String
+  channel              String           // "WHATSAPP" | "WEB_LIVECHAT" | "TELEGRAM" | "DISCORD" | "CONSOLE"
+  targetId             String           // Device ID, Web Widget ID, Telegram Bot ID, etc.
+  targetName           String?
+  isOverridden         Boolean          @default(false)
+  customSystemPrompt   String?          @db.Text
+  customDailyUserLimit Int?
+  customBlockedWords   String[]         @default([])
+  isActive             Boolean          @default(true)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  agentProfile         AiAgentProfile   @relation(fields: [agentProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([channel, targetId])
+  @@index([organizationId, channel])
+  @@map("AiChannelBinding")
+}
+
+model AiChatSession {
+  id                String           @id @default(cuid())
+  sessionId         String           @unique
+  organizationId    String?
+  agentProfileId    String?
+  channel           String           @default("CONSOLE") // "CONSOLE" | "WHATSAPP" | "WEB_LIVECHAT" | "TELEGRAM"
+  channelTargetId   String?          // Device ID WA, Web Widget ID
+  userId            String?
+  userEmail         String?
+  customerPhone     String?          // Phone number if via WhatsApp
+  externalUserId    String?          // Visitor ID / Telegram Chat ID
+  ipAddress         String?
+  userAgent         String?
+  totalMessages     Int              @default(0)
+  totalTokens       Int              @default(0)
+  strikeCount       Int              @default(0)
+  isBlocked         Boolean          @default(false)
+  blockReason       String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  messages          AiChatMessage[]
+  agentProfile      AiAgentProfile?  @relation(fields: [agentProfileId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([agentProfileId, createdAt])
+  @@index([channel, channelTargetId])
+  @@index([customerPhone, createdAt])
+  @@index([ipAddress, createdAt])
+  @@map("AiChatSession")
+}
+
+model AiChatMessage {
+  id             String           @id @default(cuid())
+  sessionId      String
+  role           String           // "user" | "assistant"
+  content        String           @db.Text
+  routePath      String?
+  promptTokens   Int              @default(0)
+  responseTokens Int              @default(0)
+  modelName      String?
+  durationMs     Int?
+  citations      String[]         @default([])
+  isFlagged      Boolean          @default(false)
+  flagReason     String?          // "PROFANITY" | "SPAM" | "OVERSIZE" | "INJECTION" | "IP_FLOOD"
+  createdAt      DateTime         @default(now())
+
+  session        AiChatSession    @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@index([isFlagged, createdAt])
+  @@map("AiChatMessage")
+}
+
+model AiChatBan {
+  id             String           @id @default(cuid())
+  banType        String           @default("ORGANIZATION") // "IP" | "USER" | "ORGANIZATION" | "PHONE"
+  targetValue    String           // IP Address, User ID, Org ID, or Customer Phone
+  organizationId String?
+  userId         String?
+  ipAddress      String?
+  customerPhone  String?
+  offenseLevel   Int              @default(1) // 1=1h, 2=12h, 3=24h, 4=7d, 5=Permanent
+  isPermanent    Boolean          @default(false)
+  blockedUntil   DateTime?
+  reason         String?
+  strikeSnapshot Int              @default(0)
+  pardonedAt     DateTime?
+  pardonedBy     String?          // Admin user ID who pardoned
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([banType, targetValue, isPermanent, blockedUntil])
+  @@index([organizationId, isPermanent, blockedUntil])
+  @@index([ipAddress, isPermanent, blockedUntil])
+  @@index([userId, isPermanent, blockedUntil])
+  @@map("AiChatBan")
+}
+
+model AiProviderConfig {
+  id             String           @id @default(cuid())
+  organizationId String
+  name           String
+  providerType   String           // "OPENAI_COMPATIBLE" | "ANTHROPIC" | "MANAGED"
+  baseUrl        String?
+  defaultModel   String
+  vaultPath      String
+  vaultKey       String           @default("API_KEY")
+  isConfigured   Boolean          @default(true)
+  isDefault      Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([organizationId, name])
+  @@index([organizationId, isDefault])
+  @@map("AiProviderConfig")
+}
+
 model GithubInstallStateNonce {
   id             String    @id @default(cuid())
   nonceHash      String    @unique
