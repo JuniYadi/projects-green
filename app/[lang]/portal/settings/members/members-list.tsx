@@ -325,11 +325,18 @@ export function MembersList({ organizationId }: MembersListProps) {
           <DataTableColumnHeader column={column} title="Created" />
         ),
         cell: ({ row }) => {
-          if (!row.original.date)
+          if (!row.original.date) {
             return <span className="text-muted-foreground">-</span>
+          }
           const d = new Date(row.original.date)
-          const pad = (n: number) => n.toString().padStart(2, "0")
-          const formatted = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+          const formatted = new Intl.DateTimeFormat(undefined, {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }).format(d)
           return (
             <span className="text-xs text-muted-foreground">{formatted}</span>
           )
@@ -342,11 +349,18 @@ export function MembersList({ organizationId }: MembersListProps) {
           <DataTableColumnHeader column={column} title="Last Sign-in" />
         ),
         cell: ({ row }) => {
-          if (!row.original.lastSignInAt)
+          if (!row.original.lastSignInAt) {
             return <span className="text-muted-foreground">-</span>
+          }
           const d = new Date(row.original.lastSignInAt)
-          const pad = (n: number) => n.toString().padStart(2, "0")
-          const formatted = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+          const formatted = new Intl.DateTimeFormat(undefined, {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }).format(d)
           return (
             <span className="text-xs text-muted-foreground">{formatted}</span>
           )
