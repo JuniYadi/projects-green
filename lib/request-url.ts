@@ -89,12 +89,14 @@ export const isSecureRequest = (
     }
   }
 
-  if (request && "headers" in request && request.headers) {
-    const forwardedProto =
-      request.headers.get("x-forwarded-proto") ||
-      request.headers.get("x-forwarded-protocol")
-    if (forwardedProto) {
-      return forwardedProto === "https"
+  if (request && typeof request === "object") {
+    const headers = "headers" in request ? request.headers : undefined
+    if (headers && typeof headers.get === "function") {
+      const forwardedProto =
+        headers.get("x-forwarded-proto") || headers.get("x-forwarded-protocol")
+      if (forwardedProto) {
+        return forwardedProto === "https"
+      }
     }
   }
 

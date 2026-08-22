@@ -210,6 +210,10 @@ describe("authService", () => {
       expect(call && "invitationToken" in call).toBe(false)
     })
     it("sets Secure on session cookie when request has x-forwarded-proto https", async () => {
+      const originalAppUrl = process.env.APP_URL
+      const originalNextPublicAppUrl = process.env.NEXT_PUBLIC_APP_URL
+      delete process.env.APP_URL
+      delete process.env.NEXT_PUBLIC_APP_URL
       mockAuthenticateWithMagicAuth.mockImplementation(async () => ({
         sealedSession: "sealed_session_token",
       }))
@@ -226,6 +230,9 @@ describe("authService", () => {
       })
       const cookie = res.headers.get("set-cookie") || ""
       expect(cookie).toContain("Secure")
+      if (originalAppUrl !== undefined) process.env.APP_URL = originalAppUrl
+      if (originalNextPublicAppUrl !== undefined)
+        process.env.NEXT_PUBLIC_APP_URL = originalNextPublicAppUrl
     })
 
     it("throws MissingAuthConfigurationError when env is missing", async () => {

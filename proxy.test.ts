@@ -24,9 +24,11 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
 import proxy from "./proxy"
 describe("proxy middleware", () => {
   const originalAppUrl = process.env.APP_URL
+  const originalNextPublicAppUrl = process.env.NEXT_PUBLIC_APP_URL
 
   beforeEach(() => {
     delete process.env.APP_URL
+    delete process.env.NEXT_PUBLIC_APP_URL
   })
 
   afterEach(() => {
@@ -34,6 +36,11 @@ describe("proxy middleware", () => {
       process.env.APP_URL = originalAppUrl
     } else {
       delete process.env.APP_URL
+    }
+    if (originalNextPublicAppUrl !== undefined) {
+      process.env.NEXT_PUBLIC_APP_URL = originalNextPublicAppUrl
+    } else {
+      delete process.env.NEXT_PUBLIC_APP_URL
     }
   })
 
