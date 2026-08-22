@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useCallback } from "react"
 import Link from "next/link"
 import { useSearchParams, useParams } from "next/navigation"
 
@@ -158,8 +158,9 @@ export default function AddonEditorPage() {
   const isNew = searchParams.get("new") === "true" || !addonCode
 
   const addonQuery = useAdminAddonQuery(addonCode)
-  const initialAddon = isNew
-    ? {
+  const initialAddon = useMemo(() => {
+    if (isNew) {
+      return {
         id: `new-${addonCode ?? crypto.randomUUID()}`,
         code: "",
         name: "",
@@ -168,9 +169,12 @@ export default function AddonEditorPage() {
         isActive: true,
         prices: [],
       }
-    : addonQuery.data?.addon
+    }
+    return addonQuery.data?.addon
       ? addonDetailToForm(addonQuery.data.addon as AddonDetail)
       : null
+  }, [isNew, addonCode, addonQuery.data])
+
   const [draft, setDraft] = useState<AddonForm | null>(() =>
     readAddonDraft(addonCode)
   )
@@ -180,21 +184,33 @@ export default function AddonEditorPage() {
   const loading = !isNew && addonQuery.isLoading
   const addon = draft ?? initialAddon
 
-  if (loading) return <LoadingSkeleton />
-  if (!addon) return null
+  const update = useCallback(
+    (next: Partial<AddonForm>) => {
+      setDraft((prev) => {
+        const current = prev ?? initialAddon
+        if (!current) return prev
+        return { ...current, ...next }
+      })
+      setModified(true)
+    },
+    [initialAddon]
+  )
 
-  const update = (next: Partial<AddonForm>) => {
-    setDraft((prev) => ({ ...(prev ?? addon), ...next }))
-    setModified(true)
-  }
+  const updatePricing = useCallback(
+    (index: number, next: Partial<AddonPricingForm>) => {
+      setDraft((prev) => {
+        const current = prev ?? initialAddon
+        if (!current) return prev
+        const prices = [...current.prices]
+        prices[index] = { ...prices[index], ...next }
+        return { ...current, prices }
+      })
+      setModified(true)
+    },
+    [initialAddon]
+  )
 
-  const updatePricing = (index: number, next: Partial<AddonPricingForm>) => {
-    const prices = [...addon.prices]
-    prices[index] = { ...prices[index], ...next }
-    update({ prices })
-  }
-
-  const addPrice = () => {
+  const addPrice = useCallback(() => {
     const newPrice: AddonPricingForm = {
       id: `price-new-${crypto.randomUUID()}`,
       billingPeriod: "MONTHLY",
@@ -204,12 +220,189 @@ export default function AddonEditorPage() {
       effectiveTo: "",
       isActive: true,
     }
-    update({ prices: [...addon.prices, newPrice] })
-  }
+    setDraft((prev) => {
+      const current = prev ?? initialAddon
+      if (!current) return prev
+      return { ...current, prices: [...current.prices, newPrice] }
+    })
+    setModified(true)
+  }, [defaultCurrency, initialAddon])
 
-  const removePrice = (index: number) => {
-    update({ prices: addon.prices.filter((_, i) => i !== index) })
-  }
+  const removePrice = useCallback(
+    (index: number) => {
+      setDraft((prev) => {
+        const current = prev ?? initialAddon
+        if (!current) return prev
+        return {
+          ...current,
+          prices: current.prices.filter((_, i) => i !== index),
+        }
+      })
+      setModified(true)
+    },
+    [initialAddon]
+  )
+
+  const priceValidations = useMemo(() => {
+    if (!addon) return []
+    return addon.prices.map((price) => {
+      const errors: string[] = []
+      if (!isValidAddonPriceAmount(price.amount)) {
+        errors.push("Amount is required and must be positive")
+      }
+      if (price.effectiveTo && price.effectiveTo < price.effectiveFrom) {
+        errors.push("Effective 'to' must be after 'from'")
+      }
+      return errors
+    })
+  }, [addon])
+
+  const enabledBillingPeriods = useMemo(
+    () =>
+      addon
+        ? Array.from(new Set(addon.prices.map((price) => price.billingPeriod)))
+        : [],
+    [addon]
+  )
+  const missingPriceCells = useMemo(
+    () =>
+      addon
+        ? getMissingAddonPriceCells(
+            addon.prices,
+            enabledBillingPeriods,
+            SUPPORTED_CURRENCIES
+          )
+        : [],
+    [addon, enabledBillingPeriods]
+  )
+  const hasErrors = useMemo(
+    () =>
+      priceValidations.some((e) => e.length > 0) ||
+      missingPriceCells.length > 0,
+    [priceValidations, missingPriceCells]
+  )
+
+  const pricingColumns = useMemo<ColumnDef<AddonPricingForm>[]>(
+    () => [
+      {
+        accessorKey: "billingPeriod",
+        header: "Billing period",
+        cell: ({ row }) => (
+          <Select
+            value={row.original.billingPeriod}
+            onValueChange={(value) =>
+              updatePricing(row.index, {
+                billingPeriod: value as AddonPricingForm["billingPeriod"],
+              })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {BILLING_PERIODS.map((period) => (
+                <SelectItem key={period} value={period}>
+                  {billingPeriodLabel(period)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ),
+      },
+      {
+        accessorKey: "currency",
+        header: "Currency",
+        cell: ({ row }) => (
+          <Select
+            value={row.original.currency}
+            onValueChange={(value) =>
+              updatePricing(row.index, { currency: value })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SUPPORTED_CURRENCIES.map((currency) => (
+                <SelectItem key={currency} value={currency}>
+                  {currency}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ),
+      },
+      {
+        accessorKey: "amount",
+        header: "Amount",
+        cell: ({ row }) => (
+          <Input
+            type="number"
+            min="0"
+            step="0.01"
+            value={row.original.amount}
+            onChange={(event) =>
+              updatePricing(row.index, { amount: event.target.value })
+            }
+            aria-invalid={!isValidAddonPriceAmount(row.original.amount)}
+          />
+        ),
+      },
+      {
+        accessorKey: "effectiveFrom",
+        header: "Effective from",
+        cell: ({ row }) => (
+          <Input
+            type="date"
+            value={row.original.effectiveFrom}
+            onChange={(event) =>
+              updatePricing(row.index, { effectiveFrom: event.target.value })
+            }
+          />
+        ),
+      },
+      {
+        accessorKey: "effectiveTo",
+        header: "Effective to",
+        cell: ({ row }) => (
+          <Input
+            type="date"
+            value={row.original.effectiveTo}
+            onChange={(event) =>
+              updatePricing(row.index, { effectiveTo: event.target.value })
+            }
+          />
+        ),
+      },
+      {
+        accessorKey: "isActive",
+        header: "Active",
+        cell: ({ row }) => (
+          <Switch
+            checked={row.original.isActive}
+            onCheckedChange={(checked) =>
+              updatePricing(row.index, { isActive: checked })
+            }
+          />
+        ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => removePrice(row.index)}
+            aria-label="Remove price"
+          >
+            <TrashIcon className="h-4 w-4 text-destructive" />
+          </Button>
+        ),
+      },
+    ],
+    [updatePricing, removePrice]
+  )
 
   const handleSaveDraft = async () => {
     if (!addon.name.trim() || !addon.code.trim()) {
@@ -241,147 +434,8 @@ export default function AddonEditorPage() {
       toast.error("Failed to archive add-on")
     }
   }
-
-  const priceValidations = addon.prices.map((price) => {
-    const errors: string[] = []
-    if (!isValidAddonPriceAmount(price.amount)) {
-      errors.push("Amount is required and must be positive")
-    }
-    if (price.effectiveTo && price.effectiveTo < price.effectiveFrom) {
-      errors.push("Effective 'to' must be after 'from'")
-    }
-    return errors
-  })
-
-  const enabledBillingPeriods = Array.from(
-    new Set(addon.prices.map((price) => price.billingPeriod))
-  )
-  const missingPriceCells = getMissingAddonPriceCells(
-    addon.prices,
-    enabledBillingPeriods,
-    SUPPORTED_CURRENCIES
-  )
-  const hasErrors =
-    priceValidations.some((e) => e.length > 0) || missingPriceCells.length > 0
-
-  const pricingColumns: ColumnDef<AddonPricingForm>[] = [
-    {
-      accessorKey: "billingPeriod",
-      header: "Billing period",
-      cell: ({ row }) => (
-        <Select
-          value={row.original.billingPeriod}
-          onValueChange={(value) =>
-            updatePricing(row.index, {
-              billingPeriod: value as AddonPricingForm["billingPeriod"],
-            })
-          }
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {BILLING_PERIODS.map((period) => (
-              <SelectItem key={period} value={period}>
-                {billingPeriodLabel(period)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      ),
-    },
-    {
-      accessorKey: "currency",
-      header: "Currency",
-      cell: ({ row }) => (
-        <Select
-          value={row.original.currency}
-          onValueChange={(value) =>
-            updatePricing(row.index, { currency: value })
-          }
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {SUPPORTED_CURRENCIES.map((currency) => (
-              <SelectItem key={currency} value={currency}>
-                {currency}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      ),
-    },
-    {
-      accessorKey: "amount",
-      header: "Amount",
-      cell: ({ row }) => (
-        <Input
-          type="number"
-          min="0"
-          step="0.01"
-          value={row.original.amount}
-          onChange={(event) =>
-            updatePricing(row.index, { amount: event.target.value })
-          }
-          aria-invalid={!isValidAddonPriceAmount(row.original.amount)}
-        />
-      ),
-    },
-    {
-      accessorKey: "effectiveFrom",
-      header: "Effective from",
-      cell: ({ row }) => (
-        <Input
-          type="date"
-          value={row.original.effectiveFrom}
-          onChange={(event) =>
-            updatePricing(row.index, { effectiveFrom: event.target.value })
-          }
-        />
-      ),
-    },
-    {
-      accessorKey: "effectiveTo",
-      header: "Effective to",
-      cell: ({ row }) => (
-        <Input
-          type="date"
-          value={row.original.effectiveTo}
-          onChange={(event) =>
-            updatePricing(row.index, { effectiveTo: event.target.value })
-          }
-        />
-      ),
-    },
-    {
-      accessorKey: "isActive",
-      header: "Active",
-      cell: ({ row }) => (
-        <Switch
-          checked={row.original.isActive}
-          onCheckedChange={(checked) =>
-            updatePricing(row.index, { isActive: checked })
-          }
-        />
-      ),
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      cell: ({ row }) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => removePrice(row.index)}
-          aria-label="Remove price"
-        >
-          <TrashIcon className="h-4 w-4 text-destructive" />
-        </Button>
-      ),
-    },
-  ]
+  if (loading) return <LoadingSkeleton />
+  if (!addon) return null
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -440,7 +494,7 @@ export default function AddonEditorPage() {
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
-                  className="text-destructive-foreground bg-destructive"
+                  variant="destructive"
                   onClick={handleArchive}
                 >
                   Archive

@@ -255,24 +255,26 @@ function subscriptionData(
   input: BillingFulfillmentInput,
   pricing: RecurringPricingRecord,
   metadata: Record<string, unknown>
-) {
+): Prisma.ServiceSubscriptionUncheckedCreateInput {
   return {
     packageId: pricing.servicePlan.packageId,
     planId: input.planId,
-    pricingId: input.pricingId,
+    pricingId: pricing.id,
     type: pricing.type,
     billingMode: pricing.billingMode,
     billingPeriod: pricing.billingPeriod,
-    priceLocked: input.unitPrice,
-    currency: input.currency,
-    quantity: input.quantity,
-    status: "ACTIVE" as const,
+    priceLocked: pricing.periodPrice,
+    currency: pricing.currency,
+    quantity: input.quantity ?? new Prisma.Decimal(1),
+    status: "ACTIVE",
     currentPeriodStart: input.periodStart,
     currentPeriodEnd: input.periodEnd,
-    metadata: jsonObject(metadata),
+    allocatedConfig: (metadata.provisioningAnswers ??
+      metadata.allocatedConfig ??
+      metadata) as Prisma.InputJsonValue,
+    metadata: metadata as Prisma.InputJsonValue,
   }
 }
-
 async function upsertServiceSubscription(
   tx: Prisma.TransactionClient,
   input: BillingFulfillmentInput,

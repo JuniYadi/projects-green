@@ -20,6 +20,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import {
   getAdminOrders,
@@ -79,6 +86,8 @@ export function BillingOrdersPage() {
   const [billingPeriod, setBillingPeriod] = useState<string>("all")
   const [from, setFrom] = useState<string>("")
   const [to, setTo] = useState<string>("")
+  const [selectedOrderResponses, setSelectedOrderResponses] =
+    useState<AdminOrder | null>(null)
 
   const load = useCallback(
     async (
@@ -314,13 +323,14 @@ export function BillingOrdersPage() {
                       <TableHead>Charge</TableHead>
                       <TableHead>Fulfillment</TableHead>
                       <TableHead>Invoice</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {orders.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={7}
+                          colSpan={8}
                           className="py-10 text-center text-muted-foreground"
                         >
                           No orders found.
@@ -379,6 +389,33 @@ export function BillingOrdersPage() {
                               "—"
                             )}
                           </TableCell>
+                          <TableCell className="text-right">
+                            {(() => {
+                              const meta = (order.metadata ?? {}) as Record<
+                                string,
+                                unknown
+                              >
+                              const answers = (meta.provisioningAnswers ??
+                                (typeof meta.device === "object"
+                                  ? meta.device
+                                  : null) ??
+                                {}) as Record<string, unknown>
+                              const hasAnswers = Object.keys(answers).length > 0
+
+                              if (!hasAnswers) return "—"
+                              return (
+                                <Button
+                                  variant="ghost"
+                                  size="xs"
+                                  onClick={() =>
+                                    setSelectedOrderResponses(order)
+                                  }
+                                >
+                                  View Responses
+                                </Button>
+                              )
+                            })()}
+                          </TableCell>
                         </TableRow>
                       ))
                     )}
@@ -419,6 +456,78 @@ export function BillingOrdersPage() {
           )}
         </CardContent>
       </Card>
+      {/* Modal Dialog to View Order Form Responses */}
+      <Dialog
+        open={Boolean(selectedOrderResponses)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedOrderResponses(null)
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Order Form Responses</DialogTitle>
+            <DialogDescription>
+              Submitted configuration and provisioning parameters for Order{" "}
+              <span className="font-mono font-medium text-foreground">
+                {selectedOrderResponses?.id}
+              </span>
+              .
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {(() => {
+              if (!selectedOrderResponses) return null
+              const meta = (selectedOrderResponses.metadata ?? {}) as Record<
+                string,
+                unknown
+              >
+              const answers = (meta.provisioningAnswers ??
+                (typeof meta.device === "object" ? meta.device : null) ??
+                {}) as Record<string, unknown>
+
+              const entries = Object.entries(answers).filter(
+                ([key, val]) =>
+                  key !== "_provisioningFields" &&
+                  val !== null &&
+                  val !== undefined &&
+                  typeof val !== "object"
+              )
+
+              if (entries.length === 0) {
+                return (
+                  <p className="text-center text-xs text-muted-foreground">
+                    No custom form field responses recorded.
+                  </p>
+                )
+              }
+
+              const formatKey = (key: string) =>
+                key
+                  .replace(/([A-Z])/g, " $1")
+                  .replace(/_/g, " ")
+                  .replace(/^\w/, (c) => c.toUpperCase())
+
+              return (
+                <div className="grid gap-2.5">
+                  {entries.map(([key, val]) => (
+                    <div
+                      key={key}
+                      className="flex flex-col justify-between rounded-md border bg-muted/20 p-2.5 text-xs"
+                    >
+                      <span className="font-medium text-muted-foreground">
+                        {formatKey(key)}
+                      </span>
+                      <span className="mt-1 font-mono font-semibold text-foreground">
+                        {String(val)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   )
 }
