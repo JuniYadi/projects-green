@@ -107,8 +107,8 @@ export async function processDocumentIngestionJob(
       organizationId,
     })
 
-    // Mock/Generate 1536-dim vector for chunks
-    const dummyEmbedding = new Array(1536).fill(0.01)
+    // Embeddings remain empty until the resolved provider pipeline is wired.
+    const embedding: number[] = []
 
     // 5. Update parent document status to READY
     await prisma.aiKnowledgeDocument.update({
@@ -118,7 +118,7 @@ export async function processDocumentIngestionJob(
         pageCount: parseResult.pageCount,
         contentMarkdown: parseResult.contentMarkdown,
         searchText: parseResult.contentMarkdown,
-        embedding: dummyEmbedding,
+        embedding,
       },
     })
 

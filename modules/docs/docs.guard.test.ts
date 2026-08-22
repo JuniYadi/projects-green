@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { beforeEach, describe, expect, it, mock, spyOn } from "bun:test"
 
 import {
   inspectPromptSafety,
@@ -38,6 +38,12 @@ describe("docs.guard - inspectPromptSafety", () => {
     const result = inspectPromptSafety("Bagaimana cara membuat invoice baru?")
     expect(result.ok).toBe(true)
     expect(result.reason).toBeUndefined()
+  })
+
+  it("allows legitimate double-dash text", () => {
+    const result = inspectPromptSafety("Lihat halaman 10--15 untuk rinciannya")
+
+    expect(result.ok).toBe(true)
   })
 
   it("rejects inputs exceeding max character limit (> 800 chars)", () => {
@@ -131,6 +137,20 @@ describe("docs.guard - checkRateLimit", () => {
     expect(overflow.reason).toBe("USER_RATE_LIMIT")
     expect(overflow.retryAfterSec).toBeGreaterThan(0)
   })
+
+  it("evicts inactive IP and user buckets after their windows expire", () => {
+    const deleteSpy = spyOn(Map.prototype, "delete")
+
+    try {
+      checkRateLimit("expired-ip", "expired-user", 100_000)
+      checkRateLimit("live-ip", "live-user", 160_001)
+
+      expect(deleteSpy).toHaveBeenCalledWith("expired-ip")
+      expect(deleteSpy).toHaveBeenCalledWith("expired-user")
+    } finally {
+      deleteSpy.mockRestore()
+    }
+  })
 })
 
 describe("docs.guard - getEscalationLevel", () => {
@@ -209,9 +229,29 @@ describe("docs.guard - checkActiveBan & recordStrikeAndEscalate", () => {
     expect(result.banType).toBe("ORGANIZATION")
   })
 
-  it("records strike and creates permanent ban if 15 strikes reached", async () => {
+  it("does not escalate before the third committed strike", async () => {
     mockUpdateMany.mockResolvedValueOnce({ count: 1 })
-    mockCount.mockResolvedValueOnce(14) // 14 + 1 = 15
+    mockCount.mockResolvedValueOnce(2)
+    mockCreate.mockImplementationOnce(
+      async (args: { data: Record<string, unknown> }) => ({
+        id: "ban_early",
+        ...args.data,
+      })
+    )
+
+    const result = await recordStrikeAndEscalate({
+      sessionId: "sess_1",
+      organizationId: "org_1",
+      reason: "PROFANITY",
+    })
+
+    expect(result.isBanned).toBe(false)
+    expect(mockCreate).not.toHaveBeenCalled()
+  })
+
+  it("creates a permanent ban when 15 committed strikes are reached", async () => {
+    mockUpdateMany.mockResolvedValueOnce({ count: 1 })
+    mockCount.mockResolvedValueOnce(15)
     mockCreate.mockImplementationOnce(
       async (args: { data: Record<string, unknown> }) => ({
         id: "ban_perm",

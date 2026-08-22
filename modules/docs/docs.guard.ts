@@ -49,7 +49,7 @@ const INJECTION_PATTERNS = [
   /javascript\s*:/i,
   /on(error|load|click|mouseover|submit)\s*=/i,
   /\b(union\s+select|select\s+.*\s+from|drop\s+table|insert\s+into|delete\s+from|update\s+.*\s+set)\b/i,
-  /(--|\/\*|\*\/)/,
+  /(\/\*|\*\/)/,
 ]
 
 // In-memory sliding window rate limiter stores
@@ -57,8 +57,48 @@ type RateLimitEntry = {
   timestamps: number[]
 }
 
+// Process-local limiter state; production instances do not share these buckets.
 const ipRateLimitStore = new Map<string, RateLimitEntry>()
 const userRateLimitStore = new Map<string, RateLimitEntry>()
+let lastRateLimitSweepAt = Number.NEGATIVE_INFINITY
+
+function pruneRateLimitEntry(entry: RateLimitEntry, windowStart: number) {
+  let writeIndex = 0
+
+  for (const timestamp of entry.timestamps) {
+    if (timestamp > windowStart) {
+      entry.timestamps[writeIndex] = timestamp
+      writeIndex += 1
+    }
+  }
+
+  entry.timestamps.length = writeIndex
+}
+
+function pruneRateLimitStore(
+  store: Map<string, RateLimitEntry>,
+  windowMs: number,
+  now: number
+) {
+  const windowStart = now - windowMs
+
+  for (const [key, entry] of store) {
+    pruneRateLimitEntry(entry, windowStart)
+    if (entry.timestamps.length === 0) {
+      store.delete(key)
+    }
+  }
+}
+
+function pruneExpiredRateLimitEntries(now: number) {
+  if (now - lastRateLimitSweepAt < USER_RATE_LIMIT_WINDOW_MS) {
+    return
+  }
+
+  pruneRateLimitStore(ipRateLimitStore, IP_RATE_LIMIT_WINDOW_MS, now)
+  pruneRateLimitStore(userRateLimitStore, USER_RATE_LIMIT_WINDOW_MS, now)
+  lastRateLimitSweepAt = now
+}
 
 /**
  * Resets in-memory rate limiters (primarily for testing)
@@ -66,6 +106,7 @@ const userRateLimitStore = new Map<string, RateLimitEntry>()
 export function resetRateLimiterStores() {
   ipRateLimitStore.clear()
   userRateLimitStore.clear()
+  lastRateLimitSweepAt = Number.NEGATIVE_INFINITY
 }
 
 /**
@@ -134,11 +175,12 @@ export function checkRateLimit(
   userId?: string | null,
   now: number = Date.now()
 ): RateLimitResult {
+  pruneExpiredRateLimitEntries(now)
   // Check IP rate limit (15 requests per 60s)
   if (ipAddress) {
     const ipEntry = ipRateLimitStore.get(ipAddress) || { timestamps: [] }
     const windowStart = now - IP_RATE_LIMIT_WINDOW_MS
-    ipEntry.timestamps = ipEntry.timestamps.filter((ts) => ts > windowStart)
+    pruneRateLimitEntry(ipEntry, windowStart)
 
     if (ipEntry.timestamps.length >= IP_RATE_LIMIT_MAX) {
       const oldest = ipEntry.timestamps[0]
@@ -160,7 +202,7 @@ export function checkRateLimit(
   if (userId) {
     const userEntry = userRateLimitStore.get(userId) || { timestamps: [] }
     const windowStart = now - USER_RATE_LIMIT_WINDOW_MS
-    userEntry.timestamps = userEntry.timestamps.filter((ts) => ts > windowStart)
+    pruneRateLimitEntry(userEntry, windowStart)
 
     if (userEntry.timestamps.length >= USER_RATE_LIMIT_MAX) {
       const oldest = userEntry.timestamps[0]
@@ -344,8 +386,7 @@ export async function recordStrikeAndEscalate(params: {
     },
   })
 
-  // Add 1 for the current strike if not yet committed in DB
-  const totalCumulativeStrikes = strikeCountAggregate + 1
+  const totalCumulativeStrikes = strikeCountAggregate
   const escalation = getEscalationLevel(totalCumulativeStrikes)
 
   if (escalation.offenseLevel > 0) {

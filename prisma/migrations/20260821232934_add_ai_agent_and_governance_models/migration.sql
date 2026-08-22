@@ -1,3 +1,4 @@
+-- noqa: disable=LT01
 -- CreateTable
 CREATE TABLE "AiAgentProfile" (
     "id" TEXT NOT NULL,

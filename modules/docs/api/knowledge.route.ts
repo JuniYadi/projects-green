@@ -302,13 +302,11 @@ export const createKnowledgeRoutes = (
               userAgent,
               channel: "CONSOLE",
               totalMessages: 1,
-              strikeCount: 1,
               isBlocked: true,
               blockReason: safetyCheck.reason,
             },
             update: {
               totalMessages: { increment: 1 },
-              strikeCount: { increment: 1 },
               isBlocked: true,
               blockReason: safetyCheck.reason,
             },

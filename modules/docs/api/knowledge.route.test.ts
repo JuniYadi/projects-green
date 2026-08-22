@@ -322,6 +322,16 @@ describe("knowledgeRoutes - Guardrails, Bans & Rate Limiting", () => {
     // Flagged message and strike saved in Prisma
     expect(mockUpsertSession).toHaveBeenCalledTimes(1)
     expect(mockCreateChatMessage).toHaveBeenCalledTimes(1)
+    expect(mockUpsertSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.not.objectContaining({
+          strikeCount: expect.anything(),
+        }),
+        update: expect.not.objectContaining({
+          strikeCount: expect.anything(),
+        }),
+      })
+    )
     expect(mockSearchKnowledgeDocs).not.toHaveBeenCalled()
   })
 

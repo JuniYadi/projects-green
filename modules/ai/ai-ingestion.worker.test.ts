@@ -51,6 +51,11 @@ describe("aiIngestionWorker", () => {
     expect(result.pageCount).toBe(1)
     expect(result.chunkCount).toBeGreaterThanOrEqual(1)
     expect(mockUpdate).toHaveBeenCalledTimes(2) // 1. PROCESSING, 2. READY
+    expect(mockUpdate).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ embedding: [] }),
+      })
+    )
   })
 
   it("fails and marks document as FAILED when page quota is exceeded", async () => {

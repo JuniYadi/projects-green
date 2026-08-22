@@ -330,6 +330,7 @@ export const createAdminAiRoutes = (deps: AdminAiRouteDependencies = {}) => {
             OR: [{ isPermanent: true }, { blockedUntil: { gt: now } }],
           },
           orderBy: { createdAt: "desc" },
+          take: 100,
         })
 
         return {
@@ -378,7 +379,7 @@ export const createAdminAiRoutes = (deps: AdminAiRouteDependencies = {}) => {
             return actor
           }
 
-          const { banId, reason } = body
+          const { banId } = body
 
           const existingBan = await prisma.aiChatBan.findUnique({
             where: { id: banId },
@@ -402,9 +403,6 @@ export const createAdminAiRoutes = (deps: AdminAiRouteDependencies = {}) => {
               isPermanent: false,
               pardonedAt: now,
               pardonedBy: actor.userId,
-              reason: reason
-                ? `${existingBan.reason} (Pardoned by admin: ${reason})`
-                : existingBan.reason,
             },
           })
 
