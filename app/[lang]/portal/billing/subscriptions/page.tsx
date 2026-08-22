@@ -13,6 +13,13 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import type { ColumnDef } from "@tanstack/react-table"
@@ -100,9 +107,11 @@ const EMPTY_SUBSCRIPTIONS: AdminSubscriptionItem[] = []
 export function BillingSubscriptionsPage() {
   const searchParams = useSearchParams()
   const linkedSubscriptionId = searchParams.get("subscriptionId")
-  const [page, setPage] = useState(1)
   const [selectedSubscription, setSelectedSubscription] =
     useState<AdminSubscriptionItem | null>(null)
+  const [selectedConfigSub, setSelectedConfigSub] =
+    useState<AdminSubscriptionItem | null>(null)
+  const [page, setPage] = useState(1)
   const subscriptionsQuery = useAdminSubscriptionsQuery({
     page,
     limit: PAGE_SIZE,
@@ -127,11 +136,12 @@ export function BillingSubscriptionsPage() {
     )
     if (!linkedSubscription) return
 
-    // Open the record targeted by a VPN operations handoff.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSelectedSubscription((current) =>
-      current?.id === linkedSubscription.id ? current : linkedSubscription
-    )
+    const timer = window.setTimeout(() => {
+      setSelectedSubscription((current) =>
+        current?.id === linkedSubscription.id ? current : linkedSubscription
+      )
+    }, 0)
+    return () => window.clearTimeout(timer)
   }, [linkedSubscriptionId, subscriptions])
 
   const columns = useMemo<ColumnDef<AdminSubscriptionItem>[]>(
@@ -257,6 +267,36 @@ export function BillingSubscriptionsPage() {
           row.original.currentPeriodEnd
             ? new Date(row.original.currentPeriodEnd).toLocaleDateString()
             : "—",
+      },
+      {
+        id: "provisioningConfig",
+        header: "Provisioning",
+        cell: ({ row }) => {
+          const sub = row.original
+          const config = (sub.allocatedConfig ?? {}) as Record<string, unknown>
+          const hasEntries =
+            Object.keys(config).filter(
+              (k) =>
+                k !== "_provisioningFields" &&
+                config[k] !== null &&
+                config[k] !== undefined &&
+                typeof config[k] !== "object"
+            ).length > 0
+
+          if (!hasEntries) {
+            return <span className="text-xs text-muted-foreground">—</span>
+          }
+
+          return (
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={() => setSelectedConfigSub(sub)}
+            >
+              View Config
+            </Button>
+          )
+        },
       },
     ],
     []
@@ -440,6 +480,73 @@ export function BillingSubscriptionsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Modal Dialog for Subscription Provisioning Config */}
+      <Dialog
+        open={Boolean(selectedConfigSub)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedConfigSub(null)
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Subscription Provisioning Parameters</DialogTitle>
+            <DialogDescription>
+              Configuration details and responses for Subscription{" "}
+              <span className="font-mono font-medium text-foreground">
+                {selectedConfigSub?.id}
+              </span>
+              .
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {(() => {
+              if (!selectedConfigSub) return null
+              const config = (selectedConfigSub.allocatedConfig ??
+                {}) as Record<string, unknown>
+              const entries = Object.entries(config).filter(
+                ([key, val]) =>
+                  key !== "_provisioningFields" &&
+                  val !== null &&
+                  val !== undefined &&
+                  typeof val !== "object"
+              )
+
+              if (entries.length === 0) {
+                return (
+                  <p className="text-center text-xs text-muted-foreground">
+                    No custom provisioning parameters recorded.
+                  </p>
+                )
+              }
+
+              const formatKey = (key: string) =>
+                key
+                  .replace(/([A-Z])/g, " $1")
+                  .replace(/_/g, " ")
+                  .replace(/^\w/, (c) => c.toUpperCase())
+
+              return (
+                <div className="grid gap-2.5">
+                  {entries.map(([key, val]) => (
+                    <div
+                      key={key}
+                      className="flex flex-col justify-between rounded-md border bg-muted/20 p-2.5 text-xs"
+                    >
+                      <span className="font-medium text-muted-foreground">
+                        {formatKey(key)}
+                      </span>
+                      <span className="mt-1 font-mono font-semibold text-foreground">
+                        {String(val)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   )
 }
