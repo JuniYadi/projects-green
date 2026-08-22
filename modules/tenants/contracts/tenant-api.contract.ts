@@ -65,11 +65,12 @@ export type TenantMembershipSummary = {
     lastName: string | null
     profilePictureUrl: string | null
     displayName: string | null
+    lastSignInAt?: string | null
   } | null
+  lastSignInAt?: string | null
   createdAt: string
   updatedAt: string
 }
-
 export type TenantInvitationSummary = {
   id: string
   email: string
