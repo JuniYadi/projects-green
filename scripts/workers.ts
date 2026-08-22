@@ -723,6 +723,7 @@ process.on("unhandledRejection", (reason) => {
 
 process.on("uncaughtException", (error) => {
   console.error("[workers] uncaught exception:", error)
+  process.exit(1)
 })
 
 // ══════════════════════════════════════════════════════════════════════════
