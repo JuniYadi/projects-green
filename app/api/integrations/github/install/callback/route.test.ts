@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { NextRequest } from "next/server"
 
 type AuthResult = {
@@ -122,7 +122,25 @@ mock.module("@/modules/credentials/app-credential.service", () => {
 })
 
 describe("GET /api/integrations/github/install/callback", () => {
+  const originalAppUrl = process.env.APP_URL
+  const originalNextPublicAppUrl = process.env.NEXT_PUBLIC_APP_URL
+
+  afterEach(() => {
+    if (originalAppUrl !== undefined) {
+      process.env.APP_URL = originalAppUrl
+    } else {
+      delete process.env.APP_URL
+    }
+    if (originalNextPublicAppUrl !== undefined) {
+      process.env.NEXT_PUBLIC_APP_URL = originalNextPublicAppUrl
+    } else {
+      delete process.env.NEXT_PUBLIC_APP_URL
+    }
+  })
+
   beforeEach(() => {
+    delete process.env.APP_URL
+    delete process.env.NEXT_PUBLIC_APP_URL
     mockWithAuth.mockClear()
     mockValidateGithubInstallState.mockClear()
     mockFetchGithubInstallationDetails.mockClear()

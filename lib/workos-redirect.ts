@@ -2,6 +2,7 @@ import { type AppLocale } from "@/lib/i18n/config"
 import { isLocale } from "@/lib/i18n/pathname"
 
 export const WORKOS_ALLOWED_ORIGINS = [
+  "https://pfnapp.id",
   "https://pfnapp.my.id",
   "http://localhost:3300",
 ] as const

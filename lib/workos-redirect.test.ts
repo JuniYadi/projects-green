@@ -24,6 +24,13 @@ describe("WorkOS public redirect configuration", () => {
     expect(getWorkOSLogoutReturnTo("en")).toBe("https://pfnapp.my.id/en/login")
     expect(getWorkOSLogoutReturnTo("id")).toBe("https://pfnapp.my.id/id/login")
   })
+  it("accepts https://pfnapp.id origin", () => {
+    process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI = "https://pfnapp.id/callback"
+
+    expect(getWorkOSPublicOrigin()).toBe("https://pfnapp.id")
+    expect(getWorkOSLogoutReturnTo("en")).toBe("https://pfnapp.id/en/login")
+    expect(getWorkOSLogoutReturnTo("id")).toBe("https://pfnapp.id/id/login")
+  })
 
   it("keeps an explicitly configured localhost origin for local development", () => {
     process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI =

@@ -1,5 +1,6 @@
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { NextRequest, NextResponse } from "next/server"
+import { getRequestUrl } from "@/lib/request-url"
 
 import {
   getSafeReturnTo,
@@ -28,14 +29,14 @@ const getStateSecret = () => {
 
 const toRedirectUrl = ({
   returnTo,
-  requestUrl,
+  request,
   status,
 }: {
   returnTo: string
-  requestUrl: string
+  request: NextRequest
   status: "connected" | "error"
 }) => {
-  const redirectUrl = new URL(returnTo, requestUrl)
+  const redirectUrl = getRequestUrl(returnTo, request)
   redirectUrl.searchParams.set("github", status)
 
   return redirectUrl
@@ -43,15 +44,15 @@ const toRedirectUrl = ({
 
 const toErrorRedirect = ({
   returnTo,
-  requestUrl,
+  request,
 }: {
   returnTo: string
-  requestUrl: string
+  request: NextRequest
 }) => {
   return NextResponse.redirect(
     toRedirectUrl({
       returnTo,
-      requestUrl,
+      request,
       status: "error",
     })
   )
@@ -158,7 +159,7 @@ export const GET = async (request: NextRequest) => {
     return NextResponse.redirect(
       toRedirectUrl({
         returnTo: getSafeReturnTo(statePayload.returnTo),
-        requestUrl: request.url,
+        request,
         status: "connected",
       })
     )
@@ -170,13 +171,13 @@ export const GET = async (request: NextRequest) => {
     if (error instanceof GithubInstallStateError) {
       return toErrorRedirect({
         returnTo: errorReturnTo,
-        requestUrl: request.url,
+        request,
       })
     }
 
     return toErrorRedirect({
       returnTo: errorReturnTo,
-      requestUrl: request.url,
+      request,
     })
   }
 }

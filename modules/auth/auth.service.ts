@@ -1,4 +1,5 @@
 import { getWorkOS } from "@workos-inc/authkit-nextjs"
+import { isSecureRequest } from "@/lib/request-url"
 import {
   AuthenticationException,
   BadRequestException,
@@ -48,8 +49,10 @@ const getCookieMaxAge = () => {
 
   return Number.isFinite(parsed) ? parsed : 60 * 60 * 24 * 400
 }
-
-const getSessionCookieHeader = (sessionData: string, requestUrl: string) => {
+const getSessionCookieHeader = (
+  sessionData: string,
+  requestUrlOrRequest?: string | Request | { headers?: Headers; url?: string }
+) => {
   const cookieName = process.env.WORKOS_COOKIE_NAME?.trim() || "wos-session"
   const cookieDomain = process.env.WORKOS_COOKIE_DOMAIN?.trim()
   const sameSite = (
@@ -60,9 +63,7 @@ const getSessionCookieHeader = (sessionData: string, requestUrl: string) => {
       ? sameSite
       : "lax"
 
-  const protocol = new URL(requestUrl).protocol
-  const secure = safeSameSite === "none" || protocol === "https:"
-
+  const secure = safeSameSite === "none" || isSecureRequest(requestUrlOrRequest)
   const parts = [
     `${cookieName}=${sessionData}`,
     "Path=/",
@@ -108,15 +109,19 @@ const getAuthConfig = () => {
 const toSessionResponse = (
   status: number,
   sealedSession: string,
-  requestUrl: string
+  requestUrl?: string | Request | { headers?: Headers; url?: string }
 ) => {
-  return new Response(JSON.stringify({ ok: true as const }), {
+  const response = new Response(JSON.stringify({ ok: true as const }), {
     status,
     headers: {
       "Content-Type": "application/json",
-      "Set-Cookie": getSessionCookieHeader(sealedSession, requestUrl),
     },
   })
+  response.headers.set(
+    "Set-Cookie",
+    getSessionCookieHeader(sealedSession, requestUrl)
+  )
+  return response
 }
 
 const ensureSealedSession = (sealedSession?: string | null) => {
@@ -160,30 +165,30 @@ export type AuthService = {
   verifyMagicCode(input: {
     email: string
     code: string
-    requestUrl: string
+    requestUrl: string | Request | { headers?: Headers; url?: string }
     invitationToken?: string
   }): Promise<Response>
   completeEmailVerification(input: {
     code: string
     pendingAuthenticationToken: string
-    requestUrl: string
+    requestUrl: string | Request | { headers?: Headers; url?: string }
   }): Promise<Response>
   completeOrganizationSelection(input: {
     organizationId: string
     pendingAuthenticationToken: string
-    requestUrl: string
+    requestUrl: string | Request | { headers?: Headers; url?: string }
   }): Promise<Response>
   signup(input: {
     name: string
     email: string
     password: string
-    requestUrl: string
+    requestUrl: string | Request | { headers?: Headers; url?: string }
     invitationToken?: string
   }): Promise<Response>
   login(input: {
     email: string
     password: string
-    requestUrl: string
+    requestUrl: string | Request | { headers?: Headers; url?: string }
     invitationToken?: string
   }): Promise<Response>
 }
