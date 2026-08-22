@@ -59,10 +59,6 @@ jobs:
       - name: Generate Prisma client
         run: bun run db:generate
 
-      - name: Run changed logic and feature dependents
-        if: ${{ github.event_name == 'pull_request' }}
-        run: bun run test:changed
-
       - name: Enforce changed logic coverage
         if: ${{ github.event_name == 'pull_request' }}
         run: bun run test:coverage:changed
