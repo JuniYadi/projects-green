@@ -686,7 +686,11 @@ export default function CheckoutPage() {
                       className="w-full text-sm font-semibold"
                       size="lg"
                     >
-                      {quoteLoading ? "Updating quote..." : "Confirm and pay"}
+                      {quoteLoading
+                        ? "Updating quote..."
+                        : Number(quotePreview.firstPayment) === 0
+                          ? "Confirm and activate"
+                          : "Confirm and pay"}
                     </Button>
                   </div>
                 </CardContent>
