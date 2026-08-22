@@ -39,7 +39,6 @@ mock.module("next/navigation", () => {
   }
 })
 
-import { NavUser } from "./nav-user"
 describe("NavUser", () => {
   afterEach(() => {
     globalThis.fetch = originalFetch
@@ -102,7 +101,7 @@ describe("NavUser", () => {
     fireEvent.pointerDown(view.getByRole("button"))
 
     await waitFor(() => {
-      expect(view.getByText("Signed in via: Google OAuth")).toBeInTheDocument()
+      expect(view.getByText("Google OAuth")).toBeInTheDocument()
     })
   })
 
