@@ -28,6 +28,10 @@ type AppBreadcrumbsProps = {
 }
 
 const SEGMENT_LABELS: Record<string, string> = {
+  agents: "AI Agents",
+  ai: "AI Studio",
+  knowledge: "Knowledge Base",
+  providers: "BYOK Providers",
   admin: "Admin",
   alerts: "Alerts",
   app: "App",
