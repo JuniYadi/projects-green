@@ -596,6 +596,67 @@ export default function InvoiceDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Dynamic Order & Provisioning Specifications */}
+          {(() => {
+            const lineWithMetadata = invoice.lines?.find(
+              (l) => l.metadataJson && typeof l.metadataJson === "object"
+            )
+            const metadata = (lineWithMetadata?.metadataJson ?? {}) as Record<
+              string,
+              unknown
+            >
+            const answers = (metadata.provisioningAnswers ??
+              (typeof metadata.device === "object" ? metadata.device : null) ??
+              {}) as Record<string, unknown>
+
+            const entries = Object.entries(answers).filter(
+              ([key, val]) =>
+                key !== "_provisioningFields" &&
+                val !== null &&
+                val !== undefined &&
+                typeof val !== "object"
+            )
+
+            if (entries.length === 0) return null
+
+            const formatKey = (key: string) =>
+              key
+                .replace(/([A-Z])/g, " $1")
+                .replace(/_/g, " ")
+                .replace(/^\w/, (c) => c.toUpperCase())
+
+            return (
+              <Card className="border-border/80 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">
+                    Order Specifications & Custom Parameters
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Configuration parameters and responses submitted during
+                    checkout.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {entries.map(([key, val]) => (
+                      <div
+                        key={key}
+                        className="flex flex-col justify-between rounded-lg border bg-muted/20 p-3"
+                      >
+                        <span className="text-xs text-muted-foreground">
+                          {formatKey(key)}
+                        </span>
+                        <span className="mt-1 font-mono text-xs font-semibold text-foreground">
+                          {String(val)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })()}
         </div>
 
         {/* Right Column: Status Summary & Payment Action Cards (4 cols) */}

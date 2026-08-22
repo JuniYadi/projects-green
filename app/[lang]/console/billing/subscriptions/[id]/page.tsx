@@ -3,7 +3,13 @@
 import { useMemo, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useParams } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -314,12 +320,12 @@ export default function SubscriptionDetailPage() {
       <Tabs defaultValue="overview">
         <TabsList aria-label={d.heading}>
           <TabsTrigger value="overview">{d.tabs.overview}</TabsTrigger>
+          <TabsTrigger value="config">Configuration</TabsTrigger>
           <TabsTrigger value="billing">{d.tabs.billing}</TabsTrigger>
           <TabsTrigger value="manage">{d.tabs.manage}</TabsTrigger>
           <TabsTrigger value="addons">{d.tabs.addons}</TabsTrigger>
           <TabsTrigger value="activity">{d.tabs.activity}</TabsTrigger>
         </TabsList>
-
         <TabsContent value="overview" className="space-y-4">
           <Card>
             <CardHeader>
@@ -402,6 +408,67 @@ export default function SubscriptionDetailPage() {
                   </p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="config" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-medium">
+                Provisioning & Order Specifications
+              </CardTitle>
+              <CardDescription>
+                Custom details, setup parameters, and form responses captured
+                during checkout.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(() => {
+                const config = (sub.allocatedConfig ?? {}) as Record<
+                  string,
+                  unknown
+                >
+                const entries = Object.entries(config).filter(
+                  ([key, val]) =>
+                    key !== "_provisioningFields" &&
+                    val !== null &&
+                    val !== undefined &&
+                    typeof val !== "object"
+                )
+
+                const formatKey = (key: string) =>
+                  key
+                    .replace(/([A-Z])/g, " $1")
+                    .replace(/_/g, " ")
+                    .replace(/^\w/, (c) => c.toUpperCase())
+
+                if (entries.length === 0) {
+                  return (
+                    <p className="py-4 text-center text-sm text-muted-foreground">
+                      No custom provisioning parameters or form responses
+                      recorded for this subscription.
+                    </p>
+                  )
+                }
+
+                return (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {entries.map(([key, val]) => (
+                      <div
+                        key={key}
+                        className="flex flex-col justify-between rounded-lg border bg-card p-3 shadow-xs"
+                      >
+                        <span className="text-xs font-medium text-muted-foreground">
+                          {formatKey(key)}
+                        </span>
+                        <span className="mt-1 font-mono text-sm font-semibold text-foreground">
+                          {String(val)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
