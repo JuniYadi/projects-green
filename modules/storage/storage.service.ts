@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2"
 import { prisma } from "@/lib/prisma"
 import {
   buildS3StorageKey,
@@ -27,7 +28,7 @@ export class StorageService {
     userId?: string
     input: PresignUploadRequest
   }): Promise<PresignUploadResponseDTO> {
-    const fileId = `cl_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
+    const fileId = createId()
     const storageKey = buildS3StorageKey({
       organizationId: params.organizationId,
       fileId,
