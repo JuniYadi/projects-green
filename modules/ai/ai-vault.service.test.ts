@@ -24,7 +24,7 @@ describe("aiVaultService", () => {
       destroyed: false,
     }))
     mockReadKV = mock(async () => ({
-      API_KEY: "sk-proj-test-1234567890",
+      API_KEY: "not-a-real-api-key",
       organizationId: "org_1",
       providerId: "prov_1",
     }))
@@ -47,7 +47,7 @@ describe("aiVaultService", () => {
       {
         organizationId: "org_1",
         providerId: "prov_1",
-        apiKey: "sk-proj-test-key",
+        apiKey: "not-a-real-api-key",
       },
       mockVaultClient
     )
@@ -60,7 +60,7 @@ describe("aiVaultService", () => {
       Record<string, string>,
     ]
     expect(pathArg).toBe("tenants/org_1/ai/providers/prov_1")
-    expect(dataArg.API_KEY).toBe("sk-proj-test-key")
+    expect(dataArg.API_KEY).toBe("not-a-real-api-key")
   })
 
   it("reads API key in memory from Vault successfully", async () => {
@@ -72,7 +72,7 @@ describe("aiVaultService", () => {
       mockVaultClient
     )
 
-    expect(key).toBe("sk-proj-test-1234567890")
+    expect(key).toBe("not-a-real-api-key")
     expect(mockReadKV).toHaveBeenCalledWith("tenants/org_1/ai/providers/prov_1")
   })
 
