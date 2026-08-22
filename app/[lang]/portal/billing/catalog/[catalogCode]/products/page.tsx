@@ -457,12 +457,12 @@ export default function CatalogProductsListPage() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              variant="destructive"
               onClick={(e) => {
                 e.preventDefault()
                 void handleDelete()
               }}
               disabled={isDeleting}
-              className="text-destructive-foreground bg-destructive hover:bg-destructive/90"
             >
               {isDeleting ? "Deleting..." : "Delete Product"}
             </AlertDialogAction>
