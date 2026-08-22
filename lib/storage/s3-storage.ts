@@ -17,7 +17,8 @@ export function getS3Config(): S3StorageConfig {
     process.env.S3_BUCKET ||
     process.env.AWS_BUCKET_NAME ||
     "projects-green-storage"
-  const endpoint = process.env.S3_ENDPOINT || process.env.AWS_ENDPOINT
+  const rawEndpoint = process.env.S3_ENDPOINT || process.env.AWS_ENDPOINT
+  const cdnUrl = process.env.S3_CDN_URL || process.env.S3_CDN_DOMAIN
   const region =
     process.env.S3_REGION || process.env.AWS_DEFAULT_REGION || "us-east-1"
   const accessKeyId =
@@ -28,10 +29,18 @@ export function getS3Config(): S3StorageConfig {
     process.env.S3_SECRET_ACCESS_KEY ||
     process.env.AWS_SECRET_ACCESS_KEY ||
     "mock-secret-key"
-  const publicUrlPrefix =
-    process.env.S3_CDN_URL ||
-    process.env.S3_CDN_DOMAIN ||
-    process.env.S3_PUBLIC_URL_PREFIX
+  const publicUrlPrefix = cdnUrl || process.env.S3_PUBLIC_URL_PREFIX
+
+  // If S3_CDN_URL is configured, use CDN hostname as endpoint so presigned URLs
+  // are signed for the CDN domain without exposing the underlying S3 provider.
+  let endpoint = rawEndpoint
+  if (cdnUrl) {
+    try {
+      endpoint = cdnUrl.startsWith("http") ? new URL(cdnUrl).host : cdnUrl
+    } catch {
+      // Keep raw endpoint
+    }
+  }
 
   return {
     bucket,
@@ -96,6 +105,7 @@ export function extractOrganizationIdFromS3Key(storageKey: string): string {
 
 /**
  * Presigns PUT upload URL with 15-minute default TTL (900 seconds)
+ * Returns 100% white-label CDN domain URL.
  */
 export async function getPresignedPutUrl(params: {
   storageKey: string
@@ -115,6 +125,7 @@ export async function getPresignedPutUrl(params: {
 
 /**
  * Presigns GET view/download URL with 15-minute default TTL (900 seconds)
+ * Returns 100% white-label CDN domain URL.
  */
 export async function getPresignedGetUrl(params: {
   storageKey: string
@@ -153,7 +164,7 @@ export async function statStorageFile(storageKey: string): Promise<{
       type: stat.type,
       lastModified: stat.lastModified ? new Date(stat.lastModified) : undefined,
     }
-  } catch (error) {
+  } catch (_error) {
     // In local / mock environments, fallback gracefully
     return { exists: false, size: 0 }
   }
