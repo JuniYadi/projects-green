@@ -191,6 +191,18 @@ export type AuthService = {
     requestUrl: string | Request | { headers?: Headers; url?: string }
     invitationToken?: string
   }): Promise<Response>
+  updateProfile(input: {
+    userId: string
+    firstName?: string
+    lastName?: string
+    profilePictureUrl?: string
+  }): Promise<{
+    id: string
+    email: string
+    firstName: string | null
+    lastName: string | null
+    profilePictureUrl: string | null
+  }>
 }
 
 export const authService: AuthService = {
@@ -398,6 +410,29 @@ export const authService: AuthService = {
         throw new InvalidAuthCredentialsError("Invalid email or password.")
       }
 
+      throw error
+    }
+  },
+  async updateProfile({ userId, firstName, lastName, profilePictureUrl }) {
+    try {
+      const updatedUser = await getWorkOS().userManagement.updateUser({
+        userId,
+        ...(firstName !== undefined ? { firstName } : {}),
+        ...(lastName !== undefined ? { lastName } : {}),
+        ...(profilePictureUrl !== undefined ? { profilePictureUrl } : {}),
+      })
+
+      return {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        firstName: updatedUser.firstName ?? null,
+        lastName: updatedUser.lastName ?? null,
+        profilePictureUrl: updatedUser.profilePictureUrl ?? null,
+      }
+    } catch (error) {
+      if (error instanceof UnprocessableEntityException) {
+        throw new AuthValidationError(error.message)
+      }
       throw error
     }
   },
