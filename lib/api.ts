@@ -118,6 +118,8 @@ export const toOpenApiJsonSchema = (schema: z.ZodType) =>
     unrepresentable: "any",
   })
 
+// Elysia generic chain depth hits TS2589 with enough .use() calls.
+// @ts-expect-error TS2589 — chain is correct at runtime; type depth limit is a TS restriction only.
 export const app = new Elysia({ prefix: "/api" })
   .use(createApiLoggingPlugin())
   .use(serverTiming())
