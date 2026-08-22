@@ -220,9 +220,10 @@ export const listTenantMemberships = async (
       ? {
           id: directoryUser.id,
           email: directoryUser.email,
-          firstName: directoryUser.firstName,
-          lastName: directoryUser.lastName,
-          profilePictureUrl: directoryUser.profilePictureUrl,
+          firstName: directoryUser.name || directoryUser.firstName || null,
+          lastName: directoryUser.lastName || null,
+          profilePictureUrl:
+            directoryUser.avatarUrl || directoryUser.profilePictureUrl || null,
         }
       : (typedMembership.user ?? null)
 
