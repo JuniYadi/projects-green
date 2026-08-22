@@ -13,6 +13,7 @@ import type {
   TenantMembersResponse,
   TenantMembershipMutationResponse,
 } from "@/modules/tenants/contracts/tenant-api.contract"
+import type { TenantActorContext } from "@/modules/tenants/api/tenants.guards"
 import {
   deleteTenantMembershipSafely,
   demoteTenantMembershipSafely,
