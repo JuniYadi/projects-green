@@ -486,10 +486,20 @@ export function TemplateForm({
               {["IMAGE", "VIDEO", "DOCUMENT"].includes(headerType) && (
                 <div className="space-y-3 rounded-lg border bg-muted/10 p-4">
                   <div className="space-y-1">
-                    <Label>Sample Media Asset</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>Sample Media Asset</Label>
+                      <span className="text-[11px] font-medium text-muted-foreground">
+                        {headerType === "IMAGE"
+                          ? "Max 5 MB (PNG, JPG)"
+                          : headerType === "VIDEO"
+                            ? "Max 16 MB (MP4, 3GPP)"
+                            : "Max 100 MB (PDF)"}
+                      </span>
+                    </div>
                     <p className="text-xs text-muted-foreground">
-                      Upload a local {headerType.toLowerCase()} or provide a
-                      sample URL for Meta template approval.
+                      Media sample ini digunakan Meta untuk proses review
+                      template. Anda tetap dapat mengirimkan media dinamis yang
+                      berbeda saat broadcast.
                     </p>
                   </div>
                   <StorageDropzone
@@ -511,7 +521,9 @@ export function TemplateForm({
                     value={headerUrl}
                     onUploadSuccess={(res) => {
                       setHeaderUrl(res.url || res.fileId)
-                      toast.success(`${headerType} uploaded successfully`)
+                      toast.success(
+                        `Sample ${headerType.toLowerCase()} berhasil diunggah ke storage`
+                      )
                     }}
                     onClear={() => setHeaderUrl("")}
                   />
@@ -520,7 +532,7 @@ export function TemplateForm({
                       htmlFor="headerUrl"
                       className="text-[11px] text-muted-foreground"
                     >
-                      Or manual direct URL:
+                      Atau gunakan URL publik langsung:
                     </Label>
                     <Input
                       id="headerUrl"
