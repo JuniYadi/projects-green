@@ -116,6 +116,12 @@ import { EmailJob } from "@/lib/queue/email"
 import { registerWhatsAppHealthWorkerLogging } from "@/lib/worker-health-logging"
 
 import { processWhatsAppBroadcastJob } from "./whatsapp-broadcast-worker"
+// ── AI Document Ingestion ──────────────────────────────────────────────────
+import {
+  AI_DOCUMENT_INGESTION_QUEUE,
+  processDocumentIngestionJob,
+  type AiDocumentIngestionJobData,
+} from "@/modules/ai/ai-ingestion.worker"
 // ══════════════════════════════════════════════════════════════════════════
 // BullMQ Workers
 // ══════════════════════════════════════════════════════════════════════════
@@ -454,6 +460,17 @@ allWorkers.push(waOutgoingWorker)
 const waWebhookRetryWorker = WebhookRetryJob.createWorker()
 allWorkers.push(waWebhookRetryWorker)
 
+// ── AI Document Ingestion Worker ───────────────────────────────────────────
+const aiIngestionWorker = new Worker<AiDocumentIngestionJobData>(
+  AI_DOCUMENT_INGESTION_QUEUE,
+  processDocumentIngestionJob,
+  {
+    connection: redisConnection,
+    prefix,
+    concurrency: 2,
+  }
+)
+allWorkers.push(aiIngestionWorker)
 // ── Event Logging (shared across all workers) ──────────────────────────────
 for (const worker of allWorkers) {
   if (worker === whatsappHealthWorker) continue
