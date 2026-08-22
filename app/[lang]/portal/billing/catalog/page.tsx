@@ -31,7 +31,10 @@ import {
   PackageIcon,
   PencilSimpleIcon,
 } from "@/components/ui/phosphor-icons"
-import { getCatalog, upsertAdminCatalogPackage } from "@/lib/billing-client"
+import {
+  getAdminCatalogPackages,
+  upsertAdminCatalogPackage,
+} from "@/lib/billing-client"
 import type { CatalogProduct } from "@/lib/billing-client"
 import { formatBillingMoney } from "@/modules/billing/format-money"
 import { toast } from "sonner"
@@ -71,7 +74,7 @@ export default function PortalBillingCatalogPage() {
     try {
       setLoading(true)
       setError(null)
-      const data = await getCatalog("IDR")
+      const data = await getAdminCatalogPackages()
       const filtered = query
         ? data.products.filter(
             (p) =>
