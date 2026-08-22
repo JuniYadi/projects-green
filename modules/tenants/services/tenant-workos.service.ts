@@ -78,7 +78,15 @@ const isLikelyEmail = (value: string | null) => {
 }
 
 const toMembershipProfile = (
-  membership: WorkOSMembership
+  membership: WorkOSMembership & {
+    user?: {
+      email?: string | null
+      firstName?: string | null
+      lastName?: string | null
+      profilePictureUrl?: string | null
+      lastSignInAt?: string | null
+    } | null
+  }
 ): TenantMembershipSummary["profile"] => {
   if (!membership.user) {
     return null
@@ -90,6 +98,7 @@ const toMembershipProfile = (
   const profilePictureUrl = normalizeNullableString(
     membership.user.profilePictureUrl
   )
+  const lastSignInAt = normalizeNullableString(membership.user.lastSignInAt)
   const displayName = [firstName, lastName].filter(Boolean).join(" ") || email
 
   return {
@@ -98,6 +107,7 @@ const toMembershipProfile = (
     lastName,
     profilePictureUrl,
     displayName: displayName || null,
+    lastSignInAt,
   }
 }
 
@@ -141,6 +151,7 @@ const toTenantMembershipSummary = (
     role: normalizeTenantRole(roleSlug),
     roleSlug,
     profile,
+    lastSignInAt: profile?.lastSignInAt ?? null,
     createdAt: membership.createdAt,
     updatedAt: membership.updatedAt,
   }
@@ -209,7 +220,6 @@ export const listTenantMemberships = async (
       statuses: ["active", "inactive", "pending"],
     })
     .then((result) => result.autoPagination())
-
   const userIds = memberships.map((m) => m.userId).filter(Boolean)
   const usersById = await getCachedUsers(userIds).catch(() => new Map())
 
@@ -224,6 +234,7 @@ export const listTenantMemberships = async (
           lastName: directoryUser.lastName || null,
           profilePictureUrl:
             directoryUser.avatarUrl || directoryUser.profilePictureUrl || null,
+          lastSignInAt: directoryUser.lastSignInAt || null,
         }
       : (typedMembership.user ?? null)
 
