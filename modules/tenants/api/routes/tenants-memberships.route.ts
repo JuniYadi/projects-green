@@ -450,5 +450,6 @@ export const createTenantsMembershipRoutes = (
     )
 }
 export const tenantMembershipRoutes = createTenantsMembershipRoutes()
+export const tenantsMembershipRoutes = tenantMembershipRoutes
 export const tenantMembershipsRoutes = tenantMembershipRoutes
 export { createTenantsMembershipRoutes as createTenantMembershipRoutes }
