@@ -48,6 +48,8 @@ import { webhookDeadLetterRoutes } from "@/modules/whatsapp/webhooks/api/webhook
 import { vaultSecretsRoutes } from "@/modules/secrets/api"
 import { adminWhatsappPricingRoutes } from "@/modules/whatsapp/messages/api/admin-pricing.route"
 import { wireguardRoutes } from "@/modules/wireguard/api/wireguard.route"
+import { storageS3Routes } from "@/modules/storage/api/storage-s3.route"
+import { portalStorageRoutes } from "@/modules/storage/api/portal-storage.route"
 const parseErrorPath = (
   value: string | Array<string | number> | undefined
 ): string | null => {
@@ -116,6 +118,8 @@ export const toOpenApiJsonSchema = (schema: z.ZodType) =>
     unrepresentable: "any",
   })
 
+// Elysia generic chain depth hits TS2589 with enough .use() calls.
+// @ts-expect-error TS2589 — chain is correct at runtime; type depth limit is a TS restriction only.
 export const app = new Elysia({ prefix: "/api" })
   .use(createApiLoggingPlugin())
   .use(serverTiming())
@@ -176,6 +180,11 @@ export const app = new Elysia({ prefix: "/api" })
           {
             name: "WhatsApp Broadcasts",
             description: "Broadcast campaigns and delivery tracking",
+          },
+          {
+            name: "S3 Presigned Storage",
+            description:
+              "Encrypted tenant-isolated S3 presigned upload initialization, confirmation, and view URLs",
           },
         ],
         components: {
@@ -312,7 +321,10 @@ export const app = new Elysia({ prefix: "/api" })
   .use(adminWhatsappPricingRoutes)
   .use(whatsappRoutes)
   .use(wireguardRoutes)
-  .get("/health", ({ request }) => {
+
+  .use(storageS3Routes)
+  .use(portalStorageRoutes)
+  .get("/health", ({ request }: { request: Request }) => {
     const base = getRequestOrigin(request)
     return {
       endpoints: [

@@ -42,6 +42,7 @@ import {
   getLanguageDisplay,
   getTemplatePlaceholderIndexes,
 } from "./template-preview"
+import { StorageDropzone } from "@/modules/storage/ui/storage-dropzone"
 import type { WhatsAppTemplateLanguage } from "@/lib/api/whatsapp-client"
 
 export type TemplateButton =
@@ -483,17 +484,52 @@ export function TemplateForm({
               )}
 
               {["IMAGE", "VIDEO", "DOCUMENT"].includes(headerType) && (
-                <div className="space-y-2 rounded-lg border border-dashed p-4">
-                  <Label htmlFor="headerUrl">Sample Media URL / Asset</Label>
-                  <Input
-                    id="headerUrl"
+                <div className="space-y-3 rounded-lg border bg-muted/10 p-4">
+                  <div className="space-y-1">
+                    <Label>Sample Media Asset</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Upload a local {headerType.toLowerCase()} or provide a
+                      sample URL for Meta template approval.
+                    </p>
+                  </div>
+                  <StorageDropzone
+                    mediaType={headerType as "IMAGE" | "VIDEO" | "DOCUMENT"}
+                    accept={
+                      headerType === "IMAGE"
+                        ? "image/png,image/jpeg,image/webp"
+                        : headerType === "VIDEO"
+                          ? "video/mp4,video/3gpp"
+                          : "application/pdf"
+                    }
+                    maxSizeBytes={
+                      headerType === "IMAGE"
+                        ? 5 * 1024 * 1024
+                        : headerType === "VIDEO"
+                          ? 16 * 1024 * 1024
+                          : 100 * 1024 * 1024
+                    }
                     value={headerUrl}
-                    onChange={(e) => setHeaderUrl(e.target.value)}
-                    placeholder={`https://example.com/sample-${headerType.toLowerCase()}.${headerType === "IMAGE" ? "jpg" : headerType === "VIDEO" ? "mp4" : "pdf"}`}
+                    onUploadSuccess={(res) => {
+                      setHeaderUrl(res.url || res.fileId)
+                      toast.success(`${headerType} uploaded successfully`)
+                    }}
+                    onClear={() => setHeaderUrl("")}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Provide a direct media URL to serve as the template sample.
-                  </p>
+                  <div className="pt-1">
+                    <Label
+                      htmlFor="headerUrl"
+                      className="text-[11px] text-muted-foreground"
+                    >
+                      Or manual direct URL:
+                    </Label>
+                    <Input
+                      id="headerUrl"
+                      value={headerUrl}
+                      onChange={(e) => setHeaderUrl(e.target.value)}
+                      placeholder={`https://example.com/sample-${headerType.toLowerCase()}.${headerType === "IMAGE" ? "jpg" : headerType === "VIDEO" ? "mp4" : "pdf"}`}
+                      className="mt-1 text-xs"
+                    />
+                  </div>
                 </div>
               )}
             </CardContent>

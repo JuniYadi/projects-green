@@ -912,6 +912,12 @@ const buildPortalNavMain = (
     isActive: startsWithRoute(pathname, "/portal/ai"),
   },
   {
+    title: "Storage Audit",
+    url: localizePathname({ pathname: "/portal/storage", locale }),
+    icon: <HardDrivesIcon />,
+    isActive: startsWithRoute(pathname, "/portal/storage"),
+  },
+  {
     title: "Settings",
     url: localizePathname({ pathname: "/portal/settings/emails", locale }),
     icon: <GearSixIcon />,
