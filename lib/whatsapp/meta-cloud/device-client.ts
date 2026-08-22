@@ -372,9 +372,7 @@ export class WhatsAppDeviceClient {
 
     const handle = result.h ?? result.handle
     if (!handle) {
-      throw new Error(
-        "Meta Cloud API returned no media handle / no profile picture handle"
-      )
+      throw new Error("Meta Cloud API returned no media handle")
     }
     return { handle }
   }
