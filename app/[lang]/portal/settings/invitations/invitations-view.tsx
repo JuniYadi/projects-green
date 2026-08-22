@@ -151,11 +151,11 @@ export function InvitationsView({ organizationId }: InvitationsViewProps) {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Role" />
         ),
-        cell: ({ row }) => (
-          <span className="capitalize">
-            {row.original.roleSlug || "Member"}
-          </span>
-        ),
+        cell: ({ row }) => {
+          const raw = row.original.roleSlug || "member"
+          const cleaned = raw.replace(/^user_/i, "")
+          return <span className="capitalize">{cleaned}</span>
+        },
       },
       {
         accessorKey: "expiresAt",

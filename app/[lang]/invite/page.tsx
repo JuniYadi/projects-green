@@ -9,12 +9,12 @@ import {
 } from "@/modules/auth/invite-cookie"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { AppLocale } from "@/lib/i18n/config"
-import { APP_NAME } from "@/lib/app-config"
 import {
   acceptTenantInvitation,
   findTenantInvitationByToken,
   getTenantOrganizationById,
 } from "@/modules/tenants/services/tenant-workos.service"
+import { APP_NAME } from "@/lib/app-config"
 
 type InvitePageProps = {
   params: Promise<{ lang: string }>
@@ -119,11 +119,16 @@ export default async function InvitePage({
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">
       <div className="flex w-full max-w-md flex-col gap-6">
-        <a href="#" className="flex items-center gap-2 self-center font-medium">
-          <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <span className="text-xs">A</span>
-          </div>
-          {APP_NAME}
+        <a
+          href={localizePathname({ pathname: "/", locale })}
+          className="flex items-center justify-center gap-2.5 self-center font-medium"
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 text-sm font-bold text-white shadow-lg shadow-emerald-500/30">
+            P
+          </span>
+          <span className="text-lg font-bold tracking-tight text-foreground">
+            {APP_NAME}
+          </span>
         </a>
 
         {!invitation ? (

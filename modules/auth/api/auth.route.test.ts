@@ -8,28 +8,61 @@ import {
   InvalidAuthCredentialsError,
   MissingAuthConfigurationError,
 } from "@/modules/auth/auth.service"
+import type { AuthService } from "@/modules/auth/auth.service"
+
+const makeMockAuthService = (
+  overrides: Partial<AuthService> = {}
+): AuthService => ({
+  requestMagicCode: async () => {},
+  verifyMagicCode: async () => {
+    throw new Error("not used")
+  },
+  completeEmailVerification: async () => {
+    throw new Error("not used")
+  },
+  completeOrganizationSelection: async () => {
+    throw new Error("not used")
+  },
+  signup: async () => {
+    throw new Error("not used")
+  },
+  login: async () => {
+    throw new Error("not used")
+  },
+  updateProfile: async () => ({
+    id: "usr_1",
+    email: "test@example.com",
+    firstName: null,
+    lastName: null,
+    profilePictureUrl: null,
+  }),
+  getUserDetails: async () => ({
+    user: {
+      id: "usr_1",
+      email: "test@example.com",
+      emailVerified: true,
+      firstName: null,
+      lastName: null,
+      name: null,
+      profilePictureUrl: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      lastSignInAt: null,
+    },
+    identities: [],
+    sessions: [],
+  }),
+  revokeUserSession: async () => {},
+  ...overrides,
+})
 
 describe("authRoutes", () => {
   it("returns success for POST /auth/magic/request", async () => {
     const app = new Elysia().use(
-      createAuthRoutes({
-        async requestMagicCode() {},
-        async verifyMagicCode() {
-          throw new Error("not used")
-        },
-        async completeEmailVerification() {
-          throw new Error("not used")
-        },
-        async completeOrganizationSelection() {
-          throw new Error("not used")
-        },
-        async signup() {
-          throw new Error("not used")
-        },
-        async login() {
-          throw new Error("not used")
-        },
-      })
+      createAuthRoutes(
+        makeMockAuthService({
+          async requestMagicCode() {},
+        })
+      )
     )
 
     const response = await app.handle(

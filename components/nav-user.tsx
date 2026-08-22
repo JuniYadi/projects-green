@@ -30,17 +30,19 @@ import {
 } from "@/components/ui/sidebar"
 import {
   CaretUpDownIcon,
-  CheckCircleIcon,
+  BuildingsIcon,
   SignOutIcon,
   GlobeIcon,
   SunIcon,
   MoonIcon,
   MonitorIcon,
+  UserGearIcon,
 } from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 import { getMessages } from "@/lib/i18n/messages"
 import { getLocaleFromPathname, localizePathname } from "@/lib/i18n/pathname"
 import { getWorkOSLogoutReturnTo } from "@/lib/workos-redirect"
+import { ProfileDialog } from "@/components/profile-dialog"
 
 import type { AppSidebarUser } from "@/components/app-sidebar"
 
@@ -108,22 +110,6 @@ const resolveAuthMethodLabel = (method: string | null, fallback: string) => {
   return methodLabels[method] ?? method
 }
 
-const formatSignInTime = (value: string | null, fallback: string) => {
-  if (!value) {
-    return fallback
-  }
-
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.valueOf())) {
-    return fallback
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(parsed)
-}
-
 export function NavUser({ user }: { user: AppSidebarUser }) {
   const { isMobile } = useSidebar()
   const { theme, setTheme, resolvedTheme } = useTheme()
@@ -141,6 +127,7 @@ export function NavUser({ user }: { user: AppSidebarUser }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const initials = resolveInitials(user.name, user.email)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [avatarStatus, setAvatarStatus] = useState<
     "idle" | "loading" | "loaded" | "error"
   >("idle")
@@ -206,10 +193,6 @@ export function NavUser({ user }: { user: AppSidebarUser }) {
 
   const authMethodLabel = resolveAuthMethodLabel(
     identityInfo?.authenticationMethod ?? null,
-    messages.navUser.notAvailableLabel
-  )
-  const lastSignInLabel = formatSignInTime(
-    identityInfo?.lastSignInAt ?? null,
     messages.navUser.notAvailableLabel
   )
 
@@ -288,20 +271,14 @@ export function NavUser({ user }: { user: AppSidebarUser }) {
                 </div>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem disabled>
-                <div className="grid gap-0.5">
-                  <span className="text-xs text-muted-foreground">
-                    {messages.navUser.sessionSecurityLabel}
-                  </span>
-                  <span className="text-xs">
-                    {messages.navUser.signedInViaLabel}: {authMethodLabel}
-                  </span>
-                  <span className="text-xs">
-                    {messages.navUser.lastSignInLabel}: {lastSignInLabel}
-                  </span>
-                </div>
+              <DropdownMenuItem onClick={() => setIsProfileOpen(true)}>
+                <UserGearIcon className="size-4" />
+                <span>
+                  {activeLocale === "id"
+                    ? "Pengaturan Profil"
+                    : "Profile Settings"}
+                </span>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link
@@ -310,11 +287,21 @@ export function NavUser({ user }: { user: AppSidebarUser }) {
                     locale: activeLocale,
                   })}
                 >
-                  <CheckCircleIcon />
-                  {messages.navUser.manageSignInLabel}
+                  <BuildingsIcon className="size-4" />
+                  <span>
+                    {messages.console.organization.heading ||
+                      "Organization Settings"}
+                  </span>
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <div className="flex items-center justify-between px-2 py-1.5 text-[11px] text-muted-foreground">
+              <span>{activeLocale === "id" ? "Metode Masuk" : "Sign-in"}:</span>
+              <span className="font-medium text-foreground">
+                {authMethodLabel}
+              </span>
+            </div>
             <DropdownMenuSeparator />
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
@@ -403,6 +390,12 @@ export function NavUser({ user }: { user: AppSidebarUser }) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        <ProfileDialog
+          open={isProfileOpen}
+          onOpenChange={setIsProfileOpen}
+          user={user}
+          authMethodLabel={authMethodLabel}
+        />
       </SidebarMenuItem>
     </SidebarMenu>
   )

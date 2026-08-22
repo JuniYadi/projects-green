@@ -12,10 +12,9 @@ import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MembersList } from "@/app/[lang]/portal/settings/members/members-list"
-import { InvitationsView } from "@/app/[lang]/portal/settings/invitations/invitations-view"
 import { OwnershipView } from "@/app/[lang]/portal/settings/ownership/ownership-view"
 
-const TABS = ["members", "invitations", "ownership"] as const
+const TABS = ["members", "ownership"] as const
 type OrganizationTab = (typeof TABS)[number]
 
 const DEFAULT_TAB: OrganizationTab = "members"
@@ -53,18 +52,12 @@ export function OrganizationTabs({ organizationId }: OrganizationTabsProps) {
         <TabsTrigger value="members" className="px-3 text-sm">
           {messages.console.organization.members}
         </TabsTrigger>
-        <TabsTrigger value="invitations" className="px-3 text-sm">
-          {messages.console.organization.invitations}
-        </TabsTrigger>
         <TabsTrigger value="ownership" className="px-3 text-sm">
           {messages.console.organization.ownership}
         </TabsTrigger>
       </TabsList>
       <TabsContent value="members" className="text-sm">
         <MembersList organizationId={organizationId} />
-      </TabsContent>
-      <TabsContent value="invitations" className="text-sm">
-        <InvitationsView organizationId={organizationId} />
       </TabsContent>
       <TabsContent value="ownership" className="text-sm">
         <OwnershipView organizationId={organizationId} />

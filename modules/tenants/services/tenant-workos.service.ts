@@ -14,7 +14,7 @@ import {
   normalizeTenantRole,
   type TenantRole,
 } from "@/modules/tenants/tenant-policy"
-
+import { getCachedUsers } from "@/lib/workos-directory"
 const BOOTSTRAP_CREATOR_ROLE_SLUG = "user_owner"
 
 const SCOPED_TENANT_ROLE_SLUG: Record<TenantRole, string> = {
@@ -38,14 +38,6 @@ type WorkOSMembership = {
     lastName?: string | null
     profilePictureUrl?: string | null
   } | null
-}
-
-type WorkOSUser = {
-  id: string
-  email?: string | null
-  firstName?: string | null
-  lastName?: string | null
-  profilePictureUrl?: string | null
 }
 
 type WorkOSInvitation = {
@@ -86,7 +78,15 @@ const isLikelyEmail = (value: string | null) => {
 }
 
 const toMembershipProfile = (
-  membership: WorkOSMembership
+  membership: WorkOSMembership & {
+    user?: {
+      email?: string | null
+      firstName?: string | null
+      lastName?: string | null
+      profilePictureUrl?: string | null
+      lastSignInAt?: string | null
+    } | null
+  }
 ): TenantMembershipSummary["profile"] => {
   if (!membership.user) {
     return null
@@ -98,6 +98,7 @@ const toMembershipProfile = (
   const profilePictureUrl = normalizeNullableString(
     membership.user.profilePictureUrl
   )
+  const lastSignInAt = normalizeNullableString(membership.user.lastSignInAt)
   const displayName = [firstName, lastName].filter(Boolean).join(" ") || email
 
   return {
@@ -106,6 +107,7 @@ const toMembershipProfile = (
     lastName,
     profilePictureUrl,
     displayName: displayName || null,
+    lastSignInAt,
   }
 }
 
@@ -149,6 +151,7 @@ const toTenantMembershipSummary = (
     role: normalizeTenantRole(roleSlug),
     roleSlug,
     profile,
+    lastSignInAt: profile?.lastSignInAt ?? null,
     createdAt: membership.createdAt,
     updatedAt: membership.updatedAt,
   }
@@ -211,37 +214,36 @@ export const listTenantMemberships = async (
 ): Promise<TenantMembershipSummary[]> => {
   const workos = getWorkOS()
 
-  const [memberships, users] = await Promise.all([
-    workos.userManagement
-      .listOrganizationMemberships({
-        organizationId,
-        statuses: ["active", "inactive", "pending"],
-      })
-      .then((result) => result.autoPagination()),
-    workos.userManagement
-      .listUsers({ organizationId })
-      .then((result) => result.autoPagination())
-      .catch(() => [] as WorkOSUser[]),
-  ])
-
-  // listOrganizationMemberships only returns userId, not the hydrated user
-  // profile. Build a lookup from listUsers so members render with email,
-  // name, and avatar instead of the raw user id.
-  const usersById = new Map<string, WorkOSUser>(
-    (users as WorkOSUser[]).map((user) => [user.id, user])
-  )
+  const memberships = await workos.userManagement
+    .listOrganizationMemberships({
+      organizationId,
+      statuses: ["active", "inactive", "pending"],
+    })
+    .then((result) => result.autoPagination())
+  const userIds = memberships.map((m) => m.userId).filter(Boolean)
+  const usersById = await getCachedUsers(userIds).catch(() => new Map())
 
   return memberships.map((membership) => {
     const typedMembership = membership as WorkOSMembership
-    const user = usersById.get(typedMembership.userId) ?? null
+    const directoryUser = usersById.get(typedMembership.userId)
+    const user = directoryUser
+      ? {
+          id: directoryUser.id,
+          email: directoryUser.email,
+          firstName: directoryUser.name || directoryUser.firstName || null,
+          lastName: directoryUser.lastName || null,
+          profilePictureUrl:
+            directoryUser.avatarUrl || directoryUser.profilePictureUrl || null,
+          lastSignInAt: directoryUser.lastSignInAt || null,
+        }
+      : (typedMembership.user ?? null)
 
     return toTenantMembershipSummary({
       ...typedMembership,
-      user: typedMembership.user ?? user,
+      user,
     })
   })
 }
-
 export const getTenantMembershipById = async (
   membershipId: string
 ): Promise<TenantMembershipSummary | null> => {
@@ -333,9 +335,11 @@ export const listTenantInvitations = async (
     })
     .then((result) => result.autoPagination())
 
-  return invitations.map((invitation) =>
-    toTenantInvitationSummary(invitation as WorkOSInvitation)
-  )
+  return invitations
+    .map((invitation) =>
+      toTenantInvitationSummary(invitation as WorkOSInvitation)
+    )
+    .filter((inv) => inv.state === "pending")
 }
 
 export const sendTenantInvitation = async (params: {

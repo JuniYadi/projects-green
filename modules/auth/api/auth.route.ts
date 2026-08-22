@@ -65,13 +65,19 @@ const organizationSelectionCompleteSchema = z.object({
     .min(1, "Missing pending authentication token."),
 })
 
-export const createAuthRoutes = (service: AuthService = authService) =>
-  new Elysia()
+export const createAuthRoutes = (
+  service: Partial<AuthService> = authService
+) => {
+  const fullService: AuthService = {
+    ...authService,
+    ...service,
+  }
+  return new Elysia()
     .post(
       "/auth/magic/request",
       async ({ body, set }) => {
         try {
-          await service.requestMagicCode({
+          await fullService.requestMagicCode({
             email: body.email,
           })
 
@@ -110,7 +116,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
       "/auth/magic/verify",
       async ({ body, request, set }) => {
         try {
-          return await service.verifyMagicCode({
+          return await fullService.verifyMagicCode({
             email: body.email,
             code: body.code,
             requestUrl: request,
@@ -125,7 +131,6 @@ export const createAuthRoutes = (service: AuthService = authService) =>
               message: "Missing WorkOS auth configuration.",
             }
           }
-
           if (error instanceof InvalidAuthCredentialsError) {
             set.status = 401
             return {
@@ -165,7 +170,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
       "/auth/email-verification/complete",
       async ({ body, request, set }) => {
         try {
-          return await service.completeEmailVerification({
+          return await fullService.completeEmailVerification({
             code: body.code,
             pendingAuthenticationToken: body.pendingAuthenticationToken,
             requestUrl: request,
@@ -188,7 +193,6 @@ export const createAuthRoutes = (service: AuthService = authService) =>
               message: error.message,
             }
           }
-
           if (error instanceof AuthValidationError) {
             set.status = 422
             return {
@@ -219,7 +223,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
       "/auth/organization-selection/complete",
       async ({ body, request, set }) => {
         try {
-          return await service.completeOrganizationSelection({
+          return await fullService.completeOrganizationSelection({
             organizationId: body.organizationId,
             pendingAuthenticationToken: body.pendingAuthenticationToken,
             requestUrl: request,
@@ -273,7 +277,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
       "/auth/signup",
       async ({ body, request, set }) => {
         try {
-          return await service.signup({
+          return await fullService.signup({
             name: body.name,
             email: body.email,
             password: body.password,
@@ -332,7 +336,7 @@ export const createAuthRoutes = (service: AuthService = authService) =>
       "/auth/login",
       async ({ body, request, set }) => {
         try {
-          return await service.login({
+          return await fullService.login({
             email: body.email,
             password: body.password,
             requestUrl: request,
@@ -374,5 +378,142 @@ export const createAuthRoutes = (service: AuthService = authService) =>
         body: loginSchema,
       }
     )
+    .patch(
+      "/auth/profile",
+      async ({ body, request, set }) => {
+        const { resolveAuthContext } =
+          await import("@/lib/auth/resolve-proxy-auth")
+        const authContext = await resolveAuthContext(request)
+
+        if (!authContext || authContext.type !== "workos") {
+          set.status = 401
+          return {
+            ok: false as const,
+            error: "UNAUTHORIZED" as const,
+            message: "You must be signed in to update your profile.",
+          }
+        }
+
+        try {
+          const profile = await fullService.updateProfile({
+            userId: authContext.userId,
+            firstName: body.firstName,
+            lastName: body.lastName,
+            profilePictureUrl: body.profilePictureUrl,
+          })
+
+          return {
+            ok: true as const,
+            user: profile,
+          }
+        } catch (error) {
+          if (error instanceof AuthValidationError) {
+            set.status = 422
+            return {
+              ok: false as const,
+              error: "VALIDATION_ERROR" as const,
+              message: error.message,
+            }
+          }
+
+          set.status = 500
+          return {
+            ok: false as const,
+            error: "INTERNAL_SERVER_ERROR" as const,
+            message: "Unable to update profile right now.",
+          }
+        }
+      },
+      {
+        body: z.object({
+          firstName: z.string().trim().max(100).optional(),
+          lastName: z.string().trim().max(100).optional(),
+          profilePictureUrl: z.string().trim().url().optional(),
+        }),
+      }
+    )
+    .get("/auth/user-details", async ({ request, set }) => {
+      const { resolveAuthContext } =
+        await import("@/lib/auth/resolve-proxy-auth")
+      const authContext = await resolveAuthContext(request)
+
+      if (!authContext || authContext.type !== "workos") {
+        set.status = 401
+        return {
+          ok: false as const,
+          error: "UNAUTHORIZED" as const,
+          message: "You must be signed in to view account details.",
+        }
+      }
+
+      try {
+        const details = await fullService.getUserDetails(authContext.userId)
+        return {
+          ok: true as const,
+          ...details,
+        }
+      } catch (error) {
+        set.status = 500
+        return {
+          ok: false as const,
+          error: "INTERNAL_SERVER_ERROR" as const,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to load user details.",
+        }
+      }
+    })
+    .post(
+      "/auth/sessions/:sessionId/revoke",
+      async ({ params, request, set }) => {
+        const { resolveAuthContext } =
+          await import("@/lib/auth/resolve-proxy-auth")
+        const authContext = await resolveAuthContext(request)
+
+        if (!authContext || authContext.type !== "workos") {
+          set.status = 401
+          return {
+            ok: false as const,
+            error: "UNAUTHORIZED" as const,
+            message: "You must be signed in to manage sessions.",
+          }
+        }
+
+        try {
+          const userDetails = await fullService.getUserDetails(
+            authContext.userId
+          )
+          const ownsSession = userDetails.sessions.some(
+            (s) => s.id === params.sessionId
+          )
+          if (!ownsSession) {
+            set.status = 403
+            return {
+              ok: false as const,
+              error: "FORBIDDEN" as const,
+              message: "You can only revoke your own sessions.",
+            }
+          }
+
+          await fullService.revokeUserSession(params.sessionId)
+          return {
+            ok: true as const,
+            message: "Session revoked successfully.",
+          }
+        } catch (error) {
+          set.status = 500
+          return {
+            ok: false as const,
+            error: "INTERNAL_SERVER_ERROR" as const,
+            message:
+              error instanceof Error
+                ? error.message
+                : "Unable to revoke session.",
+          }
+        }
+      }
+    )
+}
 
 export const authRoutes = createAuthRoutes()

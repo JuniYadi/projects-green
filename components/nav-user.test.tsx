@@ -28,7 +28,16 @@ mock.module("@workos-inc/authkit-nextjs/components", () => {
   }
 })
 
-import { useRouter, usePathname, useSearchParams } from "next/navigation"
+mock.module("next/navigation", () => {
+  return {
+    useRouter: () => ({
+      replace: mockReplace,
+      refresh: mockRefresh,
+    }),
+    usePathname: () => mockPathname,
+    useSearchParams: () => mockSearchParams,
+  }
+})
 
 describe("NavUser", () => {
   afterEach(() => {
@@ -49,14 +58,6 @@ describe("NavUser", () => {
     mockSearchParams = new URLSearchParams()
     process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI =
       "https://pfnapp.my.id/callback"
-    ;(usePathname as ReturnType<typeof mock>).mockReturnValue(mockPathname)
-    ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(
-      mockSearchParams
-    )
-    ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
-      replace: mockReplace,
-      refresh: mockRefresh,
-    })
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {
       const path =
         typeof input === "string"
@@ -100,7 +101,7 @@ describe("NavUser", () => {
     fireEvent.pointerDown(view.getByRole("button"))
 
     await waitFor(() => {
-      expect(view.getByText("Signed in via: Google OAuth")).toBeInTheDocument()
+      expect(view.getByText("Google OAuth")).toBeInTheDocument()
     })
   })
 
@@ -196,10 +197,6 @@ describe("NavUser", () => {
     mockPathname = "/id/console"
     mockSearchParams = new URLSearchParams(
       "returnTo=https%3A%2F%2Fevil.example"
-    )
-    ;(usePathname as ReturnType<typeof mock>).mockReturnValue(mockPathname)
-    ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(
-      mockSearchParams
     )
     const { NavUser } = await import("@/components/nav-user")
 

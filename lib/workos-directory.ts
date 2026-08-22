@@ -31,8 +31,9 @@ export type WorkOSDirectoryUser = {
   name: string
   email: string
   avatarUrl: string | null
+  lastSignInAt: string | null
+  createdAt: string | null
 }
-
 export type WorkOSDirectoryOrg = {
   id: string
   name: string | null
@@ -80,7 +81,6 @@ export async function getCachedUser(
   try {
     const workos = getWorkOS()
     const user = await workos.userManagement.getUser(workosUserId)
-
     const result: WorkOSDirectoryUser = {
       id: user.id,
       name:
@@ -89,9 +89,9 @@ export async function getCachedUser(
         "Unknown User",
       email: user.email?.trim() || "",
       avatarUrl: user.profilePictureUrl?.trim() || null,
+      lastSignInAt: user.lastSignInAt?.trim() || null,
+      createdAt: user.createdAt?.trim() || null,
     }
-
-    // 3. Seed cache (fire-and-forget)
     tryCacheSet(cacheKey, result)
 
     return result
