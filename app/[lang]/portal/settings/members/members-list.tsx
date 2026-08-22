@@ -200,6 +200,10 @@ export function MembersList({ organizationId }: MembersListProps) {
   )
 
   const unifiedData = useMemo<UnifiedMemberRow[]>(() => {
+    const existingMemberEmails = new Set(
+      members.map((m) => m.email?.toLowerCase()).filter(Boolean)
+    )
+
     const rows: UnifiedMemberRow[] = members.map((m) => ({
       id: `member-${m.id}`,
       membershipId: m.id,
@@ -213,12 +217,19 @@ export function MembersList({ organizationId }: MembersListProps) {
         : "inactive") as UnifiedMemberRow["status"],
       date: m.createdAt,
     }))
+
     invitations.forEach((inv) => {
+      // Don't show pending invitation if user has already accepted and joined as an active member
+      if (inv.email && existingMemberEmails.has(inv.email.toLowerCase())) {
+        return
+      }
+
       const roleSlugCleaned = (inv.roleSlug || "member").replace(
         /^user_/i,
         ""
       ) as TenantRole
       const isExpired = inv.expiresAt ? Date.parse(inv.expiresAt) < 0 : false
+
       rows.push({
         id: `invitation-${inv.id}`,
         invitationId: inv.id,
@@ -321,55 +332,113 @@ export function MembersList({ organizationId }: MembersListProps) {
         id: "actions",
         header: () => null,
         cell: ({ row }) => {
-          if (
-            row.original.type !== "invitation" ||
-            !row.original.invitationId
-          ) {
-            return null
-          }
-
+          const isInvitation = row.original.type === "invitation"
           const invId = row.original.invitationId
+          const memId = row.original.membershipId
+          const role = row.original.role
 
-          return (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <DotsThreeVerticalIcon className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() =>
-                    handleInvitationAction(
-                      eden.api.tenants[organizationId].invitations[
-                        invId
-                      ].resend.post()
-                    )
-                  }
-                >
-                  Resend
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => {
-                    if (
-                      confirm(
-                        "Are you sure you want to revoke this invitation?"
-                      )
-                    ) {
+          if (isInvitation && invId) {
+            return (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <DotsThreeVerticalIcon className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() =>
                       handleInvitationAction(
                         eden.api.tenants[organizationId].invitations[
                           invId
-                        ].revoke.post()
+                        ].resend.post()
                       )
                     }
-                  }}
-                >
-                  Revoke
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )
+                  >
+                    Resend
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => {
+                      if (
+                        confirm(
+                          "Are you sure you want to revoke this invitation?"
+                        )
+                      ) {
+                        handleInvitationAction(
+                          eden.api.tenants[organizationId].invitations[
+                            invId
+                          ].revoke.post()
+                        )
+                      }
+                    }}
+                  >
+                    Revoke
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
+          }
+
+          if (!isInvitation && memId && role !== "owner") {
+            return (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <DotsThreeVerticalIcon className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {role === "member" ? (
+                    <DropdownMenuItem
+                      onClick={() =>
+                        handleInvitationAction(
+                          eden.api.tenants[organizationId].members[
+                            memId
+                          ].promote.post({ targetRole: "admin" })
+                        )
+                      }
+                    >
+                      Promote to Admin
+                    </DropdownMenuItem>
+                  ) : null}
+                  {role === "admin" ? (
+                    <DropdownMenuItem
+                      onClick={() =>
+                        handleInvitationAction(
+                          eden.api.tenants[organizationId].members[
+                            memId
+                          ].demote.post()
+                        )
+                      }
+                    >
+                      Demote to Member
+                    </DropdownMenuItem>
+                  ) : null}
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => {
+                      if (
+                        confirm(
+                          "Are you sure you want to remove this member from the organization?"
+                        )
+                      ) {
+                        handleInvitationAction(
+                          eden.api.tenants[organizationId].members[
+                            memId
+                          ].remove.post()
+                        )
+                      }
+                    }}
+                  >
+                    Remove Member
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
+          }
+
+          return null
         },
         enableHiding: false,
       },
