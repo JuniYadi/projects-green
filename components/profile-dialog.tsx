@@ -436,7 +436,23 @@ export function ProfileDialog({
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-medium text-foreground">
-                              {session.authMethod || "Web Session"}
+                              {(() => {
+                                const method = (
+                                  session.authMethod || ""
+                                ).toLowerCase()
+                                if (method.includes("oauth"))
+                                  return "OAuth Social Login"
+                                if (
+                                  method.includes("magic") ||
+                                  method.includes("code")
+                                )
+                                  return "Magic Link / Email Code"
+                                if (method.includes("password"))
+                                  return "Password Login"
+                                if (method.includes("sso"))
+                                  return "Enterprise SSO"
+                                return session.authMethod || "Web Session"
+                              })()}
                             </span>
                             {isCurrent ? (
                               <Badge
@@ -449,13 +465,22 @@ export function ProfileDialog({
                           </div>
                           <span className="text-[11px] text-muted-foreground">
                             Started:{" "}
-                            {new Date(session.createdAt).toLocaleDateString()} •
-                            Expires:{" "}
-                            {new Date(session.expiresAt).toLocaleDateString()}
+                            {(() => {
+                              const d = new Date(session.createdAt)
+                              const pad = (n: number) =>
+                                n.toString().padStart(2, "0")
+                              return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+                            })()}{" "}
+                            • Expires:{" "}
+                            {(() => {
+                              const d = new Date(session.expiresAt)
+                              const pad = (n: number) =>
+                                n.toString().padStart(2, "0")
+                              return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+                            })()}
                           </span>
                         </div>
                       </div>
-
                       {!isCurrent ? (
                         <Button
                           variant="ghost"
