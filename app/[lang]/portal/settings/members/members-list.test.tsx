@@ -14,7 +14,7 @@ mock.module("@/lib/eden", () => ({
                 orgId: "org_123",
                 effectiveGlobalRole: "none",
                 effectiveTenantRole: "owner",
-                allowedActions: ["manage_tenant"],
+                allowedActions: ["manage_tenant", "invite_member"],
               },
             }),
           },
@@ -48,14 +48,35 @@ mock.module("@/lib/eden", () => ({
               },
             }),
           },
+          invitations: {
+            get: async () => ({
+              data: {
+                ok: true,
+                orgId: "org_123",
+                invitations: [
+                  {
+                    id: "inv_1",
+                    email: "pending@example.com",
+                    state: "pending",
+                    organizationId: "org_123",
+                    inviterUserId: "usr_1",
+                    acceptedUserId: null,
+                    roleSlug: "user_member",
+                    createdAt: "2026-01-01T00:00:00.000Z",
+                    expiresAt: "2026-01-08T00:00:00.000Z",
+                  },
+                ],
+              },
+            }),
+          },
         },
       },
     },
   },
 }))
 
-describe("MembersList", () => {
-  it("renders without crashing", () => {
+describe("Unified MembersList", () => {
+  it("renders both active members and invitations in single unified view", () => {
     const element = React.createElement(MembersList, {
       organizationId: "org_123",
     })
