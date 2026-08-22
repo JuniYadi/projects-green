@@ -42,6 +42,7 @@ import {
   getAdminSubscriptions,
   getAdminUsage,
   getBillingAccount,
+  getAdminCatalogPackages,
   getCatalog,
   getCatalogProduct,
   getInvoice,
@@ -699,6 +700,13 @@ describe("customer billing and payment helpers", () => {
     await getCatalog()
     expect(calledRequest().url.href).toBe(
       "https://billing.test/api/billing/catalog"
+    )
+  })
+
+  it("fetches admin catalog packages list", async () => {
+    await getAdminCatalogPackages()
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/admin/catalog/products"
     )
   })
 })

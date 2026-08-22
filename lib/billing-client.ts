@@ -1084,6 +1084,15 @@ export async function getAdminCatalogProduct(
   )
 }
 
+export async function getAdminCatalogPackages(): Promise<{
+  ok: true
+  products: CatalogProduct[]
+}> {
+  return fetchBilling<{ ok: true; products: CatalogProduct[] }>(
+    "/api/billing/admin/catalog/products"
+  )
+}
+
 export async function getAdminCatalogProductsList(
   catalogCode: string
 ): Promise<{ ok: true; products: CatalogPlan[] }> {
