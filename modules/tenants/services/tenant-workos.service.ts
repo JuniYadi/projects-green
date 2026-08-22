@@ -333,9 +333,11 @@ export const listTenantInvitations = async (
     })
     .then((result) => result.autoPagination())
 
-  return invitations.map((invitation) =>
-    toTenantInvitationSummary(invitation as WorkOSInvitation)
-  )
+  return invitations
+    .map((invitation) =>
+      toTenantInvitationSummary(invitation as WorkOSInvitation)
+    )
+    .filter((inv) => inv.state === "pending")
 }
 
 export const sendTenantInvitation = async (params: {
