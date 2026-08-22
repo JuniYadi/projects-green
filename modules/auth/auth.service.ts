@@ -241,6 +241,7 @@ export const authService: AuthService = {
       })
     } catch (error) {
       if (error instanceof NotFoundException) {
+        return
       }
 
       if (error instanceof UnprocessableEntityException) {
