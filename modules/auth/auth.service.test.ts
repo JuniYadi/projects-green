@@ -14,6 +14,8 @@ const MANAGED_ENV_KEYS = [
   "WORKOS_COOKIE_DOMAIN",
   "WORKOS_COOKIE_SAMESITE",
   "WORKOS_COOKIE_MAX_AGE",
+  "APP_URL",
+  "NEXT_PUBLIC_APP_URL",
 ] as const
 
 type ManagedEnvKey = (typeof MANAGED_ENV_KEYS)[number]
@@ -60,7 +62,8 @@ describe("authService", () => {
     process.env.WORKOS_COOKIE_DOMAIN = ""
     process.env.WORKOS_COOKIE_SAMESITE = "lax"
     process.env.WORKOS_COOKIE_MAX_AGE = ""
-
+    delete process.env.APP_URL
+    delete process.env.NEXT_PUBLIC_APP_URL
     mockCreateMagicAuth.mockClear()
     mockAuthenticateWithMagicAuth.mockClear()
     mockAuthenticateWithEmailVerification.mockClear()
@@ -210,29 +213,23 @@ describe("authService", () => {
       expect(call && "invitationToken" in call).toBe(false)
     })
     it("sets Secure on session cookie when request has x-forwarded-proto https", async () => {
-      const originalAppUrl = process.env.APP_URL
-      const originalNextPublicAppUrl = process.env.NEXT_PUBLIC_APP_URL
-      delete process.env.APP_URL
-      delete process.env.NEXT_PUBLIC_APP_URL
       mockAuthenticateWithMagicAuth.mockImplementation(async () => ({
         sealedSession: "sealed_session_token",
       }))
+      const headers = new Headers({
+        "x-forwarded-proto": "https",
+        "x-forwarded-host": "pfnapp.id",
+      })
       const req = new Request("http://0.0.0.0:3000/api/auth/magic/verify", {
-        headers: {
-          "x-forwarded-proto": "https",
-          "x-forwarded-host": "pfnapp.id",
-        },
+        headers,
       })
       const res = await authService.verifyMagicCode({
         email: "user@example.com",
         code: "123456",
         requestUrl: req,
       })
-      const cookie = res.headers.get("set-cookie") || ""
-      expect(cookie).toContain("Secure")
-      if (originalAppUrl !== undefined) process.env.APP_URL = originalAppUrl
-      if (originalNextPublicAppUrl !== undefined)
-        process.env.NEXT_PUBLIC_APP_URL = originalNextPublicAppUrl
+      const setCookie = res.headers.get("set-cookie") || ""
+      expect(setCookie.toLowerCase()).toContain("secure")
     })
 
     it("throws MissingAuthConfigurationError when env is missing", async () => {
