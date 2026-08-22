@@ -40,6 +40,7 @@ export type BillingOrderDTO = {
   fulfilledAt: string | null
   createdAt: string
   updatedAt: string
+  metadata?: Prisma.JsonValue | null
   line: BillingOrderLineDTO | null
   subscription: {
     id: string
@@ -121,6 +122,7 @@ export function toBillingOrderDTO(order: {
     fulfilledAt: order.fulfilledAt?.toISOString() ?? null,
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
+    metadata: order.metadataJson,
     line: line
       ? {
           id: line.id,

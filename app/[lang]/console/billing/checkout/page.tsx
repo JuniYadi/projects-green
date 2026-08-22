@@ -194,6 +194,13 @@ export default function CheckoutPage() {
         formData.profilePictureUrl?.trim() ||
         undefined
 
+      const provisioningAnswers: Record<string, string> = {
+        ...formData,
+        ...(phoneNumber ? { phoneNumber } : {}),
+        ...(displayName ? { displayName } : {}),
+        ...(profilePictureUrl ? { profilePictureUrl } : {}),
+      }
+
       const result = await submitCheckout({
         pricingId: activePricingId,
         addonIds,
@@ -207,6 +214,18 @@ export default function CheckoutPage() {
               profilePictureUrl: effectiveProfileUrl,
             }
           : undefined,
+        metadata: {
+          provisioningAnswers,
+          ...(dynamicFields.length > 0
+            ? {
+                provisioningFieldsSchema: dynamicFields.map((f) => ({
+                  name: f.name,
+                  label: f.label,
+                  type: f.type,
+                })),
+              }
+            : {}),
+        },
       })
       setQuote(result)
       if (!result.ok) {
