@@ -5,8 +5,8 @@ import type { StorageFile } from "@prisma/client"
 const MIME_TYPE_REGEX =
   /^[a-zA-Z0-9][-a-zA-Z0-9_.]*\/[a-zA-Z0-9][-a-zA-Z0-9_.+]*$/
 
-// Filename regex requiring valid filename with proper extension (e.g. photo.jpg, report.pdf)
-const FILENAME_REGEX = /^[a-zA-Z0-9_\-\s()]+\.[a-zA-Z0-9]{1,10}$/
+// Filename regex requiring valid filename and extension, allowing spaces, dots, timestamps (e.g. Screenshot 2026-08-22 at 03.45.08.png)
+const FILENAME_REGEX = /^.+\.[a-zA-Z0-9]{1,10}$/
 
 export const PresignUploadRequestSchema = z.object({
   filename: z
