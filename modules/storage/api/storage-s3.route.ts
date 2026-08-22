@@ -190,7 +190,6 @@ export const storageS3Routes = new Elysia({
         if (shouldRedirect) {
           set.status = 307
           set.headers["Location"] = result.viewUrl
-          return
         }
 
         return result

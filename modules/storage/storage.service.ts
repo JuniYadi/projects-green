@@ -27,13 +27,7 @@ export class StorageService {
     userId?: string
     input: PresignUploadRequest
   }): Promise<PresignUploadResponseDTO> {
-    // Generate unique cuid via cuid() helper from lib/utils or generate standard ID
-    // We can create record with auto cuid from prisma or generate cuid before creating storageKey
-    const { createId } = await import("@paralleldrive/cuid2").catch(() => ({
-      createId: () =>
-        `cl_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
-    }))
-    const fileId = createId()
+    const fileId = `cl_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
     const storageKey = buildS3StorageKey({
       organizationId: params.organizationId,
       fileId,
