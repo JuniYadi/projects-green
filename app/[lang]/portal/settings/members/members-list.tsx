@@ -324,13 +324,16 @@ export function MembersList({ organizationId }: MembersListProps) {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Created" />
         ),
-        cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground">
-            {row.original.date
-              ? new Date(row.original.date).toLocaleDateString()
-              : "-"}
-          </span>
-        ),
+        cell: ({ row }) => {
+          if (!row.original.date)
+            return <span className="text-muted-foreground">-</span>
+          const d = new Date(row.original.date)
+          const pad = (n: number) => n.toString().padStart(2, "0")
+          const formatted = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+          return (
+            <span className="text-xs text-muted-foreground">{formatted}</span>
+          )
+        },
       },
       {
         id: "lastSignInAt",
@@ -338,13 +341,16 @@ export function MembersList({ organizationId }: MembersListProps) {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Last Sign-in" />
         ),
-        cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground">
-            {row.original.lastSignInAt
-              ? new Date(row.original.lastSignInAt).toLocaleDateString()
-              : "-"}
-          </span>
-        ),
+        cell: ({ row }) => {
+          if (!row.original.lastSignInAt)
+            return <span className="text-muted-foreground">-</span>
+          const d = new Date(row.original.lastSignInAt)
+          const pad = (n: number) => n.toString().padStart(2, "0")
+          const formatted = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+          return (
+            <span className="text-xs text-muted-foreground">{formatted}</span>
+          )
+        },
       },
       {
         id: "actions",
