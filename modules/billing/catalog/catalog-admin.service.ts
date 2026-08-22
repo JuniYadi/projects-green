@@ -276,6 +276,41 @@ export class CatalogAdminService {
     }
   }
 
+  async listAllPackages(): Promise<CatalogProductDetailResponse["product"][]> {
+    const packages = await this.db.servicePackage.findMany({
+      include: {
+        plans: {
+          include: {
+            pricings: {
+              where: {
+                isActive: true,
+                type: "BUNDLE",
+                billingMode: "PACKAGE",
+                billingPeriod: { in: RECURRING_PERIODS as never },
+              },
+              include: {
+                servicePlan: {
+                  include: { package: true },
+                },
+                region: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+      orderBy: { code: "asc" },
+    })
+
+    return packages.map((pkg) => ({
+      code: pkg.code as never,
+      name: pkg.name,
+      description: pkg.description,
+      isActive: pkg.isActive,
+      plans: pkg.plans.map(toCatalogPlanDTO),
+    }))
+  }
+
   async getCatalogPlan(
     packageCode: string,
     planCode: string

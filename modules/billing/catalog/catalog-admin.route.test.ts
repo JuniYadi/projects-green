@@ -35,6 +35,7 @@ const service = {
   getCatalogPlan: mock<() => Promise<unknown>>(async () => null),
   deleteCatalogPlan: mock<() => Promise<void>>(async () => {}),
   listCatalogPlans: mock<() => Promise<unknown[]>>(async () => []),
+  listAllPackages: mock<() => Promise<unknown[]>>(async () => []),
   upsertPackage: mock(async () => ({
     id: "pkg-1",
     code: "VPN",
@@ -132,6 +133,31 @@ describe("catalog admin routes", () => {
         isActive: true,
         plans: [],
       },
+    })
+  })
+
+  describe("GET /admin/catalog/products", () => {
+    it("returns all admin catalog packages", async () => {
+      service.listAllPackages.mockResolvedValueOnce([
+        {
+          code: "WHATSAPP",
+          name: "WhatsApp",
+          description: null,
+          isActive: true,
+          plans: [],
+        },
+      ])
+
+      const response = await app().handle(
+        new Request("http://localhost/admin/catalog/products")
+      )
+
+      expect(response.status).toBe(200)
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        products: [{ code: "WHATSAPP" }],
+      })
+      expect(service.listAllPackages).toHaveBeenCalled()
     })
   })
 

@@ -533,37 +533,63 @@ export default function ProductDetailPage() {
             >
               <AlertDialogTrigger asChild>
                 <Button
-                  variant="destructive"
+                  variant="outline"
                   size="sm"
+                  className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
                   disabled={saving || deleting}
                 >
+                  <TrashIcon className="mr-1.5 h-4 w-4" />
                   Delete Product
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete product tier?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete product plan{" "}
-                    <strong>{productCode}</strong> and its pricing terms if no
-                    subscriptions reference it. If subscriptions exist, deletion
-                    will be blocked to preserve historical ledger integrity and
-                    you should deactivate (archive) the product instead.
+              <AlertDialogContent className="sm:max-w-md">
+                <AlertDialogHeader className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                      <WarningIcon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <AlertDialogTitle className="text-lg font-semibold">
+                        Delete product tier?
+                      </AlertDialogTitle>
+                      <p className="text-xs text-muted-foreground">
+                        Plan code:{" "}
+                        <span className="font-mono font-medium">
+                          {productCode}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                  <AlertDialogDescription className="text-sm leading-relaxed text-muted-foreground">
+                    This action will permanently delete product plan{" "}
+                    <strong className="font-semibold text-foreground">
+                      {product?.name || productCode}
+                    </strong>{" "}
+                    and all configured pricing terms.
                   </AlertDialogDescription>
+                  <div className="rounded-md border border-amber-500/20 bg-amber-50/50 p-3 text-xs text-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+                    <span className="font-semibold">Note:</span> If active
+                    subscriptions are using this plan, deletion will be blocked
+                    to protect historical ledger data. You should deactivate
+                    (archive) the product instead.
+                  </div>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={deleting}>
+                <AlertDialogFooter className="mt-4 gap-2 sm:gap-0">
+                  <AlertDialogCancel
+                    disabled={deleting}
+                    className="hover:bg-muted"
+                  >
                     Cancel
                   </AlertDialogCancel>
                   <AlertDialogAction
-                    className="text-destructive-foreground bg-destructive hover:bg-destructive/90"
+                    className="text-destructive-foreground bg-destructive shadow-sm hover:bg-destructive/90"
                     onClick={(e) => {
                       e.preventDefault()
                       void handleDelete()
                     }}
                     disabled={deleting}
                   >
-                    {deleting ? "Deleting..." : "Delete Plan"}
+                    {deleting ? "Deleting..." : "Yes, Delete Plan"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

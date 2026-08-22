@@ -42,6 +42,7 @@ import {
   getAdminSubscriptions,
   getAdminUsage,
   getBillingAccount,
+  getAdminCatalogPackages,
   getCatalog,
   getCatalogProduct,
   getInvoice,
@@ -385,7 +386,7 @@ describe("admin billing fetch helpers", () => {
     mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true }))
     await deactivateBillingContact("contact-1")
     expect(calledRequest().init).toEqual({
-      headers: { "Content-Type": "application/json" },
+      headers: {},
       method: "DELETE",
     })
   })
@@ -474,7 +475,7 @@ describe("admin billing fetch helpers", () => {
     mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true, data: {} }))
     await deactivateAdminPricing("pricing-1")
     expect(calledRequest().init).toEqual({
-      headers: { "Content-Type": "application/json" },
+      headers: {},
       method: "DELETE",
     })
   })
@@ -565,7 +566,7 @@ describe("admin billing fetch helpers", () => {
       "/api/billing/admin/catalog/VPN/products/BASIC"
     )
     expect(calledRequest().init).toEqual({
-      headers: { "Content-Type": "application/json" },
+      headers: {},
       method: "DELETE",
     })
 
@@ -699,6 +700,13 @@ describe("customer billing and payment helpers", () => {
     await getCatalog()
     expect(calledRequest().url.href).toBe(
       "https://billing.test/api/billing/catalog"
+    )
+  })
+
+  it("fetches admin catalog packages list", async () => {
+    await getAdminCatalogPackages()
+    expect(calledRequest().url.pathname).toBe(
+      "/api/billing/admin/catalog/products"
     )
   })
 })
