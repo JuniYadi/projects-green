@@ -246,6 +246,42 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     ],
     smokeProjects: [],
   },
+  {
+    name: "auth-and-sessions",
+    sourcePrefixes: [
+      "modules/auth/",
+      "components/profile-dialog",
+      "components/nav-user",
+      "lib/app-config.ts",
+      "lib/workos-directory.ts",
+    ],
+    testPrefixes: [
+      "modules/auth/",
+      "components/profile-dialog.test.tsx",
+      "components/nav-user.test.tsx",
+      "lib/app-config.test.ts",
+      "lib/workos-directory.test.ts",
+    ],
+    smokeProjects: ["smoke-portal"],
+  },
+  {
+    name: "tenants-and-organizations",
+    sourcePrefixes: [
+      "modules/tenants/",
+      "app/[lang]/console/organization/",
+      "app/[lang]/portal/settings/members/",
+      "app/[lang]/portal/settings/invitations/",
+      "app/[lang]/invite/",
+    ],
+    testPrefixes: [
+      "modules/tenants/",
+      "app/[lang]/console/organization/",
+      "app/[lang]/portal/settings/members/",
+      "app/[lang]/portal/settings/invitations/",
+      "app/[lang]/invite/",
+    ],
+    smokeProjects: ["smoke-portal"],
+  },
 ]
 export const SHARED_UI_PREFIXES = [
   "components/",
