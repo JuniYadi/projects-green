@@ -289,7 +289,7 @@ export function NavUser({ user }: { user: AppSidebarUser }) {
                 >
                   <BuildingsIcon className="size-4" />
                   <span>
-                    {messages.navUser.organizationSettingsLabel ||
+                    {messages.console.organization.heading ||
                       "Organization Settings"}
                   </span>
                 </Link>
