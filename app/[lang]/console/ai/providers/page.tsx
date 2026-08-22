@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState, useTransition } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Key, Lightning, ShieldCheck, Plus, Trash } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
@@ -63,7 +63,7 @@ export default function AiProvidersPage() {
     "idle" | "testing" | "success" | "failed"
   >("idle")
   const [testMessage, setTestMessage] = useState("")
-  const [isPending, startTransition] = useTransition()
+  const [saving, setSaving] = useState(false)
 
   const loadProviders = useCallback(async () => {
     try {
@@ -86,36 +86,9 @@ export default function AiProvidersPage() {
   }, [])
 
   useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      try {
-        const res = await eden.api.console.ai.providers.get()
-        if (
-          !cancelled &&
-          res.data &&
-          res.data.ok &&
-          Array.isArray(res.data.data)
-        ) {
-          setProviders([
-            {
-              id: "prov_managed",
-              name: "PFNApp Managed Intelligence (Default)",
-              providerType: "MANAGED",
-              defaultModel: "anthropic/claude-sonnet-4-5-20251120",
-              isDefault: true,
-            },
-            ...(res.data.data as ProviderEntry[]),
-          ])
-        }
-      } catch (err) {
-        console.warn("[ai-providers] initial load error:", err)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadProviders()
+  }, [loadProviders])
   const handleTestConnection = async () => {
     setTestStatus("testing")
     setTestMessage("")
@@ -142,29 +115,30 @@ export default function AiProvidersPage() {
   const handleSave = async () => {
     if (!name.trim() || !apiKey.trim()) return
 
-    startTransition(async () => {
-      try {
-        const res = await eden.api.console.ai.providers.post({
-          name: name.trim(),
-          providerType,
-          baseUrl:
-            providerType === "OPENAI_COMPATIBLE" ? baseUrl.trim() : undefined,
-          defaultModel: defaultModel.trim(),
-          apiKey: apiKey.trim(),
-          isDefault: false,
-        })
-        if (res.data && res.data.ok) {
-          await loadProviders()
-          setIsOpen(false)
-          setName("")
-          setApiKey("")
-          setTestStatus("idle")
-          setTestMessage("")
-        }
-      } catch (err) {
-        console.error("[ai-providers] save error:", err)
+    setSaving(true)
+    try {
+      const res = await eden.api.console.ai.providers.post({
+        name: name.trim(),
+        providerType,
+        baseUrl:
+          providerType === "OPENAI_COMPATIBLE" ? baseUrl.trim() : undefined,
+        defaultModel: defaultModel.trim(),
+        apiKey: apiKey.trim(),
+        isDefault: false,
+      })
+      if (res.data && res.data.ok) {
+        await loadProviders()
+        setIsOpen(false)
+        setName("")
+        setApiKey("")
+        setTestStatus("idle")
+        setTestMessage("")
       }
-    })
+    } catch (err) {
+      console.error("[ai-providers] save error:", err)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -311,9 +285,9 @@ export default function AiProvidersPage() {
               </Button>
               <Button
                 onClick={handleSave}
-                disabled={!name.trim() || !apiKey.trim() || isPending}
+                disabled={!name.trim() || !apiKey.trim() || saving}
               >
-                {isPending ? "Menyimpan..." : "Simpan ke Vault"}
+                {saving ? "Menyimpan..." : "Simpan ke Vault"}
               </Button>
             </DialogFooter>
           </DialogContent>

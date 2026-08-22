@@ -16,6 +16,7 @@ const mockPrisma = {
     findMany: mock(),
     findFirst: mock(),
     create: mock(),
+    update: mock(),
     delete: mock(),
   },
 }
@@ -39,6 +40,7 @@ describe("Console AI Knowledge Route", () => {
     mockPrisma.aiKnowledgeDocument.findMany.mockClear()
     mockPrisma.aiKnowledgeDocument.findFirst.mockClear()
     mockPrisma.aiKnowledgeDocument.create.mockClear()
+    mockPrisma.aiKnowledgeDocument.update.mockClear()
     mockPrisma.aiKnowledgeDocument.delete.mockClear()
     mockEnqueue.mockClear()
 
@@ -111,6 +113,38 @@ describe("Console AI Knowledge Route", () => {
     expect(json.data.status).toBe("QUEUED")
     expect(mockPrisma.aiKnowledgeDocument.create).toHaveBeenCalled()
     expect(mockEnqueue).toHaveBeenCalled()
+  })
+  it("marks document as FAILED if queueing fails", async () => {
+    mockPrisma.aiKnowledgeDocument.create.mockResolvedValue({
+      id: "doc_fail",
+      organizationId: "org_1",
+      title: "Broken Doc",
+      status: "QUEUED",
+    })
+    mockEnqueue.mockRejectedValueOnce(new Error("Redis connection timeout"))
+
+    const res = await app.handle(
+      new Request("http://localhost/console/ai/knowledge/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Broken Doc",
+          sourceType: "PDF",
+        }),
+      })
+    )
+
+    expect(res.status).toBe(500)
+    const json = (await res.json()) as { ok: boolean; error: string }
+    expect(json.ok).toBe(false)
+    expect(json.error).toBe("QUEUE_FAILED")
+    expect(mockPrisma.aiKnowledgeDocument.update).toHaveBeenCalledWith({
+      where: { id: "doc_fail" },
+      data: {
+        status: "FAILED",
+        errorMessage: "Redis connection timeout",
+      },
+    })
   })
 
   it("deletes document", async () => {

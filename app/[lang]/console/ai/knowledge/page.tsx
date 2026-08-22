@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState, useTransition } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   FileText,
   UploadSimple,
@@ -50,7 +50,7 @@ export default function AiKnowledgePage() {
   const [category, setCategory] = useState("General")
   const [contentMarkdown, setContentMarkdown] = useState("")
   const [isOpen, setIsOpen] = useState(false)
-  const [isPending, startTransition] = useTransition()
+  const [saving, setSaving] = useState(false)
 
   const loadDocs = useCallback(async () => {
     try {
@@ -64,27 +64,9 @@ export default function AiKnowledgePage() {
   }, [])
 
   useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      try {
-        const res = await eden.api.console.ai.knowledge.get()
-        if (
-          !cancelled &&
-          res.data &&
-          res.data.ok &&
-          Array.isArray(res.data.data)
-        ) {
-          setDocs(res.data.data as KnowledgeDoc[])
-        }
-      } catch (err) {
-        console.warn("[ai-knowledge] initial load error:", err)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadDocs()
+  }, [loadDocs])
   const totalPagesUsed = docs.reduce((sum, d) => sum + (d.pageCount || 1), 0)
   const maxQuota = 100 // Starter tier default
 
@@ -92,28 +74,28 @@ export default function AiKnowledgePage() {
     if (!title.trim()) return
 
     setIsUploading(true)
-    startTransition(async () => {
-      try {
-        const res = await eden.api.console.ai.knowledge.upload.post({
-          title: title.trim(),
-          category: category.trim(),
-          purpose: "Tenant Knowledge Document",
-          sourceType: "MANUAL",
-          contentMarkdown: contentMarkdown.trim() || undefined,
-        })
+    setSaving(true)
+    try {
+      const res = await eden.api.console.ai.knowledge.upload.post({
+        title: title.trim(),
+        category: category.trim(),
+        purpose: "Tenant Knowledge Document",
+        sourceType: "MANUAL",
+        contentMarkdown: contentMarkdown.trim() || undefined,
+      })
 
-        if (res.data && res.data.ok) {
-          await loadDocs()
-          setIsOpen(false)
-          setTitle("")
-          setContentMarkdown("")
-        }
-      } catch (err) {
-        console.error("[ai-knowledge] upload error:", err)
-      } finally {
-        setIsUploading(false)
+      if (res.data && res.data.ok) {
+        await loadDocs()
+        setIsOpen(false)
+        setTitle("")
+        setContentMarkdown("")
       }
-    })
+    } catch (err) {
+      console.error("[ai-knowledge] upload error:", err)
+    } finally {
+      setIsUploading(false)
+      setSaving(false)
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -192,7 +174,7 @@ export default function AiKnowledgePage() {
               </Button>
               <Button
                 onClick={handleUpload}
-                disabled={isUploading || !title.trim() || isPending}
+                disabled={isUploading || !title.trim() || saving}
               >
                 {isUploading ? "Mengunggah..." : "Mulai Parsing Dokumen"}
               </Button>

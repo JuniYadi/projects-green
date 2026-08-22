@@ -16,6 +16,7 @@ const mockPrisma = {
     findMany: mock(),
     findFirst: mock(),
     create: mock(),
+    update: mock(),
     updateMany: mock(),
     delete: mock(),
   },
@@ -56,6 +57,7 @@ describe("Console AI Providers Route", () => {
     mockPrisma.aiProviderConfig.findMany.mockClear()
     mockPrisma.aiProviderConfig.findFirst.mockClear()
     mockPrisma.aiProviderConfig.create.mockClear()
+    mockPrisma.aiProviderConfig.update.mockClear()
     mockPrisma.aiProviderConfig.updateMany.mockClear()
     mockPrisma.aiProviderConfig.delete.mockClear()
     mockVault.saveProviderApiKey.mockClear()
@@ -126,6 +128,12 @@ describe("Console AI Providers Route", () => {
     const json = (await res.json()) as { ok: boolean; data: { id: string } }
     expect(json.ok).toBe(true)
     expect(mockVault.saveProviderApiKey).toHaveBeenCalled()
+    expect(mockVault.saveProviderApiKey).toHaveBeenCalledWith({
+      organizationId: "org_1",
+      providerId: "prov_new",
+      apiKey: "sk-deepseek-12345",
+    })
+    expect(mockPrisma.aiProviderConfig.update).toHaveBeenCalled()
     expect(mockPrisma.aiProviderConfig.create).toHaveBeenCalled()
   })
 

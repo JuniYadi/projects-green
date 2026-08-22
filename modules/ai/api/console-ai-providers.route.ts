@@ -103,18 +103,7 @@ export function createConsoleAiProvidersRoutes() {
           })
         }
 
-        const tempId = `prov_${Date.now()}`
-        let vaultPath = ""
-
-        if (apiKey?.trim()) {
-          const vaultRes = await saveProviderApiKey({
-            organizationId: auth.orgId,
-            providerId: tempId,
-            apiKey: apiKey.trim(),
-          })
-          vaultPath = vaultRes.vaultPath
-        }
-
+        // 1. Create provider record first to obtain DB UUID
         const provider = await prisma.aiProviderConfig.create({
           data: {
             organizationId: auth.orgId,
@@ -122,8 +111,7 @@ export function createConsoleAiProvidersRoutes() {
             providerType: providerType as ProviderType,
             baseUrl: baseUrl?.trim() || null,
             defaultModel: defaultModel.trim(),
-            vaultPath:
-              vaultPath || `tenants/${auth.orgId}/ai/providers/${tempId}`,
+            vaultPath: "",
             vaultKey: "API_KEY",
             isDefault: Boolean(isDefault),
             isConfigured: true,
@@ -140,6 +128,25 @@ export function createConsoleAiProvidersRoutes() {
             updatedAt: true,
           },
         })
+
+        // 2. Save API key to Vault using the real DB ID
+        let vaultPath = ""
+        if (apiKey?.trim()) {
+          const vaultRes = await saveProviderApiKey({
+            organizationId: auth.orgId,
+            providerId: provider.id,
+            apiKey: apiKey.trim(),
+          })
+          vaultPath = vaultRes.vaultPath
+        }
+
+        // 3. Update the record with the actual vault path
+        if (vaultPath) {
+          await prisma.aiProviderConfig.update({
+            where: { id: provider.id },
+            data: { vaultPath },
+          })
+        }
 
         return {
           ok: true,

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState, useTransition } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Robot, WhatsappLogo, Plus, ShieldCheck } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
@@ -52,7 +52,7 @@ export default function AiAgentsPage() {
   const [systemPrompt, setSystemPrompt] = useState("")
   const [dailyLimit, setDailyLimit] = useState(20)
   const [enableProfanity, setEnableProfanity] = useState(true)
-  const [isPending, startTransition] = useTransition()
+  const [saving, setSaving] = useState(false)
 
   const loadAgents = useCallback(async () => {
     try {
@@ -66,51 +66,34 @@ export default function AiAgentsPage() {
   }, [])
 
   useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      try {
-        const res = await eden.api.console.ai.agents.get()
-        if (
-          !cancelled &&
-          res.data &&
-          res.data.ok &&
-          Array.isArray(res.data.data)
-        ) {
-          setAgents(res.data.data as AgentProfile[])
-        }
-      } catch (err) {
-        console.warn("[ai-agents] initial load error:", err)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const handleSave = () => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadAgents()
+  }, [loadAgents])
+  const handleSave = async () => {
     if (!name.trim()) return
 
-    startTransition(async () => {
-      try {
-        const res = await eden.api.console.ai.agents.post({
-          name: name.trim(),
-          description: description.trim() || undefined,
-          systemPrompt: systemPrompt.trim() || undefined,
-          dailyUserLimit: dailyLimit,
-          enableProfanityFilter: enableProfanity,
-        })
+    setSaving(true)
+    try {
+      const res = await eden.api.console.ai.agents.post({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        systemPrompt: systemPrompt.trim() || undefined,
+        dailyUserLimit: dailyLimit,
+        enableProfanityFilter: enableProfanity,
+      })
 
-        if (res.data && res.data.ok) {
-          await loadAgents()
-          setIsOpen(false)
-          setName("")
-          setDescription("")
-          setSystemPrompt("")
-        }
-      } catch (err) {
-        console.error("[ai-agents] save error:", err)
+      if (res.data && res.data.ok) {
+        await loadAgents()
+        setIsOpen(false)
+        setName("")
+        setDescription("")
+        setSystemPrompt("")
       }
-    })
+    } catch (err) {
+      console.error("[ai-agents] save error:", err)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -196,8 +179,8 @@ export default function AiAgentsPage() {
               <Button variant="ghost" onClick={() => setIsOpen(false)}>
                 Batal
               </Button>
-              <Button onClick={handleSave} disabled={!name.trim() || isPending}>
-                {isPending ? "Menyimpan..." : "Simpan Profil Agen"}
+              <Button onClick={handleSave} disabled={!name.trim() || saving}>
+                {saving ? "Menyimpan..." : "Simpan Profil Agen"}
               </Button>
             </DialogFooter>
           </DialogContent>

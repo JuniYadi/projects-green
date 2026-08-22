@@ -94,11 +94,25 @@ export function createConsoleAiKnowledgeRoutes() {
               | "MANUAL",
           })
         } catch (queueErr) {
-          // If queue unavailable in tests or offline, log warning
-          console.warn(
-            "[ai-knowledge] enqueueDocumentIngestion warning:",
-            queueErr
+          const errorMessage =
+            queueErr instanceof Error ? queueErr.message : String(queueErr)
+          console.error(
+            "[ai-knowledge] enqueueDocumentIngestion failed:",
+            errorMessage
           )
+          await prisma.aiKnowledgeDocument.update({
+            where: { id: doc.id },
+            data: {
+              status: "FAILED",
+              errorMessage,
+            },
+          })
+          set.status = 500
+          return {
+            ok: false,
+            error: "QUEUE_FAILED",
+            message: "Failed to queue document for processing",
+          }
         }
 
         set.status = 202
