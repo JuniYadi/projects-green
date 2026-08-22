@@ -428,5 +428,72 @@ export const createAuthRoutes = (service: AuthService = authService) =>
         }),
       }
     )
+    .get("/auth/user-details", async ({ request, set }) => {
+      const { resolveAuthContext } =
+        await import("@/lib/auth/resolve-proxy-auth")
+      const authContext = await resolveAuthContext(request)
+
+      if (!authContext?.userId) {
+        set.status = 401
+        return {
+          ok: false as const,
+          error: "UNAUTHORIZED" as const,
+          message: "You must be signed in to view account details.",
+        }
+      }
+
+      try {
+        const details = await service.getUserDetails(authContext.userId)
+        return {
+          ok: true as const,
+          ...details,
+        }
+      } catch (error) {
+        set.status = 500
+        return {
+          ok: false as const,
+          error: "INTERNAL_SERVER_ERROR" as const,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to load user details.",
+        }
+      }
+    })
+    .post(
+      "/auth/sessions/:sessionId/revoke",
+      async ({ params, request, set }) => {
+        const { resolveAuthContext } =
+          await import("@/lib/auth/resolve-proxy-auth")
+        const authContext = await resolveAuthContext(request)
+
+        if (!authContext?.userId) {
+          set.status = 401
+          return {
+            ok: false as const,
+            error: "UNAUTHORIZED" as const,
+            message: "You must be signed in to manage sessions.",
+          }
+        }
+
+        try {
+          await service.revokeUserSession(params.sessionId)
+          return {
+            ok: true as const,
+            message: "Session revoked successfully.",
+          }
+        } catch (error) {
+          set.status = 500
+          return {
+            ok: false as const,
+            error: "INTERNAL_SERVER_ERROR" as const,
+            message:
+              error instanceof Error
+                ? error.message
+                : "Unable to revoke session.",
+          }
+        }
+      }
+    )
 
 export const authRoutes = createAuthRoutes()
