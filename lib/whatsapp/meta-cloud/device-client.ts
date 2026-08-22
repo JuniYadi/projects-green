@@ -333,13 +333,13 @@ export class WhatsAppDeviceClient {
     )
   }
 
-  async uploadProfilePicture(file: {
+  async createResumableUpload(file: {
     data: ArrayBuffer
     mimeType: string
     fileName: string
   }): Promise<{ handle: string }> {
     if (!this.metaAppId) {
-      throw new Error("Meta app ID is required to upload a profile picture")
+      throw new Error("Meta app ID is required for resumable upload")
     }
 
     const uploadEndpoint = new URL(ENDPOINTS.UPLOAD_SESSION(this.metaAppId))
@@ -372,10 +372,19 @@ export class WhatsAppDeviceClient {
 
     const handle = result.h ?? result.handle
     if (!handle) {
-      throw new Error("Meta Cloud API returned no profile picture handle")
+      throw new Error(
+        "Meta Cloud API returned no media handle / no profile picture handle"
+      )
     }
-
     return { handle }
+  }
+
+  async uploadProfilePicture(file: {
+    data: ArrayBuffer
+    mimeType: string
+    fileName: string
+  }): Promise<{ handle: string }> {
+    return this.createResumableUpload(file)
   }
 
   async sendSingleProduct(
