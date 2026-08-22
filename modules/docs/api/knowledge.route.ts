@@ -3,18 +3,27 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { streamText } from "ai"
 import { z } from "zod"
+import { randomUUID } from "crypto"
 
+import { prisma } from "@/lib/prisma"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
 import {
   normalizeDocPath,
   searchKnowledgeDocs as searchKnowledgeDocsService,
 } from "@/modules/docs/docs.service"
+import {
+  inspectPromptSafety,
+  checkRateLimit,
+  checkActiveBan,
+  recordStrikeAndEscalate,
+} from "@/modules/docs/docs.guard"
 import type {
   KnowledgeChatRequest,
   KnowledgeCitation,
 } from "@/modules/docs/docs.types"
 
 const knowledgeChatBodySchema = z.object({
+  sessionId: z.string().optional(),
   messages: z
     .array(
       z.object({
@@ -202,19 +211,67 @@ export const createKnowledgeRoutes = (
 ) =>
   new Elysia({ prefix: "/knowledge" }).post(
     "/chat",
-    async ({ body, set }) => {
+    async ({ body, set, headers, request }) => {
       const auth = await dependencies.authenticate()
 
       if (!auth.user) {
         return toUnauthorized(set)
       }
 
-      const parsed = knowledgeChatBodySchema.safeParse(body)
+      const ipAddress =
+        (headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+        (headers["x-real-ip"] as string) ||
+        null
+      const userAgent = (headers["user-agent"] as string) || null
+      const userId = auth.user.id
+      const organizationId = auth.organizationId ?? null
+
+      // ── 1. ACTIVE BAN CHECK ───────────────────────────────────────────────
+      const activeBan = await checkActiveBan({
+        ipAddress,
+        userId,
+        organizationId,
+      })
+
+      if (activeBan.isBanned) {
+        set.status = 403
+        return {
+          ok: false as const,
+          error: "FORBIDDEN" as const,
+          message: activeBan.isPermanent
+            ? "Your access to AI services has been permanently banned due to security violations."
+            : `Your access to AI services is suspended until ${activeBan.blockedUntil?.toISOString()}.`,
+          banInfo: activeBan,
+        }
+      }
+
+      // ── 2. RATE LIMIT CHECK ───────────────────────────────────────────────
+      const rateLimit = checkRateLimit(ipAddress, userId)
+      if (!rateLimit.allowed) {
+        set.status = 429
+        return {
+          ok: false as const,
+          error: "RATE_LIMITED" as const,
+          message: `Rate limit exceeded (${rateLimit.reason}). Please retry after ${rateLimit.retryAfterSec}s.`,
+          retryAfterSec: rateLimit.retryAfterSec,
+        }
+      }
+      let rawBody = body
+      if (!rawBody && request) {
+        try {
+          rawBody = await request.json()
+        } catch {
+          // ignore invalid json body
+        }
+      }
+
+      const parsed = knowledgeChatBodySchema.safeParse(rawBody)
 
       if (!parsed.success) {
         return toValidationError(set, parsed.error.issues)
       }
 
+      const sessionId = parsed.data.sessionId || randomUUID()
       const routePath = normalizeDocPath(parsed.data.routePath)
 
       if (!routePath) {
@@ -227,6 +284,74 @@ export const createKnowledgeRoutes = (
       }
 
       const latestUserQuery = extractLatestUserQuery(parsed.data.messages)
+
+      // ── 3. PROMPT SAFETY & GUARDRAIL INSPECTION ───────────────────────────
+      const safetyCheck = inspectPromptSafety(latestUserQuery)
+
+      if (!safetyCheck.ok) {
+        // Record flagged audit message & escalate strike
+        try {
+          await prisma.aiChatSession.upsert({
+            where: { sessionId },
+            create: {
+              sessionId,
+              organizationId,
+              userId,
+              userEmail: auth.user.email,
+              ipAddress,
+              userAgent,
+              channel: "CONSOLE",
+              totalMessages: 1,
+              strikeCount: 1,
+              isBlocked: true,
+              blockReason: safetyCheck.reason,
+            },
+            update: {
+              totalMessages: { increment: 1 },
+              strikeCount: { increment: 1 },
+              isBlocked: true,
+              blockReason: safetyCheck.reason,
+            },
+          })
+
+          await prisma.aiChatMessage.create({
+            data: {
+              sessionId,
+              role: "user",
+              content: latestUserQuery,
+              routePath,
+              isFlagged: true,
+              flagReason: safetyCheck.reason,
+              promptTokens: 0,
+              responseTokens: 0,
+            },
+          })
+
+          await recordStrikeAndEscalate({
+            sessionId,
+            organizationId,
+            userId,
+            ipAddress,
+            reason: safetyCheck.reason || "PROMPT_FLAGGED",
+          })
+        } catch (err) {
+          console.error(
+            "[knowledge.route] Failed to record flagged audit:",
+            err
+          )
+        }
+
+        set.status = 422
+        return {
+          ok: false as const,
+          error: "PROMPT_FLAGGED" as const,
+          reason: safetyCheck.reason,
+          message:
+            safetyCheck.message || "Prompt rejected by AI security guardrails.",
+          tokensSpent: 0,
+        }
+      }
+
       const docs = await dependencies.searchKnowledgeDocs({
         organizationId: auth.organizationId ?? null,
         routePath,
@@ -251,6 +376,7 @@ export const createKnowledgeRoutes = (
       const citations = toCitations(docs)
       const encoder = new TextEncoder()
       let fullAnswer = ""
+      const startTime = Date.now()
 
       const answerStream = dependencies.streamKnowledgeAnswer({
         messages: parsed.data.messages,
@@ -282,6 +408,63 @@ export const createKnowledgeRoutes = (
                   })
                 )
               )
+
+              // ── ASYNC AUDIT LOGGING ───────────────────────────────────────
+              const durationMs = Date.now() - startTime
+              const approxPromptTokens = Math.ceil(latestUserQuery.length / 4)
+              const approxResponseTokens = Math.ceil(fullAnswer.length / 4)
+
+              try {
+                await prisma.aiChatSession.upsert({
+                  where: { sessionId },
+                  create: {
+                    sessionId,
+                    organizationId,
+                    userId,
+                    userEmail: auth.user?.email ?? null,
+                    ipAddress,
+                    userAgent,
+                    channel: "CONSOLE",
+                    totalMessages: 2,
+                    totalTokens: approxPromptTokens + approxResponseTokens,
+                  },
+                  update: {
+                    totalMessages: { increment: 2 },
+                    totalTokens: {
+                      increment: approxPromptTokens + approxResponseTokens,
+                    },
+                  },
+                })
+
+                await prisma.aiChatMessage.createMany({
+                  data: [
+                    {
+                      sessionId,
+                      role: "user",
+                      content: latestUserQuery,
+                      routePath,
+                      promptTokens: approxPromptTokens,
+                      responseTokens: 0,
+                      durationMs: 0,
+                    },
+                    {
+                      sessionId,
+                      role: "assistant",
+                      content: fullAnswer.trim() || STRICT_KB_FALLBACK_MESSAGE,
+                      routePath,
+                      promptTokens: 0,
+                      responseTokens: approxResponseTokens,
+                      durationMs,
+                      citations: citations.map((c) => c.id),
+                    },
+                  ],
+                })
+              } catch (auditErr) {
+                console.error(
+                  "[knowledge.route] Audit logging error:",
+                  auditErr
+                )
+              }
             } catch {
               controller.enqueue(
                 encoder.encode(
@@ -300,9 +483,6 @@ export const createKnowledgeRoutes = (
           headers: STREAM_HEADERS,
         }
       )
-    },
-    {
-      body: knowledgeChatBodySchema,
     }
   )
 
