@@ -3,7 +3,7 @@ import { render } from "@testing-library/react"
 import "@testing-library/jest-dom"
 
 import { createAuthMock } from "@/test/layout-test-mocks"
-import { redirect, usePathname } from "next/navigation"
+import { redirect } from "next/navigation"
 
 type MockAuthPayload = {
   user: {
@@ -29,7 +29,7 @@ const mockWithAuth = mock(
   })
 )
 
-const mockGetUser = mock(async () => ({
+const mockGetUser = mock(async (_userId?: string) => ({
   id: "user_123",
   firstName: "Jane",
   lastName: "Doe",
@@ -37,7 +37,7 @@ const mockGetUser = mock(async () => ({
   profilePictureUrl: "https://example.com/latest-avatar.png",
 }))
 
-const mockGetOrganization = mock(async () => ({
+const mockGetOrganization = mock(async (_organizationId?: string) => ({
   id: "org_123",
   name: "Acme Inc",
 }))
@@ -51,6 +51,32 @@ const mockGetPlatformAccessForUser = mock(
     role: "none",
   })
 )
+
+const mockResolveFirstActiveOrganization = mock(
+  async (_userId: string): Promise<{ organizationId: string } | null> => null
+)
+
+mock.module("@/lib/whatsapp/resolvers", () => ({
+  resolveFirstActiveOrganization: mockResolveFirstActiveOrganization,
+}))
+mock.module("@/lib/workos-directory", () => ({
+  getCachedUser: mock(async (id: string) => {
+    await mockGetUser(id)
+    return {
+      id: "user_123",
+      name: "Jane Doe",
+      email: "jane@example.com",
+      avatarUrl: "https://example.com/latest-avatar.png",
+    }
+  }),
+  getCachedOrganization: mock(async (id: string) => {
+    await mockGetOrganization(id)
+    return {
+      id: "org_123",
+      name: "Acme Inc",
+    }
+  }),
+}))
 
 mock.module("@workos-inc/authkit-nextjs", () => {
   return createAuthMock({
@@ -169,9 +195,6 @@ describe("ConsoleLayout", () => {
       },
       organizationId: "org_123",
     }))
-    ;(usePathname as unknown as ReturnType<typeof mock>).mockReturnValue(
-      "/en/console"
-    )
     ;(redirect as unknown as ReturnType<typeof mock>).mockImplementation(
       mockRedirect
     )
@@ -249,5 +272,34 @@ describe("ConsoleLayout", () => {
     expect(mockRedirect).toHaveBeenCalledWith(
       "/en/onboarding/organization?next=%2Fen%2Fconsole"
     )
+  })
+
+  it("auto-resolves first active organization when organizationId is missing from session", async () => {
+    mockWithAuth.mockImplementation(async () => ({
+      user: {
+        id: "user_invited",
+        firstName: "Invited",
+        lastName: "User",
+        email: "invited@example.com",
+        profilePictureUrl: null,
+      },
+      organizationId: undefined,
+    }))
+
+    mockResolveFirstActiveOrganization.mockResolvedValueOnce({
+      organizationId: "org_123",
+    })
+
+    const layoutModule = await import("@/app/[lang]/console/layout")
+    const ui = await layoutModule.default({
+      children: <div>Child Content</div>,
+      params: Promise.resolve({ lang: "en" }),
+    })
+
+    const view = render(ui)
+    expect(mockResolveFirstActiveOrganization).toHaveBeenCalledWith(
+      "user_invited"
+    )
+    expect(view.getByText("Child Content")).toBeInTheDocument()
   })
 })
