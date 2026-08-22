@@ -78,9 +78,8 @@ export default function ForensicTranscriptPage() {
     async function loadTranscript() {
       if (!sessionId) return
       try {
-        const { data: resData } = await eden.api.admin.ai
-          .sessions({ sessionId })
-          .get()
+        const { data: resData } =
+          await eden.api.admin.ai.sessions[sessionId].get()
         if (isMounted) {
           if (resData && "ok" in resData && resData.ok) {
             setData((resData as { ok: true; data: SessionDetail }).data)
@@ -91,7 +90,7 @@ export default function ForensicTranscriptPage() {
             )
           }
         }
-      } catch (_err) {
+      } catch {
         if (isMounted)
           setError("Network error while fetching forensic transcript")
       } finally {
