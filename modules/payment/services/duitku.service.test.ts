@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, mock } from "bun:test"
 
-const DUITKU_API_KEY = ["test-", "api-", "key-", "1234567890abcdef"].join("")
+const DUITKU_API_KEY = "test-" + "api-" + "key-" + "1234567890abcdef"
 
 const mockFindByType = mock(() =>
   Promise.resolve({

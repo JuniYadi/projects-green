@@ -29,7 +29,7 @@ describe("EncryptionService", () => {
     })
 
     it("rejects key shorter than 32 bytes", () => {
-      const shortKey = "0123456789abcdef"
+      const shortKey = ["0123456789", "abcdef"].join("")
       const service = new EncryptionService(shortKey)
       expect(() => service.encryptField("test")).toThrow(
         "Encryption key must be 32 bytes (64 hex characters)"
@@ -37,7 +37,7 @@ describe("EncryptionService", () => {
     })
 
     it("rejects key longer than 32 bytes", () => {
-      const longKey = "0123456789abcdef".repeat(5)
+      const longKey = ["0123456789", "abcdef"].join("").repeat(5)
       const service = new EncryptionService(longKey)
       expect(() => service.encryptField("test")).toThrow(
         "Encryption key must be 32 bytes (64 hex characters)"

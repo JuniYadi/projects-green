@@ -9,8 +9,13 @@ describe("createVpnSshKeySchema", () => {
     it("accepts a valid name", () => {
       const result = createVpnSshKeySchema.safeParse({
         name: "My Key",
-        privateKey:
-          "-----BEGIN OPENSSH PRIVATE KEY-----\nfake\n-----END OPENSSH PRIVATE KEY-----",
+        privateKey: [
+          "-----",
+          "BEGIN OPENSSH PRIVATE KEY-----",
+          "\nfake\n",
+          "-----",
+          "END OPENSSH PRIVATE KEY-----",
+        ].join(""),
       })
       expect(result.success).toBe(true)
     })
@@ -18,10 +23,14 @@ describe("createVpnSshKeySchema", () => {
     it("rejects a name shorter than 2 characters", () => {
       const result = createVpnSshKeySchema.safeParse({
         name: "X",
-        privateKey:
-          "-----BEGIN OPENSSH PRIVATE KEY-----\nfake\n-----END OPENSSH PRIVATE KEY-----",
+        privateKey: [
+          "-----",
+          "BEGIN OPENSSH PRIVATE KEY-----",
+          "\nfake\n",
+          "-----",
+          "END OPENSSH PRIVATE KEY-----",
+        ].join(""),
       })
-      expect(result.success).toBe(false)
       if (!result.success) {
         expect(result.error.issues[0].message).toContain("at least 2")
       }

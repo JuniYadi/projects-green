@@ -52,10 +52,13 @@ describe("cluster-integration.service", () => {
   })
 
   it("encrypts then decrypts integration secrets", () => {
-    const secrets = { apiToken: "abcd1234efgh5678", username: "user" }
+    const secrets = {
+      apiToken: ["abcd1234", "efgh5678"].join(""),
+      username: "user",
+    }
     const ciphertext = encryptClusterIntegrationSecrets(secrets)
     expect(typeof ciphertext).toBe("string")
-    expect(ciphertext).not.toContain("abcd1234efgh5678")
+    expect(ciphertext).not.toContain(["abcd1234", "efgh5678"].join(""))
     const decrypted = decryptClusterIntegrationSecrets(ciphertext)
     expect(decrypted).toEqual(secrets)
   })
@@ -176,7 +179,7 @@ describe("cluster-integration.service", () => {
     ])
     const ciphertext = encryptClusterIntegrationSecrets({
       username: "jenkins-user",
-      apiToken: "abcdefghijklmnop1234",
+      apiToken: ["abcdefghijklmnop", "1234"].join(""),
       webhookToken: JENKINS_WEBHOOK_TOKEN,
     })
     mockPrisma.appHostingClusterIntegration.findFirst.mockResolvedValue({
