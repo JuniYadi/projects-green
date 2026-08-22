@@ -3208,3 +3208,34 @@ model AiDeploymentSession {
   @@index([organizationId, status])
   @@index([status, expiresAt])
 }
+
+enum StorageFileStatus {
+  PENDING
+  ACTIVE
+  DELETED
+}
+
+model StorageFile {
+  id               String            @id @default(cuid())
+  organizationId   String
+  uploadedByUserId String?
+  purpose          String            @default("general") // e.g. "whatsapp_template", "avatar", "ticket"
+  bucket           String
+  storageKey       String            @unique
+  originalFilename String
+  mimeType         String
+  sizeBytes        BigInt            @default(0)
+  status           StorageFileStatus @default(PENDING)
+  publicUrl        String?
+  metadata         Json?
+  expiresAt        DateTime?
+  confirmedAt      DateTime?
+  deletedAt        DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([organizationId, status])
+  @@index([status, expiresAt])
+  @@index([organizationId, purpose])
+  @@index([createdAt(sort: Desc)])
+}
