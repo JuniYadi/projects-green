@@ -199,7 +199,7 @@ type DeviceRecord = { id: string }
 
 const PERIODS = new Set(["MONTHLY", "QUARTERLY", "SEMI_ANNUAL", "ANNUAL"])
 
-function jsonObject(value: Record<string, unknown>): Prisma.InputJsonObject {
+function _jsonObject(value: Record<string, unknown>): Prisma.InputJsonObject {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonObject
 }
 
@@ -263,7 +263,7 @@ function subscriptionData(
     type: pricing.type,
     billingMode: pricing.billingMode,
     billingPeriod: pricing.billingPeriod,
-    priceLocked: pricing.periodPrice,
+    priceLocked: pricing.periodPrice ?? new Prisma.Decimal(0),
     currency: pricing.currency,
     quantity: input.quantity ?? new Prisma.Decimal(1),
     status: "ACTIVE",

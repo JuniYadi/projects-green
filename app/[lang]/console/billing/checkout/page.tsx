@@ -25,6 +25,7 @@ import {
   type CheckoutPreview,
   type CheckoutResult,
 } from "./checkout-client"
+import { formatKey } from "@/lib/format-key"
 
 function formatCurrency(amount: string, currency: string = "IDR"): string {
   const safeCurrency =
@@ -336,27 +337,19 @@ export default function CheckoutPage() {
                             value !== null &&
                             value !== undefined
                         )
-                        .map(([name, value]) => {
-                          const formatKey = (key: string) =>
-                            key
-                              .replace(/([A-Z])/g, " $1")
-                              .replace(/_/g, " ")
-                              .replace(/^\w/, (c) => c.toUpperCase())
-
-                          return (
-                            <div
-                              key={name}
-                              className="flex items-center justify-between rounded-md border bg-card px-3 py-2 text-xs"
-                            >
-                              <span className="text-muted-foreground">
-                                {formatKey(name)}
-                              </span>
-                              <span className="font-medium text-foreground">
-                                {String(value)}
-                              </span>
-                            </div>
-                          )
-                        })}
+                        .map(([name, value]) => (
+                          <div
+                            key={name}
+                            className="flex items-center justify-between rounded-md border bg-card px-3 py-2 text-xs"
+                          >
+                            <span className="text-muted-foreground">
+                              {formatKey(name)}
+                            </span>
+                            <span className="font-medium text-foreground">
+                              {String(value)}
+                            </span>
+                          </div>
+                        ))}
                     </div>
                   </div>
                 )}

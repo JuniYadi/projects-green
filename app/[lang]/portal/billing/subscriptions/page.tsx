@@ -24,6 +24,7 @@ import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import type { ColumnDef } from "@tanstack/react-table"
 import { useAdminSubscriptionsQuery } from "@/hooks/use-billing-data"
+import { formatKey } from "@/lib/format-key"
 import type { AdminSubscriptionItem } from "@/lib/billing-client"
 import { formatBillingMoney } from "@/modules/billing/format-money"
 
@@ -519,12 +520,6 @@ export function BillingSubscriptionsPage() {
                   </p>
                 )
               }
-
-              const formatKey = (key: string) =>
-                key
-                  .replace(/([A-Z])/g, " $1")
-                  .replace(/_/g, " ")
-                  .replace(/^\w/, (c) => c.toUpperCase())
 
               return (
                 <div className="grid gap-2.5">

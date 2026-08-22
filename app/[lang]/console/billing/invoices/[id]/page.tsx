@@ -45,6 +45,7 @@ import {
   BuildingsIcon,
   UserIcon,
 } from "@phosphor-icons/react"
+import { formatKey } from "@/lib/format-key"
 import { InvoiceDownloadPdfAction } from "@/modules/invoices/ui/invoice-download-pdf-action"
 import { formatInvoiceCurrency } from "@/modules/invoices/invoices.helpers"
 import {
@@ -600,9 +601,9 @@ export default function InvoiceDetailPage() {
           {/* Dynamic Order & Provisioning Specifications */}
           {(() => {
             const lineWithMetadata = invoice.lines?.find(
-              (l) => l.metadataJson && typeof l.metadataJson === "object"
+              (l) => l.metadata && typeof l.metadata === "object"
             )
-            const metadata = (lineWithMetadata?.metadataJson ?? {}) as Record<
+            const metadata = (lineWithMetadata?.metadata ?? {}) as Record<
               string,
               unknown
             >
@@ -619,12 +620,6 @@ export default function InvoiceDetailPage() {
             )
 
             if (entries.length === 0) return null
-
-            const formatKey = (key: string) =>
-              key
-                .replace(/([A-Z])/g, " $1")
-                .replace(/_/g, " ")
-                .replace(/^\w/, (c) => c.toUpperCase())
 
             return (
               <Card className="border-border/80 shadow-sm">

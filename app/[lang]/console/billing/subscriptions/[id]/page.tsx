@@ -36,6 +36,7 @@ import {
   previewBillingPlanChange,
   changeBillingPlan,
 } from "@/hooks/use-billing-data"
+import { formatKey } from "@/lib/format-key"
 import type {
   ChangePlanPreviewResult,
   SubscriptionItem,
@@ -435,12 +436,6 @@ export default function SubscriptionDetailPage() {
                     val !== undefined &&
                     typeof val !== "object"
                 )
-
-                const formatKey = (key: string) =>
-                  key
-                    .replace(/([A-Z])/g, " $1")
-                    .replace(/_/g, " ")
-                    .replace(/^\w/, (c) => c.toUpperCase())
 
                 if (entries.length === 0) {
                   return (

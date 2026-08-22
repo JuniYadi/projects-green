@@ -75,6 +75,7 @@ export function toBillingOrderDTO(order: {
   fulfilledAt: Date | null
   createdAt: Date
   updatedAt: Date
+  metadataJson?: Prisma.JsonValue | null
   lines: Array<{
     id: string
     pricingId: string | null

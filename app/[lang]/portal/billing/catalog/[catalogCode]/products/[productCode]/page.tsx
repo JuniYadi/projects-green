@@ -398,35 +398,27 @@ export default function ProductDetailPage() {
     }
     setIsDuplicating(true)
     try {
-      const resourcesObject: Record<string, unknown> = {}
-      for (const entry of resourceEntries) {
-        if (entry.key.trim()) {
-          const num = Number(entry.value)
-          resourcesObject[entry.key.trim()] = Number.isNaN(num)
-            ? entry.value
-            : num
-        }
-      }
-      if (provisioningFields.length > 0) {
-        resourcesObject._provisioningFields = provisioningFields
-      }
-
+      const detail = await getAdminCatalogProductDetail(
+        catalogCode,
+        productCode
+      )
+      const p = detail.product
       await upsertAdminCatalogProduct(catalogCode, code, {
         name: newName,
         code,
-        resources:
-          Object.keys(resourcesObject).length > 0 ? resourcesObject : undefined,
-        billingStrategy,
-        stockControl,
-        stockCount: stockControl === "TRACKED" ? stockCount : null,
-        allowBackorder,
+        resources: p.resources,
+        billingStrategy: p.billingStrategy,
+        stockControl: p.stockControl,
+        stockCount: p.stockCount,
+        allowBackorder: p.allowBackorder,
         isActive: true,
-        prices: prices.map((p) => ({
-          billingPeriod: p.billingPeriod,
-          currency: p.currency,
-          periodPrice: Number(p.amount) || 0,
+        prices: (p.offers ?? []).map((offer) => ({
+          billingPeriod: offer.billingPeriod,
+          chargeUnit: offer.chargeUnit,
+          periodPrice: Number.parseFloat(offer.periodPrice) || 0,
+          currency: offer.currency,
           effectiveFrom: new Date().toISOString().slice(0, 10),
-          effectiveTo: p.effectiveTo || null,
+          effectiveTo: offer.effectiveTo,
           isActive: true,
         })),
       })

@@ -405,6 +405,7 @@ export default function AddonEditorPage() {
   )
 
   const handleSaveDraft = async () => {
+    if (!addon) return
     if (!addon.name.trim() || !addon.code.trim()) {
       toast.error("Code and name are required")
       return
@@ -423,7 +424,8 @@ export default function AddonEditorPage() {
   }
 
   const handleArchive = async () => {
-    const archivedAddon = { ...addon, isActive: false }
+    if (!addon) return
+    const archivedAddon: AddonForm = { ...addon, isActive: false }
     try {
       const draftKey = `addon-draft-${archivedAddon.code || archivedAddon.id}`
       localStorage.setItem(draftKey, JSON.stringify(archivedAddon))

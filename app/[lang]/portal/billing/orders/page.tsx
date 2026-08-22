@@ -33,6 +33,7 @@ import {
   billingPeriodLabel,
   type AdminOrder,
 } from "@/lib/billing-client"
+import { formatKey } from "@/lib/format-key"
 import { formatBillingMoney } from "@/modules/billing/format-money"
 
 const STATUSES = [
@@ -500,12 +501,6 @@ export function BillingOrdersPage() {
                   </p>
                 )
               }
-
-              const formatKey = (key: string) =>
-                key
-                  .replace(/([A-Z])/g, " $1")
-                  .replace(/_/g, " ")
-                  .replace(/^\w/, (c) => c.toUpperCase())
 
               return (
                 <div className="grid gap-2.5">
