@@ -50,7 +50,6 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
       "scripts/seed-billing.ts",
       "scripts/seed-vpn-server-coordinates.ts",
       "scripts/vpn-renewal-worker.ts",
-      "scripts/workers.ts",
     ],
     testPrefixes: [
       "components/billing/admin/catalog/product-editor.test.tsx",
