@@ -1,10 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, act, type RenderResult } from "@testing-library/react"
-import { useRouter, usePathname, useSearchParams } from "next/navigation"
 
 const mockReplace = mock(() => {})
 let currentPathname = "/en/console"
 let currentParams = ""
+
+mock.module("next/navigation", () => ({
+  useRouter: () => ({
+    replace: mockReplace,
+    push: mock(() => {}),
+  }),
+  usePathname: () => currentPathname,
+  useSearchParams: () => new URLSearchParams(currentParams),
+}))
+
 const mockFetch = mock(
   async () =>
     ({
@@ -33,18 +42,7 @@ describe("ThunderAiHelpDrawer", () => {
     globalThis.fetch = mockFetch as unknown as typeof fetch
     currentPathname = "/en/console"
     currentParams = ""
-    ;(useRouter as unknown as ReturnType<typeof mock>).mockImplementation(
-      () => ({
-        replace: mockReplace,
-        push: mock(() => {}),
-      })
-    )
-    ;(usePathname as unknown as ReturnType<typeof mock>).mockImplementation(
-      () => currentPathname
-    )
-    ;(useSearchParams as unknown as ReturnType<typeof mock>).mockImplementation(
-      () => new URLSearchParams(currentParams)
-    )
+    // next/navigation mocks are wired via mock.module
   })
   afterEach(() => {
     globalThis.fetch = originalFetch
