@@ -717,6 +717,14 @@ const shutdown = async (signal: string) => {
 process.on("SIGTERM", () => void shutdown("SIGTERM"))
 process.on("SIGINT", () => void shutdown("SIGINT"))
 
+process.on("unhandledRejection", (reason) => {
+  console.error("[workers] unhandled rejection:", reason)
+})
+
+process.on("uncaughtException", (error) => {
+  console.error("[workers] uncaught exception:", error)
+})
+
 // ══════════════════════════════════════════════════════════════════════════
 // Startup
 // ══════════════════════════════════════════════════════════════════════════
