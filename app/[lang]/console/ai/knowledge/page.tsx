@@ -39,8 +39,8 @@ export type KnowledgeDoc = {
   status: "READY" | "PROCESSING" | "QUEUED" | "FAILED"
   category: string
   sourceType?: string
-  createdAt?: string
-  updatedAt?: string
+  createdAt?: string | Date
+  updatedAt?: string | Date
 }
 
 export default function AiKnowledgePage() {
