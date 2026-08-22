@@ -37,7 +37,7 @@ WORKDIR /app
 RUN bun add --exact --ignore-scripts \
   @prisma/client@7.8.0 \
   @prisma/adapter-pg@7.8.0 \
-  pg@8.18.0 \
+  pg@8.20.0 \
   ssh2@1.17.0
 # Copy generated Prisma client from builder (schema-specific types & engine)
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
