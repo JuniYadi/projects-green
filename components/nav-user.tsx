@@ -137,7 +137,8 @@ export function NavUser({ user }: { user: AppSidebarUser }) {
     [user.avatarUrl]
   )
   const showFallback = !hasAvatarUrl || avatarStatus === "error"
-  getLocaleFromPathname(pathname)
+  const { locale: pathnameLocale, pathnameWithoutLocale } =
+    getLocaleFromPathname(pathname)
   const activeLocale = (pathnameLocale ?? defaultLocale) as AppLocale
   const messages = getMessages(activeLocale)
 
