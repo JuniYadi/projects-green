@@ -16,7 +16,6 @@ if (!suite || !["logic", "component", "all"].includes(suite)) {
 const testFiles = collectSuiteFiles(suite)
 const concurrency =
   process.env.TEST_CONCURRENCY?.trim() || (process.env.CI ? "8" : "2")
-const filesForRun = suite === "logic" && coverage ? [] : testFiles
 const preload = import.meta.dir + "/../test/setup.ts"
 if (coverage) {
   mkdirSync(resolve(process.cwd(), "coverage"), { recursive: true })
@@ -28,7 +27,6 @@ const args = [
   "--preload",
   preload,
   `--max-concurrency=${concurrency}`,
-  ...(coverage ? ["--only-failures"] : []),
   "--path-ignore-patterns=**/*.e2e.test.ts",
   "--path-ignore-patterns=**/e2e/**",
   "--path-ignore-patterns=**/integration/**",
@@ -36,7 +34,7 @@ const args = [
   ...(coverage
     ? ["--coverage", "--coverage-reporter=text", "--coverage-reporter=lcov"]
     : []),
-  ...filesForRun,
+  ...testFiles,
   ...passthroughArgs,
 ]
 
