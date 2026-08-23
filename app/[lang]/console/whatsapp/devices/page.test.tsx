@@ -1,3 +1,4 @@
+import "@/test/register"
 import { describe, expect, it, mock } from "bun:test"
 import { render, fireEvent, waitFor } from "@testing-library/react"
 
@@ -157,6 +158,25 @@ describe("WhatsAppDevicesPage", () => {
     // Active device should have a Details link
     const detailsLinks = view.getAllByText("Details")
     expect(detailsLinks.length).toBeGreaterThan(0)
+
+    view.unmount()
+  })
+
+  it("opens ServiceOrderDialog when clicking Sambungkan Device Baru button", async () => {
+    const view = render(<WhatsAppDevicesPage />)
+    await waitFor(() => {
+      expect(view.getByText("Support Line")).toBeInTheDocument()
+    })
+
+    const connectBtn = view.getAllByRole("button", {
+      name: /sambungkan device baru/i,
+    })[0]
+    expect(connectBtn).toBeDefined()
+    fireEvent.click(connectBtn)
+
+    await waitFor(() => {
+      expect(view.getByRole("dialog")).toBeInTheDocument()
+    })
 
     view.unmount()
   })
