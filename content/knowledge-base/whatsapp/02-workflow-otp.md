@@ -88,7 +88,7 @@ export async function sendWhatsAppOtp({ phoneNumber, otpCode }: SendOtpOptions) 
           },
           {
             type: "button",
-            sub_type: "url",
+            sub_type: "copy_code",
             index: "0",
             parameters: [
               { type: "text", text: otpCode } // Copy Code button parameter
@@ -135,7 +135,7 @@ class WhatsAppOtpService
                         ],
                         [
                             'type' => 'button',
-                            'sub_type' => 'url',
+                            'sub_type' => 'copy_code',
                             'index' => '0',
                             'parameters' => [
                                 ['type' => 'text', 'text' => $otpCode],
@@ -175,7 +175,7 @@ def send_whatsapp_otp(phone_number: str, otp_code: str) -> dict:
                 },
                 {
                     "type": "button",
-                    "sub_type": "url",
+                    "sub_type": "copy_code",
                     "index": "0",
                     "parameters": [{"type": "text", "text": otp_code}],
                 },
