@@ -1,6 +1,7 @@
 import "@/test/register"
 import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { render, fireEvent, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 
 const mockToastSuccess = mock()
 const mockToastError = mock()
@@ -174,12 +175,12 @@ describe("ServiceOrderDialog", () => {
     const phoneInput = view.getByTestId(
       "order-input-phoneNumber"
     ) as HTMLInputElement
-    fireEvent.input(phoneInput, { target: { value: "+6281234567890" } })
+    await userEvent.type(phoneInput, "+6281234567890")
 
     const checkbox = view.getByTestId(
       "order-confirm-balance-checkbox"
     ) as HTMLInputElement
-    fireEvent.click(checkbox)
+    await userEvent.click(checkbox)
 
     await waitFor(() => {
       expect(
@@ -224,12 +225,12 @@ describe("ServiceOrderDialog", () => {
     const phoneInput = view.getByTestId(
       "order-input-phoneNumber"
     ) as HTMLInputElement
-    fireEvent.input(phoneInput, { target: { value: "+6281234567890" } })
+    await userEvent.type(phoneInput, "+6281234567890")
 
     const checkbox = view.getByTestId(
       "order-confirm-balance-checkbox"
     ) as HTMLInputElement
-    fireEvent.click(checkbox)
+    await userEvent.click(checkbox)
 
     const activateBtn = view.getByTestId("order-submit-button")
     await waitFor(() => {

@@ -116,7 +116,7 @@ export function ServiceOrderDialog({
       setFormData({})
 
       try {
-        const res = await getCatalogProduct(productCode.toUpperCase(), "IDR")
+        const res = await getCatalogProduct(productCode.toUpperCase())
         if (!isMounted) return
         setCatalogData(res)
         const product =
@@ -578,13 +578,6 @@ export function ServiceOrderDialog({
                               : undefined)
                           }
                           value={formData[field.name] || ""}
-                          onInput={(e: React.FormEvent<HTMLInputElement>) => {
-                            const target = e.target as HTMLInputElement
-                            setFormData((prev) => ({
-                              ...prev,
-                              [field.name]: target.value,
-                            }))
-                          }}
                           onChange={(e) => {
                             const nextVal = e.target.value
                             setFormData((prev) => ({
@@ -801,7 +794,6 @@ export function ServiceOrderDialog({
                     type="checkbox"
                     checked={confirmed}
                     onChange={(e) => setConfirmed(e.target.checked)}
-                    onClick={() => setConfirmed(true)}
                     className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                   />
                   <Label
