@@ -670,11 +670,6 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
     navMainLabel: "WhatsApp",
     getProjects: (path, locale) => [
       {
-        name: "Subscribe WhatsApp",
-        url: "#subscribe-whatsapp",
-        icon: <PackageIcon />,
-      },
-      {
         name: "Back to Console",
         url: localizePathname({ pathname: "/console", locale }),
         icon: <CaretLeftIcon />,
@@ -1177,17 +1172,6 @@ export function AppSidebar({
     tab: searchParams.get("tab") ?? undefined,
   })
 
-  // Enhance projects to open ServiceOrderDialog if clicked
-  const enhancedProjects = projects.map((p) => {
-    if (p.url === "#subscribe-whatsapp") {
-      return {
-        ...p,
-        onClick: () => setOrderProductCode("WHATSAPP"),
-      }
-    }
-    return p
-  })
-
   const navSecondary = resolveSidebarSecondaryLinks({
     surface,
     currentPathname: pathname,
@@ -1196,12 +1180,9 @@ export function AppSidebar({
   return (
     <>
       <Sidebar variant="inset" {...props}>
-        <SidebarHeader>
-          <NavOrganization organization={organization} />
-        </SidebarHeader>
         <SidebarContent>
           {navHeader && <div className="px-3 py-2">{navHeader}</div>}
-          <NavProjects projects={enhancedProjects} />
+          {projects.length > 0 && <NavProjects projects={projects} />}
           <NavMain items={navMain} label={navMainLabel} />
           <NavSecondary items={navSecondary} className="mt-auto" />
         </SidebarContent>
@@ -1209,14 +1190,6 @@ export function AppSidebar({
           <NavUser user={user} />
         </SidebarFooter>
       </Sidebar>
-
-      <ServiceOrderDialog
-        productCode={orderProductCode ?? ""}
-        open={Boolean(orderProductCode)}
-        onOpenChange={(open) => {
-          if (!open) setOrderProductCode(null)
-        }}
-      />
     </>
   )
 }
