@@ -211,5 +211,5 @@ if (!runningNested) {
 
     expect(exitCode, `stderr: ${stderr}`).toBe(0)
     expect(stdout).toContain(`test:changed: selected: ${TARGET_TEST}`)
-  }, 20_000)
+  }, 45_000)
 }

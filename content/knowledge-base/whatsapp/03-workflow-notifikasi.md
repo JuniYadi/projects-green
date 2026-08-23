@@ -51,6 +51,7 @@ How a transactional invoice update appears with a direct payment action button:
    - **Category**: `UTILITY`
    - **Language**: English (`en`)
    - **Body Content**:
+
      ```
      Hello *{{1}}*,
      Your order *#{{2}}* has been placed!
@@ -60,6 +61,7 @@ How a transactional invoice update appears with a direct payment action button:
 
      Please complete payment using the link below:
      ```
+
    - **Buttons**: URL Button `https://pfnapp.id/pay/{{1}}`
 
 ![Templates List](/kb-assets/whatsapp/guides/02-journey1-templates-list.png)
@@ -82,11 +84,13 @@ interface InvoiceNotificationPayload {
   invoiceSlug: string
 }
 
-export async function sendInvoiceNotification(data: InvoiceNotificationPayload) {
+export async function sendInvoiceNotification(
+  data: InvoiceNotificationPayload
+) {
   const response = await fetch("https://pfnapp.id/api/whatsapp/messages", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${process.env.PFN_WHATSAPP_API_KEY}`,
+      Authorization: `Bearer ${process.env.PFN_WHATSAPP_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -99,10 +103,10 @@ export async function sendInvoiceNotification(data: InvoiceNotificationPayload) 
           {
             type: "body",
             parameters: [
-              { type: "text", text: data.customerName },   // {{1}}
-              { type: "text", text: data.invoiceNumber },  // {{2}}
-              { type: "text", text: data.totalAmount },    // {{3}}
-              { type: "text", text: data.dueDate },        // {{4}}
+              { type: "text", text: data.customerName }, // {{1}}
+              { type: "text", text: data.invoiceNumber }, // {{2}}
+              { type: "text", text: data.totalAmount }, // {{3}}
+              { type: "text", text: data.dueDate }, // {{4}}
             ],
           },
           {
@@ -110,7 +114,7 @@ export async function sendInvoiceNotification(data: InvoiceNotificationPayload) 
             sub_type: "url",
             index: "0",
             parameters: [
-              { type: "text", text: data.invoiceSlug },    // Appended to CTA URL
+              { type: "text", text: data.invoiceSlug }, // Appended to CTA URL
             ],
           },
         ],
@@ -201,12 +205,12 @@ def dispatch_invoice_whatsapp(phone: str, name: str, inv_no: str, total: str, du
             ],
         },
     }
-    
+
     headers = {
         "Authorization": f"Bearer {os.getenv('PFN_WHATSAPP_API_KEY')}",
         "Content-Type": "application/json",
     }
-    
+
     res = requests.post(url, json=payload, headers=headers)
     return res.json()
 ```
@@ -216,4 +220,4 @@ def dispatch_invoice_whatsapp(phone: str, name: str, inv_no: str, total: str, du
 ## 4. Operational Tips
 
 1. **Parameter Count Matching**: If a template contains 4 placeholders `{{1}}` to `{{4}}`, exactly 4 items must be present in `parameters`.
-2. **Special Characters**: Avoid inserting unescaped tabs or multiple linebreaks inside a single string parameter.
+2. **Special Characters**: Avoid inserting unescaped tabs or multiple line breaks inside a single string parameter.

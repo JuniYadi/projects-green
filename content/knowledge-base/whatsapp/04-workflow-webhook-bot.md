@@ -117,16 +117,18 @@ app.post("/api/whatsapp/webhook", async (req, res) => {
     let replyText = "Hello! Type *MENU* to view products or *SUPPORT* for help."
 
     if (userText.includes("menu") || userText.includes("pricing")) {
-      replyText = "📋 *Our Product Packages*:\n1. Starter: $10\n2. Pro: $35\n\nType *ORDER* to purchase."
+      replyText =
+        "📋 *Our Product Packages*:\n1. Starter: $10\n2. Pro: $35\n\nType *ORDER* to purchase."
     } else if (userText.includes("support") || userText.includes("help")) {
-      replyText = "👨‍💼 A customer support agent will join this conversation shortly."
+      replyText =
+        "👨‍💼 A customer support agent will join this conversation shortly."
     }
 
     // D. Send Instant Response (Free-form text message inside 24h window)
     await fetch("https://pfnapp.id/api/whatsapp/messages", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${API_KEY}`,
+        Authorization: `Bearer ${API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -162,7 +164,7 @@ class WhatsAppWebhookController extends Controller
 
             if ($sender && $text) {
                 $reply = "Thank you for contacting us. Type *INFO* for help.";
-                
+
                 if (str_contains($text, 'promo')) {
                     $reply = "🎉 Special offer: Use code *SAVE50* for 50% discount!";
                 }
