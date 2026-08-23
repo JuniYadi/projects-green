@@ -35,12 +35,17 @@ export function NavProjects({
                 {item.icon}
                 <span>{item.name}</span>
               </SidebarMenuButton>
-            ) : (
+            ) : item.url ? (
               <SidebarMenuButton asChild isActive={item.isActive}>
-                <Link href={item.url ?? "#"}>
+                <Link href={item.url}>
                   {item.icon}
                   <span>{item.name}</span>
                 </Link>
+              </SidebarMenuButton>
+            ) : (
+              <SidebarMenuButton isActive={item.isActive}>
+                {item.icon}
+                <span>{item.name}</span>
               </SidebarMenuButton>
             )}
           </SidebarMenuItem>
