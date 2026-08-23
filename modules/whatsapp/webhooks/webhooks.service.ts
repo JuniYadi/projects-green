@@ -219,6 +219,48 @@ export async function processInboundMessage(
         )
       )
   }
+  // Fire-and-forget: Automated bot evaluation (Workflow Engine first -> AI Bot fallback)
+  // DEBT: Inbound bot pipeline uses async dynamic imports | Fix when: Unified bot event dispatcher queue is extracted
+  if (body || payload.interactive) {
+    const interactiveObj = payload.interactive as
+      | { button_reply?: { id?: string }; list_reply?: { id?: string } }
+      | undefined
+    const buttonPayload =
+      interactiveObj?.button_reply?.id ||
+      interactiveObj?.list_reply?.id ||
+      undefined
+
+    import("@/modules/whatsapp/workflow/workflow-runner")
+      .then(async ({ processWhatsappWorkflowInbound }) => {
+        const wfResult = await processWhatsappWorkflowInbound({
+          organizationId,
+          deviceId,
+          contactPhone: normalizedPhone,
+          inboundMessageText: body || "",
+          buttonPayload,
+        })
+
+        // Only fallback to AI Agent if Workflow didn't handle the message
+        if (!wfResult.handled && body) {
+          const { processWhatsappAiBotInbound } =
+            await import("@/modules/whatsapp/ai-bot-consumer.service")
+          await processWhatsappAiBotInbound({
+            organizationId,
+            deviceId,
+            contactPhone: normalizedPhone,
+            inboundMessageText: body,
+            conversationId: conversation.id,
+            inboundMessageId: whatsappMessage.id,
+          })
+        }
+      })
+      .catch((err: unknown) =>
+        console.error(
+          `[webhooks] bot dispatch error device=${deviceId} org=${organizationId}`,
+          err
+        )
+      )
+  }
 
   return {
     messageId: whatsappMessage.id,

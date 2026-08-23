@@ -194,6 +194,18 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     smokeProjects: [],
   },
   {
+    name: "whatsapp-workflow",
+    sourcePrefixes: [
+      "modules/whatsapp/workflow/",
+      "modules/whatsapp/ai-bot-consumer.service.ts",
+    ],
+    testPrefixes: [
+      "modules/whatsapp/workflow/",
+      "modules/whatsapp/ai-bot-consumer.service.test.ts",
+    ],
+    smokeProjects: [],
+  },
+  {
     name: "whatsapp-usage",
     sourcePrefixes: [
       "app/[lang]/console/whatsapp/usage/",
