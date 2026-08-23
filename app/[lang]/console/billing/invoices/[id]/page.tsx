@@ -450,14 +450,27 @@ export default function InvoiceDetailPage() {
                       P
                     </div>
                     <span className="text-lg font-bold tracking-tight">
-                      {account?.businessName ?? account?.name ?? "PFNApp"}
+                      PFNApp
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    PT PFN Digital Solusindo
+                    PT. Premium Fast Network
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    billing@pfnapp.my.id
+                    {(() => {
+                      if (typeof window !== "undefined") {
+                        try {
+                          const hostname = window.location.hostname.replace(
+                            /^www\./,
+                            ""
+                          )
+                          return `billing@${hostname}`
+                        } catch {
+                          return "billing@premiumfast.net"
+                        }
+                      }
+                      return "billing@premiumfast.net"
+                    })()}
                   </p>
                 </div>
 
@@ -467,6 +480,9 @@ export default function InvoiceDetailPage() {
                   </p>
                   <p className="font-mono text-base font-bold text-foreground">
                     {invoice.invoiceNumber}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Issue Date: {formatDate(issueDate)}
                   </p>
                   <div className="inline-block pt-1">
                     <InvoiceStatusBadge
@@ -483,23 +499,24 @@ export default function InvoiceDetailPage() {
                 </div>
               </div>
 
-              {/* Billed To & Metadata Grid */}
-              <div className="grid gap-6 border-b border-border/60 py-6 text-sm sm:grid-cols-2">
-                <div className="space-y-1">
+              {/* Billed To & Dates Grid */}
+              <div className="grid gap-6 border-b border-border/60 py-6 sm:grid-cols-2">
+                {/* Billed To Left */}
+                <div className="space-y-1.5">
                   <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                     Billed To
                   </span>
-                  <div className="flex items-center gap-1.5 font-medium text-foreground">
-                    <BuildingsIcon className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      {invoice.billingEntity?.name ??
-                        invoice.organization?.name ??
+                  <div className="flex items-center gap-2 font-medium text-foreground">
+                    <BuildingsIcon className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-semibold">
+                      {invoice.organization?.name ??
+                        invoice.billingEntity?.name ??
                         account?.businessName ??
                         account?.name ??
-                        "—"}
+                        "Organization"}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <UserIcon className="h-3.5 w-3.5" />
                     <span>
                       {invoice.billingEntity?.email ??
@@ -510,15 +527,8 @@ export default function InvoiceDetailPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div className="space-y-1">
-                    <span className="font-semibold tracking-wider text-muted-foreground uppercase">
-                      Issue Date
-                    </span>
-                    <p className="font-medium text-foreground">
-                      {formatDate(issueDate)}
-                    </p>
-                  </div>
+                {/* Due Date & Billing Period Right Aligned */}
+                <div className="grid grid-cols-2 gap-4 text-xs sm:text-right">
                   <div className="space-y-1">
                     <span className="font-semibold tracking-wider text-muted-foreground uppercase">
                       {billing.dueDate}
@@ -527,7 +537,7 @@ export default function InvoiceDetailPage() {
                       {dueDate ? formatDate(dueDate) : "—"}
                     </p>
                   </div>
-                  <div className="col-span-2 space-y-1">
+                  <div className="space-y-1">
                     <span className="font-semibold tracking-wider text-muted-foreground uppercase">
                       Billing Period
                     </span>
