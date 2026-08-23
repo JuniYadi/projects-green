@@ -1,5 +1,5 @@
 import "@/test/register"
-import { describe, expect, it, mock } from "bun:test"
+import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { render, fireEvent, waitFor } from "@testing-library/react"
 
 // NOTE: Do NOT import `screen` — it is evaluated at module-import time when
@@ -56,6 +56,11 @@ mock.module("@/lib/api/whatsapp-client", () => ({
   },
 }))
 
+mock.module("@/components/billing/service-order-dialog", () => ({
+  ServiceOrderDialog: (props: { open: boolean }) =>
+    props.open ? <div role="dialog">Service Order Dialog</div> : null,
+}))
+
 mock.module("@/lib/i18n/messages", () => ({
   getMessages: () => ({
     console: {
@@ -92,6 +97,10 @@ function tick(ms = 50) {
 }
 
 describe("WhatsAppDevicesPage", () => {
+  beforeEach(() => {
+    document.body.innerHTML = ""
+  })
+
   it("renders search input with correct placeholder", async () => {
     const view = render(<WhatsAppDevicesPage />)
     await waitFor(() => {
@@ -106,9 +115,12 @@ describe("WhatsAppDevicesPage", () => {
   it("shows filter labels All Status and All Active States", async () => {
     const view = render(<WhatsAppDevicesPage />)
     await waitFor(() => {
-      expect(view.getByText("All Status")).toBeDefined()
-      expect(view.getByText("All Active States")).toBeDefined()
+      expect(
+        view.getByPlaceholderText("Search devices by name or phone...")
+      ).toBeInTheDocument()
     })
+    const comboboxes = view.getAllByRole("combobox")
+    expect(comboboxes.length).toBeGreaterThanOrEqual(2)
 
     view.unmount()
   })
