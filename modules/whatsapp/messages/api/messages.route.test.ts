@@ -1,5 +1,7 @@
 import { mock, describe, it, expect, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
+import { Prisma } from "@prisma/client"
+const Decimal = Prisma.Decimal
 import {
   WhatsappSendFailedError,
   WhatsappSessionWindowClosedError,
@@ -173,7 +175,9 @@ describe("messagesRoutes", () => {
     mockPrisma.whatsappBillingLedger.findFirst.mockClear()
     mockPrisma.whatsappAuditLog.findFirst.mockClear()
     mockPrisma.whatsappWebhookEvent.findMany.mockClear()
+    mockPrisma.whatsappTemplate.findFirst.mockClear()
     mockMessageService.sendTemplateMessage.mockClear()
+    mockMessageService.sendMessage.mockClear()
     mockGetCachedUser.mockClear()
 
     mockPrisma.whatsappMessage.count.mockResolvedValue(1)
@@ -352,11 +356,314 @@ describe("messagesRoutes", () => {
     })
   })
 
-  describe("POST /messages", () => {
-    // Note: Elysia t.Enum validation may require specific format
-    // Skipping detailed tests - focus on routes that don't require body parsing
+  describe("POST /messages (Unified Dispatcher)", () => {
+    it("dispatches template message with legacy KrmPesan payload format", async () => {
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce({
+        id: "template-1",
+        name: "otp_login",
+        whatsappDeviceId: "device-1",
+        category: "AUTHENTICATION",
+        languages: [
+          {
+            id: "lang-1",
+            lang: "id",
+            body: "Kode OTP Anda: {{1}}",
+          },
+        ],
+      } as any)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        postJson("/messages", {
+          phone: "081216667996",
+          template_name: "otp_login",
+          template_language: "id",
+          template: {
+            body: ["492019"],
+          },
+        })
+      )
+      expect(res.status).toBe(200)
+      const resBody = await res.json()
+      expect(resBody.ok).toBe(true)
+      expect(resBody.waMessageId).toBe("wa-template-1")
+      expect(mockMessageService.sendTemplateMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          phoneNumber: "+6281216667996",
+          templateName: "otp_login",
+          fields: ["492019"],
+        })
+      )
+    })
+
+    it("dispatches template message with non-sequential placeholders correctly", async () => {
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce({
+        id: "template-2",
+        name: "invoice_receipt",
+        whatsappDeviceId: "device-1",
+        category: "UTILITY",
+        languages: [
+          {
+            id: "lang-2",
+            lang: "id",
+            body: "Halo {{1}}, tagihan Anda {{2}}!",
+          },
+        ],
+      } as any)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        postJson("/messages", {
+          phoneNumber: "+6281234567890",
+          templateName: "invoice_receipt",
+          templateLanguage: "id",
+          fields: ["Budi", "Rp 150.000"],
+          deviceId: "device-1",
+        })
+      )
+      expect(res.status).toBe(200)
+      expect(mockMessageService.sendTemplateMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          renderedBody: "Halo Budi, tagihan Anda Rp 150.000!",
+          fields: ["Budi", "Rp 150.000"],
+        })
+      )
+    })
+
+    it("returns 422 if phone number is missing or invalid", async () => {
+      const app = createTestApp()
+      const resNoPhone = await app.handle(
+        postJson("/messages", { message: "Hello" })
+      )
+      expect(resNoPhone.status).toBe(422)
+
+      const resInvalidPhone = await app.handle(
+        postJson("/messages", { phoneNumber: "invalid", message: "Hello" })
+      )
+      expect(resInvalidPhone.status).toBe(422)
+    })
+
+    it("returns 404 if template is not found", async () => {
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce(null as any)
+      const app = createTestApp()
+      const res = await app.handle(
+        postJson("/messages", {
+          phoneNumber: "+6281234567890",
+          template_name: "unknown_template",
+        })
+      )
+      expect(res.status).toBe(404)
+    })
+
+    it("returns 422 if required template field is missing", async () => {
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce({
+        id: "template-1",
+        name: "otp_login",
+        whatsappDeviceId: "device-1",
+        languages: [
+          {
+            id: "lang-1",
+            lang: "id",
+            body: "Kode OTP: {{1}} dan {{2}}",
+          },
+        ],
+      } as any)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        postJson("/messages", {
+          phoneNumber: "+6281234567890",
+          template_name: "otp_login",
+          fields: ["1234"], // missing {{2}}
+        })
+      )
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.message).toContain("Template field {{2}} is required")
+    })
+    it("dispatches free-form text message when no template is provided", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        postJson("/messages", {
+          phoneNumber: "+6281234567890",
+          type: "text",
+          message: "Halo dari Unified Dispatcher",
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.waMessageId).toBe("wa-123")
+      expect(mockMessageService.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          phoneNumber: "+6281234567890",
+          type: "text",
+          message: "Halo dari Unified Dispatcher",
+        })
+      )
+    })
+
+    it("returns 422 for free-form media message without mediaUrl", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        postJson("/messages", {
+          phoneNumber: "+6281234567890",
+          type: "image",
+        })
+      )
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.message).toContain("mediaUrl is required for media messages")
+    })
+
+    it("returns 422 for free-form location message without coordinates", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        postJson("/messages", {
+          phoneNumber: "+6281234567890",
+          type: "location",
+        })
+      )
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.message).toContain("latitude and longitude are required")
+    })
+
+    it("handles InsufficientBalanceError in template and free-form routes", async () => {
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce({
+        id: "template-1",
+        name: "otp_login",
+        whatsappDeviceId: "device-1",
+        languages: [{ id: "l1", lang: "id", body: "OTP: {{1}}" }],
+      } as any)
+      mockMessageService.sendTemplateMessage.mockRejectedValueOnce(
+        new InsufficientBalanceError(new Decimal(500), new Decimal(100))
+      )
+      const app = createTestApp()
+      const resTemplate = await app.handle(
+        postJson("/messages", {
+          phoneNumber: "+6281234567890",
+          template_name: "otp_login",
+          fields: ["123"],
+          deviceId: "device-1",
+        })
+      )
+      expect(resTemplate.status).toBe(402)
+
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new InsufficientBalanceError(new Decimal(500), new Decimal(100))
+      )
+      const resFreeform = await app.handle(
+        postJson("/messages", {
+          phoneNumber: "+6281234567890",
+          message: "test",
+        })
+      )
+      expect(resFreeform.status).toBe(402)
+    })
+
+    it("handles QuotaExceededError and DailyLimitExceededError", async () => {
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new QuotaExceededError("org-1", "device-1", "OUT", 1000, 1000)
+      )
+      const app = createTestApp()
+      const resQuota = await app.handle(
+        postJson("/messages", {
+          phoneNumber: "+6281234567890",
+          message: "test",
+        })
+      )
+      expect(resQuota.status).toBe(429)
+
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new DailyLimitExceededError("org-1", "device-1", 100, 100)
+      )
+      const resDaily = await app.handle(
+        postJson("/messages", {
+          phoneNumber: "+6281234567890",
+          message: "test",
+        })
+      )
+      expect(resDaily.status).toBe(429)
+    })
+
+    it("handles WhatsappSessionWindowClosedError for free-form message outside window", async () => {
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new WhatsappSessionWindowClosedError()
+      )
+      const app = createTestApp()
+      const res = await app.handle(
+        postJson("/messages", {
+          phoneNumber: "+6281234567890",
+          message: "test",
+        })
+      )
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.error).toBe("WHATSAPP_TEMPLATE_REQUIRED")
+    })
+
+    it("handles WhatsappSendFailedError and generic errors", async () => {
+      mockMessageService.sendMessage.mockRejectedValueOnce(
+        new WhatsappSendFailedError("provider failed", "msg-failed-id")
+      )
+      const app = createTestApp()
+      const resFailed = await app.handle(
+        postJson("/messages", {
+          phoneNumber: "+6281234567890",
+          message: "test",
+        })
+      )
+      expect(resFailed.status).toBe(502)
+
+      mockMessageService.sendMessage.mockRejectedValueOnce(new Error("unknown"))
+      const resGeneric = await app.handle(
+        postJson("/messages", {
+          phoneNumber: "+6281234567890",
+          message: "test",
+        })
+      )
+      expect(resGeneric.status).toBe(500)
+    })
   })
 
+  describe("POST /messages/internal", () => {
+    it("creates internal message record in database", async () => {
+      mockPrisma.whatsappConversation.findFirst.mockResolvedValueOnce({
+        id: "conv-1",
+        organizationId: "org-1",
+      } as any)
+
+      mockPrisma.whatsappMessage.create.mockResolvedValueOnce({
+        id: "msg-internal-1",
+        conversationId: "conv-1",
+        direction: "OUTBOX",
+        messageType: "text",
+        body: "Internal note",
+        mediaUrl: null,
+        waMessageId: null,
+        metadata: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        postJson("/messages/internal", {
+          conversationId: "conv-1",
+          direction: "OUTBOX",
+          messageType: "text",
+          body: "Internal note",
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.message.id).toBe("msg-internal-1")
+    })
+  })
   describe("PATCH /messages/:id", () => {
     // Note: Elysia t.Enum validation may require specific format
     // Skipping detailed tests - focus on routes that don't require body parsing

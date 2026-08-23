@@ -77,6 +77,31 @@ const sendSchema = t.Object({
   address: t.Optional(t.String()),
   deviceId: t.Optional(t.String()),
 })
+const unifiedMessageSchema = t.Object({
+  phoneNumber: t.Optional(t.String()),
+  phone: t.Optional(t.String()),
+  to: t.Optional(t.String()),
+  type: t.Optional(t.String()),
+  message: t.Optional(t.String()),
+  text: t.Optional(t.Any()),
+  mediaUrl: t.Optional(t.String()),
+  media_url: t.Optional(t.String()),
+  caption: t.Optional(t.String()),
+  filename: t.Optional(t.String()),
+  latitude: t.Optional(t.Number()),
+  longitude: t.Optional(t.Number()),
+  name: t.Optional(t.String()),
+  address: t.Optional(t.String()),
+  deviceId: t.Optional(t.String()),
+  whatsappDeviceId: t.Optional(t.String()),
+  template_name: t.Optional(t.String()),
+  templateName: t.Optional(t.String()),
+  templateId: t.Optional(t.String()),
+  template_language: t.Optional(t.String()),
+  templateLanguage: t.Optional(t.String()),
+  template: t.Optional(t.Any()),
+  fields: t.Optional(t.Array(t.String())),
+})
 
 const messageUpdateSchema = t.Partial(messageBodySchema)
 
@@ -211,7 +236,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
     }
   )
   .post(
-    "/",
+    "/internal",
     async ({ request, body, set }: { request: any; body: any; set: any }) => {
       const whatsappAuth = await resolveAuthContext(request)
       if (!whatsappAuth) {
@@ -245,6 +270,418 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
     },
     {
       body: messageBodySchema,
+    }
+  )
+  .post(
+    "/",
+    async ({ request, body, set }: { request: any; body: any; set: any }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+
+      // 1. Resolve recipient phone number (supports 'phoneNumber' and legacy 'phone')
+      const rawPhone = body.phoneNumber ?? body.phone ?? body.to
+      if (!rawPhone || typeof rawPhone !== "string") {
+        set.status = 422
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message: "Phone number is required.",
+        }
+      }
+      const normalizedPhone = normalizeIndonesianPhoneNumber(rawPhone)
+      if (!normalizedPhone) {
+        set.status = 422
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message:
+            "Phone number must be in E.164 format or Indonesian local format.",
+        }
+      }
+
+      // 2. Dispatch: Template Message (PFNApp format or KrmPesan legacy format)
+      const hasTemplatePayload =
+        Boolean(body.template_name) ||
+        Boolean(body.templateName) ||
+        Boolean(body.templateId) ||
+        Boolean(body.template)
+      if (hasTemplatePayload) {
+        let templateName = body.template_name ?? body.templateName
+        let templateLanguage =
+          body.template_language ?? body.templateLanguage ?? "id"
+        let fields: string[] = Array.isArray(body.fields) ? body.fields : []
+        let deviceId: string | undefined =
+          body.deviceId ?? body.whatsappDeviceId
+
+        // Support legacy KrmPesan template object structure
+        if (body.template && typeof body.template === "object") {
+          if (Array.isArray(body.template.body)) {
+            fields = body.template.body.map((v: unknown) => String(v))
+          }
+        }
+
+        // Lookup template by templateId or templateName
+        const template = await prisma.whatsappTemplate.findFirst({
+          where: {
+            organizationId: whatsappAuth.organizationId!,
+            ...(body.templateId
+              ? { id: body.templateId }
+              : { name: templateName }),
+          },
+          include: { languages: true },
+        })
+
+        if (!template) {
+          set.status = 404
+          return {
+            ok: false,
+            error: "NOT_FOUND",
+            message: "Template not found.",
+          }
+        }
+
+        templateName = template.name
+        deviceId = deviceId || template.whatsappDeviceId || undefined
+
+        if (!deviceId) {
+          set.status = 422
+          return {
+            ok: false,
+            error: "VALIDATION_ERROR",
+            message: "Device is required.",
+          }
+        }
+
+        if (template.whatsappDeviceId !== deviceId) {
+          set.status = 422
+          return {
+            ok: false,
+            error: "VALIDATION_ERROR",
+            message: "Template is not available for the selected device.",
+          }
+        }
+
+        // Resolve template language
+        const language =
+          template.languages.find((l) => l.lang === templateLanguage) ||
+          template.languages[0]
+
+        if (!language) {
+          set.status = 422
+          return {
+            ok: false,
+            error: "VALIDATION_ERROR",
+            message: "Template language not found.",
+          }
+        }
+        templateLanguage = language.lang
+
+        // Extract placeholders from body and validate required fields
+        const placeholderRegex = /{{\s*(\d+)\s*}}/g
+        const indexes: number[] = []
+        let match
+        while ((match = placeholderRegex.exec(language.body ?? "")) !== null) {
+          const idx = parseInt(match[1], 10)
+          if (!indexes.includes(idx)) indexes.push(idx)
+        }
+        indexes.sort((a, b) => a - b)
+
+        for (const index of indexes) {
+          if (!fields || !fields[index - 1]?.trim()) {
+            set.status = 422
+            return {
+              ok: false,
+              error: "VALIDATION_ERROR",
+              message: `Template field {{${index}}} is required.`,
+            }
+          }
+        }
+
+        let renderedBody: string | null = language.body ?? null
+        if (renderedBody && fields) {
+          for (let i = 0; i < indexes.length; i++) {
+            const idx = indexes[i]
+            const val = fields[idx - 1] ?? ""
+            renderedBody = renderedBody.replace(
+              new RegExp(`{{\\s*${idx}\\s*}}`, "g"),
+              val
+            )
+          }
+        }
+
+        try {
+          const result = await messageService.sendTemplateMessage({
+            organizationId: whatsappAuth.organizationId!,
+            phoneNumber: normalizedPhone,
+            deviceId,
+            templateName,
+            templateLanguage,
+            fields,
+            renderedBody,
+            billingCategory: template.category ?? undefined,
+            templateLanguageData:
+              language as unknown as WhatsAppTemplateLanguage,
+          })
+          const response = toWhatsappSendResultDTO(result)
+
+          logWhatsappAuditEvent({
+            action: "MESSAGE_SENT",
+            organizationId: whatsappAuth.organizationId!,
+            deviceId: deviceId ?? null,
+            adminId: (whatsappAuth as any).userId,
+            message: `Template message sent to ${normalizedPhone}`,
+            status: "OK",
+            details: {
+              waMessageId: response.waMessageId,
+              phoneNumber: normalizedPhone,
+              templateName,
+              templateLanguage,
+            },
+          })
+
+          return { ok: true, ...response }
+        } catch (error) {
+          logWhatsappAuditEvent({
+            action: "MESSAGE_FAILED",
+            organizationId: whatsappAuth.organizationId!,
+            deviceId: deviceId ?? null,
+            adminId: (whatsappAuth as any).userId,
+            message: "Send template message failed",
+            errorMessage:
+              error instanceof Error ? error.message : String(error),
+            status: "FAILED",
+          })
+
+          if (error instanceof WhatsappSendFailedError) {
+            set.status = 502
+            return {
+              ok: false,
+              error: "WHATSAPP_SEND_FAILED",
+              message: error.message,
+              messageId: error.messageId,
+            }
+          }
+          if (error instanceof InsufficientBalanceError) {
+            set.status = 402
+            return {
+              ok: false,
+              error: "INSUFFICIENT_BALANCE",
+              message: "Insufficient balance for WhatsApp messaging.",
+              balance: error.available.toString(),
+              estimatedCost: error.required.toString(),
+            }
+          }
+          if (error instanceof QuotaExceededError) {
+            set.status = 429
+            return {
+              ok: false,
+              error: "MONTHLY_QUOTA_EXCEEDED",
+              message: `Monthly outbound quota exceeded. Limit: ${error.monthlyLimit}, Used: ${error.monthlyUsed}`,
+              resetAt: getMonthlyResetAt(),
+            }
+          }
+          if (error instanceof DailyLimitExceededError) {
+            set.status = 429
+            return {
+              ok: false,
+              error: "DAILY_QUOTA_EXCEEDED",
+              message: `Daily limit exceeded. Limit: ${error.dailyLimit}, Used: ${error.dailyUsed}`,
+              resetAt: getDailyResetAt(),
+            }
+          }
+          if (
+            error instanceof Error &&
+            (error.message === "NO_BILLING_ACCOUNT" ||
+              error.message === "BILLING_ACCOUNT_NOT_FOUND")
+          ) {
+            set.status = 400
+            return {
+              ok: false,
+              error: "BILLING_NOT_CONFIGURED",
+              message: "No billing account configured for this organization.",
+            }
+          }
+          if (error instanceof UnsupportedDestinationCountryError) {
+            set.status = 422
+            return {
+              ok: false,
+              error: "UNSUPPORTED_DESTINATION_COUNTRY",
+              message: error.message,
+              country: error.country,
+            }
+          }
+          if (error instanceof InsufficientQuotaError) {
+            set.status = 422
+            return {
+              ok: false,
+              error: "INSUFFICIENT_QUOTA",
+              message: error.message,
+            }
+          }
+
+          console.error("[messages] unified template send error:", error)
+          set.status = 500
+          return {
+            ok: false,
+            error: "INTERNAL_ERROR",
+            message: "Failed to send template message",
+          }
+        }
+      }
+
+      // 3. Dispatch: Free-form Message (Text / Media / Location)
+      const textMessage = body.message ?? body.text?.body ?? body.text
+      const mediaUrl = body.mediaUrl ?? body.media_url
+      const type = body.type ?? "text"
+
+      const validationError = validateSendBody({
+        ...body,
+        type,
+        message: textMessage,
+        mediaUrl,
+      })
+      if (validationError) {
+        set.status = 422
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message: validationError,
+        }
+      }
+
+      try {
+        const result = await messageService.sendMessage({
+          organizationId: whatsappAuth.organizationId!,
+          phoneNumber: normalizedPhone,
+          type,
+          message: textMessage,
+          mediaUrl,
+          caption: body.caption,
+          filename: body.filename,
+          latitude: body.latitude,
+          longitude: body.longitude,
+          name: body.name,
+          address: body.address,
+          deviceId: body.deviceId,
+        })
+        const response = toWhatsappSendResultDTO(result)
+
+        logWhatsappAuditEvent({
+          action: "MESSAGE_SENT",
+          organizationId: whatsappAuth.organizationId!,
+          deviceId: body.deviceId ?? null,
+          adminId: (whatsappAuth as any).userId,
+          message: `Message sent to ${normalizedPhone}`,
+          status: "OK",
+          details: {
+            waMessageId: response.waMessageId,
+            phoneNumber: normalizedPhone,
+            type: type ?? "text",
+          },
+        })
+
+        return { ok: true, ...response }
+      } catch (error) {
+        logWhatsappAuditEvent({
+          action: "MESSAGE_FAILED",
+          organizationId: whatsappAuth.organizationId!,
+          deviceId: body.deviceId ?? null,
+          adminId: (whatsappAuth as any).userId,
+          message: "Send message failed",
+          errorMessage: error instanceof Error ? error.message : String(error),
+          status: "FAILED",
+        })
+
+        if (error instanceof WhatsappSendFailedError) {
+          set.status = 502
+          return {
+            ok: false,
+            error: "WHATSAPP_SEND_FAILED",
+            message: error.message,
+            messageId: error.messageId,
+          }
+        }
+        if (error instanceof WhatsappSessionWindowClosedError) {
+          set.status = 422
+          return {
+            ok: false,
+            error: "WHATSAPP_TEMPLATE_REQUIRED",
+            message: error.message,
+          }
+        }
+        if (error instanceof InsufficientBalanceError) {
+          set.status = 402
+          return {
+            ok: false,
+            error: "INSUFFICIENT_BALANCE",
+            message:
+              "Insufficient balance for WhatsApp messaging. Please top up your balance.",
+            balance: error.available.toString(),
+            estimatedCost: error.required.toString(),
+          }
+        }
+        if (error instanceof QuotaExceededError) {
+          set.status = 429
+          return {
+            ok: false,
+            error: "MONTHLY_QUOTA_EXCEEDED",
+            message: `Monthly outbound quota exceeded. Limit: ${error.monthlyLimit}, Used: ${error.monthlyUsed}`,
+            resetAt: getMonthlyResetAt(),
+          }
+        }
+        if (error instanceof DailyLimitExceededError) {
+          set.status = 429
+          return {
+            ok: false,
+            error: "DAILY_QUOTA_EXCEEDED",
+            message: `Daily limit exceeded. Limit: ${error.dailyLimit}, Used: ${error.dailyUsed}`,
+            resetAt: getDailyResetAt(),
+          }
+        }
+        if (
+          error instanceof Error &&
+          (error.message === "NO_BILLING_ACCOUNT" ||
+            error.message === "BILLING_ACCOUNT_NOT_FOUND")
+        ) {
+          set.status = 400
+          return {
+            ok: false,
+            error: "BILLING_NOT_CONFIGURED",
+            message: "No billing account configured for this organization.",
+          }
+        }
+        if (error instanceof UnsupportedDestinationCountryError) {
+          set.status = 422
+          return {
+            ok: false,
+            error: "UNSUPPORTED_DESTINATION_COUNTRY",
+            message: error.message,
+            country: error.country,
+          }
+        }
+        if (error instanceof InsufficientQuotaError) {
+          set.status = 422
+          return {
+            ok: false,
+            error: "INSUFFICIENT_QUOTA",
+            message: error.message,
+          }
+        }
+
+        console.error("[messages] unified free-form send error:", error)
+        set.status = 500
+        return {
+          ok: false,
+          error: "INTERNAL_ERROR",
+          message: "Failed to send message",
+        }
+      }
+    },
+    {
+      body: unifiedMessageSchema,
     }
   )
   .patch(
@@ -606,7 +1043,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       if (renderedBody && fields) {
         for (let i = 0; i < indexes.length; i++) {
           const idx = indexes[i]
-          const val = fields[i] ?? ""
+          const val = fields[idx - 1] ?? ""
           renderedBody = renderedBody.replace(
             new RegExp(`{{\\s*${idx}\\s*}}`, "g"),
             val

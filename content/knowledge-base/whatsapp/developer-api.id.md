@@ -70,7 +70,7 @@ Halaman referensi API menyediakan cuplikan kode siap pakai untuk berbagai bahasa
 ### cURL
 
 ```bash
-curl -X POST "https://pfnapp.my.id/api/whatsapp/messages" \
+curl -X POST "https://pfnapp.id/api/whatsapp/messages" \
   -H "Authorization: Bearer pfn_wa_sec_xxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -97,7 +97,7 @@ curl -X POST "https://pfnapp.my.id/api/whatsapp/messages" \
 ### TypeScript / Node.js
 
 ```typescript
-const response = await fetch("https://pfnapp.my.id/api/whatsapp/messages", {
+const response = await fetch("https://pfnapp.id/api/whatsapp/messages", {
   method: "POST",
   headers: {
     Authorization: `Bearer ${process.env.PFN_WHATSAPP_API_KEY}`,
@@ -132,7 +132,7 @@ console.log("Respons API:", data)
 import os
 import requests
 
-url = "https://pfnapp.my.id/api/whatsapp/messages"
+url = "https://pfnapp.id/api/whatsapp/messages"
 headers = {
     "Authorization": f"Bearer {os.getenv('PFN_WHATSAPP_API_KEY')}",
     "Content-Type": "application/json",
