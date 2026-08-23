@@ -15,7 +15,7 @@ if (!suite || !["logic", "component", "all"].includes(suite)) {
 
 const testFiles = collectSuiteFiles(suite)
 const concurrency =
-  process.env.TEST_CONCURRENCY?.trim() || (process.env.CI ? "8" : "2")
+  process.env.TEST_CONCURRENCY?.trim() || (process.env.CI ? "4" : "2")
 const preload = import.meta.dir + "/../test/setup.ts"
 if (coverage) {
   mkdirSync(resolve(process.cwd(), "coverage"), { recursive: true })

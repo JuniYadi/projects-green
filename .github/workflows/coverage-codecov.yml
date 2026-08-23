@@ -21,8 +21,7 @@ jobs:
     timeout-minutes: 60
     env:
       TZ: UTC
-      TEST_CONCURRENCY: "8"
-
+      TEST_CONCURRENCY: "4"
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
