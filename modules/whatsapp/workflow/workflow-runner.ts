@@ -78,7 +78,10 @@ export async function processWhatsappWorkflowInbound(
 
       const features = dbWorkflow?.features as Record<string, unknown> | null
       if (features?.botWorkflow) {
-        workflow = WorkflowDefinitionSchema.parse(features.botWorkflow)
+        const parsed = WorkflowDefinitionSchema.safeParse(features.botWorkflow)
+        if (parsed.success) {
+          workflow = parsed.data
+        }
       }
     }
 
@@ -95,13 +98,17 @@ export async function processWhatsappWorkflowInbound(
         return { handled: false, reason: "NO_WORKFLOW_CONFIGURED" }
       }
 
-      const parsedWf = WorkflowDefinitionSchema.parse(features.botWorkflow)
-      if (!parsedWf.isActive) {
+      const parsedWf = WorkflowDefinitionSchema.safeParse(features.botWorkflow)
+      if (!parsedWf.success) {
+        return { handled: false, reason: "INVALID_WORKFLOW_DEFINITION" }
+      }
+      if (!parsedWf.data.isActive) {
         return { handled: false, reason: "WORKFLOW_INACTIVE" }
       }
+      const activeWorkflow = parsedWf.data
 
       // Check trigger matching
-      const trigger = parsedWf.trigger
+      const trigger = activeWorkflow.trigger
       let matched = false
       if (trigger.type === "whatsapp_inbound") {
         matched = true
@@ -117,7 +124,7 @@ export async function processWhatsappWorkflowInbound(
         return { handled: false, reason: "TRIGGER_NOT_MATCHED" }
       }
 
-      workflow = parsedWf
+      workflow = activeWorkflow
       const firstNode = workflow.nodes[0]
       if (!firstNode) {
         return { handled: false, reason: "EMPTY_WORKFLOW" }
