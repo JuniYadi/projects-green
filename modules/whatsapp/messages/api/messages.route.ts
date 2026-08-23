@@ -77,6 +77,31 @@ const sendSchema = t.Object({
   address: t.Optional(t.String()),
   deviceId: t.Optional(t.String()),
 })
+const unifiedMessageSchema = t.Object({
+  phoneNumber: t.Optional(t.String()),
+  phone: t.Optional(t.String()),
+  to: t.Optional(t.String()),
+  type: t.Optional(t.String()),
+  message: t.Optional(t.String()),
+  text: t.Optional(t.Any()),
+  mediaUrl: t.Optional(t.String()),
+  media_url: t.Optional(t.String()),
+  caption: t.Optional(t.String()),
+  filename: t.Optional(t.String()),
+  latitude: t.Optional(t.Number()),
+  longitude: t.Optional(t.Number()),
+  name: t.Optional(t.String()),
+  address: t.Optional(t.String()),
+  deviceId: t.Optional(t.String()),
+  whatsappDeviceId: t.Optional(t.String()),
+  template_name: t.Optional(t.String()),
+  templateName: t.Optional(t.String()),
+  templateId: t.Optional(t.String()),
+  template_language: t.Optional(t.String()),
+  templateLanguage: t.Optional(t.String()),
+  template: t.Optional(t.Any()),
+  fields: t.Optional(t.Array(t.String())),
+})
 
 const messageUpdateSchema = t.Partial(messageBodySchema)
 
@@ -257,7 +282,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       }
 
       // 1. Resolve recipient phone number (supports 'phoneNumber' and legacy 'phone')
-      const rawPhone = body.phoneNumber ?? body.phone
+      const rawPhone = body.phoneNumber ?? body.phone ?? body.to
       if (!rawPhone || typeof rawPhone !== "string") {
         set.status = 422
         return {
@@ -280,9 +305,9 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       // 2. Dispatch: Template Message (PFNApp format or KrmPesan legacy format)
       const hasTemplatePayload =
         Boolean(body.template_name) ||
+        Boolean(body.templateName) ||
         Boolean(body.templateId) ||
         Boolean(body.template)
-
       if (hasTemplatePayload) {
         let templateName = body.template_name ?? body.templateName
         let templateLanguage =
@@ -379,7 +404,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         if (renderedBody && fields) {
           for (let i = 0; i < indexes.length; i++) {
             const idx = indexes[i]
-            const val = fields[i] ?? ""
+            const val = fields[idx - 1] ?? ""
             renderedBody = renderedBody.replace(
               new RegExp(`{{\\s*${idx}\\s*}}`, "g"),
               val
@@ -512,12 +537,18 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       const mediaUrl = body.mediaUrl ?? body.media_url
       const type = body.type ?? "text"
 
-      if (typeof textMessage !== "string" && type === "text") {
+      const validationError = validateSendBody({
+        ...body,
+        type,
+        message: textMessage,
+        mediaUrl,
+      })
+      if (validationError) {
         set.status = 422
         return {
           ok: false,
           error: "VALIDATION_ERROR",
-          message: "message is required for text messages",
+          message: validationError,
         }
       }
 
@@ -648,6 +679,9 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           message: "Failed to send message",
         }
       }
+    },
+    {
+      body: unifiedMessageSchema,
     }
   )
   .patch(
@@ -1009,7 +1043,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       if (renderedBody && fields) {
         for (let i = 0; i < indexes.length; i++) {
           const idx = indexes[i]
-          const val = fields[i] ?? ""
+          const val = fields[idx - 1] ?? ""
           renderedBody = renderedBody.replace(
             new RegExp(`{{\\s*${idx}\\s*}}`, "g"),
             val
