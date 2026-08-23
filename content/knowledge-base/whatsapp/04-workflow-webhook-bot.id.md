@@ -123,7 +123,7 @@ app.post("/api/whatsapp/webhook", async (req, res) => {
     }
 
     // D. Kirim Balasan Instan (Free-form text message di dalam 24h window)
-    await fetch("https://pfnapp.my.id/api/whatsapp/messages", {
+    await fetch("https://pfnapp.id/api/whatsapp/messages", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${API_KEY}`,
@@ -169,7 +169,7 @@ class WhatsAppWebhookController extends Controller
 
                 // 2. Kirim balasan otomatis
                 Http::withToken(config('services.pfn.whatsapp_key'))
-                    ->post('https://pfnapp.my.id/api/whatsapp/messages', [
+                    ->post('https://pfnapp.id/api/whatsapp/messages', [
                         'to' => $sender,
                         'type' => 'text',
                         'text' => ['body' => $reply],

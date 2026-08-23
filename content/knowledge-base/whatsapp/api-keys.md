@@ -88,7 +88,7 @@ To authenticate requests to the WhatsApp API endpoints, provide your API key in 
 Verify your API key and inspect connected WhatsApp phone numbers and device health:
 
 ```bash
-curl -X GET "https://api.pfnapp.my.id/api/whatsapp/devices/" \
+curl -X GET "https://api.pfnapp.id/api/whatsapp/devices/" \
   -H "Authorization: Bearer pfn_wa_sec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ```
 

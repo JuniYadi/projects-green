@@ -60,7 +60,7 @@ How a transactional invoice update appears with a direct payment action button:
 
      Please complete payment using the link below:
      ```
-   - **Buttons**: URL Button `https://pfnapp.my.id/pay/{{1}}`
+   - **Buttons**: URL Button `https://pfnapp.id/pay/{{1}}`
 
 ![Templates List](/kb-assets/whatsapp/guides/02-journey1-templates-list.png)
 
@@ -83,7 +83,7 @@ interface InvoiceNotificationPayload {
 }
 
 export async function sendInvoiceNotification(data: InvoiceNotificationPayload) {
-  const response = await fetch("https://pfnapp.my.id/api/whatsapp/messages", {
+  const response = await fetch("https://pfnapp.id/api/whatsapp/messages", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${process.env.PFN_WHATSAPP_API_KEY}`,
@@ -137,7 +137,7 @@ class SendWhatsAppInvoiceNotification
         $order = $event->order;
 
         Http::withToken(config('services.pfn.whatsapp_key'))
-            ->post('https://pfnapp.my.id/api/whatsapp/messages', [
+            ->post('https://pfnapp.id/api/whatsapp/messages', [
                 'to' => $order->customer_phone,
                 'type' => 'template',
                 'template' => [
@@ -175,7 +175,7 @@ import os
 import requests
 
 def dispatch_invoice_whatsapp(phone: str, name: str, inv_no: str, total: str, due: str, inv_id: str):
-    url = "https://pfnapp.my.id/api/whatsapp/messages"
+    url = "https://pfnapp.id/api/whatsapp/messages"
     payload = {
         "to": phone,
         "type": "template",

@@ -67,7 +67,7 @@ interface SendOtpOptions {
 }
 
 export async function sendWhatsAppOtp({ phoneNumber, otpCode }: SendOtpOptions) {
-  const response = await fetch("https://pfnapp.my.id/api/whatsapp/messages", {
+  const response = await fetch("https://pfnapp.id/api/whatsapp/messages", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${process.env.PFN_WHATSAPP_API_KEY}`,
@@ -120,7 +120,7 @@ class WhatsAppOtpService
     public function sendOtp(string $phoneNumber, string $otpCode): array
     {
         $response = Http::withToken(config('services.pfn.whatsapp_key'))
-            ->post('https://pfnapp.my.id/api/whatsapp/messages', [
+            ->post('https://pfnapp.id/api/whatsapp/messages', [
                 'to' => $phoneNumber,
                 'type' => 'template',
                 'template' => [
@@ -157,7 +157,7 @@ import os
 import requests
 
 def send_whatsapp_otp(phone_number: str, otp_code: str) -> dict:
-    url = "https://pfnapp.my.id/api/whatsapp/messages"
+    url = "https://pfnapp.id/api/whatsapp/messages"
     headers = {
         "Authorization": f"Bearer {os.getenv('PFN_WHATSAPP_API_KEY')}",
         "Content-Type": "application/json",

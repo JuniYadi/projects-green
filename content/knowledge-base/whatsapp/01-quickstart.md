@@ -52,12 +52,12 @@ Before making your first API call, prepare the following:
 
 ## 3. Dispatch Test Message (Select Your Stack)
 
-The message dispatch endpoint is `POST https://pfnapp.my.id/api/whatsapp/messages`.
+The message dispatch endpoint is `POST https://pfnapp.id/api/whatsapp/messages`.
 
 ### cURL
 
 ```bash
-curl -X POST "https://pfnapp.my.id/api/whatsapp/messages" \
+curl -X POST "https://pfnapp.id/api/whatsapp/messages" \
   -H "Authorization: Bearer pfn_wa_sec_YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -75,7 +75,7 @@ curl -X POST "https://pfnapp.my.id/api/whatsapp/messages" \
 const API_KEY = process.env.PFN_WHATSAPP_API_KEY || "pfn_wa_sec_YOUR_API_KEY"
 
 async function sendQuickMessage() {
-  const response = await fetch("https://pfnapp.my.id/api/whatsapp/messages", {
+  const response = await fetch("https://pfnapp.id/api/whatsapp/messages", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${API_KEY}`,
@@ -103,7 +103,7 @@ sendQuickMessage()
 use Illuminate\Support\Facades\Http;
 
 $response = Http::withToken(config('services.pfn.whatsapp_key'))
-    ->post('https://pfnapp.my.id/api/whatsapp/messages', [
+    ->post('https://pfnapp.id/api/whatsapp/messages', [
         'to' => '+6281234567890',
         'type' => 'text',
         'text' => [
@@ -134,7 +134,7 @@ payload = {
 }
 
 response = requests.post(
-    "https://pfnapp.my.id/api/whatsapp/messages",
+    "https://pfnapp.id/api/whatsapp/messages",
     headers={
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
