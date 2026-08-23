@@ -45,7 +45,7 @@ const mockResolveAiProviderConfig = mock(async () => ({}) as never)
 const mockCreateAiLanguageModel = mock(() => ({}) as never)
 const mockGenerateText = mock(async () => ({
   text: "Halo, ada yang bisa kami bantu mengenai pesanan Anda?",
-  usage: { totalTokens: 42 },
+  usage: { totalTokens: 42, promptTokens: 10, completionTokens: 32 },
 }))
 
 mock.module("@/lib/prisma", () => ({
@@ -118,6 +118,32 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     expect(mockMessageService.sendMessage).not.toHaveBeenCalled()
   })
 
+  it("returns MAX_CHAR_EXCEEDED when input exceeds agent maxCharLength", async () => {
+    mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
+      id: "bind_1",
+      isActive: true,
+      agentProfile: {
+        id: "agent_1",
+        isActive: true,
+        maxCharLength: 10,
+        enableProfanityFilter: false,
+        customBlockedWords: [],
+      },
+    } as never)
+
+    const res = await processWhatsappAiBotInbound({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      contactPhone: "+62812345678",
+      inboundMessageText: "Pesan ini terlalu panjang sekali.",
+      conversationId: "conv_1",
+      inboundMessageId: "msg_1",
+    })
+
+    expect(res.handled).toBe(false)
+    expect(res.reason).toBe("MAX_CHAR_EXCEEDED")
+  })
+
   it("filters blocked words and sends fallback message when profanity is detected", async () => {
     mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
       id: "bind_1",
@@ -146,6 +172,49 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     expect(mockMessageService.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         message: "Mohon gunakan bahasa yang sopan.",
+      })
+    )
+  })
+
+  it("enforces daily limit and rolls back message counter on limit exceeded", async () => {
+    mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
+      id: "bind_1",
+      isActive: true,
+      agentProfile: {
+        id: "agent_1",
+        isActive: true,
+        maxCharLength: 500,
+        dailyUserLimit: 1,
+        enableProfanityFilter: false,
+        customBlockedWords: [],
+        fallbackMessage: "Batas chat harian Anda telah habis.",
+      },
+    } as never)
+
+    mockPrisma.aiChatSession.findUnique.mockResolvedValueOnce({
+      id: "sess_limit",
+      totalMessages: 5,
+    } as never)
+
+    mockPrisma.aiChatSession.update.mockResolvedValueOnce({
+      id: "sess_limit",
+      totalMessages: 6,
+    } as never)
+
+    const res = await processWhatsappAiBotInbound({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      contactPhone: "+62812345678",
+      inboundMessageText: "Halo admin toko",
+      conversationId: "conv_1",
+      inboundMessageId: "msg_1",
+    })
+
+    expect(res.handled).toBe(true)
+    expect(res.reason).toBe("DAILY_LIMIT_REACHED")
+    expect(mockMessageService.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Batas chat harian Anda telah habis.",
       })
     )
   })
