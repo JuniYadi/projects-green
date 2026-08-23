@@ -498,7 +498,7 @@ export function ServiceOrderDialog({
             {/* ── LEFT: Plan selection + Service config ── */}
             <div className="flex flex-1 flex-col gap-4 overflow-hidden border-r px-6 py-5">
               {/* Plan Selection Cards */}
-              <div className="space-y-2">
+              <div className="shrink-0 space-y-2">
                 <Label className="text-xs font-medium text-muted-foreground">
                   PILIH PAKET LAYANAN
                 </Label>
@@ -558,7 +558,7 @@ export function ServiceOrderDialog({
 
               {/* Term switcher */}
               {selectedPlan?.offers && selectedPlan.offers.length > 1 && (
-                <div className="space-y-2">
+                <div className="shrink-0 space-y-2">
                   <Label className="text-xs font-medium text-muted-foreground">
                     PERIODE PEMBAYARAN
                   </Label>
@@ -599,7 +599,7 @@ export function ServiceOrderDialog({
                     <Sparkle className="h-4 w-4 text-primary" />
                     <span>Konfigurasi Layanan</span>
                   </div>
-                  <div className="space-y-3 overflow-y-auto pr-1">
+                  <div className="flex-1 space-y-3 overflow-y-auto pr-1">
                     {dynamicFields.map((field) => (
                       <div key={field.id || field.name} className="space-y-1.5">
                         <Label
