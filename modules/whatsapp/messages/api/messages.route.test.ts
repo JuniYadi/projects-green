@@ -352,11 +352,106 @@ describe("messagesRoutes", () => {
     })
   })
 
-  describe("POST /messages", () => {
-    // Note: Elysia t.Enum validation may require specific format
-    // Skipping detailed tests - focus on routes that don't require body parsing
+  describe("POST /messages (Unified Dispatcher)", () => {
+    it("dispatches template message with legacy KrmPesan payload format", async () => {
+      mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce({
+        id: "template-1",
+        name: "otp_login",
+        whatsappDeviceId: "device-1",
+        category: "AUTHENTICATION",
+        languages: [
+          {
+            id: "lang-1",
+            lang: "id",
+            body: "Kode OTP Anda: {{1}}",
+          },
+        ],
+      } as any)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        postJson("/messages", {
+          phone: "081216667996",
+          template_name: "otp_login",
+          template_language: "id",
+          template: {
+            body: ["492019"],
+          },
+        })
+      )
+      expect(res.status).toBe(200)
+      const resBody = await res.json()
+      expect(resBody.ok).toBe(true)
+      expect(resBody.waMessageId).toBe("wa-template-1")
+      expect(mockMessageService.sendTemplateMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          phoneNumber: "+6281216667996",
+          templateName: "otp_login",
+          fields: ["492019"],
+        })
+      )
+    })
+
+    it("dispatches free-form text message when no template is provided", async () => {
+      const app = createTestApp()
+      const res = await app.handle(
+        postJson("/messages", {
+          phoneNumber: "+6281234567890",
+          type: "text",
+          message: "Halo dari Unified Dispatcher",
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.waMessageId).toBe("wa-123")
+      expect(mockMessageService.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          phoneNumber: "+6281234567890",
+          type: "text",
+          message: "Halo dari Unified Dispatcher",
+        })
+      )
+    })
   })
 
+  describe("POST /messages/internal", () => {
+    it("creates internal message record in database", async () => {
+      mockPrisma.whatsappConversation.findFirst.mockResolvedValueOnce({
+        id: "conv-1",
+        organizationId: "org-1",
+      } as any)
+
+      mockPrisma.whatsappMessage.create.mockResolvedValueOnce({
+        id: "msg-internal-1",
+        conversationId: "conv-1",
+        direction: "OUTBOX",
+        messageType: "text",
+        body: "Internal note",
+        mediaUrl: null,
+        waMessageId: null,
+        metadata: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        postJson("/messages/internal", {
+          conversationId: "conv-1",
+          direction: "OUTBOX",
+          messageType: "text",
+          body: "Internal note",
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.message.id).toBe("msg-internal-1")
+    })
+  })
   describe("PATCH /messages/:id", () => {
     // Note: Elysia t.Enum validation may require specific format
     // Skipping detailed tests - focus on routes that don't require body parsing
