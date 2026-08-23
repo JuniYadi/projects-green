@@ -17,9 +17,10 @@ import {
   MagnifyingGlass,
   Funnel,
   ArrowsClockwise,
+  Sparkle,
 } from "@phosphor-icons/react"
-
 import { Button } from "@/components/ui/button"
+import { ServiceOrderDialog } from "@/components/billing/service-order-dialog"
 import {
   Card,
   CardContent,
@@ -146,7 +147,7 @@ export default function WhatsAppPricingPage() {
   const [ledgerSelectedDevice, setLedgerSelectedDevice] = React.useState(
     searchParams.get("deviceId") || "all"
   )
-
+  const [isOrderOpen, setIsOrderOpen] = React.useState(false)
   React.useEffect(() => {
     let cancelled = false
     const loadLedger = async () => {
@@ -226,6 +227,14 @@ export default function WhatsAppPricingPage() {
               className={`size-4 ${ledgerLoading ? "animate-spin" : ""}`}
             />
             Refresh
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsOrderOpen(true)}
+          >
+            <Sparkle className="mr-1.5 size-4 text-primary" />
+            Subscribe WhatsApp Plan
           </Button>
           <Button variant="outline" size="sm" asChild>
             <Link
@@ -959,6 +968,16 @@ export default function WhatsAppPricingPage() {
           )}
         </CardContent>
       </Card>
+
+      <ServiceOrderDialog
+        productCode="WHATSAPP"
+        productTitle="WhatsApp Gateway"
+        open={isOrderOpen}
+        onOpenChange={setIsOrderOpen}
+        onSuccess={() => {
+          setRefreshKey((k) => k + 1)
+        }}
+      />
     </div>
   )
 }
