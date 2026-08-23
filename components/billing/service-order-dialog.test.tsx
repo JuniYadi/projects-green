@@ -23,30 +23,33 @@ describe("ServiceOrderDialog", () => {
     mockSubmitCheckout.mockClear()
 
     mockGetCatalogProduct.mockResolvedValue({
-      id: "prod-wa",
-      code: "WHATSAPP",
-      name: "WhatsApp Platform",
-      description: "WhatsApp Business messaging",
+      product: {
+        id: "prod-wa",
+        code: "WHATSAPP",
+        name: "WhatsApp Platform",
+        description: "WhatsApp Business messaging",
+        isActive: true,
+        plans: [
+          {
+            id: "plan-wa-starter",
+            code: "WA_STARTER",
+            name: "Starter Plan",
+            description: "Untuk UMKM",
+            resources: { devices: 1 },
+            offers: [
+              {
+                id: "pricing-wa-starter-mo",
+                pricingId: "pricing-wa-starter-mo",
+                billingPeriod: "MONTHLY",
+                periodPrice: "99000",
+                currency: "IDR",
+                chargeUnit: "SUBSCRIPTION",
+              },
+            ],
+          },
+        ],
+      },
       currency: "IDR",
-      plans: [
-        {
-          id: "plan-wa-starter",
-          code: "WA_STARTER",
-          name: "Starter Plan",
-          description: "Untuk UMKM",
-          resources: { devices: 1 },
-          offers: [
-            {
-              id: "pricing-wa-starter-mo",
-              pricingId: "pricing-wa-starter-mo",
-              billingPeriod: "MONTHLY",
-              periodPrice: "99000",
-              currency: "IDR",
-              chargeUnit: "SUBSCRIPTION",
-            },
-          ],
-        },
-      ],
     })
 
     mockGetCheckoutQuote.mockResolvedValue({
