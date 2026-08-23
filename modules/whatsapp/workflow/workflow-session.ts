@@ -67,27 +67,40 @@ export class WorkflowSessionStore {
 
   /**
    * Attempts to acquire an atomic distributed lock for a phone session.
+   * Returns a unique lock token on success, or null if lock is already held.
    */
-  async acquireLock(orgId: string, phone: string): Promise<boolean> {
+  async acquireLock(orgId: string, phone: string): Promise<string | null> {
     const key = `wa_wf_lock:${orgId}:${phone}`
+    const token = crypto.randomUUID()
     const acquired = await this.redisClient.set(
       key,
-      "1",
+      token,
       "EX",
       MUTEX_TTL_SECONDS,
       "NX"
     )
-    return acquired === "OK"
+    return acquired === "OK" ? token : null
   }
 
   /**
-   * Releases distributed lock.
+   * Releases distributed lock atomically using Lua script to verify ownership.
    */
-  async releaseLock(orgId: string, phone: string): Promise<void> {
+  async releaseLock(
+    orgId: string,
+    phone: string,
+    token: string
+  ): Promise<void> {
     const key = `wa_wf_lock:${orgId}:${phone}`
-    await this.redisClient.del(key)
+    if (typeof this.redisClient.eval === "function") {
+      const script = `if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end`
+      await this.redisClient.eval(script, 1, key, token)
+    } else {
+      const current = await this.redisClient.get(key)
+      if (current === token) {
+        await this.redisClient.del(key)
+      }
+    }
   }
-
   /**
    * Retrieves active workflow session state.
    */

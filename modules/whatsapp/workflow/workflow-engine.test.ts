@@ -11,6 +11,7 @@ const mockRedis = {
   get: mock(async () => null as unknown),
   set: mock(async () => "OK"),
   del: mock(async () => 1),
+  eval: mock(async () => 1),
 }
 
 const mockMessageService = {
@@ -199,7 +200,12 @@ describe("modules/whatsapp/workflow - Workflow Runner Engine", () => {
     mockRedis.get.mockClear()
     mockRedis.set.mockClear()
     mockRedis.del.mockClear()
-    mockPrisma.whatsappDevice.findUnique.mockClear()
+    mockRedis.eval.mockClear()
+    mockRedis.get.mockResolvedValue(null)
+    mockRedis.set.mockResolvedValue("OK")
+    mockRedis.del.mockResolvedValue(1)
+    mockRedis.eval.mockResolvedValue(1)
+    mockPrisma.whatsappDevice.findUnique.mockReset()
     mockMessageService.sendMessage.mockClear()
   })
 
@@ -242,7 +248,7 @@ describe("modules/whatsapp/workflow - Workflow Runner Engine", () => {
       version: 1,
     }
 
-    mockPrisma.whatsappDevice.findUnique.mockResolvedValueOnce({
+    mockPrisma.whatsappDevice.findUnique.mockResolvedValue({
       id: "dev_1",
       features: { botWorkflow: sampleWorkflow },
     } as never)

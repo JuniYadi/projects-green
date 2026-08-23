@@ -8,9 +8,17 @@ const mockPrisma = {
     findUnique: mock(async () => null as unknown),
     create: mock(async (args: { data: Record<string, unknown> }) => ({
       id: "sess_1",
+      totalMessages: 0,
       ...args.data,
     })),
-    update: mock(async () => ({})),
+    update: mock(
+      async (args: {
+        data: { totalMessages?: { increment?: number; decrement?: number } }
+      }) => ({
+        id: "sess_1",
+        totalMessages: args.data?.totalMessages?.increment ? 1 : 0,
+      })
+    ),
   },
   aiChatMessage: {
     create: mock(async () => ({})),

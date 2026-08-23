@@ -37,12 +37,12 @@ export async function processWhatsappWorkflowInbound(
   } = options
   const cleanText = (inboundMessageText || buttonPayload || "").trim()
 
-  // 1. Acquire Distributed Mutex Lock (5s TTL)
-  const lockAcquired = await workflowSessionStore.acquireLock(
+  // 1. Acquire Distributed Mutex Lock (5s TTL) with owner token
+  const lockToken = await workflowSessionStore.acquireLock(
     organizationId,
     contactPhone
   )
-  if (!lockAcquired) {
+  if (!lockToken) {
     return {
       handled: true,
       reason: "CONCURRENCY_LOCKED",
@@ -223,6 +223,12 @@ export async function processWhatsappWorkflowInbound(
       reason: "WORKFLOW_COMPLETED",
     }
   } finally {
-    await workflowSessionStore.releaseLock(organizationId, contactPhone)
+    if (lockToken) {
+      await workflowSessionStore.releaseLock(
+        organizationId,
+        contactPhone,
+        lockToken
+      )
+    }
   }
 }

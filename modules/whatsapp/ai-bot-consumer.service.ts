@@ -113,9 +113,19 @@ export async function processWhatsappAiBotInbound(
     })
   }
 
-  // Check session rate limits
+  // Increment message count atomically and check limit
+  const updatedSession = await prisma.aiChatSession.update({
+    where: { id: session.id },
+    data: { totalMessages: { increment: 1 } },
+  })
+
   const dailyLimit = binding.customDailyUserLimit ?? agent.dailyUserLimit ?? 30
-  if (session.totalMessages >= dailyLimit) {
+  if (updatedSession.totalMessages > dailyLimit) {
+    // Rollback the increment
+    await prisma.aiChatSession.update({
+      where: { id: session.id },
+      data: { totalMessages: { decrement: 1 } },
+    })
     if (agent.fallbackMessage) {
       await messageService.sendMessage({
         organizationId,
@@ -130,6 +140,17 @@ export async function processWhatsappAiBotInbound(
       agentProfileId: agent.id,
     }
   }
+
+  // Log user message
+  await prisma.aiChatMessage.create({
+    data: {
+      sessionId: session.id,
+      role: "user",
+      content: cleanText,
+      promptTokens: 0,
+      responseTokens: 0,
+    },
+  })
 
   // 4. In-Database Hybrid RAG (pgvector + BM25 ts_rank)
   const knowledgeChunks = await searchHybridKnowledge({
@@ -200,12 +221,9 @@ export async function processWhatsappAiBotInbound(
       message: replyText,
       deviceId,
     })
-
-    // Update session stats
     await prisma.aiChatSession.update({
       where: { id: session.id },
       data: {
-        totalMessages: { increment: 1 },
         totalTokens: {
           increment: (aiResult.usage?.totalTokens as number) || 0,
         },

@@ -52,7 +52,16 @@ export async function executeWorkflowNode(
 
   switch (node.type) {
     case "send_message": {
-      const config = SendMessageNodeConfigSchema.parse(node.config)
+      const parsed = SendMessageNodeConfigSchema.safeParse(node.config)
+      if (!parsed.success) {
+        return {
+          status: "FAILED",
+          outputPort: "error",
+          errorMessage: `Invalid send_message config: ${parsed.error.message}`,
+        }
+      }
+      const config = parsed.data
+
       const renderedText = config.text
         ? evaluateMustacheTemplate(config.text, templateContext)
         : undefined
@@ -86,7 +95,15 @@ export async function executeWorkflowNode(
     }
 
     case "prompt_input": {
-      const config = PromptInputNodeConfigSchema.parse(node.config)
+      const parsed = PromptInputNodeConfigSchema.safeParse(node.config)
+      if (!parsed.success) {
+        return {
+          status: "FAILED",
+          outputPort: "error",
+          errorMessage: `Invalid prompt_input config: ${parsed.error.message}`,
+        }
+      }
+      const config = parsed.data
 
       // If this is the resume phase with the user's answer
       if (inboundAnswer !== undefined) {
@@ -160,7 +177,16 @@ export async function executeWorkflowNode(
     }
 
     case "send_interactive": {
-      const config = SendInteractiveNodeConfigSchema.parse(node.config)
+      const parsed = SendInteractiveNodeConfigSchema.safeParse(node.config)
+      if (!parsed.success) {
+        return {
+          status: "FAILED",
+          outputPort: "error",
+          errorMessage: `Invalid send_interactive config: ${parsed.error.message}`,
+        }
+      }
+      const config = parsed.data
+
       const bodyText = evaluateMustacheTemplate(
         config.bodyText,
         templateContext
@@ -203,8 +229,70 @@ export async function executeWorkflowNode(
     }
 
     case "http_request": {
-      const config = HttpRequestNodeConfigSchema.parse(node.config)
+      const parsed = HttpRequestNodeConfigSchema.safeParse(node.config)
+      if (!parsed.success) {
+        return {
+          status: "FAILED",
+          outputPort: "error",
+          errorMessage: `Invalid http_request config: ${parsed.error.message}`,
+        }
+      }
+      const config = parsed.data
+
       const renderedUrl = evaluateMustacheTemplate(config.url, templateContext)
+
+      // SSRF guard: validate URL protocol and prevent internal network requests
+      let parsedUrl: URL
+      try {
+        parsedUrl = new URL(renderedUrl)
+      } catch {
+        return {
+          status: "FAILED",
+          outputPort: "error",
+          errorMessage: "Invalid URL format",
+        }
+      }
+
+      if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+        return {
+          status: "FAILED",
+          outputPort: "error",
+          errorMessage: "URL must be http or https",
+        }
+      }
+
+      const hostname = parsedUrl.hostname.toLowerCase()
+      if (
+        hostname === "localhost" ||
+        hostname === "127.0.0.1" ||
+        hostname === "0.0.0.0" ||
+        hostname === "::1" ||
+        hostname.startsWith("169.254.") ||
+        hostname.startsWith("10.") ||
+        hostname.startsWith("172.16.") ||
+        hostname.startsWith("172.17.") ||
+        hostname.startsWith("172.18.") ||
+        hostname.startsWith("172.19.") ||
+        hostname.startsWith("172.20.") ||
+        hostname.startsWith("172.21.") ||
+        hostname.startsWith("172.22.") ||
+        hostname.startsWith("172.23.") ||
+        hostname.startsWith("172.24.") ||
+        hostname.startsWith("172.25.") ||
+        hostname.startsWith("172.26.") ||
+        hostname.startsWith("172.27.") ||
+        hostname.startsWith("172.28.") ||
+        hostname.startsWith("172.29.") ||
+        hostname.startsWith("172.30.") ||
+        hostname.startsWith("172.31.") ||
+        hostname.startsWith("192.168.")
+      ) {
+        return {
+          status: "FAILED",
+          outputPort: "error",
+          errorMessage: "URL targets a private or internal network address",
+        }
+      }
 
       const renderedHeaders: Record<string, string> = {
         "Content-Type": "application/json",
@@ -271,7 +359,16 @@ export async function executeWorkflowNode(
     }
 
     case "condition": {
-      const config = ConditionNodeConfigSchema.parse(node.config)
+      const parsed = ConditionNodeConfigSchema.safeParse(node.config)
+      if (!parsed.success) {
+        return {
+          status: "FAILED",
+          outputPort: "error",
+          errorMessage: `Invalid condition config: ${parsed.error.message}`,
+        }
+      }
+      const config = parsed.data
+
       const left = evaluateMustacheTemplate(config.leftOperand, templateContext)
       const right = evaluateMustacheTemplate(
         config.rightOperand,
@@ -307,7 +404,16 @@ export async function executeWorkflowNode(
     }
 
     case "ai_generate": {
-      const config = AiGenerateNodeConfigSchema.parse(node.config)
+      const parsed = AiGenerateNodeConfigSchema.safeParse(node.config)
+      if (!parsed.success) {
+        return {
+          status: "FAILED",
+          outputPort: "error",
+          errorMessage: `Invalid ai_generate config: ${parsed.error.message}`,
+        }
+      }
+      const config = parsed.data
+
       const renderedPrompt = evaluateMustacheTemplate(
         config.prompt,
         templateContext
@@ -353,7 +459,7 @@ export async function executeWorkflowNode(
       return {
         status: "FAILED",
         outputPort: "error",
-        errorMessage: `Unsupported node type: ${node.type}`,
+        errorMessage: `Unsupported node type: ${(node as WorkflowNode).type}`,
       }
   }
 }
