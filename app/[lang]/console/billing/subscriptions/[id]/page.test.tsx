@@ -1,11 +1,17 @@
 import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { fireEvent, render, waitFor } from "@testing-library/react"
-import { useParams } from "next/navigation"
+import { cleanup, render, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+
+const mockUseParams = mock(() => ({ lang: "en", id: "sub-1" }))
+mock.module("next/navigation", () => ({
+  useParams: mockUseParams,
+  useRouter: () => ({ push: mock() }),
+  usePathname: () => "/en/console/billing/subscriptions/sub-1",
+}))
 
 import SubscriptionDetailPage from "./page"
-
 const renderPage = () => {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -28,8 +34,12 @@ const jsonResponse = (body: unknown, status = 200) =>
   })
 
 describe("SubscriptionDetailPage", () => {
+  afterEach(() => {
+    cleanup()
+  })
+
   beforeEach(() => {
-    ;(useParams as ReturnType<typeof mock>).mockReturnValue({
+    mockUseParams.mockReturnValue({
       lang: "en",
       id: "sub-1",
     })
@@ -134,72 +144,29 @@ describe("SubscriptionDetailPage", () => {
       expect(view.getByText(/Network error/i)).toBeInTheDocument()
     )
   })
-
-  it("renders subscription detail with overview tab", async () => {
+  it("renders subscription detail hero with active status", async () => {
     const view = renderPage()
 
     await waitFor(() => {
-      expect(view.getAllByText("WHATSAPP").length).toBeGreaterThan(0)
-      expect(view.getAllByText("WHATSAPP_STANDARD").length).toBeGreaterThan(0)
-      expect(view.getAllByText("Active").length).toBeGreaterThan(0)
+      expect(view.getByText("WhatsApp Business")).toBeInTheDocument()
+      expect(view.getAllByText(/WHATSAPP_STANDARD/).length).toBeGreaterThan(0)
+      expect(view.getByText("Active")).toBeInTheDocument()
     })
   })
-
-  it("renders billing tab with invoice data", async () => {
-    const view = renderPage()
-
-    await waitFor(() =>
-      expect(view.getByRole("tab", { name: "Billing" })).toBeInTheDocument()
-    )
-    const billingTab = view.getByRole("tab", { name: "Billing" })
-    fireEvent.mouseDown(billingTab, { button: 0, ctrlKey: false })
-    fireEvent.click(billingTab)
-
-    await waitFor(() => {
-      expect(view.getByText("INV-2026-001")).toBeInTheDocument()
-      expect(view.getByText("PAID")).toBeInTheDocument()
-    })
-  })
-
-  it("shows tabs for overview, billing, add-ons, and activity", async () => {
+  it("renders subscription summary table rows directly", async () => {
     const view = renderPage()
 
     await waitFor(() => {
-      expect(view.getByRole("tab", { name: "Overview" })).toBeInTheDocument()
-      expect(view.getByRole("tab", { name: "Billing" })).toBeInTheDocument()
-      expect(view.getByRole("tab", { name: "Add-ons" })).toBeInTheDocument()
-      expect(view.getByRole("tab", { name: "Activity" })).toBeInTheDocument()
+      expect(
+        view.getByText("Rincian Langganan & Perpanjangan")
+      ).toBeInTheDocument()
+      expect(
+        view.getByText("Data Formulir Pendaftaran Saat Order")
+      ).toBeInTheDocument()
+      expect(
+        view.getByText("Tanggal Perpanjangan Berikutnya")
+      ).toBeInTheDocument()
     })
-  })
-
-  it("shows add-ons unavailable state", async () => {
-    const view = renderPage()
-
-    await waitFor(() =>
-      expect(view.getByRole("tab", { name: "Add-ons" })).toBeInTheDocument()
-    )
-    const addonsTab = view.getByRole("tab", { name: "Add-ons" })
-    fireEvent.mouseDown(addonsTab, { button: 0, ctrlKey: false })
-    fireEvent.click(addonsTab)
-
-    await waitFor(() =>
-      expect(view.getByText("Add-ons Unavailable")).toBeInTheDocument()
-    )
-  })
-
-  it("shows activity tab with no activity message", async () => {
-    const view = renderPage()
-
-    await waitFor(() =>
-      expect(view.getByRole("tab", { name: "Activity" })).toBeInTheDocument()
-    )
-    const activityTab = view.getByRole("tab", { name: "Activity" })
-    fireEvent.mouseDown(activityTab, { button: 0, ctrlKey: false })
-    fireEvent.click(activityTab)
-
-    await waitFor(() =>
-      expect(view.getByText("No recent activity.")).toBeInTheDocument()
-    )
   })
 
   it("shows back to subscriptions link", async () => {
@@ -207,16 +174,15 @@ describe("SubscriptionDetailPage", () => {
 
     await waitFor(() =>
       expect(
-        view.getByRole("link", { name: /Back to subscriptions/i })
+        view.getByRole("link", { name: /Kembali ke Subscriptions/i })
       ).toBeInTheDocument()
     )
   })
-
   it("shows exact renewal date", async () => {
     const view = renderPage()
 
     await waitFor(() =>
-      expect(view.getByText("July 15, 2026")).toBeInTheDocument()
+      expect(view.getAllByText("July 15, 2026").length).toBeGreaterThan(0)
     )
   })
 })
