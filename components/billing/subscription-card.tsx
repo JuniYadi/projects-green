@@ -1,8 +1,8 @@
+import Link from "next/link"
 import { GlobeIcon, RocketLaunchIcon } from "@/components/ui/phosphor-icons"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-
 type SubscriptionItem = {
   id: string
   packageCode: string
@@ -100,76 +100,83 @@ export function SubscriptionCard({
     statusStyles[subscription.status] ?? statusStyles.CANCELLED
 
   return (
-    <Card className={cn("", className)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <div className="flex items-center gap-2">
-          {packageInfo.icon}
-          <CardTitle className="text-base font-medium">
-            {packageInfo.label}
-          </CardTitle>
-        </div>
-        <span
-          className={cn(
-            "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
-            statusStyle
-          )}
-        >
-          {subscription.status}
-        </span>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground">
-          {packageInfo.description}
-        </p>
-
-        <div className="space-y-1">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Plan</span>
-            <span className="font-medium">{subscription.planCode}</span>
+    <Card
+      className={cn("transition-colors hover:border-primary/50", className)}
+    >
+      <Link
+        href={`/console/billing/subscriptions/${subscription.id}`}
+        className="block focus-visible:outline-hidden"
+      >
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <div className="flex items-center gap-2">
+            {packageInfo.icon}
+            <CardTitle className="text-base font-medium">
+              {packageInfo.label}
+            </CardTitle>
           </div>
+          <span
+            className={cn(
+              "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
+              statusStyle
+            )}
+          >
+            {subscription.status}
+          </span>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            {packageInfo.description}
+          </p>
 
-          {subscription.packageCode === "WHATSAPP" && (
-            <>
-              {subscription.quotaIn != null && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Quota In</span>
-                  <span className="font-medium">
-                    {subscription.quotaIn.toLocaleString("id-ID")}
-                  </span>
-                </div>
-              )}
-              {subscription.quotaOut != null && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Quota Out</span>
-                  <span className="font-medium">
-                    {subscription.quotaOut.toLocaleString("id-ID")}
-                  </span>
-                </div>
-              )}
-            </>
-          )}
-
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">
-              {subscription.billingPeriod ?? "Period"} Price
-            </span>
-            <span className="font-medium">
-              {formatCurrency(
-                subscription.periodPrice ?? subscription.monthlyRateIdr ?? "0"
-              )}
-            </span>
-          </div>
-
-          {subscription.currentPeriodEnd && (
+          <div className="space-y-1">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Next Billing</span>
+              <span className="text-muted-foreground">Plan</span>
+              <span className="font-medium">{subscription.planCode}</span>
+            </div>
+
+            {subscription.packageCode === "WHATSAPP" && (
+              <>
+                {subscription.quotaIn != null && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Quota In</span>
+                    <span className="font-medium">
+                      {subscription.quotaIn.toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                )}
+                {subscription.quotaOut != null && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Quota Out</span>
+                    <span className="font-medium">
+                      {subscription.quotaOut.toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">
+                {subscription.billingPeriod ?? "Period"} Price
+              </span>
               <span className="font-medium">
-                {formatDate(subscription.currentPeriodEnd)}
+                {formatCurrency(
+                  subscription.periodPrice ?? subscription.monthlyRateIdr ?? "0"
+                )}
               </span>
             </div>
-          )}
-        </div>
-      </CardContent>
+
+            {subscription.currentPeriodEnd && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Next Billing</span>
+                <span className="font-medium">
+                  {formatDate(subscription.currentPeriodEnd)}
+                </span>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Link>
     </Card>
   )
 }
