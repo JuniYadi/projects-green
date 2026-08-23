@@ -107,7 +107,10 @@ mock.module("@/modules/whatsapp/whatsapp-client", () => ({
 import WhatsAppBroadcastDetailPage from "./page"
 
 const metricValue = (view: ReturnType<typeof render>, label: string) => {
-  const card = view.getByText(label).closest(".rounded-lg")
+  const cards = Array.from(document.querySelectorAll(".rounded-lg"))
+  const card = cards.find((el) =>
+    el.querySelector("p.text-sm")?.textContent?.trim().startsWith(label)
+  )
   if (!(card instanceof HTMLElement)) {
     throw new Error(`Metric card "${label}" not found`)
   }
@@ -164,10 +167,9 @@ describe("WhatsAppBroadcastDetailPage", () => {
 
     // (sent 1 + failed 1) / total 4 = 50%, label plus completion caption
     expect(view.getByText("50%")).toBeInTheDocument()
-    expect(view.getByText(/50% complete/)).toBeInTheDocument()
+    expect(view.getByText(/50% selesai/)).toBeInTheDocument()
     const fill = document.querySelector<HTMLElement>("[style*='width: 50%']")
     expect(fill).not.toBeNull()
-
     view.unmount()
   })
 
@@ -217,12 +219,12 @@ describe("WhatsAppBroadcastDetailPage", () => {
     })
     expect(view.getAllByRole("row")).toHaveLength(5) // header + 4 recipients
 
-    await user.click(view.getByRole("tab", { name: "Queued" }))
+    await user.click(view.getByRole("tab", { name: "Dalam Antrean" }))
     expect(view.getAllByRole("row")).toHaveLength(3) // header + 2 queued
     expect(view.queryByText("+6281230000001")).toBeNull()
     expect(view.getByText("+6281230000003")).toBeInTheDocument()
 
-    await user.click(view.getByRole("tab", { name: "All" }))
+    await user.click(view.getByRole("tab", { name: "Semua" }))
     await user.type(view.getByPlaceholderText("Cari nomor atau nama…"), "andi")
     expect(view.getAllByRole("row")).toHaveLength(2) // header + Andi only
     expect(view.queryByText("+6281230000002")).toBeNull()

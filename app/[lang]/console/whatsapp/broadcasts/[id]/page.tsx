@@ -41,10 +41,10 @@ import {
 type RecipientFilter = "ALL" | BroadcastRecipientStatus
 
 const recipientFilters: Array<{ value: RecipientFilter; label: string }> = [
-  { value: "ALL", label: "All" },
-  { value: "QUEUED", label: "Queued" },
-  { value: "SENT", label: "Sent" },
-  { value: "FAILED", label: "Failed" },
+  { value: "ALL", label: "Semua" },
+  { value: "QUEUED", label: "Dalam Antrean" },
+  { value: "SENT", label: "Terkirim" },
+  { value: "FAILED", label: "Gagal" },
 ]
 
 const formatDate = (value?: string | null) =>
@@ -56,6 +56,36 @@ const recipientBadgeVariant = (status: BroadcastRecipientStatus) =>
     : status === "FAILED"
       ? "destructive"
       : "secondary"
+
+const formatRecipientStatus = (status: BroadcastRecipientStatus) => {
+  switch (status) {
+    case "SENT":
+      return "TERKIRIM"
+    case "QUEUED":
+      return "DALAM ANTREAN"
+    case "FAILED":
+      return "GAGAL"
+    default:
+      return status
+  }
+}
+
+const formatBroadcastStatus = (status: string) => {
+  switch (status) {
+    case "DRAFT":
+      return "DRAFT"
+    case "QUEUED":
+      return "DALAM ANTREAN"
+    case "PROCESSING":
+      return "DALAM PROSES"
+    case "COMPLETED":
+      return "SELESAI"
+    case "FAILED":
+      return "GAGAL"
+    default:
+      return status.replaceAll("_", " ")
+  }
+}
 
 const escapeCsvCell = (value: string) =>
   /[",\n\r]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value
@@ -100,7 +130,7 @@ export default function WhatsAppBroadcastDetailPage() {
       setBroadcast(await whatsappClient.getBroadcast(params.id))
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unable to load broadcast"
+        error instanceof Error ? error.message : "Gagal memuat broadcast"
       )
     } finally {
       setLoading(false)
@@ -143,10 +173,10 @@ export default function WhatsAppBroadcastDetailPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {broadcast?.templateName ?? "Broadcast detail"}
+            {broadcast?.templateName ?? "Detail Broadcast"}
           </h1>
           <p className="text-muted-foreground">
-            Delivery status and recipient-level results.
+            Status pengiriman dan hasil per penerima.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -162,29 +192,28 @@ export default function WhatsAppBroadcastDetailPage() {
             Unduh Daftar Nomor Gagal (.csv)
           </Button>
           <Button variant="outline" onClick={() => router.back()}>
-            Back
+            Kembali
           </Button>
         </div>
       </div>
-
       {loading ? (
         <Card>
-          <CardContent className="py-8">Loading broadcast…</CardContent>
+          <CardContent className="py-8">Memuat broadcast…</CardContent>
         </Card>
       ) : !broadcast ? (
         <Card>
-          <CardContent className="py-8">Broadcast not found.</CardContent>
+          <CardContent className="py-8">Broadcast tidak ditemukan.</CardContent>
         </Card>
       ) : (
         <>
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
-                <CardTitle>Campaign progress</CardTitle>
-                <Badge>{broadcast.status.replaceAll("_", " ")}</Badge>
+                <CardTitle>Progres kampanye</CardTitle>
+                <Badge>{formatBroadcastStatus(broadcast.status)}</Badge>
               </div>
               <CardDescription>
-                {broadcast.templateLanguage} • created{" "}
+                {broadcast.templateLanguage} • dibuat{" "}
                 {formatDate(broadcast.createdAt)}
               </CardDescription>
             </CardHeader>
@@ -207,7 +236,7 @@ export default function WhatsAppBroadcastDetailPage() {
                       variant="outline"
                       className="text-emerald-600 dark:text-emerald-400"
                     >
-                      DELIVERED
+                      TERKIRIM
                     </Badge>
                   </div>
                   <p className="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
@@ -223,7 +252,7 @@ export default function WhatsAppBroadcastDetailPage() {
                       variant="outline"
                       className="text-amber-600 dark:text-amber-400"
                     >
-                      PROCESSING
+                      DALAM ANTREAN
                     </Badge>
                   </div>
                   <p className="mt-2 text-2xl font-semibold text-amber-600 dark:text-amber-400">
@@ -252,8 +281,8 @@ export default function WhatsAppBroadcastDetailPage() {
                   />
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {progress}% complete • started{" "}
-                  {formatDate(broadcast.startedAt)} • ended{" "}
+                  {progress}% selesai • dimulai{" "}
+                  {formatDate(broadcast.startedAt)} • selesai{" "}
                   {formatDate(broadcast.endedAt)}
                 </p>
               </div>
@@ -263,9 +292,9 @@ export default function WhatsAppBroadcastDetailPage() {
           <TooltipProvider>
             <Card>
               <CardHeader>
-                <CardTitle>Recipients</CardTitle>
+                <CardTitle>Daftar Penerima</CardTitle>
                 <CardDescription>
-                  Search and filter recipients by delivery status.
+                  Cari dan filter penerima berdasarkan status pengiriman.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -285,7 +314,7 @@ export default function WhatsAppBroadcastDetailPage() {
                       setFilter(value as RecipientFilter)
                     }
                   >
-                    <TabsList aria-label="Recipient status filter">
+                    <TabsList aria-label="Filter status penerima">
                       {recipientFilters.map(({ value, label }) => (
                         <TabsTrigger key={value} value={value} className="px-3">
                           {label}
@@ -298,18 +327,20 @@ export default function WhatsAppBroadcastDetailPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Name</TableHead>
+                      <TableHead>Nomor</TableHead>
+                      <TableHead>Nama</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Attempts</TableHead>
-                      <TableHead>Message ID</TableHead>
-                      <TableHead>Error</TableHead>
+                      <TableHead>Percobaan</TableHead>
+                      <TableHead>ID Pesan</TableHead>
+                      <TableHead>Kesalahan</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {recipients.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6}>No recipients found.</TableCell>
+                        <TableCell colSpan={6}>
+                          Penerima tidak ditemukan.
+                        </TableCell>
                       </TableRow>
                     ) : (
                       recipients.map((recipient) => (
@@ -320,7 +351,7 @@ export default function WhatsAppBroadcastDetailPage() {
                             <Badge
                               variant={recipientBadgeVariant(recipient.status)}
                             >
-                              {recipient.status}
+                              {formatRecipientStatus(recipient.status)}
                             </Badge>
                           </TableCell>
                           <TableCell>{recipient.attempts}</TableCell>

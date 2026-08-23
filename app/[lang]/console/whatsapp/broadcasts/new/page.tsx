@@ -173,13 +173,30 @@ export default function NewWhatsAppBroadcastPage() {
         }))
     }
     if (recipientTab === "csv") {
-      return validCsvRows.map((row) => ({
-        phoneNumber: row.phoneNumber,
-        name: row.name || undefined,
-        dynamicValues: Object.keys(row.dynamicValues).length
-          ? row.dynamicValues
-          : variableValues,
-      }))
+      return validCsvRows.map((row) => {
+        const rowValues = Object.values(row.dynamicValues)
+        const mappedValues: Record<string, string> = {}
+
+        if (rowValues.length > 0) {
+          // Positional mapping: assign CSV extra columns to template placeholders {{1}}, {{2}}, ... in order
+          placeholders.forEach((placeholder, index) => {
+            if (rowValues[index] !== undefined && rowValues[index] !== "") {
+              mappedValues[placeholder] = rowValues[index]
+            } else if (variableValues[placeholder]) {
+              mappedValues[placeholder] = variableValues[placeholder]
+            }
+          })
+        }
+
+        return {
+          phoneNumber: row.phoneNumber,
+          name: row.name || undefined,
+          dynamicValues:
+            Object.keys(mappedValues).length > 0
+              ? mappedValues
+              : variableValues,
+        }
+      })
     }
     return manualParsed
       .filter((entry) => entry.isValid)
@@ -194,6 +211,7 @@ export default function NewWhatsAppBroadcastPage() {
     variableValues,
     validCsvRows,
     manualParsed,
+    placeholders,
   ])
   const totalRecipients = activeRecipients.length
 
@@ -250,7 +268,9 @@ export default function NewWhatsAppBroadcastPage() {
     whatsappClient
       .previewBroadcastSchedule({
         whatsappDeviceId: effectiveDeviceId,
-        recipients: [],
+        recipients: activeRecipients.map((r) => ({
+          phoneNumber: r.phoneNumber,
+        })),
       })
       .then((result) => {
         if (!cancelled) {
@@ -265,7 +285,7 @@ export default function NewWhatsAppBroadcastPage() {
     return () => {
       cancelled = true
     }
-  }, [effectiveDeviceId])
+  }, [effectiveDeviceId, activeRecipients])
 
   // ─── Handlers ───────────────────────────────────────────────────────
 
