@@ -43,11 +43,20 @@ function formatDate(iso: string | null): string {
   }).format(new Date(iso))
 }
 
+function formatKey(key: string): string {
+  return key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/[_-]/g, " ")
+    .trim()
+    .replace(/^\w/, (c) => c.toUpperCase())
+}
+
 function isRetryable(errorCode: string): boolean {
   return (
     errorCode === "INSUFFICIENT_BALANCE" || errorCode === "ORDER_NOT_CHARGEABLE"
   )
 }
+
 export default function CheckoutPage() {
   const searchParams = useSearchParams()
   const pricingIdParam = searchParams.get("pricingId") || ""
