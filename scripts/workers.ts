@@ -501,188 +501,191 @@ for (const worker of allWorkers) {
 // Interval-based Workers (cron-style)
 // ══════════════════════════════════════════════════════════════════════════
 
+const isConsumerMode = process.env.WORKER_MODE === "consumer"
 const intervals: ReturnType<typeof setInterval>[] = []
 
-// ── Deploy Monitor (every 60s) ──────────────────────────────────────────────
-const deployMonitorInterval = setInterval(async () => {
-  try {
-    const results = await monitorActiveDeployments()
-    if (results.length > 0) {
-      console.info(
-        `[deploy-monitor] checked ${results.length} active deployment(s)`
-      )
-    }
-  } catch (error) {
-    console.error("[deploy-monitor] monitor cycle failed:", error)
-  }
-}, 60_000)
-intervals.push(deployMonitorInterval)
-
-// ── App Hosting Billing (every hour) ────────────────────────────────────────
-const appHostingBillingInterval = setInterval(async () => {
-  try {
-    const transactions = new BillingTransactionService(prisma)
-    const billingService = new AppHostingBillingService(prisma, transactions)
-
-    // Charge active PAYG stacks
-    const stacks = await prisma.applicationStack.findMany({
-      where: {
-        billingMode: "PAYG",
-        status: "RUNNING",
-        hourlyCost: { not: null },
-      },
-    })
-
-    let charged = 0
-    let graceEntered = 0
-    let errors = 0
-
-    for (const stack of stacks) {
-      try {
-        const { Prisma } = await import("@prisma/client")
-        const hourlyCost = new Prisma.Decimal(String(stack.hourlyCost))
-
-        const result = await billingService.chargePaygRuntimeHour({
-          organizationId: stack.organizationId,
-          stackId: stack.id,
-          hourlyCost,
-          occurredAt: new Date(),
-        })
-
-        if (result.graceEntered) {
-          graceEntered++
-        } else if (!result.alreadyProcessed) {
-          charged++
-        }
-      } catch (error) {
-        errors++
-        console.error(`[app-hosting-billing] stack=${stack.id} error:`, error)
-      }
-    }
-
-    // Check grace suspension
-    const graceStacks = await prisma.applicationStack.findMany({
-      where: {
-        metadataJson: { path: ["billingState"], equals: "PAYMENT_GRACE" },
-      },
-    })
-
-    let suspended = 0
-    for (const stack of graceStacks) {
-      try {
-        const result = await billingService.checkGraceAndSuspend({
-          stackId: stack.id,
-        })
-        if (result.suspended) suspended++
-      } catch (error) {
-        console.error(
-          `[app-hosting-billing] grace check stack=${stack.id} error:`,
-          error
+if (!isConsumerMode) {
+  // ── Deploy Monitor (every 60s) ──────────────────────────────────────────────
+  const deployMonitorInterval = setInterval(async () => {
+    try {
+      const results = await monitorActiveDeployments()
+      if (results.length > 0) {
+        console.info(
+          `[deploy-monitor] checked ${results.length} active deployment(s)`
         )
       }
+    } catch (error) {
+      console.error("[deploy-monitor] monitor cycle failed:", error)
     }
+  }, 60_000)
+  intervals.push(deployMonitorInterval)
+  // ── App Hosting Billing (every hour) ────────────────────────────────────────
+  const appHostingBillingInterval = setInterval(async () => {
+    try {
+      const transactions = new BillingTransactionService(prisma)
+      const billingService = new AppHostingBillingService(prisma, transactions)
 
-    console.info(
-      `[app-hosting-billing] charged=${charged} grace=${graceEntered} suspended=${suspended} errors=${errors}`
-    )
-  } catch (error) {
-    console.error("[app-hosting-billing] cycle failed:", error)
-  }
-}, 3_600_000) // 1 hour
-intervals.push(appHostingBillingInterval)
-// ── WhatsApp Billing (every hour) ───────────────────────────────────────────
-const whatsappBillingInterval = setInterval(async () => {
-  try {
-    const result = await runWhatsappBillingCycle(
-      prisma,
-      new BillingOrderService(prisma)
-    )
-    console.info(
-      `[whatsapp-billing] charged=${result.charged} skipped=${result.skipped} errors=${result.errors}`
-    )
-  } catch (error) {
-    console.error("[whatsapp-billing] cycle failed:", error)
-  }
-}, 3_600_000) // 1 hour
-intervals.push(whatsappBillingInterval)
+      // Charge active PAYG stacks
+      const stacks = await prisma.applicationStack.findMany({
+        where: {
+          billingMode: "PAYG",
+          status: "RUNNING",
+          hourlyCost: { not: null },
+        },
+      })
 
-// ── WhatsApp Analytics Sync (every hour) ────────────────────────────────────
-const whatsappAnalyticsInterval = setInterval(async () => {
-  try {
-    const now = new Date()
-    const endDate = now.toISOString().split("T")[0]
-    const startDate = new Date(now.getTime() - 7 * 86400_000)
-      .toISOString()
-      .split("T")[0]
+      let charged = 0
+      let graceEntered = 0
+      let errors = 0
 
-    const activeDevices = await prisma.whatsappDevice.findMany({
-      where: { status: "ACTIVE" },
-      select: { id: true, organizationId: true },
-    })
+      for (const stack of stacks) {
+        try {
+          const { Prisma } = await import("@prisma/client")
+          const hourlyCost = new Prisma.Decimal(String(stack.hourlyCost))
 
-    let synced = 0
-    let errors = 0
+          const result = await billingService.chargePaygRuntimeHour({
+            organizationId: stack.organizationId,
+            stackId: stack.id,
+            hourlyCost,
+            occurredAt: new Date(),
+          })
 
-    for (const device of activeDevices) {
-      try {
-        const { analyticsService } =
-          await import("@/modules/whatsapp/analytics/analytics.service")
-        const result = await analyticsService.syncAnalytics({
-          deviceId: device.id,
-          organizationId: device.organizationId,
-          startDate,
-          endDate,
-          granularity: "DAY",
-        })
-        synced += result.syncedCount
-        if (result.discrepancies.length > 0) {
-          console.warn(
-            `[whatsapp-analytics] device=${device.id} discrepancies=${result.discrepancies.length}`
+          if (result.graceEntered) {
+            graceEntered++
+          } else if (!result.alreadyProcessed) {
+            charged++
+          }
+        } catch (error) {
+          errors++
+          console.error(`[app-hosting-billing] stack=${stack.id} error:`, error)
+        }
+      }
+
+      // Check grace suspension
+      const graceStacks = await prisma.applicationStack.findMany({
+        where: {
+          metadataJson: { path: ["billingState"], equals: "PAYMENT_GRACE" },
+        },
+      })
+
+      let suspended = 0
+      for (const stack of graceStacks) {
+        try {
+          const result = await billingService.checkGraceAndSuspend({
+            stackId: stack.id,
+          })
+          if (result.suspended) suspended++
+        } catch (error) {
+          console.error(
+            `[app-hosting-billing] grace check stack=${stack.id} error:`,
+            error
           )
         }
-      } catch (error) {
-        errors++
-        console.error(`[whatsapp-analytics] device=${device.id} error:`, error)
       }
+
+      console.info(
+        `[app-hosting-billing] charged=${charged} grace=${graceEntered} suspended=${suspended} errors=${errors}`
+      )
+    } catch (error) {
+      console.error("[app-hosting-billing] cycle failed:", error)
     }
+  }, 3_600_000) // 1 hour
+  intervals.push(appHostingBillingInterval)
+  // ── WhatsApp Billing (every hour) ───────────────────────────────────────────
+  const whatsappBillingInterval = setInterval(async () => {
+    try {
+      const result = await runWhatsappBillingCycle(
+        prisma,
+        new BillingOrderService(prisma)
+      )
+      console.info(
+        `[whatsapp-billing] charged=${result.charged} skipped=${result.skipped} errors=${result.errors}`
+      )
+    } catch (error) {
+      console.error("[whatsapp-billing] cycle failed:", error)
+    }
+  }, 3_600_000) // 1 hour
+  intervals.push(whatsappBillingInterval)
 
-    console.info(
-      `[whatsapp-analytics] synced=${synced} errors=${errors} devices=${activeDevices.length}`
-    )
-  } catch (error) {
-    console.error("[whatsapp-analytics] cycle failed:", error)
-  }
-}, 3_600_000) // 1 hour
-intervals.push(whatsappAnalyticsInterval)
+  // ── WhatsApp Analytics Sync (every hour) ────────────────────────────────────
+  const whatsappAnalyticsInterval = setInterval(async () => {
+    try {
+      const now = new Date()
+      const endDate = now.toISOString().split("T")[0]
+      const startDate = new Date(now.getTime() - 7 * 86400_000)
+        .toISOString()
+        .split("T")[0]
 
-// ── VPN Renewal (every hour) ────────────────────────────────────────────────
-const vpnRenewalInterval = setInterval(async () => {
-  try {
-    const transactions = new BillingTransactionService(prisma)
-    const renewalService = new VpnRenewalService(prisma, transactions)
+      const activeDevices = await prisma.whatsappDevice.findMany({
+        where: { status: "ACTIVE" },
+        select: { id: true, organizationId: true },
+      })
 
-    const result = await renewalService.renewDueSubscriptions()
+      let synced = 0
+      let errors = 0
 
-    console.info(
-      `[vpn-renewal] renewed=${result.renewed} retried=${result.retried} errors=${result.errors}`
-    )
-  } catch (error) {
-    console.error("[vpn-renewal] cycle failed:", error)
-  }
-}, 3_600_000) // 1 hour
-intervals.push(vpnRenewalInterval)
+      for (const device of activeDevices) {
+        try {
+          const { analyticsService } =
+            await import("@/modules/whatsapp/analytics/analytics.service")
+          const result = await analyticsService.syncAnalytics({
+            deviceId: device.id,
+            organizationId: device.organizationId,
+            startDate,
+            endDate,
+            granularity: "DAY",
+          })
+          synced += result.syncedCount
+          if (result.discrepancies.length > 0) {
+            console.warn(
+              `[whatsapp-analytics] device=${device.id} discrepancies=${result.discrepancies.length}`
+            )
+          }
+        } catch (error) {
+          errors++
+          console.error(
+            `[whatsapp-analytics] device=${device.id} error:`,
+            error
+          )
+        }
+      }
 
-// ── VPN Reconciliation (every 5 minutes) ─────────────────────────────────
-const vpnReconciliationInterval = vpnReconciliationService.start()
-intervals.push(vpnReconciliationInterval)
+      console.info(
+        `[whatsapp-analytics] synced=${synced} errors=${errors} devices=${activeDevices.length}`
+      )
+    } catch (error) {
+      console.error("[whatsapp-analytics] cycle failed:", error)
+    }
+  }, 3_600_000) // 1 hour
+  intervals.push(whatsappAnalyticsInterval)
 
-// ── VPN Health Checks (every 15 minutes) ──────────────────────────────────
-const vpnHealthInterval = vpnHealthService.start()
-intervals.push(vpnHealthInterval)
+  // ── VPN Renewal (every hour) ────────────────────────────────────────────────
+  const vpnRenewalInterval = setInterval(async () => {
+    try {
+      const transactions = new BillingTransactionService(prisma)
+      const renewalService = new VpnRenewalService(prisma, transactions)
 
-// ── VPN Stale Session Cleanup (every 5 minutes) ───────────────────────────
-startStaleSessionCleanup()
+      const result = await renewalService.renewDueSubscriptions()
 
+      console.info(
+        `[vpn-renewal] renewed=${result.renewed} retried=${result.retried} errors=${result.errors}`
+      )
+    } catch (error) {
+      console.error("[vpn-renewal] cycle failed:", error)
+    }
+  }, 3_600_000) // 1 hour
+  intervals.push(vpnRenewalInterval)
+
+  // ── VPN Reconciliation (every 5 minutes) ─────────────────────────────────
+  const vpnReconciliationInterval = vpnReconciliationService.start()
+  intervals.push(vpnReconciliationInterval)
+
+  // ── VPN Health Checks (every 15 minutes) ──────────────────────────────────
+  const vpnHealthInterval = vpnHealthService.start()
+  intervals.push(vpnHealthInterval)
+
+  startStaleSessionCleanup()
+} // end if (!isConsumerMode)
 // ══════════════════════════════════════════════════════════════════════════
 // Graceful Shutdown
 // ══════════════════════════════════════════════════════════════════════════
@@ -729,29 +732,34 @@ process.on("uncaughtException", (error) => {
 // ══════════════════════════════════════════════════════════════════════════
 // Startup
 // ══════════════════════════════════════════════════════════════════════════
+if (!isConsumerMode) {
+  // Register billing repeatable jobs (idempotent — safe to call on start in monolithic mode)
+  await registerRepeatableJobs()
 
-// Register billing repeatable jobs (idempotent — safe to call on every start)
-await registerRepeatableJobs()
+  // Register WhatsApp health heartbeat (every 5 min)
+  await WhatsAppHealthJob.registerSchedule()
 
-// Register WhatsApp health heartbeat (every 5 min)
-await WhatsAppHealthJob.registerSchedule()
-
-// Run deploy monitor immediately on startup
-try {
-  const results = await monitorActiveDeployments()
-  if (results.length > 0) {
-    console.info(
-      `[deploy-monitor] initial check: ${results.length} active deployment(s)`
-    )
+  // Run deploy monitor immediately on startup
+  try {
+    const results = await monitorActiveDeployments()
+    if (results.length > 0) {
+      console.info(
+        `[deploy-monitor] initial check: ${results.length} active deployment(s)`
+      )
+    }
+  } catch (error) {
+    console.error("[deploy-monitor] initial check failed:", error)
   }
-} catch (error) {
-  console.error("[deploy-monitor] initial check failed:", error)
 }
 
-console.info("[workers] unified worker process ready")
+console.info(
+  `[workers] unified worker process ready (mode=${isConsumerMode ? "consumer" : "all"})`
+)
 console.info(
   `[workers] bullmq queues: ${GithubEventJob.queue}, ${BILLING_DAILY_RESET_QUEUE}, ${BILLING_MONTHLY_RESET_QUEUE}, ${BILLING_INVOICE_STATUS_QUEUE}, ${BILLING_PAYMENT_REMINDER_QUEUE}, ${OPENSEARCH_INGEST_QUEUE}, ${QUOTA_RECONCILIATION_QUEUE}, ${WHATSAPP_BROADCAST_QUEUE_NAME}, ${WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME}, ${EmailJob.queue}, ${WHATSAPP_WEBHOOK_OUTGOING_QUEUE}`
 )
-console.info(
-  "[workers] interval tasks: deploy-monitor (60s), app-hosting-billing (1h), whatsapp-billing (1h), vpn-renewal (1h), vpn-reconciliation (5m), vpn-health (15m), vpn-session-cleanup (5m)"
-)
+if (!isConsumerMode) {
+  console.info(
+    "[workers] interval tasks: deploy-monitor (60s), app-hosting-billing (1h), whatsapp-billing (1h), vpn-renewal (1h), vpn-reconciliation (5m), vpn-health (15m), vpn-session-cleanup (5m)"
+  )
+}
