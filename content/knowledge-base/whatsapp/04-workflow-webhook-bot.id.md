@@ -16,7 +16,7 @@ notes:
 
 # Workflow: Menerima Pesan Masuk & Auto-Reply Bot
 
-Panduan ini membahas arsitektur komunikasi dua arah (*two-way conversation*) untuk menangkap pesan masuk dari pelanggan melalui Webhook dan meresponsnya secara otomatis.
+Panduan ini membahas arsitektur komunikasi dua arah (_two-way conversation_) untuk menangkap pesan masuk dari pelanggan melalui Webhook dan meresponsnya secara otomatis.
 
 ---
 
@@ -114,19 +114,22 @@ app.post("/api/whatsapp/webhook", async (req, res) => {
     const userText = data.text?.body?.toLowerCase() || ""
 
     // Logika Auto-Reply Sederhana
-    let replyText = "Halo Kak! Ketik *MENU* untuk melihat produk atau *CS* untuk bantuan."
+    let replyText =
+      "Halo Kak! Ketik *MENU* untuk melihat produk atau *CS* untuk bantuan."
 
     if (userText.includes("menu") || userText.includes("harga")) {
-      replyText = "📋 *Katalog Produk Kami*:\n1. Paket Starter: Rp 50.000\n2. Paket Pro: Rp 150.000\n\nKetik *BELI* untuk memesan."
+      replyText =
+        "📋 *Katalog Produk Kami*:\n1. Paket Starter: Rp 50.000\n2. Paket Pro: Rp 150.000\n\nKetik *BELI* untuk memesan."
     } else if (userText.includes("cs") || userText.includes("bantuan")) {
-      replyText = "👨‍💼 Tim CS kami akan segera membalas chat Anda dalam 5-10 menit."
+      replyText =
+        "👨‍💼 Tim CS kami akan segera membalas chat Anda dalam 5-10 menit."
     }
 
     // D. Kirim Balasan Instan (Free-form text message di dalam 24h window)
     await fetch("https://pfnapp.id/api/whatsapp/messages", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${API_KEY}`,
+        Authorization: `Bearer ${API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -162,7 +165,7 @@ class WhatsAppWebhookController extends Controller
 
             if ($sender && $text) {
                 $reply = "Terima kasih telah menghubungi kami. Ketik *INFO* untuk bantuan.";
-                
+
                 if (str_contains($text, 'promo')) {
                     $reply = "🎉 Promo Spesial: Gunakan voucher *HEMAT50* untuk diskon 50%!";
                 }

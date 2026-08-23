@@ -254,7 +254,8 @@ function commitmentEndsAt(
 function subscriptionData(
   input: BillingFulfillmentInput,
   pricing: RecurringPricingRecord,
-  metadata: Record<string, unknown>
+  metadata: Record<string, unknown>,
+  existing?: ServiceSubscriptionRecord | null
 ): Prisma.ServiceSubscriptionUncheckedCreateInput {
   return {
     organizationId: input.organizationId,
@@ -264,7 +265,12 @@ function subscriptionData(
     type: pricing.type,
     billingMode: pricing.billingMode,
     billingPeriod: pricing.billingPeriod,
-    priceLocked: pricing.periodPrice ?? new Prisma.Decimal(0),
+    priceLocked:
+      input.unitPrice ??
+      (existing as { priceLocked?: Prisma.Decimal | null } | null | undefined)
+        ?.priceLocked ??
+      pricing.periodPrice ??
+      new Prisma.Decimal(0),
     currency: pricing.currency,
     quantity: input.quantity ?? new Prisma.Decimal(1),
     status: "ACTIVE",
@@ -309,10 +315,15 @@ async function upsertServiceSubscription(
         },
       },
     }))
-  const data = subscriptionData(input, pricing, {
-    ...metadataObject(existing?.metadata),
-    ...metadata,
-  })
+  const data = subscriptionData(
+    input,
+    pricing,
+    {
+      ...metadataObject(existing?.metadata),
+      ...metadata,
+    },
+    existing
+  )
   return existing
     ? tx.serviceSubscription.update({ where: { id: existing.id }, data })
     : tx.serviceSubscription.create({

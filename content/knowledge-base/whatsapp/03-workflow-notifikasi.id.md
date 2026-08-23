@@ -52,6 +52,7 @@ Tampilan template transaksi dengan tombol tautan pembayaran instan:
    - **Kategori**: `UTILITY`
    - **Bahasa**: `id`
    - **Isi Body**:
+
      ```
      Halo *{{1}}*,
      Pesanan *#{{2}}* telah dibuat!
@@ -61,6 +62,7 @@ Tampilan template transaksi dengan tombol tautan pembayaran instan:
 
      Silakan lakukan pembayaran melalui tautan di bawah ini:
      ```
+
    - **Tombol**: URL Button `https://pfnapp.id/pay/{{1}}`
 
 ![Daftar Template](/kb-assets/whatsapp/guides/02-journey1-templates-list.png)
@@ -83,11 +85,13 @@ interface InvoiceNotificationPayload {
   invoiceSlug: string
 }
 
-export async function sendInvoiceNotification(data: InvoiceNotificationPayload) {
+export async function sendInvoiceNotification(
+  data: InvoiceNotificationPayload
+) {
   const response = await fetch("https://pfnapp.id/api/whatsapp/messages", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${process.env.PFN_WHATSAPP_API_KEY}`,
+      Authorization: `Bearer ${process.env.PFN_WHATSAPP_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -100,10 +104,10 @@ export async function sendInvoiceNotification(data: InvoiceNotificationPayload) 
           {
             type: "body",
             parameters: [
-              { type: "text", text: data.customerName },   // {{1}}
-              { type: "text", text: data.invoiceNumber },  // {{2}}
-              { type: "text", text: data.totalAmount },    // {{3}}
-              { type: "text", text: data.dueDate },        // {{4}}
+              { type: "text", text: data.customerName }, // {{1}}
+              { type: "text", text: data.invoiceNumber }, // {{2}}
+              { type: "text", text: data.totalAmount }, // {{3}}
+              { type: "text", text: data.dueDate }, // {{4}}
             ],
           },
           {
@@ -111,7 +115,7 @@ export async function sendInvoiceNotification(data: InvoiceNotificationPayload) 
             sub_type: "url",
             index: "0",
             parameters: [
-              { type: "text", text: data.invoiceSlug },    // Akhiran URL tombol bayar
+              { type: "text", text: data.invoiceSlug }, // Akhiran URL tombol bayar
             ],
           },
         ],
@@ -202,12 +206,12 @@ def dispatch_invoice_whatsapp(phone: str, name: str, inv_no: str, total: str, du
             ],
         },
     }
-    
+
     headers = {
         "Authorization": f"Bearer {os.getenv('PFN_WHATSAPP_API_KEY')}",
         "Content-Type": "application/json",
     }
-    
+
     res = requests.post(url, json=payload, headers=headers)
     return res.json()
 ```

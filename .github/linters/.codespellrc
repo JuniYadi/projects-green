@@ -1,3 +1,3 @@
 [codespell]
-ignore-words-list = afterall,periode,mata,sistem,respons,paket,grup,tipe,variabel,notin,notIn,foto,fo,templat,progres,lokal,standar,modul,personel,ilegal,Ilegal,vew,vEw,populer,Populer,tabel,Tabel,analisis,Analisis,segmen,retur,Retur,Maks,vektor,cunt,Juni
+ignore-words-list = afterall,periode,mata,sistem,respons,paket,grup,tipe,variabel,notin,notIn,foto,fo,templat,progres,lokal,standar,modul,personel,ilegal,Ilegal,vew,vEw,populer,Populer,tabel,Tabel,analisis,Analisis,segmen,retur,Retur,Maks,vektor,cunt,Juni,elemen,maka
 skip = *.lock,bun.lock,*.png,*.jpg,*.jpeg,*.svg,*.ico,*.pdf

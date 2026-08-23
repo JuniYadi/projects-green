@@ -16,13 +16,13 @@ notes:
 
 # Workflow: Mengirim Kode OTP & Verifikasi 2FA
 
-Panduan ini menjelaskan arsitektur dan langkah pengiriman kode verifikasi satu kali (*One-Time Password*) ke WhatsApp pelanggan secara otomatis saat proses registrasi, login, atau transaksi sensitif.
+Panduan ini menjelaskan arsitektur dan langkah pengiriman kode verifikasi satu kali (_One-Time Password_) ke WhatsApp pelanggan secara otomatis saat proses registrasi, login, atau transaksi sensitif.
 
 ---
 
 ## 1. Pratinjau Pesan OTP di Layar Pengguna
 
-Tampilan template resmi kategori `AUTHENTICATION` dengan tombol *Salin Kode*:
+Tampilan template resmi kategori `AUTHENTICATION` dengan tombol _Salin Kode_:
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -66,11 +66,14 @@ interface SendOtpOptions {
   otpCode: string
 }
 
-export async function sendWhatsAppOtp({ phoneNumber, otpCode }: SendOtpOptions) {
+export async function sendWhatsAppOtp({
+  phoneNumber,
+  otpCode,
+}: SendOtpOptions) {
   const response = await fetch("https://pfnapp.id/api/whatsapp/messages", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${process.env.PFN_WHATSAPP_API_KEY}`,
+      Authorization: `Bearer ${process.env.PFN_WHATSAPP_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -83,7 +86,7 @@ export async function sendWhatsAppOtp({ phoneNumber, otpCode }: SendOtpOptions) 
           {
             type: "body",
             parameters: [
-              { type: "text", text: otpCode } // Variabel {{1}} di body teks
+              { type: "text", text: otpCode }, // Variabel {{1}} di body teks
             ],
           },
           {
@@ -91,7 +94,7 @@ export async function sendWhatsAppOtp({ phoneNumber, otpCode }: SendOtpOptions) 
             sub_type: "copy_code",
             index: "0",
             parameters: [
-              { type: "text", text: otpCode } // Parameter kode pada tombol Salin Kode
+              { type: "text", text: otpCode }, // Parameter kode pada tombol Salin Kode
             ],
           },
         ],

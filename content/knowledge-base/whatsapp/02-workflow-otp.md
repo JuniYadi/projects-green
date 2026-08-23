@@ -22,7 +22,7 @@ This workflow guide covers automated One-Time Password (OTP) dispatch to custome
 
 ## 1. Mobile Preview of the OTP Message
 
-How the official `AUTHENTICATION` template appears with the *Copy Code* button:
+How the official `AUTHENTICATION` template appears with the _Copy Code_ button:
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -66,11 +66,14 @@ interface SendOtpOptions {
   otpCode: string
 }
 
-export async function sendWhatsAppOtp({ phoneNumber, otpCode }: SendOtpOptions) {
+export async function sendWhatsAppOtp({
+  phoneNumber,
+  otpCode,
+}: SendOtpOptions) {
   const response = await fetch("https://pfnapp.id/api/whatsapp/messages", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${process.env.PFN_WHATSAPP_API_KEY}`,
+      Authorization: `Bearer ${process.env.PFN_WHATSAPP_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -83,7 +86,7 @@ export async function sendWhatsAppOtp({ phoneNumber, otpCode }: SendOtpOptions) 
           {
             type: "body",
             parameters: [
-              { type: "text", text: otpCode } // Variable {{1}} in body
+              { type: "text", text: otpCode }, // Variable {{1}} in body
             ],
           },
           {
@@ -91,7 +94,7 @@ export async function sendWhatsAppOtp({ phoneNumber, otpCode }: SendOtpOptions) 
             sub_type: "copy_code",
             index: "0",
             parameters: [
-              { type: "text", text: otpCode } // Copy Code button parameter
+              { type: "text", text: otpCode }, // Copy Code button parameter
             ],
           },
         ],

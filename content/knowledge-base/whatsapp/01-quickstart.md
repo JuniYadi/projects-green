@@ -58,7 +58,7 @@ The message dispatch endpoint is `POST https://pfnapp.id/api/whatsapp/messages`.
 
 ```bash
 curl -X POST "https://pfnapp.id/api/whatsapp/messages" \
-  -H "Authorization: Bearer pfn_wa_sec_YOUR_API_KEY" \
+  -H "Authorization: Bearer <YOUR_API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
     "to": "+6281234567890",
@@ -78,7 +78,7 @@ async function sendQuickMessage() {
   const response = await fetch("https://pfnapp.id/api/whatsapp/messages", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${API_KEY}`,
+      Authorization: `Bearer ${API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
