@@ -44,8 +44,7 @@ import {
   Brain as BrainIcon,
   FileText as FileTextIcon,
 } from "@phosphor-icons/react"
-import { defaultLocale } from "@/lib/i18n/config"
-import { ServiceOrderDialog } from "@/components/billing/service-order-dialog"
+import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 const getPathnameWithoutSearch = (pathname: string) => pathname.split("?")[0]
 
 const startsWithRoute = (pathname: string, route: string) => {
@@ -1161,9 +1160,6 @@ export function AppSidebar({
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { locale, pathnameWithoutLocale } = getLocaleFromPathname(pathname)
-  const [orderProductCode, setOrderProductCode] = React.useState<string | null>(
-    null
-  )
 
   const { navMain, projects, navMainLabel, navHeader } = resolveSidebarMenu({
     surface,
@@ -1178,21 +1174,19 @@ export function AppSidebar({
   })
 
   return (
-    <>
-      <Sidebar variant="inset" {...props}>
-        <SidebarHeader>
-          <NavOrganization organization={organization} />
-        </SidebarHeader>
-        <SidebarContent>
-          {navHeader && <div className="px-3 py-2">{navHeader}</div>}
-          {projects.length > 0 && <NavProjects projects={projects} />}
-          <NavMain items={navMain} label={navMainLabel} />
-          <NavSecondary items={navSecondary} className="mt-auto" />
-        </SidebarContent>
-        <SidebarFooter>
-          <NavUser user={user} />
-        </SidebarFooter>
-      </Sidebar>
-    </>
+    <Sidebar variant="inset" {...props}>
+      <SidebarHeader>
+        <NavOrganization organization={organization} />
+      </SidebarHeader>
+      <SidebarContent>
+        {navHeader && <div className="px-3 py-2">{navHeader}</div>}
+        {projects.length > 0 && <NavProjects projects={projects} />}
+        <NavMain items={navMain} label={navMainLabel} />
+        <NavSecondary items={navSecondary} className="mt-auto" />
+      </SidebarContent>
+      <SidebarFooter>
+        <NavUser user={user} />
+      </SidebarFooter>
+    </Sidebar>
   )
 }
