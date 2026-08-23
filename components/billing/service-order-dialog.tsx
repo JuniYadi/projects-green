@@ -212,18 +212,36 @@ export function ServiceOrderDialog({
   }
 
   const resources = (quotePreview?.resources ?? {}) as Record<string, unknown>
-  const dynamicFields: ProvisioningFieldDef[] = Array.isArray(
-    resources.provisioningFields
-  )
-    ? (resources.provisioningFields as ProvisioningFieldDef[])
-    : []
+  const dynamicFields: ProvisioningFieldDef[] =
+    Array.isArray(resources.provisioningFields) &&
+    (resources.provisioningFields as ProvisioningFieldDef[]).length > 0
+      ? (resources.provisioningFields as ProvisioningFieldDef[])
+      : productCode.toUpperCase() === "WHATSAPP"
+        ? [
+            {
+              id: "field-phone",
+              name: "phoneNumber",
+              label: "Nomor WhatsApp Device",
+              type: "text",
+              placeholder: "Contoh: +6281234567890",
+              required: true,
+            },
+            {
+              id: "field-name",
+              name: "displayName",
+              label: "Nama Tampilan Device (Opsional)",
+              type: "text",
+              placeholder: "Contoh: Customer Support Line",
+              required: false,
+            },
+          ]
+        : []
 
   const hasMissingRequiredFields = dynamicFields.some((f) => {
     if (!f.required) return false
     const val = formData[f.name] || ""
     return !val.trim()
   })
-
   const handleApplyVoucher = (e: React.FormEvent) => {
     e.preventDefault()
     if (!voucherInput.trim()) return
@@ -257,7 +275,6 @@ export function ServiceOrderDialog({
             displayName: (formData.displayName || "").trim() || undefined,
           }
         : undefined
-
     try {
       const result = await submitCheckout({
         pricingId: selectedPricingId,
