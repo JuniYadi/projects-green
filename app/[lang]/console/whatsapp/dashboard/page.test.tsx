@@ -67,17 +67,16 @@ describe("WhatsAppDashboardPage", () => {
       ).toBeInTheDocument()
     })
 
-    expect(view.getByRole("link", { name: "Subscribe Plan" })).toHaveAttribute(
-      "href",
-      "/console/billing/services/whatsapp"
-    )
+    expect(
+      view.getByRole("button", { name: /subscribe plan/i })
+    ).toBeInTheDocument()
 
     expect(
       view.getByText("Activate your WhatsApp Business Account")
     ).toBeInTheDocument()
 
     expect(
-      view.getByRole("link", { name: "View Plans & Subscribe" })
-    ).toHaveAttribute("href", "/console/billing/services/whatsapp")
+      view.getByRole("button", { name: /hubungkan whatsapp sekarang/i })
+    ).toBeInTheDocument()
   })
 })
