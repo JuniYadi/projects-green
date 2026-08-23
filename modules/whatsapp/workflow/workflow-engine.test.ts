@@ -193,6 +193,198 @@ describe("modules/whatsapp/workflow - Node Executor", () => {
     expect(result.status).toBe("COMPLETED")
     expect(result.outputPort).toBe("true")
   })
+  it("handles malformed node config with FAILED and error port safely", async () => {
+    const result = await executeWorkflowNode({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      phoneNumber: "+62812345678",
+      node: {
+        id: "bad_node",
+        type: "send_message",
+        name: "Bad Node",
+        config: {
+          messageType: "invalid_type" as never,
+        },
+      },
+      templateContext: { variables: {}, steps: {}, session: {} },
+    })
+
+    expect(result.status).toBe("FAILED")
+    expect(result.outputPort).toBe("error")
+  })
+
+  it("blocks SSRF attempts to private or internal addresses in http_request node", async () => {
+    const result = await executeWorkflowNode({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      phoneNumber: "+62812345678",
+      node: {
+        id: "ssrf_node",
+        type: "http_request",
+        name: "Cloud Metadata",
+        config: {
+          url: "http://169.254.169.254/latest/meta-data",
+          method: "GET",
+        },
+      },
+      templateContext: { variables: {}, steps: {}, session: {} },
+    })
+
+    expect(result.status).toBe("FAILED")
+    expect(result.outputPort).toBe("error")
+    expect(result.errorMessage).toContain("private or internal network")
+  })
+
+  it("executes interactive button sending in send_interactive node", async () => {
+    const result = await executeWorkflowNode({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      phoneNumber: "+62812345678",
+      node: {
+        id: "inter_1",
+        type: "send_interactive",
+        name: "Menu",
+        config: {
+          interactiveType: "button",
+          bodyText: "Pilih menu:",
+          buttons: [{ id: "btn_1", title: "Cek Status" }],
+        },
+      },
+      templateContext: { variables: {}, steps: {}, session: {} },
+    })
+
+    expect(result.status).toBe("COMPLETED")
+    expect(result.outputPort).toBe("default")
+    expect(mockMessageService.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "interactive",
+      })
+    )
+  })
+
+  it("executes prompt_input validation failure with retry prompt", async () => {
+    const result = await executeWorkflowNode({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      phoneNumber: "+62812345678",
+      node: {
+        id: "prompt_email",
+        type: "prompt_input",
+        name: "Ask Email",
+        config: {
+          question: "Masukkan email:",
+          captureVariable: "email",
+          validation: { type: "email", errorMessage: "Format email salah." },
+        },
+      },
+      templateContext: { variables: {}, steps: {}, session: {} },
+      inboundAnswer: "bukan-email",
+    })
+
+    expect(result.status).toBe("PAUSED")
+    expect(result.outputPort).toBe("default")
+    expect(mockMessageService.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Format email salah.",
+      })
+    )
+  })
+
+  it("executes prompt_input number and regex validation failures", async () => {
+    const resultNumber = await executeWorkflowNode({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      phoneNumber: "+62812345678",
+      node: {
+        id: "prompt_num",
+        type: "prompt_input",
+        name: "Ask Number",
+        config: {
+          question: "Berapa umur Anda?",
+          captureVariable: "age",
+          validation: { type: "number" },
+        },
+      },
+      templateContext: { variables: {}, steps: {}, session: {} },
+      inboundAnswer: "dua puluh",
+    })
+    expect(resultNumber.status).toBe("PAUSED")
+
+    const resultRegex = await executeWorkflowNode({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      phoneNumber: "+62812345678",
+      node: {
+        id: "prompt_code",
+        type: "prompt_input",
+        name: "Ask Code",
+        config: {
+          question: "Masukkan kode:",
+          captureVariable: "code",
+          validation: { type: "regex", pattern: "^[A-Z]{3}$" },
+        },
+      },
+      templateContext: { variables: {}, steps: {}, session: {} },
+      inboundAnswer: "1234",
+    })
+    expect(resultRegex.status).toBe("PAUSED")
+  })
+
+  it("handles condition operators: not_equals, contains, less_than", async () => {
+    const condNotEquals = await executeWorkflowNode({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      phoneNumber: "+62812345678",
+      node: {
+        id: "c_ne",
+        type: "condition",
+        name: "Check Not Equal",
+        config: {
+          leftOperand: "A",
+          operator: "not_equals",
+          rightOperand: "B",
+        },
+      },
+      templateContext: { variables: {}, steps: {}, session: {} },
+    })
+    expect(condNotEquals.outputPort).toBe("true")
+
+    const condContains = await executeWorkflowNode({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      phoneNumber: "+62812345678",
+      node: {
+        id: "c_ct",
+        type: "condition",
+        name: "Check Contains",
+        config: {
+          leftOperand: "Hello World",
+          operator: "contains",
+          rightOperand: "world",
+        },
+      },
+      templateContext: { variables: {}, steps: {}, session: {} },
+    })
+    expect(condContains.outputPort).toBe("true")
+
+    const condLessThan = await executeWorkflowNode({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      phoneNumber: "+62812345678",
+      node: {
+        id: "c_lt",
+        type: "condition",
+        name: "Check Less Than",
+        config: {
+          leftOperand: "10",
+          operator: "less_than",
+          rightOperand: "20",
+        },
+      },
+      templateContext: { variables: {}, steps: {}, session: {} },
+    })
+    expect(condLessThan.outputPort).toBe("true")
+  })
 })
 
 describe("modules/whatsapp/workflow - Workflow Runner Engine", () => {
@@ -234,6 +426,7 @@ describe("modules/whatsapp/workflow - Workflow Runner Engine", () => {
           config: {
             question: "Ketik nama kota tujuan Anda:",
             captureVariable: "kota_tujuan",
+            validation: { type: "text" },
           },
         },
       ],
