@@ -199,7 +199,7 @@ type DeviceRecord = { id: string }
 
 const PERIODS = new Set(["MONTHLY", "QUARTERLY", "SEMI_ANNUAL", "ANNUAL"])
 
-function jsonObject(value: Record<string, unknown>): Prisma.InputJsonObject {
+function _jsonObject(value: Record<string, unknown>): Prisma.InputJsonObject {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonObject
 }
 
@@ -255,24 +255,27 @@ function subscriptionData(
   input: BillingFulfillmentInput,
   pricing: RecurringPricingRecord,
   metadata: Record<string, unknown>
-) {
+): Prisma.ServiceSubscriptionUncheckedCreateInput {
   return {
+    organizationId: input.organizationId,
     packageId: pricing.servicePlan.packageId,
     planId: input.planId,
-    pricingId: input.pricingId,
+    pricingId: pricing.id,
     type: pricing.type,
     billingMode: pricing.billingMode,
     billingPeriod: pricing.billingPeriod,
-    priceLocked: input.unitPrice,
-    currency: input.currency,
-    quantity: input.quantity,
-    status: "ACTIVE" as const,
+    priceLocked: pricing.periodPrice ?? new Prisma.Decimal(0),
+    currency: pricing.currency,
+    quantity: input.quantity ?? new Prisma.Decimal(1),
+    status: "ACTIVE",
     currentPeriodStart: input.periodStart,
     currentPeriodEnd: input.periodEnd,
-    metadata: jsonObject(metadata),
+    allocatedConfig: (metadata.provisioningAnswers ??
+      metadata.allocatedConfig ??
+      metadata) as Prisma.InputJsonValue,
+    metadata: metadata as Prisma.InputJsonValue,
   }
 }
-
 async function upsertServiceSubscription(
   tx: Prisma.TransactionClient,
   input: BillingFulfillmentInput,
@@ -314,7 +317,6 @@ async function upsertServiceSubscription(
     ? tx.serviceSubscription.update({ where: { id: existing.id }, data })
     : tx.serviceSubscription.create({
         data: {
-          organizationId: input.organizationId,
           ...data,
           commitmentEndsAt: commitmentEndsAt(pricing, input.periodStart),
         },

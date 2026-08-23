@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import {
   Dialog,
   DialogClose,
@@ -10,6 +11,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 const AlertDialog = Dialog
 const AlertDialogTrigger = DialogTrigger
@@ -18,8 +21,42 @@ const AlertDialogDescription = DialogDescription
 const AlertDialogFooter = DialogFooter
 const AlertDialogHeader = DialogHeader
 const AlertDialogTitle = DialogTitle
-const AlertDialogCancel = DialogClose
-const AlertDialogAction = DialogClose
+
+function AlertDialogAction({
+  className,
+  variant = "default",
+  size = "default",
+  ...props
+}: React.ComponentProps<typeof Button>) {
+  return (
+    <Button
+      data-slot="alert-dialog-action"
+      variant={variant}
+      size={size}
+      className={cn(className)}
+      {...props}
+    />
+  )
+}
+
+function AlertDialogCancel({
+  className,
+  variant = "outline",
+  size = "default",
+  ...props
+}: React.ComponentProps<typeof Button>) {
+  return (
+    <DialogClose asChild>
+      <Button
+        data-slot="alert-dialog-cancel"
+        variant={variant}
+        size={size}
+        className={cn(className)}
+        {...props}
+      />
+    </DialogClose>
+  )
+}
 
 export {
   AlertDialog,

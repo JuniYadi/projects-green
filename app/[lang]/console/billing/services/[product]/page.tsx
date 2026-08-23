@@ -247,15 +247,23 @@ export default function ProductDetailPage() {
                                     value !== null &&
                                     value !== undefined
                                 )
-                                .map(([name, value]) => (
-                                  <Badge
-                                    key={name}
-                                    variant="secondary"
-                                    className="text-xs"
-                                  >
-                                    {name}: {String(value)}
-                                  </Badge>
-                                ))}
+                                .map(([name, value]) => {
+                                  const formatName = (k: string) =>
+                                    k
+                                      .replace(/([A-Z])/g, " $1")
+                                      .replace(/_/g, " ")
+                                      .replace(/^\w/, (c) => c.toUpperCase())
+
+                                  return (
+                                    <Badge
+                                      key={name}
+                                      variant="secondary"
+                                      className="text-xs"
+                                    >
+                                      {formatName(name)}: {String(value)}
+                                    </Badge>
+                                  )
+                                })}
                             </div>
                           </div>
                         )}

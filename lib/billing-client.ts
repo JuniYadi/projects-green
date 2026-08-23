@@ -885,6 +885,7 @@ export type AdminOrderLine = {
   currency: string
   periodStart: string
   periodEnd: string
+  metadata?: Record<string, unknown> | null
 }
 
 export type AdminOrder = {
@@ -902,6 +903,7 @@ export type AdminOrder = {
   fulfilledAt: string | null
   createdAt: string
   updatedAt: string
+  metadata?: Record<string, unknown> | null
   line: AdminOrderLine | null
   subscription: {
     id: string
