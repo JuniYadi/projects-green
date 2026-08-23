@@ -28,6 +28,14 @@ RUN bun build ./scripts/workers.ts \
   --external pg \
   --external ssh2
 
+RUN bun build ./scripts/schedule-runner.ts \
+  --target=bun \
+  --outfile=./dist/schedule-runner.js \
+  --external @prisma/client \
+  --external @prisma/adapter-pg \
+  --external pg \
+  --external ssh2
+
 # ── Production stage ────────────────────────────────────────────────────────
 FROM oven/bun:1-alpine
 

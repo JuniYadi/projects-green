@@ -28,6 +28,7 @@
     "typecheck": "tsc --noEmit",
     "worker:all": "bun run scripts/workers.ts",
     "worker:github": "bun run scripts/github-worker.ts",
+    "schedule:run": "bun run scripts/schedule-runner.ts",
     "worker:billing": "bun run scripts/billing-cron.ts",
     "worker:app-hosting-billing": "bun run scripts/app-hosting-billing-worker.ts",
     "worker:whatsapp-billing": "bun run scripts/whatsapp-monthly-billing-worker.ts",
