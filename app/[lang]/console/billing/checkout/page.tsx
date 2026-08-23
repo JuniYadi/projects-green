@@ -7,15 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ArrowCounterClockwise, WalletIcon } from "@phosphor-icons/react"
@@ -25,7 +17,11 @@ import {
   type CheckoutPreview,
   type CheckoutResult,
 } from "./checkout-client"
-import { formatKey } from "@/lib/format-key"
+import {
+  ProvisioningFieldDef,
+  ProvisioningFormField,
+  matchesPattern,
+} from "@/components/billing/provisioning-form-field"
 
 function formatCurrency(amount: string, currency: string = "IDR"): string {
   const safeCurrency =
@@ -52,27 +48,6 @@ function isRetryable(errorCode: string): boolean {
     errorCode === "INSUFFICIENT_BALANCE" || errorCode === "ORDER_NOT_CHARGEABLE"
   )
 }
-
-type ProvisioningFieldDef = {
-  id: string
-  name: string
-  label: string
-  type:
-    | "text"
-    | "number"
-    | "email"
-    | "tel"
-    | "url"
-    | "select"
-    | "radio"
-    | "checkbox"
-  placeholder?: string
-  helperText?: string
-  required: boolean
-  options?: string[]
-  validationPattern?: string
-}
-
 export default function CheckoutPage() {
   const searchParams = useSearchParams()
   const pricingIdParam = searchParams.get("pricingId") || ""
@@ -121,13 +96,12 @@ export default function CheckoutPage() {
             : (formData[f.name] ?? "")
     ).trim()
     if (f.required && !val) return true
-    if (val && f.validationPattern) {
-      try {
-        const regex = new RegExp(f.validationPattern)
-        if (!regex.test(val)) return true
-      } catch {
-        // Ignore invalid regex
-      }
+    if (
+      val &&
+      f.validationPattern &&
+      !matchesPattern(val, f.validationPattern)
+    ) {
+      return true
     }
     return false
   })
@@ -471,177 +445,14 @@ export default function CheckoutPage() {
                               : "space-y-1.5"
                           }
                         >
-                          <Label
-                            htmlFor={`field-${field.id}`}
-                            className="text-xs font-medium"
-                          >
-                            {field.label}{" "}
-                            {field.required && (
-                              <span className="text-destructive">*</span>
-                            )}
-                          </Label>
-
-                          {field.type === "select" ? (
-                            <div className="space-y-1">
-                              <Select value={val} onValueChange={onChangeVal}>
-                                <SelectTrigger
-                                  id={`field-${field.id}`}
-                                  className="w-full text-xs"
-                                >
-                                  <SelectValue
-                                    placeholder={
-                                      field.placeholder || "Select an option"
-                                    }
-                                  />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {(field.options ?? []).map((opt) => (
-                                    <SelectItem
-                                      key={opt}
-                                      value={opt}
-                                      className="text-xs"
-                                    >
-                                      {opt}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              {field.helperText && (
-                                <p className="text-[11px] leading-normal text-muted-foreground">
-                                  {field.helperText}
-                                </p>
-                              )}
-                            </div>
-                          ) : field.type === "radio" ? (
-                            <div className="space-y-1">
-                              <div className="flex flex-wrap gap-4 pt-1">
-                                {(field.options ?? []).map((opt) => (
-                                  <label
-                                    key={opt}
-                                    className="flex cursor-pointer items-center gap-2 text-xs"
-                                  >
-                                    <input
-                                      type="radio"
-                                      name={`field-${field.id}`}
-                                      value={opt}
-                                      checked={val === opt}
-                                      onChange={() => onChangeVal(opt)}
-                                    />
-                                    {opt}
-                                  </label>
-                                ))}
-                              </div>
-                              {field.helperText && (
-                                <p className="text-[11px] leading-normal text-muted-foreground">
-                                  {field.helperText}
-                                </p>
-                              )}
-                            </div>
-                          ) : field.type === "checkbox" ? (
-                            <div className="space-y-1">
-                              <div className="space-y-2 pt-1">
-                                {!field.options || field.options.length <= 1 ? (
-                                  <label className="flex cursor-pointer items-center gap-2 text-xs">
-                                    <input
-                                      type="checkbox"
-                                      name={`field-${field.id}`}
-                                      checked={Boolean(val)}
-                                      onChange={(e) =>
-                                        onChangeVal(
-                                          e.target.checked
-                                            ? field.options?.[0] || "true"
-                                            : ""
-                                        )
-                                      }
-                                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                    />
-                                    <span>
-                                      {field.options?.[0] || field.label}
-                                    </span>
-                                  </label>
-                                ) : (
-                                  <div className="flex flex-wrap gap-3">
-                                    {field.options.map((opt) => {
-                                      const currentSelected = val
-                                        .split(",")
-                                        .map((s) => s.trim())
-                                        .filter(Boolean)
-                                      const isChecked =
-                                        currentSelected.includes(opt)
-                                      return (
-                                        <label
-                                          key={opt}
-                                          className="flex cursor-pointer items-center gap-2 text-xs"
-                                        >
-                                          <input
-                                            type="checkbox"
-                                            name={`field-${field.id}`}
-                                            value={opt}
-                                            checked={isChecked}
-                                            onChange={(e) => {
-                                              const next = e.target.checked
-                                                ? [...currentSelected, opt]
-                                                : currentSelected.filter(
-                                                    (s) => s !== opt
-                                                  )
-                                              onChangeVal(next.join(", "))
-                                            }}
-                                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                          />
-                                          <span>{opt}</span>
-                                        </label>
-                                      )
-                                    })}
-                                  </div>
-                                )}
-                              </div>
-                              {field.helperText && (
-                                <p className="text-[11px] leading-normal text-muted-foreground">
-                                  {field.helperText}
-                                </p>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="space-y-1">
-                              <Input
-                                id={`field-${field.id}`}
-                                type={field.type === "tel" ? "tel" : field.type}
-                                value={val}
-                                onChange={(e) => onChangeVal(e.target.value)}
-                                onInput={(e) =>
-                                  onChangeVal(
-                                    (e.target as HTMLInputElement).value
-                                  )
-                                }
-                                placeholder={field.placeholder || undefined}
-                                required={field.required}
-                                className="text-xs"
-                              />
-                              {field.helperText && (
-                                <p className="text-[11px] leading-normal text-muted-foreground">
-                                  {field.helperText}
-                                </p>
-                              )}
-                              {Boolean(
-                                val &&
-                                field.validationPattern &&
-                                !(() => {
-                                  try {
-                                    return new RegExp(
-                                      field.validationPattern
-                                    ).test(val)
-                                  } catch {
-                                    return true
-                                  }
-                                })()
-                              ) && (
-                                <p className="text-[11px] text-destructive">
-                                  Format input tidak valid sesuai pola yang
-                                  ditentukan.
-                                </p>
-                              )}
-                            </div>
-                          )}
+                          <ProvisioningFormField
+                            field={field}
+                            value={val}
+                            onChange={onChangeVal}
+                            testIdPrefix="checkout"
+                            idPrefix="field"
+                            validationErrorMessage="Format input tidak valid sesuai pola yang ditentukan."
+                          />
                         </div>
                       )
                     })}

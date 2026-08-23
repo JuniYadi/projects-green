@@ -10,16 +10,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -47,6 +40,11 @@ import {
   type CheckoutResult,
 } from "@/app/[lang]/console/billing/checkout/checkout-client"
 import Link from "next/link"
+import {
+  ProvisioningFieldDef,
+  ProvisioningFormField,
+  matchesPattern,
+} from "@/components/billing/provisioning-form-field"
 
 function formatCurrency(amount: string, currency: string = "IDR"): string {
   const safeCurrency = currency?.trim() ? currency.trim().toUpperCase() : "IDR"
@@ -56,26 +54,6 @@ function formatCurrency(amount: string, currency: string = "IDR"): string {
     currency: safeCurrency,
     minimumFractionDigits: safeCurrency === "USD" ? 2 : 0,
   }).format(Number.isNaN(value) ? 0 : value)
-}
-
-type ProvisioningFieldDef = {
-  id?: string
-  name: string
-  label: string
-  type:
-    | "text"
-    | "number"
-    | "email"
-    | "tel"
-    | "url"
-    | "select"
-    | "radio"
-    | "checkbox"
-  placeholder?: string
-  helperText?: string
-  required?: boolean
-  options?: string[]
-  validationPattern?: string
 }
 
 export type ServiceOrderDialogProps = {
@@ -239,13 +217,12 @@ export function ServiceOrderDialog({
   const hasMissingRequiredFields = dynamicFields.some((f) => {
     const val = (formData[f.name] ?? "").trim()
     if (f.required && !val) return true
-    if (val && f.validationPattern) {
-      try {
-        const regex = new RegExp(f.validationPattern)
-        if (!regex.test(val)) return true
-      } catch {
-        // Ignore invalid regex
-      }
+    if (
+      val &&
+      f.validationPattern &&
+      !matchesPattern(val, f.validationPattern)
+    ) {
+      return true
     }
     return false
   })
@@ -337,7 +314,7 @@ export function ServiceOrderDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="!flex !max-h-[92vh] min-h-[520px] w-[95vw] !max-w-4xl flex-col gap-0 !overflow-hidden !p-0"
+        className="flex max-h-[92vh] min-h-[520px] w-[95vw] max-w-4xl flex-col gap-0 overflow-hidden p-0"
       >
         {/* Header */}
         <DialogHeader className="relative border-b px-6 py-4 text-left">
@@ -601,208 +578,20 @@ export function ServiceOrderDialog({
                   </div>
                   <div className="flex-1 space-y-3 overflow-y-auto pr-1">
                     {dynamicFields.map((field) => (
-                      <div key={field.id || field.name} className="space-y-1.5">
-                        <Label
-                          htmlFor={`order-field-${field.id || field.name}`}
-                          className="text-xs"
-                        >
-                          {field.label}
-                          {field.required && (
-                            <span className="text-destructive"> *</span>
-                          )}
-                        </Label>
-                        {field.type === "select" ? (
-                          <div className="space-y-1">
-                            <Select
-                              value={formData[field.name] || ""}
-                              onValueChange={(nextVal) =>
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  [field.name]: nextVal,
-                                }))
-                              }
-                            >
-                              <SelectTrigger
-                                id={`order-field-${field.id || field.name}`}
-                                data-testid={`order-input-${field.name}`}
-                                className="h-8 w-full text-xs"
-                              >
-                                <SelectValue
-                                  placeholder={
-                                    field.placeholder || "Pilih salah satu opsi"
-                                  }
-                                />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {(field.options ?? []).map((opt) => (
-                                  <SelectItem
-                                    key={opt}
-                                    value={opt}
-                                    className="text-xs"
-                                  >
-                                    {opt}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {field.helperText && (
-                              <p className="text-[11px] leading-normal text-muted-foreground">
-                                {field.helperText}
-                              </p>
-                            )}
-                          </div>
-                        ) : field.type === "radio" ? (
-                          <div className="space-y-1">
-                            <div
-                              className="flex flex-wrap gap-4 pt-1"
-                              data-testid={`order-input-${field.name}`}
-                            >
-                              {(field.options ?? []).map((opt) => (
-                                <label
-                                  key={opt}
-                                  className="flex cursor-pointer items-center gap-2 text-xs"
-                                >
-                                  <input
-                                    type="radio"
-                                    name={`order-field-${field.id || field.name}`}
-                                    value={opt}
-                                    checked={
-                                      (formData[field.name] || "") === opt
-                                    }
-                                    onChange={() =>
-                                      setFormData((prev) => ({
-                                        ...prev,
-                                        [field.name]: opt,
-                                      }))
-                                    }
-                                  />
-                                  {opt}
-                                </label>
-                              ))}
-                            </div>
-                            {field.helperText && (
-                              <p className="text-[11px] leading-normal text-muted-foreground">
-                                {field.helperText}
-                              </p>
-                            )}
-                          </div>
-                        ) : field.type === "checkbox" ? (
-                          <div className="space-y-1">
-                            <div
-                              className="space-y-2 pt-1"
-                              data-testid={`order-input-${field.name}`}
-                            >
-                              {!field.options || field.options.length <= 1 ? (
-                                <label className="flex cursor-pointer items-center gap-2 text-xs">
-                                  <input
-                                    type="checkbox"
-                                    name={`order-field-${field.id || field.name}`}
-                                    checked={Boolean(formData[field.name])}
-                                    onChange={(e) =>
-                                      setFormData((prev) => ({
-                                        ...prev,
-                                        [field.name]: e.target.checked
-                                          ? field.options?.[0] || "true"
-                                          : "",
-                                      }))
-                                    }
-                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                  />
-                                  <span>
-                                    {field.options?.[0] || field.label}
-                                  </span>
-                                </label>
-                              ) : (
-                                <div className="flex flex-wrap gap-3">
-                                  {field.options.map((opt) => {
-                                    const currentSelected = (
-                                      formData[field.name] || ""
-                                    )
-                                      .split(",")
-                                      .map((s) => s.trim())
-                                      .filter(Boolean)
-                                    const isChecked =
-                                      currentSelected.includes(opt)
-                                    return (
-                                      <label
-                                        key={opt}
-                                        className="flex cursor-pointer items-center gap-2 text-xs"
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          name={`order-field-${field.id || field.name}`}
-                                          value={opt}
-                                          checked={isChecked}
-                                          onChange={(e) => {
-                                            const next = e.target.checked
-                                              ? [...currentSelected, opt]
-                                              : currentSelected.filter(
-                                                  (s) => s !== opt
-                                                )
-                                            setFormData((prev) => ({
-                                              ...prev,
-                                              [field.name]: next.join(", "),
-                                            }))
-                                          }}
-                                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                        />
-                                        <span>{opt}</span>
-                                      </label>
-                                    )
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                            {field.helperText && (
-                              <p className="text-[11px] leading-normal text-muted-foreground">
-                                {field.helperText}
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="space-y-1">
-                            <Input
-                              id={`order-field-${field.id || field.name}`}
-                              name={field.name}
-                              data-testid={`order-input-${field.name}`}
-                              type={field.type === "tel" ? "tel" : field.type}
-                              placeholder={field.placeholder || undefined}
-                              value={formData[field.name] || ""}
-                              onChange={(e) => {
-                                const nextVal = e.target.value
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  [field.name]: nextVal,
-                                }))
-                              }}
-                              className="h-8 text-xs"
-                            />
-                            {field.helperText && (
-                              <p className="text-[11px] leading-normal text-muted-foreground">
-                                {field.helperText}
-                              </p>
-                            )}
-                            {Boolean(
-                              formData[field.name] &&
-                              field.validationPattern &&
-                              !(() => {
-                                try {
-                                  return new RegExp(
-                                    field.validationPattern
-                                  ).test(formData[field.name])
-                                } catch {
-                                  return true
-                                }
-                              })()
-                            ) && (
-                              <p className="text-[11px] text-destructive">
-                                Format input tidak valid sesuai pola yang
-                                ditentukan.
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                      <ProvisioningFormField
+                        key={field.id || field.name}
+                        field={field}
+                        value={formData[field.name] || ""}
+                        onChange={(nextVal) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            [field.name]: nextVal,
+                          }))
+                        }
+                        testIdPrefix="order"
+                        idPrefix="order-field"
+                        validationErrorMessage="Format input tidak valid sesuai pola yang ditentukan."
+                      />
                     ))}
                   </div>
                 </div>
