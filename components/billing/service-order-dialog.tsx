@@ -24,6 +24,7 @@ import {
 import {
   getCatalogProduct,
   type CatalogPlan,
+  type CatalogProduct,
   type CatalogProductDetailResponse,
 } from "@/lib/billing-client"
 import {
@@ -81,6 +82,7 @@ export function ServiceOrderDialog({
   const [quotePreview, setQuotePreview] = useState<CheckoutPreview | null>(null)
   const [quoteLoading, setQuoteLoading] = useState(false)
   const [quoteError, setQuoteError] = useState<string | null>(null)
+
   const [voucherInput, setVoucherInput] = useState("")
   const [appliedVoucher, setAppliedVoucher] = useState("")
   const [voucherError, setVoucherError] = useState<string | null>(null)
@@ -110,15 +112,22 @@ export function ServiceOrderDialog({
       setFormData({})
 
       void getCatalogProduct(productCode.toUpperCase(), "IDR")
-        .then((data) => {
+        .then((res) => {
           if (!isMounted) return
-          setCatalogData(data)
-          const firstPlan = data.plans?.[0]
+          setCatalogData(res)
+          const product =
+            res.product ||
+            (res as unknown as { product?: CatalogProduct }).product
+          const firstPlan = product?.plans?.[0]
           if (firstPlan) {
             setSelectedPlanId(firstPlan.id)
             const firstOffer = firstPlan.offers?.[0]
             if (firstOffer) {
-              setSelectedPricingId(firstOffer.id || firstOffer.pricingId)
+              const offerObj = firstOffer as unknown as {
+                id?: string
+                pricingId?: string
+              }
+              setSelectedPricingId(offerObj.pricingId || offerObj.id || null)
             }
           }
         })
@@ -138,6 +147,7 @@ export function ServiceOrderDialog({
       window.clearTimeout(timer)
     }
   }, [open, productCode])
+
   // 2. Fetch checkout quote when pricing/addons/voucher changes
   const loadQuote = useCallback(
     async (pricingIdToQuote: string, addons: string[], voucher: string) => {
@@ -186,7 +196,9 @@ export function ServiceOrderDialog({
     return () => window.clearTimeout(timer)
   }, [open, selectedPricingId, selectedAddonIds, appliedVoucher, loadQuote])
 
-  const selectedPlan: CatalogPlan | undefined = catalogData?.plans?.find(
+  const productInfo = catalogData?.product
+  const plansList = productInfo?.plans || []
+  const selectedPlan: CatalogPlan | undefined = plansList.find(
     (p) => p.id === selectedPlanId
   )
 
@@ -194,7 +206,8 @@ export function ServiceOrderDialog({
     setSelectedPlanId(plan.id)
     const offer = plan.offers?.[0]
     if (offer) {
-      setSelectedPricingId(offer.id || offer.pricingId)
+      const offerObj = offer as unknown as { id?: string; pricingId?: string }
+      setSelectedPricingId(offerObj.pricingId || offerObj.id || null)
     }
   }
 
@@ -287,7 +300,7 @@ export function ServiceOrderDialog({
           <DialogTitle className="text-lg font-semibold">
             {submitSuccess
               ? "Layanan Berhasil Diaktifkan!"
-              : `Aktivasi & Sambungkan ${productTitle || catalogData?.name || productCode}`}
+              : `Aktivasi & Sambungkan ${productTitle || productInfo?.name || productCode}`}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
             {submitSuccess
@@ -337,7 +350,7 @@ export function ServiceOrderDialog({
               </Button>
             </div>
           ) : catalogLoading ? (
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 px-6 py-4">
               <Skeleton className="h-20 w-full" />
               <Skeleton className="h-32 w-full" />
               <Skeleton className="h-16 w-full" />
@@ -356,7 +369,7 @@ export function ServiceOrderDialog({
                   PILIH PAKET LAYANAN
                 </Label>
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                  {(catalogData?.plans || []).map((plan) => {
+                  {plansList.map((plan) => {
                     const isSelected = plan.id === selectedPlanId
                     const offer = plan.offers?.[0]
                     return (
@@ -420,7 +433,11 @@ export function ServiceOrderDialog({
                   </Label>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {selectedPlan.offers.map((offer) => {
-                      const offerId = offer.id || offer.pricingId
+                      const offerObj = offer as unknown as {
+                        id?: string
+                        pricingId?: string
+                      }
+                      const offerId = offerObj.pricingId || offerObj.id || ""
                       const isSelected = offerId === selectedPricingId
                       return (
                         <button
@@ -497,6 +514,7 @@ export function ServiceOrderDialog({
                   </AlertDescription>
                 </Alert>
               )}
+
               {/* Addons Section */}
               {quotePreview?.availableAddons &&
                 quotePreview.availableAddons.length > 0 && (
@@ -506,6 +524,7 @@ export function ServiceOrderDialog({
                     </Label>
                     <div className="space-y-2">
                       {quotePreview.availableAddons.map((addon) => {
+                        const isChecked = selectedAddonIds.includes(addon.id)
                         return (
                           <label
                             key={addon.id}
