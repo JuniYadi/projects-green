@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import Link from "next/link"
 import type { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
@@ -163,7 +164,12 @@ const subscriptionColumns: ColumnDef<SubscriptionItem>[] = [
     accessorKey: "packageCode",
     header: "Product",
     cell: ({ row }) => (
-      <span className="font-medium">{row.original.packageCode}</span>
+      <Link
+        href={`/console/billing/subscriptions/${row.original.id}`}
+        className="font-medium text-primary hover:underline"
+      >
+        {row.original.packageCode}
+      </Link>
     ),
   },
   {
