@@ -222,9 +222,12 @@ export async function processInboundMessage(
   // Fire-and-forget: Automated bot evaluation (Workflow Engine first -> AI Bot fallback)
   // DEBT: Inbound bot pipeline uses async dynamic imports | Fix when: Unified bot event dispatcher queue is extracted
   if (body || payload.interactive) {
+    const interactiveObj = payload.interactive as
+      | { button_reply?: { id?: string }; list_reply?: { id?: string } }
+      | undefined
     const buttonPayload =
-      payload.interactive?.button_reply?.id ||
-      payload.interactive?.list_reply?.id ||
+      interactiveObj?.button_reply?.id ||
+      interactiveObj?.list_reply?.id ||
       undefined
 
     import("@/modules/whatsapp/workflow/workflow-runner")

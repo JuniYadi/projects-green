@@ -72,11 +72,12 @@ export async function processWhatsappWorkflowInbound(
       // Find workflow definition from database / cache
       const dbWorkflow = await prisma.whatsappDevice.findUnique({
         where: { id: deviceId },
-        select: { botWorkflowJson: true },
+        select: { features: true },
       })
 
-      if (dbWorkflow?.botWorkflowJson) {
-        workflow = WorkflowDefinitionSchema.parse(dbWorkflow.botWorkflowJson)
+      const features = dbWorkflow?.features as Record<string, unknown> | null
+      if (features?.botWorkflow) {
+        workflow = WorkflowDefinitionSchema.parse(features.botWorkflow)
       }
     }
 
@@ -84,14 +85,15 @@ export async function processWhatsappWorkflowInbound(
     if (!session || !workflow) {
       const dbDevice = await prisma.whatsappDevice.findUnique({
         where: { id: deviceId },
-        select: { botWorkflowJson: true },
+        select: { features: true },
       })
 
-      if (!dbDevice?.botWorkflowJson) {
+      const features = dbDevice?.features as Record<string, unknown> | null
+      if (!features?.botWorkflow) {
         return { handled: false, reason: "NO_WORKFLOW_CONFIGURED" }
       }
 
-      const parsedWf = WorkflowDefinitionSchema.parse(dbDevice.botWorkflowJson)
+      const parsedWf = WorkflowDefinitionSchema.parse(features.botWorkflow)
       if (!parsedWf.isActive) {
         return { handled: false, reason: "WORKFLOW_INACTIVE" }
       }
@@ -190,12 +192,16 @@ export async function processWhatsappWorkflowInbound(
       }
 
       // Find next edge from current node with matching outputPort
-      const outgoingEdge = workflow.edges.find(
-        (e) =>
-          e.sourceNodeId === node.id &&
-          (e.sourcePort === executionResult.outputPort ||
-            e.sourcePort === "default")
-      )
+      // Find next edge from current node with exact matching outputPort, or fallback to default
+      const outgoingEdge =
+        workflow.edges.find(
+          (e) =>
+            e.sourceNodeId === node.id &&
+            e.sourcePort === executionResult.outputPort
+        ) ||
+        workflow.edges.find(
+          (e) => e.sourceNodeId === node.id && e.sourcePort === "default"
+        )
 
       if (!outgoingEdge) {
         // Reached terminal end of graph

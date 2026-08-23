@@ -55,11 +55,7 @@ export async function processWhatsappAiBotInbound(
       isActive: true,
     },
     include: {
-      agentProfile: {
-        include: {
-          providerConfig: true,
-        },
-      },
+      agentProfile: true,
     },
   })
 
@@ -79,7 +75,7 @@ export async function processWhatsappAiBotInbound(
   }
 
   if (agent.enableProfanityFilter && agent.customBlockedWords?.length) {
-    const isBlocked = agent.customBlockedWords.some((word) =>
+    const isBlocked = agent.customBlockedWords.some((word: string) =>
       cleanText.toLowerCase().includes(word.toLowerCase().trim())
     )
     if (isBlocked) {
@@ -112,14 +108,14 @@ export async function processWhatsappAiBotInbound(
         organizationId,
         agentProfileId: agent.id,
         channel: "WHATSAPP",
-        userIdentifier: contactPhone,
+        customerPhone: contactPhone,
       },
     })
   }
 
   // Check session rate limits
   const dailyLimit = binding.customDailyUserLimit ?? agent.dailyUserLimit ?? 30
-  if (session.messageCount >= dailyLimit) {
+  if (session.totalMessages >= dailyLimit) {
     if (agent.fallbackMessage) {
       await messageService.sendMessage({
         organizationId,
@@ -164,8 +160,7 @@ export async function processWhatsappAiBotInbound(
   try {
     const providerConfig = await resolveAiProviderConfig({
       organizationId,
-      providerId: agent.providerConfigId,
-      modelOverride: agent.modelName ?? undefined,
+      modelOverride: undefined,
     })
     model = createAiLanguageModel(providerConfig)
   } catch (error) {
@@ -210,21 +205,24 @@ export async function processWhatsappAiBotInbound(
     await prisma.aiChatSession.update({
       where: { id: session.id },
       data: {
-        messageCount: { increment: 1 },
+        totalMessages: { increment: 1 },
         totalTokens: {
           increment: (aiResult.usage?.totalTokens as number) || 0,
         },
-        lastActivityAt: new Date(),
       },
     })
 
     // Log chat message
+    const usage = aiResult.usage as
+      | { promptTokens?: number; completionTokens?: number }
+      | undefined
     await prisma.aiChatMessage.create({
       data: {
         sessionId: session.id,
-        role: "ASSISTANT",
+        role: "assistant",
         content: replyText,
-        tokensUsed: aiResult.usage?.totalTokens || 0,
+        promptTokens: usage?.promptTokens || 0,
+        responseTokens: usage?.completionTokens || 0,
       },
     })
 
