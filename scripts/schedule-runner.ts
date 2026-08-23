@@ -32,7 +32,8 @@ export const scheduledJobsRegistry: ScheduledJobDefinition[] = [
     queueName: "deploy-monitor",
     jobName: "check-deploy-status",
     expression: "* * * * *",
-    buildJobId: (d) => `deploy-monitor-${d.toISOString().slice(0, 16)}`,
+    buildJobId: (d) =>
+      `deploy-monitor-${d.toISOString().slice(0, 16).replace(":", "-")}`,
   },
   // 2. Every 5 Minutes Tasks
   {
@@ -40,21 +41,24 @@ export const scheduledJobsRegistry: ScheduledJobDefinition[] = [
     queueName: "vpn-reconciliation",
     jobName: "reconcile-vpn-servers",
     expression: "*/5 * * * *",
-    buildJobId: (d) => `vpn-recon-${d.toISOString().slice(0, 16)}`,
+    buildJobId: (d) =>
+      `vpn-recon-${d.toISOString().slice(0, 16).replace(":", "-")}`,
   },
   {
     name: "vpn-stale-cleanup",
     queueName: "vpn-stale-cleanup",
     jobName: "cleanup-stale-sessions",
     expression: "*/5 * * * *",
-    buildJobId: (d) => `vpn-stale-${d.toISOString().slice(0, 16)}`,
+    buildJobId: (d) =>
+      `vpn-stale-${d.toISOString().slice(0, 16).replace(":", "-")}`,
   },
   {
     name: "whatsapp-health-fanout",
     queueName: WhatsAppHealthJob.queue,
     jobName: WhatsAppHealthJob.jobName,
     expression: "*/5 * * * *",
-    buildJobId: (d) => `wa-health-${d.toISOString().slice(0, 16)}`,
+    buildJobId: (d) =>
+      `wa-health-${d.toISOString().slice(0, 16).replace(":", "-")}`,
     payload: { action: "heartbeat" },
   },
   // 3. Every 15 Minutes Tasks
@@ -63,7 +67,8 @@ export const scheduledJobsRegistry: ScheduledJobDefinition[] = [
     queueName: "vpn-server-health",
     jobName: "check-server-health",
     expression: "*/15 * * * *",
-    buildJobId: (d) => `vpn-health-${d.toISOString().slice(0, 16)}`,
+    buildJobId: (d) =>
+      `vpn-health-${d.toISOString().slice(0, 16).replace(":", "-")}`,
   },
   // 4. Hourly Tasks (Minute 0)
   {

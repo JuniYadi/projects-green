@@ -41,4 +41,14 @@ describe("schedule-runner", () => {
     const d2 = new Date("2026-08-23T07:16:00Z")
     expect(job.buildJobId(d1)).not.toBe(job.buildJobId(d2))
   })
+
+  test("all scheduled jobs generate jobIds without colons to satisfy BullMQ validation", () => {
+    const sampleDate = new Date("2026-08-23T19:39:12.525Z")
+    for (const job of scheduledJobsRegistry) {
+      const jobId = job.buildJobId(sampleDate)
+      expect(jobId).not.toContain(":")
+      expect(typeof jobId).toBe("string")
+      expect(jobId.length).toBeGreaterThan(0)
+    }
+  })
 })
