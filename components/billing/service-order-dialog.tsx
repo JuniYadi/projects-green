@@ -18,9 +18,13 @@ import {
   ArrowCounterClockwise,
   CheckCircle,
   Clock,
+  EnvelopeSimple,
+  FileText,
+  Receipt,
   Sparkle,
   Wallet,
 } from "@phosphor-icons/react"
+import { toast } from "sonner"
 import {
   getCatalogProduct,
   type CatalogPlan,
@@ -33,6 +37,7 @@ import {
   type CheckoutPreview,
   type CheckoutResult,
 } from "@/app/[lang]/console/billing/checkout/checkout-client"
+import Link from "next/link"
 
 function formatCurrency(amount: string, currency: string = "IDR"): string {
   const safeCurrency = currency?.trim() ? currency.trim().toUpperCase() : "IDR"
@@ -48,10 +53,9 @@ type ProvisioningFieldDef = {
   id: string
   name: string
   label: string
-  type: "text" | "number" | "email" | "url" | "select" | "radio"
+  type: string
   placeholder?: string
-  required: boolean
-  options?: string[]
+  required?: boolean
 }
 
 export type ServiceOrderDialogProps = {
@@ -59,7 +63,7 @@ export type ServiceOrderDialogProps = {
   productTitle?: string
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSuccess?: (result: CheckoutResult) => void
+  onSuccess?: () => void
 }
 
 export function ServiceOrderDialog({
@@ -78,16 +82,16 @@ export function ServiceOrderDialog({
   const [selectedPricingId, setSelectedPricingId] = useState<string | null>(
     null
   )
-
-  const [quotePreview, setQuotePreview] = useState<CheckoutPreview | null>(null)
-  const [quoteLoading, setQuoteLoading] = useState(false)
-  const [quoteError, setQuoteError] = useState<string | null>(null)
+  const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([])
 
   const [voucherInput, setVoucherInput] = useState("")
   const [appliedVoucher, setAppliedVoucher] = useState("")
   const [voucherError, setVoucherError] = useState<string | null>(null)
 
-  const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([])
+  const [quotePreview, setQuotePreview] = useState<CheckoutPreview | null>(null)
+  const [quoteLoading, setQuoteLoading] = useState(false)
+  const [quoteError, setQuoteError] = useState<string | null>(null)
+
   const [confirmed, setConfirmed] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -103,7 +107,7 @@ export function ServiceOrderDialog({
     if (!open || !productCode) return
 
     let isMounted = true
-    const timer = window.setTimeout(() => {
+    const loadCatalog = async () => {
       setCatalogLoading(true)
       setCatalogError(null)
       setSubmitSuccess(null)
@@ -111,40 +115,40 @@ export function ServiceOrderDialog({
       setConfirmed(false)
       setFormData({})
 
-      void getCatalogProduct(productCode.toUpperCase(), "IDR")
-        .then((res) => {
-          if (!isMounted) return
-          setCatalogData(res)
-          const product =
-            res.product ||
-            (res as unknown as { product?: CatalogProduct }).product
-          const firstPlan = product?.plans?.[0]
-          if (firstPlan) {
-            setSelectedPlanId(firstPlan.id)
-            const firstOffer = firstPlan.offers?.[0]
-            if (firstOffer) {
-              const offerObj = firstOffer as unknown as {
-                id?: string
-                pricingId?: string
-              }
-              setSelectedPricingId(offerObj.pricingId || offerObj.id || null)
+      try {
+        const res = await getCatalogProduct(productCode.toUpperCase(), "IDR")
+        if (!isMounted) return
+        setCatalogData(res)
+        const product =
+          res.product ||
+          (res as unknown as { product?: CatalogProduct }).product
+        const firstPlan = product?.plans?.[0]
+        if (firstPlan) {
+          setSelectedPlanId(firstPlan.id)
+          const firstOffer = firstPlan.offers?.[0]
+          if (firstOffer) {
+            const offerObj = firstOffer as unknown as {
+              id?: string
+              pricingId?: string
             }
+            const pId = offerObj.pricingId || offerObj.id || null
+            setSelectedPricingId(pId)
           }
-        })
-        .catch((err) => {
-          if (!isMounted) return
-          setCatalogError(
-            err instanceof Error ? err.message : "Gagal memuat katalog paket."
-          )
-        })
-        .finally(() => {
-          if (isMounted) setCatalogLoading(false)
-        })
-    }, 0)
+        }
+      } catch (err) {
+        if (!isMounted) return
+        setCatalogError(
+          err instanceof Error ? err.message : "Gagal memuat katalog paket."
+        )
+      } finally {
+        if (isMounted) setCatalogLoading(false)
+      }
+    }
+
+    void loadCatalog()
 
     return () => {
       isMounted = false
-      window.clearTimeout(timer)
     }
   }, [open, productCode])
 
@@ -178,7 +182,7 @@ export function ServiceOrderDialog({
           }
         }
       } catch {
-        setQuoteError("Terjadi kendala jaringan saat menghitung biaya.")
+        setQuoteError("Terjadi kendala saat menghitung biaya.")
       } finally {
         setQuoteLoading(false)
       }
@@ -189,18 +193,13 @@ export function ServiceOrderDialog({
   useEffect(() => {
     if (!open || !selectedPricingId) return
 
-    const timer = window.setTimeout(() => {
-      void loadQuote(selectedPricingId, selectedAddonIds, appliedVoucher)
-    }, 0)
-
-    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadQuote(selectedPricingId, selectedAddonIds, appliedVoucher)
   }, [open, selectedPricingId, selectedAddonIds, appliedVoucher, loadQuote])
 
   const productInfo = catalogData?.product
   const plansList = productInfo?.plans || []
-  const selectedPlan: CatalogPlan | undefined = plansList.find(
-    (p) => p.id === selectedPlanId
-  )
+  const selectedPlan = plansList.find((p) => p.id === selectedPlanId)
 
   const handlePlanSelect = (plan: CatalogPlan) => {
     setSelectedPlanId(plan.id)
@@ -236,11 +235,10 @@ export function ServiceOrderDialog({
             },
           ]
         : []
-
   const hasMissingRequiredFields = dynamicFields.some((f) => {
     if (!f.required) return false
-    const val = formData[f.name] || ""
-    return !val.trim()
+    const val = (formData[f.name] ?? "").trim()
+    return !val
   })
   const handleApplyVoucher = (e: React.FormEvent) => {
     e.preventDefault()
@@ -268,13 +266,6 @@ export function ServiceOrderDialog({
     setIsSubmitting(true)
     setSubmitError(null)
 
-    const deviceInput =
-      formData.phoneNumber || formData.displayName
-        ? {
-            phoneNumber: (formData.phoneNumber || "").trim(),
-            displayName: (formData.displayName || "").trim() || undefined,
-          }
-        : undefined
     try {
       const result = await submitCheckout({
         pricingId: selectedPricingId,
@@ -282,18 +273,32 @@ export function ServiceOrderDialog({
         addonIds: selectedAddonIds.length > 0 ? selectedAddonIds : undefined,
         voucherCode: appliedVoucher || undefined,
         idempotencyKey,
-        device: deviceInput,
+        device:
+          formData.phoneNumber || formData.displayName
+            ? {
+                phoneNumber: formData.phoneNumber || "",
+                displayName: formData.displayName || undefined,
+              }
+            : undefined,
         metadata: Object.keys(formData).length > 0 ? formData : undefined,
       })
-
       if (result.ok) {
         setSubmitSuccess(result)
-        onSuccess?.(result)
+        toast.success("Aktivasi layanan berhasil!", {
+          description: `Order ${result.orderId} telah terbayar dan kuitansi invoice telah dikirimkan ke email billing Anda.`,
+        })
+        onSuccess?.()
       } else {
-        setSubmitError(result.message || "Gagal mengaktifkan layanan.")
+        setSubmitError(
+          result.message || "Gagal mengaktifkan layanan. Silakan coba kembali."
+        )
+        toast.error("Gagal mengaktifkan layanan", {
+          description: result.message,
+        })
       }
     } catch {
       setSubmitError("Terjadi kesalahan sistem saat memproses transaksi.")
+      toast.error("Terjadi kesalahan sistem saat memproses aktivasi.")
     } finally {
       setIsSubmitting(false)
     }
@@ -329,29 +334,82 @@ export function ServiceOrderDialog({
         {/* Body Content */}
         <div className="flex-1 space-y-5 overflow-y-auto px-6 py-4">
           {submitSuccess ? (
-            <div className="space-y-4 py-6 text-center">
+            <div className="space-y-4 py-2 text-center">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
                 <CheckCircle className="h-8 w-8" weight="fill" />
               </div>
               <div className="space-y-1">
                 <h3 className="text-base font-semibold">
-                  Aktivasi Instan Sukses
+                  Aktivasi Instan Sukses!
                 </h3>
                 <p className="text-xs text-muted-foreground">
                   Order ID: {submitSuccess.ok ? submitSuccess.orderId : ""}
                 </p>
               </div>
 
-              <div className="space-y-2 rounded-lg border bg-muted/40 p-4 text-left text-xs">
-                <div className="flex justify-between">
+              {/* Email & Invoice Notice Alert */}
+              <Alert className="border-emerald-200 bg-emerald-50 text-left text-xs text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300">
+                <EnvelopeSimple className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <AlertDescription className="ml-2 leading-relaxed">
+                  Bukti pembayaran dan kuitansi resmi telah dikirim ke email
+                  penanggung jawab billing organisasi Anda.
+                </AlertDescription>
+              </Alert>
+
+              {/* Order & Payment Summary Card */}
+              <div className="space-y-2.5 rounded-lg border bg-muted/40 p-4 text-left text-xs">
+                <div className="flex items-center justify-between border-b pb-2">
                   <span className="text-muted-foreground">Status Pesanan</span>
-                  <Badge variant="default">
-                    {submitSuccess.ok ? submitSuccess.status : "ACTIVE"}
+                  <Badge
+                    variant="default"
+                    className="bg-emerald-600 hover:bg-emerald-600"
+                  >
+                    {submitSuccess.ok ? submitSuccess.status : "CHARGED"}
                   </Badge>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total Tagihan</span>
-                  <span className="font-medium">
+                {submitSuccess.ok && submitSuccess.subscriptionId && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">ID Langganan</span>
+                    <span className="font-mono text-[11px]">
+                      {submitSuccess.subscriptionId}
+                    </span>
+                  </div>
+                )}
+                {submitSuccess.ok && submitSuccess.invoiceId && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Nomor Invoice</span>
+                    <Link
+                      href={`/console/billing/invoices/${submitSuccess.invoiceId}`}
+                      target="_blank"
+                      className="inline-flex items-center gap-1 font-mono text-[11px] font-medium text-primary underline underline-offset-2 hover:opacity-80"
+                    >
+                      <Receipt className="h-3.5 w-3.5" />
+                      {submitSuccess.invoiceId}
+                    </Link>
+                  </div>
+                )}
+                {submitSuccess.ok && submitSuccess.periodEnd && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">
+                      Masa Aktif s/d
+                    </span>
+                    <span className="font-medium">
+                      {new Date(submitSuccess.periodEnd).toLocaleDateString(
+                        "id-ID",
+                        {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        }
+                      )}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between border-t pt-2">
+                  <span className="text-muted-foreground">
+                    Total Pembayaran
+                  </span>
+                  <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
                     {submitSuccess.ok
                       ? formatCurrency(
                           submitSuccess.firstPayment,
@@ -362,9 +420,23 @@ export function ServiceOrderDialog({
                 </div>
               </div>
 
-              <Button onClick={() => onOpenChange(false)} className="w-full">
-                Selesai & Gunakan Layanan
-              </Button>
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-2 pt-2 sm:flex-row">
+                {submitSuccess.ok && submitSuccess.invoiceId && (
+                  <Button variant="outline" asChild className="flex-1">
+                    <Link
+                      href={`/console/billing/invoices/${submitSuccess.invoiceId}`}
+                      target="_blank"
+                    >
+                      <FileText className="mr-1.5 h-4 w-4" />
+                      Lihat Invoice
+                    </Link>
+                  </Button>
+                )}
+                <Button onClick={() => onOpenChange(false)} className="flex-1">
+                  Selesai & Gunakan Layanan
+                </Button>
+              </div>
             </div>
           ) : catalogLoading ? (
             <div className="space-y-4 px-6 py-4">
@@ -414,13 +486,10 @@ export function ServiceOrderDialog({
                               </Badge>
                             )}
                           </div>
-                          {plan.description && (
-                            <p className="line-clamp-2 text-[11px] text-muted-foreground">
-                              {plan.description}
-                            </p>
-                          )}
+                          <p className="line-clamp-2 text-[11px] text-muted-foreground">
+                            {plan.description}
+                          </p>
                         </div>
-
                         <div className="pt-3">
                           {offer && (
                             <div className="text-xs">
@@ -500,6 +569,7 @@ export function ServiceOrderDialog({
                         <Input
                           id={`order-field-${field.name}`}
                           name={field.name}
+                          data-testid={`order-input-${field.name}`}
                           type={field.type === "number" ? "number" : "text"}
                           placeholder={
                             field.placeholder ||
@@ -508,6 +578,13 @@ export function ServiceOrderDialog({
                               : undefined)
                           }
                           value={formData[field.name] || ""}
+                          onInput={(e: React.FormEvent<HTMLInputElement>) => {
+                            const target = e.target as HTMLInputElement
+                            setFormData((prev) => ({
+                              ...prev,
+                              [field.name]: target.value,
+                            }))
+                          }}
                           onChange={(e) => {
                             const nextVal = e.target.value
                             setFormData((prev) => ({
@@ -532,36 +609,40 @@ export function ServiceOrderDialog({
                 </Alert>
               )}
 
-              {/* Addons Section */}
+              {/* Available Addons */}
               {quotePreview?.availableAddons &&
                 quotePreview.availableAddons.length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-xs font-medium text-muted-foreground">
-                      ADD-ON TAMBAHAN
+                      ADD-ONS OPSIONAL
                     </Label>
                     <div className="space-y-2">
                       {quotePreview.availableAddons.map((addon) => {
                         const isChecked = selectedAddonIds.includes(addon.id)
                         return (
-                          <label
+                          <div
                             key={addon.id}
-                            className={`flex cursor-pointer items-start justify-between rounded-lg border p-2.5 text-xs transition-colors ${
+                            className={`flex items-center justify-between rounded-lg border p-3 text-xs transition-colors ${
                               isChecked
                                 ? "border-primary/50 bg-primary/5"
-                                : "hover:bg-muted/40"
+                                : "bg-card"
                             }`}
                           >
                             <div className="flex items-start gap-2.5">
                               <input
+                                id={`addon-${addon.id}`}
                                 type="checkbox"
                                 checked={isChecked}
                                 onChange={() => toggleAddon(addon.id)}
                                 className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                               />
                               <div>
-                                <p className="font-medium text-foreground">
+                                <label
+                                  htmlFor={`addon-${addon.id}`}
+                                  className="cursor-pointer font-medium text-foreground"
+                                >
                                   {addon.name}
-                                </p>
+                                </label>
                                 {addon.description && (
                                   <p className="text-[11px] text-muted-foreground">
                                     {addon.description}
@@ -569,36 +650,33 @@ export function ServiceOrderDialog({
                                 )}
                               </div>
                             </div>
-                            <span className="font-semibold whitespace-nowrap">
+                            <span className="font-semibold text-foreground">
                               +{formatCurrency(addon.price, addon.currency)}
                             </span>
-                          </label>
+                          </div>
                         )
                       })}
                     </div>
                   </div>
                 )}
 
-              {/* Voucher Section */}
+              {/* Voucher Code Form */}
               <div className="space-y-2">
                 <Label className="text-xs font-medium text-muted-foreground">
                   KODE PROMO / VOUCHER
                 </Label>
                 {appliedVoucher ? (
-                  <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-2.5 text-xs">
-                    <div className="flex items-center gap-2 text-emerald-600">
-                      <Sparkle className="h-4 w-4" />
-                      <span className="font-semibold">{appliedVoucher}</span>
-                      <span className="text-[11px] text-emerald-600/80">
-                        (Terpasang)
-                      </span>
+                  <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-800 dark:text-emerald-300">
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <Sparkle className="h-4 w-4 text-emerald-600" />
+                      <span>Voucher aktif: {appliedVoucher}</span>
                     </div>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       onClick={handleRemoveVoucher}
-                      className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                      className="h-6 px-2 text-xs text-destructive hover:bg-destructive/10"
                     >
                       Hapus
                     </Button>
@@ -609,16 +687,16 @@ export function ServiceOrderDialog({
                       placeholder="Masukkan kode promo"
                       value={voucherInput}
                       onChange={(e) => setVoucherInput(e.target.value)}
-                      className="h-8 text-xs uppercase"
+                      className="h-8 text-xs"
                     />
                     <Button
                       type="submit"
-                      variant="secondary"
+                      variant="outline"
                       size="sm"
-                      disabled={!voucherInput.trim() || quoteLoading}
+                      disabled={!voucherInput.trim()}
                       className="h-8 text-xs"
                     >
-                      Gunakan
+                      Terapkan
                     </Button>
                   </form>
                 )}
@@ -627,28 +705,21 @@ export function ServiceOrderDialog({
                 )}
               </div>
 
-              {/* Pricing Breakdown Summary */}
-              <div className="space-y-2.5 rounded-lg border bg-muted/20 p-4">
-                <div className="flex items-center justify-between text-xs font-medium">
-                  <span className="text-muted-foreground">Ringkasan Biaya</span>
-                  {quoteLoading && (
-                    <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <ArrowCounterClockwise className="h-3 w-3 animate-spin" />
-                      Menghitung...
-                    </span>
-                  )}
+              {/* Summary Breakdown */}
+              <div className="space-y-2 rounded-lg border bg-muted/40 p-3 text-xs">
+                <div className="font-medium text-foreground">
+                  Ringkasan Biaya
                 </div>
-
                 {quoteLoading && !quotePreview ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2 py-2">
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-3/4" />
                   </div>
                 ) : quotePreview ? (
-                  <div className="space-y-1.5 text-xs">
+                  <div className="space-y-1.5">
                     <div className="flex justify-between text-muted-foreground">
                       <span>
-                        {quotePreview.planName || quotePreview.planCode} (
+                        {selectedPlan?.name || "Paket"} (
                         {quotePreview.billingPeriod})
                       </span>
                       <span>
@@ -660,8 +731,8 @@ export function ServiceOrderDialog({
                     </div>
 
                     {Number(quotePreview.discount) > 0 && (
-                      <div className="flex justify-between font-medium text-emerald-600">
-                        <span>Diskon Promo</span>
+                      <div className="flex justify-between text-emerald-600">
+                        <span>Diskon Voucher</span>
                         <span>
                           -
                           {formatCurrency(
@@ -672,7 +743,19 @@ export function ServiceOrderDialog({
                       </div>
                     )}
 
-                    <div className="mt-2 flex items-baseline justify-between border-t pt-2 text-sm font-semibold">
+                    {quotePreview.addons.map((addon) => (
+                      <div
+                        key={addon.id}
+                        className="flex justify-between text-muted-foreground"
+                      >
+                        <span>+ {addon.name}</span>
+                        <span>
+                          {formatCurrency(addon.price, quotePreview.currency)}
+                        </span>
+                      </div>
+                    ))}
+
+                    <div className="flex justify-between border-t pt-2 text-sm font-semibold text-foreground">
                       <span>Total Pembayaran</span>
                       <span className="text-base text-primary">
                         {formatCurrency(
@@ -714,9 +797,11 @@ export function ServiceOrderDialog({
                 <div className="flex items-center space-x-2 pt-1">
                   <input
                     id="order-confirm-balance"
+                    data-testid="order-confirm-balance-checkbox"
                     type="checkbox"
                     checked={confirmed}
                     onChange={(e) => setConfirmed(e.target.checked)}
+                    onClick={() => setConfirmed(true)}
                     className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                   />
                   <Label
@@ -754,6 +839,7 @@ export function ServiceOrderDialog({
             </Button>
             <Button
               size="sm"
+              data-testid="order-submit-button"
               disabled={
                 !confirmed ||
                 hasMissingRequiredFields ||
