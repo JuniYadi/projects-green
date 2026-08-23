@@ -1180,6 +1180,9 @@ export function AppSidebar({
   return (
     <>
       <Sidebar variant="inset" {...props}>
+        <SidebarHeader>
+          <NavOrganization organization={organization} />
+        </SidebarHeader>
         <SidebarContent>
           {navHeader && <div className="px-3 py-2">{navHeader}</div>}
           {projects.length > 0 && <NavProjects projects={projects} />}
