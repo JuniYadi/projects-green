@@ -1034,6 +1034,7 @@ export type CatalogPlan = {
   id: string
   code: string
   name: string
+  description?: string | null
   resources: Record<string, unknown>
   billingStrategy?: "PRO_RATA" | "FIXED_CYCLE"
   stockControl?: "UNLIMITED" | "TRACKED"

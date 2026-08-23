@@ -1,6 +1,6 @@
 import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
+import { cleanup, render, waitFor } from "@testing-library/react"
 
 import { BillingContactsList } from "./billing-contacts-list"
 
@@ -54,6 +54,7 @@ describe("BillingContactsList — OWNER first-time hint", () => {
   })
 
   afterEach(() => {
+    cleanup()
     globalThis.fetch = originalFetch
   })
 
@@ -76,9 +77,8 @@ describe("BillingContactsList — OWNER first-time hint", () => {
     ) as unknown as typeof fetch
 
     const view = render(<BillingContactsList />)
-
     await waitFor(() =>
-      expect(view.getByText("owner@example.com")).toBeInTheDocument()
+      expect(view.getByText("finance@example.com")).toBeInTheDocument()
     )
     expect(
       view.queryByText(/been added as the OWNER contact/i)
@@ -91,7 +91,6 @@ describe("BillingContactsList — OWNER first-time hint", () => {
     ) as unknown as typeof fetch
 
     const view = render(<BillingContactsList />)
-
     await waitFor(() =>
       expect(view.getByText("owner@example.com")).toBeInTheDocument()
     )

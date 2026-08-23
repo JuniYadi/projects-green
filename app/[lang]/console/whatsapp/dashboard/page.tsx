@@ -7,10 +7,11 @@ import {
   PaperPlaneTilt,
   ChartLine,
   Warning,
+  Sparkle,
 } from "@phosphor-icons/react"
 import { useParams } from "next/navigation"
 import { getMessages } from "@/lib/i18n/messages"
-import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,7 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import { AccessRestricted } from "@/modules/whatsapp/ui/access-restricted"
-
+import { ServiceOrderDialog } from "@/components/billing/service-order-dialog"
 type WebhookStats = {
   periodStart: string
   periodEnd: string
@@ -109,9 +110,10 @@ export default function WhatsAppDashboardPage() {
   const [conversations, setConversations] = React.useState<
     ConversationListItem[]
   >([])
-  const [errorMessage, setErrorMessage] = React.useState("")
   const [accessDenied, setAccessDenied] =
     React.useState<AccessDeniedInfo | null>(null)
+  const [isOrderOpen, setIsOrderOpen] = React.useState(false)
+  const [errorMessage, setErrorMessage] = React.useState("")
   const [webhookStats, setWebhookStats] = React.useState<WebhookStats | null>(
     null
   )
@@ -231,10 +233,9 @@ export default function WhatsAppDashboardPage() {
           <p className="text-muted-foreground">{t.description}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/console/billing/services/whatsapp">
-              Subscribe Plan
-            </Link>
+          <Button variant="outline" onClick={() => setIsOrderOpen(true)}>
+            <Sparkle className="mr-2 size-4 text-primary" />
+            Subscribe Plan
           </Button>
           <Button variant="outline" asChild>
             <Link href="/console/whatsapp/devices">
@@ -262,10 +263,9 @@ export default function WhatsAppDashboardPage() {
                 and connect your first WhatsApp Business number.
               </p>
             </div>
-            <Button asChild className="shrink-0">
-              <Link href="/console/billing/services/whatsapp">
-                View Plans & Subscribe
-              </Link>
+            <Button className="shrink-0" onClick={() => setIsOrderOpen(true)}>
+              <Sparkle className="mr-2 size-4" />
+              Hubungkan WhatsApp Sekarang
             </Button>
           </CardContent>
         </Card>
@@ -507,6 +507,15 @@ export default function WhatsAppDashboardPage() {
           </Card>
         </>
       )}
+      <ServiceOrderDialog
+        productCode="WHATSAPP"
+        productTitle="WhatsApp Gateway"
+        open={isOrderOpen}
+        onOpenChange={setIsOrderOpen}
+        onSuccess={() => {
+          void loadData()
+        }}
+      />
     </div>
   )
 }

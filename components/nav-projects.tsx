@@ -15,9 +15,10 @@ export function NavProjects({
 }: {
   projects: {
     name: string
-    url: string
+    url?: string
     icon: React.ReactNode
     isActive?: boolean
+    onClick?: () => void
   }[]
 }) {
   return (
@@ -26,12 +27,27 @@ export function NavProjects({
       <SidebarMenu>
         {projects.map((item) => (
           <SidebarMenuItem key={item.name}>
-            <SidebarMenuButton asChild isActive={item.isActive}>
-              <Link href={item.url}>
+            {item.onClick ? (
+              <SidebarMenuButton
+                onClick={item.onClick}
+                isActive={item.isActive}
+              >
                 {item.icon}
                 <span>{item.name}</span>
-              </Link>
-            </SidebarMenuButton>
+              </SidebarMenuButton>
+            ) : item.url ? (
+              <SidebarMenuButton asChild isActive={item.isActive}>
+                <Link href={item.url}>
+                  {item.icon}
+                  <span>{item.name}</span>
+                </Link>
+              </SidebarMenuButton>
+            ) : (
+              <SidebarMenuButton isActive={item.isActive}>
+                {item.icon}
+                <span>{item.name}</span>
+              </SidebarMenuButton>
+            )}
           </SidebarMenuItem>
         ))}
       </SidebarMenu>

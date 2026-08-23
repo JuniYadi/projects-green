@@ -45,7 +45,6 @@ import {
   FileText as FileTextIcon,
 } from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
-
 const getPathnameWithoutSearch = (pathname: string) => pathname.split("?")[0]
 
 const startsWithRoute = (pathname: string, route: string) => {
@@ -1168,6 +1167,7 @@ export function AppSidebar({
     locale: locale ?? defaultLocale,
     tab: searchParams.get("tab") ?? undefined,
   })
+
   const navSecondary = resolveSidebarSecondaryLinks({
     surface,
     currentPathname: pathname,
@@ -1180,7 +1180,7 @@ export function AppSidebar({
       </SidebarHeader>
       <SidebarContent>
         {navHeader && <div className="px-3 py-2">{navHeader}</div>}
-        <NavProjects projects={projects} />
+        {projects.length > 0 && <NavProjects projects={projects} />}
         <NavMain items={navMain} label={navMainLabel} />
         <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>

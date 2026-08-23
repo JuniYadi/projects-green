@@ -19,6 +19,7 @@ import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import { getMessages } from "@/lib/i18n/messages"
+import { ServiceOrderDialog } from "@/components/billing/service-order-dialog"
 import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type {
@@ -81,8 +82,7 @@ export default function WhatsAppDevicesPage() {
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
-
-  // ── Data fetching ─────────────────────────────────────────────────────────
+  const [isOrderOpen, setIsOrderOpen] = React.useState(false)
 
   // ponytail: not wrapped in useCallback — stable enough for effect dep
   const loadDevices = async () => {
@@ -316,15 +316,20 @@ export default function WhatsAppDevicesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          {messages.console.whatsapp.devices.heading}
-        </h1>
-        <p className="text-muted-foreground">
-          {messages.console.whatsapp.devices.description}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {messages.console.whatsapp.devices.heading}
+          </h1>
+          <p className="text-muted-foreground">
+            {messages.console.whatsapp.devices.description}
+          </p>
+        </div>
+        <Button size="sm" onClick={() => setIsOrderOpen(true)}>
+          <Phone className="mr-2 size-4" />
+          Sambungkan Device Baru
+        </Button>
       </div>
-
       <Card>
         <CardHeader>
           <CardTitle>{messages.console.whatsapp.devices.cardTitle}</CardTitle>
@@ -342,10 +347,13 @@ export default function WhatsAppDevicesPage() {
               <p className="mt-1 text-xs text-muted-foreground">
                 {messages.console.whatsapp.devices.noDevicesDescription}
               </p>
-              <Button asChild className="mt-4" size="sm">
-                <Link href="/console/billing/services/whatsapp">
-                  {messages.console.whatsapp.devices.edit}
-                </Link>
+              <Button
+                className="mt-4"
+                size="sm"
+                onClick={() => setIsOrderOpen(true)}
+              >
+                <Phone className="mr-2 size-4" />
+                Sambungkan Device Baru
               </Button>
             </div>
           ) : (
@@ -383,6 +391,16 @@ export default function WhatsAppDevicesPage() {
           )}
         </CardContent>
       </Card>
+
+      <ServiceOrderDialog
+        productCode="WHATSAPP"
+        productTitle="WhatsApp Gateway"
+        open={isOrderOpen}
+        onOpenChange={setIsOrderOpen}
+        onSuccess={() => {
+          void loadDevices()
+        }}
+      />
     </div>
   )
 }
