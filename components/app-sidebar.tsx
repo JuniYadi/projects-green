@@ -44,8 +44,8 @@ import {
   Brain as BrainIcon,
   FileText as FileTextIcon,
 } from "@phosphor-icons/react"
-import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
-
+import { defaultLocale } from "@/lib/i18n/config"
+import { ServiceOrderDialog } from "@/components/billing/service-order-dialog"
 const getPathnameWithoutSearch = (pathname: string) => pathname.split("?")[0]
 
 const startsWithRoute = (pathname: string, route: string) => {
@@ -670,6 +670,11 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
     navMainLabel: "WhatsApp",
     getProjects: (path, locale) => [
       {
+        name: "Subscribe WhatsApp",
+        url: "#subscribe-whatsapp",
+        icon: <PackageIcon />,
+      },
+      {
         name: "Back to Console",
         url: localizePathname({ pathname: "/console", locale }),
         icon: <CaretLeftIcon />,
@@ -1161,6 +1166,9 @@ export function AppSidebar({
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { locale, pathnameWithoutLocale } = getLocaleFromPathname(pathname)
+  const [orderProductCode, setOrderProductCode] = React.useState<string | null>(
+    null
+  )
 
   const { navMain, projects, navMainLabel, navHeader } = resolveSidebarMenu({
     surface,
@@ -1168,25 +1176,47 @@ export function AppSidebar({
     locale: locale ?? defaultLocale,
     tab: searchParams.get("tab") ?? undefined,
   })
+
+  // Enhance projects to open ServiceOrderDialog if clicked
+  const enhancedProjects = projects.map((p) => {
+    if (p.url === "#subscribe-whatsapp") {
+      return {
+        ...p,
+        onClick: () => setOrderProductCode("WHATSAPP"),
+      }
+    }
+    return p
+  })
+
   const navSecondary = resolveSidebarSecondaryLinks({
     surface,
     currentPathname: pathname,
   })
 
   return (
-    <Sidebar variant="inset" {...props}>
-      <SidebarHeader>
-        <NavOrganization organization={organization} />
-      </SidebarHeader>
-      <SidebarContent>
-        {navHeader && <div className="px-3 py-2">{navHeader}</div>}
-        <NavProjects projects={projects} />
-        <NavMain items={navMain} label={navMainLabel} />
-        <NavSecondary items={navSecondary} className="mt-auto" />
-      </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={user} />
-      </SidebarFooter>
-    </Sidebar>
+    <>
+      <Sidebar variant="inset" {...props}>
+        <SidebarHeader>
+          <NavOrganization organization={organization} />
+        </SidebarHeader>
+        <SidebarContent>
+          {navHeader && <div className="px-3 py-2">{navHeader}</div>}
+          <NavProjects projects={enhancedProjects} />
+          <NavMain items={navMain} label={navMainLabel} />
+          <NavSecondary items={navSecondary} className="mt-auto" />
+        </SidebarContent>
+        <SidebarFooter>
+          <NavUser user={user} />
+        </SidebarFooter>
+      </Sidebar>
+
+      <ServiceOrderDialog
+        productCode={orderProductCode ?? ""}
+        open={Boolean(orderProductCode)}
+        onOpenChange={(open) => {
+          if (!open) setOrderProductCode(null)
+        }}
+      />
+    </>
   )
 }

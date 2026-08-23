@@ -537,7 +537,10 @@ describe("resolveSidebarMenu", () => {
       true
     )
 
-    expect(projects.map((project) => project.name)).toEqual(["Back to Console"])
+    expect(projects.map((project) => project.name)).toEqual([
+      "Subscribe WhatsApp",
+      "Back to Console",
+    ])
   })
   it("marks pricing active for its routes", () => {
     const { navMain, navMainLabel } = resolveSidebarMenu({
