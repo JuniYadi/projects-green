@@ -60,15 +60,22 @@ jobs:
         run: bun run db:generate
 
       - name: Enforce changed logic coverage
+        id: changed_coverage
         if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
         run: bun run test:coverage:changed
 
       - name: Run full logic coverage
+        id: full_coverage
         if: ${{ github.event_name != 'pull_request' }}
+        continue-on-error: true
         run: bun run test:coverage
 
       - name: Check LCOV output
         id: lcov
+        if: always()
+        env:
+          REQUIRE_LCOV: ${{ github.event_name == 'push' }}
         run: |
           if test -s coverage/lcov.info; then
             echo "available=true" >> "$GITHUB_OUTPUT"
@@ -76,10 +83,13 @@ jobs:
           else
             echo "available=false" >> "$GITHUB_OUTPUT"
             echo "No non-empty LCOV output was generated for this test set."
+            if test "$REQUIRE_LCOV" = "true"; then
+              exit 1
+            fi
           fi
 
       - name: Upload coverage to Codecov
-        if: ${{ steps.lcov.outputs.available == 'true' }}
+        if: ${{ always() && steps.lcov.outputs.available == 'true' }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
         with:
           files: coverage/lcov.info
@@ -89,7 +99,20 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Enforce test policy
+        if: always()
         run: bun run test:policy
+
+      - name: Fail when coverage did not complete
+        if: >-
+          ${{
+            always() &&
+            (
+              steps.changed_coverage.outcome == 'failure' ||
+              steps.full_coverage.outcome == 'failure' ||
+              steps.lcov.outcome == 'failure'
+            )
+          }}
+        run: exit 1
 
   functional-smoke:
     name: Affected Functional Smoke

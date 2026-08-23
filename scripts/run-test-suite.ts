@@ -16,6 +16,7 @@ if (!suite || !["logic", "component", "all"].includes(suite)) {
 const testFiles = collectSuiteFiles(suite)
 const concurrency =
   process.env.TEST_CONCURRENCY?.trim() || (process.env.CI ? "8" : "2")
+const filesForRun = suite === "logic" && coverage ? [] : testFiles
 const preload = import.meta.dir + "/../test/setup.ts"
 if (coverage) {
   mkdirSync(resolve(process.cwd(), "coverage"), { recursive: true })
@@ -35,7 +36,7 @@ const args = [
   ...(coverage
     ? ["--coverage", "--coverage-reporter=text", "--coverage-reporter=lcov"]
     : []),
-  ...testFiles,
+  ...filesForRun,
   ...passthroughArgs,
 ]
 
