@@ -294,7 +294,9 @@ export function ServiceOrderDialog({
               phoneNumber: provisioningAnswers.phoneNumber,
               displayName: provisioningAnswers.displayName || undefined,
               profilePictureUrl:
-                provisioningAnswers.profilePictureUrl || undefined,
+                provisioningAnswers.profilePictureUrl ||
+                provisioningAnswers.profilePicture ||
+                undefined,
             }
           : undefined,
         metadata:
@@ -493,8 +495,8 @@ export function ServiceOrderDialog({
         ) : (
           /* ── 2-column layout ── */
           <div className="flex min-h-0 flex-1 overflow-hidden">
-            {/* ── LEFT: Plan selection + Service config (scrollable) ── */}
-            <div className="flex flex-1 flex-col gap-5 overflow-y-auto border-r px-6 py-5">
+            {/* ── LEFT: Plan selection + Service config ── */}
+            <div className="flex flex-1 flex-col gap-4 overflow-hidden border-r px-6 py-5">
               {/* Plan Selection Cards */}
               <div className="space-y-2">
                 <Label className="text-xs font-medium text-muted-foreground">
@@ -590,14 +592,14 @@ export function ServiceOrderDialog({
                 </div>
               )}
 
-              {/* Dynamic Service Configuration */}
+              {/* Dynamic Service Configuration (scrollable container) */}
               {dynamicFields.length > 0 && (
-                <div className="space-y-3 rounded-lg border bg-card p-4">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                <div className="flex min-h-0 flex-1 flex-col rounded-lg border bg-card p-4">
+                  <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-foreground">
                     <Sparkle className="h-4 w-4 text-primary" />
                     <span>Konfigurasi Layanan</span>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-3 overflow-y-auto pr-1">
                     {dynamicFields.map((field) => (
                       <div key={field.id || field.name} className="space-y-1.5">
                         <Label
