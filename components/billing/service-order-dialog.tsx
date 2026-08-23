@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import {
   Dialog,
   DialogContent,
+  DialogClose,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -11,6 +12,13 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -23,6 +31,7 @@ import {
   Receipt,
   Sparkle,
   Wallet,
+  X,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import {
@@ -50,12 +59,23 @@ function formatCurrency(amount: string, currency: string = "IDR"): string {
 }
 
 type ProvisioningFieldDef = {
-  id: string
+  id?: string
   name: string
   label: string
-  type: string
+  type:
+    | "text"
+    | "number"
+    | "email"
+    | "tel"
+    | "url"
+    | "select"
+    | "radio"
+    | "checkbox"
   placeholder?: string
+  helperText?: string
   required?: boolean
+  options?: string[]
+  validationPattern?: string
 }
 
 export type ServiceOrderDialogProps = {
@@ -211,34 +231,23 @@ export function ServiceOrderDialog({
   }
 
   const resources = (quotePreview?.resources ?? {}) as Record<string, unknown>
-  const dynamicFields: ProvisioningFieldDef[] =
-    Array.isArray(resources.provisioningFields) &&
-    (resources.provisioningFields as ProvisioningFieldDef[]).length > 0
-      ? (resources.provisioningFields as ProvisioningFieldDef[])
-      : productCode.toUpperCase() === "WHATSAPP"
-        ? [
-            {
-              id: "field-phone",
-              name: "phoneNumber",
-              label: "Nomor WhatsApp Device",
-              type: "text",
-              placeholder: "Contoh: +6281234567890",
-              required: true,
-            },
-            {
-              id: "field-name",
-              name: "displayName",
-              label: "Nama Tampilan Device (Opsional)",
-              type: "text",
-              placeholder: "Contoh: Customer Support Line",
-              required: false,
-            },
-          ]
-        : []
+  const dynamicFields: ProvisioningFieldDef[] = Array.isArray(
+    resources.provisioningFields
+  )
+    ? (resources.provisioningFields as ProvisioningFieldDef[])
+    : []
   const hasMissingRequiredFields = dynamicFields.some((f) => {
-    if (!f.required) return false
     const val = (formData[f.name] ?? "").trim()
-    return !val
+    if (f.required && !val) return true
+    if (val && f.validationPattern) {
+      try {
+        const regex = new RegExp(f.validationPattern)
+        if (!regex.test(val)) return true
+      } catch {
+        // Ignore invalid regex
+      }
+    }
+    return false
   })
   const handleApplyVoucher = (e: React.FormEvent) => {
     e.preventDefault()
@@ -267,20 +276,38 @@ export function ServiceOrderDialog({
     setSubmitError(null)
 
     try {
+      // Answers are scoped to the fields currently defined by the selected
+      // product (plan) so stale values from other plans never get submitted.
+      const provisioningAnswers: Record<string, string> = {}
+      for (const field of dynamicFields) {
+        const value = (formData[field.name] ?? "").trim()
+        if (value) provisioningAnswers[field.name] = value
+      }
       const result = await submitCheckout({
         pricingId: selectedPricingId,
         quoteToken: quotePreview.quoteToken,
         addonIds: selectedAddonIds.length > 0 ? selectedAddonIds : undefined,
         voucherCode: appliedVoucher || undefined,
         idempotencyKey,
-        device:
-          formData.phoneNumber || formData.displayName
+        device: provisioningAnswers.phoneNumber
+          ? {
+              phoneNumber: provisioningAnswers.phoneNumber,
+              displayName: provisioningAnswers.displayName || undefined,
+              profilePictureUrl:
+                provisioningAnswers.profilePictureUrl || undefined,
+            }
+          : undefined,
+        metadata:
+          Object.keys(provisioningAnswers).length > 0
             ? {
-                phoneNumber: formData.phoneNumber || "",
-                displayName: formData.displayName || undefined,
+                provisioningAnswers,
+                provisioningFieldsSchema: dynamicFields.map((f) => ({
+                  name: f.name,
+                  label: f.label,
+                  type: f.type,
+                })),
               }
             : undefined,
-        metadata: Object.keys(formData).length > 0 ? formData : undefined,
       })
       if (result.ok) {
         setSubmitSuccess(result)
@@ -306,10 +333,13 @@ export function ServiceOrderDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] max-w-xl flex-col overflow-hidden p-0">
+      <DialogContent
+        showCloseButton={false}
+        className="!flex !max-h-[92vh] min-h-[520px] w-[95vw] !max-w-4xl flex-col gap-0 !overflow-hidden !p-0"
+      >
         {/* Header */}
-        <DialogHeader className="border-b px-6 py-4 text-left">
-          <div className="flex items-center gap-2">
+        <DialogHeader className="relative border-b px-6 py-4 text-left">
+          <div className="flex items-center gap-2 pr-10">
             <Badge variant="outline" className="text-xs">
               {productCode}
             </Badge>
@@ -319,7 +349,7 @@ export function ServiceOrderDialog({
               </Badge>
             )}
           </div>
-          <DialogTitle className="text-lg font-semibold">
+          <DialogTitle className="pr-10 text-lg font-semibold">
             {submitSuccess
               ? "Layanan Berhasil Diaktifkan!"
               : `Aktivasi & Sambungkan ${productTitle || productInfo?.name || productCode}`}
@@ -329,11 +359,21 @@ export function ServiceOrderDialog({
               ? "Langganan Anda aktif dan siap langsung digunakan pada dashboard ini."
               : "Pilih paket langganan dan selesaikan aktivasi langsung tanpa berpindah halaman."}
           </DialogDescription>
+          <DialogClose asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="absolute top-4 right-4 bg-secondary"
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </Button>
+          </DialogClose>
         </DialogHeader>
 
-        {/* Body Content */}
-        <div className="flex-1 space-y-5 overflow-y-auto px-6 py-4">
-          {submitSuccess ? (
+        {submitSuccess ? (
+          /* ── Success state: single column (unchanged) ── */
+          <div className="flex-1 overflow-y-auto px-6 py-4">
             <div className="space-y-4 py-2 text-center">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
                 <CheckCircle className="h-8 w-8" weight="fill" />
@@ -347,7 +387,6 @@ export function ServiceOrderDialog({
                 </p>
               </div>
 
-              {/* Email & Invoice Notice Alert */}
               <Alert className="border-emerald-200 bg-emerald-50 text-left text-xs text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300">
                 <EnvelopeSimple className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 <AlertDescription className="ml-2 leading-relaxed">
@@ -356,7 +395,6 @@ export function ServiceOrderDialog({
                 </AlertDescription>
               </Alert>
 
-              {/* Order & Payment Summary Card */}
               <div className="space-y-2.5 rounded-lg border bg-muted/40 p-4 text-left text-xs">
                 <div className="flex items-center justify-between border-b pb-2">
                   <span className="text-muted-foreground">Status Pesanan</span>
@@ -420,7 +458,6 @@ export function ServiceOrderDialog({
                 </div>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex flex-col gap-2 pt-2 sm:flex-row">
                 {submitSuccess.ok && submitSuccess.invoiceId && (
                   <Button variant="outline" asChild className="flex-1">
@@ -438,26 +475,32 @@ export function ServiceOrderDialog({
                 </Button>
               </div>
             </div>
-          ) : catalogLoading ? (
-            <div className="space-y-4 px-6 py-4">
-              <Skeleton className="h-20 w-full" />
-              <Skeleton className="h-32 w-full" />
-              <Skeleton className="h-16 w-full" />
-            </div>
-          ) : catalogError ? (
+          </div>
+        ) : catalogLoading ? (
+          <div className="flex-1 space-y-4 px-6 py-4">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        ) : catalogError ? (
+          <div className="flex-1 px-6 py-4">
             <Alert variant="destructive">
               <AlertDescription className="text-xs">
                 {catalogError}
               </AlertDescription>
             </Alert>
-          ) : (
-            <>
+          </div>
+        ) : (
+          /* ── 2-column layout ── */
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            {/* ── LEFT: Plan selection + Service config (scrollable) ── */}
+            <div className="flex flex-1 flex-col gap-5 overflow-y-auto border-r px-6 py-5">
               {/* Plan Selection Cards */}
               <div className="space-y-2">
                 <Label className="text-xs font-medium text-muted-foreground">
                   PILIH PAKET LAYANAN
                 </Label>
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <div className="grid grid-cols-2 gap-2.5">
                   {plansList.map((plan) => {
                     const isSelected = plan.id === selectedPlanId
                     const offer = plan.offers?.[0]
@@ -511,7 +554,7 @@ export function ServiceOrderDialog({
                 </div>
               </div>
 
-              {/* Term switcher if the selected plan has multiple terms */}
+              {/* Term switcher */}
               {selectedPlan?.offers && selectedPlan.offers.length > 1 && (
                 <div className="space-y-2">
                   <Label className="text-xs font-medium text-muted-foreground">
@@ -547,7 +590,7 @@ export function ServiceOrderDialog({
                 </div>
               )}
 
-              {/* Dynamic Service Configuration / Provisioning Fields */}
+              {/* Dynamic Service Configuration */}
               {dynamicFields.length > 0 && (
                 <div className="space-y-3 rounded-lg border bg-card p-4">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
@@ -556,9 +599,9 @@ export function ServiceOrderDialog({
                   </div>
                   <div className="space-y-3">
                     {dynamicFields.map((field) => (
-                      <div key={field.name} className="space-y-1.5">
+                      <div key={field.id || field.name} className="space-y-1.5">
                         <Label
-                          htmlFor={`order-field-${field.name}`}
+                          htmlFor={`order-field-${field.id || field.name}`}
                           className="text-xs"
                         >
                           {field.label}
@@ -566,40 +609,201 @@ export function ServiceOrderDialog({
                             <span className="text-destructive"> *</span>
                           )}
                         </Label>
-                        <Input
-                          id={`order-field-${field.name}`}
-                          name={field.name}
-                          data-testid={`order-input-${field.name}`}
-                          type={field.type === "number" ? "number" : "text"}
-                          placeholder={
-                            field.placeholder ||
-                            (field.name === "phoneNumber"
-                              ? "Contoh: +6281234567890"
-                              : undefined)
-                          }
-                          value={formData[field.name] || ""}
-                          onChange={(e) => {
-                            const nextVal = e.target.value
-                            setFormData((prev) => ({
-                              ...prev,
-                              [field.name]: nextVal,
-                            }))
-                          }}
-                          className="h-8 text-xs"
-                        />
+                        {field.type === "select" ? (
+                          <div className="space-y-1">
+                            <Select
+                              value={formData[field.name] || ""}
+                              onValueChange={(nextVal) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  [field.name]: nextVal,
+                                }))
+                              }
+                            >
+                              <SelectTrigger
+                                id={`order-field-${field.id || field.name}`}
+                                data-testid={`order-input-${field.name}`}
+                                className="h-8 w-full text-xs"
+                              >
+                                <SelectValue
+                                  placeholder={
+                                    field.placeholder || "Pilih salah satu opsi"
+                                  }
+                                />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(field.options ?? []).map((opt) => (
+                                  <SelectItem
+                                    key={opt}
+                                    value={opt}
+                                    className="text-xs"
+                                  >
+                                    {opt}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {field.helperText && (
+                              <p className="text-[11px] leading-normal text-muted-foreground">
+                                {field.helperText}
+                              </p>
+                            )}
+                          </div>
+                        ) : field.type === "radio" ? (
+                          <div className="space-y-1">
+                            <div
+                              className="flex flex-wrap gap-4 pt-1"
+                              data-testid={`order-input-${field.name}`}
+                            >
+                              {(field.options ?? []).map((opt) => (
+                                <label
+                                  key={opt}
+                                  className="flex cursor-pointer items-center gap-2 text-xs"
+                                >
+                                  <input
+                                    type="radio"
+                                    name={`order-field-${field.id || field.name}`}
+                                    value={opt}
+                                    checked={
+                                      (formData[field.name] || "") === opt
+                                    }
+                                    onChange={() =>
+                                      setFormData((prev) => ({
+                                        ...prev,
+                                        [field.name]: opt,
+                                      }))
+                                    }
+                                  />
+                                  {opt}
+                                </label>
+                              ))}
+                            </div>
+                            {field.helperText && (
+                              <p className="text-[11px] leading-normal text-muted-foreground">
+                                {field.helperText}
+                              </p>
+                            )}
+                          </div>
+                        ) : field.type === "checkbox" ? (
+                          <div className="space-y-1">
+                            <div
+                              className="space-y-2 pt-1"
+                              data-testid={`order-input-${field.name}`}
+                            >
+                              {!field.options || field.options.length <= 1 ? (
+                                <label className="flex cursor-pointer items-center gap-2 text-xs">
+                                  <input
+                                    type="checkbox"
+                                    name={`order-field-${field.id || field.name}`}
+                                    checked={Boolean(formData[field.name])}
+                                    onChange={(e) =>
+                                      setFormData((prev) => ({
+                                        ...prev,
+                                        [field.name]: e.target.checked
+                                          ? field.options?.[0] || "true"
+                                          : "",
+                                      }))
+                                    }
+                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                  />
+                                  <span>
+                                    {field.options?.[0] || field.label}
+                                  </span>
+                                </label>
+                              ) : (
+                                <div className="flex flex-wrap gap-3">
+                                  {field.options.map((opt) => {
+                                    const currentSelected = (
+                                      formData[field.name] || ""
+                                    )
+                                      .split(",")
+                                      .map((s) => s.trim())
+                                      .filter(Boolean)
+                                    const isChecked =
+                                      currentSelected.includes(opt)
+                                    return (
+                                      <label
+                                        key={opt}
+                                        className="flex cursor-pointer items-center gap-2 text-xs"
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          name={`order-field-${field.id || field.name}`}
+                                          value={opt}
+                                          checked={isChecked}
+                                          onChange={(e) => {
+                                            const next = e.target.checked
+                                              ? [...currentSelected, opt]
+                                              : currentSelected.filter(
+                                                  (s) => s !== opt
+                                                )
+                                            setFormData((prev) => ({
+                                              ...prev,
+                                              [field.name]: next.join(", "),
+                                            }))
+                                          }}
+                                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                        />
+                                        <span>{opt}</span>
+                                      </label>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                            {field.helperText && (
+                              <p className="text-[11px] leading-normal text-muted-foreground">
+                                {field.helperText}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <Input
+                              id={`order-field-${field.id || field.name}`}
+                              name={field.name}
+                              data-testid={`order-input-${field.name}`}
+                              type={field.type === "tel" ? "tel" : field.type}
+                              placeholder={field.placeholder || undefined}
+                              value={formData[field.name] || ""}
+                              onChange={(e) => {
+                                const nextVal = e.target.value
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  [field.name]: nextVal,
+                                }))
+                              }}
+                              className="h-8 text-xs"
+                            />
+                            {field.helperText && (
+                              <p className="text-[11px] leading-normal text-muted-foreground">
+                                {field.helperText}
+                              </p>
+                            )}
+                            {Boolean(
+                              formData[field.name] &&
+                              field.validationPattern &&
+                              !(() => {
+                                try {
+                                  return new RegExp(
+                                    field.validationPattern
+                                  ).test(formData[field.name])
+                                } catch {
+                                  return true
+                                }
+                              })()
+                            ) && (
+                              <p className="text-[11px] text-destructive">
+                                Format input tidak valid sesuai pola yang
+                                ditentukan.
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
-              )}
-
-              {/* Quote Error */}
-              {quoteError && (
-                <Alert variant="destructive">
-                  <AlertDescription className="text-xs">
-                    {quoteError}
-                  </AlertDescription>
-                </Alert>
               )}
 
               {/* Available Addons */}
@@ -653,53 +857,20 @@ export function ServiceOrderDialog({
                   </div>
                 )}
 
-              {/* Voucher Code Form */}
-              <div className="space-y-2">
-                <Label className="text-xs font-medium text-muted-foreground">
-                  KODE PROMO / VOUCHER
-                </Label>
-                {appliedVoucher ? (
-                  <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-800 dark:text-emerald-300">
-                    <div className="flex items-center gap-1.5 font-medium">
-                      <Sparkle className="h-4 w-4 text-emerald-600" />
-                      <span>Voucher aktif: {appliedVoucher}</span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleRemoveVoucher}
-                      className="h-6 px-2 text-xs text-destructive hover:bg-destructive/10"
-                    >
-                      Hapus
-                    </Button>
-                  </div>
-                ) : (
-                  <form onSubmit={handleApplyVoucher} className="flex gap-2">
-                    <Input
-                      placeholder="Masukkan kode promo"
-                      value={voucherInput}
-                      onChange={(e) => setVoucherInput(e.target.value)}
-                      className="h-8 text-xs"
-                    />
-                    <Button
-                      type="submit"
-                      variant="outline"
-                      size="sm"
-                      disabled={!voucherInput.trim()}
-                      className="h-8 text-xs"
-                    >
-                      Terapkan
-                    </Button>
-                  </form>
-                )}
-                {voucherError && (
-                  <p className="text-[11px] text-destructive">{voucherError}</p>
-                )}
-              </div>
+              {/* Quote Error */}
+              {quoteError && (
+                <Alert variant="destructive">
+                  <AlertDescription className="text-xs">
+                    {quoteError}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
 
-              {/* Summary Breakdown */}
-              <div className="space-y-2 rounded-lg border bg-muted/40 p-3 text-xs">
+            {/* ── RIGHT: Summary + Voucher + CTA (sticky, no scroll) ── */}
+            <div className="flex w-80 shrink-0 flex-col gap-3 overflow-y-auto border-l bg-muted px-5 py-5">
+              {/* Cost Summary */}
+              <div className="space-y-2 rounded-lg border bg-background p-3 text-xs">
                 <div className="font-medium text-foreground">
                   Ringkasan Biaya
                 </div>
@@ -777,7 +948,52 @@ export function ServiceOrderDialog({
                 ) : null}
               </div>
 
-              {/* Wallet Balance Gate Notice */}
+              {/* Voucher */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  KODE PROMO / VOUCHER
+                </Label>
+                {appliedVoucher ? (
+                  <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-800 dark:text-emerald-300">
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <Sparkle className="h-4 w-4 text-emerald-600" />
+                      <span>Voucher aktif: {appliedVoucher}</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveVoucher}
+                      className="h-6 px-2 text-xs text-destructive hover:bg-destructive/10"
+                    >
+                      Hapus
+                    </Button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleApplyVoucher} className="flex gap-2">
+                    <Input
+                      placeholder="Masukkan kode promo"
+                      value={voucherInput}
+                      onChange={(e) => setVoucherInput(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      size="sm"
+                      disabled={!voucherInput.trim()}
+                      className="h-8 text-xs"
+                    >
+                      Terapkan
+                    </Button>
+                  </form>
+                )}
+                {voucherError && (
+                  <p className="text-[11px] text-destructive">{voucherError}</p>
+                )}
+              </div>
+
+              {/* Wallet confirmation */}
               <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs">
                 <div className="flex items-center gap-2 font-medium text-foreground">
                   <Wallet className="h-4 w-4 text-primary" />
@@ -813,44 +1029,44 @@ export function ServiceOrderDialog({
                   </AlertDescription>
                 </Alert>
               )}
-            </>
-          )}
-        </div>
 
-        {/* Footer Actions */}
-        {!submitSuccess && (
-          <div className="flex items-center justify-end gap-2 border-t bg-background px-6 py-3.5">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              Batal
-            </Button>
-            <Button
-              size="sm"
-              data-testid="order-submit-button"
-              disabled={
-                !confirmed ||
-                hasMissingRequiredFields ||
-                isSubmitting ||
-                quoteLoading ||
-                !quotePreview ||
-                !selectedPricingId
-              }
-              onClick={handleCheckoutSubmit}
-            >
-              {isSubmitting ? (
-                <span className="flex items-center gap-2">
-                  <ArrowCounterClockwise className="h-4 w-4 animate-spin" />
-                  Memproses Aktivasi...
-                </span>
-              ) : (
-                "Aktifkan Layanan Sekarang"
-              )}
-            </Button>
+              {/* CTA Buttons */}
+              <div className="mt-auto flex flex-col gap-2 pt-2">
+                <Button
+                  size="sm"
+                  data-testid="order-submit-button"
+                  disabled={
+                    !confirmed ||
+                    hasMissingRequiredFields ||
+                    isSubmitting ||
+                    quoteLoading ||
+                    !quotePreview ||
+                    !selectedPricingId
+                  }
+                  onClick={handleCheckoutSubmit}
+                  className="w-full"
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center gap-2">
+                      <ArrowCounterClockwise className="h-4 w-4 animate-spin" />
+                      Memproses Aktivasi...
+                    </span>
+                  ) : (
+                    "Aktifkan Layanan Sekarang"
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onOpenChange(false)}
+                  disabled={isSubmitting}
+                  className="w-full"
+                >
+                  Batal
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </DialogContent>

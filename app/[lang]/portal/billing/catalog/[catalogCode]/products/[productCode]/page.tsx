@@ -104,10 +104,20 @@ export default function ProductDetailPage() {
     id: string
     name: string
     label: string
-    type: "text" | "number" | "email" | "url" | "select" | "radio"
+    type:
+      | "text"
+      | "number"
+      | "email"
+      | "tel"
+      | "url"
+      | "select"
+      | "radio"
+      | "checkbox"
     placeholder?: string
+    helperText?: string // Instructional description rendered under the input
     required: boolean
-    options?: string[] // For select and radio types
+    options?: string[] // For select, radio, and multi-choice checkbox
+    validationPattern?: string // Regex pattern (e.g. ^\+?[0-9]{8,15}$)
   }
 
   const [provisioningFields, setProvisioningFields] = useState<
@@ -864,9 +874,9 @@ export default function ProductDetailPage() {
               <div>
                 <CardTitle>Checkout & Provisioning Form Fields</CardTitle>
                 <CardDescription>
-                  Define dynamic custom form fields (text, number, email, URL,
-                  dropdown, radio) that users must fill out when checking out
-                  this plan.
+                  Define dynamic custom form fields (text, number, email, phone
+                  / tel, URL, dropdown, radio, checkbox) that users must fill
+                  out when checking out this plan.
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
@@ -1004,9 +1014,13 @@ export default function ProductDetailPage() {
                             <SelectItem value="text">Text</SelectItem>
                             <SelectItem value="number">Number</SelectItem>
                             <SelectItem value="email">Email</SelectItem>
+                            <SelectItem value="tel">
+                              Phone Number (Tel)
+                            </SelectItem>
                             <SelectItem value="url">Link / URL</SelectItem>
                             <SelectItem value="select">Dropdown</SelectItem>
                             <SelectItem value="radio">Radio Group</SelectItem>
+                            <SelectItem value="checkbox">Checkbox</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1051,11 +1065,15 @@ export default function ProductDetailPage() {
                       </Button>
                     </div>
 
-                    {/* Placeholder for text inputs or options for dropdown / radio */}
-                    {field.type === "select" || field.type === "radio" ? (
+                    {/* Options for dropdown, radio, or multi-option checkbox */}
+                    {field.type === "select" ||
+                    field.type === "radio" ||
+                    field.type === "checkbox" ? (
                       <div className="space-y-1">
                         <Label className="text-[11px] text-muted-foreground">
-                          Comma-separated Options
+                          {field.type === "checkbox"
+                            ? "Checkbox Options (comma-separated if multiple, or single label like 'Saya menyetujui')"
+                            : "Comma-separated Options"}
                         </Label>
                         <Input
                           value={(field.options ?? []).join(", ")}
@@ -1074,24 +1092,109 @@ export default function ProductDetailPage() {
                           className="h-7 text-xs"
                         />
                       </div>
+                    ) : null}
+
+                    {/* Placeholder for text, number, email, tel, url, or select */}
+                    {field.type === "text" ||
+                    field.type === "number" ||
+                    field.type === "email" ||
+                    field.type === "tel" ||
+                    field.type === "url" ||
+                    field.type === "select" ? (
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <Label className="text-[11px] text-muted-foreground">
+                            Placeholder (Short format hint inside box)
+                          </Label>
+                          <Input
+                            value={field.placeholder ?? ""}
+                            onChange={(e) =>
+                              setProvisioningFields((prev) =>
+                                prev.map((item, i) =>
+                                  i === idx
+                                    ? { ...item, placeholder: e.target.value }
+                                    : item
+                                )
+                              )
+                            }
+                            placeholder={
+                              field.type === "select"
+                                ? "e.g. Choose a category..."
+                                : field.type === "tel"
+                                  ? "e.g. +6281234567890"
+                                  : "e.g. Enter value..."
+                            }
+                            className="h-7 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[11px] text-muted-foreground">
+                            Helper Text (Instruction text below input)
+                          </Label>
+                          <Input
+                            value={field.helperText ?? ""}
+                            onChange={(e) =>
+                              setProvisioningFields((prev) =>
+                                prev.map((item, i) =>
+                                  i === idx
+                                    ? { ...item, helperText: e.target.value }
+                                    : item
+                                )
+                              )
+                            }
+                            placeholder="e.g. Please provide your business WhatsApp number..."
+                            className="h-7 text-xs"
+                          />
+                        </div>
+                      </div>
                     ) : (
+                      /* For radio/checkbox that doesn't have an input box, allow helperText if needed */
                       <div className="space-y-1">
                         <Label className="text-[11px] text-muted-foreground">
-                          Placeholder Text
+                          Helper Text (Optional instruction text below)
                         </Label>
                         <Input
-                          value={field.placeholder ?? ""}
+                          value={field.helperText ?? ""}
                           onChange={(e) =>
                             setProvisioningFields((prev) =>
                               prev.map((item, i) =>
                                 i === idx
-                                  ? { ...item, placeholder: e.target.value }
+                                  ? { ...item, helperText: e.target.value }
                                   : item
                               )
                             )
                           }
-                          placeholder="e.g. Enter value..."
+                          placeholder="e.g. Terms must be agreed before checkout..."
                           className="h-7 text-xs"
+                        />
+                      </div>
+                    )}
+
+                    {/* Validation pattern for text / tel / url / email */}
+                    {(field.type === "text" ||
+                      field.type === "tel" ||
+                      field.type === "number" ||
+                      field.type === "url") && (
+                      <div className="space-y-1">
+                        <Label className="text-[11px] text-muted-foreground">
+                          Validation Pattern (Regex / Format Rule)
+                        </Label>
+                        <Input
+                          value={field.validationPattern ?? ""}
+                          onChange={(e) =>
+                            setProvisioningFields((prev) =>
+                              prev.map((item, i) =>
+                                i === idx
+                                  ? {
+                                      ...item,
+                                      validationPattern: e.target.value,
+                                    }
+                                  : item
+                              )
+                            )
+                          }
+                          placeholder="e.g. ^\+?[0-9]{8,15}$ (Phone) or ^[A-Za-z0-9_]+$"
+                          className="h-7 font-mono text-xs"
                         />
                       </div>
                     )}
