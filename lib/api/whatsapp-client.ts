@@ -244,7 +244,7 @@ export const whatsappClient = {
       ),
     create: (input: any) =>
       serverFetch<{ ok: boolean; message: WhatsAppMessage }>(
-        "/api/whatsapp/messages",
+        "/api/whatsapp/messages/internal",
         {
           method: "POST",
           body: JSON.stringify(input),
