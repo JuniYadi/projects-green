@@ -219,6 +219,26 @@ export async function processInboundMessage(
         )
       )
   }
+  // Fire-and-forget: AI Bot Agent evaluation if text message
+  if (body) {
+    import("@/modules/whatsapp/ai-bot-consumer.service")
+      .then(({ processWhatsappAiBotInbound }) =>
+        processWhatsappAiBotInbound({
+          organizationId,
+          deviceId,
+          contactPhone: normalizedPhone,
+          inboundMessageText: body,
+          conversationId: conversation.id,
+          inboundMessageId: whatsappMessage.id,
+        })
+      )
+      .catch((err: unknown) =>
+        console.error(
+          `[webhooks] AI bot consumer error device=${deviceId} org=${organizationId}`,
+          err
+        )
+      )
+  }
 
   return {
     messageId: whatsappMessage.id,
