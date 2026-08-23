@@ -219,7 +219,8 @@ export async function processInboundMessage(
         )
       )
   }
-  // Fire-and-forget: Execute visual WhatsApp Bot Workflow Engine (if configured)
+  // Fire-and-forget: Automated bot evaluation (Workflow Engine first -> AI Bot fallback)
+  // DEBT: Inbound bot pipeline uses async dynamic imports | Fix when: Unified bot event dispatcher queue is extracted
   if (body || payload.interactive) {
     const buttonPayload =
       payload.interactive?.button_reply?.id ||
@@ -227,38 +228,32 @@ export async function processInboundMessage(
       undefined
 
     import("@/modules/whatsapp/workflow/workflow-runner")
-      .then(({ processWhatsappWorkflowInbound }) =>
-        processWhatsappWorkflowInbound({
+      .then(async ({ processWhatsappWorkflowInbound }) => {
+        const wfResult = await processWhatsappWorkflowInbound({
           organizationId,
           deviceId,
           contactPhone: normalizedPhone,
           inboundMessageText: body || "",
           buttonPayload,
         })
-      )
+
+        // Only fallback to AI Agent if Workflow didn't handle the message
+        if (!wfResult.handled && body) {
+          const { processWhatsappAiBotInbound } =
+            await import("@/modules/whatsapp/ai-bot-consumer.service")
+          await processWhatsappAiBotInbound({
+            organizationId,
+            deviceId,
+            contactPhone: normalizedPhone,
+            inboundMessageText: body,
+            conversationId: conversation.id,
+            inboundMessageId: whatsappMessage.id,
+          })
+        }
+      })
       .catch((err: unknown) =>
         console.error(
-          `[webhooks] workflow runner error device=${deviceId} org=${organizationId}`,
-          err
-        )
-      )
-  }
-  // Fire-and-forget: AI Bot Agent evaluation if text message
-  if (body) {
-    import("@/modules/whatsapp/ai-bot-consumer.service")
-      .then(({ processWhatsappAiBotInbound }) =>
-        processWhatsappAiBotInbound({
-          organizationId,
-          deviceId,
-          contactPhone: normalizedPhone,
-          inboundMessageText: body,
-          conversationId: conversation.id,
-          inboundMessageId: whatsappMessage.id,
-        })
-      )
-      .catch((err: unknown) =>
-        console.error(
-          `[webhooks] AI bot consumer error device=${deviceId} org=${organizationId}`,
+          `[webhooks] bot dispatch error device=${deviceId} org=${organizationId}`,
           err
         )
       )
