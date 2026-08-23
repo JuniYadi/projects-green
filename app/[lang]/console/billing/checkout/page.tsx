@@ -7,15 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ArrowCounterClockwise, WalletIcon } from "@phosphor-icons/react"
@@ -25,7 +17,11 @@ import {
   type CheckoutPreview,
   type CheckoutResult,
 } from "./checkout-client"
-import { formatKey } from "@/lib/format-key"
+import {
+  ProvisioningFieldDef,
+  ProvisioningFormField,
+  matchesPattern,
+} from "@/components/billing/provisioning-form-field"
 
 function formatCurrency(amount: string, currency: string = "IDR"): string {
   const safeCurrency =
@@ -47,20 +43,18 @@ function formatDate(iso: string | null): string {
   }).format(new Date(iso))
 }
 
+function formatKey(key: string): string {
+  return key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/[_-]/g, " ")
+    .trim()
+    .replace(/^\w/, (c) => c.toUpperCase())
+}
+
 function isRetryable(errorCode: string): boolean {
   return (
     errorCode === "INSUFFICIENT_BALANCE" || errorCode === "ORDER_NOT_CHARGEABLE"
   )
-}
-
-type ProvisioningFieldDef = {
-  id: string
-  name: string
-  label: string
-  type: "text" | "number" | "email" | "url" | "select" | "radio"
-  placeholder?: string
-  required: boolean
-  options?: string[]
 }
 
 export default function CheckoutPage() {
@@ -100,13 +94,26 @@ export default function CheckoutPage() {
     : []
 
   const showDynamicForm = dynamicFields.length > 0
-  const hasMissingRequiredFields = dynamicFields.some(
-    (f) =>
-      f.required &&
-      !(f.name === "phoneNumber"
-        ? phoneNumber.trim()
-        : formData[f.name]?.trim())
-  )
+  const hasMissingRequiredFields = dynamicFields.some((f) => {
+    const val = (
+      f.name === "phoneNumber"
+        ? phoneNumber
+        : f.name === "displayName"
+          ? displayName
+          : f.name === "profilePicture" || f.name === "profilePictureUrl"
+            ? profilePictureUrl
+            : (formData[f.name] ?? "")
+    ).trim()
+    if (f.required && !val) return true
+    if (
+      val &&
+      f.validationPattern &&
+      !matchesPattern(val, f.validationPattern)
+    ) {
+      return true
+    }
+    return false
+  })
   const hasPricing = Boolean(activePricingId)
 
   const isVoucherError = (code?: string) =>
@@ -416,7 +423,8 @@ export default function CheckoutPage() {
                           ? phoneNumber
                           : field.name === "displayName"
                             ? displayName
-                            : field.name === "profilePictureUrl"
+                            : field.name === "profilePicture" ||
+                                field.name === "profilePictureUrl"
                               ? profilePictureUrl
                               : (formData[field.name] ?? "")
 
@@ -425,7 +433,10 @@ export default function CheckoutPage() {
                           setPhoneNumber(nextVal)
                         else if (field.name === "displayName")
                           setDisplayName(nextVal)
-                        else if (field.name === "profilePictureUrl")
+                        else if (
+                          field.name === "profilePicture" ||
+                          field.name === "profilePictureUrl"
+                        )
                           setProfilePictureUrl(nextVal)
                         else
                           setFormData((prev) => ({
@@ -443,74 +454,14 @@ export default function CheckoutPage() {
                               : "space-y-1.5"
                           }
                         >
-                          <Label
-                            htmlFor={`field-${field.id}`}
-                            className="text-xs font-medium"
-                          >
-                            {field.label}{" "}
-                            {field.required && (
-                              <span className="text-destructive">*</span>
-                            )}
-                          </Label>
-
-                          {field.type === "select" ? (
-                            <Select value={val} onValueChange={onChangeVal}>
-                              <SelectTrigger
-                                id={`field-${field.id}`}
-                                className="w-full text-xs"
-                              >
-                                <SelectValue
-                                  placeholder={
-                                    field.placeholder || "Select an option"
-                                  }
-                                />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {(field.options ?? []).map((opt) => (
-                                  <SelectItem
-                                    key={opt}
-                                    value={opt}
-                                    className="text-xs"
-                                  >
-                                    {opt}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : field.type === "radio" ? (
-                            <div className="flex flex-wrap gap-4 pt-1">
-                              {(field.options ?? []).map((opt) => (
-                                <label
-                                  key={opt}
-                                  className="flex cursor-pointer items-center gap-2 text-xs"
-                                >
-                                  <input
-                                    type="radio"
-                                    name={`field-${field.id}`}
-                                    value={opt}
-                                    checked={val === opt}
-                                    onChange={() => onChangeVal(opt)}
-                                  />
-                                  {opt}
-                                </label>
-                              ))}
-                            </div>
-                          ) : (
-                            <Input
-                              id={`field-${field.id}`}
-                              type={field.type}
-                              value={val}
-                              onChange={(e) => onChangeVal(e.target.value)}
-                              onInput={(e) =>
-                                onChangeVal(
-                                  (e.target as HTMLInputElement).value
-                                )
-                              }
-                              placeholder={field.placeholder || undefined}
-                              required={field.required}
-                              className="text-xs"
-                            />
-                          )}
+                          <ProvisioningFormField
+                            field={field}
+                            value={val}
+                            onChange={onChangeVal}
+                            testIdPrefix="checkout"
+                            idPrefix="field"
+                            validationErrorMessage="Format input tidak valid sesuai pola yang ditentukan."
+                          />
                         </div>
                       )
                     })}
