@@ -219,6 +219,30 @@ export async function processInboundMessage(
         )
       )
   }
+  // Fire-and-forget: Execute visual WhatsApp Bot Workflow Engine (if configured)
+  if (body || payload.interactive) {
+    const buttonPayload =
+      payload.interactive?.button_reply?.id ||
+      payload.interactive?.list_reply?.id ||
+      undefined
+
+    import("@/modules/whatsapp/workflow/workflow-runner")
+      .then(({ processWhatsappWorkflowInbound }) =>
+        processWhatsappWorkflowInbound({
+          organizationId,
+          deviceId,
+          contactPhone: normalizedPhone,
+          inboundMessageText: body || "",
+          buttonPayload,
+        })
+      )
+      .catch((err: unknown) =>
+        console.error(
+          `[webhooks] workflow runner error device=${deviceId} org=${organizationId}`,
+          err
+        )
+      )
+  }
   // Fire-and-forget: AI Bot Agent evaluation if text message
   if (body) {
     import("@/modules/whatsapp/ai-bot-consumer.service")
