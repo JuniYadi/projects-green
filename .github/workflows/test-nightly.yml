@@ -16,7 +16,7 @@ jobs:
     env:
       TZ: UTC
       CI: "true"
-      TEST_CONCURRENCY: "8"
+      TEST_CONCURRENCY: "4"
       FUNCTIONAL_TEST_MODE: "true"
 
     steps:
