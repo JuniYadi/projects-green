@@ -5,7 +5,6 @@ import {
   WorkflowDefinitionSchema,
   type WorkflowDefinition,
   type WorkflowNode,
-  type WorkflowSessionState,
 } from "./workflow.schema"
 
 export type ProcessWorkflowInboundOptions = {
@@ -67,8 +66,10 @@ export async function processWhatsappWorkflowInbound(
       contactPhone
     )
     let workflow: WorkflowDefinition | null = null
+    let isResume = false
 
     if (session && session.status === "PAUSED" && session.currentNodeId) {
+      isResume = true
       // Find workflow definition from database / cache
       const dbWorkflow = await prisma.whatsappDevice.findUnique({
         where: { id: deviceId },
@@ -83,6 +84,7 @@ export async function processWhatsappWorkflowInbound(
 
     // 4. If no active session, find matching trigger keyword on this device's workflow
     if (!session || !workflow) {
+      isResume = false
       const dbDevice = await prisma.whatsappDevice.findUnique({
         where: { id: deviceId },
         select: { features: true },
@@ -136,7 +138,6 @@ export async function processWhatsappWorkflowInbound(
 
     // 5. Execute Graph Loop
     let currentNodeId: string | null = session.currentNodeId
-    let isResume = session.status === "PAUSED"
     const maxSteps = 20
     let stepCount = 0
 
@@ -166,7 +167,7 @@ export async function processWhatsappWorkflowInbound(
         inboundAnswer: isResume ? cleanText : undefined,
       })
 
-      // Turn off resume flag after first execution step
+      // Only the initial step on resume consumes the inbound answer
       isResume = false
 
       // Update captured variables and step outputs
@@ -191,7 +192,6 @@ export async function processWhatsappWorkflowInbound(
         }
       }
 
-      // Find next edge from current node with matching outputPort
       // Find next edge from current node with exact matching outputPort, or fallback to default
       const outgoingEdge =
         workflow.edges.find(
