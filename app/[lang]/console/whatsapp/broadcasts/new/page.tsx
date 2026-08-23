@@ -2,18 +2,12 @@
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
+import { Warning } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import {
   Card,
   CardContent,
@@ -22,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -30,24 +25,49 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
+  parseCsvRecipients,
+  parseManualRecipients,
+  type CsvRecipient,
+} from "@/lib/whatsapp-phone-sanitizer"
+import {
   whatsappClient,
   type Contact,
+  type CreateBroadcastInput,
   type Device,
-  type Template,
   type DeviceBroadcastCapacity,
-  type BroadcastScheduleRecommendation,
+  type Template,
 } from "@/modules/whatsapp/whatsapp-client"
-type RecipientSource = "contacts" | "manual"
 
-function parseRecipients(value: string) {
-  return value
-    .split(/\r?\n|,/)
-    .map((phoneNumber) => phoneNumber.trim())
-    .filter(Boolean)
-    .map((phoneNumber) => ({ phoneNumber }))
+type RecipientTab = "manual" | "contacts" | "csv"
+
+type BroadcastRecipientInput = CreateBroadcastInput["recipients"][number]
+
+const THROTTLE_PER_MINUTES = 60
+const FALLBACK_THROTTLE_MAX_MESSAGES = 40
+const PLACEHOLDER_PATTERN = /\{\{(\d+)\}\}/g
+
+function extractPlaceholders(body?: string | null): string[] {
+  if (!body) {
+    return []
+  }
+  const found = new Set<string>()
+  for (const match of body.matchAll(PLACEHOLDER_PATTERN)) {
+    found.add(match[1])
+  }
+  return [...found].sort((a, b) => Number(a) - Number(b))
+}
+
+function formatDuration(minutes: number): string {
+  if (minutes < 60) {
+    return `~${minutes} menit`
+  }
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  return rest > 0 ? `~${hours} jam ${rest} menit` : `~${hours} jam`
 }
 
 export default function NewWhatsAppBroadcastPage() {
@@ -58,28 +78,30 @@ export default function NewWhatsAppBroadcastPage() {
     pathname: "/console/whatsapp/broadcasts",
     locale,
   })
+
   const [templates, setTemplates] = React.useState<Template[]>([])
   const [devices, setDevices] = React.useState<Device[]>([])
   const [contacts, setContacts] = React.useState<Contact[]>([])
   const [templateId, setTemplateId] = React.useState("")
   const [templateLanguage, setTemplateLanguage] = React.useState("")
   const [deviceId, setDeviceId] = React.useState("")
-  const [recipientSource, setRecipientSource] =
-    React.useState<RecipientSource>("manual")
+  const [recipientTab, setRecipientTab] = React.useState<RecipientTab>("manual")
+  const [manualRecipients, setManualRecipients] = React.useState("")
   const [selectedContactIds, setSelectedContactIds] = React.useState<
     Set<string>
   >(new Set())
-  const [manualRecipients, setManualRecipients] = React.useState("")
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [contactSearch, setContactSearch] = React.useState("")
+  const [csvFileName, setCsvFileName] = React.useState("")
+  const [csvRows, setCsvRows] = React.useState<CsvRecipient[]>([])
+  const [variableValues, setVariableValues] = React.useState<
+    Record<string, string>
+  >({})
   const [capacity, setCapacity] =
     React.useState<DeviceBroadcastCapacity | null>(null)
-  const [, setRecommendation] =
-    React.useState<BroadcastScheduleRecommendation | null>(null)
-  const [throttleMaxMessages, setThrottleMaxMessages] =
-    React.useState<number>(0)
-  const [throttlePerMinutes, setThrottlePerMinutes] = React.useState<number>(60)
-  const [showConfirmModal, setShowConfirmModal] = React.useState(false)
   const [acknowledgeMultiDay, setAcknowledgeMultiDay] = React.useState(false)
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
+
+  // ─── Derived form data ──────────────────────────────────────────────
 
   const selectedTemplate = (templates ?? []).find(
     (template) => template.id === templateId
@@ -88,43 +110,137 @@ export default function NewWhatsAppBroadcastPage() {
     () => selectedTemplate?.languages ?? [],
     [selectedTemplate]
   )
+  const selectedLanguageBody = React.useMemo(
+    () =>
+      selectedTemplate?.languages.find(
+        (language) => language.lang === templateLanguage
+      )?.body,
+    [selectedTemplate, templateLanguage]
+  )
+  const placeholders = React.useMemo(
+    () => extractPlaceholders(selectedLanguageBody),
+    [selectedLanguageBody]
+  )
 
-  const selectedContactPhones = React.useMemo(() => {
-    return contacts
-      .filter((c) => selectedContactIds.has(c.id))
-      .map((c) => c.phoneNumber)
-  }, [contacts, selectedContactIds])
+  const manualParsed = React.useMemo(
+    () => parseManualRecipients(manualRecipients),
+    [manualRecipients]
+  )
+  const validManualCount = manualParsed.filter((r) => r.isValid).length
+  const invalidManualCount = manualParsed.length - validManualCount
 
-  const allContactsSelected =
-    contacts.length > 0 && selectedContactIds.size === contacts.length
-
-  const totalRecipients = React.useMemo(() => {
-    return (
-      selectedContactPhones.length + parseRecipients(manualRecipients).length
-    )
-  }, [selectedContactPhones, manualRecipients])
-
-  const effectiveDeviceId = deviceId || selectedTemplate?.whatsappDeviceId
-  const hasScheduleInputs = Boolean(effectiveDeviceId && totalRecipients > 0)
-  function toggleContact(id: string) {
-    setSelectedContactIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
-      return next
-    })
-  }
-
-  function toggleAllContacts() {
-    if (allContactsSelected) {
-      setSelectedContactIds(new Set())
-    } else {
-      setSelectedContactIds(new Set(contacts.map((c) => c.id)))
+  const filteredContacts = React.useMemo(() => {
+    const query = contactSearch.trim().toLowerCase()
+    if (!query) {
+      return contacts
     }
-  }
+    return contacts.filter(
+      (contact) =>
+        contact.name.toLowerCase().includes(query) ||
+        contact.phoneNumber.toLowerCase().includes(query)
+    )
+  }, [contacts, contactSearch])
+  const allVisibleSelected =
+    filteredContacts.length > 0 &&
+    filteredContacts.every((contact) => selectedContactIds.has(contact.id))
+  const selectedContactCount = selectedContactIds.size
+
+  const validCsvRows = React.useMemo(
+    () => csvRows.filter((row) => row.isValid),
+    [csvRows]
+  )
+  const invalidCsvCount = csvRows.length - validCsvRows.length
+  const csvColumns = React.useMemo(() => {
+    const hasNameColumn = csvRows.some((row) => row.name)
+    return [
+      "Nomor WhatsApp",
+      ...(hasNameColumn ? ["Nama"] : []),
+      ...Object.keys(csvRows[0]?.dynamicValues ?? {}),
+    ]
+  }, [csvRows])
+
+  const activeRecipients = React.useMemo<BroadcastRecipientInput[]>(() => {
+    if (recipientTab === "contacts") {
+      return contacts
+        .filter((contact) => selectedContactIds.has(contact.id))
+        .map((contact) => ({
+          phoneNumber: contact.phoneNumber,
+          name: contact.name || undefined,
+          dynamicValues:
+            contact.dynamicValues && Object.keys(contact.dynamicValues).length
+              ? contact.dynamicValues
+              : variableValues,
+        }))
+    }
+    if (recipientTab === "csv") {
+      return validCsvRows.map((row) => {
+        const rowValues = Object.values(row.dynamicValues)
+        const mappedValues: Record<string, string> = {}
+
+        if (rowValues.length > 0) {
+          // Positional mapping: assign CSV extra columns to template placeholders {{1}}, {{2}}, ... in order
+          placeholders.forEach((placeholder, index) => {
+            if (rowValues[index] !== undefined && rowValues[index] !== "") {
+              mappedValues[placeholder] = rowValues[index]
+            } else if (variableValues[placeholder]) {
+              mappedValues[placeholder] = variableValues[placeholder]
+            }
+          })
+        }
+
+        return {
+          phoneNumber: row.phoneNumber,
+          name: row.name || undefined,
+          dynamicValues:
+            Object.keys(mappedValues).length > 0
+              ? mappedValues
+              : variableValues,
+        }
+      })
+    }
+    return manualParsed
+      .filter((entry) => entry.isValid)
+      .map((entry) => ({
+        phoneNumber: entry.phoneNumber,
+        dynamicValues: variableValues,
+      }))
+  }, [
+    recipientTab,
+    contacts,
+    selectedContactIds,
+    variableValues,
+    validCsvRows,
+    manualParsed,
+    placeholders,
+  ])
+  const totalRecipients = activeRecipients.length
+
+  const effectiveDeviceId = deviceId || selectedTemplate?.whatsappDeviceId || ""
+  const selectedDevice = (devices ?? []).find(
+    (device) => device.id === effectiveDeviceId
+  )
+  const needsMultiDayAck = Boolean(
+    capacity && totalRecipients > capacity.remainingToday
+  )
+  const throttleMaxMessages =
+    capacity?.hourlyLimit || FALLBACK_THROTTLE_MAX_MESSAGES
+  const estimatedMinutes =
+    totalRecipients > 0
+      ? Math.ceil(
+          totalRecipients / (throttleMaxMessages / THROTTLE_PER_MINUTES)
+        )
+      : 0
+  const canSubmit = Boolean(
+    selectedTemplate &&
+    templateLanguage &&
+    effectiveDeviceId &&
+    totalRecipients > 0 &&
+    !isSubmitting &&
+    (!needsMultiDayAck || acknowledgeMultiDay)
+  )
+
+  // ─── Data loading ───────────────────────────────────────────────────
+
   React.useEffect(() => {
     ;(async () => {
       try {
@@ -145,94 +261,120 @@ export default function NewWhatsAppBroadcastPage() {
   }, [])
 
   React.useEffect(() => {
-    const manualPhoneNumbers = parseRecipients(manualRecipients)
-    const contactPhoneNumbers = selectedContactPhones.map((p) => ({
-      phoneNumber: p,
-    }))
-    const allRecipients = [...contactPhoneNumbers, ...manualPhoneNumbers]
-
-    if (!effectiveDeviceId || allRecipients.length === 0) {
+    let cancelled = false
+    if (!effectiveDeviceId) {
       return
     }
-
-    let cancelled = false
     whatsappClient
       .previewBroadcastSchedule({
         whatsappDeviceId: effectiveDeviceId,
-        recipients: allRecipients,
+        recipients: activeRecipients.map((r) => ({
+          phoneNumber: r.phoneNumber,
+        })),
       })
       .then((result) => {
         if (!cancelled) {
           setCapacity(result.capacity)
-          setRecommendation(result.recommendation)
-          setThrottleMaxMessages(result.recommendation.throttleMaxMessages)
-          setThrottlePerMinutes(result.recommendation.throttlePerMinutes)
         }
       })
       .catch(() => {
         if (!cancelled) {
           setCapacity(null)
-          setRecommendation(null)
         }
       })
     return () => {
       cancelled = true
     }
-  }, [effectiveDeviceId, manualRecipients, selectedContactPhones])
-  const handleTemplateChange = (value: string) => {
+  }, [effectiveDeviceId, activeRecipients])
+
+  // ─── Handlers ───────────────────────────────────────────────────────
+
+  function handleTemplateChange(value: string) {
     setTemplateId(value)
     const template = templates.find((item) => item.id === value)
     setTemplateLanguage(template?.languages[0]?.lang ?? "")
+    setVariableValues({})
   }
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+
+  function toggleContact(id: string) {
+    setSelectedContactIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  function toggleAllVisibleContacts() {
+    setSelectedContactIds((prev) => {
+      const next = new Set(prev)
+      for (const contact of filteredContacts) {
+        if (allVisibleSelected) {
+          next.delete(contact.id)
+        } else {
+          next.add(contact.id)
+        }
+      }
+      return next
+    })
+  }
+
+  async function handleCsvFileChange(
+    event: React.ChangeEvent<HTMLInputElement>
+  ) {
+    const file = event.target.files?.[0]
+    if (!file) {
+      return
+    }
+    setCsvFileName(file.name)
+    try {
+      const content = await file.text()
+      setCsvRows(parseCsvRecipients(content))
+    } catch {
+      toast.error("Unable to read the CSV file.")
+      setCsvRows([])
+    }
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    const manualPhoneNumbers = parseRecipients(manualRecipients)
-    const contactPhoneNumbers = selectedContactPhones.map((phoneNumber) => ({
-      phoneNumber,
-    }))
-    const allRecipients = [...contactPhoneNumbers, ...manualPhoneNumbers]
-
     if (!selectedTemplate) {
-      toast.error("Template is required")
+      toast.error("Pilih template terlebih dahulu.")
       return
     }
-
     if (!templateLanguage) {
-      toast.error("Template language is required")
+      toast.error("Pilih bahasa template terlebih dahulu.")
+      return
+    }
+    if (!effectiveDeviceId) {
+      toast.error("Pilih perangkat WhatsApp terlebih dahulu.")
+      return
+    }
+    if (totalRecipients === 0) {
+      toast.error("Tambahkan minimal satu penerima.")
+      return
+    }
+    if (needsMultiDayAck && !acknowledgeMultiDay) {
+      toast.error("Centang konfirmasi pengiriman multi-hari untuk melanjutkan.")
       return
     }
 
-    if (allRecipients.length === 0) {
-      toast.error("At least one recipient is required")
-      return
-    }
-
-    setShowConfirmModal(true)
-  }
-
-  const handleConfirmCreate = async () => {
-    const manualPhoneNumbers = parseRecipients(manualRecipients)
-    const contactPhoneNumbers = selectedContactPhones.map((phoneNumber) => ({
-      phoneNumber,
-    }))
-    const allRecipients = [...contactPhoneNumbers, ...manualPhoneNumbers]
-
-    if (!selectedTemplate) return
-
-    setShowConfirmModal(false)
     setIsSubmitting(true)
     try {
       const broadcast = await whatsappClient.createBroadcast({
         templateName: selectedTemplate.name,
         templateLanguage,
-        whatsappDeviceId: deviceId || selectedTemplate.whatsappDeviceId,
+        whatsappDeviceId: effectiveDeviceId,
         throttleMaxMessages,
-        throttlePerMinutes,
-        acknowledgeMultiDay: acknowledgeMultiDay || undefined,
-        recipients: allRecipients,
+        throttlePerMinutes: THROTTLE_PER_MINUTES,
+        acknowledgeMultiDay: needsMultiDayAck || undefined,
+        recipients: activeRecipients,
       })
-      toast.success("Broadcast created")
+      toast.success("Broadcast berhasil dibuat")
       router.push(`${basePath}/${broadcast.id}`)
     } catch (error) {
       toast.error(
@@ -243,68 +385,75 @@ export default function NewWhatsAppBroadcastPage() {
     }
   }
 
+  // ─── Render ─────────────────────────────────────────────────────────
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">New broadcast</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Broadcast Baru</h1>
         <p className="text-muted-foreground">
-          Create a WhatsApp template campaign for a list of recipients.
+          Kirim pesan template WhatsApp ke banyak penerima dalam empat langkah
+          mudah.
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Campaign details</CardTitle>
-          <CardDescription>
-            Select an approved template, sending device, and recipient phone
-            numbers.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form
-            className="space-y-5"
-            onSubmit={(event) => void handleSubmit(event)}
-          >
-            <div className="grid gap-2">
-              <Label htmlFor="template">Template</Label>
-              <Select value={templateId} onValueChange={handleTemplateChange}>
-                <SelectTrigger id="template">
-                  <SelectValue placeholder="Select template" />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.map((template) => (
-                    <SelectItem key={template.id} value={template.id}>
-                      {template.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+      <form
+        className="space-y-6"
+        onSubmit={(event) => void handleSubmit(event)}
+      >
+        {/* Step 1: Template & Perangkat */}
+        <Card>
+          <CardHeader>
+            <CardTitle>1. Template & Perangkat</CardTitle>
+            <CardDescription>
+              Pilih template pesan yang sudah disetujui dan perangkat WhatsApp
+              pengirim.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="template">Template</Label>
+                <Select value={templateId} onValueChange={handleTemplateChange}>
+                  <SelectTrigger id="template">
+                    <SelectValue placeholder="Pilih template" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templates.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="language">Bahasa</Label>
+                <Select
+                  value={templateLanguage}
+                  onValueChange={setTemplateLanguage}
+                  disabled={!templateId}
+                >
+                  <SelectTrigger id="language">
+                    <SelectValue placeholder="Pilih bahasa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {languages.map((language) => (
+                      <SelectItem key={language.id} value={language.lang}>
+                        {language.lang}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="language">Language</Label>
-              <Select
-                value={templateLanguage}
-                onValueChange={setTemplateLanguage}
-              >
-                <SelectTrigger id="language">
-                  <SelectValue placeholder="Select language" />
-                </SelectTrigger>
-                <SelectContent>
-                  {languages.map((language) => (
-                    <SelectItem key={language.id} value={language.lang}>
-                      {language.lang}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="device">Device</Label>
+              <Label htmlFor="device">Perangkat WhatsApp</Label>
               <Select value={deviceId} onValueChange={setDeviceId}>
                 <SelectTrigger id="device">
-                  <SelectValue placeholder="Use template default device" />
+                  <SelectValue placeholder="Gunakan perangkat bawaan template" />
                 </SelectTrigger>
                 <SelectContent>
                   {devices.map((device) => (
@@ -314,55 +463,107 @@ export default function NewWhatsAppBroadcastPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {effectiveDeviceId &&
+                (selectedDevice ? (
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <Badge
+                      variant={
+                        selectedDevice.status === "ACTIVE"
+                          ? "success"
+                          : "secondary"
+                      }
+                    >
+                      {selectedDevice.status === "ACTIVE"
+                        ? "Aktif"
+                        : "Nonaktif"}
+                    </Badge>
+                    <span className="text-muted-foreground">
+                      Sisa kuota 24 jam:{" "}
+                      {capacity
+                        ? `${capacity.remainingToday} pesan`
+                        : "menghitung…"}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Perangkat tidak ditemukan.
+                  </p>
+                ))}
             </div>
+          </CardContent>
+        </Card>
 
-            <div className="grid gap-2">
-              <Label htmlFor="recipient-source">Recipient source</Label>
-              <Select
-                value={recipientSource}
-                onValueChange={(value) =>
-                  setRecipientSource(value as RecipientSource)
-                }
-              >
-                <SelectTrigger id="recipient-source">
-                  <SelectValue placeholder="Select recipient source" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="contacts">From contacts</SelectItem>
-                  <SelectItem value="manual">Manual entry</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        {/* Step 2: Daftar Penerima */}
+        <Card>
+          <CardHeader>
+            <CardTitle>2. Daftar Penerima</CardTitle>
+            <CardDescription>
+              Tentukan siapa saja yang akan menerima pesan ini.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Tabs
+              value={recipientTab}
+              onValueChange={(value) => setRecipientTab(value as RecipientTab)}
+            >
+              <TabsList className="w-full sm:w-auto">
+                <TabsTrigger value="manual">Ketik / Paste Nomor</TabsTrigger>
+                <TabsTrigger value="contacts">Daftar Kontak</TabsTrigger>
+                <TabsTrigger value="csv">Upload CSV / Excel</TabsTrigger>
+              </TabsList>
 
-            {recipientSource === "contacts" && (
-              <div className="grid gap-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">
-                    Select contacts{" "}
-                    {selectedContactIds.size > 0 && (
-                      <span className="font-normal text-muted-foreground">
-                        ({selectedContactIds.size} selected)
+              <TabsContent value="manual" className="space-y-2 pt-2">
+                <Textarea
+                  id="recipients"
+                  rows={8}
+                  value={manualRecipients}
+                  onChange={(event) => setManualRecipients(event.target.value)}
+                  placeholder={"6281234567890\n6289876543210"}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Tulis satu nomor per baris atau pisahkan dengan koma.
+                </p>
+                {manualRecipients.trim().length > 0 && (
+                  <p className="text-xs font-medium">
+                    {validManualCount} nomor valid terdeteksi
+                    {invalidManualCount > 0 && (
+                      <span className="text-amber-600 dark:text-amber-400">
+                        {" "}
+                        · {invalidManualCount} nomor tidak valid akan dilewati
                       </span>
                     )}
-                  </Label>
+                  </p>
+                )}
+              </TabsContent>
+
+              <TabsContent value="contacts" className="space-y-3 pt-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Input
+                    id="contact-search"
+                    value={contactSearch}
+                    onChange={(event) => setContactSearch(event.target.value)}
+                    placeholder="Cari nama atau nomor…"
+                    className="max-w-xs"
+                  />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={toggleAllContacts}
+                    onClick={toggleAllVisibleContacts}
                     className="h-auto p-0 text-xs"
+                    disabled={filteredContacts.length === 0}
                   >
-                    {allContactsSelected ? "Deselect all" : "Select all"}
+                    {allVisibleSelected ? "Batalkan semua" : "Pilih semua"}
                   </Button>
                 </div>
                 <div className="max-h-64 overflow-y-auto rounded-md border">
-                  {contacts.length === 0 ? (
+                  {filteredContacts.length === 0 ? (
                     <div className="p-4 text-center text-sm text-muted-foreground">
-                      No contacts available.
+                      Tidak ada kontak yang cocok.
                     </div>
                   ) : (
                     <div className="divide-y">
-                      {contacts.map((contact) => (
+                      {filteredContacts.map((contact) => (
                         <label
                           key={contact.id}
                           className="flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-muted/50"
@@ -373,7 +574,7 @@ export default function NewWhatsAppBroadcastPage() {
                           />
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-sm font-medium">
-                              {contact.name || "Unnamed contact"}
+                              {contact.name || "Kontak tanpa nama"}
                             </div>
                             <div className="truncate text-xs text-muted-foreground">
                               {contact.phoneNumber}
@@ -384,182 +585,192 @@ export default function NewWhatsAppBroadcastPage() {
                     </div>
                   )}
                 </div>
-                {selectedContactIds.size > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {selectedContactCount} kontak dipilih
+                </p>
+              </TabsContent>
+
+              <TabsContent value="csv" className="space-y-3 pt-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="csv-file">File CSV / TXT</Label>
+                  <Input
+                    id="csv-file"
+                    type="file"
+                    accept=".csv,.txt,text/csv,text/plain"
+                    onChange={(event) => void handleCsvFileChange(event)}
+                  />
+                </div>
+                {csvFileName ? (
+                  <div className="space-y-2 rounded-md border bg-muted/30 p-3 text-sm">
+                    <p className="font-medium">{csvFileName}</p>
+                    <p>
+                      {validCsvRows.length} baris valid terdeteksi
+                      {invalidCsvCount > 0 && (
+                        <span className="text-amber-600 dark:text-amber-400">
+                          {" "}
+                          · {invalidCsvCount} baris tidak valid akan dilewati
+                        </span>
+                      )}
+                    </p>
+                    {csvColumns.length > 1 && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground">
+                          Kolom terdeteksi:
+                        </span>
+                        {csvColumns.map((column) => (
+                          <Badge key={column} variant="outline">
+                            {column}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
                   <p className="text-xs text-muted-foreground">
-                    {selectedContactIds.size} contact
-                    {selectedContactIds.size !== 1 ? "s" : ""} selected from
-                    contacts
+                    Kolom pertama yang berisi nomor telepon akan dipakai
+                    otomatis sebagai tujuan.
                   </p>
                 )}
+              </TabsContent>
+            </Tabs>
+
+            <p className="text-sm font-medium">
+              Total penerima: {totalRecipients}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Step 3: Variabel Pesan */}
+        <Card>
+          <CardHeader>
+            <CardTitle>3. Variabel Pesan</CardTitle>
+            <CardDescription>
+              Isi nilai untuk variabel yang ada di dalam template.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!selectedTemplate ? (
+              <p className="text-sm text-muted-foreground">
+                Pilih template terlebih dahulu untuk melihat variabel pesan.
+              </p>
+            ) : placeholders.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Template ini tidak menggunakan variabel — tidak ada yang perlu
+                diisi.
+              </p>
+            ) : (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {placeholders.map((placeholder) => (
+                    <div key={placeholder} className="grid gap-2">
+                      <Label htmlFor={`variable-${placeholder}`}>
+                        Nilai untuk {`{{${placeholder}}}`}
+                      </Label>
+                      <Input
+                        id={`variable-${placeholder}`}
+                        value={variableValues[placeholder] ?? ""}
+                        onChange={(event) =>
+                          setVariableValues((prev) => ({
+                            ...prev,
+                            [placeholder]: event.target.value,
+                          }))
+                        }
+                        placeholder={`Nilai default {${`{${placeholder}}`}}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+                {recipientTab === "csv" && (
+                  <p className="text-xs text-muted-foreground">
+                    Untuk upload CSV, kolom pada file otomatis mengisi variabel
+                    ini dari setiap baris.
+                  </p>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Step 4: Ringkasan & Jadwal Pengiriman */}
+        <Card>
+          <CardHeader>
+            <CardTitle>4. Ringkasan & Jadwal Pengiriman</CardTitle>
+            <CardDescription>
+              Periksa ringkasan sebelum membuat broadcast.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2 rounded-md border p-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Total penerima</span>
+                <span>{totalRecipients}</span>
               </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Estimasi selesai</span>
+                <span>
+                  {totalRecipients > 0 && capacity
+                    ? formatDuration(estimatedMinutes)
+                    : "—"}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Kecepatan pengiriman
+                </span>
+                <span>±{throttleMaxMessages} pesan/jam</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Kuota harian</span>
+                <span>
+                  {capacity
+                    ? `${capacity.dailyUsed + Math.min(totalRecipients, capacity.remainingToday)} / ${capacity.dailyLimit} kuota harian terpakai`
+                    : "—"}
+                </span>
+              </div>
+            </div>
+
+            {needsMultiDayAck && (
+              <Alert className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
+                <Warning weight="fill" />
+                <AlertDescription className="text-amber-700 dark:text-amber-300">
+                  Pengiriman melebihi sisa kuota hari ini (
+                  {capacity?.remainingToday} pesan). Broadcast akan otomatis
+                  dikirim bertahap multi-hari.
+                </AlertDescription>
+                <div className="mt-2 flex items-center gap-2">
+                  <Checkbox
+                    id="multi-day-ack"
+                    checked={acknowledgeMultiDay}
+                    onCheckedChange={(checked) =>
+                      setAcknowledgeMultiDay(checked === true)
+                    }
+                  />
+                  <Label
+                    htmlFor="multi-day-ack"
+                    className="text-sm font-normal"
+                  >
+                    Saya memahami dan menyetujui pengiriman multi-hari ini.
+                  </Label>
+                </div>
+              </Alert>
             )}
 
-            {recipientSource === "manual" && (
-              <div className="grid gap-2">
-                <Label htmlFor="recipients">Phone numbers</Label>
-                <Textarea
-                  id="recipients"
-                  rows={8}
-                  value={manualRecipients}
-                  onChange={(event) => setManualRecipients(event.target.value)}
-                  placeholder="6281234567890\n6289876543210"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Enter one phone number per line or comma-separated.
-                </p>
-              </div>
-            )}
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => router.push(basePath)}
+                disabled={isSubmitting}
               >
-                Cancel
+                Batal
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating…" : "Create broadcast"}
+              <Button type="submit" disabled={!canSubmit}>
+                {isSubmitting ? "Membuat broadcast…" : "Buat Broadcast"}
               </Button>
             </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Scheduling card */}
-      {hasScheduleInputs && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Scheduling</CardTitle>
-            {capacity ? (
-              <CardDescription>
-                Device limit of {capacity.dailyLimit} messages / 24h (
-                {capacity.hourlyLimit}/h). Used {capacity.dailyUsed} today,
-                {capacity.hourlyUsed} this hour.
-              </CardDescription>
-            ) : (
-              <CardDescription>Calculating schedule…</CardDescription>
-            )}
-          </CardHeader>
-          <CardContent>
-            {capacity && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="throttleMax">Messages per window</Label>
-                    <Input
-                      id="throttleMax"
-                      type="number"
-                      min={1}
-                      value={throttleMaxMessages}
-                      onChange={(e) =>
-                        setThrottleMaxMessages(Number(e.target.value))
-                      }
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="throttleMin">Window (minutes)</Label>
-                    <Input
-                      id="throttleMin"
-                      type="number"
-                      min={1}
-                      value={throttlePerMinutes}
-                      onChange={(e) =>
-                        setThrottlePerMinutes(Number(e.target.value))
-                      }
-                    />
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  ~
-                  {Math.ceil(
-                    (totalRecipients * throttlePerMinutes) /
-                      (throttleMaxMessages || 1)
-                  )}
-                  m at{" "}
-                  {Math.round((throttleMaxMessages / throttlePerMinutes) * 60)}
-                  /h
-                </p>
-                {totalRecipients > capacity.remainingToday && (
-                  <p className="text-sm text-amber-500">
-                    {totalRecipients} recipients exceed{" "}
-                    {capacity.remainingToday} remaining today — will span
-                    multiple days.
-                  </p>
-                )}
-              </div>
-            )}
           </CardContent>
         </Card>
-      )}
-
-      {/* Confirmation dialog */}
-      <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm broadcast</DialogTitle>
-            <DialogDescription>
-              Review the schedule before sending.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Recipients</span>
-              <span>{totalRecipients}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Daily limit</span>
-              <span>{capacity?.dailyLimit ?? "—"} / day</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Remaining today</span>
-              <span>{capacity?.remainingToday ?? "—"}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Rate</span>
-              <span>
-                {throttleMaxMessages} msg / {throttlePerMinutes}m
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Est. duration</span>
-              <span>
-                ~
-                {Math.ceil(
-                  (totalRecipients * throttlePerMinutes) /
-                    (throttleMaxMessages || 1)
-                )}
-                m
-              </span>
-            </div>
-            {totalRecipients > (capacity?.remainingToday ?? 0) && (
-              <div className="flex items-center gap-2 pt-2">
-                <Checkbox
-                  id="multiDay"
-                  checked={acknowledgeMultiDay}
-                  onCheckedChange={(v) => setAcknowledgeMultiDay(v === true)}
-                />
-                <Label htmlFor="multiDay" className="text-sm text-amber-500">
-                  I understand this broadcast will span multiple days
-                </Label>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowConfirmModal(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => void handleConfirmCreate()}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Creating…" : "Confirm & send"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </form>
     </div>
   )
 }
