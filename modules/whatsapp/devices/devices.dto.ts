@@ -59,7 +59,24 @@ export function toDeviceListItem(device: WhatsappDeviceRecord): DeviceListItem {
     profile.name.trim().length > 0
       ? profile.name.trim()
       : null
-
+  const verifiedName =
+    profile &&
+    typeof profile.verified_name === "string" &&
+    profile.verified_name.trim().length > 0
+      ? profile.verified_name.trim()
+      : null
+  const nameStatus =
+    profile &&
+    typeof profile.name_status === "string" &&
+    profile.name_status.trim().length > 0
+      ? profile.name_status.trim()
+      : null
+  const qualityRating =
+    profile &&
+    typeof profile.quality_rating === "string" &&
+    profile.quality_rating.trim().length > 0
+      ? profile.quality_rating.trim()
+      : null
   return {
     id: device.id,
     organizationId: device.organizationId,
@@ -77,11 +94,13 @@ export function toDeviceListItem(device: WhatsappDeviceRecord): DeviceListItem {
     whatsappMetaApp: toMetaAppMetadata(device.whatsappMetaApp),
     createdAt: device.createdAt.toISOString(),
     updatedAt: device.updatedAt.toISOString(),
+    verifiedName: verifiedName ?? null,
+    nameStatus: nameStatus ?? null,
+    qualityRating: qualityRating ?? null,
     lastHeartbeatAt: device.lastHeartbeatAt?.toISOString() ?? null,
     lastDisconnectedAt: device.lastDisconnectedAt?.toISOString() ?? null,
   }
 }
-
 export type DeviceHealthInfo = {
   status: DeviceHealthStatus
   lastHeartbeatAt: string | null

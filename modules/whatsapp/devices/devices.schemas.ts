@@ -123,10 +123,12 @@ export type DeviceListItem = {
   whatsappMetaApp: DeviceMetaAppMetadata | null
   createdAt: string
   updatedAt: string
+  verifiedName?: string | null
+  nameStatus?: string | null
+  qualityRating?: string | null
   lastHeartbeatAt?: string | null
   lastDisconnectedAt?: string | null
 }
-
 export type DeviceDetail = DeviceListItem & {
   businessId: string | null
   callbackUrl: string | null
