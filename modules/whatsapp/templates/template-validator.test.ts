@@ -87,6 +87,18 @@ describe("template-validator", () => {
       expect(result.ruleWarnings[0].suggestedCategory).toBe("MARKETING")
     })
 
+    it("detects call-to-action urgency words (ayo, segera, buruan) in UTILITY template and suggests MARKETING", () => {
+      const result = validateTemplateBodyRules(
+        "Halo {{1}}, segera selesaikan pembayaran Anda sekarang dan dapatkan penawaran kami.",
+        "UTILITY",
+        "id"
+      )
+      expect(result.isValid).toBe(true)
+      expect(result.ruleWarnings).toHaveLength(1)
+      expect(result.ruleWarnings[0].ruleId).toBe("RULE_PROMO_IN_UTILITY")
+      expect(result.ruleWarnings[0].suggestedCategory).toBe("MARKETING")
+    })
+
     it("does not warn about promotional words when category is already MARKETING", () => {
       const result = validateTemplateBodyRules(
         "Halo {{1}}, klaim diskon promo spesial 50% untuk pesanan berikutnya!",

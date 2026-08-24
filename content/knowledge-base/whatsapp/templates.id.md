@@ -105,11 +105,9 @@ Untuk mencegah penolakan tiba-tiba dari Meta, **Console Template Builder** dilen
 | Pola Kata Kunci / Format | Maksud Terdeteksi | Panduan & Rekomendasi Kategori Otomatis |
 | :--- | :--- | :--- |
 | **`otp`, `kode verifikasi`, `kode keamanan`, `verification code`** | Autentikasi | **Peringatan:** Meta mewajibkan kategori **`AUTHENTICATION`** dengan format preset resmi. Kategori Utility/Marketing akan ditolak (`INCORRECT_CATEGORY`). |
-| **`promo`, `diskon`, `voucher`, `cashback`, `sale`, `flash sale`** | Promosi di Utility | **Peringatan:** Menyertakan kata promosi/diskon pada kategori **`UTILITY`** akan memicu penolakan Meta atau reklasifikasi paksa ke **`MARKETING`**. |
+| **`promo`, `diskon`, `voucher`, `ayo`, `segera`, `buruan`, `dapatkan`, `pesan sekarang`, `belanja sekarang`** | Promosi / Ajakan (Call to Action) | **Peringatan:** Kata ajakan atau promosi/diskon pada kategori **`UTILITY`** akan memicu penolakan Meta atau reklasifikasi paksa ke **`MARKETING`**. |
 | **`{{1}}` di akhir teks** | Pelanggaran Boundary | **Peringatan:** WhatsApp membatasi variabel mengambang di akhir kalimat. Tambahkan tanda baca atau teks penutup setelah placeholder. |
 | **Variabel bertumpuk `{{1}}{{2}}`** | Format Tidak Valid | **Error:** Meta menolak variabel berdampingan tanpa spasi atau kata pemisah. |
-
----
 
 ## 4. Penyebab Template Ditolak Meta (dan Solusinya)
 

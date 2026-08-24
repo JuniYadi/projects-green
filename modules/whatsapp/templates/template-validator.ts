@@ -61,21 +61,21 @@ export const TEMPLATE_CONTENT_RULES: TemplateContentRule[] = [
       en: "Meta mandates all OTP and login verification messages use the AUTHENTICATION category with standardized preset formats. Submitting under Utility/Marketing risks rejection (INCORRECT_CATEGORY).",
     },
   },
-  // 2. Detect Promotional / Marketing keywords in UTILITY templates
+  // 2. Detect Promotional & Call-to-Action / Urgency keywords in UTILITY templates
   {
     id: "RULE_PROMO_IN_UTILITY",
-    name: "Promotional Keywords in Utility Category",
+    name: "Promotional & Call-to-Action Keywords in Utility Category",
     appliesToCategory: ["UTILITY"],
     pattern:
-      /\b(promo|promosi|diskon|discount|cashback|voucher|potongan harga|sale|cuci gudang|spesial offer|special offer|penawaran terbatas|limited offer|buy 1 get 1|bogo|belanja sekarang|shop now|klaim kupon|claim coupon|flash sale|gratis ongkir|free shipping)\b/i,
+      /\b(promo|promosi|diskon|discount|cashback|voucher|potongan harga|sale|cuci gudang|spesial offer|special offer|penawaran terbatas|limited offer|limited time|buy 1 get 1|bogo|flash sale|gratis ongkir|free shipping|ayo|yuk|mari|segera|buruan|jangan lewatkan|dapatkan|nikmati|raih|menangkan|belanja sekarang|shop now|pesan sekarang|order now|beli sekarang|buy now|daftar sekarang|register now|sign up now|coba sekarang|try now|klaim sekarang|claim now|klaim kupon|claim coupon|klik tautan|click here|kunjungi kami|visit us|act now|hurry|grab yours|don't miss out)\b/i,
     suggestedCategory: "MARKETING",
     title: {
-      id: "Terdeteksi Kata Promosi / Diskon di Kategori Utility",
-      en: "Promotional Keywords Detected in Utility Category",
+      id: "Terdeteksi Kata Promosi / Ajakan (Call to Action) di Kategori Utility",
+      en: "Promotional or Call-to-Action Keywords Detected in Utility Category",
     },
     message: {
-      id: "Template Utility ditujukan murni untuk update transaksional/notifikasi. Menyertakan diskon, kupon, atau promosi akan menyebabkan Meta menolak template atau mengklasifikasikannya ulang ke MARKETING.",
-      en: "Utility templates must strictly deliver transactional updates. Including discounts, coupons, or promo links will trigger Meta rejection or re-classification to MARKETING.",
+      id: "Template Utility ditujukan murni untuk pemberitahuan faktual/transaksional. Kata-kata ajakan (seperti 'ayo', 'segera', 'dapatkan', 'pesan sekarang') atau diskon/promo akan dideteksi Meta sebagai pesan MARKETING dan berisiko ditolak.",
+      en: "Utility templates must be strictly informational. Call-to-action words (such as 'hurry', 'act now', 'order now', 'segera', 'ayo') or promotional offers are classified by Meta as MARKETING and will trigger rejection or re-classification.",
     },
   },
 ]

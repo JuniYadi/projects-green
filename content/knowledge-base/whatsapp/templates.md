@@ -108,11 +108,9 @@ To avoid sudden Meta rejections, the **Console Template Builder** includes an au
 | Trigger Pattern | Detected Intent | Automated Guidance & Category Recommendation |
 | :--- | :--- | :--- |
 | **`otp`, `verification code`, `kode verifikasi`, `security code`** | Authentication | **Warning:** Meta strictly mandates the **`AUTHENTICATION`** category with predefined formats. Using Utility/Marketing will trigger `INCORRECT_CATEGORY`. |
-| **`promo`, `diskon`, `voucher`, `cashback`, `sale`, `flash sale`** | Marketing in Utility | **Warning:** Submitting promotional or discount words under the **`UTILITY`** category will cause Meta rejection or re-classification to **`MARKETING`**. |
+| **`promo`, `diskon`, `voucher`, `sale`, `ayo`, `segera`, `buruan`, `dapatkan`, `order now`, `shop now`** | Marketing / Call to Action | **Warning:** Submitting promotional or call-to-action/urgency words under the **`UTILITY`** category will cause Meta rejection or re-classification to **`MARKETING`**. |
 | **`{{1}}` at the end of text** | Boundary Violation | **Warning:** WhatsApp restricts unanchored variables at the end of messages. Add punctuation or closing text after the placeholder. |
 | **Consecutive `{{1}}{{2}}`** | Variable Stacking | **Error:** Meta rejects adjacent variables without separating spaces or words. |
-
----
 
 ## 4. Why Templates Get Rejected (and How to Fix Them)
 
