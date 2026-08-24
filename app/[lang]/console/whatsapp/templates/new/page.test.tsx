@@ -6,6 +6,9 @@ mock.module("next/navigation", () => ({
   useRouter: () => ({
     push: mockPush,
   }),
+  useSearchParams: () => ({
+    get: () => null,
+  }),
 }))
 mock.module("@/lib/eden", () => ({
   eden: {
