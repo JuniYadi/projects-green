@@ -456,10 +456,11 @@ describe("templatesRoutes", () => {
       )
 
       expect(res.status).toBe(200)
-      const updateCall = mockTemplateUpdate.mock.calls.at(-1)?.[0] as {
-        data: Record<string, unknown>
-      }
-      expect(updateCall.data).toEqual({
+      const calls = mockTemplateUpdate.mock.calls as unknown as Array<
+        [{ data: Record<string, unknown> }]
+      >
+      const updateCall = calls.at(-1)?.[0]
+      expect(updateCall?.data).toEqual({
         name: "Updated template",
         languages: {
           upsert: [
