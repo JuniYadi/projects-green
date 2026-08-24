@@ -149,7 +149,7 @@ export async function replayDeadLetter(id: string): Promise<void> {
         ? "message"
         : ("statuses" as const)
     await WebhookRetryJob.dispatch({
-      eventId: `replay-${id}-${Date.now()}`,
+      eventId: `replay-${id}-${Bun.randomUUIDv7()}`,
       eventType: jobEventType,
       deviceId: deadLetter.deviceId,
       organizationId: deadLetter.organizationId ?? undefined,

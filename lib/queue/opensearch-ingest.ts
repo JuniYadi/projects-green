@@ -1,5 +1,5 @@
 import { Queue } from "bullmq"
-import { getQueueRuntimeConfig } from "./queue-config"
+import { getQueueRuntimeConfig } from "@/lib/queue/queue-config"
 import type { LogEntry } from "@/modules/deploy/opensearch"
 
 export const OPENSEARCH_INGEST_QUEUE = "opensearch-ingest"
@@ -21,7 +21,7 @@ export const opensearchIngestQueue = new Queue<LogEntry>(
 
 export async function enqueueLogEntry(entry: LogEntry): Promise<void> {
   await opensearchIngestQueue.add("ingest", entry, {
-    jobId: `${entry.tenantSlug}-${entry.timestamp}-${Math.random().toString(36).slice(2, 8)}`,
+    jobId: `opensearch-ingest_${Bun.randomUUIDv7()}`,
   })
 }
 
@@ -30,7 +30,7 @@ export async function enqueueLogBatch(entries: LogEntry[]): Promise<void> {
     name: "ingest",
     data: entry,
     opts: {
-      jobId: `${entry.tenantSlug}-${entry.timestamp}-${Math.random().toString(36).slice(2, 8)}`,
+      jobId: `opensearch-ingest_${Bun.randomUUIDv7()}`,
     },
   }))
   await opensearchIngestQueue.addBulk(jobs)

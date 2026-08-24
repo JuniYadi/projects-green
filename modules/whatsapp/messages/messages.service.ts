@@ -2,7 +2,6 @@ import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import type { InteractivePayload } from "@/lib/whatsapp/meta-cloud/types"
 import { prisma } from "@/lib/prisma"
 import { enqueueQuotaReconciliation } from "@/lib/queue/quota-reconciliation"
-import { randomUUID } from "crypto"
 import { Prisma, WhatsappBillingCategory } from "@prisma/client"
 import type { WhatsAppTemplateLanguage } from "@/lib/api/whatsapp-client"
 import Decimal = Prisma.Decimal
@@ -137,8 +136,7 @@ export const messageService: MessageService = {
       address,
       interactivePayload,
     } = options
-    const jobId = `wa-job-${randomUUID()}`
-
+    const jobId = `wa-job-${Bun.randomUUIDv7()}`
     // Get or create device first (needed for quota gate checks)
     const device = deviceId
       ? await prisma.whatsappDevice.findFirst({
@@ -571,8 +569,7 @@ export const messageService: MessageService = {
       billingCategory,
       templateLanguageData,
     } = options
-    const jobId = `wa-job-${randomUUID()}`
-
+    const jobId = `wa-job-${Bun.randomUUIDv7()}`
     // Get device
     const device = deviceId
       ? await prisma.whatsappDevice.findFirst({

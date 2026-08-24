@@ -164,7 +164,7 @@ describe("createWhatsAppWebhookQueue", () => {
         deviceId: "device_1",
       },
       expect.objectContaining({
-        jobId: expect.stringContaining("wa-webhook:message:"),
+        jobId: expect.stringMatching(/^wa-webhook_message_[0-9a-f-]+$/),
       })
     )
     expect(queueCloseMock).toHaveBeenCalledTimes(0)
@@ -200,7 +200,7 @@ describe("createWhatsAppWebhookQueue", () => {
         deviceId: "device_owned",
       },
       expect.objectContaining({
-        jobId: expect.stringContaining("wa-webhook:statuses:"),
+        jobId: expect.stringMatching(/^wa-webhook_statuses_[0-9a-f-]+$/),
       })
     )
     expect(queueCloseMock).toHaveBeenCalledTimes(1)
@@ -221,7 +221,7 @@ describe("createWhatsAppWebhookQueue", () => {
       WHATSAPP_WEBHOOK_JOB_NAME,
       { eventType: "error", payload: { error: "test" }, deviceId: "device_2" },
       expect.objectContaining({
-        jobId: expect.stringContaining("wa-webhook:error:"),
+        jobId: expect.stringMatching(/^wa-webhook_error_[0-9a-f-]+$/),
         attempts: 5,
       })
     )
@@ -242,8 +242,6 @@ describe("createWhatsAppWebhookQueue", () => {
 describe("enqueueWhatsAppWebhook", () => {
   it("reuses shared queue and enqueues with deterministic job ids", async () => {
     process.env.REDIS_URL = "redis://localhost:6379/0"
-
-    const startTime = Date.now()
 
     await enqueueWhatsAppWebhook("message", { text: "hello" }, "device_a")
     await enqueueWhatsAppWebhook(
@@ -266,12 +264,12 @@ describe("enqueueWhatsAppWebhook", () => {
       eventType: "message",
       payload: { text: "hello" },
       deviceId: "device_a",
+      organizationId: undefined,
     })
-    expect(calls[0][2]!.jobId).toContain("wa-webhook:message:device_a:")
-    expect(calls[0][2]!.jobId!.length).toBeGreaterThan(
-      `wa-webhook:message:device_a:${startTime}`.length - 2
+    expect(calls[0][2]?.jobId).toMatch(
+      /^wa-webhook_message_device_a_[0-9a-f-]+$/
     )
-
+    expect(calls[0][2]?.jobId).not.toContain(":")
     expect(calls[1][0]).toBe(WHATSAPP_WEBHOOK_JOB_NAME)
     expect(calls[1][1]).toEqual({
       eventType: "statuses",
@@ -297,7 +295,7 @@ describe("enqueueWhatsAppWebhook", () => {
       WHATSAPP_WEBHOOK_JOB_NAME,
       { eventType: "message", payload: { text: "hi" }, deviceId: "dev" },
       expect.objectContaining({
-        jobId: expect.stringContaining("wa-webhook:message:dev:"),
+        jobId: expect.stringMatching(/^wa-webhook_message_dev_[0-9a-f-]+$/),
       })
     )
   })

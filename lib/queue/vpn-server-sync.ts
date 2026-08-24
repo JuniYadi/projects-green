@@ -29,7 +29,7 @@ export class VpnServerSyncJob extends BaseJob {
     const existingJob = await this.getQueue().getJob(jobId)
     if (
       existingJob &&
-      !["completed", "failed", "delayed"].includes(await existingJob.getState())
+      !["completed", "failed"].includes(await existingJob.getState())
     ) {
       console.info(
         `[vpn-server-sync] job=${jobId} already pending, skipping dispatch`
