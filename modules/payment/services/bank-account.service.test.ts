@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, mock } from "bun:test"
 
 // Mock prisma with bankAccount model
+const mockBankAccountTransaction = mock(<T>(operations: Promise<T>[]) =>
+  Promise.all(operations)
+)
+
 const mockBankAccountFindMany = mock<
   () => Promise<Array<Record<string, unknown>>>
 >(() => Promise.resolve([]))
@@ -22,6 +26,7 @@ const mockBankAccountDelete = mock<() => Promise<Record<string, unknown>>>(() =>
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
+    $transaction: mockBankAccountTransaction,
     paymentBankAccount: {
       findMany: mockBankAccountFindMany,
       findUnique: mockBankAccountFindUnique,
@@ -77,6 +82,7 @@ describe("BankAccountService", () => {
     mockBankAccountUpdate.mockClear()
     mockBankAccountUpdateMany.mockClear()
     mockBankAccountDelete.mockClear()
+    mockBankAccountTransaction.mockClear()
 
     // Reset default implementations
     mockBankAccountFindMany.mockImplementation(() => Promise.resolve([]))
@@ -389,7 +395,7 @@ describe("BankAccountService", () => {
   })
 
   describe("setDefault", () => {
-    it("makes the target active and clears every other default", async () => {
+    it("makes the target active and clears every other default in a transaction", async () => {
       const inactiveAccount = { ...mockAccount, isActive: false }
       mockBankAccountFindUnique.mockImplementation(() =>
         Promise.resolve(inactiveAccount)
@@ -400,6 +406,7 @@ describe("BankAccountService", () => {
 
       const result = await service.setDefault("ba_1")
 
+      expect(mockBankAccountTransaction).toHaveBeenCalledTimes(1)
       expect(mockBankAccountUpdateMany).toHaveBeenCalledWith({
         where: { id: { not: "ba_1" } },
         data: { isDefault: false },

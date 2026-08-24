@@ -274,7 +274,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
       const subject = `Payment Confirmation Submitted - Invoice ${data.invoiceNumber}`
       const emailLogId = await createEmailLog({
         recipientEmail,
-        type: "INVOICE_PAID",
+        type: "PAYMENT_CONFIRMATION_SUBMITTED",
         subject,
         bodyHtml: html,
         relatedEntityType: "payment_confirmation",

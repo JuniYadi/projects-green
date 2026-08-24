@@ -31,6 +31,9 @@ mock.module("@/lib/platform-role", () => ({
 process.env.ENCRYPTION_KEY =
   "0000000000000000000000000000000000000000000000000000000000000000"
 
+const mockTransaction = mock(<T>(operations: Promise<T>[]) =>
+  Promise.all(operations)
+)
 const mockFindUnique = mock()
 const mockUpdate = mock()
 const mockUpdateMany = mock()
@@ -59,6 +62,7 @@ mockFindMany.mockImplementation(() =>
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
+    $transaction: mockTransaction,
     paymentBankAccount: {
       findMany: mockFindMany,
       findUnique: mockFindUnique,
@@ -84,6 +88,7 @@ describe("AdminBankRoute GET /bank-accounts", () => {
     mockUpdate.mockClear()
     mockUpdateMany.mockClear()
     mockDelete.mockClear()
+    mockTransaction.mockClear()
     mockFindUnique.mockImplementation(() => Promise.resolve(null))
     mockUpdate.mockImplementation(() => Promise.resolve({}))
     mockUpdateMany.mockImplementation(() => Promise.resolve({ count: 0 }))
@@ -176,6 +181,7 @@ describe("AdminBankRoute bank account mutations", () => {
     mockUpdate.mockClear()
     mockUpdateMany.mockClear()
     mockDelete.mockClear()
+    mockTransaction.mockClear()
     mockFindUnique.mockImplementation(() => Promise.resolve(null))
     mockUpdate.mockImplementation(() => Promise.resolve({}))
     mockUpdateMany.mockImplementation(() => Promise.resolve({ count: 0 }))
@@ -205,6 +211,7 @@ describe("AdminBankRoute bank account mutations", () => {
       where: { id: "ba-1" },
       data: { isDefault: true, isActive: true },
     })
+    expect(mockTransaction).toHaveBeenCalledTimes(1)
   })
 
   it("toggles only active state", async () => {

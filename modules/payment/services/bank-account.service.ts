@@ -128,15 +128,16 @@ export class BankAccountService {
     })
     if (!account) throw new Error("Bank account not found")
 
-    await prisma.paymentBankAccount.updateMany({
-      where: { id: { not: id } },
-      data: { isDefault: false },
-    })
-
-    const updated = await prisma.paymentBankAccount.update({
-      where: { id },
-      data: { isDefault: true, isActive: true },
-    })
+    const [, updated] = await prisma.$transaction([
+      prisma.paymentBankAccount.updateMany({
+        where: { id: { not: id } },
+        data: { isDefault: false },
+      }),
+      prisma.paymentBankAccount.update({
+        where: { id },
+        data: { isDefault: true, isActive: true },
+      }),
+    ])
 
     return this.toResponse(updated)
   }

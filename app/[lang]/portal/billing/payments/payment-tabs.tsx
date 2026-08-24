@@ -39,7 +39,10 @@ export function PaymentTabs({ defaultTab }: { defaultTab?: string }) {
       try {
         const { data } = await eden.api.portal.payments.confirmations.get()
         if (!cancelled && Array.isArray(data)) {
-          setPendingConfirmations(data.length)
+          setPendingConfirmations(
+            data.filter((c: { status: string }) => c.status === "PENDING")
+              .length
+          )
         }
       } catch {
         // The tab remains usable when the optional badge request fails.

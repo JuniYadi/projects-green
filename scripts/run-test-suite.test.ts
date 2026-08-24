@@ -23,10 +23,11 @@ test("coverage writes LCOV without emitting the text table or discovering spec f
   const directory = mkdtempSync(join(tmpdir(), "run-test-suite-"))
   temporaryDirectories.push(directory)
 
-  writeFileSync(
-    join(directory, "bunfig.toml"),
-    readFileSync(rootBunfigPath, "utf8")
+  const bunfigContent = readFileSync(rootBunfigPath, "utf8").replace(
+    /preload\s*=\s*\[.*\]\n?/,
+    ""
   )
+  writeFileSync(join(directory, "bunfig.toml"), bunfigContent)
   writeFileSync(join(directory, "covered.ts"), "export const value = 42\n")
   writeFileSync(
     join(directory, "selected.logic.test.ts"),

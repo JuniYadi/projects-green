@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, mock } from "bun:test"
+import { describe, it, expect, beforeEach, mock, spyOn } from "bun:test"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MockVal = Record<string, any> | null
@@ -6,7 +6,7 @@ type MockVal = Record<string, any> | null
 const mockPaymentConfirmation = {
   findFirst: mock((): Promise<MockVal> => Promise.resolve(null)),
   findUnique: mock((): Promise<MockVal> => Promise.resolve(null)),
-  findMany: mock(() => Promise.resolve([])),
+  findMany: mock(() => Promise.resolve([] as Array<Record<string, unknown>>)),
   create: mock(() => Promise.resolve({})),
   update: mock(() => Promise.resolve({})),
 }
@@ -36,6 +36,17 @@ mock.module("@/modules/invoices/email.service", () => ({
 
 mock.module("@/modules/billing/email-recipients", () => ({
   resolveInvoiceEmailRecipients: mockResolveInvoiceEmailRecipients,
+}))
+
+const mockSettleProductOrdersForInvoice = mock(async () => {})
+const mockEmitBillingAudit = mock(() => {})
+
+mock.module("@/modules/billing/orders/payment-settlement", () => ({
+  settleProductOrdersForInvoice: mockSettleProductOrdersForInvoice,
+}))
+
+mock.module("@/modules/billing/audit/audit.service", () => ({
+  emitBillingAudit: mockEmitBillingAudit,
 }))
 
 // Mock prisma at leaf level
@@ -79,12 +90,15 @@ describe("ConfirmationService", () => {
     mockPaymentConfirmation.findUnique.mockClear()
     mockPaymentConfirmation.create.mockClear()
     mockPaymentConfirmation.update.mockClear()
+    mockPaymentConfirmation.findMany.mockClear()
     mockInvoice.findFirst.mockClear()
     mockInvoice.update.mockClear()
     mockBillingAccount.findUnique.mockClear()
     mockAuditLog.create.mockClear()
     mockSendPaymentConfirmationSubmitted.mockClear()
     mockResolveInvoiceEmailRecipients.mockClear()
+    mockSettleProductOrdersForInvoice.mockClear()
+    mockEmitBillingAudit.mockClear()
   }
 
   beforeEach(() => {
@@ -157,8 +171,38 @@ describe("ConfirmationService", () => {
         "Confirmation already processed"
       )
     })
+
+    it("throws when invoice billing account is missing", async () => {
+      mockPaymentConfirmation.findUnique.mockResolvedValueOnce({
+        id: "conf-123",
+        status: "PENDING",
+        amount: 50000,
+        invoiceId: "inv-123",
+        invoice: { billingAccount: null },
+      })
+
+      await expect(service.approve("conf-123", "admin-1")).rejects.toThrow(
+        "Billing account not found for invoice"
+      )
+    })
   })
   describe("create", () => {
+    it("throws when invoice is not found or not open", async () => {
+      mockInvoice.findFirst.mockResolvedValueOnce(null)
+
+      await expect(
+        service.create({
+          invoiceId: "inv-missing",
+          organizationId: "org-1",
+          data: {
+            bankAccountId: "ba-1",
+            amount: 100000,
+            paymentDateTime: new Date(),
+          },
+        })
+      ).rejects.toThrow("Invoice not found or not open")
+    })
+
     it("throws when pending confirmation already exists", async () => {
       mockInvoice.findFirst.mockResolvedValueOnce({
         id: "inv-1",
@@ -293,6 +337,164 @@ describe("ConfirmationService", () => {
         }),
         "finance@example.com"
       )
+    })
+    it("continues when recipient resolution fails", async () => {
+      mockInvoice.findFirst.mockResolvedValueOnce({
+        id: "inv-1",
+        invoiceNumber: "INV-001",
+        currency: "IDR",
+        status: "OPEN",
+      })
+      mockPaymentConfirmation.findFirst.mockResolvedValueOnce(null)
+      mockPaymentConfirmation.create.mockResolvedValueOnce({
+        id: "conf-new",
+        status: "PENDING",
+        invoiceId: "inv-1",
+        amount: 100000,
+        bankAccount: { bankName: "BCA" },
+      })
+      mockResolveInvoiceEmailRecipients.mockRejectedValueOnce(
+        new Error("recipient lookup failed")
+      )
+
+      const consoleErrorSpy = spyOn(console, "error").mockImplementation(
+        () => {}
+      )
+      const result = await service.create({
+        invoiceId: "inv-1",
+        organizationId: "org-1",
+        data: {
+          bankAccountId: "ba-1",
+          amount: 100000,
+          paymentDateTime: new Date(),
+        },
+      })
+      await Promise.resolve()
+      await Promise.resolve()
+      consoleErrorSpy.mockRestore()
+
+      expect(result.id).toBe("conf-new")
+      expect(mockSendPaymentConfirmationSubmitted).not.toHaveBeenCalled()
+    })
+
+    it("continues when a confirmation email fails to send", async () => {
+      mockInvoice.findFirst.mockResolvedValueOnce({
+        id: "inv-1",
+        invoiceNumber: "INV-001",
+        currency: "IDR",
+        status: "OPEN",
+      })
+      mockPaymentConfirmation.findFirst.mockResolvedValueOnce(null)
+      mockPaymentConfirmation.create.mockResolvedValueOnce({
+        id: "conf-new",
+        status: "PENDING",
+        invoiceId: "inv-1",
+        amount: 100000,
+        bankAccount: { bankName: "BCA" },
+      })
+      mockResolveInvoiceEmailRecipients.mockResolvedValueOnce([
+        { email: "finance@example.com" },
+      ])
+      mockSendPaymentConfirmationSubmitted.mockRejectedValueOnce(
+        new Error("smtp unavailable")
+      )
+
+      const consoleErrorSpy = spyOn(console, "error").mockImplementation(
+        () => {}
+      )
+      const result = await service.create({
+        invoiceId: "inv-1",
+        organizationId: "org-1",
+        data: {
+          bankAccountId: "ba-1",
+          amount: 100000,
+          paymentDateTime: new Date(),
+        },
+      })
+      await Promise.resolve()
+      await Promise.resolve()
+      consoleErrorSpy.mockRestore()
+
+      expect(result.id).toBe("conf-new")
+      expect(mockSendPaymentConfirmationSubmitted).toHaveBeenCalled()
+    })
+  })
+  describe("queries", () => {
+    it("lists pending confirmations with pagination", async () => {
+      const pending = [{ id: "conf-1", status: "PENDING" }]
+      mockPaymentConfirmation.findMany.mockResolvedValueOnce(pending)
+
+      const result = await service.listPending(10, 5)
+
+      expect(result[0]?.id).toBe("conf-1")
+      expect(mockPaymentConfirmation.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { status: "PENDING" },
+          take: 10,
+          skip: 5,
+        })
+      )
+    })
+
+    it("finds a confirmation by id", async () => {
+      const confirmation = { id: "conf-1", status: "PENDING" }
+      mockPaymentConfirmation.findUnique.mockResolvedValueOnce(confirmation)
+
+      const result = await service.findById("conf-1")
+
+      expect(result?.id).toBe("conf-1")
+      expect(mockPaymentConfirmation.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: "conf-1" } })
+      )
+    })
+  })
+
+  describe("reject", () => {
+    it("rejects a pending confirmation and records an audit", async () => {
+      mockPaymentConfirmation.findUnique.mockResolvedValueOnce({
+        id: "conf-1",
+        status: "PENDING",
+      })
+
+      await service.reject("conf-1", "admin-1", "Unmatched transfer")
+
+      expect(mockPaymentConfirmation.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "conf-1" },
+          data: expect.objectContaining({
+            status: "REJECTED",
+            reviewedBy: "admin-1",
+            rejectReason: "Unmatched transfer",
+          }),
+        })
+      )
+      expect(mockAuditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: "PAYMENT_REJECTED",
+            entityId: "conf-1",
+          }),
+        })
+      )
+    })
+
+    it("throws when rejecting a missing confirmation", async () => {
+      mockPaymentConfirmation.findUnique.mockResolvedValueOnce(null)
+
+      await expect(
+        service.reject("missing", "admin-1", "No payment")
+      ).rejects.toThrow("Confirmation not found")
+    })
+
+    it("throws when rejecting an already processed confirmation", async () => {
+      mockPaymentConfirmation.findUnique.mockResolvedValueOnce({
+        id: "conf-1",
+        status: "REJECTED",
+      })
+
+      await expect(
+        service.reject("conf-1", "admin-1", "Duplicate")
+      ).rejects.toThrow("Confirmation already processed")
     })
   })
 })

@@ -23,6 +23,7 @@ export const PaymentConfirmationSubmittedEmail = ({
   amount,
   bankName,
   senderName,
+  confirmationId,
 }: PaymentConfirmationSubmittedEmailProps) => (
   <Html>
     <Head />
