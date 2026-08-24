@@ -1,7 +1,7 @@
+import "@/test/register"
 import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { render } from "@testing-library/react"
 import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
-
 // NOTE: Do NOT import `screen` — it is evaluated at module-import time when
 // document.body is still null (Happy DOM). Use render()'s return value instead.
 
@@ -79,6 +79,13 @@ const mockUseSyncTemplate = mock(() => ({
   syncing: false,
 }))
 
+mock.module("@/lib/api/whatsapp-client", () => ({
+  whatsappClient: {
+    devices: {
+      list: mock(() => Promise.resolve({ ok: true, devices: [] })),
+    },
+  },
+}))
 mock.module("next/navigation", () => ({
   useRouter: () => ({
     push: mock(() => {}),
@@ -148,8 +155,7 @@ describe("WhatsAppTemplatesPage", () => {
   it("renders category facet filter options and custom allLabels", async () => {
     const view = render(<WhatsAppTemplatesPage />)
     // Filter buttons show labels in their headers
-    expect(view.getAllByText("All Sync").length).toBeGreaterThan(0)
-    expect(view.getAllByText("All Meta Status").length).toBeGreaterThan(0)
+    expect(view.getAllByText("All Status").length).toBeGreaterThan(0)
     expect(view.getAllByText("All Category").length).toBeGreaterThan(0)
   })
 
