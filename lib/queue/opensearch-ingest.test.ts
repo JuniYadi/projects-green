@@ -1,17 +1,18 @@
 import { describe, expect, it, mock } from "bun:test"
 
-const mockAdd = mock(async () => ({ id: "mock-job-id" }))
-const mockAddBulk = mock(async () => [
-  { id: "mock-job-1" },
-  { id: "mock-job-2" },
-])
+const mockAdd = mock((..._args: unknown[]) =>
+  Promise.resolve({ id: "mock-job-id" })
+)
+const mockAddBulk = mock((..._args: unknown[]) =>
+  Promise.resolve([{ id: "mock-job-1" }, { id: "mock-job-2" }])
+)
 
 class MockQueue {
-  async add(name: string, data: unknown, opts: unknown) {
-    return mockAdd(name, data, opts)
+  async add(...args: unknown[]) {
+    return mockAdd(...args)
   }
-  async addBulk(jobs: unknown[]) {
-    return mockAddBulk(jobs)
+  async addBulk(...args: unknown[]) {
+    return mockAddBulk(...args)
   }
 }
 
@@ -27,12 +28,13 @@ describe("opensearch-ingest", () => {
     await enqueueLogEntry({
       tenantSlug: "tenant-abc",
       timestamp: "2026-08-24T00:00:12.696Z",
-      level: "info",
+      level: "INFO",
+      source: "app",
       message: "test log",
     })
 
     expect(mockAdd).toHaveBeenCalledTimes(1)
-    const call = mockAdd.mock.calls[0]
+    const call = (mockAdd.mock.calls as unknown[][])[0]
     expect(call[0]).toBe("ingest")
     const opts = call[2] as { jobId: string }
     expect(opts.jobId).toMatch(
@@ -47,19 +49,22 @@ describe("opensearch-ingest", () => {
       {
         tenantSlug: "tenant-1",
         timestamp: "2026-08-24T00:00:12.000Z",
-        level: "info",
+        level: "INFO",
+        source: "app",
         message: "batch 1",
       },
       {
         tenantSlug: "tenant-2",
         timestamp: "2026-08-24T00:00:13.000Z",
-        level: "warn",
+        level: "WARN",
+        source: "app",
         message: "batch 2",
       },
     ])
 
     expect(mockAddBulk).toHaveBeenCalledTimes(1)
-    const jobs = mockAddBulk.mock.calls[0][0] as Array<{
+    const calls = mockAddBulk.mock.calls as unknown[][]
+    const jobs = calls[0][0] as Array<{
       name: string
       data: unknown
       opts: { jobId: string }

@@ -1,5 +1,5 @@
 import { Queue } from "bullmq"
-import { getQueueRuntimeConfig } from "./queue-config"
+import { getQueueRuntimeConfig } from "@/lib/queue/queue-config"
 import type { LogEntry } from "@/modules/deploy/opensearch"
 
 export const OPENSEARCH_INGEST_QUEUE = "opensearch-ingest"

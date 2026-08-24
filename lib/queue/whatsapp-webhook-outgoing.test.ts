@@ -1,12 +1,21 @@
 import { describe, expect, it, mock } from "bun:test"
 import type { WhatsappOutgoingWebhookJobData } from "./whatsapp-webhook-outgoing"
 
-const mockAdd = mock(async () => ({ id: "mock-job-id" }))
+const mockAdd = mock((..._args: unknown[]) =>
+  Promise.resolve({ id: "mock-job-id" })
+)
 
-mock.module("./queue-config", () => ({
+mock.module("@/lib/queue/queue-config", () => ({
+  getQueueRuntimeConfig: () => ({
+    connection: {},
+    prefix: "test",
+    githubEventsQueueName: "github-events",
+  }),
+  getRedisConnection: () => ({}),
   getQueue: () => ({
     add: mockAdd,
   }),
+  closeAllQueues: async () => {},
 }))
 
 const { enqueueOutgoingWebhook, WHATSAPP_WEBHOOK_OUTGOING_JOB } =
@@ -27,13 +36,13 @@ describe("whatsapp-webhook-outgoing", () => {
     await enqueueOutgoingWebhook(data)
 
     expect(mockAdd).toHaveBeenCalledTimes(1)
-    const call = mockAdd.mock.calls[0]
+    const call = (mockAdd.mock.calls as unknown[][])[0]
     expect(call[0]).toBe(WHATSAPP_WEBHOOK_OUTGOING_JOB)
     expect(call[1]).toEqual(data)
     expect(call[2]).toEqual({
       jobId: "wa-outgoing_wh_123_message_evt_123",
     })
-    expect(call[2].jobId).not.toContain(":")
+    expect((call[2] as { jobId: string }).jobId).not.toContain(":")
   })
 
   it("enqueues outgoing webhook with UUID v7 job ID when eventId is absent", async () => {
@@ -49,7 +58,7 @@ describe("whatsapp-webhook-outgoing", () => {
     await enqueueOutgoingWebhook(data)
 
     expect(mockAdd).toHaveBeenCalledTimes(1)
-    const call = mockAdd.mock.calls[0]
+    const call = (mockAdd.mock.calls as unknown[][])[0]
     expect(call[0]).toBe(WHATSAPP_WEBHOOK_OUTGOING_JOB)
     expect(call[1]).toEqual(data)
     const opts = call[2] as { jobId: string }

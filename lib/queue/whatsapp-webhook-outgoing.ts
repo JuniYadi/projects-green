@@ -1,4 +1,4 @@
-import { getQueue } from "./queue-config"
+import { getQueue } from "@/lib/queue/queue-config"
 
 export const WHATSAPP_WEBHOOK_OUTGOING_QUEUE = "whatsapp-webhook-outgoing"
 export const WHATSAPP_WEBHOOK_OUTGOING_JOB = "webhook-dispatch"

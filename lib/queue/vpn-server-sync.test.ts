@@ -10,7 +10,6 @@ class MockQueue {
 }
 
 const { VpnServerSyncJob } = await import("./vpn-server-sync")
-
 describe("VpnServerSyncJob", () => {
   it("dispatches job with safe jobId vpn-sync-<serverId>", async () => {
     mockGetJob.mockResolvedValue(null)
