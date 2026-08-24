@@ -68,12 +68,6 @@ export type LanguageVariant = {
   buttons?: unknown
 }
 
-type DeviceOption = {
-  id: string
-  phoneNumber: string
-  status: string
-}
-
 type TemplateFormProps = {
   initialData?: {
     name: string
@@ -85,14 +79,20 @@ type TemplateFormProps = {
       LanguageVariant & { parameters?: unknown; buttons?: unknown }
     >
   }
-  devices?: DeviceOption[]
+  devices?: Array<{
+    id: string
+    phoneNumber: string
+    verifiedName?: string | null
+    name?: string | null
+    status?: string | null
+  }>
   submitting: boolean
   onSubmit: (data: {
     name: string
     slug: string
     description?: string
     category?: string
-    whatsappDeviceId: string
+    whatsappDeviceId?: string
     languages: Omit<LanguageVariant, "id">[]
   }) => Promise<void>
   mode?: "create" | "edit"
@@ -157,10 +157,10 @@ function getAuthOtpCopies(
 
 export function TemplateForm({
   initialData,
-  devices = [],
+  devices: initialDevices,
   submitting,
   onSubmit,
-  mode = "create",
+  mode: _mode = "create",
   approvedTemplateLocked = false,
 }: TemplateFormProps) {
   const routeParams = useParams<{ lang?: string }>()
@@ -168,19 +168,6 @@ export function TemplateForm({
   const isEnUi = uiLocale === "en"
   const initialLang = initialData?.languages?.[0]
 
-  const activeDevices = React.useMemo(
-    () => devices.filter((d) => d.status === "ACTIVE"),
-    [devices]
-  )
-
-  const [selectedDeviceId, setSelectedDeviceId] = React.useState(
-    initialData?.whatsappDeviceId ?? ""
-  )
-
-  const whatsappDeviceId =
-    selectedDeviceId || (activeDevices.length > 0 ? activeDevices[0].id : "")
-
-  const setWhatsappDeviceId = setSelectedDeviceId
   const [name, setName] = React.useState(initialData?.name ?? "")
   const [slug, setSlug] = React.useState(initialData?.slug ?? "")
   const [slugManuallyEdited, setSlugManuallyEdited] = React.useState(
@@ -192,8 +179,16 @@ export function TemplateForm({
   const [category, setCategory] = React.useState(
     initialData?.category ?? "UTILITY"
   )
+  const [whatsappDeviceId, setWhatsappDeviceId] = React.useState(
+    initialData?.whatsappDeviceId ?? initialDevices?.[0]?.id ?? ""
+  )
+  const [devices, setDevices] = React.useState<
+    Array<{ id: string; phoneNumber: string; verifiedName?: string | null; name?: string | null; status?: string | null }>
+  >(initialDevices ?? [])
+  const [loadingDevices, setLoadingDevices] = React.useState(false)
 
   const isAuth = category === "AUTHENTICATION"
+
   // Primary language variant state
   const [lang, setLang] = React.useState(initialLang?.lang ?? "id")
   const [headerType, setHeaderType] = React.useState(
@@ -218,7 +213,33 @@ export function TemplateForm({
     }
   }
 
+  React.useEffect(() => {
+    if (initialDevices && initialDevices.length > 0) return
+
+    let active = true
+    void (async () => {
+      setLoadingDevices(true)
+      try {
+        const { whatsappClient } = await import("@/lib/api/whatsapp-client")
+        const res = await whatsappClient.devices.list()
+        if (active && res?.devices) {
+          setDevices(res.devices)
+          if (!initialData?.whatsappDeviceId && res.devices.length > 0) {
+            setWhatsappDeviceId((prev) => prev || res.devices[0].id)
+          }
+        }
+      } catch {
+        // Fallback silently if offline/testing without mock
+      } finally {
+        if (active) setLoadingDevices(false)
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [initialData?.whatsappDeviceId, initialDevices])
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
+
 
   // Markdown format insertion helper
   const applyMarkdownFormat = (
@@ -366,9 +387,6 @@ export function TemplateForm({
   const validate = (): boolean => {
     const newErrors: Record<string, string | undefined> = {}
 
-    if (!whatsappDeviceId) {
-      newErrors.whatsappDeviceId = "Active WhatsApp device is required."
-    }
     if (!name.trim()) newErrors.name = "Name is required."
     if (!slug.trim()) newErrors.slug = "Slug is required."
 
@@ -455,7 +473,7 @@ export function TemplateForm({
       slug: slug.trim(),
       description: description.trim() || undefined,
       category,
-      whatsappDeviceId,
+      whatsappDeviceId: whatsappDeviceId || undefined,
       languages: [languagePayload],
     })
   }
@@ -531,39 +549,29 @@ export function TemplateForm({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {mode === "create" && devices.length > 0 && (
+              {devices.length > 0 && (
                 <div className="space-y-2">
-                  <Label htmlFor="whatsappDeviceId">
-                    WhatsApp Device <span className="text-destructive">*</span>
-                  </Label>
+                  <Label htmlFor="whatsappDeviceId">WhatsApp Device</Label>
                   <Select
                     value={whatsappDeviceId}
                     onValueChange={setWhatsappDeviceId}
-                    disabled={approvedTemplateLocked}
+                    disabled={approvedTemplateLocked || loadingDevices}
                   >
                     <SelectTrigger id="whatsappDeviceId">
-                      <SelectValue placeholder="Select active device" />
+                      <SelectValue placeholder="Select Device" />
                     </SelectTrigger>
                     <SelectContent>
-                      {devices.map((d) => (
-                        <SelectItem
-                          key={d.id}
-                          value={d.id}
-                          disabled={d.status !== "ACTIVE"}
-                        >
-                          {d.phoneNumber} ({d.status})
-                        </SelectItem>
-                      ))}
+                      {devices
+                        .filter((d) => !d.status || d.status === "ACTIVE")
+                        .map((device) => (
+                          <SelectItem key={device.id} value={device.id}>
+                            {device.verifiedName || device.name || device.phoneNumber} ({device.phoneNumber})
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
-                  {errors.whatsappDeviceId && (
-                    <p className="text-xs text-destructive">
-                      {errors.whatsappDeviceId}
-                    </p>
-                  )}
                 </div>
               )}
-
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name">
@@ -580,6 +588,7 @@ export function TemplateForm({
                     <p className="text-xs text-destructive">{errors.name}</p>
                   )}
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="slug">
                     Template Slug / Code{" "}
