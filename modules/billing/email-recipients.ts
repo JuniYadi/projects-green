@@ -19,6 +19,26 @@ export async function resolveInvoiceEmailRecipients(
   for (const contact of account?.contacts ?? []) {
     recipients.push({ email: contact.email })
   }
+  // Resolve all Platform Users directly from AuthPlatformUserRole table
+  try {
+    const platformUsers = await prisma.authPlatformUserRole.findMany({
+      where: {
+        email: { not: null },
+      },
+      select: { email: true },
+    })
+
+    for (const { email } of platformUsers) {
+      if (email && !recipients.some((r) => r.email === email)) {
+        recipients.push({ email })
+      }
+    }
+  } catch (error) {
+    console.error(
+      "[BillingEmailRecipients] Failed to resolve platform users:",
+      error
+    )
+  }
 
   try {
     const workos = createWorkOS({ apiKey: process.env.WORKOS_API_KEY ?? "" })
@@ -46,6 +66,5 @@ export async function resolveInvoiceEmailRecipients(
       error
     )
   }
-
   return recipients
 }

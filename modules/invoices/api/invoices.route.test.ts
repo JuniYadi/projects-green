@@ -83,6 +83,18 @@ const createService = (): InvoiceService => {
   }
 }
 
+const createMockEmailService = (
+  overrides?: Partial<InvoiceEmailService>
+): InvoiceEmailService => ({
+  sendInvoiceCreated: mock(async () => {}),
+  sendPaymentReminder: mock(async () => {}),
+  sendInvoicePaid: mock(async () => {}),
+  sendInvoiceOverdue: mock(async () => {}),
+  sendInvoiceCancelled: mock(async () => {}),
+  sendPaymentConfirmationSubmitted: mock(async () => {}),
+  ...overrides,
+})
+
 const createApp = (input: {
   service?: InvoiceService
   emailService?: InvoiceEmailService
@@ -102,13 +114,8 @@ const createApp = (input: {
 }) => {
   const service = input.service ?? createService()
 
-  const mockEmailService: InvoiceEmailService = input.emailService ?? {
-    sendInvoiceCreated: mock(async () => {}),
-    sendPaymentReminder: mock(async () => {}),
-    sendInvoicePaid: mock(async () => {}),
-    sendInvoiceOverdue: mock(async () => {}),
-    sendInvoiceCancelled: mock(async () => {}),
-  }
+  const mockEmailService: InvoiceEmailService =
+    input.emailService ?? createMockEmailService()
 
   return new Elysia().use(
     createInvoicesRoutes({
@@ -434,13 +441,7 @@ describe("invoices routes", () => {
           throw new Error("role provider unavailable")
         },
         service: createService(),
-        emailService: {
-          sendInvoiceCreated: mock(async () => {}),
-          sendPaymentReminder: mock(async () => {}),
-          sendInvoicePaid: mock(async () => {}),
-          sendInvoiceOverdue: mock(async () => {}),
-          sendInvoiceCancelled: mock(async () => {}),
-        },
+        emailService: createMockEmailService(),
         getOrganizationIdByBillingAccount: async () => "org_1",
       })
     )
@@ -494,13 +495,7 @@ describe("invoices routes", () => {
 
   describe("notify endpoints", () => {
     it("sends invoice created notification", async () => {
-      const mockEmailService: InvoiceEmailService = {
-        sendInvoiceCreated: mock(async () => {}),
-        sendPaymentReminder: mock(async () => {}),
-        sendInvoicePaid: mock(async () => {}),
-        sendInvoiceOverdue: mock(async () => {}),
-        sendInvoiceCancelled: mock(async () => {}),
-      }
+      const mockEmailService = createMockEmailService()
       const app = createApp({ emailService: mockEmailService })
 
       const response = await app.handle(
@@ -526,13 +521,7 @@ describe("invoices routes", () => {
     })
 
     it("sends invoice paid notification", async () => {
-      const mockEmailService: InvoiceEmailService = {
-        sendInvoiceCreated: mock(async () => {}),
-        sendPaymentReminder: mock(async () => {}),
-        sendInvoicePaid: mock(async () => {}),
-        sendInvoiceOverdue: mock(async () => {}),
-        sendInvoiceCancelled: mock(async () => {}),
-      }
+      const mockEmailService = createMockEmailService()
       const app = createApp({ emailService: mockEmailService })
 
       const response = await app.handle(
@@ -553,13 +542,7 @@ describe("invoices routes", () => {
     })
 
     it("sends payment reminder notification", async () => {
-      const mockEmailService: InvoiceEmailService = {
-        sendInvoiceCreated: mock(async () => {}),
-        sendPaymentReminder: mock(async () => {}),
-        sendInvoicePaid: mock(async () => {}),
-        sendInvoiceOverdue: mock(async () => {}),
-        sendInvoiceCancelled: mock(async () => {}),
-      }
+      const mockEmailService = createMockEmailService()
       const app = createApp({ emailService: mockEmailService })
 
       const response = await app.handle(
@@ -580,13 +563,7 @@ describe("invoices routes", () => {
     })
 
     it("sends invoice overdue notification", async () => {
-      const mockEmailService: InvoiceEmailService = {
-        sendInvoiceCreated: mock(async () => {}),
-        sendPaymentReminder: mock(async () => {}),
-        sendInvoicePaid: mock(async () => {}),
-        sendInvoiceOverdue: mock(async () => {}),
-        sendInvoiceCancelled: mock(async () => {}),
-      }
+      const mockEmailService = createMockEmailService()
       const app = createApp({ emailService: mockEmailService })
 
       const response = await app.handle(
@@ -607,13 +584,7 @@ describe("invoices routes", () => {
     })
 
     it("sends invoice cancelled notification with reason", async () => {
-      const mockEmailService: InvoiceEmailService = {
-        sendInvoiceCreated: mock(async () => {}),
-        sendPaymentReminder: mock(async () => {}),
-        sendInvoicePaid: mock(async () => {}),
-        sendInvoiceOverdue: mock(async () => {}),
-        sendInvoiceCancelled: mock(async () => {}),
-      }
+      const mockEmailService = createMockEmailService()
       const app = createApp({ emailService: mockEmailService })
 
       const response = await app.handle(
@@ -783,13 +754,7 @@ describe("invoices routes", () => {
     })
 
     it("cancelled endpoint works without body using default email", async () => {
-      const mockEmailService: InvoiceEmailService = {
-        sendInvoiceCreated: mock(async () => {}),
-        sendPaymentReminder: mock(async () => {}),
-        sendInvoicePaid: mock(async () => {}),
-        sendInvoiceOverdue: mock(async () => {}),
-        sendInvoiceCancelled: mock(async () => {}),
-      }
+      const mockEmailService = createMockEmailService()
       const app = createApp({ emailService: mockEmailService })
 
       const response = await app.handle(
@@ -804,13 +769,7 @@ describe("invoices routes", () => {
     })
 
     it("cancelled endpoint with invalid email returns validation error", async () => {
-      const mockEmailService: InvoiceEmailService = {
-        sendInvoiceCreated: mock(async () => {}),
-        sendPaymentReminder: mock(async () => {}),
-        sendInvoicePaid: mock(async () => {}),
-        sendInvoiceOverdue: mock(async () => {}),
-        sendInvoiceCancelled: mock(async () => {}),
-      }
+      const mockEmailService = createMockEmailService()
       const app = createApp({ emailService: mockEmailService })
 
       const response = await app.handle(
@@ -846,13 +805,7 @@ describe("invoices routes", () => {
   })
 
   it("cancel does not send email when user has no email address", async () => {
-    const mockEmailService: InvoiceEmailService = {
-      sendInvoiceCreated: mock(async () => {}),
-      sendPaymentReminder: mock(async () => {}),
-      sendInvoicePaid: mock(async () => {}),
-      sendInvoiceOverdue: mock(async () => {}),
-      sendInvoiceCancelled: mock(async () => {}),
-    }
+    const mockEmailService = createMockEmailService()
     // Use super_admin platformRole to bypass all permission checks
     const app = createApp({
       auth: {
@@ -903,15 +856,11 @@ describe("invoices routes", () => {
   })
 
   it("cancel succeeds despite email service rejection", async () => {
-    const mockEmailService: InvoiceEmailService = {
-      sendInvoiceCreated: mock(async () => {}),
-      sendPaymentReminder: mock(async () => {}),
-      sendInvoicePaid: mock(async () => {}),
-      sendInvoiceOverdue: mock(async () => {}),
+    const mockEmailService = createMockEmailService({
       sendInvoiceCancelled: mock(async () => {
         throw new Error("Email service unreachable")
       }),
-    }
+    })
     const app = createApp({
       platformRole: "super_admin",
       emailService: mockEmailService,
@@ -928,15 +877,11 @@ describe("invoices routes", () => {
   })
 
   it("notify/created succeeds despite email service rejection", async () => {
-    const mockEmailService: InvoiceEmailService = {
+    const mockEmailService = createMockEmailService({
       sendInvoiceCreated: mock(async () => {
         throw new Error("Email service unreachable")
       }),
-      sendPaymentReminder: mock(async () => {}),
-      sendInvoicePaid: mock(async () => {}),
-      sendInvoiceOverdue: mock(async () => {}),
-      sendInvoiceCancelled: mock(async () => {}),
-    }
+    })
     const app = createApp({ emailService: mockEmailService })
 
     const response = await app.handle(
@@ -949,15 +894,11 @@ describe("invoices routes", () => {
   })
 
   it("notify/paid succeeds despite email service rejection", async () => {
-    const mockEmailService: InvoiceEmailService = {
-      sendInvoiceCreated: mock(async () => {}),
-      sendPaymentReminder: mock(async () => {}),
+    const mockEmailService = createMockEmailService({
       sendInvoicePaid: mock(async () => {
         throw new Error("Email service unreachable")
       }),
-      sendInvoiceOverdue: mock(async () => {}),
-      sendInvoiceCancelled: mock(async () => {}),
-    }
+    })
     const app = createApp({ emailService: mockEmailService })
 
     const response = await app.handle(
@@ -970,15 +911,11 @@ describe("invoices routes", () => {
   })
 
   it("notify/reminder succeeds despite email service rejection", async () => {
-    const mockEmailService: InvoiceEmailService = {
-      sendInvoiceCreated: mock(async () => {}),
+    const mockEmailService = createMockEmailService({
       sendPaymentReminder: mock(async () => {
         throw new Error("Email service unreachable")
       }),
-      sendInvoicePaid: mock(async () => {}),
-      sendInvoiceOverdue: mock(async () => {}),
-      sendInvoiceCancelled: mock(async () => {}),
-    }
+    })
     const app = createApp({ emailService: mockEmailService })
 
     const response = await app.handle(
@@ -991,15 +928,11 @@ describe("invoices routes", () => {
   })
 
   it("notify/overdue succeeds despite email service rejection", async () => {
-    const mockEmailService: InvoiceEmailService = {
-      sendInvoiceCreated: mock(async () => {}),
-      sendPaymentReminder: mock(async () => {}),
-      sendInvoicePaid: mock(async () => {}),
+    const mockEmailService = createMockEmailService({
       sendInvoiceOverdue: mock(async () => {
         throw new Error("Email service unreachable")
       }),
-      sendInvoiceCancelled: mock(async () => {}),
-    }
+    })
     const app = createApp({ emailService: mockEmailService })
 
     const response = await app.handle(
@@ -1012,15 +945,11 @@ describe("invoices routes", () => {
   })
 
   it("notify/cancelled succeeds despite email service rejection", async () => {
-    const mockEmailService: InvoiceEmailService = {
-      sendInvoiceCreated: mock(async () => {}),
-      sendPaymentReminder: mock(async () => {}),
-      sendInvoicePaid: mock(async () => {}),
-      sendInvoiceOverdue: mock(async () => {}),
+    const mockEmailService = createMockEmailService({
       sendInvoiceCancelled: mock(async () => {
         throw new Error("Email service unreachable")
       }),
-    }
+    })
     const app = createApp({ emailService: mockEmailService })
 
     const response = await app.handle(
@@ -1133,13 +1062,9 @@ describe("invoices routes", () => {
     const app = createApp({
       service,
       resolveInvoiceRecipients: async () => mockRecipients,
-      emailService: {
-        sendInvoiceCreated: mock(async () => {}),
-        sendPaymentReminder: mock(async () => {}),
-        sendInvoicePaid: mock(async () => {}),
-        sendInvoiceOverdue: mock(async () => {}),
+      emailService: createMockEmailService({
         sendInvoiceCancelled: mockSendInvoiceCancelled,
-      },
+      }),
       platformRole: "super_admin",
     })
 
@@ -1178,13 +1103,9 @@ describe("invoices routes", () => {
     const app = createApp({
       service,
       resolveInvoiceRecipients: async () => mockRecipients,
-      emailService: {
-        sendInvoiceCreated: mock(async () => {}),
-        sendPaymentReminder: mock(async () => {}),
+      emailService: createMockEmailService({
         sendInvoicePaid: mockSendInvoicePaid,
-        sendInvoiceOverdue: mock(async () => {}),
-        sendInvoiceCancelled: mock(async () => {}),
-      },
+      }),
       platformRole: "super_admin",
     })
 

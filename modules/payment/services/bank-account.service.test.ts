@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, mock } from "bun:test"
 
 // Mock prisma with bankAccount model
+const mockBankAccountTransaction = mock(<T>(operations: Promise<T>[]) =>
+  Promise.all(operations)
+)
+
 const mockBankAccountFindMany = mock<
   () => Promise<Array<Record<string, unknown>>>
 >(() => Promise.resolve([]))
@@ -16,15 +20,20 @@ const mockBankAccountUpdate = mock<() => Promise<Record<string, unknown>>>(() =>
 const mockBankAccountUpdateMany = mock<() => Promise<{ count: number }>>(() =>
   Promise.resolve({ count: 0 })
 )
+const mockBankAccountDelete = mock<() => Promise<Record<string, unknown>>>(() =>
+  Promise.resolve({})
+)
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
+    $transaction: mockBankAccountTransaction,
     paymentBankAccount: {
       findMany: mockBankAccountFindMany,
       findUnique: mockBankAccountFindUnique,
       create: mockBankAccountCreate,
       update: mockBankAccountUpdate,
       updateMany: mockBankAccountUpdateMany,
+      delete: mockBankAccountDelete,
     },
   },
 }))
@@ -72,6 +81,8 @@ describe("BankAccountService", () => {
     mockBankAccountCreate.mockClear()
     mockBankAccountUpdate.mockClear()
     mockBankAccountUpdateMany.mockClear()
+    mockBankAccountDelete.mockClear()
+    mockBankAccountTransaction.mockClear()
 
     // Reset default implementations
     mockBankAccountFindMany.mockImplementation(() => Promise.resolve([]))
@@ -81,6 +92,7 @@ describe("BankAccountService", () => {
     mockBankAccountUpdateMany.mockImplementation(() =>
       Promise.resolve({ count: 0 })
     )
+    mockBankAccountDelete.mockImplementation(() => Promise.resolve({}))
   })
 
   describe("list", () => {
@@ -382,6 +394,38 @@ describe("BankAccountService", () => {
     })
   })
 
+  describe("setDefault", () => {
+    it("makes the target active and clears every other default in a transaction", async () => {
+      const inactiveAccount = { ...mockAccount, isActive: false }
+      mockBankAccountFindUnique.mockImplementation(() =>
+        Promise.resolve(inactiveAccount)
+      )
+      mockBankAccountUpdate.mockImplementation(() =>
+        Promise.resolve({ ...inactiveAccount, isActive: true, isDefault: true })
+      )
+
+      const result = await service.setDefault("ba_1")
+
+      expect(mockBankAccountTransaction).toHaveBeenCalledTimes(1)
+      expect(mockBankAccountUpdateMany).toHaveBeenCalledWith({
+        where: { id: { not: "ba_1" } },
+        data: { isDefault: false },
+      })
+      expect(mockBankAccountUpdate).toHaveBeenCalledWith({
+        where: { id: "ba_1" },
+        data: { isDefault: true, isActive: true },
+      })
+      expect(result.isDefault).toBe(true)
+      expect(result.isActive).toBe(true)
+    })
+
+    it("throws error when account not found", async () => {
+      expect(service.setDefault("nonexistent")).rejects.toThrow(
+        "Bank account not found"
+      )
+    })
+  })
+
   describe("toggle", () => {
     it("toggles account from active to inactive", async () => {
       mockBankAccountFindUnique.mockImplementation(() =>
@@ -418,10 +462,69 @@ describe("BankAccountService", () => {
       expect(result.isActive).toBe(true)
     })
 
+    it("clears default when deactivating the default account", async () => {
+      const defaultAccount = { ...mockAccount, isDefault: true }
+      mockBankAccountFindUnique.mockImplementation(() =>
+        Promise.resolve(defaultAccount)
+      )
+      mockBankAccountUpdate.mockImplementation(() =>
+        Promise.resolve({ ...defaultAccount, isActive: false })
+      )
+
+      await service.toggle("ba_1")
+      expect(mockBankAccountUpdate).toHaveBeenCalledWith({
+        where: { id: "ba_1" },
+        data: { isActive: false, isDefault: false },
+      })
+    })
+
     it("throws error when account not found", async () => {
       mockBankAccountFindUnique.mockImplementation(() => Promise.resolve(null))
 
       expect(service.toggle("nonexistent")).rejects.toThrow(
+        "Bank account not found"
+      )
+    })
+  })
+  describe("delete", () => {
+    it("soft-deletes accounts that have payment confirmations", async () => {
+      mockBankAccountFindUnique.mockImplementation(() =>
+        Promise.resolve({ ...mockAccount, _count: { paymentConfirmations: 2 } })
+      )
+      mockBankAccountUpdate.mockImplementation(() =>
+        Promise.resolve({ ...mockAccount, isActive: false, isDefault: false })
+      )
+
+      const result = await service.delete("ba_1")
+
+      expect(mockBankAccountFindUnique).toHaveBeenCalledWith({
+        where: { id: "ba_1" },
+        include: { _count: { select: { paymentConfirmations: true } } },
+      })
+      expect(mockBankAccountUpdate).toHaveBeenCalledWith({
+        where: { id: "ba_1" },
+        data: { isActive: false, isDefault: false },
+      })
+      expect(mockBankAccountDelete).not.toHaveBeenCalled()
+      expect(result).toEqual({ success: true })
+    })
+
+    it("hard-deletes accounts without payment confirmations", async () => {
+      mockBankAccountFindUnique.mockImplementation(() =>
+        Promise.resolve({ ...mockAccount, _count: { paymentConfirmations: 0 } })
+      )
+
+      const result = await service.delete("ba_1")
+
+      expect(mockBankAccountDelete).toHaveBeenCalledWith({
+        where: { id: "ba_1" },
+      })
+      expect(mockBankAccountUpdate).not.toHaveBeenCalled()
+      expect(result).toEqual({ success: true })
+    })
+
+    it("throws error when account not found", async () => {
+      expect(service.delete("nonexistent")).rejects.toThrow(
         "Bank account not found"
       )
     })

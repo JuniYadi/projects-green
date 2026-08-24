@@ -4,6 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 const mockConsoleError = mock(() => {})
 console.error = mockConsoleError
 
+const mockCreateEmailLog = mock(async () => "email-log-123")
+
+mock.module("@/lib/email-log", () => ({
+  createEmailLog: mockCreateEmailLog,
+}))
+
 const mockSendEmail = mock(async () => {})
 
 mock.module("@/lib/queue/email", () => ({
@@ -11,8 +17,18 @@ mock.module("@/lib/queue/email", () => ({
 }))
 
 const mockRender = mock(async () => "<html><body>Test Email</body></html>")
+const passthrough = ({ children }: { children?: unknown }) => children
 mock.module("@react-email/components", () => ({
   render: mockRender,
+  Body: passthrough,
+  Container: passthrough,
+  Head: passthrough,
+  Heading: passthrough,
+  Hr: passthrough,
+  Html: passthrough,
+  Preview: passthrough,
+  Section: passthrough,
+  Text: passthrough,
 }))
 
 mock.module("./emails/invoice-created", () => ({
@@ -46,6 +62,7 @@ describe("invoiceEmailService", () => {
   let originalEnv: NodeJS.ProcessEnv
 
   beforeEach(async () => {
+    mockCreateEmailLog.mockClear()
     mockSendEmail.mockClear()
     mockRender.mockClear()
 
@@ -183,6 +200,53 @@ describe("invoiceEmailService", () => {
           to: "user@example.com",
         })
       )
+    })
+  })
+  describe("sendPaymentConfirmationSubmitted", () => {
+    const confirmation = {
+      invoiceId: "inv-123",
+      invoiceNumber: "INV-2026-001",
+      amount: 150,
+      currency: "USD",
+      bankName: "Test Bank",
+      senderName: "Test Sender",
+      confirmationId: "conf-123",
+    }
+
+    it("logs the submitted confirmation event type", async () => {
+      await emailService.sendPaymentConfirmationSubmitted(
+        confirmation,
+        "finance@example.com"
+      )
+
+      expect(mockCreateEmailLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "PAYMENT_CONFIRMATION_SUBMITTED",
+        })
+      )
+    })
+
+    it("sends a submitted confirmation email", async () => {
+      await emailService.sendPaymentConfirmationSubmitted(
+        confirmation,
+        "finance@example.com"
+      )
+
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: "finance@example.com",
+          subject: expect.stringContaining("Payment Confirmation Submitted"),
+        })
+      )
+    })
+
+    it("renders the submitted confirmation template", async () => {
+      await emailService.sendPaymentConfirmationSubmitted(
+        confirmation,
+        "finance@example.com"
+      )
+
+      expect(mockRender).toHaveBeenCalled()
     })
   })
 

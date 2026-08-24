@@ -408,6 +408,7 @@ describe("AdminInvoiceRoute", () => {
               sendInvoicePaid: mock(async () => {}),
               sendInvoiceOverdue: mock(async () => {}),
               sendInvoiceCancelled: mock(async () => {}),
+              sendPaymentConfirmationSubmitted: mock(async () => {}),
             },
             getOrganizationIdByBillingAccount: async () => "org-1",
             resolveInvoiceRecipients: async () => [
@@ -477,6 +478,7 @@ describe("AdminInvoiceRoute", () => {
               sendInvoicePaid: mock(async () => {}),
               sendInvoiceOverdue: mock(async () => {}),
               sendInvoiceCancelled: mockSendInvoiceCancelled,
+              sendPaymentConfirmationSubmitted: mock(async () => {}),
             },
             getOrganizationIdByBillingAccount: async () => "org-1",
             resolveInvoiceRecipients: async () => [

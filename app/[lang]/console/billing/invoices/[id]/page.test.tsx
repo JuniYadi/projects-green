@@ -131,8 +131,27 @@ describe("Billing InvoiceDetailPage", () => {
     expect(view.getByText("1234567890")).toBeInTheDocument()
     expect(view.getByText("PFNApp Technologies Inc.")).toBeInTheDocument()
     expect(
-      view.getByRole("link", { name: /confirm payment/i })
+      view.getByRole("link", { name: "Confirm Payment" })
     ).toBeInTheDocument()
+  })
+
+  it("prominently calls out manual transfer confirmation", async () => {
+    const view = render(<InvoiceDetailPage />)
+
+    await waitFor(() =>
+      expect(
+        view.getByText("Transfer submitted? Confirm payment and upload receipt")
+      ).toBeInTheDocument()
+    )
+
+    expect(
+      view.getByRole("link", {
+        name: /confirm payment and upload receipt/i,
+      })
+    ).toHaveAttribute(
+      "href",
+      "/console/billing/payments/confirm?invoiceId=inv-1"
+    )
   })
 
   it("shows a continue payment gateway action when gateway URL exists", async () => {
@@ -455,7 +474,7 @@ describe("Billing InvoiceDetailPage", () => {
     )
 
     expect(view.getByText("1234567890")).toBeInTheDocument()
-    const confirmLink = view.getByRole("link", { name: /confirm payment/i })
+    const confirmLink = view.getByRole("link", { name: "Confirm Payment" })
     expect(confirmLink).toHaveAttribute(
       "href",
       expect.stringContaining("paymentMethodId=bank-1")
@@ -536,7 +555,7 @@ describe("Billing InvoiceDetailPage", () => {
 
     await waitFor(() => {
       expect(view.getByText("9876543210")).toBeInTheDocument()
-      const confirmLink = view.getByRole("link", { name: /confirm payment/i })
+      const confirmLink = view.getByRole("link", { name: "Confirm Payment" })
       expect(confirmLink).toHaveAttribute(
         "href",
         expect.stringContaining("paymentMethodId=bank-2")
@@ -603,7 +622,7 @@ describe("Billing InvoiceDetailPage", () => {
         )
       ).toBeInTheDocument()
       expect(
-        view.queryByRole("link", { name: /confirm payment/i })
+        view.queryByRole("link", { name: "Confirm Payment" })
       ).not.toBeInTheDocument()
     })
   })

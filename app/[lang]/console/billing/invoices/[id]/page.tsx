@@ -429,6 +429,29 @@ export default function InvoiceDetailPage() {
           </div>
         </div>
       )}
+      {isManualPayment && invoice.status === "OPEN" && (
+        <Card className="border-2 border-primary bg-primary/5 shadow-md">
+          <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div className="flex items-start gap-3">
+              <CheckCircleIcon className="mt-0.5 h-6 w-6 shrink-0 text-primary" />
+              <div className="space-y-1">
+                <p className="font-semibold text-primary">
+                  Transfer submitted? Confirm payment and upload receipt
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Tell us about your transfer so we can review it and update
+                  this invoice.
+                </p>
+              </div>
+            </div>
+            <Button asChild size="lg" className="w-full shrink-0 sm:w-auto">
+              <Link href={confirmPaymentHref}>
+                Confirm payment and upload receipt
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Main Responsive Workspace */}
       <div className="grid gap-6 lg:grid-cols-12">
@@ -657,7 +680,7 @@ export default function InvoiceDetailPage() {
         {isOpen && (
           <div className="space-y-6 lg:col-span-4">
             {/* Payment Action Box */}
-            <Card className="border-primary/40 shadow-sm">
+            <Card className="border-2 border-primary shadow-lg">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold tracking-wider text-primary uppercase">
                   Payment Options

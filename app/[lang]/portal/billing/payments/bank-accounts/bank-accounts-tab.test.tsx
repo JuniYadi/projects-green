@@ -33,7 +33,7 @@ describe("BankAccountsTab", () => {
     expect(view.getByLabelText("Filter bank accounts...")).toBeInTheDocument()
   })
 
-  it("calls PATCH toggle when Set Default is clicked", async () => {
+  it("calls PATCH default when Set as Default is clicked", async () => {
     const calls: Array<{ url: string; init?: RequestInit }> = []
     globalThis.fetch = Object.assign(
       async (url: string | URL | Request, init?: RequestInit) => {
@@ -57,7 +57,45 @@ describe("BankAccountsTab", () => {
     ) as typeof fetch
 
     const view = render(<BankAccountsTab />)
-    fireEvent.click(await view.findByRole("button", { name: "Set Default" }))
+    fireEvent.click(await view.findByRole("button", { name: "Set as Default" }))
+
+    await waitFor(() => {
+      expect(
+        calls.some(
+          (call) =>
+            new URL(call.url, "http://localhost").pathname ===
+              "/api/portal/payments/bank-accounts/ba-1/default" &&
+            call.init?.method === "PATCH"
+        )
+      ).toBe(true)
+    })
+  })
+
+  it("calls PATCH toggle when Deactivate is clicked", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = []
+    globalThis.fetch = Object.assign(
+      async (url: string | URL | Request, init?: RequestInit) => {
+        calls.push({ url: String(url), init })
+        return new Response(
+          JSON.stringify([
+            {
+              id: "ba-1",
+              bankName: "BCA",
+              accountNumber: "123456",
+              accountName: "Test",
+              isActive: true,
+              isDefault: false,
+              createdAt: "2026-06-09",
+            },
+          ]),
+          { status: 200 }
+        )
+      },
+      { preconnect: () => {} }
+    ) as typeof fetch
+
+    const view = render(<BankAccountsTab />)
+    fireEvent.click(await view.findByRole("button", { name: "Deactivate" }))
 
     await waitFor(() => {
       expect(
@@ -69,6 +107,54 @@ describe("BankAccountsTab", () => {
         )
       ).toBe(true)
     })
+  })
+
+  it("calls DELETE when a bank account is confirmed for deletion", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = []
+    const originalConfirm = window.confirm
+    window.confirm = () => true
+    globalThis.fetch = Object.assign(
+      async (url: string | URL | Request, init?: RequestInit) => {
+        calls.push({ url: String(url), init })
+        const method = (init?.method ?? "GET").toUpperCase()
+        if (method === "GET") {
+          return new Response(
+            JSON.stringify([
+              {
+                id: "ba-1",
+                bankName: "BCA",
+                accountNumber: "123456",
+                accountName: "Test",
+                isActive: true,
+                isDefault: false,
+                createdAt: "2026-06-09",
+              },
+            ]),
+            { status: 200 }
+          )
+        }
+        return new Response(JSON.stringify({ ok: true }), { status: 200 })
+      },
+      { preconnect: () => {} }
+    ) as typeof fetch
+
+    try {
+      const view = render(<BankAccountsTab />)
+      fireEvent.click(await view.findByRole("button", { name: "Delete" }))
+
+      await waitFor(() => {
+        expect(
+          calls.some(
+            (call) =>
+              new URL(call.url, "http://localhost").pathname ===
+                "/api/portal/payments/bank-accounts/ba-1" &&
+              call.init?.method === "DELETE"
+          )
+        ).toBe(true)
+      })
+    } finally {
+      window.confirm = originalConfirm
+    }
   })
 
   it("opens edit form and submits updates via PUT", async () => {

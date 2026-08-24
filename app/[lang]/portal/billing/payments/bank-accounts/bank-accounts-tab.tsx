@@ -135,17 +135,26 @@ export function BankAccountsTab() {
         enableHiding: false,
         cell: ({ row }) => (
           <div className="flex justify-end gap-2">
-            {!row.original.isDefault && (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                disabled={isSubmitting}
-                onClick={() => void handleSetDefault(row.original.id)}
-              >
-                Set Default
-              </Button>
-            )}
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={
+                isSubmitting || row.original.isDefault || !row.original.isActive
+              }
+              onClick={() => void handleSetDefault(row.original.id)}
+            >
+              Set as Default
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={isSubmitting}
+              onClick={() => void handleToggleActive(row.original.id)}
+            >
+              {row.original.isActive ? "Deactivate" : "Activate"}
+            </Button>
             <Button
               type="button"
               size="sm"
@@ -154,11 +163,21 @@ export function BankAccountsTab() {
             >
               Edit
             </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              disabled={isSubmitting}
+              onClick={() => void handleDeleteAccount(row.original.id)}
+            >
+              Delete
+            </Button>
           </div>
         ),
       },
     ],
-    // ponytail: handleSetDefault is a stable hoisted async function, adding it to deps causes churn
+    // These handlers are stable hoisted async functions with no render-time
+    // dependencies. Only submitting state affects the rendered actions.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [isSubmitting]
   )
@@ -273,7 +292,7 @@ export function BankAccountsTab() {
       const { error } =
         await eden.api.portal.payments["bank-accounts"][
           accountId
-        ].toggle.patch()
+        ].default.patch()
       if (error) {
         setState({
           status: "error",
@@ -289,6 +308,57 @@ export function BankAccountsTab() {
         status: "error",
         message: "Failed to set default bank account",
       })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function handleToggleActive(accountId: string) {
+    setIsSubmitting(true)
+    try {
+      const { error } =
+        await eden.api.portal.payments["bank-accounts"][
+          accountId
+        ].toggle.patch()
+      if (error) {
+        setState({
+          status: "error",
+          message:
+            (error.value as { message?: string })?.message ||
+            "Failed to update bank account status",
+        })
+        return
+      }
+      await fetchBankAccounts()
+    } catch {
+      setState({
+        status: "error",
+        message: "Failed to update bank account status",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function handleDeleteAccount(accountId: string) {
+    if (!window.confirm("Delete this bank account?")) return
+
+    setIsSubmitting(true)
+    try {
+      const { error } =
+        await eden.api.portal.payments["bank-accounts"][accountId].delete()
+      if (error) {
+        setState({
+          status: "error",
+          message:
+            (error.value as { message?: string })?.message ||
+            "Failed to delete bank account",
+        })
+        return
+      }
+      await fetchBankAccounts()
+    } catch {
+      setState({ status: "error", message: "Failed to delete bank account" })
     } finally {
       setIsSubmitting(false)
     }

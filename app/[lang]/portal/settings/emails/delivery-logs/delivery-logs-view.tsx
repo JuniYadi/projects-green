@@ -64,6 +64,10 @@ const TYPE_OPTIONS = [
   { value: "INVOICE_CREATED", label: "Invoice Created" },
   { value: "INVOICE_PAYMENT_REMINDER", label: "Invoice Payment Reminder" },
   { value: "INVOICE_PAID", label: "Invoice Paid" },
+  {
+    value: "PAYMENT_CONFIRMATION_SUBMITTED",
+    label: "Payment Confirmation Submitted",
+  },
   { value: "INVOICE_OVERDUE", label: "Invoice Overdue" },
   { value: "INVOICE_CANCELLED", label: "Invoice Cancelled" },
   { value: "VPN_SUBSCRIPTION_CREATED", label: "VPN Subscription Created" },
