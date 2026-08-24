@@ -17,6 +17,15 @@ export interface TelemetryOptions {
 
 const MAX_LOG_LINES = 500
 
+const escapeHtml = (str: string): string => {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
+}
+
 /**
  * Wraps any cronjob or scheduled task with database telemetry,
  * in-memory ring-buffer logging, and automated failure email alerts.
@@ -87,9 +96,19 @@ export async function withCronTelemetry<T>(
   ctx.log(
     `Started cronjob [${jobCode}] execution id=${execution.id} on pod=${podName}`
   )
-
   try {
-    const result = await runnerFn(ctx)
+    const timeoutMs = options.timeoutMs ?? definition.timeoutSeconds * 1000
+    const runnerPromise = runnerFn(ctx)
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`CronJob [${jobCode}] timed out after ${timeoutMs}ms`))
+      }, timeoutMs)
+      if (typeof timer === "object" && "unref" in timer) {
+        timer.unref()
+      }
+    })
+
+    const result = await Promise.race([runnerPromise, timeoutPromise])
     const durationMs = Date.now() - startedAt
 
     ctx.log(`Completed cronjob [${jobCode}] successfully in ${durationMs}ms`)
@@ -152,8 +171,8 @@ export async function withCronTelemetry<T>(
         process.env.ADMIN_ALERT_EMAIL || "admin@projects-green.local"
       await sendEmail({
         to: adminEmail,
-        subject: `🚨 [CRON FAILED] ${definition.name} (${jobCode})`,
-        html: `<p><strong>CRONJOB EXECUTION FAILURE ALERT</strong></p><p>Job: ${definition.name} (${jobCode})<br/>Execution ID: ${execution.id}<br/>Pod: ${podName}<br/>Duration: ${durationMs}ms</p><p><strong>Error:</strong> ${errorMsg}</p><pre>${errorStack || "N/A"}</pre><pre>${logs.slice(-20).join("\n")}</pre>`,
+        subject: `🚨 [CRON FAILED] ${escapeHtml(definition.name)} (${escapeHtml(jobCode)})`,
+        html: `<p><strong>CRONJOB EXECUTION FAILURE ALERT</strong></p><p>Job: ${escapeHtml(definition.name)} (${escapeHtml(jobCode)})<br/>Execution ID: ${escapeHtml(execution.id)}<br/>Pod: ${escapeHtml(podName)}<br/>Duration: ${durationMs}ms</p><p><strong>Error:</strong> ${escapeHtml(errorMsg)}</p><pre>${escapeHtml(errorStack || "N/A")}</pre><pre>${escapeHtml(logs.slice(-20).join("\n"))}</pre>`,
       })
     } catch (emailErr) {
       console.error(

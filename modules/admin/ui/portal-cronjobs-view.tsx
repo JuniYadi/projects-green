@@ -133,10 +133,19 @@ export function CronJobsManagementView() {
   const refreshData = () => {
     if (activeTab === "overview") {
       void fetch("/api/admin/cronjobs")
-        .then((res) => res.json())
+        .then((res) => {
+          if (!res.ok)
+            throw new Error(`HTTP ${res.status}: Failed to refresh jobs`)
+          return res.json()
+        })
         .then((data) => {
           setJobs(data.jobs || [])
           setMetrics(data.metrics || null)
+        })
+        .catch((err: unknown) => {
+          toast.error(
+            err instanceof Error ? err.message : "Failed to refresh cronjobs"
+          )
         })
     } else {
       const query = new URLSearchParams()
@@ -144,10 +153,19 @@ export function CronJobsManagementView() {
       query.set("page", String(page))
       query.set("limit", "15")
       void fetch(`/api/admin/cronjobs/executions?${query.toString()}`)
-        .then((res) => res.json())
+        .then((res) => {
+          if (!res.ok)
+            throw new Error(`HTTP ${res.status}: Failed to refresh executions`)
+          return res.json()
+        })
         .then((data) => {
           setExecutions(data.executions || [])
           setTotalExecutions(data.total || 0)
+        })
+        .catch((err: unknown) => {
+          toast.error(
+            err instanceof Error ? err.message : "Failed to refresh executions"
+          )
         })
     }
   }

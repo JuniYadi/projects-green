@@ -1039,14 +1039,13 @@ const buildNavSecondary = (input: {
   surface: AppSidebarSurface
   currentPathname: string
 }) => {
-  const { locale = defaultLocale } = getLocaleFromPathname(
-    input.currentPathname
-  )
+  const { locale } = getLocaleFromPathname(input.currentPathname)
+  const activeLocale = locale ?? defaultLocale
 
   const items: NavSecondaryItem[] = [
     {
       title: "Documentation",
-      url: localizePathname({ pathname: "/docs", locale }),
+      url: localizePathname({ pathname: "/docs", locale: activeLocale }),
       icon: <BookOpenIcon />,
     },
     {

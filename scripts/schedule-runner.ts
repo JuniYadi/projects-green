@@ -168,9 +168,10 @@ export const dispatchScheduledJobs = async (
       const jobId = def.buildJobId(now)
 
       try {
+        // Telemetry captures schedule dispatching / queuing step into BullMQ
         await withCronTelemetry(def.name, async (ctx) => {
           ctx.log(
-            `Dispatching job ${def.jobName} to queue ${def.queueName} with ID ${jobId}`
+            `[Scheduler Dispatch] Job ${def.jobName} queued to ${def.queueName} with ID ${jobId}`
           )
           await queue.add(
             def.jobName,

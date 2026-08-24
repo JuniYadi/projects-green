@@ -11,6 +11,23 @@ export type FeatureMapping = {
 
 export const FEATURE_MAPPINGS: FeatureMapping[] = [
   {
+    name: "cron",
+    sourcePrefixes: [
+      "lib/cron/",
+      "modules/admin/api/routes/admin-cron",
+      "modules/admin/api/services/cron-admin",
+      "modules/admin/api/dto/cronjob",
+      "modules/admin/ui/portal-cronjobs-view",
+      "app/[lang]/portal/system/cronjobs/",
+    ],
+    testPrefixes: [
+      "lib/cron/telemetry.test.ts",
+      "modules/admin/api/routes/admin-cron.route.test.ts",
+      "modules/admin/ui/portal-cronjobs-view.test.tsx",
+    ],
+    smokeProjects: [],
+  },
+  {
     name: "api",
     sourcePrefixes: ["lib/api.ts", "lib/eden-typing-smoke.ts"],
     testPrefixes: ["lib/api.openapi.test.ts"],

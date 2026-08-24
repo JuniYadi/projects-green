@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { syncCronJobDefinitions } from "@/lib/cron/registry"
 import { withCronTelemetry } from "@/lib/cron/telemetry"
 import { getQueue } from "@/lib/queue/queue-config"
+import { scheduledJobsRegistry } from "@/scripts/schedule-runner"
 import type { CronExecutionStatus, Prisma } from "@prisma/client"
 import {
   toCronJobDefinitionDTO,
@@ -11,12 +12,20 @@ import {
   type CronSystemMetricsDTO,
 } from "../dto/cronjob.dto"
 export class CronAdminService {
+  private static lastSyncedAt = 0
+
   async listJobs(): Promise<{
     jobs: CronJobDefinitionDTO[]
     metrics: CronSystemMetricsDTO
   }> {
-    // Ensure DB has all definition records
-    await syncCronJobDefinitions()
+    // Only sync definitions if TTL has expired (5 mins)
+    if (
+      !CronAdminService.lastSyncedAt ||
+      Date.now() - CronAdminService.lastSyncedAt > 300_000
+    ) {
+      await syncCronJobDefinitions()
+      CronAdminService.lastSyncedAt = Date.now()
+    }
 
     const jobs = await prisma.cronJobDefinition.findMany({
       orderBy: [{ category: "asc" }, { name: "asc" }],
