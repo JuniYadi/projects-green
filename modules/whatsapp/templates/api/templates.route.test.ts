@@ -72,6 +72,8 @@ const mockTemplateFindUnique = mock(
     languages: [],
   })
 )
+const mockTemplateFindMany = mock(async () => [])
+const mockTemplateCount = mock(async () => 0)
 const mockSubscriptionFindFirst = mock(async () => ({
   id: "sub-1",
   organizationId: "org-1",
@@ -98,6 +100,8 @@ mock.module("@/lib/prisma", () => ({
       create: mockTemplateCreate,
       update: mockTemplateUpdate,
       findUnique: mockTemplateFindUnique,
+      findMany: mockTemplateFindMany,
+      count: mockTemplateCount,
     },
     whatsappDevice: {
       findFirst: mockDeviceFindFirst,
@@ -233,6 +237,8 @@ describe("templatesRoutes", () => {
       updatedAt: new Date(),
       languages: [],
     }))
+    mockTemplateFindMany.mockClear()
+    mockTemplateCount.mockClear()
     mockDeviceFindFirst.mockClear()
     mockSubscriptionFindFirst.mockClear()
     mockDeviceFindFirst.mockResolvedValue({
@@ -719,6 +725,29 @@ describe("templatesRoutes", () => {
       expect(json.ok).toBe(true)
       expect(json.template).toBeDefined()
       expect(json.template.category).toBe("UTILITY")
+    })
+  })
+  describe("GET / query filters", () => {
+    it("filters templates by wabaId by resolving deviceId", async () => {
+      mockDeviceFindFirst.mockResolvedValueOnce({
+        id: "device-waba-1",
+        organizationId: "org-1",
+        status: "ACTIVE",
+      })
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request("http://localhost/templates?wabaId=waba-123")
+      )
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      expect(json.ok).toBe(true)
+      expect(mockDeviceFindFirst).toHaveBeenCalledWith({
+        where: {
+          organizationId: "org-1",
+          whatsappBusinessAccountId: "waba-123",
+        },
+        select: { id: true },
+      })
     })
   })
 })

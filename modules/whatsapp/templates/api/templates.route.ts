@@ -131,11 +131,24 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       } else if (query.organizationId) {
         where.organizationId = String(query.organizationId)
       }
-
       if (query.whatsappDeviceId) {
         where.whatsappDeviceId = String(query.whatsappDeviceId)
+      } else if (query.wabaId || query.phoneId) {
+        const device = await prisma.whatsappDevice.findFirst({
+          where: {
+            ...(where.organizationId ? { organizationId: String(where.organizationId) } : {}),
+            ...(query.wabaId ? { whatsappBusinessAccountId: String(query.wabaId) } : {}),
+            ...(query.phoneId ? { whatsappPhoneId: String(query.phoneId) } : {}),
+          },
+          select: { id: true },
+        })
+        if (device) {
+          where.whatsappDeviceId = device.id
+        } else {
+          // No matching device found for wabaId/phoneId, return empty result safely
+          where.whatsappDeviceId = "non-existent-device-id"
+        }
       }
-
       const VALID_SYNC_STATUSES = [
         "SYNCED",
         "NOT_SYNCED",
