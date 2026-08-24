@@ -101,15 +101,29 @@ _Use for:_ Driving sales, product announcements, discount offers, or newsletters
 
 ---
 
-## 3. Why Templates Get Rejected (and How to Fix Them)
+## 3. Meta Pre-Review Rules & Automated Classification Assistant
 
-Meta evaluates templates with AI classifiers and manual audits. If your template gets rejected or reclassified, check these 4 common triggers:
+To avoid sudden Meta rejections, the **Console Template Builder** includes an automatic pre-validation rule engine that analyzes your text in real time:
+
+| Trigger Pattern | Detected Intent | Automated Guidance & Category Recommendation |
+| :--- | :--- | :--- |
+| **`otp`, `verification code`, `kode verifikasi`, `security code`** | Authentication | **Warning:** Meta strictly mandates the **`AUTHENTICATION`** category with predefined formats. Using Utility/Marketing will trigger `INCORRECT_CATEGORY`. |
+| **`promo`, `diskon`, `voucher`, `cashback`, `sale`, `flash sale`** | Marketing in Utility | **Warning:** Submitting promotional or discount words under the **`UTILITY`** category will cause Meta rejection or re-classification to **`MARKETING`**. |
+| **`{{1}}` at the end of text** | Boundary Violation | **Warning:** WhatsApp restricts unanchored variables at the end of messages. Add punctuation or closing text after the placeholder. |
+| **Consecutive `{{1}}{{2}}`** | Variable Stacking | **Error:** Meta rejects adjacent variables without separating spaces or words. |
+
+---
+
+## 4. Why Templates Get Rejected (and How to Fix Them)
+
+Meta evaluates templates with AI classifiers and manual audits. If your template gets rejected or reclassified, check these common triggers:
 
 ```mermaid
 graph TD
     A[Template Submission] --> B{Meta Review}
     B -->|Complies with Category Rules| C[APPROVED & SYNCED]
     B -->|Promotional words in Utility| D[Reclassified to MARKETING]
+    B -->|OTP in Utility/Marketing| G[REJECTED: INCORRECT_CATEGORY]
     B -->|Missing Sample Values| E[REJECTED: Invalid Format]
     B -->|Prohibited Goods / Phishing| F[REJECTED: Policy Violation]
 ```
@@ -120,25 +134,26 @@ graph TD
 - **Meta Action**: Immediate rejection or forced reclassification into `MARKETING`.
 - **The Fix**: Keep utility messages strictly factual, or submit directly as `MARKETING`.
 
-### 2. Missing Sample Variable Values
+### 2. OTP / Verification Sent in Utility Category
+
+- **The Issue**: Submitting custom one-time password messages as `UTILITY` instead of `AUTHENTICATION`.
+- **Meta Action**: Automatic rejection with error code `INCORRECT_CATEGORY`.
+- **The Fix**: Switch category to `AUTHENTICATION` and utilize Meta's standardized OTP configuration with 1-tap Copy Code buttons.
+
+### 3. Missing Sample Variable Values
 
 - **The Issue**: Using variables like `{{1}}`, `{{2}}` without providing sample preview text in the form.
 - **Meta Action**: Rejection because the automated reviewer cannot infer the sentence context.
 - **The Fix**: Always provide clear sample values (e.g. `Budi`, `ID-9923`) in the template form.
 
-### 3. Floating or Unanchored Variables
+### 4. Floating or Unanchored Variables
 
 - **The Issue**: Putting multiple variables together without context (e.g., `Your code is {{1}} {{2}} {{3}}`).
 - **The Fix**: Anchor each parameter clearly: `Your activation code is {{1}}. Expiring in {{2}} minutes.`
 
-### 4. Prohibited Content & Scams
-
-- **The Issue**: Mentioning unauthorized pharmaceuticals, gambling, unverified loans, or misleading threats (_"Your account will be deleted in 5 minutes unless you click here"_).
-- **The Fix**: Ensure all content adheres to WhatsApp Commerce & Business Policies.
-
 ---
 
-## 4. What Makes a Template "Marketing"?
+## 5. What Makes a Template "Marketing"?
 
 Meta treats a template as **`MARKETING`** if **any** promotional trigger is present:
 

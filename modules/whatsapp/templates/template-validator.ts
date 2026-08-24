@@ -9,12 +9,76 @@
  * 4. Slug formatting: lowercase letters, numbers, and underscores only.
  */
 
+export type ContentRuleWarning = {
+  ruleId: string
+  title: string
+  message: string
+  suggestedCategory?: "UTILITY" | "AUTHENTICATION" | "MARKETING"
+}
+
 export type VariableValidationResult = {
   isValid: boolean
   indexes: number[]
   errors: string[]
   warnings: string[]
+  ruleWarnings: ContentRuleWarning[]
 }
+
+/**
+ * Modular content classification & anti-rejection rules
+ */
+export interface TemplateContentRule {
+  id: string
+  name: string
+  appliesToCategory?: Array<"UTILITY" | "AUTHENTICATION" | "MARKETING" | string>
+  pattern: RegExp
+  suggestedCategory?: "UTILITY" | "AUTHENTICATION" | "MARKETING"
+  title: {
+    id: string
+    en: string
+  }
+  message: {
+    id: string
+    en: string
+  }
+}
+
+export const TEMPLATE_CONTENT_RULES: TemplateContentRule[] = [
+  // 1. Detect OTP / Verification keywords in non-AUTHENTICATION templates
+  {
+    id: "RULE_OTP_NON_AUTH",
+    name: "OTP / Authentication Content in Non-Auth Category",
+    appliesToCategory: ["UTILITY", "MARKETING"],
+    pattern:
+      /\b(otp|kode verifikasi|kode rahasia|verification code|one-time password|kode keamanan|security code|passcode|token verifikasi|login verification|auth code)\b/i,
+    suggestedCategory: "AUTHENTICATION",
+    title: {
+      id: "Terdeteksi Kode OTP / Verifikasi",
+      en: "OTP / Verification Content Detected",
+    },
+    message: {
+      id: "Meta mewajibkan pesan berisi OTP/verifikasi login menggunakan kategori AUTHENTICATION dengan format preset resmi Meta. Penggunaan kategori Utility/Marketing berisiko ditolak (INCORRECT_CATEGORY).",
+      en: "Meta mandates all OTP and login verification messages use the AUTHENTICATION category with standardized preset formats. Submitting under Utility/Marketing risks rejection (INCORRECT_CATEGORY).",
+    },
+  },
+  // 2. Detect Promotional / Marketing keywords in UTILITY templates
+  {
+    id: "RULE_PROMO_IN_UTILITY",
+    name: "Promotional Keywords in Utility Category",
+    appliesToCategory: ["UTILITY"],
+    pattern:
+      /\b(promo|promosi|diskon|discount|cashback|voucher|potongan harga|sale|cuci gudang|spesial offer|special offer|penawaran terbatas|limited offer|buy 1 get 1|bogo|belanja sekarang|shop now|klaim kupon|claim coupon|flash sale|gratis ongkir|free shipping)\b/i,
+    suggestedCategory: "MARKETING",
+    title: {
+      id: "Terdeteksi Kata Promosi / Diskon di Kategori Utility",
+      en: "Promotional Keywords Detected in Utility Category",
+    },
+    message: {
+      id: "Template Utility ditujukan murni untuk update transaksional/notifikasi. Menyertakan diskon, kupon, atau promosi akan menyebabkan Meta menolak template atau mengklasifikasikannya ulang ke MARKETING.",
+      en: "Utility templates must strictly deliver transactional updates. Including discounts, coupons, or promo links will trigger Meta rejection or re-classification to MARKETING.",
+    },
+  },
+]
 
 /**
  * Extracts sequential placeholder indexes from text (e.g. "{{1}} and {{2}}" -> [1, 2]).
@@ -38,10 +102,13 @@ export function extractTemplateVariables(text?: string | null): number[] {
  * - Variable cannot be directly adjacent to another variable without space/text ({{1}}{{2}}).
  */
 export function validateTemplateBodyRules(
-  body?: string | null
+  body?: string | null,
+  category?: string | null,
+  locale: "id" | "en" = "en"
 ): VariableValidationResult {
   const errors: string[] = []
   const warnings: string[] = []
+  const ruleWarnings: ContentRuleWarning[] = []
   const trimmed = (body ?? "").trim()
 
   if (!trimmed) {
@@ -50,9 +117,9 @@ export function validateTemplateBodyRules(
       indexes: [],
       errors: ["Body text is required."],
       warnings: [],
+      ruleWarnings: [],
     }
   }
-
   const indexes = extractTemplateVariables(trimmed)
 
   // 1. Check sequential indexing
@@ -85,11 +152,33 @@ export function validateTemplateBodyRules(
     errors.push("Template exceeds maximum of 25 variables.")
   }
 
+  // 5. Smart Content Rules (Category mismatch & OTP detection)
+  const currentCategory = (category || "UTILITY").toUpperCase()
+  for (const rule of TEMPLATE_CONTENT_RULES) {
+    if (
+      !rule.appliesToCategory ||
+      rule.appliesToCategory.includes(currentCategory)
+    ) {
+      if (rule.pattern.test(trimmed)) {
+        const title = rule.title[locale] || rule.title.en
+        const message = rule.message[locale] || rule.message.en
+        warnings.push(`${title}: ${message}`)
+        ruleWarnings.push({
+          ruleId: rule.id,
+          title,
+          message,
+          suggestedCategory: rule.suggestedCategory,
+        })
+      }
+    }
+  }
+
   return {
     isValid: errors.length === 0,
     indexes,
     errors,
     warnings,
+    ruleWarnings,
   }
 }
 

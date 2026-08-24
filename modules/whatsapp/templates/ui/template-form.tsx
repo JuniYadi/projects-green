@@ -283,10 +283,15 @@ export function TemplateForm({
     [body]
   )
 
-  // Body rule validation (boundary & sequential)
+  // Body rule validation (boundary, sequential, and smart content classification)
   const bodyValidation = React.useMemo(
-    () => validateTemplateBodyRules(body),
-    [body]
+    () =>
+      validateTemplateBodyRules(
+        body,
+        category,
+        lang.startsWith("id") ? "id" : "en"
+      ),
+    [body, category, lang]
   )
 
   const handleSampleChange = (index: number, val: string) => {
@@ -993,16 +998,57 @@ export function TemplateForm({
                     <p className="text-xs text-destructive">{errors.body}</p>
                   )}
 
-                  {/* Validation Warnings */}
-                  {bodyValidation.warnings.map((w, idx) => (
+                  {/* Validation Warnings & Smart Category Suggestions */}
+                  {bodyValidation.ruleWarnings.map((rw, idx) => (
                     <div
-                      key={idx}
-                      className="flex items-start gap-2 rounded-md bg-amber-500/10 p-2.5 text-xs text-amber-600 dark:text-amber-400"
+                      key={`rule-${idx}`}
+                      className="flex items-start justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200"
                     >
-                      <WarningCircle className="mt-0.5 size-4 shrink-0" />
-                      <span>{w}</span>
+                      <div className="flex items-start gap-2.5">
+                        <WarningCircle
+                          weight="fill"
+                          className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
+                        />
+                        <div className="space-y-1">
+                          <p className="font-semibold text-amber-800 dark:text-amber-300">
+                            {rw.title}
+                          </p>
+                          <p className="leading-relaxed text-amber-700/90 dark:text-amber-200/90">
+                            {rw.message}
+                          </p>
+                        </div>
+                      </div>
+                      {rw.suggestedCategory &&
+                        rw.suggestedCategory !== category && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCategory(rw.suggestedCategory!)}
+                            className="h-7 shrink-0 border-amber-500/40 bg-amber-500/20 text-xs font-semibold text-amber-900 hover:bg-amber-500/30 dark:text-amber-100"
+                          >
+                            Ubah ke {rw.suggestedCategory}
+                          </Button>
+                        )}
                     </div>
                   ))}
+
+                  {bodyValidation.warnings
+                    .filter(
+                      (w) =>
+                        !bodyValidation.ruleWarnings.some((rw) =>
+                          w.startsWith(rw.title)
+                        )
+                    )
+                    .map((w, idx) => (
+                      <div
+                        key={`std-${idx}`}
+                        className="flex items-start gap-2 rounded-md bg-amber-500/10 p-2.5 text-xs text-amber-600 dark:text-amber-400"
+                      >
+                        <WarningCircle className="mt-0.5 size-4 shrink-0" />
+                        <span>{w}</span>
+                      </div>
+                    ))}
                 </div>
               )}
 

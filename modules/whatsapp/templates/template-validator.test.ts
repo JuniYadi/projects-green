@@ -62,8 +62,40 @@ describe("template-validator", () => {
         "variables at the end of the message"
       )
     })
-  })
 
+    it("detects OTP keywords when category is UTILITY or MARKETING and suggests AUTHENTICATION", () => {
+      const result = validateTemplateBodyRules(
+        "Kode verifikasi OTP akun Anda adalah {{1}}. Jangan berikan kepada siapapun.",
+        "UTILITY",
+        "id"
+      )
+      expect(result.isValid).toBe(true)
+      expect(result.ruleWarnings).toHaveLength(1)
+      expect(result.ruleWarnings[0].ruleId).toBe("RULE_OTP_NON_AUTH")
+      expect(result.ruleWarnings[0].suggestedCategory).toBe("AUTHENTICATION")
+    })
+
+    it("detects promotional words in UTILITY template and suggests MARKETING", () => {
+      const result = validateTemplateBodyRules(
+        "Halo {{1}}, klaim diskon promo spesial 50% untuk pesanan berikutnya!",
+        "UTILITY",
+        "en"
+      )
+      expect(result.isValid).toBe(true)
+      expect(result.ruleWarnings).toHaveLength(1)
+      expect(result.ruleWarnings[0].ruleId).toBe("RULE_PROMO_IN_UTILITY")
+      expect(result.ruleWarnings[0].suggestedCategory).toBe("MARKETING")
+    })
+
+    it("does not warn about promotional words when category is already MARKETING", () => {
+      const result = validateTemplateBodyRules(
+        "Halo {{1}}, klaim diskon promo spesial 50% untuk pesanan berikutnya!",
+        "MARKETING",
+        "en"
+      )
+      expect(result.ruleWarnings).toHaveLength(0)
+    })
+  })
   describe("buildMetaTemplateComponents", () => {
     it("builds HEADER, BODY, FOOTER, and BUTTONS components correctly", () => {
       const components = buildMetaTemplateComponents({
