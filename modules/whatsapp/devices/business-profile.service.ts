@@ -81,10 +81,133 @@ export async function getProfile(
       whatsappProfile: profile as Prisma.InputJsonValue,
     },
   })
-
   return profile as BusinessProfileFields
 }
+/**
+ * Full sync with Meta Graph API phone_numbers endpoint.
+ * Fetches verified name, status, name_status, health, and embedded business profile,
+ * and updates prisma.whatsappDevice record.
+ */
+export async function syncDeviceFromMeta(
+  deviceId: string,
+  organizationId: string
+): Promise<BusinessProfileFields> {
+  const device = await getDeviceById(deviceId, organizationId)
+  const phoneId = requirePhoneId(device)
+  const wabaId = device.whatsappBusinessAccountId
+  if (!wabaId) {
+    throw new Error("Device has no WhatsApp Business Account ID configured.")
+  }
 
+  const token = device.tokenEncrypted ?? device.token ?? ""
+  const client = await WhatsAppDeviceClient.fromDevice({
+    accessToken: token,
+    phoneNumberId: phoneId,
+    wabaId,
+    organizationId: device.organizationId,
+  })
+
+  const fields =
+    "account_mode,certificate,code_verification_status,conversational_automation,display_phone_number,eligibility_for_api_business_global_search,health_status,id,is_official_business_account,is_on_biz_app,is_pin_enabled,is_preverified_number,last_onboarded_time,messaging_limit_tier,name_status,new_certificate,new_display_name,new_name_status,official_business_account,platform_type,quality_score,search_visibility,status,throughput,verified_name,whatsapp_business_manager_messaging_limit,whatsapp_business_profile.limit(10){about,address,description,email,messaging_product,profile_picture_url,vertical,websites}"
+
+  const version = device.whatsappVersion || "v22.0"
+  const url = `https://graph.facebook.com/${version}/${wabaId}/phone_numbers?fields=${fields}`
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${client.token}` },
+  })
+  const json = (await res.json()) as { data?: Array<Record<string, unknown>> }
+
+  if (!json.data || json.data.length === 0) {
+    throw new Error("No phone number data returned from Meta Graph API.")
+  }
+
+  const metaPhone = json.data.find((p) => p.id === phoneId) || json.data[0]
+
+  const embeddedProfile =
+    (
+      metaPhone.whatsapp_business_profile as {
+        data?: Array<Record<string, unknown>>
+      }
+    )?.data?.[0] ?? {}
+
+  const currentProfile =
+    device.whatsappProfile &&
+    typeof device.whatsappProfile === "object" &&
+    !Array.isArray(device.whatsappProfile)
+      ? (device.whatsappProfile as Record<string, unknown>)
+      : {}
+
+  const websites =
+    Array.isArray(embeddedProfile.websites) &&
+    embeddedProfile.websites.length > 0
+      ? (embeddedProfile.websites as string[])
+      : Array.isArray(currentProfile.websites)
+        ? (currentProfile.websites as string[])
+        : Array.isArray(currentProfile.website)
+          ? (currentProfile.website as string[])
+          : []
+
+  const mergedProfile: Record<string, unknown> = {
+    ...currentProfile,
+    about:
+      (embeddedProfile.about as string) ||
+      (currentProfile.about as string) ||
+      "",
+    address:
+      (embeddedProfile.address as string) ||
+      (currentProfile.address as string) ||
+      "",
+    description:
+      (embeddedProfile.description as string) ||
+      (currentProfile.description as string) ||
+      "",
+    email:
+      (embeddedProfile.email as string) ||
+      (currentProfile.email as string) ||
+      "",
+    vertical:
+      (embeddedProfile.vertical as string) ||
+      (currentProfile.vertical as string) ||
+      "",
+    websites,
+    profile_picture_url:
+      (embeddedProfile.profile_picture_url as string) ||
+      (currentProfile.profile_picture_url as string) ||
+      (currentProfile.profilePicture as string) ||
+      "",
+    verified_name:
+      (metaPhone.verified_name as string) ||
+      (currentProfile.verified_name as string) ||
+      "",
+    name_status:
+      (metaPhone.name_status as string) ||
+      (currentProfile.name_status as string) ||
+      "APPROVED",
+    new_display_name: metaPhone.new_display_name ?? null,
+    new_name_status: metaPhone.new_name_status ?? null,
+    quality_rating:
+      (metaPhone.quality_score as { score?: string })?.score ?? "GREEN",
+    display_phone_number:
+      (metaPhone.display_phone_number as string) || device.phoneNumber,
+    is_official_business_account:
+      metaPhone.is_official_business_account ?? false,
+    messaging_limit_tier:
+      metaPhone.whatsapp_business_manager_messaging_limit ??
+      metaPhone.messaging_limit_tier ??
+      null,
+    meta_health_status: metaPhone.health_status ?? null,
+  }
+  await prisma.whatsappDevice.update({
+    where: { id: deviceId },
+    data: {
+      whatsappProfile: mergedProfile as Prisma.InputJsonValue,
+      lastHeartbeatAt: new Date(),
+    },
+  })
+
+  return mergedProfile as BusinessProfileFields
+}
 /**
  * Update business profile in Meta + persist to local whatsappProfile JSON.
  * Sends only the provided fields (partial update).

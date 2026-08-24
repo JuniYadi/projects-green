@@ -4,13 +4,13 @@ import { fieldErrorMapFromIssues } from "@/lib/validation"
 import { updateBusinessProfileSchema } from "@/lib/whatsapp/meta-cloud/types/business-profile"
 import {
   getProfile,
+  syncDeviceFromMeta,
   updateProfile,
   uploadProfilePicture,
   DeviceNoPhoneIdError,
   DeviceNoMetaAppIdError,
   ProfileNotFoundError,
 } from "../business-profile.service"
-import { toBusinessProfileDTO } from "../business-profile.dto"
 import { DeviceNotFoundError, DeviceNotOwnedError } from "../devices.schemas"
 import { resolveDeviceAuth } from "./devices.route"
 
@@ -61,9 +61,29 @@ export const businessProfileRoutes = new Elysia({
       throw e
     }
   })
-  .patch("/", async ({ request, params: { id }, body, set }: any) => {
+  .post("/sync", async ({ request, params: { id }, set }: any) => {
     const auth = await resolveDeviceAuth(request)
     if (!auth) return toUnauthorized(set)
+    if (!auth.organizationId)
+      return toBadRequest(set, "Organization context required.")
+
+    try {
+      const profile = await syncDeviceFromMeta(id, auth.organizationId)
+      return { ok: true, profile: toBusinessProfileDTO(profile) }
+    } catch (e: any) {
+      if (e instanceof DeviceNotFoundError) return toNotFound(set, e.message)
+      if (e instanceof DeviceNotOwnedError) return toForbidden(set)
+      if (e instanceof DeviceNoPhoneIdError) return toConflict(set, e.message)
+      set.status = 500
+      return {
+        ok: false,
+        error: "SYNC_FAILED",
+        message: e?.message || "Sync failed",
+      }
+    }
+  })
+  .patch("/", async ({ request, params: { id }, body, set }: any) => {
+    const auth = await resolveDeviceAuth(request)
     if (!auth.organizationId)
       return toBadRequest(set, "Organization context required.")
 

@@ -189,6 +189,11 @@ export const whatsappClient = {
         serverFetch<{ ok: boolean; profile: BusinessProfileDTO }>(
           `/api/whatsapp/devices/${id}/profile`
         ),
+      syncMeta: (id: string) =>
+        serverFetch<{ ok: boolean; profile: BusinessProfileDTO }>(
+          `/api/whatsapp/devices/${id}/profile/sync`,
+          { method: "POST" }
+        ),
       update: (id: string, input: Record<string, unknown>) =>
         serverFetch<{ ok: boolean; profile: BusinessProfileDTO }>(
           `/api/whatsapp/devices/${id}/profile`,
