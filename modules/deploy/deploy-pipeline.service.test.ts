@@ -39,6 +39,7 @@ const mockPrisma = {
     findUnique: mock(() => Promise.resolve(mockStack)),
     create: mock(() => Promise.resolve(mockStack)),
     update: mock(() => Promise.resolve(mockStack)),
+    delete: mock(() => Promise.resolve(mockStack)),
   },
   applicationDeployment: {
     create: mock(() => Promise.resolve(mockDeployment)),
@@ -63,14 +64,20 @@ const mockPrisma = {
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
+const releaseManagedStock = mock(async () => {})
 
-const { triggerDeploy, createOrUpdateStack } =
+mock.module("@/modules/deploy/app-managed-stock.service", () => ({
+  releaseManagedStock,
+}))
+
+const { triggerDeploy, createOrUpdateStack, deleteStack } =
   await import("./deploy-pipeline.service")
 
 describe("deploy-pipeline.service", () => {
   beforeEach(() => {
     mockPrisma.applicationStack.findUniqueOrThrow.mockClear()
     mockPrisma.applicationStack.findUnique.mockClear()
+    mockPrisma.applicationStack.delete.mockClear()
     mockPrisma.applicationStack.create.mockClear()
     mockPrisma.applicationStack.update.mockClear()
     mockPrisma.applicationDeployment.create.mockClear()
@@ -78,10 +85,21 @@ describe("deploy-pipeline.service", () => {
     mockPrisma.applicationDeploymentLog.create.mockClear()
     mockPrisma.applicationDeployment.count.mockClear()
     mockPrisma.$transaction.mockClear()
+    releaseManagedStock.mockClear()
+    releaseManagedStock.mockResolvedValue(undefined)
     mockPrisma.applicationStack.findUnique.mockResolvedValue(mockStack)
     mockPrisma.applicationStack.findUniqueOrThrow.mockResolvedValue(mockStack)
+    mockPrisma.applicationStack.delete.mockResolvedValue(mockStack)
   })
 
+  it("releases managed stock before deleting a stack", async () => {
+    await deleteStack("stack-1")
+
+    expect(releaseManagedStock).toHaveBeenCalledWith("stack-1")
+    expect(mockPrisma.applicationStack.delete).toHaveBeenCalledWith({
+      where: { id: "stack-1" },
+    })
+  })
   it("triggerDeploy creates deployment, event, and initial log", async () => {
     const result = await triggerDeploy({
       stackId: "stack-1",

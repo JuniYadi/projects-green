@@ -209,6 +209,38 @@ describe("handleJenkinsImageReady", () => {
     expect(files[0]?.content).toContain("tag: '187'")
     expect(files[0]?.content).toContain("replicaCount: 1")
   })
+  it("uses an external secret and removes Vault refs from Helm env", async () => {
+    mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+      ...defaultStack,
+      envVarsJson: JSON.stringify([
+        { key: "NODE_ENV", value: "production", type: "plain" },
+        {
+          key: "DATABASE_URL",
+          value: "",
+          type: "secret_ref",
+          source: "vault",
+          vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env/DATABASE_URL",
+          vaultKey: "DATABASE_URL",
+        },
+      ]),
+    } as any)
+
+    await handleJenkinsImageReady({
+      slug: "app-metacard-prod",
+      deploymentId: "deploy-1",
+      imageTag: "189",
+    })
+
+    const files = (fakeCommit.mock.calls[0] as any)[2] as Array<{
+      content: string
+    }>
+    expect(files[0]?.content).toContain("externalSecret:")
+    expect(files[0]?.content).toContain(
+      "vaultPath: tenants/org-1/stacks/stack-1/prod/app-env"
+    )
+    expect(files[0]?.content).not.toContain("secrets:")
+    expect(files[0]?.content).not.toContain("DATABASE_URL")
+  })
   it("uses the persisted uploaded certificate secret name in Helm values", async () => {
     mockPrisma.applicationDomain.findFirst.mockResolvedValueOnce({
       id: "domain-1",

@@ -1,7 +1,14 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from "sonner"
+import { eden } from "@/lib/eden"
+
 import { Button } from "@/components/ui/button"
+import {
+  QuickDeployDialog,
+  TemplateCatalog,
+} from "@/components/deploy/template-catalog"
 import { useAiDeployFeed } from "@/modules/deploy/ui/ai-feed/use-ai-deploy-feed"
 import { FeedMessage } from "@/modules/deploy/ui/ai-feed/feed-message"
 import { FeedShell } from "@/modules/deploy/ui/ai-feed/feed-shell"
@@ -12,6 +19,7 @@ import { DetectionDetailsDialog } from "@/modules/deploy/ui/ai-feed/detection-de
 import { EnvValuesDialog } from "@/modules/deploy/ui/ai-feed/env-values-dialog"
 import { PlanDetailsDialog } from "@/modules/deploy/ui/ai-feed/plan-details-dialog"
 import { ConfirmDeployDialog } from "@/modules/deploy/ui/ai-feed/confirm-deploy-dialog"
+import type { ManagedAppTemplate } from "@/modules/deploy/managed-app-templates"
 
 const labels: Record<string, string> = {
   inspecting: "Inspecting your repository…",
@@ -41,6 +49,48 @@ export default function DeployPage() {
   const [planOpen, setPlanOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const latest = feed.items[feed.items.length - 1]
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<ManagedAppTemplate | null>(null)
+  const [templateDeploying, setTemplateDeploying] = useState(false)
+
+  const submitTemplate = async (subdomain: string) => {
+    if (!selectedTemplate) return
+
+    setTemplateDeploying(true)
+    try {
+      const { data: payload } = await eden.api.deploy.submit.post({
+        sourceType: "MANAGED_TEMPLATE",
+        templateId: selectedTemplate.id,
+        subdomain,
+        billingMode: "PAYG",
+        resourcePlanId: "payg",
+      })
+
+      if (!payload || !("ok" in payload) || !payload.ok) {
+        const msg =
+          payload && "message" in payload
+            ? String(payload.message)
+            : "Deploy failed"
+        throw new Error(msg)
+      }
+
+      const stackId =
+        payload && "data" in payload && payload.data
+          ? (payload.data as { stackId?: string }).stackId
+          : undefined
+
+      setSelectedTemplate(null)
+      toast.success(
+        `${selectedTemplate.name} deployment started${
+          stackId ? ` (${stackId})` : ""
+        }.`
+      )
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Deploy failed")
+    } finally {
+      setTemplateDeploying(false)
+    }
+  }
 
   return (
     <>
@@ -105,6 +155,20 @@ export default function DeployPage() {
           </p>
         )}
       </FeedShell>
+      <section className="rounded-xl border border-border bg-card p-6">
+        <TemplateCatalog
+          onSelect={setSelectedTemplate}
+          isDeploying={templateDeploying}
+        />
+      </section>
+      {selectedTemplate !== null && (
+        <QuickDeployDialog
+          template={selectedTemplate}
+          open
+          onClose={() => setSelectedTemplate(null)}
+          onConfirm={submitTemplate}
+        />
+      )}
       <DetectionDetailsDialog
         open={detectionOpen}
         onClose={() => setDetectionOpen(false)}

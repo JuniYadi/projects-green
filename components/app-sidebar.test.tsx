@@ -168,6 +168,7 @@ describe("resolveSidebarMenu", () => {
     expect(navMain.map((item) => item.title)).toEqual([
       "Overview",
       "Clusters",
+      "Managed Stocks",
       "Events",
       "Detector Control",
       "Settings",

@@ -63,6 +63,37 @@ describe("buildHelmValues", () => {
     expect(out.env).toEqual({ NODE_ENV: "production" })
     expect(out.secrets).toEqual({ API_KEY: "shhh" })
   })
+  it("emits externalSecret block when externalSecretVaultPath is provided", () => {
+    const out = buildHelmValues({
+      slug: "s",
+      imageRepository: "r",
+      imageTag: "1",
+      env: [
+        { key: "NODE_ENV", value: "production" },
+        { key: "API_KEY", value: "shhh", type: "secret" },
+      ],
+      externalSecretVaultPath: "tenants/org/stacks/stack/prod/app-env",
+    })
+
+    expect(out.externalSecret).toEqual({
+      enabled: true,
+      vaultPath: "tenants/org/stacks/stack/prod/app-env",
+      targetSecretName: "app-s-k8s-secrets",
+    })
+    expect(out.secrets).toBeUndefined()
+  })
+
+  it("falls back to plaintext secrets when externalSecretVaultPath is absent", () => {
+    const out = buildHelmValues({
+      slug: "s",
+      imageRepository: "r",
+      imageTag: "1",
+      env: [{ key: "API_KEY", value: "shhh", type: "secret" }],
+    })
+
+    expect(out.externalSecret).toBeUndefined()
+    expect(out.secrets).toEqual({ API_KEY: "shhh" })
+  })
 
   it("emits simpleIngress when domain provided", () => {
     const out = buildHelmValues({
