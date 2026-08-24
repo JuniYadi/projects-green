@@ -164,9 +164,7 @@ export function ManagedStocksList() {
     setMaintenanceId(stock.id)
     setError(null)
     try {
-      await eden.api.admin["managed-stocks"]({
-        id: stock.id,
-      }).maintenance.patch()
+      await eden.api.admin["managed-stocks"][stock.id].maintenance.patch()
       setStocks((current) =>
         current.map((item) =>
           item.id === stock.id ? { ...item, status: "MAINTENANCE" } : item

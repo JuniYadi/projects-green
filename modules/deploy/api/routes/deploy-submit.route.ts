@@ -379,6 +379,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
           t.Literal("PUBLIC"),
         ])
       ),
+      publicSourceUrl: t.Optional(t.String()),
       publicSourceRef: t.Optional(t.String()),
       templateId: t.Optional(t.String()),
       repositoryId: t.Optional(t.String()),
