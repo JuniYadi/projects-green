@@ -329,7 +329,13 @@ describe("whatsapp-template-sync-worker", () => {
       category: "UTILITY",
       language: "id",
       components: [
-        { type: "BODY", text: "Pesanan {{1}} berhasil!" },
+        {
+          type: "BODY",
+          text: "Pesanan {{1}} berhasil!",
+          example: {
+            body_text: [["Sample 1"]],
+          },
+        },
         { type: "FOOTER", text: "Terima kasih" },
       ],
     })

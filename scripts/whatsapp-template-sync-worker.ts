@@ -15,7 +15,7 @@ import {
 import { getQueueRuntimeConfig } from "@/lib/queue/queue-config"
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
-
+import { buildMetaTemplateComponents } from "@/modules/whatsapp/templates/template-validator"
 type MetaTemplateComponent = {
   type?: string
   format?: string
@@ -180,72 +180,6 @@ async function fetchAllTemplates(client: WhatsAppDeviceClient) {
   return templates
 }
 
-function buildMetaComponents(lang: {
-  headerType?: string | null
-  headerText?: string | null
-  headerUrl?: string | null
-  body?: string | null
-  footer?: string | null
-  buttons?: unknown
-  parameters?: unknown
-}): Array<Record<string, unknown>> {
-  const components: Array<Record<string, unknown>> = []
-
-  if (lang.headerType && lang.headerType !== "NONE") {
-    const format = lang.headerType.toUpperCase()
-    if (format === "TEXT" && lang.headerText) {
-      components.push({
-        type: "HEADER",
-        format: "TEXT",
-        text: lang.headerText,
-      })
-    } else if (["IMAGE", "VIDEO", "DOCUMENT"].includes(format)) {
-      components.push({
-        type: "HEADER",
-        format,
-        ...(lang.headerUrl ? { example: { header_handle: [lang.headerUrl] } } : {}),
-      })
-    }
-  }
-
-  if (lang.body) {
-    components.push({
-      type: "BODY",
-      text: lang.body,
-    })
-  }
-
-  if (lang.footer) {
-    components.push({
-      type: "FOOTER",
-      text: lang.footer,
-    })
-  }
-
-  if (Array.isArray(lang.buttons) && lang.buttons.length > 0) {
-    const metaButtons = (lang.buttons as Array<Record<string, unknown>>).map((b) => {
-      if (b.type === "QUICK_REPLY") {
-        return { type: "QUICK_REPLY", text: b.text }
-      }
-      if (b.type === "URL") {
-        return { type: "URL", text: b.text, url: b.url }
-      }
-      if (b.type === "PHONE_NUMBER") {
-        return { type: "PHONE_NUMBER", text: b.text, phone_number: b.phoneNumber }
-      }
-      if (b.type === "OTP") {
-        return { type: "OTP", otp_type: "COPY_CODE" }
-      }
-      return b
-    })
-    components.push({
-      type: "BUTTONS",
-      buttons: metaButtons,
-    })
-  }
-
-  return components
-}
 
 async function pushLocalTemplatesToMeta(
   client: WhatsAppDeviceClient,
@@ -270,7 +204,10 @@ async function pushLocalTemplatesToMeta(
   for (const tpl of unpushedTemplates) {
     for (const lang of tpl.languages) {
       try {
-        const components = buildMetaComponents(lang)
+        const components = buildMetaTemplateComponents({
+          ...lang,
+          category: tpl.category ?? undefined,
+        })
         const payload = {
           name: tpl.slug || tpl.name,
           category: tpl.category || "UTILITY",
