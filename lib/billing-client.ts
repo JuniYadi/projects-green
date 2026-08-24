@@ -41,6 +41,7 @@ export type SubscriptionItem = {
   currentPeriodEnd: string | null
   orderId?: string | null
   orderStatus?: string | null
+  billingInvoiceId?: string | null
   invoiceStatus?: string | null
   fulfillment?: Record<string, unknown> | null
   quotaIn?: number | null
