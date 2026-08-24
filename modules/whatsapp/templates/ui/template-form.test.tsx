@@ -19,6 +19,7 @@ describe("TemplateForm", () => {
           name: "Welcome Message",
           slug: "welcome_message",
           category: "UTILITY",
+          whatsappDeviceId: "dev-1",
           languages: [
             {
               id: "v1",
@@ -31,6 +32,7 @@ describe("TemplateForm", () => {
             },
           ],
         }}
+        devices={[{ id: "dev-1", phoneNumber: "+6281234567890", status: "ACTIVE" }]}
         submitting={false}
         onSubmit={async (data) => {
           submittedData = data
@@ -55,6 +57,7 @@ describe("TemplateForm", () => {
       name: string
       slug: string
       category: string
+      whatsappDeviceId: string
       languages: Array<{
         lang: string
         body: string
@@ -64,6 +67,7 @@ describe("TemplateForm", () => {
     expect(data.name).toBe("Welcome Message")
     expect(data.slug).toBe("welcome_message")
     expect(data.category).toBe("UTILITY")
+    expect(data.whatsappDeviceId).toBe("dev-1")
     expect(data.languages[0].lang).toBe("id")
     expect(data.languages[0].parameters?.[0].text).toBe("Budi")
   })

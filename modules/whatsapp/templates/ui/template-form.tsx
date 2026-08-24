@@ -68,22 +68,31 @@ export type LanguageVariant = {
   buttons?: unknown
 }
 
+type DeviceOption = {
+  id: string
+  phoneNumber: string
+  status: string
+}
+
 type TemplateFormProps = {
   initialData?: {
     name: string
     slug: string
     description?: string | null
     category?: string | null
+    whatsappDeviceId?: string | null
     languages?: Array<
       LanguageVariant & { parameters?: unknown; buttons?: unknown }
     >
   }
+  devices?: DeviceOption[]
   submitting: boolean
   onSubmit: (data: {
     name: string
     slug: string
     description?: string
     category?: string
+    whatsappDeviceId: string
     languages: Omit<LanguageVariant, "id">[]
   }) => Promise<void>
   mode?: "create" | "edit"
@@ -148,8 +157,10 @@ function getAuthOtpCopies(
 
 export function TemplateForm({
   initialData,
+  devices = [],
   submitting,
   onSubmit,
+  mode = "create",
   approvedTemplateLocked = false,
 }: TemplateFormProps) {
   const routeParams = useParams<{ lang?: string }>()
@@ -157,6 +168,19 @@ export function TemplateForm({
   const isEnUi = uiLocale === "en"
   const initialLang = initialData?.languages?.[0]
 
+  const activeDevices = React.useMemo(
+    () => devices.filter((d) => d.status === "ACTIVE"),
+    [devices]
+  )
+
+  const [selectedDeviceId, setSelectedDeviceId] = React.useState(
+    initialData?.whatsappDeviceId ?? ""
+  )
+
+  const whatsappDeviceId =
+    selectedDeviceId || (activeDevices.length > 0 ? activeDevices[0].id : "")
+
+  const setWhatsappDeviceId = setSelectedDeviceId
   const [name, setName] = React.useState(initialData?.name ?? "")
   const [slug, setSlug] = React.useState(initialData?.slug ?? "")
   const [slugManuallyEdited, setSlugManuallyEdited] = React.useState(
@@ -170,7 +194,6 @@ export function TemplateForm({
   )
 
   const isAuth = category === "AUTHENTICATION"
-
   // Primary language variant state
   const [lang, setLang] = React.useState(initialLang?.lang ?? "id")
   const [headerType, setHeaderType] = React.useState(
@@ -343,6 +366,9 @@ export function TemplateForm({
   const validate = (): boolean => {
     const newErrors: Record<string, string | undefined> = {}
 
+    if (!whatsappDeviceId) {
+      newErrors.whatsappDeviceId = "Active WhatsApp device is required."
+    }
     if (!name.trim()) newErrors.name = "Name is required."
     if (!slug.trim()) newErrors.slug = "Slug is required."
 
@@ -429,6 +455,7 @@ export function TemplateForm({
       slug: slug.trim(),
       description: description.trim() || undefined,
       category,
+      whatsappDeviceId,
       languages: [languagePayload],
     })
   }
@@ -504,6 +531,39 @@ export function TemplateForm({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {mode === "create" && devices.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="whatsappDeviceId">
+                    WhatsApp Device <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={whatsappDeviceId}
+                    onValueChange={setWhatsappDeviceId}
+                    disabled={approvedTemplateLocked}
+                  >
+                    <SelectTrigger id="whatsappDeviceId">
+                      <SelectValue placeholder="Select active device" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {devices.map((d) => (
+                        <SelectItem
+                          key={d.id}
+                          value={d.id}
+                          disabled={d.status !== "ACTIVE"}
+                        >
+                          {d.phoneNumber} ({d.status})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.whatsappDeviceId && (
+                    <p className="text-xs text-destructive">
+                      {errors.whatsappDeviceId}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name">
@@ -520,7 +580,6 @@ export function TemplateForm({
                     <p className="text-xs text-destructive">{errors.name}</p>
                   )}
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="slug">
                     Template Slug / Code{" "}
