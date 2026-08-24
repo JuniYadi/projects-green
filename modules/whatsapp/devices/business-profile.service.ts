@@ -208,6 +208,7 @@ export async function syncDeviceFromMeta(
       null,
     meta_health_status: metaPhone.health_status ?? null,
   }
+
   await prisma.whatsappDevice.update({
     where: { id: deviceId },
     data: {
@@ -217,6 +218,175 @@ export async function syncDeviceFromMeta(
   })
 
   return mergedProfile as BusinessProfileFields
+}
+
+/**
+ * Pull/Sync all message templates from Meta Graph API for a specific device into the database.
+ */
+export async function syncTemplatesFromMeta(
+  deviceId: string,
+  organizationId: string
+): Promise<{ syncedCount: number; totalMetaCount: number }> {
+  const device = await getDeviceById(deviceId, organizationId)
+  const phoneId = requirePhoneId(device)
+  const wabaId = device.whatsappBusinessAccountId
+  if (!wabaId) {
+    throw new Error("Device has no WhatsApp Business Account ID configured.")
+  }
+
+  const rawToken = device.tokenEncrypted ?? device.token ?? ""
+  let accessToken = rawToken
+  if (device.tokenEncrypted) {
+    const parts = device.tokenEncrypted.split(".")
+    const decryptable =
+      device.tokenIv && parts.length === 2
+        ? `${parts[0]}.${device.tokenIv}.${parts[1]}`
+        : device.tokenEncrypted
+    const { decryptWhatsAppToken } = await import("@/lib/whatsapp/crypto")
+    accessToken = await decryptWhatsAppToken(decryptable)
+  }
+
+  const version = device.whatsappVersion || "v22.0"
+  const url = `https://graph.facebook.com/${version}/${wabaId}/message_templates?fields=name,language,status,category,components,rejected_reason&limit=100`
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  const json = (await res.json()) as {
+    error?: { message: string }
+    data?: Array<{
+      id: string
+      name: string
+      language: string
+      status: string
+      category: string
+      components?: Array<Record<string, unknown>>
+      rejected_reason?: string
+    }>
+  }
+
+  if (json.error || !json.data) {
+    throw new Error(
+      json.error?.message || "Failed to fetch templates from Meta Graph API."
+    )
+  }
+
+  const metaStatusMap: Record<string, "APPROVED" | "PENDING" | "REJECTED"> = {
+    APPROVED: "APPROVED",
+    PENDING: "PENDING",
+    PENDING_REVIEW: "PENDING",
+    REJECTED: "REJECTED",
+    DECLINED: "REJECTED",
+  }
+
+  const categoryMap: Record<
+    string,
+    "MARKETING" | "UTILITY" | "AUTHENTICATION"
+  > = {
+    MARKETING: "MARKETING",
+    UTILITY: "UTILITY",
+    AUTHENTICATION: "AUTHENTICATION",
+    AUTH: "AUTHENTICATION",
+  }
+
+  let syncedCount = 0
+
+  for (const metaTpl of json.data) {
+    const metaStatus = metaStatusMap[metaTpl.status.toUpperCase()] ?? "PENDING"
+    const category = categoryMap[metaTpl.category.toUpperCase()] ?? "UTILITY"
+    const lang = metaTpl.language || "en_US"
+
+    // Extract header, body, footer, buttons from components
+    const comps = metaTpl.components || []
+    const headerComp = comps.find((c) => c.type === "HEADER")
+    const bodyComp = comps.find((c) => c.type === "BODY")
+    const footerComp = comps.find((c) => c.type === "FOOTER")
+    const buttonComp = comps.find((c) => c.type === "BUTTONS")
+
+    const headerType =
+      (headerComp?.format as string) || (headerComp ? "TEXT" : null)
+    const headerText = (headerComp?.text as string) || null
+    const headerUrl =
+      (headerComp?.example as { header_handle?: string[] })
+        ?.header_handle?.[0] || null
+    const body = (bodyComp?.text as string) || ""
+    const footer = (footerComp?.text as string) || null
+    const buttons = buttonComp?.buttons || null
+
+    // Find or create template by (organizationId, whatsappDeviceId, slug)
+    let template = await prisma.whatsappTemplate.findFirst({
+      where: {
+        organizationId,
+        whatsappDeviceId: deviceId,
+        slug: metaTpl.name,
+      },
+    })
+
+    if (!template) {
+      template = await prisma.whatsappTemplate.create({
+        data: {
+          organizationId,
+          whatsappDeviceId: deviceId,
+          slug: metaTpl.name,
+          name: metaTpl.name.replace(/_/g, " "),
+          category,
+          syncStatus: "SYNCED",
+          metaStatus,
+          lastSyncedAt: new Date(),
+        },
+      })
+    } else {
+      template = await prisma.whatsappTemplate.update({
+        where: { id: template.id },
+        data: {
+          category,
+          syncStatus: "SYNCED",
+          metaStatus,
+          lastSyncedAt: new Date(),
+        },
+      })
+    }
+
+    // Upsert language variant
+    await prisma.whatsappTemplateLanguage.upsert({
+      where: {
+        templateId_lang: {
+          templateId: template.id,
+          lang,
+        },
+      },
+      create: {
+        templateId: template.id,
+        lang,
+        headerType,
+        headerText,
+        headerUrl,
+        body,
+        footer,
+        buttons: buttons as Prisma.InputJsonValue,
+        isApproved: metaStatus === "APPROVED",
+        metaStatus,
+        rejectReason:
+          metaTpl.rejected_reason !== "NONE" ? metaTpl.rejected_reason : null,
+      },
+      update: {
+        headerType,
+        headerText,
+        headerUrl,
+        body,
+        footer,
+        buttons: buttons as Prisma.InputJsonValue,
+        isApproved: metaStatus === "APPROVED",
+        metaStatus,
+        rejectReason:
+          metaTpl.rejected_reason !== "NONE" ? metaTpl.rejected_reason : null,
+      },
+    })
+
+    syncedCount++
+  }
+
+  return { syncedCount, totalMetaCount: json.data.length }
 }
 /**
  * Update business profile in Meta + persist to local whatsappProfile JSON.

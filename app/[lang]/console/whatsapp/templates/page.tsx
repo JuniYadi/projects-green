@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { Plus, ArrowsClockwise } from "@phosphor-icons/react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { useParams, useRouter } from "next/navigation"
@@ -35,45 +36,96 @@ export default function ConsoleTemplatesPage() {
     locale,
   })
 
-  const { templates, loading, error, reload } = useTemplates()
-  const { sync, syncing } = useSyncTemplate()
+  const [devices, setDevices] = React.useState<
+    Array<{
+      id: string
+      phoneNumber: string
+      verifiedName?: string | null
+      name?: string | null
+    }>
+  >([])
+  const [selectedDeviceId, setSelectedDeviceId] = React.useState<string>("all")
+  const [isPulling, setIsPulling] = React.useState(false)
+  const [lastPullTime, setLastPullTime] = React.useState<number>(0)
+  const [cooldownRemaining, setCooldownRemaining] = React.useState<number>(0)
 
-  const handleSyncAll = async () => {
-    const unsynced = templates.filter((t) => t.syncStatus === "NOT_SYNCED")
+  const { templates, loading, error, reload } = useTemplates(
+    selectedDeviceId !== "all"
+      ? { whatsappDeviceId: selectedDeviceId }
+      : undefined
+  )
+  const { sync: _sync } = useSyncTemplate()
+  // Load devices for device selector
+  React.useEffect(() => {
+    void (async () => {
+      try {
+        const { whatsappClient } = await import("@/lib/api/whatsapp-client")
+        const res = await whatsappClient.devices.list()
+        if (res.devices) {
+          setDevices(res.devices)
+          if (res.devices.length > 0 && selectedDeviceId === "all") {
+            setSelectedDeviceId(res.devices[0].id)
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load devices for template selector:", e)
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  // Cooldown countdown timer (60s)
+  React.useEffect(() => {
+    if (lastPullTime === 0) return
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - lastPullTime) / 1000)
+      const remaining = Math.max(0, 60 - elapsed)
+      setCooldownRemaining(remaining)
+      if (remaining === 0) clearInterval(interval)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [lastPullTime])
 
-    if (unsynced.length === 0) {
-      toast.info(messages.console.whatsapp.templates.allSynced)
+  const handlePullFromMeta = async () => {
+    const targetDevice =
+      selectedDeviceId !== "all" ? selectedDeviceId : devices[0]?.id
+
+    if (!targetDevice) {
+      toast.error("Please select a device first.")
       return
     }
 
-    let synced = 0
-    let failed = 0
-    for (const template of unsynced) {
-      try {
-        await sync(template.id)
-        synced++
-      } catch {
-        failed++
+    if (cooldownRemaining > 0) {
+      toast.warning(
+        `Please wait ${cooldownRemaining}s before syncing again to protect Meta rate limits.`
+      )
+      return
+    }
+
+    setIsPulling(true)
+    try {
+      const { whatsappClient } = await import("@/lib/api/whatsapp-client")
+      const res = await whatsappClient.devices.pullTemplates(targetDevice)
+      if (res.ok) {
+        toast.success(
+          messages.console.whatsapp.templates.pulledSuccess.replace(
+            "{count}",
+            String(res.syncedCount)
+          )
+        )
+        setLastPullTime(Date.now())
+        setCooldownRemaining(60)
+        await reload()
+      } else {
+        toast.error("Failed to pull templates from Meta")
       }
-    }
-
-    if (synced > 0) {
-      toast.success(
-        messages.console.whatsapp.templates.syncedCount.replace(
-          "{count}",
-          String(synced)
-        )
-      )
-      void reload()
-    }
-
-    if (failed > 0) {
+    } catch (err) {
       toast.error(
-        messages.console.whatsapp.templates.syncFailed.replace(
-          "{count}",
-          String(failed)
-        )
+        err instanceof Error
+          ? err.message
+          : "Failed to pull templates from Meta"
       )
+    } finally {
+      setIsPulling(false)
     }
   }
 
@@ -248,20 +300,47 @@ export default function ConsoleTemplatesPage() {
               {messages.console.whatsapp.templates.cardDescription}
             </CardDescription>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {devices.length > 0 && (
+              <select
+                value={selectedDeviceId}
+                onChange={(e) => setSelectedDeviceId(e.target.value)}
+                className="rounded-md border bg-background px-3 py-1.5 text-xs font-medium text-foreground focus:outline-hidden"
+              >
+                {devices.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.verifiedName || d.name || d.phoneNumber} ({d.phoneNumber}
+                    )
+                  </option>
+                ))}
+              </select>
+            )}
+
             <Button
-              onClick={() => void handleSyncAll()}
-              disabled={syncing || loading}
+              onClick={() => void handlePullFromMeta()}
+              disabled={isPulling || loading || cooldownRemaining > 0}
               variant="outline"
+              size="sm"
+              title={
+                cooldownRemaining > 0
+                  ? `Rate limit protection: available in ${cooldownRemaining}s`
+                  : "Pull approved templates from Meta Graph API into your database"
+              }
             >
               <ArrowsClockwise
-                className={`mr-2 size-4 ${syncing ? "animate-spin" : ""}`}
+                className={`mr-2 size-4 ${isPulling ? "animate-spin" : ""}`}
               />
-              {syncing
-                ? messages.console.whatsapp.templates.syncing
-                : messages.console.whatsapp.templates.syncTemplates}
+              {isPulling
+                ? messages.console.whatsapp.templates.pulling
+                : cooldownRemaining > 0
+                  ? `${messages.console.whatsapp.templates.pullFromMeta} (${cooldownRemaining}s)`
+                  : messages.console.whatsapp.templates.pullFromMeta}
             </Button>
-            <Button onClick={() => router.push(`${templatesBasePath}/new`)}>
+
+            <Button
+              onClick={() => router.push(`${templatesBasePath}/new`)}
+              size="sm"
+            >
               <Plus weight="bold" className="mr-2 size-4" />
               {messages.console.whatsapp.templates.createTemplate}
             </Button>

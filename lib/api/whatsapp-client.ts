@@ -184,6 +184,15 @@ export const whatsappClient = {
         message: res.data.message ?? "Sync job enqueued.",
       }
     },
+    pullTemplates: (id: string) =>
+      serverFetch<{
+        ok: boolean
+        syncedCount: number
+        totalMetaCount: number
+      }>(`/api/whatsapp/devices/${id}/pull-templates`, {
+        method: "POST",
+        body: "{}",
+      }),
     profile: {
       get: (id: string) =>
         serverFetch<{ ok: boolean; profile: BusinessProfileDTO }>(
