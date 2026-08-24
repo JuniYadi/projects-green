@@ -410,6 +410,86 @@ describe("templatesRoutes", () => {
       expect(json.template.category).toBe("AUTHENTICATION")
     })
 
+    it("updates languages with upsert and excludes protected fields", async () => {
+      mockTemplateFindUnique.mockResolvedValueOnce({
+        id: "tpl-1",
+        slug: "hello_world",
+        name: "Hello World",
+        description: "A greeting template",
+        organizationId: "org-1",
+        whatsappDeviceId: null,
+        syncStatus: "NOT_SYNCED",
+        metaStatus: null,
+        lastSyncedAt: null,
+        category: "UTILITY",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        languages: [],
+      })
+      const app = createTestApp()
+
+      const body = {
+        name: "Updated template",
+        organizationId: "attacker-org",
+        syncStatus: "SYNCED",
+        languages: [
+          {
+            id: "lang-en-1",
+            lang: "en",
+            headerType: "NONE",
+            headerText: "",
+            headerUrl: "",
+            body: "Updated body",
+            parameters: [{ type: "text" }],
+            footer: "",
+            buttons: [{ type: "QUICK_REPLY", text: "More" }],
+          },
+        ],
+      }
+
+      const res = await app.handle(
+        new Request("http://localhost/templates/tpl-1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const updateCall = mockTemplateUpdate.mock.calls.at(-1)?.[0] as {
+        data: Record<string, unknown>
+      }
+      expect(updateCall.data).toEqual({
+        name: "Updated template",
+        languages: {
+          upsert: [
+            {
+              where: { id: "lang-en-1" },
+              create: {
+                lang: "en",
+                headerType: "NONE",
+                headerUrl: "",
+                headerText: "",
+                body: "Updated body",
+                parameters: [{ type: "text" }],
+                footer: "",
+                buttons: [{ type: "QUICK_REPLY", text: "More" }],
+              },
+              update: {
+                headerType: "NONE",
+                headerUrl: "",
+                headerText: "",
+                body: "Updated body",
+                parameters: [{ type: "text" }],
+                footer: "",
+                buttons: [{ type: "QUICK_REPLY", text: "More" }],
+              },
+            },
+          ],
+        },
+      })
+    })
+
     it("rejects update on templates submitted to Meta (immutable)", async () => {
       mockTemplateFindUnique.mockResolvedValueOnce({
         id: "tpl-synced",

@@ -228,7 +228,6 @@ export async function syncTemplatesFromMeta(
   organizationId: string
 ): Promise<{ syncedCount: number; totalMetaCount: number }> {
   const device = await getDeviceById(deviceId, organizationId)
-  const phoneId = requirePhoneId(device)
   const wabaId = device.whatsappBusinessAccountId
   if (!wabaId) {
     throw new Error("Device has no WhatsApp Business Account ID configured.")

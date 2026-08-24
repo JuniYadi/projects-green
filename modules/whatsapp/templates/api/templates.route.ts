@@ -531,26 +531,49 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       try {
         const hasLanguages =
           Array.isArray(bodyRecord.languages) && bodyRecord.languages.length > 0
+        const {
+          languages: _langs,
+          id: _id,
+          organizationId: _orgId,
+          syncStatus: _ss,
+          metaStatus: _ms,
+          lastSyncedAt: _ls,
+          createdAt: _ca,
+          updatedAt: _ua,
+          ...safeFields
+        } = bodyRecord
+
         const updateData = hasLanguages
-          ? {
-              ...bodyRecord,
+          ? ({
+              ...safeFields,
               languages: {
-                deleteMany: {},
-                create: (bodyRecord.languages as UpdateLanguage[]).map(
+                upsert: (bodyRecord.languages as UpdateLanguage[]).map(
                   (lang) => ({
-                    lang: lang.lang,
-                    headerType: lang.headerType,
-                    headerUrl: lang.headerUrl,
-                    headerText: lang.headerText,
-                    body: lang.body,
-                    parameters: lang.parameters,
-                    footer: lang.footer,
-                    buttons: lang.buttons,
+                    where: { id: lang.id ?? "" },
+                    create: {
+                      lang: lang.lang,
+                      headerType: lang.headerType,
+                      headerUrl: lang.headerUrl,
+                      headerText: lang.headerText,
+                      body: lang.body,
+                      parameters: lang.parameters as Prisma.InputJsonValue,
+                      footer: lang.footer,
+                      buttons: lang.buttons as Prisma.InputJsonValue,
+                    },
+                    update: {
+                      headerType: lang.headerType,
+                      headerUrl: lang.headerUrl,
+                      headerText: lang.headerText,
+                      body: lang.body,
+                      parameters: lang.parameters as Prisma.InputJsonValue,
+                      footer: lang.footer,
+                      buttons: lang.buttons as Prisma.InputJsonValue,
+                    },
                   })
                 ),
               },
-            }
-          : bodyRecord
+            } as Prisma.WhatsappTemplateUpdateInput)
+          : (safeFields as Prisma.WhatsappTemplateUpdateInput)
 
         const updated = await prisma.whatsappTemplate.update({
           where: { id: params.id },
