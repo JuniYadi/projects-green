@@ -95,6 +95,7 @@ type TemplateFormProps = {
     whatsappDeviceId?: string
     languages: Omit<LanguageVariant, "id">[]
   }) => Promise<void>
+  mode?: "create" | "edit"
   approvedTemplateLocked?: boolean
   lockedVariantIds?: string[]
   structureTemplate?: Pick<
