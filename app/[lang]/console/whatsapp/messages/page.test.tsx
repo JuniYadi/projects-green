@@ -201,6 +201,12 @@ mock.module("@/modules/whatsapp/templates/api/templates.hooks", () => ({
     error: null,
     reload: mock(() => Promise.resolve()),
   }),
+  useTemplate: (id: string) => ({
+    template: mockTemplatesData.find((t) => t.id === id) ?? null,
+    loading: false,
+    error: null,
+    reload: mock(() => Promise.resolve()),
+  }),
 }))
 
 mock.module("@/modules/whatsapp/messages/ui/message-status-badge", () => ({
@@ -869,7 +875,7 @@ describe("WhatsAppMessagesPage", () => {
       ok: true,
       conversations: [
         {
-          id: "conv_1",
+          id: "conv_inbox",
           organizationId: "org_1",
           contactPhone: "+6281234567890",
           lastMessageAt: new Date().toISOString(),
@@ -886,6 +892,19 @@ describe("WhatsAppMessagesPage", () => {
       expect(view.getByText("+6281234567890")).toBeInTheDocument()
     })
     expect(view.getByText("Received")).toBeInTheDocument()
+    view.unmount()
+  })
+
+  it("auto-opens template dialog and preselects template from ?template= query param", async () => {
+    mockSearchParams = new URLSearchParams("template=tpl_1")
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
+    await waitFor(() => {
+      expect(
+        view.getByRole("heading", { name: "Send Template Message" })
+      ).toBeInTheDocument()
+      expect(view.getAllByText("hello_world").length).toBeGreaterThanOrEqual(1)
+    })
+    mockSearchParams = new URLSearchParams()
     view.unmount()
   })
 })

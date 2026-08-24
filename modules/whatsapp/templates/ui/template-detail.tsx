@@ -282,6 +282,23 @@ export function TemplateDetailView({
               {template.category ?? "UTILITY"}
             </Badge>
             <span>•</span>
+            {template.device ? (
+              <span className="inline-flex items-center gap-1 font-medium text-foreground">
+                📱 {template.device.phoneNumber}
+                <span className="text-[10px] text-muted-foreground">
+                  ({template.device.status})
+                </span>
+              </span>
+            ) : template.whatsappDeviceId ? (
+              <span className="font-mono text-[11px] text-muted-foreground">
+                Device: {template.whatsappDeviceId}
+              </span>
+            ) : (
+              <Badge variant="secondary" className="text-[10px]">
+                All Devices
+              </Badge>
+            )}
+            <span>•</span>
             <span>Created {formatDate(template.createdAt)}</span>
           </div>
         </div>

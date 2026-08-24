@@ -18,6 +18,14 @@ export type WhatsappTemplateLanguageDTO = Pick<
   | "updatedAt"
 >
 
+export type WhatsappTemplateDeviceDTO = {
+  id: string
+  phoneNumber: string
+  status: string
+  whatsappBusinessAccountId?: string | null
+  whatsappPhoneId?: string | null
+}
+
 export type WhatsappTemplateDTO = Pick<
   Prisma.WhatsappTemplateGetPayload<Prisma.WhatsappTemplateDefaultArgs>,
   | "id"
@@ -34,7 +42,23 @@ export type WhatsappTemplateDTO = Pick<
   | "category"
 > & {
   languages?: WhatsappTemplateLanguageDTO[]
+  device?: WhatsappTemplateDeviceDTO | null
 }
+
+type TemplateWithLanguagesAndDevice = Prisma.WhatsappTemplateGetPayload<{
+  include: {
+    languages: true
+    whatsappDevice: {
+      select: {
+        id: true
+        phoneNumber: true
+        status: true
+        whatsappBusinessAccountId: true
+        whatsappPhoneId: true
+      }
+    }
+  }
+}>
 
 type TemplateWithLanguages = Prisma.WhatsappTemplateGetPayload<{
   include: { languages: true }
@@ -65,7 +89,11 @@ export function toWhatsappTemplateDTO(
   template:
     | Prisma.WhatsappTemplateGetPayload<Prisma.WhatsappTemplateDefaultArgs>
     | TemplateWithLanguages
+    | TemplateWithLanguagesAndDevice
 ): WhatsappTemplateDTO {
+  const rawDevice =
+    "whatsappDevice" in template ? template.whatsappDevice : undefined
+
   return {
     id: template.id,
     slug: template.slug,
@@ -79,8 +107,17 @@ export function toWhatsappTemplateDTO(
     createdAt: template.createdAt,
     updatedAt: template.updatedAt,
     category: template.category,
+    device: rawDevice
+      ? {
+          id: rawDevice.id,
+          phoneNumber: rawDevice.phoneNumber,
+          status: rawDevice.status,
+          whatsappBusinessAccountId: rawDevice.whatsappBusinessAccountId,
+          whatsappPhoneId: rawDevice.whatsappPhoneId,
+        }
+      : null,
     languages:
-      "languages" in template
+      "languages" in template && Array.isArray(template.languages)
         ? template.languages.map(toWhatsappTemplateLanguageDTO)
         : undefined,
   }
