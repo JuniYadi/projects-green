@@ -253,8 +253,6 @@ describe("resolveSidebarMenu", () => {
       "App Hosting",
       "VPN",
       "WhatsApp",
-      "AI Governance",
-      "Storage Audit",
       "Systems",
     ])
     expect(navMain.map((item) => item.title)).not.toContain("Documentation")
@@ -284,8 +282,6 @@ describe("resolveSidebarMenu", () => {
       "App Hosting",
       "VPN",
       "WhatsApp",
-      "AI Governance",
-      "Storage Audit",
       "Systems",
     ])
   })
@@ -301,15 +297,22 @@ describe("resolveSidebarMenu", () => {
     expect(systems?.items).toBeUndefined()
     expect(systems?.isActive).toBe(false)
   })
-  it("marks Systems active on system path", () => {
-    const { navMain, navMainLabel } = resolveSidebarMenu({
-      surface: "portal",
-      pathname: "/portal/system/cronjobs",
-      locale: "en",
-    })
-    expect(navMainLabel).toBe("Systems")
-    const systems = navMain.find((item) => item.title === "CronJobs & Workers")
-    expect(systems?.isActive).toBe(true)
+  it("marks Systems active on system, ai, and storage paths", () => {
+    for (const path of [
+      "/portal/system/cronjobs",
+      "/portal/ai",
+      "/portal/storage",
+    ]) {
+      const { navMain, navMainLabel } = resolveSidebarMenu({
+        surface: "portal",
+        pathname: path,
+        locale: "en",
+      })
+      expect(navMainLabel).toBe("Systems")
+      expect(navMain.map((item) => item.title)).toContain("AI Governance")
+      expect(navMain.map((item) => item.title)).toContain("Storage Audit")
+      expect(navMain.map((item) => item.title)).toContain("CronJobs & Workers")
+    }
   })
   it("portal secondary nav only includes Documentation and API Reference, no duplicate organization", () => {
     const items = resolveSidebarSecondaryLinks({

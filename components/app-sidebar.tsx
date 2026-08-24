@@ -142,7 +142,9 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
     context: "system",
     matches: (path) =>
       startsWithRoute(path, "/portal/system") ||
-      startsWithRoute(path, "/portal/settings/emails"),
+      startsWithRoute(path, "/portal/settings/emails") ||
+      startsWithRoute(path, "/portal/ai") ||
+      startsWithRoute(path, "/portal/storage"),
     navMainLabel: "Systems",
     getProjects: (_path, locale) => [
       {
@@ -160,6 +162,24 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <ClockIcon />,
         isActive: startsWithRoute(path, "/portal/system/cronjobs"),
+      },
+      {
+        title: "AI Governance",
+        url: localizePathname({
+          pathname: "/portal/ai",
+          locale,
+        }),
+        icon: <ShieldCheckIcon />,
+        isActive: startsWithRoute(path, "/portal/ai"),
+      },
+      {
+        title: "Storage Audit",
+        url: localizePathname({
+          pathname: "/portal/storage",
+          locale,
+        }),
+        icon: <HardDrivesIcon />,
+        isActive: startsWithRoute(path, "/portal/storage"),
       },
       {
         title: "Email Templates",
@@ -1004,22 +1024,14 @@ const buildPortalNavMain = (
     isActive: startsWithRoute(pathname, "/portal/whatsapp"),
   },
   {
-    title: "AI Governance",
-    url: localizePathname({ pathname: "/portal/ai", locale }),
-    icon: <ShieldCheckIcon />,
-    isActive: startsWithRoute(pathname, "/portal/ai"),
-  },
-  {
-    title: "Storage Audit",
-    url: localizePathname({ pathname: "/portal/storage", locale }),
-    icon: <HardDrivesIcon />,
-    isActive: startsWithRoute(pathname, "/portal/storage"),
-  },
-  {
     title: "Systems",
     url: localizePathname({ pathname: "/portal/system/cronjobs", locale }),
     icon: <ClockIcon />,
-    isActive: startsWithRoute(pathname, "/portal/system"),
+    isActive:
+      startsWithRoute(pathname, "/portal/system") ||
+      startsWithRoute(pathname, "/portal/settings/emails") ||
+      startsWithRoute(pathname, "/portal/ai") ||
+      startsWithRoute(pathname, "/portal/storage"),
   },
 ]
 
