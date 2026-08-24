@@ -23,6 +23,8 @@ import {
   CodeBlock,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
+import { useParams } from "next/navigation"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -143,12 +145,16 @@ function getAuthOtpCopies(
 
   return { body, sampleBody, footer, defaultBtn }
 }
+
 export function TemplateForm({
   initialData,
   submitting,
   onSubmit,
   approvedTemplateLocked = false,
 }: TemplateFormProps) {
+  const routeParams = useParams<{ lang?: string }>()
+  const uiLocale = resolveLocaleOrDefault(routeParams?.lang)
+  const isEnUi = uiLocale === "en"
   const initialLang = initialData?.languages?.[0]
 
   const [name, setName] = React.useState(initialData?.name ?? "")
@@ -886,44 +892,71 @@ export function TemplateForm({
                         variant="ghost"
                         size="sm"
                         onClick={() =>
-                          applyMarkdownFormat("*", "*", "teks tebal")
+                          applyMarkdownFormat(
+                            "*",
+                            "*",
+                            isEnUi ? "bold text" : "teks tebal"
+                          )
                         }
                         className="h-7 px-2 text-xs font-semibold"
-                        title="Bold (*teks*)"
+                        title={isEnUi ? "Bold (*text*)" : "Bold (*teks*)"}
                       >
-                        <TextB className="mr-1 size-3.5" /> Bold
+                        <TextB className="mr-1 size-3.5" />{" "}
+                        {isEnUi ? "Bold" : "Tebal"}
                       </Button>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() =>
-                          applyMarkdownFormat("_", "_", "teks miring")
+                          applyMarkdownFormat(
+                            "_",
+                            "_",
+                            isEnUi ? "italic text" : "teks miring"
+                          )
                         }
                         className="h-7 px-2 text-xs italic"
-                        title="Italic (_teks_)"
+                        title={isEnUi ? "Italic (_text_)" : "Italic (_teks_)"}
                       >
-                        <TextItalic className="mr-1 size-3.5" /> Italic
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => applyMarkdownFormat("~", "~", "coret")}
-                        className="h-7 px-2 text-xs line-through"
-                        title="Strikethrough (~teks~)"
-                      >
-                        <TextStrikethrough className="mr-1 size-3.5" /> Coret
+                        <TextItalic className="mr-1 size-3.5" />{" "}
+                        {isEnUi ? "Italic" : "Miring"}
                       </Button>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() =>
-                          applyMarkdownFormat("```", "```", "kode")
+                          applyMarkdownFormat(
+                            "~",
+                            "~",
+                            isEnUi ? "strikethrough" : "coret"
+                          )
+                        }
+                        className="h-7 px-2 text-xs line-through"
+                        title={
+                          isEnUi ? "Strikethrough (~text~)" : "Coret (~teks~)"
+                        }
+                      >
+                        <TextStrikethrough className="mr-1 size-3.5" />{" "}
+                        {isEnUi ? "Strikethrough" : "Coret"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          applyMarkdownFormat(
+                            "```",
+                            "```",
+                            isEnUi ? "code" : "kode"
+                          )
                         }
                         className="h-7 px-2 font-mono text-xs"
-                        title="Monospace (```kode```)"
+                        title={
+                          isEnUi
+                            ? "Monospace (```code```)"
+                            : "Monospace (```kode```)"
+                        }
                       >
                         <CodeBlock className="mr-1 size-3.5" /> Monospace
                       </Button>
@@ -935,9 +968,14 @@ export function TemplateForm({
                       size="sm"
                       onClick={insertNextVariable}
                       className="h-7 border-emerald-500/30 bg-emerald-50/50 px-2.5 text-xs font-semibold text-emerald-700 shadow-2xs transition-colors hover:border-emerald-500/50 hover:bg-emerald-100/60 dark:border-emerald-500/30 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
-                      title="Insert next {{N}} placeholder"
+                      title={
+                        isEnUi
+                          ? "Insert next {{N}} placeholder"
+                          : "Sisipkan variabel {{N}} berikutnya"
+                      }
                     >
-                      <Plus className="mr-1 size-3.5" /> Variabel
+                      <Plus className="mr-1 size-3.5" />{" "}
+                      {isEnUi ? "Variable" : "Variabel"}
                     </Button>
                   </div>
 
