@@ -23,6 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Card,
   CardContent,
@@ -63,6 +64,7 @@ export default function ConsoleTemplatesPage() {
       name?: string | null
     }>
   >([])
+  const [loadingDevices, setLoadingDevices] = React.useState<boolean>(true)
   const [selectedDeviceId, setSelectedDeviceId] = React.useState<string>("all")
   const [isPulling, setIsPulling] = React.useState(false)
   const [lastPullTime, setLastPullTime] = React.useState<number>(0)
@@ -77,6 +79,7 @@ export default function ConsoleTemplatesPage() {
   // Load devices for device selector
   React.useEffect(() => {
     void (async () => {
+      setLoadingDevices(true)
       try {
         const res = await whatsappClient.devices.list()
         if (res.devices) {
@@ -87,10 +90,11 @@ export default function ConsoleTemplatesPage() {
         }
       } catch (e) {
         console.error("Failed to load devices for template selector:", e)
+      } finally {
+        setLoadingDevices(false)
       }
     })()
   }, [])
-  // Cooldown countdown timer (60s)
   React.useEffect(() => {
     if (lastPullTime === 0) return
     const interval = setInterval(() => {
@@ -144,11 +148,18 @@ export default function ConsoleTemplatesPage() {
     }
   }
 
-  const syncedCount = templates.filter((t) => t.syncStatus === "SYNCED").length
-  const notSyncedCount = templates.filter(
-    (t) => t.syncStatus === "NOT_SYNCED"
+  const utilityCount = templates.filter(
+    (t) => (t.category || "UTILITY").toUpperCase() === "UTILITY"
   ).length
-
+  const authCount = templates.filter(
+    (t) => (t.category || "").toUpperCase() === "AUTHENTICATION"
+  ).length
+  const marketingCount = templates.filter(
+    (t) => (t.category || "").toUpperCase() === "MARKETING"
+  ).length
+  const syncedCount = templates.filter((t) => t.syncStatus === "SYNCED").length
+  const totalCount = templates.length
+  const isAllSynced = totalCount > 0 && syncedCount === totalCount
   function formatRelativeTime(dateString: string | Date): string {
     const date = new Date(dateString)
     const now = new Date()
@@ -481,7 +492,9 @@ export default function ConsoleTemplatesPage() {
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {devices.length > 0 && (
+            {loadingDevices ? (
+              <Skeleton className="h-8 w-48 rounded-md" />
+            ) : devices.length > 0 ? (
               <select
                 value={selectedDeviceId}
                 onChange={(e) => setSelectedDeviceId(e.target.value)}
@@ -494,8 +507,7 @@ export default function ConsoleTemplatesPage() {
                   </option>
                 ))}
               </select>
-            )}
-
+            ) : null}
             <Button
               onClick={() => void handlePullFromMeta()}
               disabled={isPulling || loading || cooldownRemaining > 0}
@@ -527,25 +539,88 @@ export default function ConsoleTemplatesPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="mb-6 grid grid-cols-3 gap-4">
-            <div className="rounded-lg border p-4 text-center">
-              <p className="text-2xl font-bold">{templates.length}</p>
-              <p className="text-xs text-muted-foreground">
-                {messages.console.whatsapp.templates.totalTemplates}
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-lg border bg-card/60 p-3.5 text-left shadow-2xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  ⚡ Utility
+                </span>
+                <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+                  Trans
+                </Badge>
+              </div>
+              <p className="mt-1 text-2xl font-bold text-foreground">
+                {utilityCount}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Notifications & alerts
               </p>
             </div>
-            <div className="rounded-lg border p-4 text-center">
-              <p className="text-2xl font-bold text-green-600">{syncedCount}</p>
-              <p className="text-xs text-muted-foreground">
-                {messages.console.whatsapp.templates.synced}
+
+            <div className="rounded-lg border bg-card/60 p-3.5 text-left shadow-2xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  🔑 Authentication
+                </span>
+                <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+                  Auth
+                </Badge>
+              </div>
+              <p className="mt-1 text-2xl font-bold text-foreground">
+                {authCount}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                OTPs & verifications
               </p>
             </div>
-            <div className="rounded-lg border p-4 text-center">
-              <p className="text-2xl font-bold text-yellow-600">
-                {notSyncedCount}
+
+            <div className="rounded-lg border bg-card/60 p-3.5 text-left shadow-2xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  📢 Marketing
+                </span>
+                <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+                  Promo
+                </Badge>
+              </div>
+              <p className="mt-1 text-2xl font-bold text-foreground">
+                {marketingCount}
               </p>
-              <p className="text-xs text-muted-foreground">
-                {messages.console.whatsapp.templates.pendingSync}
+              <p className="text-[11px] text-muted-foreground">
+                Campaigns & offers
+              </p>
+            </div>
+
+            <div
+              className={`rounded-lg border p-3.5 text-left shadow-2xs ${
+                isAllSynced
+                  ? "border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-500/10"
+                  : "border-amber-500/30 bg-amber-500/5 dark:bg-amber-500/10"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  ☁️ Meta Sync
+                </span>
+                <span
+                  className={`size-2 rounded-full ${
+                    isAllSynced ? "bg-emerald-500" : "bg-amber-500"
+                  }`}
+                />
+              </div>
+              <p
+                className={`mt-1 text-2xl font-bold ${
+                  isAllSynced
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-amber-600 dark:text-amber-400"
+                }`}
+              >
+                {syncedCount} / {totalCount}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {isAllSynced
+                  ? "100% Synced to Meta"
+                  : `${totalCount - syncedCount} Pending / Draft`}
               </p>
             </div>
           </div>
