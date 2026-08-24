@@ -64,7 +64,7 @@ export default function ConsoleNewTemplatePage() {
     slug: string
     description?: string
     category?: string
-    whatsappDeviceId: string
+    whatsappDeviceId?: string
     languages: Array<{
       lang: string
       headerType: string

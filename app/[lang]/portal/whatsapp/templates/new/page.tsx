@@ -61,7 +61,7 @@ export default function PortalNewTemplatePage() {
     slug: string
     description?: string
     category?: string
-    whatsappDeviceId: string
+    whatsappDeviceId?: string
     languages: Array<{
       lang: string
       headerType: string
