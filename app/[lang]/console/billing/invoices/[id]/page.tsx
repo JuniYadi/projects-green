@@ -452,7 +452,10 @@ export default function InvoiceDetailPage() {
                   <p className="text-xs text-muted-foreground">
                     PT. Premium Fast Network
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p
+                    className="text-xs text-muted-foreground"
+                    suppressHydrationWarning
+                  >
                     {(() => {
                       if (typeof window !== "undefined") {
                         try {
@@ -478,7 +481,7 @@ export default function InvoiceDetailPage() {
                   </p>
                   <div className="space-y-0.5 pt-0.5 text-xs text-muted-foreground">
                     <p>Issue Date: {formatDate(issueDate)}</p>
-                    <p>Due Date: {formatDate(issueDate)}</p>
+                    <p>Due Date: {formatDate(dueDate)}</p>
                   </div>
                   <div className="inline-block pt-1">
                     <InvoiceStatusBadge

@@ -249,7 +249,7 @@ export const createBillingInvoicesRoutes = (
             account.contacts?.[0]
           const orgName = workosOrg?.name ?? "Organization"
           const ownerEmail = ownerContact?.email ?? auth.user?.email ?? null
-          const contactName = orgName
+          const contactName = ownerContact?.name ?? orgName
           return {
             ok: true as const,
             invoice: {
