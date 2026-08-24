@@ -9,6 +9,8 @@ import {
   UploadMediaInput,
   UploadMediaResult,
   PhoneNumberInfo,
+  CreateMetaTemplateInput,
+  CreateMetaTemplateResult,
 } from "./types"
 import type { MediaMetadata, DeleteMediaResult } from "./types/media"
 import { decryptWhatsAppToken } from "../crypto"
@@ -279,6 +281,24 @@ export class WhatsAppDeviceClient {
 
   async listTemplates(): Promise<any> {
     return this.listTemplatesPage()
+  }
+  async createTemplate(
+    input: CreateMetaTemplateInput
+  ): Promise<CreateMetaTemplateResult> {
+    const endpoint = ENDPOINTS.TEMPLATES(this.wabaId)
+    const payload = {
+      name: input.name,
+      category: input.category,
+      language: input.language,
+      components: input.components,
+    }
+
+    return this.httpClient.request<CreateMetaTemplateResult>(
+      "CREATE_TEMPLATE",
+      endpoint,
+      "POST",
+      payload
+    )
   }
 
   async listTemplatesPage(after?: string): Promise<any> {

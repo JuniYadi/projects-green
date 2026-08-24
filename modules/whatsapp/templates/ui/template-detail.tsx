@@ -143,7 +143,19 @@ export function TemplateDetailView({
             </Button>
           )}
           {onEdit && (
-            <Button variant="default" size="sm" onClick={onEdit}>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={onEdit}
+              disabled={
+                template.syncStatus === "SYNCED" || Boolean(template.metaStatus)
+              }
+              title={
+                template.syncStatus === "SYNCED" || Boolean(template.metaStatus)
+                  ? "Templates submitted to Meta cannot be modified"
+                  : undefined
+              }
+            >
               Edit
             </Button>
           )}

@@ -3,6 +3,7 @@ import {
   extractTemplateVariables,
   formatTemplateSlug,
   validateTemplateBodyRules,
+  buildMetaTemplateComponents,
 } from "./template-validator"
 
 describe("template-validator", () => {
@@ -60,6 +61,91 @@ describe("template-validator", () => {
       expect(result.warnings[0]).toContain(
         "variables at the end of the message"
       )
+    })
+  })
+
+  describe("buildMetaTemplateComponents", () => {
+    it("builds HEADER, BODY, FOOTER, and BUTTONS components correctly", () => {
+      const components = buildMetaTemplateComponents({
+        headerType: "TEXT",
+        headerText: "Order {{1}} Update",
+        body: "Hello {{1}}, your order total is {{2}}.",
+        footer: "Thank you for shopping with us.",
+        buttons: [
+          { type: "QUICK_REPLY", text: "Track Order" },
+          {
+            type: "URL",
+            text: "Visit Web",
+            url: "https://example.com/orders/{{1}}",
+          },
+          {
+            type: "PHONE_NUMBER",
+            text: "Call Support",
+            phoneNumber: "+6281234567890",
+          },
+        ],
+      })
+
+      expect(components).toEqual([
+        {
+          type: "HEADER",
+          format: "TEXT",
+          text: "Order {{1}} Update",
+          example: {
+            header_text: ["Sample 1"],
+          },
+        },
+        {
+          type: "BODY",
+          text: "Hello {{1}}, your order total is {{2}}.",
+          example: {
+            body_text: [["Sample 1", "Sample 2"]],
+          },
+        },
+        {
+          type: "FOOTER",
+          text: "Thank you for shopping with us.",
+        },
+        {
+          type: "BUTTONS",
+          buttons: [
+            { type: "QUICK_REPLY", text: "Track Order" },
+            {
+              type: "URL",
+              text: "Visit Web",
+              url: "https://example.com/orders/{{1}}",
+              example: ["param_1"],
+            },
+            {
+              type: "PHONE_NUMBER",
+              text: "Call Support",
+              phone_number: "+6281234567890",
+            },
+          ],
+        },
+      ])
+    })
+
+    it("builds media header component with example handle", () => {
+      const components = buildMetaTemplateComponents({
+        headerType: "IMAGE",
+        headerUrl: "https://example.com/banner.jpg",
+        body: "Simple body without variables",
+      })
+
+      expect(components).toEqual([
+        {
+          type: "HEADER",
+          format: "IMAGE",
+          example: {
+            header_handle: ["https://example.com/banner.jpg"],
+          },
+        },
+        {
+          type: "BODY",
+          text: "Simple body without variables",
+        },
+      ])
     })
   })
 })

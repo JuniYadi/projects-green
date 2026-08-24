@@ -105,3 +105,141 @@ export function formatTemplateSlug(input: string): string {
     .replace(/[^a-z0-9_]/g, "")
     .slice(0, 100)
 }
+
+export type BuildMetaComponentsInput = {
+  headerType?: string | null
+  headerText?: string | null
+  headerUrl?: string | null
+  body?: string | null
+  footer?: string | null
+  buttons?: unknown
+  parameters?: unknown
+}
+
+/**
+ * Converts template language input to Meta Cloud API components structure.
+ */
+export function buildMetaTemplateComponents(
+  input: BuildMetaComponentsInput
+): Array<Record<string, unknown>> {
+  const components: Array<Record<string, unknown>> = []
+
+  // 1. HEADER
+  const headerType = input.headerType?.toUpperCase()
+  if (headerType && headerType !== "NONE") {
+    if (headerType === "TEXT" && input.headerText?.trim()) {
+      const headerVars = extractTemplateVariables(input.headerText)
+      const headerComp: Record<string, unknown> = {
+        type: "HEADER",
+        format: "TEXT",
+        text: input.headerText.trim(),
+      }
+      if (headerVars.length > 0) {
+        headerComp.example = {
+          header_text: headerVars.map((v) => `Sample ${v}`),
+        }
+      }
+      components.push(headerComp)
+    } else if (
+      headerType === "IMAGE" ||
+      headerType === "VIDEO" ||
+      headerType === "DOCUMENT"
+    ) {
+      const headerComp: Record<string, unknown> = {
+        type: "HEADER",
+        format: headerType,
+      }
+      if (input.headerUrl?.trim()) {
+        headerComp.example = {
+          header_handle: [input.headerUrl.trim()],
+        }
+      }
+      components.push(headerComp)
+    }
+  }
+
+  // 2. BODY
+  if (input.body?.trim()) {
+    const bodyVars = extractTemplateVariables(input.body)
+    const bodyComp: Record<string, unknown> = {
+      type: "BODY",
+      text: input.body.trim(),
+    }
+
+    if (bodyVars.length > 0) {
+      // Extract custom sample values from parameters if available
+      const paramList = Array.isArray(input.parameters)
+        ? (input.parameters as Array<{ type?: string; text?: string }>)
+        : []
+      const sampleTexts = bodyVars.map((v, i) => {
+        const customParam = paramList.find(
+          (p) => p.type === "BODY" && p.text?.trim()
+        )
+        return paramList[i]?.text?.trim() || `Sample ${v}`
+      })
+      bodyComp.example = {
+        body_text: [sampleTexts],
+      }
+    }
+    components.push(bodyComp)
+  }
+
+  // 3. FOOTER
+  if (input.footer?.trim()) {
+    components.push({
+      type: "FOOTER",
+      text: input.footer.trim(),
+    })
+  }
+
+  // 4. BUTTONS
+  if (Array.isArray(input.buttons) && input.buttons.length > 0) {
+    const metaButtons: Array<Record<string, unknown>> = []
+    for (const b of input.buttons as Array<Record<string, any>>) {
+      if (b.type === "QUICK_REPLY" && b.text?.trim()) {
+        metaButtons.push({
+          type: "QUICK_REPLY",
+          text: b.text.trim(),
+        })
+      } else if (b.type === "URL" && b.text?.trim() && b.url?.trim()) {
+        const urlVars = extractTemplateVariables(b.url)
+        const btnObj: Record<string, unknown> = {
+          type: "URL",
+          text: b.text.trim(),
+          url: b.url.trim(),
+        }
+        if (urlVars.length > 0) {
+          btnObj.example = Array.isArray(b.example)
+            ? b.example
+            : urlVars.map((v) => `param_${v}`)
+        }
+        metaButtons.push(btnObj)
+      } else if (
+        b.type === "PHONE_NUMBER" &&
+        b.text?.trim() &&
+        b.phoneNumber?.trim()
+      ) {
+        metaButtons.push({
+          type: "PHONE_NUMBER",
+          text: b.text.trim(),
+          phone_number: b.phoneNumber.trim(),
+        })
+      } else if (b.type === "OTP") {
+        metaButtons.push({
+          type: "OTP",
+          otp_type: "COPY_CODE",
+          text: b.text?.trim() || "Copy Code",
+        })
+      }
+    }
+
+    if (metaButtons.length > 0) {
+      components.push({
+        type: "BUTTONS",
+        buttons: metaButtons,
+      })
+    }
+  }
+
+  return components
+}

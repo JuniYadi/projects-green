@@ -23,7 +23,10 @@ import {
 import { TemplateList } from "@/modules/whatsapp/templates/ui/template-list"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
+import {
+  whatsappClient,
+  type WhatsAppTemplate,
+} from "@/lib/api/whatsapp-client"
 import { TemplateLanguageBadge } from "@/modules/whatsapp/templates/ui/template-preview"
 
 export default function ConsoleTemplatesPage() {
@@ -59,11 +62,10 @@ export default function ConsoleTemplatesPage() {
   React.useEffect(() => {
     void (async () => {
       try {
-        const { whatsappClient } = await import("@/lib/api/whatsapp-client")
         const res = await whatsappClient.devices.list()
         if (res.devices) {
           setDevices(res.devices)
-          if (res.devices.length > 0 && selectedDeviceId === "all") {
+          if (res.devices.length > 0) {
             setSelectedDeviceId(res.devices[0].id)
           }
         }
@@ -71,7 +73,6 @@ export default function ConsoleTemplatesPage() {
         console.error("Failed to load devices for template selector:", e)
       }
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   // Cooldown countdown timer (60s)
   React.useEffect(() => {
