@@ -115,6 +115,8 @@ export type BuildMetaComponentsInput = {
   footer?: string | null
   buttons?: unknown
   parameters?: unknown
+  addSecurityRecommendation?: boolean
+  codeExpirationMinutes?: number
 }
 
 /**
@@ -127,31 +129,50 @@ export function buildMetaTemplateComponents(
   const components: Array<Record<string, unknown>> = []
 
   // Special Meta Cloud API requirements for AUTHENTICATION category:
-  // - Must include BODY with `add_security_recommendation: true` (or standard body if preset).
-  // - Must include BUTTONS with OTP COPY_CODE or ONE_TAP.
+  // - BODY component with optional `add_security_recommendation` (boolean, default true).
+  // - FOOTER component with optional `code_expiration_minutes` (number 1-90).
+  // - BUTTONS component with OTP `COPY_CODE` button and custom button text (default "Copy Code" / "Salin Kode").
   if (isAuth) {
     // 1. Auth BODY
-    components.push({
+    const bodyComp: Record<string, unknown> = {
       type: "BODY",
-      add_security_recommendation: true,
+    }
+    if (input.addSecurityRecommendation !== false) {
+      bodyComp.add_security_recommendation = true
+    }
+    components.push(bodyComp)
+
+    // 2. Auth FOOTER (code expiration)
+    const expiration =
+      typeof input.codeExpirationMinutes === "number" &&
+      input.codeExpirationMinutes >= 1 &&
+      input.codeExpirationMinutes <= 90
+        ? input.codeExpirationMinutes
+        : 5
+
+    components.push({
+      type: "FOOTER",
+      code_expiration_minutes: expiration,
     })
 
-    // 2. Auth FOOTER (optional code expiration)
-    if (input.footer?.trim()) {
-      components.push({
-        type: "FOOTER",
-        code_expiration_minutes: 5,
-      })
+    // 3. Auth BUTTONS (OTP copy_code)
+    let otpButtonText = "Copy Code"
+    if (Array.isArray(input.buttons) && input.buttons.length > 0) {
+      const firstOtp = (input.buttons as Array<Record<string, any>>).find(
+        (b) => b.type === "OTP"
+      )
+      if (firstOtp?.text?.trim()) {
+        otpButtonText = firstOtp.text.trim()
+      }
     }
 
-    // 3. Auth BUTTONS (OTP copy_code)
     components.push({
       type: "BUTTONS",
       buttons: [
         {
           type: "OTP",
           otp_type: "COPY_CODE",
-          text: "Copy Code",
+          text: otpButtonText,
         },
       ],
     })

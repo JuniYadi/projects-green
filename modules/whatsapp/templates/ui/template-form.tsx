@@ -127,6 +127,8 @@ export function TemplateForm({
     initialData?.category ?? "UTILITY"
   )
 
+  const isAuth = category === "AUTHENTICATION"
+
   // Primary language variant state
   const [lang, setLang] = React.useState(initialLang?.lang ?? "id")
   const [headerType, setHeaderType] = React.useState(
@@ -136,8 +138,20 @@ export function TemplateForm({
     initialLang?.headerText ?? ""
   )
   const [headerUrl, setHeaderUrl] = React.useState(initialLang?.headerUrl ?? "")
-  const [body, setBody] = React.useState(initialLang?.body ?? "")
+  const [body, setBody] = React.useState(
+    initialLang?.body ??
+      (initialData?.category === "AUTHENTICATION"
+        ? "<KODE_OTP> adalah kode verifikasi Anda. Demi keamanan, jangan bagikan kode ini kepada siapapun."
+        : "")
+  )
   const [footer, setFooter] = React.useState(initialLang?.footer ?? "")
+
+  // Authentication specific settings
+  const [addSecurityRecommendation, setAddSecurityRecommendation] =
+    React.useState(true)
+  const [codeExpirationMinutes, setCodeExpirationMinutes] =
+    React.useState<number>(5)
+  const [otpButtonText, setOtpButtonText] = React.useState("Copy Code")
 
   // Dynamic variable sample dictionary: { 1: "John", 2: "ORD-123" }
   const [sampleValues, setSampleValues] = React.useState<
@@ -151,7 +165,6 @@ export function TemplateForm({
     }
     return []
   })
-
   // Preview tab state (visual bubble vs clean configuration JSON)
   const [previewTab, setPreviewTab] = React.useState<"visual" | "json">(
     "visual"
@@ -229,15 +242,18 @@ export function TemplateForm({
 
     if (!name.trim()) newErrors.name = "Name is required."
     if (!slug.trim()) newErrors.slug = "Slug is required."
-    if (!body.trim()) newErrors.body = "Body text is required."
 
-    if (!bodyValidation.isValid && bodyValidation.errors.length > 0) {
-      newErrors.body = bodyValidation.errors[0]
-    }
+    if (!isAuth) {
+      if (!body.trim()) newErrors.body = "Body text is required."
 
-    if (headerType === "TEXT" && !headerText.trim()) {
-      newErrors.headerText =
-        "Header text is required when TEXT header is chosen."
+      if (!bodyValidation.isValid && bodyValidation.errors.length > 0) {
+        newErrors.body = bodyValidation.errors[0]
+      }
+
+      if (headerType === "TEXT" && !headerText.trim()) {
+        newErrors.headerText =
+          "Header text is required when TEXT header is chosen."
+      }
     }
 
     setErrors(newErrors)
@@ -260,15 +276,40 @@ export function TemplateForm({
 
     const languagePayload = {
       lang,
-      headerType,
-      headerText: headerType === "TEXT" ? headerText.trim() : "",
-      headerUrl: ["IMAGE", "VIDEO", "DOCUMENT"].includes(headerType)
-        ? headerUrl.trim()
-        : "",
-      body: body.trim(),
-      footer: footer.trim(),
-      parameters: parameters.length > 0 ? parameters : undefined,
-      buttons: buttons.length > 0 ? buttons : undefined,
+      headerType: isAuth ? "NONE" : headerType,
+      headerText: !isAuth && headerType === "TEXT" ? headerText.trim() : "",
+      headerUrl:
+        !isAuth && ["IMAGE", "VIDEO", "DOCUMENT"].includes(headerType)
+          ? headerUrl.trim()
+          : "",
+      body: isAuth
+        ? `${addSecurityRecommendation ? "Demi keamanan, jangan bagikan kode ini. " : ""}Kode verifikasi Anda adalah {{1}}`
+        : body.trim(),
+      footer: isAuth
+        ? `Kode berlaku ${codeExpirationMinutes} menit.`
+        : footer.trim(),
+      parameters: isAuth
+        ? [{ type: "BODY" as const, text: "123456" }]
+        : parameters.length > 0
+          ? parameters
+          : undefined,
+      buttons: isAuth
+        ? [
+            {
+              type: "OTP" as const,
+              otpType: "COPY_CODE" as const,
+              text: otpButtonText,
+            },
+          ]
+        : buttons.length > 0
+          ? buttons
+          : undefined,
+      authConfig: isAuth
+        ? {
+            addSecurityRecommendation,
+            codeExpirationMinutes,
+          }
+        : undefined,
     }
 
     await onSubmit({
@@ -284,16 +325,26 @@ export function TemplateForm({
   const previewLanguage: WhatsAppTemplateLanguage = {
     id: "preview-temp",
     lang,
-    headerType: headerType === "NONE" ? null : headerType,
-    headerText: headerType === "TEXT" ? headerText : null,
-    headerUrl: headerUrl || null,
-    body,
-    footer: footer || null,
-    parameters: detectedPlaceholders.map((idx) => ({
-      type: "BODY",
-      text: sampleValues[idx] || `Sample ${idx}`,
-    })),
-    buttons: buttons.length > 0 ? buttons : null,
+    headerType: isAuth ? null : headerType === "NONE" ? null : headerType,
+    headerText: !isAuth && headerType === "TEXT" ? headerText : null,
+    headerUrl: !isAuth ? headerUrl || null : null,
+    body: isAuth
+      ? `${addSecurityRecommendation ? "Demi keamanan, jangan bagikan kode ini. " : ""}Kode verifikasi Anda adalah 123456`
+      : body,
+    footer: isAuth
+      ? `Kode berlaku ${codeExpirationMinutes} menit.`
+      : footer || null,
+    parameters: isAuth
+      ? [{ type: "BODY", text: "123456" }]
+      : detectedPlaceholders.map((idx) => ({
+          type: "BODY",
+          text: sampleValues[idx] || `Sample ${idx}`,
+        })),
+    buttons: isAuth
+      ? [{ type: "OTP", otpType: "COPY_CODE", text: otpButtonText }]
+      : buttons.length > 0
+        ? buttons
+        : null,
   }
 
   // Application JSON Configuration representation (NOT Meta payload)
@@ -386,7 +437,19 @@ export function TemplateForm({
                   <Label htmlFor="category">Category</Label>
                   <Select
                     value={category}
-                    onValueChange={setCategory}
+                    onValueChange={(val) => {
+                      setCategory(val)
+                      if (val === "AUTHENTICATION") {
+                        setHeaderType("NONE")
+                        setHeaderText("")
+                        setHeaderUrl("")
+                        setBody(
+                          "<KODE_OTP> adalah kode verifikasi Anda. Demi keamanan, jangan bagikan kode ini kepada siapapun."
+                        )
+                        setFooter("Kode ini kadaluarsa dalam 5 menit.")
+                        setButtons([{ type: "OTP", otpType: "COPY_CODE" }])
+                      }
+                    }}
                     disabled={approvedTemplateLocked}
                   >
                     <SelectTrigger id="category">
@@ -396,7 +459,7 @@ export function TemplateForm({
                       <SelectItem value="UTILITY">Utility</SelectItem>
                       <SelectItem value="MARKETING">Marketing</SelectItem>
                       <SelectItem value="AUTHENTICATION">
-                        Authentication
+                        Authentication (OTP)
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -436,157 +499,250 @@ export function TemplateForm({
             </CardContent>
           </Card>
 
-          {/* Header Configuration */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base font-semibold">
-                2. Header (Optional)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Header Type</Label>
-                <div className="flex flex-wrap gap-2">
-                  {(
-                    ["NONE", "TEXT", "IMAGE", "VIDEO", "DOCUMENT"] as const
-                  ).map((type) => (
-                    <Button
-                      key={type}
-                      type="button"
-                      variant={headerType === type ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setHeaderType(type)}
-                    >
-                      {type === "NONE" ? "None" : type}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              {headerType === "TEXT" && (
+          {/* Header Configuration (Hidden for Authentication) */}
+          {!isAuth && (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base font-semibold">
+                  2. Header (Optional)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="headerText">
-                    Header Text <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="headerText"
-                    value={headerText}
-                    onChange={(e) => setHeaderText(e.target.value)}
-                    maxLength={60}
-                    placeholder="e.g. Order Confirmation"
-                  />
-                  {errors.headerText && (
-                    <p className="text-xs text-destructive">
-                      {errors.headerText}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {["IMAGE", "VIDEO", "DOCUMENT"].includes(headerType) && (
-                <div className="space-y-3 rounded-lg border bg-muted/10 p-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <Label>Sample Media Asset</Label>
-                      <span className="text-[11px] font-medium text-muted-foreground">
-                        {headerType === "IMAGE"
-                          ? "Max 5 MB (PNG, JPG)"
-                          : headerType === "VIDEO"
-                            ? "Max 16 MB (MP4, 3GPP)"
-                            : "Max 100 MB (PDF)"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Media sample ini digunakan Meta untuk proses review
-                      template. Anda tetap dapat mengirimkan media dinamis yang
-                      berbeda saat broadcast.
-                    </p>
+                  <Label>Header Type</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {(
+                      ["NONE", "TEXT", "IMAGE", "VIDEO", "DOCUMENT"] as const
+                    ).map((type) => (
+                      <Button
+                        key={type}
+                        type="button"
+                        variant={headerType === type ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setHeaderType(type)}
+                      >
+                        {type === "NONE" ? "None" : type}
+                      </Button>
+                    ))}
                   </div>
-                  <StorageDropzone
-                    mediaType={headerType as "IMAGE" | "VIDEO" | "DOCUMENT"}
-                    accept={
-                      headerType === "IMAGE"
-                        ? "image/png,image/jpeg,image/webp"
-                        : headerType === "VIDEO"
-                          ? "video/mp4,video/3gpp"
-                          : "application/pdf"
-                    }
-                    maxSizeBytes={
-                      headerType === "IMAGE"
-                        ? 5 * 1024 * 1024
-                        : headerType === "VIDEO"
-                          ? 16 * 1024 * 1024
-                          : 100 * 1024 * 1024
-                    }
-                    value={headerUrl}
-                    onUploadSuccess={(res) => {
-                      setHeaderUrl(res.url || res.fileId)
-                      toast.success(
-                        `Sample ${headerType.toLowerCase()} berhasil diunggah ke storage`
-                      )
-                    }}
-                    onClear={() => setHeaderUrl("")}
-                  />
-                  <div className="pt-1">
-                    <Label
-                      htmlFor="headerUrl"
-                      className="text-[11px] text-muted-foreground"
-                    >
-                      Atau gunakan URL publik langsung:
+                </div>
+
+                {headerType === "TEXT" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="headerText">
+                      Header Text <span className="text-destructive">*</span>
                     </Label>
                     <Input
-                      id="headerUrl"
-                      value={headerUrl}
-                      onChange={(e) => setHeaderUrl(e.target.value)}
-                      placeholder={`https://example.com/sample-${headerType.toLowerCase()}.${headerType === "IMAGE" ? "jpg" : headerType === "VIDEO" ? "mp4" : "pdf"}`}
-                      className="mt-1 text-xs"
+                      id="headerText"
+                      value={headerText}
+                      onChange={(e) => setHeaderText(e.target.value)}
+                      maxLength={60}
+                      placeholder="e.g. Order Confirmation"
                     />
+                    {errors.headerText && (
+                      <p className="text-xs text-destructive">
+                        {errors.headerText}
+                      </p>
+                    )}
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                )}
 
+                {["IMAGE", "VIDEO", "DOCUMENT"].includes(headerType) && (
+                  <div className="space-y-3 rounded-lg border bg-muted/10 p-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <Label>Sample Media Asset</Label>
+                        <span className="text-[11px] font-medium text-muted-foreground">
+                          {headerType === "IMAGE"
+                            ? "Max 5 MB (PNG, JPG)"
+                            : headerType === "VIDEO"
+                              ? "Max 16 MB (MP4, 3GPP)"
+                              : "Max 100 MB (PDF)"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Media sample ini digunakan Meta untuk proses review
+                        template. Anda tetap dapat mengirimkan media dinamis
+                        yang berbeda saat broadcast.
+                      </p>
+                    </div>
+                    <StorageDropzone
+                      mediaType={headerType as "IMAGE" | "VIDEO" | "DOCUMENT"}
+                      accept={
+                        headerType === "IMAGE"
+                          ? "image/png,image/jpeg,image/webp"
+                          : headerType === "VIDEO"
+                            ? "video/mp4,video/3gpp"
+                            : "application/pdf"
+                      }
+                      maxSizeBytes={
+                        headerType === "IMAGE"
+                          ? 5 * 1024 * 1024
+                          : headerType === "VIDEO"
+                            ? 16 * 1024 * 1024
+                            : 100 * 1024 * 1024
+                      }
+                      value={headerUrl}
+                      onUploadSuccess={(res) => {
+                        setHeaderUrl(res.url || res.fileId)
+                        toast.success(
+                          `Sample ${headerType.toLowerCase()} berhasil diunggah ke storage`
+                        )
+                      }}
+                      onClear={() => setHeaderUrl("")}
+                    />
+                    <div className="pt-1">
+                      <Label
+                        htmlFor="headerUrl"
+                        className="text-[11px] text-muted-foreground"
+                      >
+                        Atau gunakan URL publik langsung:
+                      </Label>
+                      <Input
+                        id="headerUrl"
+                        value={headerUrl}
+                        onChange={(e) => setHeaderUrl(e.target.value)}
+                        placeholder={`https://example.com/sample-${headerType.toLowerCase()}.${headerType === "IMAGE" ? "jpg" : headerType === "VIDEO" ? "mp4" : "pdf"}`}
+                        className="mt-1 text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
           {/* Body & Dynamic Placeholders */}
           <Card>
             <CardHeader className="pb-4">
-              <CardTitle className="text-base font-semibold">
-                3. Body & Dynamic Placeholders
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-semibold">
+                  {isAuth
+                    ? "2. Authentication Configuration"
+                    : "3. Body & Dynamic Placeholders"}
+                </CardTitle>
+                {isAuth && (
+                  <Badge variant="secondary" className="text-xs">
+                    Meta OTP Standard
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="body">
-                    Body Text <span className="text-destructive">*</span>
-                  </Label>
-                  <span className="text-xs text-muted-foreground">
-                    {body.length} / 1024
-                  </span>
-                </div>
-                <Textarea
-                  id="body"
-                  rows={5}
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  maxLength={1024}
-                  placeholder="Halo {{1}}, pesanan Anda {{2}} telah dikirim via {{3}}. Terima kasih telah berbelanja!"
-                />
-                {errors.body && (
-                  <p className="text-xs text-destructive">{errors.body}</p>
-                )}
-
-                {/* Validation Warnings */}
-                {bodyValidation.warnings.map((w, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-start gap-2 rounded-md bg-amber-500/10 p-2.5 text-xs text-amber-600 dark:text-amber-400"
-                  >
-                    <WarningCircle className="mt-0.5 size-4 shrink-0" />
-                    <span>{w}</span>
+              {isAuth ? (
+                <div className="space-y-4">
+                  {/* Security Recommendation Switch */}
+                  <div className="flex items-start justify-between gap-4 rounded-lg border p-3.5">
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor="security-rec"
+                        className="text-sm font-medium"
+                      >
+                        Add Security Recommendation
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Tambahkan teks rekomendasi keamanan Meta resmi
+                        (&quot;Demi keamanan, jangan bagikan kode ini kepada
+                        siapapun&quot;) di dalam pesan.
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={addSecurityRecommendation}
+                      onChange={(e) =>
+                        setAddSecurityRecommendation(e.target.checked)
+                      }
+                      className="mt-1 size-4 cursor-pointer accent-primary"
+                    />
                   </div>
-                ))}
-              </div>
+
+                  {/* Code Expiration Input */}
+                  <div className="space-y-2 rounded-lg border p-3.5">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="code-exp" className="text-sm font-medium">
+                        Code Expiration (Minutes)
+                      </Label>
+                      <span className="font-mono text-xs font-medium text-primary">
+                        {codeExpirationMinutes} Menit
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Masa berlaku kode OTP (Meta mendukung 1 hingga 90 menit).
+                      Nilai ini otomatis disisipkan di footer pesan.
+                    </p>
+                    <Input
+                      id="code-exp"
+                      type="number"
+                      min={1}
+                      max={90}
+                      value={codeExpirationMinutes}
+                      onChange={(e) =>
+                        setCodeExpirationMinutes(
+                          Math.max(
+                            1,
+                            Math.min(90, parseInt(e.target.value) || 5)
+                          )
+                        )
+                      }
+                      className="w-36 font-mono text-sm"
+                    />
+                  </div>
+
+                  {/* OTP Button Text Customization */}
+                  <div className="space-y-2 rounded-lg border p-3.5">
+                    <Label
+                      htmlFor="otp-btn-text"
+                      className="text-sm font-medium"
+                    >
+                      OTP Copy Code Button Text
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Teks tombol yang akan diklik pengguna untuk menyalin kode
+                      OTP.
+                    </p>
+                    <Input
+                      id="otp-btn-text"
+                      value={otpButtonText}
+                      onChange={(e) => setOtpButtonText(e.target.value)}
+                      maxLength={25}
+                      placeholder="e.g. Copy Code / Salin Kode"
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="body">
+                      Body Text <span className="text-destructive">*</span>
+                    </Label>
+                    <span className="text-xs text-muted-foreground">
+                      {body.length} / 1024
+                    </span>
+                  </div>
+                  <Textarea
+                    id="body"
+                    rows={5}
+                    value={body}
+                    onChange={(e) => setBody(e.target.value)}
+                    maxLength={1024}
+                    placeholder="Halo {{1}}, pesanan Anda {{2}} telah dikirim via {{3}}. Terima kasih telah berbelanja!"
+                  />
+                  {errors.body && (
+                    <p className="text-xs text-destructive">{errors.body}</p>
+                  )}
+
+                  {/* Validation Warnings */}
+                  {bodyValidation.warnings.map((w, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-start gap-2 rounded-md bg-amber-500/10 p-2.5 text-xs text-amber-600 dark:text-amber-400"
+                    >
+                      <WarningCircle className="mt-0.5 size-4 shrink-0" />
+                      <span>{w}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Detected Placeholders Sample Inputs */}
               {detectedPlaceholders.length > 0 && (
@@ -624,125 +780,129 @@ export function TemplateForm({
             </CardContent>
           </Card>
 
-          {/* Footer Configuration */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base font-semibold">
-                4. Footer (Optional)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Label htmlFor="footer">Footer Text</Label>
-              <Input
-                id="footer"
-                value={footer}
-                onChange={(e) => setFooter(e.target.value)}
-                maxLength={60}
-                placeholder="e.g. PT Perusahaan Maju Jaya"
-              />
-              <p className="text-xs text-muted-foreground">
-                Small disclaimer text displayed below message body (max 60
-                chars).
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Interactive Buttons */}
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
+          {/* Footer Configuration (Hidden for Authentication as it's governed by Code Expiration) */}
+          {!isAuth && (
+            <Card>
+              <CardHeader className="pb-4">
                 <CardTitle className="text-base font-semibold">
-                  5. Buttons (Optional - Max 3)
+                  4. Footer (Optional)
                 </CardTitle>
-                <div className="flex gap-1.5">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addButton("QUICK_REPLY")}
-                    disabled={buttons.length >= 3}
-                  >
-                    <Plus className="mr-1 size-3.5" /> Quick Reply
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addButton("URL")}
-                    disabled={buttons.length >= 3}
-                  >
-                    <Plus className="mr-1 size-3.5" /> URL CTA
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addButton("PHONE_NUMBER")}
-                    disabled={buttons.length >= 3}
-                  >
-                    <Plus className="mr-1 size-3.5" /> Phone
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {buttons.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic">
-                  No interactive buttons added.
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Label htmlFor="footer">Footer Text</Label>
+                <Input
+                  id="footer"
+                  value={footer}
+                  onChange={(e) => setFooter(e.target.value)}
+                  maxLength={60}
+                  placeholder="e.g. PT Perusahaan Maju Jaya"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Small disclaimer text displayed below message body (max 60
+                  chars).
                 </p>
-              ) : (
-                buttons.map((btn, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-3 rounded-lg border p-3"
-                  >
-                    <Badge variant="outline" className="text-xs">
-                      {btn.type}
-                    </Badge>
-                    <div className="flex-1 space-y-2">
-                      <Input
-                        value={"text" in btn ? btn.text : ""}
-                        onChange={(e) =>
-                          updateButton(i, { text: e.target.value })
-                        }
-                        placeholder="Button Text"
-                        className="text-xs"
-                      />
-                      {btn.type === "URL" && (
-                        <Input
-                          value={btn.url}
-                          onChange={(e) =>
-                            updateButton(i, { url: e.target.value })
-                          }
-                          placeholder="https://example.com/track"
-                          className="font-mono text-xs"
-                        />
-                      )}
-                      {btn.type === "PHONE_NUMBER" && (
-                        <Input
-                          value={btn.phoneNumber}
-                          onChange={(e) =>
-                            updateButton(i, { phoneNumber: e.target.value })
-                          }
-                          placeholder="+6281234567890"
-                          className="font-mono text-xs"
-                        />
-                      )}
-                    </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Interactive Buttons (Hidden for Authentication because OTP Copy Code button is fixed) */}
+          {!isAuth && (
+            <Card>
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold">
+                    5. Buttons (Optional - Max 3)
+                  </CardTitle>
+                  <div className="flex gap-1.5">
                     <Button
                       type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive"
-                      onClick={() => removeButton(i)}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addButton("QUICK_REPLY")}
+                      disabled={buttons.length >= 3}
                     >
-                      <Trash className="size-4" />
+                      <Plus className="mr-1 size-3.5" /> Quick Reply
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addButton("URL")}
+                      disabled={buttons.length >= 3}
+                    >
+                      <Plus className="mr-1 size-3.5" /> URL CTA
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addButton("PHONE_NUMBER")}
+                      disabled={buttons.length >= 3}
+                    >
+                      <Plus className="mr-1 size-3.5" /> Phone
                     </Button>
                   </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {buttons.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">
+                    No interactive buttons added.
+                  </p>
+                ) : (
+                  buttons.map((btn, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-3 rounded-lg border p-3"
+                    >
+                      <Badge variant="outline" className="text-xs">
+                        {btn.type}
+                      </Badge>
+                      <div className="flex-1 space-y-2">
+                        <Input
+                          value={"text" in btn ? btn.text : ""}
+                          onChange={(e) =>
+                            updateButton(i, { text: e.target.value })
+                          }
+                          placeholder="Button Text"
+                          className="text-xs"
+                        />
+                        {btn.type === "URL" && (
+                          <Input
+                            value={btn.url}
+                            onChange={(e) =>
+                              updateButton(i, { url: e.target.value })
+                            }
+                            placeholder="https://example.com/track"
+                            className="font-mono text-xs"
+                          />
+                        )}
+                        {btn.type === "PHONE_NUMBER" && (
+                          <Input
+                            value={btn.phoneNumber}
+                            onChange={(e) =>
+                              updateButton(i, { phoneNumber: e.target.value })
+                            }
+                            placeholder="+6281234567890"
+                            className="font-mono text-xs"
+                          />
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeButton(i)}
+                        className="text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash className="size-4" />
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Form Actions */}
           <div className="flex items-center justify-end gap-3 pt-4">

@@ -69,13 +69,15 @@ export function TemplateLanguageBadge({
   lang: string
   className?: string
 }) {
-  const { label, flag } = getLanguageDisplay(lang)
+  const { code, label, flag } = getLanguageDisplay(lang)
   return (
     <Badge variant="secondary" className={className}>
       {flag ? (
         <span className="mr-1 text-xs leading-none">{getFlagEmoji(flag)}</span>
       ) : null}
-      <span className="font-normal">{label}</span>
+      {code}
+      <span className="ml-1 text-muted-foreground/60">·</span>
+      <span className="ml-1 font-normal">{label}</span>
     </Badge>
   )
 }
@@ -194,17 +196,22 @@ function extractParameterExamples(params: unknown): Record<number, string> {
 // ─── Button label resolution ─────────────────────────────────────────────────
 
 function getButtonLabel(btn: Record<string, unknown>): string {
-  if (typeof btn.text === "string" && btn.text) return btn.text
+  if (typeof btn.text === "string" && btn.text.trim()) return btn.text.trim()
 
   const ctaUrl = btn.cta_url as Record<string, unknown> | undefined
-  if (ctaUrl && typeof ctaUrl.display_text === "string")
-    return ctaUrl.display_text
+  if (
+    ctaUrl &&
+    typeof ctaUrl.display_text === "string" &&
+    ctaUrl.display_text.trim()
+  )
+    return ctaUrl.display_text.trim()
 
   const reply = btn.reply as Record<string, unknown> | undefined
-  if (reply && typeof reply.title === "string") return reply.title
+  if (reply && typeof reply.title === "string" && reply.title.trim())
+    return reply.title.trim()
 
-  // OTP button is special — text is "Copy code"
-  if (btn.type === "OTP") return "Copy code"
+  // OTP button fallback
+  if (btn.type === "OTP") return "Copy Code"
 
   return String(btn.type ?? "Button")
 }
