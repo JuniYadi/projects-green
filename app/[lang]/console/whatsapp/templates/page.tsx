@@ -123,12 +123,10 @@ export default function ConsoleTemplatesPage() {
       const { whatsappClient } = await import("@/lib/api/whatsapp-client")
       const res = await whatsappClient.devices.pullTemplates(targetDevice)
       if (res.ok) {
-        toast.success(
-          messages.console.whatsapp.templates.pulledSuccess.replace(
-            "{count}",
-            String(res.syncedCount)
-          )
-        )
+        const successMsg =
+          messages.console.whatsapp.templates.pulledSuccess ||
+          "Successfully pulled {count} templates from Meta!"
+        toast.success(successMsg.replace("{count}", String(res.syncedCount)))
         setLastPullTime(Date.now())
         setCooldownRemaining(60)
         await reload()
