@@ -305,7 +305,7 @@ describe("whatsapp-template-sync-worker", () => {
           },
         ],
       },
-    ])
+    ] as any)
     listTemplatesPageMock.mockResolvedValue({
       data: [
         {

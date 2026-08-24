@@ -116,8 +116,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
       const { page, limit, skip } = getPagination(query)
-      const where: BodyRecord = {}
-
+      const where: Prisma.WhatsappTemplateWhereInput = {}
       if (!isSuperAdmin(whatsappAuth)) {
         if (!whatsappAuth.organizationId) {
           set.status = 403
@@ -136,7 +135,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       } else if (query.wabaId || query.phoneId) {
         const device = await prisma.whatsappDevice.findFirst({
           where: {
-            ...(where.organizationId ? { organizationId: String(where.organizationId) } : {}),
+            ...(where.organizationId ? { organizationId: where.organizationId as string } : {}),
             ...(query.wabaId ? { whatsappBusinessAccountId: String(query.wabaId) } : {}),
             ...(query.phoneId ? { whatsappPhoneId: String(query.phoneId) } : {}),
           },
@@ -263,12 +262,13 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         }
       }
 
-      const orgId =
+      const targetOrgId = (
         whatsappAuth.type === "workos"
-          ? whatsappAuth.organizationId!
-          : (body as BodyRecord).organizationId
+          ? whatsappAuth.organizationId
+          : (body as Record<string, string | undefined>).organizationId
+      ) ?? ""
 
-      if (!orgId) {
+      if (!targetOrgId) {
         set.status = 400
         return {
           ok: false,
@@ -317,7 +317,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       const device = await prisma.whatsappDevice.findFirst({
         where: {
           id: whatsappDeviceId,
-          organizationId: orgId,
+          organizationId: targetOrgId,
           status: "ACTIVE",
         },
         select: { id: true },
@@ -335,7 +335,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       // Guard: organization must have at least one ACTIVE WhatsApp subscription
       const subscription = await prisma.serviceSubscription.findFirst({
         where: {
-          organizationId: orgId,
+          organizationId: targetOrgId,
           package: { code: "WHATSAPP" },
           status: "ACTIVE",
         },
@@ -366,7 +366,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
             description,
             category: category as WhatsappBillingCategory,
             whatsappDeviceId: device.id,
-            organizationId: orgId,
+            organizationId: targetOrgId,
             syncStatus: "NOT_SYNCED",
             metaStatus: null,
             languages: {
@@ -395,7 +395,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       } catch (err) {
         logWhatsappAuditEvent({
           action: "TEMPLATE_CREATE_FAILED",
-          organizationId: orgId,
+          organizationId: targetOrgId,
           adminId: auth.userId,
           message: "Template DB creation failed",
           errorMessage: String(err),

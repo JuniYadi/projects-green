@@ -80,7 +80,7 @@ const mockSubscriptionFindFirst = mock(async () => ({
   status: "ACTIVE",
 }))
 const mockLogAudit = mock(async () => {})
-const mockDeviceFindFirst = mock(async () => ({
+const mockDeviceFindFirst = mock(async (): Promise<any> => ({
   id: "dev-1",
   tokenEncrypted: "encrypted-token",
   whatsappBusinessAccountId: "waba-1",
@@ -324,7 +324,7 @@ describe("templatesRoutes", () => {
     })
 
     it("rejects creation if device is not found or not active", async () => {
-      mockDeviceFindFirst.mockResolvedValueOnce(null)
+      mockDeviceFindFirst.mockResolvedValueOnce(null as any)
       const app = createTestApp()
 
       const body = {
@@ -359,7 +359,7 @@ describe("templatesRoutes", () => {
     })
 
     it("rejects creation if organization has no active subscription", async () => {
-      mockSubscriptionFindFirst.mockResolvedValueOnce(null)
+      mockSubscriptionFindFirst.mockResolvedValueOnce(null as any)
       const app = createTestApp()
 
       const body = {

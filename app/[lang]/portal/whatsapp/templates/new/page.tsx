@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft } from "@phosphor-icons/react"
@@ -13,34 +14,64 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { eden } from "@/lib/eden"
 import { useCreateTemplate } from "@/modules/whatsapp/templates/api/templates.hooks"
+import type { TemplateFormInput } from "@/modules/whatsapp/templates/api/templates.hooks"
 import { TemplateForm } from "@/modules/whatsapp/templates/ui/template-form"
+import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 
 export default function PortalNewTemplatePage() {
   const router = useRouter()
   const { create, creating } = useCreateTemplate()
+  const [devices, setDevices] = React.useState<DeviceListItem[]>([])
+
+  React.useEffect(() => {
+    let cancelled = false
+    async function fetchDevices() {
+      try {
+        const res = await eden.api.whatsapp.devices.get()
+        const body = res.data as unknown as {
+          ok: boolean
+          devices?: DeviceListItem[]
+        }
+        if (!cancelled && body?.ok && Array.isArray(body.devices)) {
+          setDevices(body.devices)
+        }
+      } catch {
+        // Fallback
+      }
+    }
+    void fetchDevices()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handleSubmit = async (data: {
     name: string
     slug: string
     description?: string
+    category?: string
+    whatsappDeviceId: string
     languages: Array<{
       lang: string
       headerType: string
       headerText: string
+      headerUrl: string
       body: string
       footer: string
+      parameters?: unknown
+      buttons?: unknown
     }>
   }) => {
     try {
-      const template = await create(data)
+      const template = await create(data as unknown as TemplateFormInput)
       toast.success("Template created successfully.")
       router.push(`./${template.id}`)
     } catch {
       toast.error("Failed to create template.")
     }
   }
-
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div>
@@ -66,7 +97,11 @@ export default function PortalNewTemplatePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <TemplateForm submitting={creating} onSubmit={handleSubmit} />
+          <TemplateForm
+            devices={devices}
+            submitting={creating}
+            onSubmit={handleSubmit}
+          />
         </CardContent>
       </Card>
     </main>
