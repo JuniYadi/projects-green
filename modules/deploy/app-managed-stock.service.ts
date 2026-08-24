@@ -191,18 +191,30 @@ export async function claimManagedStock(
     })
   })
 
-  const credentials = await getVault().readKV(stock.vaultPath)
-  const dbEnvVars = buildDbEnvVars(input.serviceType, stock, credentials)
-  await getVaultSecrets().writeSecrets({
-    organizationId: input.orgId,
-    stackId: input.stackId,
-    environment: input.environment,
-    secrets: dbEnvVars,
-  })
-
+  try {
+    const credentials = await getVault().readKV(stock.vaultPath)
+    const dbEnvVars = buildDbEnvVars(input.serviceType, stock, credentials)
+    await getVaultSecrets().writeSecrets({
+      organizationId: input.orgId,
+      stackId: input.stackId,
+      environment: input.environment,
+      secrets: dbEnvVars,
+    })
+  } catch (error) {
+    await prisma.appManagedStock
+      .update({
+        where: { id: stock.id },
+        data: {
+          status: "DIRTY",
+          allocatedStackId: null,
+          allocatedAt: null,
+        },
+      })
+      .catch(() => {})
+    throw error
+  }
   return stock
 }
-
 const findTenantVaultPath = (envVarsJson: unknown): string | null => {
   if (!Array.isArray(envVarsJson)) return null
 

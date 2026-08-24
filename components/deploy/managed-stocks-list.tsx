@@ -83,9 +83,9 @@ export function ManagedStocksList() {
       setLoading(true)
       setError(null)
       try {
-        const { data: payload } = await eden.api.admin["managed-stocks"].get(
-          selectedClusterId ? { $query: { clusterId: selectedClusterId } } : {}
-        )
+        const { data: payload } = await eden.api.admin["managed-stocks"].get({
+          $query: selectedClusterId ? { clusterId: selectedClusterId } : {},
+        })
         const data = Array.isArray((payload as { data?: unknown } | null)?.data)
           ? (payload as { data: ManagedStockDTO[] }).data
           : []
@@ -118,9 +118,13 @@ export function ManagedStocksList() {
     const form = event.currentTarget
     const values = new FormData(form)
     const label = String(values.get("label") ?? "").trim()
+    const serviceType = String(values.get("serviceType") ?? "MYSQL") as
+      | "MYSQL"
+      | "POSTGRESQL"
+      | "REDIS"
     const payload = {
       clusterId: String(values.get("clusterId") ?? ""),
-      serviceType: String(values.get("serviceType") ?? "MYSQL"),
+      serviceType,
       ...(label ? { label } : {}),
       endpointHost: String(values.get("endpointHost") ?? "").trim(),
       endpointPort: Number(values.get("endpointPort") ?? 0),
@@ -162,7 +166,7 @@ export function ManagedStocksList() {
     try {
       await eden.api.admin["managed-stocks"]({
         id: stock.id,
-      }).delete()
+      }).maintenance.patch()
       setStocks((current) =>
         current.map((item) =>
           item.id === stock.id ? { ...item, status: "MAINTENANCE" } : item

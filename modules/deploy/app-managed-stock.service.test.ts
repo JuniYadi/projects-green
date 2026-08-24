@@ -145,7 +145,7 @@ describe("managed stock service", () => {
       allocatedAt: null,
       createdAt: new Date("2026-08-24T00:00:00.000Z"),
       updatedAt: new Date("2026-08-24T00:00:00.000Z"),
-    })
+    } as never)
     mockWriteKV.mockResolvedValue({ version: 3 })
     mockReadKV.mockResolvedValue({
       password: "db-secret",
@@ -221,7 +221,7 @@ describe("managed stock service", () => {
   })
 
   it("rejects a missing cluster", async () => {
-    mockPrisma.appHostingCluster.findUnique.mockResolvedValueOnce(null)
+    mockPrisma.appHostingCluster.findUnique.mockResolvedValueOnce(null as never)
 
     await expect(
       importManagedStock({
@@ -266,7 +266,7 @@ describe("managed stock service", () => {
       id: "stock-1",
       allocatedStackId: "stack-1",
       vaultPath: "admin/managed-stock/stock-1",
-    })
+    } as never)
 
     await releaseManagedStock("stack-1")
 

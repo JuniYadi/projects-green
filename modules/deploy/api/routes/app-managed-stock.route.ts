@@ -22,7 +22,7 @@ const importManagedStockBody = t.Object({
   serviceType: serviceTypes,
   label: t.Optional(t.String()),
   endpointHost: t.String(),
-  endpointPort: t.Number(),
+  endpointPort: t.Integer({ minimum: 1, maximum: 65535 }),
   databaseName: t.String(),
   username: t.String(),
   password: t.String(),
@@ -83,16 +83,20 @@ export const createManagedStockRoutes = () =>
       },
       { query: managedStockQuery }
     )
-    .delete("/:id", async ({ params, set }) => {
-      const actor = await requireSuperAdmin(set)
-      if ("ok" in actor && !actor.ok) {
-        return actor as AdminApiError
-      }
+    .patch(
+      "/:id/maintenance",
+      async ({ params, set }) => {
+        const actor = await requireSuperAdmin(set)
+        if ("ok" in actor && !actor.ok) {
+          return actor as AdminApiError
+        }
 
-      try {
-        await updateManagedStockStatus(params.id, "MAINTENANCE")
-        return { ok: true as const }
-      } catch (error) {
-        return routeError(set, error)
-      }
-    })
+        try {
+          await updateManagedStockStatus(params.id, "MAINTENANCE")
+          return { ok: true as const }
+        } catch (error) {
+          return routeError(set, error)
+        }
+      },
+      { params: t.Object({ id: t.String() }) }
+    )

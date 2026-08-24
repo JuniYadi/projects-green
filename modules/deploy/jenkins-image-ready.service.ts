@@ -105,12 +105,24 @@ const parseEnvVarsJson = (raw: unknown): JenkinsEnvVar[] => {
   if (typeof raw === "string") {
     try {
       parsed = JSON.parse(raw)
-    } catch {
+    } catch (error) {
+      console.error(
+        "[jenkins-image-ready] Failed to parse envVarsJson string:",
+        error
+      )
       return []
     }
   }
 
-  if (!Array.isArray(parsed)) return []
+  if (!Array.isArray(parsed)) {
+    if (raw !== null && raw !== undefined) {
+      console.warn(
+        "[jenkins-image-ready] envVarsJson is not an array:",
+        typeof parsed
+      )
+    }
+    return []
+  }
 
   return parsed.flatMap((item) => {
     if (typeof item !== "object" || item === null) return []

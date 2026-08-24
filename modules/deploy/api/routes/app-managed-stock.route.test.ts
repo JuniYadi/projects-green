@@ -194,10 +194,10 @@ describe("managed stock admin routes", () => {
     expect(body.error).toBe("CLUSTER_NOT_FOUND")
   })
 
-  it("marks a stock as maintenance instead of deleting it", async () => {
+  it("marks a stock as maintenance via patch", async () => {
     const app = new Elysia().use(createManagedStockRoutes())
     const response = await app.handle(
-      new Request(`${BASE}/stock-1`, { method: "DELETE" })
+      new Request(`${BASE}/stock-1/maintenance`, { method: "PATCH" })
     )
 
     expect(response.status).toBe(200)

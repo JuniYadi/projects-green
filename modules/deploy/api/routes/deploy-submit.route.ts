@@ -12,10 +12,14 @@ import {
   triggerDeploy,
 } from "../../deploy-pipeline.service"
 import { ensureManagedDomainForStack } from "@/modules/deploy/app-hosting-edge.service"
+import type { AppManagedStock } from "@prisma/client"
 import { claimManagedStock } from "@/modules/deploy/app-managed-stock.service"
 import { assertDeployExecutionGates } from "../../deploy-execution-gates"
 import { DEPLOY_TEMPLATES } from "../../deploy.constants"
-import { MANAGED_APP_TEMPLATES } from "../../managed-app-templates"
+import {
+  MANAGED_APP_TEMPLATES,
+  type ManagedAppTemplate,
+} from "../../managed-app-templates"
 import { parsePublicGitUrl } from "../../public-source"
 
 /**
@@ -109,15 +113,27 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
     let publicSourceRef: string | null = null
     let name: string
     let slug: string
-    let managedTemplate: (typeof MANAGED_APP_TEMPLATES)[number] | undefined
+    let managedTemplate: ManagedAppTemplate | undefined
 
-    if (sourceType === "TEMPLATE") {
+    if (sourceType === "MANAGED_TEMPLATE") {
       managedTemplate = MANAGED_APP_TEMPLATES.find(
         (template) => template.id === body.templateId
       )
-      const template =
-        managedTemplate ??
-        DEPLOY_TEMPLATES.find((template) => template.id === body.templateId)
+      if (!managedTemplate) {
+        set.status = 422
+        return {
+          ok: false,
+          error: "UNKNOWN_TEMPLATE",
+          message: "Unknown managed templateId",
+        }
+      }
+      repositoryConnectionId = null
+      name = body.name?.trim() || managedTemplate.name
+      slug = slugify(name)
+    } else if (sourceType === "TEMPLATE") {
+      const template = DEPLOY_TEMPLATES.find(
+        (item) => item.id === body.templateId
+      )
       if (!template) {
         set.status = 422
         return {
@@ -191,6 +207,29 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       memory: body.memory ?? null,
     })
 
+    // If deploying a managed template with managed DB, claim stock first before creating stack to avoid orphaned stacks
+    let claimedStock: AppManagedStock | undefined
+    if (managedTemplate) {
+      try {
+        claimedStock = await claimManagedStock({
+          serviceType: managedTemplate.engineType,
+          stackId: "pending",
+          orgId: auth.organizationId,
+          environment: "prod",
+        })
+      } catch (error) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "MANAGED_STOCK_UNAVAILABLE",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to claim managed database stock",
+        }
+      }
+    }
+
     // Persist the stack as the single source of truth before any deploy.
     let stack
     try {
@@ -199,7 +238,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         name,
         slug,
         sourceType:
-          sourceType === "TEMPLATE"
+          sourceType === "MANAGED_TEMPLATE" || sourceType === "TEMPLATE"
             ? "TEMPLATE"
             : sourceType === "PUBLIC"
               ? "PUBLIC"
@@ -229,6 +268,18 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         imageRepository: managedTemplate?.imageRepository ?? null,
       })
     } catch (error) {
+      if (claimedStock) {
+        await prisma.appManagedStock
+          .update({
+            where: { id: claimedStock.id },
+            data: {
+              status: "AVAILABLE",
+              allocatedStackId: null,
+              allocatedAt: null,
+            },
+          })
+          .catch(() => {})
+      }
       if (
         error instanceof Error &&
         error.message === "STACK_DEPLOY_IN_PROGRESS"
@@ -243,15 +294,15 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       }
       throw error
     }
-    if (managedTemplate) {
-      await claimManagedStock({
-        serviceType: managedTemplate.engineType,
-        stackId: stack.id,
-        orgId: auth.organizationId,
-        environment: "prod",
-      })
-    }
 
+    if (managedTemplate && claimedStock) {
+      await prisma.appManagedStock
+        .update({
+          where: { id: claimedStock.id },
+          data: { allocatedStackId: stack.id },
+        })
+        .catch(() => {})
+    }
     try {
       await assertDeployExecutionGates({
         organizationId: auth.organizationId,
@@ -324,10 +375,10 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         t.Union([
           t.Literal("GITHUB"),
           t.Literal("TEMPLATE"),
+          t.Literal("MANAGED_TEMPLATE"),
           t.Literal("PUBLIC"),
         ])
       ),
-      publicSourceUrl: t.Optional(t.String()),
       publicSourceRef: t.Optional(t.String()),
       templateId: t.Optional(t.String()),
       repositoryId: t.Optional(t.String()),

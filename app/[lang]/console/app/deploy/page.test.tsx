@@ -57,12 +57,17 @@ describe("DeployPage", () => {
     })
 
     expect(capturedBody.current).toMatchObject({
-      sourceType: "TEMPLATE",
+      sourceType: "MANAGED_TEMPLATE",
       templateId: "n8n",
       billingMode: "PAYG",
       resourcePlanId: "payg",
     })
-    expect(String(capturedBody.current?.subdomain)).toMatch(/^n8n-/)
+    expect(
+      String(
+        (capturedBody.current as Record<string, unknown> | null)?.subdomain ??
+          ""
+      )
+    ).toMatch(/^n8n-/)
     expect(
       view.queryByRole("button", { name: "Launch to Kubernetes" })
     ).toBeNull()

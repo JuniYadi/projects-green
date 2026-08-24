@@ -105,6 +105,9 @@ const mockPrisma = {
       isDefault: true,
     })),
   },
+  appManagedStock: {
+    update: mock(async () => ({ id: "stock-1" })),
+  },
 }
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
@@ -213,7 +216,7 @@ describe("deploySubmitRoutes /submit", () => {
 
   it("claims managed stock for one-click templates", async () => {
     const res = await submit({
-      sourceType: "TEMPLATE",
+      sourceType: "MANAGED_TEMPLATE",
       templateId: "n8n",
       resourcePlanId: "payg",
       billingMode: "PAYG",
@@ -224,7 +227,7 @@ describe("deploySubmitRoutes /submit", () => {
     expect(res.status).toBe(200)
     expect(claimManagedStock).toHaveBeenCalledWith({
       serviceType: "MYSQL",
-      stackId: "stack-1",
+      stackId: "pending",
       orgId: "org-1",
       environment: "prod",
     })

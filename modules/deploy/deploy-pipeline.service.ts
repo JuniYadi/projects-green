@@ -233,8 +233,11 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
  * removal of the stack itself.
  */
 export async function deleteStack(stackId: string) {
-  await releaseManagedStock(stackId).catch(() => {
-    // Non-fatal cleanup; the stack deletion must still complete.
+  await releaseManagedStock(stackId).catch((error) => {
+    console.error(
+      `[deleteStack] releaseManagedStock failed for stack ${stackId}:`,
+      error
+    )
   })
   return prisma.applicationStack.delete({ where: { id: stackId } })
 }

@@ -59,7 +59,7 @@ export default function DeployPage() {
     setTemplateDeploying(true)
     try {
       const { data: payload } = await eden.api.deploy.submit.post({
-        sourceType: "TEMPLATE",
+        sourceType: "MANAGED_TEMPLATE",
         templateId: selectedTemplate.id,
         subdomain,
         billingMode: "PAYG",
