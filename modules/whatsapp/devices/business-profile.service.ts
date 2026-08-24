@@ -313,12 +313,21 @@ export async function syncTemplatesFromMeta(
     const footer = (footerComp?.text as string) || null
     const buttons = buttonComp?.buttons || null
 
+    const isApproved = metaStatus === "APPROVED"
+    const rejectReason =
+      metaTpl.rejected_reason !== "NONE" ? metaTpl.rejected_reason : null
+
     // Find or create template by (organizationId, whatsappDeviceId, slug)
     let template = await prisma.whatsappTemplate.findFirst({
       where: {
         organizationId,
         whatsappDeviceId: deviceId,
         slug: metaTpl.name,
+      },
+      include: {
+        languages: {
+          where: { lang },
+        },
       },
     })
 
@@ -334,54 +343,82 @@ export async function syncTemplatesFromMeta(
           metaStatus,
           lastSyncedAt: new Date(),
         },
+        include: {
+          languages: true,
+        },
       })
     } else {
-      template = await prisma.whatsappTemplate.update({
-        where: { id: template.id },
-        data: {
-          category,
-          syncStatus: "SYNCED",
-          metaStatus,
-          lastSyncedAt: new Date(),
-        },
-      })
+      // Dirty check on parent template: only update if metaStatus/category changed
+      const isTemplateDirty =
+        template.metaStatus !== metaStatus ||
+        template.category !== category ||
+        template.syncStatus !== "SYNCED"
+
+      if (isTemplateDirty) {
+        template = await prisma.whatsappTemplate.update({
+          where: { id: template.id },
+          data: {
+            category,
+            syncStatus: "SYNCED",
+            metaStatus,
+            lastSyncedAt: new Date(),
+          },
+          include: {
+            languages: {
+              where: { lang },
+            },
+          },
+        })
+      }
     }
 
-    // Upsert language variant
-    await prisma.whatsappTemplateLanguage.upsert({
-      where: {
-        templateId_lang: {
+    // Language dirty check
+    const existingLang = template.languages?.[0]
+    if (!existingLang) {
+      await prisma.whatsappTemplateLanguage.create({
+        data: {
           templateId: template.id,
           lang,
+          headerType,
+          headerText,
+          headerUrl,
+          body,
+          footer,
+          buttons: buttons as Prisma.InputJsonValue,
+          isApproved,
+          metaStatus,
+          rejectReason,
         },
-      },
-      create: {
-        templateId: template.id,
-        lang,
-        headerType,
-        headerText,
-        headerUrl,
-        body,
-        footer,
-        buttons: buttons as Prisma.InputJsonValue,
-        isApproved: metaStatus === "APPROVED",
-        metaStatus,
-        rejectReason:
-          metaTpl.rejected_reason !== "NONE" ? metaTpl.rejected_reason : null,
-      },
-      update: {
-        headerType,
-        headerText,
-        headerUrl,
-        body,
-        footer,
-        buttons: buttons as Prisma.InputJsonValue,
-        isApproved: metaStatus === "APPROVED",
-        metaStatus,
-        rejectReason:
-          metaTpl.rejected_reason !== "NONE" ? metaTpl.rejected_reason : null,
-      },
-    })
+      })
+    } else {
+      const isLangDirty =
+        existingLang.metaStatus !== metaStatus ||
+        existingLang.rejectReason !== rejectReason ||
+        existingLang.isApproved !== isApproved ||
+        existingLang.headerType !== headerType ||
+        existingLang.headerText !== headerText ||
+        existingLang.headerUrl !== headerUrl ||
+        existingLang.body !== body ||
+        existingLang.footer !== footer ||
+        JSON.stringify(existingLang.buttons) !== JSON.stringify(buttons)
+
+      if (isLangDirty) {
+        await prisma.whatsappTemplateLanguage.update({
+          where: { id: existingLang.id },
+          data: {
+            headerType,
+            headerText,
+            headerUrl,
+            body,
+            footer,
+            buttons: buttons as Prisma.InputJsonValue,
+            isApproved,
+            metaStatus,
+            rejectReason,
+          },
+        })
+      }
+    }
 
     syncedCount++
   }

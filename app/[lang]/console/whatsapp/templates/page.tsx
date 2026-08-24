@@ -355,15 +355,59 @@ export default function ConsoleTemplatesPage() {
       ),
     },
     {
-      accessorFn: (row) => row.whatsappDeviceId ?? "",
+      accessorFn: (row) => {
+        const matched = devices.find((d) => d.id === row.whatsappDeviceId)
+        return matched
+          ? `${matched.verifiedName || matched.name || ""} ${matched.phoneNumber}`
+          : "Any device"
+      },
       id: "whatsappDeviceId",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Device" />
       ),
-      cell: ({ row }) =>
-        row.original.whatsappDeviceId
-          ? row.original.whatsappDeviceId
-          : "Any device",
+      cell: ({ row }) => {
+        const deviceId = row.original.whatsappDeviceId
+        if (!deviceId) {
+          return (
+            <Badge
+              variant="outline"
+              className="text-xs font-normal text-muted-foreground"
+            >
+              All Devices
+            </Badge>
+          )
+        }
+
+        const matched = devices.find((d) => d.id === deviceId)
+        const displayName =
+          matched?.verifiedName || matched?.name || matched?.phoneNumber
+        const phone = matched?.phoneNumber
+
+        return (
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex cursor-help flex-col">
+                  <span className="text-xs font-medium text-foreground">
+                    {displayName || deviceId}
+                  </span>
+                  {phone && displayName !== phone && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {phone}
+                    </span>
+                  )}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                <p className="font-semibold">{displayName}</p>
+                <p className="font-mono text-[10px] text-muted-foreground">
+                  ID: {deviceId}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )
+      },
     },
     {
       accessorKey: "createdAt",

@@ -550,9 +550,10 @@ export const idMessages: AppMessages = {
         cardDescription: "Kelola template pesan WhatsApp Anda",
         syncTemplates: "Sinkronisasi Template",
         syncing: "Menyinkronkan...",
-        pullFromMeta: "Tarik dari Meta",
-        pulling: "Menarik...",
-        pulledSuccess: "Berhasil menarik {count} template dari Meta!",
+        pullFromMeta: "Sinkronkan",
+        pulling: "Menyinkronkan...",
+        pulledSuccess:
+          "Berhasil menyinkronkan {count} template dengan WhatsApp!",
         selectDevice: "Pilih Perangkat",
         allDevices: "Semua Perangkat",
         createTemplate: "Buat Template",
