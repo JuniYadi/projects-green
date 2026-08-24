@@ -85,6 +85,7 @@ export const businessProfileRoutes = new Elysia({
   })
   .patch("/", async ({ request, params: { id }, body, set }: any) => {
     const auth = await resolveDeviceAuth(request)
+    if (!auth) return toUnauthorized(set)
     if (!auth.organizationId)
       return toBadRequest(set, "Organization context required.")
 

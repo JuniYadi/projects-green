@@ -17,8 +17,9 @@ import {
   Clock,
   XCircle,
 } from "@phosphor-icons/react"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 
+import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -56,6 +57,8 @@ export function TemplateDetailView({
   syncing,
 }: TemplateDetailProps) {
   const router = useRouter()
+  const routeParams = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(routeParams?.lang)
   // ── Loading skeleton ──────────────────────────────────────────────────
 
   if (loading) {
@@ -214,7 +217,10 @@ export function TemplateDetailView({
               className="bg-emerald-600 text-white hover:bg-emerald-700"
               onClick={() =>
                 router.push(
-                  `/en/console/whatsapp/messages?template=${template.id}`
+                  localizePathname({
+                    pathname: `/console/whatsapp/messages?template=${template.id}`,
+                    locale,
+                  })
                 )
               }
             >
@@ -228,7 +234,10 @@ export function TemplateDetailView({
             variant="outline"
             onClick={() =>
               router.push(
-                `/en/console/whatsapp/templates/new?duplicate=${template.id}`
+                localizePathname({
+                  pathname: `/console/whatsapp/templates/new?duplicate=${template.id}`,
+                  locale,
+                })
               )
             }
           >

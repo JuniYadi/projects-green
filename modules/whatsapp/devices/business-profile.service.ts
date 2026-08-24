@@ -247,29 +247,55 @@ export async function syncTemplatesFromMeta(
   }
 
   const version = device.whatsappVersion || "v22.0"
-  const url = `https://graph.facebook.com/${version}/${wabaId}/message_templates?fields=name,language,status,category,components,rejected_reason&limit=100`
+  const baseUrl = new URL(
+    `https://graph.facebook.com/${version}/${wabaId}/message_templates`
+  )
+  baseUrl.searchParams.set(
+    "fields",
+    "name,language,status,category,components,rejected_reason"
+  )
+  baseUrl.searchParams.set("limit", "100")
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  })
-  const json = (await res.json()) as {
-    error?: { message: string }
-    data?: Array<{
-      id: string
-      name: string
-      language: string
-      status: string
-      category: string
-      components?: Array<Record<string, unknown>>
-      rejected_reason?: string
-    }>
+  type MetaTemplate = {
+    id: string
+    name: string
+    language: string
+    status: string
+    category: string
+    components?: Array<Record<string, unknown>>
+    rejected_reason?: string
   }
 
-  if (json.error || !json.data) {
-    throw new Error(
-      json.error?.message || "Failed to fetch templates from Meta Graph API."
-    )
-  }
+  const allMetaTemplates: MetaTemplate[] = []
+  let after: string | undefined
+
+  do {
+    const pageUrl = new URL(baseUrl)
+    if (after) {
+      pageUrl.searchParams.set("after", after)
+    }
+
+    const res = await fetch(pageUrl, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    const json = (await res.json()) as {
+      error?: { message: string }
+      data?: MetaTemplate[]
+      paging?: {
+        cursors?: { after?: string }
+        next?: string
+      }
+    }
+
+    if (json.error || !json.data) {
+      throw new Error(
+        json.error?.message || "Failed to fetch templates from Meta Graph API."
+      )
+    }
+
+    allMetaTemplates.push(...json.data)
+    after = json.paging?.next ? json.paging.cursors?.after : undefined
+  } while (after)
 
   const metaStatusMap: Record<string, "APPROVED" | "PENDING" | "REJECTED"> = {
     APPROVED: "APPROVED",
@@ -291,7 +317,7 @@ export async function syncTemplatesFromMeta(
 
   let syncedCount = 0
 
-  for (const metaTpl of json.data) {
+  for (const metaTpl of allMetaTemplates) {
     const metaStatus = metaStatusMap[metaTpl.status.toUpperCase()] ?? "PENDING"
     const category = categoryMap[metaTpl.category.toUpperCase()] ?? "UTILITY"
     const lang = metaTpl.language || "en_US"
@@ -423,7 +449,7 @@ export async function syncTemplatesFromMeta(
     syncedCount++
   }
 
-  return { syncedCount, totalMetaCount: json.data.length }
+  return { syncedCount, totalMetaCount: allMetaTemplates.length }
 }
 /**
  * Update business profile in Meta + persist to local whatsappProfile JSON.

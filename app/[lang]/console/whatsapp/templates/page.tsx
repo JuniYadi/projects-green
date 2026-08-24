@@ -669,6 +669,7 @@ export default function ConsoleTemplatesPage() {
                 {
                   columnId: "category",
                   allLabel: "All Category",
+                  label: "Category",
                   options: [
                     { label: "Marketing", value: "MARKETING" },
                     { label: "Utility", value: "UTILITY" },

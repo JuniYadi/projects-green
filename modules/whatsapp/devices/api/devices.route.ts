@@ -78,6 +78,10 @@ const toUnauthorized = (set: RouteSet) => {
   set.status = 401
   return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
 }
+const toBadRequest = (set: RouteSet, message: string) => {
+  set.status = 400
+  return { ok: false, error: "BAD_REQUEST", message }
+}
 
 const toQueueUnavailable = (set: RouteSet) => {
   set.status = 503

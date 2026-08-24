@@ -576,6 +576,7 @@ export const idMessages: AppMessages = {
         description: "Kelola koneksi perangkat WhatsApp Anda.",
         cardTitle: "Perangkat WhatsApp",
         cardDescription: "Kelola koneksi perangkat WhatsApp Anda",
+        edit: "Sunting",
         connectNewDevice: "Sambungkan Perangkat Baru",
         quotaUsage: "Penggunaan Kuota",
         quotaUsageTooltip:

@@ -36,6 +36,7 @@ export interface WhatsAppTemplateLanguage {
   footer?: string | null
   isApproved?: boolean
   metaStatus?: string
+  rejectReason?: string | null
   buttons?: unknown
 }
 

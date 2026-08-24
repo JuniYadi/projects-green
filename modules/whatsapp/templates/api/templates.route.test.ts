@@ -419,7 +419,7 @@ describe("templatesRoutes", () => {
         organizationId: "org-1",
         whatsappDeviceId: "dev-1",
         syncStatus: "SYNCED",
-        metaStatus: "PENDING",
+        metaStatus: "APPROVED",
         lastSyncedAt: new Date(),
         category: "UTILITY",
         createdAt: new Date(),
@@ -444,6 +444,37 @@ describe("templatesRoutes", () => {
       expect(json.message).toContain(
         "Templates submitted to Meta cannot be modified"
       )
+    })
+
+    it("allows update on synced templates pending Meta approval", async () => {
+      mockTemplateFindUnique.mockResolvedValueOnce({
+        id: "tpl-synced-pending",
+        slug: "hello_world",
+        name: "Hello World",
+        description: "A greeting template",
+        organizationId: "org-1",
+        whatsappDeviceId: "dev-1",
+        syncStatus: "SYNCED",
+        metaStatus: "PENDING",
+        lastSyncedAt: new Date(),
+        category: "UTILITY",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        languages: [],
+      })
+
+      const app = createTestApp()
+      const body = { name: "Rename while pending" }
+
+      const res = await app.handle(
+        new Request("http://localhost/templates/tpl-synced-pending", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+      )
+
+      expect(res.status).toBe(200)
     })
   })
 

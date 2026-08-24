@@ -168,7 +168,7 @@ function WhatsAppProfilePreview({
   const profilePictureUrl = getProfileString(profile, "profile_picture_url")
   const isVerified =
     device.nameStatus?.toUpperCase() === "APPROVED" ||
-    profile?.isOfficialBusinessAccount
+    profile?.isOfficialBusinessAccount === true
 
   return (
     <Card

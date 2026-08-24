@@ -69,6 +69,28 @@ describe("selectSmokeProjects", () => {
       ])
     )
   })
+  test("maps WhatsApp templates sources to their template tests", () => {
+    expect(
+      findFeatureMappings("modules/whatsapp/templates/ui/template-detail.tsx")
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "whatsapp-templates",
+          sourcePrefixes: [
+            "app/[lang]/console/whatsapp/templates/",
+            "app/[lang]/portal/whatsapp/templates/",
+            "modules/whatsapp/templates/",
+          ],
+          testPrefixes: [
+            "app/[lang]/console/whatsapp/templates/",
+            "app/[lang]/portal/whatsapp/templates/",
+            "modules/whatsapp/templates/",
+          ],
+          smokeProjects: ["smoke-portal"],
+        }),
+      ])
+    )
+  })
   test("reports an unmapped UI feature instead of running nothing", () => {
     const selection = selectSmokeProjects([
       "modules/new-feature/ui/new-page.tsx",

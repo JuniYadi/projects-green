@@ -1,6 +1,6 @@
 import "@/test/register"
 import { describe, expect, it, mock, beforeEach } from "bun:test"
-import { render } from "@testing-library/react"
+import { cleanup, render } from "@testing-library/react"
 import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
 // NOTE: Do NOT import `screen` — it is evaluated at module-import time when
 // document.body is still null (Happy DOM). Use render()'s return value instead.
@@ -107,12 +107,16 @@ mock.module("@/lib/i18n/messages", () => ({
           description: "Manage your WhatsApp message templates",
           cardTitle: "Templates",
           cardDescription: "Create and manage WhatsApp Business templates",
-          totalTemplates: "Total Templates",
           synced: "Synced",
           pendingSync: "Pending Sync",
           syncing: "Syncing...",
           syncTemplates: "Sync All",
           createTemplate: "Create Template",
+          pullFromMeta: "Sync",
+          pulling: "Syncing...",
+          pulledSuccess: "Successfully synced {count} templates with WhatsApp!",
+          selectDevice: "Select Device",
+          allDevices: "All Devices",
         },
       },
     },
@@ -129,28 +133,28 @@ import WhatsAppTemplatesPage from "./page"
 
 describe("WhatsAppTemplatesPage", () => {
   beforeEach(() => {
+    cleanup()
     mockUseTemplates.mockClear()
     mockUseSyncTemplate.mockClear()
   })
-
   it("renders category column header", async () => {
     const view = render(<WhatsAppTemplatesPage />)
-    expect(view.getByText("Category")).toBeDefined()
+    expect(view.getAllByText("Category").length).toBeGreaterThan(0)
   })
 
   it("renders category badge for UTILITY template", async () => {
     const view = render(<WhatsAppTemplatesPage />)
-    expect(view.getByText("UTILITY")).toBeDefined()
+    expect(view.getAllByText("UTILITY").length).toBeGreaterThan(0)
   })
 
   it("renders category badge for MARKETING template", async () => {
     const view = render(<WhatsAppTemplatesPage />)
-    expect(view.getByText("MARKETING")).toBeDefined()
+    expect(view.getAllByText("MARKETING").length).toBeGreaterThan(0)
   })
 
   it("renders category badge for AUTHENTICATION template", async () => {
     const view = render(<WhatsAppTemplatesPage />)
-    expect(view.getByText("AUTHENTICATION")).toBeDefined()
+    expect(view.getAllByText("AUTHENTICATION").length).toBeGreaterThan(0)
   })
   it("renders category facet filter options and custom allLabels", async () => {
     const view = render(<WhatsAppTemplatesPage />)

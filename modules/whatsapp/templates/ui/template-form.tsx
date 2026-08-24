@@ -252,7 +252,10 @@ export function TemplateForm({
       textarea.setSelectionRange(newPos, newPos)
     }, 0)
   }
-  React.useState<number>(5)
+  const [addSecurityRecommendation, setAddSecurityRecommendation] =
+    React.useState(true)
+  const [codeExpirationMinutes, setCodeExpirationMinutes] =
+    React.useState<number>(5)
   const [messageValidityMinutes, setMessageValidityMinutes] =
     React.useState<number>(10)
   const [otpButtonText, setOtpButtonText] = React.useState("Copy Code")

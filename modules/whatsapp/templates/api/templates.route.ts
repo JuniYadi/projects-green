@@ -514,8 +514,11 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       }
       const bodyRecord = body as BodyRecord
 
-      // Template is immutable once submitted/created in Meta
-      if (template.syncStatus === "SYNCED" || template.metaStatus) {
+      // Only lock templates that were successfully synced and approved by Meta
+      if (
+        template.syncStatus === "SYNCED" &&
+        template.metaStatus === "APPROVED"
+      ) {
         set.status = 422
         return {
           ok: false,

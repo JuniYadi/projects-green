@@ -573,6 +573,7 @@ export const enMessages: AppMessages = {
         description: "Manage your WhatsApp device connections.",
         cardTitle: "WhatsApp Devices",
         cardDescription: "Connected WhatsApp devices",
+        edit: "Edit",
         connectNewDevice: "Connect New Device",
         quotaUsage: "Quota Usage",
         quotaUsageTooltip:
