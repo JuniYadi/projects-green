@@ -182,7 +182,7 @@ describe("WhatsAppTemplatesPage", () => {
     const view = render(<WhatsAppTemplatesPage />)
     // "Creation Date" should be hidden from table headers
     expect(view.queryByText("Creation Date")).toBeNull()
-    // "Last Updated Date" should be visible in headers
-    expect(view.queryByText("Last Updated Date")).toBeDefined()
+    // "Last Updated" should be visible in headers
+    expect(view.getAllByText("Last Updated").length).toBeGreaterThan(0)
   })
 })

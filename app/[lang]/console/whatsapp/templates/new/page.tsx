@@ -3,16 +3,20 @@
 import * as React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft } from "@phosphor-icons/react"
+import { ArrowLeft, WarningCircle, DeviceMobile } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { eden } from "@/lib/eden"
 import {
   useCreateTemplate,
   useTemplate,
 } from "@/modules/whatsapp/templates/api/templates.hooks"
 import type { TemplateFormInput } from "@/modules/whatsapp/templates/api/templates.hooks"
 import { TemplateForm } from "@/modules/whatsapp/templates/ui/template-form"
+import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 
 export default function ConsoleNewTemplatePage() {
   const router = useRouter()
@@ -23,12 +27,44 @@ export default function ConsoleNewTemplatePage() {
     duplicateId || ""
   )
   const { create, creating } = useCreateTemplate()
+  const [devices, setDevices] = React.useState<DeviceListItem[]>([])
+  const [loadingDevices, setLoadingDevices] = React.useState(true)
+
+  React.useEffect(() => {
+    let cancelled = false
+    async function fetchDevices() {
+      try {
+        const res = await eden.api.whatsapp.devices.get()
+        const body = res.data as unknown as {
+          ok: boolean
+          devices?: DeviceListItem[]
+        }
+        if (!cancelled && body?.ok && Array.isArray(body.devices)) {
+          setDevices(body.devices)
+        }
+      } catch {
+        // Fallback gracefully
+      } finally {
+        if (!cancelled) setLoadingDevices(false)
+      }
+    }
+    void fetchDevices()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const activeDevices = React.useMemo(
+    () => devices.filter((d) => d.status === "ACTIVE"),
+    [devices]
+  )
 
   const handleSubmit = async (data: {
     name: string
     slug: string
     description?: string
     category?: string
+    whatsappDeviceId: string
     languages: Array<{
       lang: string
       headerType: string
@@ -103,11 +139,41 @@ export default function ConsoleNewTemplatePage() {
         </p>
       </div>
 
-      <TemplateForm
-        initialData={initialData}
-        submitting={creating}
-        onSubmit={handleSubmit}
-      />
+      {loadingDevices ? (
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      ) : activeDevices.length === 0 ? (
+        <Card className="border-warning/30 bg-warning/5">
+          <CardHeader>
+            <div className="flex items-center gap-2 text-warning">
+              <WarningCircle className="size-5" />
+              <CardTitle className="text-base font-semibold">
+                Active WhatsApp Device Required
+              </CardTitle>
+            </div>
+            <CardDescription>
+              You need at least one active WhatsApp device with a valid subscription before you can create message templates.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild size="sm">
+              <Link href="../devices">
+                <DeviceMobile className="mr-1.5 size-4" />
+                Go to Devices
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <TemplateForm
+          initialData={initialData}
+          devices={devices}
+          submitting={creating}
+          onSubmit={handleSubmit}
+        />
+      )}
     </div>
   )
 }

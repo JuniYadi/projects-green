@@ -22,17 +22,25 @@ class WorkerMock {
   }
 }
 
+const createTemplateMock = mock(async (..._args: unknown[]) => ({
+  id: "meta-tpl-1",
+  status: "PENDING",
+  category: "UTILITY",
+}))
+
 const mockPrisma = {
   whatsappDevice: {
     findFirst: mock(async (..._args: unknown[]) => null as unknown),
   },
   whatsappTemplate: {
     findFirst: mock(async (..._args: unknown[]) => null as unknown),
+    findMany: mock(async (..._args: unknown[]) => []),
     create: mock(async (..._args: unknown[]) => ({})),
     update: mock(async (..._args: unknown[]) => ({})),
     updateMany: mock(async (..._args: unknown[]) => ({ count: 0 })),
   },
   whatsappTemplateLanguage: {
+    update: mock(async (..._args: unknown[]) => ({})),
     upsert: mock(async (..._args: unknown[]) => ({})),
   },
 }
@@ -42,6 +50,7 @@ const listTemplatesPageMock = mock(
 )
 const fromDeviceMock = mock(async (..._args: unknown[]) => ({
   listTemplatesPage: listTemplatesPageMock,
+  createTemplate: createTemplateMock,
 }))
 const logWhatsappAuditEventMock = mock(async (..._args: unknown[]) => undefined)
 
@@ -64,9 +73,12 @@ beforeEach(() => {
   workerCloseMock.mockClear()
   mockPrisma.whatsappDevice.findFirst.mockClear()
   mockPrisma.whatsappTemplate.findFirst.mockClear()
+  mockPrisma.whatsappTemplate.findMany.mockClear()
   mockPrisma.whatsappTemplate.create.mockClear()
   mockPrisma.whatsappTemplate.update.mockClear()
+  mockPrisma.whatsappTemplateLanguage.update.mockClear()
   mockPrisma.whatsappTemplateLanguage.upsert.mockClear()
+  createTemplateMock.mockClear()
   listTemplatesPageMock.mockClear()
   fromDeviceMock.mockClear()
   logWhatsappAuditEventMock.mockClear()
@@ -79,10 +91,13 @@ beforeEach(() => {
     whatsappBusinessAccountId: "waba_1",
   })
   mockPrisma.whatsappTemplate.findFirst.mockResolvedValue(null)
+  mockPrisma.whatsappTemplate.findMany.mockResolvedValue([])
   listTemplatesPageMock.mockResolvedValue({ data: [] })
-  fromDeviceMock.mockResolvedValue({ listTemplatesPage: listTemplatesPageMock })
+  fromDeviceMock.mockResolvedValue({
+    listTemplatesPage: listTemplatesPageMock,
+    createTemplate: createTemplateMock,
+  })
 })
-
 describe("whatsapp-template-sync-worker", () => {
   it("fetches paginated templates and creates local template records", async () => {
     listTemplatesPageMock
@@ -271,5 +286,67 @@ describe("whatsapp-template-sync-worker", () => {
       action: "TEMPLATE_SYNC_FAILED",
       status: "FAILED",
     })
+  })
+  it("pushes un-synced local templates to Meta before pulling", async () => {
+    mockPrisma.whatsappTemplate.findMany.mockResolvedValueOnce([
+      {
+        id: "tpl_local_1",
+        name: "Order Confirmation",
+        slug: "order_confirmation",
+        category: "UTILITY",
+        languages: [
+          {
+            id: "lang_1",
+            lang: "id",
+            headerType: "NONE",
+            body: "Pesanan {{1}} berhasil!",
+            footer: "Terima kasih",
+            buttons: null,
+          },
+        ],
+      },
+    ] as any)
+    listTemplatesPageMock.mockResolvedValue({
+      data: [
+        {
+          name: "order_confirmation",
+          language: "id",
+          status: "PENDING",
+          category: "UTILITY",
+          components: [{ type: "BODY", text: "Pesanan {{1}} berhasil!" }],
+        },
+      ],
+    })
+
+    await syncTemplates({
+      organizationId: "org_1",
+      deviceId: "device_1",
+      method: "sync-templates",
+    })
+
+    expect(createTemplateMock).toHaveBeenCalledWith({
+      name: "order_confirmation",
+      category: "UTILITY",
+      language: "id",
+      components: [
+        {
+          type: "BODY",
+          text: "Pesanan {{1}} berhasil!",
+          example: {
+            body_text: [["Sample 1"]],
+          },
+        },
+        { type: "FOOTER", text: "Terima kasih" },
+      ],
+    })
+    expect(mockPrisma.whatsappTemplate.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "tpl_local_1" },
+        data: expect.objectContaining({
+          syncStatus: "SYNCED",
+          metaStatus: "PENDING",
+        }),
+      })
+    )
   })
 })

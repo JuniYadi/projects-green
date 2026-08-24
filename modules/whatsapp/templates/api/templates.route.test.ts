@@ -72,8 +72,15 @@ const mockTemplateFindUnique = mock(
     languages: [],
   })
 )
+const mockTemplateFindMany = mock(async () => [])
+const mockTemplateCount = mock(async () => 0)
+const mockSubscriptionFindFirst = mock(async () => ({
+  id: "sub-1",
+  organizationId: "org-1",
+  status: "ACTIVE",
+}))
 const mockLogAudit = mock(async () => {})
-const mockDeviceFindFirst = mock(async () => ({
+const mockDeviceFindFirst = mock(async (): Promise<any> => ({
   id: "dev-1",
   tokenEncrypted: "encrypted-token",
   whatsappBusinessAccountId: "waba-1",
@@ -93,9 +100,14 @@ mock.module("@/lib/prisma", () => ({
       create: mockTemplateCreate,
       update: mockTemplateUpdate,
       findUnique: mockTemplateFindUnique,
+      findMany: mockTemplateFindMany,
+      count: mockTemplateCount,
     },
     whatsappDevice: {
       findFirst: mockDeviceFindFirst,
+    },
+    serviceSubscription: {
+      findFirst: mockSubscriptionFindFirst,
     },
   },
 }))
@@ -225,16 +237,34 @@ describe("templatesRoutes", () => {
       updatedAt: new Date(),
       languages: [],
     }))
+    mockTemplateFindMany.mockClear()
+    mockTemplateCount.mockClear()
+    mockDeviceFindFirst.mockClear()
+    mockSubscriptionFindFirst.mockClear()
+    mockDeviceFindFirst.mockResolvedValue({
+      id: "dev-1",
+      tokenEncrypted: "encrypted-token",
+      whatsappBusinessAccountId: "waba-1",
+      whatsappPhoneId: "phone-1",
+      organizationId: "org-1",
+      status: "ACTIVE",
+    })
+    mockSubscriptionFindFirst.mockResolvedValue({
+      id: "sub-1",
+      organizationId: "org-1",
+      status: "ACTIVE",
+    })
     mockLogAudit.mockClear()
   })
   describe("POST /", () => {
-    it("creates a template with category UTILITY", async () => {
+    it("creates a template with category UTILITY and active device & subscription", async () => {
       const app = createTestApp()
 
       const body = {
         slug: "hello_world",
         name: "Hello World",
         description: "A greeting template",
+        whatsappDeviceId: "device-1",
         category: "UTILITY",
         languages: [
           {
@@ -263,12 +293,112 @@ describe("templatesRoutes", () => {
       expect(json.template.category).toBe("UTILITY")
     })
 
+    it("rejects creation if whatsappDeviceId is missing", async () => {
+      const app = createTestApp()
+
+      const body = {
+        slug: "hello_world",
+        name: "Hello World",
+        category: "UTILITY",
+        languages: [
+          {
+            lang: "en",
+            headerType: "NONE",
+            headerText: "",
+            headerUrl: "",
+            body: "Hello {{1}}",
+            footer: "",
+          },
+        ],
+      }
+
+      const res = await app.handle(
+        new Request("http://localhost/templates/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+      )
+
+      expect(res.status).toBe(422)
+    })
+
+    it("rejects creation if device is not found or not active", async () => {
+      mockDeviceFindFirst.mockResolvedValueOnce(null as any)
+      const app = createTestApp()
+
+      const body = {
+        slug: "hello_world",
+        name: "Hello World",
+        whatsappDeviceId: "device-inactive",
+        category: "UTILITY",
+        languages: [
+          {
+            lang: "en",
+            headerType: "NONE",
+            headerText: "",
+            headerUrl: "",
+            body: "Hello {{1}}",
+            footer: "",
+          },
+        ],
+      }
+
+      const res = await app.handle(
+        new Request("http://localhost/templates/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+      )
+
+      expect(res.status).toBe(400)
+      const json = await res.json()
+      expect(json.ok).toBe(false)
+      expect(json.error).toBe("DEVICE_NOT_ACTIVE")
+    })
+
+    it("rejects creation if organization has no active subscription", async () => {
+      mockSubscriptionFindFirst.mockResolvedValueOnce(null as any)
+      const app = createTestApp()
+
+      const body = {
+        slug: "hello_world",
+        name: "Hello World",
+        whatsappDeviceId: "device-1",
+        category: "UTILITY",
+        languages: [
+          {
+            lang: "en",
+            headerType: "NONE",
+            headerText: "",
+            headerUrl: "",
+            body: "Hello {{1}}",
+            footer: "",
+          },
+        ],
+      }
+
+      const res = await app.handle(
+        new Request("http://localhost/templates/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+      )
+
+      expect(res.status).toBe(403)
+      const json = await res.json()
+      expect(json.ok).toBe(false)
+      expect(json.error).toBe("SUBSCRIPTION_REQUIRED")
+    })
     it("creates a template with MARKETING category", async () => {
       const app = createTestApp()
 
       const body = {
         slug: "promo_template",
         name: "Promo Template",
+        whatsappDeviceId: "device-1",
         category: "MARKETING",
         languages: [
           {
@@ -302,6 +432,7 @@ describe("templatesRoutes", () => {
       const body = {
         slug: "no_category",
         name: "No Category Template",
+        whatsappDeviceId: "device-1",
         languages: [
           {
             lang: "en",
@@ -334,6 +465,7 @@ describe("templatesRoutes", () => {
       const body = {
         slug: "bad_category",
         name: "Bad Category",
+        whatsappDeviceId: "device-1",
         category: "INVALID_CATEGORY",
         languages: [
           {
@@ -566,6 +698,7 @@ describe("templatesRoutes", () => {
       const body = {
         slug: "dto_test",
         name: "DTO Test",
+        whatsappDeviceId: "device-1",
         category: "UTILITY",
         languages: [
           {
@@ -592,6 +725,29 @@ describe("templatesRoutes", () => {
       expect(json.ok).toBe(true)
       expect(json.template).toBeDefined()
       expect(json.template.category).toBe("UTILITY")
+    })
+  })
+  describe("GET / query filters", () => {
+    it("filters templates by wabaId by resolving deviceId", async () => {
+      mockDeviceFindFirst.mockResolvedValueOnce({
+        id: "device-waba-1",
+        organizationId: "org-1",
+        status: "ACTIVE",
+      })
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request("http://localhost/templates?wabaId=waba-123")
+      )
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      expect(json.ok).toBe(true)
+      expect(mockDeviceFindFirst).toHaveBeenCalledWith({
+        where: {
+          organizationId: "org-1",
+          whatsappBusinessAccountId: "waba-123",
+        },
+        select: { id: true },
+      })
     })
   })
 })

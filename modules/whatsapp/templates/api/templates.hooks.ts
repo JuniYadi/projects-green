@@ -16,7 +16,7 @@ export type TemplateFormInput = {
   slug: string
   name: string
   description?: string
-  whatsappDeviceId?: string
+  whatsappDeviceId: string
   category?: "MARKETING" | "UTILITY" | "AUTHENTICATION"
   languages: Array<{
     lang: string

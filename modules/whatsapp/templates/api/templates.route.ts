@@ -34,7 +34,7 @@ const templateBodySchema = t.Object({
   slug: t.String(),
   name: t.String(),
   description: t.Optional(t.String()),
-  whatsappDeviceId: t.Optional(t.String()),
+  whatsappDeviceId: t.String(),
   category: t.Optional(
     t.Union([
       t.Literal("MARKETING"),
@@ -116,8 +116,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
       const { page, limit, skip } = getPagination(query)
-      const where: BodyRecord = {}
-
+      const where: Prisma.WhatsappTemplateWhereInput = {}
       if (!isSuperAdmin(whatsappAuth)) {
         if (!whatsappAuth.organizationId) {
           set.status = 403
@@ -131,11 +130,24 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       } else if (query.organizationId) {
         where.organizationId = String(query.organizationId)
       }
-
       if (query.whatsappDeviceId) {
         where.whatsappDeviceId = String(query.whatsappDeviceId)
+      } else if (query.wabaId || query.phoneId) {
+        const device = await prisma.whatsappDevice.findFirst({
+          where: {
+            ...(where.organizationId ? { organizationId: where.organizationId as string } : {}),
+            ...(query.wabaId ? { whatsappBusinessAccountId: String(query.wabaId) } : {}),
+            ...(query.phoneId ? { whatsappPhoneId: String(query.phoneId) } : {}),
+          },
+          select: { id: true },
+        })
+        if (device) {
+          where.whatsappDeviceId = device.id
+        } else {
+          // No matching device found for wabaId/phoneId, return empty result safely
+          where.whatsappDeviceId = "non-existent-device-id"
+        }
       }
-
       const VALID_SYNC_STATUSES = [
         "SYNCED",
         "NOT_SYNCED",
@@ -250,6 +262,21 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         }
       }
 
+      const targetOrgId = (
+        whatsappAuth.type === "workos"
+          ? whatsappAuth.organizationId
+          : (body as Record<string, string | undefined>).organizationId
+      ) ?? ""
+
+      if (!targetOrgId) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "BAD_REQUEST",
+          message: "Organization ID required.",
+        }
+      }
+
       const bodyObj = body as BodyRecord & {
         languages: Array<{
           lang: string
@@ -265,7 +292,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         name: string
         description?: string
         category?: string
-        whatsappDeviceId?: string
+        whatsappDeviceId: string
         organizationId?: string
       }
       const {
@@ -276,137 +303,61 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         category,
         whatsappDeviceId,
       } = bodyObj
+
+      if (!whatsappDeviceId) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "BAD_REQUEST",
+          message: "Active WhatsApp device is required.",
+        }
+      }
+
+      // Guard: device must exist, belong to org, and be ACTIVE
+      const device = await prisma.whatsappDevice.findFirst({
+        where: {
+          id: whatsappDeviceId,
+          organizationId: targetOrgId,
+          status: "ACTIVE",
+        },
+        select: { id: true },
+      })
+
+      if (!device) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "DEVICE_NOT_ACTIVE",
+          message: "An active WhatsApp device owned by the organization is required.",
+        }
+      }
+
+      // Guard: organization must have at least one ACTIVE WhatsApp subscription
+      const subscription = await prisma.serviceSubscription.findFirst({
+        where: {
+          organizationId: targetOrgId,
+          package: { code: "WHATSAPP" },
+          status: "ACTIVE",
+        },
+        select: { id: true },
+      })
+
+      if (!subscription) {
+        set.status = 403
+        return {
+          ok: false,
+          error: "SUBSCRIPTION_REQUIRED",
+          message: "An active WhatsApp subscription is required to create templates.",
+        }
+      }
+
       const languages = rawLanguages!.map((lang) => ({
         ...lang,
         parameters: lang.parameters as Prisma.InputJsonValue,
         buttons: lang.buttons as Prisma.InputJsonValue,
       }))
 
-      const targetOrgId =
-        whatsappAuth.type === "workos"
-          ? whatsappAuth.organizationId!
-          : bodyObj.organizationId!
-
-      // Resolve WhatsApp Device to push to Meta
-      let device = null
-      if (whatsappDeviceId) {
-        device = await prisma.whatsappDevice.findFirst({
-          where: {
-            id: whatsappDeviceId,
-            organizationId: targetOrgId,
-            status: "ACTIVE",
-          },
-        })
-      } else {
-        device = await prisma.whatsappDevice.findFirst({
-          where: {
-            organizationId: targetOrgId,
-            status: "ACTIVE",
-          },
-          orderBy: { createdAt: "desc" },
-        })
-      }
-
-      if (
-        !device ||
-        !device.tokenEncrypted ||
-        !device.whatsappBusinessAccountId
-      ) {
-        set.status = 400
-        return {
-          ok: false,
-          error: "NO_ACTIVE_DEVICE",
-          message:
-            "An active WhatsApp device with business account credentials is required to create templates in Meta.",
-        }
-      }
-
       const auth = whatsappAuth as AuthContext
-      let metaTemplateId: string | undefined
-      let metaStatus: WhatsappTemplateSyncStatus = "NOT_SYNCED"
-
-      // Direct push to Meta Cloud API (no queue)
-      try {
-        const client = await WhatsAppDeviceClient.fromDevice({
-          accessToken: device.tokenEncrypted,
-          phoneNumberId: device.whatsappPhoneId ?? "",
-          wabaId: device.whatsappBusinessAccountId,
-          metaAppId: device.whatsappMetaAppId ?? undefined,
-          organizationId: targetOrgId,
-        })
-
-        const isAuthCat = (category ?? "").toUpperCase() === "AUTHENTICATION"
-        for (const lang of rawLanguages!) {
-          const authCfg = (lang as Record<string, unknown>).authConfig as
-            | Record<string, unknown>
-            | undefined
-          const ttlMinutes =
-            typeof authCfg?.messageValidityMinutes === "number"
-              ? authCfg.messageValidityMinutes
-              : typeof authCfg?.messageSendTtlMinutes === "number"
-                ? authCfg.messageSendTtlMinutes
-                : undefined
-          const messageSendTtlSeconds =
-            typeof ttlMinutes === "number"
-              ? Math.max(60, Math.min(900, ttlMinutes * 60))
-              : undefined
-
-          const components = buildMetaTemplateComponents({
-            ...lang,
-            category,
-            addSecurityRecommendation: authCfg?.addSecurityRecommendation as
-              | boolean
-              | undefined,
-            codeExpirationMinutes: authCfg?.codeExpirationMinutes as
-              | number
-              | undefined,
-          })
-          const metaResult = await client.createTemplate({
-            name: slug,
-            category: (category ?? "UTILITY").toUpperCase(),
-            language: lang.lang,
-            components,
-            ...(isAuthCat && messageSendTtlSeconds
-              ? { message_send_ttl_seconds: messageSendTtlSeconds }
-              : {}),
-          })
-          if (metaResult?.id) {
-            metaTemplateId = metaResult.id
-          }
-        }
-        metaStatus = "SYNCED"
-      } catch (metaErr: unknown) {
-        const metaErrRecord =
-          metaErr && typeof metaErr === "object"
-            ? (metaErr as Record<string, unknown>)
-            : null
-        const innerError =
-          metaErrRecord?.error && typeof metaErrRecord.error === "object"
-            ? (metaErrRecord.error as Record<string, unknown>)
-            : null
-        const metaErrorMessage =
-          (typeof innerError?.message === "string" && innerError.message) ||
-          (typeof metaErrRecord?.message === "string" &&
-            metaErrRecord.message) ||
-          String(metaErr)
-
-        logWhatsappAuditEvent({
-          action: "TEMPLATE_META_CREATE_FAILED",
-          organizationId: targetOrgId,
-          adminId: auth.userId,
-          deviceId: device.id,
-          message: `Failed to push template to Meta: ${name} (${slug})`,
-          errorMessage: metaErrorMessage,
-          status: "FAILED",
-          details: { slug, name, category },
-        })
-        set.status = 502
-        return {
-          ok: false,
-          error: "META_API_ERROR",
-          message: metaErrorMessage,
-        }
-      }
       try {
         const template = await prisma.whatsappTemplate.create({
           data: {
@@ -416,15 +367,10 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
             category: category as WhatsappBillingCategory,
             whatsappDeviceId: device.id,
             organizationId: targetOrgId,
-            syncStatus: "SYNCED",
-            metaStatus: "PENDING",
-            lastSyncedAt: new Date(),
+            syncStatus: "NOT_SYNCED",
+            metaStatus: null,
             languages: {
-              create: languages.map((l) => ({
-                ...l,
-                metaStatus: "PENDING",
-                isApproved: false,
-              })),
+              create: languages,
             },
           },
           include: {
@@ -433,17 +379,15 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         })
 
         logWhatsappAuditEvent({
-          action: "TEMPLATE_META_CREATED",
+          action: "TEMPLATE_CREATED",
           organizationId: template.organizationId,
           adminId: auth.userId,
           deviceId: device.id,
-          message: `Template created and pushed to Meta: ${template.name} (${template.slug})`,
+          message: `Template created: ${template.name} (${template.slug})`,
           status: "OK",
           details: {
             templateId: template.id,
             slug: template.slug,
-            metaTemplateId,
-            wabaId: device.whatsappBusinessAccountId,
           },
         })
 
@@ -453,7 +397,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           action: "TEMPLATE_CREATE_FAILED",
           organizationId: targetOrgId,
           adminId: auth.userId,
-          message: "Template DB creation failed after Meta push",
+          message: "Template DB creation failed",
           errorMessage: String(err),
           status: "FAILED",
         })

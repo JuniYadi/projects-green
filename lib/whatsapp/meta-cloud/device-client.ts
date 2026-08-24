@@ -328,7 +328,6 @@ export class WhatsAppDeviceClient {
     // Stub as requested
     return
   }
-
   // ─── Business Profile ────────────────────────────────────────────────────────────
 
   async getBusinessProfile(
