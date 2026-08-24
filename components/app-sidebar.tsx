@@ -19,6 +19,7 @@ import {
   BookOpenIcon,
   BuildingsIcon,
   CaretLeftIcon,
+  Clock as ClockIcon,
   ChartLineIcon,
   CrosshairIcon,
   DeviceMobileIcon,
@@ -134,6 +135,54 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <BuildingsIcon />,
         isActive: startsWithRoute(path, "/portal/admin/organizations"),
+      },
+    ],
+  },
+  {
+    context: "system",
+    matches: (path) =>
+      startsWithRoute(path, "/portal/system") ||
+      startsWithRoute(path, "/portal/settings/emails"),
+    navMainLabel: "Systems",
+    getProjects: (_path, locale) => [
+      {
+        name: "Back to Portal",
+        url: localizePathname({ pathname: "/portal", locale }),
+        icon: <CaretLeftIcon />,
+      },
+    ],
+    getNavMain: (path, locale) => [
+      {
+        title: "CronJobs & Workers",
+        url: localizePathname({
+          pathname: "/portal/system/cronjobs",
+          locale,
+        }),
+        icon: <ClockIcon />,
+        isActive: startsWithRoute(path, "/portal/system/cronjobs"),
+      },
+      {
+        title: "Email Templates",
+        url: localizePathname({
+          pathname: "/portal/settings/emails",
+          locale,
+        }),
+        icon: <PaperPlaneTiltIcon />,
+        isActive:
+          startsWithRoute(path, "/portal/settings/emails") &&
+          !startsWithRoute(path, "/portal/settings/emails/delivery-logs"),
+      },
+      {
+        title: "Email Logs",
+        url: localizePathname({
+          pathname: "/portal/settings/emails/delivery-logs",
+          locale,
+        }),
+        icon: <ListMagnifyingGlassIcon />,
+        isActive: startsWithRoute(
+          path,
+          "/portal/settings/emails/delivery-logs"
+        ),
       },
     ],
   },
@@ -967,11 +1016,21 @@ const buildPortalNavMain = (
     isActive: startsWithRoute(pathname, "/portal/storage"),
   },
   {
-    title: "Settings",
-    url: localizePathname({ pathname: "/portal/settings/emails", locale }),
-    icon: <GearSixIcon />,
-    isActive: startsWithRoute(pathname, "/portal/settings/emails"),
+    title: "Systems",
+    url: localizePathname({ pathname: "/portal/system/cronjobs", locale }),
+    icon: <ClockIcon />,
+    isActive:
+      startsWithRoute(pathname, "/portal/system") ||
+      startsWithRoute(pathname, "/portal/settings/emails"),
     items: [
+      {
+        title: "CronJobs & Workers",
+        url: localizePathname({
+          pathname: "/portal/system/cronjobs",
+          locale,
+        }),
+        isActive: startsWithRoute(pathname, "/portal/system/cronjobs"),
+      },
       {
         title: "Email Templates",
         url: localizePathname({ pathname: "/portal/settings/emails", locale }),

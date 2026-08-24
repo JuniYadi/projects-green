@@ -255,7 +255,7 @@ describe("resolveSidebarMenu", () => {
       "WhatsApp",
       "AI Governance",
       "Storage Audit",
-      "Settings",
+      "Systems",
     ])
     expect(navMain.map((item) => item.title)).not.toContain("Documentation")
 
@@ -286,64 +286,66 @@ describe("resolveSidebarMenu", () => {
       "WhatsApp",
       "AI Governance",
       "Storage Audit",
-      "Settings",
+      "Systems",
     ])
   })
-  it("renders Settings with Email Templates and Email Logs children for portal surface", () => {
+  it("renders Systems with CronJobs, Email Templates and Email Logs children for portal surface", () => {
     const { navMain } = resolveSidebarMenu({
       surface: "portal",
       pathname: "/portal/documentations",
       locale: "en",
     })
-    const settings = navMain.find((item) => item.title === "Settings")
-    expect(settings).toBeDefined()
-    expect(settings?.items?.map((i) => i.title)).toEqual([
+    const systems = navMain.find((item) => item.title === "Systems")
+    expect(systems).toBeDefined()
+    expect(systems?.items?.map((i) => i.title)).toEqual([
+      "CronJobs & Workers",
       "Email Templates",
       "Email Logs",
     ])
     expect(
-      settings?.items?.find((i) => i.title === "Email Templates")?.url
+      systems?.items?.find((i) => i.title === "CronJobs & Workers")?.url
+    ).toBe("/en/portal/system/cronjobs")
+    expect(
+      systems?.items?.find((i) => i.title === "Email Templates")?.url
     ).toBe("/en/portal/settings/emails")
-    expect(settings?.items?.find((i) => i.title === "Email Logs")?.url).toBe(
+    expect(systems?.items?.find((i) => i.title === "Email Logs")?.url).toBe(
       "/en/portal/settings/emails/delivery-logs"
     )
-    expect(settings?.isActive).toBe(false)
+    expect(systems?.isActive).toBe(false)
     expect(
-      settings?.items?.find((i) => i.title === "Email Templates")?.isActive
+      systems?.items?.find((i) => i.title === "Email Templates")?.isActive
     ).toBe(false)
     expect(
-      settings?.items?.find((i) => i.title === "Email Logs")?.isActive
+      systems?.items?.find((i) => i.title === "Email Logs")?.isActive
     ).toBe(false)
   })
   it("marks Email Templates active on email template path", () => {
-    const { navMain } = resolveSidebarMenu({
+    const { navMain, navMainLabel } = resolveSidebarMenu({
       surface: "portal",
       pathname: "/portal/settings/emails",
       locale: "en",
     })
-    const settings = navMain.find((item) => item.title === "Settings")
-    expect(settings?.isActive).toBe(true)
-    expect(
-      settings?.items?.find((i) => i.title === "Email Templates")?.isActive
-    ).toBe(true)
-    expect(
-      settings?.items?.find((i) => i.title === "Email Logs")?.isActive
-    ).toBe(false)
+    expect(navMainLabel).toBe("Systems")
+    const emailTemplates = navMain.find(
+      (item) => item.title === "Email Templates"
+    )
+    expect(emailTemplates?.isActive).toBe(true)
+    const emailLogs = navMain.find((item) => item.title === "Email Logs")
+    expect(emailLogs?.isActive).toBe(false)
   })
   it("marks Email Logs active on delivery-logs path", () => {
-    const { navMain } = resolveSidebarMenu({
+    const { navMain, navMainLabel } = resolveSidebarMenu({
       surface: "portal",
       pathname: "/portal/settings/emails/delivery-logs",
       locale: "id",
     })
-    const settings = navMain.find((item) => item.title === "Settings")
-    expect(settings?.isActive).toBe(true)
-    expect(
-      settings?.items?.find((i) => i.title === "Email Logs")?.isActive
-    ).toBe(true)
-    expect(
-      settings?.items?.find((i) => i.title === "Email Templates")?.isActive
-    ).toBe(false)
+    expect(navMainLabel).toBe("Systems")
+    const emailLogs = navMain.find((item) => item.title === "Email Logs")
+    expect(emailLogs?.isActive).toBe(true)
+    const emailTemplates = navMain.find(
+      (item) => item.title === "Email Templates"
+    )
+    expect(emailTemplates?.isActive).toBe(false)
   })
   it("renders My Organization with children in portal secondary nav", () => {
     const items = resolveSidebarSecondaryLinks({
