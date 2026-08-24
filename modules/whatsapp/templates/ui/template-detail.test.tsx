@@ -91,7 +91,7 @@ describe("TemplateDetailView", () => {
     expect(view.getByText("Template not found.")).toBeInTheDocument()
   })
 
-  it("renders approved language variants and their WhatsApp previews", () => {
+  it("renders approved template spec, interactive tester, and WhatsApp preview", () => {
     const indonesian: WhatsAppTemplateLanguage = {
       ...baseLanguage,
       id: "language-id",
@@ -116,10 +116,11 @@ describe("TemplateDetailView", () => {
     expect(
       view.getByText("Hello Alice, your order is ready.")
     ).toBeInTheDocument()
-    expect(view.getByText("Halo Budi, pesananmu siap.")).toBeInTheDocument()
-    expect(view.getAllByText("Track order").length).toBe(2)
+    expect(view.getAllByText("Track order").length).toBeGreaterThanOrEqual(1)
     expect(view.getByText("en")).toBeInTheDocument()
-    expect(view.getByText("id")).toBeInTheDocument()
+    expect(
+      view.getByRole("button", { name: /Get Code Snippet/i })
+    ).toBeInTheDocument()
   })
 
   it.each([
