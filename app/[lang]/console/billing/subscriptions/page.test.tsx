@@ -1,7 +1,7 @@
 import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { render, waitFor } from "@testing-library/react"
+import { cleanup, render, waitFor } from "@testing-library/react"
 
 import SubscriptionsPage from "./page"
 
@@ -25,6 +25,10 @@ const jsonResponse = (body: unknown, status = 200) =>
       "Content-Type": "application/json",
     },
   })
+
+afterEach(() => {
+  cleanup()
+})
 
 describe("SubscriptionsPage", () => {
   beforeEach(() => {

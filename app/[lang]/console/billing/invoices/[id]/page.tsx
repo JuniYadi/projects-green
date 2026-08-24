@@ -39,9 +39,6 @@ import {
   CheckCircleIcon,
   ClockIcon,
   XCircleIcon,
-  ReceiptIcon,
-  CalendarBlankIcon,
-  CreditCardIcon,
   BuildingsIcon,
   UserIcon,
 } from "@phosphor-icons/react"
@@ -255,10 +252,7 @@ export default function InvoiceDetailPage() {
 
   const invoice = data.invoice
   const isTopUp = invoice.type === "TOP_UP"
-  const isPaid = invoice.status === "PAID"
   const isOpen = invoice.status === "OPEN"
-  const isDraft = invoice.status === "DRAFT"
-  const isVoid = invoice.status === "VOID"
   const issueDate = invoice.issuedAt ?? invoice.createdAt ?? null
   const dueDate = invoice.dueAt ?? invoice.dueDate ?? null
   const invoiceCurrency = invoice.currency || account?.currency || "USD"
@@ -436,10 +430,12 @@ export default function InvoiceDetailPage() {
         </div>
       )}
 
-      {/* Main 2-Column Responsive Workspace */}
+      {/* Main Responsive Workspace */}
       <div className="grid gap-6 lg:grid-cols-12">
-        {/* Left Column: Printable Invoice Document (8 cols) */}
-        <div className="space-y-6 lg:col-span-8">
+        {/* Left Column: Printable Invoice Document (Full 12 cols if paid/draft/void, 8 cols if payment needed) */}
+        <div
+          className={`space-y-6 ${isOpen ? "lg:col-span-8" : "lg:col-span-12"}`}
+        >
           <Card className="border-border/80 shadow-sm">
             <CardContent className="p-6 sm:p-8">
               {/* Document Header */}
@@ -450,17 +446,32 @@ export default function InvoiceDetailPage() {
                       P
                     </div>
                     <span className="text-lg font-bold tracking-tight">
-                      {account?.businessName ?? account?.name ?? "PFNApp"}
+                      PFNApp
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    PT PFN Digital Solusindo
+                    PT. Premium Fast Network
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    billing@pfnapp.my.id
+                  <p
+                    className="text-xs text-muted-foreground"
+                    suppressHydrationWarning
+                  >
+                    {(() => {
+                      if (typeof window !== "undefined") {
+                        try {
+                          const hostname = window.location.hostname.replace(
+                            /^www\./,
+                            ""
+                          )
+                          return `billing@${hostname}`
+                        } catch {
+                          return "billing@premiumfast.net"
+                        }
+                      }
+                      return "billing@premiumfast.net"
+                    })()}
                   </p>
                 </div>
-
                 <div className="space-y-1 text-left sm:text-right">
                   <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
                     {billing.invoiceDetail}
@@ -468,6 +479,10 @@ export default function InvoiceDetailPage() {
                   <p className="font-mono text-base font-bold text-foreground">
                     {invoice.invoiceNumber}
                   </p>
+                  <div className="space-y-0.5 pt-0.5 text-xs text-muted-foreground">
+                    <p>Issue Date: {formatDate(issueDate)}</p>
+                    <p>Due Date: {formatDate(dueDate)}</p>
+                  </div>
                   <div className="inline-block pt-1">
                     <InvoiceStatusBadge
                       status={
@@ -483,23 +498,24 @@ export default function InvoiceDetailPage() {
                 </div>
               </div>
 
-              {/* Billed To & Metadata Grid */}
-              <div className="grid gap-6 border-b border-border/60 py-6 text-sm sm:grid-cols-2">
-                <div className="space-y-1">
+              {/* Billed To & Dates Grid */}
+              <div className="grid gap-6 border-b border-border/60 py-6 sm:grid-cols-2">
+                {/* Billed To Left */}
+                <div className="space-y-1.5">
                   <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                     Billed To
                   </span>
-                  <div className="flex items-center gap-1.5 font-medium text-foreground">
-                    <BuildingsIcon className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      {invoice.billingEntity?.name ??
-                        invoice.organization?.name ??
+                  <div className="flex items-center gap-2 font-medium text-foreground">
+                    <BuildingsIcon className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-semibold">
+                      {invoice.organization?.name ??
+                        invoice.billingEntity?.name ??
                         account?.businessName ??
                         account?.name ??
-                        "—"}
+                        "Organization"}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <UserIcon className="h-3.5 w-3.5" />
                     <span>
                       {invoice.billingEntity?.email ??
@@ -510,32 +526,15 @@ export default function InvoiceDetailPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div className="space-y-1">
-                    <span className="font-semibold tracking-wider text-muted-foreground uppercase">
-                      Issue Date
-                    </span>
-                    <p className="font-medium text-foreground">
-                      {formatDate(issueDate)}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="font-semibold tracking-wider text-muted-foreground uppercase">
-                      {billing.dueDate}
-                    </span>
-                    <p className="font-medium text-foreground">
-                      {dueDate ? formatDate(dueDate) : "—"}
-                    </p>
-                  </div>
-                  <div className="col-span-2 space-y-1">
-                    <span className="font-semibold tracking-wider text-muted-foreground uppercase">
-                      Billing Period
-                    </span>
-                    <p className="font-medium text-foreground">
-                      {formatPeriodDate(invoice.periodStart)} —{" "}
-                      {formatPeriodDate(invoice.periodEnd)}
-                    </p>
-                  </div>
+                {/* Billing Period Right Aligned */}
+                <div className="space-y-1 text-xs sm:text-right">
+                  <span className="font-semibold tracking-wider text-muted-foreground uppercase">
+                    Billing Period
+                  </span>
+                  <p className="font-medium text-foreground">
+                    {formatPeriodDate(invoice.periodStart)} —{" "}
+                    {formatPeriodDate(invoice.periodEnd)}
+                  </p>
                 </div>
               </div>
 
@@ -654,115 +653,10 @@ export default function InvoiceDetailPage() {
           })()}
         </div>
 
-        {/* Right Column: Status Summary & Payment Action Cards (4 cols) */}
-        <div className="space-y-6 lg:col-span-4">
-          {/* Status & Summary Card */}
-          <Card className="border-border/80 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">
-                Payment Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-lg border bg-muted/30 p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">
-                    Invoice State
-                  </span>
-                  <InvoiceStatusBadge
-                    status={
-                      invoice.status as
-                        | "OPEN"
-                        | "PENDING"
-                        | "PAID"
-                        | "VOID"
-                        | "DRAFT"
-                    }
-                  />
-                </div>
-                <div className="mt-3">
-                  <span className="text-xs text-muted-foreground">
-                    {billing.total}
-                  </span>
-                  <p className="font-mono text-2xl font-bold tracking-tight text-foreground">
-                    {formatInvoiceAmount(invoice.totalAmountIdr)}
-                  </p>
-                </div>
-              </div>
-
-              {isPaid && (
-                <div className="flex items-start gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3.5 text-xs text-emerald-800 dark:text-emerald-300">
-                  <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0" />
-                  <div className="space-y-0.5">
-                    <p className="font-semibold">Invoice is Paid</p>
-                    <p className="text-muted-foreground">
-                      This transaction has been settled. No further action is
-                      required.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {isDraft && (
-                <div className="flex items-start gap-3 rounded-lg border border-muted bg-muted/40 p-3.5 text-xs text-muted-foreground">
-                  <ClockIcon className="mt-0.5 h-4 w-4 shrink-0" />
-                  <div className="space-y-0.5">
-                    <p className="font-semibold text-foreground">Draft State</p>
-                    <p>
-                      This invoice is being prepared and will be finalized at
-                      the end of the billing cycle.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {isVoid && (
-                <div className="flex items-start gap-3 rounded-lg border border-red-500/20 bg-red-500/10 p-3.5 text-xs text-red-800 dark:text-red-300">
-                  <XCircleIcon className="mt-0.5 h-4 w-4 shrink-0" />
-                  <div className="space-y-0.5">
-                    <p className="font-semibold">Invoice Voided</p>
-                    <p className="text-muted-foreground">
-                      This invoice has been cancelled and is no longer valid.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2 pt-2 text-xs">
-                <div className="flex items-center justify-between text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <ReceiptIcon className="h-3.5 w-3.5" />
-                    Invoice No
-                  </span>
-                  <span className="font-mono text-foreground">
-                    {invoice.invoiceNumber}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <CalendarBlankIcon className="h-3.5 w-3.5" />
-                    {billing.issuedDate}
-                  </span>
-                  <span className="text-foreground">
-                    {formatDate(issueDate)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <CreditCardIcon className="h-3.5 w-3.5" />
-                    Payment Type
-                  </span>
-                  <span className="text-foreground capitalize">
-                    {invoice.type?.toLowerCase().replace("_", " ") ??
-                      "Standard"}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Payment Action Box (When status is OPEN) */}
-          {isOpen && (
+        {/* Right Column: Payment Actions (4 cols, only visible when action needed) */}
+        {isOpen && (
+          <div className="space-y-6 lg:col-span-4">
+            {/* Payment Action Box */}
             <Card className="border-primary/40 shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold tracking-wider text-primary uppercase">
@@ -942,8 +836,8 @@ export default function InvoiceDetailPage() {
                 )}
               </CardContent>
             </Card>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Top-up Required Dialog */}

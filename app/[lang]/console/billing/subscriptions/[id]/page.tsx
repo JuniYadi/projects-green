@@ -1,17 +1,10 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useParams } from "next/navigation"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -30,17 +23,10 @@ import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   useSubscriptionsQuery,
   useInvoiceQuery,
-  useCatalogProductQuery,
   cancelBillingSubscription,
-  reinstateBillingSubscription,
-  previewBillingPlanChange,
-  changeBillingPlan,
 } from "@/hooks/use-billing-data"
 import { formatKey } from "@/lib/format-key"
-import type {
-  ChangePlanPreviewResult,
-  SubscriptionItem,
-} from "@/lib/billing-client"
+import type { SubscriptionItem } from "@/lib/billing-client"
 import { ArrowLeftIcon } from "@phosphor-icons/react"
 import Link from "next/link"
 
@@ -93,17 +79,7 @@ function getTermLabel(billingPeriod: string | null | undefined): string {
   return billingPeriod ?? "N/A"
 }
 
-type DialogState =
-  | { type: "none" }
-  | { type: "cancel" }
-  | { type: "reinstate" }
-  | {
-      type: "change-plan"
-      preview: ChangePlanPreviewResult | null
-      loading: boolean
-      previewError: string | null
-      pricingId: string
-    }
+type DialogState = { type: "none" } | { type: "cancel" }
 
 export default function SubscriptionDetailPage() {
   const params = useParams<{ id: string; lang?: string }>()
@@ -117,24 +93,8 @@ export default function SubscriptionDetailPage() {
   const sub = subscriptions?.subscriptions.find(
     (subscription) => subscription.id === subscriptionId
   ) as SubscriptionItem | undefined
-  const invoiceQuery = useInvoiceQuery(subscriptionId)
-  const catalogQuery = useCatalogProductQuery(
-    sub?.packageCode,
-    sub?.currency ?? undefined
-  )
+  const invoiceQuery = useInvoiceQuery(sub?.billingInvoiceId ?? undefined)
   const invoice = invoiceQuery.data
-  const catalogProduct = catalogQuery.data ?? null
-  const changeOffers = useMemo(
-    () =>
-      catalogProduct?.plans.flatMap((plan) =>
-        plan.offers.map((offer) => ({
-          ...offer,
-          planCode: plan.code,
-          planName: plan.name,
-        }))
-      ) ?? [],
-    [catalogProduct]
-  )
   const isLoading = subscriptionsQuery.isLoading || invoiceQuery.isLoading
   const error =
     subscriptionsQuery.error instanceof Error
@@ -148,7 +108,6 @@ export default function SubscriptionDetailPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [cancelReason, setCancelReason] = useState("")
-  const [reinstateReason, setReinstateReason] = useState("")
 
   const d = messages.console.billing.subscriptions.detail
 
@@ -177,94 +136,12 @@ export default function SubscriptionDetailPage() {
     }
   }
 
-  async function handleReinstate() {
-    setActionLoading(true)
-    setActionError(null)
-    try {
-      await reinstateBillingSubscription(
-        subscriptionId,
-        reinstateReason || undefined
-      )
-      setDialog({ type: "none" })
-      setReinstateReason("")
-      await refreshSubscriptions()
-    } catch (err) {
-      setActionError(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong while reinstating the subscription."
-      )
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
-  async function handlePreviewPlan(pricingId: string) {
-    setDialog({
-      type: "change-plan",
-      preview: null,
-      loading: true,
-      previewError: null,
-      pricingId,
-    })
-    try {
-      const preview = await previewBillingPlanChange(subscriptionId, pricingId)
-      setDialog((prev) =>
-        prev.type === "change-plan"
-          ? {
-              ...prev,
-              preview: preview as ChangePlanPreviewResult,
-              loading: false,
-            }
-          : prev
-      )
-    } catch (err) {
-      setDialog((prev) =>
-        prev.type === "change-plan"
-          ? {
-              ...prev,
-              loading: false,
-              previewError:
-                err instanceof Error
-                  ? err.message
-                  : "Could not preview this plan change.",
-            }
-          : { type: "none" }
-      )
-    }
-  }
-
-  async function handleChangePlan() {
-    if (dialog.type !== "change-plan") return
-    setActionLoading(true)
-    setActionError(null)
-    try {
-      await changeBillingPlan(subscriptionId, dialog.pricingId)
-      setDialog({ type: "none" })
-      await refreshSubscriptions()
-    } catch (err) {
-      setActionError(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong while changing the plan."
-      )
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
   if (isLoading) {
     return (
       <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
-        <header className="space-y-1">
-          <Skeleton className="h-8 w-48" />
-        </header>
-        <div className="grid gap-4 md:grid-cols-3">
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-        </div>
-        <Skeleton className="h-64" />
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-64 w-full" />
       </main>
     )
   }
@@ -297,342 +174,228 @@ export default function SubscriptionDetailPage() {
   }
 
   const invoiceData = invoice?.invoice
-  const isCancelled = sub.status === "CANCELLED"
   const isPendingCancellation = sub.cancelAtPeriodEnd === true
   const canCancel = sub.status === "ACTIVE" && !isPendingCancellation
-  const canReinstate = isPendingCancellation && sub.status !== "CANCELLED"
+  // Extract custom parameters & form responses
+  const config = (sub.allocatedConfig ?? {}) as Record<string, unknown>
+  const checkoutQuote = config.checkoutQuote as
+    | Record<string, unknown>
+    | undefined
+  const formEntries = Object.entries(config).filter(
+    ([key, val]) =>
+      key !== "_provisioningFields" &&
+      key !== "checkoutQuote" &&
+      key !== "addons" &&
+      key !== "device" &&
+      key !== "deviceIds" &&
+      key !== "allowanceByDevice" &&
+      key !== "invoiceLineId" &&
+      key !== "planId" &&
+      key !== "userId" &&
+      key !== "workosUserId" &&
+      key !== "voucher" &&
+      val !== null &&
+      val !== undefined &&
+      typeof val !== "object"
+  )
+
+  // Product-specific quick links
+  let serviceDashboardUrl: string | null = null
+  let serviceLabel = "Open Service"
+  if (sub.packageCode === "WHATSAPP") {
+    serviceDashboardUrl = "/console/whatsapp/dashboard"
+    serviceLabel = "Go to WhatsApp Console"
+  } else if (sub.packageCode === "VPN") {
+    serviceDashboardUrl = "/console/vpn/dashboard"
+    serviceLabel = "Go to VPN Dashboard"
+  } else if (sub.packageCode === "APP_HOSTING") {
+    serviceDashboardUrl = "/console/app"
+    serviceLabel = "Go to Applications"
+  }
+
+  // Extract key form values like phone number, business name, display name
+  const rawPhone = (config.phoneNumber ??
+    config.companyPhoneNumber ??
+    "") as string
+  const rawDisplayName = (config.displayName ??
+    config.businessName ??
+    "") as string
+
+  // Extract core user data
+  const orderDate = sub.currentPeriodStart
+    ? formatDate(sub.currentPeriodStart)
+    : "-"
+  const renewalDate = sub.currentPeriodEnd
+    ? formatDate(sub.currentPeriodEnd)
+    : "-"
+  const firstSubtotal = checkoutQuote?.subtotal
+    ? formatCurrency(String(checkoutQuote.subtotal), sub.currency ?? "IDR")
+    : sub.periodPrice
+      ? formatCurrency(sub.periodPrice, sub.currency ?? "IDR")
+      : "-"
+  const nextRecurringPrice = formatCurrency(
+    sub.periodPrice ?? sub.monthlyRateIdr ?? "0",
+    sub.currency ?? "IDR"
+  )
+  const billingCycle = getTermLabel(sub.billingPeriod)
+
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
-      <header className="flex items-center justify-between">
+      {/* Header with Title and Actions */}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant="ghost" size="sm" className="-ml-3" asChild>
             <Link href="/console/billing/subscriptions">
               <ArrowLeftIcon className="mr-2 size-4" />
-              {d.backTo}
+              Kembali ke Subscriptions
             </Link>
           </Button>
-          <h1 className="text-2xl font-semibold">{d.heading}</h1>
-          <p className="text-sm text-muted-foreground">
-            {sub.packageCode} / {sub.planCode}
-          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight">
+              {sub.packageCode === "WHATSAPP"
+                ? "WhatsApp Business"
+                : sub.packageCode}
+            </h1>
+            <Badge className={getStatusVariant(sub.status)}>
+              {getStatusLabel(sub.status)}
+            </Badge>
+            <Badge variant="outline">{sub.planCode} Plan</Badge>
+          </div>
+          {rawPhone && (
+            <p className="text-sm font-medium text-primary">
+              {rawPhone} {rawDisplayName ? `(${rawDisplayName})` : ""}
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {serviceDashboardUrl && (
+            <Button asChild size="sm">
+              <Link href={serviceDashboardUrl}>{serviceLabel}</Link>
+            </Button>
+          )}
+          {invoiceData?.id && (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/console/billing/invoices/${invoiceData.id}`}>
+                Lihat Invoice
+              </Link>
+            </Button>
+          )}
         </div>
       </header>
 
-      <Tabs defaultValue="overview">
-        <TabsList aria-label={d.heading}>
-          <TabsTrigger value="overview">{d.tabs.overview}</TabsTrigger>
-          <TabsTrigger value="config">Configuration</TabsTrigger>
-          <TabsTrigger value="billing">{d.tabs.billing}</TabsTrigger>
-          <TabsTrigger value="manage">{d.tabs.manage}</TabsTrigger>
-          <TabsTrigger value="addons">{d.tabs.addons}</TabsTrigger>
-          <TabsTrigger value="activity">{d.tabs.activity}</TabsTrigger>
-        </TabsList>
-        <TabsContent value="overview" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-medium">
-                {sub.packageCode}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <p className="text-xs text-muted-foreground">
-                    {d.overview.status}
-                  </p>
-                  <Badge className={getStatusVariant(sub.status)}>
-                    {getStatusLabel(sub.status)}
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">
-                    {d.overview.serviceStatus}
-                  </p>
-                  <Badge className={getStatusVariant(sub.status)}>
-                    {getStatusLabel(sub.status)}
-                  </Badge>
-                </div>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <p className="text-xs text-muted-foreground">
-                    {d.overview.product}
-                  </p>
-                  <p className="font-medium">{sub.packageCode}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">
-                    {d.overview.plan}
-                  </p>
-                  <p className="font-medium">{sub.planCode}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">
-                    {d.overview.term}
-                  </p>
-                  <p className="font-medium">
-                    {getTermLabel(sub.billingPeriod)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">
-                    {d.overview.renewal}
-                  </p>
-                  <p className="font-medium">
-                    {formatDate(sub.currentPeriodEnd)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">
-                    {d.overview.invoiceState}
-                  </p>
-                  <p className="font-medium">{sub.invoiceStatus ?? "N/A"}</p>
-                </div>
-                {isPendingCancellation && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">
-                      {d.overview.cancelPending}
-                    </p>
-                    <p className="font-medium text-yellow-600 dark:text-yellow-400">
-                      {d.overview.cancelPendingLabel}
-                    </p>
-                  </div>
-                )}
-              </div>
-              {sub.periodPrice && (
-                <div>
-                  <p className="text-xs text-muted-foreground">
-                    {d.billing.amount}
-                  </p>
-                  <p className="font-medium">
-                    {formatCurrency(sub.periodPrice, sub.currency ?? "IDR")}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="config" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-medium">
-                Provisioning & Order Specifications
-              </CardTitle>
-              <CardDescription>
-                Custom details, setup parameters, and form responses captured
-                during checkout.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {(() => {
-                const config = (sub.allocatedConfig ?? {}) as Record<
-                  string,
-                  unknown
-                >
-                const entries = Object.entries(config).filter(
-                  ([key, val]) =>
-                    key !== "_provisioningFields" &&
-                    val !== null &&
-                    val !== undefined &&
-                    typeof val !== "object"
-                )
+      {/* Section 1: Rincian Langganan & Perpanjangan */}
+      <Card>
+        <div className="border-b px-5 py-3">
+          <h2 className="text-sm font-semibold">
+            Rincian Langganan & Perpanjangan
+          </h2>
+        </div>
+        <CardContent className="p-5">
+          <dl className="divide-y divide-border/60 text-sm">
+            <div className="grid grid-cols-1 py-2 sm:grid-cols-3">
+              <dt className="text-muted-foreground">Tanggal Order Pertama</dt>
+              <dd className="font-medium text-foreground sm:col-span-2">
+                {orderDate}
+              </dd>
+            </div>
+            <div className="grid grid-cols-1 py-2 sm:grid-cols-3">
+              <dt className="text-muted-foreground">Biaya Pertama Order</dt>
+              <dd className="font-medium text-foreground sm:col-span-2">
+                {firstSubtotal}{" "}
+                <span className="text-xs font-semibold text-green-600 dark:text-green-400">
+                  ({sub.invoiceStatus ?? "PAID"})
+                </span>
+              </dd>
+            </div>
+            <div className="grid grid-cols-1 py-2 sm:grid-cols-3">
+              <dt className="text-muted-foreground">
+                Tanggal Perpanjangan Berikutnya
+              </dt>
+              <dd className="font-semibold text-primary sm:col-span-2">
+                {renewalDate}{" "}
+                <span className="text-xs font-normal text-muted-foreground">
+                  (Otomatis dipotong dari saldo organisasi)
+                </span>
+              </dd>
+            </div>
+            <div className="grid grid-cols-1 py-2 sm:grid-cols-3">
+              <dt className="text-muted-foreground">
+                Biaya Perpanjangan (Next Order)
+              </dt>
+              <dd className="font-bold text-foreground sm:col-span-2">
+                {nextRecurringPrice} / {billingCycle.toLowerCase()}
+              </dd>
+            </div>
+            <div className="grid grid-cols-1 py-2 sm:grid-cols-3">
+              <dt className="text-muted-foreground">Paket & Siklus</dt>
+              <dd className="font-medium text-foreground sm:col-span-2">
+                {sub.planCode} · {billingCycle}
+              </dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
 
-                if (entries.length === 0) {
-                  return (
-                    <p className="py-4 text-center text-sm text-muted-foreground">
-                      No custom provisioning parameters or form responses
-                      recorded for this subscription.
-                    </p>
-                  )
-                }
-
-                return (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {entries.map(([key, val]) => (
-                      <div
-                        key={key}
-                        className="flex flex-col justify-between rounded-lg border bg-card p-3 shadow-xs"
+      {/* Section 2: Data Formulir Pendaftaran Saat Order */}
+      <Card>
+        <div className="border-b px-5 py-3">
+          <h2 className="text-sm font-semibold">
+            Data Formulir Pendaftaran Saat Order
+          </h2>
+        </div>
+        <CardContent className="p-5">
+          {formEntries.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Tidak ada data formulir tambahan yang tercatat.
+            </p>
+          ) : (
+            <dl className="divide-y divide-border/60 text-sm">
+              {formEntries.map(([key, val]) => (
+                <div key={key} className="grid grid-cols-1 py-2 sm:grid-cols-3">
+                  <dt className="text-muted-foreground">{formatKey(key)}</dt>
+                  <dd className="font-mono text-xs font-medium break-all text-foreground sm:col-span-2">
+                    {String(val).startsWith("http") ? (
+                      <a
+                        href={String(val)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary underline hover:text-primary/80"
                       >
-                        <span className="text-xs font-medium text-muted-foreground">
-                          {formatKey(key)}
-                        </span>
-                        <span className="mt-1 font-mono text-sm font-semibold text-foreground">
-                          {String(val)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )
-              })()}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="billing" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-medium">
-                {invoiceData?.invoiceNumber ?? d.billing.invoiceNumber}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {invoiceData ? (
-                <>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        {d.billing.status}
-                      </p>
-                      <Badge className={getStatusVariant(invoiceData.status)}>
-                        {getStatusLabel(invoiceData.status)}
-                      </Badge>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        {d.billing.period}
-                      </p>
-                      <p className="font-medium">
-                        {formatDate(invoiceData.periodStart)} –{" "}
-                        {formatDate(invoiceData.periodEnd)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        {d.billing.amount}
-                      </p>
-                      <p className="font-medium">
-                        {formatCurrency(
-                          invoiceData.totalAmountIdr,
-                          invoiceData.currency
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {d.addons.message}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="manage" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-medium">
-                {d.manage.title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Plan / Term Change */}
-              <div>
-                <h3 className="mb-1 text-sm font-medium">
-                  {d.manage.changePlan.title}
-                </h3>
-                <p className="mb-3 text-sm text-muted-foreground">
-                  {d.manage.changePlan.description}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {changeOffers.length > 0 ? (
-                    changeOffers.map((offer) => (
-                      <Button
-                        key={offer.id}
-                        variant="outline"
-                        size="sm"
-                        disabled={
-                          offer.id === sub.pricingId ||
-                          sub.status === "CANCELLED" ||
-                          isPendingCancellation
-                        }
-                        onClick={() => void handlePreviewPlan(offer.id)}
-                      >
-                        {offer.planName} · {getTermLabel(offer.billingPeriod)}
-                      </Button>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No other published plans are available.
-                    </p>
-                  )}
+                        Lihat Tautan / Dokumen
+                      </a>
+                    ) : (
+                      String(val)
+                    )}
+                  </dd>
                 </div>
-              </div>
+              ))}
+            </dl>
+          )}
+        </CardContent>
+      </Card>
 
-              <div className="border-t pt-4">
-                {canCancel && (
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="mb-1 text-sm font-medium">
-                        {d.manage.cancel.title}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {d.manage.cancel.description}
-                      </p>
-                    </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => setDialog({ type: "cancel" })}
-                    >
-                      {d.manage.cancel.button}
-                    </Button>
-                  </div>
-                )}
-                {canReinstate && (
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="mb-1 text-sm font-medium">
-                        {d.manage.reinstate.title}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {d.manage.reinstate.description}
-                      </p>
-                    </div>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => setDialog({ type: "reinstate" })}
-                    >
-                      {d.manage.reinstate.button}
-                    </Button>
-                  </div>
-                )}
-                {isCancelled && (
-                  <p className="text-sm text-muted-foreground">
-                    {d.manage.cancelledNote}
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="addons" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-medium">
-                {d.addons.unavailable}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                {d.addons.message}
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="activity" className="space-y-4">
-          <Card>
-            <CardContent className="py-8 text-center">
-              <p className="text-sm text-muted-foreground">
-                {d.activity.noActivity}
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* Section 3: Pembatalan Langganan */}
+      {canCancel && (
+        <div className="flex items-center justify-between rounded-xl border border-border/80 bg-card p-4">
+          <div>
+            <h3 className="text-sm font-medium text-foreground">
+              Batalkan Perpanjangan Otomatis
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Layanan akan tetap aktif sampai {renewalDate}. Setelah itu tidak
+              akan diperpanjang lagi.
+            </p>
+          </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setDialog({ type: "cancel" })}
+          >
+            Batalkan Perpanjangan
+          </Button>
+        </div>
+      )}
 
       {/* Cancel Dialog */}
       <AlertDialog
@@ -674,140 +437,6 @@ export default function SubscriptionDetailPage() {
               {actionLoading
                 ? d.manage.cancel.confirming
                 : d.manage.cancel.confirmBtn}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Reinstate Dialog */}
-      <AlertDialog
-        open={dialog.type === "reinstate"}
-        onOpenChange={(open) =>
-          open ? setDialog({ type: "reinstate" }) : setDialog({ type: "none" })
-        }
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {d.manage.reinstate.dialogTitle}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {d.manage.reinstate.dialogDescription}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <Textarea
-            placeholder={d.manage.reinstate.reasonPlaceholder}
-            value={reinstateReason}
-            onChange={(e) => setReinstateReason(e.target.value)}
-            className="mt-3"
-          />
-          {actionError && (
-            <p className="mt-2 text-sm text-red-600 dark:text-red-400">
-              {actionError}
-            </p>
-          )}
-          <AlertDialogFooter className="mt-4">
-            <AlertDialogCancel disabled={actionLoading}>
-              {d.manage.reinstate.cancelBtn}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault()
-                void handleReinstate()
-              }}
-              disabled={actionLoading}
-            >
-              {actionLoading
-                ? d.manage.reinstate.confirming
-                : d.manage.reinstate.confirmBtn}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Change Plan Dialog */}
-      <AlertDialog
-        open={dialog.type === "change-plan"}
-        onOpenChange={(open) =>
-          open ? setDialog(dialog) : setDialog({ type: "none" })
-        }
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {d.manage.changePlan.dialogTitle}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {d.manage.changePlan.dialogDescription}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          {dialog.type === "change-plan" && (
-            <div className="mt-3 space-y-2">
-              {dialog.loading && (
-                <p className="text-sm text-muted-foreground">
-                  {d.manage.changePlan.loadingPreview}
-                </p>
-              )}
-              {dialog.previewError && (
-                <p className="text-sm text-red-600 dark:text-red-400">
-                  {dialog.previewError}
-                </p>
-              )}
-              {dialog.preview && (
-                <div className="space-y-1 rounded-md border bg-muted/50 p-3 text-sm">
-                  <p>
-                    <span className="font-medium">New plan:</span>{" "}
-                    {dialog.preview.newPlanCode}
-                  </p>
-                  <p>
-                    <span className="font-medium">Billing period:</span>{" "}
-                    {getTermLabel(dialog.preview.newBillingPeriod)}
-                  </p>
-                  <p>
-                    <span className="font-medium">Price:</span>{" "}
-                    {formatCurrency(
-                      dialog.preview.newPeriodPrice,
-                      dialog.preview.newCurrency
-                    )}
-                  </p>
-                  <p>
-                    <span className="font-medium">Effective:</span>{" "}
-                    {formatDate(dialog.preview.effectiveDate)}
-                  </p>
-                </div>
-              )}
-              {actionError && (
-                <p className="text-sm text-red-600 dark:text-red-400">
-                  {actionError}
-                </p>
-              )}
-            </div>
-          )}
-
-          <AlertDialogFooter className="mt-4">
-            <AlertDialogCancel
-              disabled={
-                actionLoading ||
-                (dialog.type === "change-plan" && dialog.loading)
-              }
-            >
-              {d.manage.changePlan.cancelBtn}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault()
-                void handleChangePlan()
-              }}
-              disabled={
-                actionLoading ||
-                (dialog.type === "change-plan" && dialog.loading) ||
-                (dialog.type === "change-plan" && !dialog.preview)
-              }
-            >
-              {actionLoading
-                ? d.manage.changePlan.confirming
-                : d.manage.changePlan.confirmBtn}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

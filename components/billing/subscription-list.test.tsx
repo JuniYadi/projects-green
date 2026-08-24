@@ -1,6 +1,6 @@
 import "@/test/register"
-import { describe, expect, it, mock } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
+import { afterEach, describe, expect, it, mock } from "bun:test"
+import { cleanup, render, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { SubscriptionList } from "./subscription-list"
 const mockSubscriptions = [
@@ -77,6 +77,10 @@ const mockSubscriptions = [
     invoiceStatus: "OVERDUE",
   },
 ]
+
+afterEach(() => {
+  cleanup()
+})
 
 describe("SubscriptionList", () => {
   it("renders all subscriptions without filters", () => {

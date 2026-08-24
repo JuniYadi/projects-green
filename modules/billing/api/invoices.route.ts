@@ -6,7 +6,7 @@ import Decimal = Prisma.Decimal
 
 import { prisma } from "@/lib/prisma"
 import { fieldErrorMapFromIssues } from "@/lib/validation"
-
+import { getCachedOrganization } from "@/lib/workos-directory"
 type BillingAuthContext = {
   organizationId?: string | null
   role?: string | null
@@ -211,29 +211,45 @@ export const createBillingInvoicesRoutes = (
         const { id } = parsed.data
 
         try {
-          // Look up billing account for the caller's organization
+          // Look up billing account with owner contact for the caller's organization
           const account = await prisma.billingAccount.findUnique({
             where: { organizationId: auth.organizationId },
-            select: { id: true },
+            select: {
+              id: true,
+              organizationId: true,
+              contacts: {
+                where: { isActive: true },
+                orderBy: [{ role: "asc" }, { createdAt: "asc" }],
+                select: { name: true, email: true, role: true },
+              },
+            },
           })
 
           if (!account) {
             return toNotFound(set, "Invoice not found.")
           }
 
-          // Fetch invoice scoped to the caller's billing account
-          const invoice = await prisma.billingInvoice.findFirst({
-            where: { id, billingAccountId: account.id },
-            include: {
-              lines: true,
-              paymentConfirmations: { include: { bankAccount: true } },
-            },
-          })
+          // Fetch invoice and organization name concurrently
+          const [invoice, workosOrg] = await Promise.all([
+            prisma.billingInvoice.findFirst({
+              where: { id, billingAccountId: account.id },
+              include: {
+                lines: true,
+                paymentConfirmations: { include: { bankAccount: true } },
+              },
+            }),
+            getCachedOrganization(auth.organizationId),
+          ])
 
           if (!invoice) {
             return toNotFound(set, "Invoice not found.")
           }
-
+          const ownerContact =
+            account.contacts?.find((c) => c.role === "OWNER") ??
+            account.contacts?.[0]
+          const orgName = workosOrg?.name ?? "Organization"
+          const ownerEmail = ownerContact?.email ?? auth.user?.email ?? null
+          const contactName = ownerContact?.name ?? orgName
           return {
             ok: true as const,
             invoice: {
@@ -261,6 +277,14 @@ export const createBillingInvoicesRoutes = (
                 createdAt: pc.createdAt.toISOString(),
                 amount: Number(pc.amount),
               })),
+              billingEntity: {
+                name: contactName,
+                email: ownerEmail,
+              },
+              organization: {
+                name: orgName,
+                email: ownerEmail,
+              },
             },
           }
         } catch (error) {

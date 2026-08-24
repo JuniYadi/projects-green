@@ -278,7 +278,7 @@ export function BillingDashboard() {
             {messages.console.billing.activeSubscriptions}
           </h2>
           <Button asChild variant="ghost" size="sm">
-            <Link href="/console/billing/subscription">
+            <Link href="/console/billing/subscriptions">
               {messages.console.billing.viewAll}
             </Link>
           </Button>
