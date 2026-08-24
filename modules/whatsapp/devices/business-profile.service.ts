@@ -99,13 +99,17 @@ export async function syncDeviceFromMeta(
     throw new Error("Device has no WhatsApp Business Account ID configured.")
   }
 
-  const token = device.tokenEncrypted ?? device.token ?? ""
-  const client = await WhatsAppDeviceClient.fromDevice({
-    accessToken: token,
-    phoneNumberId: phoneId,
-    wabaId,
-    organizationId: device.organizationId,
-  })
+  const rawToken = device.tokenEncrypted ?? device.token ?? ""
+  let accessToken = rawToken
+  if (device.tokenEncrypted) {
+    const parts = device.tokenEncrypted.split(".")
+    const decryptable =
+      device.tokenIv && parts.length === 2
+        ? `${parts[0]}.${device.tokenIv}.${parts[1]}`
+        : device.tokenEncrypted
+    const { decryptWhatsAppToken } = await import("@/lib/whatsapp/crypto")
+    accessToken = await decryptWhatsAppToken(decryptable)
+  }
 
   const fields =
     "account_mode,certificate,code_verification_status,conversational_automation,display_phone_number,eligibility_for_api_business_global_search,health_status,id,is_official_business_account,is_on_biz_app,is_pin_enabled,is_preverified_number,last_onboarded_time,messaging_limit_tier,name_status,new_certificate,new_display_name,new_name_status,official_business_account,platform_type,quality_score,search_visibility,status,throughput,verified_name,whatsapp_business_manager_messaging_limit,whatsapp_business_profile.limit(10){about,address,description,email,messaging_product,profile_picture_url,vertical,websites}"
@@ -114,12 +118,18 @@ export async function syncDeviceFromMeta(
   const url = `https://graph.facebook.com/${version}/${wabaId}/phone_numbers?fields=${fields}`
 
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${client.token}` },
+    headers: { Authorization: `Bearer ${accessToken}` },
   })
-  const json = (await res.json()) as { data?: Array<Record<string, unknown>> }
+  const json = (await res.json()) as {
+    error?: { message: string }
+    data?: Array<Record<string, unknown>>
+  }
 
-  if (!json.data || json.data.length === 0) {
-    throw new Error("No phone number data returned from Meta Graph API.")
+  if (json.error || !json.data || json.data.length === 0) {
+    throw new Error(
+      json.error?.message ||
+        "No phone number data returned from Meta Graph API."
+    )
   }
 
   const metaPhone = json.data.find((p) => p.id === phoneId) || json.data[0]
