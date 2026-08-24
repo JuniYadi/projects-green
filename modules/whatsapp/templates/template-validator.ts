@@ -107,6 +107,7 @@ export function formatTemplateSlug(input: string): string {
 }
 
 export type BuildMetaComponentsInput = {
+  category?: string | null
   headerType?: string | null
   headerText?: string | null
   headerUrl?: string | null
@@ -122,7 +123,41 @@ export type BuildMetaComponentsInput = {
 export function buildMetaTemplateComponents(
   input: BuildMetaComponentsInput
 ): Array<Record<string, unknown>> {
+  const isAuth = input.category?.toUpperCase() === "AUTHENTICATION"
   const components: Array<Record<string, unknown>> = []
+
+  // Special Meta Cloud API requirements for AUTHENTICATION category:
+  // - Must include BODY with `add_security_recommendation: true` (or standard body if preset).
+  // - Must include BUTTONS with OTP COPY_CODE or ONE_TAP.
+  if (isAuth) {
+    // 1. Auth BODY
+    components.push({
+      type: "BODY",
+      add_security_recommendation: true,
+    })
+
+    // 2. Auth FOOTER (optional code expiration)
+    if (input.footer?.trim()) {
+      components.push({
+        type: "FOOTER",
+        code_expiration_minutes: 5,
+      })
+    }
+
+    // 3. Auth BUTTONS (OTP copy_code)
+    components.push({
+      type: "BUTTONS",
+      buttons: [
+        {
+          type: "OTP",
+          otp_type: "COPY_CODE",
+          text: "Copy Code",
+        },
+      ],
+    })
+
+    return components
+  }
 
   // 1. HEADER
   const headerType = input.headerType?.toUpperCase()

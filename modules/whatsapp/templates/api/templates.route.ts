@@ -335,7 +335,10 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         })
 
         for (const lang of rawLanguages!) {
-          const components = buildMetaTemplateComponents(lang)
+          const components = buildMetaTemplateComponents({
+            ...lang,
+            category,
+          })
           const metaResult = await client.createTemplate({
             name: slug,
             category: (category ?? "UTILITY").toUpperCase(),

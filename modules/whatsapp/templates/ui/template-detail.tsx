@@ -13,7 +13,6 @@ import {
 } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
   Card,
   CardContent,
@@ -26,6 +25,7 @@ import {
   TemplateLanguageBadge,
   WhatsAppTemplatePreview,
 } from "./template-preview"
+import { MetaStatusBadge, TemplateStatusBadge } from "./template-list"
 import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
 
 type TemplateDetailProps = {
@@ -183,9 +183,26 @@ export function TemplateDetailView({
               <InfoRow
                 label="Status"
                 value={
-                  <Badge variant="outline">
-                    {template.syncStatus ?? "NOT_SYNCED"}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <TemplateStatusBadge
+                      status={template.syncStatus ?? "NOT_SYNCED"}
+                    />
+                    {template.metaStatus && (
+                      <MetaStatusBadge status={template.metaStatus} />
+                    )}
+                  </div>
+                }
+              />
+              <InfoRow
+                label="Meta Review Status"
+                value={
+                  template.metaStatus ? (
+                    <MetaStatusBadge status={template.metaStatus} />
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      Not submitted
+                    </span>
+                  )
                 }
               />
               <InfoRow
@@ -222,9 +239,17 @@ export function TemplateDetailView({
               <div className="space-y-3">
                 {template.languages.map((lang) => (
                   <div key={lang.id} className="rounded-md border p-3">
-                    <div className="mb-2">
+                    <div className="mb-2 flex items-center justify-between">
                       <TemplateLanguageBadge lang={lang.lang} />
+                      {lang.metaStatus && (
+                        <MetaStatusBadge status={lang.metaStatus} />
+                      )}
                     </div>
+                    {lang.rejectReason && (
+                      <div className="mb-2 rounded bg-destructive/10 p-2 text-xs text-destructive">
+                        <strong>Rejection Reason:</strong> {lang.rejectReason}
+                      </div>
+                    )}
                     {lang.headerType && lang.headerType !== "NONE" && (
                       <p className="mb-1.5 text-xs text-muted-foreground">
                         Header: {lang.headerType}
