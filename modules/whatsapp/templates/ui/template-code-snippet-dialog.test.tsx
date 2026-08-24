@@ -1,6 +1,9 @@
 import "@/test/register"
 import { describe, expect, it } from "bun:test"
-import { generateTemplatePayload } from "./template-code-snippet-dialog"
+import {
+  generateTemplatePayload,
+  toPythonLiteral,
+} from "./template-code-snippet-dialog"
 import type {
   WhatsAppTemplate,
   WhatsAppTemplateLanguage,
@@ -33,7 +36,7 @@ const mockTemplate: WhatsAppTemplate = {
 }
 
 describe("generateTemplatePayload", () => {
-  it("generates correct structured template payload with variable parameters", () => {
+  it("generates correct structured template payload with variable parameters and OTP sub_type", () => {
     const payload = generateTemplatePayload(
       mockTemplate,
       mockLanguage,
@@ -60,10 +63,32 @@ describe("generateTemplatePayload", () => {
       { type: "text", text: "998811" },
     ])
 
-    // Button parameters
+    // Button parameters (OTP buttons must use sub_type: "otp")
     const buttonComp = components.find((c) => c.type === "button")
     expect(buttonComp).toBeDefined()
-    expect(buttonComp?.sub_type).toBe("url")
+    expect(buttonComp?.sub_type).toBe("otp")
     expect(buttonComp?.parameters).toEqual([{ type: "text", text: "Budi" }])
+  })
+})
+
+describe("toPythonLiteral", () => {
+  it("safely serializes booleans, nulls, and strings without substring corruption", () => {
+    const data = {
+      is_active: true,
+      is_disabled: false,
+      optional_field: null,
+      notes: "unfortunately this is nullified and true value stays intact",
+      nested: {
+        numbers: [1, 2, 3],
+      },
+    }
+
+    const py = toPythonLiteral(data)
+    expect(py).toContain('"is_active": True')
+    expect(py).toContain('"is_disabled": False')
+    expect(py).toContain('"optional_field": None')
+    expect(py).toContain(
+      '"notes": "unfortunately this is nullified and true value stays intact"'
+    )
   })
 })

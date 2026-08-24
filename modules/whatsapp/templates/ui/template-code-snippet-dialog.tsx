@@ -11,6 +11,7 @@ import * as React from "react"
 import { Check, Copy, Code } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
+import { getApiBaseUrl } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -34,6 +35,27 @@ type TemplateCodeSnippetDialogProps = {
   selectedLanguage: WhatsAppTemplateLanguage
   variableValues: TemplatePreviewValues
   recipientPhone?: string
+  apiBaseUrl?: string
+}
+
+export function toPythonLiteral(obj: unknown, indent = 0): string {
+  const pad = "  ".repeat(indent)
+  const pad1 = "  ".repeat(indent + 1)
+  if (obj === null) return "None"
+  if (typeof obj === "boolean") return obj ? "True" : "False"
+  if (typeof obj === "number") return String(obj)
+  if (typeof obj === "string") return JSON.stringify(obj)
+  if (Array.isArray(obj)) {
+    if (obj.length === 0) return "[]"
+    const items = obj.map((v) => `${pad1}${toPythonLiteral(v, indent + 1)}`)
+    return `[\n${items.join(",\n")}\n${pad}]`
+  }
+  const entries = Object.entries(obj as Record<string, unknown>)
+  if (entries.length === 0) return "{}"
+  const items = entries.map(
+    ([k, v]) => `${pad1}${JSON.stringify(k)}: ${toPythonLiteral(v, indent + 1)}`
+  )
+  return `{\n${items.join(",\n")}\n${pad}}`
 }
 
 export function generateTemplatePayload(
@@ -68,7 +90,7 @@ export function generateTemplatePayload(
     if (isOtpOrUrlWithVar && placeholderIndexes.length > 0) {
       components.push({
         type: "button",
-        sub_type: "url",
+        sub_type: btnObj.type === "OTP" ? "otp" : "url",
         index,
         parameters: [
           {
@@ -100,9 +122,17 @@ export function TemplateCodeSnippetDialog({
   selectedLanguage,
   variableValues,
   recipientPhone = "+6281234567890",
+  apiBaseUrl,
 }: TemplateCodeSnippetDialogProps) {
   const [copied, setCopied] = React.useState(false)
   const [activeTab, setActiveTab] = React.useState("curl")
+
+  const resolvedBaseUrl =
+    apiBaseUrl ||
+    (typeof window !== "undefined" && window.location.origin
+      ? window.location.origin
+      : getApiBaseUrl())
+  const messagesEndpoint = `${resolvedBaseUrl.replace(/\/+$/, "")}/api/v1/whatsapp/messages`
 
   const payload = React.useMemo(
     () =>
@@ -118,13 +148,13 @@ export function TemplateCodeSnippetDialog({
   const jsonString = JSON.stringify(payload, null, 2)
 
   const snippets: Record<string, string> = {
-    curl: `curl -X POST "https://pfnapp.my.id/api/v1/whatsapp/messages" \\
+    curl: `curl -X POST "${messagesEndpoint}" \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '${JSON.stringify(payload, null, 2)}'`,
 
     node: `// Node.js (Fetch API)
-const response = await fetch("https://pfnapp.my.id/api/v1/whatsapp/messages", {
+const response = await fetch("${messagesEndpoint}", {
   method: "POST",
   headers: {
     "Authorization": \`Bearer \${process.env.WHATSAPP_API_KEY}\`,
@@ -140,12 +170,12 @@ console.log("Response:", data);`,
 import os
 import requests
 
-url = "https://pfnapp.my.id/api/v1/whatsapp/messages"
+url = "${messagesEndpoint}"
 headers = {
     "Authorization": f"Bearer {os.environ.get('WHATSAPP_API_KEY')}",
     "Content-Type": "application/json"
 }
-payload = ${jsonString.replace(/true/g, "True").replace(/false/g, "False").replace(/null/g, "None")}
+payload = ${toPythonLiteral(payload)}
 
 response = requests.post(url, json=payload, headers=headers)
 print(response.json())`,
@@ -153,7 +183,7 @@ print(response.json())`,
     php: `<?php
 // PHP (cURL)
 $apiKey = getenv('WHATSAPP_API_KEY');
-$url = "https://pfnapp.my.id/api/v1/whatsapp/messages";
+$url = "${messagesEndpoint}";
 $payload = '${jsonString}';
 
 $ch = curl_init($url);
@@ -182,7 +212,7 @@ import (
 )
 
 func main() {
-	url := "https://pfnapp.my.id/api/v1/whatsapp/messages"
+	url := "${messagesEndpoint}"
 	payload := []byte(\`${jsonString}\`)
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
