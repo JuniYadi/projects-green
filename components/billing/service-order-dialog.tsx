@@ -314,7 +314,7 @@ export function ServiceOrderDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="flex max-h-[92vh] min-h-[520px] w-[95vw] max-w-4xl flex-col gap-0 overflow-hidden p-0"
+        className="flex max-h-[92vh] min-h-[560px] w-[95vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl"
       >
         {/* Header */}
         <DialogHeader className="relative border-b px-6 py-4 text-left">
