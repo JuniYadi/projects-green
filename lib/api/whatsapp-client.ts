@@ -10,6 +10,14 @@ import type { BusinessProfileDTO } from "@/modules/whatsapp/devices/business-pro
 
 // --- Response Types for other entities (inferred from routes until schemas are extracted) ---
 
+export interface WhatsAppTemplateDevice {
+  id: string
+  phoneNumber: string
+  status: string
+  whatsappBusinessAccountId?: string | null
+  whatsappPhoneId?: string | null
+}
+
 export interface WhatsAppTemplate {
   id: string
   slug: string
@@ -21,6 +29,7 @@ export interface WhatsAppTemplate {
   metaStatus?: "APPROVED" | "PENDING" | "REJECTED" | null
   category?: "MARKETING" | "UTILITY" | "AUTHENTICATION" | null
   languages: WhatsAppTemplateLanguage[]
+  device?: WhatsAppTemplateDevice | null
   createdAt: string
   updatedAt: string
 }

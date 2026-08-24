@@ -63,7 +63,10 @@ import type {
   WhatsAppTemplate,
   WhatsAppTemplateLanguage,
 } from "@/lib/api/whatsapp-client"
-import { useTemplates } from "@/modules/whatsapp/templates/api/templates.hooks"
+import {
+  useTemplates,
+  useTemplate,
+} from "@/modules/whatsapp/templates/api/templates.hooks"
 import { MessageStatusBadge } from "@/modules/whatsapp/messages/ui/message-status-badge"
 import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
 import {
@@ -488,7 +491,8 @@ export default function WhatsAppMessagesPage() {
   >({})
   const [templateSearchQuery, setTemplateSearchQuery] = React.useState("")
   const [templatePickerOpen, setTemplatePickerOpen] = React.useState(true)
-
+  const [initialTemplateHandled, setInitialTemplateHandled] =
+    React.useState(false)
   const queryClient = useQueryClient()
 
   const {
@@ -583,6 +587,54 @@ export default function WhatsAppMessagesPage() {
     loadConversationForPhone,
   ])
 
+  const templateQueryId = searchParams.get("template")
+  const { template: queryTemplate } = useTemplate(
+    templateQueryId && !initialTemplateHandled ? templateQueryId : ""
+  )
+  React.useEffect(() => {
+    if (!templateQueryId || initialTemplateHandled || !queryTemplate) return
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSendDialogOpen(true)
+    if (queryTemplate.whatsappDeviceId) {
+      setSendDeviceId(queryTemplate.whatsappDeviceId)
+    }
+    setSelectedTemplateId(queryTemplate.id)
+    if (queryTemplate.languages && queryTemplate.languages.length > 0) {
+      setSelectedTemplateLanguage(queryTemplate.languages[0].lang)
+    }
+    setTemplatePickerOpen(false)
+    setInitialTemplateHandled(true)
+  }, [templateQueryId, queryTemplate, initialTemplateHandled])
+
+  // When send dialog opens manually without ?template=, reset
+  const handleDialogOpenChange = (open: boolean) => {
+    if (open) {
+      if (!templateQueryId) {
+        setSelectedTemplateId("")
+        setSelectedTemplateLanguage("")
+        setTemplateFieldValues({})
+        setTemplateSearchQuery("")
+        setTemplatePickerOpen(true)
+      }
+
+      // Pre-fill phone from ?phone= query parameter
+      const phoneParam = searchParams.get(PHONE_QUERY_KEY)
+      const normalized = phoneParam
+        ? normalizeIndonesianPhoneNumber(phoneParam)
+        : null
+      setSendPhone(normalized ?? "")
+    } else {
+      setSendPhone("")
+      setSendDeviceId("")
+      setSelectedTemplateId("")
+      setSelectedTemplateLanguage("")
+      setTemplateFieldValues({})
+      setTemplateSearchQuery("")
+      setInitialTemplateHandled(false)
+    }
+    setSendDialogOpen(open)
+  }
   const hasActiveDevice = React.useMemo(
     () => devices.some((d) => d.status === "ACTIVE"),
     [devices]
@@ -624,7 +676,7 @@ export default function WhatsAppMessagesPage() {
   )
 
   React.useEffect(() => {
-    if (sendDeviceId) {
+    if (sendDeviceId && !templateQueryId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedTemplateId("")
       setSelectedTemplateLanguage("")
@@ -632,7 +684,7 @@ export default function WhatsAppMessagesPage() {
       setTemplateSearchQuery("")
       setTemplatePickerOpen(true)
     }
-  }, [sendDeviceId])
+  }, [sendDeviceId, templateQueryId])
 
   // ── Derived state ──────────────────────────────────────────────────────
 
@@ -915,34 +967,6 @@ export default function WhatsAppMessagesPage() {
       ),
       deviceId: sendDeviceId,
     })
-  }
-
-  // ─── Render ────────────────────────────────────────────────────────────
-  const handleDialogOpenChange = (open: boolean) => {
-    if (open) {
-      // Reset template/language/fields on each open
-      setSelectedTemplateId("")
-      setSelectedTemplateLanguage("")
-      setTemplateFieldValues({})
-      setTemplateSearchQuery("")
-      setTemplatePickerOpen(true)
-
-      // Pre-fill phone from ?phone= query parameter
-      const phoneParam = searchParams.get(PHONE_QUERY_KEY)
-      const normalized = phoneParam
-        ? normalizeIndonesianPhoneNumber(phoneParam)
-        : null
-      setSendPhone(normalized ?? "")
-    } else {
-      // Reset all on close; next open re-reads ?phone=
-      setSendPhone("")
-      setSendDeviceId("")
-      setSelectedTemplateId("")
-      setSelectedTemplateLanguage("")
-      setTemplateFieldValues({})
-      setTemplateSearchQuery("")
-    }
-    setSendDialogOpen(open)
   }
 
   return (

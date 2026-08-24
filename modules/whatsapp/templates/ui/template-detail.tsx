@@ -1,11 +1,13 @@
 /**
- * Template Detail — Reusable detail view component
+ * Template Detail — Interactive detail view component
  *
- * Shows template metadata, language variants, and action buttons.
+ * Shows template metadata, structured specification tester,
+ * live preview (WhatsApp Bubble & Ready-to-use JSON), and developer code modal.
  */
 
 "use client"
 
+import * as React from "react"
 import {
   WarningCircle,
   ArrowsClockwise,
@@ -16,8 +18,13 @@ import {
   CheckCircle,
   Clock,
   XCircle,
+  Code,
+  Check,
+  ChatsCircle,
+  FileCode,
 } from "@phosphor-icons/react"
 import { useParams, useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
@@ -29,12 +36,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-  TemplateLanguageBadge,
   WhatsAppTemplatePreview,
+  resolveTemplatePreviewValues,
+  type TemplatePreviewValues,
 } from "./template-preview"
+import { TemplateSpecTester } from "./template-spec-tester"
+import {
+  TemplateCodeSnippetDialog,
+  generateTemplatePayload,
+} from "./template-code-snippet-dialog"
 import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
+
 type TemplateDetailProps = {
   template: WhatsAppTemplate | null
   loading: boolean
@@ -59,6 +74,46 @@ export function TemplateDetailView({
   const router = useRouter()
   const routeParams = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(routeParams?.lang)
+
+  // State for active language selection and variable overrides
+  const defaultLang = template?.languages?.[0]?.lang ?? ""
+  const [selectedLang, setSelectedLang] = React.useState<string>(defaultLang)
+  const [variableOverrides, setVariableOverrides] =
+    React.useState<TemplatePreviewValues>({})
+  const [codeModalOpen, setCodeModalOpen] = React.useState(false)
+  const [copiedJson, setCopiedJson] = React.useState(false)
+  const [previewTab, setPreviewTab] = React.useState<"bubble" | "json">(
+    "bubble"
+  )
+
+  const activeLangCode = selectedLang || defaultLang
+  const currentLanguage =
+    template?.languages.find((l) => l.lang === activeLangCode) ||
+    template?.languages[0]
+
+  const resolvedDefaultValues = React.useMemo(() => {
+    return currentLanguage ? resolveTemplatePreviewValues(currentLanguage) : {}
+  }, [currentLanguage])
+
+  const variableValues = React.useMemo(
+    () => ({
+      ...resolvedDefaultValues,
+      ...variableOverrides,
+    }),
+    [resolvedDefaultValues, variableOverrides]
+  )
+
+  const handleLanguageChange = (lang: string) => {
+    setSelectedLang(lang)
+    setVariableOverrides({})
+  }
+
+  const handleVariableChange = (index: number, val: string) => {
+    setVariableOverrides((prev) => ({
+      ...prev,
+      [index]: val,
+    }))
+  }
   // ── Loading skeleton ──────────────────────────────────────────────────
 
   if (loading) {
@@ -178,6 +233,22 @@ export function TemplateDetailView({
     firstRejectedLang?.rejectReason
   )
 
+  const activePayload = currentLanguage
+    ? generateTemplatePayload(template, currentLanguage, variableValues)
+    : null
+
+  const activeJsonString = activePayload
+    ? JSON.stringify(activePayload, null, 2)
+    : ""
+
+  const handleCopyJson = () => {
+    if (!activeJsonString) return
+    void navigator.clipboard.writeText(activeJsonString)
+    setCopiedJson(true)
+    toast.success("Ready-to-use JSON payload copied!")
+    setTimeout(() => setCopiedJson(false), 2000)
+  }
+
   return (
     <div className="space-y-6">
       {/* Top Header */}
@@ -204,9 +275,32 @@ export function TemplateDetailView({
               </Badge>
             )}
           </div>
-          <p className="mt-1 font-mono text-xs text-muted-foreground">
-            {template.slug}
-          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span className="font-mono">{template.slug}</span>
+            <span>•</span>
+            <Badge variant="outline" className="font-mono text-[10px]">
+              {template.category ?? "UTILITY"}
+            </Badge>
+            <span>•</span>
+            {template.device ? (
+              <span className="inline-flex items-center gap-1 font-medium text-foreground">
+                📱 {template.device.phoneNumber}
+                <span className="text-[10px] text-muted-foreground">
+                  ({template.device.status})
+                </span>
+              </span>
+            ) : template.whatsappDeviceId ? (
+              <span className="font-mono text-[11px] text-muted-foreground">
+                Device: {template.whatsappDeviceId}
+              </span>
+            ) : (
+              <Badge variant="secondary" className="text-[10px]">
+                All Devices
+              </Badge>
+            )}
+            <span>•</span>
+            <span>Created {formatDate(template.createdAt)}</span>
+          </div>
         </div>
 
         {/* Action Buttons */}
@@ -226,6 +320,18 @@ export function TemplateDetailView({
             >
               <PaperPlaneTilt weight="bold" className="mr-1.5 size-4" />
               Send Test Message
+            </Button>
+          )}
+
+          {currentLanguage && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCodeModalOpen(true)}
+              className="gap-1.5"
+            >
+              <Code weight="bold" className="size-4 text-primary" />
+              Get Code Snippet
             </Button>
           )}
 
@@ -290,109 +396,131 @@ export function TemplateDetailView({
         </Card>
       )}
 
-      {/* Main Grid Content */}
-      <div className="grid gap-6 lg:grid-cols-5">
-        {/* Left: Clean Template Info (2 columns span on large screens) */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Template Summary</CardTitle>
-            <CardDescription>Key configuration & assignment</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <dl className="space-y-3.5">
-              <InfoRow
-                label="WhatsApp Status"
-                value={
-                  <span className="text-xs font-semibold">
-                    {isApproved
-                      ? "Approved by Meta"
-                      : isRejected
-                        ? "Rejected"
-                        : "In Review"}
-                  </span>
-                }
+      {/* Main Content Layout: Left Spec/Tester + Right Live Preview Tabs */}
+      <div className="grid gap-6 lg:grid-cols-12">
+        {/* Left Column: Spec Breakdown & Variable Tester (7 cols) */}
+        <div className="space-y-4 lg:col-span-7">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">
+                Template Specification & Variable Tester
+              </CardTitle>
+              <CardDescription>
+                Detailed component breakdown. Type sample variables below to
+                test formatting and generate real-time JSON payload.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TemplateSpecTester
+                languages={template.languages}
+                selectedLang={selectedLang}
+                onSelectLang={handleLanguageChange}
+                variableValues={variableValues}
+                onVariableChange={handleVariableChange}
               />
-              <InfoRow
-                label="Category"
-                value={
-                  <Badge variant="outline" className="font-mono text-xs">
-                    {template.category ?? "UTILITY"}
-                  </Badge>
-                }
-              />
-              <InfoRow
-                label="Assigned Device"
-                value={
-                  template.whatsappDeviceId ? (
-                    <span className="text-xs font-medium">Assigned</span>
-                  ) : (
-                    <Badge variant="secondary" className="text-[10px]">
-                      All Devices
-                    </Badge>
-                  )
-                }
-              />
-              <InfoRow
-                label="Total Languages"
-                value={`${template.languages.length} Variant(s)`}
-              />
-              <InfoRow label="Created" value={formatDate(template.createdAt)} />
-              <InfoRow
-                label="Last Updated"
-                value={formatDate(template.updatedAt)}
-              />
-            </dl>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
-        {/* Right: Realistic WhatsApp Preview (3 columns span) */}
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle className="text-base">Message Preview</CardTitle>
-            <CardDescription>
-              Realistic preview of what your recipients see in WhatsApp
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {template.languages.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No language variants available.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {template.languages.map((lang) => (
-                  <div key={lang.id} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <TemplateLanguageBadge lang={lang.lang} />
-                      {lang.rejectReason && (
-                        <span className="text-[11px] font-semibold text-destructive">
-                          Reason: {lang.rejectReason}
-                        </span>
-                      )}
-                    </div>
-                    <WhatsAppTemplatePreview language={lang} />
-                  </div>
-                ))}
+        {/* Right Column: Live WhatsApp Bubble & Ready-to-Use JSON (5 cols) */}
+        <div className="space-y-4 lg:col-span-5">
+          <Card className="sticky top-6">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">Live Preview</CardTitle>
+                  <CardDescription>
+                    Real-time visual output and API payload
+                  </CardDescription>
+                </div>
+
+                <Tabs
+                  value={previewTab}
+                  onValueChange={(v) => setPreviewTab(v as "bubble" | "json")}
+                >
+                  <TabsList className="h-8">
+                    <TabsTrigger
+                      value="bubble"
+                      className="h-7 gap-1 px-2 text-xs"
+                    >
+                      <ChatsCircle className="size-3.5" />
+                      Bubble
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="json"
+                      className="h-7 gap-1 px-2 text-xs"
+                    >
+                      <FileCode className="size-3.5" />
+                      JSON
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              {currentLanguage ? (
+                previewTab === "bubble" ? (
+                  <div className="space-y-3">
+                    <WhatsAppTemplatePreview
+                      language={currentLanguage}
+                      values={variableValues}
+                    />
+                    <p className="text-center text-[11px] text-muted-foreground">
+                      💡 Recipient view rendered with your tested variables.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between pb-1">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Ready-to-use API Payload:
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleCopyJson}
+                        className="h-7 gap-1 text-[11px]"
+                      >
+                        {copiedJson ? (
+                          <>
+                            <Check className="size-3 text-emerald-500" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="size-3" />
+                            Copy JSON
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <div className="relative rounded-lg border bg-muted/40 p-3 font-mono text-xs leading-relaxed dark:bg-black/50">
+                      <pre className="max-h-[380px] overflow-auto whitespace-pre">
+                        <code>{activeJsonString}</code>
+                      </pre>
+                    </div>
+                  </div>
+                )
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  No language variant available.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
-  )
-}
 
-function InfoRow({
-  label,
-  value,
-}: {
-  label: string
-  value: string | number | React.ReactNode
-}) {
-  return (
-    <div className="flex items-center justify-between border-b border-border/40 pb-3 last:border-0 last:pb-0">
-      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className="text-xs text-foreground">{value}</dd>
+      {/* Code Snippet Modal */}
+      {currentLanguage && (
+        <TemplateCodeSnippetDialog
+          open={codeModalOpen}
+          onOpenChange={setCodeModalOpen}
+          template={template}
+          selectedLanguage={currentLanguage}
+          variableValues={variableValues}
+        />
+      )}
     </div>
   )
 }

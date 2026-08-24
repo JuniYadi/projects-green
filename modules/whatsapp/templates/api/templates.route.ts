@@ -135,9 +135,15 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       } else if (query.wabaId || query.phoneId) {
         const device = await prisma.whatsappDevice.findFirst({
           where: {
-            ...(where.organizationId ? { organizationId: where.organizationId as string } : {}),
-            ...(query.wabaId ? { whatsappBusinessAccountId: String(query.wabaId) } : {}),
-            ...(query.phoneId ? { whatsappPhoneId: String(query.phoneId) } : {}),
+            ...(where.organizationId
+              ? { organizationId: where.organizationId as string }
+              : {}),
+            ...(query.wabaId
+              ? { whatsappBusinessAccountId: String(query.wabaId) }
+              : {}),
+            ...(query.phoneId
+              ? { whatsappPhoneId: String(query.phoneId) }
+              : {}),
           },
           select: { id: true },
         })
@@ -213,6 +219,15 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         where: { id: params.id },
         include: {
           languages: true,
+          whatsappDevice: {
+            select: {
+              id: true,
+              phoneNumber: true,
+              status: true,
+              whatsappBusinessAccountId: true,
+              whatsappPhoneId: true,
+            },
+          },
         },
       })
 
@@ -262,11 +277,10 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         }
       }
 
-      const targetOrgId = (
-        whatsappAuth.type === "workos"
+      const targetOrgId =
+        (whatsappAuth.type === "workos"
           ? whatsappAuth.organizationId
-          : (body as Record<string, string | undefined>).organizationId
-      ) ?? ""
+          : (body as Record<string, string | undefined>).organizationId) ?? ""
 
       if (!targetOrgId) {
         set.status = 400
@@ -328,7 +342,8 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         return {
           ok: false,
           error: "DEVICE_NOT_ACTIVE",
-          message: "An active WhatsApp device owned by the organization is required.",
+          message:
+            "An active WhatsApp device owned by the organization is required.",
         }
       }
 
@@ -347,7 +362,8 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         return {
           ok: false,
           error: "SUBSCRIPTION_REQUIRED",
-          message: "An active WhatsApp subscription is required to create templates.",
+          message:
+            "An active WhatsApp subscription is required to create templates.",
         }
       }
 
