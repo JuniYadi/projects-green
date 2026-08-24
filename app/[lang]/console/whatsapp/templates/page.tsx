@@ -5,8 +5,24 @@ import { Plus, ArrowsClockwise } from "@phosphor-icons/react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
+import {
+  CheckCircle,
+  Clock,
+  XCircle,
+  CloudCheck,
+  CloudArrowUp,
+  CloudSlash,
+  Question,
+} from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   Card,
   CardContent,
@@ -135,18 +151,155 @@ export default function ConsoleTemplatesPage() {
     (t) => t.syncStatus === "NOT_SYNCED"
   ).length
 
-  function StatusDot({
-    label,
-    className,
-  }: {
-    label: string
-    className: string
-  }) {
+  function formatRelativeTime(dateString: string | Date): string {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+    if (diffSec < 45) return "just now"
+    if (diffSec < 90) return "1 min ago"
+    const diffMin = Math.floor(diffSec / 60)
+    if (diffMin < 45) return `${diffMin} mins ago`
+    if (diffMin < 90) return "1 hour ago"
+    const diffHours = Math.floor(diffMin / 60)
+    if (diffHours < 22) return `${diffHours} hours ago`
+    if (diffHours < 36) return "1 day ago"
+    const diffDays = Math.floor(diffHours / 24)
+    if (diffDays < 30) return `${diffDays} days ago`
+    const diffMonths = Math.floor(diffDays / 30)
+    if (diffMonths < 12) return `${diffMonths} months ago`
+    return `${Math.floor(diffMonths / 12)} years ago`
+  }
+
+  function TemplateStatusCell({ template }: { template: WhatsAppTemplate }) {
+    const metaStatus = template.metaStatus ?? "UNKNOWN"
+    const syncStatus = template.syncStatus ?? "NOT_SYNCED"
+
+    // Extract rejection reasons if any
+    const rejectionReasons = template.languages
+      ?.map((l) => l.rejectReason)
+      .filter((r): r is string => Boolean(r && r !== "NONE"))
+
+    const firstRejectReason =
+      rejectionReasons && rejectionReasons.length > 0
+        ? rejectionReasons[0]
+        : null
+
+    // Meta Status Config
+    const metaConfig: Record<
+      string,
+      { label: string; icon: React.ReactNode; variantClass: string }
+    > = {
+      APPROVED: {
+        label: "Approved",
+        icon: <CheckCircle weight="fill" className="size-3.5" />,
+        variantClass:
+          "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+      },
+      PENDING: {
+        label: "In Review",
+        icon: <Clock weight="fill" className="size-3.5" />,
+        variantClass:
+          "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
+      },
+      REJECTED: {
+        label: "Rejected",
+        icon: <XCircle weight="fill" className="size-3.5" />,
+        variantClass:
+          "bg-destructive/15 text-destructive dark:text-red-400 border-destructive/30",
+      },
+      UNKNOWN: {
+        label: "Draft",
+        icon: <Question weight="bold" className="size-3.5" />,
+        variantClass: "bg-muted text-muted-foreground border-border",
+      },
+    }
+
+    // Local Sync Config
+    const syncConfig: Record<
+      string,
+      { dotClass: string; tooltip: string; icon: React.ReactNode }
+    > = {
+      SYNCED: {
+        dotClass: "bg-emerald-500",
+        tooltip: "Synced to Meta",
+        icon: <CloudCheck className="size-3 text-emerald-500" />,
+      },
+      SYNCING: {
+        dotClass: "bg-blue-500 animate-pulse",
+        tooltip: "Sync in progress...",
+        icon: <CloudArrowUp className="size-3 animate-bounce text-blue-500" />,
+      },
+      NOT_SYNCED: {
+        dotClass: "bg-amber-500",
+        tooltip: "Draft / Not synced to Meta yet",
+        icon: <CloudSlash className="size-3 text-amber-500" />,
+      },
+      NOT_IN_META: {
+        dotClass: "bg-amber-500",
+        tooltip: "Not found in Meta Graph API",
+        icon: <CloudSlash className="size-3 text-amber-500" />,
+      },
+      FAILED: {
+        dotClass: "bg-destructive",
+        tooltip: "Sync failed with Meta",
+        icon: <CloudSlash className="size-3 text-destructive" />,
+      },
+    }
+
+    const currentMeta = metaConfig[metaStatus] ?? metaConfig.UNKNOWN
+    const currentSync = syncConfig[syncStatus] ?? syncConfig.NOT_SYNCED
+
     return (
-      <span className="inline-flex items-center gap-1.5">
-        <span className={`size-2 rounded-full ${className}`} />
-        <span className="sr-only">{label}</span>
-      </span>
+      <TooltipProvider delayDuration={150}>
+        <div className="flex items-center gap-2">
+          {metaStatus === "REJECTED" && firstRejectReason ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge
+                  variant="outline"
+                  className={`flex cursor-help items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold ${currentMeta.variantClass}`}
+                >
+                  {currentMeta.icon}
+                  {currentMeta.label}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs text-xs">
+                <p className="font-semibold text-destructive">
+                  Meta Rejection Reason:
+                </p>
+                <p className="mt-0.5 text-muted-foreground">
+                  {firstRejectReason.replace(/_/g, " ")}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <Badge
+              variant="outline"
+              className={`flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold ${currentMeta.variantClass}`}
+            >
+              {currentMeta.icon}
+              {currentMeta.label}
+            </Badge>
+          )}
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="flex cursor-help items-center p-0.5">
+                <span
+                  className={`size-2 rounded-full ring-2 ring-background ${currentSync.dotClass}`}
+                />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              <p className="font-semibold">{currentSync.tooltip}</p>
+              <p className="text-[10px] text-muted-foreground">
+                Local DB: {syncStatus}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
     )
   }
 
@@ -181,49 +334,13 @@ export default function ConsoleTemplatesPage() {
       ),
     },
     {
-      accessorFn: (row) => row.syncStatus ?? "NOT_SYNCED",
-      id: "syncStatus",
+      accessorFn: (row) =>
+        `${row.metaStatus ?? "UNKNOWN"}_${row.syncStatus ?? "NOT_SYNCED"}`,
+      id: "status",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Sync" />
+        <DataTableColumnHeader column={column} title="Status" />
       ),
-      cell: ({ row }) => {
-        const status = row.original.syncStatus ?? "NOT_SYNCED"
-        const dotClass: Record<string, string> = {
-          SYNCED: "bg-emerald-500",
-          SYNCING: "bg-blue-500 animate-pulse",
-          FAILED: "bg-red-500",
-          NOT_IN_META: "bg-amber-500",
-        }
-        return (
-          <StatusDot
-            label={status}
-            className={dotClass[status] ?? "bg-muted-foreground"}
-          />
-        )
-      },
-    },
-    {
-      accessorFn: (row) => row.metaStatus ?? "UNKNOWN",
-      id: "metaStatus",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Meta Status" />
-      ),
-      cell: ({ row }) => {
-        const status = row.original.metaStatus ?? "UNKNOWN"
-        if (status === "UNKNOWN")
-          return <span className="text-muted-foreground">—</span>
-        const dotClass: Record<string, string> = {
-          APPROVED: "bg-emerald-500",
-          PENDING: "bg-amber-500",
-          REJECTED: "bg-red-500",
-        }
-        return (
-          <StatusDot
-            label={status}
-            className={dotClass[status] ?? "bg-muted-foreground"}
-          />
-        )
-      },
+      cell: ({ row }) => <TemplateStatusCell template={row.original} />,
     },
     {
       accessorKey: "category",
@@ -260,9 +377,29 @@ export default function ConsoleTemplatesPage() {
     {
       accessorKey: "updatedAt",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Last Updated Date" />
+        <DataTableColumnHeader column={column} title="Last Updated" />
       ),
-      cell: ({ row }) => new Date(row.original.updatedAt).toLocaleString(),
+      cell: ({ row }) => {
+        const date = new Date(row.original.updatedAt)
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+        const formattedFull = `${date.toLocaleString()} (${timeZone})`
+        const relative = formatRelativeTime(date)
+
+        return (
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help text-sm text-foreground/90 underline-offset-2 hover:underline">
+                  {relative}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs font-medium">
+                <p>{formattedFull}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )
+      },
     },
     {
       id: "actions",
@@ -388,46 +525,33 @@ export default function ConsoleTemplatesPage() {
               searchPlaceholder="Search templates..."
               searchableColumns={[
                 "name",
-                "syncStatus",
-                "metaStatus",
+                "status",
                 "category",
                 "languages",
                 "whatsappDeviceId",
                 "createdAt",
                 "updatedAt",
               ]}
-              initialSorting={[{ id: "createdAt", desc: true }]}
+              initialSorting={[{ id: "updatedAt", desc: true }]}
               pageSize={10}
               defaultColumnVisibility={{
-                whatsappDeviceId: false,
                 createdAt: false,
                 languages: false,
               }}
               facetFilters={[
                 {
-                  columnId: "syncStatus",
-                  allLabel: "All Sync",
-                  label: "Sync",
-                  options: [
-                    { label: "Synced", value: "SYNCED" },
-                    { label: "Not Synced", value: "NOT_SYNCED" },
-                    { label: "Not in Meta", value: "NOT_IN_META" },
-                  ],
-                },
-                {
-                  columnId: "metaStatus",
-                  allLabel: "All Meta Status",
-                  label: "Meta Status",
+                  columnId: "status",
+                  allLabel: "All Status",
+                  label: "Status",
                   options: [
                     { label: "Approved", value: "APPROVED" },
-                    { label: "Pending", value: "PENDING" },
+                    { label: "In Review", value: "PENDING" },
                     { label: "Rejected", value: "REJECTED" },
                   ],
                 },
                 {
                   columnId: "category",
                   allLabel: "All Category",
-                  label: "Category",
                   options: [
                     { label: "Marketing", value: "MARKETING" },
                     { label: "Utility", value: "UTILITY" },

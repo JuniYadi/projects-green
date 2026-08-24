@@ -69,15 +69,13 @@ export function TemplateLanguageBadge({
   lang: string
   className?: string
 }) {
-  const { code, label, flag } = getLanguageDisplay(lang)
+  const { label, flag } = getLanguageDisplay(lang)
   return (
     <Badge variant="secondary" className={className}>
       {flag ? (
         <span className="mr-1 text-xs leading-none">{getFlagEmoji(flag)}</span>
       ) : null}
-      {code}
-      <span className="ml-1 text-muted-foreground/60">·</span>
-      <span className="ml-1 font-normal">{label}</span>
+      <span className="font-normal">{label}</span>
     </Badge>
   )
 }
