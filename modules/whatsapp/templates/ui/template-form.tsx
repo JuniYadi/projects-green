@@ -107,6 +107,39 @@ const SUPPORTED_LANGUAGES = [
   { code: "zh_CN", label: "Chinese (Simplified)", flag: "🇨🇳" },
 ]
 
+function getAuthOtpCopies(
+  lang: string,
+  addSecurity: boolean,
+  expirationMinutes: number
+) {
+  const isEn = lang.startsWith("en")
+  const isMs = lang.startsWith("ms")
+
+  let body = ""
+  let sampleBody = ""
+  let footer = ""
+  let defaultBtn = "Salin Kode"
+
+  if (isEn) {
+    body = `{{1}} is your verification code.${addSecurity ? " For your security, do not share this code." : ""}`
+    sampleBody = `*549281* is your verification code.${addSecurity ? " For your security, do not share this code." : ""}`
+    footer = `Expires in ${expirationMinutes} minutes.`
+    defaultBtn = "Copy Code"
+  } else if (isMs) {
+    body = `{{1}} ialah kod pengesahan anda.${addSecurity ? " Untuk keselamatan anda, jangan kongsi kod ini." : ""}`
+    sampleBody = `*549281* ialah kod pengesahan anda.${addSecurity ? " Untuk keselamatan anda, jangan kongsi kod ini." : ""}`
+    footer = `Tamat tempoh dalam ${expirationMinutes} minit.`
+    defaultBtn = "Salin Kod"
+  } else {
+    // Default Indonesian (id)
+    body = `*{{1}}* adalah kode verifikasi Anda.${addSecurity ? " Demi keamanan, jangan bagikan kode ini." : ""}`
+    sampleBody = `*549281* adalah kode verifikasi Anda.${addSecurity ? " Demi keamanan, jangan bagikan kode ini." : ""}`
+    footer = `Kedaluwarsa dalam ${expirationMinutes} menit.`
+    defaultBtn = "Salin Kode"
+  }
+
+  return { body, sampleBody, footer, defaultBtn }
+}
 export function TemplateForm({
   initialData,
   submitting,
@@ -284,10 +317,18 @@ export function TemplateForm({
           ? headerUrl.trim()
           : "",
       body: isAuth
-        ? `${addSecurityRecommendation ? "Demi keamanan, jangan bagikan kode ini. " : ""}Kode verifikasi Anda adalah {{1}}`
+        ? getAuthOtpCopies(
+            lang,
+            addSecurityRecommendation,
+            codeExpirationMinutes
+          ).body
         : body.trim(),
       footer: isAuth
-        ? `Kode berlaku ${codeExpirationMinutes} menit.`
+        ? getAuthOtpCopies(
+            lang,
+            addSecurityRecommendation,
+            codeExpirationMinutes
+          ).footer
         : footer.trim(),
       parameters: isAuth
         ? [{ type: "BODY" as const, text: "123456" }]
@@ -331,10 +372,12 @@ export function TemplateForm({
     headerText: !isAuth && headerType === "TEXT" ? headerText : null,
     headerUrl: !isAuth ? headerUrl || null : null,
     body: isAuth
-      ? `${addSecurityRecommendation ? "Demi keamanan, jangan bagikan kode ini. " : ""}Kode verifikasi Anda adalah 123456`
+      ? getAuthOtpCopies(lang, addSecurityRecommendation, codeExpirationMinutes)
+          .sampleBody
       : body,
     footer: isAuth
-      ? `Kode berlaku ${codeExpirationMinutes} menit.`
+      ? getAuthOtpCopies(lang, addSecurityRecommendation, codeExpirationMinutes)
+          .footer
       : footer || null,
     parameters: isAuth
       ? [{ type: "BODY", text: "123456" }]
@@ -445,11 +488,12 @@ export function TemplateForm({
                         setHeaderType("NONE")
                         setHeaderText("")
                         setHeaderUrl("")
-                        setBody(
-                          "<KODE_OTP> adalah kode verifikasi Anda. Demi keamanan, jangan bagikan kode ini kepada siapapun."
+                        const copy = getAuthOtpCopies(
+                          lang,
+                          addSecurityRecommendation,
+                          codeExpirationMinutes
                         )
-                        setFooter("Kode ini kadaluarsa dalam 5 menit.")
-                        setButtons([{ type: "OTP", otpType: "COPY_CODE" }])
+                        setOtpButtonText(copy.defaultBtn)
                       }
                     }}
                     disabled={approvedTemplateLocked}
@@ -471,7 +515,17 @@ export function TemplateForm({
                   <Label htmlFor="lang">Language</Label>
                   <Select
                     value={lang}
-                    onValueChange={setLang}
+                    onValueChange={(newLang) => {
+                      setLang(newLang)
+                      if (isAuth) {
+                        const copy = getAuthOtpCopies(
+                          newLang,
+                          addSecurityRecommendation,
+                          codeExpirationMinutes
+                        )
+                        setOtpButtonText(copy.defaultBtn)
+                      }
+                    }}
                     disabled={approvedTemplateLocked}
                   >
                     <SelectTrigger id="lang">
@@ -642,12 +696,13 @@ export function TemplateForm({
                         Add Security Recommendation
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        Tambahkan teks rekomendasi keamanan Meta resmi
-                        (&quot;Demi keamanan, jangan bagikan kode ini kepada
-                        siapapun&quot;) di dalam pesan.
+                        {lang.startsWith("en")
+                          ? 'Include Meta official security recommendation ("For your security, do not share this code.")'
+                          : 'Tambahkan teks rekomendasi keamanan resmi Meta ("Demi keamanan, jangan bagikan kode ini.")'}
                       </p>
                     </div>
                     <input
+                      id="security-rec"
                       type="checkbox"
                       checked={addSecurityRecommendation}
                       onChange={(e) =>
@@ -664,12 +719,14 @@ export function TemplateForm({
                         Code Expiration (Minutes)
                       </Label>
                       <span className="font-mono text-xs font-medium text-primary">
-                        {codeExpirationMinutes} Menit
+                        {codeExpirationMinutes}{" "}
+                        {lang.startsWith("en") ? "Minutes" : "Menit"}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Masa berlaku kode OTP (Meta mendukung 1 hingga 90 menit).
-                      Nilai ini otomatis disisipkan di footer pesan.
+                      {lang.startsWith("en")
+                        ? "OTP validity duration (1 to 90 minutes). Automatically inserted into footer."
+                        : "Masa berlaku kode OTP (1 hingga 90 menit). Otomatis disisipkan di footer pesan."}
                     </p>
                     <Input
                       id="code-exp"
@@ -696,17 +753,19 @@ export function TemplateForm({
                         htmlFor="msg-validity"
                         className="text-sm font-medium"
                       >
-                        Masa Validitas Pesan / Message TTL (Minutes)
+                        {lang.startsWith("en")
+                          ? "Message Validity / Delivery TTL (Minutes)"
+                          : "Masa Validitas Pesan / Message TTL (Minutes)"}
                       </Label>
                       <span className="font-mono text-xs font-medium text-primary">
-                        {messageValidityMinutes} Menit
+                        {messageValidityMinutes}{" "}
+                        {lang.startsWith("en") ? "Minutes" : "Menit"}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Masa berlaku pengiriman pesan ke penerima (Meta Cloud API
-                      membatasi 1 hingga 15 menit). Jika pengguna offline
-                      melebihi batas ini, pesan otomatis dibatalkan
-                      pengirimannya.
+                      {lang.startsWith("en")
+                        ? "Message delivery time-to-live (1 to 15 minutes). If recipient is offline past this time, delivery is cancelled."
+                        : "Masa berlaku pengiriman pesan ke penerima (1 hingga 15 menit). Jika pengguna offline melebihi batas ini, pesan otomatis dibatalkan pengirimannya."}
                     </p>
                     <Input
                       id="msg-validity"
@@ -725,6 +784,8 @@ export function TemplateForm({
                       className="w-36 font-mono text-sm"
                     />
                   </div>
+
+                  {/* OTP Button Text Customization */}
                   <div className="space-y-2 rounded-lg border p-3.5">
                     <Label
                       htmlFor="otp-btn-text"
@@ -733,15 +794,20 @@ export function TemplateForm({
                       OTP Copy Code Button Text
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Teks tombol yang akan diklik pengguna untuk menyalin kode
-                      OTP.
+                      {lang.startsWith("en")
+                        ? "Button label clicked by recipient to copy the OTP code."
+                        : "Teks tombol yang akan diklik pengguna untuk menyalin kode OTP."}
                     </p>
                     <Input
                       id="otp-btn-text"
                       value={otpButtonText}
                       onChange={(e) => setOtpButtonText(e.target.value)}
                       maxLength={25}
-                      placeholder="e.g. Copy Code / Salin Kode"
+                      placeholder={
+                        lang.startsWith("en")
+                          ? "e.g. Copy Code"
+                          : "e.g. Salin Kode"
+                      }
                       className="text-sm"
                     />
                   </div>
