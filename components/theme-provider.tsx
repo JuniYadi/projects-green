@@ -13,6 +13,7 @@ function ThemeProvider({
       defaultTheme="system"
       enableSystem
       disableTransitionOnChange
+      enableColorScheme={false}
       {...props}
     >
       <ThemeHotkey />

@@ -189,6 +189,20 @@ export type SendTemplateMessageResult = {
   rawStatus?: string
 }
 
+export type CreateMetaTemplateInput = {
+  name: string
+  category: string
+  language: string
+  components: Array<Record<string, unknown>>
+  message_send_ttl_seconds?: number
+}
+
+export type CreateMetaTemplateResult = {
+  id: string
+  status?: string
+  category?: string
+}
+
 export type ReplyPayloadText = {
   body: string
 }

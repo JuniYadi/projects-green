@@ -70,6 +70,8 @@ type DeviceBasicInfo = {
   id: string
   phoneNumber: string
   name?: string | null
+  verifiedName?: string | null
+  nameStatus?: string | null
   status: string
   organizationId: string
   createdAt: string
@@ -236,16 +238,32 @@ export function TabsDeviceDetail({
         </Button>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold">{device.phoneNumber}</h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="font-mono text-2xl font-semibold tracking-tight">
+                {device.phoneNumber}
+              </h1>
               <Badge
                 variant={device.status === "ACTIVE" ? "success" : "secondary"}
               >
                 {device.status}
               </Badge>
+              {device.nameStatus && (
+                <Badge
+                  variant={
+                    device.nameStatus.toUpperCase() === "APPROVED"
+                      ? "success"
+                      : device.nameStatus.toUpperCase() === "PENDING_REVIEW"
+                        ? "warning"
+                        : "destructive"
+                  }
+                  className="text-[11px] font-normal"
+                >
+                  {device.nameStatus}
+                </Badge>
+              )}
             </div>
             <p className="text-sm text-muted-foreground">
-              Device {device.name && `- ${device.name}`}
+              {device.verifiedName || device.name || device.phoneNumber}
             </p>
           </div>
           {actions && <div className="flex items-center gap-2">{actions}</div>}

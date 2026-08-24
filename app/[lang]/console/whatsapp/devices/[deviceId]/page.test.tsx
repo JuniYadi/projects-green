@@ -1,7 +1,7 @@
+import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { fireEvent, render, waitFor, within } from "@testing-library/react"
 import React from "react"
-
 const ORIGINAL_FETCH = globalThis.fetch
 
 const jsonResponse = (body: unknown) =>
@@ -42,17 +42,66 @@ const device = {
 } as const
 
 mock.module("next/navigation", () => ({
-  useParams: () => ({ lang: "en", deviceId: "cmqoeiclj0006x94c6ofe0wti" }),
-  useRouter: () => ({ push: mock(() => {}), replace: mock(() => {}) }),
-  usePathname: () => "/en/console/whatsapp/devices/cmqoeiclj0006x94c6ofe0wti",
+  useParams: () => ({
+    deviceId: "cmqoeiclj0006x94c6ofe0wti",
+    lang: "en",
+  }),
   useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({
+    replace: mock(() => {}),
+    push: mock(() => {}),
+  }),
 }))
+
+const mockUpdateProfile = mock(() =>
+  Promise.resolve({
+    ok: true,
+    profile: {
+      name: "Green Support",
+      about: "Saved profile about text",
+      websites: ["https://example.com"],
+      vertical: "OTHER",
+    },
+  })
+)
+
+mock.module("@/lib/api/whatsapp-client", () => ({
+  whatsappClient: {
+    devices: {
+      get: mock(() => Promise.resolve({ ok: true, device })),
+      profile: {
+        update: mockUpdateProfile,
+      },
+    },
+    usage: {
+      overview: mock(() =>
+        Promise.resolve({
+          ok: true,
+          month: [],
+          today: [],
+          cost: { totalAmount: 0, totalEntries: 0, byCategory: [] },
+          devices: [
+            {
+              deviceId: "cmqoeiclj0006x94c6ofe0wti",
+              phoneNumber: "+6281212345678",
+              messageInboxCount: 5,
+              messageOutboxCount: 10,
+              sessionCount: 2,
+              messageFailedCount: 0,
+            },
+          ],
+        })
+      ),
+    },
+  },
+}))
+
 mock.module("@/lib/i18n/messages", () => ({
   getMessages: () => ({
     console: {
       whatsapp: {
         devices: {
-          heading: "Devices",
+          heading: "WhatsApp Devices",
           description: "Connected WhatsApp devices",
           cardTitle: "Devices",
           cardDescription: "Manage your WhatsApp devices",
@@ -71,9 +120,8 @@ mock.module("@/lib/i18n/messages", () => ({
           cancel: "Cancel",
           saving: "Saving...",
           saveChanges: "Save",
-          notifyAdmin: "Notify admin",
-          srOpenMenu: "Open menu",
-          editPhoneNumber: "Edit phone number",
+          invalidFileType: "Invalid file type",
+          fileTooLarge: "File too large",
         },
       },
     },
@@ -144,15 +192,6 @@ describe("ConsoleWhatsAppDeviceDetailPage", () => {
       ).toBeTruthy()
     })
 
-    const calls = mockFetch.mock.calls
-    const deviceCall = calls.find(([input]) => {
-      const url =
-        typeof input === "string" || input instanceof URL
-          ? input.toString()
-          : input.url
-      return url.includes("/api/whatsapp/devices/cmqoeiclj0006x94c6ofe0wti")
-    })
-    expect(deviceCall).toBeTruthy()
     expect(
       within(view.getByTestId("whatsapp-profile-preview")).getByText("GS")
     ).toBeTruthy()

@@ -98,6 +98,24 @@ describe("selectChangedTests", () => {
     })
   })
 
+  test("selects WhatsApp templates tests for templates feature changes", () => {
+    const selection = selectChangedTests(
+      ["modules/whatsapp/templates/ui/template-detail.tsx"],
+      [
+        "modules/whatsapp/templates/api/templates.route.test.ts",
+        "modules/whatsapp/templates/ui/template-detail.test.tsx",
+      ]
+    )
+
+    expect(selection).toEqual({
+      testFiles: [
+        "modules/whatsapp/templates/api/templates.route.test.ts",
+        "modules/whatsapp/templates/ui/template-detail.test.tsx",
+      ],
+      unmappedProductionPaths: [],
+    })
+  })
+
   test("selects the OpenAPI contract test for the application entrypoint", () => {
     const selection = selectChangedTests(
       ["lib/api.ts"],

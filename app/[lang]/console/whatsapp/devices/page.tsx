@@ -1,8 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { Phone } from "@phosphor-icons/react"
+import { Info, Phone } from "@phosphor-icons/react"
 import type { ColumnDef } from "@tanstack/react-table"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -22,6 +28,7 @@ import { getMessages } from "@/lib/i18n/messages"
 import { ServiceOrderDialog } from "@/components/billing/service-order-dialog"
 import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
+import { detectCountryFromPhone } from "@/modules/whatsapp/messages/phone-number"
 import type {
   DeviceListItem,
   DeviceStatus,
@@ -54,6 +61,175 @@ function DeviceStatusBadge({ status, messages }: DeviceStatusBadgeProps) {
   return <Badge variant={variant[status]}>{label[status]}</Badge>
 }
 
+function getCountryFlagEmoji(iso: string): string {
+  if (!iso || iso.length !== 2) return ""
+  const codePoints = iso
+    .toUpperCase()
+    .split("")
+    .map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)
+  return String.fromCodePoint(...codePoints)
+}
+// ─── Meta Name Status badge ──────────────────────────────────────────────────
+
+type NameStatusBadgeProps = {
+  nameStatus: string | null | undefined
+  verifiedName: string | null | undefined
+  messages: ReturnType<typeof getMessages>
+}
+
+function NameStatusBadge({
+  nameStatus,
+  verifiedName,
+  messages,
+}: NameStatusBadgeProps) {
+  const status = (nameStatus ?? "UNSET").toUpperCase()
+  const variant: Record<
+    string,
+    "success" | "warning" | "destructive" | "secondary"
+  > = {
+    APPROVED: "success",
+    PENDING_REVIEW: "warning",
+    DECLINED: "destructive",
+    EXPIRED: "destructive",
+    UNSET: "secondary",
+  }
+
+  const label: Record<string, string> = {
+    APPROVED: messages.console.whatsapp.devices.nameApproved,
+    PENDING_REVIEW: messages.console.whatsapp.devices.namePending,
+    DECLINED: messages.console.whatsapp.devices.nameDeclined,
+    EXPIRED: messages.console.whatsapp.devices.nameExpired,
+    UNSET: messages.console.whatsapp.devices.nameUnset,
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-sm font-medium text-foreground">
+        {verifiedName || "—"}
+      </span>
+      <div>
+        <Badge
+          variant={variant[status] ?? "secondary"}
+          className="px-1.5 py-0 text-[10px] font-normal"
+        >
+          {label[status] ?? status}
+        </Badge>
+      </div>
+    </div>
+  )
+}
+
+// ─── Quota Progress Bar with Tooltip ─────────────────────────────────────────
+
+type QuotaUsageCellProps = {
+  device: DeviceListItem
+  messages: ReturnType<typeof getMessages>
+}
+
+function QuotaUsageCell({ device, messages }: QuotaUsageCellProps) {
+  const total = device.quotaBase > 0 ? device.quotaBase : 1000
+  // In the billing model: quotaBaseOut is the REMAINING base quota!
+  // So: used = total - remaining (quotaBaseOut)
+  const remaining = Math.max(0, Math.min(device.quotaBaseOut, total))
+  const used = Math.max(0, total - remaining)
+  const percent = Math.min(Math.round((used / total) * 100), 100)
+
+  // Color bar: used >= 90% (or remaining <= 10%) = red/destructive, 75-90% = amber, <75% = emerald
+  const barColor =
+    percent >= 90
+      ? "bg-destructive"
+      : percent >= 75
+        ? "bg-amber-500"
+        : "bg-emerald-500"
+
+  return (
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex w-36 cursor-pointer flex-col gap-1.5 py-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium">
+                {used.toLocaleString()} / {total.toLocaleString()}
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                {percent}%
+              </span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+                style={{ width: `${percent}%` }}
+              />
+            </div>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="flex flex-col gap-1 text-xs">
+          <p className="font-semibold">
+            {messages.console.whatsapp.devices.quotaUsage}
+          </p>
+          <p>
+            {messages.console.whatsapp.devices.quota
+              .replace("{used}", used.toLocaleString())
+              .replace("{total}", total.toLocaleString())}
+          </p>
+          <p className="text-muted-foreground">
+            {remaining === 0
+              ? `🔴 ${messages.console.whatsapp.devices.quotaExhausted}`
+              : `🟢 ${messages.console.whatsapp.devices.remaining.replace("{remaining}", remaining.toLocaleString())}`}
+          </p>
+          {device.dailyLimitMessage > 0 && (
+            <p className="text-muted-foreground">
+              {messages.console.whatsapp.devices.dailyLimit.replace(
+                "{limit}",
+                device.dailyLimitMessage.toLocaleString()
+              )}
+            </p>
+          )}
+          {Number(device.balance) > 0 && (
+            <p className="text-muted-foreground">
+              {messages.console.whatsapp.devices.balance.replace(
+                "{amount}",
+                Number(device.balance).toLocaleString("id-ID")
+              )}
+            </p>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+// ─── Header With Info Tooltip ────────────────────────────────────────────────
+
+function ColumnHeaderWithTooltip({
+  title,
+  tooltip,
+}: {
+  title: string
+  tooltip: string
+}) {
+  return (
+    <TooltipProvider delayDuration={150}>
+      <div className="flex items-center gap-1">
+        <span>{title}</span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex items-center text-muted-foreground hover:text-foreground focus:outline-hidden"
+              aria-label={tooltip}
+            >
+              <Info className="size-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs text-xs">
+            {tooltip}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    </TooltipProvider>
+  )
+}
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getDeviceHealthStatus(
@@ -67,10 +243,6 @@ function getDeviceHealthStatus(
       : "DISCONNECTED"
   }
   return "UNKNOWN"
-}
-
-function getActiveState(device: DeviceListItem): "ACTIVE" | "INACTIVE" {
-  return device.status === "ACTIVE" ? "ACTIVE" : "INACTIVE"
 }
 
 // ─── Page component ─────────────────────────────────────────────────────────
@@ -115,7 +287,8 @@ export default function WhatsAppDevicesPage() {
 
   const columns: ColumnDef<DeviceListItem>[] = [
     {
-      accessorFn: (row) => `${row.name ?? ""} ${row.phoneNumber}`,
+      accessorFn: (row) =>
+        `${row.phoneNumber} ${row.verifiedName ?? ""} ${row.name ?? ""}`,
       id: "device",
       header: ({ column }) => (
         <DataTableColumnHeader
@@ -125,63 +298,113 @@ export default function WhatsAppDevicesPage() {
       ),
       cell: ({ row }) => {
         const device = row.original
-        const hasName = device.name !== device.phoneNumber
+        const detected = detectCountryFromPhone(device.phoneNumber)
+        const flag = detected?.iso ? getCountryFlagEmoji(detected.iso) : ""
+        const countryName = detected?.country ?? ""
+
         return (
-          <div>
-            <p className="font-medium">
-              {hasName ? device.name : device.phoneNumber}
+          <div className="flex flex-col gap-0.5">
+            <p className="font-mono text-sm font-medium tracking-tight">
+              {device.phoneNumber}
             </p>
-            {hasName && (
-              <p className="text-xs text-muted-foreground">
-                {device.phoneNumber}
+            {(flag || countryName) && (
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                {flag && <span className="text-sm leading-none">{flag}</span>}
+                <span>{countryName}</span>
               </p>
             )}
-            <p className="text-xs text-muted-foreground">
-              {device.quotaBaseOut} / {device.quotaBase}{" "}
-              {messages.console.whatsapp.devices.cardDescription}
-              {device.dailyLimitMessage > 0 &&
-                ` · ${device.dailyLimitMessage} ${messages.console.whatsapp.devices.inactive}`}
-              {Number(device.balance) > 0 &&
-                ` · ${messages.console.whatsapp.devices.cardTitle}: Rp${Number(device.balance).toLocaleString("id-ID")}`}
-            </p>
           </div>
+        )
+      },
+    },
+    {
+      id: "quotaUsage",
+      header: () => (
+        <ColumnHeaderWithTooltip
+          title={messages.console.whatsapp.devices.quotaUsage}
+          tooltip={messages.console.whatsapp.devices.quotaUsageTooltip}
+        />
+      ),
+      cell: ({ row }) => (
+        <QuotaUsageCell device={row.original} messages={messages} />
+      ),
+    },
+    {
+      id: "displayName",
+      header: () => (
+        <ColumnHeaderWithTooltip
+          title={messages.console.whatsapp.devices.displayName}
+          tooltip={messages.console.whatsapp.devices.displayNameTooltip}
+        />
+      ),
+      cell: ({ row }) => {
+        const device = row.original
+        const name =
+          device.verifiedName ||
+          (device.name !== device.phoneNumber ? device.name : null)
+
+        return (
+          <NameStatusBadge
+            nameStatus={device.nameStatus}
+            verifiedName={name}
+            messages={messages}
+          />
         )
       },
     },
     {
       accessorKey: "status",
       header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={messages.console.whatsapp.devices.cardTitle}
-        />
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader
+            column={column}
+            title={messages.console.whatsapp.devices.statusTitle}
+          />
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center text-muted-foreground hover:text-foreground focus:outline-hidden"
+                  aria-label={messages.console.whatsapp.devices.statusTooltip}
+                >
+                  <Info className="size-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs text-xs">
+                {messages.console.whatsapp.devices.statusTooltip}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       ),
       cell: ({ row }) => (
         <DeviceStatusBadge status={row.original.status} messages={messages} />
       ),
     },
     {
-      accessorFn: getActiveState,
-      id: "activeState",
-      header: ({ column }) => (
-        <DataTableColumnHeader
-          column={column}
-          title={messages.console.whatsapp.devices.active}
-        />
-      ),
-      cell: ({ row }) => (
-        <span>
-          {row.getValue("activeState") === "ACTIVE"
-            ? messages.console.whatsapp.devices.active
-            : messages.console.whatsapp.devices.inactive}
-        </span>
-      ),
-    },
-    {
       accessorFn: getDeviceHealthStatus,
       id: "health",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Health" />
+        <div className="flex items-center gap-1">
+          <DataTableColumnHeader column={column} title="Health" />
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center text-muted-foreground hover:text-foreground focus:outline-hidden"
+                  aria-label={messages.console.whatsapp.devices.healthTooltip}
+                >
+                  <Info className="size-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs text-xs">
+                {messages.console.whatsapp.devices.healthTooltip}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       ),
       cell: ({ row }) => (
         <DeviceHealthBadge
@@ -204,7 +427,7 @@ export default function WhatsAppDevicesPage() {
                   locale,
                 })}
               >
-                Details
+                {messages.console.whatsapp.devices.manage}
               </Link>
             </Button>
           )
@@ -327,7 +550,7 @@ export default function WhatsAppDevicesPage() {
         </div>
         <Button size="sm" onClick={() => setIsOrderOpen(true)}>
           <Phone className="mr-2 size-4" />
-          Sambungkan Device Baru
+          {messages.console.whatsapp.devices.connectNewDevice}
         </Button>
       </div>
       <Card>
@@ -353,7 +576,7 @@ export default function WhatsAppDevicesPage() {
                 onClick={() => setIsOrderOpen(true)}
               >
                 <Phone className="mr-2 size-4" />
-                Sambungkan Device Baru
+                {messages.console.whatsapp.devices.connectNewDevice}
               </Button>
             </div>
           ) : (
@@ -375,15 +598,6 @@ export default function WhatsAppDevicesPage() {
                     { label: "Inactive", value: "NON_ACTIVE" },
                     { label: "Disconnected", value: "DISCONNECTED" },
                     { label: "Unknown", value: "UNKNOWN" },
-                  ],
-                },
-                {
-                  columnId: "activeState",
-                  allLabel: "All Active States",
-                  label: "Active",
-                  options: [
-                    { label: "Active", value: "ACTIVE" },
-                    { label: "Inactive", value: "INACTIVE" },
                   ],
                 },
               ]}

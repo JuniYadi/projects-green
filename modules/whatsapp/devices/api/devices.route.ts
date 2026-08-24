@@ -78,6 +78,10 @@ const toUnauthorized = (set: RouteSet) => {
   set.status = 401
   return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
 }
+const toBadRequest = (set: RouteSet, message: string) => {
+  set.status = 400
+  return { ok: false, error: "BAD_REQUEST", message }
+}
 
 const toQueueUnavailable = (set: RouteSet) => {
   set.status = 503
@@ -408,8 +412,34 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
         console.error("[WhatsAppDevices] Template sync enqueue failed:", error)
         return toQueueUnavailable(set)
       }
-
       return { ok: true, message: "Sync job enqueued." }
+    }
+  )
+  .post(
+    "/:id/pull-templates",
+    async ({ request, params: { id }, set }: any) => {
+      const whatsappAuth = await resolveDeviceAuth(request)
+      if (!whatsappAuth) return toUnauthorized(set)
+      if (!whatsappAuth.organizationId) {
+        return toBadRequest(set, "Organization context required.")
+      }
+
+      try {
+        const { syncTemplatesFromMeta } =
+          await import("../business-profile.service")
+        const result = await syncTemplatesFromMeta(
+          id,
+          whatsappAuth.organizationId
+        )
+        return { ok: true, ...result }
+      } catch (error: any) {
+        set.status = 500
+        return {
+          ok: false,
+          error: "PULL_TEMPLATES_FAILED",
+          message: error?.message || "Failed to pull templates from Meta",
+        }
+      }
     }
   )
   // POST /:id/regenerate-signing-secret — regenerate webhook HMAC signing secret

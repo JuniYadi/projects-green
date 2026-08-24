@@ -16,6 +16,7 @@ import {
   resolveTemplatePreviewValues,
   WhatsAppTemplatePreview,
   TemplateLanguageBadge,
+  WhatsAppFormattedText,
 } from "./template-preview"
 import type { WhatsAppTemplateLanguage } from "@/lib/api/whatsapp-client"
 
@@ -224,7 +225,6 @@ describe("WhatsAppTemplatePreview", () => {
     expect(container.textContent).toContain("No preview content")
   })
 })
-
 // ─── TemplateLanguageBadge ────────────────────────────────────────────────────
 
 describe("TemplateLanguageBadge", () => {
@@ -238,5 +238,45 @@ describe("TemplateLanguageBadge", () => {
     const { container } = render(<TemplateLanguageBadge lang="en" />)
     expect(container.textContent).toContain("en")
     expect(container.textContent).toContain("English")
+  })
+})
+
+// ─── WhatsAppFormattedText ───────────────────────────────────────────────────
+
+describe("WhatsAppFormattedText", () => {
+  it("renders bold text wrapped in *", () => {
+    const { container } = render(
+      <WhatsAppFormattedText text="Hello *World*!" />
+    )
+    const strong = container.querySelector("strong")
+    expect(strong).not.toBeNull()
+    expect(strong?.textContent).toBe("World")
+  })
+
+  it("renders italic text wrapped in _", () => {
+    const { container } = render(
+      <WhatsAppFormattedText text="This is _italic_ style" />
+    )
+    const em = container.querySelector("em")
+    expect(em).not.toBeNull()
+    expect(em?.textContent).toBe("italic")
+  })
+
+  it("renders strikethrough text wrapped in ~", () => {
+    const { container } = render(
+      <WhatsAppFormattedText text="Discount ~Rp 100.000~ Rp 50.000" />
+    )
+    const del = container.querySelector("del")
+    expect(del).not.toBeNull()
+    expect(del?.textContent).toBe("Rp 100.000")
+  })
+
+  it("renders monospace text wrapped in ```", () => {
+    const { container } = render(
+      <WhatsAppFormattedText text="Use code ```PROMO2026``` at checkout" />
+    )
+    const code = container.querySelector("code")
+    expect(code).not.toBeNull()
+    expect(code?.textContent).toBe("PROMO2026")
   })
 })

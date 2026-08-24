@@ -98,15 +98,27 @@ _Tujuan:_ Mengirimkan kode verifikasi identitas dan keamanan akun sekali pakai (
 
 ---
 
-## 3. Penyebab Template Ditolak Meta (dan Solusinya)
+## 3. Aturan Pre-Review Meta & Asisten Klasifikasi Otomatis
 
-Meta meninjau pengajuan template menggunakan sistem AI dan auditor manual. Jika template Anda ditolak atau dialihkan kategorinya, periksa 4 penyebab umum berikut:
+Untuk mencegah penolakan tiba-tiba dari Meta, **Console Template Builder** dilengkapi dengan mesin validasi aturan cerdas yang mengevaluasi teks secara real-time:
+
+| Pola Kata Kunci / Format | Maksud Terdeteksi | Panduan & Rekomendasi Kategori Otomatis |
+| :--- | :--- | :--- |
+| **`otp`, `kode verifikasi`, `kode keamanan`, `verification code`** | Autentikasi | **Peringatan:** Meta mewajibkan kategori **`AUTHENTICATION`** dengan format preset resmi. Kategori Utility/Marketing akan ditolak (`INCORRECT_CATEGORY`). |
+| **`promo`, `diskon`, `voucher`, `ayo`, `segera`, `buruan`, `dapatkan`, `pesan sekarang`, `belanja sekarang`** | Promosi / Ajakan (Call to Action) | **Peringatan:** Kata ajakan atau promosi/diskon pada kategori **`UTILITY`** akan memicu penolakan Meta atau reklasifikasi paksa ke **`MARKETING`**. |
+| **`{{1}}` di akhir teks** | Pelanggaran Boundary | **Peringatan:** WhatsApp membatasi variabel mengambang di akhir kalimat. Tambahkan tanda baca atau teks penutup setelah placeholder. |
+| **Variabel bertumpuk `{{1}}{{2}}`** | Format Tidak Valid | **Error:** Meta menolak variabel berdampingan tanpa spasi atau kata pemisah. |
+
+## 4. Penyebab Template Ditolak Meta (dan Solusinya)
+
+Meta meninjau pengajuan template menggunakan sistem AI dan auditor manual. Jika template Anda ditolak atau dialihkan kategorinya, periksa penyebab umum berikut:
 
 ```mermaid
 graph TD
     A[Pengajuan Template Baru] --> B{Peninjauan Meta}
     B -->|Sesuai Aturan Kategori| C[APPROVED & SYNCED]
     B -->|Ada Kata Promosi di Utility| D[Dialihkan ke Kategori MARKETING]
+    B -->|OTP di Kategori Utility/Marketing| G[REJECTED: INCORRECT_CATEGORY]
     B -->|Kurang Nilai Contoh Variabel| E[REJECTED: Format Tidak Valid]
     B -->|Produk Terlarang / Phishing| F[REJECTED: Melanggar Kebijakan]
 ```
@@ -117,25 +129,26 @@ graph TD
 - **Tindakan Meta**: Ditolak langsung atau otomatis diubah menjadi `MARKETING`.
 - **Solusi**: Jaga pesan utility tetap faktual murni transaksi, atau ajukan sejak awal sebagai `MARKETING`.
 
-### 2. Tidak Mengisi Contoh Nilai Variabel (_Sample Values_)
+### 2. Mengirimkan Kode OTP pada Kategori Utility / Marketing
+
+- **Penyebab**: Mengajukan pesan kode verifikasi login / OTP secara kustom dengan kategori `UTILITY`.
+- **Tindakan Meta**: Ditolak otomatis oleh Meta dengan status `INCORRECT_CATEGORY`.
+- **Solusi**: Ubah kategori template menjadi `AUTHENTICATION` dan manfaatkan template preset Meta yang dilengkapi tombol 1-tap Copy Code.
+
+### 3. Tidak Mengisi Contoh Nilai Variabel (_Sample Values_)
 
 - **Penyebab**: Menggunakan variabel `{{1}}`, `{{2}}` tanpa mengisi kolom contoh teks kalimat di formulir builder.
 - **Tindakan Meta**: Ditolak karena sistem review tidak dapat memahami konteks kalimat.
 - **Solusi**: Selalu isi contoh nilai variabel yang realistis (contoh: `Budi`, `INV-12345`) saat pembuatan template.
 
-### 3. Variabel Menggantung Tanpa Konteks
+### 4. Variabel Menggantung Tanpa Konteks
 
 - **Penyebab**: Menaruh variabel berurutan tanpa kalimat penjelas (contoh: `Kode Anda adalah {{1}} {{2}} {{3}}`).
 - **Solusi**: Beri penjelasan fungsi setiap variabel: `Kode aktivasi Anda adalah {{1}}. Berlaku selama {{2}} menit.`
 
-### 4. Pelanggaran Kebijakan Perdagangan Meta
-
-- **Penyebab**: Mempromosikan produk terlarang (obat tanpa resep, pinjaman ilegal, judi, tembakau) atau pesan ancaman palsu (_"Akun Anda akan ditutup dalam 5 menit jika tidak klik link ini"_).
-- **Solusi**: Pastikan seluruh konten mematuhi Kebijakan Bisnis & Perdagangan WhatsApp resmi.
-
 ---
 
-## 4. Indikator yang Mengubah Template Menjadi "Marketing"
+## 5. Indikator yang Mengubah Template Menjadi "Marketing"
 
 Meta akan otomatis menganggap template sebagai **`MARKETING`** jika terdapat **salah satu** indikator berikut:
 

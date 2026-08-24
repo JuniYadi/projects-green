@@ -1,10 +1,14 @@
-import { describe, expect, it } from "bun:test"
-import { render } from "@testing-library/react"
+import "@/test/register"
+import { beforeEach, describe, expect, it } from "bun:test"
+import { cleanup, render } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { TemplateForm } from "./template-form"
 
 describe("TemplateForm", () => {
+  beforeEach(() => {
+    cleanup()
+  })
   it("renders with default category UTILITY and language id", async () => {
     const user = userEvent.setup()
     let submittedData: Record<string, unknown> | null = null

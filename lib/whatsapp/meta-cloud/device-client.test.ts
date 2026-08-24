@@ -212,6 +212,44 @@ describe("WhatsAppDeviceClient message methods", () => {
     }
   })
 })
+describe("WhatsAppDeviceClient template methods", () => {
+  beforeEach(() => {
+    mockRequest.mockClear()
+  })
+
+  it("creates template on Meta Cloud API with proper components", async () => {
+    mockRequest.mockResolvedValueOnce({
+      id: "meta-tpl-123",
+      status: "PENDING",
+      category: "UTILITY",
+    })
+
+    const client = createClient()
+    const result = await client.createTemplate({
+      name: "welcome_message",
+      category: "UTILITY",
+      language: "id",
+      components: [{ type: "BODY", text: "Selamat datang {{1}}" }],
+    })
+
+    expect(result).toEqual({
+      id: "meta-tpl-123",
+      status: "PENDING",
+      category: "UTILITY",
+    })
+    expect(mockRequest).toHaveBeenCalledWith(
+      "CREATE_TEMPLATE",
+      expect.stringContaining("waba-1/message_templates"),
+      "POST",
+      {
+        name: "welcome_message",
+        category: "UTILITY",
+        language: "id",
+        components: [{ type: "BODY", text: "Selamat datang {{1}}" }],
+      }
+    )
+  })
+})
 
 // ─── Catalog tests ───────────────────────────────────────────────────────────
 

@@ -2,6 +2,7 @@ import "@/test/register"
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import {
   getProfile,
+  syncTemplatesFromMeta,
   updateProfile,
   uploadProfilePicture,
   DeviceNoPhoneIdError,
@@ -12,12 +13,35 @@ import { DeviceNotFoundError, DeviceNotOwnedError } from "./devices.schemas"
 
 const mockFindUnique = mock(async (_args?: unknown): Promise<unknown> => null)
 const mockUpdate = mock(async (_args?: unknown): Promise<unknown> => null)
+const mockTemplateFindFirst = mock(
+  async (_args?: unknown): Promise<unknown> => null
+)
+const mockTemplateCreate = mock(
+  async (_args?: unknown): Promise<unknown> => ({
+    id: "template-created",
+    languages: [],
+  })
+)
+const mockTemplateLanguageCreate = mock(async (_args?: unknown) => ({}))
+const mockTemplateUpdate = mock(
+  async (_args?: unknown): Promise<unknown> => null
+)
+const mockTemplateLanguageUpdate = mock(async (_args?: unknown) => ({}))
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
     whatsappDevice: {
       findUnique: mockFindUnique,
       update: mockUpdate,
+    },
+    whatsappTemplate: {
+      findFirst: mockTemplateFindFirst,
+      create: mockTemplateCreate,
+      update: mockTemplateUpdate,
+    },
+    whatsappTemplateLanguage: {
+      create: mockTemplateLanguageCreate,
+      update: mockTemplateLanguageUpdate,
     },
   },
 }))
@@ -52,6 +76,11 @@ describe("business-profile.service", () => {
   beforeEach(() => {
     mockFindUnique.mockClear()
     mockUpdate.mockClear()
+    mockTemplateFindFirst.mockClear()
+    mockTemplateCreate.mockClear()
+    mockTemplateLanguageCreate.mockClear()
+    mockTemplateUpdate.mockClear()
+    mockTemplateLanguageUpdate.mockClear()
     mockGetBusinessProfile.mockClear()
     mockUpdateBusinessProfile.mockClear()
     mockUploadProfilePicture.mockClear()
@@ -256,5 +285,91 @@ describe("business-profile.service", () => {
       messaging_product: "whatsapp",
       profile_picture_handle: "handle-123",
     })
+  })
+  it("syncTemplatesFromMeta syncs templates across cursor pages", async () => {
+    mockFindUnique.mockImplementationOnce(async () => ({
+      id: "d-1",
+      organizationId: "org-1",
+      token: "token",
+      tokenEncrypted: null,
+      tokenIv: null,
+      whatsappPhoneId: "phone-1",
+      whatsappBusinessAccountId: "waba-1",
+      whatsappVersion: "v22.0",
+      whatsappMetaApp: { metaAppId: "app-1" },
+    }))
+
+    const requestedUrls: URL[] = []
+    const originalFetch = globalThis.fetch
+    const mockFetch = mock(async (input: string | URL | Request) => {
+      const pageUrl = new URL(input.toString())
+      requestedUrls.push(pageUrl)
+
+      if (requestedUrls.length === 1) {
+        return new Response(
+          JSON.stringify({
+            data: [
+              {
+                id: "meta-1",
+                name: "first_template",
+                language: "en_US",
+                status: "APPROVED",
+                category: "UTILITY",
+                components: [{ type: "BODY", text: "First" }],
+              },
+            ],
+            paging: {
+              cursors: { after: "cursor-page-2" },
+              next: "https://graph.facebook.com/v22.0/next",
+            },
+          })
+        )
+      }
+
+      return new Response(
+        JSON.stringify({
+          data: [
+            {
+              id: "meta-2",
+              name: "second_template",
+              language: "id",
+              status: "PENDING",
+              category: "MARKETING",
+              components: [{ type: "BODY", text: "Second" }],
+            },
+          ],
+        })
+      )
+    })
+    const fetchMock = mockFetch as unknown as typeof fetch
+    globalThis.fetch = fetchMock
+
+    try {
+      const result = await syncTemplatesFromMeta("d-1", "org-1")
+
+      expect(result).toEqual({ syncedCount: 2, totalMetaCount: 2 })
+      expect(mockTemplateCreate).toHaveBeenCalledTimes(2)
+      expect(mockTemplateCreate).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          data: expect.objectContaining({ slug: "first_template" }),
+        })
+      )
+      expect(mockTemplateCreate).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          data: expect.objectContaining({ slug: "second_template" }),
+        })
+      )
+      expect(requestedUrls).toHaveLength(2)
+      expect(requestedUrls[0].searchParams.get("after")).toBeNull()
+      expect(requestedUrls[1].searchParams.get("after")).toBe("cursor-page-2")
+      expect(requestedUrls[0].searchParams.get("limit")).toBe("100")
+      expect(requestedUrls[0].searchParams.get("fields")).toBe(
+        "name,language,status,category,components,rejected_reason"
+      )
+    } finally {
+      globalThis.fetch = originalFetch
+    }
   })
 })

@@ -70,10 +70,29 @@ mock.module("@/lib/i18n/messages", () => ({
           description: "Manage your WhatsApp devices",
           cardTitle: "Devices",
           cardDescription: "Connected WhatsApp devices",
+          connectNewDevice: "Connect New Device",
+          quotaUsage: "Quota Usage",
+          quotaUsageTooltip: "Current message quota consumed",
+          displayName: "Display Name",
+          displayNameTooltip: "Official Meta-verified display name",
+          statusTitle: "Status",
+          statusTooltip: "Device activation status",
+          healthTooltip: "Connection health to Meta API",
+          namePending: "Pending Review",
+          nameDeclined: "Declined",
+          nameExpired: "Expired",
+          nameUnset: "Unset",
+          quota: "Quota: {used} / {total} msgs",
+          dailyLimit: "Daily limit: {limit} msgs",
+          balance: "Balance: Rp{amount}",
+          remaining: "{remaining} msgs left",
+          quotaExhausted: "Quota exhausted",
+          manage: "Manage",
           noDevices: "No devices found",
-          noDevicesDescription: "Add a device to get started",
           active: "Active",
           inactive: "Inactive",
+          disconnected: "Disconnected",
+          unknown: "Unknown",
           unableToLoad: "Unable to load devices",
           notifyAdmin: "Contact admin to activate",
         },
@@ -81,7 +100,6 @@ mock.module("@/lib/i18n/messages", () => ({
     },
   }),
 }))
-
 mock.module("@/lib/i18n/pathname", () => ({
   localizePathname: (opts: { pathname: string; locale: string }) =>
     `/en${opts.pathname}`,
@@ -112,7 +130,7 @@ describe("WhatsAppDevicesPage", () => {
     view.unmount()
   })
 
-  it("shows filter labels All Status and All Active States", async () => {
+  it("shows filter label All Status", async () => {
     const view = render(<WhatsAppDevicesPage />)
     await waitFor(() => {
       expect(
@@ -120,7 +138,7 @@ describe("WhatsAppDevicesPage", () => {
       ).toBeInTheDocument()
     })
     const comboboxes = view.getAllByRole("combobox")
-    expect(comboboxes.length).toBeGreaterThanOrEqual(2)
+    expect(comboboxes.length).toBeGreaterThanOrEqual(1)
 
     view.unmount()
   })
@@ -160,28 +178,28 @@ describe("WhatsAppDevicesPage", () => {
     view.unmount()
   })
 
-  it("shows Details action for active device", async () => {
+  it("shows Manage action for active device", async () => {
     const view = render(<WhatsAppDevicesPage />)
     await waitFor(() => {
       expect(view.getByText("Support Line")).toBeInTheDocument()
     })
     await tick(100)
 
-    // Active device should have a Details link
-    const detailsLinks = view.getAllByText("Details")
-    expect(detailsLinks.length).toBeGreaterThan(0)
+    // Active device should have a Manage link
+    const manageLinks = view.getAllByText("Manage")
+    expect(manageLinks.length).toBeGreaterThan(0)
 
     view.unmount()
   })
 
-  it("opens ServiceOrderDialog when clicking Sambungkan Device Baru button", async () => {
+  it("opens ServiceOrderDialog when clicking Connect New Device button", async () => {
     const view = render(<WhatsAppDevicesPage />)
     await waitFor(() => {
       expect(view.getByText("Support Line")).toBeInTheDocument()
     })
 
     const connectBtn = view.getAllByRole("button", {
-      name: /sambungkan device baru/i,
+      name: /connect new device/i,
     })[0]
     expect(connectBtn).toBeDefined()
     fireEvent.click(connectBtn)

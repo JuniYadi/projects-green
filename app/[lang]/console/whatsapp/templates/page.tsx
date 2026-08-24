@@ -1,11 +1,29 @@
 "use client"
 
+import * as React from "react"
 import { Plus, ArrowsClockwise } from "@phosphor-icons/react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
+import {
+  CheckCircle,
+  Clock,
+  XCircle,
+  CloudCheck,
+  CloudArrowUp,
+  CloudSlash,
+  Question,
+} from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Card,
   CardContent,
@@ -22,7 +40,10 @@ import {
 import { TemplateList } from "@/modules/whatsapp/templates/ui/template-list"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
+import {
+  whatsappClient,
+  type WhatsAppTemplate,
+} from "@/lib/api/whatsapp-client"
 import { TemplateLanguageBadge } from "@/modules/whatsapp/templates/ui/template-preview"
 
 export default function ConsoleTemplatesPage() {
@@ -35,65 +56,259 @@ export default function ConsoleTemplatesPage() {
     locale,
   })
 
-  const { templates, loading, error, reload } = useTemplates()
-  const { sync, syncing } = useSyncTemplate()
+  const [devices, setDevices] = React.useState<
+    Array<{
+      id: string
+      phoneNumber: string
+      verifiedName?: string | null
+      name?: string | null
+    }>
+  >([])
+  const [loadingDevices, setLoadingDevices] = React.useState<boolean>(true)
+  const [selectedDeviceId, setSelectedDeviceId] = React.useState<string>("all")
+  const [isPulling, setIsPulling] = React.useState(false)
+  const [lastPullTime, setLastPullTime] = React.useState<number>(0)
+  const [cooldownRemaining, setCooldownRemaining] = React.useState<number>(0)
 
-  const handleSyncAll = async () => {
-    const unsynced = templates.filter((t) => t.syncStatus === "NOT_SYNCED")
+  const { templates, loading, error, reload } = useTemplates(
+    selectedDeviceId !== "all"
+      ? { whatsappDeviceId: selectedDeviceId }
+      : undefined
+  )
+  const { sync: _sync } = useSyncTemplate()
+  // Load devices for device selector
+  React.useEffect(() => {
+    void (async () => {
+      setLoadingDevices(true)
+      try {
+        const res = await whatsappClient.devices.list()
+        if (res.devices) {
+          setDevices(res.devices)
+          if (res.devices.length > 0) {
+            setSelectedDeviceId(res.devices[0].id)
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load devices for template selector:", e)
+      } finally {
+        setLoadingDevices(false)
+      }
+    })()
+  }, [])
+  React.useEffect(() => {
+    if (lastPullTime === 0) return
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - lastPullTime) / 1000)
+      const remaining = Math.max(0, 60 - elapsed)
+      setCooldownRemaining(remaining)
+      if (remaining === 0) clearInterval(interval)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [lastPullTime])
 
-    if (unsynced.length === 0) {
-      toast.info(messages.console.whatsapp.templates.allSynced)
+  const handlePullFromMeta = async () => {
+    const targetDevice =
+      selectedDeviceId !== "all" ? selectedDeviceId : devices[0]?.id
+
+    if (!targetDevice) {
+      toast.error("Please select a device first.")
       return
     }
 
-    let synced = 0
-    let failed = 0
-    for (const template of unsynced) {
-      try {
-        await sync(template.id)
-        synced++
-      } catch {
-        failed++
+    if (cooldownRemaining > 0) {
+      toast.warning(
+        `Please wait ${cooldownRemaining}s before syncing again to protect Meta rate limits.`
+      )
+      return
+    }
+
+    setIsPulling(true)
+    try {
+      const { whatsappClient } = await import("@/lib/api/whatsapp-client")
+      const res = await whatsappClient.devices.pullTemplates(targetDevice)
+      if (res.ok) {
+        const successMsg =
+          messages.console.whatsapp.templates.pulledSuccess ||
+          "Successfully pulled {count} templates from Meta!"
+        toast.success(successMsg.replace("{count}", String(res.syncedCount)))
+        setLastPullTime(Date.now())
+        setCooldownRemaining(60)
+        await reload()
+      } else {
+        toast.error("Failed to pull templates from Meta")
       }
-    }
-
-    if (synced > 0) {
-      toast.success(
-        messages.console.whatsapp.templates.syncedCount.replace(
-          "{count}",
-          String(synced)
-        )
-      )
-      void reload()
-    }
-
-    if (failed > 0) {
+    } catch (err) {
       toast.error(
-        messages.console.whatsapp.templates.syncFailed.replace(
-          "{count}",
-          String(failed)
-        )
+        err instanceof Error
+          ? err.message
+          : "Failed to pull templates from Meta"
       )
+    } finally {
+      setIsPulling(false)
     }
   }
 
-  const syncedCount = templates.filter((t) => t.syncStatus === "SYNCED").length
-  const notSyncedCount = templates.filter(
-    (t) => t.syncStatus === "NOT_SYNCED"
+  const utilityCount = templates.filter(
+    (t) => (t.category || "UTILITY").toUpperCase() === "UTILITY"
   ).length
+  const authCount = templates.filter(
+    (t) => (t.category || "").toUpperCase() === "AUTHENTICATION"
+  ).length
+  const marketingCount = templates.filter(
+    (t) => (t.category || "").toUpperCase() === "MARKETING"
+  ).length
+  const syncedCount = templates.filter((t) => t.syncStatus === "SYNCED").length
+  const totalCount = templates.length
+  const isAllSynced = totalCount > 0 && syncedCount === totalCount
+  function formatRelativeTime(dateString: string | Date): string {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000)
 
-  function StatusDot({
-    label,
-    className,
-  }: {
-    label: string
-    className: string
-  }) {
+    if (diffSec < 45) return "just now"
+    if (diffSec < 90) return "1 min ago"
+    const diffMin = Math.floor(diffSec / 60)
+    if (diffMin < 45) return `${diffMin} mins ago`
+    if (diffMin < 90) return "1 hour ago"
+    const diffHours = Math.floor(diffMin / 60)
+    if (diffHours < 22) return `${diffHours} hours ago`
+    if (diffHours < 36) return "1 day ago"
+    const diffDays = Math.floor(diffHours / 24)
+    if (diffDays < 30) return `${diffDays} days ago`
+    const diffMonths = Math.floor(diffDays / 30)
+    if (diffMonths < 12) return `${diffMonths} months ago`
+    return `${Math.floor(diffMonths / 12)} years ago`
+  }
+
+  function TemplateStatusCell({ template }: { template: WhatsAppTemplate }) {
+    const metaStatus = template.metaStatus ?? "UNKNOWN"
+    const syncStatus = template.syncStatus ?? "NOT_SYNCED"
+
+    // Extract rejection reasons if any
+    const rejectionReasons = template.languages
+      ?.map((l) => l.rejectReason)
+      .filter((r): r is string => Boolean(r && r !== "NONE"))
+
+    const firstRejectReason =
+      rejectionReasons && rejectionReasons.length > 0
+        ? rejectionReasons[0]
+        : null
+
+    // Meta Status Config
+    const metaConfig: Record<
+      string,
+      { label: string; icon: React.ReactNode; variantClass: string }
+    > = {
+      APPROVED: {
+        label: "Approved",
+        icon: <CheckCircle weight="fill" className="size-3.5" />,
+        variantClass:
+          "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+      },
+      PENDING: {
+        label: "In Review",
+        icon: <Clock weight="fill" className="size-3.5" />,
+        variantClass:
+          "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30",
+      },
+      REJECTED: {
+        label: "Rejected",
+        icon: <XCircle weight="fill" className="size-3.5" />,
+        variantClass:
+          "bg-destructive/15 text-destructive dark:text-red-400 border-destructive/30",
+      },
+      UNKNOWN: {
+        label: "Draft",
+        icon: <Question weight="bold" className="size-3.5" />,
+        variantClass: "bg-muted text-muted-foreground border-border",
+      },
+    }
+
+    // Local Sync Config
+    const syncConfig: Record<
+      string,
+      { dotClass: string; tooltip: string; icon: React.ReactNode }
+    > = {
+      SYNCED: {
+        dotClass: "bg-emerald-500",
+        tooltip: "Synced to Meta",
+        icon: <CloudCheck className="size-3 text-emerald-500" />,
+      },
+      SYNCING: {
+        dotClass: "bg-blue-500 animate-pulse",
+        tooltip: "Sync in progress...",
+        icon: <CloudArrowUp className="size-3 animate-bounce text-blue-500" />,
+      },
+      NOT_SYNCED: {
+        dotClass: "bg-amber-500",
+        tooltip: "Draft / Not synced to Meta yet",
+        icon: <CloudSlash className="size-3 text-amber-500" />,
+      },
+      NOT_IN_META: {
+        dotClass: "bg-amber-500",
+        tooltip: "Not found in Meta Graph API",
+        icon: <CloudSlash className="size-3 text-amber-500" />,
+      },
+      FAILED: {
+        dotClass: "bg-destructive",
+        tooltip: "Sync failed with Meta",
+        icon: <CloudSlash className="size-3 text-destructive" />,
+      },
+    }
+
+    const currentMeta = metaConfig[metaStatus] ?? metaConfig.UNKNOWN
+    const currentSync = syncConfig[syncStatus] ?? syncConfig.NOT_SYNCED
+
     return (
-      <span className="inline-flex items-center gap-1.5">
-        <span className={`size-2 rounded-full ${className}`} />
-        <span className="sr-only">{label}</span>
-      </span>
+      <TooltipProvider delayDuration={150}>
+        <div className="flex items-center gap-2">
+          {metaStatus === "REJECTED" && firstRejectReason ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge
+                  variant="outline"
+                  className={`flex cursor-help items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold ${currentMeta.variantClass}`}
+                >
+                  {currentMeta.icon}
+                  {currentMeta.label}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs text-xs">
+                <p className="font-semibold text-destructive">
+                  Meta Rejection Reason:
+                </p>
+                <p className="mt-0.5 text-muted-foreground">
+                  {firstRejectReason.replace(/_/g, " ")}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <Badge
+              variant="outline"
+              className={`flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold ${currentMeta.variantClass}`}
+            >
+              {currentMeta.icon}
+              {currentMeta.label}
+            </Badge>
+          )}
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="flex cursor-help items-center p-0.5">
+                <span
+                  className={`size-2 rounded-full ring-2 ring-background ${currentSync.dotClass}`}
+                />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              <p className="font-semibold">{currentSync.tooltip}</p>
+              <p className="text-[10px] text-muted-foreground">
+                Local DB: {syncStatus}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
     )
   }
 
@@ -128,49 +343,13 @@ export default function ConsoleTemplatesPage() {
       ),
     },
     {
-      accessorFn: (row) => row.syncStatus ?? "NOT_SYNCED",
-      id: "syncStatus",
+      accessorFn: (row) =>
+        `${row.metaStatus ?? "UNKNOWN"}_${row.syncStatus ?? "NOT_SYNCED"}`,
+      id: "status",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Sync" />
+        <DataTableColumnHeader column={column} title="Status" />
       ),
-      cell: ({ row }) => {
-        const status = row.original.syncStatus ?? "NOT_SYNCED"
-        const dotClass: Record<string, string> = {
-          SYNCED: "bg-emerald-500",
-          SYNCING: "bg-blue-500 animate-pulse",
-          FAILED: "bg-red-500",
-          NOT_IN_META: "bg-amber-500",
-        }
-        return (
-          <StatusDot
-            label={status}
-            className={dotClass[status] ?? "bg-muted-foreground"}
-          />
-        )
-      },
-    },
-    {
-      accessorFn: (row) => row.metaStatus ?? "UNKNOWN",
-      id: "metaStatus",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Meta Status" />
-      ),
-      cell: ({ row }) => {
-        const status = row.original.metaStatus ?? "UNKNOWN"
-        if (status === "UNKNOWN")
-          return <span className="text-muted-foreground">—</span>
-        const dotClass: Record<string, string> = {
-          APPROVED: "bg-emerald-500",
-          PENDING: "bg-amber-500",
-          REJECTED: "bg-red-500",
-        }
-        return (
-          <StatusDot
-            label={status}
-            className={dotClass[status] ?? "bg-muted-foreground"}
-          />
-        )
-      },
+      cell: ({ row }) => <TemplateStatusCell template={row.original} />,
     },
     {
       accessorKey: "category",
@@ -187,15 +366,59 @@ export default function ConsoleTemplatesPage() {
       ),
     },
     {
-      accessorFn: (row) => row.whatsappDeviceId ?? "",
+      accessorFn: (row) => {
+        const matched = devices.find((d) => d.id === row.whatsappDeviceId)
+        return matched
+          ? `${matched.verifiedName || matched.name || ""} ${matched.phoneNumber}`
+          : "Any device"
+      },
       id: "whatsappDeviceId",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Device" />
       ),
-      cell: ({ row }) =>
-        row.original.whatsappDeviceId
-          ? row.original.whatsappDeviceId
-          : "Any device",
+      cell: ({ row }) => {
+        const deviceId = row.original.whatsappDeviceId
+        if (!deviceId) {
+          return (
+            <Badge
+              variant="outline"
+              className="text-xs font-normal text-muted-foreground"
+            >
+              All Devices
+            </Badge>
+          )
+        }
+
+        const matched = devices.find((d) => d.id === deviceId)
+        const displayName =
+          matched?.verifiedName || matched?.name || matched?.phoneNumber
+        const phone = matched?.phoneNumber
+
+        return (
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex cursor-help flex-col">
+                  <span className="text-xs font-medium text-foreground">
+                    {displayName || deviceId}
+                  </span>
+                  {phone && displayName !== phone && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {phone}
+                    </span>
+                  )}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                <p className="font-semibold">{displayName}</p>
+                <p className="font-mono text-[10px] text-muted-foreground">
+                  ID: {deviceId}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )
+      },
     },
     {
       accessorKey: "createdAt",
@@ -207,9 +430,29 @@ export default function ConsoleTemplatesPage() {
     {
       accessorKey: "updatedAt",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Last Updated Date" />
+        <DataTableColumnHeader column={column} title="Last Updated" />
       ),
-      cell: ({ row }) => new Date(row.original.updatedAt).toLocaleString(),
+      cell: ({ row }) => {
+        const date = new Date(row.original.updatedAt)
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+        const formattedFull = `${date.toLocaleString()} (${timeZone})`
+        const relative = formatRelativeTime(date)
+
+        return (
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help text-sm text-foreground/90 underline-offset-2 hover:underline">
+                  {relative}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs font-medium">
+                <p>{formattedFull}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )
+      },
     },
     {
       id: "actions",
@@ -248,45 +491,136 @@ export default function ConsoleTemplatesPage() {
               {messages.console.whatsapp.templates.cardDescription}
             </CardDescription>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {loadingDevices ? (
+              <Skeleton className="h-8 w-48 rounded-md" />
+            ) : devices.length > 0 ? (
+              <select
+                value={selectedDeviceId}
+                onChange={(e) => setSelectedDeviceId(e.target.value)}
+                className="rounded-md border bg-background px-3 py-1.5 text-xs font-medium text-foreground focus:outline-hidden"
+              >
+                {devices.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.verifiedName || d.name || d.phoneNumber} ({d.phoneNumber}
+                    )
+                  </option>
+                ))}
+              </select>
+            ) : null}
             <Button
-              onClick={() => void handleSyncAll()}
-              disabled={syncing || loading}
+              onClick={() => void handlePullFromMeta()}
+              disabled={isPulling || loading || cooldownRemaining > 0}
               variant="outline"
+              size="sm"
+              title={
+                cooldownRemaining > 0
+                  ? `Rate limit protection: available in ${cooldownRemaining}s`
+                  : "Pull approved templates from Meta Graph API into your database"
+              }
             >
               <ArrowsClockwise
-                className={`mr-2 size-4 ${syncing ? "animate-spin" : ""}`}
+                className={`mr-2 size-4 ${isPulling ? "animate-spin" : ""}`}
               />
-              {syncing
-                ? messages.console.whatsapp.templates.syncing
-                : messages.console.whatsapp.templates.syncTemplates}
+              {isPulling
+                ? messages.console.whatsapp.templates.pulling
+                : cooldownRemaining > 0
+                  ? `${messages.console.whatsapp.templates.pullFromMeta} (${cooldownRemaining}s)`
+                  : messages.console.whatsapp.templates.pullFromMeta}
             </Button>
-            <Button onClick={() => router.push(`${templatesBasePath}/new`)}>
+
+            <Button
+              onClick={() => router.push(`${templatesBasePath}/new`)}
+              size="sm"
+            >
               <Plus weight="bold" className="mr-2 size-4" />
               {messages.console.whatsapp.templates.createTemplate}
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="mb-6 grid grid-cols-3 gap-4">
-            <div className="rounded-lg border p-4 text-center">
-              <p className="text-2xl font-bold">{templates.length}</p>
-              <p className="text-xs text-muted-foreground">
-                {messages.console.whatsapp.templates.totalTemplates}
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-lg border bg-card/60 p-3.5 text-left shadow-2xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  ⚡ Utility
+                </span>
+                <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+                  Trans
+                </Badge>
+              </div>
+              <p className="mt-1 text-2xl font-bold text-foreground">
+                {utilityCount}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Notifications & alerts
               </p>
             </div>
-            <div className="rounded-lg border p-4 text-center">
-              <p className="text-2xl font-bold text-green-600">{syncedCount}</p>
-              <p className="text-xs text-muted-foreground">
-                {messages.console.whatsapp.templates.synced}
+
+            <div className="rounded-lg border bg-card/60 p-3.5 text-left shadow-2xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  🔑 Authentication
+                </span>
+                <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+                  Auth
+                </Badge>
+              </div>
+              <p className="mt-1 text-2xl font-bold text-foreground">
+                {authCount}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                OTPs & verifications
               </p>
             </div>
-            <div className="rounded-lg border p-4 text-center">
-              <p className="text-2xl font-bold text-yellow-600">
-                {notSyncedCount}
+
+            <div className="rounded-lg border bg-card/60 p-3.5 text-left shadow-2xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  📢 Marketing
+                </span>
+                <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+                  Promo
+                </Badge>
+              </div>
+              <p className="mt-1 text-2xl font-bold text-foreground">
+                {marketingCount}
               </p>
-              <p className="text-xs text-muted-foreground">
-                {messages.console.whatsapp.templates.pendingSync}
+              <p className="text-[11px] text-muted-foreground">
+                Campaigns & offers
+              </p>
+            </div>
+
+            <div
+              className={`rounded-lg border p-3.5 text-left shadow-2xs ${
+                isAllSynced
+                  ? "border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-500/10"
+                  : "border-amber-500/30 bg-amber-500/5 dark:bg-amber-500/10"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  ☁️ Meta Sync
+                </span>
+                <span
+                  className={`size-2 rounded-full ${
+                    isAllSynced ? "bg-emerald-500" : "bg-amber-500"
+                  }`}
+                />
+              </div>
+              <p
+                className={`mt-1 text-2xl font-bold ${
+                  isAllSynced
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-amber-600 dark:text-amber-400"
+                }`}
+              >
+                {syncedCount} / {totalCount}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {isAllSynced
+                  ? "100% Synced to Meta"
+                  : `${totalCount - syncedCount} Pending / Draft`}
               </p>
             </div>
           </div>
@@ -308,39 +642,27 @@ export default function ConsoleTemplatesPage() {
               searchPlaceholder="Search templates..."
               searchableColumns={[
                 "name",
-                "syncStatus",
-                "metaStatus",
+                "status",
                 "category",
                 "languages",
                 "whatsappDeviceId",
                 "createdAt",
                 "updatedAt",
               ]}
-              initialSorting={[{ id: "createdAt", desc: true }]}
+              initialSorting={[{ id: "updatedAt", desc: true }]}
               pageSize={10}
               defaultColumnVisibility={{
-                whatsappDeviceId: false,
                 createdAt: false,
                 languages: false,
               }}
               facetFilters={[
                 {
-                  columnId: "syncStatus",
-                  allLabel: "All Sync",
-                  label: "Sync",
-                  options: [
-                    { label: "Synced", value: "SYNCED" },
-                    { label: "Not Synced", value: "NOT_SYNCED" },
-                    { label: "Not in Meta", value: "NOT_IN_META" },
-                  ],
-                },
-                {
-                  columnId: "metaStatus",
-                  allLabel: "All Meta Status",
-                  label: "Meta Status",
+                  columnId: "status",
+                  allLabel: "All Status",
+                  label: "Status",
                   options: [
                     { label: "Approved", value: "APPROVED" },
-                    { label: "Pending", value: "PENDING" },
+                    { label: "In Review", value: "PENDING" },
                     { label: "Rejected", value: "REJECTED" },
                   ],
                 },

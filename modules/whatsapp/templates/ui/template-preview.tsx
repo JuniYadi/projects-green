@@ -6,6 +6,7 @@
  * and the send-message dialog.
  */
 
+import * as React from "react"
 import { Badge } from "@/components/ui/badge"
 import type { WhatsAppTemplateLanguage } from "@/lib/api/whatsapp-client"
 
@@ -81,7 +82,6 @@ export function TemplateLanguageBadge({
     </Badge>
   )
 }
-
 function getFlagEmoji(countryCode: string): string {
   if (countryCode.length !== 2) return ""
   const codePoints = countryCode
@@ -89,6 +89,84 @@ function getFlagEmoji(countryCode: string): string {
     .split("")
     .map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)
   return String.fromCodePoint(...codePoints)
+}
+
+// ─── WhatsApp Markdown formatting ────────────────────────────────────────────
+
+/**
+ * Renders WhatsApp markdown styles (*bold*, _italic_, ~strikethrough~, ```monospace```).
+ */
+export function WhatsAppFormattedText({ text }: { text: string }) {
+  if (!text) return null
+
+  // Split text by lines first to preserve line breaks
+  const lines = text.split("\n")
+
+  return (
+    <>
+      {lines.map((line, lineIdx) => (
+        <React.Fragment key={lineIdx}>
+          {lineIdx > 0 && <br />}
+          {renderWhatsAppLine(line)}
+        </React.Fragment>
+      ))}
+    </>
+  )
+}
+
+function renderWhatsAppLine(line: string): React.ReactNode {
+  if (!line) return null
+
+  // Tokenize line by markdown delimiters: ```...```, *...*, _..._, ~...~
+  // Regex matches:
+  // 1. ```code```
+  // 2. *bold*
+  // 3. _italic_
+  // 4. ~strikethrough~
+  const regex =
+    /(```[\s\S]*?```|\*(?!\s)[^*]+(?!\s)\*|_(?!\s)[^_]+(?!\s)_|~(?!\s)[^~]+(?!\s)~)/g
+  const parts = line.split(regex)
+
+  return parts.map((part, i) => {
+    if (!part) return null
+
+    if (part.startsWith("```") && part.endsWith("```") && part.length >= 6) {
+      return (
+        <code
+          key={i}
+          className="rounded bg-muted/70 px-1 py-0.5 font-mono text-[12px] text-foreground"
+        >
+          {part.slice(3, -3)}
+        </code>
+      )
+    }
+
+    if (part.startsWith("*") && part.endsWith("*") && part.length >= 2) {
+      return (
+        <strong key={i} className="font-bold text-foreground">
+          {part.slice(1, -1)}
+        </strong>
+      )
+    }
+
+    if (part.startsWith("_") && part.endsWith("_") && part.length >= 2) {
+      return (
+        <em key={i} className="italic">
+          {part.slice(1, -1)}
+        </em>
+      )
+    }
+
+    if (part.startsWith("~") && part.endsWith("~") && part.length >= 2) {
+      return (
+        <del key={i} className="line-through opacity-80">
+          {part.slice(1, -1)}
+        </del>
+      )
+    }
+
+    return <React.Fragment key={i}>{part}</React.Fragment>
+  })
 }
 
 // ─── Template body rendering ─────────────────────────────────────────────────
@@ -104,7 +182,6 @@ export function renderTemplateBody(
     return values[index] || ""
   })
 }
-
 // ─── Value resolution ────────────────────────────────────────────────────────
 
 /**
@@ -125,11 +202,21 @@ export function resolveTemplatePreviewValues(
   const values: TemplatePreviewValues = {}
   const examples = extractParameterExamples(language.parameters)
 
+  const bodyLower = (language.body ?? "").toLowerCase()
+  const isLikelyOtp =
+    bodyLower.includes("kode") ||
+    bodyLower.includes("code") ||
+    bodyLower.includes("verifikasi") ||
+    bodyLower.includes("otp") ||
+    bodyLower.includes("verification")
+
   for (const idx of indexes) {
     if (overrides?.[idx]) {
       values[idx] = overrides[idx]
     } else if (examples[idx]) {
       values[idx] = examples[idx]
+    } else if (isLikelyOtp && idx === 1) {
+      values[idx] = "549281"
     } else {
       values[idx] = `Example ${idx}`
     }
@@ -196,17 +283,22 @@ function extractParameterExamples(params: unknown): Record<number, string> {
 // ─── Button label resolution ─────────────────────────────────────────────────
 
 function getButtonLabel(btn: Record<string, unknown>): string {
-  if (typeof btn.text === "string" && btn.text) return btn.text
+  if (typeof btn.text === "string" && btn.text.trim()) return btn.text.trim()
 
   const ctaUrl = btn.cta_url as Record<string, unknown> | undefined
-  if (ctaUrl && typeof ctaUrl.display_text === "string")
-    return ctaUrl.display_text
+  if (
+    ctaUrl &&
+    typeof ctaUrl.display_text === "string" &&
+    ctaUrl.display_text.trim()
+  )
+    return ctaUrl.display_text.trim()
 
   const reply = btn.reply as Record<string, unknown> | undefined
-  if (reply && typeof reply.title === "string") return reply.title
+  if (reply && typeof reply.title === "string" && reply.title.trim())
+    return reply.title.trim()
 
-  // OTP button is special — text is "Copy code"
-  if (btn.type === "OTP") return "Copy code"
+  // OTP button fallback
+  if (btn.type === "OTP") return "Copy Code"
 
   return String(btn.type ?? "Button")
 }
@@ -218,11 +310,13 @@ export function WhatsAppTemplatePreview({
   values,
   className,
   mode = "full",
+  businessName = "Official WhatsApp Business",
 }: {
   language: WhatsAppTemplateLanguage
   values?: TemplatePreviewValues
   className?: string
   mode?: "full" | "compact"
+  businessName?: string
 }) {
   const resolved = resolveTemplatePreviewValues(language, values)
   const bodyText = renderTemplateBody(language.body, resolved)
@@ -247,13 +341,14 @@ export function WhatsAppTemplatePreview({
     )
   }
 
-  // Compact mode: render only body text (matches MessageBubble)
   if (mode === "compact") {
     return (
       <div className={className}>
-        <div className="ml-auto max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-sm text-primary-foreground shadow-sm">
+        <div className="ml-auto max-w-[85%] rounded-2xl rounded-tr-none bg-[#e7fedb] px-3.5 py-2.5 text-sm text-[#111b21] shadow-sm dark:bg-[#005c4b] dark:text-[#e9edef]">
           {bodyText && (
-            <div className="break-words whitespace-pre-wrap">{bodyText}</div>
+            <div className="leading-relaxed break-words">
+              <WhatsAppFormattedText text={bodyText} />
+            </div>
           )}
         </div>
       </div>
@@ -261,54 +356,97 @@ export function WhatsAppTemplatePreview({
   }
 
   return (
-    <div className={className}>
-      <div className="ml-auto max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-sm text-primary-foreground shadow-sm">
-        {/* Header */}
+    <div
+      className={`overflow-hidden rounded-xl border bg-[#efeae2]/60 p-4 font-sans text-[#111b21] dark:bg-[#0b141a]/90 dark:text-[#e9edef] ${className ?? ""}`}
+    >
+      {/* Mockup Header bar */}
+      <div className="mb-3 flex items-center justify-between border-b border-border/40 pb-2 text-xs">
+        <div className="flex items-center gap-1.5 font-medium text-foreground">
+          <span className="size-2 rounded-full bg-emerald-500" />
+          <span>{businessName}</span>
+        </div>
+        <span className="text-[10px] text-muted-foreground">
+          Template Message
+        </span>
+      </div>
+
+      {/* WhatsApp Message Bubble Container */}
+      <div className="relative max-w-[90%] rounded-xl rounded-tl-none border border-black/5 bg-white p-3 text-sm shadow-md sm:max-w-[80%] dark:border-white/5 dark:bg-[#1f2c34]">
+        {/* Header Text / Media Attachment */}
         {language.headerText ? (
-          <div className="mb-1.5 font-semibold">{language.headerText}</div>
+          <div className="mb-2 text-sm font-bold text-foreground">
+            {language.headerText}
+          </div>
         ) : null}
+
         {language.headerType &&
         language.headerType !== "NONE" &&
         !language.headerText ? (
-          <div className="mb-1.5 rounded-md border border-primary-foreground/20 bg-primary-foreground/10 px-2 py-3 text-center text-xs font-medium">
-            {language.headerType === "IMAGE" ||
-            language.headerType === "VIDEO" ? (
-              <span>{language.headerType} placeholder</span>
-            ) : language.headerType === "DOCUMENT" ? (
-              <div>
-                <span>Document placeholder</span>
-                {language.headerUrl && (
-                  <p className="mt-0.5 truncate text-[10px] text-primary-foreground/60">
-                    {language.headerUrl}
+          <div className="mb-2 overflow-hidden rounded-lg border border-border/40 bg-muted/40">
+            {language.headerType === "DOCUMENT" ? (
+              <div className="flex items-center gap-3 p-2.5">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-destructive/15 text-xs font-bold text-destructive uppercase">
+                  PDF
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium text-foreground">
+                    {language.headerUrl
+                      ? language.headerUrl.split("/").pop()?.split("?")[0] ||
+                        "attachment.pdf"
+                      : "Document Attachment (PDF)"}
                   </p>
-                )}
+                  <p className="text-[10px] text-muted-foreground">
+                    WhatsApp Document
+                  </p>
+                </div>
+              </div>
+            ) : language.headerType === "IMAGE" ? (
+              <div className="flex h-32 items-center justify-center bg-muted/60 text-xs text-muted-foreground">
+                <span>🖼️ Image Attachment</span>
+              </div>
+            ) : language.headerType === "VIDEO" ? (
+              <div className="flex h-32 items-center justify-center bg-muted/60 text-xs text-muted-foreground">
+                <span>🎥 Video Attachment</span>
               </div>
             ) : (
-              <span>{language.headerType} placeholder</span>
+              <div className="p-2 text-center text-xs text-muted-foreground">
+                {language.headerType} Header
+              </div>
             )}
           </div>
         ) : null}
 
-        {/* Body */}
+        {/* Message Body with WhatsApp Markdown Formatting */}
         {bodyText && (
-          <div className="break-words whitespace-pre-wrap">{bodyText}</div>
+          <div className="text-sm leading-relaxed break-words text-foreground/90">
+            <WhatsAppFormattedText text={bodyText} />
+          </div>
         )}
 
-        {/* Footer */}
+        {/* Footer Text */}
         {language.footer && (
-          <div className="mt-1.5 text-[11px] text-primary-foreground/60">
+          <div className="mt-2 text-[11px] text-muted-foreground">
             {language.footer}
           </div>
         )}
 
-        {/* Buttons — full-width rows below the bubble */}
+        {/* Timestamp and Read Status */}
+        <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
+          <span>10:45</span>
+          <span className="font-bold text-emerald-500">✓✓</span>
+        </div>
+
+        {/* Interactive Buttons — Clean WhatsApp Card Style */}
         {buttons.length > 0 && (
-          <div className="mt-2 space-y-1.5">
+          <div className="-mx-3 mt-2 -mb-3 divide-y divide-border/40 border-t border-border/40">
             {buttons.map((btn, i) => (
               <div
                 key={i}
-                className="rounded-md border border-primary-foreground/20 bg-primary-foreground/5 px-3 py-2 text-center text-xs font-medium"
+                className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-center text-xs font-semibold text-[#00a884] transition-colors hover:bg-muted/30 dark:text-[#00a884]"
               >
+                {btn.type === "URL" && <span>🔗</span>}
+                {btn.type === "PHONE_NUMBER" && <span>📞</span>}
+                {btn.type === "OTP" && <span>🔑</span>}
                 {getButtonLabel(btn)}
               </div>
             ))}

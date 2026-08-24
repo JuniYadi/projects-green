@@ -499,8 +499,12 @@ export type AppMessages = {
         cardDescription: string
         syncTemplates: string
         syncing: string
+        pullFromMeta: string
+        pulling: string
+        pulledSuccess: string
+        selectDevice: string
+        allDevices: string
         createTemplate: string
-        totalTemplates: string
         synced: string
         pendingSync: string
         allSynced: string
@@ -520,6 +524,25 @@ export type AppMessages = {
         description: string
         cardTitle: string
         cardDescription: string
+        connectNewDevice: string
+        quotaUsage: string
+        quotaUsageTooltip: string
+        displayName: string
+        displayNameTooltip: string
+        statusTitle: string
+        statusTooltip: string
+        healthTooltip: string
+        nameApproved: string
+        namePending: string
+        nameDeclined: string
+        nameExpired: string
+        nameUnset: string
+        quota: string
+        dailyLimit: string
+        balance: string
+        remaining: string
+        quotaExhausted: string
+        manage: string
         active: string
         inactive: string
         disconnected: string

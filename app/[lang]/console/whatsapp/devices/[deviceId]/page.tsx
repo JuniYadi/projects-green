@@ -3,7 +3,17 @@
 import * as React from "react"
 import { useParams } from "next/navigation"
 
-import { CheckCircle, Image, PencilSimple, Phone } from "@phosphor-icons/react"
+import {
+  CheckCircle,
+  Image,
+  PencilSimple,
+  Phone,
+  ChatCircle,
+  PaperPlaneTilt,
+  ChartDonut,
+  ArrowsClockwise,
+} from "@phosphor-icons/react"
+import { detectCountryFromPhone } from "@/modules/whatsapp/messages/phone-number"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Card,
@@ -129,79 +139,160 @@ const getInitials = (value: string) =>
     .toUpperCase() || "WA"
 
 type WhatsAppProfilePreviewProps = {
-  device: Pick<DeviceDetail, "name" | "phoneNumber" | "status">
+  device: DeviceDetail
   profile: Record<string, unknown> | null
+  messages: ReturnType<typeof getMessages>["console"]["whatsapp"]["devices"]
 }
 
 function WhatsAppProfilePreview({
   device,
   profile,
   messages,
-}: WhatsAppProfilePreviewProps & {
-  messages: ReturnType<typeof getMessages>["console"]["whatsapp"]["devices"]
-}) {
+}: WhatsAppProfilePreviewProps) {
   const displayName =
-    getProfileString(profile, "name") || device.name || messages.cardTitle
-  const about = getProfileString(profile, "about") || messages.description
+    device.verifiedName ||
+    getProfileString(profile, "name") ||
+    (device.name !== device.phoneNumber ? device.name : null) ||
+    device.phoneNumber
+  const about =
+    getProfileString(profile, "about") ||
+    getProfileString(profile, "description")
+  const email = getProfileString(profile, "email")
+  const websites = Array.isArray(profile?.websites)
+    ? (profile?.websites as string[]).filter(Boolean)
+    : []
+  const address = getProfileString(profile, "address")
+  const category =
+    getProfileString(profile, "category") ||
+    getProfileString(profile, "vertical")
   const profilePictureUrl = getProfileString(profile, "profile_picture_url")
-  const availability =
-    device.status === "ACTIVE" ? messages.active : messages.inactive
+  const isVerified =
+    device.nameStatus?.toUpperCase() === "APPROVED" ||
+    profile?.isOfficialBusinessAccount === true
 
   return (
-    <div
+    <Card
       data-testid="whatsapp-profile-preview"
-      className="overflow-hidden rounded-xl border bg-muted/20"
+      className="overflow-hidden border shadow-sm"
     >
-      <div className="flex items-center justify-between gap-3 border-b bg-emerald-700 px-4 py-3 text-white dark:bg-emerald-900">
-        <div>
-          <p className="text-xs font-medium tracking-[0.16em] text-white/70 uppercase">
-            WhatsApp profile
-          </p>
-          <p className="text-sm font-medium">{messages.cardDescription}</p>
+      <CardHeader className="bg-emerald-800 px-5 py-4 text-white dark:bg-emerald-950">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-sm font-semibold tracking-wide text-white">
+              Official WhatsApp Business Profile
+            </CardTitle>
+          </div>
+          <Badge
+            variant="outline"
+            className="border-white/20 bg-white/10 text-[11px] font-normal text-white"
+          >
+            Preview
+          </Badge>
         </div>
-        <span className="rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[11px] font-medium">
-          Preview
-        </span>
-      </div>
+      </CardHeader>
 
-      <div className="bg-emerald-50/70 px-4 py-5 dark:bg-emerald-950/20">
-        <div className="mx-auto max-w-sm overflow-hidden rounded-2xl border bg-background shadow-sm">
-          <div className="flex items-center gap-3 px-4 py-4">
-            <Avatar className="size-12 border-2 border-emerald-500/20">
-              {profilePictureUrl ? (
-                <AvatarImage
-                  src={profilePictureUrl}
-                  alt={`${displayName} profile`}
+      <CardContent className="space-y-6 p-5">
+        <div className="flex items-center gap-4">
+          <Avatar className="size-16 border-2 border-emerald-500/20 shadow-sm">
+            {profilePictureUrl ? (
+              <AvatarImage
+                src={profilePictureUrl}
+                alt={`${displayName} profile`}
+              />
+            ) : null}
+            <AvatarFallback className="bg-emerald-100 text-lg font-bold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
+              {getInitials(displayName)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <div className="flex items-center gap-1.5">
+              <p className="truncate text-base font-bold text-foreground">
+                {displayName}
+              </p>
+              {isVerified && (
+                <CheckCircle
+                  weight="fill"
+                  className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                  aria-label="Verified"
                 />
-              ) : null}
-              <AvatarFallback className="bg-emerald-100 font-semibold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
-                {getInitials(displayName)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold">{displayName}</p>
-              <p className="truncate text-xs text-muted-foreground">
-                {device.phoneNumber}
-              </p>
-              <p className="mt-1 flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                <CheckCircle weight="fill" className="size-3" />
-                {availability}
-              </p>
+              )}
+            </div>
+            <p className="font-mono text-xs text-muted-foreground">
+              {device.phoneNumber}
+            </p>
+            <div className="pt-0.5">
+              <Badge
+                variant={device.status === "ACTIVE" ? "success" : "secondary"}
+                className="px-1.5 py-0 text-[10px] font-normal"
+              >
+                {device.status === "ACTIVE"
+                  ? messages.active
+                  : messages.inactive}
+              </Badge>
             </div>
           </div>
+        </div>
 
-          <div className="border-t bg-muted/20 px-4 py-4">
-            <p className="text-xs font-medium text-muted-foreground">
-              {messages.edit}
+        <div className="rounded-xl border bg-muted/30 p-3.5 text-xs">
+          <p className="mb-1 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
+            About & Description
+          </p>
+          {about ? (
+            <p className="leading-relaxed whitespace-pre-wrap text-foreground/90">
+              {about}
             </p>
-            <p className="mt-1 text-sm leading-6">{about}</p>
+          ) : (
+            <p className="text-muted-foreground italic">
+              Not configured (click Edit Profile to add)
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-2.5 text-xs">
+          <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+            Business Details
+          </p>
+          <div className="space-y-2.5 rounded-xl border bg-card p-3.5">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Category</span>
+              {category ? (
+                <span className="font-medium">{category}</span>
+              ) : (
+                <span className="text-muted-foreground italic">— Not set</span>
+              )}
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Email</span>
+              {email ? (
+                <span className="font-medium">{email}</span>
+              ) : (
+                <span className="text-muted-foreground italic">— Not set</span>
+              )}
+            </div>
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-muted-foreground">Website</span>
+              {websites.length > 0 ? (
+                <span className="max-w-[200px] truncate text-right font-medium">
+                  {websites.join(", ")}
+                </span>
+              ) : (
+                <span className="text-muted-foreground italic">— Not set</span>
+              )}
+            </div>
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-muted-foreground">Address</span>
+              {address ? (
+                <span className="text-right font-medium">{address}</span>
+              ) : (
+                <span className="text-muted-foreground italic">— Not set</span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }
-
 export default function ConsoleWhatsAppDeviceDetailPage() {
   const params = useParams<{ deviceId: string; lang?: string }>()
   const deviceId = params?.deviceId
@@ -214,6 +305,12 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
   })
 
   const [device, setDevice] = React.useState<DeviceDetail | null>(null)
+  const [usageStats, setUsageStats] = React.useState<{
+    inbound: number
+    outbound: number
+    total: number
+  }>({ inbound: 0, outbound: 0, total: 0 })
+  const [isSyncing, setIsSyncing] = React.useState(false)
   const [pageState, setPageState] = React.useState<PageState>("loading")
   const [errorMessage, setErrorMessage] = React.useState("")
   const [profileDialogOpen, setProfileDialogOpen] = React.useState(false)
@@ -271,16 +368,39 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
     setErrorMessage("")
 
     try {
-      const response = await whatsappClient.devices.get(deviceId)
-      if (!response.ok) {
+      const [deviceRes, usageRes] = await Promise.allSettled([
+        whatsappClient.devices.get(deviceId),
+        whatsappClient.usage.overview(),
+      ])
+
+      if (deviceRes.status === "rejected" || !deviceRes.value.ok) {
         throw new Error(deviceMessages.unableToLoad)
       }
-      setDevice(response.device)
+
+      const foundDevice = deviceRes.value.device
+      setDevice(foundDevice)
       setProfileForm(
         toProfileForm(
-          response.device.whatsappProfile as Record<string, unknown> | null
+          foundDevice.whatsappProfile as Record<string, unknown> | null
         )
       )
+
+      if (usageRes.status === "fulfilled" && usageRes.value.ok) {
+        const devUsage = usageRes.value.devices?.find(
+          (d) =>
+            d.deviceId === deviceId || d.phoneNumber === foundDevice.phoneNumber
+        )
+        if (devUsage) {
+          const inCount = devUsage.messageInboxCount || 0
+          const outCount = devUsage.messageOutboxCount || 0
+          setUsageStats({
+            inbound: inCount,
+            outbound: outCount,
+            total: inCount + outCount,
+          })
+        }
+      }
+
       clearProfilePictureSelection()
       setPageState("loaded")
     } catch (err) {
@@ -289,7 +409,26 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       setErrorMessage(message)
       setPageState("error")
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deviceId])
+
+  const handleSyncMeta = async () => {
+    if (!deviceId) return
+    setIsSyncing(true)
+    try {
+      const res = await whatsappClient.devices.profile.syncMeta(deviceId)
+      if (res.ok) {
+        toast.success("Successfully synchronized profile with Meta!")
+        await loadDevice()
+      } else {
+        toast.error("Failed to synchronize with Meta")
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Sync failed")
+    } finally {
+      setIsSyncing(false)
+    }
+  }
 
   React.useEffect(() => {
     ;(async () => {
@@ -353,116 +492,221 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       : undefined
   const profilePictureUrl = profilePicturePreviewUrl || currentProfilePictureUrl
 
+  // Quota calculation (quotaBaseOut is remaining base quota)
+  const totalQuota = device.quotaBase > 0 ? device.quotaBase : 1000
+  const remainingQuota = Math.max(0, Math.min(device.quotaBaseOut, totalQuota))
+  const usedQuota = Math.max(0, totalQuota - remainingQuota)
+  const quotaPercent = Math.min(Math.round((usedQuota / totalQuota) * 100), 100)
+  const quotaBarColor =
+    quotaPercent >= 90
+      ? "bg-destructive"
+      : quotaPercent >= 75
+        ? "bg-amber-500"
+        : "bg-emerald-500"
+
+  const countryInfo = detectCountryFromPhone(device.phoneNumber)
+
   const overviewContent = (
-    <div className="grid gap-6 md:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Device Information</CardTitle>
-          <CardDescription>Basic device details</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <dl className="space-y-3">
-            <InfoRow
-              label={deviceMessages.phoneNumber}
-              value={device.phoneNumber}
-            />
-            <InfoRow label="Name" value={device.name || "-"} />
-            <InfoRow
-              label="Status"
-              value={
-                <Badge
-                  variant={device.status === "ACTIVE" ? "success" : "secondary"}
-                >
-                  {device.status}
-                </Badge>
-              }
-            />
-            <InfoRow
-              label="Usage"
-              value={`${device.quotaBaseOut} / ${device.quotaBase} messages`}
-            />
-            <InfoRow
-              label="Daily Limit"
-              value={
-                device.dailyLimitMessage > 0
-                  ? `${device.dailyLimitMessage} msg/day`
-                  : "No limit"
-              }
-            />
-          </dl>
-        </CardContent>
-      </Card>
+    <div className="space-y-6">
+      {/* ── 1. KPI Usage Summary Cards (Full Width) ────────────────────────── */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="shadow-xs">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Total Messages
+            </CardTitle>
+            <ChatCircle className="size-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {usageStats.total.toLocaleString()}
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">This month</p>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Timestamps</CardTitle>
-          <CardDescription>Device lifecycle dates</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <dl className="space-y-3">
-            <InfoRow label="Created" value={formatDate(device.createdAt)} />
-            <InfoRow
-              label="Last Updated"
-              value={formatDate(device.updatedAt)}
-            />
-          </dl>
-        </CardContent>
-      </Card>
+        <Card className="shadow-xs">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Inbound Received
+            </CardTitle>
+            <ChatCircle className="size-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {usageStats.inbound.toLocaleString()}
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Incoming messages
+            </p>
+          </CardContent>
+        </Card>
 
-      <Card className="md:col-span-2">
-        <CardHeader>
-          <CardTitle className="text-base">WhatsApp Profile</CardTitle>
-          <CardDescription>Meta business profile information</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+        <Card className="shadow-xs">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Outbound Sent
+            </CardTitle>
+            <PaperPlaneTilt className="size-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {usageStats.outbound.toLocaleString()}
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Outgoing messages
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-xs">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+              Quota Consumption
+            </CardTitle>
+            <ChartDonut className="size-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent className="space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-sm font-bold">
+                {usedQuota.toLocaleString()} / {totalQuota.toLocaleString()}
+              </span>
+              <span className="font-medium text-muted-foreground">
+                {quotaPercent}%
+              </span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${quotaBarColor}`}
+                style={{ width: `${quotaPercent}%` }}
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {remainingQuota.toLocaleString()} msgs remaining
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── 2. Two-Column Split Layout (55% Details, 45% WhatsApp Preview) ─── */}
+      <div className="grid gap-6 lg:grid-cols-12">
+        {/* Left Column: Device Information & Technical Specs */}
+        <div className="space-y-6 lg:col-span-7">
+          <Card className="shadow-xs">
+            <CardHeader className="border-b pb-4">
+              <CardTitle className="text-base font-semibold">
+                Device Information
+              </CardTitle>
+              <CardDescription>
+                Technical parameters and connection state
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-5">
+              <dl className="space-y-3.5">
+                <InfoRow
+                  label="Phone Number"
+                  value={
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono">{device.phoneNumber}</span>
+                      {countryInfo && (
+                        <Badge
+                          variant="outline"
+                          className="text-xs font-normal"
+                        >
+                          {countryInfo.country}
+                        </Badge>
+                      )}
+                    </div>
+                  }
+                />
+                <InfoRow
+                  label="Display Name"
+                  value={device.verifiedName || device.name || "—"}
+                />
+                <InfoRow
+                  label="Meta Name Status"
+                  value={
+                    device.nameStatus ? (
+                      <Badge
+                        variant={
+                          device.nameStatus.toUpperCase() === "APPROVED"
+                            ? "success"
+                            : device.nameStatus.toUpperCase() ===
+                                "PENDING_REVIEW"
+                              ? "warning"
+                              : "destructive"
+                        }
+                      >
+                        {device.nameStatus}
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary">Unset</Badge>
+                    )
+                  }
+                />
+                <InfoRow
+                  label="Device Status"
+                  value={
+                    <Badge
+                      variant={
+                        device.status === "ACTIVE" ? "success" : "secondary"
+                      }
+                    >
+                      {device.status}
+                    </Badge>
+                  }
+                />
+                <InfoRow
+                  label="Daily Limit"
+                  value={
+                    device.dailyLimitMessage > 0
+                      ? `${device.dailyLimitMessage.toLocaleString()} msgs / day`
+                      : "No Limit"
+                  }
+                />
+                {Number(device.balance) > 0 && (
+                  <InfoRow
+                    label="Device Balance"
+                    value={`Rp${Number(device.balance).toLocaleString("id-ID")}`}
+                  />
+                )}
+              </dl>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-xs">
+            <CardHeader className="border-b pb-4">
+              <CardTitle className="text-base font-semibold">
+                Lifecycle Timestamps
+              </CardTitle>
+              <CardDescription>
+                Creation and synchronisation history
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-5">
+              <dl className="space-y-3.5">
+                <InfoRow
+                  label="Created At"
+                  value={formatDate(device.createdAt)}
+                />
+                <InfoRow
+                  label="Last Synchronized"
+                  value={formatDate(device.updatedAt)}
+                />
+              </dl>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column: WhatsApp Business Profile Preview */}
+        <div className="lg:col-span-5">
           <WhatsAppProfilePreview
             device={device}
             profile={profile}
             messages={deviceMessages}
           />
-
-          <div className="border-t pt-6">
-            <div className="mb-3">
-              <p className="text-sm font-medium">Profile fields</p>
-              <p className="text-xs text-muted-foreground">
-                Raw information returned by Meta
-              </p>
-            </div>
-            <dl className="space-y-3">
-              <InfoRow
-                label="About"
-                value={(profile?.about as string) || deviceMessages.inactive}
-              />
-              <InfoRow
-                label="Description"
-                value={
-                  (profile?.description as string) || deviceMessages.inactive
-                }
-              />
-              <InfoRow
-                label="Email"
-                value={(profile?.email as string) || deviceMessages.inactive}
-              />
-              <InfoRow
-                label="Website"
-                value={
-                  (profile?.websites as string[])?.length
-                    ? (profile?.websites as string[]).join(", ")
-                    : deviceMessages.inactive
-                }
-              />
-              <InfoRow
-                label="Vertical"
-                value={(profile?.vertical as string) || deviceMessages.inactive}
-              />
-              <InfoRow
-                label="Address"
-                value={(profile?.address as string) || deviceMessages.inactive}
-              />
-            </dl>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 
@@ -691,12 +935,32 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
     </Dialog>
   )
 
+  const actionButtons = (
+    <div className="flex items-center gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => void handleSyncMeta()}
+        disabled={isSyncing}
+        title="Sync latest profile and display name from Meta Graph API"
+      >
+        <ArrowsClockwise
+          className={`mr-2 size-4 ${isSyncing ? "animate-spin" : ""}`}
+        />
+        {isSyncing ? "Syncing..." : "Sync from Meta"}
+      </Button>
+      {profileDialog}
+    </div>
+  )
+
   return (
     <TabsDeviceDetail
       device={{
         id: device.id,
         phoneNumber: device.phoneNumber,
         name: device.name,
+        verifiedName: device.verifiedName,
+        nameStatus: device.nameStatus,
         status: device.status,
         organizationId: device.organizationId,
         createdAt: device.createdAt,
@@ -705,7 +969,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       backHref={devicesPath}
       messageJourneyBasePath="/console/whatsapp/messages"
       overviewChildren={overviewContent}
-      actions={profileDialog}
+      actions={actionButtons}
     />
   )
 }

@@ -5,11 +5,18 @@ import type {
   WhatsappBillingCategory,
   WhatsappTemplateSyncStatus,
 } from "@prisma/client"
-import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
-import { requireSuperAdmin } from "@/lib/whatsapp/auth"
+import {
+  resolveAuthContext,
+  type ResolvedAuth,
+} from "@/lib/auth/resolve-proxy-auth"
 import { enqueueWhatsAppTemplateSync } from "@/lib/queue/whatsapp-template-sync"
 import { toWhatsappTemplateDTO } from "../templates.dto"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
+import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
+import { buildMetaTemplateComponents } from "../template-validator"
+
+const isSuperAdmin = (auth: ResolvedAuth) =>
+  auth.type === "workos" && auth.platformRole === "super_admin"
 
 const templateLanguageSchema = t.Object({
   lang: t.String(),
@@ -20,6 +27,7 @@ const templateLanguageSchema = t.Object({
   parameters: t.Optional(t.Any()),
   footer: t.Optional(t.String()),
   buttons: t.Optional(t.Any()),
+  authConfig: t.Optional(t.Any()),
 })
 
 const templateBodySchema = t.Object({
@@ -110,7 +118,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       const { page, limit, skip } = getPagination(query)
       const where: BodyRecord = {}
 
-      if (!requireSuperAdmin(whatsappAuth)) {
+      if (!isSuperAdmin(whatsappAuth)) {
         if (!whatsappAuth.organizationId) {
           set.status = 403
           return {
@@ -274,6 +282,131 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         buttons: lang.buttons as Prisma.InputJsonValue,
       }))
 
+      const targetOrgId =
+        whatsappAuth.type === "workos"
+          ? whatsappAuth.organizationId!
+          : bodyObj.organizationId!
+
+      // Resolve WhatsApp Device to push to Meta
+      let device = null
+      if (whatsappDeviceId) {
+        device = await prisma.whatsappDevice.findFirst({
+          where: {
+            id: whatsappDeviceId,
+            organizationId: targetOrgId,
+            status: "ACTIVE",
+          },
+        })
+      } else {
+        device = await prisma.whatsappDevice.findFirst({
+          where: {
+            organizationId: targetOrgId,
+            status: "ACTIVE",
+          },
+          orderBy: { createdAt: "desc" },
+        })
+      }
+
+      if (
+        !device ||
+        !device.tokenEncrypted ||
+        !device.whatsappBusinessAccountId
+      ) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "NO_ACTIVE_DEVICE",
+          message:
+            "An active WhatsApp device with business account credentials is required to create templates in Meta.",
+        }
+      }
+
+      const auth = whatsappAuth as AuthContext
+      let metaTemplateId: string | undefined
+      let metaStatus: WhatsappTemplateSyncStatus = "NOT_SYNCED"
+
+      // Direct push to Meta Cloud API (no queue)
+      try {
+        const client = await WhatsAppDeviceClient.fromDevice({
+          accessToken: device.tokenEncrypted,
+          phoneNumberId: device.whatsappPhoneId ?? "",
+          wabaId: device.whatsappBusinessAccountId,
+          metaAppId: device.whatsappMetaAppId ?? undefined,
+          organizationId: targetOrgId,
+        })
+
+        const isAuthCat = (category ?? "").toUpperCase() === "AUTHENTICATION"
+        for (const lang of rawLanguages!) {
+          const authCfg = (lang as Record<string, unknown>).authConfig as
+            | Record<string, unknown>
+            | undefined
+          const ttlMinutes =
+            typeof authCfg?.messageValidityMinutes === "number"
+              ? authCfg.messageValidityMinutes
+              : typeof authCfg?.messageSendTtlMinutes === "number"
+                ? authCfg.messageSendTtlMinutes
+                : undefined
+          const messageSendTtlSeconds =
+            typeof ttlMinutes === "number"
+              ? Math.max(60, Math.min(900, ttlMinutes * 60))
+              : undefined
+
+          const components = buildMetaTemplateComponents({
+            ...lang,
+            category,
+            addSecurityRecommendation: authCfg?.addSecurityRecommendation as
+              | boolean
+              | undefined,
+            codeExpirationMinutes: authCfg?.codeExpirationMinutes as
+              | number
+              | undefined,
+          })
+          const metaResult = await client.createTemplate({
+            name: slug,
+            category: (category ?? "UTILITY").toUpperCase(),
+            language: lang.lang,
+            components,
+            ...(isAuthCat && messageSendTtlSeconds
+              ? { message_send_ttl_seconds: messageSendTtlSeconds }
+              : {}),
+          })
+          if (metaResult?.id) {
+            metaTemplateId = metaResult.id
+          }
+        }
+        metaStatus = "SYNCED"
+      } catch (metaErr: unknown) {
+        const metaErrRecord =
+          metaErr && typeof metaErr === "object"
+            ? (metaErr as Record<string, unknown>)
+            : null
+        const innerError =
+          metaErrRecord?.error && typeof metaErrRecord.error === "object"
+            ? (metaErrRecord.error as Record<string, unknown>)
+            : null
+        const metaErrorMessage =
+          (typeof innerError?.message === "string" && innerError.message) ||
+          (typeof metaErrRecord?.message === "string" &&
+            metaErrRecord.message) ||
+          String(metaErr)
+
+        logWhatsappAuditEvent({
+          action: "TEMPLATE_META_CREATE_FAILED",
+          organizationId: targetOrgId,
+          adminId: auth.userId,
+          deviceId: device.id,
+          message: `Failed to push template to Meta: ${name} (${slug})`,
+          errorMessage: metaErrorMessage,
+          status: "FAILED",
+          details: { slug, name, category },
+        })
+        set.status = 502
+        return {
+          ok: false,
+          error: "META_API_ERROR",
+          message: metaErrorMessage,
+        }
+      }
       try {
         const template = await prisma.whatsappTemplate.create({
           data: {
@@ -281,13 +414,17 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
             name,
             description,
             category: category as WhatsappBillingCategory,
-            whatsappDeviceId,
-            organizationId:
-              whatsappAuth.type === "workos"
-                ? whatsappAuth.organizationId!
-                : bodyObj.organizationId!,
+            whatsappDeviceId: device.id,
+            organizationId: targetOrgId,
+            syncStatus: "SYNCED",
+            metaStatus: "PENDING",
+            lastSyncedAt: new Date(),
             languages: {
-              create: languages,
+              create: languages.map((l) => ({
+                ...l,
+                metaStatus: "PENDING",
+                isApproved: false,
+              })),
             },
           },
           include: {
@@ -295,24 +432,28 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           },
         })
 
-        const auth = whatsappAuth as AuthContext
         logWhatsappAuditEvent({
-          action: "TEMPLATE_CREATED",
+          action: "TEMPLATE_META_CREATED",
           organizationId: template.organizationId,
           adminId: auth.userId,
-          message: `Template created: ${template.name}`,
+          deviceId: device.id,
+          message: `Template created and pushed to Meta: ${template.name} (${template.slug})`,
           status: "OK",
-          details: { templateId: template.id, slug: template.slug },
+          details: {
+            templateId: template.id,
+            slug: template.slug,
+            metaTemplateId,
+            wabaId: device.whatsappBusinessAccountId,
+          },
         })
 
         return { ok: true, template: toWhatsappTemplateDTO(template) }
       } catch (err) {
-        const auth = whatsappAuth as AuthContext
         logWhatsappAuditEvent({
           action: "TEMPLATE_CREATE_FAILED",
-          organizationId: whatsappAuth.organizationId ?? "",
+          organizationId: targetOrgId,
           adminId: auth.userId,
-          message: "Template creation failed",
+          message: "Template DB creation failed after Meta push",
           errorMessage: String(err),
           status: "FAILED",
         })
@@ -371,162 +512,68 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           message: "Access denied.",
         }
       }
-
       const bodyRecord = body as BodyRecord
 
-      // ── Approved template restrictions ─────────────────────────────────
-      if (template.metaStatus === "APPROVED") {
-        const coreFields: Record<string, true> = {
-          name: true,
-          slug: true,
-          description: true,
-          category: true,
-          whatsappDeviceId: true,
-        }
-        const hasCoreField = Object.keys(coreFields).some(
-          (f) => f in bodyRecord
-        )
-        if (hasCoreField) {
-          set.status = 422
-          return {
-            ok: false,
-            error: "VALIDATION_ERROR",
-            message: "Approved templates can only add language variants.",
-          }
-        }
-
-        const languages = bodyRecord.languages as UpdateLanguage[] | undefined
-
-        if (languages && languages.length > 0) {
-          const existingLangs = new Set(template.languages.map((l) => l.lang))
-          const existingIds = new Set(template.languages.map((l) => l.id))
-
-          for (const lang of languages) {
-            if (lang.id && existingIds.has(lang.id)) {
-              set.status = 422
-              return {
-                ok: false,
-                error: "VALIDATION_ERROR",
-                message:
-                  "Approved template language variants cannot be edited.",
-              }
-            }
-            if (existingLangs.has(lang.lang)) {
-              set.status = 422
-              return {
-                ok: false,
-                error: "VALIDATION_ERROR",
-                message:
-                  "Approved template language variants cannot be edited.",
-              }
-            }
-          }
-
-          const structureSource =
-            template.languages.find(
-              (l) => l.isApproved || l.metaStatus === "APPROVED"
-            ) ??
-            template.languages[0] ??
-            null
-
-          if (!structureSource) {
-            set.status = 422
-            return {
-              ok: false,
-              error: "VALIDATION_ERROR",
-              message:
-                "No approved language variant found to validate structure against.",
-            }
-          }
-
-          for (const lang of languages) {
-            const mismatch =
-              (lang.headerType ?? "NONE") !==
-                (structureSource.headerType ?? "NONE") ||
-              (lang.headerText ?? "") !== (structureSource.headerText ?? "") ||
-              (lang.headerUrl ?? "") !== (structureSource.headerUrl ?? "") ||
-              (lang.body ?? "") !== (structureSource.body ?? "") ||
-              (lang.footer ?? "") !== (structureSource.footer ?? "") ||
-              JSON.stringify(lang.parameters ?? null) !==
-                JSON.stringify(structureSource.parameters ?? null) ||
-              JSON.stringify(lang.buttons ?? null) !==
-                JSON.stringify(structureSource.buttons ?? null)
-            if (mismatch) {
-              set.status = 422
-              return {
-                ok: false,
-                error: "VALIDATION_ERROR",
-                message:
-                  "New language variants must match the approved template structure.",
-              }
-            }
-          }
-
-          const languagesWithoutIds = languages.map((lang) => ({
-            lang: lang.lang,
-            headerType: lang.headerType,
-            headerUrl: lang.headerUrl,
-            headerText: lang.headerText,
-            body: lang.body,
-            parameters: lang.parameters as Prisma.InputJsonValue,
-            footer: lang.footer,
-            buttons: lang.buttons as Prisma.InputJsonValue,
-          }))
-
-          try {
-            const updated = await prisma.whatsappTemplate.update({
-              where: { id: params.id },
-              data: { languages: { create: languagesWithoutIds } },
-              include: { languages: true },
-            })
-
-            logWhatsappAuditEvent({
-              action: "TEMPLATE_UPDATED",
-              organizationId: updated.organizationId,
-              adminId: auth.userId,
-              message: `Template updated: ${updated.name}`,
-              status: "OK",
-            })
-
-            return { ok: true, template: toWhatsappTemplateDTO(updated) }
-          } catch (err) {
-            logWhatsappAuditEvent({
-              action: "TEMPLATE_UPDATE_FAILED",
-              organizationId: template.organizationId,
-              adminId: auth.userId,
-              message: "Template update failed",
-              errorMessage: String(err),
-              status: "FAILED",
-            })
-            throw err
-          }
+      // Only lock templates that were successfully synced and approved by Meta
+      if (
+        template.syncStatus === "SYNCED" &&
+        template.metaStatus === "APPROVED"
+      ) {
+        set.status = 422
+        return {
+          ok: false,
+          error: "TEMPLATE_IMMUTABLE",
+          message:
+            "Templates submitted to Meta cannot be modified. Create a new template instead.",
         }
       }
-
       // ── Unapproved template update ─────────────────────────────────────
       try {
         const hasLanguages =
           Array.isArray(bodyRecord.languages) && bodyRecord.languages.length > 0
+        const {
+          languages: _langs,
+          id: _id,
+          organizationId: _orgId,
+          syncStatus: _ss,
+          metaStatus: _ms,
+          lastSyncedAt: _ls,
+          createdAt: _ca,
+          updatedAt: _ua,
+          ...safeFields
+        } = bodyRecord
+
         const updateData = hasLanguages
-          ? {
-              ...bodyRecord,
+          ? ({
+              ...safeFields,
               languages: {
-                deleteMany: {},
-                create: (bodyRecord.languages as UpdateLanguage[]).map(
+                upsert: (bodyRecord.languages as UpdateLanguage[]).map(
                   (lang) => ({
-                    lang: lang.lang,
-                    headerType: lang.headerType,
-                    headerUrl: lang.headerUrl,
-                    headerText: lang.headerText,
-                    body: lang.body,
-                    parameters: lang.parameters,
-                    footer: lang.footer,
-                    buttons: lang.buttons,
+                    where: { id: lang.id ?? "" },
+                    create: {
+                      lang: lang.lang,
+                      headerType: lang.headerType,
+                      headerUrl: lang.headerUrl,
+                      headerText: lang.headerText,
+                      body: lang.body,
+                      parameters: lang.parameters as Prisma.InputJsonValue,
+                      footer: lang.footer,
+                      buttons: lang.buttons as Prisma.InputJsonValue,
+                    },
+                    update: {
+                      headerType: lang.headerType,
+                      headerUrl: lang.headerUrl,
+                      headerText: lang.headerText,
+                      body: lang.body,
+                      parameters: lang.parameters as Prisma.InputJsonValue,
+                      footer: lang.footer,
+                      buttons: lang.buttons as Prisma.InputJsonValue,
+                    },
                   })
                 ),
               },
-            }
-          : bodyRecord
+            } as Prisma.WhatsappTemplateUpdateInput)
+          : (safeFields as Prisma.WhatsappTemplateUpdateInput)
 
         const updated = await prisma.whatsappTemplate.update({
           where: { id: params.id },
@@ -545,7 +592,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         })
 
         return { ok: true, template: toWhatsappTemplateDTO(updated) }
-      } catch (err) {
+      } catch (err: unknown) {
         logWhatsappAuditEvent({
           action: "TEMPLATE_UPDATE_FAILED",
           organizationId: template.organizationId,
@@ -554,7 +601,12 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           errorMessage: String(err),
           status: "FAILED",
         })
-        throw err
+        set.status = 500
+        return {
+          ok: false,
+          error: "INTERNAL_ERROR",
+          message: String(err),
+        }
       }
     },
     {

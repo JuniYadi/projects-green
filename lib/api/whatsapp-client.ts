@@ -36,6 +36,7 @@ export interface WhatsAppTemplateLanguage {
   footer?: string | null
   isApproved?: boolean
   metaStatus?: string
+  rejectReason?: string | null
   buttons?: unknown
 }
 
@@ -93,7 +94,7 @@ async function serverFetch<T>(
     ...options,
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      ...(options?.body ? { "Content-Type": "application/json" } : {}),
       ...options?.headers,
     },
   })
@@ -184,10 +185,24 @@ export const whatsappClient = {
         message: res.data.message ?? "Sync job enqueued.",
       }
     },
+    pullTemplates: (id: string) =>
+      serverFetch<{
+        ok: boolean
+        syncedCount: number
+        totalMetaCount: number
+      }>(`/api/whatsapp/devices/${id}/pull-templates`, {
+        method: "POST",
+        body: "{}",
+      }),
     profile: {
       get: (id: string) =>
         serverFetch<{ ok: boolean; profile: BusinessProfileDTO }>(
           `/api/whatsapp/devices/${id}/profile`
+        ),
+      syncMeta: (id: string) =>
+        serverFetch<{ ok: boolean; profile: BusinessProfileDTO }>(
+          `/api/whatsapp/devices/${id}/profile/sync`,
+          { method: "POST", body: "{}" }
         ),
       update: (id: string, input: Record<string, unknown>) =>
         serverFetch<{ ok: boolean; profile: BusinessProfileDTO }>(
