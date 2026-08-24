@@ -15,7 +15,10 @@ import {
 import { getQueueRuntimeConfig } from "@/lib/queue/queue-config"
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
-import { buildMetaTemplateComponents } from "@/modules/whatsapp/templates/template-validator"
+import {
+  buildMetaTemplateComponents,
+  formatTemplateSlug,
+} from "@/modules/whatsapp/templates/template-validator"
 type MetaTemplateComponent = {
   type?: string
   format?: string
@@ -63,13 +66,6 @@ const SUPPORTED_META_STATUSES = new Set<string>([
   WhatsappTemplateMetaStatus.REJECTED,
 ])
 
-function slugifyTemplateName(name: string) {
-  return name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-}
 
 function toSupportedMetaStatus(status?: string) {
   const normalized = status?.toUpperCase()
@@ -247,17 +243,31 @@ async function upsertTemplate(
   deviceId: string,
   template: MetaTemplate
 ): Promise<"created" | "updated"> {
+  const canonicalSlug = formatTemplateSlug(template.name)
+  const hyphenatedSlug = template.name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+  const possibleSlugs = Array.from(
+    new Set([canonicalSlug, template.name, hyphenatedSlug].filter(Boolean))
+  )
+
   const existing = await prisma.whatsappTemplate.findFirst({
     where: {
       organizationId,
-      name: template.name,
+      whatsappDeviceId: deviceId,
+      OR: [
+        { slug: { in: possibleSlugs } },
+        { name: template.name },
+      ],
     },
-    select: { id: true },
+    select: { id: true, name: true, slug: true },
   })
   const metaStatus = toSupportedMetaStatus(template.status)
   const languageData = toLanguageData(template)
   const data = {
-    slug: slugifyTemplateName(template.name) || template.name,
+    slug: canonicalSlug || template.name,
     name: template.name,
     category: template.category
       ? (template.category as WhatsappBillingCategory)
@@ -383,9 +393,30 @@ export async function syncTemplates(
     where: {
       organizationId: jobData.organizationId,
       whatsappDeviceId: jobData.deviceId,
-      slug: {
-        notIn: templates.map((t) => slugifyTemplateName(t.name) || t.name),
-      },
+      AND: [
+        {
+          slug: {
+            notIn: Array.from(
+              new Set(
+                templates.flatMap((t) => [
+                  formatTemplateSlug(t.name),
+                  t.name,
+                  t.name
+                    .trim()
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, "-")
+                    .replace(/^-+|-+$/g, ""),
+                ]).filter(Boolean)
+              )
+            ),
+          },
+        },
+        {
+          name: {
+            notIn: templates.map((t) => t.name),
+          },
+        },
+      ],
       syncStatus: { not: WhatsappTemplateSyncStatus.NOT_IN_META },
     },
     data: {
@@ -489,13 +520,26 @@ export async function syncTemplateStatus(
     notInMeta: 0,
     failed: 0,
   }
-
   for (const template of templates) {
     try {
+      const canonicalSlug = formatTemplateSlug(template.name)
+      const hyphenatedSlug = template.name
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+      const possibleSlugs = Array.from(
+        new Set([canonicalSlug, template.name, hyphenatedSlug].filter(Boolean))
+      )
+
       const existing = await prisma.whatsappTemplate.findFirst({
         where: {
           organizationId: jobData.organizationId,
-          name: template.name,
+          whatsappDeviceId: jobData.deviceId,
+          OR: [
+            { slug: { in: possibleSlugs } },
+            { name: template.name },
+          ],
         },
         select: { id: true },
       })

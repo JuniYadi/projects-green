@@ -6,6 +6,7 @@ import {
   type BusinessProfileFields,
   type UpdateBusinessProfileInput,
 } from "@/lib/whatsapp/meta-cloud/types/business-profile"
+import { formatTemplateSlug } from "../templates/template-validator"
 import { DeviceNotFoundError, DeviceNotOwnedError } from "./devices.schemas"
 
 export class DeviceNoPhoneIdError extends Error {
@@ -342,12 +343,25 @@ export async function syncTemplatesFromMeta(
     const rejectReason =
       metaTpl.rejected_reason !== "NONE" ? metaTpl.rejected_reason : null
 
-    // Find or create template by (organizationId, whatsappDeviceId, slug)
+    // Find or create template by (organizationId, whatsappDeviceId, canonical slug / name)
+    const canonicalSlug = formatTemplateSlug(metaTpl.name)
+    const hyphenatedSlug = metaTpl.name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+    const possibleSlugs = Array.from(
+      new Set([canonicalSlug, metaTpl.name, hyphenatedSlug].filter(Boolean))
+    )
+
     let template = await prisma.whatsappTemplate.findFirst({
       where: {
         organizationId,
         whatsappDeviceId: deviceId,
-        slug: metaTpl.name,
+        OR: [
+          { slug: { in: possibleSlugs } },
+          { name: metaTpl.name },
+        ],
       },
       include: {
         languages: {
@@ -361,8 +375,8 @@ export async function syncTemplatesFromMeta(
         data: {
           organizationId,
           whatsappDeviceId: deviceId,
-          slug: metaTpl.name,
-          name: metaTpl.name.replace(/_/g, " "),
+          slug: canonicalSlug || metaTpl.name,
+          name: metaTpl.name,
           category,
           syncStatus: "SYNCED",
           metaStatus,
@@ -383,6 +397,7 @@ export async function syncTemplatesFromMeta(
         template = await prisma.whatsappTemplate.update({
           where: { id: template.id },
           data: {
+            slug: canonicalSlug || metaTpl.name,
             category,
             syncStatus: "SYNCED",
             metaStatus,

@@ -27,6 +27,15 @@ describe("template-validator", () => {
       )
       expect(formatTemplateSlug("Flash-Sale #2026!")).toBe("flash_sale_2026")
       expect(formatTemplateSlug("  welcome_message  ")).toBe("welcome_message")
+      expect(formatTemplateSlug("pengingat-donor-darah")).toBe(
+        "pengingat_donor_darah"
+      )
+      expect(formatTemplateSlug("Pengingat Donor Darah")).toBe(
+        "pengingat_donor_darah"
+      )
+      expect(formatTemplateSlug("pengingat_donor_darah")).toBe(
+        "pengingat_donor_darah"
+      )
     })
   })
 
