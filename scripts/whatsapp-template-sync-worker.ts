@@ -180,6 +180,131 @@ async function fetchAllTemplates(client: WhatsAppDeviceClient) {
   return templates
 }
 
+function buildMetaComponents(lang: {
+  headerType?: string | null
+  headerText?: string | null
+  headerUrl?: string | null
+  body?: string | null
+  footer?: string | null
+  buttons?: unknown
+  parameters?: unknown
+}): Array<Record<string, unknown>> {
+  const components: Array<Record<string, unknown>> = []
+
+  if (lang.headerType && lang.headerType !== "NONE") {
+    const format = lang.headerType.toUpperCase()
+    if (format === "TEXT" && lang.headerText) {
+      components.push({
+        type: "HEADER",
+        format: "TEXT",
+        text: lang.headerText,
+      })
+    } else if (["IMAGE", "VIDEO", "DOCUMENT"].includes(format)) {
+      components.push({
+        type: "HEADER",
+        format,
+        ...(lang.headerUrl ? { example: { header_handle: [lang.headerUrl] } } : {}),
+      })
+    }
+  }
+
+  if (lang.body) {
+    components.push({
+      type: "BODY",
+      text: lang.body,
+    })
+  }
+
+  if (lang.footer) {
+    components.push({
+      type: "FOOTER",
+      text: lang.footer,
+    })
+  }
+
+  if (Array.isArray(lang.buttons) && lang.buttons.length > 0) {
+    const metaButtons = (lang.buttons as Array<Record<string, unknown>>).map((b) => {
+      if (b.type === "QUICK_REPLY") {
+        return { type: "QUICK_REPLY", text: b.text }
+      }
+      if (b.type === "URL") {
+        return { type: "URL", text: b.text, url: b.url }
+      }
+      if (b.type === "PHONE_NUMBER") {
+        return { type: "PHONE_NUMBER", text: b.text, phone_number: b.phoneNumber }
+      }
+      if (b.type === "OTP") {
+        return { type: "OTP", otp_type: "COPY_CODE" }
+      }
+      return b
+    })
+    components.push({
+      type: "BUTTONS",
+      buttons: metaButtons,
+    })
+  }
+
+  return components
+}
+
+async function pushLocalTemplatesToMeta(
+  client: WhatsAppDeviceClient,
+  organizationId: string,
+  deviceId: string
+) {
+  // Find templates belonging to this org & device that need to be pushed to Meta
+  const unpushedTemplates = await prisma.whatsappTemplate.findMany({
+    where: {
+      organizationId,
+      whatsappDeviceId: deviceId,
+      OR: [
+        { syncStatus: WhatsappTemplateSyncStatus.NOT_SYNCED },
+        { metaStatus: null },
+      ],
+    },
+    include: {
+      languages: true,
+    },
+  })
+
+  for (const tpl of unpushedTemplates) {
+    for (const lang of tpl.languages) {
+      try {
+        const components = buildMetaComponents(lang)
+        const payload = {
+          name: tpl.slug || tpl.name,
+          category: tpl.category || "UTILITY",
+          language: lang.lang,
+          components,
+        }
+        const metaResult = await client.createTemplate(payload)
+        const metaStatus = toSupportedMetaStatus(metaResult.status) ?? WhatsappTemplateMetaStatus.PENDING
+
+        await prisma.whatsappTemplate.update({
+          where: { id: tpl.id },
+          data: {
+            syncStatus: WhatsappTemplateSyncStatus.SYNCED,
+            metaStatus,
+            lastSyncedAt: new Date(),
+          },
+        })
+
+        await prisma.whatsappTemplateLanguage.update({
+          where: { id: lang.id },
+          data: {
+            metaStatus,
+          },
+        })
+      } catch (err) {
+        console.warn(
+          `[whatsapp-template-sync-worker] failed to push template ${tpl.name} (${lang.lang}) to Meta:`,
+          err
+        )
+      }
+    }
+  }
+}
+
 async function upsertTemplate(
   organizationId: string,
   deviceId: string,
@@ -266,6 +391,9 @@ export async function syncTemplates(
 
   try {
     client = await createClient(jobData)
+    // 1. Push local un-synced / newly created templates to Meta Cloud API
+    await pushLocalTemplatesToMeta(client, jobData.organizationId, jobData.deviceId)
+    // 2. Pull all templates from Meta Cloud API
     templates = await fetchAllTemplates(client)
   } catch (error) {
     try {

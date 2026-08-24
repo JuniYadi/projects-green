@@ -323,12 +323,24 @@ export class WhatsAppDeviceClient {
 
     return this.httpClient.request("LIST_TEMPLATES", endpoint.toString(), "GET")
   }
+  async createTemplate(payload: {
+    name: string
+    category: string
+    language: string
+    components: Array<Record<string, unknown>>
+  }): Promise<{ id: string; status: string; category: string }> {
+    return this.httpClient.request(
+      "CREATE_TEMPLATE",
+      ENDPOINTS.TEMPLATES(this.wabaId),
+      "POST",
+      payload
+    )
+  }
 
   async refreshToken(): Promise<void> {
     // Stub as requested
     return
   }
-
   // ─── Business Profile ────────────────────────────────────────────────────────────
 
   async getBusinessProfile(
