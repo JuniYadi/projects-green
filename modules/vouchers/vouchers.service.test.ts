@@ -245,6 +245,39 @@ describe("VoucherService", () => {
 
       expect(result.code).toMatch(/^PFN-[A-Z0-9]{6}$/)
     })
+    it("creates voucher with custom static code", async () => {
+      const prisma = createMockPrisma()
+      prisma.voucher.create = mock(() => ({
+        id: "v_custom",
+        code: "DISCOUNT100",
+        prefix: null,
+        status: "ACTIVE",
+        maxClaims: 100,
+        claimedCount: 0,
+        metadataJson: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        currency: "IDR",
+      }))
+
+      const service = new VoucherService(prisma as PrismaClient)
+      const result = await service.createVoucher({
+        code: "discount100",
+        maxClaims: 100,
+        expiresAt: new Date(Date.now() + 86400000).toISOString(),
+        amount: 100000,
+        createdByWorkosUserId: "user_1",
+      })
+
+      expect(result.code).toBe("DISCOUNT100")
+      expect(prisma.voucher.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            code: "DISCOUNT100",
+          }),
+        })
+      )
+    })
 
     it("persists an explicit disabled initial status", async () => {
       const prisma = createMockPrisma()
@@ -331,11 +364,50 @@ describe("VoucherService", () => {
             }
           ).toString()
         ).toBe("0")
+        expect(
+          (
+            persistedData?.maximumDiscountAmount as {
+              toString: () => string
+            }
+          ).toString()
+        ).toBe("25000")
       }
     })
-  })
 
-  // ─── disableVoucher ───────────────────────────────────────────────────
+    it("creates promotion with custom static code", async () => {
+      const prisma = createMockPrisma()
+      prisma.voucher.create = mock(() => ({
+        id: "v_promo_custom",
+        code: "MERDEKA80",
+        prefix: null,
+        status: "ACTIVE",
+        kind: "PRODUCT_PROMOTION",
+        discountType: "PERCENTAGE",
+        discountValue: 80,
+        maxClaims: 50,
+        claimedCount: 0,
+        metadataJson: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        currency: "IDR",
+      }))
+
+      const service = new VoucherService(prisma as PrismaClient)
+      const result = await service.createPromotion({
+        code: "merdeka80",
+        maxClaims: 50,
+        expiresAt: new Date(Date.now() + 86400000).toISOString(),
+        discountType: "PERCENTAGE",
+        discountValue: 80,
+        currencyPolicy: "MATCH_CURRENCY_ONLY",
+        allowedPackageCodes: ["WHATSAPP"],
+        allowedBillingPeriods: ["MONTHLY"],
+        createdByWorkosUserId: "user_1",
+      })
+
+      expect(result.code).toBe("MERDEKA80")
+    })
+  })
 
   describe("disableVoucher", () => {
     it("disables an active voucher", async () => {

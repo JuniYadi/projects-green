@@ -11,6 +11,7 @@ import {
   VoucherTargetUserMismatchError,
   VoucherTargetOrgMismatchError,
   BillingCurrencyMismatchError,
+  VoucherCodeAlreadyExistsError,
   VoucherNotPublishableError,
   VoucherAlreadyPublishedError,
   VoucherAlreadyDisabledError,
@@ -18,8 +19,8 @@ import {
   VoucherDiscountConfigurationError,
   VoucherKindFieldMismatchError,
 } from "./vouchers.errors"
-
 type CreateVoucherData = {
+  code?: string
   prefix?: string
   maxClaims: number
   expiresAt: string
@@ -52,6 +53,7 @@ type ListVouchersParams = {
 }
 
 type CreatePromotionData = {
+  code?: string
   prefix?: string
   maxClaims: number
   expiresAt: string
@@ -180,6 +182,39 @@ export class VoucherService {
   // ─── Portal: create voucher ─────────────────────────────────────────────────
 
   async createVoucher(data: CreateVoucherData) {
+    if (data.code) {
+      const normalizedCode = data.code.trim().toUpperCase()
+      try {
+        const created = await this.prisma.voucher.create({
+          data: {
+            code: normalizedCode,
+            prefix: data.prefix ?? null,
+            maxClaims: data.maxClaims,
+            expiresAt: new Date(data.expiresAt),
+            status: data.status ?? "ACTIVE",
+            amount: new Prisma.Decimal(data.amount),
+            currency: data.currency ?? "IDR",
+            targetWorkosUserId: data.targetWorkosUserId ?? null,
+            targetOrganizationId: data.targetOrganizationId ?? null,
+            metadataJson:
+              data.metadataJson !== undefined
+                ? (data.metadataJson as Prisma.InputJsonValue)
+                : Prisma.JsonNull,
+            createdByWorkosUserId: data.createdByWorkosUserId,
+          },
+        })
+        return created
+      } catch (err) {
+        if (
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === "P2002"
+        ) {
+          throw new VoucherCodeAlreadyExistsError(normalizedCode)
+        }
+        throw err
+      }
+    }
+
     const code = await generateUniqueVoucherCode(async (candidate) => {
       try {
         await this.prisma.voucher.create({
@@ -540,52 +575,72 @@ export class VoucherService {
   // ─── Create promotion voucher ────────────────────────────────────────────────
 
   async createPromotion(data: CreatePromotionData) {
+    const buildPromotionData = (code: string) => ({
+      code,
+      prefix: data.prefix ?? null,
+      maxClaims: data.maxClaims,
+      expiresAt: new Date(data.expiresAt),
+      status: data.status ?? "ACTIVE",
+      amount: Prisma.Decimal(0),
+      currency: "IDR",
+      kind: "PRODUCT_PROMOTION" as const,
+      discountType: data.discountType,
+      discountValue: new Prisma.Decimal(data.discountValue),
+      discountCurrency: data.discountCurrency ?? null,
+      currencyPolicy: data.currencyPolicy,
+      firstCheckoutOnly: data.firstCheckoutOnly ?? false,
+      allowUpgrade: data.allowUpgrade ?? false,
+      stackable: data.stackable ?? false,
+      minimumOrderAmount:
+        data.minimumOrderAmount !== undefined &&
+        data.minimumOrderAmount !== null
+          ? new Prisma.Decimal(data.minimumOrderAmount)
+          : null,
+      maximumDiscountAmount:
+        data.maximumDiscountAmount !== undefined &&
+        data.maximumDiscountAmount !== null
+          ? new Prisma.Decimal(data.maximumDiscountAmount)
+          : null,
+      allowedPackageCodes: data.allowedPackageCodes
+        ? (data.allowedPackageCodes as Prisma.InputJsonValue)
+        : undefined,
+      allowedPlanCodes: data.allowedPlanCodes
+        ? (data.allowedPlanCodes as Prisma.InputJsonValue)
+        : undefined,
+      allowedBillingPeriods: data.allowedBillingPeriods
+        ? (data.allowedBillingPeriods as Prisma.InputJsonValue)
+        : undefined,
+      targetWorkosUserId: data.targetWorkosUserId ?? null,
+      targetOrganizationId: data.targetOrganizationId ?? null,
+      metadataJson:
+        data.metadataJson !== undefined
+          ? (data.metadataJson as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
+      createdByWorkosUserId: data.createdByWorkosUserId,
+    })
+
+    if (data.code) {
+      const normalizedCode = data.code.trim().toUpperCase()
+      try {
+        const created = await this.prisma.voucher.create({
+          data: buildPromotionData(normalizedCode),
+        })
+        return created
+      } catch (err) {
+        if (
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === "P2002"
+        ) {
+          throw new VoucherCodeAlreadyExistsError(normalizedCode)
+        }
+        throw err
+      }
+    }
+
     const code = await generateUniqueVoucherCode(async (candidate) => {
       try {
         await this.prisma.voucher.create({
-          data: {
-            code: candidate,
-            prefix: data.prefix ?? null,
-            maxClaims: data.maxClaims,
-            expiresAt: new Date(data.expiresAt),
-            status: data.status ?? "ACTIVE",
-            amount: Prisma.Decimal(0),
-            currency: "IDR",
-            kind: "PRODUCT_PROMOTION",
-            discountType: data.discountType,
-            discountValue: new Prisma.Decimal(data.discountValue),
-            discountCurrency: data.discountCurrency ?? null,
-            currencyPolicy: data.currencyPolicy,
-            firstCheckoutOnly: data.firstCheckoutOnly ?? false,
-            allowUpgrade: data.allowUpgrade ?? false,
-            stackable: data.stackable ?? false,
-            minimumOrderAmount:
-              data.minimumOrderAmount !== undefined &&
-              data.minimumOrderAmount !== null
-                ? new Prisma.Decimal(data.minimumOrderAmount)
-                : null,
-            maximumDiscountAmount:
-              data.maximumDiscountAmount !== undefined &&
-              data.maximumDiscountAmount !== null
-                ? new Prisma.Decimal(data.maximumDiscountAmount)
-                : null,
-            allowedPackageCodes: data.allowedPackageCodes
-              ? (data.allowedPackageCodes as Prisma.InputJsonValue)
-              : undefined,
-            allowedPlanCodes: data.allowedPlanCodes
-              ? (data.allowedPlanCodes as Prisma.InputJsonValue)
-              : undefined,
-            allowedBillingPeriods: data.allowedBillingPeriods
-              ? (data.allowedBillingPeriods as Prisma.InputJsonValue)
-              : undefined,
-            targetWorkosUserId: data.targetWorkosUserId ?? null,
-            targetOrganizationId: data.targetOrganizationId ?? null,
-            metadataJson:
-              data.metadataJson !== undefined
-                ? (data.metadataJson as Prisma.InputJsonValue)
-                : Prisma.JsonNull,
-            createdByWorkosUserId: data.createdByWorkosUserId,
-          },
+          data: buildPromotionData(candidate),
         })
         return true
       } catch (err) {
@@ -601,7 +656,6 @@ export class VoucherService {
 
     const created = await this.prisma.voucher.findUniqueOrThrow({
       where: { code },
-      include: { claims: true },
     })
 
     return created

@@ -35,9 +35,14 @@ describe("generateVoucherCode", () => {
     expect(codes.size).toBe(50)
   })
 
-  it("throws when prefix contains non-alpha characters", () => {
-    expect(() => generateVoucherCode("ABC123")).toThrow(
-      "Prefix must contain only uppercase letters A-Z"
+  it("allows alphanumeric prefix like PMI or SMAN1", () => {
+    const code = generateVoucherCode("SMAN1")
+    expect(code).toMatch(/^SMAN1-[A-Z0-9]{6}$/)
+  })
+
+  it("throws when prefix contains special characters", () => {
+    expect(() => generateVoucherCode("PMI_123")).toThrow(
+      "Prefix must contain only uppercase letters and digits"
     )
   })
 
