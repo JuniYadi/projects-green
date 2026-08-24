@@ -286,11 +286,19 @@ export class WhatsAppDeviceClient {
     input: CreateMetaTemplateInput
   ): Promise<CreateMetaTemplateResult> {
     const endpoint = ENDPOINTS.TEMPLATES(this.wabaId)
-    const payload = {
+    const payload: Record<string, unknown> = {
       name: input.name,
       category: input.category,
       language: input.language,
       components: input.components,
+    }
+
+    if (
+      typeof input.message_send_ttl_seconds === "number" &&
+      input.message_send_ttl_seconds >= 60 &&
+      input.message_send_ttl_seconds <= 900
+    ) {
+      payload.message_send_ttl_seconds = input.message_send_ttl_seconds
     }
 
     return this.httpClient.request<CreateMetaTemplateResult>(

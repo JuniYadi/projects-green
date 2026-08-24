@@ -151,8 +151,9 @@ export function TemplateForm({
     React.useState(true)
   const [codeExpirationMinutes, setCodeExpirationMinutes] =
     React.useState<number>(5)
+  const [messageValidityMinutes, setMessageValidityMinutes] =
+    React.useState<number>(10)
   const [otpButtonText, setOtpButtonText] = React.useState("Copy Code")
-
   // Dynamic variable sample dictionary: { 1: "John", 2: "ORD-123" }
   const [sampleValues, setSampleValues] = React.useState<
     Record<number, string>
@@ -308,6 +309,7 @@ export function TemplateForm({
         ? {
             addSecurityRecommendation,
             codeExpirationMinutes,
+            messageValidityMinutes,
           }
         : undefined,
     }
@@ -687,7 +689,42 @@ export function TemplateForm({
                     />
                   </div>
 
-                  {/* OTP Button Text Customization */}
+                  {/* Message Validity (TTL) Input */}
+                  <div className="space-y-2 rounded-lg border p-3.5">
+                    <div className="flex items-center justify-between">
+                      <Label
+                        htmlFor="msg-validity"
+                        className="text-sm font-medium"
+                      >
+                        Masa Validitas Pesan / Message TTL (Minutes)
+                      </Label>
+                      <span className="font-mono text-xs font-medium text-primary">
+                        {messageValidityMinutes} Menit
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Masa berlaku pengiriman pesan ke penerima (Meta Cloud API
+                      membatasi 1 hingga 15 menit). Jika pengguna offline
+                      melebihi batas ini, pesan otomatis dibatalkan
+                      pengirimannya.
+                    </p>
+                    <Input
+                      id="msg-validity"
+                      type="number"
+                      min={1}
+                      max={15}
+                      value={messageValidityMinutes}
+                      onChange={(e) =>
+                        setMessageValidityMinutes(
+                          Math.max(
+                            1,
+                            Math.min(15, parseInt(e.target.value) || 10)
+                          )
+                        )
+                      }
+                      className="w-36 font-mono text-sm"
+                    />
+                  </div>
                   <div className="space-y-2 rounded-lg border p-3.5">
                     <Label
                       htmlFor="otp-btn-text"

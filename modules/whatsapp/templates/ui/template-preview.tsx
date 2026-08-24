@@ -125,11 +125,21 @@ export function resolveTemplatePreviewValues(
   const values: TemplatePreviewValues = {}
   const examples = extractParameterExamples(language.parameters)
 
+  const bodyLower = (language.body ?? "").toLowerCase()
+  const isLikelyOtp =
+    bodyLower.includes("kode") ||
+    bodyLower.includes("code") ||
+    bodyLower.includes("verifikasi") ||
+    bodyLower.includes("otp") ||
+    bodyLower.includes("verification")
+
   for (const idx of indexes) {
     if (overrides?.[idx]) {
       values[idx] = overrides[idx]
     } else if (examples[idx]) {
       values[idx] = examples[idx]
+    } else if (isLikelyOtp && idx === 1) {
+      values[idx] = "549281"
     } else {
       values[idx] = `Example ${idx}`
     }

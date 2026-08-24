@@ -27,6 +27,7 @@ const templateLanguageSchema = t.Object({
   parameters: t.Optional(t.Any()),
   footer: t.Optional(t.String()),
   buttons: t.Optional(t.Any()),
+  authConfig: t.Optional(t.Any()),
 })
 
 const templateBodySchema = t.Object({
@@ -334,16 +335,40 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           organizationId: targetOrgId,
         })
 
+        const isAuthCat = (category ?? "").toUpperCase() === "AUTHENTICATION"
         for (const lang of rawLanguages!) {
+          const authCfg = (lang as Record<string, unknown>).authConfig as
+            | Record<string, unknown>
+            | undefined
+          const ttlMinutes =
+            typeof authCfg?.messageValidityMinutes === "number"
+              ? authCfg.messageValidityMinutes
+              : typeof authCfg?.messageSendTtlMinutes === "number"
+                ? authCfg.messageSendTtlMinutes
+                : undefined
+          const messageSendTtlSeconds =
+            typeof ttlMinutes === "number"
+              ? Math.max(60, Math.min(900, ttlMinutes * 60))
+              : undefined
+
           const components = buildMetaTemplateComponents({
             ...lang,
             category,
+            addSecurityRecommendation: authCfg?.addSecurityRecommendation as
+              | boolean
+              | undefined,
+            codeExpirationMinutes: authCfg?.codeExpirationMinutes as
+              | number
+              | undefined,
           })
           const metaResult = await client.createTemplate({
             name: slug,
             category: (category ?? "UTILITY").toUpperCase(),
             language: lang.lang,
             components,
+            ...(isAuthCat && messageSendTtlSeconds
+              ? { message_send_ttl_seconds: messageSendTtlSeconds }
+              : {}),
           })
           if (metaResult?.id) {
             metaTemplateId = metaResult.id

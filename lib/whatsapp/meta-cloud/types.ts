@@ -194,6 +194,7 @@ export type CreateMetaTemplateInput = {
   category: string
   language: string
   components: Array<Record<string, unknown>>
+  message_send_ttl_seconds?: number
 }
 
 export type CreateMetaTemplateResult = {
