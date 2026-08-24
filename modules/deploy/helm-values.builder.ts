@@ -24,6 +24,7 @@ export type HelmValuesInput = {
   memory?: number | null
   domain?: string | null
   edge?: HelmValuesEdgePolicy | null
+  externalSecretVaultPath?: string
 }
 
 const omitUndefined = <T extends Record<string, unknown>>(obj: T): T =>
@@ -65,7 +66,15 @@ export function buildHelmValues(
   }
 
   if (Object.keys(plainEnv).length > 0) values.env = plainEnv
-  if (Object.keys(secretEnv).length > 0) values.secrets = secretEnv
+  if (input.externalSecretVaultPath) {
+    values.externalSecret = {
+      enabled: true,
+      vaultPath: input.externalSecretVaultPath,
+      targetSecretName: `app-${input.slug}-k8s-secrets`,
+    }
+  } else if (Object.keys(secretEnv).length > 0) {
+    values.secrets = secretEnv
+  }
 
   const edge = input.edge
   const ingressDomain = edge?.domain || input.domain

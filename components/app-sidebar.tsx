@@ -26,6 +26,7 @@ import {
   GaugeIcon,
   GlobeIcon,
   HardDrivesIcon,
+  DatabaseIcon,
   KeyIcon,
   LifebuoyIcon,
   Lightning,
@@ -411,6 +412,15 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <HardDrivesIcon />,
         isActive: startsWithRoute(path, "/portal/app/clusters"),
+      },
+      {
+        title: "Managed Stocks",
+        url: localizePathname({
+          pathname: "/portal/app/managed-stocks",
+          locale,
+        }),
+        icon: <DatabaseIcon />,
+        isActive: startsWithRoute(path, "/portal/app/managed-stocks"),
       },
       {
         title: "Events",

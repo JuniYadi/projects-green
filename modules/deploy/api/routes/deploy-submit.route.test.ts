@@ -24,10 +24,22 @@ mock.module("@/modules/deploy/app-hosting-edge.service", () => ({
   ensureManagedDomainForStack,
 }))
 
-// Leaf-only mock: every sibling service (createOrUpdateStack, triggerDeploy,
-// AppHostingBillingService, BillingTransactionService) runs for real against
-// this prisma mock. Mocking those services directly would pollute their own
-// test files under the shared --coverage process (see AGENTS.md mock rules).
+// Managed stock is mocked so the route test does not require Vault or a
+// stock DB.
+const claimManagedStock = mock(async () => ({
+  id: "stock-1",
+}))
+const releaseManagedStock = mock(async () => {})
+
+mock.module("@/modules/deploy/app-managed-stock.service", () => ({
+  claimManagedStock,
+  releaseManagedStock,
+}))
+// Leaf-only mock: every other sibling service (createOrUpdateStack,
+// triggerDeploy, AppHostingBillingService, BillingTransactionService) runs for
+// real against this prisma mock. Mocking those services directly would pollute
+// their own test files under the shared --coverage process (see AGENTS.md mock
+// rules).
 const stackRecord = {
   id: "stack-1",
   organizationId: "org-1",
@@ -122,6 +134,8 @@ const validBody = {
   paygBufferHours: 24,
 }
 const resetPrisma = () => {
+  claimManagedStock.mockClear()
+  claimManagedStock.mockResolvedValue({ id: "stock-1" } as never)
   ensureManagedDomainForStack.mockClear()
   mockPrisma.$transaction.mockClear()
   mockPrisma.githubRepositoryConnection.findFirst.mockClear()
@@ -195,6 +209,34 @@ describe("deploySubmitRoutes /submit", () => {
     expect(body.data.deploymentId).toBe("deploy-1")
     expect(ensureManagedDomainForStack).toHaveBeenCalledWith("stack-1")
     expect(mockPrisma.applicationStack.update).toHaveBeenCalled()
+  })
+
+  it("claims managed stock for one-click templates", async () => {
+    const res = await submit({
+      sourceType: "TEMPLATE",
+      templateId: "n8n",
+      resourcePlanId: "payg",
+      billingMode: "PAYG",
+      cpu: 500,
+      memory: 512,
+    })
+
+    expect(res.status).toBe(200)
+    expect(claimManagedStock).toHaveBeenCalledWith({
+      serviceType: "MYSQL",
+      stackId: "stack-1",
+      orgId: "org-1",
+      environment: "prod",
+    })
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          metadataJson: expect.objectContaining({
+            imageRepository: "docker.io/n8nio/n8n",
+          }),
+        }),
+      })
+    )
   })
 
   it("persists secret reference metadata without dropping it", async () => {

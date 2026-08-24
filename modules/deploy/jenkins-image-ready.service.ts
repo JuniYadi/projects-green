@@ -90,6 +90,69 @@ const ACTIVE_DEPLOYMENT_STATUSES = [
   "RUNNING",
 ] as const
 
+type JenkinsEnvVar = {
+  key: string
+  value: string
+  type?: string
+  scope?: string
+  source?: string
+  vaultPath?: string
+  vaultKey?: string
+}
+
+const parseEnvVarsJson = (raw: unknown): JenkinsEnvVar[] => {
+  let parsed: unknown = raw
+  if (typeof raw === "string") {
+    try {
+      parsed = JSON.parse(raw)
+    } catch {
+      return []
+    }
+  }
+
+  if (!Array.isArray(parsed)) return []
+
+  return parsed.flatMap((item) => {
+    if (typeof item !== "object" || item === null) return []
+    const row = item as Record<string, unknown>
+    if (typeof row.key !== "string" || typeof row.value !== "string") {
+      return []
+    }
+
+    return [
+      {
+        key: row.key,
+        value: row.value,
+        ...(typeof row.type === "string" ? { type: row.type } : {}),
+        ...(typeof row.scope === "string" ? { scope: row.scope } : {}),
+        ...(typeof row.source === "string" ? { source: row.source } : {}),
+        ...(typeof row.vaultPath === "string"
+          ? { vaultPath: row.vaultPath }
+          : {}),
+        ...(typeof row.vaultKey === "string" ? { vaultKey: row.vaultKey } : {}),
+      },
+    ]
+  })
+}
+
+const getExternalSecretVaultPath = (
+  envVars: JenkinsEnvVar[]
+): string | undefined => {
+  const vaultEntry = envVars.find(
+    (entry) =>
+      (entry.source === "vault" ||
+        entry.type === "secret_ref" ||
+        entry.type === "secret_shared_ref") &&
+      Boolean(entry.vaultPath)
+  )
+  if (!vaultEntry?.vaultPath) return undefined
+
+  const canonicalPath = vaultEntry.vaultPath.match(
+    /^(tenants\/[^/]+\/stacks\/[^/]+\/[^/]+\/app-env)(?:\/.*)?$/
+  )
+  return canonicalPath?.[1]
+}
+
 const findActiveDeployment = async (
   stackId: string,
   input: JenkinsImageReadyInput
@@ -143,12 +206,14 @@ export async function handleJenkinsImageReady(
     ? `${registryConfig.host}/${registryConfig.namespace}/${stack.slug}`
     : `${registryConfig.host}/${stack.slug}`
 
-  const envVars =
-    (stack.envVarsJson as Array<{
-      key: string
-      value: string
-      type?: string
-    }>) ?? []
+  const parsedEnvVars = parseEnvVarsJson(stack.envVarsJson)
+  const envVars = parsedEnvVars.filter(
+    (entry) =>
+      entry.source !== "vault" &&
+      entry.type !== "secret_ref" &&
+      entry.type !== "secret_shared_ref"
+  )
+  const externalSecretVaultPath = getExternalSecretVaultPath(parsedEnvVars)
 
   const edge = await loadPersistedEdgePolicy(stack.id, stack.slug)
 
@@ -162,6 +227,7 @@ export async function handleJenkinsImageReady(
     memory: stack.memory,
     domain: stack.customDomain ?? null,
     edge,
+    externalSecretVaultPath,
   })
 
   const valuesYaml = jsYaml.dump(values, {

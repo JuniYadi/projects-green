@@ -450,6 +450,7 @@ model ApplicationStack {
   repositoryConnection GithubRepositoryConnection? @relation(fields: [repositoryConnectionId], references: [id], onDelete: SetNull)
   cluster              AppHostingCluster?          @relation(fields: [clusterId], references: [id], onDelete: SetNull)
   domains              ApplicationDomain[]
+  managedStock         AppManagedStock?
 
   @@unique([organizationId, slug])
   @@index([organizationId])
@@ -2995,6 +2996,7 @@ model AppHostingCluster {
   integrations              AppHostingClusterIntegration[]
   stacks                    ApplicationStack[]
   managedServiceCredentials AppManagedServiceCredential[]
+  managedStocks             AppManagedStock[]
   endpoint                  AppHostingClusterEndpoint?
   domains                   ApplicationDomain[]
 
@@ -3054,6 +3056,39 @@ model AppManagedServiceCredential {
   @@index([clusterId])
   @@index([serviceType])
   @@index([isActive])
+}
+
+enum AppManagedStockStatus {
+  AVAILABLE
+  ALLOCATED
+  DIRTY
+  MAINTENANCE
+}
+
+model AppManagedStock {
+  id                String                 @id @default(cuid())
+  clusterId         String
+  serviceType       AppManagedServiceType
+  label             String?
+  endpointHost      String
+  endpointPort      Int
+  databaseName      String
+  username          String
+  tlsEnabled        Boolean                @default(false)
+  vaultPath         String
+  vaultVersion      Int                    @default(1)
+  status            AppManagedStockStatus  @default(AVAILABLE)
+  allocatedStackId  String?                @unique
+  allocatedAt       DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  cluster AppHostingCluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  stack   ApplicationStack? @relation(fields: [allocatedStackId], references: [id], onDelete: SetNull)
+
+  @@index([clusterId, serviceType, status])
+  @@index([status])
+  @@map("AppManagedStock")
 }
 
 enum ApplicationDomainKind {

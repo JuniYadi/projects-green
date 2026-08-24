@@ -12,8 +12,10 @@ import {
   triggerDeploy,
 } from "../../deploy-pipeline.service"
 import { ensureManagedDomainForStack } from "@/modules/deploy/app-hosting-edge.service"
+import { claimManagedStock } from "@/modules/deploy/app-managed-stock.service"
 import { assertDeployExecutionGates } from "../../deploy-execution-gates"
 import { DEPLOY_TEMPLATES } from "../../deploy.constants"
+import { MANAGED_APP_TEMPLATES } from "../../managed-app-templates"
 import { parsePublicGitUrl } from "../../public-source"
 
 /**
@@ -107,9 +109,15 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
     let publicSourceRef: string | null = null
     let name: string
     let slug: string
+    let managedTemplate: (typeof MANAGED_APP_TEMPLATES)[number] | undefined
 
     if (sourceType === "TEMPLATE") {
-      const template = DEPLOY_TEMPLATES.find((t) => t.id === body.templateId)
+      managedTemplate = MANAGED_APP_TEMPLATES.find(
+        (template) => template.id === body.templateId
+      )
+      const template =
+        managedTemplate ??
+        DEPLOY_TEMPLATES.find((template) => template.id === body.templateId)
       if (!template) {
         set.status = 422
         return {
@@ -218,6 +226,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         customDomain: body.customDomain ?? null,
         subdomain: body.subdomain ?? null,
         envVars: body.envVars ?? [],
+        imageRepository: managedTemplate?.imageRepository ?? null,
       })
     } catch (error) {
       if (
@@ -233,6 +242,14 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         }
       }
       throw error
+    }
+    if (managedTemplate) {
+      await claimManagedStock({
+        serviceType: managedTemplate.engineType,
+        stackId: stack.id,
+        orgId: auth.organizationId,
+        environment: "prod",
+      })
     }
 
     try {

@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { releaseManagedStock } from "@/modules/deploy/app-managed-stock.service"
 import { resolveDefaultAppHostingClusterId } from "@/modules/deploy/cluster-integration.service"
 import { syncJenkinsPipeline } from "@/modules/jenkins/jenkins-sync.service"
 
@@ -39,6 +40,7 @@ export type StackUpsertInput = {
   customDomain?: string | null
   subdomain?: string | null
   envVars?: unknown[]
+  imageRepository?: string | null
 }
 
 const IN_PROGRESS_STATUSES = ["QUEUED", "BUILDING", "DEPLOYING"] as const
@@ -158,6 +160,8 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
     if (input.secondaryEngineVersion != null)
       buildMetadata.secondaryEngineVersion = input.secondaryEngineVersion
     if (input.defaultPort != null) buildMetadata.defaultPort = input.defaultPort
+    if (input.imageRepository != null)
+      buildMetadata.imageRepository = input.imageRepository
 
     // Merge with existing metadataJson on update
     const existingJson =
@@ -221,6 +225,18 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
   })
 
   return stack
+}
+
+/**
+ * Delete an application stack and release any managed database stock.
+ * Stock cleanup is deliberately non-fatal so stale Vault state cannot block
+ * removal of the stack itself.
+ */
+export async function deleteStack(stackId: string) {
+  await releaseManagedStock(stackId).catch(() => {
+    // Non-fatal cleanup; the stack deletion must still complete.
+  })
+  return prisma.applicationStack.delete({ where: { id: stackId } })
 }
 
 export async function triggerDeploy(params: {
