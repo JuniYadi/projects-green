@@ -32,7 +32,9 @@ describe("TemplateForm", () => {
             },
           ],
         }}
-        devices={[{ id: "dev-1", phoneNumber: "+6281234567890", status: "ACTIVE" }]}
+        devices={[
+          { id: "dev-1", phoneNumber: "+6281234567890", status: "ACTIVE" },
+        ]}
         submitting={false}
         onSubmit={async (data) => {
           submittedData = data
@@ -96,5 +98,39 @@ describe("TemplateForm", () => {
     await user.click(addUrlBtn)
 
     expect(getByDisplayValue("Visit Website")).toBeDefined()
+  })
+  it("validates required whatsappDeviceId on submission", async () => {
+    const user = userEvent.setup()
+    let submitted = false
+
+    const { getByRole, getByText } = render(
+      <TemplateForm
+        initialData={{
+          name: "Test Template",
+          slug: "test_template",
+          whatsappDeviceId: "",
+          languages: [
+            {
+              id: "v1",
+              lang: "id",
+              headerType: "NONE",
+              headerText: "",
+              headerUrl: "",
+              body: "Halo kawan",
+              footer: "",
+            },
+          ],
+        }}
+        devices={[]}
+        submitting={false}
+        onSubmit={async () => {
+          submitted = true
+        }}
+      />
+    )
+
+    await user.click(getByRole("button", { name: /save template/i }))
+    expect(submitted).toBe(false)
+    expect(getByText(/active whatsapp device is required/i)).toBeDefined()
   })
 })

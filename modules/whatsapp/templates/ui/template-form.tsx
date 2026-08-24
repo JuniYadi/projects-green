@@ -183,7 +183,13 @@ export function TemplateForm({
     initialData?.whatsappDeviceId ?? initialDevices?.[0]?.id ?? ""
   )
   const [devices, setDevices] = React.useState<
-    Array<{ id: string; phoneNumber: string; verifiedName?: string | null; name?: string | null; status?: string | null }>
+    Array<{
+      id: string
+      phoneNumber: string
+      verifiedName?: string | null
+      name?: string | null
+      status?: string | null
+    }>
   >(initialDevices ?? [])
   const [loadingDevices, setLoadingDevices] = React.useState(false)
 
@@ -239,7 +245,6 @@ export function TemplateForm({
     }
   }, [initialData?.whatsappDeviceId, initialDevices])
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
-
 
   // Markdown format insertion helper
   const applyMarkdownFormat = (
@@ -387,6 +392,9 @@ export function TemplateForm({
   const validate = (): boolean => {
     const newErrors: Record<string, string | undefined> = {}
 
+    if (!whatsappDeviceId) {
+      newErrors.whatsappDeviceId = "Active WhatsApp device is required."
+    }
     if (!name.trim()) newErrors.name = "Name is required."
     if (!slug.trim()) newErrors.slug = "Slug is required."
 
@@ -549,12 +557,27 @@ export function TemplateForm({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {devices.length > 0 && (
-                <div className="space-y-2">
-                  <Label htmlFor="whatsappDeviceId">WhatsApp Device</Label>
+              <div className="space-y-2">
+                <Label htmlFor="whatsappDeviceId">
+                  WhatsApp Device <span className="text-destructive">*</span>
+                </Label>
+                {devices.filter((d) => !d.status || d.status === "ACTIVE")
+                  .length === 0 ? (
+                  <div className="border-warning/40 bg-warning/10 text-warning rounded-md border p-3 text-xs">
+                    {loadingDevices
+                      ? "Loading WhatsApp devices..."
+                      : "No active WhatsApp devices found. Please configure and activate a device first."}
+                  </div>
+                ) : (
                   <Select
                     value={whatsappDeviceId}
-                    onValueChange={setWhatsappDeviceId}
+                    onValueChange={(val) => {
+                      setWhatsappDeviceId(val)
+                      setErrors((prev) => ({
+                        ...prev,
+                        whatsappDeviceId: undefined,
+                      }))
+                    }}
                     disabled={approvedTemplateLocked || loadingDevices}
                   >
                     <SelectTrigger id="whatsappDeviceId">
@@ -565,13 +588,21 @@ export function TemplateForm({
                         .filter((d) => !d.status || d.status === "ACTIVE")
                         .map((device) => (
                           <SelectItem key={device.id} value={device.id}>
-                            {device.verifiedName || device.name || device.phoneNumber} ({device.phoneNumber})
+                            {device.verifiedName ||
+                              device.name ||
+                              device.phoneNumber}{" "}
+                            ({device.phoneNumber})
                           </SelectItem>
                         ))}
                     </SelectContent>
                   </Select>
-                </div>
-              )}
+                )}
+                {errors.whatsappDeviceId && (
+                  <p className="text-xs text-destructive">
+                    {errors.whatsappDeviceId}
+                  </p>
+                )}
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name">
