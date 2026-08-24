@@ -1,3 +1,5 @@
+import "@/test/register"
+
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { fireEvent, render } from "@testing-library/react"
 import type {

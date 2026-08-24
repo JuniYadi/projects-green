@@ -38,8 +38,8 @@ export function generateVoucherCode(
   const random = randomAlphanumeric(len)
 
   if (normalizedPrefix) {
-    if (!/^[A-Z]+$/.test(normalizedPrefix)) {
-      throw new Error("Prefix must contain only uppercase letters A-Z")
+    if (!/^[A-Z0-9]+$/.test(normalizedPrefix)) {
+      throw new Error("Prefix must contain only uppercase letters and digits")
     }
     return `${normalizedPrefix}-${random}`
   }

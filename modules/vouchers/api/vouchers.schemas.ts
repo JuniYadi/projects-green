@@ -46,9 +46,19 @@ const positiveDecimal = z.preprocess((val) => {
 
 const uppercasePrefix = z
   .string()
-  .regex(/^[A-Z]+$/, "Prefix must contain only uppercase letters A-Z")
+  .regex(/^[A-Z0-9]+$/, "Prefix must contain only uppercase letters and digits")
   .optional()
 
+const customVoucherCode = z
+  .string()
+  .trim()
+  .regex(
+    /^[A-Z0-9]+(-[A-Z0-9]+)*$/,
+    "Code must contain only uppercase alphanumeric characters with optional single hyphens"
+  )
+  .min(3, "Code must be at least 3 characters")
+  .max(32, "Code cannot exceed 32 characters")
+  .optional()
 const nonNegativeDecimal = z.preprocess((val) => {
   if (typeof val === "string") {
     const parsed = parseFloat(val)
@@ -63,6 +73,7 @@ const optionalNonNegativeDecimal = nonNegativeDecimal.optional()
 
 export const createVoucherSchema = z
   .object({
+    code: customVoucherCode,
     prefix: uppercasePrefix,
     maxClaims: z.number().int().min(1, "maxClaims must be at least 1"),
     expiresAt: futureDate,
@@ -75,7 +86,6 @@ export const createVoucherSchema = z
     metadataJson: z.record(z.string(), z.unknown()).optional(),
   })
   .strict()
-
 export type CreateVoucherInput = z.infer<typeof createVoucherSchema>
 
 // ─── Update voucher (legacy balance-credit) ────────────────────────────────────
@@ -106,6 +116,7 @@ export type RedeemVoucherInput = z.infer<typeof redeemVoucherSchema>
 
 export const createPromotionSchema = z
   .object({
+    code: customVoucherCode,
     prefix: uppercasePrefix,
     maxClaims: z.number().int().min(1, "maxClaims must be at least 1"),
     expiresAt: futureDate,

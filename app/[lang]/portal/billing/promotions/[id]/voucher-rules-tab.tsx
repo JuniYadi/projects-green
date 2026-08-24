@@ -169,9 +169,11 @@ export function VoucherRulesTab({
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="voucher-expires-at">Expiration date and time</Label>
+          <Label htmlFor="voucher-rules-expires-at">
+            Expiration date and time
+          </Label>
           <Input
-            id="voucher-expires-at"
+            id="voucher-rules-expires-at"
             type="datetime-local"
             min={currentDateTimeLocal()}
             value={toDateTimeLocal(voucher.expiresAt)}
@@ -183,7 +185,6 @@ export function VoucherRulesTab({
           </p>
           {renderErrors("expiresAt")}
         </div>
-
         {isProductPromo && (
           <>
             <div className="grid gap-4 sm:grid-cols-2">

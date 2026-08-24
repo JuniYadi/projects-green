@@ -71,6 +71,13 @@ export class VoucherCollisionRetryExhaustedError extends Error {
     this.name = "VoucherCollisionRetryExhaustedError"
   }
 }
+export class VoucherCodeAlreadyExistsError extends Error {
+  readonly code = "VOUCHER_CODE_ALREADY_EXISTS"
+  constructor(code: string) {
+    super(`Voucher code already exists: ${code}`)
+    this.name = "VoucherCodeAlreadyExistsError"
+  }
+}
 
 // ─── Promotion domain errors ──────────────────────────────────────────────────
 

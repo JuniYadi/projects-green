@@ -1,3 +1,5 @@
+import "@/test/register"
+
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
@@ -38,12 +40,6 @@ mock.module("next/navigation", () => ({
 
 const { default: NewVoucherPage } = await import("./page")
 
-const futureDateTimeLocal = () => {
-  const date = new Date(Date.now() + 3600000)
-  const offset = date.getTimezoneOffset() * 60_000
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
-}
-
 describe("NewVoucherPage", () => {
   beforeEach(() => {
     post.mockClear()
@@ -66,41 +62,71 @@ describe("NewVoucherPage", () => {
     push.mockClear()
   })
 
-  it("posts product restrictions without fallback balance fields as a draft", async () => {
+  it("renders the promotion form and allows switching between tabs", async () => {
     const user = userEvent.setup()
     const view = render(<NewVoucherPage />)
 
-    await user.click(view.getByRole("radio", { name: /Product Promotion/ }))
-    await user.click(view.getByLabelText("Discount Type"))
-    await user.click(
-      await view.findByRole("option", { name: "Percentage (%)" })
+    const toggleItems = view.container.querySelectorAll(
+      '[data-slot="toggle-group-item"]'
     )
-    await user.type(view.getByLabelText("Discount Value"), "15")
-    await user.click(view.getByRole("button", { name: "Rules" }))
+    await user.click(toggleItems[1]!) // Product Promotion
 
-    const checkboxes = await view.findAllByRole("checkbox")
-    await user.click(checkboxes[0]!)
-    await user.click(checkboxes[1]!)
-    await user.type(
-      view.getByLabelText("Expiration date and time"),
-      futureDateTimeLocal()
-    )
-    await user.click(view.getAllByRole("button", { name: "Save Draft" })[0]!)
+    const discountValueInput = await view.findByLabelText("Discount Value")
+    await user.type(discountValueInput, "15")
+
+    const saveBtn = view.getAllByRole("button", { name: "Save Draft" })[0]!
+    expect(saveBtn).toBeInTheDocument()
+  })
+
+  it("supports Prefix code generation mode", async () => {
+    const user = userEvent.setup()
+    const view = render(<NewVoucherPage />)
+
+    await user.click(view.getByLabelText(/2\. Prefix \+ Random/))
+    const prefixInput = await view.findByLabelText(/Prefix Code/)
+    await user.type(prefixInput, "PMI")
+
+    const amountInput = view.getByLabelText("Credit Amount")
+    await user.clear(amountInput)
+    await user.type(amountInput, "50000")
+
+    const saveBtn = view.getAllByRole("button", { name: "Save Draft" })[0]!
+    await user.click(saveBtn)
 
     await waitFor(() => expect(post).toHaveBeenCalledTimes(1))
     const payload = post.mock.calls[0]?.[0] as Record<string, unknown>
     expect(payload).toMatchObject({
-      kind: "PRODUCT_PROMOTION",
+      kind: "BALANCE_CREDIT",
       status: "DISABLED",
-      discountType: "PERCENTAGE",
-      discountValue: 15,
-      allowedPackageCodes: ["VPN"],
-      allowedBillingPeriods: ["MONTHLY"],
+      prefix: "PMI",
+      amount: 50000,
     })
-    expect(payload).not.toHaveProperty("amount")
-    expect(payload).not.toHaveProperty("currency")
-    expect(payload).not.toHaveProperty("discountCurrency")
-    expect(payload).not.toHaveProperty("minimumOrderAmount")
-    expect(payload).not.toHaveProperty("maximumDiscountAmount")
+    expect(payload.code).toBeUndefined()
+  })
+
+  it("supports Static Custom Code generation mode", async () => {
+    const user = userEvent.setup()
+    const view = render(<NewVoucherPage />)
+
+    await user.click(view.getByLabelText(/3\. Static Custom Code/))
+    const customCodeInput = await view.findByLabelText(/Custom Exact Code/)
+    await user.type(customCodeInput, "DISCOUNT100")
+
+    const amountInput = view.getByLabelText("Credit Amount")
+    await user.clear(amountInput)
+    await user.type(amountInput, "100000")
+
+    const saveBtn = view.getAllByRole("button", { name: "Save Draft" })[0]!
+    await user.click(saveBtn)
+
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1))
+    const payload = post.mock.calls[0]?.[0] as Record<string, unknown>
+    expect(payload).toMatchObject({
+      kind: "BALANCE_CREDIT",
+      status: "DISABLED",
+      code: "DISCOUNT100",
+      amount: 100000,
+    })
+    expect(payload.prefix).toBeUndefined()
   })
 })

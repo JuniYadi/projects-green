@@ -26,6 +26,7 @@ import {
 import {
   VoucherNotFoundError,
   VoucherCollisionRetryExhaustedError,
+  VoucherCodeAlreadyExistsError,
   VoucherKindFieldMismatchError,
 } from "../vouchers.errors"
 
@@ -119,6 +120,14 @@ const toErrorResponse = (set: RouteSet, error: unknown) => {
     return {
       ok: false as const,
       error: "VOUCHER_COLLISION_RETRY_EXHAUSTED" as const,
+      message: error.message,
+    }
+  }
+  if (error instanceof VoucherCodeAlreadyExistsError) {
+    set.status = 409
+    return {
+      ok: false as const,
+      error: "VOUCHER_CODE_ALREADY_EXISTS" as const,
       message: error.message,
     }
   }

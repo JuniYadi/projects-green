@@ -1310,6 +1310,7 @@ export type VoucherListResponse = {
 }
 
 type VoucherCreateBase = {
+  code?: string
   prefix?: string
   maxClaims: number
   expiresAt: string
