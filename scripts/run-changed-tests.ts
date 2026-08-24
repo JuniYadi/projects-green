@@ -226,9 +226,7 @@ export const run = (): number => {
     "--preload",
     preload,
     `--max-concurrency=${concurrency}`,
-    ...(options.coverage
-      ? ["--coverage", "--coverage-reporter=text", "--coverage-reporter=lcov"]
-      : []),
+    ...(options.coverage ? ["--coverage", "--coverage-reporter=lcov"] : []),
     ...sorted,
   ]
 
