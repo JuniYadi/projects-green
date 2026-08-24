@@ -160,6 +160,7 @@ export function TemplateForm({
   devices: initialDevices,
   submitting,
   onSubmit,
+  mode: _mode = "create",
   approvedTemplateLocked = false,
 }: TemplateFormProps) {
   const routeParams = useParams<{ lang?: string }>()
