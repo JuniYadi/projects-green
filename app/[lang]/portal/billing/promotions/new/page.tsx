@@ -55,6 +55,7 @@ type DraftVoucher = {
   expiryPreset: ExpiryPreset
   expiresAt: string
   amount: number
+  currency: string
   targetWorkosUserId: string | null
   targetOrganizationId: string | null
   kind: VoucherKind
@@ -128,6 +129,7 @@ export default function NewVoucherPage() {
     expiryPreset: "30_DAYS",
     expiresAt: getFutureDateFromDays(30),
     amount: 0,
+    currency: "IDR",
     targetWorkosUserId: null,
     targetOrganizationId: null,
     kind: "BALANCE_CREDIT",
