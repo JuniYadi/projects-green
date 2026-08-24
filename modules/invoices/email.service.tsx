@@ -8,6 +8,8 @@ import { PaymentReminderEmail } from "./emails/payment-reminder"
 import { InvoicePaidEmail } from "./emails/invoice-paid"
 import { InvoiceOverdueEmail } from "./emails/invoice-overdue"
 import { InvoiceCancelledEmail } from "./emails/invoice-cancelled"
+import { PaymentConfirmationSubmittedEmail } from "./emails/payment-confirmation-submitted"
+
 import type {
   InvoiceDetail,
   InvoiceListItem,
@@ -47,6 +49,18 @@ export type InvoiceEmailService = {
     recipientEmail: string,
     reason?: string,
     organizationId?: string
+  ): Promise<void>
+  sendPaymentConfirmationSubmitted(
+    data: {
+      invoiceId: string
+      invoiceNumber: string
+      amount: number
+      currency: string
+      bankName: string
+      senderName?: string
+      confirmationId: string
+    },
+    recipientEmail: string
   ): Promise<void>
 }
 
@@ -242,6 +256,42 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
       console.error("Failed to send invoice cancelled email:", error)
       throw new InvoiceEmailServiceError(
         `Failed to send invoice cancelled notification: ${error instanceof Error ? error.message : String(error)}`
+      )
+    }
+  },
+  async sendPaymentConfirmationSubmitted(data, recipientEmail) {
+    try {
+      const amount = formatCurrency(data.amount, data.currency)
+      const html = await render(
+        <PaymentConfirmationSubmittedEmail
+          invoiceNumber={data.invoiceNumber}
+          amount={amount}
+          bankName={data.bankName}
+          senderName={data.senderName}
+          confirmationId={data.confirmationId}
+        />
+      )
+      const subject = `Payment Confirmation Submitted - Invoice ${data.invoiceNumber}`
+      const emailLogId = await createEmailLog({
+        recipientEmail,
+        type: "INVOICE_PAID",
+        subject,
+        bodyHtml: html,
+        relatedEntityType: "payment_confirmation",
+        relatedEntityId: data.confirmationId,
+      })
+
+      await sendEmail({
+        to: recipientEmail,
+        subject,
+        html,
+        emailLogId: emailLogId ?? undefined,
+      })
+    } catch (error) {
+      console.error("Failed to send payment confirmation email:", error)
+      const detail = error instanceof Error ? error.message : String(error)
+      throw new InvoiceEmailServiceError(
+        "Failed to send payment confirmation notification: " + detail
       )
     }
   },

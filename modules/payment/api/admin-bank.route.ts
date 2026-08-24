@@ -120,9 +120,23 @@ export const createAdminBankRoutes = () =>
         isDefault,
       })
     })
+    .patch("/:id/default", async ({ params, set }) => {
+      const err = await requireBankAuth(set)
+      if (err) return err
+
+      return bankAccountService.setDefault(params.id)
+    })
+
     .patch("/:id/toggle", async ({ params, set }) => {
       const err = await requireBankAuth(set)
       if (err) return err
 
       return bankAccountService.toggle(params.id)
+    })
+
+    .delete("/:id", async ({ params, set }) => {
+      const err = await requireBankAuth(set)
+      if (err) return err
+
+      return bankAccountService.delete(params.id)
     })

@@ -30,6 +30,10 @@ mock.module("./emails/invoice-overdue", () => ({
 mock.module("./emails/invoice-cancelled", () => ({
   InvoiceCancelledEmail: () => "<div>Invoice Cancelled</div>",
 }))
+mock.module("./emails/payment-confirmation-submitted", () => ({
+  PaymentConfirmationSubmittedEmail: () =>
+    "<div>Payment Confirmation Submitted</div>",
+}))
 
 const mockInvoice = {
   id: "inv-123",
@@ -183,6 +187,40 @@ describe("invoiceEmailService", () => {
           to: "user@example.com",
         })
       )
+    })
+  })
+  describe("sendPaymentConfirmationSubmitted", () => {
+    const confirmation = {
+      invoiceId: "inv-123",
+      invoiceNumber: "INV-2026-001",
+      amount: 150,
+      currency: "USD",
+      bankName: "Test Bank",
+      senderName: "Test Sender",
+      confirmationId: "conf-123",
+    }
+
+    it("sends a submitted confirmation email", async () => {
+      await emailService.sendPaymentConfirmationSubmitted(
+        confirmation,
+        "finance@example.com"
+      )
+
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: "finance@example.com",
+          subject: expect.stringContaining("Payment Confirmation Submitted"),
+        })
+      )
+    })
+
+    it("renders the submitted confirmation template", async () => {
+      await emailService.sendPaymentConfirmationSubmitted(
+        confirmation,
+        "finance@example.com"
+      )
+
+      expect(mockRender).toHaveBeenCalled()
     })
   })
 

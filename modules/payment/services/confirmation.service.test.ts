@@ -23,6 +23,20 @@ const mockBillingAccount = {
 const mockAuditLog = {
   create: mock(() => Promise.resolve({})),
 }
+const mockSendPaymentConfirmationSubmitted = mock(async () => {})
+const mockResolveInvoiceEmailRecipients = mock(() =>
+  Promise.resolve([] as Array<{ email: string }>)
+)
+
+mock.module("@/modules/invoices/email.service", () => ({
+  createInvoiceEmailService: () => ({
+    sendPaymentConfirmationSubmitted: mockSendPaymentConfirmationSubmitted,
+  }),
+}))
+
+mock.module("@/modules/billing/email-recipients", () => ({
+  resolveInvoiceEmailRecipients: mockResolveInvoiceEmailRecipients,
+}))
 
 // Mock prisma at leaf level
 mock.module("@/lib/prisma", () => ({
@@ -69,9 +83,13 @@ describe("ConfirmationService", () => {
     mockInvoice.update.mockClear()
     mockBillingAccount.findUnique.mockClear()
     mockAuditLog.create.mockClear()
+    mockSendPaymentConfirmationSubmitted.mockClear()
+    mockResolveInvoiceEmailRecipients.mockClear()
   }
 
   beforeEach(() => {
+    mockResolveInvoiceEmailRecipients.mockResolvedValue([])
+    mockSendPaymentConfirmationSubmitted.mockResolvedValue(undefined)
     resetMocks()
     mockInvoice.findFirst.mockResolvedValue(null)
     mockPaymentConfirmation.findFirst.mockResolvedValue(null)
@@ -228,6 +246,52 @@ describe("ConfirmationService", () => {
             billingAccount: { organizationId: "org-1" },
           }),
         })
+      )
+    })
+    it("dispatches confirmation email to invoice contacts", async () => {
+      mockInvoice.findFirst.mockResolvedValueOnce({
+        id: "inv-1",
+        invoiceNumber: "INV-001",
+        currency: "IDR",
+        status: "OPEN",
+      })
+      mockPaymentConfirmation.findFirst.mockResolvedValueOnce(null)
+      mockPaymentConfirmation.create.mockResolvedValueOnce({
+        id: "conf-new",
+        status: "PENDING",
+        invoiceId: "inv-1",
+        amount: 100000,
+        senderName: "Sender",
+        bankAccount: { bankName: "BCA" },
+      })
+      mockResolveInvoiceEmailRecipients.mockResolvedValueOnce([
+        { email: "finance@example.com" },
+      ])
+
+      await service.create({
+        invoiceId: "inv-1",
+        organizationId: "org-1",
+        data: {
+          bankAccountId: "ba-1",
+          amount: 100000,
+          paymentDateTime: new Date(),
+          senderName: "Sender",
+        },
+      })
+      await Promise.resolve()
+      await Promise.resolve()
+
+      expect(mockSendPaymentConfirmationSubmitted).toHaveBeenCalledWith(
+        expect.objectContaining({
+          invoiceId: "inv-1",
+          invoiceNumber: "INV-001",
+          amount: 100000,
+          currency: "IDR",
+          bankName: "BCA",
+          senderName: "Sender",
+          confirmationId: "conf-new",
+        }),
+        "finance@example.com"
       )
     })
   })

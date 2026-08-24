@@ -1,5 +1,11 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
+import {
+  createInvoiceEmailService,
+  type InvoiceEmailService,
+} from "@/modules/invoices/email.service"
+import { resolveInvoiceEmailRecipients } from "@/modules/billing/email-recipients"
+
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { settleProductOrdersForInvoice } from "@/modules/billing/orders/payment-settlement"
 import Decimal = Prisma.Decimal
@@ -7,10 +13,15 @@ import { emitBillingAudit } from "@/modules/billing/audit/audit.service"
 
 export class ConfirmationService {
   private billingTransactions: BillingTransactionService
+  private emailService: InvoiceEmailService
 
-  constructor(billingTransactions?: BillingTransactionService) {
+  constructor(
+    billingTransactions?: BillingTransactionService,
+    emailService?: InvoiceEmailService
+  ) {
     this.billingTransactions =
       billingTransactions ?? new BillingTransactionService(prisma)
+    this.emailService = emailService ?? createInvoiceEmailService()
   }
 
   async create(input: {
@@ -72,6 +83,40 @@ export class ConfirmationService {
         bankAccount: true,
       },
     })
+
+    void resolveInvoiceEmailRecipients(organizationId)
+      .then((recipients) =>
+        Promise.all(
+          recipients.map(({ email }) =>
+            this.emailService
+              .sendPaymentConfirmationSubmitted(
+                {
+                  invoiceId,
+                  invoiceNumber: invoice.invoiceNumber,
+                  amount: Number(confirmation.amount),
+                  currency: invoice.currency,
+                  bankName: confirmation.bankAccount.bankName,
+                  senderName: confirmation.senderName ?? undefined,
+                  confirmationId: confirmation.id,
+                },
+                email
+              )
+              .catch((error) => {
+                console.error(
+                  "[ConfirmationService] Failed to send submission email",
+                  email,
+                  error
+                )
+              })
+          )
+        )
+      )
+      .catch((error) => {
+        console.error(
+          "[ConfirmationService] Failed to resolve confirmation email recipients",
+          error
+        )
+      })
 
     return confirmation
   }

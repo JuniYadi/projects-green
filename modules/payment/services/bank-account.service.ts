@@ -122,6 +122,25 @@ export class BankAccountService {
     return this.toResponse(account)
   }
 
+  async setDefault(id: string): Promise<BankAccountResponse> {
+    const account = await prisma.paymentBankAccount.findUnique({
+      where: { id },
+    })
+    if (!account) throw new Error("Bank account not found")
+
+    await prisma.paymentBankAccount.updateMany({
+      where: { id: { not: id } },
+      data: { isDefault: false },
+    })
+
+    const updated = await prisma.paymentBankAccount.update({
+      where: { id },
+      data: { isDefault: true, isActive: true },
+    })
+
+    return this.toResponse(updated)
+  }
+
   async toggle(id: string): Promise<BankAccountResponse> {
     const account = await prisma.paymentBankAccount.findUnique({
       where: { id },
@@ -130,10 +149,32 @@ export class BankAccountService {
 
     const updated = await prisma.paymentBankAccount.update({
       where: { id },
-      data: { isActive: !account.isActive },
+      data: {
+        isActive: !account.isActive,
+        ...(account.isDefault && account.isActive ? { isDefault: false } : {}),
+      },
     })
 
     return this.toResponse(updated)
+  }
+
+  async delete(id: string): Promise<{ success: boolean }> {
+    const account = await prisma.paymentBankAccount.findUnique({
+      where: { id },
+      include: { _count: { select: { paymentConfirmations: true } } },
+    })
+    if (!account) throw new Error("Bank account not found")
+
+    if (account._count.paymentConfirmations > 0) {
+      await prisma.paymentBankAccount.update({
+        where: { id },
+        data: { isActive: false, isDefault: false },
+      })
+    } else {
+      await prisma.paymentBankAccount.delete({ where: { id } })
+    }
+
+    return { success: true }
   }
 
   async getActiveAccounts(currency?: string): Promise<BankAccountResponse[]> {
