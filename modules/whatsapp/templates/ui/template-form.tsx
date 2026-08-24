@@ -17,9 +17,12 @@ import {
   Code,
   Eye,
   Sparkle,
+  TextB,
+  TextItalic,
+  TextStrikethrough,
+  CodeBlock,
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
-
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -178,12 +181,72 @@ export function TemplateForm({
         : "")
   )
   const [footer, setFooter] = React.useState(initialLang?.footer ?? "")
+  // Auto-slugify when name changes unless user typed custom slug
+  const handleNameChange = (val: string) => {
+    setName(val)
+    if (!slugManuallyEdited && !approvedTemplateLocked) {
+      setSlug(formatTemplateSlug(val))
+    }
+  }
 
-  // Authentication specific settings
-  const [addSecurityRecommendation, setAddSecurityRecommendation] =
-    React.useState(true)
-  const [codeExpirationMinutes, setCodeExpirationMinutes] =
-    React.useState<number>(5)
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null)
+
+  // Markdown format insertion helper
+  const applyMarkdownFormat = (
+    prefix: string,
+    suffix: string = prefix,
+    placeholder: string = "text"
+  ) => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    const start = textarea.selectionStart ?? 0
+    const end = textarea.selectionEnd ?? 0
+    const selectedText = body.slice(start, end)
+    const replacement = selectedText
+      ? `${prefix}${selectedText}${suffix}`
+      : `${prefix}${placeholder}${suffix}`
+
+    const newBody = body.slice(0, start) + replacement + body.slice(end)
+    setBody(newBody)
+
+    // Restore cursor position
+    setTimeout(() => {
+      textarea.focus()
+      if (selectedText) {
+        textarea.setSelectionRange(start + prefix.length, end + prefix.length)
+      } else {
+        textarea.setSelectionRange(
+          start + prefix.length,
+          start + prefix.length + placeholder.length
+        )
+      }
+    }, 0)
+  }
+
+  // Insert next dynamic variable {{N}}
+  const insertNextVariable = () => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    const currentVariables = getTemplatePlaceholderIndexes(body)
+    const nextIndex =
+      currentVariables.length > 0 ? Math.max(...currentVariables) + 1 : 1
+    const varText = `{{${nextIndex}}}`
+
+    const start = textarea.selectionStart ?? body.length
+    const end = textarea.selectionEnd ?? body.length
+
+    const newBody = body.slice(0, start) + varText + body.slice(end)
+    setBody(newBody)
+
+    setTimeout(() => {
+      textarea.focus()
+      const newPos = start + varText.length
+      textarea.setSelectionRange(newPos, newPos)
+    }, 0)
+  }
+  React.useState<number>(5)
   const [messageValidityMinutes, setMessageValidityMinutes] =
     React.useState<number>(10)
   const [otpButtonText, setOtpButtonText] = React.useState("Copy Code")
@@ -207,14 +270,6 @@ export function TemplateForm({
   const [errors, setErrors] = React.useState<
     Record<string, string | undefined>
   >({})
-
-  // Auto-slugify when name changes unless user typed custom slug
-  const handleNameChange = (val: string) => {
-    setName(val)
-    if (!slugManuallyEdited && !approvedTemplateLocked) {
-      setSlug(formatTemplateSlug(val))
-    }
-  }
 
   // Detect {{N}} in body and sync sample inputs
   const detectedPlaceholders = React.useMemo(
@@ -822,13 +877,79 @@ export function TemplateForm({
                       {body.length} / 1024
                     </span>
                   </div>
+
+                  {/* WhatsApp Markdown & Variable Quick Action Toolbar */}
+                  <div className="flex flex-wrap items-center justify-between gap-1.5 rounded-t-lg border border-b-0 bg-muted/40 p-1.5">
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          applyMarkdownFormat("*", "*", "teks tebal")
+                        }
+                        className="h-7 px-2 text-xs font-semibold"
+                        title="Bold (*teks*)"
+                      >
+                        <TextB className="mr-1 size-3.5" /> Bold
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          applyMarkdownFormat("_", "_", "teks miring")
+                        }
+                        className="h-7 px-2 text-xs italic"
+                        title="Italic (_teks_)"
+                      >
+                        <TextItalic className="mr-1 size-3.5" /> Italic
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => applyMarkdownFormat("~", "~", "coret")}
+                        className="h-7 px-2 text-xs line-through"
+                        title="Strikethrough (~teks~)"
+                      >
+                        <TextStrikethrough className="mr-1 size-3.5" /> Coret
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          applyMarkdownFormat("```", "```", "kode")
+                        }
+                        className="h-7 px-2 font-mono text-xs"
+                        title="Monospace (```kode```)"
+                      >
+                        <CodeBlock className="mr-1 size-3.5" /> Monospace
+                      </Button>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={insertNextVariable}
+                      className="h-7 border-emerald-500/30 bg-emerald-50/50 px-2.5 text-xs font-semibold text-emerald-700 shadow-2xs transition-colors hover:border-emerald-500/50 hover:bg-emerald-100/60 dark:border-emerald-500/30 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+                      title="Insert next {{N}} placeholder"
+                    >
+                      <Plus className="mr-1 size-3.5" /> Variabel
+                    </Button>
+                  </div>
+
                   <Textarea
+                    ref={textareaRef}
                     id="body"
                     rows={5}
                     value={body}
                     onChange={(e) => setBody(e.target.value)}
                     maxLength={1024}
                     placeholder="Halo {{1}}, pesanan Anda {{2}} telah dikirim via {{3}}. Terima kasih telah berbelanja!"
+                    className="rounded-t-none"
                   />
                   {errors.body && (
                     <p className="text-xs text-destructive">{errors.body}</p>

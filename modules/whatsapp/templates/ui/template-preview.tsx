@@ -6,6 +6,7 @@
  * and the send-message dialog.
  */
 
+import * as React from "react"
 import { Badge } from "@/components/ui/badge"
 import type { WhatsAppTemplateLanguage } from "@/lib/api/whatsapp-client"
 
@@ -81,7 +82,6 @@ export function TemplateLanguageBadge({
     </Badge>
   )
 }
-
 function getFlagEmoji(countryCode: string): string {
   if (countryCode.length !== 2) return ""
   const codePoints = countryCode
@@ -89,6 +89,84 @@ function getFlagEmoji(countryCode: string): string {
     .split("")
     .map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)
   return String.fromCodePoint(...codePoints)
+}
+
+// ─── WhatsApp Markdown formatting ────────────────────────────────────────────
+
+/**
+ * Renders WhatsApp markdown styles (*bold*, _italic_, ~strikethrough~, ```monospace```).
+ */
+export function WhatsAppFormattedText({ text }: { text: string }) {
+  if (!text) return null
+
+  // Split text by lines first to preserve line breaks
+  const lines = text.split("\n")
+
+  return (
+    <>
+      {lines.map((line, lineIdx) => (
+        <React.Fragment key={lineIdx}>
+          {lineIdx > 0 && <br />}
+          {renderWhatsAppLine(line)}
+        </React.Fragment>
+      ))}
+    </>
+  )
+}
+
+function renderWhatsAppLine(line: string): React.ReactNode {
+  if (!line) return null
+
+  // Tokenize line by markdown delimiters: ```...```, *...*, _..._, ~...~
+  // Regex matches:
+  // 1. ```code```
+  // 2. *bold*
+  // 3. _italic_
+  // 4. ~strikethrough~
+  const regex =
+    /(```[\s\S]*?```|\*(?!\s)[^*]+(?!\s)\*|_(?!\s)[^_]+(?!\s)_|~(?!\s)[^~]+(?!\s)~)/g
+  const parts = line.split(regex)
+
+  return parts.map((part, i) => {
+    if (!part) return null
+
+    if (part.startsWith("```") && part.endsWith("```") && part.length >= 6) {
+      return (
+        <code
+          key={i}
+          className="rounded bg-muted/70 px-1 py-0.5 font-mono text-[12px] text-foreground"
+        >
+          {part.slice(3, -3)}
+        </code>
+      )
+    }
+
+    if (part.startsWith("*") && part.endsWith("*") && part.length >= 2) {
+      return (
+        <strong key={i} className="font-bold text-foreground">
+          {part.slice(1, -1)}
+        </strong>
+      )
+    }
+
+    if (part.startsWith("_") && part.endsWith("_") && part.length >= 2) {
+      return (
+        <em key={i} className="italic">
+          {part.slice(1, -1)}
+        </em>
+      )
+    }
+
+    if (part.startsWith("~") && part.endsWith("~") && part.length >= 2) {
+      return (
+        <del key={i} className="line-through opacity-80">
+          {part.slice(1, -1)}
+        </del>
+      )
+    }
+
+    return <React.Fragment key={i}>{part}</React.Fragment>
+  })
 }
 
 // ─── Template body rendering ─────────────────────────────────────────────────
@@ -104,7 +182,6 @@ export function renderTemplateBody(
     return values[index] || ""
   })
 }
-
 // ─── Value resolution ────────────────────────────────────────────────────────
 
 /**
@@ -264,13 +341,14 @@ export function WhatsAppTemplatePreview({
     )
   }
 
-  // Compact mode: render only body text (matches MessageBubble)
   if (mode === "compact") {
     return (
       <div className={className}>
         <div className="ml-auto max-w-[85%] rounded-2xl rounded-tr-none bg-[#e7fedb] px-3.5 py-2.5 text-sm text-[#111b21] shadow-sm dark:bg-[#005c4b] dark:text-[#e9edef]">
           {bodyText && (
-            <div className="break-words whitespace-pre-wrap">{bodyText}</div>
+            <div className="leading-relaxed break-words">
+              <WhatsAppFormattedText text={bodyText} />
+            </div>
           )}
         </div>
       </div>
@@ -338,10 +416,10 @@ export function WhatsAppTemplatePreview({
           </div>
         ) : null}
 
-        {/* Message Body */}
+        {/* Message Body with WhatsApp Markdown Formatting */}
         {bodyText && (
-          <div className="text-sm leading-relaxed break-words whitespace-pre-wrap text-foreground/90">
-            {bodyText}
+          <div className="text-sm leading-relaxed break-words text-foreground/90">
+            <WhatsAppFormattedText text={bodyText} />
           </div>
         )}
 
