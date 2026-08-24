@@ -31,9 +31,7 @@ const args = [
   "--path-ignore-patterns=**/e2e/**",
   "--path-ignore-patterns=**/integration/**",
   ...(suite === "logic" ? ["--path-ignore-patterns=**/*.test.tsx"] : []),
-  ...(coverage
-    ? ["--coverage", "--coverage-reporter=text", "--coverage-reporter=lcov"]
-    : []),
+  ...(coverage ? ["--coverage", "--coverage-reporter=lcov"] : []),
   ...testFiles,
   ...passthroughArgs,
 ]
