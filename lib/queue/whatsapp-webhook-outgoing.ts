@@ -22,7 +22,10 @@ export const enqueueOutgoingWebhook = async (
     WHATSAPP_WEBHOOK_OUTGOING_QUEUE
   )
 
+  const jobId = data.eventId
+    ? `wa-outgoing_${data.webhookId}_${data.eventType}_${data.eventId}`
+    : `wa-outgoing_${data.webhookId}_${data.eventType}_${Bun.randomUUIDv7()}`
   await queue.add(WHATSAPP_WEBHOOK_OUTGOING_JOB, data, {
-    jobId: `wa-outgoing:${data.webhookId}:${data.eventType}:${data.eventId ?? "anon"}`,
+    jobId,
   })
 }

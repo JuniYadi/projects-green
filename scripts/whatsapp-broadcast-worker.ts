@@ -1,6 +1,5 @@
 import { Prisma, WhatsappBillingCategory } from "@prisma/client"
 import { Queue, Worker, type Job } from "bullmq"
-import { randomUUID } from "crypto"
 
 import { prisma } from "@/lib/prisma"
 import {
@@ -53,7 +52,7 @@ async function enqueueBroadcastJob(
 ) {
   await broadcastQueue.add(WHATSAPP_BROADCAST_JOB_NAME, data, {
     delay,
-    jobId: `wa-broadcast:${data.method}:${data.campaignId}:${data.recipientId}:${randomUUID()}`,
+    jobId: `wa-broadcast_${data.method}_${data.campaignId}_${data.recipientId}_${Bun.randomUUIDv7()}`,
     removeOnComplete: 500,
     removeOnFail: 500,
   })

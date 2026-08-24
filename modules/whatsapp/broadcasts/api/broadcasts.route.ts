@@ -1,5 +1,4 @@
 import { Elysia, t } from "elysia"
-import { randomUUID } from "crypto"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import {
@@ -470,7 +469,7 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
             method: "dispatch" as const,
           },
           opts: {
-            jobId: `wa-broadcast:dispatch:${campaign.id}:${r.id}:${randomUUID()}`,
+            jobId: `wa-broadcast_dispatch_${campaign.id}_${r.id}_${Bun.randomUUIDv7()}`,
           },
         }))
       )

@@ -160,7 +160,7 @@ describe("createQuotaReconciliationQueue", () => {
         timestamp: "2025-01-01T00:00:00.000Z",
       },
       expect.objectContaining({
-        jobId: "quota-recon:org-1:dev-1:msg-1",
+        jobId: "quota-recon_org-1_dev-1_msg-1",
       })
     )
   })
@@ -206,7 +206,7 @@ describe("createQuotaReconciliationQueue", () => {
         timestamp: "2025-06-01T00:00:00.000Z",
       },
       expect.objectContaining({
-        jobId: "quota-recon:org-owned:dev-owned:msg-owned",
+        jobId: "quota-recon_org-owned_dev-owned_msg-owned",
       })
     )
     expect(queueCloseMock).toHaveBeenCalledTimes(1)

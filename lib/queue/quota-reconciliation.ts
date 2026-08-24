@@ -110,8 +110,8 @@ export const createQuotaReconciliationQueue = ({
   return {
     async enqueue(data, opts) {
       await queueClient.add(jobName, data, {
-        jobId: `quota-recon:${data.organizationId}:${data.deviceId}:${data.messageId}`,
         ...opts,
+        jobId: `quota-recon_${data.organizationId}_${data.deviceId}_${data.messageId}`,
       })
     },
     async close() {

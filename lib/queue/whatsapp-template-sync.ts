@@ -37,8 +37,7 @@ const DEFAULT_JOB_OPTIONS: JobsOptions = {
 }
 
 const createTemplateSyncJobId = (data: WhatsAppTemplateSyncJobData): string => {
-  const unique = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
-  return `wa-template-sync_${data.organizationId}_${data.deviceId}_${data.method}_${unique}`
+  return `wa-template-sync_${data.organizationId}_${data.deviceId}_${data.method}_${Bun.randomUUIDv7()}`
 }
 
 export const getWhatsAppTemplateSyncRedisConnection = (): RedisOptions => {

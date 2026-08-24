@@ -39,12 +39,14 @@ describe("createWhatsAppTemplateSyncQueue", () => {
     const secondJobId = (add.mock.calls[1][2] as { jobId?: string } | undefined)
       ?.jobId
 
-    expect(firstJobId).toStartWith(
-      "wa-template-sync_org_1_dev_1_sync-templates_"
+    expect(firstJobId).toMatch(
+      /^wa-template-sync_org_1_dev_1_sync-templates_[0-9a-f-]+$/
     )
-    expect(secondJobId).toStartWith(
-      "wa-template-sync_org_1_dev_1_sync-templates_"
+    expect(secondJobId).toMatch(
+      /^wa-template-sync_org_1_dev_1_sync-templates_[0-9a-f-]+$/
     )
+    expect(firstJobId).not.toContain(":")
+    expect(secondJobId).not.toContain(":")
     expect(secondJobId).not.toBe(firstJobId)
   })
 })
