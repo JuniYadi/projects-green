@@ -19,6 +19,7 @@ import {
   BookOpenIcon,
   BuildingsIcon,
   CaretLeftIcon,
+  Clock as ClockIcon,
   ChartLineIcon,
   CrosshairIcon,
   DeviceMobileIcon,
@@ -134,6 +135,74 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         }),
         icon: <BuildingsIcon />,
         isActive: startsWithRoute(path, "/portal/admin/organizations"),
+      },
+    ],
+  },
+  {
+    context: "system",
+    matches: (path) =>
+      startsWithRoute(path, "/portal/system") ||
+      startsWithRoute(path, "/portal/settings/emails") ||
+      startsWithRoute(path, "/portal/ai") ||
+      startsWithRoute(path, "/portal/storage"),
+    navMainLabel: "Systems",
+    getProjects: (_path, locale) => [
+      {
+        name: "Back to Portal",
+        url: localizePathname({ pathname: "/portal", locale }),
+        icon: <CaretLeftIcon />,
+      },
+    ],
+    getNavMain: (path, locale) => [
+      {
+        title: "CronJobs & Workers",
+        url: localizePathname({
+          pathname: "/portal/system/cronjobs",
+          locale,
+        }),
+        icon: <ClockIcon />,
+        isActive: startsWithRoute(path, "/portal/system/cronjobs"),
+      },
+      {
+        title: "AI Governance",
+        url: localizePathname({
+          pathname: "/portal/ai",
+          locale,
+        }),
+        icon: <ShieldCheckIcon />,
+        isActive: startsWithRoute(path, "/portal/ai"),
+      },
+      {
+        title: "Storage Audit",
+        url: localizePathname({
+          pathname: "/portal/storage",
+          locale,
+        }),
+        icon: <HardDrivesIcon />,
+        isActive: startsWithRoute(path, "/portal/storage"),
+      },
+      {
+        title: "Email Templates",
+        url: localizePathname({
+          pathname: "/portal/settings/emails",
+          locale,
+        }),
+        icon: <PaperPlaneTiltIcon />,
+        isActive:
+          startsWithRoute(path, "/portal/settings/emails") &&
+          !startsWithRoute(path, "/portal/settings/emails/delivery-logs"),
+      },
+      {
+        title: "Email Logs",
+        url: localizePathname({
+          pathname: "/portal/settings/emails/delivery-logs",
+          locale,
+        }),
+        icon: <ListMagnifyingGlassIcon />,
+        isActive: startsWithRoute(
+          path,
+          "/portal/settings/emails/delivery-logs"
+        ),
       },
     ],
   },
@@ -955,42 +1024,14 @@ const buildPortalNavMain = (
     isActive: startsWithRoute(pathname, "/portal/whatsapp"),
   },
   {
-    title: "AI Governance",
-    url: localizePathname({ pathname: "/portal/ai", locale }),
-    icon: <ShieldCheckIcon />,
-    isActive: startsWithRoute(pathname, "/portal/ai"),
-  },
-  {
-    title: "Storage Audit",
-    url: localizePathname({ pathname: "/portal/storage", locale }),
-    icon: <HardDrivesIcon />,
-    isActive: startsWithRoute(pathname, "/portal/storage"),
-  },
-  {
-    title: "Settings",
-    url: localizePathname({ pathname: "/portal/settings/emails", locale }),
-    icon: <GearSixIcon />,
-    isActive: startsWithRoute(pathname, "/portal/settings/emails"),
-    items: [
-      {
-        title: "Email Templates",
-        url: localizePathname({ pathname: "/portal/settings/emails", locale }),
-        isActive:
-          startsWithRoute(pathname, "/portal/settings/emails") &&
-          !startsWithRoute(pathname, "/portal/settings/emails/delivery-logs"),
-      },
-      {
-        title: "Email Logs",
-        url: localizePathname({
-          pathname: "/portal/settings/emails/delivery-logs",
-          locale,
-        }),
-        isActive: startsWithRoute(
-          pathname,
-          "/portal/settings/emails/delivery-logs"
-        ),
-      },
-    ],
+    title: "Systems",
+    url: localizePathname({ pathname: "/portal/system/cronjobs", locale }),
+    icon: <ClockIcon />,
+    isActive:
+      startsWithRoute(pathname, "/portal/system") ||
+      startsWithRoute(pathname, "/portal/settings/emails") ||
+      startsWithRoute(pathname, "/portal/ai") ||
+      startsWithRoute(pathname, "/portal/storage"),
   },
 ]
 
@@ -998,17 +1039,13 @@ const buildNavSecondary = (input: {
   surface: AppSidebarSurface
   currentPathname: string
 }) => {
-  const locale =
-    getLocaleFromPathname(input.currentPathname).locale ?? defaultLocale
-  const pathnameWithoutLocale = getLocaleFromPathname(
-    input.currentPathname
-  ).pathnameWithoutLocale
-  const pathWithoutSearch = getPathnameWithoutSearch(pathnameWithoutLocale)
+  const { locale } = getLocaleFromPathname(input.currentPathname)
+  const activeLocale = locale ?? defaultLocale
 
   const items: NavSecondaryItem[] = [
     {
       title: "Documentation",
-      url: localizePathname({ pathname: "/docs", locale }),
+      url: localizePathname({ pathname: "/docs", locale: activeLocale }),
       icon: <BookOpenIcon />,
     },
     {
@@ -1017,54 +1054,6 @@ const buildNavSecondary = (input: {
       icon: <BookOpenIcon />,
     },
   ]
-
-  if (input.surface === "portal") {
-    items.push({
-      title: "My Organization",
-      url: localizePathname({
-        pathname: "/portal/settings/members",
-        locale,
-      }),
-      icon: <BuildingsIcon />,
-      isActive: startsWithRoute(pathWithoutSearch, "/portal/settings"),
-      items: [
-        {
-          title: "Members",
-          url: localizePathname({
-            pathname: "/portal/settings/members",
-            locale,
-          }),
-          isActive: pathWithoutSearch.startsWith("/portal/settings/members"),
-        },
-        {
-          title: "Invitation",
-          url: localizePathname({
-            pathname: "/portal/settings/invitations",
-            locale,
-          }),
-          isActive: pathWithoutSearch.startsWith(
-            "/portal/settings/invitations"
-          ),
-        },
-        {
-          title: "Ownership",
-          url: localizePathname({
-            pathname: "/portal/settings/ownership",
-            locale,
-          }),
-          isActive: pathWithoutSearch.startsWith("/portal/settings/ownership"),
-        },
-        {
-          title: "Email Templates",
-          url: localizePathname({
-            pathname: "/portal/settings/emails",
-            locale,
-          }),
-          isActive: pathWithoutSearch.startsWith("/portal/settings/emails"),
-        },
-      ],
-    })
-  }
 
   return items
 }

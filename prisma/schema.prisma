@@ -3240,3 +3240,78 @@ model StorageFile {
   @@index([organizationId, purpose])
   @@index([createdAt(sort: Desc)])
 }
+
+enum CronJobStatus {
+  HEALTHY
+  RUNNING
+  DEGRADED
+  FAILED
+  MISSED
+  DISABLED
+}
+
+enum CronExecutionStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  TIMED_OUT
+  CANCELLED
+}
+
+enum CronTriggerType {
+  SCHEDULED_K8S
+  MANUAL_PORTAL
+  API_WEBHOOK
+  RETRY
+}
+
+model CronJobDefinition {
+  id              String             @id @default(cuid())
+  code            String             @unique
+  name            String
+  description     String?
+  category        String
+  cronExpression  String
+  timezone        String             @default("UTC")
+  timeoutSeconds  Int                @default(3600)
+  gracePeriodMins Int                @default(15)
+  isEnabled       Boolean            @default(true)
+  lastStatus      CronJobStatus      @default(HEALTHY)
+  lastRunAt       DateTime?
+  nextRunAt       DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  executions      CronJobExecution[]
+
+  @@index([category])
+  @@index([lastStatus])
+}
+
+model CronJobExecution {
+  id            String              @id @default(cuid())
+  cronJobId     String
+  cronJob       CronJobDefinition   @relation(fields: [cronJobId], references: [id], onDelete: Cascade)
+
+  status        CronExecutionStatus @default(PENDING)
+  triggerType   CronTriggerType     @default(SCHEDULED_K8S)
+  triggeredBy   String?
+  triggerReason String?
+
+  podName       String?
+  startedAt     DateTime            @default(now())
+  finishedAt    DateTime?
+  durationMs    Int?
+
+  summary       Json?
+  errorMessage  String?             @db.Text
+  errorStack    String?             @db.Text
+
+  logTail       String?             @db.Text
+
+  createdAt     DateTime            @default(now())
+
+  @@index([cronJobId, startedAt(sort: Desc)])
+  @@index([status])
+}

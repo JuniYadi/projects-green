@@ -253,9 +253,7 @@ describe("resolveSidebarMenu", () => {
       "App Hosting",
       "VPN",
       "WhatsApp",
-      "AI Governance",
-      "Storage Audit",
-      "Settings",
+      "Systems",
     ])
     expect(navMain.map((item) => item.title)).not.toContain("Documentation")
 
@@ -284,68 +282,39 @@ describe("resolveSidebarMenu", () => {
       "App Hosting",
       "VPN",
       "WhatsApp",
-      "AI Governance",
-      "Storage Audit",
-      "Settings",
+      "Systems",
     ])
   })
-  it("renders Settings with Email Templates and Email Logs children for portal surface", () => {
+  it("renders Systems without collapsible children for portal surface", () => {
     const { navMain } = resolveSidebarMenu({
       surface: "portal",
       pathname: "/portal/documentations",
       locale: "en",
     })
-    const settings = navMain.find((item) => item.title === "Settings")
-    expect(settings).toBeDefined()
-    expect(settings?.items?.map((i) => i.title)).toEqual([
-      "Email Templates",
-      "Email Logs",
-    ])
-    expect(
-      settings?.items?.find((i) => i.title === "Email Templates")?.url
-    ).toBe("/en/portal/settings/emails")
-    expect(settings?.items?.find((i) => i.title === "Email Logs")?.url).toBe(
-      "/en/portal/settings/emails/delivery-logs"
-    )
-    expect(settings?.isActive).toBe(false)
-    expect(
-      settings?.items?.find((i) => i.title === "Email Templates")?.isActive
-    ).toBe(false)
-    expect(
-      settings?.items?.find((i) => i.title === "Email Logs")?.isActive
-    ).toBe(false)
+    const systems = navMain.find((item) => item.title === "Systems")
+    expect(systems).toBeDefined()
+    expect(systems?.url).toBe("/en/portal/system/cronjobs")
+    expect(systems?.items).toBeUndefined()
+    expect(systems?.isActive).toBe(false)
   })
-  it("marks Email Templates active on email template path", () => {
-    const { navMain } = resolveSidebarMenu({
-      surface: "portal",
-      pathname: "/portal/settings/emails",
-      locale: "en",
-    })
-    const settings = navMain.find((item) => item.title === "Settings")
-    expect(settings?.isActive).toBe(true)
-    expect(
-      settings?.items?.find((i) => i.title === "Email Templates")?.isActive
-    ).toBe(true)
-    expect(
-      settings?.items?.find((i) => i.title === "Email Logs")?.isActive
-    ).toBe(false)
+  it("marks Systems active on system, ai, and storage paths", () => {
+    for (const path of [
+      "/portal/system/cronjobs",
+      "/portal/ai",
+      "/portal/storage",
+    ]) {
+      const { navMain, navMainLabel } = resolveSidebarMenu({
+        surface: "portal",
+        pathname: path,
+        locale: "en",
+      })
+      expect(navMainLabel).toBe("Systems")
+      expect(navMain.map((item) => item.title)).toContain("AI Governance")
+      expect(navMain.map((item) => item.title)).toContain("Storage Audit")
+      expect(navMain.map((item) => item.title)).toContain("CronJobs & Workers")
+    }
   })
-  it("marks Email Logs active on delivery-logs path", () => {
-    const { navMain } = resolveSidebarMenu({
-      surface: "portal",
-      pathname: "/portal/settings/emails/delivery-logs",
-      locale: "id",
-    })
-    const settings = navMain.find((item) => item.title === "Settings")
-    expect(settings?.isActive).toBe(true)
-    expect(
-      settings?.items?.find((i) => i.title === "Email Logs")?.isActive
-    ).toBe(true)
-    expect(
-      settings?.items?.find((i) => i.title === "Email Templates")?.isActive
-    ).toBe(false)
-  })
-  it("renders My Organization with children in portal secondary nav", () => {
+  it("portal secondary nav only includes Documentation and API Reference, no duplicate organization", () => {
     const items = resolveSidebarSecondaryLinks({
       surface: "portal",
       currentPathname: "/id/portal/settings/invitations",
@@ -353,35 +322,7 @@ describe("resolveSidebarMenu", () => {
     expect(items.map((item) => item.title)).toEqual([
       "Documentation",
       "API Reference",
-      "My Organization",
     ])
-    const myOrg = items.find((item) => item.title === "My Organization")
-    expect(myOrg?.url).toBe("/id/portal/settings/members")
-    expect(myOrg?.isActive).toBe(true)
-    expect(myOrg?.items?.map((i) => i.title)).toEqual([
-      "Members",
-      "Invitation",
-      "Ownership",
-      "Email Templates",
-    ])
-    expect(myOrg?.items?.find((i) => i.title === "Invitation")?.isActive).toBe(
-      true
-    )
-    expect(myOrg?.items?.find((i) => i.title === "Members")?.isActive).toBe(
-      false
-    )
-  })
-  it("renders My Organization with Email Logs child active on delivery-logs path", () => {
-    const items = resolveSidebarSecondaryLinks({
-      surface: "portal",
-      currentPathname: "/en/portal/settings/emails/delivery-logs",
-    })
-    const myOrg = items.find((item) => item.title === "My Organization")
-    expect(myOrg?.isActive).toBe(true)
-    expect(
-      myOrg?.items?.find((i) => i.title === "Email Templates")?.isActive
-    ).toBe(true)
-    expect(items.map((item) => item.title)).not.toContain("Settings")
   })
   it("console sidebar secondary includes Documentation and API Reference, but not Settings or Email Templates", () => {
     const items = resolveSidebarSecondaryLinks({

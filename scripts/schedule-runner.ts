@@ -1,4 +1,6 @@
 import { cronMatches } from "@/lib/cron/cron-matcher"
+import { syncCronJobDefinitions } from "@/lib/cron/registry"
+import { withCronTelemetry } from "@/lib/cron/telemetry"
 import { getQueue } from "@/lib/queue/queue-config"
 import {
   BILLING_DAILY_RESET_QUEUE,
@@ -14,7 +16,6 @@ import {
   BILLING_RENEWAL_LADDER_JOB,
 } from "@/lib/queue/billing-cron"
 import { WhatsAppHealthJob } from "@/lib/queue/whatsapp-health"
-
 export interface ScheduledJobDefinition {
   name: string
   queueName: string
@@ -161,22 +162,28 @@ export const dispatchScheduledJobs = async (
 
   const dispatched: string[] = []
   const failed: { name: string; error: string }[] = []
-
   await Promise.all(
     dueJobs.map(async (def) => {
       const queue = getQueue(def.queueName)
       const jobId = def.buildJobId(now)
 
       try {
-        await queue.add(
-          def.jobName,
-          { ...(def.payload || {}), scheduledAt: now.toISOString() },
-          {
-            jobId,
-            removeOnComplete: 1000,
-            removeOnFail: 5000,
-          }
-        )
+        // Telemetry captures schedule dispatching / queuing step into BullMQ
+        await withCronTelemetry(def.name, async (ctx) => {
+          ctx.log(
+            `[Scheduler Dispatch] Job ${def.jobName} queued to ${def.queueName} with ID ${jobId}`
+          )
+          await queue.add(
+            def.jobName,
+            { ...(def.payload || {}), scheduledAt: now.toISOString() },
+            {
+              jobId,
+              removeOnComplete: 1000,
+              removeOnFail: 5000,
+            }
+          )
+          return { queue: def.queueName, jobName: def.jobName, jobId }
+        })
         dispatched.push(def.name)
       } catch (err) {
         failed.push({
@@ -189,9 +196,10 @@ export const dispatchScheduledJobs = async (
 
   return { dispatched, failed }
 }
-
-// ── Runner entrypoint when executed directly ───────────────────────────────
 if (import.meta.main) {
+  await syncCronJobDefinitions().catch((e) =>
+    console.warn("[schedule-runner] Failed to sync cron definitions:", e)
+  )
   const now = new Date()
   const result = await dispatchScheduledJobs(now)
 
