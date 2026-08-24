@@ -93,7 +93,7 @@ async function serverFetch<T>(
     ...options,
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      ...(options?.body ? { "Content-Type": "application/json" } : {}),
       ...options?.headers,
     },
   })
@@ -192,7 +192,7 @@ export const whatsappClient = {
       syncMeta: (id: string) =>
         serverFetch<{ ok: boolean; profile: BusinessProfileDTO }>(
           `/api/whatsapp/devices/${id}/profile/sync`,
-          { method: "POST" }
+          { method: "POST", body: "{}" }
         ),
       update: (id: string, input: Record<string, unknown>) =>
         serverFetch<{ ok: boolean; profile: BusinessProfileDTO }>(

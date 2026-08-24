@@ -11,6 +11,7 @@ import {
   DeviceNoMetaAppIdError,
   ProfileNotFoundError,
 } from "../business-profile.service"
+import { toBusinessProfileDTO } from "../business-profile.dto"
 import { DeviceNotFoundError, DeviceNotOwnedError } from "../devices.schemas"
 import { resolveDeviceAuth } from "./devices.route"
 
