@@ -65,6 +65,21 @@ const SUPPORTED_META_STATUSES = new Set<string>([
   WhatsappTemplateMetaStatus.PENDING,
   WhatsappTemplateMetaStatus.REJECTED,
 ])
+function possibleSlugsFor(name: string): string[] {
+  return Array.from(
+    new Set(
+      [
+        formatTemplateSlug(name),
+        name,
+        name
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, ""),
+      ].filter(Boolean)
+    )
+  )
+}
 
 
 function toSupportedMetaStatus(status?: string) {
@@ -244,14 +259,7 @@ async function upsertTemplate(
   template: MetaTemplate
 ): Promise<"created" | "updated"> {
   const canonicalSlug = formatTemplateSlug(template.name)
-  const hyphenatedSlug = template.name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-  const possibleSlugs = Array.from(
-    new Set([canonicalSlug, template.name, hyphenatedSlug].filter(Boolean))
-  )
+  const possibleSlugs = possibleSlugsFor(template.name)
 
   const existing = await prisma.whatsappTemplate.findFirst({
     where: {
@@ -397,17 +405,7 @@ export async function syncTemplates(
         {
           slug: {
             notIn: Array.from(
-              new Set(
-                templates.flatMap((t) => [
-                  formatTemplateSlug(t.name),
-                  t.name,
-                  t.name
-                    .trim()
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]+/g, "-")
-                    .replace(/^-+|-+$/g, ""),
-                ]).filter(Boolean)
-              )
+              new Set(templates.flatMap((t) => possibleSlugsFor(t.name)))
             ),
           },
         },
@@ -522,15 +520,7 @@ export async function syncTemplateStatus(
   }
   for (const template of templates) {
     try {
-      const canonicalSlug = formatTemplateSlug(template.name)
-      const hyphenatedSlug = template.name
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-      const possibleSlugs = Array.from(
-        new Set([canonicalSlug, template.name, hyphenatedSlug].filter(Boolean))
-      )
+      const possibleSlugs = possibleSlugsFor(template.name)
 
       const existing = await prisma.whatsappTemplate.findFirst({
         where: {

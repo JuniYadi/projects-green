@@ -95,7 +95,6 @@ type TemplateFormProps = {
     whatsappDeviceId?: string
     languages: Omit<LanguageVariant, "id">[]
   }) => Promise<void>
-  mode?: "create" | "edit"
   approvedTemplateLocked?: boolean
   lockedVariantIds?: string[]
   structureTemplate?: Pick<
@@ -182,7 +181,7 @@ export function TemplateForm({
     initialData?.whatsappDeviceId ?? initialDevices?.[0]?.id ?? ""
   )
   const [devices, setDevices] = React.useState<
-    Array<{ id: string; phoneNumber: string; verifiedName?: string | null; name?: string | null }>
+    Array<{ id: string; phoneNumber: string; verifiedName?: string | null; name?: string | null; status?: string | null }>
   >(initialDevices ?? [])
   const [loadingDevices, setLoadingDevices] = React.useState(false)
 
@@ -560,11 +559,13 @@ export function TemplateForm({
                       <SelectValue placeholder="Select Device" />
                     </SelectTrigger>
                     <SelectContent>
-                      {devices.map((device) => (
-                        <SelectItem key={device.id} value={device.id}>
-                          {device.verifiedName || device.name || device.phoneNumber} ({device.phoneNumber})
-                        </SelectItem>
-                      ))}
+                      {devices
+                        .filter((d) => !d.status || d.status === "ACTIVE")
+                        .map((device) => (
+                          <SelectItem key={device.id} value={device.id}>
+                            {device.verifiedName || device.name || device.phoneNumber} ({device.phoneNumber})
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
