@@ -223,20 +223,18 @@ export function TemplateDetailView({
             </Button>
           )}
 
-          {isRejected && (
-            <Button
-              size="sm"
-              variant="default"
-              onClick={() =>
-                router.push(
-                  `/en/console/whatsapp/templates/new?duplicate=${template.id}`
-                )
-              }
-            >
-              <Copy weight="bold" className="mr-1.5 size-4" />
-              Duplicate & Fix
-            </Button>
-          )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              router.push(
+                `/en/console/whatsapp/templates/new?duplicate=${template.id}`
+              )
+            }
+          >
+            <Copy weight="bold" className="mr-1.5 size-4" />
+            Duplicate
+          </Button>
 
           {onSync && (
             <Button
