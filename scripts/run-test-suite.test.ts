@@ -11,6 +11,7 @@ import { join, resolve } from "node:path"
 
 const temporaryDirectories: string[] = []
 const runnerPath = resolve(import.meta.dir, "run-test-suite.ts")
+const rootBunfigPath = resolve(import.meta.dir, "../bunfig.toml")
 
 afterEach(() => {
   for (const directory of temporaryDirectories.splice(0)) {
@@ -18,10 +19,14 @@ afterEach(() => {
   }
 })
 
-test("coverage runs selected logic tests without discovering spec files", async () => {
+test("coverage writes LCOV without emitting the text table or discovering spec files", async () => {
   const directory = mkdtempSync(join(tmpdir(), "run-test-suite-"))
   temporaryDirectories.push(directory)
 
+  writeFileSync(
+    join(directory, "bunfig.toml"),
+    readFileSync(rootBunfigPath, "utf8")
+  )
   writeFileSync(join(directory, "covered.ts"), "export const value = 42\n")
   writeFileSync(
     join(directory, "selected.logic.test.ts"),
@@ -50,6 +55,7 @@ test("coverage runs selected logic tests without discovering spec files", async 
   const exitCode = await proc.exited
   const lcovPath = join(directory, "coverage", "lcov.info")
 
+  expect(stderr).not.toContain("Uncovered Line #s")
   expect(exitCode, `stdout: ${stdout}\nstderr: ${stderr}`).toBe(0)
   expect(existsSync(lcovPath)).toBe(true)
   expect(readFileSync(lcovPath, "utf8")).toContain("covered.ts")
