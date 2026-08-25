@@ -91,6 +91,18 @@ describe("selectSmokeProjects", () => {
       ])
     )
   })
+  test("maps WhatsApp event parsing to its webhook dispatch test", () => {
+    expect(findFeatureMappings("lib/whatsapp/handle-event.ts")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "whatsapp-messages",
+          testPrefixes: expect.arrayContaining([
+            "lib/whatsapp/__tests__/webhook-dispatch.test.ts",
+          ]),
+        }),
+      ])
+    )
+  })
   test("reports an unmapped UI feature instead of running nothing", () => {
     const selection = selectSmokeProjects([
       "modules/new-feature/ui/new-page.tsx",

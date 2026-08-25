@@ -190,6 +190,7 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     sourcePrefixes: [
       "app/[lang]/console/whatsapp/messages/",
       "app/[lang]/portal/whatsapp/messages/",
+      "lib/whatsapp/handle-event.ts",
       "modules/whatsapp/conversations/",
       "modules/whatsapp/messages/",
       "modules/whatsapp/webhooks/",
@@ -198,6 +199,7 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     testPrefixes: [
       "app/[lang]/console/whatsapp/messages/",
       "app/[lang]/portal/whatsapp/messages/",
+      "lib/whatsapp/__tests__/webhook-dispatch.test.ts",
       "modules/whatsapp/conversations/",
       "modules/whatsapp/messages/",
       "modules/whatsapp/webhooks/",
