@@ -351,12 +351,26 @@ function MessageBubble({ message }: { message: Message }) {
 
     return (
       <div className="flex flex-col items-end gap-1">
-        <WhatsAppTemplatePreview
-          language={meta.templateLanguageData!}
-          values={values}
-          mode="full"
-        />
-        <div className="mr-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+        <div className="group relative">
+          <WhatsAppTemplatePreview
+            language={meta.templateLanguageData!}
+            values={values}
+            mode="full"
+          />
+          {message.waMessageId && (
+            <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
+              <Link
+                href={`/console/whatsapp/messages/${encodeURIComponent(message.waMessageId)}`}
+                className="inline-flex items-center gap-1 rounded-md bg-background/80 px-2 py-1 text-[11px] font-medium text-foreground shadow-sm backdrop-blur hover:bg-background hover:text-primary"
+                title="Inspect Message Journey"
+              >
+                <span>Journey</span>
+                <ArrowSquareOut className="size-3" />
+              </Link>
+            </div>
+          )}
+        </div>
+        <div className="mr-1 flex items-center gap-1 text-[11px] text-muted-foreground">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -371,16 +385,6 @@ function MessageBubble({ message }: { message: Message }) {
             statusHistory={message.statusHistory}
             direction={message.direction}
           />
-          {message.waMessageId && (
-            <Link
-              href={`/console/whatsapp/messages/${encodeURIComponent(message.waMessageId)}`}
-              className="ml-1 inline-flex items-center gap-0.5 font-medium text-primary hover:underline"
-              title="Inspect Message Journey"
-            >
-              <span>Journey</span>
-              <ArrowSquareOut className="size-3" />
-            </Link>
-          )}
         </div>
       </div>
     )
@@ -388,24 +392,24 @@ function MessageBubble({ message }: { message: Message }) {
 
   return (
     <TooltipProvider>
-      <div className={`flex ${isInbox ? "justify-start" : "justify-end"}`}>
+      <div className={`group flex ${isInbox ? "justify-start" : "justify-end"}`}>
         <div
-          className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${
+          className={`relative max-w-[78%] rounded-2xl px-3.5 py-2 text-sm shadow-xs ${
             isInbox
-              ? "rounded-bl-sm bg-muted text-foreground"
-              : "rounded-br-sm bg-primary text-primary-foreground"
+              ? "rounded-tl-xs bg-muted text-foreground"
+              : "rounded-tr-xs bg-emerald-600/90 text-white dark:bg-emerald-700 dark:text-emerald-50"
           }`}
         >
-          <p className="break-words whitespace-pre-wrap">
+          <p className="break-words whitespace-pre-wrap leading-relaxed pr-14">
             {message.body || (
-              <span className="text-muted-foreground/60 italic">
+              <span className="italic opacity-60">
                 (no content)
               </span>
             )}
           </p>
           <div
-            className={`mt-1 flex items-center justify-end gap-1.5 text-[10px] ${
-              isInbox ? "text-muted-foreground" : "text-primary-foreground/70"
+            className={`absolute bottom-1.5 right-2 flex select-none items-center gap-1 text-[10px] ${
+              isInbox ? "text-muted-foreground" : "text-emerald-100 dark:text-emerald-200"
             }`}
           >
             <Tooltip>
@@ -420,27 +424,28 @@ function MessageBubble({ message }: { message: Message }) {
               statusHistory={message.statusHistory}
               direction={message.direction}
             />
-            {message.waMessageId && (
+          </div>
+
+          {message.waMessageId && (
+            <div
+              className={`absolute top-1 ${
+                isInbox ? "-right-7" : "-left-7"
+              } opacity-0 transition-opacity group-hover:opacity-100`}
+            >
               <Link
                 href={`/console/whatsapp/messages/${encodeURIComponent(message.waMessageId)}`}
-                className={`ml-1 inline-flex items-center gap-0.5 font-medium hover:underline ${
-                  isInbox
-                    ? "text-primary"
-                    : "text-primary-foreground/90 hover:text-white"
-                }`}
+                className="flex size-6 items-center justify-center rounded-full bg-muted/80 text-muted-foreground shadow-xs backdrop-blur hover:bg-muted hover:text-foreground"
                 title="Inspect Message Journey"
               >
-                <span>Journey</span>
                 <ArrowSquareOut className="size-3" />
               </Link>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </TooltipProvider>
   )
 }
-
 // ─── Page Component ──────────────────────────────────────────────────────────
 
 export default function WhatsAppMessagesPage() {
@@ -478,7 +483,14 @@ export default function WhatsAppMessagesPage() {
   const [activeConversationId, setActiveConversationId] = React.useState<
     string | null
   >(null)
+  // State - quick reply composer
+  const [replyText, setReplyText] = React.useState("")
+  const [currentTime, setCurrentTime] = React.useState(() => Date.now())
 
+  React.useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(Date.now()), 60000)
+    return () => clearInterval(timer)
+  }, [])
   // State - send message
   const [sendDialogOpen, setSendDialogOpen] = React.useState(false)
   const [sendPhone, setSendPhone] = React.useState("")
@@ -493,7 +505,6 @@ export default function WhatsAppMessagesPage() {
   const [templatePickerOpen, setTemplatePickerOpen] = React.useState(true)
   const openedTemplateQueryIdRef = React.useRef<string | null>(null)
   const queryClient = useQueryClient()
-
   const {
     data: conversations = [],
     isLoading: conversationsLoading,
@@ -767,6 +778,71 @@ export default function WhatsAppMessagesPage() {
     if (labelFilterIds.length > 0) count++
     return count
   }, [directionFilter, statusFilter, labelFilterIds])
+  // 24-Hour Customer Service Window check (based on latest INBOX message)
+  const sessionWindowInfo = React.useMemo(() => {
+    if (!activeConversation || orderedMessages.length === 0) {
+      return { isOpen: false, lastInboxAt: null, timeRemaining: null }
+    }
+    const lastInboxMsg = [...orderedMessages]
+      .reverse()
+      .find((m) => m.direction === "INBOX")
+    if (!lastInboxMsg) {
+      return { isOpen: false, lastInboxAt: null, timeRemaining: null }
+    }
+    const lastInboxTime = new Date(lastInboxMsg.createdAt).getTime()
+    const elapsed = currentTime - lastInboxTime
+    const twentyFourHours = 24 * 60 * 60 * 1000
+    if (elapsed < twentyFourHours && elapsed >= 0) {
+      const remainingMs = twentyFourHours - elapsed
+      const hours = Math.floor(remainingMs / (60 * 60 * 1000))
+      const minutes = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000))
+      return {
+        isOpen: true,
+        lastInboxAt: lastInboxMsg.createdAt,
+        timeRemaining: `${hours}h ${minutes}m`,
+      }
+    }
+    return { isOpen: false, lastInboxAt: lastInboxMsg.createdAt, timeRemaining: null }
+  }, [activeConversation, orderedMessages, currentTime])
+
+  const sendReplyMutation = useMutation({
+    mutationFn: (input: { phoneNumber: string; message: string; deviceId?: string }) =>
+      whatsappClient.messages.send(input),
+    onSuccess: async () => {
+      toast.success("Message sent")
+      setReplyText("")
+      if (activeConversationId) {
+        await queryClient.invalidateQueries({
+          queryKey: ["whatsapp", "conversation", activeConversationId],
+        })
+      }
+      await queryClient.invalidateQueries({
+        queryKey: ["whatsapp", "conversations"],
+      })
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to send message")
+    },
+  })
+
+  const handleSendReply = async () => {
+    if (!activeConversation || !replyText.trim()) return
+    if (activeDevices.length === 0) {
+      toast.error("No active WhatsApp device available")
+      return
+    }
+    sendReplyMutation.mutate({
+      phoneNumber: activeConversation.contactPhone,
+      message: replyText.trim(),
+      deviceId: sendDeviceId || (activeDevices[0]?.id ?? undefined),
+    })
+  }
+
+  const handleOpenSendTemplateForActiveChat = () => {
+    if (!activeConversation) return
+    setSendPhone(activeConversation.contactPhone)
+    setSendDialogOpen(true)
+  }
 
   // ── Handlers ───────────────────────────────────────────────────────────
 
@@ -1702,8 +1778,8 @@ export default function WhatsAppMessagesPage() {
           </div>
 
           {/* Messages Area */}
-          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden p-3">
-            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-muted/20 p-3">
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pr-1">
               {/* Loading */}
               {activeLoading && (
                 <div className="flex flex-1 flex-col justify-end gap-3">
@@ -1754,7 +1830,7 @@ export default function WhatsAppMessagesPage() {
 
               {/* Messages */}
               {!activeLoading && orderedMessages.length > 0 && (
-                <div className="mt-auto flex flex-col justify-end gap-3">
+                <div className="mt-auto flex flex-col justify-end gap-3 pb-2">
                   {groupMessagesByDate(orderedMessages).map((group) => (
                     <React.Fragment key={group.label}>
                       <MessageDateGroup label={group.label} />
@@ -1767,6 +1843,73 @@ export default function WhatsAppMessagesPage() {
                 </div>
               )}
             </div>
+
+            {/* Bottom 24-Hour Context & Composer */}
+            {activeConversation && (
+              <div className="mt-2 shrink-0 border-t pt-2">
+                {sessionWindowInfo.isOpen ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between px-1 text-[11px] text-muted-foreground">
+                      <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                        <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        24-Hour window open (Expires in {sessionWindowInfo.timeRemaining})
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 gap-1 px-2 text-[11px]"
+                        onClick={handleOpenSendTemplateForActiveChat}
+                      >
+                        <PaperPlaneTilt className="size-3" />
+                        <span>Send Template</span>
+                      </Button>
+                    </div>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        handleSendReply()
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <Input
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        placeholder="Type a message..."
+                        disabled={sendReplyMutation.isPending}
+                        className="h-10 flex-1 bg-background text-sm"
+                      />
+                      <Button
+                        type="submit"
+                        size="sm"
+                        className="h-10 shrink-0 gap-1.5 px-4"
+                        disabled={!replyText.trim() || sendReplyMutation.isPending}
+                      >
+                        <PaperPlaneTilt className="size-4" weight="fill" />
+                        <span>{sendReplyMutation.isPending ? "Sending..." : "Send"}</span>
+                      </Button>
+                    </form>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-between gap-2 rounded-lg border bg-background/60 p-3 sm:flex-row">
+                    <div className="text-xs text-muted-foreground">
+                      <p className="font-medium text-foreground">24-Hour Messaging Window is Closed</p>
+                      <p className="text-[11px]">
+                        Free-form reply is only allowed after the user sends an inbound message.
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={handleOpenSendTemplateForActiveChat}
+                      className="shrink-0 gap-1.5"
+                    >
+                      <PaperPlaneTilt className="size-3.5" weight="fill" />
+                      <span>Send Template</span>
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
