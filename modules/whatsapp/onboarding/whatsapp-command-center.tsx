@@ -42,6 +42,7 @@ export function WhatsAppCommandCenter({
     graduateNow,
   } = onboarding
 
+  const numericLevel = level === "0_pending" ? 0.5 : level
   const levelName = React.useMemo(() => {
     switch (level) {
       case 0:
@@ -307,7 +308,7 @@ export function WhatsAppCommandCenter({
           {/* Node 2: Message & Template */}
           <Card
             className={`relative overflow-hidden transition-all ${
-              level >= 2
+              numericLevel >= 2
                 ? "border-emerald-500/40 bg-emerald-500/5"
                 : hasDevice
                   ? "border-primary/40 shadow-sm"
@@ -319,7 +320,7 @@ export function WhatsAppCommandCenter({
                 <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Lightning className="size-4" weight="fill" />
                 </div>
-                {level >= 2 ? (
+                {numericLevel >= 2 ? (
                   <CheckCircle
                     className="size-5 text-emerald-500"
                     weight="fill"
@@ -339,7 +340,7 @@ export function WhatsAppCommandCenter({
                 </p>
               </div>
               <p className="text-[11px] font-medium text-muted-foreground">
-                {level >= 2
+                {numericLevel >= 2
                   ? "✓ Broadcasts & Catalogs Unlocked"
                   : "Unlocks Broadcasts & Catalogs"}
               </p>

@@ -67,6 +67,8 @@ function makeDeviceLabel(device: DeviceListItem): string {
 // ─── Page Component ───────────────────────────────────────────────────────────
 
 export default function WhatsAppWebhookEventsPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
   const loadErrorMsg = messages.console.whatsapp.events.loadError
   const basePath = localizePathname({

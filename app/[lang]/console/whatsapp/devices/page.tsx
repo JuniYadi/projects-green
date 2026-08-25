@@ -32,7 +32,10 @@ import { detectCountryFromPhone } from "@/modules/whatsapp/messages/phone-number
 import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsapp-onboarding"
 import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
 import { DeviceHealthBadge } from "@/modules/whatsapp/ui/device-health-badge"
-
+import type {
+  DeviceListItem,
+  DeviceStatus,
+} from "@/modules/whatsapp/devices/devices.schemas"
 // ─── Status badge ───────────────────────────────────────────────────────────
 
 type DeviceStatusBadgeProps = {

@@ -11,9 +11,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { useSearchParams } from "next/navigation"
 import {
+  AuditLogDTO,
   AuditLogTable,
-  type AuditLogDTO,
 } from "@/modules/whatsapp/audit/ui/whatsapp-audit-table"
 import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsapp-onboarding"
 import { LockedFeatureTeaser } from "@/modules/whatsapp/onboarding/locked-feature-teaser"
@@ -40,6 +41,7 @@ const AUDIT_ACTIONS = [
 const AUDIT_STATUSES = ["OK", "FAILED", "STARTED", "PENDING"]
 
 export default function ConsoleWhatsAppAuditLogsPage() {
+  const searchParams = useSearchParams()
   const onboarding = useWhatsAppOnboarding()
 
   const [logs, setLogs] = React.useState<AuditLogDTO[]>([])

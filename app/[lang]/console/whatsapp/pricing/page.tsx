@@ -208,9 +208,10 @@ export default function WhatsAppPricingPage() {
           onSubscribeClick={() => setIsOrderOpen(true)}
         />
         <ServiceOrderDialog
+          productCode="WHATSAPP"
+          productTitle="WhatsApp Gateway"
           open={isOrderOpen}
           onOpenChange={setIsOrderOpen}
-          initialServicePackage="WHATSAPP"
           onSuccess={() => {}}
         />
       </>

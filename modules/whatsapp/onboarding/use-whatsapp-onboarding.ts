@@ -1,9 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useQuery } from "@tanstack/react-query"
 import { eden } from "@/lib/eden"
-
 export type WhatsAppFeature =
   | "devices"
   | "messages"
@@ -143,23 +141,29 @@ export function useWhatsAppOnboarding(
       }
     } catch {}
   }, [])
-  // Dedicated single endpoint query with React Query + Eden fetch
-  const { data: serverStatus } = useQuery({
-    queryKey: ["whatsapp", "onboarding", "status"],
-    queryFn: async () => {
+  const [serverStatus, setServerStatus] = React.useState<{
+    hasSubscription?: boolean
+    deviceCount?: number
+    templateCount?: number
+    messageCount?: number
+    apiKeyCount?: number
+  } | null>(null)
+
+  React.useEffect(() => {
+    let isCancelled = false
+    async function fetchStatus() {
       try {
         const res = await (eden.api.whatsapp as any).onboarding.status.get()
-        if (res.data?.ok && res.data.data) {
-          return res.data.data
+        if (!isCancelled && res.data?.ok && res.data.data) {
+          setServerStatus(res.data.data)
         }
-      } catch (err) {
-        console.error("Failed to query onboarding status:", err)
-      }
-      return null
-    },
-    staleTime: 10_000,
-  })
-
+      } catch {}
+    }
+    fetchStatus()
+    return () => {
+      isCancelled = true
+    }
+  }, [])
   const mergedInput: WhatsAppOnboardingInput = React.useMemo(() => {
     return {
       hasSubscription:
