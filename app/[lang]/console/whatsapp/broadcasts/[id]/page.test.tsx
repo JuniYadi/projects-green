@@ -89,10 +89,11 @@ const broadcastWithoutFailures = makeBroadcast({
 })
 
 const getBroadcast = mock(() => Promise.resolve(broadcastWithFailures))
+let currentLocale = "en"
 
 mock.module("next/navigation", () => ({
   useRouter: () => ({ back: mock(() => {}), push: mock(() => {}) }),
-  useParams: () => ({ lang: "en", id: "bc_1" }),
+  useParams: () => ({ lang: currentLocale, id: "bc_1" }),
 }))
 
 mock.module("@/lib/i18n/pathname", () => ({
@@ -126,6 +127,7 @@ describe("WhatsAppBroadcastDetailPage", () => {
   let anchors: HTMLAnchorElement[]
 
   beforeEach(() => {
+    currentLocale = "en"
     document.body.innerHTML = ""
     getBroadcast.mockImplementation(() =>
       Promise.resolve(broadcastWithFailures)
@@ -157,17 +159,17 @@ describe("WhatsAppBroadcastDetailPage", () => {
     const view = render(<WhatsAppBroadcastDetailPage />)
 
     await waitFor(() => {
-      expect(view.getByText("Progres pengiriman")).toBeInTheDocument()
+      expect(view.getByText("Delivery progress")).toBeInTheDocument()
     })
 
-    expect(metricValue(view, "Total Penerima")).toBe("4")
-    expect(metricValue(view, "Berhasil Terkirim")).toBe("1")
-    expect(metricValue(view, "Dalam Antrean")).toBe("2")
-    expect(metricValue(view, "Gagal")).toBe("1")
+    expect(metricValue(view, "Total recipients")).toBe("4")
+    expect(metricValue(view, "Sent")).toBe("1")
+    expect(metricValue(view, "Queued")).toBe("2")
+    expect(metricValue(view, "Failed")).toBe("1")
 
     // (sent 1 + failed 1) / total 4 = 50%, label plus completion caption
     expect(view.getByText("50%")).toBeInTheDocument()
-    expect(view.getByText(/50% selesai/)).toBeInTheDocument()
+    expect(view.getByText(/50% complete/)).toBeInTheDocument()
     const fill = document.querySelector<HTMLElement>("[style*='width: 50%']")
     expect(fill).not.toBeNull()
     view.unmount()
@@ -178,7 +180,7 @@ describe("WhatsAppBroadcastDetailPage", () => {
     const view = render(<WhatsAppBroadcastDetailPage />)
 
     const button = await waitFor(() =>
-      view.getByRole("button", { name: /unduh daftar nomor gagal/i })
+      view.getByRole("button", { name: /download failed numbers/i })
     )
     await user.click(button)
 
@@ -203,7 +205,7 @@ describe("WhatsAppBroadcastDetailPage", () => {
     const view = render(<WhatsAppBroadcastDetailPage />)
 
     const button = await waitFor(() =>
-      view.getByRole("button", { name: /unduh daftar nomor gagal/i })
+      view.getByRole("button", { name: /download failed numbers/i })
     )
     expect(button).toHaveProperty("disabled", true)
 
@@ -219,15 +221,30 @@ describe("WhatsAppBroadcastDetailPage", () => {
     })
     expect(view.getAllByRole("row")).toHaveLength(5) // header + 4 recipients
 
-    await user.click(view.getByRole("tab", { name: "Dalam Antrean" }))
+    await user.click(view.getByRole("tab", { name: "Queued" }))
     expect(view.getAllByRole("row")).toHaveLength(3) // header + 2 queued
     expect(view.queryByText("+6281230000001")).toBeNull()
     expect(view.getByText("+6281230000003")).toBeInTheDocument()
 
-    await user.click(view.getByRole("tab", { name: "Semua" }))
-    await user.type(view.getByPlaceholderText("Cari nomor atau nama…"), "andi")
+    await user.click(view.getByRole("tab", { name: "All" }))
+    await user.type(
+      view.getByPlaceholderText("Search name or phone number..."),
+      "andi"
+    )
     expect(view.getAllByRole("row")).toHaveLength(2) // header + Andi only
     expect(view.queryByText("+6281230000002")).toBeNull()
+
+    view.unmount()
+  })
+
+  it("renders Indonesian customer-facing broadcast copy", async () => {
+    currentLocale = "id"
+    const view = render(<WhatsAppBroadcastDetailPage />)
+
+    expect(await view.findByText("Progres pengiriman")).toBeInTheDocument()
+    expect(
+      view.getByRole("button", { name: /unduh daftar nomor gagal/i })
+    ).toBeInTheDocument()
 
     view.unmount()
   })

@@ -1,4 +1,8 @@
 "use client"
+import {
+  getWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import {
@@ -92,14 +96,21 @@ export function MessageStatusBadge({
           <TooltipTrigger asChild>
             <span
               className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium text-destructive hover:bg-destructive/10"
-              title="Failed to deliver"
+              title={getWhatsAppText("s235")}
             >
-              <WarningCircle className="size-3 text-destructive" weight="fill" />
-              <span>Failed</span>
+              <WarningCircle
+                className="size-3 text-destructive"
+                weight="fill"
+              />
+              <span>
+                <WhatsAppText id="s155" />
+              </span>
             </span>
           </TooltipTrigger>
           <TooltipContent className="max-w-[240px] text-xs">
-            <p className="font-semibold text-destructive">Delivery Failed</p>
+            <p className="font-semibold text-destructive">
+              <WhatsAppText id="s236" />
+            </p>
             <p className="mt-0.5 text-muted-foreground">
               {failureReason || "Message could not be delivered by WhatsApp."}
             </p>

@@ -3,6 +3,7 @@
  */
 
 "use client"
+import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import {
   Dialog,
@@ -33,10 +34,13 @@ export function TemplateDeleteDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete Template</DialogTitle>
+          <DialogTitle>
+            <WhatsAppText id="s259" />
+          </DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete <strong>{templateName}</strong>?
-            This action cannot be undone.
+            <WhatsAppText id="s260" />
+            <strong>{templateName}</strong>
+            <WhatsAppText id="s261" />
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -45,7 +49,7 @@ export function TemplateDeleteDialog({
             onClick={() => onOpenChange(false)}
             disabled={deleting}
           >
-            Cancel
+            <WhatsAppText id="s15" />
           </Button>
           <Button variant="destructive" onClick={onConfirm} disabled={deleting}>
             {deleting ? "Deleting..." : "Delete"}

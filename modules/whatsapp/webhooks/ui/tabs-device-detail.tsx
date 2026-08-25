@@ -1,4 +1,5 @@
 "use client"
+import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import { useSearchParams, useRouter } from "next/navigation"
@@ -234,7 +235,9 @@ export function TabsDeviceDetail({
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-2">
         <Button asChild variant="ghost" size="sm" className="w-fit px-0">
-          <Link href={backHref}>Back to Devices</Link>
+          <Link href={backHref}>
+            <WhatsAppText id="s213" />
+          </Link>
         </Button>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-1">
@@ -277,11 +280,16 @@ export function TabsDeviceDetail({
             <TabsTrigger value="meta-webhook">Meta Webhook</TabsTrigger>
           )}
           <TabsTrigger value="templates">
-            Templates <TemplateCountBadge deviceId={device.id} />
+            <WhatsAppText id="s214" />
+            <TemplateCountBadge deviceId={device.id} />
           </TabsTrigger>
-          <TabsTrigger value="webhook-log">Webhook Log</TabsTrigger>
+          <TabsTrigger value="webhook-log">
+            <WhatsAppText id="s215" />
+          </TabsTrigger>
           <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
-          <TabsTrigger value="audit-logs">Audit Logs</TabsTrigger>
+          <TabsTrigger value="audit-logs">
+            <WhatsAppText id="s216" />
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
@@ -297,9 +305,11 @@ export function TabsDeviceDetail({
         <TabsContent value="templates" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Device Templates</CardTitle>
+              <CardTitle>
+                <WhatsAppText id="s217" />
+              </CardTitle>
               <CardDescription>
-                WhatsApp message templates synced to this device.
+                <WhatsAppText id="s218" />
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -311,9 +321,11 @@ export function TabsDeviceDetail({
         <TabsContent value="webhook-log" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Webhook Events</CardTitle>
+              <CardTitle>
+                <WhatsAppText id="s219" />
+              </CardTitle>
               <CardDescription>
-                Incoming Meta webhook events for this device.
+                <WhatsAppText id="s220" />
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -330,8 +342,7 @@ export function TabsDeviceDetail({
             <CardHeader>
               <CardTitle>Outgoing Webhooks</CardTitle>
               <CardDescription>
-                Outgoing webhook configurations and delivery logs for this
-                device.
+                <WhatsAppText id="s221" />
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -346,8 +357,12 @@ export function TabsDeviceDetail({
         <TabsContent value="audit-logs" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Audit Logs</CardTitle>
-              <CardDescription>Admin actions for this device.</CardDescription>
+              <CardTitle>
+                <WhatsAppText id="s216" />
+              </CardTitle>
+              <CardDescription>
+                <WhatsAppText id="s222" />
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <AuditLogTabContent
@@ -484,7 +499,9 @@ function WebhooksTab({
 
   if (state.type === "loading") {
     return (
-      <p className="py-4 text-sm text-muted-foreground">Loading webhooks…</p>
+      <p className="py-4 text-sm text-muted-foreground">
+        <WhatsAppText id="s223" />
+      </p>
     )
   }
 
@@ -493,7 +510,7 @@ function WebhooksTab({
       <div className="flex flex-col items-center justify-center py-8">
         <p className="mb-2 text-sm text-destructive">{state.error}</p>
         <Button variant="outline" onClick={() => void fetchWebhooks()}>
-          Retry
+          <WhatsAppText id="s101" />
         </Button>
       </div>
     )
@@ -503,7 +520,7 @@ function WebhooksTab({
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
         <p className="text-sm text-muted-foreground">
-          No outgoing webhooks configured for this device.
+          <WhatsAppText id="s224" />
         </p>
       </div>
     )
@@ -562,7 +579,9 @@ function WebhooksTab({
       {/* Delivery logs for selected webhook */}
       {selectedWebhookId && (
         <div>
-          <h4 className="mb-2 text-sm font-medium">Delivery Logs</h4>
+          <h4 className="mb-2 text-sm font-medium">
+            <WhatsAppText id="s225" />
+          </h4>
           <DeliveryLogTable
             logs={deliveryLogs}
             isLoading={false}

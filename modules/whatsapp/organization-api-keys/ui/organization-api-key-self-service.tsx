@@ -1,4 +1,5 @@
 "use client"
+import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import { Ban, Check, Copy, KeyRound, RotateCw } from "lucide-react"
@@ -152,9 +153,11 @@ export function WhatsappOrganizationApiKeySelfService() {
     return (
       <Card className="border-destructive">
         <CardHeader>
-          <CardTitle>Access denied</CardTitle>
+          <CardTitle>
+            <WhatsAppText id="s181" />
+          </CardTitle>
           <CardDescription>
-            Only organization admins can manage the WhatsApp API key.
+            <WhatsAppText id="s182" />
           </CardDescription>
         </CardHeader>
       </Card>
@@ -162,7 +165,11 @@ export function WhatsappOrganizationApiKeySelfService() {
   }
 
   if (loading || !state) {
-    return <p className="text-sm text-muted-foreground">Loading API key...</p>
+    return (
+      <p className="text-sm text-muted-foreground">
+        <WhatsAppText id="s183" />
+      </p>
+    )
   }
 
   const canGenerate = state.status !== "ACTIVE"
@@ -171,10 +178,11 @@ export function WhatsappOrganizationApiKeySelfService() {
   return (
     <div className="space-y-6">
       <header className="space-y-1">
-        <h1 className="text-xl font-semibold">WhatsApp API key</h1>
+        <h1 className="text-xl font-semibold">
+          <WhatsAppText id="s184" />
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Manage the static API key for your organization. The secret is shown
-          only once after generation or rotation.
+          <WhatsAppText id="s185" />
         </p>
       </header>
 
@@ -183,8 +191,7 @@ export function WhatsappOrganizationApiKeySelfService() {
           <CardHeader>
             <CardTitle className="text-base">One-time API secret</CardTitle>
             <CardDescription>
-              Copy this secret now. It cannot be recovered after leaving this
-              page.
+              <WhatsAppText id="s186" />
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap items-center gap-3">
@@ -214,10 +221,11 @@ export function WhatsappOrganizationApiKeySelfService() {
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-4">
           <div>
-            <CardTitle className="text-base">Current key</CardTitle>
+            <CardTitle className="text-base">
+              <WhatsAppText id="s187" />
+            </CardTitle>
             <CardDescription>
-              Fingerprints and lifecycle metadata are safe to share. Secret
-              material is never stored here.
+              <WhatsAppText id="s188" />
             </CardDescription>
           </div>
           <Badge variant={statusVariant(state.status)}>
@@ -249,7 +257,9 @@ export function WhatsappOrganizationApiKeySelfService() {
               <dd>{formatDate(state.revokedAt)}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Last used</dt>
+              <dt className="text-muted-foreground">
+                <WhatsAppText id="s189" />
+              </dt>
               <dd>{formatDate(state.lastUsedAt)}</dd>
             </div>
           </dl>
@@ -262,7 +272,7 @@ export function WhatsappOrganizationApiKeySelfService() {
                 onClick={() => void runAction("generate")}
               >
                 <KeyRound className="mr-2 size-4" />
-                Generate API key
+                <WhatsAppText id="s190" />
               </Button>
             )}
             {canRotate && (
@@ -274,19 +284,22 @@ export function WhatsappOrganizationApiKeySelfService() {
                     disabled={busy !== null}
                   >
                     <RotateCw className="mr-2 size-4" />
-                    Rotate API key
+                    <WhatsAppText id="s191" />
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Rotate API key?</AlertDialogTitle>
+                    <AlertDialogTitle>
+                      <WhatsAppText id="s192" />
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
-                      The current key will stop working immediately. Copy the
-                      new secret before leaving this page.
+                      <WhatsAppText id="s193" />
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>
+                      <WhatsAppText id="s15" />
+                    </AlertDialogCancel>
                     <AlertDialogAction onClick={() => void runAction("rotate")}>
                       Rotate
                     </AlertDialogAction>
@@ -303,19 +316,22 @@ export function WhatsappOrganizationApiKeySelfService() {
                     disabled={busy !== null}
                   >
                     <Ban className="mr-2 size-4" />
-                    Revoke API key
+                    <WhatsAppText id="s194" />
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Revoke API key?</AlertDialogTitle>
+                    <AlertDialogTitle>
+                      <WhatsAppText id="s195" />
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
-                      This immediately disables the current key. You can
-                      generate a new key afterward.
+                      <WhatsAppText id="s196" />
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>
+                      <WhatsAppText id="s15" />
+                    </AlertDialogCancel>
                     <AlertDialogAction onClick={() => void runAction("revoke")}>
                       Revoke
                     </AlertDialogAction>

@@ -640,6 +640,71 @@ export type AppMessages = {
         wizardStep1: string
         wizardStep2: string
         wizardStep3: string
+        list: {
+          campaigns: string
+          campaignsDescription: string
+          loading: string
+          view: string
+          send: string
+          delete: string
+          actions: string
+          deleteConfirmation: string
+          deleted: string
+          loadError: string
+          sendError: string
+          deleteError: string
+          progress: string
+        }
+        detail: {
+          fallbackTitle: string
+          description: string
+          downloadFailed: string
+          back: string
+          loading: string
+          notFound: string
+          campaignProgress: string
+          createdAt: string
+          totalRecipients: string
+          sent: string
+          failed: string
+          queued: string
+          deliveryProgress: string
+          recipientList: string
+          recipientListDescription: string
+          progressTiming: string
+          recipientFilterLabel: string
+          name: string
+          status: string
+          messageId: string
+          error: string
+          searchPlaceholder: string
+          all: string
+          recipient: string
+          phoneNumber: string
+          attempts: string
+          lastError: string
+          updatedAt: string
+          noRecipients: string
+          loadError: string
+        }
+        status: {
+          draft: string
+          queued: string
+          processing: string
+          completed: string
+          failed: string
+        }
+      }
+      shared: {
+        justNow: string
+        never: string
+        minutesAgo: string
+        hoursAgo: string
+        daysAgo: string
+        lastSeen: string
+        connected: string
+        disconnected: string
+        unknown: string
       }
       catalogs: {
         heading: string

@@ -5,6 +5,7 @@
  */
 
 "use client"
+import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import {
   Lightning,
@@ -147,7 +148,7 @@ export function TemplateList({
         </p>
         <Button variant="outline" onClick={onRetry}>
           <ArrowsClockwise className="mr-2 size-4" />
-          Retry
+          <WhatsAppText id="s101" />
         </Button>
       </div>
     )

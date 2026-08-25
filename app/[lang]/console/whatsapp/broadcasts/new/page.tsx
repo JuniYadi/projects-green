@@ -1,4 +1,5 @@
 "use client"
+import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -562,7 +563,9 @@ export default function NewWhatsAppBroadcastPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="template">Template</Label>
+                <Label htmlFor="template">
+                  <WhatsAppText id="s16" />
+                </Label>
                 <Select
                   value={templateId}
                   onValueChange={handleTemplateChange}
@@ -671,7 +674,9 @@ export default function NewWhatsAppBroadcastPage() {
               <TabsList className="w-full sm:w-auto">
                 <TabsTrigger value="manual">Ketik / Paste Nomor</TabsTrigger>
                 <TabsTrigger value="contacts">Daftar Kontak</TabsTrigger>
-                <TabsTrigger value="csv">Upload CSV / Excel</TabsTrigger>
+                <TabsTrigger value="csv">
+                  <WhatsAppText id="s17" />
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="manual" className="space-y-2 pt-2">
@@ -762,7 +767,7 @@ export default function NewWhatsAppBroadcastPage() {
                       mengikuti urutan {"{{1}}"}, {"{{2}}"}, dan seterusnya.
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Ganti baris contoh fiktif sebelum mengunggah file.
+                      <WhatsAppText id="s18" />
                     </p>
                   </div>
                   <Button
@@ -772,11 +777,13 @@ export default function NewWhatsAppBroadcastPage() {
                     disabled={!selectedTemplate || !templateLanguage}
                     onClick={downloadCsvTemplate}
                   >
-                    Unduh template CSV
+                    <WhatsAppText id="s19" />
                   </Button>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="csv-file">File CSV / TXT</Label>
+                  <Label htmlFor="csv-file">
+                    <WhatsAppText id="s20" />
+                  </Label>
                   <Input
                     id="csv-file"
                     type="file"
@@ -902,7 +909,9 @@ export default function NewWhatsAppBroadcastPage() {
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Template</span>
+                <span className="text-muted-foreground">
+                  <WhatsAppText id="s16" />
+                </span>
                 <span>
                   {isPreflightCurrent
                     ? serverPreflight.selection.templateName
@@ -944,7 +953,7 @@ export default function NewWhatsAppBroadcastPage() {
               {placeholders.length > 0 ? (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
-                    Variabel template
+                    <WhatsAppText id="s21" />
                   </span>
                   <span>{variableValidation.requiredVariables.join(", ")}</span>
                 </div>

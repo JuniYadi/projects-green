@@ -1,3 +1,4 @@
+import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -13,7 +14,7 @@ export default function WhatsAppUsageLoading() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Messages
+              <WhatsAppText id="s44" />
             </CardTitle>
             <Skeleton className="size-4" />
           </CardHeader>
@@ -43,7 +44,9 @@ export default function WhatsAppUsageLoading() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              <WhatsAppText id="s45" />
+            </CardTitle>
             <Skeleton className="size-4" />
           </CardHeader>
           <CardContent>

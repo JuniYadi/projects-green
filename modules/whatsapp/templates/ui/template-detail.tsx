@@ -6,6 +6,10 @@
  */
 
 "use client"
+import {
+  getWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import {
@@ -163,7 +167,7 @@ export function TemplateDetailView({
         </p>
         <Button variant="outline" onClick={onRetry}>
           <ArrowsClockwise className="mr-2 size-4" />
-          Retry
+          <WhatsAppText id="s101" />
         </Button>
       </div>
     )
@@ -178,7 +182,9 @@ export function TemplateDetailView({
           className="mb-3 size-10 text-muted-foreground"
           weight="fill"
         />
-        <p className="text-sm text-muted-foreground">Template not found.</p>
+        <p className="text-sm text-muted-foreground">
+          <WhatsAppText id="s262" />
+        </p>
       </div>
     )
   }
@@ -284,7 +290,7 @@ export function TemplateDetailView({
             ) : (
               <Badge className="flex items-center gap-1 border-amber-500/30 bg-amber-500/15 text-amber-600">
                 <Clock weight="fill" className="size-3.5" />
-                In Review
+                <WhatsAppText id="s263" />
               </Badge>
             )}
           </div>
@@ -304,11 +310,12 @@ export function TemplateDetailView({
               </span>
             ) : template.whatsappDeviceId ? (
               <span className="font-mono text-[11px] text-muted-foreground">
-                Device: {template.whatsappDeviceId}
+                <WhatsAppText id="s264" />
+                {template.whatsappDeviceId}
               </span>
             ) : (
               <Badge variant="secondary" className="text-[10px]">
-                All Devices
+                <WhatsAppText id="s47" />
               </Badge>
             )}
             <span>•</span>
@@ -332,7 +339,7 @@ export function TemplateDetailView({
               }
             >
               <PaperPlaneTilt weight="bold" className="mr-1.5 size-4" />
-              Send Test Message
+              <WhatsAppText id="s265" />
             </Button>
           )}
 
@@ -343,13 +350,17 @@ export function TemplateDetailView({
               onClick={() => setCodeModalOpen(true)}
             >
               <Code weight="bold" className="mr-1.5 size-4 text-primary" />
-              Get Code Snippet
+              <WhatsAppText id="s266" />
             </Button>
           )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button aria-label="More actions" size="icon" variant="outline">
+              <Button
+                aria-label={getWhatsAppText("s267")}
+                size="icon"
+                variant="outline"
+              >
                 <DotsThree weight="bold" className="size-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -379,7 +390,7 @@ export function TemplateDetailView({
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onSelect={onDelete}>
-                    Delete
+                    <WhatsAppText id="s268" />
                   </DropdownMenuItem>
                 </>
               )}
@@ -440,11 +451,10 @@ export function TemplateDetailView({
           <Card className="ring-0">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">
-                Template Specification & Variable Tester
+                <WhatsAppText id="s269" />
               </CardTitle>
               <CardDescription>
-                Detailed component breakdown. Type sample variables below to
-                test formatting and generate real-time JSON payload.
+                <WhatsAppText id="s270" />
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -465,9 +475,11 @@ export function TemplateDetailView({
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-base">Live Preview</CardTitle>
+                  <CardTitle className="text-base">
+                    <WhatsAppText id="s271" />
+                  </CardTitle>
                   <CardDescription>
-                    Real-time visual output and API payload
+                    <WhatsAppText id="s272" />
                   </CardDescription>
                 </div>
 
@@ -503,14 +515,14 @@ export function TemplateDetailView({
                       values={variableValues}
                     />
                     <p className="text-center text-[11px] text-muted-foreground">
-                      💡 Recipient view rendered with your tested variables.
+                      <WhatsAppText id="s273" />
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between pb-1">
                       <span className="text-xs font-medium text-muted-foreground">
-                        Ready-to-use API Payload:
+                        <WhatsAppText id="s274" />
                       </span>
                       <Button
                         size="sm"
@@ -526,7 +538,7 @@ export function TemplateDetailView({
                         ) : (
                           <>
                             <Copy className="size-3" />
-                            Copy JSON
+                            <WhatsAppText id="s201" />
                           </>
                         )}
                       </Button>
@@ -540,7 +552,7 @@ export function TemplateDetailView({
                 )
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  No language variant available.
+                  <WhatsAppText id="s275" />
                 </p>
               )}
             </CardContent>

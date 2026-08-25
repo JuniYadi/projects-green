@@ -1,4 +1,8 @@
 "use client"
+import {
+  getWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -98,7 +102,7 @@ export default function ConsoleWhatsAppMessageJourneyPage() {
           className="gap-1.5"
         >
           <ArrowLeft className="size-4" />
-          Back
+          <WhatsAppText id="s119" />
         </Button>
       </div>
 
@@ -126,7 +130,7 @@ export default function ConsoleWhatsAppMessageJourneyPage() {
               className="gap-2"
             >
               <ArrowsClockwise className="size-4" />
-              Retry
+              <WhatsAppText id="s101" />
             </Button>
           </CardContent>
         </Card>
@@ -140,7 +144,7 @@ export default function ConsoleWhatsAppMessageJourneyPage() {
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <CardTitle className="text-lg">
-                    WhatsApp Message Journey
+                    <WhatsAppText id="s120" />
                   </CardTitle>
                   <CardDescription className="mt-1 flex items-center gap-2">
                     <span className="font-mono text-xs font-medium text-foreground">
@@ -150,7 +154,7 @@ export default function ConsoleWhatsAppMessageJourneyPage() {
                       type="button"
                       onClick={handleCopyId}
                       className="inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-                      title="Copy full WA Message ID"
+                      title={getWhatsAppText("s121")}
                     >
                       {copied ? (
                         <Check className="size-3.5 text-emerald-600" />
@@ -182,10 +186,11 @@ export default function ConsoleWhatsAppMessageJourneyPage() {
             <div className="lg:col-span-7">
               <Card className="h-full">
                 <CardHeader>
-                  <CardTitle className="text-base">Message Journey</CardTitle>
+                  <CardTitle className="text-base">
+                    <WhatsAppText id="s122" />
+                  </CardTitle>
                   <CardDescription>
-                    End-to-end lifecycle from initiation to delivery and
-                    receipt.
+                    <WhatsAppText id="s123" />
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -198,9 +203,11 @@ export default function ConsoleWhatsAppMessageJourneyPage() {
             <div className="space-y-6 lg:col-span-5">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Message Preview</CardTitle>
+                  <CardTitle className="text-base">
+                    <WhatsAppText id="s124" />
+                  </CardTitle>
                   <CardDescription>
-                    WhatsApp rendering preview as seen by recipient.
+                    <WhatsAppText id="s125" />
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -211,7 +218,9 @@ export default function ConsoleWhatsAppMessageJourneyPage() {
               {/* Technical Metadata Card */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Technical Details</CardTitle>
+                  <CardTitle className="text-base">
+                    <WhatsAppText id="s126" />
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2.5 text-xs">
                   <div className="flex justify-between border-b pb-2">
@@ -229,7 +238,7 @@ export default function ConsoleWhatsAppMessageJourneyPage() {
                   {journey.device && (
                     <div className="flex justify-between border-b pb-2">
                       <span className="text-muted-foreground">
-                        Sender Device:
+                        <WhatsAppText id="s127" />
                       </span>
                       <span className="font-mono font-medium">
                         {journey.device.phoneNumber}
@@ -239,7 +248,7 @@ export default function ConsoleWhatsAppMessageJourneyPage() {
                   {journey.contact && (
                     <div className="flex justify-between border-b pb-2">
                       <span className="text-muted-foreground">
-                        Recipient Phone:
+                        <WhatsAppText id="s128" />
                       </span>
                       <span className="font-mono font-medium">
                         {journey.contact.phoneNumber}
@@ -249,7 +258,7 @@ export default function ConsoleWhatsAppMessageJourneyPage() {
                   {journey.audit?.actorName && (
                     <div className="flex justify-between border-b pb-2">
                       <span className="text-muted-foreground">
-                        Initiated By:
+                        <WhatsAppText id="s129" />
                       </span>
                       <span className="font-mono font-medium">
                         {journey.audit.actorName}

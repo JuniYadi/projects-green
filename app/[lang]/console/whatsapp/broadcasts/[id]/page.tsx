@@ -31,6 +31,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { getMessages } from "@/lib/i18n/messages"
 import {
   whatsappClient,
   type Broadcast,
@@ -39,13 +40,6 @@ import {
 } from "@/modules/whatsapp/whatsapp-client"
 
 type RecipientFilter = "ALL" | BroadcastRecipientStatus
-
-const recipientFilters: Array<{ value: RecipientFilter; label: string }> = [
-  { value: "ALL", label: "Semua" },
-  { value: "QUEUED", label: "Dalam Antrean" },
-  { value: "SENT", label: "Terkirim" },
-  { value: "FAILED", label: "Gagal" },
-]
 
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleString() : "—"
@@ -57,31 +51,37 @@ const recipientBadgeVariant = (status: BroadcastRecipientStatus) =>
       ? "destructive"
       : "secondary"
 
-const formatRecipientStatus = (status: BroadcastRecipientStatus) => {
+const formatRecipientStatus = (
+  status: BroadcastRecipientStatus,
+  messages: ReturnType<typeof getMessages>["console"]["whatsapp"]["broadcasts"]
+) => {
   switch (status) {
     case "SENT":
-      return "TERKIRIM"
+      return messages.detail.sent
     case "QUEUED":
-      return "DALAM ANTREAN"
+      return messages.detail.queued
     case "FAILED":
-      return "GAGAL"
+      return messages.detail.failed
     default:
       return status
   }
 }
 
-const formatBroadcastStatus = (status: string) => {
+const formatBroadcastStatus = (
+  status: string,
+  messages: ReturnType<typeof getMessages>["console"]["whatsapp"]["broadcasts"]
+) => {
   switch (status) {
     case "DRAFT":
-      return "DRAFT"
+      return messages.status.draft
     case "QUEUED":
-      return "DALAM ANTREAN"
+      return messages.status.queued
     case "PROCESSING":
-      return "DALAM PROSES"
+      return messages.status.processing
     case "COMPLETED":
-      return "SELESAI"
+      return messages.status.completed
     case "FAILED":
-      return "GAGAL"
+      return messages.status.failed
     default:
       return status.replaceAll("_", " ")
   }
@@ -118,7 +118,14 @@ const downloadFailedRecipientsCsv = (
 export default function WhatsAppBroadcastDetailPage() {
   const router = useRouter()
   const params = useParams<{ lang?: string; id: string }>()
-  resolveLocaleOrDefault(params?.lang)
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const t = getMessages(locale).console.whatsapp.broadcasts
+  const recipientFilters: Array<{ value: RecipientFilter; label: string }> = [
+    { value: "ALL", label: t.detail.all },
+    { value: "QUEUED", label: t.detail.queued },
+    { value: "SENT", label: t.detail.sent },
+    { value: "FAILED", label: t.detail.failed },
+  ]
   const [broadcast, setBroadcast] = React.useState<Broadcast | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [filter, setFilter] = React.useState<RecipientFilter>("ALL")
@@ -129,13 +136,11 @@ export default function WhatsAppBroadcastDetailPage() {
     try {
       setBroadcast(await whatsappClient.getBroadcast(params.id))
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Gagal memuat broadcast"
-      )
+      toast.error(error instanceof Error ? error.message : t.detail.loadError)
     } finally {
       setLoading(false)
     }
-  }, [params.id])
+  }, [params.id, t.detail.loadError])
 
   React.useEffect(() => {
     ;(async () => {
@@ -173,11 +178,9 @@ export default function WhatsAppBroadcastDetailPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {broadcast?.templateName ?? "Detail Broadcast"}
+            {broadcast?.templateName ?? t.detail.fallbackTitle}
           </h1>
-          <p className="text-muted-foreground">
-            Status pengiriman dan hasil per penerima.
-          </p>
+          <p className="text-muted-foreground">{t.detail.description}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button
@@ -189,39 +192,42 @@ export default function WhatsAppBroadcastDetailPage() {
             }}
           >
             <DownloadSimple weight="bold" className="size-4" />
-            Unduh Daftar Nomor Gagal (.csv)
+            {t.detail.downloadFailed}
           </Button>
           <Button variant="outline" onClick={() => router.back()}>
-            Kembali
+            {t.detail.back}
           </Button>
         </div>
       </div>
       {loading ? (
         <Card>
-          <CardContent className="py-8">Memuat broadcast…</CardContent>
+          <CardContent className="py-8">{t.detail.loading}</CardContent>
         </Card>
       ) : !broadcast ? (
         <Card>
-          <CardContent className="py-8">Broadcast tidak ditemukan.</CardContent>
+          <CardContent className="py-8">{t.detail.notFound}</CardContent>
         </Card>
       ) : (
         <>
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
-                <CardTitle>Progres kampanye</CardTitle>
-                <Badge>{formatBroadcastStatus(broadcast.status)}</Badge>
+                <CardTitle>{t.detail.campaignProgress}</CardTitle>
+                <Badge>{formatBroadcastStatus(broadcast.status, t)}</Badge>
               </div>
               <CardDescription>
-                {broadcast.templateLanguage} • dibuat{" "}
-                {formatDate(broadcast.createdAt)}
+                {broadcast.templateLanguage} •{" "}
+                {t.detail.createdAt.replace(
+                  "{date}",
+                  formatDate(broadcast.createdAt)
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid gap-4 md:grid-cols-4">
                 <div className="rounded-lg border p-4">
                   <p className="text-sm text-muted-foreground">
-                    Total Penerima
+                    {t.detail.totalRecipients}
                   </p>
                   <p className="mt-2 text-2xl font-semibold">
                     {broadcast.total}
@@ -230,13 +236,13 @@ export default function WhatsAppBroadcastDetailPage() {
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2">
                     <p className="text-sm text-muted-foreground">
-                      Berhasil Terkirim
+                      {t.detail.sent}
                     </p>
                     <Badge
                       variant="outline"
                       className="text-emerald-600 dark:text-emerald-400"
                     >
-                      TERKIRIM
+                      {t.detail.sent}
                     </Badge>
                   </div>
                   <p className="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
@@ -246,13 +252,13 @@ export default function WhatsAppBroadcastDetailPage() {
                 <div className="rounded-lg border p-4">
                   <div className="flex items-center gap-2">
                     <p className="text-sm text-muted-foreground">
-                      Dalam Antrean
+                      {t.detail.queued}
                     </p>
                     <Badge
                       variant="outline"
                       className="text-amber-600 dark:text-amber-400"
                     >
-                      DALAM ANTREAN
+                      {t.detail.queued}
                     </Badge>
                   </div>
                   <p className="mt-2 text-2xl font-semibold text-amber-600 dark:text-amber-400">
@@ -260,7 +266,9 @@ export default function WhatsAppBroadcastDetailPage() {
                   </p>
                 </div>
                 <div className="rounded-lg border p-4">
-                  <p className="text-sm text-muted-foreground">Gagal</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t.detail.failed}
+                  </p>
                   <p className="mt-2 text-2xl font-semibold text-red-600 dark:text-red-400">
                     {broadcast.failed}
                   </p>
@@ -270,7 +278,7 @@ export default function WhatsAppBroadcastDetailPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
-                    Progres pengiriman
+                    {t.detail.deliveryProgress}
                   </span>
                   <span className="font-medium">{progress}%</span>
                 </div>
@@ -281,9 +289,10 @@ export default function WhatsAppBroadcastDetailPage() {
                   />
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {progress}% selesai • dimulai{" "}
-                  {formatDate(broadcast.startedAt)} • selesai{" "}
-                  {formatDate(broadcast.endedAt)}
+                  {t.detail.progressTiming
+                    .replace("{progress}", String(progress))
+                    .replace("{startedAt}", formatDate(broadcast.startedAt))
+                    .replace("{endedAt}", formatDate(broadcast.endedAt))}
                 </p>
               </div>
             </CardContent>
@@ -292,9 +301,9 @@ export default function WhatsAppBroadcastDetailPage() {
           <TooltipProvider>
             <Card>
               <CardHeader>
-                <CardTitle>Daftar Penerima</CardTitle>
+                <CardTitle>{t.detail.recipientList}</CardTitle>
                 <CardDescription>
-                  Cari dan filter penerima berdasarkan status pengiriman.
+                  {t.detail.recipientListDescription}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -302,7 +311,7 @@ export default function WhatsAppBroadcastDetailPage() {
                   <div className="relative w-full sm:max-w-xs">
                     <MagnifyingGlass className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      placeholder="Cari nomor atau nama…"
+                      placeholder={t.detail.searchPlaceholder}
                       value={search}
                       onChange={(event) => setSearch(event.target.value)}
                       className="pl-9"
@@ -314,7 +323,7 @@ export default function WhatsAppBroadcastDetailPage() {
                       setFilter(value as RecipientFilter)
                     }
                   >
-                    <TabsList aria-label="Filter status penerima">
+                    <TabsList aria-label={t.detail.recipientFilterLabel}>
                       {recipientFilters.map(({ value, label }) => (
                         <TabsTrigger key={value} value={value} className="px-3">
                           {label}
@@ -327,19 +336,19 @@ export default function WhatsAppBroadcastDetailPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nomor</TableHead>
-                      <TableHead>Nama</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Percobaan</TableHead>
-                      <TableHead>ID Pesan</TableHead>
-                      <TableHead>Kesalahan</TableHead>
+                      <TableHead>{t.detail.phoneNumber}</TableHead>
+                      <TableHead>{t.detail.name}</TableHead>
+                      <TableHead>{t.detail.status}</TableHead>
+                      <TableHead>{t.detail.attempts}</TableHead>
+                      <TableHead>{t.detail.messageId}</TableHead>
+                      <TableHead>{t.detail.error}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {recipients.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6}>
-                          Penerima tidak ditemukan.
+                          {t.detail.noRecipients}
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -351,7 +360,7 @@ export default function WhatsAppBroadcastDetailPage() {
                             <Badge
                               variant={recipientBadgeVariant(recipient.status)}
                             >
-                              {formatRecipientStatus(recipient.status)}
+                              {formatRecipientStatus(recipient.status, t)}
                             </Badge>
                           </TableCell>
                           <TableCell>{recipient.attempts}</TableCell>

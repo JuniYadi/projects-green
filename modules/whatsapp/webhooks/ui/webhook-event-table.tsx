@@ -7,6 +7,7 @@
  */
 
 "use client"
+import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 import Link from "next/link"
 import * as React from "react"
 import { useState, useCallback } from "react"
@@ -217,11 +218,19 @@ export function WebhookEventTable({
             <TableHeader>
               <TableRow>
                 {showPayload && <TableHead className="w-10" />}
-                <TableHead>Device</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>WA Message ID</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s113" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s10" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s202" />
+                </TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Event</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s226" />
+                </TableHead>
                 <TableHead>Timestamp</TableHead>
               </TableRow>
             </TableHeader>
@@ -272,7 +281,7 @@ export function WebhookEventTable({
         {onRetry && (
           <Button variant="outline" onClick={onRetry}>
             <ArrowsClockwise className="mr-2 size-4" />
-            Retry
+            <WhatsAppText id="s101" />
           </Button>
         )}
       </div>
@@ -288,7 +297,9 @@ export function WebhookEventTable({
           className="mb-3 size-10 text-muted-foreground"
           weight="fill"
         />
-        <p className="text-sm text-muted-foreground">No webhook events yet</p>
+        <p className="text-sm text-muted-foreground">
+          <WhatsAppText id="s227" />
+        </p>
         {emptyActionHref && (
           <Button variant="outline" className="mt-3" asChild>
             <a href={emptyActionHref}>{emptyActionLabel}</a>
@@ -305,11 +316,19 @@ export function WebhookEventTable({
             <TableHeader>
               <TableRow>
                 {showPayload && <TableHead className="w-10" />}
-                <TableHead>Device</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>WA Message ID</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s113" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s10" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s202" />
+                </TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Event</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s226" />
+                </TableHead>
                 <TableHead>Timestamp</TableHead>
               </TableRow>
             </TableHeader>
@@ -373,7 +392,7 @@ export function WebhookEventTable({
                               <TooltipContent className="max-w-sm font-mono text-xs break-all">
                                 <p>{event.waMessageId}</p>
                                 <p className="mt-0.5 text-[10px] text-muted-foreground">
-                                  Click to copy full ID
+                                  <WhatsAppText id="s205" />
                                 </p>
                               </TooltipContent>
                             </Tooltip>
@@ -413,7 +432,7 @@ export function WebhookEventTable({
                             <RawPayloadViewer payload={event.metaPayload} />
                           ) : (
                             <p className="text-xs text-muted-foreground italic">
-                              No raw payload data available for this event.
+                              <WhatsAppText id="s228" />
                             </p>
                           )}
                         </TableCell>
@@ -438,7 +457,9 @@ export function WebhookEventTable({
               Previous
             </Button>
             <span className="text-xs text-muted-foreground">
-              Page {pagination.page} of {pagination.totalPages}
+              <WhatsAppText id="s211" />
+              {pagination.page} <WhatsAppText id="s14" />
+              {pagination.totalPages}
             </span>
             <Button
               variant="outline"

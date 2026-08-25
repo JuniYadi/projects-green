@@ -1,4 +1,8 @@
 "use client"
+import {
+  getWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import {
@@ -447,7 +451,7 @@ export default function WhatsAppContactsPage() {
           <div className="flex gap-2">
             <Button onClick={openImportDialog}>
               <Upload weight="bold" className="mr-2 size-4" />
-              Import CSV
+              <WhatsAppText id="s0" />
             </Button>
             <Button onClick={openAddDialog}>
               <UserPlus weight="bold" className="mr-2 size-4" />
@@ -578,7 +582,8 @@ export default function WhatsAppContactsPage() {
                       </p>
                       {contact.lastMessage && (
                         <p className="max-w-64 truncate text-xs text-muted-foreground">
-                          Last: {contact.lastMessage}
+                          <WhatsAppText id="s1" />
+                          {contact.lastMessage}
                         </p>
                       )}
                       {contact.lastMessageAt && (
@@ -602,7 +607,9 @@ export default function WhatsAppContactsPage() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon-sm">
-                          <span className="sr-only">Open menu</span>
+                          <span className="sr-only">
+                            <WhatsAppText id="s2" />
+                          </span>
                           <DotsThreeVertical weight="bold" className="size-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -695,7 +702,7 @@ export default function WhatsAppContactsPage() {
                 }
               >
                 <SelectTrigger id="add-group" className="w-full">
-                  <SelectValue placeholder="Default audience" />
+                  <SelectValue placeholder={getWhatsAppText("s3")} />
                 </SelectTrigger>
                 <SelectContent>
                   {groups.map((group) => (
@@ -820,7 +827,7 @@ export default function WhatsAppContactsPage() {
                 }
               >
                 <SelectTrigger id="edit-group" className="w-full">
-                  <SelectValue placeholder="Default audience" />
+                  <SelectValue placeholder={getWhatsAppText("s3")} />
                 </SelectTrigger>
                 <SelectContent>
                   {groups.map((group) => (
@@ -914,16 +921,19 @@ export default function WhatsAppContactsPage() {
       <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Import Contacts from CSV</DialogTitle>
+            <DialogTitle>
+              <WhatsAppText id="s4" />
+            </DialogTitle>
             <DialogDescription>
-              Upload a CSV file with columns: phone, name, email, group
-              (optional). The first row must be a header row.
+              <WhatsAppText id="s5" />
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             {/* File input */}
             <div className="grid gap-2">
-              <Label htmlFor="csv-upload">CSV File</Label>
+              <Label htmlFor="csv-upload">
+                <WhatsAppText id="s6" />
+              </Label>
               <input
                 id="csv-upload"
                 type="file"
@@ -934,7 +944,7 @@ export default function WhatsAppContactsPage() {
               <Button asChild variant="outline">
                 <label htmlFor="csv-upload" className="cursor-pointer">
                   <Upload weight="bold" className="mr-2 size-4" />
-                  Choose CSV File
+                  <WhatsAppText id="s7" />
                 </label>
               </Button>
             </div>
@@ -943,7 +953,8 @@ export default function WhatsAppContactsPage() {
             {parsedContacts.length > 0 && (
               <div className="grid gap-2">
                 <Label>
-                  Preview ({parsedContacts.length} contact
+                  <WhatsAppText id="s8" />
+                  {parsedContacts.length} <WhatsAppText id="s9" />
                   {parsedContacts.length !== 1 ? "s" : ""})
                 </Label>
                 <div className="max-h-64 overflow-auto rounded-md border">
@@ -951,16 +962,16 @@ export default function WhatsAppContactsPage() {
                     <thead className="sticky top-0 bg-muted">
                       <tr>
                         <th className="px-2 py-1.5 text-left font-medium">
-                          Phone
+                          <WhatsAppText id="s10" />
                         </th>
                         <th className="px-2 py-1.5 text-left font-medium">
-                          Name
+                          <WhatsAppText id="s11" />
                         </th>
                         <th className="px-2 py-1.5 text-left font-medium">
-                          Email
+                          <WhatsAppText id="s12" />
                         </th>
                         <th className="px-2 py-1.5 text-left font-medium">
-                          Group
+                          <WhatsAppText id="s13" />
                         </th>
                       </tr>
                     </thead>
@@ -983,7 +994,8 @@ export default function WhatsAppContactsPage() {
             {isImporting && (
               <div className="grid gap-2">
                 <Label>
-                  Importing {importProgress.current} of {importProgress.total}…
+                  Importing {importProgress.current} <WhatsAppText id="s14" />
+                  {importProgress.total}…
                 </Label>
                 <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                   <div
@@ -1005,7 +1017,7 @@ export default function WhatsAppContactsPage() {
               }}
               disabled={isImporting}
             >
-              Cancel
+              <WhatsAppText id="s15" />
             </Button>
             <Button
               onClick={() => void handleImport()}

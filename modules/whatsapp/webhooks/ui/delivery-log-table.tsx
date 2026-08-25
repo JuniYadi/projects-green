@@ -6,6 +6,7 @@
  */
 
 "use client"
+import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import { useState, useCallback } from "react"
 import {
@@ -99,7 +100,9 @@ export function DeliveryLogTable({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10" />
-                <TableHead>Event Type</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s230" />
+                </TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Attempt</TableHead>
                 <TableHead>HTTP Status</TableHead>
@@ -148,7 +151,7 @@ export function DeliveryLogTable({
         {onRetry && (
           <Button variant="outline" onClick={onRetry}>
             <ArrowsClockwise className="mr-2 size-4" />
-            Retry
+            <WhatsAppText id="s101" />
           </Button>
         )}
       </div>
@@ -164,7 +167,9 @@ export function DeliveryLogTable({
           className="mb-3 size-10 text-muted-foreground"
           weight="fill"
         />
-        <p className="text-sm text-muted-foreground">No delivery logs yet</p>
+        <p className="text-sm text-muted-foreground">
+          <WhatsAppText id="s276" />
+        </p>
       </div>
     )
   }
@@ -178,7 +183,9 @@ export function DeliveryLogTable({
           <TableHeader>
             <TableRow>
               <TableHead className="w-10" />
-              <TableHead>Event Type</TableHead>
+              <TableHead>
+                <WhatsAppText id="s230" />
+              </TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Attempt</TableHead>
               <TableHead>HTTP Status</TableHead>
@@ -267,7 +274,7 @@ export function DeliveryLogTable({
                 {log.errorMessage && (
                   <div>
                     <p className="mb-1 text-xs font-medium text-muted-foreground">
-                      Error
+                      <WhatsAppText id="s277" />
                     </p>
                     <p className="text-sm text-red-600">{log.errorMessage}</p>
                   </div>
@@ -275,7 +282,7 @@ export function DeliveryLogTable({
                 {log.responseBody && (
                   <div>
                     <p className="mb-1 text-xs font-medium text-muted-foreground">
-                      Response Body
+                      <WhatsAppText id="s278" />
                     </p>
                     <pre className="max-h-32 overflow-auto rounded bg-muted p-2 text-xs">
                       {log.responseBody}
@@ -300,7 +307,9 @@ export function DeliveryLogTable({
             Previous
           </Button>
           <span className="text-xs text-muted-foreground">
-            Page {pagination.page} of {pagination.totalPages}
+            <WhatsAppText id="s211" />
+            {pagination.page} <WhatsAppText id="s14" />
+            {pagination.totalPages}
           </span>
           <Button
             variant="outline"

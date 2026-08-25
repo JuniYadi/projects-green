@@ -1,4 +1,8 @@
 "use client"
+import {
+  getWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 import * as React from "react"
 import Link from "next/link"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -318,14 +322,18 @@ function ConversationItem({
             <span>Internal Notes</span>
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onLabels(conversation)}>
-            <span>Add Label</span>
+            <span>
+              <WhatsAppText id="s130" />
+            </span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"
             onSelect={() => onDelete(conversation.id)}
           >
-            <span>Delete Chat</span>
+            <span>
+              <WhatsAppText id="s131" />
+            </span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -364,7 +372,7 @@ function MessageBubble({ message }: { message: Message }) {
               <Link
                 href={`/console/whatsapp/messages/${encodeURIComponent(message.waMessageId)}`}
                 className="inline-flex items-center gap-1 rounded-md bg-background/80 px-2 py-1 text-[11px] font-medium text-foreground shadow-sm backdrop-blur hover:bg-background hover:text-primary"
-                title="Inspect Message Journey"
+                title={getWhatsAppText("s132")}
               >
                 <span>Journey</span>
                 <ArrowSquareOut className="size-3" />
@@ -394,7 +402,9 @@ function MessageBubble({ message }: { message: Message }) {
 
   return (
     <TooltipProvider>
-      <div className={`group flex ${isInbox ? "justify-start" : "justify-end"}`}>
+      <div
+        className={`group flex ${isInbox ? "justify-start" : "justify-end"}`}
+      >
         <div
           className={`relative max-w-[78%] rounded-2xl px-3.5 py-2 text-sm shadow-xs ${
             isInbox
@@ -402,16 +412,18 @@ function MessageBubble({ message }: { message: Message }) {
               : "rounded-tr-xs bg-emerald-600/90 text-white dark:bg-emerald-700 dark:text-emerald-50"
           }`}
         >
-          <p className="break-words whitespace-pre-wrap leading-relaxed">
+          <p className="leading-relaxed break-words whitespace-pre-wrap">
             {message.body || (
               <span className="italic opacity-60">
-                (no content)
+                <WhatsAppText id="s133" />
               </span>
             )}
           </p>
           <div
-            className={`absolute bottom-1.5 right-2 flex select-none items-center gap-1 text-[10px] ${
-              isInbox ? "text-muted-foreground" : "text-emerald-100 dark:text-emerald-200"
+            className={`absolute right-2 bottom-1.5 flex items-center gap-1 text-[10px] select-none ${
+              isInbox
+                ? "text-muted-foreground"
+                : "text-emerald-100 dark:text-emerald-200"
             }`}
           >
             <Tooltip>
@@ -437,7 +449,7 @@ function MessageBubble({ message }: { message: Message }) {
               <Link
                 href={`/console/whatsapp/messages/${encodeURIComponent(message.waMessageId)}`}
                 className="flex size-6 items-center justify-center rounded-full bg-muted/80 text-muted-foreground shadow-xs backdrop-blur hover:bg-muted hover:text-foreground"
-                title="Inspect Message Journey"
+                title={getWhatsAppText("s132")}
               >
                 <ArrowSquareOut className="size-3" />
               </Link>
@@ -803,12 +815,19 @@ export default function WhatsAppMessagesPage() {
         timeRemaining: `${hours}h ${minutes}m`,
       }
     }
-    return { isOpen: false, lastInboxAt: lastInboxMsg.createdAt, timeRemaining: null }
+    return {
+      isOpen: false,
+      lastInboxAt: lastInboxMsg.createdAt,
+      timeRemaining: null,
+    }
   }, [activeConversation, orderedMessages, currentTime])
 
   const sendReplyMutation = useMutation({
-    mutationFn: (input: { phoneNumber: string; message: string; deviceId?: string }) =>
-      whatsappClient.messages.send(input),
+    mutationFn: (input: {
+      phoneNumber: string
+      message: string
+      deviceId?: string
+    }) => whatsappClient.messages.send(input),
     onSuccess: async () => {
       toast.success("Message sent")
       setReplyText("")
@@ -1077,10 +1096,11 @@ export default function WhatsAppMessagesPage() {
           </DialogTrigger>
           <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-5xl">
             <DialogHeader>
-              <DialogTitle>Send Template Message</DialogTitle>
+              <DialogTitle>
+                <WhatsAppText id="s134" />
+              </DialogTitle>
               <DialogDescription>
-                Select a device, choose an approved WhatsApp template, fill
-                required fields, then send it to a phone number.
+                <WhatsAppText id="s135" />
               </DialogDescription>
             </DialogHeader>
             <div className="min-h-0 flex-1 overflow-y-auto px-1 py-4">
@@ -1089,7 +1109,9 @@ export default function WhatsAppMessagesPage() {
                 <div className="space-y-4">
                   {/* Phone Number — top of left column */}
                   <div className="grid gap-2">
-                    <Label htmlFor="send-phone">Phone Number *</Label>
+                    <Label htmlFor="send-phone">
+                      <WhatsAppText id="s136" />
+                    </Label>
                     <div className="flex gap-2">
                       <Input
                         id="send-phone"
@@ -1105,7 +1127,7 @@ export default function WhatsAppMessagesPage() {
                           size="sm"
                           onClick={() => setSendPhone("")}
                         >
-                          Clear
+                          <WhatsAppText id="s137" />
                         </Button>
                       )}
                     </div>
@@ -1115,7 +1137,7 @@ export default function WhatsAppMessagesPage() {
                   {hasSingleActiveDevice && sendDeviceId ? (
                     <div className="grid gap-1">
                       <Label className="text-xs text-muted-foreground">
-                        Device
+                        <WhatsAppText id="s113" />
                       </Label>
                       <p className="text-sm font-medium">
                         {activeDevices[0].phoneNumber}
@@ -1123,13 +1145,15 @@ export default function WhatsAppMessagesPage() {
                     </div>
                   ) : activeDevices.length > 1 ? (
                     <div className="mb-4 grid gap-2">
-                      <Label htmlFor="send-device">Device *</Label>
+                      <Label htmlFor="send-device">
+                        <WhatsAppText id="s138" />
+                      </Label>
                       <Select
                         value={sendDeviceId}
                         onValueChange={setSendDeviceId}
                       >
                         <SelectTrigger id="send-device">
-                          <SelectValue placeholder="Select a device..." />
+                          <SelectValue placeholder={getWhatsAppText("s139")} />
                         </SelectTrigger>
                         <SelectContent>
                           {activeDevices.map((device) => (
@@ -1142,17 +1166,19 @@ export default function WhatsAppMessagesPage() {
                     </div>
                   ) : (
                     <div className="mb-4 grid gap-2">
-                      <Label htmlFor="send-device">Device *</Label>
+                      <Label htmlFor="send-device">
+                        <WhatsAppText id="s138" />
+                      </Label>
                       <Select
                         value={sendDeviceId}
                         onValueChange={setSendDeviceId}
                       >
                         <SelectTrigger id="send-device">
-                          <SelectValue placeholder="Select a device..." />
+                          <SelectValue placeholder={getWhatsAppText("s139")} />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__none" disabled>
-                            No active devices available
+                            <WhatsAppText id="s140" />
                           </SelectItem>
                         </SelectContent>
                       </Select>
@@ -1161,14 +1187,16 @@ export default function WhatsAppMessagesPage() {
 
                   {/* Template Selection — searchable */}
                   <div className="grid gap-2">
-                    <Label htmlFor="send-template">Template *</Label>
+                    <Label htmlFor="send-template">
+                      <WhatsAppText id="s141" />
+                    </Label>
                     {!sendDeviceId ? (
                       <div className="flex h-10 items-center rounded-md border border-dashed px-3 text-sm text-muted-foreground">
-                        Select a device first
+                        <WhatsAppText id="s142" />
                       </div>
                     ) : templatesLoading ? (
                       <div className="flex h-10 items-center rounded-md border border-dashed px-3 text-sm text-muted-foreground">
-                        Loading templates...
+                        <WhatsAppText id="s143" />
                       </div>
                     ) : templatesError ? (
                       <div className="flex flex-col gap-2 rounded-md border border-destructive/50 p-3">
@@ -1180,12 +1208,12 @@ export default function WhatsAppMessagesPage() {
                           variant="outline"
                           onClick={reloadTemplates}
                         >
-                          Retry
+                          <WhatsAppText id="s101" />
                         </Button>
                       </div>
                     ) : approvedTemplates.length === 0 ? (
                       <div className="flex h-10 items-center rounded-md border border-dashed px-3 text-sm text-muted-foreground">
-                        No approved templates for this device
+                        <WhatsAppText id="s144" />
                       </div>
                     ) : selectedTemplateId && !templatePickerOpen ? (
                       <div className="rounded-md border p-3">
@@ -1225,7 +1253,7 @@ export default function WhatsAppMessagesPage() {
                                 size="sm"
                                 onClick={() => setTemplatePickerOpen(true)}
                               >
-                                Change Template
+                                <WhatsAppText id="s145" />
                               </Button>
                             </div>
                           )
@@ -1235,7 +1263,7 @@ export default function WhatsAppMessagesPage() {
                       <>
                         <Input
                           id="send-template"
-                          placeholder="Type to filter templates..."
+                          placeholder={getWhatsAppText("s146")}
                           value={templateSearchQuery}
                           onChange={(e) =>
                             setTemplateSearchQuery(e.target.value)
@@ -1244,7 +1272,7 @@ export default function WhatsAppMessagesPage() {
                         <div className="max-h-64 overflow-y-auto rounded-md border">
                           {visibleTemplates.length === 0 ? (
                             <div className="px-3 py-2 text-sm text-muted-foreground">
-                              No templates match your search
+                              <WhatsAppText id="s147" />
                             </div>
                           ) : (
                             visibleTemplates.map((tpl) => (
@@ -1421,7 +1449,9 @@ export default function WhatsAppMessagesPage() {
                 <div className="space-y-4 lg:sticky lg:top-0">
                   <div className="rounded-lg border bg-card">
                     <div className="border-b px-4 py-3">
-                      <h4 className="text-sm font-semibold">Message Preview</h4>
+                      <h4 className="text-sm font-semibold">
+                        <WhatsAppText id="s124" />
+                      </h4>
                     </div>
                     <div className="space-y-3 p-4">
                       {selectedTemplateId ? (
@@ -1434,7 +1464,7 @@ export default function WhatsAppMessagesPage() {
                             <>
                               <div>
                                 <p className="text-xs text-muted-foreground">
-                                  Template
+                                  <WhatsAppText id="s16" />
                                 </p>
                                 <div className="flex items-center gap-2">
                                   <p className="text-sm font-medium">
@@ -1480,7 +1510,7 @@ export default function WhatsAppMessagesPage() {
                                 return (
                                   <div>
                                     <p className="text-xs text-muted-foreground">
-                                      Body
+                                      <WhatsAppText id="s148" />
                                     </p>
                                     <div className="mt-1">
                                       <WhatsAppTemplatePreview
@@ -1497,7 +1527,7 @@ export default function WhatsAppMessagesPage() {
                         })()
                       ) : (
                         <p className="text-sm text-muted-foreground">
-                          Select a template to see a preview.
+                          <WhatsAppText id="s149" />
                         </p>
                       )}
                     </div>
@@ -1510,7 +1540,7 @@ export default function WhatsAppMessagesPage() {
                 variant="outline"
                 onClick={() => handleDialogOpenChange(false)}
               >
-                Cancel
+                <WhatsAppText id="s15" />
               </Button>
               <Button
                 onClick={handleSendMessage}
@@ -1540,8 +1570,8 @@ export default function WhatsAppMessagesPage() {
               <div className="relative w-full">
                 <MagnifyingGlass className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Search phone number..."
-                  aria-label="Search conversations by phone number"
+                  placeholder={getWhatsAppText("s150")}
+                  aria-label={getWhatsAppText("s151")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-9 w-full pl-8 text-sm"
@@ -1580,7 +1610,7 @@ export default function WhatsAppMessagesPage() {
                     }}
                   >
                     <DropdownMenuRadioItem value="all">
-                      All Conversations
+                      <WhatsAppText id="s152" />
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="unreplied">
                       Needs Reply (Inbox)
@@ -1596,7 +1626,7 @@ export default function WhatsAppMessagesPage() {
                     onValueChange={setDirectionFilter}
                   >
                     <DropdownMenuRadioItem value="all">
-                      All Directions
+                      <WhatsAppText id="s153" />
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="INBOX">
                       Inbox
@@ -1615,7 +1645,7 @@ export default function WhatsAppMessagesPage() {
                       All Status
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="SENT">
-                      Sent
+                      <WhatsAppText id="s154" />
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="DELIVERED">
                       Delivered
@@ -1624,7 +1654,7 @@ export default function WhatsAppMessagesPage() {
                       Read
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="FAILED">
-                      Failed
+                      <WhatsAppText id="s155" />
                     </DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
                   {allLabels.length > 0 && (
@@ -1705,7 +1735,7 @@ export default function WhatsAppMessagesPage() {
                     })
                   }
                 >
-                  Retry
+                  <WhatsAppText id="s101" />
                 </Button>
               </div>
             )}
@@ -1732,7 +1762,7 @@ export default function WhatsAppMessagesPage() {
                     onClick={() => setSendDialogOpen(true)}
                   >
                     <PaperPlaneTilt className="mr-2 size-4" />
-                    Start a conversation
+                    <WhatsAppText id="s156" />
                   </Button>
                 </div>
               )}
@@ -1768,13 +1798,16 @@ export default function WhatsAppMessagesPage() {
                       {formatPhone(activeConversation.contactPhone)}
                     </h3>
                     <p className="text-[11px] text-muted-foreground">
-                      {activeConversation._count.whatsappMessages} messages
+                      {activeConversation._count.whatsappMessages}{" "}
+                      <WhatsAppText id="s55" />
                     </p>
                   </div>
                 </div>
               </>
             ) : (
-              <h3 className="font-semibold">Select a conversation</h3>
+              <h3 className="font-semibold">
+                <WhatsAppText id="s157" />
+              </h3>
             )}
           </div>
 
@@ -1809,7 +1842,7 @@ export default function WhatsAppMessagesPage() {
                     weight="fill"
                   />
                   <p className="text-sm text-muted-foreground">
-                    Select a conversation to view messages
+                    <WhatsAppText id="s158" />
                   </p>
                 </div>
               )}
@@ -1824,7 +1857,7 @@ export default function WhatsAppMessagesPage() {
                       weight="fill"
                     />
                     <p className="text-sm text-muted-foreground">
-                      No messages in this conversation yet
+                      <WhatsAppText id="s159" />
                     </p>
                   </div>
                 )}
@@ -1852,8 +1885,9 @@ export default function WhatsAppMessagesPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between px-1 text-[11px] text-muted-foreground">
                       <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                        <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        24-Hour window open (Expires in {sessionWindowInfo.timeRemaining})
+                        <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
+                        <WhatsAppText id="s160" />
+                        {sessionWindowInfo.timeRemaining})
                       </span>
                       <Button
                         type="button"
@@ -1863,7 +1897,9 @@ export default function WhatsAppMessagesPage() {
                         onClick={handleOpenSendTemplateForActiveChat}
                       >
                         <PaperPlaneTilt className="size-3" />
-                        <span>Send Template</span>
+                        <span>
+                          <WhatsAppText id="s161" />
+                        </span>
                       </Button>
                     </div>
                     <form
@@ -1876,7 +1912,7 @@ export default function WhatsAppMessagesPage() {
                       <Input
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
-                        placeholder="Type a message..."
+                        placeholder={getWhatsAppText("s162")}
                         disabled={sendReplyMutation.isPending}
                         className="h-10 flex-1 bg-background text-sm"
                       />
@@ -1884,19 +1920,25 @@ export default function WhatsAppMessagesPage() {
                         type="submit"
                         size="sm"
                         className="h-10 shrink-0 gap-1.5 px-4"
-                        disabled={!replyText.trim() || sendReplyMutation.isPending}
+                        disabled={
+                          !replyText.trim() || sendReplyMutation.isPending
+                        }
                       >
                         <PaperPlaneTilt className="size-4" weight="fill" />
-                        <span>{sendReplyMutation.isPending ? "Sending..." : "Send"}</span>
+                        <span>
+                          {sendReplyMutation.isPending ? "Sending..." : "Send"}
+                        </span>
                       </Button>
                     </form>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-between gap-2 rounded-lg border bg-background/60 p-3 sm:flex-row">
                     <div className="text-xs text-muted-foreground">
-                      <p className="font-medium text-foreground">24-Hour Messaging Window is Closed</p>
+                      <p className="font-medium text-foreground">
+                        <WhatsAppText id="s163" />
+                      </p>
                       <p className="text-[11px]">
-                        Free-form reply is only allowed after the user sends an inbound message.
+                        <WhatsAppText id="s164" />
                       </p>
                     </div>
                     <Button
@@ -1905,7 +1947,9 @@ export default function WhatsAppMessagesPage() {
                       className="shrink-0 gap-1.5"
                     >
                       <PaperPlaneTilt className="size-3.5" weight="fill" />
-                      <span>Send Template</span>
+                      <span>
+                        <WhatsAppText id="s161" />
+                      </span>
                     </Button>
                   </div>
                 )}
@@ -1918,10 +1962,11 @@ export default function WhatsAppMessagesPage() {
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete Chat</DialogTitle>
+            <DialogTitle>
+              <WhatsAppText id="s131" />
+            </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this conversation? This action
-              cannot be undone.
+              <WhatsAppText id="s165" />
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
@@ -1929,7 +1974,7 @@ export default function WhatsAppMessagesPage() {
               variant="outline"
               onClick={() => setDeleteConfirmOpen(false)}
             >
-              Cancel
+              <WhatsAppText id="s15" />
             </Button>
             <Button
               variant="destructive"
@@ -1948,7 +1993,7 @@ export default function WhatsAppMessagesPage() {
           <DialogHeader>
             <DialogTitle>Internal Notes</DialogTitle>
             <DialogDescription>
-              Add notes about this conversation. Only visible to your team.
+              <WhatsAppText id="s166" />
             </DialogDescription>
           </DialogHeader>
           <div className="py-2">
@@ -1958,14 +2003,14 @@ export default function WhatsAppMessagesPage() {
             <textarea
               id="notes-textarea"
               className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder="Add notes about this conversation..."
+              placeholder={getWhatsAppText("s167")}
               value={notesText}
               onChange={(e) => setNotesText(e.target.value)}
             />
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setNotesDialogOpen(false)}>
-              Cancel
+              <WhatsAppText id="s15" />
             </Button>
             <Button
               onClick={handleSaveNotes}
@@ -1981,15 +2026,17 @@ export default function WhatsAppMessagesPage() {
       <Dialog open={labelPickerOpen} onOpenChange={setLabelPickerOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add Labels</DialogTitle>
+            <DialogTitle>
+              <WhatsAppText id="s168" />
+            </DialogTitle>
             <DialogDescription>
-              Select labels to organize this conversation.
+              <WhatsAppText id="s169" />
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-1 py-2">
             {allLabels.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">
-                No labels available. Create labels from the Labels page.
+                <WhatsAppText id="s170" />
               </p>
             ) : (
               allLabels.map((label) => (
@@ -2029,7 +2076,7 @@ export default function WhatsAppMessagesPage() {
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setLabelPickerOpen(false)}>
-              Cancel
+              <WhatsAppText id="s15" />
             </Button>
             <Button
               onClick={handleSaveLabels}

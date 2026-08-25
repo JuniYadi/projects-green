@@ -1,4 +1,8 @@
 "use client"
+import {
+  getWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import { Plus, ArrowsClockwise } from "@phosphor-icons/react"
@@ -377,7 +381,10 @@ export default function ConsoleTemplatesPage() {
       },
       id: "whatsappDeviceId",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Device" />
+        <DataTableColumnHeader
+          column={column}
+          title={getWhatsAppText("s113")}
+        />
       ),
       cell: ({ row }) => {
         const deviceId = row.original.whatsappDeviceId
@@ -387,7 +394,7 @@ export default function ConsoleTemplatesPage() {
               variant="outline"
               className="text-xs font-normal text-muted-foreground"
             >
-              All Devices
+              <WhatsAppText id="s47" />
             </Badge>
           )
         }
@@ -415,7 +422,8 @@ export default function ConsoleTemplatesPage() {
               <TooltipContent side="top" className="text-xs">
                 <p className="font-semibold">{displayName}</p>
                 <p className="font-mono text-[10px] text-muted-foreground">
-                  ID: {deviceId}
+                  <WhatsAppText id="s177" />
+                  {deviceId}
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -426,14 +434,20 @@ export default function ConsoleTemplatesPage() {
     {
       accessorKey: "createdAt",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Creation Date" />
+        <DataTableColumnHeader
+          column={column}
+          title={getWhatsAppText("s178")}
+        />
       ),
       cell: ({ row }) => new Date(row.original.createdAt).toLocaleString(),
     },
     {
       accessorKey: "updatedAt",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Last Updated" />
+        <DataTableColumnHeader
+          column={column}
+          title={getWhatsAppText("s179")}
+        />
       ),
       cell: ({ row }) => {
         const date = new Date(row.original.updatedAt)
@@ -467,7 +481,7 @@ export default function ConsoleTemplatesPage() {
           size="sm"
           onClick={() => router.push(`${templatesBasePath}/${row.original.id}`)}
         >
-          View
+          <WhatsAppText id="s180" />
         </Button>
       ),
     },
