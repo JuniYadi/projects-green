@@ -197,6 +197,23 @@ describe("ConsoleWhatsAppDeviceDetailPage", () => {
     ).toBeTruthy()
   })
 
+  it("attaches the preview header directly to the card silhouette", async () => {
+    const { default: ConsoleWhatsAppDeviceDetailPage } = await import("./page")
+
+    const view = render(React.createElement(ConsoleWhatsAppDeviceDetailPage))
+
+    await waitFor(() => {
+      expect(view.getByTestId("whatsapp-profile-preview")).toBeTruthy()
+    })
+
+    const preview = view.getByTestId("whatsapp-profile-preview")
+    const header = preview.querySelector('[data-slot="card-header"]')
+
+    expect(preview).toHaveClass("[--card-spacing:0px]")
+    expect(header?.parentElement).toBe(preview)
+    expect(header).toHaveClass("rounded-t-[min(var(--radius-4xl),24px)]")
+  })
+
   it("offers an image picker and preview instead of a profile URL field", async () => {
     const { default: ConsoleWhatsAppDeviceDetailPage } = await import("./page")
 
