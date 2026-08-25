@@ -323,13 +323,15 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           }
         }
 
-        // Lookup template by templateId or templateName
+        // Lookup template by templateId, slug, or name
         const template = await prisma.whatsappTemplate.findFirst({
           where: {
             organizationId: whatsappAuth.organizationId!,
             ...(body.templateId
               ? { id: body.templateId }
-              : { name: templateName }),
+              : {
+                  OR: [{ slug: templateName }, { name: templateName }],
+                }),
           },
           include: { languages: true },
         })
@@ -343,7 +345,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           }
         }
 
-        templateName = template.name
+        templateName = template.slug || template.name
         deviceId = deviceId || template.whatsappDeviceId || undefined
 
         if (!deviceId) {
@@ -1055,7 +1057,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           organizationId: whatsappAuth.organizationId!,
           phoneNumber: normalizedPhone,
           deviceId,
-          templateName: template.name,
+          templateName: template.slug || template.name,
           templateLanguage,
           fields,
           renderedBody,

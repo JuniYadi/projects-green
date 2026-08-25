@@ -679,11 +679,40 @@ export const messageService: MessageService = {
     let waMessageId: string | undefined
     let sendFailure: string | null = null
     try {
+      const buttonComponents: Array<Record<string, unknown>> = []
+      const rawButtons = Array.isArray(templateLanguageData?.buttons)
+        ? templateLanguageData.buttons
+        : []
+
+      rawButtons.forEach((btn, index) => {
+        const btnObj = btn as Record<string, unknown>
+        const isOtp =
+          btnObj.type === "OTP" ||
+          (typeof btnObj.url === "string" &&
+            btnObj.url.includes("otp_type=COPY_CODE"))
+
+        if (isOtp && fields && fields.length > 0) {
+          const otpValue = fields[0] || ""
+          buttonComponents.push({
+            type: "button",
+            sub_type: "url",
+            index: String(index),
+            parameters: [
+              {
+                type: "text",
+                text: otpValue,
+              },
+            ],
+          })
+        }
+      })
+
       const result = await client.sendTemplateMessage({
         to: phoneNumber,
         templateName,
         templateLanguage,
         fields: fields ?? [],
+        buttons: buttonComponents,
       })
       if (
         typeof result.providerMessageId !== "string" ||

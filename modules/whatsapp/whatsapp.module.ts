@@ -27,8 +27,9 @@ import {
 import { mediaRoutes } from "@/modules/whatsapp/media/api/media.route"
 import { catalogsRoutes } from "@/modules/whatsapp/catalogs/api/catalogs.route"
 import { analyticsRoutes } from "@/modules/whatsapp/analytics/api/analytics.route"
-
 import { consoleOrganizationApiKeyRoutes } from "@/modules/whatsapp/organization-api-keys/api/organization-api-keys-console.route"
+import { onboardingRoutes } from "@/modules/whatsapp/onboarding/api/onboarding.route"
+
 export const whatsappRoutes = new Elysia({ prefix: "/whatsapp" })
   .use(devicesRoutes)
   .use(businessProfileRoutes)
@@ -48,4 +49,5 @@ export const whatsappRoutes = new Elysia({ prefix: "/whatsapp" })
   .use(mediaRoutes)
   .use(consoleWhatsappAuditRoutes)
   .use(consoleOrganizationApiKeyRoutes)
+  .use(onboardingRoutes)
   .use(analyticsRoutes)

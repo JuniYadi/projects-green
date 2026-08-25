@@ -1053,6 +1053,7 @@ describe("messageService", () => {
         templateName: "hello_world",
         templateLanguage: "en",
         fields: ["John"],
+        buttons: [],
       })
       expect(mockEnqueueWebhook).toHaveBeenCalledWith(
         expect.objectContaining({

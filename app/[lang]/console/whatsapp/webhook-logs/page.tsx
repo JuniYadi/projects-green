@@ -25,7 +25,9 @@ import {
   type WebhookEventFilterState,
 } from "@/modules/whatsapp/webhooks/ui/webhook-event-filter"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
-
+import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsapp-onboarding"
+import { LockedFeatureTeaser } from "@/modules/whatsapp/onboarding/locked-feature-teaser"
+import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type PageState = "loading" | "error" | "loaded"
@@ -75,6 +77,7 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
   const [filters, setFilters] =
     React.useState<WebhookEventFilterState>(DEFAULT_FILTER_STATE)
   const [page, setPage] = React.useState(1)
+  const onboarding = useWhatsAppOnboarding()
 
   // ── Load devices on mount ────────────────────────────────────────────────
 
@@ -83,8 +86,8 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
       const res = await eden.api.whatsapp.devices.get()
       const body = res.data as unknown as {
         ok: boolean
-        devices?: DeviceListItem[]
-      } | null
+        devices: DeviceListItem[]
+      }
       if (body?.ok && Array.isArray(body.devices)) {
         setDevices(body.devices)
       }
@@ -155,6 +158,21 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
       await loadEvents()
     })()
   }, [loadEvents])
+  if (onboarding.isFeatureLocked("webhook_logs")) {
+    return (
+      <>
+        <LockedFeatureTeaser
+          featureTitle="Webhook Event Radar"
+          featureDescription="Inspect real-time inbound webhook deliveries, dead letters, retry queues, and Meta status callback payloads."
+          unlockLevel={3}
+          prerequisiteDescription="Send your first message and approve a template to unlock developer radar and webhook logs."
+          activeMissionHref="/console/whatsapp/messages"
+          activeMissionLabel="Complete Active Mission"
+        />
+        <FlightHudWidget onboarding={onboarding} />
+      </>
+    )
+  }
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 

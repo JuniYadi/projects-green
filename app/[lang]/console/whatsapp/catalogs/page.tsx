@@ -12,11 +12,31 @@ import {
 import { useParams } from "next/navigation"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { getMessages } from "@/lib/i18n/messages"
+import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsapp-onboarding"
+import { LockedFeatureTeaser } from "@/modules/whatsapp/onboarding/locked-feature-teaser"
+import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
 
 export default function CatalogsPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
+  const onboarding = useWhatsAppOnboarding()
+
+  if (onboarding.isFeatureLocked("catalogs")) {
+    return (
+      <>
+        <LockedFeatureTeaser
+          featureTitle="WhatsApp Catalogs & Commerce"
+          featureDescription="Showcase interactive product collections, carts, and commerce inventory directly inside WhatsApp conversations."
+          unlockLevel={2}
+          prerequisiteDescription="Send your first message and approve a template to unlock commerce catalog tools."
+          activeMissionHref="/console/whatsapp/messages"
+          activeMissionLabel="Send Test Message"
+        />
+        <FlightHudWidget onboarding={onboarding} />
+      </>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-6">

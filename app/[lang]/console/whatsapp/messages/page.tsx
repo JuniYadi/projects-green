@@ -41,7 +41,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { FieldLegend, FieldSet } from "@/components/ui/field"
+import { FieldSet, FieldLegend } from "@/components/ui/field"
+import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsapp-onboarding"
+import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -451,8 +453,7 @@ export default function WhatsAppMessagesPage() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-
-  // State - filters
+  const onboarding = useWhatsAppOnboarding()
   const [searchQuery, setSearchQuery] = React.useState("")
   const [directionFilter, setDirectionFilter] = React.useState("all")
   const [replyFilter, setReplyFilter] = React.useState<
@@ -1896,6 +1897,7 @@ export default function WhatsAppMessagesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <FlightHudWidget onboarding={onboarding} />
     </main>
   )
 }
