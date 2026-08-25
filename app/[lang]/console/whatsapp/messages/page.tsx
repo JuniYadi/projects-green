@@ -491,8 +491,7 @@ export default function WhatsAppMessagesPage() {
   >({})
   const [templateSearchQuery, setTemplateSearchQuery] = React.useState("")
   const [templatePickerOpen, setTemplatePickerOpen] = React.useState(true)
-  const [initialTemplateHandled, setInitialTemplateHandled] =
-    React.useState(false)
+  const openedTemplateQueryIdRef = React.useRef<string | null>(null)
   const queryClient = useQueryClient()
 
   const {
@@ -588,15 +587,23 @@ export default function WhatsAppMessagesPage() {
   ])
 
   const templateQueryId = searchParams.get("template")
-  const { template: queryTemplate } = useTemplate(
-    templateQueryId && !initialTemplateHandled ? templateQueryId : ""
-  )
+  const { template: queryTemplate } = useTemplate(templateQueryId ?? "")
   React.useEffect(() => {
-    if (!templateQueryId || initialTemplateHandled || !queryTemplate) return
+    if (!templateQueryId) {
+      // The URL changed, so the same template may intentionally open again.
+      openedTemplateQueryIdRef.current = null
+      return
+    }
+    if (
+      openedTemplateQueryIdRef.current === templateQueryId ||
+      !queryTemplate
+    ) {
+      return
+    }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSendDialogOpen(true)
     if (queryTemplate.whatsappDeviceId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSendDeviceId(queryTemplate.whatsappDeviceId)
     }
     setSelectedTemplateId(queryTemplate.id)
@@ -604,8 +611,15 @@ export default function WhatsAppMessagesPage() {
       setSelectedTemplateLanguage(queryTemplate.languages[0].lang)
     }
     setTemplatePickerOpen(false)
-    setInitialTemplateHandled(true)
-  }, [templateQueryId, queryTemplate, initialTemplateHandled])
+    openedTemplateQueryIdRef.current = templateQueryId
+  }, [templateQueryId, queryTemplate])
+
+  const clearTemplateQuery = React.useCallback(() => {
+    const next = new URLSearchParams(searchParams.toString())
+    next.delete("template")
+    const qs = next.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }, [pathname, router, searchParams])
 
   // When send dialog opens manually without ?template=, reset
   const handleDialogOpenChange = (open: boolean) => {
@@ -631,7 +645,7 @@ export default function WhatsAppMessagesPage() {
       setSelectedTemplateLanguage("")
       setTemplateFieldValues({})
       setTemplateSearchQuery("")
-      setInitialTemplateHandled(false)
+      if (templateQueryId) clearTemplateQuery()
     }
     setSendDialogOpen(open)
   }
@@ -830,6 +844,7 @@ export default function WhatsAppMessagesPage() {
         queryKey: ["whatsapp", "conversations"],
       })
       const next = new URLSearchParams(searchParams.toString())
+      next.delete("template")
       next.set(PHONE_QUERY_KEY, cleanPhoneForQuery(variables.phoneNumber))
       router.replace(`${pathname}?${next.toString()}`, { scroll: false })
     },
@@ -1416,7 +1431,7 @@ export default function WhatsAppMessagesPage() {
             <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setSendDialogOpen(false)}
+                onClick={() => handleDialogOpenChange(false)}
               >
                 Cancel
               </Button>
