@@ -46,6 +46,8 @@ export interface WhatsAppTemplateLanguage {
   isApproved?: boolean
   metaStatus?: string
   rejectReason?: string | null
+  /** Meta's `reason` webhook field or `rejected_reason` query field. */
+  metaReason?: string | null
   buttons?: unknown
 }
 

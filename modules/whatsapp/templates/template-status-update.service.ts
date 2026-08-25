@@ -55,6 +55,12 @@ function toCategory(category?: string): WhatsappBillingCategory | undefined {
     : undefined
 }
 
+function toMetaReason(reason?: string): string | null {
+  const normalized = reason?.trim()
+
+  return normalized && normalized !== "NONE" ? normalized : null
+}
+
 async function auditResult(params: {
   organizationId: string
   deviceId: string
@@ -155,15 +161,16 @@ export async function processTemplateStatusUpdate(
   })
 
   if (update.language) {
+    const metaReason = toMetaReason(update.reason)
+
     await prisma.whatsappTemplateLanguage.updateMany({
       where: { templateId: template.id, lang: update.language },
       data: {
         metaStatus,
         isApproved: metaStatus === WhatsappTemplateMetaStatus.APPROVED,
-        rejectReason:
-          metaStatus === WhatsappTemplateMetaStatus.REJECTED
-            ? (update.reason ?? null)
-            : null,
+        // Meta also supplies a reason for non-rejection status updates.
+        // The column is historical, but the DTO exposes this as `metaReason`.
+        rejectReason: metaReason,
       },
     })
   }
