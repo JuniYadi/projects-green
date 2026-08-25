@@ -29,7 +29,8 @@ export const onboardingRoutes = new Elysia({ prefix: "/onboarding" }).get(
       deviceCount,
       templateCount,
       messageCount,
-      apiKeyCount,
+      legacyApiKeyCount,
+      orgApiKeyCount,
       subscription,
     ] = await Promise.all([
       prisma.whatsappDevice.count({
@@ -46,11 +47,14 @@ export const onboardingRoutes = new Elysia({ prefix: "/onboarding" }).get(
       prisma.whatsappApiKey.count({
         where: { organizationId },
       }),
+      prisma.whatsappOrganizationApiKey.count({
+        where: { organizationId, status: "ACTIVE" },
+      }),
       prisma.serviceSubscription.findFirst({
         where: {
           organizationId,
-          servicePackage: {
-            packageCode: "WHATSAPP",
+          package: {
+            code: "WHATSAPP",
           },
           status: "ACTIVE",
         },
@@ -65,7 +69,7 @@ export const onboardingRoutes = new Elysia({ prefix: "/onboarding" }).get(
         deviceCount,
         templateCount,
         messageCount,
-        apiKeyCount,
+        apiKeyCount: legacyApiKeyCount + orgApiKeyCount,
       },
     }
   }

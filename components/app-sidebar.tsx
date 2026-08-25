@@ -759,11 +759,13 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
       let isGraduated = false
       if (typeof window !== "undefined") {
         try {
-          isGraduated =
-            localStorage.getItem("whatsapp_onboarding_graduated") === "true"
+          const manual = localStorage.getItem("whatsapp_onboarding_graduated")
+          const statusCached = sessionStorage.getItem(
+            "whatsapp_onboarding_graduated"
+          )
+          isGraduated = manual === "true" || statusCached === "true"
         } catch {}
       }
-
       return [
         {
           title: "Dashboard",

@@ -62,15 +62,15 @@ describe("WhatsApp Onboarding Engine", () => {
 
   it("verifies unlock thresholds for various features", () => {
     expect(getFeatureUnlockLevel("usage")).toBe(0)
+    expect(getFeatureUnlockLevel("pricing_ledger")).toBe(0)
     expect(getFeatureUnlockLevel("devices")).toBe(1)
     expect(getFeatureUnlockLevel("messages")).toBe(1)
     expect(getFeatureUnlockLevel("contacts")).toBe(1)
     expect(getFeatureUnlockLevel("templates")).toBe(2)
     expect(getFeatureUnlockLevel("broadcasts")).toBe(2)
     expect(getFeatureUnlockLevel("catalogs")).toBe(2)
-    expect(getFeatureUnlockLevel("api_keys")).toBe(3)
+    expect(getFeatureUnlockLevel("api_keys")).toBe(2)
     expect(getFeatureUnlockLevel("webhook_logs")).toBe(3)
     expect(getFeatureUnlockLevel("audit_logs")).toBe(3)
-    expect(getFeatureUnlockLevel("pricing_ledger")).toBe(3)
   })
 })

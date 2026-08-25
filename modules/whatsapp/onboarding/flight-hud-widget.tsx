@@ -11,7 +11,9 @@ import {
   ArrowRight,
   Sparkle,
   X,
+  Lifebuoy,
 } from "@phosphor-icons/react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -27,9 +29,24 @@ export function FlightHudWidget({
   onboarding,
   onSubscribeClick,
 }: FlightHudWidgetProps) {
+  const HUD_STORAGE_KEY = "whatsapp_onboarding_hud_closed"
+  const [isDismissed, setIsDismissed] = React.useState<boolean>(() => {
+    if (typeof window === "undefined") return false
+    try {
+      return localStorage.getItem(HUD_STORAGE_KEY) === "true"
+    } catch {
+      return false
+    }
+  })
   const [isExpanded, setIsExpanded] = React.useState(false)
-  const [isDismissed, setIsDismissed] = React.useState(false)
   const [isInternalOrderOpen, setIsInternalOrderOpen] = React.useState(false)
+
+  const handleDismiss = React.useCallback(() => {
+    try {
+      localStorage.setItem(HUD_STORAGE_KEY, "true")
+    } catch {}
+    setIsDismissed(true)
+  }, [])
 
   const handleSubscribe = React.useCallback(() => {
     if (onSubscribeClick) {
@@ -39,10 +56,9 @@ export function FlightHudWidget({
     }
   }, [onSubscribeClick])
 
-  if (onboarding.isGraduated || isDismissed) {
+  if (isDismissed) {
     return null
   }
-
   const { activeMission, progressPercent, missions, level } = onboarding
 
   const levelDisplay = level === "0_pending" ? "Lv 0 (Tower)" : `Level ${level}`
@@ -87,96 +103,240 @@ export function FlightHudWidget({
                 variant="ghost"
                 size="icon"
                 className="size-6 text-muted-foreground hover:text-foreground"
-                onClick={() => setIsDismissed(true)}
-                title="Hide for this session"
+                onClick={handleDismiss}
+                title="Close HUD"
               >
                 <X className="size-3.5" />
               </Button>
             </div>
           </div>
-
           <CardContent className="space-y-4 p-4">
-            <div className="space-y-1.5 rounded-lg border border-primary/20 bg-primary/5 p-3">
-              <div className="flex items-center justify-between text-xs font-semibold">
-                <span className="text-primary">Current Mission</span>
-                <span className="text-muted-foreground">
-                  {activeMission.subtitle}
+            {/* Interactive Carousel Card Header */}
+            <div className="flex items-center justify-between px-1 text-[11px] font-semibold text-muted-foreground">
+              <span className="flex items-center gap-1.5 font-bold text-primary">
+                <Sparkle className="size-3.5" weight="fill" />
+                {onboarding.replayLevel !== null
+                  ? `Step ${missions.findIndex((m) => m.level === activeMission.level) + 1} of ${missions.length}`
+                  : activeMission.completed
+                    ? "Setup Finished (All Milestones Done)"
+                    : `Step ${missions.findIndex((m) => m.level === activeMission.level) + 1} of ${missions.length}`}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currentIdx = missions.findIndex(
+                      (m) => m.level === activeMission.level
+                    )
+                    const prevIdx =
+                      (currentIdx - 1 + missions.length) % missions.length
+                    onboarding.setReplayLevel(missions[prevIdx].level)
+                  }}
+                  className="flex size-5 items-center justify-center rounded-md border bg-background text-xs font-bold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  title="Previous step"
+                >
+                  ‹
+                </button>
+                <span className="px-0.5 font-mono text-[10px] tabular-nums">
+                  {missions.findIndex((m) => m.level === activeMission.level) +
+                    1}
+                  /{missions.length}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currentIdx = missions.findIndex(
+                      (m) => m.level === activeMission.level
+                    )
+                    const nextIdx = (currentIdx + 1) % missions.length
+                    onboarding.setReplayLevel(missions[nextIdx].level)
+                  }}
+                  className="flex size-5 items-center justify-center rounded-md border bg-background text-xs font-bold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  title="Next step"
+                >
+                  ›
+                </button>
               </div>
-              <p className="text-sm leading-tight font-bold text-foreground">
-                {activeMission.title}
-              </p>
-              <p className="text-xs leading-snug text-muted-foreground">
-                {activeMission.description}
-              </p>
-              <div className="pt-2">
-                {activeMission.isActionDialog ? (
-                  <Button
-                    size="sm"
-                    className="h-8 w-full gap-1.5 text-xs"
-                    onClick={handleSubscribe}
+            </div>
+
+            {/* Carousel Mission Card Container */}
+            <div className="relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-b from-primary/10 via-primary/5 to-background p-3.5 shadow-xs">
+              <div
+                key={activeMission.title}
+                className="animate-in space-y-1.5 transition-all duration-300 ease-out fade-in-60 slide-in-from-right-6"
+              >
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="flex items-center gap-1.5 text-primary">
+                    {activeMission.completed ? (
+                      <CheckCircle
+                        className="size-4 animate-in text-emerald-500 zoom-in"
+                        weight="fill"
+                      />
+                    ) : (
+                      <span className="relative flex size-2">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                        <span className="relative inline-flex size-2 rounded-full bg-primary" />
+                      </span>
+                    )}
+                    {activeMission.title}
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className="h-4 px-1.5 text-[10px] font-bold text-muted-foreground"
                   >
-                    <Sparkle className="size-3.5" weight="fill" />
-                    {activeMission.actionLabel}
-                  </Button>
-                ) : activeMission.actionHref ? (
-                  <Button
-                    size="sm"
-                    className="h-8 w-full gap-1.5 text-xs"
-                    asChild
-                  >
-                    <Link href={activeMission.actionHref}>
+                    {activeMission.subtitle}
+                  </Badge>
+                </div>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {activeMission.description}
+                </p>
+                <div className="pt-2">
+                  {activeMission.isActionDialog ? (
+                    <Button
+                      size="sm"
+                      className="h-8 w-full gap-1.5 text-xs font-semibold shadow-sm transition-transform hover:shadow-md active:scale-95"
+                      onClick={handleSubscribe}
+                    >
+                      <Sparkle className="size-3.5" weight="fill" />
                       {activeMission.actionLabel}
-                      <ArrowRight className="size-3.5" />
-                    </Link>
-                  </Button>
-                ) : null}
+                    </Button>
+                  ) : activeMission.actionHref ? (
+                    <Button
+                      size="sm"
+                      className="h-8 w-full gap-1.5 text-xs font-semibold shadow-sm transition-transform hover:shadow-md active:scale-95"
+                      asChild
+                    >
+                      <Link href={activeMission.actionHref}>
+                        {activeMission.actionLabel}
+                        <ArrowRight className="size-3.5" />
+                      </Link>
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             </div>
 
             <div className="space-y-2">
               <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                Flight Checklist
+                Checklist
               </span>
               <div className="space-y-1.5">
-                {missions.map((m, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex items-center gap-2 rounded-md p-1.5 text-xs transition-colors ${
-                      m.completed
-                        ? "text-muted-foreground line-through opacity-70"
-                        : m.level === level
-                          ? "bg-accent/60 font-semibold text-foreground"
-                          : "text-muted-foreground opacity-50"
-                    }`}
-                  >
-                    {m.completed ? (
-                      <CheckCircle
-                        className="size-3.5 shrink-0 text-emerald-500"
-                        weight="fill"
-                      />
+                {missions.map((m, idx) => {
+                  const isCurrentActive =
+                    onboarding.replayLevel !== null
+                      ? activeMission.level === m.level
+                      : false
+                  return (
+                    <button
+                      type="button"
+                      key={idx}
+                      onClick={() => {
+                        if (onboarding.replayLevel === m.level) {
+                          onboarding.setReplayLevel(null)
+                        } else {
+                          onboarding.setReplayLevel(m.level)
+                        }
+                      }}
+                      className={`group relative flex w-full items-center justify-between gap-2 overflow-hidden rounded-md p-2 text-left text-xs transition-all duration-200 ease-out hover:bg-muted/70 ${
+                        isCurrentActive
+                          ? "translate-x-0.5 border border-border bg-accent/60 font-semibold text-foreground shadow-xs"
+                          : m.completed
+                            ? "text-muted-foreground hover:text-foreground"
+                            : "text-muted-foreground opacity-60"
+                      }`}
+                    >
+                      {isCurrentActive && (
+                        <span className="absolute top-0 left-0 h-full w-1 animate-in rounded-r bg-emerald-500 duration-200 fade-in slide-in-from-left" />
+                      )}
+                      <div className="flex items-center gap-2 truncate">
+                        {m.completed ? (
+                          <CheckCircle
+                            className={`size-4 shrink-0 text-emerald-500 transition-transform duration-200 ${
+                              isCurrentActive
+                                ? "scale-105"
+                                : "group-hover:scale-105"
+                            }`}
+                            weight="fill"
+                          />
+                        ) : (
+                          <Circle className="size-4 shrink-0 text-muted-foreground" />
+                        )}
+                        <span className="truncate">{m.title}</span>
+                      </div>
+                      {m.completed ? (
+                        <Badge
+                          variant={isCurrentActive ? "default" : "outline"}
+                          className={`h-4 px-1.5 text-[9px] font-medium transition-all duration-150 ${
+                            isCurrentActive
+                              ? "bg-foreground text-background shadow-xs"
+                              : "border-border/60 text-muted-foreground group-hover:text-foreground"
+                          }`}
+                        >
+                          {isCurrentActive ? "Viewing" : "Replay"}
+                        </Badge>
+                      ) : null}
+                    </button>
+                  )
+                })}
+
+                {/* Bottom Done Anchor - Elegant Neutral with subtle Emerald Accent */}
+                <div
+                  className={`group relative flex w-full items-center justify-between gap-2 overflow-hidden rounded-lg border p-2.5 text-left text-xs transition-all duration-200 ${
+                    progressPercent === 100
+                      ? "border-border/60 bg-muted/40 font-medium text-foreground shadow-xs"
+                      : "border-border/40 bg-muted/20 text-muted-foreground opacity-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    {progressPercent === 100 ? (
+                      <div className="relative flex size-3 items-center justify-center">
+                        <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                        <CheckCircle
+                          className="relative size-4 text-emerald-500"
+                          weight="fill"
+                        />
+                      </div>
                     ) : (
-                      <Circle className="size-3.5 shrink-0" />
+                      <Circle className="size-4 shrink-0 text-muted-foreground" />
                     )}
-                    <span className="truncate">{m.title}</span>
+                    <span className="font-semibold tracking-tight text-foreground">
+                      {progressPercent === 100
+                        ? "Ready for Production • Done"
+                        : "All Onboarding Complete"}
+                    </span>
                   </div>
-                ))}
+                  <Badge
+                    variant={progressPercent === 100 ? "secondary" : "outline"}
+                    className="h-4.5 border-emerald-500/30 px-2 text-[10px] font-bold text-emerald-600 dark:text-emerald-400"
+                  >
+                    {progressPercent === 100
+                      ? "100% DONE"
+                      : `${progressPercent}%`}
+                  </Badge>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between border-t pt-1 text-[11px]">
+            <div className="flex items-center justify-between border-t border-border/50 pt-2 text-[11px]">
               <button
                 type="button"
-                onClick={onboarding.graduateNow}
-                className="text-muted-foreground underline-offset-2 transition-colors hover:text-primary hover:underline"
+                onClick={() => {
+                  onboarding.graduateNow()
+                  handleDismiss()
+                  toast.success(
+                    "Onboarding guide dismissed. You can reopen it anytime from the dashboard."
+                  )
+                }}
+                className="text-muted-foreground transition-colors hover:text-foreground hover:underline"
               >
-                Skip Onboarding
+                Close Guide
               </button>
               <Link
-                href="/console/whatsapp/dashboard"
-                className="font-medium text-primary hover:underline"
+                href="/console/support-tickets"
+                className="flex items-center gap-1 font-medium text-muted-foreground transition-colors hover:text-foreground hover:underline"
               >
-                Command Center →
+                <Lifebuoy className="size-3.5" />
+                Need Help?
               </Link>
             </div>
           </CardContent>
@@ -184,22 +344,28 @@ export function FlightHudWidget({
       ) : (
         <Button
           onClick={() => setIsExpanded(true)}
-          className="group flex items-center gap-2.5 rounded-full border border-primary/40 bg-background/95 px-4 py-2.5 text-xs font-semibold text-foreground shadow-xl backdrop-blur-md hover:bg-muted/80"
+          className="group relative flex items-center gap-2 rounded-full border border-primary/40 bg-background/95 py-2 pr-3.5 pl-3 text-xs font-medium text-foreground shadow-lg backdrop-blur-md transition-all duration-200 hover:scale-105 hover:border-primary hover:bg-muted/80 active:scale-95"
           variant="outline"
         >
+          {/* Compact Beacon Indicator */}
           <div className="relative flex size-2.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-            <span className="relative inline-flex size-2.5 rounded-full bg-primary" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+            <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
           </div>
-          <span className="font-bold text-primary">{levelDisplay}:</span>
-          <span className="max-w-[140px] truncate">{activeMission.title}</span>
-          <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-            {progressPercent}%
+          <span className="font-semibold text-foreground">
+            {progressPercent === 100 ? "Onboarding Guide" : "Onboarding Guide"}
+          </span>
+          <Badge
+            variant={progressPercent === 100 ? "default" : "secondary"}
+            className={`h-4.5 px-1.5 text-[10px] font-bold ${
+              progressPercent === 100 ? "bg-emerald-600 text-white" : ""
+            }`}
+          >
+            {progressPercent === 100 ? "100% ✓" : `${progressPercent}%`}
           </Badge>
-          <CaretUp className="size-3.5 text-muted-foreground group-hover:text-foreground" />
+          <CaretUp className="size-3.5 text-muted-foreground transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:text-foreground" />
         </Button>
       )}
-
       <ServiceOrderDialog
         productCode="WHATSAPP"
         productTitle="WhatsApp Gateway"

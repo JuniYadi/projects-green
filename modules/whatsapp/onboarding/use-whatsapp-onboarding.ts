@@ -41,6 +41,8 @@ export type WhatsAppOnboardingState = {
   hasApiKey: boolean
   missions: OnboardingMission[]
   activeMission: OnboardingMission
+  replayLevel: OnboardingLevel | null
+  setReplayLevel: (level: OnboardingLevel | null) => void
   isFeatureLocked: (feature: WhatsAppFeature) => boolean
   getFeatureUnlockLevel: (feature: WhatsAppFeature) => number
   graduateNow: () => void
@@ -57,10 +59,11 @@ export type WhatsAppOnboardingInput = {
 }
 
 const GRADUATED_STORAGE_KEY = "whatsapp_onboarding_graduated"
-
+const REPLAY_LEVEL_STORAGE_KEY = "whatsapp_onboarding_replay_level"
 export function getFeatureUnlockLevel(feature: WhatsAppFeature): number {
   switch (feature) {
     case "usage":
+    case "pricing_ledger":
       return 0
     case "devices":
     case "messages":
@@ -69,11 +72,10 @@ export function getFeatureUnlockLevel(feature: WhatsAppFeature): number {
     case "templates":
     case "broadcasts":
     case "catalogs":
-      return 2
     case "api_keys":
+      return 2
     case "webhook_logs":
     case "audit_logs":
-    case "pricing_ledger":
       return 3
     default:
       return 0
@@ -117,6 +119,30 @@ export function useWhatsAppOnboarding(
     }
   })
 
+  const [replayLevel, setReplayLevelState] =
+    React.useState<OnboardingLevel | null>(() => {
+      if (typeof window === "undefined") return null
+      try {
+        const saved = localStorage.getItem(REPLAY_LEVEL_STORAGE_KEY)
+        if (saved === "0_pending") return "0_pending"
+        if (saved !== null && !isNaN(Number(saved)))
+          return Number(saved) as OnboardingLevel
+        return null
+      } catch {
+        return null
+      }
+    })
+
+  const setReplayLevel = React.useCallback((level: OnboardingLevel | null) => {
+    setReplayLevelState(level)
+    try {
+      if (level === null) {
+        localStorage.removeItem(REPLAY_LEVEL_STORAGE_KEY)
+      } else {
+        localStorage.setItem(REPLAY_LEVEL_STORAGE_KEY, String(level))
+      }
+    } catch {}
+  }, [])
   // Dedicated single endpoint query with React Query + Eden fetch
   const { data: serverStatus } = useQuery({
     queryKey: ["whatsapp", "onboarding", "status"],
@@ -158,6 +184,16 @@ export function useWhatsAppOnboarding(
 
   const isGraduated = manualGraduated || derivedLevel === 3
 
+  React.useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      if (isGraduated) {
+        sessionStorage.setItem(GRADUATED_STORAGE_KEY, "true")
+      } else {
+        sessionStorage.removeItem(GRADUATED_STORAGE_KEY)
+      }
+    } catch {}
+  }, [isGraduated])
   const numericLevel =
     derivedLevel === "0_pending"
       ? 0.5
@@ -236,14 +272,43 @@ export function useWhatsAppOnboarding(
     isGraduated,
   ])
 
+  const allMissionsCompleted =
+    hasSubscription &&
+    hasDevice &&
+    hasMessage &&
+    hasTemplate &&
+    (hasApiKey || isGraduated)
+
   const activeMission = React.useMemo(() => {
+    if (replayLevel !== null) {
+      const target = missions.find((m) => m.level === replayLevel)
+      if (target) return target
+    }
     if (!hasSubscription && !hasDevice) return missions[0]
     if (hasSubscription && !hasDevice) return missions[1]
     if (!hasMessage) return missions[2]
     if (!hasTemplate) return missions[3]
-    return missions[4]
-  }, [hasSubscription, hasDevice, hasMessage, hasTemplate, missions])
-
+    if (!hasApiKey && !isGraduated) return missions[4]
+    return {
+      level: 3 as OnboardingLevel,
+      title: "All Steps Completed!",
+      subtitle: "Setup Ready",
+      description:
+        "You have completed all initial onboarding milestones. You can click any step below to replay its guide anytime.",
+      actionLabel: "View Messages",
+      actionHref: "/console/whatsapp/messages",
+      completed: true,
+    }
+  }, [
+    replayLevel,
+    missions,
+    hasSubscription,
+    hasDevice,
+    hasMessage,
+    hasTemplate,
+    hasApiKey,
+    isGraduated,
+  ])
   const isFeatureLocked = React.useCallback(
     (feature: WhatsAppFeature): boolean => {
       if (isGraduated) return false
@@ -278,6 +343,8 @@ export function useWhatsAppOnboarding(
     hasApiKey,
     missions,
     activeMission,
+    replayLevel,
+    setReplayLevel,
     isFeatureLocked,
     getFeatureUnlockLevel,
     graduateNow,

@@ -265,10 +265,16 @@ export default function WhatsAppDashboardPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={onboarding.resetOnboarding}
-            className="text-xs"
+            onClick={() => {
+              try {
+                localStorage.removeItem("whatsapp_onboarding_hud_closed")
+              } catch {}
+              window.location.reload()
+            }}
+            className="gap-1.5 text-xs"
           >
-            Flight Onboarding Mode
+            <Sparkle className="size-3.5 text-primary" weight="fill" />
+            Show Onboarding Guide
           </Button>
           <Button variant="outline" onClick={() => setIsOrderOpen(true)}>
             <Sparkle className="mr-2 size-4 text-primary" />
