@@ -189,9 +189,7 @@ export function TemplateDetailView({
   const isApproved = template.metaStatus === "APPROVED"
   const isRejected =
     template.metaStatus === "REJECTED" ||
-    template.languages.some(
-      (l) => l.metaStatus === "REJECTED" || l.rejectReason
-    )
+    template.languages.some((l) => l.metaStatus === "REJECTED")
 
   // Map Rejection Reasons to human explanations & fix recommendations
   const getHumanRejectionGuidance = (reason?: string | null) => {
@@ -228,9 +226,16 @@ export function TemplateDetailView({
     }
   }
 
-  const firstRejectedLang = template.languages.find((l) => l.rejectReason)
+  const rejectedReasonLanguage = template.languages.find(
+    (l) => l.metaStatus === "REJECTED" && (l.metaReason || l.rejectReason)
+  )
+  const reasonLanguage = template.languages.find(
+    (l) => l.metaReason || l.rejectReason
+  )
+  const metaReason = reasonLanguage?.metaReason ?? reasonLanguage?.rejectReason
+  const rejectionReasonLanguage = rejectedReasonLanguage ?? reasonLanguage
   const rejectionGuidance = getHumanRejectionGuidance(
-    firstRejectedLang?.rejectReason
+    rejectionReasonLanguage?.metaReason ?? rejectionReasonLanguage?.rejectReason
   )
 
   const activePayload = currentLanguage
@@ -278,8 +283,8 @@ export function TemplateDetailView({
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="font-mono">{template.slug}</span>
             <span>•</span>
-            <Badge variant="outline" className="font-mono text-[10px]">
-              {template.category ?? "UTILITY"}
+            <Badge variant="outline" className="font-mono text-xs">
+              Kategori Meta: {template.category ?? "Tidak tersedia"}
             </Badge>
             <span>•</span>
             {template.device ? (
@@ -383,13 +388,35 @@ export function TemplateDetailView({
             <div className="space-y-1">
               <p className="text-sm font-semibold text-destructive">
                 {rejectionGuidance.title} (
-                {firstRejectedLang?.rejectReason || "REJECTED"})
+                {rejectionReasonLanguage?.metaReason ??
+                  rejectionReasonLanguage?.rejectReason ??
+                  "REJECTED"}
               </p>
               <p className="text-xs leading-relaxed text-foreground/80">
                 {rejectionGuidance.explanation}
               </p>
               <p className="pt-1 text-xs text-muted-foreground">
                 💡 <strong>Solusi:</strong> {rejectionGuidance.fix}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!isRejected && metaReason && metaReason !== "NONE" && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="flex items-start gap-3 p-4">
+            <div className="rounded-full bg-primary/10 p-2 text-primary">
+              <Info weight="fill" className="size-5" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-semibold">Informasi dari Meta</p>
+              <p className="text-xs leading-relaxed text-foreground/80">
+                Kategori template saat ini:{" "}
+                {template.category ?? "Tidak tersedia"}
+              </p>
+              <p className="text-xs leading-relaxed text-foreground/80">
+                Alasan dari Meta: {metaReason}
               </p>
             </div>
           </CardContent>

@@ -88,6 +88,33 @@ describe("processTemplateStatusUpdate", () => {
         data: expect.objectContaining({
           metaStatus: "APPROVED",
           isApproved: true,
+          rejectReason: null,
+        }),
+      })
+    )
+  })
+
+  it("retains a Meta status reason for the scoped reclassified language", async () => {
+    mockPrisma.whatsappTemplate.findFirst.mockResolvedValue({
+      id: "template-1",
+      category: "UTILITY",
+      metaStatus: "PENDING",
+      syncStatus: "SYNCED",
+      lastSyncedAt: null,
+    })
+
+    await processTemplateStatusUpdate("org-1", "device-1", {
+      ...approvedUpdate,
+      reason: "Template no longer meets utility guidance",
+    })
+
+    expect(mockPrisma.whatsappTemplateLanguage.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { templateId: "template-1", lang: "id" },
+        data: expect.objectContaining({
+          metaStatus: "APPROVED",
+          isApproved: true,
+          rejectReason: "Template no longer meets utility guidance",
         }),
       })
     )

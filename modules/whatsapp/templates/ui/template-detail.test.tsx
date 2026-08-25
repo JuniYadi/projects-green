@@ -123,6 +123,43 @@ describe("TemplateDetailView", () => {
     ).toBeInTheDocument()
   })
 
+  it("shows the current Meta category and available status reason", () => {
+    const view = render(
+      <TemplateDetailView
+        {...propsFor({
+          template: {
+            ...baseTemplate,
+            category: "MARKETING",
+            languages: [
+              {
+                ...baseLanguage,
+                metaReason: "Template no longer meets utility guidance",
+              },
+            ],
+          },
+        })}
+      />
+    )
+
+    expect(view.getByText("Kategori Meta: MARKETING")).toBeInTheDocument()
+    expect(view.getByText("Informasi dari Meta")).toBeInTheDocument()
+    expect(
+      view.getByText(
+        "Alasan dari Meta: Template no longer meets utility guidance"
+      )
+    ).toBeInTheDocument()
+    expect(view.getByText("Approved")).toBeInTheDocument()
+    expect(view.queryByText("Rejected")).not.toBeInTheDocument()
+  })
+
+  it("omits the Meta notice when no reason is available", () => {
+    const view = render(<TemplateDetailView {...propsFor()} />)
+
+    expect(view.getByText("Kategori Meta: UTILITY")).toBeInTheDocument()
+    expect(view.queryByText("Informasi dari Meta")).not.toBeInTheDocument()
+    expect(view.queryByText(/Alasan dari Meta:/)).not.toBeInTheDocument()
+  })
+
   it("removes outer divider rings while preserving the responsive columns", () => {
     const view = render(<TemplateDetailView {...propsFor()} />)
     const cards = view.container.querySelectorAll('[data-slot="card"]')

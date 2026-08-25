@@ -80,14 +80,16 @@ const mockSubscriptionFindFirst = mock(async () => ({
   status: "ACTIVE",
 }))
 const mockLogAudit = mock(async () => {})
-const mockDeviceFindFirst = mock(async (): Promise<any> => ({
-  id: "dev-1",
-  tokenEncrypted: "encrypted-token",
-  whatsappBusinessAccountId: "waba-1",
-  whatsappPhoneId: "phone-1",
-  organizationId: "org-1",
-  status: "ACTIVE",
-}))
+const mockDeviceFindFirst = mock(
+  async (): Promise<any> => ({
+    id: "dev-1",
+    tokenEncrypted: "encrypted-token",
+    whatsappBusinessAccountId: "waba-1",
+    whatsappPhoneId: "phone-1",
+    organizationId: "org-1",
+    status: "ACTIVE",
+  })
+)
 
 const mockCreateMetaTemplate = mock(async () => ({
   id: "meta-tpl-1",
@@ -148,6 +150,8 @@ function createTestApp() {
   return new Elysia().use(templatesRoutes).compile()
 }
 
+const defaultRejectReason: string | null = null
+
 // Helper to build an approved template with one language
 function approvedTemplate({
   langId = "lang-en-1",
@@ -159,6 +163,7 @@ function approvedTemplate({
   footer = "",
   parameters = null,
   buttons = null,
+  rejectReason = defaultRejectReason,
 } = {}) {
   return {
     id: "tpl-approved",
@@ -186,6 +191,7 @@ function approvedTemplate({
         buttons,
         isApproved: true,
         metaStatus: "APPROVED",
+        rejectReason,
         createdAt: new Date(),
         updatedAt: new Date(),
         whatsappTemplateId: "tpl-approved",
@@ -725,6 +731,26 @@ describe("templatesRoutes", () => {
       expect(json.ok).toBe(true)
       expect(json.template).toBeDefined()
       expect(json.template.category).toBe("UTILITY")
+    })
+
+    it("returns a Meta status reason separately from rejection status", async () => {
+      mockTemplateFindUnique.mockResolvedValueOnce(
+        approvedTemplate({
+          rejectReason: "Template no longer meets utility guidance",
+        })
+      )
+      const app = createTestApp()
+
+      const res = await app.handle(
+        new Request("http://localhost/templates/tpl-approved")
+      )
+
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      expect(json.template.metaStatus).toBe("APPROVED")
+      expect(json.template.languages[0].metaReason).toBe(
+        "Template no longer meets utility guidance"
+      )
     })
   })
   describe("GET / query filters", () => {

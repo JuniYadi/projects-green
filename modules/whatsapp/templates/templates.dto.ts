@@ -16,7 +16,10 @@ export type WhatsappTemplateLanguageDTO = Pick<
   | "rejectReason"
   | "createdAt"
   | "updatedAt"
->
+> & {
+  /** Meta's `reason` webhook field or `rejected_reason` query field. */
+  metaReason: string | null
+}
 
 export type WhatsappTemplateDeviceDTO = {
   id: string
@@ -80,6 +83,7 @@ function toWhatsappTemplateLanguageDTO(
     isApproved: language.isApproved,
     metaStatus: language.metaStatus,
     rejectReason: language.rejectReason,
+    metaReason: language.rejectReason,
     createdAt: language.createdAt,
     updatedAt: language.updatedAt,
   }
