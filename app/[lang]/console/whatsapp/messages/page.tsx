@@ -400,7 +400,7 @@ function MessageBubble({ message }: { message: Message }) {
               : "rounded-tr-xs bg-emerald-600/90 text-white dark:bg-emerald-700 dark:text-emerald-50"
           }`}
         >
-          <p className="break-words whitespace-pre-wrap leading-relaxed pr-14">
+          <p className="break-words whitespace-pre-wrap leading-relaxed">
             {message.body || (
               <span className="italic opacity-60">
                 (no content)
@@ -825,7 +825,7 @@ export default function WhatsAppMessagesPage() {
     },
   })
 
-  const handleSendReply = async () => {
+  const handleSendReply = () => {
     if (!activeConversation || !replyText.trim()) return
     if (activeDevices.length === 0) {
       toast.error("No active WhatsApp device available")

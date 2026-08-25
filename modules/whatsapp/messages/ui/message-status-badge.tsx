@@ -23,17 +23,11 @@ interface MessageStatusBadgeProps {
   direction: "INBOX" | "OUTBOX"
 }
 
-const STATUS_CONFIG: Record<
-  DeliveryStatus,
-  {
-    label: string
-    variant: "secondary" | "outline" | "default" | "destructive" | "success"
-  }
-> = {
-  SENT: { label: "Sent", variant: "secondary" },
-  DELIVERED: { label: "Delivered", variant: "outline" },
-  READ: { label: "Read", variant: "default" },
-  FAILED: { label: "Failed", variant: "destructive" },
+const STATUS_CONFIG: Record<DeliveryStatus, { label: string }> = {
+  SENT: { label: "Sent" },
+  DELIVERED: { label: "Delivered" },
+  READ: { label: "Read" },
+  FAILED: { label: "Failed" },
 }
 
 function StatusIcon({
