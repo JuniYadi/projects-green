@@ -213,11 +213,14 @@ describe("TemplateDetailView", () => {
     expect(view.container.textContent).toContain(reason)
   })
 
-  it("keeps the approved send action primary in the overflow layout", () => {
+  it("keeps the approved send action primary and code snippet secondary inline", () => {
     const view = render(<TemplateDetailView {...propsFor()} />)
 
     expect(
       view.getAllByRole("button", { name: "Send Test Message" })
+    ).toHaveLength(1)
+    expect(
+      view.getAllByRole("button", { name: "Get Code Snippet" })
     ).toHaveLength(1)
     expect(
       view.getByRole("button", { name: "More actions" })
@@ -226,11 +229,17 @@ describe("TemplateDetailView", () => {
       view.queryByRole("button", { name: "Action" })
     ).not.toBeInTheDocument()
     expect(
-      view.queryByRole("button", { name: "Get Code Snippet" })
-    ).not.toBeInTheDocument()
-    expect(
       view.queryByRole("button", { name: "Duplicate" })
     ).not.toBeInTheDocument()
+
+    fireEvent.click(view.getByRole("button", { name: "Get Code Snippet" }))
+    expect(
+      view.getByRole("dialog", { name: "Developer Integration Code" })
+    ).toBeInTheDocument()
+
+    act(() => {
+      fireEvent.keyDown(view.getByRole("dialog"), { key: "Escape" })
+    })
 
     act(() => {
       fireEvent.keyDown(view.getByRole("button", { name: "More actions" }), {
@@ -239,8 +248,8 @@ describe("TemplateDetailView", () => {
     })
 
     expect(
-      view.getByRole("menuitem", { name: "Get Code Snippet" })
-    ).toBeInTheDocument()
+      view.queryByRole("menuitem", { name: "Get Code Snippet" })
+    ).not.toBeInTheDocument()
     expect(
       view.getByRole("menuitem", { name: "Duplicate" })
     ).toBeInTheDocument()

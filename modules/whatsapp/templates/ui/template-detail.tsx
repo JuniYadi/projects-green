@@ -336,6 +336,17 @@ export function TemplateDetailView({
             </Button>
           )}
 
+          {currentLanguage && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setCodeModalOpen(true)}
+            >
+              <Code weight="bold" className="mr-1.5 size-4 text-primary" />
+              Get Code Snippet
+            </Button>
+          )}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button aria-label="More actions" size="icon" variant="outline">
@@ -343,12 +354,6 @@ export function TemplateDetailView({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {currentLanguage && (
-                <DropdownMenuItem onSelect={() => setCodeModalOpen(true)}>
-                  <Code weight="bold" className="size-4 text-primary" />
-                  Get Code Snippet
-                </DropdownMenuItem>
-              )}
               <DropdownMenuItem
                 onSelect={() =>
                   router.push(
