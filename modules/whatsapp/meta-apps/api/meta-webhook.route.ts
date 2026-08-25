@@ -2,7 +2,10 @@ import { timingSafeEqual } from "node:crypto"
 import { Elysia, t } from "elysia"
 import type { Prisma } from "@prisma/client"
 
-import { handleEventUseCase } from "@/lib/whatsapp/handle-event"
+import {
+  handleEventUseCase,
+  normalizeTemplateStatusUpdate,
+} from "@/lib/whatsapp/handle-event"
 import {
   createWebhookEvent,
   recordProcessingResult,
@@ -58,9 +61,11 @@ type ParsedEventResult = {
   duplicate?: boolean
 }
 type WebhookItem = {
-  phoneNumberId: string
-  eventType: "inbound_message" | "status_update"
-  jobEventType: "message" | "statuses"
+  deviceLookup:
+    | { type: "phone"; value: string }
+    | { type: "waba"; value: string }
+  eventType: "inbound_message" | "status_update" | "template_status_update"
+  jobEventType: "message" | "statuses" | "template_status_update"
   payload: Prisma.InputJsonValue
 }
 
@@ -133,6 +138,28 @@ function extractWebhookItems(payload: unknown): WebhookItem[] | null {
     }
     for (const change of entry.changes) {
       if (!isRecord(change) || !isRecord(change.value)) return null
+
+      if (change.field === "message_template_status_update") {
+        const templateStatusUpdate = normalizeTemplateStatusUpdate(
+          change.value,
+          typeof entry.time === "number" ? entry.time : undefined
+        )
+        if (
+          !templateStatusUpdate ||
+          typeof entry.id !== "string" ||
+          entry.id.length === 0
+        ) {
+          return null
+        }
+        items.push({
+          deviceLookup: { type: "waba", value: entry.id },
+          eventType: "template_status_update",
+          jobEventType: "template_status_update",
+          payload: templateStatusUpdate as unknown as Prisma.InputJsonValue,
+        })
+        continue
+      }
+
       const metadata = change.value.metadata
       if (
         !isRecord(metadata) ||
@@ -156,7 +183,7 @@ function extractWebhookItems(payload: unknown): WebhookItem[] | null {
       for (const message of messages ?? []) {
         if (!isRecord(message)) return null
         items.push({
-          phoneNumberId: metadata.phone_number_id,
+          deviceLookup: { type: "phone", value: metadata.phone_number_id },
           eventType: "inbound_message",
           jobEventType: "message",
           payload: message as unknown as Prisma.InputJsonValue,
@@ -165,7 +192,7 @@ function extractWebhookItems(payload: unknown): WebhookItem[] | null {
       for (const status of statuses ?? []) {
         if (!isRecord(status)) return null
         items.push({
-          phoneNumberId: metadata.phone_number_id,
+          deviceLookup: { type: "phone", value: metadata.phone_number_id },
           eventType: "status_update",
           jobEventType: "statuses",
           payload: status as unknown as Prisma.InputJsonValue,
@@ -319,27 +346,65 @@ export const metaWebhookRoutes = new Elysia({
         return invalidResponse(set, 422, "INVALID_PAYLOAD")
       }
 
-      const phoneIds = [...new Set(items.map((item) => item.phoneNumberId))]
-      const devices = new Map<string, { id: string; organizationId: string }>()
+      const deviceLookupKeys = [
+        ...new Set(
+          items.map(
+            (item) => `${item.deviceLookup.type}:${item.deviceLookup.value}`
+          )
+        ),
+      ]
+      const devices = new Map<
+        string,
+        Array<{ id: string; organizationId: string }>
+      >()
       try {
         await Promise.all(
-          phoneIds.map(async (phoneId) => {
-            const device = await metaAppsService.resolveDeviceByPhoneId(
+          deviceLookupKeys.map(async (lookupKey) => {
+            const [lookupType, lookupValue] = lookupKey.split(":", 2)
+            if (lookupType === "phone") {
+              const device = await metaAppsService.resolveDeviceByPhoneId(
+                credentials.id,
+                lookupValue
+              )
+              if (device) {
+                devices.set(lookupKey, [
+                  { id: device.id, organizationId: device.organizationId },
+                ])
+              }
+              return
+            }
+
+            const matchedDevices = await metaAppsService.resolveDevicesByWabaId(
               credentials.id,
-              phoneId
+              lookupValue
             )
-            if (device)
-              devices.set(phoneId, {
-                id: device.id,
-                organizationId: device.organizationId,
-              })
+            if (matchedDevices.length > 0) {
+              devices.set(
+                lookupKey,
+                matchedDevices.map((device) => ({
+                  id: device.id,
+                  organizationId: device.organizationId,
+                }))
+              )
+            }
           })
         )
       } catch {
         return invalidResponse(set, 500, "INTERNAL_ERROR")
       }
-      if (devices.size !== phoneIds.length) {
-        const unmappedPhoneIds = phoneIds.filter((id) => !devices.has(id))
+      if (devices.size !== deviceLookupKeys.length) {
+        const unmappedLookupKeys = deviceLookupKeys.filter(
+          (key) => !devices.has(key)
+        )
+        const phoneIds = deviceLookupKeys
+          .filter((key) => key.startsWith("phone:"))
+          .map((key) => key.slice("phone:".length))
+        const unmappedPhoneIds = unmappedLookupKeys
+          .filter((key) => key.startsWith("phone:"))
+          .map((key) => key.slice("phone:".length))
+        const unmappedWabaIds = unmappedLookupKeys
+          .filter((key) => key.startsWith("waba:"))
+          .map((key) => key.slice("waba:".length))
         logWebhookRejection({
           reason: "UNKNOWN_DEVICE",
           webhookKey: params.webhookKey,
@@ -347,11 +412,15 @@ export const metaWebhookRoutes = new Elysia({
           phoneIds,
           ip,
           userAgent,
-          details: { unmappedPhoneIds },
+          details: { unmappedPhoneIds, unmappedWabaIds },
           rawPayload: payload,
         })
         return invalidResponse(set, 422, "UNKNOWN_DEVICE")
       }
+
+      const phoneIds = deviceLookupKeys
+        .filter((key) => key.startsWith("phone:"))
+        .map((key) => key.slice("phone:".length))
 
       let parsedEvent: ParsedEventResult
       try {
@@ -394,15 +463,19 @@ export const metaWebhookRoutes = new Elysia({
       }> = []
       try {
         for (const item of items) {
-          const device = devices.get(item.phoneNumberId)
-          if (!device) return invalidResponse(set, 422, "UNKNOWN_DEVICE")
-          const eventId = await createWebhookEvent(
-            device.organizationId,
-            device.id,
-            item.eventType,
-            item.payload
-          )
-          createdEvents.push({ eventId, item, device })
+          const lookupKey = `${item.deviceLookup.type}:${item.deviceLookup.value}`
+          const matchedDevices = devices.get(lookupKey)
+          if (!matchedDevices)
+            return invalidResponse(set, 422, "UNKNOWN_DEVICE")
+          for (const device of matchedDevices) {
+            const eventId = await createWebhookEvent(
+              device.organizationId,
+              device.id,
+              item.eventType,
+              item.payload
+            )
+            createdEvents.push({ eventId, item, device })
+          }
         }
       } catch {
         await Promise.allSettled(

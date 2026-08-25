@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto"
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
+import templateStatusFixture from "./__fixtures__/message-template-status-update.json"
 
 type Credentials = {
   id: string
@@ -28,7 +29,7 @@ type RecordProcessingResult = (
 ) => Promise<void>
 type Dispatch = (data: {
   eventId: string
-  eventType: "message" | "statuses"
+  eventType: "message" | "statuses" | "template_status_update"
   deviceId: string
   organizationId: string
   payload: unknown
@@ -40,6 +41,9 @@ const mockResolveCredentials = mock<
 const mockResolveDevice = mock<
   (metaAppId: string, phoneId: string) => Promise<Device | null>
 >(async () => null)
+const mockResolveDevicesByWabaId = mock<
+  (metaAppId: string, wabaId: string) => Promise<Device[]>
+>(async () => [])
 const mockCreateWebhookEvent = mock<CreateEvent>(
   async () => `event-${++eventCounter}`
 )
@@ -56,6 +60,7 @@ mock.module("../meta-apps.service", () => ({
   metaAppsService: {
     resolveCredentialsByWebhookKey: mockResolveCredentials,
     resolveDeviceByPhoneId: mockResolveDevice,
+    resolveDevicesByWabaId: mockResolveDevicesByWabaId,
   },
 }))
 mock.module("@/modules/whatsapp/webhooks/webhooks.service", () => ({
@@ -68,6 +73,30 @@ mock.module("@/modules/whatsapp/webhooks/jobs/webhook-retry.job", () => ({
 }))
 mock.module("@/lib/whatsapp/handle-event", () => ({
   handleEventUseCase: mockHandleEvent,
+  normalizeTemplateStatusUpdate: (value: Record<string, unknown>) => {
+    const templateId = value.message_template_id
+    const templateName = value.message_template_name
+    const event = value.event
+    if (
+      (typeof templateId !== "string" && typeof templateId !== "number") ||
+      typeof templateName !== "string" ||
+      typeof event !== "string"
+    ) {
+      return null
+    }
+    return {
+      templateId: String(templateId),
+      templateName,
+      event,
+      ...(typeof value.message_template_category === "string"
+        ? { category: value.message_template_category }
+        : {}),
+      ...(typeof value.message_template_language === "string"
+        ? { language: value.message_template_language }
+        : {}),
+      ...(typeof value.reason === "string" ? { reason: value.reason } : {}),
+    }
+  },
 }))
 mock.module("@/modules/whatsapp/audit/whatsapp-audit.service", () => ({
   logWhatsappAuditEvent: mockLogAudit,
@@ -117,6 +146,7 @@ function signedRequest(body: string, secret = appCredentials.appSecret) {
 beforeEach(() => {
   mockResolveCredentials.mockReset()
   mockResolveDevice.mockReset()
+  mockResolveDevicesByWabaId.mockReset()
   mockCreateWebhookEvent.mockReset()
   mockRecordProcessingResult.mockReset()
   mockDispatch.mockReset()
@@ -134,6 +164,7 @@ beforeEach(() => {
     entries: [],
   })
   mockLogAudit.mockResolvedValue(undefined)
+  mockResolveDevicesByWabaId.mockResolvedValue([])
 })
 describe("canonical Meta webhook ingress", () => {
   it("returns challenge only for matching active app token", async () => {
@@ -217,6 +248,74 @@ describe("canonical Meta webhook ingress", () => {
         (call: Parameters<Dispatch>) => call[0].deviceId
       )
     ).toEqual(["device-1", "device-2"])
+  })
+
+  it("accepts a signed template status update without message items", async () => {
+    mockResolveCredentials.mockResolvedValue(appCredentials)
+    mockResolveDevicesByWabaId.mockResolvedValue([devices.phone1])
+    const body = JSON.stringify(templateStatusFixture)
+
+    const response = await createTestApp().handle(signedRequest(body))
+
+    expect(response.status).toBe(200)
+    expect(mockResolveDevicesByWabaId).toHaveBeenCalledWith(
+      "meta-1",
+      "test-waba-template-status"
+    )
+    expect(mockCreateWebhookEvent).toHaveBeenCalledWith(
+      "org-1",
+      "device-1",
+      "template_status_update",
+      expect.objectContaining({
+        templateId: "1234567890",
+        templateName: "thank_you_message",
+        category: "MARKETING",
+        language: "id",
+        event: "APPROVED",
+        reason: "NONE",
+      })
+    )
+    expect(mockDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: "template_status_update" })
+    )
+  })
+
+  it("does not create duplicate template status events", async () => {
+    mockResolveCredentials.mockResolvedValue(appCredentials)
+    mockResolveDevicesByWabaId.mockResolvedValue([devices.phone1])
+    const body = JSON.stringify(templateStatusFixture)
+
+    const first = await createTestApp().handle(signedRequest(body))
+    mockHandleEvent.mockResolvedValueOnce({ duplicate: true })
+    const second = await createTestApp().handle(signedRequest(body))
+
+    expect(first.status).toBe(200)
+    expect(second.status).toBe(200)
+    expect(mockCreateWebhookEvent).toHaveBeenCalledTimes(1)
+    expect(mockDispatch).toHaveBeenCalledTimes(1)
+  })
+
+  it("rejects malformed template status updates without creating events", async () => {
+    mockResolveCredentials.mockResolvedValue(appCredentials)
+    const body = JSON.stringify({
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "test-waba-template-status",
+          changes: [
+            {
+              field: "message_template_status_update",
+              value: { event: "APPROVED", message_template_id: 1234567890 },
+            },
+          ],
+        },
+      ],
+    })
+
+    const response = await createTestApp().handle(signedRequest(body))
+
+    expect(response.status).toBe(422)
+    expect(mockCreateWebhookEvent).not.toHaveBeenCalled()
   })
 
   it("rejects invalid signature and unknown app or phone", async () => {

@@ -229,6 +229,15 @@ export class MetaAppsService {
     })
   }
 
+  async resolveDevicesByWabaId(
+    whatsappMetaAppId: string,
+    whatsappBusinessAccountId: string
+  ): Promise<WhatsappDevice[]> {
+    return this.database.whatsappDevice.findMany({
+      where: { whatsappMetaAppId, whatsappBusinessAccountId },
+    })
+  }
+
   async deactivate(id: string): Promise<WhatsappMetaAppDTO | null> {
     const app = await this.withNoDevicesLock(id, (tx) =>
       tx.whatsappMetaApp.update({

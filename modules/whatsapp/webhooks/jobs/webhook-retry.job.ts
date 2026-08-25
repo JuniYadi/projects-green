@@ -14,12 +14,14 @@ import {
   processDeliveryStatus,
 } from "../webhooks.service"
 import { createDeadLetter } from "../services/webhook-dead-letter.service"
+import { processTemplateStatusUpdate } from "../../templates/template-status-update.service"
+import type { TemplateStatusUpdate } from "@/lib/whatsapp/handle-event"
 
 export const WHATSAPP_WEBHOOK_RETRY_QUEUE = "whatsapp-webhook-retry"
 
 type WebhookRetryJobData = {
   eventId: string
-  eventType: "message" | "statuses"
+  eventType: "message" | "statuses" | "template_status_update"
   deviceId: string
   organizationId?: string
   payload: unknown
@@ -59,8 +61,14 @@ export class WebhookRetryJob extends BaseJob {
           throw new Error("Message missing 'from' field")
         }
         await processInboundMessage(msgPayload as any, deviceId, organizationId)
-      } else {
+      } else if (eventType === "statuses") {
         await processDeliveryStatus(payload as any, deviceId, organizationId)
+      } else {
+        await processTemplateStatusUpdate(
+          organizationId,
+          deviceId,
+          payload as TemplateStatusUpdate
+        )
       }
       await recordProcessingResult(eventId, "SUCCESS")
     } catch (error) {
@@ -74,7 +82,11 @@ export class WebhookRetryJob extends BaseJob {
           deviceId,
           organizationId,
           eventType:
-            eventType === "message" ? "inbound_message" : "status_update",
+            eventType === "message"
+              ? "inbound_message"
+              : eventType === "statuses"
+                ? "status_update"
+                : "template_status_update",
           payload,
           errorMessage: String(error),
           attemptCount: job.attemptsMade + 1,
