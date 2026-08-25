@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import type { Job } from "bullmq"
+import type { Prisma } from "@prisma/client"
 
 process.env.REDIS_URL = "redis://localhost:6379/0"
 
@@ -36,7 +37,8 @@ const mockPrisma = {
     findFirst: mock(async (..._args: unknown[]) => null as unknown),
     findMany: mock(async (..._args: unknown[]) => []),
     create: mock(async (..._args: unknown[]) => ({})),
-    update: mock(async (..._args: unknown[]) => ({})),
+    update:
+      mock<(args: Prisma.WhatsappTemplateUpdateArgs) => Promise<unknown>>(),
     updateMany: mock(async (..._args: unknown[]) => ({ count: 0 })),
   },
   whatsappTemplateLanguage: {
@@ -274,10 +276,10 @@ describe("whatsapp-template-sync-worker", () => {
         },
       })
     )
-    const updateData = mockPrisma.whatsappTemplate.update.mock.calls[0]?.[0]
-      ?.data as Record<string, unknown>
-    expect(updateData.name).toBeUndefined()
-    expect(updateData.slug).toBe("welcome_message")
+    const updateArgs = mockPrisma.whatsappTemplate.update.mock.calls[0]?.[0]
+    if (!updateArgs) throw new Error("Expected template update arguments")
+    expect(updateArgs.data.name).toBeUndefined()
+    expect(updateArgs.data.slug).toBe("welcome_message")
   })
 
   it("emits TEMPLATE_SYNC_FAILED when sync-templates partially fails", async () => {

@@ -406,7 +406,7 @@ describe("business-profile.service", () => {
     })
 
     const originalFetch = globalThis.fetch
-    globalThis.fetch = mock(
+    const mockFetch = Object.assign(
       async () =>
         new Response(
           JSON.stringify({
@@ -421,8 +421,10 @@ describe("business-profile.service", () => {
               },
             ],
           })
-        )
-    ) as typeof fetch
+        ),
+      { preconnect: originalFetch.preconnect }
+    )
+    globalThis.fetch = mockFetch
 
     try {
       await syncTemplatesFromMeta("d-1", "org-1")
