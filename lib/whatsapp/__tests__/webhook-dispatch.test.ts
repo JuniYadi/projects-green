@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { createHmac } from "node:crypto"
 import { resetIdempotencyStore } from "../idempotency-repository"
 import type { WhatsAppWebhookJobData } from "@/lib/queue/whatsapp-webhook"
+import templateStatusFixture from "@/modules/whatsapp/meta-apps/api/__fixtures__/message-template-status-update.json"
 
 // Mock ioredis before any module that uses it is imported
 mock.module("ioredis", () => {
@@ -178,6 +179,30 @@ describe("handleEventUseCase", () => {
     expect(entries[0]).toMatchObject({
       messages: [],
       statuses: [],
+    })
+  })
+
+  it("normalizes template status fields from a template-only envelope", async () => {
+    const result = await handleEventUseCase(templateStatusFixture)
+    const entries = (result as { entries: unknown[] }).entries
+
+    expect(entries).toHaveLength(1)
+    expect(entries[0]).toMatchObject({
+      id: "test-waba-template-status",
+      phoneNumberId: "",
+      messages: [],
+      statuses: [],
+      templateStatusUpdates: [
+        {
+          templateId: "1234567890",
+          templateName: "thank_you_message",
+          category: "MARKETING",
+          language: "id",
+          event: "APPROVED",
+          reason: "NONE",
+          occurredAt: 1700000000,
+        },
+      ],
     })
   })
 

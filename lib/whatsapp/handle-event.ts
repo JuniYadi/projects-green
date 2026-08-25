@@ -6,19 +6,22 @@ type WhatsappWebhookEnvelope = {
   object: "whatsapp_business_account"
   entry: Array<{
     id: string
+    time?: number
     changes: Array<{
-      value: {
-        messaging_product: string
-        metadata: {
-          phone_number_id: string
-          display_phone_number?: string
-        }
-        messages?: unknown[]
-        statuses?: unknown[]
-      }
+      value: Record<string, unknown>
       field: string
     }>
   }>
+}
+
+export type TemplateStatusUpdate = {
+  templateId: string
+  templateName: string
+  category?: string
+  language?: string
+  event: string
+  reason?: string
+  occurredAt?: number
 }
 
 export type ParsedWebhookEntry = {
@@ -27,6 +30,7 @@ export type ParsedWebhookEntry = {
   displayPhoneNumber?: string
   messages: unknown[]
   statuses: unknown[]
+  templateStatusUpdates: TemplateStatusUpdate[]
 }
 
 type DebugRepository = {
@@ -50,6 +54,44 @@ function isWhatsappWebhookEnvelope(
     candidate.object === "whatsapp_business_account" &&
     Array.isArray(candidate.entry)
   )
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value)
+
+export function normalizeTemplateStatusUpdate(
+  value: unknown,
+  occurredAt?: number
+): TemplateStatusUpdate | null {
+  if (!isRecord(value)) return null
+
+  const rawTemplateId = value.message_template_id
+  const templateName = value.message_template_name
+  const event = value.event
+
+  if (
+    (typeof rawTemplateId !== "string" && typeof rawTemplateId !== "number") ||
+    typeof templateName !== "string" ||
+    templateName.length === 0 ||
+    typeof event !== "string" ||
+    event.length === 0
+  ) {
+    return null
+  }
+
+  const category = value.message_template_category
+  const language = value.message_template_language
+  const reason = value.reason
+
+  return {
+    templateId: String(rawTemplateId),
+    templateName,
+    event,
+    ...(typeof category === "string" ? { category } : {}),
+    ...(typeof language === "string" ? { language } : {}),
+    ...(typeof reason === "string" ? { reason } : {}),
+    ...(typeof occurredAt === "number" ? { occurredAt } : {}),
+  }
 }
 
 export async function handleEventUseCase(
@@ -79,15 +121,31 @@ export async function handleEventUseCase(
 
   // Parse entries into a stable structure for downstream dispatch
   const parsedEntries: ParsedWebhookEntry[] = payload.entry.map((entry) => {
-    const change = entry.changes?.[0]
-    const value = change?.value ?? {}
+    const changes = entry.changes ?? []
+    const messageChange = changes.find((change) => change.field === "messages")
+    const value = messageChange?.value ?? {}
+    const metadata = isRecord(value.metadata) ? value.metadata : {}
+    const templateStatusUpdates = changes.flatMap((change) =>
+      change.field === "message_template_status_update"
+        ? [normalizeTemplateStatusUpdate(change.value, entry.time)].filter(
+            (update): update is TemplateStatusUpdate => update !== null
+          )
+        : []
+    )
 
     return {
       id: entry.id,
-      phoneNumberId: value.metadata?.phone_number_id ?? "",
-      displayPhoneNumber: value.metadata?.display_phone_number,
-      messages: value.messages ?? [],
-      statuses: value.statuses ?? [],
+      phoneNumberId:
+        typeof metadata.phone_number_id === "string"
+          ? metadata.phone_number_id
+          : "",
+      displayPhoneNumber:
+        typeof metadata.display_phone_number === "string"
+          ? metadata.display_phone_number
+          : undefined,
+      messages: Array.isArray(value.messages) ? value.messages : [],
+      statuses: Array.isArray(value.statuses) ? value.statuses : [],
+      templateStatusUpdates,
     }
   })
 
