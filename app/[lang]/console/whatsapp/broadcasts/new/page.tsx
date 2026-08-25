@@ -801,9 +801,11 @@ export default function NewWhatsAppBroadcastPage() {
                       <WhatsAppText id="s336" locale={locale} />
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Unduh kolom yang sesuai dengan bahasa template. Kolom
-                      Nomor WhatsApp dan Nama dikenali otomatis; variabel pesan
-                      mengikuti urutan {"{{1}}"}, {"{{2}}"}, dan seterusnya.
+                      {formatWhatsAppText(
+                        "s381",
+                        { first: "{{1}}", second: "{{2}}" },
+                        locale
+                      )}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       <WhatsAppText id="s337" locale={locale} />
@@ -853,11 +855,7 @@ export default function NewWhatsAppBroadcastPage() {
                     {csvColumns.length > 1 && (
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-xs text-muted-foreground">
-                          {formatWhatsAppText(
-                            "s340",
-                            { columns: "" },
-                            locale
-                          )}
+                          {formatWhatsAppText("s340", { columns: "" }, locale)}
                         </span>
                         {csvColumns.map((column) => (
                           <Badge key={column} variant="outline">
@@ -876,11 +874,7 @@ export default function NewWhatsAppBroadcastPage() {
             </Tabs>
 
             <p className="text-sm font-medium">
-              {formatWhatsAppText(
-                "s341",
-                { count: totalRecipients },
-                locale
-              )}
+              {formatWhatsAppText("s341", { count: totalRecipients }, locale)}
             </p>
           </CardContent>
         </Card>
@@ -1055,7 +1049,8 @@ export default function NewWhatsAppBroadcastPage() {
                   <WhatsAppText id="s351" locale={locale} />
                 </span>
                 <span>
-                  ±{throttleMaxMessages} <WhatsAppText id="s352" locale={locale} />
+                  ±{throttleMaxMessages}{" "}
+                  <WhatsAppText id="s352" locale={locale} />
                 </span>
               </div>
               <div className="flex justify-between text-sm">

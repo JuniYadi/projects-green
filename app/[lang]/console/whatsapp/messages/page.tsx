@@ -885,30 +885,24 @@ export default function WhatsAppMessagesPage() {
     [pathname, router, searchParams]
   )
 
-  const handleDeleteConversation = React.useCallback((id: string) => {
+  const handleDeleteConversation = (id: string) => {
     setSelectedConversationId(id)
     setDeleteConfirmOpen(true)
-  }, [])
+  }
 
-  const handleNotesConversation = React.useCallback(
-    (conversation: ConversationListItem) => {
-      setSelectedConversationId(conversation.id)
-      setNotesText(conversation.internalNotes ?? "")
-      setNotesDialogOpen(true)
-    },
-    []
-  )
+  const handleNotesConversation = (conversation: ConversationListItem) => {
+    setSelectedConversationId(conversation.id)
+    setNotesText(conversation.internalNotes ?? "")
+    setNotesDialogOpen(true)
+  }
 
-  const handleLabelsConversation = React.useCallback(
-    (conversation: ConversationListItem) => {
-      setSelectedConversationId(conversation.id)
-      setSelectedLabelIds(
-        new Set(conversation.conversationLabels?.map((cl) => cl.label.id) ?? [])
-      )
-      setLabelPickerOpen(true)
-    },
-    []
-  )
+  const handleLabelsConversation = (conversation: ConversationListItem) => {
+    setSelectedConversationId(conversation.id)
+    setSelectedLabelIds(
+      new Set(conversation.conversationLabels?.map((cl) => cl.label.id) ?? [])
+    )
+    setLabelPickerOpen(true)
+  }
 
   // ── Mutations ──────────────────────────────────────────────────────────
   const sendMutation = useMutation({
@@ -1015,20 +1009,20 @@ export default function WhatsAppMessagesPage() {
     })
   }, [selectedConversationId, notesText, saveNotesMutation])
 
-  const handleConfirmDelete = React.useCallback(() => {
+  const handleConfirmDelete = () => {
     if (!selectedConversationId) return
     deleteMutation.mutate(selectedConversationId)
     setDeleteConfirmOpen(false)
-  }, [selectedConversationId, deleteMutation])
+  }
 
-  const handleToggleLabel = React.useCallback((labelId: string) => {
+  const handleToggleLabel = (labelId: string) => {
     setSelectedLabelIds((prev) => {
       const next = new Set(prev)
       if (next.has(labelId)) next.delete(labelId)
       else next.add(labelId)
       return next
     })
-  }, [])
+  }
 
   const handleSaveLabels = React.useCallback(() => {
     if (!selectedConversationId) return
@@ -1562,9 +1556,11 @@ export default function WhatsAppMessagesPage() {
                   !approvedTemplates.find((t) => t.id === selectedTemplateId)
                 }
               >
-                {sendMutation.isPending
-                  ? "Sending..."
-                  : "Send Template Message"}
+                {sendMutation.isPending ? (
+                  <WhatsAppText id="s380" locale={locale} />
+                ) : (
+                  <WhatsAppText id="s134" locale={locale} />
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1942,7 +1938,11 @@ export default function WhatsAppMessagesPage() {
                       >
                         <PaperPlaneTilt className="size-4" weight="fill" />
                         <span>
-                          {sendReplyMutation.isPending ? "Sending..." : "Send"}
+                          {sendReplyMutation.isPending ? (
+                            <WhatsAppText id="s380" locale={locale} />
+                          ) : (
+                            <WhatsAppText id="s161" locale={locale} />
+                          )}
                         </span>
                       </Button>
                     </form>

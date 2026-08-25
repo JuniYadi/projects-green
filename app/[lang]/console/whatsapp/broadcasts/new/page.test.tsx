@@ -13,7 +13,7 @@ let templateState = {
 }
 
 mock.module("next/navigation", () => ({
-  useParams: () => ({ lang: "en" }),
+  useParams: () => ({ lang: "id" }),
   useRouter: () => ({ push: mockPush }),
 }))
 
@@ -170,7 +170,7 @@ describe("NewWhatsAppBroadcastPage selection flow", () => {
 
     expect(view.queryByText("3. Variabel Pesan")).not.toBeInTheDocument()
     expect(
-      view.getByText("3. Preflight & Jadwal Pengiriman")
+      view.getByText("4. Preflight & jadwal pengiriman")
     ).toBeInTheDocument()
   })
 })

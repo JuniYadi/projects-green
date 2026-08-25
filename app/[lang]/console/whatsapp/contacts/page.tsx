@@ -114,6 +114,11 @@ const emptyFormData: ContactFormData = {
   status: "ACTIVE",
 }
 
+const contactsUnableToLoadByLocale = {
+  en: getMessages("en").console.whatsapp.contacts.unableToLoad,
+  id: getMessages("id").console.whatsapp.contacts.unableToLoad,
+}
+
 // ─── Page Component ───────────────────────────────────────────────────────
 
 export default function WhatsAppContactsPage() {
@@ -121,6 +126,7 @@ export default function WhatsAppContactsPage() {
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
   const onboarding = useWhatsAppOnboarding()
+  const contactsUnableToLoad = contactsUnableToLoadByLocale[locale]
   // ── Data state ──────────────────────────────────────────────────────────
   const [contacts, setContacts] = React.useState<Contact[]>([])
   const [groups, setGroups] = React.useState<ContactGroup[]>([])
@@ -163,14 +169,12 @@ export default function WhatsAppContactsPage() {
       setContacts(items)
     } catch (error) {
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : messages.console.whatsapp.contacts.unableToLoad
+        error instanceof Error ? error.message : contactsUnableToLoad
       )
     } finally {
       setIsLoading(false)
     }
-  }, [messages.console.whatsapp.contacts.unableToLoad])
+  }, [contactsUnableToLoad])
 
   const loadGroups = React.useCallback(async () => {
     try {
@@ -378,12 +382,20 @@ export default function WhatsAppContactsPage() {
     setParsedContacts([])
     if (successCount > 0) {
       toast.success(
-        `Imported ${successCount} contact${successCount !== 1 ? "s" : ""}`
+        formatWhatsAppText(
+          successCount === 1 ? "s384" : "s385",
+          { count: successCount },
+          locale
+        )
       )
     }
     if (errorCount > 0) {
       toast.error(
-        `${errorCount} contact${errorCount !== 1 ? "s" : ""} failed to import`
+        formatWhatsAppText(
+          errorCount === 1 ? "s386" : "s387",
+          { count: errorCount },
+          locale
+        )
       )
     }
     void loadContacts()
@@ -953,9 +965,11 @@ export default function WhatsAppContactsPage() {
             {parsedContacts.length > 0 && (
               <div className="grid gap-2">
                 <Label>
-                  <WhatsAppText id="s8" />
-                  {parsedContacts.length} <WhatsAppText id="s9" />
-                  {parsedContacts.length !== 1 ? "s" : ""})
+                  {formatWhatsAppText(
+                    parsedContacts.length === 1 ? "s378" : "s379",
+                    { count: parsedContacts.length },
+                    locale
+                  )}
                 </Label>
                 <div className="max-h-64 overflow-auto rounded-md border">
                   <table className="w-full text-xs">
@@ -994,8 +1008,7 @@ export default function WhatsAppContactsPage() {
             {isImporting && (
               <div className="grid gap-2">
                 <Label>
-                  Importing {importProgress.current} <WhatsAppText id="s14" />
-                  {importProgress.total}…
+                  {formatWhatsAppText("s388", importProgress, locale)}
                 </Label>
                 <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                   <div
@@ -1024,8 +1037,12 @@ export default function WhatsAppContactsPage() {
               disabled={isImporting || parsedContacts.length === 0}
             >
               {isImporting
-                ? `Importing ${importProgress.current}/${importProgress.total}…`
-                : `Import ${parsedContacts.length} Contact${parsedContacts.length !== 1 ? "s" : ""}`}
+                ? formatWhatsAppText("s388", importProgress, locale)
+                : formatWhatsAppText(
+                    parsedContacts.length === 1 ? "s389" : "s390",
+                    { count: parsedContacts.length },
+                    locale
+                  )}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -816,9 +816,11 @@ export default function WhatsAppUsagePage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Recent Deductions</CardTitle>
+            <CardTitle>
+              <WhatsAppText id="s382" locale={locale} />
+            </CardTitle>
             <p className="text-xs text-muted-foreground">
-              Latest 5 quota/balance deduction entries
+              <WhatsAppText id="s383" locale={locale} />
             </p>
           </div>
           <Button variant="outline" size="sm" asChild className="gap-1.5">
