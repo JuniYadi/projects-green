@@ -179,6 +179,58 @@ describe("ConsoleWhatsAppDeviceDetailPage", () => {
     globalThis.fetch = ORIGINAL_FETCH
   })
 
+  it("renders truthful Meta display-name status states", async () => {
+    const { MetaNameStatusBadge } = await import("./page")
+    const view = render(
+      React.createElement(MetaNameStatusBadge, {
+        nameStatus: null,
+        profile: null,
+      })
+    )
+
+    expect(view.getByText("Not yet synced")).toBeTruthy()
+
+    view.rerender(
+      React.createElement(MetaNameStatusBadge, {
+        nameStatus: "APPROVED",
+        profile: { meta_name_status_sync_state: "UNKNOWN" },
+      })
+    )
+    expect(view.getByText("Unknown")).toBeTruthy()
+
+    view.rerender(
+      React.createElement(MetaNameStatusBadge, {
+        nameStatus: "PENDING_REVIEW",
+        profile: null,
+      })
+    )
+    expect(view.getByText("Pending")).toBeTruthy()
+
+    view.rerender(
+      React.createElement(MetaNameStatusBadge, {
+        nameStatus: "APPROVED",
+        profile: null,
+      })
+    )
+    expect(view.getByText("Approved")).toBeTruthy()
+
+    view.rerender(
+      React.createElement(MetaNameStatusBadge, {
+        nameStatus: "REJECTED",
+        profile: null,
+      })
+    )
+    expect(view.getByText("Rejected")).toBeTruthy()
+
+    view.rerender(
+      React.createElement(MetaNameStatusBadge, {
+        nameStatus: null,
+        profile: { meta_name_status_sync_state: "UNAVAILABLE" },
+      })
+    )
+    expect(view.getByText("Meta unavailable")).toBeTruthy()
+  })
+
   it("loads device profile after the loading render without changing hook order", async () => {
     const { default: ConsoleWhatsAppDeviceDetailPage } = await import("./page")
 
