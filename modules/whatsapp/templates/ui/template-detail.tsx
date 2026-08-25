@@ -121,7 +121,7 @@ export function TemplateDetailView({
       <div className="space-y-6">
         <Skeleton className="h-8 w-64" />
         <div className="grid gap-6 md:grid-cols-2">
-          <Card>
+          <Card className="ring-0">
             <CardHeader>
               <Skeleton className="h-5 w-32" />
             </CardHeader>
@@ -130,7 +130,7 @@ export function TemplateDetailView({
               <Skeleton className="h-4 w-3/4" />
             </CardContent>
           </Card>
-          <Card>
+          <Card className="ring-0">
             <CardHeader>
               <Skeleton className="h-5 w-32" />
             </CardHeader>
@@ -400,7 +400,7 @@ export function TemplateDetailView({
       <div className="grid gap-6 lg:grid-cols-12">
         {/* Left Column: Spec Breakdown & Variable Tester (7 cols) */}
         <div className="space-y-4 lg:col-span-7">
-          <Card>
+          <Card className="ring-0">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">
                 Template Specification & Variable Tester
@@ -424,7 +424,7 @@ export function TemplateDetailView({
 
         {/* Right Column: Live WhatsApp Bubble & Ready-to-Use JSON (5 cols) */}
         <div className="space-y-4 lg:col-span-5">
-          <Card className="sticky top-6">
+          <Card className="sticky top-6 ring-0">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
