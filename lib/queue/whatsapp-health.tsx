@@ -231,6 +231,7 @@ async function checkSingleDevice(deviceId: string): Promise<void> {
         await recordMetaRefreshUnavailable(deviceId, device.organizationId)
       } catch (recordError) {
         emitWhatsAppHealthDeviceMetadataRefreshFailed(recordError)
+        return
       }
       emitWhatsAppHealthDeviceMetadataRefreshFailed(error)
     }

@@ -375,6 +375,21 @@ describe("checkSingleDevice through WhatsAppHealthJob.handle", () => {
     expect(markDisconnectedMock).not.toHaveBeenCalled()
   })
 
+  it("logs the refresh-recording error once when recording fails", async () => {
+    const recordError = new Error("Metadata state could not be recorded")
+    findUniqueMock.mockResolvedValue(activeDevice())
+    syncDeviceFromMetaMock.mockRejectedValue(new Error("Meta unavailable"))
+    recordMetaRefreshUnavailableMock.mockRejectedValue(recordError)
+
+    await WhatsAppHealthJob.handle({ data: { deviceId: "d1" } })
+
+    expect(updateLastHeartbeatMock).toHaveBeenCalledWith("d1")
+    expect(recordMetaRefreshUnavailableMock).toHaveBeenCalledWith("d1", "org-1")
+    expect(emitMetadataRefreshFailedMock).toHaveBeenCalledTimes(1)
+    expect(emitMetadataRefreshFailedMock).toHaveBeenCalledWith(recordError)
+    expect(emitCheckFailedMock).not.toHaveBeenCalled()
+  })
+
   it("disconnects after the miss threshold and emails organization users", async () => {
     findUniqueMock.mockResolvedValueOnce(activeDevice()).mockResolvedValueOnce({
       phoneNumber: "+15551234567",

@@ -2,6 +2,7 @@ import "@/test/register"
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import {
   getProfile,
+  recordMetaRefreshUnavailable,
   syncDeviceFromMeta,
   syncTemplatesFromMeta,
   updateProfile,
@@ -74,6 +75,22 @@ mock.module("@/lib/whatsapp/crypto", () => ({
 }))
 
 const mockMetaRequest = mock(async (_args?: unknown): Promise<unknown> => ({}))
+
+const metaSyncDevice = (
+  whatsappProfile: Record<string, unknown> = { about: "Existing profile" }
+) => ({
+  id: "d-1",
+  organizationId: "org-1",
+  token: "token",
+  tokenEncrypted: null,
+  tokenIv: null,
+  whatsappPhoneId: "phone-1",
+  whatsappBusinessAccountId: "waba-1",
+  whatsappVersion: "v22.0",
+  phoneNumber: "+15551234567",
+  whatsappProfile,
+  whatsappMetaApp: { metaAppId: "app-1" },
+})
 
 mock.module("@/lib/whatsapp/meta-cloud/client", () => {
   class MockMetaCloudHttpClient {
@@ -179,19 +196,7 @@ describe("business-profile.service", () => {
   })
 
   it("syncs the Meta display-name status and related device metadata", async () => {
-    mockFindUnique.mockResolvedValue({
-      id: "d-1",
-      organizationId: "org-1",
-      token: "token",
-      tokenEncrypted: null,
-      tokenIv: null,
-      whatsappPhoneId: "phone-1",
-      whatsappBusinessAccountId: "waba-1",
-      whatsappVersion: "v22.0",
-      phoneNumber: "+15551234567",
-      whatsappProfile: { about: "Existing profile" },
-      whatsappMetaApp: { metaAppId: "app-1" },
-    })
+    mockFindUnique.mockResolvedValue(metaSyncDevice())
     mockMetaRequest.mockResolvedValue({
       data: [
         {
@@ -229,19 +234,12 @@ describe("business-profile.service", () => {
   })
 
   it("marks a partial Meta response as unknown without inventing approval", async () => {
-    mockFindUnique.mockResolvedValue({
-      id: "d-1",
-      organizationId: "org-1",
-      token: "token",
-      tokenEncrypted: null,
-      tokenIv: null,
-      whatsappPhoneId: "phone-1",
-      whatsappBusinessAccountId: "waba-1",
-      whatsappVersion: "v22.0",
-      phoneNumber: "+15551234567",
-      whatsappProfile: { about: "Existing profile" },
-      whatsappMetaApp: { metaAppId: "app-1" },
-    })
+    mockFindUnique.mockResolvedValue(
+      metaSyncDevice({
+        about: "Existing profile",
+        name_status: "PENDING",
+      })
+    )
     mockMetaRequest.mockResolvedValue({
       data: [{ id: "phone-1", verified_name: "Green Support" }],
     })
@@ -250,9 +248,50 @@ describe("business-profile.service", () => {
 
     expect(profile).toMatchObject({
       verified_name: "Green Support",
+      name_status: "PENDING",
       meta_name_status_sync_state: "UNKNOWN",
     })
     expect(profile).not.toHaveProperty("name_status", "APPROVED")
+  })
+
+  it("does not replace the last Meta state when the refresh is unavailable", async () => {
+    mockFindUnique.mockResolvedValue(
+      metaSyncDevice({
+        name_status: "PENDING",
+        verified_name: "Green Support",
+        meta_health_status: "AVAILABLE",
+      })
+    )
+
+    await recordMetaRefreshUnavailable("d-1", "org-1")
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "d-1" },
+        data: {
+          whatsappProfile: expect.objectContaining({
+            name_status: "PENDING",
+            verified_name: "Green Support",
+            meta_health_status: "AVAILABLE",
+            meta_name_status_sync_state: "UNAVAILABLE",
+            meta_name_status_checked_at: expect.any(String),
+          }),
+        },
+      })
+    )
+  })
+
+  it("does not write a success state when Meta returns an error", async () => {
+    mockFindUnique.mockResolvedValue(metaSyncDevice())
+    mockMetaRequest.mockResolvedValue({
+      error: { message: "Meta is temporarily unavailable" },
+    })
+
+    await expect(syncDeviceFromMeta("d-1", "org-1")).rejects.toThrow(
+      "Meta is temporarily unavailable"
+    )
+
+    expect(mockUpdate).not.toHaveBeenCalled()
   })
 
   it("updateProfile throws DeviceNoPhoneIdError when phone id missing", async () => {
