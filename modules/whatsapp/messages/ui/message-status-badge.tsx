@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { Badge } from "@/components/ui/badge"
 import {
   Tooltip,
   TooltipContent,
@@ -89,31 +88,45 @@ export function MessageStatusBadge({
 
   const latestStatus = topStatusRecord?.status
   if (!latestStatus) return null
-  const config = STATUS_CONFIG[latestStatus]
   const failureReason =
     latestStatus === "FAILED" ? topStatusRecord?.error : null
 
-  if (failureReason) {
+  if (latestStatus === "FAILED") {
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge variant={config.variant} className="ml-1 gap-1 text-[10px]">
-              <StatusIcon status={latestStatus} className="size-3" />
-              {config.label}
-            </Badge>
+            <span
+              className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium text-destructive hover:bg-destructive/10"
+              title="Failed to deliver"
+            >
+              <WarningCircle className="size-3 text-destructive" weight="fill" />
+              <span>Failed</span>
+            </span>
           </TooltipTrigger>
-          <TooltipContent>
-            <p className="max-w-[200px] text-xs">{failureReason}</p>
+          <TooltipContent className="max-w-[240px] text-xs">
+            <p className="font-semibold text-destructive">Delivery Failed</p>
+            <p className="mt-0.5 text-muted-foreground">
+              {failureReason || "Message could not be delivered by WhatsApp."}
+            </p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
     )
   }
+
   return (
-    <Badge variant={config.variant} className="ml-1 gap-1 text-[10px]">
-      <StatusIcon status={latestStatus} className="size-3" />
-      {config.label}
-    </Badge>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex items-center">
+            <StatusIcon status={latestStatus} className="size-3.5" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="text-xs">
+          {STATUS_CONFIG[latestStatus].label}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
