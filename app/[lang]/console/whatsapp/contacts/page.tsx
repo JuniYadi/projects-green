@@ -1,5 +1,6 @@
 "use client"
 import {
+  formatWhatsAppText,
   getWhatsAppText,
   WhatsAppText,
 } from "@/modules/whatsapp/ui/whatsapp-text"
