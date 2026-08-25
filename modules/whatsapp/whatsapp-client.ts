@@ -290,13 +290,14 @@ export type BroadcastSummary = {
 }
 
 export type CreateBroadcastInput = {
+  templateId: string
   templateName: string
   templateLanguage: string
   templateParams?: Record<string, unknown> | null
   throttleMaxMessages?: number | null
   throttlePerMinutes?: number | null
   acknowledgeMultiDay?: boolean | null
-  whatsappDeviceId?: string | null
+  whatsappDeviceId: string
   whatsappContactGroupId?: string | null
   recipients: Array<{
     phoneNumber: string

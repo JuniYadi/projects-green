@@ -39,8 +39,8 @@ import {
   type CreateBroadcastInput,
   type Device,
   type DeviceBroadcastCapacity,
-  type Template,
 } from "@/modules/whatsapp/whatsapp-client"
+import { useTemplates } from "@/modules/whatsapp/templates/api/templates.hooks"
 
 type RecipientTab = "manual" | "contacts" | "csv"
 
@@ -79,7 +79,6 @@ export default function NewWhatsAppBroadcastPage() {
     locale,
   })
 
-  const [templates, setTemplates] = React.useState<Template[]>([])
   const [devices, setDevices] = React.useState<Device[]>([])
   const [contacts, setContacts] = React.useState<Contact[]>([])
   const [templateId, setTemplateId] = React.useState("")
@@ -103,11 +102,29 @@ export default function NewWhatsAppBroadcastPage() {
 
   // ─── Derived form data ──────────────────────────────────────────────
 
-  const selectedTemplate = (templates ?? []).find(
+  const activeDevices = React.useMemo(
+    () => devices.filter((device) => device.status === "ACTIVE"),
+    [devices]
+  )
+  const {
+    templates,
+    loading: templatesLoading,
+    error: templatesError,
+    reload: reloadTemplates,
+  } = useTemplates({
+    broadcastEligible: true,
+    whatsappDeviceId: deviceId || undefined,
+    enabled: Boolean(deviceId),
+    sort: "desc",
+  })
+  const selectedTemplate = templates.find(
     (template) => template.id === templateId
   )
   const languages = React.useMemo(
-    () => selectedTemplate?.languages ?? [],
+    () =>
+      selectedTemplate?.languages.filter(
+        (language) => language.isApproved || language.metaStatus === "APPROVED"
+      ) ?? [],
     [selectedTemplate]
   )
   const selectedLanguageBody = React.useMemo(
@@ -215,9 +232,8 @@ export default function NewWhatsAppBroadcastPage() {
   ])
   const totalRecipients = activeRecipients.length
 
-  const effectiveDeviceId = deviceId || selectedTemplate?.whatsappDeviceId || ""
   const selectedDevice = (devices ?? []).find(
-    (device) => device.id === effectiveDeviceId
+    (device) => device.id === deviceId
   )
   const needsMultiDayAck = Boolean(
     capacity && totalRecipients > capacity.remainingToday
@@ -233,7 +249,7 @@ export default function NewWhatsAppBroadcastPage() {
   const canSubmit = Boolean(
     selectedTemplate &&
     templateLanguage &&
-    effectiveDeviceId &&
+    deviceId &&
     totalRecipients > 0 &&
     !isSubmitting &&
     (!needsMultiDayAck || acknowledgeMultiDay)
@@ -244,12 +260,10 @@ export default function NewWhatsAppBroadcastPage() {
   React.useEffect(() => {
     ;(async () => {
       try {
-        const [templateItems, deviceItems, contactItems] = await Promise.all([
-          whatsappClient.listTemplates(),
+        const [deviceItems, contactItems] = await Promise.all([
           whatsappClient.listDevices(),
           whatsappClient.listContacts(),
         ])
-        setTemplates(Array.isArray(templateItems) ? templateItems : [])
         setDevices(Array.isArray(deviceItems) ? deviceItems : [])
         setContacts(Array.isArray(contactItems) ? contactItems : [])
       } catch (error) {
@@ -262,12 +276,12 @@ export default function NewWhatsAppBroadcastPage() {
 
   React.useEffect(() => {
     let cancelled = false
-    if (!effectiveDeviceId) {
+    if (!deviceId) {
       return
     }
     whatsappClient
       .previewBroadcastSchedule({
-        whatsappDeviceId: effectiveDeviceId,
+        whatsappDeviceId: deviceId,
         recipients: activeRecipients.map((r) => ({
           phoneNumber: r.phoneNumber,
         })),
@@ -285,15 +299,22 @@ export default function NewWhatsAppBroadcastPage() {
     return () => {
       cancelled = true
     }
-  }, [effectiveDeviceId, activeRecipients])
+  }, [deviceId, activeRecipients])
 
   // ─── Handlers ───────────────────────────────────────────────────────
 
   function handleTemplateChange(value: string) {
     setTemplateId(value)
-    const template = templates.find((item) => item.id === value)
-    setTemplateLanguage(template?.languages[0]?.lang ?? "")
+    setTemplateLanguage("")
     setVariableValues({})
+  }
+
+  function handleDeviceChange(value: string) {
+    setDeviceId(value)
+    setTemplateId("")
+    setTemplateLanguage("")
+    setVariableValues({})
+    setCapacity(null)
   }
 
   function toggleContact(id: string) {
@@ -342,16 +363,19 @@ export default function NewWhatsAppBroadcastPage() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
+    if (!deviceId) {
+      toast.error("Pilih perangkat WhatsApp terlebih dahulu.")
+      return
+    }
     if (!selectedTemplate) {
       toast.error("Pilih template terlebih dahulu.")
       return
     }
-    if (!templateLanguage) {
-      toast.error("Pilih bahasa template terlebih dahulu.")
-      return
-    }
-    if (!effectiveDeviceId) {
-      toast.error("Pilih perangkat WhatsApp terlebih dahulu.")
+    if (
+      !templateLanguage ||
+      !languages.some((lang) => lang.lang === templateLanguage)
+    ) {
+      toast.error("Pilih bahasa template yang valid terlebih dahulu.")
       return
     }
     if (totalRecipients === 0) {
@@ -366,9 +390,10 @@ export default function NewWhatsAppBroadcastPage() {
     setIsSubmitting(true)
     try {
       const broadcast = await whatsappClient.createBroadcast({
+        templateId: selectedTemplate.id,
         templateName: selectedTemplate.name,
         templateLanguage,
-        whatsappDeviceId: effectiveDeviceId,
+        whatsappDeviceId: deviceId,
         throttleMaxMessages,
         throttlePerMinutes: THROTTLE_PER_MINUTES,
         acknowledgeMultiDay: needsMultiDayAck || undefined,
@@ -401,22 +426,50 @@ export default function NewWhatsAppBroadcastPage() {
         className="space-y-6"
         onSubmit={(event) => void handleSubmit(event)}
       >
-        {/* Step 1: Template & Perangkat */}
+        {/* Step 1: Perangkat, Template, & Bahasa */}
         <Card>
           <CardHeader>
-            <CardTitle>1. Template & Perangkat</CardTitle>
+            <CardTitle>1. Perangkat, Template, & Bahasa</CardTitle>
             <CardDescription>
-              Pilih template pesan yang sudah disetujui dan perangkat WhatsApp
-              pengirim.
+              Pilih perangkat pengirim, lalu template dan bahasa yang tersedia
+              untuk perangkat tersebut.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-2">
+                <Label htmlFor="device">Perangkat WhatsApp</Label>
+                <Select value={deviceId} onValueChange={handleDeviceChange}>
+                  <SelectTrigger id="device">
+                    <SelectValue placeholder="Pilih perangkat" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeDevices.map((device) => (
+                      <SelectItem key={device.id} value={device.id}>
+                        {device.phoneNumber}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid gap-2">
                 <Label htmlFor="template">Template</Label>
-                <Select value={templateId} onValueChange={handleTemplateChange}>
+                <Select
+                  value={templateId}
+                  onValueChange={handleTemplateChange}
+                  disabled={
+                    !deviceId || templatesLoading || Boolean(templatesError)
+                  }
+                >
                   <SelectTrigger id="template">
-                    <SelectValue placeholder="Pilih template" />
+                    <SelectValue
+                      placeholder={
+                        !deviceId
+                          ? "Pilih perangkat terlebih dahulu"
+                          : "Pilih template"
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {templates.map((template) => (
@@ -449,47 +502,48 @@ export default function NewWhatsAppBroadcastPage() {
               </div>
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="device">Perangkat WhatsApp</Label>
-              <Select value={deviceId} onValueChange={setDeviceId}>
-                <SelectTrigger id="device">
-                  <SelectValue placeholder="Gunakan perangkat bawaan template" />
-                </SelectTrigger>
-                <SelectContent>
-                  {devices.map((device) => (
-                    <SelectItem key={device.id} value={device.id}>
-                      {device.phoneNumber}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {effectiveDeviceId &&
-                (selectedDevice ? (
-                  <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <Badge
-                      variant={
-                        selectedDevice.status === "ACTIVE"
-                          ? "success"
-                          : "secondary"
-                      }
-                    >
-                      {selectedDevice.status === "ACTIVE"
-                        ? "Aktif"
-                        : "Nonaktif"}
-                    </Badge>
-                    <span className="text-muted-foreground">
-                      Sisa kuota 24 jam:{" "}
-                      {capacity
-                        ? `${capacity.remainingToday} pesan`
-                        : "menghitung…"}
-                    </span>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Perangkat tidak ditemukan.
-                  </p>
-                ))}
-            </div>
+            {!deviceId ? (
+              <p className="text-sm text-muted-foreground">
+                Pilih perangkat untuk memuat template yang tersedia.
+              </p>
+            ) : templatesLoading ? (
+              <p className="text-sm text-muted-foreground">
+                Memuat template perangkat...
+              </p>
+            ) : templatesError ? (
+              <div className="flex flex-wrap items-center gap-3 rounded-md border border-destructive/50 p-3">
+                <p className="text-sm text-destructive">{templatesError}</p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={reloadTemplates}
+                >
+                  Coba lagi
+                </Button>
+              </div>
+            ) : templates.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Tidak ada template disetujui untuk perangkat ini.
+              </p>
+            ) : null}
+
+            {deviceId &&
+              (selectedDevice ? (
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <Badge variant="success">Aktif</Badge>
+                  <span className="text-muted-foreground">
+                    Sisa kuota 24 jam:{" "}
+                    {capacity
+                      ? `${capacity.remainingToday} pesan`
+                      : "menghitung…"}
+                  </span>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Perangkat tidak ditemukan.
+                </p>
+              ))}
           </CardContent>
         </Card>
 

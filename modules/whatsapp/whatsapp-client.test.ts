@@ -208,8 +208,10 @@ describe("createWhatsAppClient", () => {
     await client.getBroadcast("broadcast-1")
     respond({ broadcast: {} })
     await client.createBroadcast({
+      templateId: "template-1",
       templateName: "welcome",
       templateLanguage: "en_US",
+      whatsappDeviceId: "device-1",
       recipients: [{ phoneNumber: "+14155550100" }],
     })
     respond({ broadcast: {} })
@@ -297,8 +299,10 @@ describe("createWhatsAppClient", () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true }))
     await expect(
       client.createBroadcast({
+        templateId: "template-1",
         templateName: "welcome",
         templateLanguage: "en_US",
+        whatsappDeviceId: "device-1",
         recipients: [{ phoneNumber: "+14155550100" }],
       })
     ).rejects.toThrow("Unable to create WhatsApp broadcast.")

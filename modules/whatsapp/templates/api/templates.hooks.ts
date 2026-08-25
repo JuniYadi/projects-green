@@ -31,6 +31,7 @@ export type TemplateFormInput = {
 }
 
 type TemplateFilters = {
+  broadcastEligible?: boolean
   organizationId?: string
   whatsappDeviceId?: string
   syncStatus?: string
@@ -51,6 +52,7 @@ export function useTemplates(filters?: TemplateFilters) {
 
   const enabled = filters?.enabled !== false
   const orgId = filters?.organizationId
+  const broadcastEligible = filters?.broadcastEligible
   const deviceId = filters?.whatsappDeviceId
   const syncStatus = filters?.syncStatus
   const sort = filters?.sort
@@ -65,6 +67,7 @@ export function useTemplates(filters?: TemplateFilters) {
       try {
         const query: Record<string, string> = {}
         if (orgId) query.organizationId = orgId
+        if (broadcastEligible) query.broadcastEligible = "true"
         if (deviceId) query.whatsappDeviceId = deviceId
         if (syncStatus) query.syncStatus = syncStatus
         if (sort) query.sort = sort
@@ -89,7 +92,7 @@ export function useTemplates(filters?: TemplateFilters) {
     return () => {
       cancelled = true
     }
-  }, [enabled, orgId, deviceId, syncStatus, sort])
+  }, [broadcastEligible, enabled, orgId, deviceId, syncStatus, sort])
 
   const reload = React.useCallback(async () => {
     if (!enabled) return
@@ -98,6 +101,7 @@ export function useTemplates(filters?: TemplateFilters) {
     try {
       const query: Record<string, string> = {}
       if (orgId) query.organizationId = orgId
+      if (broadcastEligible) query.broadcastEligible = "true"
       if (deviceId) query.whatsappDeviceId = deviceId
       if (syncStatus) query.syncStatus = syncStatus
       if (sort) query.sort = sort
@@ -113,7 +117,7 @@ export function useTemplates(filters?: TemplateFilters) {
     } finally {
       setLoading(false)
     }
-  }, [enabled, orgId, deviceId, syncStatus, sort])
+  }, [broadcastEligible, enabled, orgId, deviceId, syncStatus, sort])
 
   if (!enabled) {
     return {

@@ -143,6 +143,12 @@ export default function NewWhatsAppBroadcastPage() {
       return
     }
 
+    const whatsappDeviceId = deviceId || selectedTemplate.whatsappDeviceId
+    if (!whatsappDeviceId) {
+      toast.error("A sending device is required")
+      return
+    }
+
     if (allRecipients.length === 0) {
       toast.error("At least one recipient is required")
       return
@@ -151,9 +157,10 @@ export default function NewWhatsAppBroadcastPage() {
     setIsSubmitting(true)
     try {
       const broadcast = await whatsappClient.createBroadcast({
+        templateId: selectedTemplate.id,
         templateName: selectedTemplate.name,
         templateLanguage,
-        whatsappDeviceId: deviceId || selectedTemplate.whatsappDeviceId,
+        whatsappDeviceId,
         recipients: allRecipients,
       })
       toast.success("Broadcast created")

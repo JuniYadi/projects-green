@@ -7,6 +7,8 @@ const mockAggregate = mock(async () => ({
 }))
 const mockFindUnique = mock(async () => null)
 const mockCampaignUpdate = mock(async () => ({}))
+const mockDeviceFindFirst = mock(async () => null)
+const mockTemplateFindFirst = mock(async () => null)
 
 const mockPrisma = {
   whatsappBroadcastCampaign: {
@@ -14,6 +16,12 @@ const mockPrisma = {
     aggregate: mockAggregate,
     findUnique: mockFindUnique,
     update: mockCampaignUpdate,
+  },
+  whatsappDevice: {
+    findFirst: mockDeviceFindFirst,
+  },
+  whatsappTemplate: {
+    findFirst: mockTemplateFindFirst,
   },
 }
 
@@ -138,5 +146,62 @@ describe("broadcastsRoutes /:id/send", () => {
     expect(jobs[0].opts.jobId).not.toContain(":")
     expect(jobs[1].opts.jobId).not.toContain(":")
     expect(jobs[0].opts.jobId).not.toBe(jobs[1].opts.jobId)
+  })
+})
+
+describe("broadcastsRoutes POST /", () => {
+  beforeEach(() => {
+    mockDeviceFindFirst.mockClear()
+    mockTemplateFindFirst.mockClear()
+    mockDeviceFindFirst.mockResolvedValue(null)
+    mockTemplateFindFirst.mockResolvedValue(null)
+  })
+
+  it("rejects a device, template, and language combination outside the organization", async () => {
+    const response = await createTestApp().handle(
+      new Request("http://localhost/broadcasts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          templateId: "template-other-org",
+          templateName: "Untrusted template name",
+          templateLanguage: "en",
+          whatsappDeviceId: "device-other-org",
+          recipients: [{ phoneNumber: "+628123456789" }],
+        }),
+      })
+    )
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: "VALIDATION_ERROR",
+      message:
+        "Select an active device, approved template, and valid language.",
+    })
+    expect(mockDeviceFindFirst).toHaveBeenCalledWith({
+      where: {
+        id: "device-other-org",
+        organizationId: "org-1",
+        status: "ACTIVE",
+      },
+      select: { id: true },
+    })
+    expect(mockTemplateFindFirst).toHaveBeenCalledWith({
+      where: {
+        id: "template-other-org",
+        organizationId: "org-1",
+        whatsappDeviceId: "device-other-org",
+        syncStatus: "SYNCED",
+        metaStatus: "APPROVED",
+        languages: {
+          some: {
+            lang: "en",
+            OR: [{ isApproved: true }, { metaStatus: "APPROVED" }],
+          },
+        },
+      },
+      select: { name: true },
+    })
   })
 })
