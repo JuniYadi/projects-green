@@ -27,77 +27,77 @@
   "candidates": [
     {
       "file": "app/[lang]/console/whatsapp/contacts/page.tsx",
-      "line": 647,
+      "line": 654,
       "value": "*",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/contacts/page.tsx",
-      "line": 655,
+      "line": 662,
       "value": "+1234567890",
       "category": "sample_data",
       "reason": "Sample phone or email value."
     },
     {
       "file": "app/[lang]/console/whatsapp/contacts/page.tsx",
-      "line": 668,
+      "line": 675,
       "value": "John Doe",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/contacts/page.tsx",
-      "line": 682,
+      "line": 689,
       "value": "john@example.com",
       "category": "sample_data",
       "reason": "Sample phone or email value."
     },
     {
       "file": "app/[lang]/console/whatsapp/contacts/page.tsx",
-      "line": 772,
+      "line": 779,
       "value": "*",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/contacts/page.tsx",
-      "line": 780,
+      "line": 787,
       "value": "+1234567890",
       "category": "sample_data",
       "reason": "Sample phone or email value."
     },
     {
       "file": "app/[lang]/console/whatsapp/contacts/page.tsx",
-      "line": 793,
+      "line": 800,
       "value": "John Doe",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/contacts/page.tsx",
-      "line": 807,
+      "line": 814,
       "value": "john@example.com",
       "category": "sample_data",
       "reason": "Sample phone or email value."
     },
     {
       "file": "app/[lang]/console/whatsapp/contacts/page.tsx",
-      "line": 941,
+      "line": 956,
       "value": ")",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/contacts/page.tsx",
-      "line": 976,
+      "line": 995,
       "value": "Importing",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/contacts/page.tsx",
-      "line": 976,
+      "line": 996,
       "value": "…",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
@@ -146,392 +146,392 @@
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 594,
+      "line": 596,
       "value": "Bahasa",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 601,
+      "line": 603,
       "value": "Pilih bahasa",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 616,
+      "line": 618,
       "value": "Pilih perangkat untuk memuat template yang tersedia.",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 620,
+      "line": 622,
       "value": "Memuat template perangkat...",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 631,
+      "line": 633,
       "value": "Coba lagi",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 636,
+      "line": 638,
       "value": "Tidak ada template disetujui untuk perangkat ini.",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 643,
+      "line": 645,
       "value": "Aktif",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 645,
+      "line": 647,
       "value": "Sisa kuota 24 jam:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 653,
+      "line": 655,
       "value": "Perangkat tidak ditemukan.",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 662,
+      "line": 664,
       "value": "2. Daftar Penerima",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 664,
+      "line": 666,
       "value": "Tentukan siapa saja yang akan menerima pesan ini.",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 673,
+      "line": 675,
       "value": "Ketik / Paste Nomor",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 674,
+      "line": 676,
       "value": "Daftar Kontak",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 687,
+      "line": 691,
       "value": "Tulis satu nomor per baris atau pisahkan dengan koma.",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 691,
+      "line": 695,
       "value": "nomor valid terdeteksi",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 695,
+      "line": 699,
       "value": "·",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 695,
+      "line": 699,
       "value": "nomor tidak valid akan dilewati",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 708,
+      "line": 712,
       "value": "Cari nama atau nomor…",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 725,
+      "line": 729,
       "value": "Tidak ada kontak yang cocok.",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 752,
+      "line": 756,
       "value": "kontak dipilih",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 759,
+      "line": 763,
       "value": "Template CSV penerima",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 761,
+      "line": 765,
       "value": "Unduh kolom yang sesuai dengan bahasa template. Kolom\n                      Nomor WhatsApp dan Nama dikenali otomatis; variabel pesan\n                      mengikuti urutan",
       "category": "url_or_code",
       "reason": "URL, payload, or code fragment."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 763,
+      "line": 767,
       "value": ",",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 763,
+      "line": 767,
       "value": ", dan seterusnya.",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 790,
+      "line": 798,
       "value": "baris valid terdeteksi",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 794,
+      "line": 802,
       "value": "·",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 794,
+      "line": 802,
       "value": "baris tidak valid akan dilewati",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 801,
+      "line": 809,
       "value": "Kolom terdeteksi:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 813,
+      "line": 821,
       "value": "Kolom pertama yang berisi nomor telepon akan dipakai\n                    otomatis sebagai tujuan.",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 821,
+      "line": 829,
       "value": "Total penerima:",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 829,
+      "line": 837,
       "value": "3. Variabel Pesan",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 831,
+      "line": 839,
       "value": "Isi nilai untuk variabel yang ada di dalam template.",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 839,
+      "line": 847,
       "value": "Nilai untuk",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 857,
+      "line": 865,
       "value": "CSV harus menggunakan kolom",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 857,
+      "line": 865,
       "value": ",",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 857,
+      "line": 865,
       "value": ", dan\n                  seterusnya. Kolom yang tidak dipakai akan memblokir preflight.",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 869,
+      "line": 877,
       "value": ". Preflight & Jadwal\n              Pengiriman",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 873,
+      "line": 881,
       "value": "Konfirmasi data yang divalidasi server sebelum membuat broadcast.",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 895,
+      "line": 903,
       "value": "Perangkat",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 912,
+      "line": 922,
       "value": "Bahasa",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 920,
+      "line": 930,
       "value": "Penerima",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 925,
+      "line": 935,
       "value": "(",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 931,
+      "line": 941,
       "value": ")",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 935,
+      "line": 945,
       "value": "Mode kirim",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 951,
+      "line": 962,
       "value": "Status preflight",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 965,
+      "line": 976,
       "value": "Estimasi selesai",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 974,
+      "line": 985,
       "value": "Kecepatan pengiriman",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 976,
+      "line": 987,
       "value": "±",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 976,
+      "line": 987,
       "value": "pesan/jam",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 979,
+      "line": 990,
       "value": "Kuota harian",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 992,
+      "line": 1003,
       "value": "Pengiriman melebihi sisa kuota hari ini (",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 993,
+      "line": 1004,
       "value": "pesan). Broadcast akan otomatis\n                  dikirim bertahap multi-hari.",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 1008,
+      "line": 1019,
       "value": "Saya memahami dan menyetujui pengiriman multi-hari ini.",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/new/page.tsx",
-      "line": 1021,
+      "line": 1032,
       "value": "Batal",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/[id]/page.tsx",
-      "line": 223,
+      "line": 219,
       "value": "•",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/broadcasts/[id]/page.tsx",
-      "line": 286,
+      "line": 283,
       "value": "%",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
@@ -559,196 +559,196 @@
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 237,
+      "line": 240,
       "value": "Comparison",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 245,
+      "line": 248,
       "value": "Cost Reconciliation",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 266,
+      "line": 270,
       "value": "Generate Report",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 276,
+      "line": 280,
       "value": "Run Reconciliation",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 301,
+      "line": 305,
       "value": "Sync Result",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 305,
+      "line": 309,
       "value": "Synced",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 305,
+      "line": 309,
       "value": "records.",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 308,
+      "line": 312,
       "value": "discrepancies found.",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 322,
+      "line": 326,
       "value": "Comparison Report (",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 322,
+      "line": 327,
       "value": ")",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 326,
+      "line": 331,
       "value": "Meta:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 332,
+      "line": 337,
       "value": "Local:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 338,
+      "line": 343,
       "value": "Delta:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 350,
+      "line": 355,
       "value": "Discrepant rows:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 366,
+      "line": 374,
       "value": "Metric",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 367,
+      "line": 375,
       "value": "Meta",
       "category": "technical_term",
       "reason": "Technical product or language name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 369,
+      "line": 377,
       "value": "Local",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 372,
+      "line": 380,
       "value": "Delta",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 374,
+      "line": 382,
       "value": "Status",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 413,
+      "line": 421,
       "value": "Cost Reconciliation",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 416,
+      "line": 424,
       "value": "Meta:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 419,
+      "line": 427,
       "value": "Local:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 422,
+      "line": 430,
       "value": "Delta:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 444,
+      "line": 455,
       "value": "Category",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 446,
+      "line": 457,
       "value": "Meta Cost",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 449,
+      "line": 460,
       "value": "Local Cost",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 452,
+      "line": 463,
       "value": "Delta",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/analytics/page.tsx",
-      "line": 454,
+      "line": 465,
       "value": "Status",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
@@ -762,448 +762,448 @@
     },
     {
       "file": "app/[lang]/console/whatsapp/dashboard/page.tsx",
-      "line": 265,
+      "line": 268,
       "value": "Hubungkan WhatsApp Sekarang",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/audit-logs/page.tsx",
-      "line": 178,
+      "line": 187,
       "value": "Status",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/audit-logs/page.tsx",
-      "line": 198,
+      "line": 210,
       "value": "deviceId",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/audit-logs/page.tsx",
-      "line": 240,
+      "line": 255,
       "value": "Apply",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/audit-logs/page.tsx",
-      "line": 243,
+      "line": 258,
       "value": "Reset",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/loading.tsx",
-      "line": 26,
+      "line": 27,
       "value": "Inbound Count",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/loading.tsx",
-      "line": 36,
+      "line": 37,
       "value": "Outbound Count",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/loading.tsx",
-      "line": 59,
+      "line": 62,
       "value": "Monthly Quota Used",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/loading.tsx",
-      "line": 70,
+      "line": 73,
       "value": "Remaining Quota",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/loading.tsx",
-      "line": 81,
+      "line": 84,
       "value": "Projected Cost",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/loading.tsx",
-      "line": 91,
+      "line": 94,
       "value": "Balance",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 340,
+      "line": 346,
       "value": "Inbound Count",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 361,
+      "line": 369,
       "value": "Outbound Count",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 393,
+      "line": 405,
       "value": "Rp",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 400,
+      "line": 412,
       "value": "ledger entries",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 411,
+      "line": 423,
       "value": "Monthly Quota Used",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 425,
+      "line": 437,
       "value": "/",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 439,
+      "line": 452,
       "value": "Remaining Quota",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 463,
+      "line": 477,
       "value": "Projected Cost",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 481,
+      "line": 495,
       "value": "Estimated monthly cost",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 488,
+      "line": 502,
       "value": "Balance",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 498,
+      "line": 512,
       "value": "Rp",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 501,
+      "line": 515,
       "value": "Overage balance",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 513,
+      "line": 529,
       "value": "Projected:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 520,
+      "line": 536,
       "value": "Balance: Rp",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 538,
+      "line": 555,
       "value": "credits used ·",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 542,
+      "line": 560,
       "value": "Rp",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 559,
+      "line": 579,
       "value": "Rp",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 678,
+      "line": 705,
       "value": "entries",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 683,
+      "line": 710,
       "value": "Rp",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 686,
+      "line": 713,
       "value": "%",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 710,
+      "line": 737,
       "value": "Monthly Comparison",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 737,
+      "line": 766,
       "value": "out",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 761,
+      "line": 791,
       "value": "Recent Deductions",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 763,
+      "line": 793,
       "value": "Latest 5 quota/balance deduction entries",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 776,
+      "line": 807,
       "value": "Time",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 778,
+      "line": 811,
       "value": "Category",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 779,
+      "line": 812,
       "value": "Credits",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 780,
+      "line": 813,
       "value": "Status",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 844,
+      "line": 878,
       "value": "REFUNDED",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 852,
+      "line": 886,
       "value": "CONFIRMED",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/usage/page.tsx",
-      "line": 860,
+      "line": 894,
       "value": "PENDING",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 141,
+      "line": 144,
       "value": "Meta unavailable",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 149,
+      "line": 156,
       "value": "Approved",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 153,
+      "line": 160,
       "value": "Pending",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 157,
+      "line": 164,
       "value": "Rejected",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 253,
+      "line": 266,
       "value": "Verified",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 291,
+      "line": 307,
       "value": "Category",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 307,
+      "line": 329,
       "value": "Website",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 317,
+      "line": 341,
       "value": "Address",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 564,
+      "line": 593,
       "value": "Inbound Received",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 595,
+      "line": 627,
       "value": "Quota Consumption",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 602,
+      "line": 634,
       "value": "/",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 605,
+      "line": 637,
       "value": "%",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 615,
+      "line": 647,
       "value": "msgs remaining",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 696,
+      "line": 730,
       "value": "Lifecycle Timestamps",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 833,
+      "line": 876,
       "value": "Address",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 840,
+      "line": 883,
       "value": "Business address",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 852,
+      "line": 897,
       "value": "contact@example.com",
       "category": "sample_data",
       "reason": "Sample phone or email value."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 889,
+      "line": 937,
       "value": "Website 1",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 897,
+      "line": 945,
       "value": "https://example.com",
       "category": "url_or_code",
       "reason": "URL, payload, or code fragment."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 901,
+      "line": 949,
       "value": "Website 2",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 909,
+      "line": 957,
       "value": "https://example2.com",
       "category": "url_or_code",
       "reason": "URL, payload, or code fragment."
     },
     {
       "file": "app/[lang]/console/whatsapp/devices/[deviceId]/page.tsx",
-      "line": 913,
+      "line": 961,
       "value": "Vertical",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
@@ -1238,980 +1238,980 @@
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 209,
+      "line": 212,
       "value": "& Ledger",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 235,
+      "line": 240,
       "value": "Subscribe WhatsApp Plan",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 292,
+      "line": 298,
       "value": "Quota Credit",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 304,
+      "line": 311,
       "value": "PAYG Overage",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 326,
+      "line": 334,
       "value": "Top Up Balance",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 338,
+      "line": 346,
       "value": "WhatsApp Category Rates & Tier Comparison",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 352,
+      "line": 363,
       "value": ")",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 355,
+      "line": 367,
       "value": "(",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 355,
+      "line": 367,
       "value": ")",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 372,
+      "line": 384,
       "value": "Pricing rates unavailable.",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 402,
+      "line": 416,
       "value": "Country:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 407,
+      "line": 421,
       "value": "Rate Tier:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 424,
+      "line": 437,
       "value": "Category",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 434,
+      "line": 447,
       "value": "Quota Credit",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 449,
+      "line": 463,
       "value": "BASE",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 462,
+      "line": 476,
       "value": "TIER 1",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 475,
+      "line": 489,
       "value": "TIER 2",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 488,
+      "line": 502,
       "value": "TIER 3",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 576,
+      "line": 590,
       "value": "-",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 641,
+      "line": 656,
       "value": "Credits",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 652,
+      "line": 668,
       "value": "Refunded / Reverted",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 655,
+      "line": 671,
       "value": "Credits",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 666,
+      "line": 683,
       "value": "Net Billed Credits",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 669,
+      "line": 686,
       "value": "Credits",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 685,
+      "line": 703,
       "value": "Transaction & Deduction Ledger",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 717,
+      "line": 736,
       "value": "Status",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 721,
+      "line": 742,
       "value": "Confirmed",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 722,
+      "line": 743,
       "value": "Pending Verify",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 723,
+      "line": 744,
       "value": "Refunded / Reverted",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 737,
+      "line": 758,
       "value": "Category",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 741,
+      "line": 764,
       "value": "MARKETING",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 742,
+      "line": 765,
       "value": "UTILITY",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 743,
+      "line": 766,
       "value": "AUTHENTICATION",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 744,
+      "line": 767,
       "value": "SERVICE",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 785,
+      "line": 811,
       "value": "Time",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 787,
+      "line": 815,
       "value": "Category",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 788,
+      "line": 816,
       "value": "Source Type",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 789,
+      "line": 817,
       "value": "Deduction",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 790,
+      "line": 818,
       "value": "Status",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 849,
+      "line": 879,
       "value": "via",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 866,
+      "line": 896,
       "value": "QUOTA_ALLOWANCE",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 872,
+      "line": 902,
       "value": "credits",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 875,
+      "line": 905,
       "value": "credits",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 885,
+      "line": 915,
       "value": "REFUNDED",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 893,
+      "line": 923,
       "value": "CONFIRMED",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 901,
+      "line": 931,
       "value": "PENDING",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 926,
+      "line": 958,
       "value": "(",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 926,
+      "line": 958,
       "value": "entries)",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 936,
+      "line": 968,
       "value": "Previous",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/pricing/page.tsx",
-      "line": 945,
+      "line": 977,
       "value": "Next",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/[waMessageId]/page.tsx",
-      "line": 169,
+      "line": 175,
       "value": "Origin:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/[waMessageId]/page.tsx",
-      "line": 213,
+      "line": 227,
       "value": "Direction:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/[waMessageId]/page.tsx",
-      "line": 219,
+      "line": 233,
       "value": "Type:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/[waMessageId]/page.tsx",
-      "line": 254,
+      "line": 271,
       "value": "Billing Status:",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 298,
+      "line": 301,
       "value": "Needs Reply",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 317,
+      "line": 320,
       "value": "Internal Notes",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 368,
+      "line": 375,
       "value": "Journey",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1093,
+      "line": 1117,
       "value": "+628123456789",
       "category": "sample_data",
       "reason": "Sample phone or email value."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1208,
+      "line": 1245,
       "value": "lang",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1280,
+      "line": 1319,
       "value": "lang",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1312,
+      "line": 1351,
       "value": "Language *",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1388,
+      "line": 1427,
       "value": "Field",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1441,
+      "line": 1483,
       "value": "Language",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1457,
+      "line": 1499,
       "value": "(",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1457,
+      "line": 1499,
       "value": ")",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1553,
+      "line": 1598,
       "value": "Reply State",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1569,
+      "line": 1615,
       "value": "Needs Reply (Inbox)",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1572,
+      "line": 1618,
       "value": "Replied (Outbox)",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1576,
+      "line": 1622,
       "value": "Direction",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1584,
+      "line": 1631,
       "value": "Inbox",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1587,
+      "line": 1634,
       "value": "Outbox",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1591,
+      "line": 1638,
       "value": "Status",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1597,
+      "line": 1644,
       "value": "All Status",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1602,
+      "line": 1650,
       "value": "Delivered",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1605,
+      "line": 1653,
       "value": "Read",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1613,
+      "line": 1662,
       "value": "Labels",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1831,
+      "line": 1889,
       "value": ")",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1920,
+      "line": 1993,
       "value": "Internal Notes",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/messages/page.tsx",
-      "line": 1926,
+      "line": 2000,
       "value": "Notes",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/templates/page.tsx",
-      "line": 279,
+      "line": 282,
       "value": "Meta Rejection Reason:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/templates/page.tsx",
-      "line": 307,
+      "line": 310,
       "value": "Local DB:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/templates/page.tsx",
-      "line": 351,
+      "line": 354,
       "value": "Status",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "app/[lang]/console/whatsapp/templates/page.tsx",
-      "line": 358,
+      "line": 361,
       "value": "Category",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/templates/page.tsx",
-      "line": 366,
+      "line": 369,
       "value": "Languages",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/templates/page.tsx",
-      "line": 504,
+      "line": 519,
       "value": "(",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/templates/page.tsx",
-      "line": 505,
+      "line": 520,
       "value": ")",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "app/[lang]/console/whatsapp/templates/page.tsx",
-      "line": 545,
+      "line": 560,
       "value": "⚡ Utility",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/templates/page.tsx",
-      "line": 548,
+      "line": 563,
       "value": "Trans",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/templates/page.tsx",
-      "line": 555,
+      "line": 570,
       "value": "Notifications & alerts",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/templates/page.tsx",
-      "line": 562,
+      "line": 577,
       "value": "🔑 Authentication",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/templates/page.tsx",
-      "line": 565,
+      "line": 580,
       "value": "Auth",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/templates/page.tsx",
-      "line": 572,
+      "line": 587,
       "value": "OTPs & verifications",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/templates/page.tsx",
-      "line": 579,
+      "line": 594,
       "value": "📢 Marketing",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/templates/page.tsx",
-      "line": 582,
+      "line": 597,
       "value": "Promo",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/templates/page.tsx",
-      "line": 589,
+      "line": 604,
       "value": "Campaigns & offers",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/templates/page.tsx",
-      "line": 602,
+      "line": 617,
       "value": "☁️ Meta Sync",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "app/[lang]/console/whatsapp/templates/page.tsx",
-      "line": 617,
+      "line": 632,
       "value": "/",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/organization-api-keys/ui/organization-api-key-self-service.tsx",
-      "line": 182,
+      "line": 192,
       "value": "One-time API secret",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/organization-api-keys/ui/organization-api-key-self-service.tsx",
-      "line": 224,
+      "line": 238,
       "value": "Fingerprint",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/organization-api-keys/ui/organization-api-key-self-service.tsx",
-      "line": 230,
+      "line": 244,
       "value": "Generated keys",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/organization-api-keys/ui/organization-api-key-self-service.tsx",
-      "line": 234,
+      "line": 248,
       "value": "Created",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/organization-api-keys/ui/organization-api-key-self-service.tsx",
-      "line": 238,
+      "line": 252,
       "value": "Rotated",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/organization-api-keys/ui/organization-api-key-self-service.tsx",
-      "line": 242,
+      "line": 256,
       "value": "Revoked",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/organization-api-keys/ui/organization-api-key-self-service.tsx",
-      "line": 281,
+      "line": 304,
       "value": "Rotate",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/organization-api-keys/ui/organization-api-key-self-service.tsx",
-      "line": 307,
+      "line": 336,
       "value": "Revoke",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/audit/ui/whatsapp-audit-table.tsx",
-      "line": 149,
+      "line": 150,
       "value": "Copied",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/audit/ui/whatsapp-audit-table.tsx",
-      "line": 191,
+      "line": 202,
       "value": "Status",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "modules/whatsapp/audit/ui/whatsapp-audit-table.tsx",
-      "line": 193,
+      "line": 206,
       "value": "Actor",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/audit/ui/whatsapp-audit-table.tsx",
-      "line": 194,
+      "line": 207,
       "value": "Time",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/audit/ui/whatsapp-audit-table.tsx",
-      "line": 271,
+      "line": 295,
       "value": "Status",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "modules/whatsapp/audit/ui/whatsapp-audit-table.tsx",
-      "line": 273,
+      "line": 299,
       "value": "Actor",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/audit/ui/whatsapp-audit-table.tsx",
-      "line": 274,
+      "line": 300,
       "value": "Time",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/audit/ui/whatsapp-audit-table.tsx",
-      "line": 361,
+      "line": 388,
       "value": "—",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/audit/ui/whatsapp-audit-table.tsx",
-      "line": 399,
+      "line": 430,
       "value": "IP:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/audit/ui/whatsapp-audit-table.tsx",
-      "line": 403,
+      "line": 434,
       "value": "User Agent:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/audit/ui/whatsapp-audit-table.tsx",
-      "line": 420,
+      "line": 456,
       "value": "Duration:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/audit/ui/whatsapp-audit-table.tsx",
-      "line": 443,
+      "line": 481,
       "value": "(",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/audit/ui/whatsapp-audit-table.tsx",
-      "line": 452,
+      "line": 491,
       "value": "Previous",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/audit/ui/whatsapp-audit-table.tsx",
-      "line": 460,
+      "line": 499,
       "value": "Next",
-      "category": "non_english_or_proper_name",
-      "reason": "Non-English copy or proper name."
-    },
-    {
-      "file": "modules/whatsapp/webhooks/ui/tabs-device-detail.tsx",
-      "line": 276,
-      "value": "Overview",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/tabs-device-detail.tsx",
       "line": 278,
+      "value": "Overview",
+      "category": "non_english_or_proper_name",
+      "reason": "Non-English copy or proper name."
+    },
+    {
+      "file": "modules/whatsapp/webhooks/ui/tabs-device-detail.tsx",
+      "line": 280,
       "value": "Meta Webhook",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/tabs-device-detail.tsx",
-      "line": 284,
+      "line": 289,
       "value": "Webhooks",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/tabs-device-detail.tsx",
-      "line": 330,
+      "line": 343,
       "value": "Outgoing Webhooks",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/tabs-device-detail.tsx",
-      "line": 514,
+      "line": 536,
       "value": "URL",
       "category": "technical_term",
       "reason": "Technical product or language name."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/tabs-device-detail.tsx",
-      "line": 515,
+      "line": 537,
       "value": "Auth",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/tabs-device-detail.tsx",
-      "line": 516,
+      "line": 538,
       "value": "Status",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/tabs-device-detail.tsx",
-      "line": 547,
+      "line": 569,
       "value": "Detail",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/tabs-device-detail.tsx",
-      "line": 616,
+      "line": 640,
       "value": "(?)",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/tabs-device-detail.tsx",
-      "line": 619,
+      "line": 643,
       "value": "(",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/tabs-device-detail.tsx",
-      "line": 619,
+      "line": 643,
       "value": ")",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/webhook-event-table.tsx",
-      "line": 224,
+      "line": 230,
       "value": "Status",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/webhook-event-table.tsx",
-      "line": 226,
+      "line": 234,
       "value": "Timestamp",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/webhook-event-table.tsx",
-      "line": 311,
+      "line": 328,
       "value": "Status",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/webhook-event-table.tsx",
-      "line": 313,
+      "line": 332,
       "value": "Timestamp",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/webhook-event-table.tsx",
-      "line": 382,
+      "line": 402,
       "value": "—",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/webhook-event-table.tsx",
-      "line": 436,
+      "line": 457,
       "value": "Previous",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/webhook-event-table.tsx",
-      "line": 447,
+      "line": 470,
       "value": "Next",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/webhook-event-filter.tsx",
-      "line": 101,
+      "line": 104,
       "value": "Organization",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/webhook-event-filter.tsx",
-      "line": 147,
+      "line": 155,
       "value": "Status",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/webhook-event-filter.tsx",
-      "line": 229,
+      "line": 245,
       "value": "Reset",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
@@ -2225,581 +2225,581 @@
     },
     {
       "file": "modules/whatsapp/templates/ui/template-preview.tsx",
-      "line": 388,
+      "line": 390,
       "value": "PDF",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-preview.tsx",
-      "line": 398,
+      "line": 400,
       "value": "WhatsApp Document",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-preview.tsx",
-      "line": 404,
+      "line": 406,
       "value": "🖼️ Image Attachment",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-preview.tsx",
-      "line": 408,
+      "line": 410,
       "value": "🎥 Video Attachment",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-preview.tsx",
-      "line": 433,
+      "line": 436,
       "value": "10:45",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-preview.tsx",
-      "line": 434,
+      "line": 437,
       "value": "✓✓",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-preview.tsx",
-      "line": 445,
+      "line": 448,
       "value": "🔗",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-preview.tsx",
-      "line": 446,
+      "line": 449,
       "value": "📞",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-preview.tsx",
-      "line": 447,
+      "line": 450,
       "value": "🔑",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 557,
+      "line": 560,
       "value": "1. General Configuration",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 563,
+      "line": 567,
       "value": "*",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 595,
+      "line": 599,
       "value": "(",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 595,
+      "line": 599,
       "value": ")",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 610,
+      "line": 615,
       "value": "*",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 616,
+      "line": 621,
       "value": "e.g. Order Status Update",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 627,
+      "line": 632,
       "value": "*",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 636,
+      "line": 641,
       "value": "order_status_update",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 650,
+      "line": 656,
       "value": "Category",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 673,
+      "line": 679,
       "value": "Utility",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 674,
+      "line": 680,
       "value": "Marketing",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 676,
+      "line": 682,
       "value": "Authentication (OTP)",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 683,
+      "line": 689,
       "value": "Language",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 706,
+      "line": 712,
       "value": "(",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 706,
+      "line": 712,
       "value": ")",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 756,
+      "line": 768,
       "value": "*",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 763,
+      "line": 775,
       "value": "e.g. Order Confirmation",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 777,
+      "line": 789,
       "value": "Sample Media Asset",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 787,
+      "line": 799,
       "value": "Media sample ini digunakan Meta untuk proses review\n                        template. Anda tetap dapat mengirimkan media dinamis\n                        yang berbeda saat broadcast.",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 822,
+      "line": 834,
       "value": "Atau gunakan URL publik langsung:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 848,
+      "line": 860,
       "value": "Meta OTP Standard",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 983,
+      "line": 999,
       "value": "*",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 986,
+      "line": 1002,
       "value": "/ 1024",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 1064,
+      "line": 1080,
       "value": "Monospace",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 1092,
+      "line": 1108,
       "value": "Halo {{1}}, pesanan Anda {{2}} telah dikirim via {{3}}. Terima kasih telah berbelanja!",
       "category": "url_or_code",
       "reason": "URL, payload, or code fragment."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 1128,
+      "line": 1144,
       "value": "Ubah ke",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 1159,
+      "line": 1175,
       "value": "Dynamic Variable Samples (",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 1159,
+      "line": 1175,
       "value": ")",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 1169,
+      "line": 1185,
       "value": "Placeholder",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 1169,
+      "line": 1185,
       "value": "Sample",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 1194,
+      "line": 1210,
       "value": "4. Footer (Optional)",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 1198,
+      "line": 1214,
       "value": "Footer Text",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 1204,
+      "line": 1220,
       "value": "e.g. PT Perusahaan Maju Jaya",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 1218,
+      "line": 1235,
       "value": "5. Buttons (Optional - Max 3)",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 1228,
+      "line": 1245,
       "value": "Quick Reply",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 1237,
+      "line": 1254,
       "value": "URL CTA",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 1269,
+      "line": 1289,
       "value": "Button Text",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 1278,
+      "line": 1298,
       "value": "https://example.com/track",
       "category": "url_or_code",
       "reason": "URL, payload, or code fragment."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 1288,
+      "line": 1308,
       "value": "+6281234567890",
       "category": "sample_data",
       "reason": "Sample phone or email value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 1331,
+      "line": 1352,
       "value": "Bubble",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-form.tsx",
-      "line": 1340,
+      "line": 1361,
       "value": "Config JSON",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 277,
+      "line": 283,
       "value": "Approved",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 282,
+      "line": 288,
       "value": "Rejected",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 292,
+      "line": 299,
       "value": "•",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 294,
+      "line": 301,
       "value": "Kategori Meta:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 296,
+      "line": 303,
       "value": "•",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 299,
+      "line": 306,
       "value": "📱",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 301,
+      "line": 308,
       "value": "(",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 301,
+      "line": 308,
       "value": ")",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 312,
+      "line": 321,
       "value": "•",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 313,
+      "line": 322,
       "value": "Created",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 364,
+      "line": 379,
       "value": "Duplicate",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 395,
+      "line": 411,
       "value": "(",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 404,
+      "line": 420,
       "value": "💡",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 404,
+      "line": 420,
       "value": "Solusi:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 418,
+      "line": 434,
       "value": "Informasi dari Meta",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 420,
+      "line": 436,
       "value": "Kategori template saat ini:",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 424,
+      "line": 440,
       "value": "Alasan dari Meta:",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 475,
+      "line": 496,
       "value": "Bubble",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 482,
+      "line": 503,
       "value": "JSON",
       "category": "technical_term",
       "reason": "Technical product or language name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-detail.tsx",
-      "line": 513,
+      "line": 536,
       "value": "Copied",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/delivery-log-table.tsx",
-      "line": 104,
-      "value": "Status",
-      "category": "already_indonesian",
-      "reason": "Already Indonesian UI copy."
-    },
-    {
-      "file": "modules/whatsapp/webhooks/ui/delivery-log-table.tsx",
-      "line": 105,
-      "value": "Attempt",
-      "category": "non_english_or_proper_name",
-      "reason": "Non-English copy or proper name."
-    },
-    {
-      "file": "modules/whatsapp/webhooks/ui/delivery-log-table.tsx",
       "line": 106,
-      "value": "HTTP Status",
+      "value": "Status",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/delivery-log-table.tsx",
       "line": 107,
-      "value": "Started",
-      "category": "non_english_or_proper_name",
-      "reason": "Non-English copy or proper name."
-    },
-    {
-      "file": "modules/whatsapp/webhooks/ui/delivery-log-table.tsx",
-      "line": 182,
-      "value": "Status",
-      "category": "already_indonesian",
-      "reason": "Already Indonesian UI copy."
-    },
-    {
-      "file": "modules/whatsapp/webhooks/ui/delivery-log-table.tsx",
-      "line": 183,
       "value": "Attempt",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/delivery-log-table.tsx",
-      "line": 184,
+      "line": 108,
       "value": "HTTP Status",
       "category": "already_indonesian",
       "reason": "Already Indonesian UI copy."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/delivery-log-table.tsx",
-      "line": 185,
+      "line": 109,
       "value": "Started",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/delivery-log-table.tsx",
-      "line": 214,
+      "line": 189,
+      "value": "Status",
+      "category": "already_indonesian",
+      "reason": "Already Indonesian UI copy."
+    },
+    {
+      "file": "modules/whatsapp/webhooks/ui/delivery-log-table.tsx",
+      "line": 190,
+      "value": "Attempt",
+      "category": "non_english_or_proper_name",
+      "reason": "Non-English copy or proper name."
+    },
+    {
+      "file": "modules/whatsapp/webhooks/ui/delivery-log-table.tsx",
+      "line": 191,
+      "value": "HTTP Status",
+      "category": "already_indonesian",
+      "reason": "Already Indonesian UI copy."
+    },
+    {
+      "file": "modules/whatsapp/webhooks/ui/delivery-log-table.tsx",
+      "line": 192,
+      "value": "Started",
+      "category": "non_english_or_proper_name",
+      "reason": "Non-English copy or proper name."
+    },
+    {
+      "file": "modules/whatsapp/webhooks/ui/delivery-log-table.tsx",
+      "line": 221,
       "value": "/",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/delivery-log-table.tsx",
-      "line": 228,
+      "line": 235,
       "value": "—",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/delivery-log-table.tsx",
-      "line": 241,
+      "line": 248,
       "value": "Resend",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/delivery-log-table.tsx",
-      "line": 298,
+      "line": 307,
       "value": "Previous",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/webhooks/ui/delivery-log-table.tsx",
-      "line": 309,
+      "line": 320,
       "value": "Next",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
@@ -2820,126 +2820,126 @@
     },
     {
       "file": "modules/whatsapp/templates/ui/template-spec-tester.tsx",
-      "line": 77,
+      "line": 78,
       "value": "Active Language:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-spec-tester.tsx",
-      "line": 93,
+      "line": 94,
       "value": "(",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-spec-tester.tsx",
-      "line": 93,
+      "line": 94,
       "value": ")",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-spec-tester.tsx",
-      "line": 107,
+      "line": 108,
       "value": "1",
       "category": "sample_data",
       "reason": "Sample phone or email value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-spec-tester.tsx",
-      "line": 131,
+      "line": 134,
       "value": "Media URL:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-spec-tester.tsx",
-      "line": 144,
+      "line": 147,
       "value": "2",
       "category": "sample_data",
       "reason": "Sample phone or email value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-spec-tester.tsx",
-      "line": 181,
+      "line": 187,
       "value": "Variable",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-spec-tester.tsx",
-      "line": 207,
+      "line": 215,
       "value": "3",
       "category": "sample_data",
       "reason": "Sample phone or email value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-spec-tester.tsx",
-      "line": 210,
+      "line": 218,
       "value": "Footer Component",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-spec-tester.tsx",
-      "line": 234,
+      "line": 244,
       "value": "4",
       "category": "sample_data",
       "reason": "Sample phone or email value."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-spec-tester.tsx",
-      "line": 240,
+      "line": 251,
       "value": "Button(s)",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-spec-tester.tsx",
-      "line": 273,
+      "line": 285,
       "value": "URL:",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-code-snippet-dialog.tsx",
-      "line": 266,
+      "line": 269,
       "value": "cURL",
       "category": "technical_term",
       "reason": "Technical product or language name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-code-snippet-dialog.tsx",
-      "line": 269,
+      "line": 272,
       "value": "Node.js",
       "category": "technical_term",
       "reason": "Technical product or language name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-code-snippet-dialog.tsx",
-      "line": 272,
+      "line": 275,
       "value": "Python",
       "category": "technical_term",
       "reason": "Technical product or language name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-code-snippet-dialog.tsx",
-      "line": 275,
+      "line": 278,
       "value": "PHP",
       "category": "technical_term",
       "reason": "Technical product or language name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-code-snippet-dialog.tsx",
-      "line": 278,
+      "line": 281,
       "value": "Go",
       "category": "technical_term",
       "reason": "Technical product or language name."
     },
     {
       "file": "modules/whatsapp/templates/ui/template-code-snippet-dialog.tsx",
-      "line": 291,
+      "line": 294,
       "value": "Copied",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."

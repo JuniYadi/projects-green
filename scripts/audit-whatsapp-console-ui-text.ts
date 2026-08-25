@@ -357,6 +357,7 @@ const candidates = collectRenderedDependencies().flatMap((path) => {
     if (ts.isJsxText(node) && node.text.trim()) add(node, node.text)
     if (
       ts.isJsxAttribute(node) &&
+      ts.isIdentifier(node.name) &&
       attributeNames.has(node.name.text) &&
       node.initializer &&
       ts.isStringLiteral(node.initializer)

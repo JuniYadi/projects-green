@@ -1,5 +1,4 @@
 "use client"
-import { getWhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import { useParams } from "next/navigation"
 import {
