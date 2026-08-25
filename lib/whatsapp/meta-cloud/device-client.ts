@@ -100,8 +100,7 @@ export class WhatsAppDeviceClient {
   async sendTemplateMessage(
     input: SendTemplateMessageInput
   ): Promise<SendTemplateMessageResult> {
-    const components: any[] = []
-
+    const components: any[] = input.components ? [...input.components] : []
     if (input.header) {
       components.push({
         type: "header",
@@ -131,6 +130,9 @@ export class WhatsAppDeviceClient {
         type: "body",
         parameters: input.fields.map((text) => ({ type: "text", text })),
       })
+    }
+    if (input.buttons && Array.isArray(input.buttons)) {
+      components.push(...input.buttons)
     }
 
     const payload = {

@@ -46,6 +46,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsapp-onboarding"
+import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
 import { useParams } from "next/navigation"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
@@ -114,8 +116,8 @@ export default function WhatsAppContactsPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
+  const onboarding = useWhatsAppOnboarding()
   // ── Data state ──────────────────────────────────────────────────────────
-
   const [contacts, setContacts] = React.useState<Contact[]>([])
   const [groups, setGroups] = React.useState<ContactGroup[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
@@ -1016,6 +1018,7 @@ export default function WhatsAppContactsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <FlightHudWidget onboarding={onboarding} />
     </div>
   )
 }

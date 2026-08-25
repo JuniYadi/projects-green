@@ -52,8 +52,30 @@ const mockPricing = mock(() =>
     },
   })
 )
+mock.module("@/modules/whatsapp/onboarding/use-whatsapp-onboarding", () => ({
+  useWhatsAppOnboarding: () => ({
+    isFeatureLocked: () => false,
+    isGraduated: true,
+    level: 3,
+    progressPercent: 100,
+    missions: [],
+    activeMission: {
+      title: "Done",
+      subtitle: "Done",
+      description: "Done",
+      actionLabel: "Done",
+      completed: true,
+    },
+    graduateNow: () => {},
+    resetOnboarding: () => {},
+  }),
+}))
 
 mock.module("next/navigation", () => ({
+  useRouter: () => ({
+    push: mock(() => {}),
+    replace: mock(() => {}),
+  }),
   useParams: () => ({ lang: "en" }),
   usePathname: () => "/en/console/whatsapp/pricing",
   useSearchParams: () => new URLSearchParams(),

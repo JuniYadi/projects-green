@@ -18,7 +18,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
-import { CaretRightIcon } from "@phosphor-icons/react"
+import { CaretRightIcon, LockSimple } from "@phosphor-icons/react"
 
 export function NavMain({
   items,
@@ -29,10 +29,12 @@ export function NavMain({
     url: string
     icon: React.ReactNode
     isActive?: boolean
+    isLocked?: boolean
     items?: {
       title: string
       url: string
       isActive?: boolean
+      isLocked?: boolean
     }[]
   }[]
   label?: string
@@ -56,10 +58,22 @@ export function NavMain({
                   asChild
                   tooltip={item.title}
                   isActive={isActive}
+                  className={item.isLocked ? "opacity-60 grayscale" : ""}
                 >
-                  <Link href={item.url}>
-                    {item.icon}
-                    <span>{item.title}</span>
+                  <Link
+                    href={item.url}
+                    className="flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      {item.icon}
+                      <span className="truncate">{item.title}</span>
+                    </div>
+                    {item.isLocked && (
+                      <LockSimple
+                        className="ml-auto size-3.5 shrink-0 text-muted-foreground"
+                        weight="bold"
+                      />
+                    )}
                   </Link>
                 </SidebarMenuButton>
                 {item.items?.length ? (

@@ -27,8 +27,11 @@ import { whatsappClient } from "@/lib/api/whatsapp-client"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import { AccessRestricted } from "@/modules/whatsapp/ui/access-restricted"
 import { ServiceOrderDialog } from "@/components/billing/service-order-dialog"
+import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsapp-onboarding"
+import { WhatsAppCommandCenter } from "@/modules/whatsapp/onboarding/whatsapp-command-center"
+import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
+
 type WebhookStats = {
-  periodStart: string
   periodEnd: string
   totalEvents: number
   failedEvents: number
@@ -225,6 +228,32 @@ export default function WhatsAppDashboardPage() {
     [conversations]
   )
 
+  const onboarding = useWhatsAppOnboarding()
+
+  if (!onboarding.isGraduated && state === "loaded") {
+    return (
+      <div className="space-y-6">
+        <WhatsAppCommandCenter
+          onboarding={onboarding}
+          onSubscribeClick={() => setIsOrderOpen(true)}
+        />
+        <ServiceOrderDialog
+          productCode="WHATSAPP"
+          productTitle="WhatsApp Gateway"
+          open={isOrderOpen}
+          onOpenChange={setIsOrderOpen}
+          onSuccess={() => {
+            void loadData()
+          }}
+        />
+        <FlightHudWidget
+          onboarding={onboarding}
+          onSubscribeClick={() => setIsOrderOpen(true)}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -233,6 +262,20 @@ export default function WhatsAppDashboardPage() {
           <p className="text-muted-foreground">{t.description}</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              try {
+                localStorage.removeItem("whatsapp_onboarding_hud_closed")
+              } catch {}
+              window.location.reload()
+            }}
+            className="gap-1.5 text-xs"
+          >
+            <Sparkle className="size-3.5 text-primary" weight="fill" />
+            Show Onboarding Guide
+          </Button>
           <Button variant="outline" onClick={() => setIsOrderOpen(true)}>
             <Sparkle className="mr-2 size-4 text-primary" />
             Subscribe Plan
@@ -251,6 +294,7 @@ export default function WhatsAppDashboardPage() {
           </Button>
         </div>
       </div>
+
       {state === "loaded" && devices.length === 0 && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="flex flex-col items-center justify-between gap-4 p-6 sm:flex-row">
@@ -515,6 +559,10 @@ export default function WhatsAppDashboardPage() {
         onSuccess={() => {
           void loadData()
         }}
+      />
+      <FlightHudWidget
+        onboarding={onboarding}
+        onSubscribeClick={() => setIsOrderOpen(true)}
       />
     </div>
   )

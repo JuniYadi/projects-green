@@ -1410,7 +1410,7 @@ describe("messagesRoutes", () => {
           organizationId: "org-1",
           phoneNumber: "+1234567890",
           deviceId: "device-1",
-          templateName: "hello_world",
+          templateName: "hello-world",
           templateLanguage: "en",
           fields: ["John", "Acme Corp"],
         })

@@ -23,7 +23,9 @@ import {
   type Broadcast,
   type BroadcastStatus,
 } from "@/modules/whatsapp/whatsapp-client"
-
+import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsapp-onboarding"
+import { LockedFeatureTeaser } from "@/modules/whatsapp/onboarding/locked-feature-teaser"
+import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
 const statusVariant = (status: BroadcastStatus) => {
   if (status === "COMPLETED") return "default"
   if (status === "COMPLETED_WITH_ERRORS") return "secondary"
@@ -44,6 +46,7 @@ export default function WhatsAppBroadcastsPage() {
   })
   const [broadcasts, setBroadcasts] = React.useState<Broadcast[]>([])
   const [loading, setLoading] = React.useState(true)
+  const onboarding = useWhatsAppOnboarding()
 
   const loadBroadcasts = React.useCallback(async () => {
     setLoading(true)
@@ -184,6 +187,22 @@ export default function WhatsAppBroadcastsPage() {
       },
     ]
   }, [basePath, handleSend, handleDelete, router])
+
+  if (onboarding.isFeatureLocked("broadcasts")) {
+    return (
+      <>
+        <LockedFeatureTeaser
+          featureTitle="Broadcast Campaigns"
+          featureDescription="Send personalized WhatsApp messages to bulk recipient audiences simultaneously with tracking and delivery analytics."
+          unlockLevel={2}
+          prerequisiteDescription="Send your first message and approve a template to unlock bulk broadcast operations."
+          activeMissionHref="/console/whatsapp/messages"
+          activeMissionLabel="Send Test Message"
+        />
+        <FlightHudWidget onboarding={onboarding} />
+      </>
+    )
+  }
 
   return (
     <div className="space-y-6">

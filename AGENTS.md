@@ -44,6 +44,7 @@
 - WorkOS user/org names must resolve through `lib/workos-directory.ts`; do not use deprecated WorkOS cache/sidebar hooks.
 - Bun tests: mock leaf infrastructure only, put `mock.module()` before imports, use `mockClear()` plus explicit defaults in `beforeEach`, and run `bun run test:coverage` if mock setup changes.
 - Console pages under `app/[lang]/console/**` use the shared console spacing (`flex flex-1 flex-col gap-6 p-6 pt-0`) and shared table patterns unless product design requires otherwise.
+- UI Color Hierarchy (60-30-10 Rule): Reserve primary green strictly for primary actions (CTA) and semantic success icons. Use neutral card surfaces (`bg-card`/`bg-background` + `border-border`) and muted text (`text-muted-foreground`) for cards, badges, and secondary elements to prevent green washout.
 - Vault docs are the product/domain source of truth. If vault docs conflict with code, update code or flag the mismatch; do not duplicate domain docs in the repository.
 
 ## Project map

@@ -80,10 +80,12 @@ type AppSidebarNavItem = {
   url: string
   icon: React.ReactNode
   isActive?: boolean
+  isLocked?: boolean
   items?: {
     title: string
     url: string
     isActive?: boolean
+    isLocked?: boolean
   }[]
 }
 
@@ -753,118 +755,136 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         icon: <CaretLeftIcon />,
       },
     ],
-    getNavMain: (path, locale) => [
-      {
-        title: "Dashboard",
-        url: localizePathname({
-          pathname: "/console/whatsapp/dashboard",
-          locale,
-        }),
-        icon: <GaugeIcon />,
-        isActive: startsWithRoute(path, "/console/whatsapp/dashboard"),
-      },
-      {
-        title: "API Keys",
-        url: localizePathname({
-          pathname: "/console/whatsapp/api-keys",
-          locale,
-        }),
-        icon: <KeyIcon />,
-        isActive: startsWithRoute(path, "/console/whatsapp/api-keys"),
-      },
-      {
-        title: "Usage",
-        url: localizePathname({
-          pathname: "/console/whatsapp/usage",
-          locale,
-        }),
-        icon: <ChartLineIcon />,
-        isActive: startsWithRoute(path, "/console/whatsapp/usage"),
-      },
-      {
-        title: "Pricing & Ledger",
-        url: localizePathname({
-          pathname: "/console/whatsapp/pricing",
-          locale,
-        }),
-        icon: <ReceiptIcon />,
-        isActive:
-          startsWithRoute(path, "/console/whatsapp/pricing") ||
-          startsWithRoute(path, "/console/whatsapp/ledger"),
-      },
-      {
-        title: "Devices",
-        url: localizePathname({
-          pathname: "/console/whatsapp/devices",
-          locale,
-        }),
-        icon: <WhatsappLogoIcon />,
-        isActive: startsWithRoute(path, "/console/whatsapp/devices"),
-      },
-      {
-        title: "Templates",
-        url: localizePathname({
-          pathname: "/console/whatsapp/templates",
-          locale,
-        }),
-        icon: <Lightning />,
-        isActive: startsWithRoute(path, "/console/whatsapp/templates"),
-      },
-      {
-        title: "Messages",
-        url: localizePathname({
-          pathname: "/console/whatsapp/messages",
-          locale,
-        }),
-        icon: <PaperPlaneTiltIcon />,
-        isActive: startsWithRoute(path, "/console/whatsapp/messages"),
-      },
-      {
-        title: "Broadcasts",
-        url: localizePathname({
-          pathname: "/console/whatsapp/broadcasts",
-          locale,
-        }),
-        icon: <RocketLaunchIcon />,
-        isActive: startsWithRoute(path, "/console/whatsapp/broadcasts"),
-      },
-      {
-        title: "Contacts",
-        url: localizePathname({
-          pathname: "/console/whatsapp/contacts",
-          locale,
-        }),
-        icon: <BookOpenIcon />,
-        isActive: startsWithRoute(path, "/console/whatsapp/contacts"),
-      },
-      {
-        title: "Catalogs",
-        url: localizePathname({
-          pathname: "/console/whatsapp/catalogs",
-          locale,
-        }),
-        icon: <ShoppingBagOpen />,
-        isActive: startsWithRoute(path, "/console/whatsapp/catalogs"),
-      },
-      {
-        title: "Webhook Logs",
-        url: localizePathname({
-          pathname: "/console/whatsapp/webhook-logs",
-          locale,
-        }),
-        icon: <ListMagnifyingGlassIcon />,
-        isActive: startsWithRoute(path, "/console/whatsapp/webhook-logs"),
-      },
-      {
-        title: "Audit Logs",
-        url: localizePathname({
-          pathname: "/console/whatsapp/audit-logs",
-          locale,
-        }),
-        icon: <ListMagnifyingGlassIcon />,
-        isActive: startsWithRoute(path, "/console/whatsapp/audit-logs"),
-      },
-    ],
+    getNavMain: (path, locale) => {
+      let isGraduated = false
+      if (typeof window !== "undefined") {
+        try {
+          const manual = localStorage.getItem("whatsapp_onboarding_graduated")
+          const statusCached = sessionStorage.getItem(
+            "whatsapp_onboarding_graduated"
+          )
+          isGraduated = manual === "true" || statusCached === "true"
+        } catch {}
+      }
+      return [
+        {
+          title: "Dashboard",
+          url: localizePathname({
+            pathname: "/console/whatsapp/dashboard",
+            locale,
+          }),
+          icon: <GaugeIcon />,
+          isActive: startsWithRoute(path, "/console/whatsapp/dashboard"),
+        },
+        {
+          title: "API Keys",
+          url: localizePathname({
+            pathname: "/console/whatsapp/api-keys",
+            locale,
+          }),
+          icon: <KeyIcon />,
+          isActive: startsWithRoute(path, "/console/whatsapp/api-keys"),
+          isLocked: !isGraduated,
+        },
+        {
+          title: "Usage",
+          url: localizePathname({
+            pathname: "/console/whatsapp/usage",
+            locale,
+          }),
+          icon: <ChartLineIcon />,
+          isActive: startsWithRoute(path, "/console/whatsapp/usage"),
+        },
+        {
+          title: "Pricing & Ledger",
+          url: localizePathname({
+            pathname: "/console/whatsapp/pricing",
+            locale,
+          }),
+          icon: <ReceiptIcon />,
+          isActive:
+            startsWithRoute(path, "/console/whatsapp/pricing") ||
+            startsWithRoute(path, "/console/whatsapp/ledger"),
+          isLocked: !isGraduated,
+        },
+        {
+          title: "Devices",
+          url: localizePathname({
+            pathname: "/console/whatsapp/devices",
+            locale,
+          }),
+          icon: <WhatsappLogoIcon />,
+          isActive: startsWithRoute(path, "/console/whatsapp/devices"),
+        },
+        {
+          title: "Templates",
+          url: localizePathname({
+            pathname: "/console/whatsapp/templates",
+            locale,
+          }),
+          icon: <Lightning />,
+          isActive: startsWithRoute(path, "/console/whatsapp/templates"),
+        },
+        {
+          title: "Messages",
+          url: localizePathname({
+            pathname: "/console/whatsapp/messages",
+            locale,
+          }),
+          icon: <PaperPlaneTiltIcon />,
+          isActive: startsWithRoute(path, "/console/whatsapp/messages"),
+        },
+        {
+          title: "Broadcasts",
+          url: localizePathname({
+            pathname: "/console/whatsapp/broadcasts",
+            locale,
+          }),
+          icon: <RocketLaunchIcon />,
+          isActive: startsWithRoute(path, "/console/whatsapp/broadcasts"),
+          isLocked: !isGraduated,
+        },
+        {
+          title: "Contacts",
+          url: localizePathname({
+            pathname: "/console/whatsapp/contacts",
+            locale,
+          }),
+          icon: <BookOpenIcon />,
+          isActive: startsWithRoute(path, "/console/whatsapp/contacts"),
+        },
+        {
+          title: "Catalogs",
+          url: localizePathname({
+            pathname: "/console/whatsapp/catalogs",
+            locale,
+          }),
+          icon: <ShoppingBagOpen />,
+          isActive: startsWithRoute(path, "/console/whatsapp/catalogs"),
+          isLocked: !isGraduated,
+        },
+        {
+          title: "Webhook Logs",
+          url: localizePathname({
+            pathname: "/console/whatsapp/webhook-logs",
+            locale,
+          }),
+          icon: <ListMagnifyingGlassIcon />,
+          isActive: startsWithRoute(path, "/console/whatsapp/webhook-logs"),
+          isLocked: !isGraduated,
+        },
+        {
+          title: "Audit Logs",
+          url: localizePathname({
+            pathname: "/console/whatsapp/audit-logs",
+            locale,
+          }),
+          icon: <ListMagnifyingGlassIcon />,
+          isActive: startsWithRoute(path, "/console/whatsapp/audit-logs"),
+          isLocked: !isGraduated,
+        },
+      ]
+    },
   },
   {
     context: "vpn",

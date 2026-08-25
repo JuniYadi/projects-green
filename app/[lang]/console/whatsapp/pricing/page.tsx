@@ -21,6 +21,9 @@ import {
 } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { ServiceOrderDialog } from "@/components/billing/service-order-dialog"
+import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsapp-onboarding"
+import { LockedFeatureTeaser } from "@/modules/whatsapp/onboarding/locked-feature-teaser"
+import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
 import {
   Card,
   CardContent,
@@ -148,6 +151,8 @@ export default function WhatsAppPricingPage() {
     searchParams.get("deviceId") || "all"
   )
   const [isOrderOpen, setIsOrderOpen] = React.useState(false)
+  const onboarding = useWhatsAppOnboarding()
+
   React.useEffect(() => {
     let cancelled = false
     const loadLedger = async () => {
@@ -187,6 +192,31 @@ export default function WhatsAppPricingPage() {
     searchQuery,
     refreshKey,
   ])
+  if (onboarding.isFeatureLocked("pricing_ledger")) {
+    return (
+      <>
+        <LockedFeatureTeaser
+          featureTitle="Pricing, Quotas & Ledger"
+          featureDescription="Granular conversation costing breakdown, balance deductions, top-ups, and transaction audit ledger."
+          unlockLevel={3}
+          prerequisiteDescription="Send your first message and approve a template to unlock granular ledger billing."
+          activeMissionHref="/console/whatsapp/messages"
+          activeMissionLabel="Complete Active Mission"
+        />
+        <FlightHudWidget
+          onboarding={onboarding}
+          onSubscribeClick={() => setIsOrderOpen(true)}
+        />
+        <ServiceOrderDialog
+          productCode="WHATSAPP"
+          productTitle="WhatsApp Gateway"
+          open={isOrderOpen}
+          onOpenChange={setIsOrderOpen}
+          onSuccess={() => {}}
+        />
+      </>
+    )
+  }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -205,7 +235,7 @@ export default function WhatsAppPricingPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {t.pricing.heading} & Ledger
+            {t?.pricing?.heading ?? "WhatsApp Pricing"} & Ledger
           </h1>
           <p className="text-sm text-muted-foreground">
             Category rates, quota deduction policies, and itemized transaction
@@ -243,7 +273,7 @@ export default function WhatsAppPricingPage() {
                 locale,
               })}
             >
-              {t.usage.heading}
+              {t?.usage?.heading ?? "Usage"}
             </Link>
           </Button>
           <Button size="sm" asChild>
@@ -254,7 +284,7 @@ export default function WhatsAppPricingPage() {
               })}
             >
               <PaperPlaneTilt className="mr-1.5 size-4" />
-              {t.messages.sendMessage}
+              {t?.messages?.sendMessage ?? "Send Message"}
             </Link>
           </Button>
         </div>

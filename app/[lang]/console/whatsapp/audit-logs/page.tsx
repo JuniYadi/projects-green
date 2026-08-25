@@ -1,10 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useParams } from "next/navigation"
-import { getMessages } from "@/lib/i18n/messages"
-import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,11 +11,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { useSearchParams } from "next/navigation"
 import {
+  AuditLogDTO,
   AuditLogTable,
-  type AuditLogDTO,
 } from "@/modules/whatsapp/audit/ui/whatsapp-audit-table"
-
+import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsapp-onboarding"
+import { LockedFeatureTeaser } from "@/modules/whatsapp/onboarding/locked-feature-teaser"
+import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
 const AUDIT_ACTIONS = [
   "TEMPLATE_SYNC_REQUESTED",
   "TEMPLATE_SYNCED",
@@ -42,11 +41,8 @@ const AUDIT_ACTIONS = [
 const AUDIT_STATUSES = ["OK", "FAILED", "STARTED", "PENDING"]
 
 export default function ConsoleWhatsAppAuditLogsPage() {
-  const params = useParams<{ lang?: string }>()
-  const locale = resolveLocaleOrDefault(params?.lang)
-  const messages = getMessages(locale)
-  const t = messages.console.whatsapp.auditLogs
   const searchParams = useSearchParams()
+  const onboarding = useWhatsAppOnboarding()
 
   const [logs, setLogs] = React.useState<AuditLogDTO[]>([])
   const [page, setPage] = React.useState(Number(searchParams.get("page")) || 1)
@@ -144,6 +140,21 @@ export default function ConsoleWhatsAppAuditLogsPage() {
     setFilterFrom("")
     setFilterTo("")
     setPage(1)
+  }
+  if (onboarding.isFeatureLocked("audit_logs")) {
+    return (
+      <>
+        <LockedFeatureTeaser
+          featureTitle="Enterprise Audit Trail"
+          featureDescription="Immutable forensic compliance log tracking all template syncs, device callbacks, message transmissions, and security actions."
+          unlockLevel={3}
+          prerequisiteDescription="Send your first message and approve a template to unlock enterprise audit trails."
+          activeMissionHref="/console/whatsapp/messages"
+          activeMissionLabel="Complete Active Mission"
+        />
+        <FlightHudWidget onboarding={onboarding} />
+      </>
+    )
   }
 
   const handlePageChange = (newPage: number) => {

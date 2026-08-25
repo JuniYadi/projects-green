@@ -180,7 +180,8 @@ export type SendTemplateMessageInput = SendMessageInputBase & {
   fields?: string[]
   footer?: string
   header?: SendTemplateHeaderInput
-  buttons?: SendTemplateButtonsInput
+  buttons?: Array<Record<string, unknown>>
+  components?: Array<Record<string, unknown>>
 }
 
 export type SendTemplateMessageResult = {

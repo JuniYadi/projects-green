@@ -34,7 +34,9 @@ import {
   type WebhookEventFilterState,
 } from "@/modules/whatsapp/webhooks/ui/webhook-event-filter"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
-
+import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsapp-onboarding"
+import { LockedFeatureTeaser } from "@/modules/whatsapp/onboarding/locked-feature-teaser"
+import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type PageState = "loading" | "error" | "loaded"
@@ -68,6 +70,7 @@ export default function WhatsAppWebhookEventsPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
+  const loadErrorMsg = messages.console.whatsapp.events.loadError
   const basePath = localizePathname({
     pathname: "/console/whatsapp/events",
     locale,
@@ -91,6 +94,7 @@ export default function WhatsAppWebhookEventsPage() {
   const [filters, setFilters] =
     React.useState<WebhookEventFilterState>(DEFAULT_FILTER_STATE)
   const [page, setPage] = React.useState(1)
+  const onboarding = useWhatsAppOnboarding()
 
   // ── Load devices on mount ────────────────────────────────────────────────
 
@@ -162,20 +166,31 @@ export default function WhatsAppWebhookEventsPage() {
       setMeta(result.meta)
       setPageState("loaded")
     } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : messages.console.whatsapp.events.loadError
-      setErrorMessage(message)
+      const message = err instanceof Error ? err.message : loadErrorMsg
       setPageState("error")
     }
-  }, [selectedDeviceId, filters, page])
+  }, [selectedDeviceId, filters, page, loadErrorMsg])
 
   React.useEffect(() => {
     ;(async () => {
       await loadEvents()
     })()
   }, [loadEvents])
+  if (onboarding.isFeatureLocked("webhook_logs")) {
+    return (
+      <>
+        <LockedFeatureTeaser
+          featureTitle="Raw Event Stream"
+          featureDescription="Real-time telemetry log tracking raw Meta webhook events and processing states across connected devices."
+          unlockLevel={3}
+          prerequisiteDescription="Send your first message and approve a template to unlock raw event telemetry."
+          activeMissionHref="/console/whatsapp/messages"
+          activeMissionLabel="Complete Active Mission"
+        />
+        <FlightHudWidget onboarding={onboarding} />
+      </>
+    )
+  }
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 

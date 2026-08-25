@@ -29,12 +29,13 @@ import { ServiceOrderDialog } from "@/components/billing/service-order-dialog"
 import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import { detectCountryFromPhone } from "@/modules/whatsapp/messages/phone-number"
+import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsapp-onboarding"
+import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
+import { DeviceHealthBadge } from "@/modules/whatsapp/ui/device-health-badge"
 import type {
   DeviceListItem,
   DeviceStatus,
 } from "@/modules/whatsapp/devices/devices.schemas"
-import { DeviceHealthBadge } from "@/modules/whatsapp/ui/device-health-badge"
-
 // ─── Status badge ───────────────────────────────────────────────────────────
 
 type DeviceStatusBadgeProps = {
@@ -255,12 +256,12 @@ export default function WhatsAppDevicesPage() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
   const [isOrderOpen, setIsOrderOpen] = React.useState(false)
+  const onboarding = useWhatsAppOnboarding({
+    deviceCount: devices.length,
+  })
 
   // ponytail: not wrapped in useCallback — stable enough for effect dep
   const loadDevices = async () => {
-    setIsLoading(true)
-    setErrorMessage(null)
-
     try {
       const { devices: items } = await whatsappClient.devices.list()
       setDevices(items)
@@ -614,6 +615,11 @@ export default function WhatsAppDevicesPage() {
         onSuccess={() => {
           void loadDevices()
         }}
+      />
+
+      <FlightHudWidget
+        onboarding={onboarding}
+        onSubscribeClick={() => setIsOrderOpen(true)}
       />
     </div>
   )

@@ -40,6 +40,8 @@ import {
 import { TemplateList } from "@/modules/whatsapp/templates/ui/template-list"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsapp-onboarding"
+import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
 import {
   whatsappClient,
   type WhatsAppTemplate,
@@ -55,6 +57,7 @@ export default function ConsoleTemplatesPage() {
     pathname: "/console/whatsapp/templates",
     locale,
   })
+  const onboarding = useWhatsAppOnboarding()
 
   const [devices, setDevices] = React.useState<
     Array<{
@@ -681,6 +684,7 @@ export default function ConsoleTemplatesPage() {
           )}
         </CardContent>
       </Card>
+      <FlightHudWidget onboarding={onboarding} />
     </div>
   )
 }
