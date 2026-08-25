@@ -131,6 +131,18 @@ describe("validateSchedule", () => {
     ).rejects.toThrow(BroadcastScheduleLimitError)
   })
 
+  it("rejects a zero-value throttle before calculating a rate", async () => {
+    await expect(
+      validateSchedule({
+        throttleMaxMessages: 0,
+        throttlePerMinutes: 60,
+        totalRecipients: 100,
+        organizationId: "org_1",
+        deviceId: "dev_1",
+      })
+    ).rejects.toThrow("Throttle values must be greater than zero.")
+  })
+
   it("rejects when total exceeds remaining today without acknowledge", async () => {
     const deviceWithUsage = { dailyLimitMessage: 100 }
     mockFindFirst.mockResolvedValue(deviceWithUsage)

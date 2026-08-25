@@ -2215,11 +2215,13 @@ model WhatsappTemplateLanguage {
 model WhatsappBroadcastCampaign {
   id                  String                  @id @default(cuid())
   organizationId      String
+  templateId          String?
   templateName        String
   templateLanguage    String
   templateParams      Json?
   throttleMaxMessages Int?
   throttlePerMinutes  Int?
+  acknowledgeMultiDay Boolean                 @default(false)
   status              WhatsappBroadcastStatus @default(QUEUED)
   total               Int                     @default(0)
   queued              Int                     @default(0)

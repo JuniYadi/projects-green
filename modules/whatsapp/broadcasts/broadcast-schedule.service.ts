@@ -110,6 +110,17 @@ export async function validateSchedule(params: {
   deviceId: string
   acknowledgeMultiDay?: boolean
 }) {
+  if (
+    !Number.isFinite(params.throttleMaxMessages) ||
+    !Number.isFinite(params.throttlePerMinutes) ||
+    params.throttleMaxMessages <= 0 ||
+    params.throttlePerMinutes <= 0
+  ) {
+    throw new BroadcastScheduleLimitError(
+      "Throttle values must be greater than zero."
+    )
+  }
+
   const capacity = await getDeviceBroadcastCapacity(
     params.organizationId,
     params.deviceId

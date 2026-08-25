@@ -16,6 +16,10 @@ import {
   toDeviceBroadcastCapacityDTO,
   toBroadcastScheduleRecommendationDTO,
 } from "../broadcast-schedule.dto"
+import {
+  formatBroadcastVariableValidationError,
+  validateBroadcastRecipientVariables,
+} from "../broadcast-preflight"
 
 const E164_REGEX = /^[+]?[1-9]\d{6,14}$/
 const broadcastRecipientSchema = t.Object({
@@ -45,8 +49,189 @@ const broadcastPreviewBodySchema = t.Object({
   whatsappDeviceId: t.String(),
   recipients: t.Array(broadcastRecipientSchema),
 })
+const broadcastPreflightBodySchema = t.Object({
+  templateId: t.String(),
+  templateLanguage: t.String(),
+  whatsappDeviceId: t.String(),
+  throttleMaxMessages: t.Optional(t.Number()),
+  throttlePerMinutes: t.Optional(t.Number()),
+  acknowledgeMultiDay: t.Optional(t.Boolean()),
+  recipients: t.Array(broadcastRecipientSchema),
+})
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 100
+
+type BroadcastPreflightRecipient = {
+  dynamicValues?: unknown
+}
+
+type BroadcastPreflightPayload = {
+  templateId: string
+  templateLanguage: string
+  whatsappDeviceId: string
+  throttleMaxMessages?: number
+  throttlePerMinutes?: number
+  acknowledgeMultiDay?: boolean
+  recipients: BroadcastPreflightRecipient[]
+}
+
+type ValidatedBroadcastSelection = {
+  deviceId: string
+  templateId: string
+  templateName: string
+  templateLanguage: string
+  templateBody: string | null
+}
+
+async function resolveBroadcastSelection({
+  organizationId,
+  templateId,
+  templateLanguage,
+  deviceId,
+}: {
+  organizationId: string
+  templateId: string
+  templateLanguage: string
+  deviceId: string
+}): Promise<ValidatedBroadcastSelection | null> {
+  const [device, template] = await Promise.all([
+    prisma.whatsappDevice.findFirst({
+      where: { id: deviceId, organizationId, status: "ACTIVE" },
+      select: { id: true },
+    }),
+    prisma.whatsappTemplate.findFirst({
+      where: {
+        id: templateId,
+        organizationId,
+        whatsappDeviceId: deviceId,
+        syncStatus: "SYNCED",
+        metaStatus: "APPROVED",
+        languages: {
+          some: {
+            lang: templateLanguage,
+            OR: [{ isApproved: true }, { metaStatus: "APPROVED" }],
+          },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        languages: {
+          where: {
+            lang: templateLanguage,
+            OR: [{ isApproved: true }, { metaStatus: "APPROVED" }],
+          },
+          select: { body: true },
+          take: 1,
+        },
+      },
+    }),
+  ])
+
+  const language = template?.languages[0]
+  if (!device || !template || !language) {
+    return null
+  }
+
+  return {
+    deviceId: device.id,
+    templateId: template.id,
+    templateName: template.name,
+    templateLanguage,
+    templateBody: language.body,
+  }
+}
+
+async function validateBroadcastPreflight({
+  organizationId,
+  payload,
+  enforceSchedule = true,
+}: {
+  organizationId: string
+  payload: BroadcastPreflightPayload
+  enforceSchedule?: boolean
+}): Promise<
+  | {
+      ok: true
+      selection: ValidatedBroadcastSelection
+      capacity: Awaited<ReturnType<typeof getDeviceBroadcastCapacity>>
+      recommendation: Awaited<ReturnType<typeof computeRecommendedSchedule>>
+    }
+  | { ok: false; message: string }
+> {
+  if (payload.recipients.length === 0) {
+    return {
+      ok: false,
+      message: "Add at least one valid recipient before continuing.",
+    }
+  }
+
+  const selection = await resolveBroadcastSelection({
+    organizationId,
+    templateId: payload.templateId,
+    templateLanguage: payload.templateLanguage,
+    deviceId: payload.whatsappDeviceId,
+  })
+  if (!selection) {
+    return {
+      ok: false,
+      message:
+        "Select an active device, approved template, and valid language.",
+    }
+  }
+
+  const variables = validateBroadcastRecipientVariables({
+    templateBody: selection.templateBody,
+    recipients: payload.recipients,
+  })
+  if (!variables.isValid) {
+    return {
+      ok: false,
+      message: formatBroadcastVariableValidationError(variables),
+    }
+  }
+
+  const hasThrottleMax = payload.throttleMaxMessages !== undefined
+  const hasThrottlePeriod = payload.throttlePerMinutes !== undefined
+  if (hasThrottleMax !== hasThrottlePeriod) {
+    return {
+      ok: false,
+      message:
+        "Provide both throttle values, or leave both empty to use device limits.",
+    }
+  }
+
+  try {
+    const capacity = await getDeviceBroadcastCapacity(
+      organizationId,
+      payload.whatsappDeviceId
+    )
+    const recommendation = await computeRecommendedSchedule({
+      totalRecipients: payload.recipients.length,
+      organizationId,
+      deviceId: payload.whatsappDeviceId,
+    })
+
+    if (enforceSchedule && hasThrottleMax && hasThrottlePeriod) {
+      await validateSchedule({
+        throttleMaxMessages: payload.throttleMaxMessages!,
+        throttlePerMinutes: payload.throttlePerMinutes!,
+        totalRecipients: payload.recipients.length,
+        organizationId,
+        deviceId: payload.whatsappDeviceId,
+        acknowledgeMultiDay: payload.acknowledgeMultiDay,
+      })
+    }
+
+    return { ok: true, selection, capacity, recommendation }
+  } catch (error) {
+    return {
+      ok: false,
+      message:
+        error instanceof Error ? error.message : "Broadcast preflight failed.",
+    }
+  }
+}
 
 function getPagination(query: Record<string, unknown>) {
   const page = Math.max(Number(query.page) || 1, 1)
@@ -203,6 +388,60 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
     }
   )
   .post(
+    "/preflight",
+    async ({
+      request,
+      body,
+      set,
+    }: {
+      request: Request
+      body: BroadcastPreflightPayload
+      set: { status?: number | string }
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      if (whatsappAuth.type !== "workos" || !whatsappAuth.organizationId) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "BAD_REQUEST",
+          message: "Organization ID required.",
+        }
+      }
+
+      const preflight = await validateBroadcastPreflight({
+        organizationId: whatsappAuth.organizationId,
+        payload: body,
+        enforceSchedule: false,
+      })
+      if (!preflight.ok) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message: preflight.message,
+        }
+      }
+
+      return {
+        ok: true,
+        selection: preflight.selection,
+        recipientCount: body.recipients.length,
+        dispatchMode: "MANUAL_DISPATCH" as const,
+        capacity: toDeviceBroadcastCapacityDTO(preflight.capacity),
+        recommendation: toBroadcastScheduleRecommendationDTO(
+          preflight.recommendation
+        ),
+      }
+    },
+    {
+      body: broadcastPreflightBodySchema,
+    }
+  )
+  .post(
     "/",
     async ({ request, body, set }: { request: any; body: any; set: any }) => {
       const whatsappAuth = await resolveAuthContext(request)
@@ -221,7 +460,6 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
 
       const {
         recipients,
-        acknowledgeMultiDay,
         templateId,
         templateName: _templateName,
         ...campaignData
@@ -231,80 +469,33 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
           ? whatsappAuth.organizationId!
           : (body as any).organizationId
 
-      const [device, template] = await Promise.all([
-        prisma.whatsappDevice.findFirst({
-          where: {
-            id: campaignData.whatsappDeviceId,
-            organizationId,
-            status: "ACTIVE",
-          },
-          select: { id: true },
-        }),
-        prisma.whatsappTemplate.findFirst({
-          where: {
-            id: templateId,
-            organizationId,
-            whatsappDeviceId: campaignData.whatsappDeviceId,
-            syncStatus: "SYNCED",
-            metaStatus: "APPROVED",
-            languages: {
-              some: {
-                lang: campaignData.templateLanguage,
-                OR: [{ isApproved: true }, { metaStatus: "APPROVED" }],
-              },
-            },
-          },
-          select: { name: true },
-        }),
-      ])
-
-      if (!device || !template) {
+      const preflight = await validateBroadcastPreflight({
+        organizationId,
+        payload: {
+          templateId,
+          templateLanguage: campaignData.templateLanguage,
+          whatsappDeviceId: campaignData.whatsappDeviceId,
+          throttleMaxMessages: campaignData.throttleMaxMessages,
+          throttlePerMinutes: campaignData.throttlePerMinutes,
+          acknowledgeMultiDay: campaignData.acknowledgeMultiDay,
+          recipients,
+        },
+      })
+      if (!preflight.ok) {
         set.status = 400
         return {
           ok: false,
           error: "VALIDATION_ERROR",
-          message:
-            "Select an active device, approved template, and valid language.",
-        }
-      }
-
-      // Validate device schedule limits when throttle is specified
-      if (campaignData.throttleMaxMessages && campaignData.throttlePerMinutes) {
-        if (!campaignData.whatsappDeviceId) {
-          set.status = 400
-          return {
-            ok: false,
-            error: "VALIDATION_ERROR",
-            message: "Device ID is required when throttle is set.",
-          }
-        }
-
-        try {
-          await validateSchedule({
-            throttleMaxMessages: campaignData.throttleMaxMessages,
-            throttlePerMinutes: campaignData.throttlePerMinutes,
-            totalRecipients: recipients.length,
-            organizationId,
-            deviceId: campaignData.whatsappDeviceId,
-            acknowledgeMultiDay,
-          })
-        } catch (error) {
-          set.status = 400
-          return {
-            ok: false,
-            error: "VALIDATION_ERROR",
-            message:
-              error instanceof Error
-                ? error.message
-                : "Schedule validation failed",
-          }
+          message: preflight.message,
         }
       }
 
       const campaign = await prisma.whatsappBroadcastCampaign.create({
         data: {
           ...campaignData,
-          templateName: template.name,
+          templateId: preflight.selection.templateId,
+          templateName: preflight.selection.templateName,
+          acknowledgeMultiDay: campaignData.acknowledgeMultiDay ?? false,
           organizationId,
           total: recipients.length,
           queued: recipients.length,
@@ -491,6 +682,37 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
           ok: false,
           error: "BAD_REQUEST",
           message: "Campaign is already processing or completed.",
+        }
+      }
+
+      if (!campaign.templateId || !campaign.whatsappDeviceId) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message:
+            "This broadcast is missing its selected template or device. Recreate it before sending.",
+        }
+      }
+
+      const preflight = await validateBroadcastPreflight({
+        organizationId: campaign.organizationId,
+        payload: {
+          templateId: campaign.templateId,
+          templateLanguage: campaign.templateLanguage,
+          whatsappDeviceId: campaign.whatsappDeviceId,
+          throttleMaxMessages: campaign.throttleMaxMessages ?? undefined,
+          throttlePerMinutes: campaign.throttlePerMinutes ?? undefined,
+          acknowledgeMultiDay: campaign.acknowledgeMultiDay,
+          recipients: campaign.recipients,
+        },
+      })
+      if (!preflight.ok) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message: preflight.message,
         }
       }
 
