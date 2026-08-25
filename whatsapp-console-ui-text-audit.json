@@ -15,7 +15,7 @@
     "modules/whatsapp/whatsapp-client.tsx"
   ],
   "category_counts": {
-    "product_static_english": 12,
+    "product_static_english": 0,
     "product_static_indonesian": 0,
     "sample_data": 11,
     "url_or_code": 10,
@@ -23,7 +23,7 @@
     "technical_term": 8,
     "non_english_or_proper_name": 237
   },
-  "remaining_product_static": 12,
+  "remaining_product_static": 0,
   "candidates": [
     {
       "file": "app/[lang]/console/whatsapp/contacts/page.tsx",
@@ -1371,87 +1371,66 @@
     },
     {
       "file": "modules/whatsapp/onboarding/flight-hud-widget.tsx",
-      "line": 78,
+      "line": 84,
       "value": "Flight Deck HUD",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/flight-hud-widget.tsx",
-      "line": 88,
+      "line": 94,
       "value": "% flight readiness",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/flight-hud-widget.tsx",
-      "line": 98,
+      "line": 104,
       "value": "Collapse HUD",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/flight-hud-widget.tsx",
-      "line": 107,
-      "value": "Close HUD",
-      "category": "product_static_english",
-      "reason": "Product-controlled English UI copy."
-    },
-    {
-      "file": "modules/whatsapp/onboarding/flight-hud-widget.tsx",
-      "line": 136,
+      "line": 142,
       "value": "Previous step",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/flight-hud-widget.tsx",
-      "line": 138,
+      "line": 144,
       "value": "‹",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/onboarding/flight-hud-widget.tsx",
-      "line": 143,
+      "line": 149,
       "value": "/",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/onboarding/flight-hud-widget.tsx",
-      "line": 155,
+      "line": 161,
       "value": "Next step",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/flight-hud-widget.tsx",
-      "line": 157,
+      "line": 163,
       "value": "›",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/onboarding/flight-hud-widget.tsx",
-      "line": 221,
+      "line": 227,
       "value": "Checklist",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
-    },
-    {
-      "file": "modules/whatsapp/onboarding/flight-hud-widget.tsx",
-      "line": 332,
-      "value": "Close Guide",
-      "category": "product_static_english",
-      "reason": "Product-controlled English UI copy."
-    },
-    {
-      "file": "modules/whatsapp/onboarding/flight-hud-widget.tsx",
-      "line": 339,
-      "value": "Need Help?",
-      "category": "product_static_english",
-      "reason": "Product-controlled English UI copy."
     },
     {
       "file": "modules/whatsapp/onboarding/locked-feature-teaser.tsx",
@@ -1469,196 +1448,133 @@
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 89,
+      "line": 95,
       "value": "Flight Readiness",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 92,
+      "line": 98,
       "value": "%",
       "category": "punctuation_or_format",
       "reason": "Punctuation, counter, or format value."
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 101,
+      "line": 107,
       "value": "Skip Tutorial",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 141,
+      "line": 147,
       "value": "Explore Quotas",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 154,
-      "value": "Transponder Verification in Progress",
-      "category": "product_static_english",
-      "reason": "Product-controlled English UI copy."
-    },
-    {
-      "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 158,
-      "value": "Your subscription is active! Platform admins are currently\n              provisioning and linking your Meta WhatsApp Business number.",
-      "category": "product_static_english",
-      "reason": "Product-controlled English UI copy."
-    },
-    {
-      "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 171,
+      "line": 176,
       "value": "Plan Subscribed",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 174,
+      "line": 179,
       "value": "Active WhatsApp tier allocated",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 185,
+      "line": 190,
       "value": "Admin Review",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 188,
-      "value": "WABA number registration",
-      "category": "product_static_english",
-      "reason": "Product-controlled English UI copy."
-    },
-    {
-      "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 195,
+      "line": 200,
       "value": "Cockpit Live",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 197,
-      "value": "Level 1 ready for take-off",
-      "category": "product_static_english",
-      "reason": "Product-controlled English UI copy."
-    },
-    {
-      "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 205,
-      "value": "Want to check your pending transponder hardware details?",
-      "category": "product_static_english",
-      "reason": "Product-controlled English UI copy."
-    },
-    {
-      "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 213,
-      "value": "View Devices Tab",
-      "category": "product_static_english",
-      "reason": "Product-controlled English UI copy."
-    },
-    {
-      "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 224,
+      "line": 231,
       "value": "Mission Flight Roadmap",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 227,
+      "line": 234,
       "value": "Progression unlocks advanced cockpit tabs",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 252,
+      "line": 259,
       "value": "Lv 0",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 257,
+      "line": 264,
       "value": "1. Plan Subscription",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 259,
+      "line": 266,
       "value": "Activate WhatsApp business tier.",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 290,
+      "line": 297,
       "value": "Lv 1",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 295,
-      "value": "2. Device Transponder",
-      "category": "product_static_english",
-      "reason": "Product-controlled English UI copy."
-    },
-    {
-      "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 297,
-      "value": "Connect active Meta WhatsApp number.",
-      "category": "product_static_english",
-      "reason": "Product-controlled English UI copy."
-    },
-    {
-      "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 330,
+      "line": 339,
       "value": "Lv 2",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 336,
+      "line": 345,
       "value": "3. Operations & Broadcasts",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 339,
-      "value": "Send 1st message and create template.",
-      "category": "product_static_english",
-      "reason": "Product-controlled English UI copy."
-    },
-    {
-      "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 370,
+      "line": 379,
       "value": "Lv 3",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 375,
+      "line": 384,
       "value": "4. Radar & Telemetry",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
     },
     {
       "file": "modules/whatsapp/onboarding/whatsapp-command-center.tsx",
-      "line": 377,
+      "line": 386,
       "value": "Generate API Keys & Webhooks.",
       "category": "non_english_or_proper_name",
       "reason": "Non-English copy or proper name."
