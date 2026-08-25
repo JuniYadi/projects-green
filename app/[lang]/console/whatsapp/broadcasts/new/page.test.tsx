@@ -160,4 +160,17 @@ describe("NewWhatsAppBroadcastPage selection flow", () => {
       "Pilih bahasa"
     )
   })
+
+  it("omits the variable step for a zero-variable template", async () => {
+    const view = render(<NewWhatsAppBroadcastPage />)
+
+    await selectOption(view, "Perangkat WhatsApp", "+628111")
+    await selectOption(view, "Template", "Order ready")
+    await selectOption(view, "Bahasa", "id")
+
+    expect(view.queryByText("3. Variabel Pesan")).not.toBeInTheDocument()
+    expect(
+      view.getByText("3. Preflight & Jadwal Pengiriman")
+    ).toBeInTheDocument()
+  })
 })

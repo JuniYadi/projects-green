@@ -262,11 +262,13 @@ export type BroadcastRecipient = {
 export type Broadcast = {
   id: string
   organizationId?: string
+  templateId?: string | null
   templateName: string
   templateLanguage: string
   templateParams?: Record<string, unknown> | null
   throttleMaxMessages?: number | null
   throttlePerMinutes?: number | null
+  acknowledgeMultiDay?: boolean
   status: BroadcastStatus
   total: number
   queued: number
@@ -328,6 +330,18 @@ export type BroadcastScheduleRecommendation = {
 export type PreviewBroadcastResult = {
   capacity: DeviceBroadcastCapacity
   recommendation: BroadcastScheduleRecommendation
+}
+
+export type BroadcastPreflightResult = PreviewBroadcastResult & {
+  selection: {
+    deviceId: string
+    templateId: string
+    templateName: string
+    templateLanguage: string
+    templateBody: string | null
+  }
+  recipientCount: number
+  dispatchMode: "MANUAL_DISPATCH"
 }
 
 // ─── Webhook Types ────────────────────────────────────────────────────────
@@ -865,6 +879,26 @@ export const createWhatsAppClient = () => {
         capacity: payload.capacity,
         recommendation: payload.recommendation,
       }
+    },
+
+    async preflightBroadcast(input: {
+      templateId: string
+      templateLanguage: string
+      whatsappDeviceId: string
+      throttleMaxMessages?: number
+      throttlePerMinutes?: number
+      acknowledgeMultiDay?: boolean
+      recipients: CreateBroadcastInput["recipients"]
+    }) {
+      return requestJson<ApiSuccess<BroadcastPreflightResult>>(
+        `${API_BASE}/broadcasts/preflight`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(input),
+        },
+        "Unable to validate WhatsApp broadcast preflight."
+      )
     },
 
     // ── Webhooks ────────────────────────────────────────────────────────

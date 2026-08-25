@@ -35,11 +35,15 @@ import {
 } from "@/lib/whatsapp-phone-sanitizer"
 import { buildRecipientCsvTemplate } from "@/modules/whatsapp/broadcasts/recipient-csv-template"
 import {
+  formatBroadcastVariableValidationError,
+  validateBroadcastRecipientVariables,
+} from "@/modules/whatsapp/broadcasts/broadcast-preflight"
+import {
   whatsappClient,
   type Contact,
   type CreateBroadcastInput,
   type Device,
-  type DeviceBroadcastCapacity,
+  type BroadcastPreflightResult,
 } from "@/modules/whatsapp/whatsapp-client"
 import { useTemplates } from "@/modules/whatsapp/templates/api/templates.hooks"
 import { extractTemplateVariables } from "@/modules/whatsapp/templates/template-validator"
@@ -58,6 +62,33 @@ function formatDuration(minutes: number): string {
   const hours = Math.floor(minutes / 60)
   const rest = minutes % 60
   return rest > 0 ? `~${hours} jam ${rest} menit` : `~${hours} jam`
+}
+
+function withFallbackVariableValues({
+  source,
+  fallback,
+  placeholders,
+}: {
+  source?: Record<string, unknown> | null
+  fallback: Record<string, string>
+  placeholders: string[]
+}): Record<string, unknown> | undefined {
+  if (placeholders.length === 0) {
+    return undefined
+  }
+
+  const values = { ...source }
+  for (const placeholder of placeholders) {
+    const variable = `{{${placeholder}}}`
+    if (
+      values[variable] === undefined &&
+      values[placeholder] === undefined &&
+      fallback[placeholder] !== undefined
+    ) {
+      values[variable] = fallback[placeholder]
+    }
+  }
+  return values
 }
 
 export default function NewWhatsAppBroadcastPage() {
@@ -85,8 +116,15 @@ export default function NewWhatsAppBroadcastPage() {
   const [variableValues, setVariableValues] = React.useState<
     Record<string, string>
   >({})
-  const [capacity, setCapacity] =
-    React.useState<DeviceBroadcastCapacity | null>(null)
+  const [serverPreflight, setServerPreflight] =
+    React.useState<BroadcastPreflightResult | null>(null)
+  const [validatedPreflightKey, setValidatedPreflightKey] = React.useState<
+    string | null
+  >(null)
+  const [preflightError, setPreflightError] = React.useState<{
+    key: string
+    message: string
+  } | null>(null)
   const [acknowledgeMultiDay, setAcknowledgeMultiDay] = React.useState(false)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
@@ -159,10 +197,16 @@ export default function NewWhatsAppBroadcastPage() {
   const invalidCsvCount = csvRows.length - validCsvRows.length
   const csvColumns = React.useMemo(() => {
     const hasNameColumn = csvRows.some((row) => row.name)
+    const dynamicColumns = new Set<string>()
+    for (const row of csvRows) {
+      for (const column of Object.keys(row.dynamicValues)) {
+        dynamicColumns.add(column)
+      }
+    }
     return [
       "Nomor WhatsApp",
       ...(hasNameColumn ? ["Nama"] : []),
-      ...Object.keys(csvRows[0]?.dynamicValues ?? {}),
+      ...[...dynamicColumns],
     ]
   }, [csvRows])
 
@@ -173,35 +217,23 @@ export default function NewWhatsAppBroadcastPage() {
         .map((contact) => ({
           phoneNumber: contact.phoneNumber,
           name: contact.name || undefined,
-          dynamicValues:
-            contact.dynamicValues && Object.keys(contact.dynamicValues).length
-              ? contact.dynamicValues
-              : variableValues,
+          dynamicValues: withFallbackVariableValues({
+            source: contact.dynamicValues,
+            fallback: variableValues,
+            placeholders,
+          }),
         }))
     }
     if (recipientTab === "csv") {
       return validCsvRows.map((row) => {
-        const rowValues = Object.values(row.dynamicValues)
-        const mappedValues: Record<string, string> = {}
-
-        if (rowValues.length > 0) {
-          // Positional mapping: assign CSV extra columns to template placeholders {{1}}, {{2}}, ... in order
-          placeholders.forEach((placeholder, index) => {
-            if (rowValues[index] !== undefined && rowValues[index] !== "") {
-              mappedValues[placeholder] = rowValues[index]
-            } else if (variableValues[placeholder]) {
-              mappedValues[placeholder] = variableValues[placeholder]
-            }
-          })
-        }
-
         return {
           phoneNumber: row.phoneNumber,
           name: row.name || undefined,
-          dynamicValues:
-            Object.keys(mappedValues).length > 0
-              ? mappedValues
-              : variableValues,
+          dynamicValues: withFallbackVariableValues({
+            source: row.dynamicValues,
+            fallback: variableValues,
+            placeholders,
+          }),
         }
       })
     }
@@ -209,7 +241,10 @@ export default function NewWhatsAppBroadcastPage() {
       .filter((entry) => entry.isValid)
       .map((entry) => ({
         phoneNumber: entry.phoneNumber,
-        dynamicValues: variableValues,
+        dynamicValues: withFallbackVariableValues({
+          fallback: variableValues,
+          placeholders,
+        }),
       }))
   }, [
     recipientTab,
@@ -221,10 +256,57 @@ export default function NewWhatsAppBroadcastPage() {
     placeholders,
   ])
   const totalRecipients = activeRecipients.length
+  const variableValidation = React.useMemo(
+    () =>
+      validateBroadcastRecipientVariables({
+        templateBody: selectedLanguageBody,
+        recipients: activeRecipients,
+      }),
+    [activeRecipients, selectedLanguageBody]
+  )
+  const hasInvalidRecipients =
+    (recipientTab === "manual" && invalidManualCount > 0) ||
+    (recipientTab === "csv" && invalidCsvCount > 0)
+  const localPreflightErrors = React.useMemo(() => {
+    const errors: string[] = []
+    if (!deviceId) errors.push("Pilih perangkat WhatsApp.")
+    if (!selectedTemplate) errors.push("Pilih template yang disetujui.")
+    if (!templateLanguage) errors.push("Pilih bahasa template yang valid.")
+    if (totalRecipients === 0)
+      errors.push("Tambahkan minimal satu penerima valid.")
+    if (hasInvalidRecipients) {
+      errors.push("Perbaiki atau hapus penerima yang tidak valid.")
+    }
+    if (placeholders.length > 0 && !variableValidation.isValid) {
+      errors.push(formatBroadcastVariableValidationError(variableValidation))
+    }
+    return errors
+  }, [
+    deviceId,
+    hasInvalidRecipients,
+    placeholders.length,
+    selectedTemplate,
+    templateLanguage,
+    totalRecipients,
+    variableValidation,
+  ])
 
   const selectedDevice = (devices ?? []).find(
     (device) => device.id === deviceId
   )
+  const preflightRequestKey = React.useMemo(
+    () =>
+      JSON.stringify({
+        templateId: selectedTemplate?.id,
+        templateLanguage,
+        deviceId,
+        recipients: activeRecipients,
+      }),
+    [activeRecipients, deviceId, selectedTemplate?.id, templateLanguage]
+  )
+  const isPreflightCurrent =
+    serverPreflight !== null && validatedPreflightKey === preflightRequestKey
+  const capacity = isPreflightCurrent ? serverPreflight.capacity : null
   const needsMultiDayAck = Boolean(
     capacity && totalRecipients > capacity.remainingToday
   )
@@ -236,11 +318,15 @@ export default function NewWhatsAppBroadcastPage() {
           totalRecipients / (throttleMaxMessages / THROTTLE_PER_MINUTES)
         )
       : 0
+  const isPreflightErrorCurrent = preflightError?.key === preflightRequestKey
   const canSubmit = Boolean(
     selectedTemplate &&
     templateLanguage &&
     deviceId &&
     totalRecipients > 0 &&
+    localPreflightErrors.length === 0 &&
+    isPreflightCurrent &&
+    !isPreflightErrorCurrent &&
     !isSubmitting &&
     (!needsMultiDayAck || acknowledgeMultiDay)
   )
@@ -266,30 +352,50 @@ export default function NewWhatsAppBroadcastPage() {
 
   React.useEffect(() => {
     let cancelled = false
-    if (!deviceId) {
+    if (
+      !deviceId ||
+      !selectedTemplate ||
+      !templateLanguage ||
+      localPreflightErrors.length > 0
+    ) {
       return
     }
     whatsappClient
-      .previewBroadcastSchedule({
+      .preflightBroadcast({
+        templateId: selectedTemplate.id,
+        templateLanguage,
         whatsappDeviceId: deviceId,
-        recipients: activeRecipients.map((r) => ({
-          phoneNumber: r.phoneNumber,
-        })),
+        recipients: activeRecipients,
       })
       .then((result) => {
         if (!cancelled) {
-          setCapacity(result.capacity)
+          setServerPreflight(result)
+          setValidatedPreflightKey(preflightRequestKey)
         }
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (!cancelled) {
-          setCapacity(null)
+          setPreflightError({
+            key: preflightRequestKey,
+            message:
+              error instanceof Error
+                ? error.message
+                : "Preflight broadcast tidak dapat divalidasi.",
+          })
         }
       })
     return () => {
       cancelled = true
     }
-  }, [deviceId, activeRecipients])
+  }, [
+    activeRecipients,
+    deviceId,
+    localPreflightErrors.length,
+    needsMultiDayAck,
+    selectedTemplate,
+    templateLanguage,
+    preflightRequestKey,
+  ])
 
   // ─── Handlers ───────────────────────────────────────────────────────
 
@@ -304,7 +410,6 @@ export default function NewWhatsAppBroadcastPage() {
     setTemplateId("")
     setTemplateLanguage("")
     setVariableValues({})
-    setCapacity(null)
   }
 
   function toggleContact(id: string) {
@@ -720,70 +825,144 @@ export default function NewWhatsAppBroadcastPage() {
           </CardContent>
         </Card>
 
-        {/* Step 3: Variabel Pesan */}
-        <Card>
-          <CardHeader>
-            <CardTitle>3. Variabel Pesan</CardTitle>
-            <CardDescription>
-              Isi nilai untuk variabel yang ada di dalam template.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {!selectedTemplate ? (
-              <p className="text-sm text-muted-foreground">
-                Pilih template terlebih dahulu untuk melihat variabel pesan.
-              </p>
-            ) : placeholders.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Template ini tidak menggunakan variabel — tidak ada yang perlu
-                diisi.
-              </p>
-            ) : (
-              <>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {placeholders.map((placeholder) => (
-                    <div key={placeholder} className="grid gap-2">
-                      <Label htmlFor={`variable-${placeholder}`}>
-                        Nilai untuk {`{{${placeholder}}}`}
-                      </Label>
-                      <Input
-                        id={`variable-${placeholder}`}
-                        value={variableValues[placeholder] ?? ""}
-                        onChange={(event) =>
-                          setVariableValues((prev) => ({
-                            ...prev,
-                            [placeholder]: event.target.value,
-                          }))
-                        }
-                        placeholder={`Nilai default {${`{${placeholder}}`}}`}
-                      />
-                    </div>
-                  ))}
-                </div>
-                {recipientTab === "csv" && (
-                  <p className="text-xs text-muted-foreground">
-                    Untuk upload CSV, kolom pada file otomatis mengisi variabel
-                    ini dari setiap baris.
-                  </p>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
+        {placeholders.length > 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>3. Variabel Pesan</CardTitle>
+              <CardDescription>
+                Isi nilai untuk variabel yang ada di dalam template.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {placeholders.map((placeholder) => (
+                  <div key={placeholder} className="grid gap-2">
+                    <Label htmlFor={`variable-${placeholder}`}>
+                      Nilai untuk {`{{${placeholder}}}`}
+                    </Label>
+                    <Input
+                      id={`variable-${placeholder}`}
+                      value={variableValues[placeholder] ?? ""}
+                      onChange={(event) =>
+                        setVariableValues((prev) => ({
+                          ...prev,
+                          [placeholder]: event.target.value,
+                        }))
+                      }
+                      placeholder={`Nilai default {${`{${placeholder}}`}}`}
+                    />
+                  </div>
+                ))}
+              </div>
+              {recipientTab === "csv" ? (
+                <p className="text-xs text-muted-foreground">
+                  CSV harus menggunakan kolom {"{{1}}"}, {"{{2}}"}, dan
+                  seterusnya. Kolom yang tidak dipakai akan memblokir preflight.
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
+        ) : null}
 
-        {/* Step 4: Ringkasan & Jadwal Pengiriman */}
+        {/* Final server-validated review before the campaign is created. */}
         <Card>
           <CardHeader>
-            <CardTitle>4. Ringkasan & Jadwal Pengiriman</CardTitle>
+            <CardTitle>
+              {placeholders.length > 0 ? "4" : "3"}. Preflight & Jadwal
+              Pengiriman
+            </CardTitle>
             <CardDescription>
-              Periksa ringkasan sebelum membuat broadcast.
+              Konfirmasi data yang divalidasi server sebelum membuat broadcast.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {localPreflightErrors.length > 0 ? (
+              <Alert variant="destructive">
+                <Warning weight="fill" />
+                <AlertDescription>
+                  {localPreflightErrors.map((error) => (
+                    <p key={error}>{error}</p>
+                  ))}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            {isPreflightErrorCurrent ? (
+              <Alert variant="destructive">
+                <Warning weight="fill" />
+                <AlertDescription>{preflightError.message}</AlertDescription>
+              </Alert>
+            ) : null}
             <div className="space-y-2 rounded-md border p-3">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Total penerima</span>
-                <span>{totalRecipients}</span>
+                <span className="text-muted-foreground">Perangkat</span>
+                <span>
+                  {isPreflightCurrent &&
+                  serverPreflight.selection.deviceId === deviceId
+                    ? selectedDevice?.phoneNumber
+                    : "Belum tervalidasi"}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Template</span>
+                <span>
+                  {isPreflightCurrent
+                    ? serverPreflight.selection.templateName
+                    : "—"}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Bahasa</span>
+                <span>
+                  {isPreflightCurrent
+                    ? serverPreflight.selection.templateLanguage
+                    : "—"}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Penerima</span>
+                <span>
+                  {isPreflightCurrent
+                    ? serverPreflight.recipientCount
+                    : totalRecipients}{" "}
+                  ({" "}
+                  {recipientTab === "manual"
+                    ? "ketik/paste"
+                    : recipientTab === "contacts"
+                      ? "daftar kontak"
+                      : csvFileName || "CSV"}
+                  )
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Mode kirim</span>
+                <span>
+                  {isPreflightCurrent &&
+                  serverPreflight.dispatchMode === "MANUAL_DISPATCH"
+                    ? "Buat antrean, kirim manual"
+                    : "Belum tervalidasi"}
+                </span>
+              </div>
+              {placeholders.length > 0 ? (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Variabel template
+                  </span>
+                  <span>{variableValidation.requiredVariables.join(", ")}</span>
+                </div>
+              ) : null}
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Status preflight</span>
+                <span>
+                  {isPreflightCurrent
+                    ? needsMultiDayAck && !acknowledgeMultiDay
+                      ? "Perlu konfirmasi multi-hari"
+                      : "Lulus"
+                    : isPreflightErrorCurrent
+                      ? "Gagal"
+                      : localPreflightErrors.length === 0
+                        ? "Memvalidasi server…"
+                        : "Menunggu data valid"}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Estimasi selesai</span>

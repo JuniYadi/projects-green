@@ -7,8 +7,23 @@ const mockAggregate = mock(async () => ({
 }))
 const mockFindUnique = mock(async () => null)
 const mockCampaignUpdate = mock(async () => ({}))
+const mockCampaignCreate = mock(async () => ({}))
 const mockDeviceFindFirst = mock(async () => null)
 const mockTemplateFindFirst = mock(async () => null)
+const mockGetDeviceBroadcastCapacity = mock(async () => ({
+  dailyLimit: 1000,
+  dailyUsed: 0,
+  hourlyLimit: 41,
+  hourlyUsed: 0,
+  remainingToday: 1000,
+  remainingThisHour: 41,
+}))
+const mockComputeRecommendedSchedule = mock(async () => ({
+  throttleMaxMessages: 41,
+  throttlePerMinutes: 60,
+  estimatedDurationMinutes: 60,
+}))
+const mockValidateSchedule = mock(async () => {})
 
 const mockPrisma = {
   whatsappBroadcastCampaign: {
@@ -16,6 +31,7 @@ const mockPrisma = {
     aggregate: mockAggregate,
     findUnique: mockFindUnique,
     update: mockCampaignUpdate,
+    create: mockCampaignCreate,
   },
   whatsappDevice: {
     findFirst: mockDeviceFindFirst,
@@ -39,6 +55,12 @@ const authContext = {
 
 mock.module("@/lib/auth/resolve-proxy-auth", () => ({
   resolveAuthContext: mock(async () => authContext),
+}))
+
+mock.module("../broadcast-schedule.service", () => ({
+  getDeviceBroadcastCapacity: mockGetDeviceBroadcastCapacity,
+  computeRecommendedSchedule: mockComputeRecommendedSchedule,
+  validateSchedule: mockValidateSchedule,
 }))
 
 const mockAddBulk = mock(async () => [])
@@ -101,6 +123,12 @@ describe("broadcastsRoutes /:id/send", () => {
     mockFindUnique.mockClear()
     mockCampaignUpdate.mockClear()
     mockAddBulk.mockClear()
+    mockDeviceFindFirst.mockResolvedValue({ id: "device-1" })
+    mockTemplateFindFirst.mockResolvedValue({
+      id: "template-1",
+      name: "Authoritative template",
+      languages: [{ body: "Hello" }],
+    })
   })
 
   it("dispatches recipients in bulk with UUID v7 job IDs without colons", async () => {
@@ -108,6 +136,12 @@ describe("broadcastsRoutes /:id/send", () => {
       id: "camp-123",
       organizationId: "org-1",
       status: "QUEUED",
+      templateId: "template-1",
+      templateLanguage: "en",
+      whatsappDeviceId: "device-1",
+      throttleMaxMessages: null,
+      throttlePerMinutes: null,
+      acknowledgeMultiDay: false,
       recipients: [
         { id: "recip-1", status: "QUEUED" },
         { id: "recip-2", status: "QUEUED" },
@@ -147,12 +181,45 @@ describe("broadcastsRoutes /:id/send", () => {
     expect(jobs[1].opts.jobId).not.toContain(":")
     expect(jobs[0].opts.jobId).not.toBe(jobs[1].opts.jobId)
   })
+
+  it("blocks dispatch when the selected template is no longer approved", async () => {
+    mockFindUnique.mockResolvedValueOnce({
+      id: "camp-123",
+      organizationId: "org-1",
+      status: "QUEUED",
+      templateId: "template-1",
+      templateLanguage: "en",
+      whatsappDeviceId: "device-1",
+      throttleMaxMessages: null,
+      throttlePerMinutes: null,
+      acknowledgeMultiDay: false,
+      recipients: [{ id: "recip-1", status: "QUEUED" }],
+    } as any)
+    mockTemplateFindFirst.mockResolvedValueOnce(null)
+
+    const response = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/camp-123/send", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: "VALIDATION_ERROR",
+      message:
+        "Select an active device, approved template, and valid language.",
+    })
+    expect(mockCampaignUpdate).not.toHaveBeenCalled()
+    expect(mockAddBulk).not.toHaveBeenCalled()
+  })
 })
 
 describe("broadcastsRoutes POST /", () => {
   beforeEach(() => {
     mockDeviceFindFirst.mockClear()
     mockTemplateFindFirst.mockClear()
+    mockCampaignCreate.mockClear()
     mockDeviceFindFirst.mockResolvedValue(null)
     mockTemplateFindFirst.mockResolvedValue(null)
   })
@@ -201,7 +268,50 @@ describe("broadcastsRoutes POST /", () => {
           },
         },
       },
-      select: { name: true },
+      select: {
+        id: true,
+        name: true,
+        languages: {
+          where: {
+            lang: "en",
+            OR: [{ isApproved: true }, { metaStatus: "APPROVED" }],
+          },
+          select: { body: true },
+          take: 1,
+        },
+      },
     })
+  })
+
+  it("rejects bypassed creation when a required recipient variable is missing", async () => {
+    mockDeviceFindFirst.mockResolvedValue({ id: "device-1" })
+    mockTemplateFindFirst.mockResolvedValue({
+      id: "template-1",
+      name: "Authoritative template",
+      languages: [{ body: "Halo {{1}}" }],
+    })
+
+    const response = await createTestApp().handle(
+      new Request("http://localhost/broadcasts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          templateId: "template-1",
+          templateName: "Bypassed client value",
+          templateLanguage: "id",
+          whatsappDeviceId: "device-1",
+          recipients: [{ phoneNumber: "+628123456789" }],
+        }),
+      })
+    )
+
+    expect(response.status).toBe(400)
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: "VALIDATION_ERROR",
+      message:
+        "Recipient 1 is missing {{1}}. Add a non-empty value for every required template variable.",
+    })
+    expect(mockCampaignCreate).not.toHaveBeenCalled()
   })
 })

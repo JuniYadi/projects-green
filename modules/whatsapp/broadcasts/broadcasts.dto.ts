@@ -17,6 +17,7 @@ export type WhatsappBroadcastRecipientDTO = Pick<
 export type WhatsappBroadcastCampaignDTO = Pick<
   Prisma.WhatsappBroadcastCampaignGetPayload<Prisma.WhatsappBroadcastCampaignDefaultArgs>,
   | "id"
+  | "templateId"
   | "templateName"
   | "templateLanguage"
   | "templateParams"
@@ -31,6 +32,7 @@ export type WhatsappBroadcastCampaignDTO = Pick<
   | "updatedAt"
   | "throttleMaxMessages"
   | "throttlePerMinutes"
+  | "acknowledgeMultiDay"
 > & {
   recipients?: WhatsappBroadcastRecipientDTO[]
   recipientCount?: number
@@ -69,6 +71,7 @@ export function toWhatsappBroadcastCampaignDTO(
 ): WhatsappBroadcastCampaignDTO {
   return {
     id: campaign.id,
+    templateId: campaign.templateId,
     templateName: campaign.templateName,
     templateLanguage: campaign.templateLanguage,
     templateParams: campaign.templateParams,
@@ -83,6 +86,7 @@ export function toWhatsappBroadcastCampaignDTO(
     updatedAt: campaign.updatedAt,
     throttleMaxMessages: campaign.throttleMaxMessages,
     throttlePerMinutes: campaign.throttlePerMinutes,
+    acknowledgeMultiDay: campaign.acknowledgeMultiDay,
     recipients:
       "recipients" in campaign
         ? campaign.recipients.map(toWhatsappBroadcastRecipientDTO)
