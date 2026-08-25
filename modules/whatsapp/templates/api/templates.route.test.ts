@@ -150,6 +150,8 @@ function createTestApp() {
   return new Elysia().use(templatesRoutes).compile()
 }
 
+const defaultRejectReason: string | null = null
+
 // Helper to build an approved template with one language
 function approvedTemplate({
   langId = "lang-en-1",
@@ -161,7 +163,7 @@ function approvedTemplate({
   footer = "",
   parameters = null,
   buttons = null,
-  rejectReason = null,
+  rejectReason = defaultRejectReason,
 } = {}) {
   return {
     id: "tpl-approved",
