@@ -391,7 +391,6 @@ export default function NewWhatsAppBroadcastPage() {
     activeRecipients,
     deviceId,
     localPreflightErrors.length,
-    needsMultiDayAck,
     selectedTemplate,
     templateLanguage,
     preflightRequestKey,

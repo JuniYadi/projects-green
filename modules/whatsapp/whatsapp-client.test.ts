@@ -123,6 +123,96 @@ describe("createWhatsAppClient", () => {
       "Device unavailable"
     )
   })
+
+  it("serializes the complete broadcast preflight request and returns its result", async () => {
+    const preflight = {
+      selection: {
+        deviceId: "device-1",
+        templateId: "template-1",
+        templateName: "Authoritative template",
+        templateLanguage: "en",
+        templateBody: "Hello {{1}}",
+      },
+      recipientCount: 1,
+      dispatchMode: "MANUAL_DISPATCH" as const,
+      capacity: {
+        dailyLimit: 1000,
+        dailyUsed: 100,
+        hourlyLimit: 50,
+        hourlyUsed: 10,
+        remainingToday: 900,
+        remainingThisHour: 40,
+      },
+      recommendation: {
+        throttleMaxMessages: 40,
+        throttlePerMinutes: 60,
+        estimatedDurationMinutes: 2,
+      },
+    }
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ok: true, ...preflight }))
+
+    const result = await createWhatsAppClient().preflightBroadcast({
+      templateId: "template-1",
+      templateLanguage: "en",
+      whatsappDeviceId: "device-1",
+      throttleMaxMessages: 40,
+      throttlePerMinutes: 60,
+      acknowledgeMultiDay: true,
+      recipients: [
+        {
+          phoneNumber: "+14155550100",
+          dynamicValues: { "{{1}}": "Ada" },
+        },
+      ],
+    })
+
+    expect(result).toEqual({ ok: true, ...preflight })
+    const [url, init] = requestCall()
+    expect(url).toBe("/api/whatsapp/broadcasts/preflight")
+    expect(init).toMatchObject({
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        templateId: "template-1",
+        templateLanguage: "en",
+        whatsappDeviceId: "device-1",
+        throttleMaxMessages: 40,
+        throttlePerMinutes: 60,
+        acknowledgeMultiDay: true,
+        recipients: [
+          {
+            phoneNumber: "+14155550100",
+            dynamicValues: { "{{1}}": "Ada" },
+          },
+        ],
+      }),
+    })
+  })
+
+  it("surfaces a preflight validation error from the API", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message:
+            "Select an active device, approved template, and valid language.",
+        },
+        400
+      )
+    )
+
+    await expect(
+      createWhatsAppClient().preflightBroadcast({
+        templateId: "template-1",
+        templateLanguage: "en",
+        whatsappDeviceId: "device-1",
+        recipients: [{ phoneNumber: "+14155550100" }],
+      })
+    ).rejects.toThrow(
+      "Select an active device, approved template, and valid language."
+    )
+  })
   it("calls the remaining resource methods with their API shapes", async () => {
     const client = createWhatsAppClient()
     const respond = (payload: Record<string, unknown> = {}) => {
