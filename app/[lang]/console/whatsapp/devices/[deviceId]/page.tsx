@@ -173,7 +173,7 @@ function WhatsAppProfilePreview({
   return (
     <Card
       data-testid="whatsapp-profile-preview"
-      className="overflow-hidden border shadow-sm"
+      className="overflow-hidden border shadow-sm [--card-spacing:0px]"
     >
       <CardHeader className="bg-emerald-800 px-5 py-4 text-white dark:bg-emerald-950">
         <div className="flex items-center justify-between">
