@@ -60,6 +60,10 @@ export type CsvRecipient = {
   isValid: boolean
 }
 
+// These labels deliberately match the parser's recognized phone/name columns.
+export const RECIPIENT_CSV_PHONE_HEADER = "Nomor WhatsApp"
+export const RECIPIENT_CSV_NAME_HEADER = "Nama"
+
 const PHONE_COLUMN_PATTERN = /phone|telepon|hp|nomor|wa|mobile/i
 const NAME_COLUMN_PATTERN = /name|nama/i
 

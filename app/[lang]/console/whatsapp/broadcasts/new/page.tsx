@@ -33,6 +33,7 @@ import {
   parseManualRecipients,
   type CsvRecipient,
 } from "@/lib/whatsapp-phone-sanitizer"
+import { buildRecipientCsvTemplate } from "@/modules/whatsapp/broadcasts/recipient-csv-template"
 import {
   whatsappClient,
   type Contact,
@@ -41,6 +42,7 @@ import {
   type DeviceBroadcastCapacity,
 } from "@/modules/whatsapp/whatsapp-client"
 import { useTemplates } from "@/modules/whatsapp/templates/api/templates.hooks"
+import { extractTemplateVariables } from "@/modules/whatsapp/templates/template-validator"
 
 type RecipientTab = "manual" | "contacts" | "csv"
 
@@ -48,18 +50,6 @@ type BroadcastRecipientInput = CreateBroadcastInput["recipients"][number]
 
 const THROTTLE_PER_MINUTES = 60
 const FALLBACK_THROTTLE_MAX_MESSAGES = 40
-const PLACEHOLDER_PATTERN = /\{\{(\d+)\}\}/g
-
-function extractPlaceholders(body?: string | null): string[] {
-  if (!body) {
-    return []
-  }
-  const found = new Set<string>()
-  for (const match of body.matchAll(PLACEHOLDER_PATTERN)) {
-    found.add(match[1])
-  }
-  return [...found].sort((a, b) => Number(a) - Number(b))
-}
 
 function formatDuration(minutes: number): string {
   if (minutes < 60) {
@@ -135,7 +125,7 @@ export default function NewWhatsAppBroadcastPage() {
     [selectedTemplate, templateLanguage]
   )
   const placeholders = React.useMemo(
-    () => extractPlaceholders(selectedLanguageBody),
+    () => extractTemplateVariables(selectedLanguageBody).map(String),
     [selectedLanguageBody]
   )
 
@@ -358,6 +348,20 @@ export default function NewWhatsAppBroadcastPage() {
       toast.error("Unable to read the CSV file.")
       setCsvRows([])
     }
+  }
+
+  function downloadCsvTemplate() {
+    const csv = buildRecipientCsvTemplate(selectedLanguageBody)
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+
+    link.href = url
+    link.download = "template-penerima-whatsapp.csv"
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -645,6 +649,28 @@ export default function NewWhatsAppBroadcastPage() {
               </TabsContent>
 
               <TabsContent value="csv" className="space-y-3 pt-2">
+                <div className="flex flex-col gap-3 rounded-md border bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Template CSV penerima</p>
+                    <p className="text-xs text-muted-foreground">
+                      Unduh kolom yang sesuai dengan bahasa template. Kolom
+                      Nomor WhatsApp dan Nama dikenali otomatis; variabel pesan
+                      mengikuti urutan {"{{1}}"}, {"{{2}}"}, dan seterusnya.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Ganti baris contoh fiktif sebelum mengunggah file.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!selectedTemplate || !templateLanguage}
+                    onClick={downloadCsvTemplate}
+                  >
+                    Unduh template CSV
+                  </Button>
+                </div>
                 <div className="grid gap-2">
                   <Label htmlFor="csv-file">File CSV / TXT</Label>
                   <Input
