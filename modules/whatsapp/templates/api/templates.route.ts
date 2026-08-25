@@ -168,6 +168,16 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         where.syncStatus = query.syncStatus as WhatsappTemplateSyncStatus
       }
 
+      if (query.broadcastEligible === "true") {
+        where.syncStatus = "SYNCED"
+        where.metaStatus = "APPROVED"
+        where.languages = {
+          some: {
+            OR: [{ isApproved: true }, { metaStatus: "APPROVED" }],
+          },
+        }
+      }
+
       const sortOrder = query.sort === "asc" ? "asc" : ("desc" as const)
 
       const [total, templates] = await Promise.all([
@@ -175,7 +185,14 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         prisma.whatsappTemplate.findMany({
           where,
           include: {
-            languages: true,
+            languages:
+              query.broadcastEligible === "true"
+                ? {
+                    where: {
+                      OR: [{ isApproved: true }, { metaStatus: "APPROVED" }],
+                    },
+                  }
+                : true,
           },
           orderBy: { createdAt: sortOrder },
           skip,

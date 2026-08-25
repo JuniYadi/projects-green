@@ -754,6 +754,43 @@ describe("templatesRoutes", () => {
     })
   })
   describe("GET / query filters", () => {
+    it("returns only approved template variants for the selected organization device", async () => {
+      mockTemplateFindMany.mockResolvedValueOnce([])
+      mockTemplateCount.mockResolvedValueOnce(0)
+      const app = createTestApp()
+
+      const res = await app.handle(
+        new Request(
+          "http://localhost/templates?whatsappDeviceId=device-1&broadcastEligible=true"
+        )
+      )
+
+      expect(res.status).toBe(200)
+      expect(mockTemplateFindMany).toHaveBeenCalledWith({
+        where: {
+          organizationId: "org-1",
+          whatsappDeviceId: "device-1",
+          syncStatus: "SYNCED",
+          metaStatus: "APPROVED",
+          languages: {
+            some: {
+              OR: [{ isApproved: true }, { metaStatus: "APPROVED" }],
+            },
+          },
+        },
+        include: {
+          languages: {
+            where: {
+              OR: [{ isApproved: true }, { metaStatus: "APPROVED" }],
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        skip: 0,
+        take: 50,
+      })
+    })
+
     it("filters templates by wabaId by resolving deviceId", async () => {
       mockDeviceFindFirst.mockResolvedValueOnce({
         id: "device-waba-1",

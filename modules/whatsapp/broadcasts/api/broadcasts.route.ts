@@ -25,10 +25,11 @@ const broadcastRecipientSchema = t.Object({
 })
 
 const broadcastCampaignBodySchema = t.Object({
+  templateId: t.String(),
   templateName: t.String(),
   templateLanguage: t.String(),
   templateParams: t.Optional(t.Any()),
-  whatsappDeviceId: t.Optional(t.String()),
+  whatsappDeviceId: t.String(),
   whatsappContactGroupId: t.Optional(t.String()),
   throttleMaxMessages: t.Optional(t.Number()),
   throttlePerMinutes: t.Optional(t.Number()),
@@ -218,11 +219,54 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
         }
       }
 
-      const { recipients, acknowledgeMultiDay, ...campaignData } = body
+      const {
+        recipients,
+        acknowledgeMultiDay,
+        templateId,
+        templateName: _templateName,
+        ...campaignData
+      } = body
       const organizationId =
         whatsappAuth.type === "workos"
           ? whatsappAuth.organizationId!
           : (body as any).organizationId
+
+      const [device, template] = await Promise.all([
+        prisma.whatsappDevice.findFirst({
+          where: {
+            id: campaignData.whatsappDeviceId,
+            organizationId,
+            status: "ACTIVE",
+          },
+          select: { id: true },
+        }),
+        prisma.whatsappTemplate.findFirst({
+          where: {
+            id: templateId,
+            organizationId,
+            whatsappDeviceId: campaignData.whatsappDeviceId,
+            syncStatus: "SYNCED",
+            metaStatus: "APPROVED",
+            languages: {
+              some: {
+                lang: campaignData.templateLanguage,
+                OR: [{ isApproved: true }, { metaStatus: "APPROVED" }],
+              },
+            },
+          },
+          select: { name: true },
+        }),
+      ])
+
+      if (!device || !template) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message:
+            "Select an active device, approved template, and valid language.",
+        }
+      }
 
       // Validate device schedule limits when throttle is specified
       if (campaignData.throttleMaxMessages && campaignData.throttlePerMinutes) {
@@ -260,6 +304,7 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
       const campaign = await prisma.whatsappBroadcastCampaign.create({
         data: {
           ...campaignData,
+          templateName: template.name,
           organizationId,
           total: recipients.length,
           queued: recipients.length,
