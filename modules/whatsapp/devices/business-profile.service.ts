@@ -343,7 +343,7 @@ export async function syncTemplatesFromMeta(
     const rejectReason =
       metaTpl.rejected_reason !== "NONE" ? metaTpl.rejected_reason : null
 
-    // Find or create template by (organizationId, whatsappDeviceId, canonical slug / name)
+    // Meta identifiers match only technical slugs; local names are display labels.
     const canonicalSlug = formatTemplateSlug(metaTpl.name)
     const hyphenatedSlug = metaTpl.name
       .trim()
@@ -358,10 +358,7 @@ export async function syncTemplatesFromMeta(
       where: {
         organizationId,
         whatsappDeviceId: deviceId,
-        OR: [
-          { slug: { in: possibleSlugs } },
-          { name: metaTpl.name },
-        ],
+        slug: { in: possibleSlugs },
       },
       include: {
         languages: {
@@ -387,8 +384,9 @@ export async function syncTemplatesFromMeta(
         },
       })
     } else {
-      // Dirty check on parent template: only update if metaStatus/category changed
+      // Update only Meta-controlled parent fields when the remote record changed.
       const isTemplateDirty =
+        template.slug !== (canonicalSlug || metaTpl.name) ||
         template.metaStatus !== metaStatus ||
         template.category !== category ||
         template.syncStatus !== "SYNCED"

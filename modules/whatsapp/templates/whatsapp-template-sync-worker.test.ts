@@ -33,9 +33,8 @@ mock.module("@/modules/whatsapp/audit/whatsapp-audit.service", () => ({
   logWhatsappAuditEvent: mock().mockResolvedValue({}),
 }))
 
-const { syncTemplates } = await import(
-  "@/scripts/whatsapp-template-sync-worker"
-)
+const { syncTemplates } =
+  await import("@/scripts/whatsapp-template-sync-worker")
 
 describe("whatsapp-template-sync-worker", () => {
   beforeEach(() => {
@@ -59,7 +58,9 @@ describe("whatsapp-template-sync-worker", () => {
       organizationId: "org-1",
     })
 
-    mockWhatsAppDeviceClient.fromDevice.mockReturnValue(mockWhatsAppDeviceClient)
+    mockWhatsAppDeviceClient.fromDevice.mockReturnValue(
+      mockWhatsAppDeviceClient
+    )
   })
 
   it("matches existing template created with underscore, title case, or hyphenated slug", async () => {
@@ -84,7 +85,9 @@ describe("whatsapp-template-sync-worker", () => {
     })
 
     mockPrisma.whatsappTemplate.update.mockResolvedValue({ id: "tpl-123" })
-    mockPrisma.whatsappTemplateLanguage.upsert.mockResolvedValue({ id: "lang-1" })
+    mockPrisma.whatsappTemplateLanguage.upsert.mockResolvedValue({
+      id: "lang-1",
+    })
     mockPrisma.whatsappTemplate.updateMany.mockResolvedValue({ count: 0 })
 
     const summary = await syncTemplates({
@@ -136,16 +139,12 @@ describe("whatsapp-template-sync-worker", () => {
         where: expect.objectContaining({
           organizationId: "org-1",
           whatsappDeviceId: "device-1",
-          AND: expect.arrayContaining([
-            expect.objectContaining({
-              slug: expect.objectContaining({
-                notIn: expect.arrayContaining([
-                  "pengingat_donor_darah",
-                  "pengingat-donor-darah",
-                ]),
-              }),
-            }),
-          ]),
+          slug: expect.objectContaining({
+            notIn: expect.arrayContaining([
+              "pengingat_donor_darah",
+              "pengingat-donor-darah",
+            ]),
+          }),
         }),
       })
     )

@@ -81,7 +81,6 @@ function possibleSlugsFor(name: string): string[] {
   )
 }
 
-
 function toSupportedMetaStatus(status?: string) {
   const normalized = status?.toUpperCase()
 
@@ -191,7 +190,6 @@ async function fetchAllTemplates(client: WhatsAppDeviceClient) {
   return templates
 }
 
-
 async function pushLocalTemplatesToMeta(
   client: WhatsAppDeviceClient,
   organizationId: string,
@@ -226,7 +224,9 @@ async function pushLocalTemplatesToMeta(
           components,
         }
         const metaResult = await client.createTemplate(payload)
-        const metaStatus = toSupportedMetaStatus(metaResult.status) ?? WhatsappTemplateMetaStatus.PENDING
+        const metaStatus =
+          toSupportedMetaStatus(metaResult.status) ??
+          WhatsappTemplateMetaStatus.PENDING
 
         await prisma.whatsappTemplate.update({
           where: { id: tpl.id },
@@ -265,18 +265,14 @@ async function upsertTemplate(
     where: {
       organizationId,
       whatsappDeviceId: deviceId,
-      OR: [
-        { slug: { in: possibleSlugs } },
-        { name: template.name },
-      ],
+      slug: { in: possibleSlugs },
     },
-    select: { id: true, name: true, slug: true },
+    select: { id: true },
   })
   const metaStatus = toSupportedMetaStatus(template.status)
   const languageData = toLanguageData(template)
-  const data = {
+  const metaData = {
     slug: canonicalSlug || template.name,
-    name: template.name,
     category: template.category
       ? (template.category as WhatsappBillingCategory)
       : null,
@@ -289,7 +285,9 @@ async function upsertTemplate(
   if (!existing) {
     await prisma.whatsappTemplate.create({
       data: {
-        ...data,
+        ...metaData,
+        // Meta-only discoveries have no local display label yet.
+        name: template.name,
         organizationId,
         languages: {
           create: languageData,
@@ -301,7 +299,7 @@ async function upsertTemplate(
 
   await prisma.whatsappTemplate.update({
     where: { id: existing.id },
-    data,
+    data: metaData,
   })
 
   await prisma.whatsappTemplateLanguage.upsert({
@@ -347,7 +345,11 @@ export async function syncTemplates(
   try {
     client = await createClient(jobData)
     // 1. Push local un-synced / newly created templates to Meta Cloud API
-    await pushLocalTemplatesToMeta(client, jobData.organizationId, jobData.deviceId)
+    await pushLocalTemplatesToMeta(
+      client,
+      jobData.organizationId,
+      jobData.deviceId
+    )
     // 2. Pull all templates from Meta Cloud API
     templates = await fetchAllTemplates(client)
   } catch (error) {
@@ -401,20 +403,11 @@ export async function syncTemplates(
     where: {
       organizationId: jobData.organizationId,
       whatsappDeviceId: jobData.deviceId,
-      AND: [
-        {
-          slug: {
-            notIn: Array.from(
-              new Set(templates.flatMap((t) => possibleSlugsFor(t.name)))
-            ),
-          },
-        },
-        {
-          name: {
-            notIn: templates.map((t) => t.name),
-          },
-        },
-      ],
+      slug: {
+        notIn: Array.from(
+          new Set(templates.flatMap((t) => possibleSlugsFor(t.name)))
+        ),
+      },
       syncStatus: { not: WhatsappTemplateSyncStatus.NOT_IN_META },
     },
     data: {
@@ -526,10 +519,7 @@ export async function syncTemplateStatus(
         where: {
           organizationId: jobData.organizationId,
           whatsappDeviceId: jobData.deviceId,
-          OR: [
-            { slug: { in: possibleSlugs } },
-            { name: template.name },
-          ],
+          slug: { in: possibleSlugs },
         },
         select: { id: true },
       })

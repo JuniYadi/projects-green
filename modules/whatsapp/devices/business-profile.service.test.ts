@@ -286,7 +286,7 @@ describe("business-profile.service", () => {
       profile_picture_handle: "handle-123",
     })
   })
-  it("syncTemplatesFromMeta syncs templates across cursor pages", async () => {
+  it("initializes Meta-discovered display labels across cursor pages", async () => {
     mockFindUnique.mockImplementationOnce(async () => ({
       id: "d-1",
       organizationId: "org-1",
@@ -352,13 +352,19 @@ describe("business-profile.service", () => {
       expect(mockTemplateCreate).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({
-          data: expect.objectContaining({ slug: "first_template" }),
+          data: expect.objectContaining({
+            slug: "first_template",
+            name: "first_template",
+          }),
         })
       )
       expect(mockTemplateCreate).toHaveBeenNthCalledWith(
         2,
         expect.objectContaining({
-          data: expect.objectContaining({ slug: "second_template" }),
+          data: expect.objectContaining({
+            slug: "second_template",
+            name: "second_template",
+          }),
         })
       )
       expect(requestedUrls).toHaveLength(2)
@@ -367,6 +373,76 @@ describe("business-profile.service", () => {
       expect(requestedUrls[0].searchParams.get("limit")).toBe("100")
       expect(requestedUrls[0].searchParams.get("fields")).toBe(
         "name,language,status,category,components,rejected_reason"
+      )
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  it("preserves a local display name while matching Meta by technical slug", async () => {
+    mockFindUnique.mockResolvedValue({
+      id: "d-1",
+      organizationId: "org-1",
+      token: "token",
+      tokenEncrypted: null,
+      tokenIv: null,
+      whatsappPhoneId: "phone-1",
+      whatsappBusinessAccountId: "waba-1",
+      whatsappVersion: "v22.0",
+      whatsappMetaApp: { metaAppId: "app-1" },
+    })
+    mockTemplateFindFirst.mockResolvedValue({
+      id: "template-1",
+      name: "Order Confirmation",
+      slug: "order_confirmation",
+      category: "UTILITY",
+      metaStatus: "PENDING",
+      syncStatus: "NOT_SYNCED",
+      languages: [],
+    })
+    mockTemplateUpdate.mockResolvedValue({
+      id: "template-1",
+      languages: [],
+    })
+
+    const originalFetch = globalThis.fetch
+    const mockFetch = Object.assign(
+      async () =>
+        new Response(
+          JSON.stringify({
+            data: [
+              {
+                id: "meta-1",
+                name: "order_confirmation",
+                language: "en_US",
+                status: "APPROVED",
+                category: "UTILITY",
+                components: [{ type: "BODY", text: "Confirmed" }],
+              },
+            ],
+          })
+        ),
+      { preconnect: originalFetch.preconnect }
+    )
+    globalThis.fetch = mockFetch
+
+    try {
+      await syncTemplatesFromMeta("d-1", "org-1")
+
+      expect(mockTemplateFindFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            organizationId: "org-1",
+            whatsappDeviceId: "d-1",
+            slug: { in: expect.arrayContaining(["order_confirmation"]) },
+          },
+        })
+      )
+      expect(mockTemplateUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "template-1" },
+          data: expect.not.objectContaining({ name: expect.anything() }),
+        })
       )
     } finally {
       globalThis.fetch = originalFetch

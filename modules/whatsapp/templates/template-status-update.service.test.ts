@@ -64,10 +64,7 @@ describe("processTemplateStatusUpdate", () => {
         where: expect.objectContaining({
           organizationId: "org-1",
           whatsappDeviceId: "device-1",
-          OR: expect.arrayContaining([
-            { slug: { in: expect.arrayContaining(["thank-you-message"]) } },
-            { name: "thank_you_message" },
-          ]),
+          slug: { in: expect.arrayContaining(["thank_you_message"]) },
         }),
       })
     )

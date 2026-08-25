@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import type { Job } from "bullmq"
+import type { Prisma } from "@prisma/client"
 
 process.env.REDIS_URL = "redis://localhost:6379/0"
 
@@ -36,7 +37,8 @@ const mockPrisma = {
     findFirst: mock(async (..._args: unknown[]) => null as unknown),
     findMany: mock(async (..._args: unknown[]) => []),
     create: mock(async (..._args: unknown[]) => ({})),
-    update: mock(async (..._args: unknown[]) => ({})),
+    update:
+      mock<(args: Prisma.WhatsappTemplateUpdateArgs) => Promise<unknown>>(),
     updateMany: mock(async (..._args: unknown[]) => ({ count: 0 })),
   },
   whatsappTemplateLanguage: {
@@ -146,7 +148,7 @@ describe("whatsapp-template-sync-worker", () => {
       {
         data: {
           organizationId: "org_1",
-          slug: "welcome-message",
+          slug: "welcome_message",
           name: "welcome_message",
           category: "MARKETING",
           syncStatus: "SYNCED",
@@ -239,6 +241,45 @@ describe("whatsapp-template-sync-worker", () => {
     expect(logWhatsappAuditEventMock).toHaveBeenCalledWith(
       expect.objectContaining({ action: "TEMPLATE_SYNCED", status: "OK" })
     )
+  })
+
+  it("preserves a local display name while pulling Meta template status", async () => {
+    mockPrisma.whatsappTemplate.findFirst.mockResolvedValue({
+      id: "template_1",
+      name: "Welcome Message",
+      slug: "welcome_message",
+    })
+    listTemplatesPageMock.mockResolvedValue({
+      data: [
+        {
+          name: "welcome_message",
+          language: "en_US",
+          status: "APPROVED",
+          category: "MARKETING",
+          components: [{ type: "BODY", text: "Hello" }],
+        },
+      ],
+    })
+
+    await syncTemplates({
+      organizationId: "org_1",
+      deviceId: "device_1",
+      method: "sync-templates",
+    })
+
+    expect(mockPrisma.whatsappTemplate.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          organizationId: "org_1",
+          whatsappDeviceId: "device_1",
+          slug: { in: expect.arrayContaining(["welcome_message"]) },
+        },
+      })
+    )
+    const updateArgs = mockPrisma.whatsappTemplate.update.mock.calls[0]?.[0]
+    if (!updateArgs) throw new Error("Expected template update arguments")
+    expect(updateArgs.data.name).toBeUndefined()
+    expect(updateArgs.data.slug).toBe("welcome_message")
   })
 
   it("emits TEMPLATE_SYNC_FAILED when sync-templates partially fails", async () => {

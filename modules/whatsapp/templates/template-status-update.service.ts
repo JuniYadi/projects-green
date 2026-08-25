@@ -107,10 +107,7 @@ export async function processTemplateStatusUpdate(
     where: {
       organizationId,
       whatsappDeviceId: deviceId,
-      OR: [
-        { slug: { in: possibleSlugsFor(update.templateName) } },
-        { name: update.templateName },
-      ],
+      slug: { in: possibleSlugsFor(update.templateName) },
     },
     select: {
       id: true,
