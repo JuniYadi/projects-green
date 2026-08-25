@@ -22,6 +22,7 @@ import {
   Check,
   ChatsCircle,
   FileCode,
+  DotsThree,
 } from "@phosphor-icons/react"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -38,6 +39,13 @@ import {
 } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   WhatsAppTemplatePreview,
   resolveTemplatePreviewValues,
@@ -328,53 +336,50 @@ export function TemplateDetailView({
             </Button>
           )}
 
-          {currentLanguage && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setCodeModalOpen(true)}
-              className="gap-1.5"
-            >
-              <Code weight="bold" className="size-4 text-primary" />
-              Get Code Snippet
-            </Button>
-          )}
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() =>
-              router.push(
-                localizePathname({
-                  pathname: `/console/whatsapp/templates/new?duplicate=${template.id}`,
-                  locale,
-                })
-              )
-            }
-          >
-            <Copy weight="bold" className="mr-1.5 size-4" />
-            Duplicate
-          </Button>
-
-          {onSync && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onSync}
-              disabled={syncing}
-            >
-              <ArrowsClockwise
-                className={`mr-1 size-4 ${syncing ? "animate-spin" : ""}`}
-              />
-              {syncing ? "Syncing..." : "Sync"}
-            </Button>
-          )}
-
-          {onDelete && (
-            <Button variant="destructive" size="sm" onClick={onDelete}>
-              Delete
-            </Button>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button aria-label="More actions" size="icon" variant="outline">
+                <DotsThree weight="bold" className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {currentLanguage && (
+                <DropdownMenuItem onSelect={() => setCodeModalOpen(true)}>
+                  <Code weight="bold" className="size-4 text-primary" />
+                  Get Code Snippet
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                onSelect={() =>
+                  router.push(
+                    localizePathname({
+                      pathname: `/console/whatsapp/templates/new?duplicate=${template.id}`,
+                      locale,
+                    })
+                  )
+                }
+              >
+                <Copy weight="bold" className="size-4" />
+                Duplicate
+              </DropdownMenuItem>
+              {onSync && (
+                <DropdownMenuItem onSelect={onSync} disabled={syncing}>
+                  <ArrowsClockwise
+                    className={`size-4 ${syncing ? "animate-spin" : ""}`}
+                  />
+                  {syncing ? "Syncing..." : "Sync"}
+                </DropdownMenuItem>
+              )}
+              {onDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" onSelect={onDelete}>
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

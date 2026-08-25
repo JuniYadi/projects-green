@@ -1,6 +1,6 @@
 import "@/test/register"
-import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { cleanup, fireEvent, render } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { act, cleanup, fireEvent, render } from "@testing-library/react"
 import type {
   WhatsAppTemplate,
   WhatsAppTemplateLanguage,
@@ -54,6 +54,8 @@ const propsFor = (
 })
 
 describe("TemplateDetailView", () => {
+  afterEach(() => cleanup())
+
   beforeEach(() => {
     cleanup()
     routerPush.mockClear()
@@ -119,7 +121,7 @@ describe("TemplateDetailView", () => {
     expect(view.getAllByText("Track order").length).toBeGreaterThanOrEqual(1)
     expect(view.getByText("en")).toBeInTheDocument()
     expect(
-      view.getByRole("button", { name: /Get Code Snippet/i })
+      view.getByRole("button", { name: "More actions" })
     ).toBeInTheDocument()
   })
 
@@ -211,6 +213,39 @@ describe("TemplateDetailView", () => {
     expect(view.container.textContent).toContain(reason)
   })
 
+  it("keeps the approved send action primary in the overflow layout", () => {
+    const view = render(<TemplateDetailView {...propsFor()} />)
+
+    expect(
+      view.getAllByRole("button", { name: "Send Test Message" })
+    ).toHaveLength(1)
+    expect(
+      view.getByRole("button", { name: "More actions" })
+    ).toBeInTheDocument()
+    expect(
+      view.queryByRole("button", { name: "Action" })
+    ).not.toBeInTheDocument()
+    expect(
+      view.queryByRole("button", { name: "Get Code Snippet" })
+    ).not.toBeInTheDocument()
+    expect(
+      view.queryByRole("button", { name: "Duplicate" })
+    ).not.toBeInTheDocument()
+
+    act(() => {
+      fireEvent.keyDown(view.getByRole("button", { name: "More actions" }), {
+        key: "ArrowDown",
+      })
+    })
+
+    expect(
+      view.getByRole("menuitem", { name: "Get Code Snippet" })
+    ).toBeInTheDocument()
+    expect(
+      view.getByRole("menuitem", { name: "Duplicate" })
+    ).toBeInTheDocument()
+  })
+
   it("navigates to localized test-message and duplicate actions", () => {
     const view = render(<TemplateDetailView {...propsFor()} />)
 
@@ -219,9 +254,55 @@ describe("TemplateDetailView", () => {
       "/en/console/whatsapp/messages?template=template-1"
     )
 
-    fireEvent.click(view.getByRole("button", { name: "Duplicate" }))
+    act(() => {
+      fireEvent.keyDown(view.getByRole("button", { name: "More actions" }), {
+        key: "ArrowDown",
+      })
+    })
+    fireEvent.click(view.getByRole("menuitem", { name: "Duplicate" }))
     expect(routerPush).toHaveBeenLastCalledWith(
       "/en/console/whatsapp/templates/new?duplicate=template-1"
     )
+  })
+
+  it("separates destructive delete and delegates it to confirmation", () => {
+    const onDelete = mock()
+    const view = render(<TemplateDetailView {...propsFor({ onDelete })} />)
+
+    act(() => {
+      fireEvent.keyDown(view.getByRole("button", { name: "More actions" }), {
+        key: "ArrowDown",
+      })
+    })
+
+    const deleteItem = view.getByRole("menuitem", { name: "Delete" })
+    expect(deleteItem).toHaveAttribute("data-variant", "destructive")
+    expect(
+      view.baseElement.querySelector('[data-slot="dropdown-menu-separator"]')
+    ).toBeInTheDocument()
+    expect(onDelete).not.toHaveBeenCalled()
+
+    fireEvent.click(deleteItem)
+    expect(onDelete).toHaveBeenCalledTimes(1)
+  })
+
+  it("preserves optional and disabled sync action availability", () => {
+    const onSync = mock()
+    const view = render(
+      <TemplateDetailView {...propsFor({ onSync, syncing: true })} />
+    )
+
+    act(() => {
+      fireEvent.keyDown(view.getByRole("button", { name: "More actions" }), {
+        key: "ArrowDown",
+      })
+    })
+
+    const syncItem = view.getByText("Syncing...").closest('[role="menuitem"]')
+    expect(syncItem).toHaveAttribute("data-disabled", "")
+    expect(
+      view.queryByRole("menuitem", { name: "Delete" })
+    ).not.toBeInTheDocument()
+    expect(onSync).not.toHaveBeenCalled()
   })
 })
