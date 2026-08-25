@@ -146,7 +146,7 @@ describe("whatsapp-template-sync-worker", () => {
       {
         data: {
           organizationId: "org_1",
-          slug: "welcome-message",
+          slug: "welcome_message",
           name: "welcome_message",
           category: "MARKETING",
           syncStatus: "SYNCED",
@@ -239,6 +239,45 @@ describe("whatsapp-template-sync-worker", () => {
     expect(logWhatsappAuditEventMock).toHaveBeenCalledWith(
       expect.objectContaining({ action: "TEMPLATE_SYNCED", status: "OK" })
     )
+  })
+
+  it("preserves a local display name while pulling Meta template status", async () => {
+    mockPrisma.whatsappTemplate.findFirst.mockResolvedValue({
+      id: "template_1",
+      name: "Welcome Message",
+      slug: "welcome_message",
+    })
+    listTemplatesPageMock.mockResolvedValue({
+      data: [
+        {
+          name: "welcome_message",
+          language: "en_US",
+          status: "APPROVED",
+          category: "MARKETING",
+          components: [{ type: "BODY", text: "Hello" }],
+        },
+      ],
+    })
+
+    await syncTemplates({
+      organizationId: "org_1",
+      deviceId: "device_1",
+      method: "sync-templates",
+    })
+
+    expect(mockPrisma.whatsappTemplate.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          organizationId: "org_1",
+          whatsappDeviceId: "device_1",
+          slug: { in: expect.arrayContaining(["welcome_message"]) },
+        },
+      })
+    )
+    const updateData = mockPrisma.whatsappTemplate.update.mock.calls[0]?.[0]
+      ?.data as Record<string, unknown>
+    expect(updateData.name).toBeUndefined()
+    expect(updateData.slug).toBe("welcome_message")
   })
 
   it("emits TEMPLATE_SYNC_FAILED when sync-templates partially fails", async () => {
