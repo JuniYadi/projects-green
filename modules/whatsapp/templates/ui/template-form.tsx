@@ -796,9 +796,7 @@ export function TemplateForm({
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Media sample ini digunakan Meta untuk proses review
-                        template. Anda tetap dapat mengirimkan media dinamis
-                        yang berbeda saat broadcast.
+                        <WhatsAppText id="s373" />
                       </p>
                     </div>
                     <StorageDropzone
@@ -1141,7 +1139,7 @@ export function TemplateForm({
                             onClick={() => setCategory(rw.suggestedCategory!)}
                             className="h-7 shrink-0 border-amber-500/40 bg-amber-500/20 text-xs font-semibold text-amber-900 hover:bg-amber-500/30 dark:text-amber-100"
                           >
-                            Ubah ke {rw.suggestedCategory}
+                            <WhatsAppText id="s374" /> {rw.suggestedCategory}
                           </Button>
                         )}
                     </div>

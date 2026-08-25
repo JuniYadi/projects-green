@@ -1,5 +1,8 @@
 "use client"
-import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
+import {
+  formatWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import { Warning } from "@phosphor-icons/react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -23,14 +26,8 @@ export function AccessRestricted({
           <WhatsAppText id="s197" />
         </p>
         <div className="mt-2 text-sm text-muted-foreground">
-          <p>
-            <WhatsAppText id="s198" />{" "}
-            <span className="font-medium">{current ?? "none"}</span>
-          </p>
-          <p>
-            <WhatsAppText id="s199" />
-            <span className="font-medium">{required}</span>
-          </p>
+          <p>{formatWhatsAppText("s356", { role: current ?? "none" })}</p>
+          <p>{formatWhatsAppText("s357", { role: required })}</p>
         </div>
         <p className="mt-3 text-sm text-muted-foreground">{action}</p>
       </CardContent>

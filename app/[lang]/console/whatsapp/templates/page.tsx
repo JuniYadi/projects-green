@@ -354,7 +354,10 @@ export default function ConsoleTemplatesPage() {
         `${row.metaStatus ?? "UNKNOWN"}_${row.syncStatus ?? "NOT_SYNCED"}`,
       id: "status",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
+        <DataTableColumnHeader
+          column={column}
+          title={getWhatsAppText("s302", locale)}
+        />
       ),
       cell: ({ row }) => <TemplateStatusCell template={row.original} />,
     },
@@ -383,7 +386,7 @@ export default function ConsoleTemplatesPage() {
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
-          title={getWhatsAppText("s113")}
+          title={getWhatsAppText("s113", locale)}
         />
       ),
       cell: ({ row }) => {
@@ -436,7 +439,7 @@ export default function ConsoleTemplatesPage() {
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
-          title={getWhatsAppText("s178")}
+          title={getWhatsAppText("s178", locale)}
         />
       ),
       cell: ({ row }) => new Date(row.original.createdAt).toLocaleString(),
@@ -446,7 +449,7 @@ export default function ConsoleTemplatesPage() {
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
-          title={getWhatsAppText("s179")}
+          title={getWhatsAppText("s179", locale)}
         />
       ),
       cell: ({ row }) => {

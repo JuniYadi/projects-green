@@ -535,7 +535,9 @@ function WebhooksTab({
             <TableRow>
               <TableHead>URL</TableHead>
               <TableHead>Auth</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>
+                <WhatsAppText id="s302" />
+              </TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>

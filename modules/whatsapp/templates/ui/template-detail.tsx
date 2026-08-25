@@ -431,13 +431,15 @@ export function TemplateDetailView({
               <Info weight="fill" className="size-5" />
             </div>
             <div className="space-y-1">
-              <p className="text-sm font-semibold">Informasi dari Meta</p>
+              <p className="text-sm font-semibold">
+                <WhatsAppText id="s375" />
+              </p>
               <p className="text-xs leading-relaxed text-foreground/80">
-                Kategori template saat ini:{" "}
+                <WhatsAppText id="s376" />{" "}
                 {template.category ?? "Tidak tersedia"}
               </p>
               <p className="text-xs leading-relaxed text-foreground/80">
-                Alasan dari Meta: {metaReason}
+                <WhatsAppText id="s377" /> {metaReason}
               </p>
             </div>
           </CardContent>

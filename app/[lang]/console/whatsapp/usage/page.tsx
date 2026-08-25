@@ -1,5 +1,8 @@
 "use client"
-import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
+import {
+  formatWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import {
@@ -409,7 +412,11 @@ export default function WhatsAppUsagePage() {
               </div>
             )}
             <p className="text-xs text-muted-foreground">
-              {costData?.totalEntries ?? 0} ledger entries
+              {formatWhatsAppText(
+                "s300",
+                { count: costData?.totalEntries ?? 0 },
+                locale
+              )}
             </p>
           </CardContent>
         </Card>
@@ -552,8 +559,14 @@ export default function WhatsAppUsagePage() {
                         {dev.phoneNumber ?? "Unknown"}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {dev.quotaUsed} credits used · {dev.messageCount}{" "}
-                        <WhatsAppText id="s55" />
+                        {formatWhatsAppText(
+                          "s301",
+                          {
+                            credits: dev.quotaUsed,
+                            messages: dev.messageCount,
+                          },
+                          locale
+                        )}
                       </p>
                     </div>
                     <div className="text-right text-sm">
@@ -702,7 +715,11 @@ export default function WhatsAppUsagePage() {
                               .toUpperCase()}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
-                            {cat.count.toLocaleString()} entries
+                            {formatWhatsAppText(
+                              "s299",
+                              { count: cat.count.toLocaleString() },
+                              locale
+                            )}
                           </span>
                         </div>
                         <div className="text-right">
@@ -761,11 +778,22 @@ export default function WhatsAppUsagePage() {
                         {getMonthName(m.month)} {m.year}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {m.messageInboxCount.toLocaleString()}{" "}
-                        <WhatsAppText id="s62" />{" "}
-                        {m.messageOutboxCount.toLocaleString()} out
-                        {m.messageFailedCount > 0 &&
-                          ` · ${m.messageFailedCount} failed`}
+                        {formatWhatsAppText(
+                          "s298",
+                          {
+                            inbound: m.messageInboxCount.toLocaleString(),
+                            outbound: m.messageOutboxCount.toLocaleString(),
+                            failed:
+                              m.messageFailedCount > 0
+                                ? formatWhatsAppText(
+                                    "s355",
+                                    { count: m.messageFailedCount },
+                                    locale
+                                  )
+                                : "",
+                          },
+                          locale
+                        )}
                       </p>
                     </div>
                     <div className="text-right">
@@ -810,7 +838,9 @@ export default function WhatsAppUsagePage() {
                 </TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Credits</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s302" locale={locale} />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

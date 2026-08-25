@@ -5,9 +5,11 @@ import {
 } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
+import { useParams, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   Card,
   CardContent,
@@ -15,7 +17,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { useSearchParams } from "next/navigation"
 import {
   AuditLogDTO,
   AuditLogTable,
@@ -45,6 +46,8 @@ const AUDIT_ACTIONS = [
 const AUDIT_STATUSES = ["OK", "FAILED", "STARTED", "PENDING"]
 
 export default function ConsoleWhatsAppAuditLogsPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
   const searchParams = useSearchParams()
   const onboarding = useWhatsAppOnboarding()
 
@@ -202,7 +205,7 @@ export default function ConsoleWhatsAppAuditLogsPage() {
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            Status
+            <WhatsAppText id="s302" locale={locale} />
           </label>
           <select
             className="h-9 rounded-md border px-3 text-sm"
@@ -237,7 +240,7 @@ export default function ConsoleWhatsAppAuditLogsPage() {
             <WhatsAppText id="s38" />
           </label>
           <Input
-            placeholder={getWhatsAppText("s39")}
+            placeholder={getWhatsAppText("s39", locale)}
             className="h-9 w-48"
             value={filterQ}
             onChange={(e) => setFilterQ(e.target.value)}

@@ -379,7 +379,9 @@ export default function WhatsAppAnalyticsPage() {
                       <th className="pr-4 pb-2 text-right font-medium">
                         Delta
                       </th>
-                      <th className="pb-2 font-medium">Status</th>
+                      <th className="pb-2 font-medium">
+                        <WhatsAppText id="s302" />
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -462,7 +464,9 @@ export default function WhatsAppAnalyticsPage() {
                       <th className="pr-4 pb-2 text-right font-medium">
                         Delta
                       </th>
-                      <th className="pb-2 font-medium">Status</th>
+                      <th className="pb-2 font-medium">
+                        <WhatsAppText id="s302" />
+                      </th>
                     </tr>
                   </thead>
                   <tbody>

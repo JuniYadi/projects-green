@@ -6,7 +6,10 @@
  */
 
 "use client"
-import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
+import {
+  formatWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import { useState, useCallback } from "react"
 import {
@@ -103,9 +106,15 @@ export function DeliveryLogTable({
                 <TableHead>
                   <WhatsAppText id="s230" />
                 </TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Attempt</TableHead>
-                <TableHead>HTTP Status</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s302" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s307" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s308" />
+                </TableHead>
                 <TableHead>Started</TableHead>
               </TableRow>
             </TableHeader>
@@ -186,9 +195,15 @@ export function DeliveryLogTable({
               <TableHead>
                 <WhatsAppText id="s230" />
               </TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Attempt</TableHead>
-              <TableHead>HTTP Status</TableHead>
+              <TableHead>
+                <WhatsAppText id="s302" />
+              </TableHead>
+              <TableHead>
+                <WhatsAppText id="s307" />
+              </TableHead>
+              <TableHead>
+                <WhatsAppText id="s308" />
+              </TableHead>
               <TableHead>Started</TableHead>
               <TableHead className="w-20" />
             </TableRow>
@@ -304,12 +319,13 @@ export function DeliveryLogTable({
             disabled={pagination.page <= 1}
             onClick={() => pagination.onPageChange(pagination.page - 1)}
           >
-            Previous
+            <WhatsAppText id="s304" />
           </Button>
           <span className="text-xs text-muted-foreground">
-            <WhatsAppText id="s211" />
-            {pagination.page} <WhatsAppText id="s14" />
-            {pagination.totalPages}
+            {formatWhatsAppText("s297", {
+              page: pagination.page,
+              totalPages: pagination.totalPages,
+            })}
           </span>
           <Button
             variant="outline"
@@ -317,7 +333,7 @@ export function DeliveryLogTable({
             disabled={pagination.page >= pagination.totalPages}
             onClick={() => pagination.onPageChange(pagination.page + 1)}
           >
-            Next
+            <WhatsAppText id="s305" />
           </Button>
         </div>
       )}

@@ -1,5 +1,9 @@
 "use client"
-import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
+import {
+  formatWhatsAppText,
+  getWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -524,10 +528,11 @@ export default function NewWhatsAppBroadcastPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Broadcast Baru</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          <WhatsAppText id="s309" locale={locale} />
+        </h1>
         <p className="text-muted-foreground">
-          Kirim pesan template WhatsApp ke banyak penerima dalam empat langkah
-          mudah.
+          <WhatsAppText id="s310" locale={locale} />
         </p>
       </div>
 
@@ -538,19 +543,24 @@ export default function NewWhatsAppBroadcastPage() {
         {/* Step 1: Perangkat, Template, & Bahasa */}
         <Card>
           <CardHeader>
-            <CardTitle>1. Perangkat, Template, & Bahasa</CardTitle>
+            <CardTitle>
+              <WhatsAppText id="s311" locale={locale} />
+            </CardTitle>
             <CardDescription>
-              Pilih perangkat pengirim, lalu template dan bahasa yang tersedia
-              untuk perangkat tersebut.
+              <WhatsAppText id="s312" locale={locale} />
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-3">
               <div className="grid gap-2">
-                <Label htmlFor="device">Perangkat WhatsApp</Label>
+                <Label htmlFor="device">
+                  <WhatsAppText id="s313" locale={locale} />
+                </Label>
                 <Select value={deviceId} onValueChange={handleDeviceChange}>
                   <SelectTrigger id="device">
-                    <SelectValue placeholder="Pilih perangkat" />
+                    <SelectValue
+                      placeholder={getWhatsAppText("s314", locale)}
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {activeDevices.map((device) => (
@@ -564,7 +574,7 @@ export default function NewWhatsAppBroadcastPage() {
 
               <div className="grid gap-2">
                 <Label htmlFor="template">
-                  <WhatsAppText id="s16" />
+                  <WhatsAppText id="s16" locale={locale} />
                 </Label>
                 <Select
                   value={templateId}
@@ -577,8 +587,8 @@ export default function NewWhatsAppBroadcastPage() {
                     <SelectValue
                       placeholder={
                         !deviceId
-                          ? "Pilih perangkat terlebih dahulu"
-                          : "Pilih template"
+                          ? getWhatsAppText("s315", locale)
+                          : getWhatsAppText("s316", locale)
                       }
                     />
                   </SelectTrigger>
@@ -593,14 +603,18 @@ export default function NewWhatsAppBroadcastPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="language">Bahasa</Label>
+                <Label htmlFor="language">
+                  <WhatsAppText id="s317" locale={locale} />
+                </Label>
                 <Select
                   value={templateLanguage}
                   onValueChange={setTemplateLanguage}
                   disabled={!templateId}
                 >
                   <SelectTrigger id="language">
-                    <SelectValue placeholder="Pilih bahasa" />
+                    <SelectValue
+                      placeholder={getWhatsAppText("s318", locale)}
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {languages.map((language) => (
@@ -615,11 +629,11 @@ export default function NewWhatsAppBroadcastPage() {
 
             {!deviceId ? (
               <p className="text-sm text-muted-foreground">
-                Pilih perangkat untuk memuat template yang tersedia.
+                <WhatsAppText id="s319" locale={locale} />
               </p>
             ) : templatesLoading ? (
               <p className="text-sm text-muted-foreground">
-                Memuat template perangkat...
+                <WhatsAppText id="s320" locale={locale} />
               </p>
             ) : templatesError ? (
               <div className="flex flex-wrap items-center gap-3 rounded-md border border-destructive/50 p-3">
@@ -630,29 +644,34 @@ export default function NewWhatsAppBroadcastPage() {
                   variant="outline"
                   onClick={reloadTemplates}
                 >
-                  Coba lagi
+                  <WhatsAppText id="s101" locale={locale} />
                 </Button>
               </div>
             ) : templates.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Tidak ada template disetujui untuk perangkat ini.
+                <WhatsAppText id="s321" locale={locale} />
               </p>
             ) : null}
 
             {deviceId &&
               (selectedDevice ? (
                 <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <Badge variant="success">Aktif</Badge>
+                  <Badge variant="success">
+                    <WhatsAppText id="s322" locale={locale} />
+                  </Badge>
                   <span className="text-muted-foreground">
-                    Sisa kuota 24 jam:{" "}
                     {capacity
-                      ? `${capacity.remainingToday} pesan`
-                      : "menghitung…"}
+                      ? formatWhatsAppText(
+                          "s323",
+                          { count: capacity.remainingToday },
+                          locale
+                        )
+                      : getWhatsAppText("s324", locale)}
                   </span>
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Perangkat tidak ditemukan.
+                  <WhatsAppText id="s325" locale={locale} />
                 </p>
               ))}
           </CardContent>
@@ -661,9 +680,11 @@ export default function NewWhatsAppBroadcastPage() {
         {/* Step 2: Daftar Penerima */}
         <Card>
           <CardHeader>
-            <CardTitle>2. Daftar Penerima</CardTitle>
+            <CardTitle>
+              <WhatsAppText id="s326" locale={locale} />
+            </CardTitle>
             <CardDescription>
-              Tentukan siapa saja yang akan menerima pesan ini.
+              <WhatsAppText id="s327" locale={locale} />
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -672,10 +693,14 @@ export default function NewWhatsAppBroadcastPage() {
               onValueChange={(value) => setRecipientTab(value as RecipientTab)}
             >
               <TabsList className="w-full sm:w-auto">
-                <TabsTrigger value="manual">Ketik / Paste Nomor</TabsTrigger>
-                <TabsTrigger value="contacts">Daftar Kontak</TabsTrigger>
+                <TabsTrigger value="manual">
+                  <WhatsAppText id="s328" locale={locale} />
+                </TabsTrigger>
+                <TabsTrigger value="contacts">
+                  <WhatsAppText id="s329" locale={locale} />
+                </TabsTrigger>
                 <TabsTrigger value="csv">
-                  <WhatsAppText id="s17" />
+                  <WhatsAppText id="s17" locale={locale} />
                 </TabsTrigger>
               </TabsList>
 
@@ -688,15 +713,23 @@ export default function NewWhatsAppBroadcastPage() {
                   placeholder={"6281234567890\n6289876543210"}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Tulis satu nomor per baris atau pisahkan dengan koma.
+                  <WhatsAppText id="s330" locale={locale} />
                 </p>
                 {manualRecipients.trim().length > 0 && (
                   <p className="text-xs font-medium">
-                    {validManualCount} nomor valid terdeteksi
+                    {formatWhatsAppText(
+                      "s331",
+                      { count: validManualCount },
+                      locale
+                    )}
                     {invalidManualCount > 0 && (
                       <span className="text-amber-600 dark:text-amber-400">
                         {" "}
-                        · {invalidManualCount} nomor tidak valid akan dilewati
+                        {formatWhatsAppText(
+                          "s332",
+                          { count: invalidManualCount },
+                          locale
+                        )}
                       </span>
                     )}
                   </p>
@@ -709,7 +742,7 @@ export default function NewWhatsAppBroadcastPage() {
                     id="contact-search"
                     value={contactSearch}
                     onChange={(event) => setContactSearch(event.target.value)}
-                    placeholder="Cari nama atau nomor…"
+                    placeholder={getWhatsAppText("s333", locale)}
                     className="max-w-xs"
                   />
                   <Button
@@ -726,7 +759,7 @@ export default function NewWhatsAppBroadcastPage() {
                 <div className="max-h-64 overflow-y-auto rounded-md border">
                   {filteredContacts.length === 0 ? (
                     <div className="p-4 text-center text-sm text-muted-foreground">
-                      Tidak ada kontak yang cocok.
+                      <WhatsAppText id="s334" locale={locale} />
                     </div>
                   ) : (
                     <div className="divide-y">
@@ -753,21 +786,27 @@ export default function NewWhatsAppBroadcastPage() {
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {selectedContactCount} kontak dipilih
+                  {formatWhatsAppText(
+                    "s335",
+                    { count: selectedContactCount },
+                    locale
+                  )}
                 </p>
               </TabsContent>
 
               <TabsContent value="csv" className="space-y-3 pt-2">
                 <div className="flex flex-col gap-3 rounded-md border bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="space-y-1">
-                    <p className="text-sm font-medium">Template CSV penerima</p>
+                    <p className="text-sm font-medium">
+                      <WhatsAppText id="s336" locale={locale} />
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       Unduh kolom yang sesuai dengan bahasa template. Kolom
                       Nomor WhatsApp dan Nama dikenali otomatis; variabel pesan
                       mengikuti urutan {"{{1}}"}, {"{{2}}"}, dan seterusnya.
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      <WhatsAppText id="s18" />
+                      <WhatsAppText id="s337" locale={locale} />
                     </p>
                   </div>
                   <Button
@@ -777,12 +816,12 @@ export default function NewWhatsAppBroadcastPage() {
                     disabled={!selectedTemplate || !templateLanguage}
                     onClick={downloadCsvTemplate}
                   >
-                    <WhatsAppText id="s19" />
+                    <WhatsAppText id="s19" locale={locale} />
                   </Button>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="csv-file">
-                    <WhatsAppText id="s20" />
+                    <WhatsAppText id="s20" locale={locale} />
                   </Label>
                   <Input
                     id="csv-file"
@@ -795,18 +834,30 @@ export default function NewWhatsAppBroadcastPage() {
                   <div className="space-y-2 rounded-md border bg-muted/30 p-3 text-sm">
                     <p className="font-medium">{csvFileName}</p>
                     <p>
-                      {validCsvRows.length} baris valid terdeteksi
+                      {formatWhatsAppText(
+                        "s338",
+                        { count: validCsvRows.length },
+                        locale
+                      )}
                       {invalidCsvCount > 0 && (
                         <span className="text-amber-600 dark:text-amber-400">
                           {" "}
-                          · {invalidCsvCount} baris tidak valid akan dilewati
+                          {formatWhatsAppText(
+                            "s339",
+                            { count: invalidCsvCount },
+                            locale
+                          )}
                         </span>
                       )}
                     </p>
                     {csvColumns.length > 1 && (
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-xs text-muted-foreground">
-                          Kolom terdeteksi:
+                          {formatWhatsAppText(
+                            "s340",
+                            { columns: "" },
+                            locale
+                          )}
                         </span>
                         {csvColumns.map((column) => (
                           <Badge key={column} variant="outline">
@@ -818,15 +869,18 @@ export default function NewWhatsAppBroadcastPage() {
                   </div>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    Kolom pertama yang berisi nomor telepon akan dipakai
-                    otomatis sebagai tujuan.
+                    <WhatsAppText id="s368" locale={locale} />
                   </p>
                 )}
               </TabsContent>
             </Tabs>
 
             <p className="text-sm font-medium">
-              Total penerima: {totalRecipients}
+              {formatWhatsAppText(
+                "s341",
+                { count: totalRecipients },
+                locale
+              )}
             </p>
           </CardContent>
         </Card>
@@ -834,9 +888,11 @@ export default function NewWhatsAppBroadcastPage() {
         {placeholders.length > 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle>3. Variabel Pesan</CardTitle>
+              <CardTitle>
+                <WhatsAppText id="s342" locale={locale} />
+              </CardTitle>
               <CardDescription>
-                Isi nilai untuk variabel yang ada di dalam template.
+                <WhatsAppText id="s343" locale={locale} />
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -844,7 +900,11 @@ export default function NewWhatsAppBroadcastPage() {
                 {placeholders.map((placeholder) => (
                   <div key={placeholder} className="grid gap-2">
                     <Label htmlFor={`variable-${placeholder}`}>
-                      Nilai untuk {`{{${placeholder}}}`}
+                      {formatWhatsAppText(
+                        "s344",
+                        { variable: `{{${placeholder}}}` },
+                        locale
+                      )}
                     </Label>
                     <Input
                       id={`variable-${placeholder}`}
@@ -862,8 +922,7 @@ export default function NewWhatsAppBroadcastPage() {
               </div>
               {recipientTab === "csv" ? (
                 <p className="text-xs text-muted-foreground">
-                  CSV harus menggunakan kolom {"{{1}}"}, {"{{2}}"}, dan
-                  seterusnya. Kolom yang tidak dipakai akan memblokir preflight.
+                  <WhatsAppText id="s369" locale={locale} />
                 </p>
               ) : null}
             </CardContent>
@@ -874,11 +933,10 @@ export default function NewWhatsAppBroadcastPage() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {placeholders.length > 0 ? "4" : "3"}. Preflight & Jadwal
-              Pengiriman
+              <WhatsAppText id="s345" locale={locale} />
             </CardTitle>
             <CardDescription>
-              Konfirmasi data yang divalidasi server sebelum membuat broadcast.
+              <WhatsAppText id="s346" locale={locale} />
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -900,7 +958,9 @@ export default function NewWhatsAppBroadcastPage() {
             ) : null}
             <div className="space-y-2 rounded-md border p-3">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Perangkat</span>
+                <span className="text-muted-foreground">
+                  <WhatsAppText id="s113" locale={locale} />
+                </span>
                 <span>
                   {isPreflightCurrent &&
                   serverPreflight.selection.deviceId === deviceId
@@ -910,7 +970,7 @@ export default function NewWhatsAppBroadcastPage() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">
-                  <WhatsAppText id="s16" />
+                  <WhatsAppText id="s16" locale={locale} />
                 </span>
                 <span>
                   {isPreflightCurrent
@@ -919,7 +979,9 @@ export default function NewWhatsAppBroadcastPage() {
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Bahasa</span>
+                <span className="text-muted-foreground">
+                  <WhatsAppText id="s317" locale={locale} />
+                </span>
                 <span>
                   {isPreflightCurrent
                     ? serverPreflight.selection.templateLanguage
@@ -927,7 +989,9 @@ export default function NewWhatsAppBroadcastPage() {
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Penerima</span>
+                <span className="text-muted-foreground">
+                  <WhatsAppText id="s347" locale={locale} />
+                </span>
                 <span>
                   {isPreflightCurrent
                     ? serverPreflight.recipientCount
@@ -942,7 +1006,9 @@ export default function NewWhatsAppBroadcastPage() {
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Mode kirim</span>
+                <span className="text-muted-foreground">
+                  <WhatsAppText id="s348" locale={locale} />
+                </span>
                 <span>
                   {isPreflightCurrent &&
                   serverPreflight.dispatchMode === "MANUAL_DISPATCH"
@@ -953,13 +1019,15 @@ export default function NewWhatsAppBroadcastPage() {
               {placeholders.length > 0 ? (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
-                    <WhatsAppText id="s21" />
+                    <WhatsAppText id="s21" locale={locale} />
                   </span>
                   <span>{variableValidation.requiredVariables.join(", ")}</span>
                 </div>
               ) : null}
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Status preflight</span>
+                <span className="text-muted-foreground">
+                  <WhatsAppText id="s349" locale={locale} />
+                </span>
                 <span>
                   {isPreflightCurrent
                     ? needsMultiDayAck && !acknowledgeMultiDay
@@ -973,7 +1041,9 @@ export default function NewWhatsAppBroadcastPage() {
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Estimasi selesai</span>
+                <span className="text-muted-foreground">
+                  <WhatsAppText id="s350" locale={locale} />
+                </span>
                 <span>
                   {totalRecipients > 0 && capacity
                     ? formatDuration(estimatedMinutes)
@@ -982,12 +1052,16 @@ export default function NewWhatsAppBroadcastPage() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">
-                  Kecepatan pengiriman
+                  <WhatsAppText id="s351" locale={locale} />
                 </span>
-                <span>±{throttleMaxMessages} pesan/jam</span>
+                <span>
+                  ±{throttleMaxMessages} <WhatsAppText id="s352" locale={locale} />
+                </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Kuota harian</span>
+                <span className="text-muted-foreground">
+                  <WhatsAppText id="s353" locale={locale} />
+                </span>
                 <span>
                   {capacity
                     ? `${capacity.dailyUsed + Math.min(totalRecipients, capacity.remainingToday)} / ${capacity.dailyLimit} kuota harian terpakai`
@@ -1000,9 +1074,11 @@ export default function NewWhatsAppBroadcastPage() {
               <Alert className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
                 <Warning weight="fill" />
                 <AlertDescription className="text-amber-700 dark:text-amber-300">
-                  Pengiriman melebihi sisa kuota hari ini (
-                  {capacity?.remainingToday} pesan). Broadcast akan otomatis
-                  dikirim bertahap multi-hari.
+                  {formatWhatsAppText(
+                    "s370",
+                    { count: capacity?.remainingToday ?? 0 },
+                    locale
+                  )}
                 </AlertDescription>
                 <div className="mt-2 flex items-center gap-2">
                   <Checkbox
@@ -1029,7 +1105,7 @@ export default function NewWhatsAppBroadcastPage() {
                 onClick={() => router.push(basePath)}
                 disabled={isSubmitting}
               >
-                Batal
+                <WhatsAppText id="s354" locale={locale} />
               </Button>
               <Button type="submit" disabled={!canSubmit}>
                 {isSubmitting ? "Membuat broadcast…" : "Buat Broadcast"}

@@ -154,7 +154,7 @@ export default function ConsoleWhatsAppMessageJourneyPage() {
                       type="button"
                       onClick={handleCopyId}
                       className="inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-                      title={getWhatsAppText("s121")}
+                      title={getWhatsAppText("s121", params?.lang)}
                     >
                       {copied ? (
                         <Check className="size-3.5 text-emerald-600" />
@@ -268,7 +268,7 @@ export default function ConsoleWhatsAppMessageJourneyPage() {
                   {journey.billing?.status && (
                     <div className="flex justify-between border-b pb-2">
                       <span className="text-muted-foreground">
-                        Billing Status:
+                        <WhatsAppText id="s371" locale={params?.lang} />
                       </span>
                       <span className="font-medium text-emerald-600">
                         {journey.billing.status}

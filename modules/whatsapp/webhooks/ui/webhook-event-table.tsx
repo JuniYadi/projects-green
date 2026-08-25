@@ -7,7 +7,10 @@
  */
 
 "use client"
-import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
+import {
+  formatWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 import Link from "next/link"
 import * as React from "react"
 import { useState, useCallback } from "react"
@@ -227,11 +230,15 @@ export function WebhookEventTable({
                 <TableHead>
                   <WhatsAppText id="s202" />
                 </TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s302" />
+                </TableHead>
                 <TableHead>
                   <WhatsAppText id="s226" />
                 </TableHead>
-                <TableHead>Timestamp</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s306" />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -325,11 +332,15 @@ export function WebhookEventTable({
                 <TableHead>
                   <WhatsAppText id="s202" />
                 </TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s302" />
+                </TableHead>
                 <TableHead>
                   <WhatsAppText id="s226" />
                 </TableHead>
-                <TableHead>Timestamp</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s306" />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -454,12 +465,13 @@ export function WebhookEventTable({
               disabled={pagination.page <= 1}
               onClick={() => pagination.onPageChange(pagination.page - 1)}
             >
-              Previous
+              <WhatsAppText id="s304" />
             </Button>
             <span className="text-xs text-muted-foreground">
-              <WhatsAppText id="s211" />
-              {pagination.page} <WhatsAppText id="s14" />
-              {pagination.totalPages}
+              {formatWhatsAppText("s297", {
+                page: pagination.page,
+                totalPages: pagination.totalPages,
+              })}
             </span>
             <Button
               variant="outline"
@@ -467,7 +479,7 @@ export function WebhookEventTable({
               disabled={pagination.page >= pagination.totalPages}
               onClick={() => pagination.onPageChange(pagination.page + 1)}
             >
-              Next
+              <WhatsAppText id="s305" />
             </Button>
           </div>
         )}

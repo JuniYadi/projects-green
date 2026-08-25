@@ -856,7 +856,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
               onChange={(e) =>
                 setProfileForm((f) => ({ ...f, about: e.target.value }))
               }
-              placeholder={getWhatsAppText("s86")}
+              placeholder={getWhatsAppText("s86", locale)}
             />
           </div>
           <div className="grid gap-2">
@@ -869,7 +869,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
               onChange={(e) =>
                 setProfileForm((f) => ({ ...f, description: e.target.value }))
               }
-              placeholder={getWhatsAppText("s88")}
+              placeholder={getWhatsAppText("s88", locale)}
             />
           </div>
           <div className="grid gap-2">
@@ -969,7 +969,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
               }
             >
               <SelectTrigger id="profile-vertical">
-                <SelectValue placeholder={getWhatsAppText("s91")} />
+                <SelectValue placeholder={getWhatsAppText("s91", locale)} />
               </SelectTrigger>
               <SelectContent>
                 {VERTICALS.map((v) => (
@@ -1002,7 +1002,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
         size="sm"
         onClick={() => void handleSyncMeta()}
         disabled={isSyncing}
-        title={getWhatsAppText("s92")}
+        title={getWhatsAppText("s92", locale)}
       >
         <ArrowsClockwise
           className={`mr-2 size-4 ${isSyncing ? "animate-spin" : ""}`}

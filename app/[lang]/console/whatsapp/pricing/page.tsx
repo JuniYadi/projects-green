@@ -1,5 +1,6 @@
 "use client"
 import {
+  formatWhatsAppText,
   getWhatsAppText,
   WhatsAppText,
 } from "@/modules/whatsapp/ui/whatsapp-text"
@@ -386,7 +387,7 @@ export default function WhatsAppPricingPage() {
                 value={selectedDeviceId}
                 onChange={(e) => setSelectedDeviceId(e.target.value)}
                 className="rounded-md border bg-background px-2.5 py-1 text-xs"
-                aria-label={getWhatsAppText("s99")}
+                aria-label={getWhatsAppText("s99", locale)}
               >
                 <option value="all">
                   <WhatsAppText id="s100" />
@@ -747,7 +748,7 @@ export default function WhatsAppPricingPage() {
             <div className="relative min-w-[200px] flex-1">
               <MagnifyingGlass className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder={getWhatsAppText("s110")}
+                placeholder={getWhatsAppText("s110", locale)}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 text-xs"
@@ -763,7 +764,7 @@ export default function WhatsAppPricingPage() {
                 }}
               >
                 <SelectTrigger className="text-xs">
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder={getWhatsAppText("s302", locale)} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">
@@ -808,7 +809,9 @@ export default function WhatsAppPricingPage() {
                 }}
               >
                 <SelectTrigger className="text-xs">
-                  <SelectValue placeholder={getWhatsAppText("s113")} />
+                  <SelectValue
+                    placeholder={getWhatsAppText("s113", locale)}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">
@@ -845,7 +848,9 @@ export default function WhatsAppPricingPage() {
                   <TableHead className="text-xs">Category</TableHead>
                   <TableHead className="text-xs">Source Type</TableHead>
                   <TableHead className="text-xs">Deduction</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs">
+                    <WhatsAppText id="s302" locale={locale} />
+                  </TableHead>
                   <TableHead className="text-xs">
                     <WhatsAppText id="s116" />
                   </TableHead>
@@ -983,9 +988,11 @@ export default function WhatsAppPricingPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-2">
               <span className="text-xs text-muted-foreground">
-                <WhatsAppText id="s118" />
-                {page} <WhatsAppText id="s14" />
-                {totalPages} ({ledgerTotal} entries)
+                {formatWhatsAppText(
+                  "s296",
+                  { page, totalPages, total: ledgerTotal },
+                  locale
+                )}
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -995,7 +1002,7 @@ export default function WhatsAppPricingPage() {
                   disabled={page <= 1 || ledgerLoading}
                   className="text-xs"
                 >
-                  Previous
+                  <WhatsAppText id="s304" locale={locale} />
                 </Button>
                 <Button
                   variant="outline"
@@ -1004,7 +1011,7 @@ export default function WhatsAppPricingPage() {
                   disabled={page >= totalPages || ledgerLoading}
                   className="text-xs"
                 >
-                  Next
+                  <WhatsAppText id="s305" locale={locale} />
                 </Button>
               </div>
             </div>

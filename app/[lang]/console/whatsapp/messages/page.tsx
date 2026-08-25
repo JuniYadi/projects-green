@@ -342,7 +342,13 @@ function ConversationItem({
 }
 
 // ─── Message Bubble ──────────────────────────────────────────────────────────
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({
+  message,
+  locale,
+}: {
+  message: Message
+  locale: string
+}) {
   const isInbox = message.direction === "INBOX"
 
   // Template messages with stored language data render as full preview with footer
@@ -372,7 +378,7 @@ function MessageBubble({ message }: { message: Message }) {
               <Link
                 href={`/console/whatsapp/messages/${encodeURIComponent(message.waMessageId)}`}
                 className="inline-flex items-center gap-1 rounded-md bg-background/80 px-2 py-1 text-[11px] font-medium text-foreground shadow-sm backdrop-blur hover:bg-background hover:text-primary"
-                title={getWhatsAppText("s132")}
+                title={getWhatsAppText("s132", locale)}
               >
                 <span>Journey</span>
                 <ArrowSquareOut className="size-3" />
@@ -449,7 +455,7 @@ function MessageBubble({ message }: { message: Message }) {
               <Link
                 href={`/console/whatsapp/messages/${encodeURIComponent(message.waMessageId)}`}
                 className="flex size-6 items-center justify-center rounded-full bg-muted/80 text-muted-foreground shadow-xs backdrop-blur hover:bg-muted hover:text-foreground"
-                title={getWhatsAppText("s132")}
+                title={getWhatsAppText("s132", locale)}
               >
                 <ArrowSquareOut className="size-3" />
               </Link>
@@ -1153,7 +1159,9 @@ export default function WhatsAppMessagesPage() {
                         onValueChange={setSendDeviceId}
                       >
                         <SelectTrigger id="send-device">
-                          <SelectValue placeholder={getWhatsAppText("s139")} />
+                          <SelectValue
+                            placeholder={getWhatsAppText("s139", locale)}
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {activeDevices.map((device) => (
@@ -1174,7 +1182,9 @@ export default function WhatsAppMessagesPage() {
                         onValueChange={setSendDeviceId}
                       >
                         <SelectTrigger id="send-device">
-                          <SelectValue placeholder={getWhatsAppText("s139")} />
+                          <SelectValue
+                            placeholder={getWhatsAppText("s139", locale)}
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__none" disabled>
@@ -1263,7 +1273,7 @@ export default function WhatsAppMessagesPage() {
                       <>
                         <Input
                           id="send-template"
-                          placeholder={getWhatsAppText("s146")}
+                          placeholder={getWhatsAppText("s146", locale)}
                           value={templateSearchQuery}
                           onChange={(e) =>
                             setTemplateSearchQuery(e.target.value)
@@ -1570,8 +1580,8 @@ export default function WhatsAppMessagesPage() {
               <div className="relative w-full">
                 <MagnifyingGlass className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder={getWhatsAppText("s150")}
-                  aria-label={getWhatsAppText("s151")}
+                  placeholder={getWhatsAppText("s150", locale)}
+                  aria-label={getWhatsAppText("s151", locale)}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-9 w-full pl-8 text-sm"
@@ -1636,13 +1646,15 @@ export default function WhatsAppMessagesPage() {
                     </DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Status</DropdownMenuLabel>
+                  <DropdownMenuLabel>
+                    <WhatsAppText id="s302" locale={locale} />
+                  </DropdownMenuLabel>
                   <DropdownMenuRadioGroup
                     value={statusFilter}
                     onValueChange={setStatusFilter}
                   >
                     <DropdownMenuRadioItem value="all">
-                      All Status
+                      <WhatsAppText id="s372" locale={locale} />
                     </DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="SENT">
                       <WhatsAppText id="s154" />
@@ -1869,7 +1881,11 @@ export default function WhatsAppMessagesPage() {
                     <React.Fragment key={group.label}>
                       <MessageDateGroup label={group.label} />
                       {group.messages.map((message) => (
-                        <MessageBubble key={message.id} message={message} />
+                        <MessageBubble
+                          key={message.id}
+                          message={message}
+                          locale={locale}
+                        />
                       ))}
                     </React.Fragment>
                   ))}
@@ -1912,7 +1928,7 @@ export default function WhatsAppMessagesPage() {
                       <Input
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
-                        placeholder={getWhatsAppText("s162")}
+                        placeholder={getWhatsAppText("s162", locale)}
                         disabled={sendReplyMutation.isPending}
                         className="h-10 flex-1 bg-background text-sm"
                       />
@@ -2003,7 +2019,7 @@ export default function WhatsAppMessagesPage() {
             <textarea
               id="notes-textarea"
               className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder={getWhatsAppText("s167")}
+              placeholder={getWhatsAppText("s167", locale)}
               value={notesText}
               onChange={(e) => setNotesText(e.target.value)}
             />

@@ -1,5 +1,8 @@
 "use client"
-import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
+import {
+  formatWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import Link from "next/link"
 import {
@@ -199,12 +202,18 @@ export function AuditLogTable({
                 <TableHead>
                   <WhatsAppText id="s35" />
                 </TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s302" />
+                </TableHead>
                 <TableHead>
                   <WhatsAppText id="s203" />
                 </TableHead>
-                <TableHead>Actor</TableHead>
-                <TableHead>Time</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s303" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s306" />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -292,12 +301,18 @@ export function AuditLogTable({
                 <TableHead>
                   <WhatsAppText id="s35" />
                 </TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s302" />
+                </TableHead>
                 <TableHead>
                   <WhatsAppText id="s203" />
                 </TableHead>
-                <TableHead>Actor</TableHead>
-                <TableHead>Time</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s303" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s306" />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -476,10 +491,11 @@ export function AuditLogTable({
         {pagination && pagination.totalPages > 1 && (
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>
-              <WhatsAppText id="s211" />
-              {pagination.page} <WhatsAppText id="s14" />
-              {pagination.totalPages} ({pagination.total}{" "}
-              <WhatsAppText id="s212" />
+              {formatWhatsAppText("s296", {
+                page: pagination.page,
+                totalPages: pagination.totalPages,
+                total: pagination.total,
+              })}
             </span>
             <div className="flex gap-2">
               <Button
@@ -488,7 +504,7 @@ export function AuditLogTable({
                 disabled={pagination.page <= 1}
                 onClick={() => pagination.onPageChange(pagination.page - 1)}
               >
-                Previous
+                <WhatsAppText id="s304" />
               </Button>
               <Button
                 variant="outline"
@@ -496,7 +512,7 @@ export function AuditLogTable({
                 disabled={pagination.page >= pagination.totalPages}
                 onClick={() => pagination.onPageChange(pagination.page + 1)}
               >
-                Next
+                <WhatsAppText id="s305" />
               </Button>
             </div>
           </div>

@@ -702,7 +702,7 @@ export default function WhatsAppContactsPage() {
                 }
               >
                 <SelectTrigger id="add-group" className="w-full">
-                  <SelectValue placeholder={getWhatsAppText("s3")} />
+                  <SelectValue placeholder={getWhatsAppText("s3", locale)} />
                 </SelectTrigger>
                 <SelectContent>
                   {groups.map((group) => (
@@ -827,7 +827,7 @@ export default function WhatsAppContactsPage() {
                 }
               >
                 <SelectTrigger id="edit-group" className="w-full">
-                  <SelectValue placeholder={getWhatsAppText("s3")} />
+                  <SelectValue placeholder={getWhatsAppText("s3", locale)} />
                 </SelectTrigger>
                 <SelectContent>
                   {groups.map((group) => (

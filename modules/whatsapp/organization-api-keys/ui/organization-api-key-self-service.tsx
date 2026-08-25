@@ -189,7 +189,9 @@ export function WhatsappOrganizationApiKeySelfService() {
       {secret && (
         <Card className="border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20">
           <CardHeader>
-            <CardTitle className="text-base">One-time API secret</CardTitle>
+            <CardTitle className="text-base">
+              <WhatsAppText id="s358" />
+            </CardTitle>
             <CardDescription>
               <WhatsAppText id="s186" />
             </CardDescription>
@@ -204,7 +206,7 @@ export function WhatsappOrganizationApiKeySelfService() {
               ) : (
                 <Copy className="mr-2 size-4" />
               )}
-              {copied ? "Copied" : "Copy secret"}
+              <WhatsAppText id={copied ? "s359" : "s360"} />
             </Button>
           </CardContent>
         </Card>
@@ -235,25 +237,35 @@ export function WhatsappOrganizationApiKeySelfService() {
         <CardContent className="space-y-6">
           <dl className="grid gap-4 text-sm sm:grid-cols-2">
             <div>
-              <dt className="text-muted-foreground">Fingerprint</dt>
+              <dt className="text-muted-foreground">
+                <WhatsAppText id="s361" />
+              </dt>
               <dd className="font-mono break-all">
                 {state.fingerprint ?? "—"}
               </dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Generated keys</dt>
+              <dt className="text-muted-foreground">
+                <WhatsAppText id="s362" />
+              </dt>
               <dd>{state.generatedKeyCount}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Created</dt>
+              <dt className="text-muted-foreground">
+                <WhatsAppText id="s363" />
+              </dt>
               <dd>{formatDate(state.createdAt)}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Rotated</dt>
+              <dt className="text-muted-foreground">
+                <WhatsAppText id="s364" />
+              </dt>
               <dd>{formatDate(state.rotatedAt)}</dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Revoked</dt>
+              <dt className="text-muted-foreground">
+                <WhatsAppText id="s365" />
+              </dt>
               <dd>{formatDate(state.revokedAt)}</dd>
             </div>
             <div>
@@ -301,7 +313,7 @@ export function WhatsappOrganizationApiKeySelfService() {
                       <WhatsAppText id="s15" />
                     </AlertDialogCancel>
                     <AlertDialogAction onClick={() => void runAction("rotate")}>
-                      Rotate
+                      <WhatsAppText id="s366" />
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -333,7 +345,7 @@ export function WhatsappOrganizationApiKeySelfService() {
                       <WhatsAppText id="s15" />
                     </AlertDialogCancel>
                     <AlertDialogAction onClick={() => void runAction("revoke")}>
-                      Revoke
+                      <WhatsAppText id="s367" />
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

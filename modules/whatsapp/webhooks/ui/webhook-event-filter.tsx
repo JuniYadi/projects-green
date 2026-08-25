@@ -152,7 +152,7 @@ export function WebhookEventFilter({
       {/* Status */}
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-medium text-muted-foreground">
-          Status
+          <WhatsAppText id="s302" />
         </label>
         <Select
           value={initialFilters.processingStatus}

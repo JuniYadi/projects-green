@@ -192,7 +192,7 @@ const indonesianWords = new Set([
 
 type Category =
   | "product_static_english"
-  | "already_indonesian"
+  | "product_static_indonesian"
   | "sample_data"
   | "url_or_code"
   | "punctuation_or_format"
@@ -291,7 +291,8 @@ const classify = (value: string): Pick<Candidate, "category" | "reason"> => {
   }
   if (
     /^(https?:\/\/|www\.)/i.test(trimmed) ||
-    /[{};]|=>|\b(?:const|import|return)\b/.test(trimmed)
+    /[{};]|=>|\b(?:const|import|return)\b/.test(trimmed) ||
+    /^(?:e\.g\.|[a-z]+(?:_[a-z]+)+)/i.test(trimmed)
   ) {
     return {
       category: "url_or_code",
@@ -319,8 +320,8 @@ const classify = (value: string): Pick<Candidate, "category" | "reason"> => {
   }
   if (valueWords.some((word) => indonesianWords.has(word))) {
     return {
-      category: "already_indonesian",
-      reason: "Already Indonesian UI copy.",
+      category: "product_static_indonesian",
+      reason: "Product-controlled Indonesian UI copy outside the catalog.",
     }
   }
   if (valueWords.some((word) => englishWords.has(word))) {
@@ -374,7 +375,7 @@ const categoryCounts = Object.fromEntries(
   (
     [
       "product_static_english",
-      "already_indonesian",
+      "product_static_indonesian",
       "sample_data",
       "url_or_code",
       "punctuation_or_format",
@@ -397,8 +398,8 @@ console.log(
       classification: {
         product_static_english:
           "Only product-controlled English UI copy requiring typed catalog extraction; this is the completion gate.",
-        already_indonesian:
-          "Indonesian UI copy retained as localized copy, not an extraction candidate.",
+        product_static_indonesian:
+          "Product-controlled Indonesian UI copy requiring typed catalog extraction; this is a completion gate.",
         sample_data: "Phone numbers and email values.",
         url_or_code: "URLs, raw payloads, configuration, and code fragments.",
         punctuation_or_format:
@@ -410,7 +411,9 @@ console.log(
       },
       excluded_files: [...excludedFiles],
       category_counts: categoryCounts,
-      remaining_product_static: categoryCounts.product_static_english,
+      remaining_product_static:
+        categoryCounts.product_static_english +
+        categoryCounts.product_static_indonesian,
       candidates,
     },
     null,
