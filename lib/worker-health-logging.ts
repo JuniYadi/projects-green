@@ -196,6 +196,19 @@ export const emitWhatsAppHealthDeviceCheckFailed = (
   )
 }
 
+export const emitWhatsAppHealthDeviceMetadataRefreshFailed = (
+  error: unknown,
+  writer: JsonLogWriter = writeJsonLogLine
+): void => {
+  writeRecord(
+    {
+      ...baseRecord("warn", "whatsapp.health.device.metadata_refresh.failed"),
+      errorType: safeErrorType(error),
+    },
+    writer
+  )
+}
+
 export const emitWhatsAppHealthDeviceDisconnected = (
   writer: JsonLogWriter = writeJsonLogLine
 ): void => {

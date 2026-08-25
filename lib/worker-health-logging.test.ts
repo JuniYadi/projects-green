@@ -9,6 +9,7 @@ import {
   emitVpnHealthServerFailed,
   emitWhatsAppHealthCycleEnqueued,
   emitWhatsAppHealthDeviceCheckFailed,
+  emitWhatsAppHealthDeviceMetadataRefreshFailed,
   emitWhatsAppHealthDeviceDisconnected,
   emitWhatsAppHealthDeviceRecovered,
   emitWhatsAppHealthDeviceUnavailable,
@@ -144,6 +145,7 @@ describe.serial("worker health JSON logging", () => {
       emitWhatsAppHealthDeviceUnavailable("phone_id_missing")
       emitWhatsAppHealthDeviceRecovered()
       emitWhatsAppHealthDeviceCheckFailed(4, error)
+      emitWhatsAppHealthDeviceMetadataRefreshFailed(error)
       emitWhatsAppHealthDeviceDisconnected()
       emitWhatsAppHealthDisconnectEmailNoRecipients()
       emitWhatsAppHealthDisconnectEmailFailed(circular)
@@ -156,7 +158,7 @@ describe.serial("worker health JSON logging", () => {
     const serialized = JSON.stringify(logs)
 
     expect(captured.stdout).toBe("")
-    expect(logs).toHaveLength(12)
+    expect(logs).toHaveLength(13)
     expect(logs.every((log) => typeof log === "object")).toBe(true)
     expect(logs.map((log) => log.event)).toContain(
       "whatsapp.health.cycle.enqueued"

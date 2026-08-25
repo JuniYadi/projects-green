@@ -1,5 +1,7 @@
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { MetaCloudHttpClient } from "@/lib/whatsapp/meta-cloud/client"
+import { ENDPOINTS } from "@/lib/whatsapp/meta-cloud/endpoints"
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import {
   updateBusinessProfileSchema,
@@ -115,16 +117,20 @@ export async function syncDeviceFromMeta(
   const fields =
     "account_mode,certificate,code_verification_status,conversational_automation,display_phone_number,eligibility_for_api_business_global_search,health_status,id,is_official_business_account,is_on_biz_app,is_pin_enabled,is_preverified_number,last_onboarded_time,messaging_limit_tier,name_status,new_certificate,new_display_name,new_name_status,official_business_account,platform_type,quality_score,search_visibility,status,throughput,verified_name,whatsapp_business_manager_messaging_limit,whatsapp_business_profile.limit(10){about,address,description,email,messaging_product,profile_picture_url,vertical,websites}"
 
+  const url = new URL(ENDPOINTS.WABA_PHONE_NUMBERS(wabaId))
   const version = device.whatsappVersion || "v22.0"
-  const url = `https://graph.facebook.com/${version}/${wabaId}/phone_numbers?fields=${fields}`
+  url.pathname = `/${version}/${wabaId}/phone_numbers`
+  url.searchParams.set("fields", fields)
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+  const client = new MetaCloudHttpClient({
+    accessToken,
+    phoneNumberId: phoneId,
+    organizationId: device.organizationId,
   })
-  const json = (await res.json()) as {
+  const json = await client.request<{
     error?: { message: string }
     data?: Array<Record<string, unknown>>
-  }
+  }>("SYNC_DEVICE_FROM_META", url.toString(), "GET")
 
   if (json.error || !json.data || json.data.length === 0) {
     throw new Error(
@@ -194,7 +200,7 @@ export async function syncDeviceFromMeta(
     name_status:
       (metaPhone.name_status as string) ||
       (currentProfile.name_status as string) ||
-      "APPROVED",
+      null,
     new_display_name: metaPhone.new_display_name ?? null,
     new_name_status: metaPhone.new_name_status ?? null,
     quality_rating:
@@ -208,6 +214,9 @@ export async function syncDeviceFromMeta(
       metaPhone.messaging_limit_tier ??
       null,
     meta_health_status: metaPhone.health_status ?? null,
+    meta_name_status_checked_at: new Date().toISOString(),
+    meta_name_status_sync_state:
+      typeof metaPhone.name_status === "string" ? "SYNCED" : "UNKNOWN",
   }
 
   await prisma.whatsappDevice.update({
@@ -219,6 +228,33 @@ export async function syncDeviceFromMeta(
   })
 
   return mergedProfile as BusinessProfileFields
+}
+
+/**
+ * Records an automated refresh failure without replacing the last Meta status.
+ */
+export async function recordMetaRefreshUnavailable(
+  deviceId: string,
+  organizationId: string
+): Promise<void> {
+  const device = await getDeviceById(deviceId, organizationId)
+  const currentProfile =
+    device.whatsappProfile &&
+    typeof device.whatsappProfile === "object" &&
+    !Array.isArray(device.whatsappProfile)
+      ? (device.whatsappProfile as Record<string, unknown>)
+      : {}
+
+  await prisma.whatsappDevice.update({
+    where: { id: deviceId },
+    data: {
+      whatsappProfile: {
+        ...currentProfile,
+        meta_name_status_checked_at: new Date().toISOString(),
+        meta_name_status_sync_state: "UNAVAILABLE",
+      } as Prisma.InputJsonValue,
+    },
+  })
 }
 
 /**

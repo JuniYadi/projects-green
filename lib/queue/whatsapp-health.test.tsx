@@ -43,6 +43,18 @@ mock.module("@/modules/whatsapp/devices/devices.service", () => ({
   },
 }))
 
+const syncDeviceFromMetaMock = mock(
+  async (_deviceId: string, _organizationId: string) => ({})
+)
+const recordMetaRefreshUnavailableMock = mock(
+  async (_deviceId: string, _organizationId: string) => undefined
+)
+
+mock.module("@/modules/whatsapp/devices/business-profile.service", () => ({
+  syncDeviceFromMeta: syncDeviceFromMetaMock,
+  recordMetaRefreshUnavailable: recordMetaRefreshUnavailableMock,
+}))
+
 const sendEmailMock = mock(async (_args: unknown) => undefined)
 
 mock.module("@/lib/queue/email", () => ({
@@ -81,6 +93,7 @@ mock.module("@/lib/whatsapp/meta-cloud/endpoints", () => ({
 const emitCycleEnqueuedMock = mock((_count: number) => undefined)
 const emitUnavailableMock = mock((_reason: string) => undefined)
 const emitCheckFailedMock = mock((_count: number, _error: unknown) => undefined)
+const emitMetadataRefreshFailedMock = mock((_error: unknown) => undefined)
 const emitDisconnectedMock = mock(() => undefined)
 const emitRecoveredMock = mock(() => undefined)
 const emitEmailFailedMock = mock((_error: unknown) => undefined)
@@ -89,6 +102,7 @@ const emitNoRecipientsMock = mock(() => undefined)
 mock.module("@/lib/worker-health-logging", () => ({
   emitWhatsAppHealthCycleEnqueued: emitCycleEnqueuedMock,
   emitWhatsAppHealthDeviceCheckFailed: emitCheckFailedMock,
+  emitWhatsAppHealthDeviceMetadataRefreshFailed: emitMetadataRefreshFailedMock,
   emitWhatsAppHealthDeviceDisconnected: emitDisconnectedMock,
   emitWhatsAppHealthDeviceRecovered: emitRecoveredMock,
   emitWhatsAppHealthDeviceUnavailable: emitUnavailableMock,
@@ -138,6 +152,7 @@ type Device = {
   organizationId: string
   status: string
   whatsappPhoneId: string | null
+  whatsappBusinessAccountId: string | null
 }
 
 type HealthDevice = {
@@ -153,6 +168,7 @@ const activeDevice = (overrides: Partial<Device> = {}): Device => ({
   organizationId: "org-1",
   status: "ACTIVE",
   whatsappPhoneId: "phone-1",
+  whatsappBusinessAccountId: "business-1",
   ...overrides,
 })
 
@@ -178,6 +194,8 @@ const resetMocks = () => {
     updateLastHeartbeatMock,
     markActiveMock,
     markDisconnectedMock,
+    syncDeviceFromMetaMock,
+    recordMetaRefreshUnavailableMock,
     sendEmailMock,
     decryptWhatsAppTokenMock,
     metaClientConstructorMock,
@@ -185,6 +203,7 @@ const resetMocks = () => {
     emitCycleEnqueuedMock,
     emitUnavailableMock,
     emitCheckFailedMock,
+    emitMetadataRefreshFailedMock,
     emitDisconnectedMock,
     emitRecoveredMock,
     emitEmailFailedMock,
@@ -202,6 +221,8 @@ const resetMocks = () => {
   findManyMock.mockResolvedValue([])
   pipelineExecMock.mockResolvedValue([[null, 1]] as unknown[])
   metaRequestMock.mockResolvedValue(undefined)
+  syncDeviceFromMetaMock.mockResolvedValue({})
+  recordMetaRefreshUnavailableMock.mockResolvedValue(undefined)
   sendEmailMock.mockResolvedValue(undefined)
   listMembershipsMock.mockResolvedValue({
     data: [{ userId: "user-1" }, { userId: "user-2" }],
@@ -318,6 +339,7 @@ describe("checkSingleDevice through WhatsAppHealthJob.handle", () => {
     expect(updateLastHeartbeatMock).toHaveBeenCalledWith("d1")
     expect(redisDelMock).toHaveBeenCalledWith("whatsapp:health:miss:d1")
     expect(markDisconnectedMock).not.toHaveBeenCalled()
+    expect(syncDeviceFromMetaMock).toHaveBeenCalledWith("d1", "org-1")
   })
 
   it("increments misses and logs an API failure", async () => {
@@ -333,6 +355,23 @@ describe("checkSingleDevice through WhatsAppHealthJob.handle", () => {
       900
     )
     expect(emitCheckFailedMock).toHaveBeenCalledWith(2, "Meta unavailable")
+    expect(markDisconnectedMock).not.toHaveBeenCalled()
+    expect(syncDeviceFromMetaMock).not.toHaveBeenCalled()
+  })
+
+  it("records a Meta metadata failure without failing a healthy device", async () => {
+    findUniqueMock.mockResolvedValue(activeDevice())
+    syncDeviceFromMetaMock.mockRejectedValue(new Error("Meta unavailable"))
+
+    await WhatsAppHealthJob.handle({ data: { deviceId: "d1" } })
+
+    expect(updateLastHeartbeatMock).toHaveBeenCalledWith("d1")
+    expect(redisDelMock).toHaveBeenCalledWith("whatsapp:health:miss:d1")
+    expect(recordMetaRefreshUnavailableMock).toHaveBeenCalledWith("d1", "org-1")
+    expect(emitMetadataRefreshFailedMock).toHaveBeenCalledWith(
+      expect.any(Error)
+    )
+    expect(emitCheckFailedMock).not.toHaveBeenCalled()
     expect(markDisconnectedMock).not.toHaveBeenCalled()
   })
 

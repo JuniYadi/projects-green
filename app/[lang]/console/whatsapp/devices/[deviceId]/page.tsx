@@ -121,6 +121,44 @@ function InfoRow({ label, value }: InfoRowProps) {
   )
 }
 
+type MetaNameStatusBadgeProps = {
+  nameStatus: string | null | undefined
+  profile: Record<string, unknown> | null
+}
+
+export function MetaNameStatusBadge({
+  nameStatus,
+  profile,
+}: MetaNameStatusBadgeProps) {
+  const syncState = getProfileString(
+    profile,
+    "meta_name_status_sync_state"
+  ).toUpperCase()
+  const normalizedStatus = nameStatus?.toUpperCase()
+
+  if (syncState === "UNAVAILABLE") {
+    return <Badge variant="secondary">Meta unavailable</Badge>
+  }
+
+  if (syncState === "UNKNOWN") {
+    return <Badge variant="secondary">Unknown</Badge>
+  }
+
+  if (normalizedStatus === "APPROVED") {
+    return <Badge variant="success">Approved</Badge>
+  }
+
+  if (normalizedStatus === "PENDING" || normalizedStatus === "PENDING_REVIEW") {
+    return <Badge variant="warning">Pending</Badge>
+  }
+
+  if (normalizedStatus === "DECLINED" || normalizedStatus === "REJECTED") {
+    return <Badge variant="destructive">Rejected</Badge>
+  }
+
+  return <Badge variant="secondary">Not yet synced</Badge>
+}
+
 const getProfileString = (
   profile: Record<string, unknown> | null,
   key: string
@@ -626,22 +664,10 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                 <InfoRow
                   label="Meta Name Status"
                   value={
-                    device.nameStatus ? (
-                      <Badge
-                        variant={
-                          device.nameStatus.toUpperCase() === "APPROVED"
-                            ? "success"
-                            : device.nameStatus.toUpperCase() ===
-                                "PENDING_REVIEW"
-                              ? "warning"
-                              : "destructive"
-                        }
-                      >
-                        {device.nameStatus}
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary">Unset</Badge>
-                    )
+                    <MetaNameStatusBadge
+                      nameStatus={device.nameStatus}
+                      profile={profile}
+                    />
                   }
                 />
                 <InfoRow

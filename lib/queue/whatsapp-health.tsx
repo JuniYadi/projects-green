@@ -2,6 +2,8 @@
  * WhatsApp Device Health — BullMQ repeatable job
  *
  * Heartbeat mechanism: polls Meta Cloud API every 5 min per ACTIVE device.
+ * A successful heartbeat also refreshes device metadata through the same shared
+ * operation used by the manual "Sync From Meta" control.
  * 3 consecutive misses → DISCONNECTED.
  *
  * Miss counter: Redis key `whatsapp:health:miss:{deviceId}` with 15 min TTL.
@@ -14,6 +16,10 @@ import { BaseJob } from "@/lib/queue/base-job"
 import { sendEmail } from "@/lib/queue/email"
 import { redis } from "@/lib/redis"
 import { devicesService } from "@/modules/whatsapp/devices/devices.service"
+import {
+  recordMetaRefreshUnavailable,
+  syncDeviceFromMeta,
+} from "@/modules/whatsapp/devices/business-profile.service"
 import { DeviceDisconnectedEmail } from "@/modules/whatsapp/emails/device-disconnected"
 import {
   emitWhatsAppHealthCycleEnqueued,
@@ -21,6 +27,7 @@ import {
   emitWhatsAppHealthDeviceDisconnected,
   emitWhatsAppHealthDeviceRecovered,
   emitWhatsAppHealthDeviceUnavailable,
+  emitWhatsAppHealthDeviceMetadataRefreshFailed,
   emitWhatsAppHealthDisconnectEmailFailed,
   emitWhatsAppHealthDisconnectEmailNoRecipients,
 } from "@/lib/worker-health-logging"
@@ -179,6 +186,7 @@ async function checkSingleDevice(deviceId: string): Promise<void> {
       organizationId: true,
       status: true,
       whatsappPhoneId: true,
+      whatsappBusinessAccountId: true,
     },
   })
 
@@ -211,6 +219,20 @@ async function checkSingleDevice(deviceId: string): Promise<void> {
     if ((device.status as string) === "DISCONNECTED") {
       await devicesService.markActive(deviceId)
       emitWhatsAppHealthDeviceRecovered()
+    }
+
+    if (!device.whatsappBusinessAccountId) return
+
+    // Metadata must never turn a healthy connection into a failed health check.
+    try {
+      await syncDeviceFromMeta(deviceId, device.organizationId)
+    } catch (error) {
+      try {
+        await recordMetaRefreshUnavailable(deviceId, device.organizationId)
+      } catch (recordError) {
+        emitWhatsAppHealthDeviceMetadataRefreshFailed(recordError)
+      }
+      emitWhatsAppHealthDeviceMetadataRefreshFailed(error)
     }
   } else {
     // Miss — increment counter

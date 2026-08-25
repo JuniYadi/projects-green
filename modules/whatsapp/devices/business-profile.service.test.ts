@@ -2,6 +2,7 @@ import "@/test/register"
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import {
   getProfile,
+  syncDeviceFromMeta,
   syncTemplatesFromMeta,
   updateProfile,
   uploadProfilePicture,
@@ -72,6 +73,15 @@ mock.module("@/lib/whatsapp/crypto", () => ({
   decryptWhatsAppToken: async (t: string) => t,
 }))
 
+const mockMetaRequest = mock(async (_args?: unknown): Promise<unknown> => ({}))
+
+mock.module("@/lib/whatsapp/meta-cloud/client", () => {
+  class MockMetaCloudHttpClient {
+    request = mockMetaRequest
+  }
+  return { MetaCloudHttpClient: MockMetaCloudHttpClient }
+})
+
 describe("business-profile.service", () => {
   beforeEach(() => {
     mockFindUnique.mockClear()
@@ -84,6 +94,8 @@ describe("business-profile.service", () => {
     mockGetBusinessProfile.mockClear()
     mockUpdateBusinessProfile.mockClear()
     mockUploadProfilePicture.mockClear()
+    mockMetaRequest.mockClear()
+    mockMetaRequest.mockResolvedValue({})
   })
 
   it("throws error instances correctly", () => {
@@ -164,6 +176,83 @@ describe("business-profile.service", () => {
     const res = await getProfile("d-1", "org-1")
     expect(res.about).toBe("New about")
     expect(mockUpdate).toHaveBeenCalled()
+  })
+
+  it("syncs the Meta display-name status and related device metadata", async () => {
+    mockFindUnique.mockResolvedValue({
+      id: "d-1",
+      organizationId: "org-1",
+      token: "token",
+      tokenEncrypted: null,
+      tokenIv: null,
+      whatsappPhoneId: "phone-1",
+      whatsappBusinessAccountId: "waba-1",
+      whatsappVersion: "v22.0",
+      phoneNumber: "+15551234567",
+      whatsappProfile: { about: "Existing profile" },
+      whatsappMetaApp: { metaAppId: "app-1" },
+    })
+    mockMetaRequest.mockResolvedValue({
+      data: [
+        {
+          id: "phone-1",
+          verified_name: "Green Support",
+          name_status: "APPROVED",
+          quality_score: { score: "GREEN" },
+          health_status: "AVAILABLE",
+          whatsapp_business_profile: { data: [{ about: "Support team" }] },
+        },
+      ],
+    })
+
+    await syncDeviceFromMeta("d-1", "org-1")
+
+    expect(mockMetaRequest).toHaveBeenCalledWith(
+      "SYNC_DEVICE_FROM_META",
+      expect.stringContaining("/v22.0/waba-1/phone_numbers"),
+      "GET"
+    )
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "d-1" },
+        data: expect.objectContaining({
+          whatsappProfile: expect.objectContaining({
+            verified_name: "Green Support",
+            name_status: "APPROVED",
+            quality_rating: "GREEN",
+            meta_health_status: "AVAILABLE",
+            meta_name_status_sync_state: "SYNCED",
+          }),
+        }),
+      })
+    )
+  })
+
+  it("marks a partial Meta response as unknown without inventing approval", async () => {
+    mockFindUnique.mockResolvedValue({
+      id: "d-1",
+      organizationId: "org-1",
+      token: "token",
+      tokenEncrypted: null,
+      tokenIv: null,
+      whatsappPhoneId: "phone-1",
+      whatsappBusinessAccountId: "waba-1",
+      whatsappVersion: "v22.0",
+      phoneNumber: "+15551234567",
+      whatsappProfile: { about: "Existing profile" },
+      whatsappMetaApp: { metaAppId: "app-1" },
+    })
+    mockMetaRequest.mockResolvedValue({
+      data: [{ id: "phone-1", verified_name: "Green Support" }],
+    })
+
+    const profile = await syncDeviceFromMeta("d-1", "org-1")
+
+    expect(profile).toMatchObject({
+      verified_name: "Green Support",
+      meta_name_status_sync_state: "UNKNOWN",
+    })
+    expect(profile).not.toHaveProperty("name_status", "APPROVED")
   })
 
   it("updateProfile throws DeviceNoPhoneIdError when phone id missing", async () => {
