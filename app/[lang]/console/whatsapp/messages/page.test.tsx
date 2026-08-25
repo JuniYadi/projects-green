@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 const mockRouterPush = mock(() => {})
 const mockRouterReplace = mock(() => {})
+const mockToastSuccess = mock(() => {})
 let mockSearchParams = new URLSearchParams()
 const mockConversationsGet = mock(() => {
   const nullable = null as string | null
@@ -173,6 +174,14 @@ mock.module("next/navigation", () => ({
   useSearchParams: () => mockSearchParams,
 }))
 
+mock.module("sonner", () => ({
+  toast: {
+    success: mockToastSuccess,
+    error: mock(() => {}),
+    warning: mock(() => {}),
+  },
+}))
+
 mock.module("@/lib/api/whatsapp-client", () => ({
   whatsappClient: {
     messages: {
@@ -238,6 +247,7 @@ describe("WhatsAppMessagesPage", () => {
   beforeEach(() => {
     mockRouterPush.mockClear()
     mockRouterReplace.mockClear()
+    mockToastSuccess.mockClear()
     mockConversationsList.mockClear()
     mockConversationsGet.mockClear()
     mockSendTemplate.mockClear()
@@ -697,6 +707,7 @@ describe("WhatsAppMessagesPage", () => {
 
   it("sends a template and updates URL when send succeeds", async () => {
     mockConversationsList.mockResolvedValueOnce({ ok: true, conversations: [] })
+    mockSearchParams = new URLSearchParams("template=tpl_1")
 
     const view = renderWithQuery(<WhatsAppMessagesPage />)
     const user = userEvent.setup()
@@ -705,8 +716,7 @@ describe("WhatsAppMessagesPage", () => {
     })
     await tick(50)
 
-    // Open dialog
-    await user.click(view.getByRole("button", { name: /send message/i }))
+    // A template launch URL preselects the template and opens the dialog.
     await waitFor(() => {
       expect(
         view.getByRole("heading", { name: "Send Template Message" })
@@ -720,8 +730,7 @@ describe("WhatsAppMessagesPage", () => {
     await user.type(phoneInput, "+6289876543210")
     expect(phoneInput.value).toBe("+6289876543210")
 
-    // Select template and fill fields
-    await user.click(view.getAllByText("hello_world")[0])
+    // Fill required fields for the preselected template.
     await waitFor(() => {
       expect(view.queryByPlaceholderText("Value for {{1}}")).toBeInTheDocument()
     })
@@ -895,8 +904,8 @@ describe("WhatsAppMessagesPage", () => {
     view.unmount()
   })
 
-  it("auto-opens template dialog and preselects template from ?template= query param", async () => {
-    mockSearchParams = new URLSearchParams("template=tpl_1")
+  it("closes a template deep link once and opens again for a later template URL", async () => {
+    mockSearchParams = new URLSearchParams("template=tpl_1&phone=6281234567890")
     const view = renderWithQuery(<WhatsAppMessagesPage />)
     await waitFor(() => {
       expect(
@@ -904,7 +913,105 @@ describe("WhatsAppMessagesPage", () => {
       ).toBeInTheDocument()
       expect(view.getAllByText("hello_world").length).toBeGreaterThanOrEqual(1)
     })
+
+    fireEvent.click(view.getByRole("button", { name: "Close" }))
+    await waitFor(() => {
+      expect(
+        view.queryByRole("heading", { name: "Send Template Message" })
+      ).not.toBeInTheDocument()
+    })
+    expect(mockRouterReplace).toHaveBeenCalledWith(
+      "/en/console/whatsapp/messages?phone=6281234567890",
+      { scroll: false }
+    )
+    expect(mockSendTemplate).not.toHaveBeenCalled()
+    expect(mockToastSuccess).not.toHaveBeenCalled()
+
+    // Simulate the URL state after the replacement, then browser Forward to
+    // another valid template launch URL.
     mockSearchParams = new URLSearchParams()
+    view.rerender(<WhatsAppMessagesPage />)
+    mockSearchParams = new URLSearchParams("template=tpl_1")
+    view.rerender(<WhatsAppMessagesPage />)
+    await waitFor(() => {
+      expect(
+        view.getByRole("heading", { name: "Send Template Message" })
+      ).toBeInTheDocument()
+    })
+    view.unmount()
+  })
+
+  it("cancels a template deep link without sending or reporting success", async () => {
+    mockSearchParams = new URLSearchParams("template=tpl_1")
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
+    await waitFor(() => {
+      expect(
+        view.getByRole("heading", { name: "Send Template Message" })
+      ).toBeInTheDocument()
+    })
+
+    fireEvent.click(view.getByRole("button", { name: "Cancel" }))
+    await waitFor(() => {
+      expect(
+        view.queryByRole("heading", { name: "Send Template Message" })
+      ).not.toBeInTheDocument()
+    })
+    expect(mockRouterReplace).toHaveBeenCalledWith(
+      "/en/console/whatsapp/messages",
+      { scroll: false }
+    )
+    expect(mockSendTemplate).not.toHaveBeenCalled()
+    expect(mockToastSuccess).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  it("dismisses a template deep link with Escape without reopening", async () => {
+    mockSearchParams = new URLSearchParams("template=tpl_1")
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
+    await waitFor(() => {
+      expect(
+        view.getByRole("heading", { name: "Send Template Message" })
+      ).toBeInTheDocument()
+    })
+
+    fireEvent.keyDown(document, { key: "Escape", code: "Escape" })
+    await waitFor(() => {
+      expect(
+        view.queryByRole("heading", { name: "Send Template Message" })
+      ).not.toBeInTheDocument()
+    })
+    expect(mockRouterReplace).toHaveBeenCalledWith(
+      "/en/console/whatsapp/messages",
+      { scroll: false }
+    )
+    expect(mockSendTemplate).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  it("dismisses a template deep link from the permitted backdrop", async () => {
+    mockSearchParams = new URLSearchParams("template=tpl_1")
+    const view = renderWithQuery(<WhatsAppMessagesPage />)
+    await waitFor(() => {
+      expect(
+        view.getByRole("heading", { name: "Send Template Message" })
+      ).toBeInTheDocument()
+    })
+    const backdrop = document.querySelector('[data-slot="dialog-overlay"]')
+    expect(backdrop).not.toBeNull()
+
+    fireEvent.pointerDown(backdrop!)
+    fireEvent.pointerUp(backdrop!)
+    fireEvent.click(backdrop!)
+    await waitFor(() => {
+      expect(
+        view.queryByRole("heading", { name: "Send Template Message" })
+      ).not.toBeInTheDocument()
+    })
+    expect(mockRouterReplace).toHaveBeenCalledWith(
+      "/en/console/whatsapp/messages",
+      { scroll: false }
+    )
+    expect(mockSendTemplate).not.toHaveBeenCalled()
     view.unmount()
   })
 })
