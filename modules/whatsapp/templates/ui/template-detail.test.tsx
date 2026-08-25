@@ -123,6 +123,17 @@ describe("TemplateDetailView", () => {
     ).toBeInTheDocument()
   })
 
+  it("removes outer divider rings while preserving the responsive columns", () => {
+    const view = render(<TemplateDetailView {...propsFor()} />)
+    const cards = view.container.querySelectorAll('[data-slot="card"]')
+    const layout = view.container.querySelector(".lg\\:grid-cols-12")
+
+    expect(cards).toHaveLength(2)
+    expect(cards[0]).toHaveClass("ring-0")
+    expect(cards[1]).toHaveClass("ring-0")
+    expect(layout).toHaveClass("grid", "gap-6", "lg:grid-cols-12")
+  })
+
   it.each([
     [
       "INCORRECT_CATEGORY",
