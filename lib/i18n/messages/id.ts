@@ -526,6 +526,7 @@ export const idMessages: AppMessages = {
         levels: {
           groundControl: "Level 0 • Mulai Penyiapan",
           towerClearancePending: "Level 0 • Menunggu Verifikasi Perangkat",
+          level0Pending: "Lv 0 (Verifikasi)",
           transponderActive: "Level 1 • Perangkat Aktif",
           flightOperations: "Level 2 • Operasional Pesan",
           fullCockpitMaster: "Level 3 • Otomasi Penuh",

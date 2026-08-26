@@ -41,11 +41,7 @@ export function LockedFeatureTeaser({
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(suppliedLocale ?? params?.lang)
   const messages = getMessages(locale)
-  const t = messages?.console?.whatsapp?.onboarding?.lockedFeature ?? {
-    lockedTitle: "Locked Cockpit Feature • Level {level}",
-    unlockPrerequisite: "Unlock Prerequisite",
-    defaultActiveLabel: "Complete Active Mission",
-  }
+  const t = messages.console.whatsapp.onboarding.lockedFeature
   const activeMissionLabel = suppliedActiveMissionLabel ?? t.defaultActiveLabel
   const localizedHref = localizePathname({
     pathname: activeMissionHref,

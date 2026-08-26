@@ -73,9 +73,7 @@ export function FlightHudWidget({
 
   const levelDisplay =
     level === "0_pending"
-      ? locale === "id"
-        ? "Lv 0 (Verifikasi)"
-        : "Lv 0 (Tower)"
+      ? tLevels.level0Pending
       : tLevels.levelPrefix.replace("{level}", String(level))
 
   return (

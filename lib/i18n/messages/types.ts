@@ -472,6 +472,7 @@ export type AppMessages = {
         levels: {
           groundControl: string
           towerClearancePending: string
+          level0Pending: string
           transponderActive: string
           flightOperations: string
           fullCockpitMaster: string

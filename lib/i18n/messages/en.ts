@@ -524,6 +524,7 @@ export const enMessages: AppMessages = {
         levels: {
           groundControl: "Level 0 • Ground Control",
           towerClearancePending: "Level 0 • Tower Clearance Pending",
+          level0Pending: "Lv 0 (Tower)",
           transponderActive: "Level 1 • Transponder Active",
           flightOperations: "Level 2 • Flight Operations",
           fullCockpitMaster: "Level 3 • Full Cockpit Master",
