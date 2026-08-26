@@ -1,3 +1,4 @@
+import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 import {
   Card,
   CardContent,
@@ -36,7 +37,7 @@ export function MetaWebhookCard({ metaWebhook }: MetaWebhookCardProps) {
       <CardHeader>
         <CardTitle>Meta Webhook Setup</CardTitle>
         <CardDescription>
-          Inbound Meta webhook configuration for this device.
+          <WhatsAppText id="s279" />
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -53,8 +54,7 @@ export function MetaWebhookCard({ metaWebhook }: MetaWebhookCardProps) {
           </dl>
         ) : (
           <p className="text-sm text-muted-foreground">
-            No Meta App is attached to this device. Inbound Meta webhooks are
-            not configured.
+            <WhatsAppText id="s280" />
           </p>
         )}
       </CardContent>

@@ -1,4 +1,5 @@
 "use client"
+import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import {
@@ -289,7 +290,7 @@ export default function WhatsAppDashboardPage() {
           <Button asChild>
             <Link href="/console/whatsapp/messages">
               <PaperPlaneTilt className="mr-2 size-4" />
-              Send Message
+              <WhatsAppText id="s30" />
             </Link>
           </Button>
         </div>
@@ -300,11 +301,10 @@ export default function WhatsAppDashboardPage() {
           <CardContent className="flex flex-col items-center justify-between gap-4 p-6 sm:flex-row">
             <div className="space-y-1 text-center sm:text-left">
               <h3 className="text-base font-semibold">
-                Activate your WhatsApp Business Account
+                <WhatsAppText id="s31" />
               </h3>
               <p className="text-sm text-muted-foreground">
-                You have no active WhatsApp devices. Choose a plan to register
-                and connect your first WhatsApp Business number.
+                <WhatsAppText id="s32" />
               </p>
             </div>
             <Button className="shrink-0" onClick={() => setIsOrderOpen(true)}>

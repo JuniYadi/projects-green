@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useParams } from "next/navigation"
 import {
   RocketLaunch,
   CheckCircle,
@@ -22,17 +23,22 @@ import {
   CardDescription,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { getWhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 import type { WhatsAppOnboardingState } from "./use-whatsapp-onboarding"
 
 export type WhatsAppCommandCenterProps = {
   onboarding: WhatsAppOnboardingState
   onSubscribeClick: () => void
+  locale?: string
 }
 
 export function WhatsAppCommandCenter({
   onboarding,
   onSubscribeClick,
+  locale: suppliedLocale,
 }: WhatsAppCommandCenterProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = suppliedLocale ?? params?.lang
   const {
     level,
     progressPercent,
@@ -151,12 +157,11 @@ export function WhatsAppCommandCenter({
             <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
               <ClockCountdown className="size-5" weight="bold" />
               <CardTitle className="text-base font-bold">
-                Transponder Verification in Progress
+                {getWhatsAppText("s394", locale)}
               </CardTitle>
             </div>
             <CardDescription className="text-muted-foreground">
-              Your subscription is active! Platform admins are currently
-              provisioning and linking your Meta WhatsApp Business number.
+              {getWhatsAppText("s395", locale)}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -185,7 +190,7 @@ export function WhatsAppCommandCenter({
                     Admin Review
                   </p>
                   <p className="text-muted-foreground">
-                    WABA number registration
+                    {getWhatsAppText("s396", locale)}
                   </p>
                 </div>
               </div>
@@ -194,7 +199,7 @@ export function WhatsAppCommandCenter({
                 <div className="text-xs">
                   <p className="font-semibold text-foreground">Cockpit Live</p>
                   <p className="text-muted-foreground">
-                    Level 1 ready for take-off
+                    {getWhatsAppText("s397", locale)}
                   </p>
                 </div>
               </div>
@@ -202,7 +207,7 @@ export function WhatsAppCommandCenter({
 
             <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3 text-xs">
               <span className="text-muted-foreground">
-                Want to check your pending transponder hardware details?
+                {getWhatsAppText("s398", locale)}
               </span>
               <Button
                 variant="outline"
@@ -210,7 +215,9 @@ export function WhatsAppCommandCenter({
                 asChild
                 className="h-7 text-xs"
               >
-                <Link href="/console/whatsapp/devices">View Devices Tab</Link>
+                <Link href="/console/whatsapp/devices">
+                  {getWhatsAppText("s399", locale)}
+                </Link>
               </Button>
             </div>
           </CardContent>
@@ -292,9 +299,11 @@ export function WhatsAppCommandCenter({
                 )}
               </div>
               <div>
-                <h3 className="text-sm font-bold">2. Device Transponder</h3>
+                <h3 className="text-sm font-bold">
+                  {getWhatsAppText("s400", locale)}
+                </h3>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Connect active Meta WhatsApp number.
+                  {getWhatsAppText("s401", locale)}
                 </p>
               </div>
               <p className="text-[11px] font-medium text-muted-foreground">
@@ -336,7 +345,7 @@ export function WhatsAppCommandCenter({
                   3. Operations & Broadcasts
                 </h3>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Send 1st message and create template.
+                  {getWhatsAppText("s402", locale)}
                 </p>
               </div>
               <p className="text-[11px] font-medium text-muted-foreground">

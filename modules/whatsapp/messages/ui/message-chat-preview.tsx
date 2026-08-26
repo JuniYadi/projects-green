@@ -1,4 +1,5 @@
 "use client"
+import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import { Checks, Check, Image as ImageIcon } from "@phosphor-icons/react"
 import type { WhatsappMessageJourneyDTO } from "../messages.dto"
@@ -43,7 +44,8 @@ export function MessageChatPreview({
             {contact?.phoneNumber || "WhatsApp Contact"}
           </h4>
           <p className="text-[11px] text-emerald-100/80">
-            Via device {device?.phoneNumber || "WhatsApp Cloud"}
+            <WhatsAppText id="s234" />
+            {device?.phoneNumber || "WhatsApp Cloud"}
           </p>
         </div>
         <span className="rounded bg-emerald-800/80 px-2 py-0.5 text-[10px] font-medium tracking-wider uppercase">

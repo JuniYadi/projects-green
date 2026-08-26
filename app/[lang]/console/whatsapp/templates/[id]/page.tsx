@@ -1,4 +1,5 @@
 "use client"
+import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -105,14 +106,16 @@ export default function ConsoleTemplateDetailPage() {
       <Button asChild variant="ghost" size="sm" className="w-fit px-0">
         <Link href="../">
           <ArrowLeft className="mr-1 size-4" />
-          Back to Templates
+          <WhatsAppText id="s172" />
         </Link>
       </Button>
 
       {editing && template ? (
         <Card>
           <CardHeader>
-            <CardTitle>Edit Template</CardTitle>
+            <CardTitle>
+              <WhatsAppText id="s176" />
+            </CardTitle>
             <CardDescription>
               {approvedTemplateLocked
                 ? "Approved templates are locked. Add a new language variant with the same content structure."

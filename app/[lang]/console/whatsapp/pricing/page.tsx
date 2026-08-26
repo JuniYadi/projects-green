@@ -1,4 +1,9 @@
 "use client"
+import {
+  formatWhatsAppText,
+  getWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import { useQuery } from "@tanstack/react-query"
@@ -238,8 +243,7 @@ export default function WhatsAppPricingPage() {
             {t?.pricing?.heading ?? "WhatsApp Pricing"} & Ledger
           </h1>
           <p className="text-sm text-muted-foreground">
-            Category rates, quota deduction policies, and itemized transaction
-            ledger.
+            <WhatsAppText id="s93" />
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -256,7 +260,7 @@ export default function WhatsAppPricingPage() {
             <ArrowsClockwise
               className={`size-4 ${ledgerLoading ? "animate-spin" : ""}`}
             />
-            Refresh
+            <WhatsAppText id="s94" />
           </Button>
           <Button
             variant="outline"
@@ -312,7 +316,7 @@ export default function WhatsAppPricingPage() {
             <div className="flex items-center gap-2">
               <Info className="size-4 shrink-0 text-primary" />
               <span>
-                In-quota messages deduct from your plan quota allowance first (
+                <WhatsAppText id="s95" />
                 <span
                   className={`font-semibold ${
                     allActive
@@ -325,7 +329,7 @@ export default function WhatsAppPricingPage() {
                   Quota Credit{" "}
                   {allActive ? "" : isMixed ? "(Partial)" : "(Exhausted)"}
                 </span>
-                ). When monthly quota is exhausted, Pay-As-You-Go overage (
+                <WhatsAppText id="s96" />
                 <span
                   className={`font-semibold ${
                     noneActive
@@ -342,7 +346,7 @@ export default function WhatsAppPricingPage() {
                       ? "(Partial Fallback)"
                       : "(Fallback)"}
                 </span>
-                ) rates apply directly from your prepaid wallet balance.
+                <WhatsAppText id="s97" />
               </span>
             </div>
             <Button
@@ -373,8 +377,7 @@ export default function WhatsAppPricingPage() {
               WhatsApp Category Rates & Tier Comparison
             </CardTitle>
             <CardDescription className="text-xs">
-              Compare in-quota deduction against Pay-As-You-Go (PAYG) overage
-              rates across volume tiers.
+              <WhatsAppText id="s98" />
             </CardDescription>
           </div>
           {devices.length > 1 && (
@@ -384,9 +387,12 @@ export default function WhatsAppPricingPage() {
                 value={selectedDeviceId}
                 onChange={(e) => setSelectedDeviceId(e.target.value)}
                 className="rounded-md border bg-background px-2.5 py-1 text-xs"
-                aria-label="Filter by WhatsApp device"
+                aria-label={getWhatsAppText("s99", locale)}
               >
-                <option value="all">All Devices ({devices.length})</option>
+                <option value="all">
+                  <WhatsAppText id="s100" />
+                  {devices.length})
+                </option>
                 {devices.map((d) => (
                   <option key={d.deviceId} value={d.deviceId}>
                     {formatPhone(d.phoneNumber)} ({d.country})
@@ -414,12 +420,12 @@ export default function WhatsAppPricingPage() {
                 className="mt-2 text-xs"
                 onClick={() => refetchPricing()}
               >
-                Retry
+                <WhatsAppText id="s101" />
               </Button>
             </div>
           ) : devices.length === 0 ? (
             <div className="py-6 text-center text-xs text-muted-foreground">
-              No active WhatsApp devices found.
+              <WhatsAppText id="s102" />
             </div>
           ) : (
             <div className="space-y-6">
@@ -454,8 +460,7 @@ export default function WhatsAppPricingPage() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
                         <caption className="sr-only">
-                          Category deduction rates and multi-tier pricing for{" "}
-                          {device.phoneNumber}
+                          <WhatsAppText id="s103" /> {device.phoneNumber}
                         </caption>
                         <thead className="border-b bg-muted/20 text-muted-foreground">
                           <tr>
@@ -473,7 +478,7 @@ export default function WhatsAppPricingPage() {
                                 Quota Credit
                               </span>
                               <div className="mt-0.5 text-[10px] font-normal text-muted-foreground">
-                                In-Quota Allowance
+                                <WhatsAppText id="s104" />
                               </div>
                             </th>
                             <th scope="col" className="px-4 py-3 text-right">
@@ -676,7 +681,7 @@ export default function WhatsAppPricingPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription className="text-xs">
-              Total Deducted Credits
+              <WhatsAppText id="s105" />
             </CardDescription>
             <CardTitle className="text-xl font-bold">
               {ledgerSummary.totalCredits.toLocaleString()} Credits
@@ -684,7 +689,7 @@ export default function WhatsAppPricingPage() {
           </CardHeader>
           <CardContent>
             <p className="text-[11px] text-muted-foreground">
-              Total quota credits reserved/debited across all dispatches
+              <WhatsAppText id="s106" />
             </p>
           </CardContent>
         </Card>
@@ -699,7 +704,7 @@ export default function WhatsAppPricingPage() {
           </CardHeader>
           <CardContent>
             <p className="text-[11px] text-muted-foreground">
-              Automatically refunded due to Meta delivery rejection
+              <WhatsAppText id="s107" />
             </p>
           </CardContent>
         </Card>
@@ -714,7 +719,7 @@ export default function WhatsAppPricingPage() {
           </CardHeader>
           <CardContent>
             <p className="text-[11px] text-muted-foreground">
-              Confirmed delivered message quota
+              <WhatsAppText id="s108" />
             </p>
           </CardContent>
         </Card>
@@ -729,8 +734,7 @@ export default function WhatsAppPricingPage() {
                 Transaction & Deduction Ledger
               </CardTitle>
               <CardDescription className="text-xs">
-                Real-time record of all quota deductions, deliveries, and
-                refunds.
+                <WhatsAppText id="s109" />
               </CardDescription>
             </div>
           </div>
@@ -744,7 +748,7 @@ export default function WhatsAppPricingPage() {
             <div className="relative min-w-[200px] flex-1">
               <MagnifyingGlass className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search phone or wamid..."
+                placeholder={getWhatsAppText("s110", locale)}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 text-xs"
@@ -760,10 +764,12 @@ export default function WhatsAppPricingPage() {
                 }}
               >
                 <SelectTrigger className="text-xs">
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder={getWhatsAppText("s302", locale)} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="all">
+                    <WhatsAppText id="s111" />
+                  </SelectItem>
                   <SelectItem value="CONFIRMED">Confirmed</SelectItem>
                   <SelectItem value="PENDING">Pending Verify</SelectItem>
                   <SelectItem value="REFUNDED">Refunded / Reverted</SelectItem>
@@ -783,7 +789,9 @@ export default function WhatsAppPricingPage() {
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="all">
+                    <WhatsAppText id="s112" />
+                  </SelectItem>
                   <SelectItem value="MARKETING">MARKETING</SelectItem>
                   <SelectItem value="UTILITY">UTILITY</SelectItem>
                   <SelectItem value="AUTHENTICATION">AUTHENTICATION</SelectItem>
@@ -801,10 +809,14 @@ export default function WhatsAppPricingPage() {
                 }}
               >
                 <SelectTrigger className="text-xs">
-                  <SelectValue placeholder="Device" />
+                  <SelectValue
+                    placeholder={getWhatsAppText("s113", locale)}
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Devices</SelectItem>
+                  <SelectItem value="all">
+                    <WhatsAppText id="s47" />
+                  </SelectItem>
                   {devices.map((d) => (
                     <SelectItem key={d.deviceId} value={d.deviceId}>
                       {formatPhone(d.phoneNumber)}
@@ -821,7 +833,7 @@ export default function WhatsAppPricingPage() {
               className="h-9 gap-1.5 text-xs"
             >
               <Funnel className="size-3.5" />
-              Apply Filter
+              <WhatsAppText id="s114" />
             </Button>
           </form>
           {/* Ledger Table */}
@@ -830,13 +842,17 @@ export default function WhatsAppPricingPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-xs">Time</TableHead>
-                  <TableHead className="text-xs">Recipient</TableHead>
+                  <TableHead className="text-xs">
+                    <WhatsAppText id="s115" />
+                  </TableHead>
                   <TableHead className="text-xs">Category</TableHead>
                   <TableHead className="text-xs">Source Type</TableHead>
                   <TableHead className="text-xs">Deduction</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
                   <TableHead className="text-xs">
-                    Meta Message ID / Note
+                    <WhatsAppText id="s302" locale={locale} />
+                  </TableHead>
+                  <TableHead className="text-xs">
+                    <WhatsAppText id="s116" />
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -874,7 +890,7 @@ export default function WhatsAppPricingPage() {
                       className="h-28 text-center text-xs text-muted-foreground"
                     >
                       <Receipt className="mx-auto mb-2 size-6 opacity-40" />
-                      No deduction ledger entries found.
+                      <WhatsAppText id="s117" />
                     </TableCell>
                   </TableRow>
                 )}
@@ -972,7 +988,11 @@ export default function WhatsAppPricingPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-2">
               <span className="text-xs text-muted-foreground">
-                Showing page {page} of {totalPages} ({ledgerTotal} entries)
+                {formatWhatsAppText(
+                  "s296",
+                  { page, totalPages, total: ledgerTotal },
+                  locale
+                )}
               </span>
               <div className="flex items-center gap-2">
                 <Button
@@ -982,7 +1002,7 @@ export default function WhatsAppPricingPage() {
                   disabled={page <= 1 || ledgerLoading}
                   className="text-xs"
                 >
-                  Previous
+                  <WhatsAppText id="s304" locale={locale} />
                 </Button>
                 <Button
                   variant="outline"
@@ -991,7 +1011,7 @@ export default function WhatsAppPricingPage() {
                   disabled={page >= totalPages || ledgerLoading}
                   className="text-xs"
                 >
-                  Next
+                  <WhatsAppText id="s305" locale={locale} />
                 </Button>
               </div>
             </div>

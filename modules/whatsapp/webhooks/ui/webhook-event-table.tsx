@@ -7,6 +7,10 @@
  */
 
 "use client"
+import {
+  formatWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 import Link from "next/link"
 import * as React from "react"
 import { useState, useCallback } from "react"
@@ -217,12 +221,24 @@ export function WebhookEventTable({
             <TableHeader>
               <TableRow>
                 {showPayload && <TableHead className="w-10" />}
-                <TableHead>Device</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>WA Message ID</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Event</TableHead>
-                <TableHead>Timestamp</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s113" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s10" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s202" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s302" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s226" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s306" />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -272,7 +288,7 @@ export function WebhookEventTable({
         {onRetry && (
           <Button variant="outline" onClick={onRetry}>
             <ArrowsClockwise className="mr-2 size-4" />
-            Retry
+            <WhatsAppText id="s101" />
           </Button>
         )}
       </div>
@@ -288,7 +304,9 @@ export function WebhookEventTable({
           className="mb-3 size-10 text-muted-foreground"
           weight="fill"
         />
-        <p className="text-sm text-muted-foreground">No webhook events yet</p>
+        <p className="text-sm text-muted-foreground">
+          <WhatsAppText id="s227" />
+        </p>
         {emptyActionHref && (
           <Button variant="outline" className="mt-3" asChild>
             <a href={emptyActionHref}>{emptyActionLabel}</a>
@@ -305,12 +323,24 @@ export function WebhookEventTable({
             <TableHeader>
               <TableRow>
                 {showPayload && <TableHead className="w-10" />}
-                <TableHead>Device</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>WA Message ID</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Event</TableHead>
-                <TableHead>Timestamp</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s113" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s10" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s202" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s302" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s226" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s306" />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -373,7 +403,7 @@ export function WebhookEventTable({
                               <TooltipContent className="max-w-sm font-mono text-xs break-all">
                                 <p>{event.waMessageId}</p>
                                 <p className="mt-0.5 text-[10px] text-muted-foreground">
-                                  Click to copy full ID
+                                  <WhatsAppText id="s205" />
                                 </p>
                               </TooltipContent>
                             </Tooltip>
@@ -413,7 +443,7 @@ export function WebhookEventTable({
                             <RawPayloadViewer payload={event.metaPayload} />
                           ) : (
                             <p className="text-xs text-muted-foreground italic">
-                              No raw payload data available for this event.
+                              <WhatsAppText id="s228" />
                             </p>
                           )}
                         </TableCell>
@@ -435,10 +465,13 @@ export function WebhookEventTable({
               disabled={pagination.page <= 1}
               onClick={() => pagination.onPageChange(pagination.page - 1)}
             >
-              Previous
+              <WhatsAppText id="s304" />
             </Button>
             <span className="text-xs text-muted-foreground">
-              Page {pagination.page} of {pagination.totalPages}
+              {formatWhatsAppText("s297", {
+                page: pagination.page,
+                totalPages: pagination.totalPages,
+              })}
             </span>
             <Button
               variant="outline"
@@ -446,7 +479,7 @@ export function WebhookEventTable({
               disabled={pagination.page >= pagination.totalPages}
               onClick={() => pagination.onPageChange(pagination.page + 1)}
             >
-              Next
+              <WhatsAppText id="s305" />
             </Button>
           </div>
         )}

@@ -1,4 +1,8 @@
 "use client"
+import {
+  getWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import { useParams } from "next/navigation"
@@ -141,7 +145,11 @@ export function MetaNameStatusBadge({
   }
 
   if (syncState === "UNKNOWN") {
-    return <Badge variant="secondary">Unknown</Badge>
+    return (
+      <Badge variant="secondary">
+        <WhatsAppText id="s69" />
+      </Badge>
+    )
   }
 
   if (normalizedStatus === "APPROVED") {
@@ -156,7 +164,11 @@ export function MetaNameStatusBadge({
     return <Badge variant="destructive">Rejected</Badge>
   }
 
-  return <Badge variant="secondary">Not yet synced</Badge>
+  return (
+    <Badge variant="secondary">
+      <WhatsAppText id="s70" />
+    </Badge>
+  )
 }
 
 const getProfileString = (
@@ -217,14 +229,14 @@ function WhatsAppProfilePreview({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CardTitle className="text-sm font-semibold tracking-wide text-white">
-              Official WhatsApp Business Profile
+              <WhatsAppText id="s71" />
             </CardTitle>
           </div>
           <Badge
             variant="outline"
             className="border-white/20 bg-white/10 text-[11px] font-normal text-white"
           >
-            Preview
+            <WhatsAppText id="s72" />
           </Badge>
         </div>
       </CardHeader>
@@ -273,7 +285,7 @@ function WhatsAppProfilePreview({
 
         <div className="rounded-xl border bg-muted/30 p-3.5 text-xs">
           <p className="mb-1 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
-            About & Description
+            <WhatsAppText id="s73" />
           </p>
           {about ? (
             <p className="leading-relaxed whitespace-pre-wrap text-foreground/90">
@@ -281,14 +293,14 @@ function WhatsAppProfilePreview({
             </p>
           ) : (
             <p className="text-muted-foreground italic">
-              Not configured (click Edit Profile to add)
+              <WhatsAppText id="s74" />
             </p>
           )}
         </div>
 
         <div className="space-y-2.5 text-xs">
           <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-            Business Details
+            <WhatsAppText id="s75" />
           </p>
           <div className="space-y-2.5 rounded-xl border bg-card p-3.5">
             <div className="flex items-center justify-between">
@@ -296,15 +308,21 @@ function WhatsAppProfilePreview({
               {category ? (
                 <span className="font-medium">{category}</span>
               ) : (
-                <span className="text-muted-foreground italic">— Not set</span>
+                <span className="text-muted-foreground italic">
+                  <WhatsAppText id="s76" />
+                </span>
               )}
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Email</span>
+              <span className="text-muted-foreground">
+                <WhatsAppText id="s12" />
+              </span>
               {email ? (
                 <span className="font-medium">{email}</span>
               ) : (
-                <span className="text-muted-foreground italic">— Not set</span>
+                <span className="text-muted-foreground italic">
+                  <WhatsAppText id="s76" />
+                </span>
               )}
             </div>
             <div className="flex items-start justify-between gap-2">
@@ -314,7 +332,9 @@ function WhatsAppProfilePreview({
                   {websites.join(", ")}
                 </span>
               ) : (
-                <span className="text-muted-foreground italic">— Not set</span>
+                <span className="text-muted-foreground italic">
+                  <WhatsAppText id="s76" />
+                </span>
               )}
             </div>
             <div className="flex items-start justify-between gap-2">
@@ -322,7 +342,9 @@ function WhatsAppProfilePreview({
               {address ? (
                 <span className="text-right font-medium">{address}</span>
               ) : (
-                <span className="text-muted-foreground italic">— Not set</span>
+                <span className="text-muted-foreground italic">
+                  <WhatsAppText id="s76" />
+                </span>
               )}
             </div>
           </div>
@@ -551,7 +573,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
         <Card className="shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Total Messages
+              <WhatsAppText id="s44" />
             </CardTitle>
             <ChatCircle className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -559,7 +581,9 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
             <div className="text-2xl font-bold">
               {usageStats.total.toLocaleString()}
             </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">This month</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              <WhatsAppText id="s48" />
+            </p>
           </CardContent>
         </Card>
 
@@ -575,7 +599,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
               {usageStats.inbound.toLocaleString()}
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Incoming messages
+              <WhatsAppText id="s77" />
             </p>
           </CardContent>
         </Card>
@@ -583,7 +607,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
         <Card className="shadow-xs">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Outbound Sent
+              <WhatsAppText id="s78" />
             </CardTitle>
             <PaperPlaneTilt className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -592,7 +616,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
               {usageStats.outbound.toLocaleString()}
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Outgoing messages
+              <WhatsAppText id="s79" />
             </p>
           </CardContent>
         </Card>
@@ -633,10 +657,10 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
           <Card className="shadow-xs">
             <CardHeader className="border-b pb-4">
               <CardTitle className="text-base font-semibold">
-                Device Information
+                <WhatsAppText id="s80" />
               </CardTitle>
               <CardDescription>
-                Technical parameters and connection state
+                <WhatsAppText id="s81" />
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-5">
@@ -706,7 +730,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                 Lifecycle Timestamps
               </CardTitle>
               <CardDescription>
-                Creation and synchronisation history
+                <WhatsAppText id="s82" />
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-5">
@@ -808,19 +832,23 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <PencilSimple className="mr-2 size-4" />
-          Edit WhatsApp Profile
+          <WhatsAppText id="s83" />
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Edit WhatsApp Profile</DialogTitle>
+          <DialogTitle>
+            <WhatsAppText id="s83" />
+          </DialogTitle>
           <DialogDescription>
-            Update your Meta business profile information.
+            <WhatsAppText id="s84" />
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="profile-about">About</Label>
+            <Label htmlFor="profile-about">
+              <WhatsAppText id="s85" />
+            </Label>
             <Input
               id="profile-about"
               maxLength={139}
@@ -828,18 +856,20 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
               onChange={(e) =>
                 setProfileForm((f) => ({ ...f, about: e.target.value }))
               }
-              placeholder="Short description about your business"
+              placeholder={getWhatsAppText("s86", locale)}
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="profile-description">Description</Label>
+            <Label htmlFor="profile-description">
+              <WhatsAppText id="s87" />
+            </Label>
             <Textarea
               id="profile-description"
               value={profileForm.description}
               onChange={(e) =>
                 setProfileForm((f) => ({ ...f, description: e.target.value }))
               }
-              placeholder="Detailed description of your business"
+              placeholder={getWhatsAppText("s88", locale)}
             />
           </div>
           <div className="grid gap-2">
@@ -854,7 +884,9 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="profile-email">Email</Label>
+            <Label htmlFor="profile-email">
+              <WhatsAppText id="s12" />
+            </Label>
             <Input
               id="profile-email"
               type="email"
@@ -866,7 +898,9 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="profile-picture-file">Profile picture</Label>
+            <Label htmlFor="profile-picture-file">
+              <WhatsAppText id="s89" />
+            </Label>
             <div className="flex items-center gap-3">
               <Avatar size="lg">
                 <AvatarImage
@@ -889,7 +923,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
                   onChange={handleProfilePictureChange}
                 />
                 <p className="text-xs text-muted-foreground">
-                  JPEG or PNG, up to 5 MB. The preview updates before saving.
+                  <WhatsAppText id="s90" />
                 </p>
                 {profilePictureFile && (
                   <p className="truncate text-xs font-medium">
@@ -935,7 +969,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
               }
             >
               <SelectTrigger id="profile-vertical">
-                <SelectValue placeholder="Select vertical" />
+                <SelectValue placeholder={getWhatsAppText("s91", locale)} />
               </SelectTrigger>
               <SelectContent>
                 {VERTICALS.map((v) => (
@@ -949,7 +983,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setProfileDialogOpen(false)}>
-            Cancel
+            <WhatsAppText id="s15" />
           </Button>
           <Button onClick={handleSaveProfile} disabled={profileSubmitting}>
             {profileSubmitting
@@ -968,7 +1002,7 @@ export default function ConsoleWhatsAppDeviceDetailPage() {
         size="sm"
         onClick={() => void handleSyncMeta()}
         disabled={isSyncing}
-        title="Sync latest profile and display name from Meta Graph API"
+        title={getWhatsAppText("s92", locale)}
       >
         <ArrowsClockwise
           className={`mr-2 size-4 ${isSyncing ? "animate-spin" : ""}`}

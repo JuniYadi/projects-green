@@ -1,9 +1,15 @@
 "use client"
+import {
+  getWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
+import { useParams, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   Card,
   CardContent,
@@ -11,7 +17,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { useSearchParams } from "next/navigation"
 import {
   AuditLogDTO,
   AuditLogTable,
@@ -41,6 +46,8 @@ const AUDIT_ACTIONS = [
 const AUDIT_STATUSES = ["OK", "FAILED", "STARTED", "PENDING"]
 
 export default function ConsoleWhatsAppAuditLogsPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
   const searchParams = useSearchParams()
   const onboarding = useWhatsAppOnboarding()
 
@@ -166,9 +173,11 @@ export default function ConsoleWhatsAppAuditLogsPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold">WhatsApp Audit Logs</h1>
+        <h1 className="text-2xl font-semibold">
+          <WhatsAppText id="s33" />
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Track WhatsApp actions for your organization.
+          <WhatsAppText id="s34" />
         </p>
       </header>
 
@@ -176,14 +185,16 @@ export default function ConsoleWhatsAppAuditLogsPage() {
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            Action
+            <WhatsAppText id="s35" />
           </label>
           <select
             className="h-9 rounded-md border px-3 text-sm"
             value={filterAction}
             onChange={(e) => setFilterAction(e.target.value)}
           >
-            <option value="">All</option>
+            <option value="">
+              <WhatsAppText id="s36" />
+            </option>
             {AUDIT_ACTIONS.map((a) => (
               <option key={a} value={a}>
                 {a}
@@ -194,14 +205,16 @@ export default function ConsoleWhatsAppAuditLogsPage() {
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            Status
+            <WhatsAppText id="s302" locale={locale} />
           </label>
           <select
             className="h-9 rounded-md border px-3 text-sm"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
           >
-            <option value="">All</option>
+            <option value="">
+              <WhatsAppText id="s36" />
+            </option>
             {AUDIT_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s}
@@ -212,7 +225,7 @@ export default function ConsoleWhatsAppAuditLogsPage() {
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            Device ID
+            <WhatsAppText id="s37" />
           </label>
           <Input
             placeholder="deviceId"
@@ -224,10 +237,10 @@ export default function ConsoleWhatsAppAuditLogsPage() {
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            Search
+            <WhatsAppText id="s38" />
           </label>
           <Input
-            placeholder="message, adminId, deviceId"
+            placeholder={getWhatsAppText("s39", locale)}
             className="h-9 w-48"
             value={filterQ}
             onChange={(e) => setFilterQ(e.target.value)}
@@ -236,7 +249,7 @@ export default function ConsoleWhatsAppAuditLogsPage() {
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            From
+            <WhatsAppText id="s40" />
           </label>
           <Input
             type="date"
@@ -248,7 +261,7 @@ export default function ConsoleWhatsAppAuditLogsPage() {
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            To
+            <WhatsAppText id="s41" />
           </label>
           <Input
             type="date"
@@ -271,9 +284,11 @@ export default function ConsoleWhatsAppAuditLogsPage() {
       {/* Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Audit Log</CardTitle>
+          <CardTitle>
+            <WhatsAppText id="s42" />
+          </CardTitle>
           <CardDescription>
-            WhatsApp audit entries for your organization.
+            <WhatsAppText id="s43" />
           </CardDescription>
         </CardHeader>
         <CardContent>

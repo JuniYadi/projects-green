@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useParams } from "next/navigation"
 import {
   Target,
   CaretUp,
@@ -18,17 +19,22 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { ServiceOrderDialog } from "@/components/billing/service-order-dialog"
+import { getWhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 import type { WhatsAppOnboardingState } from "./use-whatsapp-onboarding"
 
 export type FlightHudWidgetProps = {
   onboarding: WhatsAppOnboardingState
   onSubscribeClick?: () => void
+  locale?: string
 }
 
 export function FlightHudWidget({
   onboarding,
   onSubscribeClick,
+  locale: suppliedLocale,
 }: FlightHudWidgetProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = suppliedLocale ?? params?.lang
   const HUD_STORAGE_KEY = "whatsapp_onboarding_hud_closed"
   const [isDismissed, setIsDismissed] = React.useState<boolean>(() => {
     if (typeof window === "undefined") return false
@@ -104,7 +110,7 @@ export function FlightHudWidget({
                 size="icon"
                 className="size-6 text-muted-foreground hover:text-foreground"
                 onClick={handleDismiss}
-                title="Close HUD"
+                title={getWhatsAppText("s391", locale)}
               >
                 <X className="size-3.5" />
               </Button>
@@ -329,14 +335,14 @@ export function FlightHudWidget({
                 }}
                 className="text-muted-foreground transition-colors hover:text-foreground hover:underline"
               >
-                Close Guide
+                {getWhatsAppText("s392", locale)}
               </button>
               <Link
                 href="/console/support-tickets"
                 className="flex items-center gap-1 font-medium text-muted-foreground transition-colors hover:text-foreground hover:underline"
               >
                 <Lifebuoy className="size-3.5" />
-                Need Help?
+                {getWhatsAppText("s393", locale)}
               </Link>
             </div>
           </CardContent>

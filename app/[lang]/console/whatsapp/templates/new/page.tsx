@@ -1,4 +1,5 @@
 "use client"
+import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -7,7 +8,13 @@ import { ArrowLeft, WarningCircle, DeviceMobile } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { eden } from "@/lib/eden"
 import {
@@ -112,7 +119,7 @@ export default function ConsoleNewTemplatePage() {
     return (
       <div className="space-y-6">
         <p className="animate-pulse text-sm text-muted-foreground">
-          Loading template to duplicate...
+          <WhatsAppText id="s171" />
         </p>
       </div>
     )
@@ -124,7 +131,7 @@ export default function ConsoleNewTemplatePage() {
         <Button asChild variant="ghost" size="sm" className="w-fit px-0">
           <Link href="./">
             <ArrowLeft className="mr-1 size-4" />
-            Back to Templates
+            <WhatsAppText id="s172" />
           </Link>
         </Button>
         <h1 className="mt-2 text-2xl font-bold tracking-tight">
@@ -147,21 +154,21 @@ export default function ConsoleNewTemplatePage() {
       ) : activeDevices.length === 0 ? (
         <Card className="border-warning/30 bg-warning/5">
           <CardHeader>
-            <div className="flex items-center gap-2 text-warning">
+            <div className="text-warning flex items-center gap-2">
               <WarningCircle className="size-5" />
               <CardTitle className="text-base font-semibold">
-                Active WhatsApp Device Required
+                <WhatsAppText id="s173" />
               </CardTitle>
             </div>
             <CardDescription>
-              You need at least one active WhatsApp device with a valid subscription before you can create message templates.
+              <WhatsAppText id="s174" />
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild size="sm">
               <Link href="../devices">
                 <DeviceMobile className="mr-1.5 size-4" />
-                Go to Devices
+                <WhatsAppText id="s175" />
               </Link>
             </Button>
           </CardContent>

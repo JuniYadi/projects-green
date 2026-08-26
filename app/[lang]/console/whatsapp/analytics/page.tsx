@@ -1,8 +1,7 @@
 "use client"
+import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
-import { useState, useEffect, useCallback } from "react"
-import { useParams } from "next/navigation"
 import {
   ChartLine,
   Funnel,
@@ -16,8 +15,6 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
-import { getMessages } from "@/lib/i18n/messages"
-import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type PageState = "idle" | "loading" | "error" | "loaded"
 
@@ -95,10 +92,6 @@ function deltaBadgeCost(delta: number) {
 }
 
 export default function WhatsAppAnalyticsPage() {
-  const params = useParams<{ lang?: string }>()
-  const locale = resolveLocaleOrDefault(params?.lang)
-  const messages = getMessages(locale)
-  const t = messages.console.whatsapp.analytics
   const [state, setState] = React.useState<PageState>("idle")
   const [error, setError] = React.useState("")
   const [tab, setTab] = React.useState<"comparison" | "cost">("comparison")
@@ -194,7 +187,7 @@ export default function WhatsAppAnalyticsPage() {
           <div>
             <h1 className="text-2xl font-semibold">Analytics</h1>
             <p className="text-sm text-muted-foreground">
-              Compare Meta-reported analytics with local data.
+              <WhatsAppText id="s22" />
             </p>
           </div>
           {devices.length > 0 && (
@@ -225,7 +218,9 @@ export default function WhatsAppAnalyticsPage() {
           onChange={(e) => setStartDate(e.target.value)}
           className="rounded-md border bg-background px-2 py-1 text-sm"
         />
-        <span className="text-sm text-muted-foreground">to</span>
+        <span className="text-sm text-muted-foreground">
+          <WhatsAppText id="s23" />
+        </span>
         <input
           type="date"
           value={endDate}
@@ -265,7 +260,7 @@ export default function WhatsAppAnalyticsPage() {
               <ArrowsClockwise
                 className={`mr-1 size-4 ${state === "loading" ? "animate-spin" : ""}`}
               />
-              Sync from Meta
+              <WhatsAppText id="s24" />
             </Button>
             <Button
               variant="outline"
@@ -328,7 +323,8 @@ export default function WhatsAppAnalyticsPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>
-                Comparison Report ({reportResult.from} to {reportResult.to})
+                Comparison Report ({reportResult.from} <WhatsAppText id="s23" />
+                {reportResult.to})
               </CardTitle>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <span>
@@ -365,14 +361,16 @@ export default function WhatsAppAnalyticsPage() {
           <CardContent>
             {reportResult.comparisons.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">
-                No data for the selected range.
+                <WhatsAppText id="s25" />
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b text-muted-foreground">
-                      <th className="pr-4 pb-2 font-medium">Date</th>
+                      <th className="pr-4 pb-2 font-medium">
+                        <WhatsAppText id="s26" />
+                      </th>
                       <th className="pr-4 pb-2 font-medium">Metric</th>
                       <th className="pr-4 pb-2 text-right font-medium">Meta</th>
                       <th className="pr-4 pb-2 text-right font-medium">
@@ -381,7 +379,9 @@ export default function WhatsAppAnalyticsPage() {
                       <th className="pr-4 pb-2 text-right font-medium">
                         Delta
                       </th>
-                      <th className="pb-2 font-medium">Status</th>
+                      <th className="pb-2 font-medium">
+                        <WhatsAppText id="s302" />
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -444,14 +444,16 @@ export default function WhatsAppAnalyticsPage() {
           <CardContent>
             {costResult.rows.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">
-                No cost data for the selected range.
+                <WhatsAppText id="s27" />
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b text-muted-foreground">
-                      <th className="pr-4 pb-2 font-medium">Date</th>
+                      <th className="pr-4 pb-2 font-medium">
+                        <WhatsAppText id="s26" />
+                      </th>
                       <th className="pr-4 pb-2 font-medium">Category</th>
                       <th className="pr-4 pb-2 text-right font-medium">
                         Meta Cost
@@ -462,7 +464,9 @@ export default function WhatsAppAnalyticsPage() {
                       <th className="pr-4 pb-2 text-right font-medium">
                         Delta
                       </th>
-                      <th className="pb-2 font-medium">Status</th>
+                      <th className="pb-2 font-medium">
+                        <WhatsAppText id="s302" />
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -509,10 +513,11 @@ export default function WhatsAppAnalyticsPage() {
               className="mb-4 size-12 text-muted-foreground"
               weight="fill"
             />
-            <h3 className="mb-1 text-lg font-medium">No data loaded</h3>
+            <h3 className="mb-1 text-lg font-medium">
+              <WhatsAppText id="s28" />
+            </h3>
             <p className="max-w-md text-sm text-muted-foreground">
-              Select a device and date range, then sync from Meta or generate a
-              report.
+              <WhatsAppText id="s29" />
             </p>
           </CardContent>
         </Card>

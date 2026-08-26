@@ -52,4 +52,32 @@ describe("WhatsAppCommandCenter", () => {
     expect(view.getByText("Transmit First Message")).toBeInTheDocument()
     expect(view.getByText("60%")).toBeInTheDocument()
   })
+
+  it("renders English roadmap copy for the supplied locale", () => {
+    const view = render(
+      <WhatsAppCommandCenter
+        onboarding={mockState}
+        onSubscribeClick={() => {}}
+        locale="en"
+      />
+    )
+
+    expect(view.getByText("2. Device Transponder")).toBeInTheDocument()
+  })
+
+  it("renders Indonesian pending-device copy for the supplied locale", () => {
+    const view = render(
+      <WhatsAppCommandCenter
+        onboarding={{ ...mockState, level: "0_pending", hasDevice: false }}
+        onSubscribeClick={() => {}}
+        locale="id"
+      />
+    )
+
+    expect(
+      view.getByText("Verifikasi Transponder Sedang Berlangsung")
+    ).toBeInTheDocument()
+    expect(view.getByText("Pendaftaran nomor WABA")).toBeInTheDocument()
+    expect(view.getByText("Lihat Tab Perangkat")).toBeInTheDocument()
+  })
 })

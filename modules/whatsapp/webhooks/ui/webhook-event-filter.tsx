@@ -6,6 +6,10 @@
  */
 
 "use client"
+import {
+  getWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import { useCallback, useState } from "react"
 import { X } from "@phosphor-icons/react"
@@ -104,10 +108,12 @@ export function WebhookEventFilter({
             onValueChange={(val) => updateFilter("organizationId", val)}
           >
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="All organizations" />
+              <SelectValue placeholder={getWhatsAppText("s229")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="all">
+                <WhatsAppText id="s36" />
+              </SelectItem>
               {organizations.map((org) => (
                 <SelectItem key={org.id} value={org.id}>
                   {org.name}
@@ -121,17 +127,19 @@ export function WebhookEventFilter({
       {/* Event Type */}
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-medium text-muted-foreground">
-          Event Type
+          <WhatsAppText id="s230" />
         </label>
         <Select
           value={initialFilters.eventType}
           onValueChange={(val) => updateFilter("eventType", val)}
         >
           <SelectTrigger className="w-40">
-            <SelectValue placeholder="All types" />
+            <SelectValue placeholder={getWhatsAppText("s231")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="all">
+              <WhatsAppText id="s36" />
+            </SelectItem>
             {eventTypes.map((type) => (
               <SelectItem key={type} value={type}>
                 {type}
@@ -144,17 +152,19 @@ export function WebhookEventFilter({
       {/* Status */}
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-medium text-muted-foreground">
-          Status
+          <WhatsAppText id="s302" />
         </label>
         <Select
           value={initialFilters.processingStatus}
           onValueChange={(val) => updateFilter("processingStatus", val)}
         >
           <SelectTrigger className="w-36">
-            <SelectValue placeholder="All statuses" />
+            <SelectValue placeholder={getWhatsAppText("s232")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="all">
+              <WhatsAppText id="s36" />
+            </SelectItem>
             {statuses.map((status) => (
               <SelectItem key={status} value={status}>
                 {status}
@@ -168,17 +178,19 @@ export function WebhookEventFilter({
       {showDeviceDropdown && (
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            Device
+            <WhatsAppText id="s113" />
           </label>
           <Select
             value={initialFilters.deviceId}
             onValueChange={(val) => updateFilter("deviceId", val)}
           >
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="All devices" />
+              <SelectValue placeholder={getWhatsAppText("s233")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="all">
+                <WhatsAppText id="s36" />
+              </SelectItem>
               {devices.map((device) => (
                 <SelectItem key={device.id} value={device.id}>
                   {device.label}
@@ -192,7 +204,7 @@ export function WebhookEventFilter({
       {/* Date From */}
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-medium text-muted-foreground">
-          From
+          <WhatsAppText id="s40" />
         </label>
         <input
           type="date"
@@ -207,7 +219,9 @@ export function WebhookEventFilter({
 
       {/* Date To */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium text-muted-foreground">To</label>
+        <label className="text-xs font-medium text-muted-foreground">
+          <WhatsAppText id="s41" />
+        </label>
         <input
           type="date"
           value={localDateTo}

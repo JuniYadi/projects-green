@@ -1,4 +1,8 @@
 "use client"
+import {
+  formatWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import Link from "next/link"
 import {
@@ -131,7 +135,7 @@ function DetailsViewer({ details }: { details: Record<string, unknown> }) {
     <div className="col-span-2 space-y-1.5">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
-          Details
+          <WhatsAppText id="s200" />
         </span>
         <Button
           type="button"
@@ -151,7 +155,9 @@ function DetailsViewer({ details }: { details: Record<string, unknown> }) {
           ) : (
             <>
               <CopySimple className="size-3.5" />
-              <span>Copy JSON</span>
+              <span>
+                <WhatsAppText id="s201" />
+              </span>
             </>
           )}
         </Button>
@@ -184,14 +190,30 @@ export function AuditLogTable({
             <TableHeader>
               <TableRow>
                 {showPayload && <TableHead className="w-10" />}
-                <TableHead>Device</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>WA Message ID</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Message</TableHead>
-                <TableHead>Actor</TableHead>
-                <TableHead>Time</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s113" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s10" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s202" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s35" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s302" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s203" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s303" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s306" />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -242,7 +264,7 @@ export function AuditLogTable({
         {onRetry && (
           <Button variant="outline" onClick={onRetry}>
             <ArrowsClockwise className="mr-2 size-4" />
-            Retry
+            <WhatsAppText id="s101" />
           </Button>
         )}
       </div>
@@ -252,7 +274,9 @@ export function AuditLogTable({
   if (logs.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <p className="text-sm text-muted-foreground">No audit logs found</p>
+        <p className="text-sm text-muted-foreground">
+          <WhatsAppText id="s204" />
+        </p>
       </div>
     )
   }
@@ -265,14 +289,30 @@ export function AuditLogTable({
             <TableHeader>
               <TableRow>
                 {showPayload && <TableHead className="w-10" />}
-                <TableHead>Device</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>WA Message ID</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Message</TableHead>
-                <TableHead>Actor</TableHead>
-                <TableHead>Time</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s113" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s10" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s202" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s35" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s302" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s203" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s303" />
+                </TableHead>
+                <TableHead>
+                  <WhatsAppText id="s306" />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -353,7 +393,7 @@ export function AuditLogTable({
                               <TooltipContent className="max-w-sm font-mono text-xs break-all">
                                 <p>{String(log.details.waMessageId)}</p>
                                 <p className="mt-0.5 text-[10px] text-muted-foreground">
-                                  Click to copy full ID
+                                  <WhatsAppText id="s205" />
                                 </p>
                               </TooltipContent>
                             </Tooltip>
@@ -390,11 +430,15 @@ export function AuditLogTable({
                         <TableCell colSpan={9} className="bg-muted/30 p-4">
                           <div className="grid grid-cols-2 gap-3 text-sm">
                             <div>
-                              <span className="font-medium">Message:</span>{" "}
+                              <span className="font-medium">
+                                <WhatsAppText id="s206" />
+                              </span>{" "}
                               {log.message ?? "—"}
                             </div>
                             <div>
-                              <span className="font-medium">Error:</span>{" "}
+                              <span className="font-medium">
+                                <WhatsAppText id="s207" />
+                              </span>{" "}
                               {log.errorMessage ?? "—"}
                             </div>
                             <div>
@@ -406,16 +450,20 @@ export function AuditLogTable({
                               {log.userAgent ?? "—"}
                             </div>
                             <div>
-                              <span className="font-medium">Admin ID:</span>{" "}
+                              <span className="font-medium">
+                                <WhatsAppText id="s208" />
+                              </span>{" "}
                               {log.adminId ?? "—"}
                             </div>
                             <div>
-                              <span className="font-medium">Device ID:</span>{" "}
+                              <span className="font-medium">
+                                <WhatsAppText id="s209" />
+                              </span>{" "}
                               {log.deviceId ?? "—"}
                             </div>
                             <div>
                               <span className="font-medium">
-                                Correlation ID:
+                                <WhatsAppText id="s210" />
                               </span>{" "}
                               {log.correlationId ?? "—"}
                             </div>
@@ -443,8 +491,11 @@ export function AuditLogTable({
         {pagination && pagination.totalPages > 1 && (
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>
-              Page {pagination.page} of {pagination.totalPages} (
-              {pagination.total} total)
+              {formatWhatsAppText("s296", {
+                page: pagination.page,
+                totalPages: pagination.totalPages,
+                total: pagination.total,
+              })}
             </span>
             <div className="flex gap-2">
               <Button
@@ -453,7 +504,7 @@ export function AuditLogTable({
                 disabled={pagination.page <= 1}
                 onClick={() => pagination.onPageChange(pagination.page - 1)}
               >
-                Previous
+                <WhatsAppText id="s304" />
               </Button>
               <Button
                 variant="outline"
@@ -461,7 +512,7 @@ export function AuditLogTable({
                 disabled={pagination.page >= pagination.totalPages}
                 onClick={() => pagination.onPageChange(pagination.page + 1)}
               >
-                Next
+                <WhatsAppText id="s305" />
               </Button>
             </div>
           </div>

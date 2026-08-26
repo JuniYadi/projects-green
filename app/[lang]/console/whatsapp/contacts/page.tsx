@@ -1,4 +1,9 @@
 "use client"
+import {
+  formatWhatsAppText,
+  getWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import {
@@ -110,6 +115,11 @@ const emptyFormData: ContactFormData = {
   status: "ACTIVE",
 }
 
+const contactsUnableToLoadByLocale = {
+  en: getMessages("en").console.whatsapp.contacts.unableToLoad,
+  id: getMessages("id").console.whatsapp.contacts.unableToLoad,
+}
+
 // ─── Page Component ───────────────────────────────────────────────────────
 
 export default function WhatsAppContactsPage() {
@@ -117,6 +127,7 @@ export default function WhatsAppContactsPage() {
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
   const onboarding = useWhatsAppOnboarding()
+  const contactsUnableToLoad = contactsUnableToLoadByLocale[locale]
   // ── Data state ──────────────────────────────────────────────────────────
   const [contacts, setContacts] = React.useState<Contact[]>([])
   const [groups, setGroups] = React.useState<ContactGroup[]>([])
@@ -159,14 +170,12 @@ export default function WhatsAppContactsPage() {
       setContacts(items)
     } catch (error) {
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : messages.console.whatsapp.contacts.unableToLoad
+        error instanceof Error ? error.message : contactsUnableToLoad
       )
     } finally {
       setIsLoading(false)
     }
-  }, [messages.console.whatsapp.contacts.unableToLoad])
+  }, [contactsUnableToLoad])
 
   const loadGroups = React.useCallback(async () => {
     try {
@@ -374,12 +383,20 @@ export default function WhatsAppContactsPage() {
     setParsedContacts([])
     if (successCount > 0) {
       toast.success(
-        `Imported ${successCount} contact${successCount !== 1 ? "s" : ""}`
+        formatWhatsAppText(
+          successCount === 1 ? "s384" : "s385",
+          { count: successCount },
+          locale
+        )
       )
     }
     if (errorCount > 0) {
       toast.error(
-        `${errorCount} contact${errorCount !== 1 ? "s" : ""} failed to import`
+        formatWhatsAppText(
+          errorCount === 1 ? "s386" : "s387",
+          { count: errorCount },
+          locale
+        )
       )
     }
     void loadContacts()
@@ -447,7 +464,7 @@ export default function WhatsAppContactsPage() {
           <div className="flex gap-2">
             <Button onClick={openImportDialog}>
               <Upload weight="bold" className="mr-2 size-4" />
-              Import CSV
+              <WhatsAppText id="s0" />
             </Button>
             <Button onClick={openAddDialog}>
               <UserPlus weight="bold" className="mr-2 size-4" />
@@ -578,7 +595,8 @@ export default function WhatsAppContactsPage() {
                       </p>
                       {contact.lastMessage && (
                         <p className="max-w-64 truncate text-xs text-muted-foreground">
-                          Last: {contact.lastMessage}
+                          <WhatsAppText id="s1" />
+                          {contact.lastMessage}
                         </p>
                       )}
                       {contact.lastMessageAt && (
@@ -602,7 +620,9 @@ export default function WhatsAppContactsPage() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon-sm">
-                          <span className="sr-only">Open menu</span>
+                          <span className="sr-only">
+                            <WhatsAppText id="s2" />
+                          </span>
                           <DotsThreeVertical weight="bold" className="size-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -695,7 +715,7 @@ export default function WhatsAppContactsPage() {
                 }
               >
                 <SelectTrigger id="add-group" className="w-full">
-                  <SelectValue placeholder="Default audience" />
+                  <SelectValue placeholder={getWhatsAppText("s3", locale)} />
                 </SelectTrigger>
                 <SelectContent>
                   {groups.map((group) => (
@@ -820,7 +840,7 @@ export default function WhatsAppContactsPage() {
                 }
               >
                 <SelectTrigger id="edit-group" className="w-full">
-                  <SelectValue placeholder="Default audience" />
+                  <SelectValue placeholder={getWhatsAppText("s3", locale)} />
                 </SelectTrigger>
                 <SelectContent>
                   {groups.map((group) => (
@@ -914,16 +934,19 @@ export default function WhatsAppContactsPage() {
       <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Import Contacts from CSV</DialogTitle>
+            <DialogTitle>
+              <WhatsAppText id="s4" />
+            </DialogTitle>
             <DialogDescription>
-              Upload a CSV file with columns: phone, name, email, group
-              (optional). The first row must be a header row.
+              <WhatsAppText id="s5" />
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             {/* File input */}
             <div className="grid gap-2">
-              <Label htmlFor="csv-upload">CSV File</Label>
+              <Label htmlFor="csv-upload">
+                <WhatsAppText id="s6" />
+              </Label>
               <input
                 id="csv-upload"
                 type="file"
@@ -934,7 +957,7 @@ export default function WhatsAppContactsPage() {
               <Button asChild variant="outline">
                 <label htmlFor="csv-upload" className="cursor-pointer">
                   <Upload weight="bold" className="mr-2 size-4" />
-                  Choose CSV File
+                  <WhatsAppText id="s7" />
                 </label>
               </Button>
             </div>
@@ -943,24 +966,27 @@ export default function WhatsAppContactsPage() {
             {parsedContacts.length > 0 && (
               <div className="grid gap-2">
                 <Label>
-                  Preview ({parsedContacts.length} contact
-                  {parsedContacts.length !== 1 ? "s" : ""})
+                  {formatWhatsAppText(
+                    parsedContacts.length === 1 ? "s378" : "s379",
+                    { count: parsedContacts.length },
+                    locale
+                  )}
                 </Label>
                 <div className="max-h-64 overflow-auto rounded-md border">
                   <table className="w-full text-xs">
                     <thead className="sticky top-0 bg-muted">
                       <tr>
                         <th className="px-2 py-1.5 text-left font-medium">
-                          Phone
+                          <WhatsAppText id="s10" />
                         </th>
                         <th className="px-2 py-1.5 text-left font-medium">
-                          Name
+                          <WhatsAppText id="s11" />
                         </th>
                         <th className="px-2 py-1.5 text-left font-medium">
-                          Email
+                          <WhatsAppText id="s12" />
                         </th>
                         <th className="px-2 py-1.5 text-left font-medium">
-                          Group
+                          <WhatsAppText id="s13" />
                         </th>
                       </tr>
                     </thead>
@@ -983,7 +1009,7 @@ export default function WhatsAppContactsPage() {
             {isImporting && (
               <div className="grid gap-2">
                 <Label>
-                  Importing {importProgress.current} of {importProgress.total}…
+                  {formatWhatsAppText("s388", importProgress, locale)}
                 </Label>
                 <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                   <div
@@ -1005,15 +1031,19 @@ export default function WhatsAppContactsPage() {
               }}
               disabled={isImporting}
             >
-              Cancel
+              <WhatsAppText id="s15" />
             </Button>
             <Button
               onClick={() => void handleImport()}
               disabled={isImporting || parsedContacts.length === 0}
             >
               {isImporting
-                ? `Importing ${importProgress.current}/${importProgress.total}…`
-                : `Import ${parsedContacts.length} Contact${parsedContacts.length !== 1 ? "s" : ""}`}
+                ? formatWhatsAppText("s388", importProgress, locale)
+                : formatWhatsAppText(
+                    parsedContacts.length === 1 ? "s389" : "s390",
+                    { count: parsedContacts.length },
+                    locale
+                  )}
             </Button>
           </DialogFooter>
         </DialogContent>
