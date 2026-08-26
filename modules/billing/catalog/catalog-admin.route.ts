@@ -548,7 +548,7 @@ export const createCatalogAdminRoutes = (deps: CatalogAdminRouteDeps = {}) => {
 
           try {
             const result = await service.importCatalog(parsed.data.payload, {
-              ...parsed.data.options,
+              dryRun: Boolean(parsed.data.options?.dryRun),
               overrideCatalogCode:
                 parsed.data.options?.overrideCatalogCode ||
                 (params.catalogCode as string),

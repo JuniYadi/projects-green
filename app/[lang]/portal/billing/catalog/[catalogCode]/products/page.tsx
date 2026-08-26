@@ -59,6 +59,7 @@ import {
 } from "@/lib/billing-client"
 import type { CatalogPlan } from "@/lib/billing-client"
 import { CatalogExportImport } from "@/components/billing/admin/catalog/catalog-export-import"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 import { toast } from "sonner"
 const CATALOG_LABELS: Record<string, string> = {
   APP_HOSTING: "App Hosting",

@@ -52,7 +52,7 @@ export const catalogMigrationProductSchema = z.object({
   code: z.string().min(1),
   name: z.string().min(1),
   description: z.string().nullable().optional(),
-  resources: z.record(z.unknown()).default({}),
+  resources: z.record(z.string(), z.unknown()).default({}),
   billingStrategy: z.enum(["PRO_RATA", "FIXED_CYCLE"]).default("FIXED_CYCLE"),
   stockControl: z.enum(["UNLIMITED", "TRACKED"]).default("UNLIMITED"),
   stockCount: z.number().int().nullable().optional(),

@@ -1159,8 +1159,8 @@ export class CatalogAdminService {
     // Perform atomic transaction import
     await (this.db as unknown as PrismaClient).$transaction(async (tx) => {
       const txService = new CatalogAdminService({
-        db: tx as unknown as CatalogAdminDb,
-        currencyService: this.currencyService,
+        prisma: tx as unknown as CatalogAdminDb,
+        currencyService: this.currencies,
       })
 
       // Ensure package exists
@@ -1205,8 +1205,10 @@ export class CatalogAdminService {
             currency: offer.currency,
             effectiveFrom: offer.effectiveFrom
               ? new Date(offer.effectiveFrom)
+              : new Date(),
+            effectiveTo: offer.effectiveTo
+              ? new Date(offer.effectiveTo)
               : undefined,
-            effectiveTo: offer.effectiveTo ? new Date(offer.effectiveTo) : null,
             isActive: offer.isActive,
           })
         }
@@ -1230,8 +1232,10 @@ export class CatalogAdminService {
             amount: price.amount,
             effectiveFrom: price.effectiveFrom
               ? new Date(price.effectiveFrom)
+              : new Date(),
+            effectiveTo: price.effectiveTo
+              ? new Date(price.effectiveTo)
               : undefined,
-            effectiveTo: price.effectiveTo ? new Date(price.effectiveTo) : null,
             isActive: price.isActive,
           })
         }
@@ -1244,11 +1248,13 @@ export class CatalogAdminService {
             await txService.upsertPlanAddonAttachment({
               planId: plan.id,
               addonId: ad.id,
-              label: att.label,
-              description: att.description,
+              label: att.label ?? undefined,
+              description: att.description ?? undefined,
               isRequired: att.isRequired,
               displayOrder: att.displayOrder,
-              enabledTerms: att.enabledTerms,
+              enabledTerms: (att.enabledTerms ?? undefined) as
+                | Record<string, unknown>
+                | undefined,
               isActive: att.isActive,
             })
           }
