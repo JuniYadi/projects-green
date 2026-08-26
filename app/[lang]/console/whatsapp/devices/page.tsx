@@ -612,6 +612,8 @@ export default function WhatsAppDevicesPage() {
         productTitle="WhatsApp Gateway"
         open={isOrderOpen}
         onOpenChange={setIsOrderOpen}
+        lang={locale}
+        messages={messages?.console?.billing?.serviceOrder}
         onSuccess={() => {
           void loadDevices()
         }}

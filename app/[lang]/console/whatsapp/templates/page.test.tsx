@@ -98,99 +98,10 @@ mock.module("@/modules/whatsapp/templates/api/templates.hooks", () => ({
   useSyncTemplate: mockUseSyncTemplate,
 }))
 
+import { enMessages } from "@/lib/i18n/messages/en"
+
 mock.module("@/lib/i18n/messages", () => ({
-  getMessages: () => ({
-    console: {
-      whatsapp: {
-        templates: {
-          heading: "Templates",
-          description: "Manage your WhatsApp message templates",
-          cardTitle: "Templates",
-          cardDescription: "Create and manage WhatsApp Business templates",
-          synced: "Synced",
-          pendingSync: "Pending Sync",
-          syncing: "Syncing...",
-          syncTemplates: "Sync All",
-          createTemplate: "Create Template",
-          pullFromMeta: "Sync",
-          pulling: "Syncing...",
-          pulledSuccess: "Successfully synced {count} templates with WhatsApp!",
-          selectDevice: "Select Device",
-          allDevices: "All Devices",
-        },
-        onboarding: {
-          missions: {
-            subscribe: {
-              title: "Subscribe Plan",
-              subtitle: "Ground Control",
-              description: "Subscribe",
-              actionLabel: "Subscribe",
-            },
-            transponderDevices: {
-              title: "Devices",
-              subtitle: "Tower",
-              description: "Devices",
-              actionLabel: "Devices",
-            },
-            firstMessage: {
-              title: "First Message",
-              subtitle: "Ignition",
-              description: "Message",
-              actionLabel: "Message",
-            },
-            template: {
-              title: "Template",
-              subtitle: "Broadcast",
-              description: "Template",
-              actionLabel: "Template",
-            },
-            apiKey: {
-              title: "API Key",
-              subtitle: "Automation",
-              description: "API Key",
-              actionLabel: "API Key",
-            },
-            completed: {
-              title: "Complete",
-              subtitle: "Production",
-              description: "Complete",
-              actionLabel: "Complete",
-            },
-          },
-          levels: {
-            groundControl: "Level 0 • Ground Control",
-            towerClearancePending: "Level 0 • Tower Clearance Pending",
-            level0Pending: "Lv 0 (Tower)",
-            transponderActive: "Level 1 • Transponder Active",
-            flightOperations: "Level 2 • Flight Operations",
-            fullCockpitMaster: "Level 3 • Full Cockpit Master",
-            levelPrefix: "Level {level}",
-          },
-          hud: {
-            flightDeckHud: "Flight Deck HUD",
-            flightReadiness: "Flight Readiness",
-            collapseHud: "Collapse HUD",
-            closeHud: "Close HUD",
-            closeGuide: "Close Guide",
-            needHelp: "Need Help?",
-            stepOf: "Step {step} of {total}",
-            setupFinished: "Setup Finished",
-            prevStep: "Previous",
-            nextStep: "Next",
-            checklist: "Checklist",
-            viewing: "Viewing",
-            replay: "Replay",
-            readyForProduction: "Ready for Production",
-            allOnboardingComplete: "All onboarding steps complete",
-            onboardingGuide: "Onboarding Guide",
-            dismissedToast: "HUD Dismissed",
-            showOnboardingGuide: "Show Onboarding Guide",
-            subscribePlan: "Subscribe Plan",
-          },
-        },
-      },
-    },
-  }),
+  getMessages: () => enMessages,
 }))
 
 mock.module("@/lib/i18n/pathname", () => ({

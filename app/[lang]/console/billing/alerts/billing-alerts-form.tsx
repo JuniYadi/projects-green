@@ -61,9 +61,7 @@ export function BillingAlertsForm() {
       })
       .catch((err) => {
         if (cancelled) return
-        setError(
-          err instanceof Error ? err.message : "Failed to load preferences"
-        )
+        setError(err instanceof Error ? err.message : page.loadError)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -119,9 +117,7 @@ export function BillingAlertsForm() {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to save preferences"
-      )
+      setError(err instanceof Error ? err.message : page.saveError)
     } finally {
       setSaving(false)
     }
@@ -152,7 +148,7 @@ export function BillingAlertsForm() {
             className="mt-2"
             onClick={() => window.location.reload()}
           >
-            Retry
+            {page.retry}
           </Button>
         </div>
       </div>
@@ -298,15 +294,14 @@ export function BillingAlertsForm() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Invoice notification preferences are now managed per contact on the{" "}
+            {page.invoiceRemindersNotice}{" "}
             <Link
-              href="/console/billing/contacts"
+              href={`/${resolveLocaleOrDefault(params?.lang)}/console/billing/contacts`}
               className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
             >
-              Billing Contacts
+              {page.contactsLink}
             </Link>{" "}
-            page. Add or update contacts to control which email addresses
-            receive invoice notifications.
+            {page.invoiceRemindersDetails}
           </p>
         </CardContent>
       </Card>
@@ -317,15 +312,15 @@ export function BillingAlertsForm() {
           {saving ? (
             <>
               <Spinner className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
+              {page.saving}
             </>
           ) : (
-            "Save Preferences"
+            page.savePreferences
           )}
         </Button>
         {saved && (
           <p className="text-sm text-green-600 dark:text-green-400">
-            Preferences saved successfully!
+            {page.savedSuccess}
           </p>
         )}
         {error && <p className="text-sm text-destructive">{error}</p>}

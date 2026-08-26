@@ -1,10 +1,13 @@
 import "@/test/register"
 import { describe, expect, it, beforeEach, mock } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
-import { BillingAlertsForm } from "./billing-alerts-form"
 import React from "react"
 
-// ─── Mock billing client ──────────────────────────────────────────────────────
+mock.module("next/navigation", () => ({
+  useParams: mock(() => ({ lang: "en" })),
+}))
+
+import { BillingAlertsForm } from "./billing-alerts-form"
 
 const mockGetBillingAccount = mock()
 const mockUpdateBillingAlerts = mock()
@@ -95,7 +98,7 @@ describe("BillingAlertsForm", () => {
     await waitFor(() => {
       const link = view.getByRole("link", { name: /Billing Contacts/i })
       expect(link).toBeTruthy()
-      expect(link.getAttribute("href")).toBe("/console/billing/contacts")
+      expect(link.getAttribute("href")).toBe("/en/console/billing/contacts")
     })
   })
 

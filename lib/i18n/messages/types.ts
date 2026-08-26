@@ -184,12 +184,14 @@ export type AppMessages = {
         invoiceRemindersTitle: string
         invoiceRemindersDesc: string
         invoiceRemindersNotice: string
+        invoiceRemindersDetails: string
         contactsLink: string
         savePreferences: string
         saving: string
         savedSuccess: string
         loadError: string
         saveError: string
+        retry: string
       }
       checkout: {
         heading: string
@@ -212,6 +214,34 @@ export type AppMessages = {
         updatingQuote: string
         submitting: string
         selectOptionPlaceholder: string
+        cycle: string
+        expires: string
+        chargedFor: string
+        remainingDays: string
+        daysAlignedToRenewal: string
+        discount: string
+        firstPayment: string
+        nextRenewal: string
+        confirmationText: string
+        orderConfirmed: string
+        orderId: string
+        status: string
+        firstPaymentSummary: string
+        nextRenewalSummary: string
+        currency: string
+        billingPeriod: string
+        period: string
+        orderFailed: string
+        retry: string
+        addBalance: string
+        chooseAnotherPlan: string
+        noPricingSelected: string
+        requiredAddon: string
+        notAvailable: string
+        invalidFieldFormat: string
+        confirmAndActivate: string
+        voucherCurrencyMismatch: string
+        submissionFailed: string
       }
       contacts: {
         heading: string
@@ -220,6 +250,22 @@ export type AppMessages = {
         ownerBannerDesc: string
         addContact: string
         addDialogTitle: string
+        actions: string
+        edit: string
+        deactivateAction: string
+        retry: string
+        addDescription: string
+        deactivateDescription: string
+        searchPlaceholder: string
+        allRoles: string
+        emptyTable: string
+        invoiceNotificationLabel: string
+        alertsNotificationLabel: string
+        supportNotificationLabel: string
+        adding: string
+        displayNamePlaceholder: string
+        editNamePlaceholder: string
+        roleSummary: string
         editDialogTitle: string
         deactivateDialogTitle: string
         emailLabel: string
@@ -241,6 +287,8 @@ export type AppMessages = {
         emptyTitle: string
         emptyDescription: string
         loadError: string
+        addFailed: string
+        deactivateFailed: string
       }
       paymentMethods: {
         heading: string
@@ -255,6 +303,14 @@ export type AppMessages = {
         deleteButton: string
         deleting: string
         cancel: string
+        defaultLabel: string
+        setDefaultLabel: string
+        removeMethod: string
+        removeDescription: string
+        removeTitle: string
+        removing: string
+        removeButton: string
+        loadError: string
       }
       paymentsConfirm: {
         heading: string
@@ -275,6 +331,38 @@ export type AppMessages = {
         submitButton: string
         submitting: string
         cancel: string
+        amount: string
+        destination: string
+        amountToConfirm: string
+        invoice: string
+        invoiceLabel: string
+        destinationBankAccount: string
+        noBankAccounts: string
+        transferDateTime: string
+        senderBankName: string
+        senderBankNamePlaceholder: string
+        senderName: string
+        senderNamePlaceholder: string
+        senderAccountNumber: string
+        senderAccountPlaceholder: string
+        senderAccountNumberPlaceholder: string
+        paymentProof: string
+        paymentProofOptional: string
+        paymentProofAlt: string
+        proofUploaded: string
+        notes: string
+        notesOptional: string
+        notesPlaceholder: string
+        needHelp: string
+        helpDescription: string
+        needHelpDescription: string
+        createSupportTicket: string
+        uploadErrorType: string
+        uploadErrorSize: string
+        uploadFailed: string
+        confirmationFailed: string
+        alreadyConfirmed: string
+        processing: string
       }
       settingsPage: {
         heading: string
@@ -286,6 +374,8 @@ export type AppMessages = {
         saving: string
         savedSuccess: string
         loadError: string
+        currencyUsd: string
+        currencyIdr: string
       }
       singleSubscription: {
         heading: string
@@ -305,6 +395,21 @@ export type AppMessages = {
         typeTopUp: string
         typeInvoice: string
         typeAdjustment: string
+        invoice: string
+        status: string
+        method: string
+        amount: string
+        date: string
+        searchPlaceholder: string
+        statusAll: string
+        statusOpen: string
+        statusPaid: string
+        statusVoid: string
+        emptyAll: string
+        emptyFiltered: string
+        notAvailable: string
+        methodVirtualAccount: string
+        methodManualBank: string
       }
       subscriptions: {
         heading: string
@@ -332,6 +437,26 @@ export type AppMessages = {
         errorTitle: string
         errorDescription: string
         retryButton: string
+        actionPayInvoice: string
+        notAvailable: string
+        renewalExpired: string
+        renewalRenews: string
+        statusAriaLabel: string
+        packageWhatsApp: string
+        packageWhatsAppDescription: string
+        packageVpn: string
+        packageVpnDescription: string
+        packageAppHosting: string
+        packageAppHostingDescription: string
+        actionRenewNow: string
+        actionNoActionNeeded: string
+        actionServiceBeingPrepared: string
+        actionContactSupport: string
+        termMonthly: string
+        termQuarterly: string
+        termSemiAnnual: string
+        termAnnual: string
+        cardPeriodPrice: string
         detail: {
           heading: string
           backTo: string
@@ -383,6 +508,7 @@ export type AppMessages = {
               cancelBtn: string
               confirming: string
               confirmBtn: string
+              cancelError: string
             }
             reinstate: {
               title: string
@@ -404,7 +530,285 @@ export type AppMessages = {
           activity: {
             noActivity: string
           }
+          notFound: string
+          notFoundDescription: string
+          backToSubscriptions: string
+          openService: string
+          whatsappConsole: string
+          vpnDashboard: string
+          applications: string
+          invoiceLink: string
+          renewalDetails: string
+          overviewSection: string
+          firstOrderDate: string
+          firstOrderCost: string
+          nextRenewalDate: string
+          autoDebitNote: string
+          renewalCost: string
+          planAndCycle: string
+          planCycle: string
+          signupFormData: string
+          registrationData: string
+          noAdditionalFormData: string
+          noRegistrationData: string
+          viewLinksDocuments: string
+          viewLink: string
+          cancelAutoRenewal: string
+          cancelAutoRenewalTitle: string
+          cancelAutoRenewalDescription: string
+          cancelAutoRenewalButton: string
+          serviceActiveUntil: string
+          willNotRenew: string
+          cancelRenewal: string
         }
+      }
+      invoices: {
+        heading: string
+        issuedOn: string
+        paymentConfirmation: string
+        submitted: string
+        transferSubmittedTitle: string
+        transferSubmittedDescription: string
+        confirmAndUploadReceipt: string
+        providerShortName: string
+        providerName: string
+        issueDate: string
+        dueDate: string
+        billedTo: string
+        billingPeriod: string
+        currency: string
+        tax: string
+        discount: string
+        orderSpecificationsTitle: string
+        orderSpecificationsDescription: string
+        paymentOptions: string
+        transferExactAmount: string
+        destinationAccountHint: string
+        paymentMethod: string
+        selectPaymentMethod: string
+        bank: string
+        accountNumber: string
+        accountName: string
+        noActivePaymentMethod: string
+        contactSupportBeforeTransfer: string
+        gatewayDescription: string
+        continueToGateway: string
+        gatewayUnavailable: string
+        noPaymentMethodSelected: string
+        availableBalance: string
+        topUpRequired: string
+        topUpDescription: string
+        gapAmount: string
+        topUpInvoice: string
+        topUpInstruction: string
+        goToTopUp: string
+        invoice: string
+        issuedDate: string
+        paymentGateway: string
+        unsupportedCurrency: string
+        noBankAccounts: string
+        support: string
+      }
+      usagePage: {
+        heading: string
+        description: string
+        exportCsv: string
+        costByService: string
+        eventsSuffix: string
+        noData: string
+        dailyTrend: string
+        quotaUsage: string
+        quotaUsageDescription: string
+        totalCost: string
+        currentPeriod: string
+        totalEvents: string
+        allServices: string
+        servicesUsed: string
+        activeCategories: string
+        dailyAverage: string
+        last30Days: string
+        chartCost: string
+        loadError: string
+        unknownError: string
+        csvCategory: string
+        csvQuantity: string
+        csvTotalCost: string
+        csvPercentage: string
+      }
+      vouchers: {
+        heading: string
+        description: string
+        codeLabel: string
+        codePlaceholder: string
+        redeeming: string
+        historyHeading: string
+        redeem: string
+        redemptionSuccess: string
+        failedRedeem: string
+        unexpectedError: string
+        tableAmount: string
+        claimedAt: string
+        emptyHistory: string
+        searchPlaceholder: string
+        dismissResult: string
+      }
+      expressTopUp: {
+        heading: string
+        currentBalance: string
+        chooseAmount: string
+        customAmountPlaceholder: string
+        amountMustBeBetween: string
+        amountRangeAnd: string
+        instantPaymentMethod: string
+        creatingPayment: string
+        totalPayment: string
+        invoice: string
+        scanQrDescription: string
+        openPaymentPage: string
+        virtualAccountNumber: string
+        copiedToClipboard: string
+        proceedToGateway: string
+        waitingForConfirmation: string
+        checkStatus: string
+        paymentReceived: string
+        amountAddedToWallet: string
+        continueWorking: string
+        selectDescription: string
+        paymentDescription: string
+        successDescription: string
+        qrisMethod: string
+        qrisMethodDescription: string
+        virtualAccountMethod: string
+        virtualAccountMethodDescription: string
+        paymentAction: string
+        qrCodeAlt: string
+        paymentGatewayUnavailable: string
+        topupCreateFailed: string
+      }
+      topUpForm: {
+        successHeading: string
+        confirmationNumber: string
+        amountAdded: string
+        newBalance: string
+        topUpAgain: string
+        amountLabel: string
+        customAmount: string
+        amountPlaceholder: string
+        minimumAmount: string
+        maximumAmount: string
+        exchangeRate: string
+        paymentMethod: string
+        noPaymentMethods: string
+        destinationAccount: string
+        bankPlaceholder: string
+        swiftBic: string
+        bankAddress: string
+        noBankAccounts: string
+        topUpAmount: string
+        manualTransferAvailable: string
+        referenceId: string
+        virtualAccount: string
+        qris: string
+        paypal: string
+        referencePlaceholder: string
+        manualBankTransfer: string
+        processing: string
+        submit: string
+        topupFailed: string
+      }
+      subscriptionCard: {
+        plan: string
+        quotaIn: string
+        quotaOut: string
+        price: string
+        nextBilling: string
+        periodPrice: string
+      }
+      balanceCard: {
+        heading: string
+        accountAge: string
+        lowBalanceWarning: string
+      }
+      invoiceTable: {
+        searchPlaceholder: string
+        columnInvoice: string
+        columnIssuedDate: string
+        columnDueDate: string
+        columnAmount: string
+        columnStatus: string
+        columnPdf: string
+        statusAll: string
+        statusDraft: string
+        statusIssued: string
+        statusOpen: string
+        statusPaid: string
+        statusOverdue: string
+        statusCancelled: string
+        statusVoid: string
+        statusUncollectible: string
+        emptyMessage: string
+      }
+      invoiceLines: {
+        description: string
+        category: string
+        quantity: string
+        qty: string
+        amount: string
+        noLineItems: string
+        noItems: string
+        appHosting: string
+        whatsapp: string
+        other: string
+      }
+      serviceOrder: {
+        close: string
+        successHeading: string
+        orderId: string
+        receiptNotice: string
+        orderStatus: string
+        subscriptionId: string
+        invoiceNumber: string
+        activeUntil: string
+        totalPayment: string
+        viewInvoice: string
+        finishAndUse: string
+        choosePlan: string
+        selected: string
+        billingPeriod: string
+        serviceConfiguration: string
+        optionalAddons: string
+        costSummary: string
+        voucherDiscount: string
+        renewal: string
+        promoCode: string
+        activeVoucher: string
+        remove: string
+        promoPlaceholder: string
+        apply: string
+        walletPaymentMethod: string
+        walletPaymentDescription: string
+        walletAgreement: string
+        processingActivation: string
+        cancel: string
+        activationTitle: string
+        activationSuccessTitle: string
+        activationDescription: string
+        successToast: string
+        successToastDescription: string
+        activationError: string
+        systemError: string
+        invalidField: string
+      }
+      setupStatus: {
+        heading: string
+        incomplete: string
+        setup: string
+        setUp: string
+        dismissWarning: string
+        dismiss: string
+        paymentGateway: string
+        bankAccount: string
+        currency: string
       }
       services: {
         heading: string
@@ -417,6 +821,7 @@ export type AppMessages = {
         emptyTitle: string
         emptyDescription: string
         viewPlans: string
+        resultsCount: string
         product: {
           heading: string
           description: string
@@ -426,6 +831,13 @@ export type AppMessages = {
           checkout: string
           backToServices: string
           unavailableTerm: string
+          termMonthly: string
+          termQuarterly: string
+          termSemiAnnual: string
+          termAnnual: string
+          perSubscription: string
+          perDevice: string
+          currencyPlaceholder: string
         }
       }
     }

@@ -40,11 +40,16 @@ import {
   type CheckoutResult,
 } from "@/app/[lang]/console/billing/checkout/checkout-client"
 import Link from "next/link"
+import { getMessages } from "@/lib/i18n/messages"
+import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import type { AppMessages } from "@/lib/i18n/messages/types"
 import {
   ProvisioningFieldDef,
   ProvisioningFormField,
   matchesPattern,
 } from "@/components/billing/provisioning-form-field"
+
+type ServiceOrderMessages = AppMessages["console"]["billing"]["serviceOrder"]
 
 function formatCurrency(amount: string, currency: string = "IDR"): string {
   const safeCurrency = currency?.trim() ? currency.trim().toUpperCase() : "IDR"
@@ -61,6 +66,8 @@ export type ServiceOrderDialogProps = {
   productTitle?: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  lang?: string
+  messages?: ServiceOrderMessages
   onSuccess?: () => void
 }
 
@@ -69,8 +76,15 @@ export function ServiceOrderDialog({
   productTitle,
   open,
   onOpenChange,
+  lang,
+  messages,
   onSuccess,
 }: ServiceOrderDialogProps) {
+  const locale = resolveLocaleOrDefault(lang ?? "en")
+  const t =
+    messages ??
+    getMessages(locale)?.console?.billing?.serviceOrder ??
+    getMessages("en").console.billing.serviceOrder
   const [catalogData, setCatalogData] =
     useState<CatalogProductDetailResponse | null>(null)
   const [catalogLoading, setCatalogLoading] = useState(false)
@@ -135,9 +149,7 @@ export function ServiceOrderDialog({
         }
       } catch (err) {
         if (!isMounted) return
-        setCatalogError(
-          err instanceof Error ? err.message : "Gagal memuat katalog paket."
-        )
+        setCatalogError(err instanceof Error ? err.message : t.activationError)
       } finally {
         if (isMounted) setCatalogLoading(false)
       }
@@ -174,13 +186,13 @@ export function ServiceOrderDialog({
             result.error?.startsWith("VOUCHER_") ||
             result.error === "BILLING_CURRENCY_MISMATCH"
           ) {
-            setVoucherError(result.message || "Voucher tidak valid")
+            setVoucherError(result.message || t.activationError)
           } else {
-            setQuoteError(result.message || "Gagal memuat rincian harga paket")
+            setQuoteError(result.message || t.activationError)
           }
         }
       } catch {
-        setQuoteError("Terjadi kendala saat menghitung biaya.")
+        setQuoteError(t.systemError)
       } finally {
         setQuoteLoading(false)
       }
@@ -290,21 +302,20 @@ export function ServiceOrderDialog({
       })
       if (result.ok) {
         setSubmitSuccess(result)
-        toast.success("Aktivasi layanan berhasil!", {
-          description: `Order ${result.orderId} telah terbayar dan kuitansi invoice telah dikirimkan ke email billing Anda.`,
+        toast.success(t.successToast, {
+          description: t.successToastDescription.replace(
+            "{orderId}",
+            result.orderId
+          ),
         })
         onSuccess?.()
       } else {
-        setSubmitError(
-          result.message || "Gagal mengaktifkan layanan. Silakan coba kembali."
-        )
-        toast.error("Gagal mengaktifkan layanan", {
-          description: result.message,
-        })
+        setSubmitError(result.message || t.activationError)
+        toast.error(t.activationError, { description: result.message })
       }
     } catch {
-      setSubmitError("Terjadi kesalahan sistem saat memproses transaksi.")
-      toast.error("Terjadi kesalahan sistem saat memproses aktivasi.")
+      setSubmitError(t.systemError)
+      toast.error(t.systemError)
     } finally {
       setIsSubmitting(false)
     }
@@ -330,13 +341,14 @@ export function ServiceOrderDialog({
           </div>
           <DialogTitle className="pr-10 text-lg font-semibold">
             {submitSuccess
-              ? "Layanan Berhasil Diaktifkan!"
-              : `Aktivasi & Sambungkan ${productTitle || productInfo?.name || productCode}`}
+              ? t.activationSuccessTitle
+              : t.activationTitle.replace(
+                  "{service}",
+                  productTitle || productInfo?.name || productCode
+                )}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            {submitSuccess
-              ? "Langganan Anda aktif dan siap langsung digunakan pada dashboard ini."
-              : "Pilih paket langganan dan selesaikan aktivasi langsung tanpa berpindah halaman."}
+            {submitSuccess ? t.receiptNotice : t.activationDescription}
           </DialogDescription>
           <DialogClose asChild>
             <Button
@@ -345,7 +357,7 @@ export function ServiceOrderDialog({
               className="absolute top-4 right-4 bg-secondary"
             >
               <X className="h-4 w-4" />
-              <span className="sr-only">Close</span>
+              <span className="sr-only">{t.close}</span>
             </Button>
           </DialogClose>
         </DialogHeader>
@@ -358,25 +370,22 @@ export function ServiceOrderDialog({
                 <CheckCircle className="h-8 w-8" weight="fill" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-base font-semibold">
-                  Aktivasi Instan Sukses!
-                </h3>
+                <h3 className="text-base font-semibold">{t.successHeading}</h3>
                 <p className="text-xs text-muted-foreground">
-                  Order ID: {submitSuccess.ok ? submitSuccess.orderId : ""}
+                  {`${t.orderId} ${submitSuccess.ok ? submitSuccess.orderId : ""}`}
                 </p>
               </div>
 
               <Alert className="border-emerald-200 bg-emerald-50 text-left text-xs text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300">
                 <EnvelopeSimple className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 <AlertDescription className="ml-2 leading-relaxed">
-                  Bukti pembayaran dan kuitansi resmi telah dikirim ke email
-                  penanggung jawab billing organisasi Anda.
+                  {t.receiptNotice}
                 </AlertDescription>
               </Alert>
 
               <div className="space-y-2.5 rounded-lg border bg-muted/40 p-4 text-left text-xs">
                 <div className="flex items-center justify-between border-b pb-2">
-                  <span className="text-muted-foreground">Status Pesanan</span>
+                  <span className="text-muted-foreground">{t.orderStatus}</span>
                   <Badge
                     variant="default"
                     className="bg-emerald-600 hover:bg-emerald-600"
@@ -386,7 +395,9 @@ export function ServiceOrderDialog({
                 </div>
                 {submitSuccess.ok && submitSuccess.subscriptionId && (
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">ID Langganan</span>
+                    <span className="text-muted-foreground">
+                      {t.subscriptionId}
+                    </span>
                     <span className="font-mono text-[11px]">
                       {submitSuccess.subscriptionId}
                     </span>
@@ -394,9 +405,14 @@ export function ServiceOrderDialog({
                 )}
                 {submitSuccess.ok && submitSuccess.invoiceId && (
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Nomor Invoice</span>
+                    <span className="text-muted-foreground">
+                      {t.invoiceNumber}
+                    </span>
                     <Link
-                      href={`/console/billing/invoices/${submitSuccess.invoiceId}`}
+                      href={localizePathname({
+                        pathname: `/console/billing/invoices/${submitSuccess.invoiceId}`,
+                        locale,
+                      })}
                       target="_blank"
                       className="inline-flex items-center gap-1 font-mono text-[11px] font-medium text-primary underline underline-offset-2 hover:opacity-80"
                     >
@@ -408,11 +424,11 @@ export function ServiceOrderDialog({
                 {submitSuccess.ok && submitSuccess.periodEnd && (
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">
-                      Masa Aktif s/d
+                      {t.activeUntil}
                     </span>
                     <span className="font-medium">
                       {new Date(submitSuccess.periodEnd).toLocaleDateString(
-                        "id-ID",
+                        locale === "id" ? "id-ID" : "en-US",
                         {
                           day: "numeric",
                           month: "short",
@@ -424,7 +440,7 @@ export function ServiceOrderDialog({
                 )}
                 <div className="flex items-center justify-between border-t pt-2">
                   <span className="text-muted-foreground">
-                    Total Pembayaran
+                    {t.totalPayment}
                   </span>
                   <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
                     {submitSuccess.ok
@@ -441,16 +457,19 @@ export function ServiceOrderDialog({
                 {submitSuccess.ok && submitSuccess.invoiceId && (
                   <Button variant="outline" asChild className="flex-1">
                     <Link
-                      href={`/console/billing/invoices/${submitSuccess.invoiceId}`}
+                      href={localizePathname({
+                        pathname: `/console/billing/invoices/${submitSuccess.invoiceId}`,
+                        locale,
+                      })}
                       target="_blank"
                     >
                       <FileText className="mr-1.5 h-4 w-4" />
-                      Lihat Invoice
+                      {t.viewInvoice}
                     </Link>
                   </Button>
                 )}
                 <Button onClick={() => onOpenChange(false)} className="flex-1">
-                  Selesai & Gunakan Layanan
+                  {t.finishAndUse}
                 </Button>
               </div>
             </div>
@@ -477,7 +496,7 @@ export function ServiceOrderDialog({
               {/* Plan Selection Cards */}
               <div className="shrink-0 space-y-2">
                 <Label className="text-xs font-medium text-muted-foreground">
-                  PILIH PAKET LAYANAN
+                  {t.choosePlan}
                 </Label>
                 <div className="grid grid-cols-2 gap-2.5">
                   {plansList.map((plan) => {
@@ -504,7 +523,7 @@ export function ServiceOrderDialog({
                                 variant="default"
                                 className="h-4 px-1.5 text-[10px]"
                               >
-                                Terpilih
+                                {t.selected}
                               </Badge>
                             )}
                           </div>
@@ -537,7 +556,7 @@ export function ServiceOrderDialog({
               {selectedPlan?.offers && selectedPlan.offers.length > 1 && (
                 <div className="shrink-0 space-y-2">
                   <Label className="text-xs font-medium text-muted-foreground">
-                    PERIODE PEMBAYARAN
+                    {t.billingPeriod}
                   </Label>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {selectedPlan.offers.map((offer) => {
@@ -574,7 +593,7 @@ export function ServiceOrderDialog({
                 <div className="flex min-h-0 flex-1 flex-col rounded-lg border bg-card p-4">
                   <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-foreground">
                     <Sparkle className="h-4 w-4 text-primary" />
-                    <span>Konfigurasi Layanan</span>
+                    <span>{t.serviceConfiguration}</span>
                   </div>
                   <div className="flex-1 space-y-3 overflow-y-auto pr-1">
                     {dynamicFields.map((field) => (
@@ -590,7 +609,7 @@ export function ServiceOrderDialog({
                         }
                         testIdPrefix="order"
                         idPrefix="order-field"
-                        validationErrorMessage="Format input tidak valid sesuai pola yang ditentukan."
+                        validationErrorMessage={t.invalidField}
                       />
                     ))}
                   </div>
@@ -602,7 +621,7 @@ export function ServiceOrderDialog({
                 quotePreview.availableAddons.length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-xs font-medium text-muted-foreground">
-                      ADD-ONS OPSIONAL
+                      {t.optionalAddons}
                     </Label>
                     <div className="space-y-2">
                       {quotePreview.availableAddons.map((addon) => {
@@ -663,7 +682,7 @@ export function ServiceOrderDialog({
               {/* Cost Summary */}
               <div className="space-y-2 rounded-lg border bg-background p-3 text-xs">
                 <div className="font-medium text-foreground">
-                  Ringkasan Biaya
+                  {t.costSummary}
                 </div>
                 {quoteLoading && !quotePreview ? (
                   <div className="space-y-2 py-2">
@@ -674,7 +693,7 @@ export function ServiceOrderDialog({
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-muted-foreground">
                       <span>
-                        {selectedPlan?.name || "Paket"} (
+                        {selectedPlan?.name || t.choosePlan} (
                         {quotePreview.billingPeriod})
                       </span>
                       <span>
@@ -687,7 +706,7 @@ export function ServiceOrderDialog({
 
                     {Number(quotePreview.discount) > 0 && (
                       <div className="flex justify-between text-emerald-600">
-                        <span>Diskon Voucher</span>
+                        <span>{t.voucherDiscount}</span>
                         <span>
                           -
                           {formatCurrency(
@@ -711,7 +730,7 @@ export function ServiceOrderDialog({
                     ))}
 
                     <div className="flex justify-between border-t pt-2 text-sm font-semibold text-foreground">
-                      <span>Total Pembayaran</span>
+                      <span>{t.totalPayment}</span>
                       <span className="text-base text-primary">
                         {formatCurrency(
                           quotePreview.firstPayment,
@@ -723,15 +742,18 @@ export function ServiceOrderDialog({
                     <div className="flex items-center gap-1 pt-1 text-[11px] text-muted-foreground">
                       <Clock className="h-3.5 w-3.5" />
                       <span>
-                        Perpanjangan:{" "}
+                        {t.renewal}{" "}
                         {quotePreview.nextRenewal
                           ? new Date(
                               quotePreview.nextRenewal
-                            ).toLocaleDateString("id-ID", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            })
+                            ).toLocaleDateString(
+                              locale === "id" ? "id-ID" : "en-US",
+                              {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              }
+                            )
                           : "-"}
                       </span>
                     </div>
@@ -742,13 +764,15 @@ export function ServiceOrderDialog({
               {/* Voucher */}
               <div className="space-y-2">
                 <Label className="text-xs font-medium text-muted-foreground">
-                  KODE PROMO / VOUCHER
+                  {t.promoCode}
                 </Label>
                 {appliedVoucher ? (
                   <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-800 dark:text-emerald-300">
                     <div className="flex items-center gap-1.5 font-medium">
                       <Sparkle className="h-4 w-4 text-emerald-600" />
-                      <span>Voucher aktif: {appliedVoucher}</span>
+                      <span>
+                        {t.activeVoucher} {appliedVoucher}
+                      </span>
                     </div>
                     <Button
                       type="button"
@@ -757,13 +781,13 @@ export function ServiceOrderDialog({
                       onClick={handleRemoveVoucher}
                       className="h-6 px-2 text-xs text-destructive hover:bg-destructive/10"
                     >
-                      Hapus
+                      {t.remove}
                     </Button>
                   </div>
                 ) : (
                   <form onSubmit={handleApplyVoucher} className="flex gap-2">
                     <Input
-                      placeholder="Masukkan kode promo"
+                      placeholder={t.promoPlaceholder}
                       value={voucherInput}
                       onChange={(e) => setVoucherInput(e.target.value)}
                       className="h-8 text-xs"
@@ -775,7 +799,7 @@ export function ServiceOrderDialog({
                       disabled={!voucherInput.trim()}
                       className="h-8 text-xs"
                     >
-                      Terapkan
+                      {t.apply}
                     </Button>
                   </form>
                 )}
@@ -788,11 +812,10 @@ export function ServiceOrderDialog({
               <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs">
                 <div className="flex items-center gap-2 font-medium text-foreground">
                   <Wallet className="h-4 w-4 text-primary" />
-                  <span>Metode Pembayaran: Saldo Wallet</span>
+                  <span>{t.walletPaymentMethod}</span>
                 </div>
                 <p className="text-[11px] leading-relaxed text-muted-foreground">
-                  Total tagihan akan langsung dipotong dari saldo akun Anda
-                  secara instan.
+                  {t.walletPaymentDescription}
                 </p>
                 <div className="flex items-center space-x-2 pt-1">
                   <input
@@ -807,7 +830,7 @@ export function ServiceOrderDialog({
                     htmlFor="order-confirm-balance"
                     className="cursor-pointer text-[11px] text-foreground"
                   >
-                    Saya menyetujui pemotongan saldo untuk aktivasi layanan ini.
+                    {t.walletAgreement}
                   </Label>
                 </div>
               </div>
@@ -840,10 +863,13 @@ export function ServiceOrderDialog({
                   {isSubmitting ? (
                     <span className="flex items-center gap-2">
                       <ArrowCounterClockwise className="h-4 w-4 animate-spin" />
-                      Memproses Aktivasi...
+                      {t.processingActivation}
                     </span>
                   ) : (
-                    "Aktifkan Layanan Sekarang"
+                    t.activationTitle.replace(
+                      "{service}",
+                      productTitle || productInfo?.name || productCode
+                    )
                   )}
                 </Button>
                 <Button
@@ -854,7 +880,7 @@ export function ServiceOrderDialog({
                   disabled={isSubmitting}
                   className="w-full"
                 >
-                  Batal
+                  {t.cancel}
                 </Button>
               </div>
             </div>

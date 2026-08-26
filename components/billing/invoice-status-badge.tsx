@@ -1,8 +1,12 @@
+import type { AppMessages } from "@/lib/i18n/messages/types"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { cn } from "@/lib/utils"
 
 type InvoiceStatusBadgeProps = {
   status: string
   className?: string
+  lang?: string
 }
 
 const statusStyles: Record<string, string> = {
@@ -20,23 +24,33 @@ const statusStyles: Record<string, string> = {
   VOID: "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400",
 }
 
-const statusLabels: Record<string, string> = {
-  CANCELLED: "Cancelled",
-  DRAFT: "Draft",
-  ISSUED: "Issued",
-  OPEN: "Open",
-  OVERDUE: "Overdue",
-  PAID: "Paid",
-  PENDING: "Pending",
-  UNCOLLECTIBLE: "Uncollectible",
-  VOID: "Void",
+function getStatusLabel(
+  status: string,
+  labels: AppMessages["console"]["billing"]["invoiceTable"]
+): string {
+  const map: Record<string, string> = {
+    CANCELLED: labels.statusCancelled,
+    DRAFT: labels.statusDraft,
+    ISSUED: labels.statusIssued,
+    OPEN: labels.statusOpen,
+    OVERDUE: labels.statusOverdue,
+    PAID: labels.statusPaid,
+    PENDING: labels.statusOpen,
+    UNCOLLECTIBLE: labels.statusUncollectible,
+    VOID: labels.statusVoid,
+  }
+  return map[status.toUpperCase()] ?? status.toUpperCase()
 }
 
 export function InvoiceStatusBadge({
   status,
   className,
+  lang,
 }: InvoiceStatusBadgeProps) {
+  const locale = resolveLocaleOrDefault(lang)
+  const labels = getMessages(locale).console.billing.invoiceTable
   const normalized = status.toUpperCase()
+
   return (
     <span
       className={cn(
@@ -45,7 +59,7 @@ export function InvoiceStatusBadge({
         className
       )}
     >
-      {statusLabels[normalized] ?? normalized}
+      {getStatusLabel(status, labels)}
     </span>
   )
 }

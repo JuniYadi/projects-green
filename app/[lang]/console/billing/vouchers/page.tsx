@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
+import { getMessages } from "@/lib/i18n/messages"
 import { eden } from "@/lib/eden"
 import Link from "next/link"
 import { useParams } from "next/navigation"
@@ -30,7 +31,8 @@ type ClaimRecord = {
 export default function VouchersPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
-
+  const messages = getMessages(locale)
+  const t = messages.console.billing.vouchers
   const [code, setCode] = useState("")
   const [isRedeeming, setIsRedeeming] = useState(false)
   const [redeemResult, setRedeemResult] = useState<{
@@ -92,13 +94,16 @@ export default function VouchersPage() {
       if (!data?.ok) {
         setRedeemResult({
           type: "error",
-          message: data?.message || "Failed to redeem voucher",
+          message: data?.message || t.failedRedeem,
         })
         return
       }
       setRedeemResult({
         type: "success",
-        message: `Successfully redeemed voucher! ${data.data.currency} ${Number(data.data.amount).toLocaleString()} credit added.`,
+        message: t.redemptionSuccess.replace(
+          "{amount}",
+          `${data.data.currency} ${Number(data.data.amount).toLocaleString()}`
+        ),
       })
       setCode("")
 
@@ -124,7 +129,7 @@ export default function VouchersPage() {
     } catch {
       setRedeemResult({
         type: "error",
-        message: "An unexpected error occurred. Please try again.",
+        message: t.unexpectedError,
       })
     } finally {
       setIsRedeeming(false)
@@ -138,11 +143,11 @@ export default function VouchersPage() {
   const columns: ColumnDef<ClaimRecord>[] = [
     {
       accessorKey: "voucherCode",
-      header: "Voucher Code",
+      header: t.codeLabel,
     },
     {
       accessorKey: "amount",
-      header: "Amount",
+      header: t.tableAmount,
       cell: ({ row }) => {
         const amount = row.getValue("amount") as string
         const currency = row.original.currency
@@ -151,7 +156,7 @@ export default function VouchersPage() {
     },
     {
       accessorKey: "claimedAt",
-      header: "Claimed At",
+      header: t.claimedAt,
       cell: ({ row }) => {
         const date = row.getValue("claimedAt") as string
         return new Date(date).toLocaleDateString(
@@ -173,20 +178,18 @@ export default function VouchersPage() {
       <header className="space-y-1">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" asChild>
-            <Link href="/console/billing">
+            <Link href={`/${locale}/console/billing`}>
               <ArrowLeftIcon className="h-4 w-4" />
             </Link>
           </Button>
-          <h1 className="text-2xl font-semibold">Redeem Voucher</h1>
+          <h1 className="text-2xl font-semibold">{t.heading}</h1>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Enter a voucher code to add credit to your account.
-        </p>
+        <p className="text-sm text-muted-foreground">{t.description}</p>
       </header>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Voucher Code</CardTitle>
+          <CardTitle className="text-base">{t.codeLabel}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -196,7 +199,7 @@ export default function VouchersPage() {
                 setCode(e.target.value)
                 if (redeemResult) dismissResult()
               }}
-              placeholder="Enter voucher code (e.g. WELCOME-ABC123)"
+              placeholder={t.codePlaceholder}
               className="uppercase sm:max-w-sm"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !isRedeeming && code.trim()) {
@@ -211,10 +214,10 @@ export default function VouchersPage() {
               {isRedeeming ? (
                 <>
                   <Spinner className="mr-2 h-4 w-4 animate-spin" />
-                  Redeeming...
+                  {t.redeeming}
                 </>
               ) : (
-                "Redeem"
+                t.redeem
               )}
             </Button>
           </div>
@@ -247,6 +250,7 @@ export default function VouchersPage() {
                 variant="ghost"
                 size="icon"
                 className="h-5 w-5"
+                aria-label={t.dismissResult}
                 onClick={dismissResult}
               >
                 <XCircleIcon className="h-4 w-4" />
@@ -258,7 +262,7 @@ export default function VouchersPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Redemption History</CardTitle>
+          <CardTitle className="text-base">{t.historyHeading}</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoadingClaims ? (
@@ -268,9 +272,9 @@ export default function VouchersPage() {
               tableId="console-billing-vouchers"
               columns={columns}
               data={claims}
-              emptyMessage="You have not redeemed any vouchers yet."
+              emptyMessage={t.emptyHistory}
               searchableColumns={["voucherCode"]}
-              searchPlaceholder="Search vouchers..."
+              searchPlaceholder={t.searchPlaceholder}
             />
           )}
         </CardContent>

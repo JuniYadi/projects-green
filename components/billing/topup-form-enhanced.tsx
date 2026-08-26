@@ -1,18 +1,22 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { eden } from "@/lib/eden"
 import { useRouter } from "next/navigation"
-
+import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import type { AppMessages } from "@/lib/i18n/messages/types"
 import {
   QrCodeIcon,
   BuildingsIcon,
   HandCoinsIcon,
   PaypalLogoIcon,
 } from "@phosphor-icons/react"
+
+type TopupMessages = AppMessages["console"]["billing"]["topUpForm"]
 
 type PaymentMethod = "VA" | "QRIS" | "MANUAL_BANK" | "PAYPAL"
 
@@ -43,6 +47,8 @@ interface CurrencyConfig {
 interface TopupFormEnhancedProps {
   className?: string
   currency?: "IDR" | "USD"
+  lang?: string
+  messages?: TopupMessages
   onConfigChange?: (config: CurrencyConfig) => void
   onSuccess?: (result: {
     invoiceId: string
@@ -53,42 +59,36 @@ interface TopupFormEnhancedProps {
 
 const ALL_PAYMENT_METHODS: {
   value: PaymentMethod
-  label: string
   icon: React.ElementType
-  description: string
 }[] = [
-  {
-    value: "MANUAL_BANK",
-    label: "Manual Bank Transfer",
-    icon: BuildingsIcon,
-    description: "Transfer to our bank account manually",
-  },
-  {
-    value: "VA",
-    label: "Virtual Account",
-    icon: HandCoinsIcon,
-    description: "Pay via bank virtual account",
-  },
-  {
-    value: "QRIS",
-    label: "QRIS",
-    icon: QrCodeIcon,
-    description: "Pay with any QRIS-enabled app",
-  },
-  {
-    value: "PAYPAL",
-    label: "PayPal",
-    icon: PaypalLogoIcon,
-    description: "Pay securely with PayPal",
-  },
+  { value: "MANUAL_BANK", icon: BuildingsIcon },
+  { value: "VA", icon: HandCoinsIcon },
+  { value: "QRIS", icon: QrCodeIcon },
+  { value: "PAYPAL", icon: PaypalLogoIcon },
 ]
 
 export function TopupFormEnhanced({
   className,
   currency = "IDR",
+  lang,
+  messages,
   onConfigChange,
   onSuccess,
 }: TopupFormEnhancedProps) {
+  const locale = resolveLocaleOrDefault(lang)
+  const t = messages ?? getMessages(locale).console.billing.topUpForm
+  const paymentMessages: Record<
+    PaymentMethod,
+    { label: string; description: string }
+  > = {
+    MANUAL_BANK: {
+      label: t.manualBankTransfer,
+      description: t.manualTransferAvailable,
+    },
+    VA: { label: t.virtualAccount, description: t.paymentMethod },
+    QRIS: { label: t.qris, description: t.paymentMethod },
+    PAYPAL: { label: t.paypal, description: t.paymentMethod },
+  }
   const router = useRouter()
   const [formState, setFormState] = useState<FormState>("idle")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -255,7 +255,7 @@ export function TopupFormEnhanced({
       }
 
       if (!result || !result.ok) {
-        throw new Error(result?.message || "Topup failed. Please try again.")
+        throw new Error(result?.message || t.topupFailed)
       }
 
       if (result.invoice?.id) {
@@ -271,7 +271,12 @@ export function TopupFormEnhanced({
         // Manual transfer lands on the invoice detail page so the customer can
         // review the destination account and exact amount before confirming.
         if (result.invoice?.id) {
-          router.push(`/console/billing/invoices/${result.invoice.id}`)
+          router.push(
+            localizePathname({
+              pathname: `/console/billing/invoices/${result.invoice.id}`,
+              locale,
+            })
+          )
         }
       } else if (
         paymentMethod === "VA" ||
@@ -287,15 +292,16 @@ export function TopupFormEnhanced({
           setFormState("success")
           if (result?.invoice?.id) {
             router.push(
-              `/console/billing/invoices/${result.invoice.id}?payment=pending`
+              `${localizePathname({
+                pathname: `/console/billing/invoices/${result.invoice.id}`,
+                locale,
+              })}?payment=pending`
             )
           }
         }
       }
     } catch (err) {
-      setErrorMessage(
-        err instanceof Error ? err.message : "Topup failed. Please try again."
-      )
+      setErrorMessage(err instanceof Error ? err.message : t.topupFailed)
       setFormState("error")
     }
   }
@@ -311,7 +317,9 @@ export function TopupFormEnhanced({
       <div className="space-y-6">
         {/* Amount Input */}
         <Field>
-          <FieldLabel>Amount ({currency})</FieldLabel>
+          <FieldLabel>
+            {t.amountLabel} {currency})
+          </FieldLabel>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
             {currencyConfig.presets.map((preset) => (
               <Button
@@ -334,7 +342,7 @@ export function TopupFormEnhanced({
               disabled={formState === "submitting"}
               onClick={() => setAmount(0)}
             >
-              Custom
+              {t.customAmount}
             </Button>
           </div>
           <div className="relative mt-2">
@@ -343,7 +351,7 @@ export function TopupFormEnhanced({
               inputMode="numeric"
               value={formatAmount(amount)}
               onChange={(e) => setAmount(parseFormattedAmount(e.target.value))}
-              placeholder="Enter amount"
+              placeholder={t.amountPlaceholder}
               disabled={formState === "submitting"}
               className="pr-16"
             />
@@ -353,18 +361,18 @@ export function TopupFormEnhanced({
           </div>
           {amount > 0 && amount < currencyConfig.minTopup && (
             <p className="mt-1 text-sm text-destructive">
-              Minimum topup is {formatCurrency(currencyConfig.minTopup)}
+              {t.minimumAmount} {formatCurrency(currencyConfig.minTopup)}
             </p>
           )}
           {amount > currencyConfig.maxTopup && (
             <p className="mt-1 text-sm text-destructive">
-              Maximum topup is {formatCurrency(currencyConfig.maxTopup)}
+              {t.maximumAmount} {formatCurrency(currencyConfig.maxTopup)}
             </p>
           )}
           {currency !== currencyConfig.baseCode &&
             currencyConfig.ratePerBase > 0 && (
               <p className="mt-1 text-xs text-muted-foreground">
-                Exchange rate: 1 {currencyConfig.baseCode} ={" "}
+                {t.exchangeRate} {currencyConfig.baseCode} ={" "}
                 {formatCurrency(currencyConfig.ratePerBase)}
               </p>
             )}
@@ -372,7 +380,7 @@ export function TopupFormEnhanced({
 
         {/* Payment Method Selection */}
         <Field>
-          <FieldLabel>Payment Method</FieldLabel>
+          <FieldLabel>{t.paymentMethod}</FieldLabel>
           <div className="grid gap-3">
             {hasPaymentMethods ? (
               PAYMENT_METHODS.map((method) => (
@@ -395,18 +403,19 @@ export function TopupFormEnhanced({
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <method.icon className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{method.label}</span>
+                      <span className="font-medium">
+                        {paymentMessages[method.value].label}
+                      </span>
                     </div>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {method.description}
+                      {paymentMessages[method.value].description}
                     </p>
                   </div>
                 </label>
               ))
             ) : (
               <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                No payment methods are available for {currency}. Please contact
-                support.
+                {t.noPaymentMethods} {currency}. {t.manualTransferAvailable}.
               </div>
             )}
           </div>
@@ -415,9 +424,9 @@ export function TopupFormEnhanced({
         {/* Bank Account Selection (for Manual Bank Transfer) */}
         {paymentMethod === "MANUAL_BANK" && availableMethods.MANUAL_BANK && (
           <Field>
-            <FieldLabel>Destination Account</FieldLabel>
+            <FieldLabel>{t.destinationAccount}</FieldLabel>
             {isLoadingAccounts ? (
-              <Input type="text" value="Loading..." disabled />
+              <Input type="text" value={t.processing} disabled />
             ) : bankAccounts.length > 0 ? (
               <div className="grid gap-3">
                 {bankAccounts.map((account) => (
@@ -444,12 +453,12 @@ export function TopupFormEnhanced({
                       </p>
                       {account.swiftCode && (
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                          SWIFT/BIC: {account.swiftCode}
+                          {t.swiftBic} {account.swiftCode}
                         </p>
                       )}
                       {account.bankAddress && (
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                          Bank address: {account.bankAddress}
+                          {t.bankAddress} {account.bankAddress}
                         </p>
                       )}
                     </div>
@@ -458,7 +467,7 @@ export function TopupFormEnhanced({
               </div>
             ) : (
               <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                No bank accounts available. Please contact support.
+                {t.noBankAccounts}
               </div>
             )}
           </Field>
@@ -468,7 +477,7 @@ export function TopupFormEnhanced({
         {isValid && hasPaymentMethods && (
           <div className="rounded-lg border bg-muted/30 p-4">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Top Up Amount</span>
+              <span className="text-muted-foreground">{t.topUpAmount}</span>
               <span className="font-medium">{formatCurrency(amount)}</span>
             </div>
           </div>
@@ -487,7 +496,7 @@ export function TopupFormEnhanced({
             !isValid || !hasPaymentMethods || formState === "submitting"
           }
         >
-          {formState === "submitting" ? "Processing..." : "Create Invoice"}
+          {formState === "submitting" ? t.processing : t.submit}
         </Button>
       </div>
     </form>

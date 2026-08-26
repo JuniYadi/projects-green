@@ -27,21 +27,14 @@ import { cn } from "@/lib/utils"
 
 type BillingPeriod = "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL"
 
-const TERM_LABELS: Record<BillingPeriod, string> = {
-  MONTHLY: "Monthly",
-  QUARTERLY: "Quarterly",
-  SEMI_ANNUAL: "Semi-Annual",
-  ANNUAL: "Annual",
-}
-
 const CURRENCY_OPTIONS = [
   { code: "IDR", flag: "🇮🇩", label: "IDR" },
   { code: "USD", flag: "🇺🇸", label: "USD" },
 ] as const
 
-function formatPrice(price: string, currency: string): string {
+function formatPrice(price: string, currency: string, locale: string): string {
   const amount = Number.parseFloat(price)
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat(locale === "id" ? "id-ID" : "en-US", {
     style: "currency",
     currency,
     minimumFractionDigits: 0,
@@ -93,15 +86,24 @@ export default function ProductDetailPage() {
     messages.console.billing.services.errorDescription,
   ])
 
-  const productName = useMemo(() => {
-    if (!data?.product) return productCode
-    const known: Record<string, string> = {
-      WHATSAPP: "WhatsApp",
-      VPN: "VPN",
-      APP_HOSTING: "App Hosting",
-    }
-    return known[data.product.code] ?? data.product.name
-  }, [data, productCode])
+  const termLabels: Record<BillingPeriod, string> = {
+    MONTHLY: messages.console.billing.services.product.termMonthly,
+    QUARTERLY: messages.console.billing.services.product.termQuarterly,
+    SEMI_ANNUAL: messages.console.billing.services.product.termSemiAnnual,
+    ANNUAL: messages.console.billing.services.product.termAnnual,
+  }
+  const chargeUnitLabels: Record<string, string> = {
+    SUBSCRIPTION: messages.console.billing.services.product.perSubscription,
+    DEVICE: messages.console.billing.services.product.perDevice,
+  }
+  const knownTitles: Record<string, string> = {
+    WHATSAPP: messages.console.billing.singleSubscription.whatsappTitle,
+    VPN: messages.console.billing.singleSubscription.vpnTitle,
+    APP_HOSTING: messages.console.billing.singleSubscription.appHostingTitle,
+  }
+  const productName = data?.product
+    ? (knownTitles[data.product.code] ?? data.product.name)
+    : productCode
 
   const plansWithOffer = useMemo<PlanOffer[]>(() => {
     if (!data?.product) return []
@@ -148,7 +150,7 @@ export default function ProductDetailPage() {
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="flex flex-col gap-4">
         <Button variant="ghost" size="sm" asChild className="w-fit">
-          <Link href="/console/billing/services">
+          <Link href={`/${locale}/console/billing/services`}>
             <ArrowLeftIcon className="mr-1 size-4" />
             {messages.console.billing.services.product.backToServices}
           </Link>
@@ -176,7 +178,12 @@ export default function ProductDetailPage() {
               onValueChange={(val) => setSelectedCurrency(val)}
             >
               <SelectTrigger className="w-[120px] bg-background">
-                <SelectValue placeholder="Currency" />
+                <SelectValue
+                  placeholder={
+                    messages.console.billing.services.product
+                      .currencyPlaceholder
+                  }
+                />
               </SelectTrigger>
               <SelectContent align="end">
                 {CURRENCY_OPTIONS.map((c) => (
@@ -214,7 +221,7 @@ export default function ProductDetailPage() {
             <div className="grid gap-4 lg:grid-cols-2">
               {plansWithOffer.map(({ plan, offer }) => {
                 const checkoutUrl = offer
-                  ? `/console/billing/checkout?pricingId=${encodeURIComponent(
+                  ? `/${locale}/console/billing/checkout?pricingId=${encodeURIComponent(
                       offer.id
                     )}`
                   : "#"
@@ -271,9 +278,8 @@ export default function ProductDetailPage() {
                         {/* Charge unit */}
                         {offer && (
                           <p className="text-xs text-muted-foreground">
-                            {offer.chargeUnit === "SUBSCRIPTION"
-                              ? "Per subscription"
-                              : "Per device"}
+                            {chargeUnitLabels[offer.chargeUnit] ??
+                              offer.chargeUnit}
                           </p>
                         )}
                       </div>
@@ -282,13 +288,17 @@ export default function ProductDetailPage() {
                         <div>
                           {offer && (
                             <p className="text-2xl font-bold">
-                              {formatPrice(offer.periodPrice, offer.currency)}
+                              {formatPrice(
+                                offer.periodPrice,
+                                offer.currency,
+                                locale
+                              )}
                             </p>
                           )}
                           {offer && (
                             <p className="text-xs text-muted-foreground">
                               /{" "}
-                              {TERM_LABELS[
+                              {termLabels[
                                 offer.billingPeriod as BillingPeriod
                               ].toLowerCase()}
                             </p>

@@ -93,8 +93,10 @@ export default function ServicesPage() {
         />
         {search && (
           <span className="text-sm text-muted-foreground">
-            {filteredProducts.length} result
-            {filteredProducts.length !== 1 ? "s" : ""}
+            {messages.console.billing.services.resultsCount.replace(
+              "{count}",
+              String(filteredProducts.length)
+            )}
           </span>
         )}
       </div>

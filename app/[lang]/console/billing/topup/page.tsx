@@ -125,6 +125,8 @@ export default function TopupPage() {
               ) : (
                 <TopupFormEnhanced
                   currency={currency}
+                  lang={locale}
+                  messages={billing.topUpForm}
                   onConfigChange={setCurrencyConfig}
                 />
               )}

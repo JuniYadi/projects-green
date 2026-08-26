@@ -61,15 +61,13 @@ describe("InvoiceTable", () => {
     const view = render(<InvoiceTable invoices={[]} lang="en" />)
 
     expect(view.getByLabelText("Search invoices...")).toBeInTheDocument()
-    expect(view.getByText("All status")).toBeInTheDocument()
+    expect(view.getByText("All")).toBeInTheDocument()
     expect(view.getByRole("button", { name: /columns/i })).toBeInTheDocument()
     expect(view.getByText("Invoice #")).toBeInTheDocument()
     expect(view.getByText("Issued Date")).toBeInTheDocument()
     expect(view.getByText("Amount")).toBeInTheDocument()
     expect(view.getByText("Status")).toBeInTheDocument()
-    expect(
-      view.getByText("No invoices match your filters.")
-    ).toBeInTheDocument()
+    expect(view.getByText("No invoices yet.")).toBeInTheDocument()
   })
 
   it("renders invoice rows with data", () => {

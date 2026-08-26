@@ -1,14 +1,15 @@
 "use client"
 
 import { useMemo, useState } from "react"
-
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
 import type { CatalogPlan, CatalogProduct } from "@/lib/billing-client"
-
 const BILLING_PERIODS = [
   "MONTHLY",
   "QUARTERLY",
@@ -46,11 +47,13 @@ export function PlanComparisonCard({
   className,
   onSelectPlan,
 }: PlanComparisonCardProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [selectedTerm, setSelectedTerm] = useState<BillingPeriod>(
     BILLING_PERIODS[0]
   )
   const [selectedPlan, setSelectedPlan] = useState<CatalogPlan | null>(null)
-
   const plansWithOffer = useMemo(
     () =>
       product.plans
@@ -103,7 +106,7 @@ export function PlanComparisonCard({
 
         {plansWithOffer.length === 0 && (
           <div className="py-6 text-center text-sm text-muted-foreground">
-            No plans available for the selected term.
+            {messages.console.billing.services.product.noPlansForTerm}
           </div>
         )}
 

@@ -4,6 +4,9 @@ import Link from "next/link"
 import { useMemo } from "react"
 import { type ColumnDef } from "@tanstack/react-table"
 
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import type { AppMessages } from "@/lib/i18n/messages/types"
 import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { InvoiceStatusBadge } from "@/components/billing/invoice-status-badge"
@@ -17,17 +20,20 @@ type InvoiceTableProps = {
   tableId?: string
 }
 
-const INVOICE_STATUS_FILTERS = [
-  { label: "Draft", value: "DRAFT" },
-  { label: "Issued", value: "ISSUED" },
-  { label: "Open", value: "OPEN" },
-  { label: "Paid", value: "PAID" },
-  { label: "Overdue", value: "OVERDUE" },
-  { label: "Cancelled", value: "CANCELLED" },
-  { label: "Void", value: "VOID" },
-  { label: "Uncollectible", value: "UNCOLLECTIBLE" },
-]
-
+function getInvoiceStatusFilters(
+  t: AppMessages["console"]["billing"]["invoiceTable"]
+) {
+  return [
+    { label: t.statusDraft, value: "DRAFT" },
+    { label: t.statusIssued, value: "ISSUED" },
+    { label: t.statusOpen, value: "OPEN" },
+    { label: t.statusPaid, value: "PAID" },
+    { label: t.statusOverdue, value: "OVERDUE" },
+    { label: t.statusCancelled, value: "CANCELLED" },
+    { label: t.statusVoid, value: "VOID" },
+    { label: t.statusUncollectible, value: "UNCOLLECTIBLE" },
+  ]
+}
 function formatCurrency(amountIdr: string, currency: string): string {
   const amount = Number.parseFloat(amountIdr)
   return new Intl.NumberFormat("id-ID", {
@@ -37,10 +43,10 @@ function formatCurrency(amountIdr: string, currency: string): string {
   }).format(amount)
 }
 
-function formatDate(dateStr: string | null): string {
+function formatDate(dateStr: string | null, locale: string): string {
   if (!dateStr) return "N/A"
 
-  return new Intl.DateTimeFormat("id-ID", {
+  return new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -67,17 +73,20 @@ function InvoiceNumberCell({
 }
 
 export function InvoiceTable({
-  emptyMessage = "No invoices match your filters.",
+  emptyMessage,
   invoices,
   lang,
   tableId,
 }: InvoiceTableProps) {
+  const locale = resolveLocaleOrDefault(lang)
+  const t = getMessages(locale).console.billing.invoiceTable
+  const statusFilters = getInvoiceStatusFilters(t)
   const columns = useMemo<ColumnDef<InvoiceListItem, unknown>[]>(
     () => [
       {
         accessorKey: "invoiceNumber",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Invoice #" />
+          <DataTableColumnHeader column={column} title={t.columnInvoice} />
         ),
         cell: ({ row }) => (
           <InvoiceNumberCell
@@ -91,12 +100,13 @@ export function InvoiceTable({
         id: "issuedAt",
         accessorFn: (row) => row.issuedAt ?? row.createdAt ?? null,
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Issued Date" />
+          <DataTableColumnHeader column={column} title={t.columnIssuedDate} />
         ),
         cell: ({ row }) => (
           <span className="text-muted-foreground">
             {formatDate(
-              row.original.issuedAt ?? row.original.createdAt ?? null
+              row.original.issuedAt ?? row.original.createdAt ?? null,
+              locale
             )}
           </span>
         ),
@@ -106,11 +116,14 @@ export function InvoiceTable({
         id: "dueAt",
         accessorFn: (row) => row.dueAt ?? row.dueDate ?? null,
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Due Date" />
+          <DataTableColumnHeader column={column} title={t.columnDueDate} />
         ),
         cell: ({ row }) => (
           <span className="text-muted-foreground">
-            {formatDate(row.original.dueAt ?? row.original.dueDate ?? null)}
+            {formatDate(
+              row.original.dueAt ?? row.original.dueDate ?? null,
+              locale
+            )}
           </span>
         ),
         sortingFn: "datetime",
@@ -118,7 +131,7 @@ export function InvoiceTable({
       {
         accessorKey: "totalAmountIdr",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Amount" />
+          <DataTableColumnHeader column={column} title={t.columnAmount} />
         ),
         cell: ({ row }) => (
           <span className="font-medium">
@@ -129,14 +142,16 @@ export function InvoiceTable({
       {
         accessorKey: "status",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnHeader column={column} title={t.columnStatus} />
         ),
-        cell: ({ row }) => <InvoiceStatusBadge status={row.original.status} />,
+        cell: ({ row }) => (
+          <InvoiceStatusBadge status={row.original.status} lang={lang} />
+        ),
       },
       {
         id: "pdf",
         enableHiding: false,
-        header: () => <span>PDF</span>,
+        header: () => <span>{t.columnPdf}</span>,
         cell: ({ row }) => (
           <InvoiceDownloadPdfAction
             invoiceId={row.original.id}
@@ -145,7 +160,7 @@ export function InvoiceTable({
         ),
       },
     ],
-    [lang]
+    [lang, locale, t]
   )
 
   return (
@@ -153,21 +168,19 @@ export function InvoiceTable({
       tableId={tableId}
       columns={columns}
       data={invoices}
-      defaultColumnVisibility={{
-        dueAt: false,
-      }}
+      defaultColumnVisibility={{ dueAt: false }}
       searchableColumns={["invoiceNumber"]}
-      searchPlaceholder="Search invoices..."
+      searchPlaceholder={t.searchPlaceholder}
       facetFilters={[
         {
           columnId: "status",
-          label: "Status",
-          allLabel: "All status",
-          options: INVOICE_STATUS_FILTERS,
+          label: t.columnStatus,
+          allLabel: t.statusAll,
+          options: statusFilters,
         },
       ]}
       initialSorting={[{ id: "issuedAt", desc: true }]}
-      emptyMessage={emptyMessage}
+      emptyMessage={emptyMessage ?? t.emptyMessage}
     />
   )
 }

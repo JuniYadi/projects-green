@@ -3,6 +3,8 @@
 import { eden } from "@/lib/eden"
 import { useCallback, useEffect, useState } from "react"
 import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
@@ -39,19 +41,24 @@ interface UsageSummary {
   totalSpend: number
 }
 
-const chartConfig = {
-  cost: {
-    label: "Cost",
-    color: "var(--chart-1)",
-  },
-} satisfies ChartConfig
+function createChartConfig(chartCost: string) {
+  return {
+    cost: {
+      label: chartCost,
+      color: "var(--chart-1)",
+    },
+  } satisfies ChartConfig
+}
 
 function formatCurrency(amount: number): string {
   return `Rp ${amount.toLocaleString()}`
 }
 
-function exportToCSV(data: UsageBreakdown[], filename: string) {
-  const headers = ["Category", "Quantity", "Total Cost (IDR)", "Percentage"]
+function exportToCSV(
+  data: UsageBreakdown[],
+  filename: string,
+  headers: string[]
+) {
   const rows = data.map((item) => [
     item.category,
     item.quantity.toString(),
@@ -69,7 +76,11 @@ function exportToCSV(data: UsageBreakdown[], filename: string) {
 }
 
 export default function UsagePage() {
-  void useParams<{ lang?: string }>()
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.console.billing.usagePage
+  const chartConfig = createChartConfig(t.chartCost)
   const [summary, setSummary] = useState<UsageSummary | null>(null)
   const [trend, setTrend] = useState<DailyTrend[]>([])
   const [loading, setLoading] = useState(true)
@@ -89,36 +100,39 @@ export default function UsagePage() {
           !summaryRes.data.success ||
           !trendRes.data.success
         ) {
-          throw new Error("Failed to fetch usage data")
+          throw new Error(t.loadError)
         }
 
         setSummary(summaryRes.data!.data as never)
         setTrend(trendRes.data!.data.trend as never)
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error")
+        setError(err instanceof Error ? err.message : t.unknownError)
       } finally {
         setLoading(false)
       }
     }
 
     fetchData()
-  }, [])
+  }, [t.loadError, t.unknownError])
 
   const handleExport = useCallback(() => {
     if (summary?.breakdown) {
       const filename = `usage-report-${summary.period}.csv`
-      exportToCSV(summary.breakdown, filename)
+      exportToCSV(summary.breakdown, filename, [
+        t.csvCategory,
+        t.csvQuantity,
+        t.csvTotalCost,
+        t.csvPercentage,
+      ])
     }
-  }, [summary])
+  }, [summary, t.csvCategory, t.csvQuantity, t.csvTotalCost, t.csvPercentage])
 
   if (loading) {
     return (
       <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
         <header className="space-y-1">
-          <h1 className="text-2xl font-semibold">Usage & Costs</h1>
-          <p className="text-sm text-muted-foreground">
-            Monitor your usage and track costs across all services.
-          </p>
+          <h1 className="text-2xl font-semibold">{t.heading}</h1>
+          <p className="text-sm text-muted-foreground">{t.description}</p>
         </header>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Skeleton className="h-28" />
@@ -138,10 +152,8 @@ export default function UsagePage() {
     return (
       <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
         <header className="space-y-1">
-          <h1 className="text-2xl font-semibold">Usage & Costs</h1>
-          <p className="text-sm text-muted-foreground">
-            Monitor your usage and track costs across all services.
-          </p>
+          <h1 className="text-2xl font-semibold">{t.heading}</h1>
+          <p className="text-sm text-muted-foreground">{t.description}</p>
         </header>
         <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4">
           <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
@@ -156,25 +168,25 @@ export default function UsagePage() {
 
   const summaryCards = [
     {
-      title: "Total Cost",
+      title: t.totalCost,
       value: formatCurrency(totalCost),
       icon: CurrencyDollarIcon,
-      description: "Current period",
+      description: t.currentPeriod,
     },
     {
-      title: "Total Events",
+      title: t.totalEvents,
       value: totalEvents.toLocaleString(),
       icon: LightningIcon,
-      description: "All services",
+      description: t.allServices,
     },
     {
-      title: "Services Used",
+      title: t.servicesUsed,
       value: breakdown.length.toString(),
       icon: DeviceMobileIcon,
-      description: "Active categories",
+      description: t.activeCategories,
     },
     {
-      title: "Daily Average",
+      title: t.dailyAverage,
       value: formatCurrency(
         trend.length > 0
           ? Math.round(
@@ -183,7 +195,7 @@ export default function UsagePage() {
           : 0
       ),
       icon: PaperPlaneTiltIcon,
-      description: "Last 30 days",
+      description: t.last30Days,
     },
   ]
 
@@ -192,14 +204,12 @@ export default function UsagePage() {
       <header className="space-y-1">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold">Usage & Costs</h1>
-            <p className="text-sm text-muted-foreground">
-              Monitor your usage and track costs across all services.
-            </p>
+            <h1 className="text-2xl font-semibold">{t.heading}</h1>
+            <p className="text-sm text-muted-foreground">{t.description}</p>
           </div>
           <Button variant="outline" size="sm" onClick={handleExport}>
             <DownloadIcon className="mr-2 h-4 w-4" />
-            Export CSV
+            {t.exportCsv}
           </Button>
         </div>
       </header>
@@ -229,7 +239,7 @@ export default function UsagePage() {
         {/* Cost Breakdown */}
         <Card>
           <CardHeader>
-            <CardTitle>Cost by Service</CardTitle>
+            <CardTitle>{t.costByService}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -241,7 +251,7 @@ export default function UsagePage() {
                         {item.category}
                       </span>
                       <span className="ml-2 text-xs text-muted-foreground">
-                        ({item.quantity.toLocaleString()} events)
+                        ({item.quantity.toLocaleString()} {t.eventsSuffix}
                       </span>
                     </div>
                     <div className="text-right">
@@ -262,9 +272,7 @@ export default function UsagePage() {
                 </div>
               ))}
               {breakdown.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  No usage data for this period.
-                </p>
+                <p className="text-sm text-muted-foreground">{t.noData}</p>
               )}
             </div>
           </CardContent>
@@ -273,7 +281,7 @@ export default function UsagePage() {
         {/* Daily Trend Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Daily Trend (Last 30 Days)</CardTitle>
+            <CardTitle>{t.dailyTrend}</CardTitle>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[300px]">
@@ -281,10 +289,10 @@ export default function UsagePage() {
                 <XAxis
                   dataKey="date"
                   tickFormatter={(value: string) =>
-                    new Date(value).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })
+                    new Date(value).toLocaleDateString(
+                      locale === "id" ? "id-ID" : "en-US",
+                      { month: "short", day: "numeric" }
+                    )
                   }
                   tickLine={false}
                   axisLine={false}
@@ -301,15 +309,18 @@ export default function UsagePage() {
                     <ChartTooltipContent
                       formatter={(value: number) => [
                         formatCurrency(value),
-                        "Cost",
+                        t.chartCost,
                       ]}
                       labelFormatter={(label: string) =>
-                        new Date(label).toLocaleDateString("en-US", {
-                          weekday: "long",
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })
+                        new Date(label).toLocaleDateString(
+                          locale === "id" ? "id-ID" : "en-US",
+                          {
+                            weekday: "long",
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }
+                        )
                       }
                     />
                   }
@@ -328,12 +339,11 @@ export default function UsagePage() {
       {/* Quota Usage — pending backend support */}
       <Card>
         <CardHeader>
-          <CardTitle>Quota Usage</CardTitle>
+          <CardTitle>{t.quotaUsage}</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Quota usage data will be available here once the backend quota
-            tracking system is implemented.
+            {t.quotaUsageDescription}
           </p>
         </CardContent>
       </Card>
