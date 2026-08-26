@@ -1,6 +1,11 @@
 // Billing API client types and fetch helpers
 import { getApiBaseUrl } from "@/lib/eden"
 import { formatBillingMoney } from "@/modules/billing/format-money"
+import type {
+  CatalogExportPayload,
+  CatalogImportOptions,
+  CatalogImportResult,
+} from "@/modules/billing/catalog/catalog-migration.dto"
 
 export type BillingAccount = {
   ok: true
@@ -1172,6 +1177,29 @@ export async function upsertAdminCatalogPackage(input: {
       body: JSON.stringify(input),
     }
   )
+}
+
+export async function exportAdminCatalog(
+  catalogCode: string
+): Promise<{ ok: true; data: CatalogExportPayload }> {
+  return fetchBilling<{
+    ok: true
+    data: CatalogExportPayload
+  }>(`/api/billing/admin/catalog/${encodeURIComponent(catalogCode)}/export`)
+}
+
+export async function importAdminCatalog(
+  catalogCode: string,
+  payload: CatalogExportPayload,
+  options?: CatalogImportOptions
+): Promise<{ ok: true; data: CatalogImportResult }> {
+  return fetchBilling<{
+    ok: true
+    data: CatalogImportResult
+  }>(`/api/billing/admin/catalog/${encodeURIComponent(catalogCode)}/import`, {
+    method: "POST",
+    body: JSON.stringify({ payload, options }),
+  })
 }
 
 // ─── Admin Catalog Write ──────────────────────────────────────────────────────

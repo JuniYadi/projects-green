@@ -58,7 +58,7 @@ import {
   deleteAdminCatalogProduct,
 } from "@/lib/billing-client"
 import type { CatalogPlan } from "@/lib/billing-client"
-import { formatBillingMoney } from "@/modules/billing/format-money"
+import { CatalogExportImport } from "@/components/billing/admin/catalog/catalog-export-import"
 import { toast } from "sonner"
 const CATALOG_LABELS: Record<string, string> = {
   APP_HOSTING: "App Hosting",
@@ -273,6 +273,11 @@ export default function CatalogProductsListPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <CatalogExportImport
+            catalogCode={catalogCode}
+            catalogTitle={catalogTitle}
+            onImportSuccess={() => void loadProducts()}
+          />
           <Link
             href={`/portal/billing/catalog/${catalogCode.toLowerCase()}/products/new`}
           >

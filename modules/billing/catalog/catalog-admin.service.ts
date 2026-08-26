@@ -9,6 +9,15 @@ import type {
   CatalogPlanDTO,
 } from "./catalog.dto"
 import { toCatalogPlanDTO } from "./catalog.dto"
+import {
+  CATALOG_SCHEMA_VERSION,
+  type CatalogExportPayload,
+  type CatalogImportOptions,
+  type CatalogImportResult,
+  type CatalogImportDiffItem,
+  type CatalogMigrationProduct,
+  type CatalogMigrationAddon,
+} from "./catalog-migration.dto"
 
 const RECURRING_PERIODS = [
   "MONTHLY",
@@ -845,5 +854,409 @@ export class CatalogAdminService {
 
       return pkg
     })
+  }
+
+  // ─── Export & Import ───────────────────────────────────────────────
+
+  async exportCatalog(catalogCode: string): Promise<CatalogExportPayload> {
+    const pkg = await this.db.servicePackage.findFirst({
+      where: { code: catalogCode as never },
+      include: {
+        plans: {
+          include: {
+            pricings: {
+              where: {
+                isActive: true,
+              },
+              include: {
+                region: true,
+              },
+              orderBy: { createdAt: "asc" },
+            },
+            addons: {
+              include: {
+                addon: {
+                  include: {
+                    prices: {
+                      where: { isActive: true },
+                      orderBy: { createdAt: "asc" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    })
+
+    if (!pkg) {
+      throw new CatalogPackageNotFoundError(catalogCode)
+    }
+
+    const products: CatalogMigrationProduct[] = pkg.plans.map((plan) => {
+      const offers = plan.pricings.map((pr) => ({
+        billingPeriod: pr.billingPeriod as
+          | "MONTHLY"
+          | "QUARTERLY"
+          | "SEMI_ANNUAL"
+          | "ANNUAL",
+        chargeUnit: pr.chargeUnit as "SUBSCRIPTION" | "DEVICE",
+        periodPrice: Number(pr.periodPrice ?? pr.basePriceIdr ?? 0),
+        currency: pr.currency,
+        effectiveFrom: pr.effectiveFrom
+          ? pr.effectiveFrom.toISOString()
+          : undefined,
+        effectiveTo: pr.effectiveTo ? pr.effectiveTo.toISOString() : null,
+        isActive: pr.isActive,
+      }))
+
+      return {
+        code: plan.code,
+        name: plan.name,
+        description: undefined,
+        resources: (plan.resources ?? {}) as Record<string, unknown>,
+        billingStrategy: plan.billingStrategy as "PRO_RATA" | "FIXED_CYCLE",
+        stockControl: plan.stockControl as "UNLIMITED" | "TRACKED",
+        stockCount: plan.stockCount,
+        allowBackorder: plan.allowBackorder,
+        isActive: plan.isActive,
+        offers,
+      }
+    })
+
+    // Collect unique addons attached to plans in this package
+    const addonMap = new Map<string, CatalogMigrationAddon>()
+    for (const plan of pkg.plans) {
+      for (const pa of plan.addons) {
+        const addon = pa.addon
+        if (!addonMap.has(addon.code)) {
+          addonMap.set(addon.code, {
+            code: addon.code,
+            name: addon.name,
+            description: addon.description,
+            billingMode: addon.billingMode as
+              | "RECURRING"
+              | "ONE_TIME"
+              | "USAGE",
+            isActive: addon.isActive,
+            prices: addon.prices.map((p) => ({
+              billingPeriod: p.billingPeriod as
+                | "MONTHLY"
+                | "QUARTERLY"
+                | "SEMI_ANNUAL"
+                | "ANNUAL",
+              amount: Number(p.amount),
+              currency: p.currency,
+              effectiveFrom: p.effectiveFrom
+                ? p.effectiveFrom.toISOString()
+                : undefined,
+              effectiveTo: p.effectiveTo ? p.effectiveTo.toISOString() : null,
+              isActive: p.isActive,
+            })),
+            planAttachments: [],
+          })
+        }
+        const addonEntry = addonMap.get(addon.code)!
+        addonEntry.planAttachments = addonEntry.planAttachments || []
+        addonEntry.planAttachments.push({
+          planCode: plan.code,
+          label: pa.label,
+          description: pa.description,
+          isRequired: pa.isRequired,
+          displayOrder: pa.displayOrder,
+          enabledTerms: Array.isArray(pa.enabledTerms)
+            ? (pa.enabledTerms as string[])
+            : null,
+          isActive: pa.isActive,
+        })
+      }
+    }
+
+    return {
+      schemaVersion: CATALOG_SCHEMA_VERSION,
+      catalogCode: pkg.code,
+      catalogName: pkg.name,
+      description: pkg.description,
+      exportedAt: new Date().toISOString(),
+      sourceEnv: process.env.NODE_ENV || "development",
+      products,
+      addons: Array.from(addonMap.values()),
+    }
+  }
+
+  async importCatalog(
+    payload: CatalogExportPayload,
+    options: CatalogImportOptions = { dryRun: false }
+  ): Promise<CatalogImportResult> {
+    const targetCatalogCode = options.overrideCatalogCode || payload.catalogCode
+
+    const warnings: string[] = []
+    if (payload.catalogCode !== targetCatalogCode) {
+      warnings.push(
+        `Importing catalog "${payload.catalogCode}" as "${targetCatalogCode}".`
+      )
+    }
+
+    const existingPkg = await this.db.servicePackage.findFirst({
+      where: { code: targetCatalogCode as never },
+      include: {
+        plans: {
+          include: {
+            pricings: true,
+            addons: {
+              include: { addon: true },
+            },
+          },
+        },
+      },
+    })
+
+    const productDiffs: CatalogImportDiffItem[] = []
+    const existingPlanMap = new Map<
+      string,
+      NonNullable<typeof existingPkg>["plans"][number]
+    >()
+    if (existingPkg) {
+      for (const p of existingPkg.plans) {
+        existingPlanMap.set(p.code, p)
+      }
+    }
+
+    let productsToCreate = 0
+    let productsToUpdate = 0
+    let productsUnchanged = 0
+
+    for (const prod of payload.products) {
+      const existing = existingPlanMap.get(prod.code)
+      if (!existing) {
+        productsToCreate++
+        productDiffs.push({
+          code: prod.code,
+          name: prod.name,
+          action: "create",
+          details: [
+            `New product plan with ${prod.offers.length} price offer(s)`,
+          ],
+        })
+      } else {
+        const details: string[] = []
+        if (existing.name !== prod.name) {
+          details.push(`Rename: "${existing.name}" -> "${prod.name}"`)
+        }
+        if (existing.billingStrategy !== prod.billingStrategy) {
+          details.push(
+            `Strategy: "${existing.billingStrategy}" -> "${prod.billingStrategy}"`
+          )
+        }
+        if (existing.stockControl !== prod.stockControl) {
+          details.push(
+            `Stock Control: "${existing.stockControl}" -> "${prod.stockControl}"`
+          )
+        }
+        if (existing.isActive !== prod.isActive) {
+          details.push(`Active: ${existing.isActive} -> ${prod.isActive}`)
+        }
+
+        if (
+          details.length > 0 ||
+          prod.offers.length !== existing.pricings.length
+        ) {
+          productsToUpdate++
+          productDiffs.push({
+            code: prod.code,
+            name: prod.name,
+            action: "update",
+            details: details.length > 0 ? details : ["Updated pricing/offers"],
+          })
+        } else {
+          productsUnchanged++
+          productDiffs.push({
+            code: prod.code,
+            name: prod.name,
+            action: "unchanged",
+            details: ["Matches existing configuration"],
+          })
+        }
+      }
+    }
+
+    const addonDiffs: CatalogImportDiffItem[] = []
+    let addonsToCreate = 0
+    let addonsToUpdate = 0
+    let addonsUnchanged = 0
+
+    for (const addon of payload.addons || []) {
+      const existing = await this.db.serviceAddon.findUnique({
+        where: { code: addon.code },
+      })
+      if (!existing) {
+        addonsToCreate++
+        addonDiffs.push({
+          code: addon.code,
+          name: addon.name,
+          action: "create",
+          details: [`New addon with ${addon.prices.length} price point(s)`],
+        })
+      } else {
+        const details: string[] = []
+        if (existing.name !== addon.name) {
+          details.push(`Rename: "${existing.name}" -> "${addon.name}"`)
+        }
+        if (existing.billingMode !== addon.billingMode) {
+          details.push(
+            `Billing Mode: "${existing.billingMode}" -> "${addon.billingMode}"`
+          )
+        }
+        if (details.length > 0) {
+          addonsToUpdate++
+          addonDiffs.push({
+            code: addon.code,
+            name: addon.name,
+            action: "update",
+            details,
+          })
+        } else {
+          addonsUnchanged++
+          addonDiffs.push({
+            code: addon.code,
+            name: addon.name,
+            action: "unchanged",
+            details: ["Matches existing configuration"],
+          })
+        }
+      }
+    }
+
+    const totalProcessed =
+      payload.products.length + (payload.addons || []).length
+
+    const result: CatalogImportResult = {
+      ok: true,
+      catalogCode: targetCatalogCode,
+      dryRun: Boolean(options.dryRun),
+      summary: {
+        productsToCreate,
+        productsToUpdate,
+        productsUnchanged,
+        addonsToCreate,
+        addonsToUpdate,
+        addonsUnchanged,
+        totalProcessed,
+      },
+      diffs: {
+        products: productDiffs,
+        addons: addonDiffs,
+      },
+      warnings,
+    }
+
+    if (options.dryRun) {
+      return result
+    }
+
+    // Perform atomic transaction import
+    await (this.db as unknown as PrismaClient).$transaction(async (tx) => {
+      const txService = new CatalogAdminService({
+        db: tx as unknown as CatalogAdminDb,
+        currencyService: this.currencyService,
+      })
+
+      // Ensure package exists
+      const pkg = await txService.upsertPackage({
+        code: targetCatalogCode,
+        name: payload.catalogName,
+        description: payload.description || undefined,
+      })
+
+      // Default region
+      const defaultRegion = await tx.serviceRegion.findFirst({
+        where: { isActive: true },
+        orderBy: { createdAt: "asc" },
+      })
+
+      // Upsert products and prices
+      for (const prod of payload.products) {
+        const plan = await txService.upsertPlan({
+          packageCode: pkg.code,
+          code: prod.code,
+          name: prod.name,
+          resources: prod.resources,
+          billingStrategy: prod.billingStrategy,
+          stockControl: prod.stockControl,
+          stockCount: prod.stockCount,
+          allowBackorder: prod.allowBackorder,
+          isActive: prod.isActive,
+        })
+
+        for (const offer of prod.offers) {
+          const regionId = defaultRegion?.id
+          if (!regionId) {
+            throw new CatalogRegionNotFoundError()
+          }
+
+          await txService.upsertPlanPricing({
+            planId: plan.id,
+            regionId,
+            billingPeriod: offer.billingPeriod,
+            chargeUnit: offer.chargeUnit,
+            periodPrice: offer.periodPrice,
+            currency: offer.currency,
+            effectiveFrom: offer.effectiveFrom
+              ? new Date(offer.effectiveFrom)
+              : undefined,
+            effectiveTo: offer.effectiveTo ? new Date(offer.effectiveTo) : null,
+            isActive: offer.isActive,
+          })
+        }
+      }
+
+      // Upsert addons and attachments
+      for (const addon of payload.addons || []) {
+        const ad = await txService.upsertAddon({
+          code: addon.code,
+          name: addon.name,
+          description: addon.description || undefined,
+          billingMode: addon.billingMode,
+          isActive: addon.isActive,
+        })
+
+        for (const price of addon.prices) {
+          await txService.upsertAddonPricing({
+            addonId: ad.id,
+            billingPeriod: price.billingPeriod,
+            currency: price.currency,
+            amount: price.amount,
+            effectiveFrom: price.effectiveFrom
+              ? new Date(price.effectiveFrom)
+              : undefined,
+            effectiveTo: price.effectiveTo ? new Date(price.effectiveTo) : null,
+            isActive: price.isActive,
+          })
+        }
+
+        for (const att of addon.planAttachments || []) {
+          const plan = await tx.servicePlan.findFirst({
+            where: { packageId: pkg.id, code: att.planCode },
+          })
+          if (plan) {
+            await txService.upsertPlanAddonAttachment({
+              planId: plan.id,
+              addonId: ad.id,
+              label: att.label,
+              description: att.description,
+              isRequired: att.isRequired,
+              displayOrder: att.displayOrder,
+              enabledTerms: att.enabledTerms,
+              isActive: att.isActive,
+            })
+          }
+        }
+      }
+    })
+
+    result.appliedAt = new Date().toISOString()
+    return result
   }
 }
