@@ -1,8 +1,11 @@
-import type { Driver } from "driver.js"
-
 export type IndonesianLocaleCueMessages = {
   title: string
   description: string
+}
+
+type LocaleCueDriver = {
+  drive: () => void
+  destroy: () => void
 }
 
 type DriverModule = {
@@ -14,7 +17,7 @@ type DriverModule = {
       element: Element
       popover: IndonesianLocaleCueMessages
     }>
-  }) => Driver
+  }) => LocaleCueDriver
 }
 
 type CueLoaders = {

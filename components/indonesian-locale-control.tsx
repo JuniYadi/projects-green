@@ -81,7 +81,7 @@ export function IndonesianLocaleControl({
         return
       }
 
-      if (shouldRunIndonesianLocaleCue(preference)) {
+      if (preference && shouldRunIndonesianLocaleCue(preference)) {
         setCueDecision(preference.decision)
       }
     }, 0)
