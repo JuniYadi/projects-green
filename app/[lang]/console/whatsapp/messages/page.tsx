@@ -141,7 +141,7 @@ type ConversationDetail = ConversationListItem & {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const formatTime = (iso: string | null | undefined) => {
+const formatConversationTime = (iso: string | null | undefined) => {
   if (!iso) return ""
   const d = new Date(iso)
   const now = new Date()
@@ -151,9 +151,28 @@ const formatTime = (iso: string | null | undefined) => {
     d.getDate() === now.getDate()
 
   if (sameDay) {
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    return d.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
   }
   return d.toLocaleDateString([], { day: "numeric", month: "short" })
+}
+
+const formatMessageTime = (iso: string | null | undefined) => {
+  if (!iso) return ""
+  try {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return ""
+    return d.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+  } catch {
+    return ""
+  }
 }
 
 const formatPhone = (phone: string) => {
@@ -169,6 +188,7 @@ function formatLocalDateTime(iso: string | null | undefined): string {
     return d.toLocaleString(undefined, {
       dateStyle: "medium",
       timeStyle: "short",
+      hour12: false,
     })
   } catch {
     return String(iso)
@@ -289,7 +309,7 @@ function ConversationItem({
               {formatPhone(conversation.contactPhone)}
             </span>
             <span className="shrink-0 text-xs text-muted-foreground">
-              {formatTime(conversation.lastMessageAt)}
+              {formatConversationTime(conversation.lastMessageAt)}
             </span>
           </div>
           <div className="mt-1 flex items-center justify-between gap-1.5">
@@ -403,13 +423,13 @@ function MessageBubble({
                       className="cursor-pointer font-medium hover:text-foreground"
                       title={formattedDateTime}
                     >
-                      {formatTime(message.createdAt)}
+                      {formatMessageTime(message.createdAt)}
                     </button>
                   </TooltipTrigger>
                   <TooltipContent
                     side="top"
                     sideOffset={6}
-                    className="border border-border bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md"
+                    className="border border-border bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md [&_svg]:bg-popover [&_svg]:fill-popover"
                   >
                     {formattedDateTime}
                   </TooltipContent>
@@ -466,9 +486,12 @@ function MessageBubble({
           >
             <Tooltip>
               <TooltipTrigger asChild>
-                <span>{formatTime(message.createdAt)}</span>
+                <span>{formatMessageTime(message.createdAt)}</span>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent
+                side="top"
+                className="border border-border bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md [&_svg]:bg-popover [&_svg]:fill-popover"
+              >
                 {formatLocalDateTime(message.createdAt)}
               </TooltipContent>
             </Tooltip>

@@ -78,7 +78,7 @@ type ConversationDetail = ConversationListItem & {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const formatTime = (iso: string | null | undefined) => {
+const formatConversationTime = (iso: string | null | undefined) => {
   if (!iso) return ""
   const d = new Date(iso)
   const now = new Date()
@@ -88,9 +88,28 @@ const formatTime = (iso: string | null | undefined) => {
     d.getDate() === now.getDate()
 
   if (sameDay) {
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    return d.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
   }
   return d.toLocaleDateString([], { day: "numeric", month: "short" })
+}
+
+const formatMessageTime = (iso: string | null | undefined) => {
+  if (!iso) return ""
+  try {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return ""
+    return d.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+  } catch {
+    return ""
+  }
 }
 
 const formatPhone = (phone: string) => {
@@ -131,7 +150,7 @@ function ConversationItem({
             {formatPhone(conversation.contactPhone)}
           </span>
           <span className="shrink-0 text-xs text-muted-foreground">
-            {formatTime(conversation.lastMessageAt)}
+            {formatConversationTime(conversation.lastMessageAt)}
           </span>
         </div>
         <div className="mt-0.5 flex items-center gap-1.5">
@@ -176,7 +195,7 @@ function MessageBubble({ message }: { message: Message }) {
             isInbox ? "text-muted-foreground" : "text-primary-foreground/70"
           }`}
         >
-          <span>{formatTime(message.createdAt)}</span>
+          <span>{formatMessageTime(message.createdAt)}</span>
           <MessageStatusBadge
             statusHistory={message.statusHistory}
             direction={message.direction}

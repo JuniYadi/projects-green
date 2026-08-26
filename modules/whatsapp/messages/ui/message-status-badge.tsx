@@ -8,6 +8,7 @@ import * as React from "react"
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Clock, Check, Checks, WarningCircle } from "@phosphor-icons/react"
@@ -90,50 +91,59 @@ export function MessageStatusBadge({
 
   if (latestStatus === "FAILED") {
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            className="inline-flex cursor-pointer items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium text-destructive hover:bg-destructive/10"
-            title={getWhatsAppText("s235")}
+      <TooltipProvider delayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex cursor-pointer items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium text-destructive hover:bg-destructive/10"
+              title={getWhatsAppText("s235")}
+            >
+              <WarningCircle
+                className="size-3 text-destructive"
+                weight="fill"
+              />
+              <span>
+                <WhatsAppText id="s155" />
+              </span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent
+            side="top"
+            className="flex max-w-sm flex-col items-start gap-1 border border-border bg-popover p-3 text-xs text-popover-foreground shadow-md [&_svg]:bg-popover [&_svg]:fill-popover"
           >
-            <WarningCircle className="size-3 text-destructive" weight="fill" />
-            <span>
-              <WhatsAppText id="s155" />
-            </span>
-          </button>
-        </TooltipTrigger>
-        <TooltipContent
-          side="top"
-          className="max-w-[240px] border border-border bg-popover p-2.5 text-xs text-popover-foreground shadow-md"
-        >
-          <p className="font-semibold text-destructive">
-            <WhatsAppText id="s236" />
-          </p>
-          <p className="mt-0.5 text-muted-foreground">
-            {failureReason || "Message could not be delivered by WhatsApp."}
-          </p>
-        </TooltipContent>
-      </Tooltip>
+            <p className="font-semibold text-destructive">
+              <WhatsAppText id="s236" />
+            </p>
+            <p className="leading-relaxed break-words text-muted-foreground">
+              {failureReason || "Message could not be delivered by WhatsApp."}
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     )
   }
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex cursor-pointer items-center text-muted-foreground hover:text-foreground"
+    <TooltipProvider delayDuration={0}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex cursor-pointer items-center text-muted-foreground hover:text-foreground"
+            title={STATUS_CONFIG[latestStatus].label}
+            aria-label={STATUS_CONFIG[latestStatus].label}
+          >
+            <StatusIcon status={latestStatus} className="size-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent
+          side="top"
+          className="border border-border bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md [&_svg]:bg-popover [&_svg]:fill-popover"
         >
-          <StatusIcon status={latestStatus} className="size-3.5" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent
-        side="top"
-        className="border border-border bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md"
-      >
-        {STATUS_CONFIG[latestStatus].label}
-      </TooltipContent>
-    </Tooltip>
+          {STATUS_CONFIG[latestStatus].label}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
