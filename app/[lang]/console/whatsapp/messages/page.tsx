@@ -384,11 +384,13 @@ function MessageBubble({
 
     return (
       <div className="flex flex-col items-end gap-1">
-        <div className="group relative">
+        <div className="group relative max-w-[85%] sm:max-w-[78%]">
           <WhatsAppTemplatePreview
             language={meta.templateLanguageData!}
             values={values}
             mode="full"
+            showOuterContainer={false}
+            hideInternalStatus={true}
           />
           {message.waMessageId && (
             <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
@@ -1923,10 +1925,9 @@ export default function WhatsAppMessagesPage() {
             )}
           </div>
 
-          {/* Messages Area */}
-          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-muted/20 p-3">
-            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pr-1">
-              {/* Loading */}
+          {/* Messages Area — seamless WhatsApp wallpaper styling */}
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#efeae2]/30 dark:bg-[#0b141a]/40">
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3 pr-2">
               {activeLoading && (
                 <div className="flex flex-1 flex-col justify-end gap-3">
                   {Array.from({ length: 3 }).map((_, i) => (
@@ -1996,7 +1997,7 @@ export default function WhatsAppMessagesPage() {
 
             {/* Bottom 24-Hour Context & Composer */}
             {activeConversation && (
-              <div className="mt-2 shrink-0 border-t pt-2">
+              <div className="shrink-0 border-t bg-card p-3">
                 {sessionWindowInfo.isOpen ? (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between px-1 text-[11px] text-muted-foreground">
