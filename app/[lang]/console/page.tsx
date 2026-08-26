@@ -4,272 +4,680 @@ import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { eden } from "@/lib/eden"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { formatBillingMoney } from "@/modules/billing/format-money"
 import {
-  WalletIcon,
-  CurrencyCircleDollarIcon,
   ReceiptIcon,
   LifebuoyIcon,
-} from "@phosphor-icons/react"
+  SquaresFourIcon,
+  MegaphoneSimpleIcon,
+  ArrowRightIcon,
+  CheckCircleIcon,
+  WarningCircleIcon,
+  ClockIcon,
+  PlusIcon,
+  BookOpenIcon,
+  ShieldCheckIcon,
+} from "@/components/ui/phosphor-icons"
 
-type DashboardCard = {
-  title: string
-  icon: React.ReactNode
-  value: string | null
-  subtitle: string | null
-  loading: boolean
-  error: boolean
-  href: string | null
+type InvoiceSummary = {
+  id: string
+  invoiceNumber: string
+  status: string
+  totalAmountIdr: string
+  currency: string
+  issuedAt: string | null
+  dueAt: string | null
+  paymentUrl: string | null
 }
 
-const createInitialState = (
-  overviewMessages: ReturnType<typeof getMessages>["console"]["overview"]
-): DashboardCard[] => [
-  {
-    title: overviewMessages.currentBalance,
-    icon: <WalletIcon />,
-    value: null,
-    subtitle: null,
-    loading: true,
-    error: false,
-    href: null,
-  },
-  {
-    title: overviewMessages.spentThisMonth,
-    icon: <CurrencyCircleDollarIcon />,
-    value: null,
-    subtitle: null,
-    loading: true,
-    error: false,
-    href: null,
-  },
-  {
-    title: overviewMessages.lastInvoice,
-    icon: <ReceiptIcon />,
-    value: null,
-    subtitle: null,
-    loading: true,
-    error: false,
-    href: null,
-  },
-  {
-    title: overviewMessages.openTickets,
-    icon: <LifebuoyIcon />,
-    value: null,
-    subtitle: null,
-    loading: true,
-    error: false,
-    href: null,
-  },
-]
+type ServiceSummary = {
+  id: string
+  packageCode: string
+  planCode: string
+  status: string
+  currentPeriodEnd: string | null
+  cancelAtPeriodEnd?: boolean
+}
+
+type TicketSummary = {
+  id: string
+  subject: string
+  status: string
+  priority: string
+  updatedAt: string
+}
+
+type DashboardState = {
+  loading: boolean
+  invoice: {
+    data: InvoiceSummary | null
+    error: boolean
+  }
+  services: {
+    data: ServiceSummary[]
+    error: boolean
+  }
+  tickets: {
+    data: TicketSummary[]
+    error: boolean
+  }
+}
+
+const invoiceStatusBadgeVariant = (
+  status: string
+):
+  | "default"
+  | "secondary"
+  | "success"
+  | "warning"
+  | "destructive"
+  | "outline" => {
+  switch (status.toUpperCase()) {
+    case "PAID":
+      return "success"
+    case "PENDING":
+    case "OPEN":
+    case "DRAFT":
+      return "warning"
+    case "OVERDUE":
+    case "UNCOLLECTIBLE":
+    case "VOID":
+      return "destructive"
+    default:
+      return "secondary"
+  }
+}
+
+const serviceStatusBadgeVariant = (
+  status: string
+):
+  | "default"
+  | "secondary"
+  | "success"
+  | "warning"
+  | "destructive"
+  | "outline" => {
+  switch (status.toUpperCase()) {
+    case "ACTIVE":
+      return "success"
+    case "SUSPENDED":
+    case "PENDING":
+      return "warning"
+    case "CANCELLED":
+    case "EXPIRED":
+      return "destructive"
+    default:
+      return "secondary"
+  }
+}
+
+const ticketStatusBadgeVariant = (
+  status: string
+):
+  | "default"
+  | "secondary"
+  | "success"
+  | "warning"
+  | "destructive"
+  | "outline" => {
+  switch (status.toLowerCase()) {
+    case "resolved":
+    case "closed":
+      return "secondary"
+    case "in_progress":
+    case "open":
+      return "warning"
+    case "waiting_response":
+      return "default"
+    default:
+      return "outline"
+  }
+}
+
+function formatDate(dateStr: string | null, locale: string): string {
+  if (!dateStr) return "-"
+  try {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return "-"
+    return new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", {
+      dateStyle: "medium",
+    }).format(d)
+  } catch {
+    return dateStr
+  }
+}
 
 export default function ConsolePage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
-  const [cards, setCards] = useState<DashboardCard[]>(() =>
-    createInitialState(messages.console.overview)
-  )
+  const t = messages.console.overview
+
+  const [state, setState] = useState<DashboardState>({
+    loading: true,
+    invoice: { data: null, error: false },
+    services: { data: [], error: false },
+    tickets: { data: [], error: false },
+  })
 
   const fetchDashboardData = useCallback(async () => {
+    type SupportTicketsApi = {
+      "support-tickets": {
+        get: () => Promise<{
+          data?: {
+            ok: boolean
+            tickets?: Array<{
+              id: string
+              subject: string
+              status: string
+              priority: string
+              updatedAt?: string
+              createdAt?: string
+            }>
+          }
+        }>
+      }
+    }
+
     const results = await Promise.allSettled([
-      eden.api.billing.account.get().then((r) => r.data),
-      eden.api.billing.usage.get().then((r) => r.data),
+      // 0: Latest invoice
       eden.api.billing.invoices
         .get({ $query: { limit: "1" } })
-        .then((r) => r.data!),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (eden.api as any)["support-tickets"]
-        .get({ $query: { status: "open" } })
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .then((r: any) => r.data),
+        .then((r) => r.data),
+      // 1: Subscriptions / Services
+      eden.api.billing.subscriptions.get().then((r) => r.data),
+      // 2: Support tickets
+      (eden.api as unknown as SupportTicketsApi)["support-tickets"]
+        .get()
+        .then((r) => r.data),
     ])
+    const invoiceResult = results[0]
+    const serviceResult = results[1]
+    const ticketResult = results[2]
 
-    const account =
-      results[0].status === "fulfilled" && results[0].value?.ok
-        ? results[0].value
-        : null
-    const accountCurrency: string =
-      account?.currency ||
-      (results[2].status === "fulfilled" &&
-        results[2].value?.ok &&
-        results[2].value.invoices?.[0]?.currency) ||
-      "IDR"
+    let latestInvoice: InvoiceSummary | null = null
+    let invoiceError = false
 
-    setCards([
-      {
-        title: messages.console.overview.currentBalance,
-        icon: <WalletIcon />,
-        value: account?.formattedBalance ?? null,
-        subtitle:
-          results[0].status === "fulfilled" && results[0].value?.ok
-            ? messages.console.overview.accountAge.replace(
-                "{age}",
-                results[0].value.accountAge
-              )
-            : null,
-        loading: false,
-        error: results[0].status !== "fulfilled" || !results[0].value?.ok,
-        href: null,
-      },
-      {
-        title: messages.console.overview.spentThisMonth,
-        icon: <CurrencyCircleDollarIcon />,
-        value:
-          results[1].status === "fulfilled" && results[1].value?.success
-            ? formatBillingMoney(
-                Number(results[1].value.data.totalSpend),
-                accountCurrency
-              )
-            : null,
-        subtitle:
-          results[1].status === "fulfilled" && results[1].value?.success
-            ? messages.console.overview.period.replace(
-                "{period}",
-                String(results[1].value.data.period ?? "")
-              )
-            : null,
-        loading: false,
-        error: results[1].status !== "fulfilled" || !results[1].value?.success,
-        href: null,
-      },
-      {
-        title: messages.console.overview.lastInvoice,
-        icon: <ReceiptIcon />,
-        value:
-          results[2].status === "fulfilled" &&
-          results[2].value?.ok &&
-          results[2].value.invoices?.length > 0
-            ? formatBillingMoney(
-                results[2].value.invoices[0].totalAmountIdr,
-                results[2].value.invoices[0].currency ?? accountCurrency
-              )
-            : results[2].status === "fulfilled" && results[2].value?.ok
-              ? messages.console.overview.noInvoicesYet
-              : null,
-        subtitle:
-          results[2].status === "fulfilled" &&
-          results[2].value?.ok &&
-          results[2].value.invoices?.length > 0
-            ? messages.console.overview.status.replace(
-                "{status}",
-                results[2].value.invoices[0].status
-              )
-            : null,
-        loading: false,
-        error: results[2].status !== "fulfilled" || !results[2].value?.ok,
-        href:
-          results[2].status === "fulfilled" &&
-          results[2].value?.ok &&
-          results[2].value.invoices?.length > 0 &&
-          results[2].value.invoices[0].id
-            ? localizePathname({
-                pathname: `/console/billing/invoices/${results[2].value.invoices[0].id}`,
-                locale,
-              })
-            : localizePathname({
-                pathname: "/console/billing/invoices",
-                locale,
-              }),
-      },
-      {
-        title: messages.console.overview.openTickets,
-        icon: <LifebuoyIcon />,
-        value:
-          results[3].status === "fulfilled" && results[3].value?.ok
-            ? String(results[3].value.tickets?.length ?? 0)
-            : null,
-        subtitle:
-          results[3].status === "fulfilled" && results[3].value?.ok
-            ? messages.console.overview.awaitingResponse
-            : null,
-        loading: false,
-        error: results[3].status !== "fulfilled" || !results[3].value?.ok,
-        href: localizePathname({
-          pathname: "/console/support-tickets?status=open",
-          locale,
-        }),
-      },
-    ])
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locale]) // ponytail: messages is stable i18n object, not needed in deps
+    if (invoiceResult.status === "fulfilled" && invoiceResult.value?.ok) {
+      const invs = invoiceResult.value.invoices
+      if (invs && invs.length > 0) {
+        const inv = invs[0]
+        latestInvoice = {
+          id: inv.id,
+          invoiceNumber: inv.invoiceNumber,
+          status: inv.status,
+          totalAmountIdr: inv.totalAmountIdr,
+          currency: inv.currency ?? "IDR",
+          issuedAt: inv.issuedAt ?? inv.createdAt ?? null,
+          dueAt: inv.dueAt ?? inv.dueDate ?? null,
+          paymentUrl: inv.paymentUrl ?? null,
+        }
+      }
+    } else {
+      invoiceError = true
+    }
+
+    let servicesList: ServiceSummary[] = []
+    let servicesError = false
+
+    if (serviceResult.status === "fulfilled" && serviceResult.value?.ok) {
+      servicesList = (serviceResult.value.subscriptions || []).map((s) => ({
+        id: s.id,
+        packageCode: s.packageCode,
+        planCode: s.planCode,
+        status: s.status,
+        currentPeriodEnd: s.currentPeriodEnd,
+        cancelAtPeriodEnd: s.cancelAtPeriodEnd,
+      }))
+    } else {
+      servicesError = true
+    }
+
+    let ticketsList: TicketSummary[] = []
+    let ticketsError = false
+
+    if (ticketResult.status === "fulfilled" && ticketResult.value?.ok) {
+      ticketsList = (ticketResult.value.tickets || []).map(
+        (t: {
+          id: string
+          subject: string
+          status: string
+          priority: string
+          updatedAt?: string
+          createdAt?: string
+        }) => ({
+          id: t.id,
+          subject: t.subject,
+          status: t.status,
+          priority: t.priority,
+          updatedAt: t.updatedAt ?? t.createdAt ?? new Date().toISOString(),
+        })
+      )
+    } else {
+      ticketsError = true
+    }
+
+    setState({
+      loading: false,
+      invoice: { data: latestInvoice, error: invoiceError },
+      services: { data: servicesList, error: servicesError },
+      tickets: { data: ticketsList, error: ticketsError },
+    })
+  }, [])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchDashboardData()
   }, [fetchDashboardData])
 
+  const activeServices = state.services.data.filter(
+    (s) => s.status.toUpperCase() === "ACTIVE"
+  )
+  const openTickets = state.tickets.data.filter(
+    (t) =>
+      t.status.toLowerCase() !== "closed" &&
+      t.status.toLowerCase() !== "resolved"
+  )
+
+  const isInvoicePayable =
+    state.invoice.data &&
+    ["OPEN", "PENDING", "OVERDUE"].includes(
+      state.invoice.data.status.toUpperCase()
+    )
+
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">
-          {messages.console.overview.heading}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {messages.console.overview.description}
-        </p>
+        <h1 className="text-2xl font-semibold">{t.heading}</h1>
+        <p className="text-sm text-muted-foreground">{t.description}</p>
       </header>
 
-      <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {cards.map((card) => {
-          const cardInner = (
-            <Card
-              className={
-                !card.loading && !card.error && card.href
-                  ? "h-full transition-colors hover:border-primary/50 hover:bg-accent/40"
-                  : "h-full"
-              }
-            >
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {card.title}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* SECTION 1: LATEST INVOICE */}
+        <Card className="flex flex-col justify-between">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ReceiptIcon className="size-5 text-muted-foreground" />
+                <CardTitle className="text-base font-medium">
+                  {t.invoices.title}
                 </CardTitle>
-                {card.icon}
-              </CardHeader>
-              <CardContent>
-                {card.loading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-7 w-28" />
-                    <Skeleton className="h-4 w-20" />
-                  </div>
-                ) : card.error ? (
-                  <p className="text-sm text-muted-foreground">
-                    {messages.console.overview.unavailable}
-                  </p>
-                ) : (
-                  <>
-                    <p className="text-2xl font-bold">{card.value}</p>
-                    {card.subtitle && (
-                      <p className="text-xs text-muted-foreground">
-                        {card.subtitle}
-                      </p>
+              </div>
+              {state.invoice.data && (
+                <Badge
+                  variant={invoiceStatusBadgeVariant(state.invoice.data.status)}
+                >
+                  {state.invoice.data.status}
+                </Badge>
+              )}
+            </div>
+            <CardDescription>{t.invoices.description}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1">
+            {state.loading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-7 w-36" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+            ) : state.invoice.error ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <WarningCircleIcon className="size-4 text-destructive" />
+                <span>{t.invoices.failedToLoad}</span>
+              </div>
+            ) : state.invoice.data ? (
+              <div className="space-y-2">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    #{state.invoice.data.invoiceNumber}
+                  </span>
+                  <span className="text-xl font-bold">
+                    {formatBillingMoney(
+                      state.invoice.data.totalAmountIdr,
+                      state.invoice.data.currency
                     )}
-                  </>
+                  </span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {state.invoice.data.dueAt
+                    ? t.invoices.dueOn.replace(
+                        "{date}",
+                        formatDate(state.invoice.data.dueAt, locale)
+                      )
+                    : state.invoice.data.issuedAt
+                      ? t.invoices.issuedOn.replace(
+                          "{date}",
+                          formatDate(state.invoice.data.issuedAt, locale)
+                        )
+                      : null}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <p className="text-sm font-medium">
+                  {t.invoices.noInvoiceTitle}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t.invoices.noInvoiceDesc}
+                </p>
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="flex items-center justify-between border-t pt-4">
+            {state.invoice.data ? (
+              <>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link
+                    href={localizePathname({
+                      pathname: "/console/billing/invoices",
+                      locale,
+                    })}
+                  >
+                    {t.invoices.viewAll}
+                  </Link>
+                </Button>
+                {isInvoicePayable ? (
+                  <Button size="sm" asChild>
+                    <Link
+                      href={
+                        state.invoice.data.paymentUrl ||
+                        localizePathname({
+                          pathname: `/console/billing/invoices/${state.invoice.data.id}`,
+                          locale,
+                        })
+                      }
+                    >
+                      {t.invoices.payNowCta}
+                      <ArrowRightIcon className="size-4" />
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link
+                      href={localizePathname({
+                        pathname: `/console/billing/invoices/${state.invoice.data.id}`,
+                        locale,
+                      })}
+                    >
+                      {t.invoices.viewDetailsCta}
+                    </Link>
+                  </Button>
                 )}
-              </CardContent>
-            </Card>
-          )
+              </>
+            ) : (
+              <Button variant="outline" size="sm" asChild className="w-full">
+                <Link
+                  href={localizePathname({
+                    pathname: "/console/billing/invoices",
+                    locale,
+                  })}
+                >
+                  {t.invoices.viewInvoicesCta}
+                </Link>
+              </Button>
+            )}
+          </CardFooter>
+        </Card>
 
-          if (!card.loading && !card.error && card.href) {
-            return (
+        {/* SECTION 2: ACTIVE SERVICES */}
+        <Card className="flex flex-col justify-between">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <SquaresFourIcon className="size-5 text-muted-foreground" />
+                <CardTitle className="text-base font-medium">
+                  {t.services.title}
+                </CardTitle>
+              </div>
+              {!state.loading && !state.services.error && (
+                <Badge
+                  variant={activeServices.length > 0 ? "success" : "secondary"}
+                >
+                  {t.services.activeCount.replace(
+                    "{count}",
+                    String(activeServices.length)
+                  )}
+                </Badge>
+              )}
+            </div>
+            <CardDescription>{t.services.description}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1">
+            {state.loading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-7 w-36" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+            ) : state.services.error ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <WarningCircleIcon className="size-4 text-destructive" />
+                <span>{t.services.failedToLoad}</span>
+              </div>
+            ) : state.services.data.length > 0 ? (
+              <div className="space-y-2">
+                {state.services.data.slice(0, 2).map((service) => (
+                  <div
+                    key={service.id}
+                    className="flex items-center justify-between rounded-lg border border-border/60 p-2.5 text-xs"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="font-semibold text-foreground">
+                        {service.packageCode} • {service.planCode}
+                      </div>
+                      {service.currentPeriodEnd && (
+                        <div className="text-muted-foreground">
+                          {t.services.renewsOn.replace(
+                            "{date}",
+                            formatDate(service.currentPeriodEnd, locale)
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <Badge variant={serviceStatusBadgeVariant(service.status)}>
+                      {service.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <p className="text-sm font-medium">
+                  {t.services.noServicesTitle}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t.services.noServicesDesc}
+                </p>
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="flex items-center justify-between border-t pt-4">
+            <Button variant="outline" size="sm" asChild className="w-full">
               <Link
-                key={card.title}
-                href={card.href}
-                aria-label={card.title}
-                className="rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                href={localizePathname({
+                  pathname:
+                    state.services.data.length > 0
+                      ? "/console/billing/subscriptions"
+                      : "/console/billing/services/whatsapp",
+                  locale,
+                })}
               >
-                {cardInner}
+                {state.services.data.length > 0
+                  ? t.services.manageAll
+                  : t.services.browseServicesCta}
+                <ArrowRightIcon className="size-4" />
               </Link>
-            )
-          }
+            </Button>
+          </CardFooter>
+        </Card>
 
-          return <div key={card.title}>{cardInner}</div>
-        })}
-      </section>
+        {/* SECTION 3: SUPPORT TICKETS */}
+        <Card className="flex flex-col justify-between">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <LifebuoyIcon className="size-5 text-muted-foreground" />
+                <CardTitle className="text-base font-medium">
+                  {t.support.title}
+                </CardTitle>
+              </div>
+              {!state.loading && !state.tickets.error && (
+                <Badge
+                  variant={openTickets.length > 0 ? "warning" : "secondary"}
+                >
+                  {t.support.openCount.replace(
+                    "{count}",
+                    String(openTickets.length)
+                  )}
+                </Badge>
+              )}
+            </div>
+            <CardDescription>{t.support.description}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1">
+            {state.loading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-7 w-36" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+            ) : state.tickets.error ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <WarningCircleIcon className="size-4 text-destructive" />
+                <span>{t.support.failedToLoad}</span>
+              </div>
+            ) : state.tickets.data.length > 0 ? (
+              <div className="space-y-2">
+                {state.tickets.data.slice(0, 2).map((ticket) => (
+                  <Link
+                    key={ticket.id}
+                    href={localizePathname({
+                      pathname: `/console/support-tickets/${ticket.id}`,
+                      locale,
+                    })}
+                    className="flex items-center justify-between rounded-lg border border-border/60 p-2.5 text-xs transition-colors hover:bg-muted/50"
+                  >
+                    <div className="space-y-0.5 pr-2">
+                      <div className="line-clamp-1 font-semibold text-foreground">
+                        {ticket.subject}
+                      </div>
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <ClockIcon className="size-3" />
+                        <span>
+                          {t.support.lastUpdated.replace(
+                            "{date}",
+                            formatDate(ticket.updatedAt, locale)
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                    <Badge variant={ticketStatusBadgeVariant(ticket.status)}>
+                      {ticket.status}
+                    </Badge>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <p className="text-sm font-medium">
+                  {t.support.noTicketsTitle}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t.support.noTicketsDesc}
+                </p>
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="flex items-center justify-between border-t pt-4">
+            <Button variant="ghost" size="sm" asChild>
+              <Link
+                href={localizePathname({
+                  pathname: "/console/support-tickets",
+                  locale,
+                })}
+              >
+                {t.support.viewAll}
+              </Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link
+                href={localizePathname({
+                  pathname: "/console/support-tickets/new",
+                  locale,
+                })}
+              >
+                <PlusIcon className="size-4" />
+                {t.support.createTicketCta}
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
+
+        {/* SECTION 4: ANNOUNCEMENTS & SYSTEM UPDATES */}
+        <Card className="flex flex-col justify-between">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MegaphoneSimpleIcon className="size-5 text-muted-foreground" />
+                <CardTitle className="text-base font-medium">
+                  {t.announcements.title}
+                </CardTitle>
+              </div>
+              <Badge variant="success" className="gap-1">
+                <CheckCircleIcon className="size-3" />
+                <span>{t.announcements.operationalBadge}</span>
+              </Badge>
+            </div>
+            <CardDescription>{t.announcements.description}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1">
+            <div className="space-y-2 rounded-lg border border-border/60 bg-card p-3">
+              <div className="flex items-start gap-2.5">
+                <ShieldCheckIcon className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                <div className="space-y-0.5">
+                  <p className="text-xs font-semibold text-foreground">
+                    {t.announcements.platformStatusTitle}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t.announcements.platformStatusDesc}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 space-y-1">
+              <p className="text-xs font-semibold text-foreground">
+                {t.announcements.noAnnouncementsTitle}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t.announcements.noAnnouncementsDesc}
+              </p>
+            </div>
+          </CardContent>
+          <CardFooter className="flex items-center justify-between border-t pt-4">
+            <Button variant="outline" size="sm" asChild className="w-full">
+              <Link
+                href={localizePathname({
+                  pathname: "/console/docs",
+                  locale,
+                })}
+              >
+                <BookOpenIcon className="size-4" />
+                {t.announcements.viewDocsCta}
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
     </main>
   )
 }

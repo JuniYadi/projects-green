@@ -68,17 +68,59 @@ export const idMessages: AppMessages = {
   console: {
     overview: {
       heading: "Konsol",
-      description: "Ringkasan penagihan dan aktivitas organisasi Anda.",
-      currentBalance: "Saldo Saat Ini",
-      spentThisMonth: "Pengeluaran Bulan Ini",
-      lastInvoice: "Invoice Terakhir",
-      openTickets: "Tiket Terbuka",
-      unavailable: "Tidak Tersedia",
-      noInvoicesYet: "Belum ada invoice",
-      awaitingResponse: "Menunggu respons",
-      accountAge: "Usia akun: {age}",
-      period: "Periode: {period}",
-      status: "Status: {status}",
+      description:
+        "Ringkasan akun, layanan aktif, dan aktivitas organisasi Anda.",
+      invoices: {
+        title: "Invoice Terbaru",
+        description:
+          "Status dan rincian pembayaran untuk tagihan terbaru Anda.",
+        viewAll: "Lihat semua invoice",
+        noInvoiceTitle: "Belum ada invoice",
+        noInvoiceDesc:
+          "Invoice akan muncul di sini setelah akun Anda memiliki aktivitas penagihan.",
+        viewInvoicesCta: "Lihat invoice",
+        payNowCta: "Bayar invoice",
+        viewDetailsCta: "Lihat detail invoice",
+        issuedOn: "Diterbitkan: {date}",
+        dueOn: "Jatuh tempo: {date}",
+        failedToLoad: "Tidak dapat memuat informasi invoice.",
+      },
+      services: {
+        title: "Layanan Aktif",
+        description: "Langganan aktif dan produk yang sedang berjalan.",
+        manageAll: "Kelola langganan",
+        noServicesTitle: "Belum ada layanan aktif",
+        noServicesDesc:
+          "Berlangganan WhatsApp Business, VPN, atau deploy aplikasi untuk memulai.",
+        browseServicesCta: "Jelajahi layanan",
+        renewsOn: "Perpanjangan pada {date}",
+        failedToLoad: "Tidak dapat memuat layanan aktif.",
+        activeCount: "{count} layanan aktif",
+      },
+      support: {
+        title: "Dukungan & Bantuan",
+        description: "Tiket bantuan terbaru dan status penanganan.",
+        viewAll: "Lihat semua tiket",
+        noTicketsTitle: "Tidak ada tiket aktif",
+        noTicketsDesc:
+          "Butuh bantuan? Buat tiket dukungan dan tim kami akan segera merespons.",
+        createTicketCta: "Buat tiket baru",
+        openCount: "{count} tiket terbuka",
+        lastUpdated: "Diperbarui: {date}",
+        failedToLoad: "Tidak dapat memuat tiket bantuan.",
+      },
+      announcements: {
+        title: "Informasi & Pembaruan",
+        description:
+          "Pengumuman terbaru, pembaruan sistem, dan catatan platform.",
+        noAnnouncementsTitle: "Semua sistem normal",
+        noAnnouncementsDesc:
+          "Belum ada pengumuman baru saat ini. Pantau terus untuk pembaruan fitur.",
+        viewDocsCta: "Baca dokumentasi",
+        operationalBadge: "Beroperasi",
+        platformStatusTitle: "Platform beroperasi normal",
+        platformStatusDesc: "Semua layanan dan API berjalan normal.",
+      },
     },
     organization: {
       heading: "Pengaturan Organisasi",
