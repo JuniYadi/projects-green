@@ -242,6 +242,7 @@ describe("ServiceOrderDialog", () => {
         open={true}
         onOpenChange={() => {}}
         onSuccess={handleSuccess}
+        lang="id"
       />
     )
 

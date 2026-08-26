@@ -216,6 +216,7 @@ export const idMessages: AppMessages = {
         savedSuccess: "Preferensi berhasil disimpan!",
         loadError: "Gagal memuat preferensi",
         saveError: "Gagal menyimpan preferensi",
+        retry: "Coba Lagi",
       },
       checkout: {
         heading: "Checkout",
@@ -305,6 +306,8 @@ export const idMessages: AppMessages = {
         emptyDescription:
           "Tambahkan kontak untuk memastikan anggota tim yang tepat menerima notifikasi penagihan.",
         loadError: "Gagal memuat kontak",
+        addFailed: "Gagal menambahkan kontak",
+        deactivateFailed: "Gagal menonaktifkan kontak",
         actions: "Tindakan",
         edit: "Edit",
         deactivateAction: "Nonaktifkan",
@@ -759,6 +762,7 @@ export const idMessages: AppMessages = {
         paymentAction: "Bayar {amount} Secara Instan",
         qrCodeAlt: "Kode Pembayaran QRIS",
         paymentGatewayUnavailable: "Tersedia di gerbang pembayaran",
+        topupCreateFailed: "Gagal membuat isi ulang. Silakan coba lagi.",
       },
       topUpForm: {
         successHeading: "Isi Ulang Berhasil!",
@@ -790,6 +794,7 @@ export const idMessages: AppMessages = {
         manualBankTransfer: "Transfer Bank Manual",
         processing: "Memproses...",
         submit: "Buat Invoice",
+        topupFailed: "Isi ulang gagal. Silakan coba lagi.",
       },
       subscriptionCard: {
         plan: "Paket",

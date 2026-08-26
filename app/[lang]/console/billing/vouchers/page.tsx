@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { getMessages } from "@/lib/i18n/messages"
 import { eden } from "@/lib/eden"
 import Link from "next/link"

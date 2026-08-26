@@ -5,8 +5,19 @@ import { fireEvent, render, waitFor } from "@testing-library/react"
 const pushMock = mock((href: string) => {
   void href
 })
+const useRouterMock = mock(() => ({
+  push: pushMock,
+  replace: () => {},
+  refresh: () => {},
+}))
+const usePathnameMock = mock(() => "/en/console/billing/topup")
 
-import { useRouter, usePathname } from "next/navigation"
+mock.module("next/navigation", () => ({
+  useRouter: useRouterMock,
+  usePathname: usePathnameMock,
+  useParams: () => ({ lang: "en" }),
+}))
+
 import { TopupFormEnhanced } from "./topup-form-enhanced"
 
 const originalFetch = globalThis.fetch
@@ -20,14 +31,12 @@ const jsonResponse = (body: unknown, status = 200) =>
 
 describe("TopupFormEnhanced", () => {
   beforeEach(() => {
-    ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
+    useRouterMock.mockReturnValue({
       push: pushMock,
       replace: () => {},
       refresh: () => {},
     })
-    ;(usePathname as ReturnType<typeof mock>).mockReturnValue(
-      "/en/console/billing/topup"
-    )
+    usePathnameMock.mockReturnValue("/en/console/billing/topup")
     pushMock.mockClear()
   })
 
@@ -89,7 +98,9 @@ describe("TopupFormEnhanced", () => {
     fireEvent.click(view.getByRole("button", { name: /create invoice/i }))
 
     await waitFor(() =>
-      expect(pushMock).toHaveBeenCalledWith("/console/billing/invoices/inv_42")
+      expect(pushMock).toHaveBeenCalledWith(
+        "/en/console/billing/invoices/inv_42"
+      )
     )
     // Must not route to the confirm page directly.
     expect(pushMock).not.toHaveBeenCalledWith(

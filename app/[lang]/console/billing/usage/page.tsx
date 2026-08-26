@@ -2,6 +2,7 @@
 
 import { eden } from "@/lib/eden"
 import { useCallback, useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"

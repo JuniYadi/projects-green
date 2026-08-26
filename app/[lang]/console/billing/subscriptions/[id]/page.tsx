@@ -237,7 +237,7 @@ export default function SubscriptionDetailPage() {
   // Extract core user data
   const orderDate = sub.currentPeriodStart
     ? formatDate(sub.currentPeriodStart, d.notFound, locale)
-    : formatDate(sub.createdAt, "-", locale)
+    : "-"
   const renewalDate = formatDate(sub.currentPeriodEnd, "-", locale)
   const firstSubtotal = checkoutQuote?.subtotal
     ? formatCurrency(
@@ -275,7 +275,10 @@ export default function SubscriptionDetailPage() {
                 : sub.packageCode}
             </h1>
             <Badge className={getStatusVariant(sub.status)}>
-              {getStatusLabel(sub.status, d)}
+              {getStatusLabel(
+                sub.status,
+                messages.console.billing.subscriptions
+              )}
             </Badge>
             <Badge variant="outline">
               {sub.planCode} {d.overview.plan}

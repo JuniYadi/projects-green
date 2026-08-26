@@ -161,7 +161,11 @@ const ROLE_FILTERS = [
 
 // ─── Main component ──────────────────────────────────────────────────────────
 
-export function BillingContactsList() {
+type BillingContactsListProps = {
+  orgId?: string
+}
+
+export function BillingContactsList({ orgId }: BillingContactsListProps = {}) {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
   const t = getMessages(locale).console.billing.contacts
@@ -193,7 +197,7 @@ export function BillingContactsList() {
 
   const fetchAccount = useCallback(async () => {
     try {
-      const result = await getBillingAccount()
+      const result = await getBillingAccount(orgId ? { orgId } : undefined)
       setAccount(result)
       setError(null)
     } catch (err) {
@@ -201,7 +205,7 @@ export function BillingContactsList() {
     } finally {
       setLoading(false)
     }
-  }, [t.loadError])
+  }, [orgId, t.loadError])
 
   useEffect(() => {
     const run = async () => {
@@ -260,11 +264,15 @@ export function BillingContactsList() {
   )
 
   const handleAddContact = useCallback(async () => {
+    if (!addForm.email) return
     setAddSubmitting(true)
     setAddError(null)
 
     try {
-      const result = await addBillingContact(addForm)
+      const result = await addBillingContact({
+        ...addForm,
+        ...(orgId ? { orgId } : {}),
+      })
       // Update local list with the returned contact
       setAccount((prev) => {
         if (!prev) return prev
@@ -282,18 +290,21 @@ export function BillingContactsList() {
         notifyOnSupport: true,
       })
     } catch (err) {
-      setAddError(err instanceof Error ? err.message : t.loadError)
+      setAddError(err instanceof Error ? err.message : t.addFailed)
     } finally {
       setAddSubmitting(false)
     }
-  }, [addForm, t.loadError])
+  }, [addForm, orgId, t.addFailed])
 
   const handleDeactivateContact = useCallback(async () => {
     if (!deactivateTarget) return
     setDeactivating(true)
 
     try {
-      await deactivateBillingContact(deactivateTarget.id)
+      await deactivateBillingContact(
+        deactivateTarget.id,
+        orgId ? { orgId } : undefined
+      )
       setAccount((prev) => {
         if (!prev) return prev
         return {
@@ -303,20 +314,24 @@ export function BillingContactsList() {
       })
       setDeactivateTarget(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.loadError)
+      setError(err instanceof Error ? err.message : t.deactivateFailed)
     } finally {
       setDeactivating(false)
     }
-  }, [deactivateTarget, t.loadError])
+  }, [deactivateTarget, orgId, t.deactivateFailed])
 
   const handleEditContact = useCallback(async () => {
     if (!editTarget) return
     setEditSubmitting(true)
 
     try {
-      const result = await updateBillingContact(editTarget.id, {
-        name: editName || null,
-      })
+      const result = await updateBillingContact(
+        editTarget.id,
+        {
+          name: editName || null,
+        },
+        orgId ? { orgId } : undefined
+      )
       setAccount((prev) => {
         if (!prev) return prev
         return {
@@ -332,7 +347,7 @@ export function BillingContactsList() {
     } finally {
       setEditSubmitting(false)
     }
-  }, [editTarget, editName])
+  }, [editTarget, editName, orgId])
 
   const columns = useMemo<ColumnDef<BillingContactDTO, unknown>[]>(
     () => [

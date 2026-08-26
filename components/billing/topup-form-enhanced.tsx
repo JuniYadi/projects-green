@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { eden } from "@/lib/eden"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-
 import { Button } from "@/components/ui/button"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -255,7 +255,7 @@ export function TopupFormEnhanced({
       }
 
       if (!result || !result.ok) {
-        throw new Error(result?.message || t.manualTransferAvailable)
+        throw new Error(result?.message || t.topupFailed)
       }
 
       if (result.invoice?.id) {
@@ -301,9 +301,7 @@ export function TopupFormEnhanced({
         }
       }
     } catch (err) {
-      setErrorMessage(
-        err instanceof Error ? err.message : t.manualTransferAvailable
-      )
+      setErrorMessage(err instanceof Error ? err.message : t.topupFailed)
       setFormState("error")
     }
   }

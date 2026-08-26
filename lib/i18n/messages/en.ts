@@ -216,6 +216,7 @@ export const enMessages: AppMessages = {
         savedSuccess: "Preferences saved successfully!",
         loadError: "Failed to load preferences",
         saveError: "Failed to save preferences",
+        retry: "Retry",
       },
       checkout: {
         heading: "Checkout",
@@ -304,6 +305,8 @@ export const enMessages: AppMessages = {
         emptyDescription:
           "Add contacts to ensure the right team members receive billing notifications.",
         loadError: "Failed to load contacts",
+        addFailed: "Failed to add contact",
+        deactivateFailed: "Failed to deactivate contact",
         actions: "Actions",
         edit: "Edit",
         deactivateAction: "Deactivate",
@@ -755,6 +758,7 @@ export const enMessages: AppMessages = {
         paymentAction: "Pay {amount} Instantly",
         qrCodeAlt: "QRIS Payment Code",
         paymentGatewayUnavailable: "Available at payment gateway",
+        topupCreateFailed: "Failed to create top-up. Please try again.",
       },
       topUpForm: {
         successHeading: "Topup Successful!",
@@ -786,6 +790,7 @@ export const enMessages: AppMessages = {
         paypal: "PayPal",
         processing: "Processing...",
         submit: "Create Invoice",
+        topupFailed: "Top-up failed. Please try again.",
       },
       subscriptionCard: {
         plan: "Plan",

@@ -207,7 +207,7 @@ export function ExpressTopupModal({
       })
 
       if (!result || !result.ok || !result.invoice?.id) {
-        throw new Error(result?.message || t.paymentDescription)
+        throw new Error(result?.message || t.topupCreateFailed)
       }
 
       const invId = result.invoice.id
@@ -234,7 +234,7 @@ export function ExpressTopupModal({
 
       setStep("payment")
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : t.paymentDescription)
+      setErrorMessage(err instanceof Error ? err.message : t.topupCreateFailed)
     } finally {
       setIsSubmitting(false)
     }

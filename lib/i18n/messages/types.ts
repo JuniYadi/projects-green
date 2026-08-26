@@ -191,6 +191,7 @@ export type AppMessages = {
         savedSuccess: string
         loadError: string
         saveError: string
+        retry: string
       }
       checkout: {
         heading: string
@@ -286,6 +287,8 @@ export type AppMessages = {
         emptyTitle: string
         emptyDescription: string
         loadError: string
+        addFailed: string
+        deactivateFailed: string
       }
       paymentMethods: {
         heading: string
@@ -680,6 +683,7 @@ export type AppMessages = {
         paymentAction: string
         qrCodeAlt: string
         paymentGatewayUnavailable: string
+        topupCreateFailed: string
       }
       topUpForm: {
         successHeading: string
@@ -710,6 +714,7 @@ export type AppMessages = {
         manualBankTransfer: string
         processing: string
         submit: string
+        topupFailed: string
       }
       subscriptionCard: {
         plan: string

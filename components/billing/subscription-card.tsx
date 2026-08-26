@@ -1,6 +1,10 @@
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { GlobeIcon, RocketLaunchIcon } from "@/components/ui/phosphor-icons"
+import {
+  GlobeIcon,
+  RocketLaunchIcon,
+  WhatsappLogoIcon,
+} from "@/components/ui/phosphor-icons"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
@@ -36,7 +40,7 @@ type PackageInfo = {
 }
 
 const packageIcons: Record<string, React.ReactNode> = {
-  WHATSAPP: <GlobeIcon className="h-5 w-5" />,
+  WHATSAPP: <WhatsappLogoIcon className="h-5 w-5" />,
   VPN: <GlobeIcon className="h-5 w-5" />,
   APP_HOSTING: <RocketLaunchIcon className="h-5 w-5" />,
 }

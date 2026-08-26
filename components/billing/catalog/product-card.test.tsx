@@ -50,9 +50,8 @@ describe("CatalogProductCard", () => {
   it("renders a link to the product plans page", () => {
     const view = render(<CatalogProductCard product={whatsappProduct} />)
     const link = view.getByText("View plans")
-    expect(link.closest("a")).toHaveAttribute(
-      "href",
-      "/console/billing/services/whatsapp"
+    expect(link.closest("a")?.getAttribute("href")).toBe(
+      "/en/console/billing/services/whatsapp"
     )
   })
 
@@ -65,7 +64,7 @@ describe("CatalogProductCard", () => {
       plans: [],
     }
     const view = render(<CatalogProductCard product={unknownProduct} />)
-    expect(view.getByText("UNKNOWN_PRODUCT")).toBeInTheDocument()
+    expect(view.getByText("Unknown Product")).toBeInTheDocument()
   })
 
   it("shows empty description when description is null", () => {

@@ -148,7 +148,7 @@ export function BillingAlertsForm() {
             className="mt-2"
             onClick={() => window.location.reload()}
           >
-            {page.retry ?? "Retry"}
+            {page.retry}
           </Button>
         </div>
       </div>

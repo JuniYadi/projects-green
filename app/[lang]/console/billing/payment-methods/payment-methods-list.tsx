@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useCallback, useEffect } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { getMessages } from "@/lib/i18n/messages"
@@ -40,16 +41,19 @@ function PaymentMethodsContent({ methods }: { methods: PaymentMethod[] }) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const handleSetDefault = useCallback(async (id: string) => {
-    try {
-      await setDefaultPaymentMethod(id)
-      setLocalMethods((prev) =>
-        prev.map((m) => ({ ...m, isDefault: m.id === id }))
-      )
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t.loadError)
-    }
-  }, [])
+  const handleSetDefault = useCallback(
+    async (id: string) => {
+      try {
+        await setDefaultPaymentMethod(id)
+        setLocalMethods((prev: PaymentMethod[]) =>
+          prev.map((m: PaymentMethod) => ({ ...m, isDefault: m.id === id }))
+        )
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t.loadError)
+      }
+    },
+    [t.loadError]
+  )
 
   const handleDelete = useCallback(async () => {
     if (!methodToDelete) return
@@ -57,7 +61,9 @@ function PaymentMethodsContent({ methods }: { methods: PaymentMethod[] }) {
     setIsDeleting(true)
     try {
       await removePaymentMethod(methodToDelete.id)
-      setLocalMethods((prev) => prev.filter((m) => m.id !== methodToDelete.id))
+      setLocalMethods((prev: PaymentMethod[]) =>
+        prev.filter((m: PaymentMethod) => m.id !== methodToDelete.id)
+      )
       setDeleteDialogOpen(false)
       setMethodToDelete(null)
     } catch (err) {
@@ -65,7 +71,7 @@ function PaymentMethodsContent({ methods }: { methods: PaymentMethod[] }) {
     } finally {
       setIsDeleting(false)
     }
-  }, [methodToDelete])
+  }, [methodToDelete, t.loadError])
 
   const openDeleteDialog = useCallback((method: PaymentMethod) => {
     setMethodToDelete(method)
@@ -194,7 +200,8 @@ export function PaymentMethodsList() {
   const locale = resolveLocaleOrDefault(params?.lang)
   const t = getMessages(locale).console.billing.paymentMethods
   const [methods, setMethods] = useState<PaymentMethod[]>([])
-
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     let cancelled = false
 
@@ -220,8 +227,7 @@ export function PaymentMethodsList() {
     return () => {
       cancelled = true
     }
-  }, [])
-
+  }, [t.loadError])
   if (loading) {
     return (
       <div className="space-y-4">
