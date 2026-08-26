@@ -37,7 +37,7 @@ export function renderMarkdownToHtml(markdown: string): string {
   // Transform standard code blocks into modern Mac Terminal Cards with precision per-line rows & copy button
   htmlResult = htmlResult.replace(
     /<pre><code(?: class="language-([a-zA-Z0-9_-]+)")?>([\s\S]*?)<\/code><\/pre>/gi,
-    (_match, lang, code) => {
+    (_match: string, lang: string | undefined, code: string) => {
       const displayLang = (lang || "code").toUpperCase()
       // Split code lines safely (code is already HTML-escaped by markdown parser)
       const lines = code.split(/\r?\n/)
@@ -50,18 +50,18 @@ export function renderMarkdownToHtml(markdown: string): string {
       let bodyContent: string
       if (hasLineNumbers) {
         const rows = displayLines
-          .map((lineContent, i) => {
+          .map((lineContent: string, i: number) => {
             const lineNum = i + 1
             const safeContent = lineContent === "" ? " " : lineContent
-            return `<div class="code-line group/line flex items-baseline leading-[1.625rem] hover:bg-zinc-800/40"><span class="line-number select-none w-8 shrink-0 pr-3 text-right font-mono text-[11px] text-zinc-600 border-r border-zinc-800/80 group-hover/line:text-zinc-400">${lineNum}</span><span class="line-content pl-3 font-mono text-xs text-zinc-100 whitespace-pre">${safeContent}</span></div>`
+            return `<div class="code-line group/line flex items-baseline leading-[1.625rem] hover:bg-muted/40 dark:hover:bg-zinc-800/40"><span class="line-number select-none w-8 shrink-0 pr-3 text-right font-mono text-[11px] text-muted-foreground/60 border-r border-border/60 dark:border-zinc-800/80 group-hover/line:text-muted-foreground dark:group-hover/line:text-zinc-400">${lineNum}</span><span class="line-content pl-3 font-mono text-xs text-foreground dark:text-zinc-100 whitespace-pre">${safeContent}</span></div>`
           })
           .join("")
         bodyContent = `<div class="p-3 overflow-x-auto font-mono text-xs">${rows}</div>`
       } else {
-        bodyContent = `<div class="p-4 overflow-x-auto font-mono text-xs leading-relaxed text-zinc-100"><pre class="m-0! p-0! bg-transparent! border-0! text-zinc-100 font-mono text-xs leading-relaxed overflow-visible!"><code>${code}</code></pre></div>`
+        bodyContent = `<div class="p-4 overflow-x-auto font-mono text-xs leading-relaxed text-foreground dark:text-zinc-100"><pre class="m-0! p-0! bg-transparent! border-0! text-foreground dark:text-zinc-100 font-mono text-xs leading-relaxed overflow-visible!"><code>${code}</code></pre></div>`
       }
 
-      return `<div class="code-window-wrapper group my-6 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-xl shadow-black/30"><div class="flex h-10 items-center justify-between border-b border-zinc-800/80 bg-zinc-900/90 px-3.5 select-none"><div class="flex items-center gap-3"><div class="flex items-center gap-1.5 pl-1 pr-1"><span class="size-2.5 rounded-full bg-red-500/80"></span><span class="size-2.5 rounded-full bg-amber-500/80"></span><span class="size-2.5 rounded-full bg-emerald-500/80"></span></div><span class="rounded-md border border-zinc-700/50 bg-zinc-800/80 px-2 py-0.5 font-mono text-[11px] font-medium text-zinc-300">${displayLang}</span></div><button type="button" class="code-copy-btn flex size-7 items-center justify-center rounded-lg border border-zinc-700/60 bg-zinc-800/80 text-zinc-300 transition-all hover:border-zinc-500 hover:bg-zinc-700 hover:text-white active:scale-90" aria-label="Salin kode" title="Salin kode"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 256 256"><path d="M216,40H88A16,16,0,0,0,72,56V72H56A16,16,0,0,0,40,88V216a16,16,0,0,0,16,16H184a16,16,0,0,0,16-16V200h16a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40ZM184,216H56V88H184V216Zm32-32H200V88a16,16,0,0,0-16-16H88V56H216V184Z"></path></svg></button></div>${bodyContent}</div>`
+      return `<div class="code-window-wrapper group my-6 overflow-hidden rounded-2xl border border-border/70 bg-card dark:border-zinc-800 dark:bg-zinc-950 shadow-md dark:shadow-xl dark:shadow-black/30"><div class="flex h-10 items-center justify-between border-b border-border/60 bg-muted/40 dark:border-zinc-800/80 dark:bg-zinc-900/90 px-3.5 select-none"><div class="flex items-center gap-3"><div class="flex items-center gap-1.5 pl-1 pr-1"><span class="size-2.5 rounded-full bg-red-500/80"></span><span class="size-2.5 rounded-full bg-amber-500/80"></span><span class="size-2.5 rounded-full bg-emerald-500/80"></span></div><span class="rounded-md border border-border/60 bg-muted/60 dark:border-zinc-700/50 dark:bg-zinc-800/80 px-2 py-0.5 font-mono text-[11px] font-medium text-foreground/80 dark:text-zinc-300">${displayLang}</span></div><button type="button" class="code-copy-btn flex size-7 items-center justify-center rounded-lg border border-border/60 bg-background/80 dark:border-zinc-700/60 dark:bg-zinc-800/80 text-muted-foreground dark:text-zinc-300 transition-all hover:border-border hover:bg-muted hover:text-foreground dark:hover:border-zinc-500 dark:hover:bg-zinc-700 dark:hover:text-white active:scale-90" aria-label="Salin kode" title="Salin kode"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 256 256"><path d="M216,40H88A16,16,0,0,0,72,56V72H56A16,16,0,0,0,40,88V216a16,16,0,0,0,16,16H184a16,16,0,0,0,16-16V200h16a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40ZM184,216H56V88H184V216Zm32-32H200V88a16,16,0,0,0-16-16H88V56H216V184Z"></path></svg></button></div>${bodyContent}</div>`
     }
   )
   return htmlResult
