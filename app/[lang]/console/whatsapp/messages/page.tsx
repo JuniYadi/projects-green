@@ -394,7 +394,9 @@ function MessageBubble({ message }: { message: Message }) {
 
   return (
     <TooltipProvider>
-      <div className={`group flex ${isInbox ? "justify-start" : "justify-end"}`}>
+      <div
+        className={`group flex ${isInbox ? "justify-start" : "justify-end"}`}
+      >
         <div
           className={`relative max-w-[78%] rounded-2xl px-3.5 py-2 text-sm shadow-xs ${
             isInbox
@@ -402,16 +404,16 @@ function MessageBubble({ message }: { message: Message }) {
               : "rounded-tr-xs bg-emerald-600/90 text-white dark:bg-emerald-700 dark:text-emerald-50"
           }`}
         >
-          <p className="break-words whitespace-pre-wrap leading-relaxed">
+          <p className="leading-relaxed break-words whitespace-pre-wrap">
             {message.body || (
-              <span className="italic opacity-60">
-                (no content)
-              </span>
+              <span className="italic opacity-60">(no content)</span>
             )}
           </p>
           <div
-            className={`absolute bottom-1.5 right-2 flex select-none items-center gap-1 text-[10px] ${
-              isInbox ? "text-muted-foreground" : "text-emerald-100 dark:text-emerald-200"
+            className={`absolute right-2 bottom-1.5 flex items-center gap-1 text-[10px] select-none ${
+              isInbox
+                ? "text-muted-foreground"
+                : "text-emerald-100 dark:text-emerald-200"
             }`}
           >
             <Tooltip>
@@ -803,12 +805,19 @@ export default function WhatsAppMessagesPage() {
         timeRemaining: `${hours}h ${minutes}m`,
       }
     }
-    return { isOpen: false, lastInboxAt: lastInboxMsg.createdAt, timeRemaining: null }
+    return {
+      isOpen: false,
+      lastInboxAt: lastInboxMsg.createdAt,
+      timeRemaining: null,
+    }
   }, [activeConversation, orderedMessages, currentTime])
 
   const sendReplyMutation = useMutation({
-    mutationFn: (input: { phoneNumber: string; message: string; deviceId?: string }) =>
-      whatsappClient.messages.send(input),
+    mutationFn: (input: {
+      phoneNumber: string
+      message: string
+      deviceId?: string
+    }) => whatsappClient.messages.send(input),
     onSuccess: async () => {
       toast.success("Message sent")
       setReplyText("")
@@ -1319,6 +1328,27 @@ export default function WhatsAppMessagesPage() {
                         (t) => t.id === selectedTemplateId
                       )
                       if (!tpl) return null
+                      if (tpl.languages.length === 1) {
+                        const singleLang = tpl.languages[0]
+                        const presentation = getLanguagePresentation(
+                          singleLang.lang
+                        )
+                        return (
+                          <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-3.5 py-2.5">
+                            <span className="text-xs font-medium text-muted-foreground">
+                              Language
+                            </span>
+                            <span className="inline-flex items-center gap-2 text-sm font-medium">
+                              <span aria-hidden="true">
+                                {presentation.flag}
+                              </span>
+                              <span>
+                                {presentation.name} ({singleLang.lang})
+                              </span>
+                            </span>
+                          </div>
+                        )
+                      }
                       return (
                         <FieldSet className="gap-2">
                           <FieldLegend variant="label">Language *</FieldLegend>
@@ -1392,26 +1422,55 @@ export default function WhatsAppMessagesPage() {
                       )
                       const indexes = getTemplatePlaceholderIndexes(lang?.body)
                       if (indexes.length === 0) return null
+
+                      // Extract example variables from Meta component if available
+                      const params = lang?.parameters as {
+                        components?: Array<{
+                          type: string
+                          example?: { body_text?: string[][] }
+                        }>
+                      }
+                      const bodyComp = params?.components?.find(
+                        (c) => c.type === "BODY"
+                      )
+                      const exampleValues =
+                        bodyComp?.example?.body_text?.[0] || []
+
                       return (
                         <>
-                          {indexes.map((index) => (
-                            <div className="grid gap-2" key={index}>
-                              <Label htmlFor={`field-${index}`}>
-                                Field {`{{${index}}}`}
-                              </Label>
-                              <Input
-                                id={`field-${index}`}
-                                placeholder={`Value for {{${index}}}`}
-                                value={templateFieldValues[index] ?? ""}
-                                onChange={(e) =>
-                                  setTemplateFieldValues((prev) => ({
-                                    ...prev,
-                                    [index]: e.target.value,
-                                  }))
-                                }
-                              />
-                            </div>
-                          ))}
+                          {indexes.map((index) => {
+                            const exampleHint = exampleValues[index - 1]
+                            const placeholder = `Value for {{${index}}}`
+
+                            return (
+                              <div className="grid gap-2" key={index}>
+                                <div className="flex items-center justify-between">
+                                  <Label htmlFor={`field-${index}`}>
+                                    Field {`{{${index}}}`}
+                                  </Label>
+                                  {exampleHint && (
+                                    <span className="text-[11px] text-muted-foreground">
+                                      Example:{" "}
+                                      <span className="font-mono text-foreground/80">
+                                        {exampleHint}
+                                      </span>
+                                    </span>
+                                  )}
+                                </div>
+                                <Input
+                                  id={`field-${index}`}
+                                  placeholder={placeholder}
+                                  value={templateFieldValues[index] ?? ""}
+                                  onChange={(e) =>
+                                    setTemplateFieldValues((prev) => ({
+                                      ...prev,
+                                      [index]: e.target.value,
+                                    }))
+                                  }
+                                />
+                              </div>
+                            )
+                          })}
                         </>
                       )
                     })()}
@@ -1852,8 +1911,9 @@ export default function WhatsAppMessagesPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between px-1 text-[11px] text-muted-foreground">
                       <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                        <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        24-Hour window open (Expires in {sessionWindowInfo.timeRemaining})
+                        <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
+                        24-Hour window open (Expires in{" "}
+                        {sessionWindowInfo.timeRemaining})
                       </span>
                       <Button
                         type="button"
@@ -1884,19 +1944,26 @@ export default function WhatsAppMessagesPage() {
                         type="submit"
                         size="sm"
                         className="h-10 shrink-0 gap-1.5 px-4"
-                        disabled={!replyText.trim() || sendReplyMutation.isPending}
+                        disabled={
+                          !replyText.trim() || sendReplyMutation.isPending
+                        }
                       >
                         <PaperPlaneTilt className="size-4" weight="fill" />
-                        <span>{sendReplyMutation.isPending ? "Sending..." : "Send"}</span>
+                        <span>
+                          {sendReplyMutation.isPending ? "Sending..." : "Send"}
+                        </span>
                       </Button>
                     </form>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-between gap-2 rounded-lg border bg-background/60 p-3 sm:flex-row">
                     <div className="text-xs text-muted-foreground">
-                      <p className="font-medium text-foreground">24-Hour Messaging Window is Closed</p>
+                      <p className="font-medium text-foreground">
+                        24-Hour Messaging Window is Closed
+                      </p>
                       <p className="text-[11px]">
-                        Free-form reply is only allowed after the user sends an inbound message.
+                        Free-form reply is only allowed after the user sends an
+                        inbound message.
                       </p>
                     </div>
                     <Button

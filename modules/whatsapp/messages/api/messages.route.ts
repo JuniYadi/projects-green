@@ -345,7 +345,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           }
         }
 
-        templateName = template.slug || template.name
+        templateName = template.slug
         deviceId = deviceId || template.whatsappDeviceId || undefined
 
         if (!deviceId) {
@@ -1057,7 +1057,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           organizationId: whatsappAuth.organizationId!,
           phoneNumber: normalizedPhone,
           deviceId,
-          templateName: template.slug || template.name,
+          templateName: template.slug,
           templateLanguage,
           fields,
           renderedBody,

@@ -24,19 +24,7 @@ export type TemplateStatusUpdateResult =
   | "unsupported_event"
 
 function possibleSlugsFor(name: string): string[] {
-  return Array.from(
-    new Set(
-      [
-        formatTemplateSlug(name),
-        name,
-        name
-          .trim()
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, ""),
-      ].filter(Boolean)
-    )
-  )
+  return Array.from(new Set([formatTemplateSlug(name), name].filter(Boolean)))
 }
 
 function toMetaStatus(event: string): WhatsappTemplateMetaStatus | null {
