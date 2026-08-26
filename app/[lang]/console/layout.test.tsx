@@ -3,8 +3,17 @@ import { render } from "@testing-library/react"
 import "@testing-library/jest-dom"
 
 import { createAuthMock } from "@/test/layout-test-mocks"
-import { redirect } from "next/navigation"
 
+const mockRedirect = mock((url: string) => {
+  throw new Error(`REDIRECT:${url}`)
+})
+
+mock.module("next/navigation", () => ({
+  redirect: mockRedirect,
+  usePathname: () => "/en/console",
+  useRouter: () => ({ replace: mock(() => {}), refresh: mock(() => {}) }),
+  useSearchParams: () => new URLSearchParams(),
+}))
 type MockAuthPayload = {
   user: {
     id: string
@@ -41,10 +50,6 @@ const mockGetOrganization = mock(async (_organizationId?: string) => ({
   id: "org_123",
   name: "Acme Inc",
 }))
-
-const mockRedirect = mock((url: string) => {
-  throw new Error(`REDIRECT:${url}`)
-})
 const mockGetPlatformAccessForUser = mock(
   async (): Promise<import("@/lib/platform-role").PlatformAccess> => ({
     exists: false,
@@ -195,9 +200,6 @@ describe("ConsoleLayout", () => {
       },
       organizationId: "org_123",
     }))
-    ;(redirect as unknown as ReturnType<typeof mock>).mockImplementation(
-      mockRedirect
-    )
   })
   it("renders shared console shell around children", async () => {
     const layoutModule = await import("@/app/[lang]/console/layout")

@@ -3,6 +3,7 @@ import "./console.css"
 import { AppSidebar } from "@/components/app-sidebar"
 import { AppBreadcrumbs } from "@/components/app-breadcrumbs"
 import { Separator } from "@/components/ui/separator"
+import { ConsoleOnboardingTour } from "@/components/console-onboarding-tour"
 import {
   SidebarInset,
   SidebarProvider,
@@ -154,6 +155,7 @@ export default async function ConsoleLayout({
         ) : null}
         {children}
       </SidebarInset>
+      <ConsoleOnboardingTour />
     </SidebarProvider>
   )
 }

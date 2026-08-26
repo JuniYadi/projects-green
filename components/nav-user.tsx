@@ -220,6 +220,7 @@ export function NavUser({ user }: { user: AppSidebarUser }) {
             <SidebarMenuButton
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              data-tour="user-profile"
             >
               <Avatar className="h-8 w-8 rounded-lg">
                 {hasAvatarUrl ? (

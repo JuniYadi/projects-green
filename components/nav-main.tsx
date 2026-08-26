@@ -40,7 +40,7 @@ export function NavMain({
   label?: string
 }) {
   return (
-    <SidebarGroup>
+    <SidebarGroup data-tour="sidebar-menu">
       <SidebarGroupLabel>{label}</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
