@@ -58,8 +58,12 @@ mock.module("@/lib/eden", () => ({
 }))
 
 const mockGetInvoice = mock(async () => ({
-  id: "inv-123",
-  status: "PAID",
+  ok: true,
+  invoice: {
+    id: "inv-123",
+    invoiceNumber: "TOP-ABC",
+    status: "PAID",
+  },
 }))
 
 mock.module("@/lib/billing-client", () => ({

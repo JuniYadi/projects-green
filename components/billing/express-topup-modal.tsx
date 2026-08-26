@@ -141,8 +141,8 @@ export function ExpressTopupModal({
   const checkPaymentStatus = useCallback(
     async (id: string) => {
       try {
-        const invoice = await getInvoice(id)
-        if (invoice && invoice.status?.toLowerCase() === "paid") {
+        const res = await getInvoice(id)
+        if (res?.ok && res.invoice?.status?.toLowerCase() === "paid") {
           setStep("success")
           if (pollingRef.current) {
             clearInterval(pollingRef.current)
@@ -191,18 +191,10 @@ export function ExpressTopupModal({
     setErrorMessage(null)
 
     try {
-      const { data: result } = (await eden.api.payments.topup.post({
+      const { data: result } = await eden.api.payments.topup.post({
         amount,
         paymentMethod: selectedMethod,
-      } as never)) as {
-        data: {
-          ok?: boolean
-          message?: string
-          invoice?: { id: string; invoiceNumber?: string }
-          paymentUrl?: string
-          vaNumber?: string
-        } | null
-      }
+      })
 
       if (!result || !result.ok || !result.invoice?.id) {
         throw new Error(result?.message || "Failed to create express top-up")
