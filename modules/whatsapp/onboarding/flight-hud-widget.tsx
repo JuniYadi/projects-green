@@ -37,34 +37,8 @@ export function FlightHudWidget({
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(suppliedLocale ?? params?.lang)
   const messages = getMessages(locale)
-  const t = messages?.console?.whatsapp?.onboarding?.hud ?? {
-    flightDeckHud: "Flight Deck HUD",
-    flightReadiness: "Flight Readiness",
-    collapseHud: "Collapse HUD",
-    closeHud: "Close HUD",
-    closeGuide: "Close Guide",
-    needHelp: "Need Help?",
-    stepOf: "Step {step} of {total}",
-    setupFinished: "Setup Finished (All Milestones Done)",
-    prevStep: "Previous step",
-    nextStep: "Next step",
-    checklist: "Checklist",
-    viewing: "Viewing",
-    replay: "Replay",
-    readyForProduction: "Ready for Production • Done",
-    allOnboardingComplete: "All Onboarding Complete",
-    onboardingGuide: "Onboarding Guide",
-    dismissedToast:
-      "Onboarding guide dismissed. You can reopen it anytime from the dashboard.",
-  }
-  const tLevels = messages?.console?.whatsapp?.onboarding?.levels ?? {
-    groundControl: "Level 0 • Ground Control",
-    towerClearancePending: "Level 0 • Tower Clearance Pending",
-    transponderActive: "Level 1 • Transponder Active",
-    flightOperations: "Level 2 • Flight Operations",
-    fullCockpitMaster: "Level 3 • Full Cockpit Master",
-    levelPrefix: "Level {level}",
-  }
+  const t = messages.console.whatsapp.onboarding.hud
+  const tLevels = messages.console.whatsapp.onboarding.levels
   const HUD_STORAGE_KEY = "whatsapp_onboarding_hud_closed"
   const [isDismissed, setIsDismissed] = React.useState<boolean>(() => {
     if (typeof window === "undefined") return false

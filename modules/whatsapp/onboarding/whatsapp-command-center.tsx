@@ -41,41 +41,8 @@ export function WhatsAppCommandCenter({
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(suppliedLocale ?? params?.lang)
   const messages = getMessages(locale)
-  const t = messages?.console?.whatsapp?.onboarding?.commandCenter ?? {
-    flightReadiness: "Flight Readiness",
-    skipTutorial: "Skip Tutorial",
-    exploreQuotas: "Explore Quotas",
-    planSubscribed: "Plan Subscribed",
-    planSubscribedDesc: "Active WhatsApp tier allocated",
-    adminReview: "Admin Review",
-    cockpitLive: "Cockpit Live",
-    roadmapTitle: "Mission Flight Roadmap",
-    roadmapSubtitle: "Progression unlocks advanced cockpit tabs",
-    planTitle: "1. Plan Subscription",
-    planDesc: "Activate WhatsApp business tier.",
-    planUnlocked: "✓ Unlocked",
-    planPending: "Pending Action",
-    deviceTitle: "2. Device Transponder",
-    deviceDesc: "Connect active Meta WhatsApp number.",
-    deviceUnlocked: "✓ Messages & Contacts Unlocked",
-    deviceLocked: "Unlocks Messages & Contacts",
-    opsTitle: "3. Operations & Broadcasts",
-    opsDesc: "Send 1st message and create template.",
-    opsUnlocked: "✓ Broadcasts & Catalogs Unlocked",
-    opsLocked: "Unlocks Broadcasts & Catalogs",
-    telemetryTitle: "4. Radar & Telemetry",
-    telemetryDesc: "Generate API Keys & Webhooks.",
-    telemetryUnlocked: "✓ Full Cockpit Master",
-    telemetryLocked: "Unlocks Logs & Full Telemetry",
-  }
-  const tLevels = messages?.console?.whatsapp?.onboarding?.levels ?? {
-    groundControl: "Level 0 • Ground Control",
-    towerClearancePending: "Level 0 • Tower Clearance Pending",
-    transponderActive: "Level 1 • Transponder Active",
-    flightOperations: "Level 2 • Flight Operations",
-    fullCockpitMaster: "Level 3 • Full Cockpit Master",
-    levelPrefix: "Level {level}",
-  }
+  const t = messages.console.whatsapp.onboarding.commandCenter
+  const tLevels = messages.console.whatsapp.onboarding.levels
   const {
     level,
     progressPercent,
@@ -201,15 +168,11 @@ export function WhatsAppCommandCenter({
             <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
               <ClockCountdown className="size-5" weight="bold" />
               <CardTitle className="text-base font-bold">
-                {locale === "id"
-                  ? "Verifikasi Perangkat Sedang Berlangsung"
-                  : "Transponder Verification in Progress"}
+                {t.pendingTitle}
               </CardTitle>
             </div>
             <CardDescription className="text-muted-foreground">
-              {locale === "id"
-                ? "Langganan Anda aktif! Admin platform sedang menyiapkan dan menghubungkan nomor WhatsApp Business Meta Anda."
-                : "Your subscription is active! Platform admins are currently provisioning and linking your Meta WhatsApp Business number."}
+              {t.pendingDescription}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -238,9 +201,7 @@ export function WhatsAppCommandCenter({
                     {t.adminReview}
                   </p>
                   <p className="text-muted-foreground">
-                    {locale === "id"
-                      ? "Pendaftaran nomor WABA"
-                      : "WABA number registration"}
+                    {t.wabaRegistration}
                   </p>
                 </div>
               </div>
@@ -251,9 +212,7 @@ export function WhatsAppCommandCenter({
                     {t.cockpitLive}
                   </p>
                   <p className="text-muted-foreground">
-                    {locale === "id"
-                      ? "Level 1 siap digunakan"
-                      : "Level 1 ready for take-off"}
+                    {t.level1Ready}
                   </p>
                 </div>
               </div>
@@ -261,9 +220,7 @@ export function WhatsAppCommandCenter({
 
             <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3 text-xs">
               <span className="text-muted-foreground">
-                {locale === "id"
-                  ? "Ingin memeriksa detail perangkat yang masih tertunda?"
-                  : "Want to check your pending transponder hardware details?"}
+                {t.checkPendingDetails}
               </span>
               <Button
                 variant="outline"
@@ -277,7 +234,7 @@ export function WhatsAppCommandCenter({
                     locale,
                   })}
                 >
-                  {locale === "id" ? "Lihat Tab Perangkat" : "View Devices Tab"}
+                  {t.viewDevicesTab}
                 </Link>
               </Button>
             </div>

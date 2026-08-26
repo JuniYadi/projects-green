@@ -111,7 +111,9 @@ export default function WhatsAppPricingPage() {
   const params = useParams<{ lang?: string }>()
   const searchParams = useSearchParams()
   const locale = resolveLocaleOrDefault(params?.lang)
-  const t = getMessages(locale).console.whatsapp
+  const messages = getMessages(locale)
+  const t = messages.console.whatsapp
+  const tLocked = messages.console.whatsapp.onboarding.lockedFeatures.pricing
   const [selectedDeviceId, setSelectedDeviceId] = React.useState<string>("all")
 
   // Pricing rates query
@@ -201,23 +203,12 @@ export default function WhatsAppPricingPage() {
     return (
       <>
         <LockedFeatureTeaser
-          featureTitle={
-            messages.console.whatsapp.onboarding.lockedFeatures.pricing.title
-          }
-          featureDescription={
-            messages.console.whatsapp.onboarding.lockedFeatures.pricing
-              .description
-          }
+          featureTitle={tLocked.title}
+          featureDescription={tLocked.description}
           unlockLevel={3}
-          prerequisiteDescription={
-            messages.console.whatsapp.onboarding.lockedFeatures.pricing
-              .prerequisite
-          }
+          prerequisiteDescription={tLocked.prerequisite}
           activeMissionHref="/console/whatsapp/messages"
-          activeMissionLabel={
-            messages.console.whatsapp.onboarding.lockedFeatures.pricing
-              .activeLabel
-          }
+          activeMissionLabel={tLocked.activeLabel}
           locale={locale}
         />
         <FlightHudWidget

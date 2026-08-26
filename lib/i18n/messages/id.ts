@@ -550,6 +550,8 @@ export const idMessages: AppMessages = {
           onboardingGuide: "Panduan Penyiapan",
           dismissedToast:
             "Panduan penyiapan disembunyikan. Anda dapat membukanya kembali kapan saja dari dasbor.",
+          showOnboardingGuide: "Tampilkan Panduan Penyiapan",
+          subscribePlan: "Pilih Paket",
         },
         commandCenter: {
           flightReadiness: "Kesiapan Penyiapan",
@@ -577,6 +579,14 @@ export const idMessages: AppMessages = {
           telemetryDesc: "Buat API Key & Webhook.",
           telemetryUnlocked: "✓ Otomasi Penuh",
           telemetryLocked: "Membuka Log & Telemetri Lengkap",
+          pendingTitle: "Verifikasi Perangkat Sedang Berlangsung",
+          pendingDescription:
+            "Langganan Anda aktif! Admin platform sedang menyiapkan dan menghubungkan nomor WhatsApp Business Meta Anda.",
+          wabaRegistration: "Pendaftaran nomor WABA",
+          level1Ready: "Level 1 siap digunakan",
+          checkPendingDetails:
+            "Ingin memeriksa detail perangkat yang masih tertunda?",
+          viewDevicesTab: "Lihat Tab Perangkat",
         },
         lockedFeature: {
           lockedTitle: "Fitur Terkunci • Level {level}",

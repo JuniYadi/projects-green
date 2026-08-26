@@ -495,6 +495,8 @@ export type AppMessages = {
           allOnboardingComplete: string
           onboardingGuide: string
           dismissedToast: string
+          showOnboardingGuide: string
+          subscribePlan: string
         }
         commandCenter: {
           flightReadiness: string
@@ -522,6 +524,12 @@ export type AppMessages = {
           telemetryDesc: string
           telemetryUnlocked: string
           telemetryLocked: string
+          pendingTitle: string
+          pendingDescription: string
+          wabaRegistration: string
+          level1Ready: string
+          checkPendingDetails: string
+          viewDevicesTab: string
         }
         lockedFeature: {
           lockedTitle: string

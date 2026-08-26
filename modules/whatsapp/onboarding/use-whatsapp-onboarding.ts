@@ -115,50 +115,7 @@ export function useWhatsAppOnboarding(
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(input.locale ?? params?.lang)
   const messages = getMessages(locale)
-  const obMessages = messages?.console?.whatsapp?.onboarding?.missions ?? {
-    subscribe: {
-      title: "Subscribe to WhatsApp Plan",
-      subtitle: "Ground Control",
-      description:
-        "Activate your WhatsApp Business tier to unlock transponder registration and device allocation.",
-      actionLabel: "Subscribe Plan",
-    },
-    transponderDevices: {
-      title: "Transponder Hardware Allocation",
-      subtitle: "Tower Clearance",
-      description:
-        "Admin is verifying credentials and provisioning your Meta WABA device number.",
-      actionLabel: "View Devices Status",
-    },
-    firstMessage: {
-      title: "Transmit First Message",
-      subtitle: "Payload Ignition",
-      description:
-        "Open the live communicator to send your first WhatsApp message to a test recipient.",
-      actionLabel: "Open Messages",
-    },
-    template: {
-      title: "Draft & Approve Message Template",
-      subtitle: "Broadcast Readiness",
-      description:
-        "Create a high-impact marketing or utility template to unlock bulk broadcasts and catalogs.",
-      actionLabel: "Create Template",
-    },
-    apiKey: {
-      title: "Generate Production API Key",
-      subtitle: "Full Cockpit Automation",
-      description:
-        "Issue automated credentials and subscribe webhooks for end-to-end integration.",
-      actionLabel: "Generate API Key",
-    },
-    completed: {
-      title: "All Onboarding Complete",
-      subtitle: "Ready for Production",
-      description:
-        "All WhatsApp setup milestones are complete. Your account is ready for production.",
-      actionLabel: "Open Dashboard",
-    },
-  }
+  const obMessages = messages.console.whatsapp.onboarding.missions
 
   const [manualGraduated, setManualGraduated] = React.useState<boolean>(() => {
     if (input.bypassGating) return true

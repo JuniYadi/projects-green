@@ -277,13 +277,11 @@ export default function WhatsAppDashboardPage() {
             className="gap-1.5 text-xs"
           >
             <Sparkle className="size-3.5 text-primary" weight="fill" />
-            {locale === "id"
-              ? "Tampilkan Panduan Penyiapan"
-              : "Show Onboarding Guide"}
+            {messages.console.whatsapp.onboarding.hud.showOnboardingGuide}
           </Button>
           <Button variant="outline" onClick={() => setIsOrderOpen(true)}>
             <Sparkle className="mr-2 size-4 text-primary" />
-            {locale === "id" ? "Pilih Paket" : "Subscribe Plan"}
+            {messages.console.whatsapp.onboarding.hud.subscribePlan}
           </Button>
           <Button variant="outline" asChild>
             <Link href="/console/whatsapp/devices">

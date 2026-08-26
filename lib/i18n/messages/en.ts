@@ -548,6 +548,8 @@ export const enMessages: AppMessages = {
           onboardingGuide: "Onboarding Guide",
           dismissedToast:
             "Onboarding guide dismissed. You can reopen it anytime from the dashboard.",
+          showOnboardingGuide: "Show Onboarding Guide",
+          subscribePlan: "Subscribe Plan",
         },
         commandCenter: {
           flightReadiness: "Flight Readiness",
@@ -575,6 +577,14 @@ export const enMessages: AppMessages = {
           telemetryDesc: "Generate API Keys & Webhooks.",
           telemetryUnlocked: "✓ Full Cockpit Master",
           telemetryLocked: "Unlocks Logs & Full Telemetry",
+          pendingTitle: "Transponder Verification in Progress",
+          pendingDescription:
+            "Your subscription is active! Platform admins are currently provisioning and linking your Meta WhatsApp Business number.",
+          wabaRegistration: "WABA number registration",
+          level1Ready: "Level 1 ready for take-off",
+          checkPendingDetails:
+            "Want to check your pending transponder hardware details?",
+          viewDevicesTab: "View Devices Tab",
         },
         lockedFeature: {
           lockedTitle: "Locked Cockpit Feature • Level {level}",

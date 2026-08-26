@@ -10,10 +10,10 @@ const replayStorageKey = "whatsapp_onboarding_replay_level"
 const originalFetch = globalThis.fetch
 
 beforeEach(() => {
-  globalThis.fetch = async () =>
+  globalThis.fetch = (async () =>
     new Response(JSON.stringify({ ok: true, data: {} }), {
       headers: { "content-type": "application/json" },
-    })
+    })) as unknown as typeof fetch
 })
 
 afterEach(() => {

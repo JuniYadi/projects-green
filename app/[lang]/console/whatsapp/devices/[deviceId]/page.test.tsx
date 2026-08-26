@@ -174,10 +174,10 @@ const mockFetch = mock((input: string | URL | Request, init?: RequestInit) => {
 
 describe("ConsoleWhatsAppDeviceDetailPage", () => {
   beforeEach(() => {
+    document.body.innerHTML = ""
     mockFetch.mockClear()
     globalThis.fetch = mockFetch as unknown as typeof fetch
   })
-
   afterEach(() => {
     globalThis.fetch = ORIGINAL_FETCH
   })
