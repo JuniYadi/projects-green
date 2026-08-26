@@ -49,7 +49,7 @@ const conversationUpdateSchema = t.Partial(
     ),
     assigneeId: t.Optional(t.Nullable(t.String())),
     lastReadAt: t.Optional(t.Nullable(t.String())),
-    csatScore: t.Optional(t.Nullable(t.Number())),
+    csatScore: t.Optional(t.Nullable(t.Number({ minimum: 1, maximum: 5 }))),
   })
 )
 
@@ -114,7 +114,16 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
         where.status = lifecycleStatus.toUpperCase()
       }
 
-      if (stage) {
+      const VALID_STAGES = [
+        "NEW",
+        "CONTACTED",
+        "QUALIFIED",
+        "PROPOSAL",
+        "NEGOTIATION",
+        "WON",
+        "LOST",
+      ]
+      if (stage && VALID_STAGES.includes(stage.toUpperCase())) {
         where.stage = stage.toUpperCase()
       }
 
@@ -127,11 +136,7 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
       }
 
       // Filter conversations that have messages with the given message delivery status
-      if (
-        status &&
-        status !== "all" &&
-        !["OPEN", "PENDING", "RESOLVED"].includes(status.toUpperCase())
-      ) {
+      if (status && status !== "all") {
         where.whatsappMessages = {
           some: {
             statusHistory: {
@@ -139,11 +144,6 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
             },
           },
         }
-      } else if (
-        status &&
-        ["OPEN", "PENDING", "RESOLVED"].includes(status.toUpperCase())
-      ) {
-        where.status = status.toUpperCase()
       }
       const take = parseConversationLimit(limit)
 
@@ -361,7 +361,7 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
       const activitiesToCreate: Array<{
         actorId: string
         actorName?: string
-        type: any
+        type: Prisma.$Enums.WhatsappActivityType
         fromValue?: string
         toValue?: string
       }> = []
@@ -647,6 +647,6 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
         },
       })
 
-      return { ok: true, message: "CSAT survey dispatched." }
+      return { ok: true, message: "CSAT survey activity recorded." }
     }
   )

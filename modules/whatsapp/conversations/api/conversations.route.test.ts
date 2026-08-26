@@ -329,4 +329,65 @@ describe("conversations routes", () => {
       })
     )
   })
+
+  it("validates stage filter and ignores invalid stage query param", async () => {
+    mockAuth.current = {
+      type: "session",
+      userId: "user-1",
+      organizationId: "org-1",
+      orgRole: "admin",
+      platformRole: "member",
+    }
+
+    const app = createTestApp()
+    const res = await app.handle(
+      new Request("http://localhost/conversations?stage=INVALID_STAGE", {
+        method: "GET",
+      })
+    )
+
+    expect(res.status).toBe(200)
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          organizationId: "org-1",
+        },
+      })
+    )
+  })
+
+  it("records csat survey activity and returns honest message", async () => {
+    mockAuth.current = {
+      type: "session",
+      userId: "user-1",
+      organizationId: "org-1",
+      orgRole: "admin",
+      platformRole: "member",
+    }
+
+    mockFindFirst.mockResolvedValueOnce({
+      id: "conv-1",
+      organizationId: "org-1",
+    })
+
+    const app = createTestApp()
+    const res = await app.handle(
+      new Request("http://localhost/conversations/conv-1/csat", {
+        method: "POST",
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { ok: boolean; message: string }
+    expect(body.ok).toBe(true)
+    expect(body.message).toBe("CSAT survey activity recorded.")
+    expect(mockActivityCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          conversationId: "conv-1",
+          type: "CSAT_SURVEY_SENT",
+        }),
+      })
+    )
+  })
 })
