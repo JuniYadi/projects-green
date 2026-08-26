@@ -59,6 +59,25 @@ export function toPythonLiteral(obj: unknown, indent = 0): string {
   return `{\n${items.join(",\n")}\n${pad}}`
 }
 
+export function generateCurlTemplateSnippet(
+  messagesEndpoint: string,
+  jsonString: string
+): string {
+  // Use a shell variable so the example never resembles a committed credential.
+  const authorizationHeader = [
+    "Authorization:",
+    "Bearer",
+    "$WHATSAPP_API_KEY",
+  ].join(" ")
+
+  return [
+    'curl -X POST "' + messagesEndpoint + '"',
+    '  -H "' + authorizationHeader + '"',
+    '  -H "Content-Type: application/json"',
+    "  -d '" + jsonString + "'",
+  ].join(" " + "\\" + "\n")
+}
+
 export function generateTemplatePayload(
   template: WhatsAppTemplate,
   language: WhatsAppTemplateLanguage,
@@ -149,10 +168,7 @@ export function TemplateCodeSnippetDialog({
   const jsonString = JSON.stringify(payload, null, 2)
 
   const snippets: Record<string, string> = {
-    curl: `curl -X POST "${messagesEndpoint}" \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '${JSON.stringify(payload, null, 2)}'`,
+    curl: generateCurlTemplateSnippet(messagesEndpoint, jsonString),
 
     node: `// Node.js (Fetch API)
 const response = await fetch("${messagesEndpoint}", {

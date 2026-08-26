@@ -1,6 +1,7 @@
 import "@/test/register"
 import { describe, expect, it } from "bun:test"
 import {
+  generateCurlTemplateSnippet,
   generateTemplatePayload,
   toPythonLiteral,
 } from "./template-code-snippet-dialog"
@@ -34,6 +35,18 @@ const mockTemplate: WhatsAppTemplate = {
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
 }
+
+describe("generateCurlTemplateSnippet", () => {
+  it("uses an explicit shell variable for the authorization header", () => {
+    const snippet = generateCurlTemplateSnippet(
+      "https://example.test/api/v1/whatsapp/messages",
+      '{"to":"+6281234567890"}'
+    )
+
+    expect(snippet).toContain('-H "Authorization: Bearer $WHATSAPP_API_KEY"')
+    expect(snippet).not.toContain("YOUR_API_KEY")
+  })
+})
 
 describe("generateTemplatePayload", () => {
   it("generates correct structured template payload with variable parameters and OTP sub_type", () => {
