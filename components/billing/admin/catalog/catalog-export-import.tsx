@@ -333,7 +333,12 @@ export function CatalogExportImport({
             </Button>
             <Button
               onClick={handleApplyImport}
-              disabled={!parsedPayload || isApplying || Boolean(parseError)}
+              disabled={
+                !parsedPayload ||
+                !dryRunResult ||
+                isApplying ||
+                Boolean(parseError)
+              }
               className="gap-1.5"
             >
               {isApplying ? (

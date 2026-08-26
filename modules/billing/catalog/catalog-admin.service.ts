@@ -1059,6 +1059,31 @@ export class CatalogAdminService {
           details.push(`Active: ${existing.isActive} -> ${prod.isActive}`)
         }
 
+        // Offer-level diff comparison when count matches
+        if (existing.pricings.length === prod.offers.length) {
+          for (const offer of prod.offers) {
+            const matchingPricing = existing.pricings.find(
+              (ep) =>
+                ep.billingPeriod === offer.billingPeriod &&
+                ep.currency === offer.currency
+            )
+            if (
+              !matchingPricing ||
+              Number(
+                matchingPricing.periodPrice ?? matchingPricing.basePriceIdr ?? 0
+              ) !== offer.periodPrice
+            ) {
+              details.push(
+                `Price change in ${offer.billingPeriod} ${offer.currency}: ${Number(
+                  matchingPricing?.periodPrice ??
+                    matchingPricing?.basePriceIdr ??
+                    0
+                )} -> ${offer.periodPrice}`
+              )
+            }
+          }
+        }
+
         if (
           details.length > 0 ||
           prod.offers.length !== existing.pricings.length
@@ -1081,16 +1106,25 @@ export class CatalogAdminService {
         }
       }
     }
-
     const addonDiffs: CatalogImportDiffItem[] = []
     let addonsToCreate = 0
     let addonsToUpdate = 0
     let addonsUnchanged = 0
 
+    // Batch fetch existing addons to eliminate N+1 queries
+    const addonCodes = (payload.addons || []).map((a) => a.code)
+    const existingAddonsBatch =
+      addonCodes.length > 0
+        ? await this.db.serviceAddon.findMany({
+            where: { code: { in: addonCodes } },
+          })
+        : []
+    const existingAddonMap = new Map(
+      existingAddonsBatch.map((a) => [a.code, a])
+    )
+
     for (const addon of payload.addons || []) {
-      const existing = await this.db.serviceAddon.findUnique({
-        where: { code: addon.code },
-      })
+      const existing = existingAddonMap.get(addon.code) ?? null
       if (!existing) {
         addonsToCreate++
         addonDiffs.push({
@@ -1257,6 +1291,10 @@ export class CatalogAdminService {
                 | undefined,
               isActive: att.isActive,
             })
+          } else {
+            warnings.push(
+              `Addon "${addon.code}" attachment skipped: plan "${att.planCode}" not found.`
+            )
           }
         }
       }
