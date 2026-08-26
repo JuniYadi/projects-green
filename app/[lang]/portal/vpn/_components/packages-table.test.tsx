@@ -5,16 +5,17 @@ mock.module("next/navigation", () => ({
   useParams: () => ({ lang: "en" }),
 }))
 
+const actualClient = await import("./vpn-admin-client")
 const listVpnPackages = mock()
 const listVpnServers = mock()
 mock.module("./vpn-admin-client", () => ({
+  ...actualClient,
   listVpnPackages,
   listVpnServers,
   deleteVpnPackage: mock(),
   createVpnPackage: mock(),
   updateVpnPackage: mock(),
 }))
-
 const { PackagesTable } = await import("./packages-table")
 
 function packageRecord(

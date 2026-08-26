@@ -243,8 +243,46 @@ type EdenRes = { data: any; error: any }
 
 type ApiBody<T> = { ok: true; data: T } | { ok: false; message?: string }
 
+export function extractErrorMessage(
+  error: unknown,
+  fallback = "Request failed"
+): string {
+  if (!error) return fallback
+  if (typeof error === "string") return error
+  if (typeof error === "object") {
+    const errObj = error as Record<string, unknown>
+    if (typeof errObj.message === "string" && errObj.message.trim()) {
+      return errObj.message
+    }
+    if (errObj.value && typeof errObj.value === "object") {
+      const valObj = errObj.value as Record<string, unknown>
+      if (typeof valObj.message === "string" && valObj.message.trim()) {
+        return valObj.message
+      }
+      if (typeof valObj.error === "string" && valObj.error.trim()) {
+        return valObj.error
+      }
+    }
+    if (typeof errObj.error === "string" && errObj.error.trim()) {
+      return errObj.error
+    }
+    if (typeof errObj.statusText === "string" && errObj.statusText.trim()) {
+      return errObj.statusText
+    }
+    try {
+      const json = JSON.stringify(error)
+      if (json && json !== "{}") return json
+    } catch {
+      // ignore serialization error
+    }
+  }
+  return String(error) || fallback
+}
+
 function throwIfError(res: EdenRes) {
-  if (res.error) throw new Error(String(res.error))
+  if (res.error) {
+    throw new Error(extractErrorMessage(res.error))
+  }
   const body = res.data as Record<string, unknown> | null
   if (!body || (body && "ok" in body && body.ok === false)) {
     const msg =

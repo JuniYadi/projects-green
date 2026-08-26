@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto"
+import { randomBytes } from "node:crypto"
 
 import { Prisma, type PrismaClient } from "@prisma/client"
 
@@ -28,6 +28,23 @@ export class VpnPackageValidationError extends Error {
     super(message)
     this.name = "VpnPackageValidationError"
   }
+}
+
+export function slugifyPlanName(name: string): string {
+  const clean = name
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .replace(/_{2,}/g, "_")
+    .slice(0, 32)
+  return clean || "PLAN"
+}
+
+export function generateVpnPlanCode(name: string): string {
+  const slug = slugifyPlanName(name)
+  const suffix = randomBytes(4).toString("hex").toUpperCase()
+  return `VPN_${slug}_${suffix}`
 }
 
 export class VpnPackageService {
@@ -69,7 +86,7 @@ export class VpnPackageService {
           isActive: input.isActive ?? true,
           servicePlan: {
             create: {
-              code: `VPN_${randomUUID()}`,
+              code: generateVpnPlanCode(input.name),
               name: input.name,
               resources: {},
               isActive: input.isActive ?? true,

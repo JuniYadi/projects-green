@@ -4,6 +4,8 @@ import {
   VpnPackageNotFoundError,
   VpnPackageValidationError,
   VpnPackageService,
+  slugifyPlanName,
+  generateVpnPlanCode,
 } from "./vpn-package.service"
 
 type AnyFn = (...args: any[]) => any
@@ -81,7 +83,7 @@ describe("VpnPackageService.create", () => {
     expect(pkgCreate).toHaveBeenCalledTimes(1)
     const data = pkgCreate.mock.calls[0][0].data
     expect(data.servicePlan.create).toMatchObject({
-      code: expect.stringMatching(/^VPN_[0-9a-f-]{36}$/),
+      code: expect.stringMatching(/^VPN_GLOBAL_BUNDLE_[A-F0-9]{8}$/),
       name: "Global Bundle",
       resources: {},
       isActive: true,
@@ -152,5 +154,23 @@ describe("VpnPackageService.deactivate", () => {
     await expect(service.deactivate("missing")).rejects.toBeInstanceOf(
       VpnPackageNotFoundError
     )
+  })
+})
+
+describe("VPN Plan Code Generation", () => {
+  it("slugifies plan names cleanly to uppercase alphanumeric with underscore", () => {
+    expect(slugifyPlanName("Global Bundle")).toBe("GLOBAL_BUNDLE")
+    expect(slugifyPlanName("Ultra-Fast / Pro Plan #1")).toBe(
+      "ULTRA_FAST_PRO_PLAN_1"
+    )
+    expect(slugifyPlanName("   ___special---name___  ")).toBe("SPECIAL_NAME")
+    expect(slugifyPlanName("!@#$%^&*()")).toBe("PLAN")
+  })
+
+  it("generates uppercase VPN plan codes matching required format", () => {
+    const code = generateVpnPlanCode("Premium 5G VPN")
+    expect(code).toMatch(/^VPN_PREMIUM_5G_VPN_[A-F0-9]{8}$/)
+    expect(code).toBe(code.toUpperCase())
+    expect(code).toMatch(/^[A-Z0-9_]+$/)
   })
 })
