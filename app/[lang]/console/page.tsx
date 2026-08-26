@@ -635,7 +635,7 @@ export default function ConsolePage() {
               </div>
               <Badge variant="success" className="gap-1">
                 <CheckCircleIcon className="size-3" />
-                <span>Operational</span>
+                <span>{t.announcements.operationalBadge}</span>
               </Badge>
             </div>
             <CardDescription>{t.announcements.description}</CardDescription>

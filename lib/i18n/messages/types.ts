@@ -64,16 +64,6 @@ export type AppMessages = {
     overview: {
       heading: string
       description: string
-      currentBalance: string
-      spentThisMonth: string
-      lastInvoice: string
-      openTickets: string
-      unavailable: string
-      noInvoicesYet: string
-      awaitingResponse: string
-      accountAge: string
-      period: string
-      status: string
       // Actionable overview sections
       invoices: {
         title: string
@@ -86,7 +76,6 @@ export type AppMessages = {
         viewDetailsCta: string
         issuedOn: string
         dueOn: string
-        amountLabel: string
         failedToLoad: string
       }
       services: {
@@ -117,6 +106,7 @@ export type AppMessages = {
         noAnnouncementsTitle: string
         noAnnouncementsDesc: string
         viewDocsCta: string
+        operationalBadge: string
         platformStatusTitle: string
         platformStatusDesc: string
       }

@@ -69,16 +69,6 @@ export const enMessages: AppMessages = {
     overview: {
       heading: "Console",
       description: "Overview of your organization billing and activity.",
-      currentBalance: "Current Balance",
-      spentThisMonth: "Spent This Month",
-      lastInvoice: "Last Invoice",
-      openTickets: "Open Tickets",
-      unavailable: "Unavailable",
-      noInvoicesYet: "No invoices yet",
-      awaitingResponse: "Awaiting response",
-      accountAge: "Account age: {age}",
-      period: "Period: {period}",
-      status: "Status: {status}",
       invoices: {
         title: "Latest Invoice",
         description: "Status and payment details for your most recent billing.",
@@ -91,7 +81,6 @@ export const enMessages: AppMessages = {
         viewDetailsCta: "View invoice details",
         issuedOn: "Issued: {date}",
         dueOn: "Due: {date}",
-        amountLabel: "Total Amount",
         failedToLoad: "Unable to load invoice information.",
       },
       services: {
@@ -125,6 +114,7 @@ export const enMessages: AppMessages = {
         noAnnouncementsDesc:
           "No new announcements right now. Check back later for platform updates.",
         viewDocsCta: "Browse documentation",
+        operationalBadge: "Operational",
         platformStatusTitle: "Platform operational",
         platformStatusDesc: "All services and APIs are running normally.",
       },

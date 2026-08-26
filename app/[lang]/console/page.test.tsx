@@ -166,6 +166,7 @@ describe("ConsolePage Actionable Overview", () => {
     // Announcements card assertions
     expect(screen.getByText("Announcements & Updates")).toBeInTheDocument()
     expect(screen.getByText("Platform operational")).toBeInTheDocument()
+    expect(screen.getByText("Operational")).toBeInTheDocument()
   })
 
   it("renders empty states when no data is available", async () => {
@@ -235,6 +236,7 @@ describe("ConsolePage Actionable Overview", () => {
     expect(screen.getByText("Layanan Aktif")).toBeInTheDocument()
     expect(screen.getByText("Dukungan & Bantuan")).toBeInTheDocument()
     expect(screen.getByText("Informasi & Pembaruan")).toBeInTheDocument()
+    expect(screen.getByText("Beroperasi")).toBeInTheDocument()
     expect(screen.getByText("Belum ada invoice")).toBeInTheDocument()
     expect(screen.getByText("Belum ada layanan aktif")).toBeInTheDocument()
     expect(screen.getByText("Tidak ada tiket aktif")).toBeInTheDocument()

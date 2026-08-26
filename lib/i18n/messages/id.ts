@@ -70,16 +70,6 @@ export const idMessages: AppMessages = {
       heading: "Konsol",
       description:
         "Ringkasan akun, layanan aktif, dan aktivitas organisasi Anda.",
-      currentBalance: "Saldo Saat Ini",
-      spentThisMonth: "Pengeluaran Bulan Ini",
-      lastInvoice: "Invoice Terakhir",
-      openTickets: "Tiket Terbuka",
-      unavailable: "Tidak Tersedia",
-      noInvoicesYet: "Belum ada invoice",
-      awaitingResponse: "Menunggu respons",
-      accountAge: "Usia akun: {age}",
-      period: "Periode: {period}",
-      status: "Status: {status}",
       invoices: {
         title: "Invoice Terbaru",
         description:
@@ -93,7 +83,6 @@ export const idMessages: AppMessages = {
         viewDetailsCta: "Lihat detail invoice",
         issuedOn: "Diterbitkan: {date}",
         dueOn: "Jatuh tempo: {date}",
-        amountLabel: "Total Tagihan",
         failedToLoad: "Tidak dapat memuat informasi invoice.",
       },
       services: {
@@ -128,6 +117,7 @@ export const idMessages: AppMessages = {
         noAnnouncementsDesc:
           "Belum ada pengumuman baru saat ini. Pantau terus untuk pembaruan fitur.",
         viewDocsCta: "Baca dokumentasi",
+        operationalBadge: "Beroperasi",
         platformStatusTitle: "Platform beroperasi normal",
         platformStatusDesc: "Semua layanan dan API berjalan normal.",
       },
