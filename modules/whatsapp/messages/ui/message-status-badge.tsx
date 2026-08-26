@@ -8,7 +8,6 @@ import * as React from "react"
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Clock, Check, Checks, WarningCircle } from "@phosphor-icons/react"
@@ -91,47 +90,50 @@ export function MessageStatusBadge({
 
   if (latestStatus === "FAILED") {
     return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span
-              className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium text-destructive hover:bg-destructive/10"
-              title={getWhatsAppText("s235")}
-            >
-              <WarningCircle
-                className="size-3 text-destructive"
-                weight="fill"
-              />
-              <span>
-                <WhatsAppText id="s155" />
-              </span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex cursor-pointer items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium text-destructive hover:bg-destructive/10"
+            title={getWhatsAppText("s235")}
+          >
+            <WarningCircle className="size-3 text-destructive" weight="fill" />
+            <span>
+              <WhatsAppText id="s155" />
             </span>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-[240px] text-xs">
-            <p className="font-semibold text-destructive">
-              <WhatsAppText id="s236" />
-            </p>
-            <p className="mt-0.5 text-muted-foreground">
-              {failureReason || "Message could not be delivered by WhatsApp."}
-            </p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent
+          side="top"
+          className="max-w-[240px] border border-border bg-popover p-2.5 text-xs text-popover-foreground shadow-md"
+        >
+          <p className="font-semibold text-destructive">
+            <WhatsAppText id="s236" />
+          </p>
+          <p className="mt-0.5 text-muted-foreground">
+            {failureReason || "Message could not be delivered by WhatsApp."}
+          </p>
+        </TooltipContent>
+      </Tooltip>
     )
   }
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="inline-flex items-center">
-            <StatusIcon status={latestStatus} className="size-3.5" />
-          </span>
-        </TooltipTrigger>
-        <TooltipContent className="text-xs">
-          {STATUS_CONFIG[latestStatus].label}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex cursor-pointer items-center text-muted-foreground hover:text-foreground"
+        >
+          <StatusIcon status={latestStatus} className="size-3.5" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        className="border border-border bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md"
+      >
+        {STATUS_CONFIG[latestStatus].label}
+      </TooltipContent>
+    </Tooltip>
   )
 }

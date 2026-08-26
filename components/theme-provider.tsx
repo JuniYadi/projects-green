@@ -14,6 +14,7 @@ function ThemeProvider({
       enableSystem
       disableTransitionOnChange
       enableColorScheme={false}
+      forcedTheme={undefined}
       {...props}
     >
       <ThemeHotkey />

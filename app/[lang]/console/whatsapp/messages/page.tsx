@@ -162,17 +162,16 @@ const formatPhone = (phone: string) => {
 }
 
 function formatLocalDateTime(iso: string | null | undefined): string {
-  if (!iso) return ""
+  if (!iso) return "No date"
   try {
     const d = new Date(iso)
-    if (isNaN(d.getTime())) return ""
-    return new Intl.DateTimeFormat(undefined, {
+    if (isNaN(d.getTime())) return String(iso)
+    return d.toLocaleString(undefined, {
       dateStyle: "medium",
       timeStyle: "short",
-      timeZoneName: "short",
-    }).format(d)
+    })
   } catch {
-    return ""
+    return String(iso)
   }
 }
 
@@ -381,6 +380,7 @@ function MessageBubble({
       },
       {}
     )
+    const formattedDateTime = formatLocalDateTime(message.createdAt)
 
     return (
       <div className="flex flex-col items-end">
@@ -394,14 +394,24 @@ function MessageBubble({
               hideInternalStatus={true}
             />
             {/* Integrated timestamp and delivery status directly inside template card bottom right */}
-            <div className="absolute right-3.5 bottom-2 flex items-center gap-1 text-[10px] text-muted-foreground select-none">
-              <TooltipProvider>
+            <div className="absolute right-3.5 bottom-2 z-20 flex items-center gap-1 text-[10px] text-muted-foreground select-none">
+              <TooltipProvider delayDuration={0}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span>{formatTime(message.createdAt)}</span>
+                    <button
+                      type="button"
+                      className="cursor-pointer font-medium hover:text-foreground"
+                      title={formattedDateTime}
+                    >
+                      {formatTime(message.createdAt)}
+                    </button>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    {formatLocalDateTime(message.createdAt)}
+                  <TooltipContent
+                    side="top"
+                    sideOffset={6}
+                    className="border border-border bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md"
+                  >
+                    {formattedDateTime}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
