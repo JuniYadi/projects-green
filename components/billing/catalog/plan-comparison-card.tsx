@@ -103,7 +103,7 @@ export function PlanComparisonCard({
 
         {plansWithOffer.length === 0 && (
           <div className="py-6 text-center text-sm text-muted-foreground">
-            No plans available for the selected term.
+            {getMessages("en").console.billing.services.product.noPlansForTerm}
           </div>
         )}
 

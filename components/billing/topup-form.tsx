@@ -6,11 +6,18 @@ import { Button } from "@/components/ui/button"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { topup } from "@/lib/billing-client"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import type { AppMessages } from "@/lib/i18n/messages/types"
 import { CheckCircleIcon } from "@phosphor-icons/react"
+
+type TopupMessages = AppMessages["console"]["billing"]["topUpForm"]
 
 type TopupFormProps = {
   className?: string
   currency?: "IDR" | "USD"
+  lang?: string
+  messages?: TopupMessages
   onSuccess?: (result: {
     adjustmentId: string
     newBalanceIdr: string
@@ -23,8 +30,13 @@ type FormState = "idle" | "submitting" | "success" | "error"
 export function TopupForm({
   className,
   currency = "IDR",
+  lang,
+  messages,
   onSuccess,
 }: TopupFormProps) {
+  const t =
+    messages ??
+    getMessages(resolveLocaleOrDefault(lang)).console.billing.topUpForm
   const [formState, setFormState] = useState<FormState>("idle")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successData, setSuccessData] = useState<{
@@ -66,7 +78,7 @@ export function TopupForm({
       onSuccess?.(result)
     } catch (err) {
       setErrorMessage(
-        err instanceof Error ? err.message : "Topup failed. Please try again."
+        err instanceof Error ? err.message : t.manualTransferAvailable
       )
       setFormState("error")
     }
@@ -96,28 +108,28 @@ export function TopupForm({
         <div className="flex items-center gap-3 text-green-600 dark:text-green-400">
           <CheckCircleIcon className="h-8 w-8" />
           <div>
-            <h3 className="font-semibold">Topup Successful!</h3>
+            <h3 className="font-semibold">{t.successHeading}</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Confirmation #: {successData.adjustmentId}
+              {t.confirmationNumber} {successData.adjustmentId}
             </p>
           </div>
         </div>
         <div className="mt-4 space-y-2 text-sm">
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Amount Added</span>
+            <span className="text-muted-foreground">{t.amountAdded}</span>
             <span className="font-medium">
               {formatCurrency(successData.amountIdr)}
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">New Balance</span>
+            <span className="text-muted-foreground">{t.newBalance}</span>
             <span className="font-medium">
               {formatCurrency(successData.newBalanceIdr)}
             </span>
           </div>
         </div>
         <Button variant="outline" className="mt-4 w-full" onClick={handleReset}>
-          Topup Again
+          {t.topUpAgain}
         </Button>
       </div>
     )
@@ -127,7 +139,9 @@ export function TopupForm({
     <form onSubmit={handleSubmit} className={className}>
       <div className="space-y-4">
         <Field>
-          <FieldLabel>Amount ({currency})</FieldLabel>
+          <FieldLabel>
+            {t.amountLabel} {currency})
+          </FieldLabel>
           <Input
             type="number"
             min={minLimit}
@@ -137,36 +151,33 @@ export function TopupForm({
             onChange={(e) =>
               setAmount(Number.parseInt(e.target.value, 10) || 0)
             }
-            placeholder={`Enter amount (min ${formatCurrency(String(minLimit))})`}
+            placeholder={`${t.amountPlaceholder} (${t.minimumAmount} ${formatCurrency(String(minLimit))})`}
             disabled={formState === "submitting"}
           />
           {amount > 0 && amount < minLimit && (
             <p className="mt-1 text-sm text-destructive">
-              Minimum topup is {formatCurrency(String(minLimit))}
+              {t.minimumAmount} {formatCurrency(String(minLimit))}
             </p>
           )}
           {amount > maxLimit && (
             <p className="mt-1 text-sm text-destructive">
-              Maximum topup is {formatCurrency(String(maxLimit))}
+              {t.maximumAmount} {formatCurrency(String(maxLimit))}
             </p>
           )}
         </Field>
 
         <Field>
-          <FieldLabel>Payment Method</FieldLabel>
-          <Input type="text" value="Manual Bank Transfer" disabled />
-          <p className="mt-1 text-xs text-muted-foreground">
-            Only manual bank transfer is available for now
-          </p>
+          <FieldLabel>{t.paymentMethod}</FieldLabel>
+          <Input type="text" value={t.manualTransferAvailable} disabled />
         </Field>
 
         <Field>
-          <FieldLabel>Reference ID (Optional)</FieldLabel>
+          <FieldLabel>{t.referenceId}</FieldLabel>
           <Input
             type="text"
             value={referenceId}
             onChange={(e) => setReferenceId(e.target.value)}
-            placeholder="e.g., TRF-12345"
+            placeholder={t.referencePlaceholder}
             maxLength={100}
             disabled={formState === "submitting"}
           />
@@ -183,7 +194,7 @@ export function TopupForm({
           className="w-full"
           disabled={!isValid || formState === "submitting"}
         >
-          {formState === "submitting" ? "Processing..." : "Top Up"}
+          {formState === "submitting" ? t.processing : t.submit}
         </Button>
       </div>
     </form>

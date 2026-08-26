@@ -243,6 +243,8 @@ export default function WhatsAppDashboardPage() {
           productTitle="WhatsApp Gateway"
           open={isOrderOpen}
           onOpenChange={setIsOrderOpen}
+          lang={locale}
+          messages={messages.console.billing.serviceOrder}
           onSuccess={() => {
             void loadData()
           }}
@@ -556,6 +558,8 @@ export default function WhatsAppDashboardPage() {
         productTitle="WhatsApp Gateway"
         open={isOrderOpen}
         onOpenChange={setIsOrderOpen}
+        lang={locale}
+        messages={messages.console.billing.serviceOrder}
         onSuccess={() => {
           void loadData()
         }}

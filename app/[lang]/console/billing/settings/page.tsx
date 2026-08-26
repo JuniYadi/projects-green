@@ -73,14 +73,13 @@ export default function BillingSettingsPage() {
       const result = await updateBillingCurrency(currency)
       setCurrency(result.preferredCurrency)
       setIsDirty(false)
-      setMessage({ type: "success", text: "Currency preference updated." })
+      setMessage({ type: "success", text: t.savedSuccess })
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to update currency"
+      const msg = err instanceof Error ? err.message : t.loadError
       if (msg.includes("CURRENCY_LOCKED") || msg.includes("currency")) {
         setMessage({
           type: "error",
-          text: "Cannot change currency after invoices exist. Current currency is locked.",
+          text: t.currencyLockedWarning,
         })
         setHasInvoices(true)
       } else {
@@ -154,8 +153,8 @@ export default function BillingSettingsPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="USD">USD — US Dollar</SelectItem>
-                <SelectItem value="IDR">IDR — Indonesian Rupiah</SelectItem>
+                <SelectItem value="USD">{t.currencyUsd}</SelectItem>
+                <SelectItem value="IDR">{t.currencyIdr}</SelectItem>
               </SelectContent>
             </Select>
 

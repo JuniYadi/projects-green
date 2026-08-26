@@ -76,7 +76,7 @@ export default function InvoicesPage() {
         <CardContent>
           <InvoiceTable
             invoices={data?.invoices ?? []}
-            lang="en"
+            lang={locale}
             tableId="console-billing-invoices"
           />
         </CardContent>

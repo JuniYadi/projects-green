@@ -1,5 +1,8 @@
 "use client"
 
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { type ColumnDef } from "@tanstack/react-table"
 
@@ -53,6 +56,9 @@ import {
 // ─── Role badge ──────────────────────────────────────────────────────────────
 
 function RoleBadge({ role }: { role: string }) {
+  const params = useParams<{ lang?: string }>()
+  const t = getMessages(resolveLocaleOrDefault(params?.lang)).console.billing
+    .contacts
   const variant =
     role === "OWNER"
       ? "default"
@@ -61,8 +67,13 @@ function RoleBadge({ role }: { role: string }) {
         : role === "ACCOUNTING"
           ? "warning"
           : "secondary"
-
-  return <Badge variant={variant}>{role}</Badge>
+  const labels: Record<string, string> = {
+    OWNER: "OWNER",
+    FINANCE: t.roleFinance,
+    ACCOUNTING: t.roleAccounting,
+    GENERAL: t.roleGeneral,
+  }
+  return <Badge variant={variant}>{labels[role] ?? role}</Badge>
 }
 
 // ─── Notification toggle ─────────────────────────────────────────────────────
@@ -90,7 +101,7 @@ function NotificationToggle({
           ? "bg-primary/10 text-primary hover:bg-primary/20"
           : "bg-muted text-muted-foreground hover:bg-muted/80"
       } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
-      aria-label={`${label} ${checked ? "enabled" : "disabled"}`}
+      aria-label={label}
     >
       <Icon className="h-3.5 w-3.5" />
       {label}
@@ -109,6 +120,9 @@ function RowActions({
   onEdit: (contact: BillingContactDTO) => void
   onDeactivate: (contact: BillingContactDTO) => void
 }) {
+  const params = useParams<{ lang?: string }>()
+  const t = getMessages(resolveLocaleOrDefault(params?.lang)).console.billing
+    .contacts
   if (contact.role === "OWNER") {
     return null
   }
@@ -118,18 +132,18 @@ function RowActions({
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="size-8">
           <DotsThreeVertical className="h-4 w-4" />
-          <span className="sr-only">Actions</span>
+          <span className="sr-only">{t.actions}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40">
         <DropdownMenuItem onClick={() => onEdit(contact)}>
-          Edit
+          {t.edit}
         </DropdownMenuItem>
         <DropdownMenuItem
           className="text-destructive"
           onClick={() => onDeactivate(contact)}
         >
-          Deactivate
+          {t.deactivateAction}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -148,6 +162,9 @@ const ROLE_FILTERS = [
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export function BillingContactsList() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const t = getMessages(locale).console.billing.contacts
   const [account, setAccount] = useState<BillingAccountDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -180,13 +197,11 @@ export function BillingContactsList() {
       setAccount(result)
       setError(null)
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load billing account"
-      )
+      setError(err instanceof Error ? err.message : t.loadError)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t.loadError])
 
   useEffect(() => {
     const run = async () => {
@@ -267,11 +282,11 @@ export function BillingContactsList() {
         notifyOnSupport: true,
       })
     } catch (err) {
-      setAddError(err instanceof Error ? err.message : "Failed to add contact")
+      setAddError(err instanceof Error ? err.message : t.loadError)
     } finally {
       setAddSubmitting(false)
     }
-  }, [addForm])
+  }, [addForm, t.loadError])
 
   const handleDeactivateContact = useCallback(async () => {
     if (!deactivateTarget) return
@@ -288,13 +303,11 @@ export function BillingContactsList() {
       })
       setDeactivateTarget(null)
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to deactivate contact"
-      )
+      setError(err instanceof Error ? err.message : t.loadError)
     } finally {
       setDeactivating(false)
     }
-  }, [deactivateTarget])
+  }, [deactivateTarget, t.loadError])
 
   const handleEditContact = useCallback(async () => {
     if (!editTarget) return
@@ -326,7 +339,7 @@ export function BillingContactsList() {
       {
         accessorKey: "email",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Email" />
+          <DataTableColumnHeader column={column} title={t.emailLabel} />
         ),
         cell: ({ row }) => (
           <span className="font-medium">{row.original.email}</span>
@@ -335,7 +348,7 @@ export function BillingContactsList() {
       {
         accessorKey: "name",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Name" />
+          <DataTableColumnHeader column={column} title={t.nameLabel} />
         ),
         cell: ({ row }) => (
           <span className="text-muted-foreground">
@@ -346,19 +359,19 @@ export function BillingContactsList() {
       {
         accessorKey: "role",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Role" />
+          <DataTableColumnHeader column={column} title={t.roleLabel} />
         ),
         cell: ({ row }) => <RoleBadge role={row.original.role} />,
       },
       {
         id: "notifications",
-        header: "Notifications",
+        header: t.notificationsLabel,
         cell: ({ row }) => {
           const contact = row.original
           return (
             <div className="flex items-center gap-1.5">
               <NotificationToggle
-                label="Invoice"
+                label={t.invoiceNotificationLabel}
                 icon={EnvelopeSimple}
                 checked={contact.notifyOnInvoice}
                 onChange={() =>
@@ -366,7 +379,7 @@ export function BillingContactsList() {
                 }
               />
               <NotificationToggle
-                label="Alerts"
+                label={t.alertsNotificationLabel}
                 icon={Bell}
                 checked={contact.notifyOnLowBalance}
                 onChange={() =>
@@ -374,7 +387,7 @@ export function BillingContactsList() {
                 }
               />
               <NotificationToggle
-                label="Support"
+                label={t.supportNotificationLabel}
                 icon={Headset}
                 checked={contact.notifyOnSupport}
                 onChange={() =>
@@ -399,7 +412,7 @@ export function BillingContactsList() {
         ),
       },
     ],
-    [handleToggleNotification]
+    [handleToggleNotification, t]
   )
 
   if (loading) {
@@ -425,7 +438,7 @@ export function BillingContactsList() {
             void fetchAccount()
           }}
         >
-          Retry
+          {t.retry}
         </Button>
       </div>
     )
@@ -440,14 +453,8 @@ export function BillingContactsList() {
         >
           <Sparkle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
           <div className="space-y-1">
-            <p className="font-medium text-foreground">
-              You&rsquo;ve been added as the OWNER contact
-            </p>
-            <p className="text-muted-foreground">
-              We pre-filled your address so billing notifications never get
-              lost. Add your finance or accounting team below to keep them in
-              the loop on invoices and low balance alerts.
-            </p>
+            <p className="font-medium text-foreground">{t.ownerBannerTitle}</p>
+            <p className="text-muted-foreground">{t.ownerBannerDesc}</p>
           </div>
         </div>
       ) : null}
@@ -457,21 +464,21 @@ export function BillingContactsList() {
         columns={columns}
         data={contacts}
         searchableColumns={["email", "name"]}
-        searchPlaceholder="Search contacts..."
+        searchPlaceholder={t.searchPlaceholder}
         facetFilters={[
           {
             columnId: "role",
-            label: "Role",
-            allLabel: "All roles",
+            label: t.roleLabel,
+            allLabel: t.allRoles,
             options: ROLE_FILTERS,
           },
         ]}
-        emptyMessage="No billing contacts yet. Add one to start receiving notifications."
+        emptyMessage={t.emptyTable}
       />
 
       {/* Add Contact button */}
       <div className="flex justify-end">
-        <Button onClick={() => setAddOpen(true)}>+ Add Contact</Button>
+        <Button onClick={() => setAddOpen(true)}>{t.addContact}</Button>
       </div>
 
       {/* ─── Add Contact Dialog ───────────────────────────────────────────── */}
@@ -493,17 +500,15 @@ export function BillingContactsList() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add Billing Contact</DialogTitle>
-            <DialogDescription>
-              Add a new email address to receive billing notifications.
-            </DialogDescription>
+            <DialogTitle>{t.addDialogTitle}</DialogTitle>
+            <DialogDescription>{t.addDescription}</DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-2">
             {/* Email */}
             <div className="grid gap-2">
               <Label htmlFor="email">
-                Email <span className="text-destructive">*</span>
+                {t.emailLabel} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="email"
@@ -518,10 +523,10 @@ export function BillingContactsList() {
 
             {/* Display Name */}
             <div className="grid gap-2">
-              <Label htmlFor="name">Display Name (optional)</Label>
+              <Label htmlFor="name">{t.nameLabel}</Label>
               <Input
                 id="name"
-                placeholder="Finance Team"
+                placeholder={t.namePlaceholder}
                 value={addForm.name ?? ""}
                 onChange={(e) =>
                   setAddForm((prev) => ({
@@ -534,7 +539,7 @@ export function BillingContactsList() {
 
             {/* Role */}
             <div className="grid gap-2">
-              <Label htmlFor="role">Role</Label>
+              <Label htmlFor="role">{t.roleLabel}</Label>
               <Select
                 value={addForm.role ?? "GENERAL"}
                 onValueChange={(value: "FINANCE" | "ACCOUNTING" | "GENERAL") =>
@@ -545,16 +550,16 @@ export function BillingContactsList() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="FINANCE">Finance</SelectItem>
-                  <SelectItem value="ACCOUNTING">Accounting</SelectItem>
-                  <SelectItem value="GENERAL">General</SelectItem>
+                  <SelectItem value="FINANCE">{t.roleFinance}</SelectItem>
+                  <SelectItem value="ACCOUNTING">{t.roleAccounting}</SelectItem>
+                  <SelectItem value="GENERAL">{t.roleGeneral}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Notification toggles */}
             <div className="grid gap-3">
-              <Label>Notifications</Label>
+              <Label>{t.notificationsLabel}</Label>
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="add-notify-invoice"
@@ -570,7 +575,7 @@ export function BillingContactsList() {
                   htmlFor="add-notify-invoice"
                   className="text-sm font-normal"
                 >
-                  Invoice notifications
+                  {t.invoiceNotificationLabel}
                 </Label>
               </div>
               <div className="flex items-center gap-2">
@@ -588,7 +593,7 @@ export function BillingContactsList() {
                   htmlFor="add-notify-alerts"
                   className="text-sm font-normal"
                 >
-                  Low balance alerts
+                  {t.alertsNotificationLabel}
                 </Label>
               </div>
               <div className="flex items-center gap-2">
@@ -606,7 +611,7 @@ export function BillingContactsList() {
                   htmlFor="add-notify-support"
                   className="text-sm font-normal"
                 >
-                  Support notifications
+                  {t.supportNotificationLabel}
                 </Label>
               </div>
             </div>
@@ -620,7 +625,7 @@ export function BillingContactsList() {
               onClick={() => setAddOpen(false)}
               disabled={addSubmitting}
             >
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               onClick={() => void handleAddContact()}
@@ -629,10 +634,10 @@ export function BillingContactsList() {
               {addSubmitting ? (
                 <>
                   <Spinner className="mr-2 h-4 w-4 animate-spin" />
-                  Adding...
+                  {t.adding}
                 </>
               ) : (
-                "Add Contact"
+                t.addContact
               )}
             </Button>
           </DialogFooter>
@@ -648,19 +653,19 @@ export function BillingContactsList() {
       >
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Edit Contact</DialogTitle>
+            <DialogTitle>{t.editDialogTitle}</DialogTitle>
             <DialogDescription>
-              Update the display name for {editTarget?.email}.
+              {t.editNamePlaceholder}: {editTarget?.email}.
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-2 py-2">
-            <Label htmlFor="edit-name">Display Name</Label>
+            <Label htmlFor="edit-name">{t.nameLabel}</Label>
             <Input
               id="edit-name"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
-              placeholder="Enter display name"
+              placeholder={t.editNamePlaceholder}
             />
           </div>
 
@@ -670,7 +675,7 @@ export function BillingContactsList() {
               onClick={() => setEditTarget(null)}
               disabled={editSubmitting}
             >
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               onClick={() => void handleEditContact()}
@@ -679,10 +684,10 @@ export function BillingContactsList() {
               {editSubmitting ? (
                 <>
                   <Spinner className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  {t.saving}
                 </>
               ) : (
-                "Save"
+                t.save
               )}
             </Button>
           </DialogFooter>
@@ -698,11 +703,9 @@ export function BillingContactsList() {
       >
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Deactivate Contact</DialogTitle>
+            <DialogTitle>{t.deactivateDialogTitle}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to deactivate{" "}
-              <strong>{deactivateTarget?.email}</strong>? They will no longer
-              receive billing notifications.
+              {deactivateTarget?.email} {t.deactivateDescription}
             </DialogDescription>
           </DialogHeader>
 
@@ -710,7 +713,7 @@ export function BillingContactsList() {
             <div className="rounded-lg border p-3 text-sm">
               <p className="font-medium">{deactivateTarget.email}</p>
               <p className="text-muted-foreground">
-                Role: {deactivateTarget.role}
+                {t.roleSummary} {deactivateTarget.role}
               </p>
             </div>
           )}
@@ -721,7 +724,7 @@ export function BillingContactsList() {
               onClick={() => setDeactivateTarget(null)}
               disabled={deactivating}
             >
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               variant="destructive"
@@ -731,10 +734,10 @@ export function BillingContactsList() {
               {deactivating ? (
                 <>
                   <Spinner className="mr-2 h-4 w-4 animate-spin" />
-                  Deactivating...
+                  {t.deactivating}
                 </>
               ) : (
-                "Deactivate"
+                t.deactivate
               )}
             </Button>
           </DialogFooter>

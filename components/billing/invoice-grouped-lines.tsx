@@ -13,38 +13,45 @@ import { Badge } from "@/components/ui/badge"
 import type { InvoiceLineItem } from "@/lib/billing-client"
 import { formatInvoiceCurrency } from "@/modules/invoices/invoices.helpers"
 
+import type { AppMessages } from "@/lib/i18n/messages/types"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 // ─── Helpers ───────────────────────────────────────────────────────────
 
 type Category = "vpn" | "app-hosting" | "whatsapp" | "other"
 
-const CATEGORY_META: Record<
+function getCategoryMeta(
+  t: AppMessages["console"]["billing"]["invoiceLines"]
+): Record<
   Category,
   {
     label: string
     icon: React.ReactNode
     variant: "default" | "secondary" | "outline"
   }
-> = {
-  vpn: {
-    label: "VPN",
-    icon: <GlobeIcon className="h-3.5 w-3.5" />,
-    variant: "secondary",
-  },
-  "app-hosting": {
-    label: "App Hosting",
-    icon: <RocketLaunchIcon className="h-3.5 w-3.5" />,
-    variant: "secondary",
-  },
-  whatsapp: {
-    label: "WhatsApp API",
-    icon: <WhatsappLogoIcon className="h-3.5 w-3.5" />,
-    variant: "secondary",
-  },
-  other: {
-    label: "Other",
-    icon: <DotsThreeIcon className="h-3.5 w-3.5" />,
-    variant: "outline",
-  },
+> {
+  return {
+    vpn: {
+      label: "VPN",
+      icon: <GlobeIcon className="h-3.5 w-3.5" />,
+      variant: "secondary",
+    },
+    "app-hosting": {
+      label: t.appHosting,
+      icon: <RocketLaunchIcon className="h-3.5 w-3.5" />,
+      variant: "secondary",
+    },
+    whatsapp: {
+      label: t.whatsapp,
+      icon: <WhatsappLogoIcon className="h-3.5 w-3.5" />,
+      variant: "secondary",
+    },
+    other: {
+      label: t.other,
+      icon: <DotsThreeIcon className="h-3.5 w-3.5" />,
+      variant: "outline",
+    },
+  }
 }
 
 const toMoneyNumber = (amount: string): number => {
@@ -111,13 +118,18 @@ type InvoiceGroupedLinesProps = {
   lines: InvoiceLineItem[]
   currency: string
   periodLabel?: string
+  lang?: string
 }
 
 export function InvoiceGroupedLines({
   lines,
   currency,
   periodLabel,
+  lang,
 }: InvoiceGroupedLinesProps) {
+  const locale = resolveLocaleOrDefault(lang)
+  const t = getMessages(locale).console.billing.invoiceLines
+  const categoryMeta = getCategoryMeta(t)
   return (
     <div className="space-y-2">
       {periodLabel && (
@@ -128,10 +140,10 @@ export function InvoiceGroupedLines({
           <table className="w-full text-left text-sm">
             <thead className="border-b border-border/70 bg-muted/40 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
               <tr>
-                <th className="px-4 py-3">Description</th>
-                <th className="px-4 py-3">Category</th>
-                <th className="px-4 py-3 text-right">Qty</th>
-                <th className="px-4 py-3 text-right">Amount</th>
+                <th className="px-4 py-3">{t.description}</th>
+                <th className="px-4 py-3">{t.category}</th>
+                <th className="px-4 py-3 text-right">{t.quantity}</th>
+                <th className="px-4 py-3 text-right">{t.amount}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60 bg-card">
@@ -141,13 +153,13 @@ export function InvoiceGroupedLines({
                     colSpan={4}
                     className="px-4 py-6 text-center text-sm text-muted-foreground"
                   >
-                    No line items found.
+                    {t.noLineItems}
                   </td>
                 </tr>
               ) : (
                 lines.map((item, idx) => {
                   const category = getCategory(item)
-                  const meta = CATEGORY_META[category]
+                  const meta = categoryMeta[category]
                   return (
                     <tr
                       key={idx}
@@ -196,19 +208,23 @@ export function InvoiceGroupedLines({
 export function InvoiceFlatLine({
   lines,
   currency,
+  lang,
 }: {
   lines: InvoiceLineItem[]
   currency: string
+  lang?: string
 }) {
+  const locale = resolveLocaleOrDefault(lang)
+  const t = getMessages(locale).console.billing.invoiceLines
   return (
     <div className="overflow-hidden rounded-lg border border-border/70">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-border/70 bg-muted/40 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             <tr>
-              <th className="px-4 py-3">Description</th>
-              <th className="px-4 py-3 text-right">Qty</th>
-              <th className="px-4 py-3 text-right">Amount</th>
+              <th className="px-4 py-3">{t.description}</th>
+              <th className="px-4 py-3 text-right">{t.quantity}</th>
+              <th className="px-4 py-3 text-right">{t.amount}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60 bg-card">
@@ -218,7 +234,7 @@ export function InvoiceFlatLine({
                   colSpan={3}
                   className="px-4 py-6 text-center text-sm text-muted-foreground"
                 >
-                  No line items found.
+                  {t.noLineItems}
                 </td>
               </tr>
             ) : (

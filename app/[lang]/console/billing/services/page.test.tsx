@@ -1,8 +1,13 @@
 import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, waitFor, fireEvent } from "@testing-library/react"
-import { useParams } from "next/navigation"
 
+mock.module("next/navigation", () => ({
+  useParams: mock(() => ({ lang: "en" })),
+  useRouter: mock(() => ({ push: mock() })),
+}))
+
+import { useParams } from "next/navigation"
 import ServicesPage from "./page"
 
 const originalFetch = globalThis.fetch
@@ -154,19 +159,17 @@ describe("ServicesPage", () => {
 
     const whatsappLink = view
       .getAllByText(/view plans/i)
-      .find((el) => el.closest("a")?.href.includes("whatsapp"))
+      .find((el) => el.closest("a")?.getAttribute("href")?.includes("whatsapp"))
     expect(whatsappLink).toBeTruthy()
-    expect(whatsappLink?.closest("a")).toHaveAttribute(
-      "href",
-      "/console/billing/services/whatsapp"
+    expect(whatsappLink?.closest("a")?.getAttribute("href")).toBe(
+      "/en/console/billing/services/whatsapp"
     )
 
     const vpnLink = view
       .getAllByText(/view plans/i)
-      .find((el) => el.closest("a")?.href.includes("vpn"))
-    expect(vpnLink?.closest("a")).toHaveAttribute(
-      "href",
-      "/console/billing/services/vpn"
+      .find((el) => el.closest("a")?.getAttribute("href")?.includes("vpn"))
+    expect(vpnLink?.closest("a")?.getAttribute("href")).toBe(
+      "/en/console/billing/services/vpn"
     )
   })
 

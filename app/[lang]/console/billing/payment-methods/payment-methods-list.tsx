@@ -1,7 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
@@ -27,6 +29,9 @@ function maskAccountNumber(number: string): string {
 }
 
 function PaymentMethodsContent({ methods }: { methods: PaymentMethod[] }) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const t = getMessages(locale).console.billing.paymentMethods
   const [localMethods, setLocalMethods] = useState(methods)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [methodToDelete, setMethodToDelete] = useState<PaymentMethod | null>(
@@ -42,9 +47,7 @@ function PaymentMethodsContent({ methods }: { methods: PaymentMethod[] }) {
         prev.map((m) => ({ ...m, isDefault: m.id === id }))
       )
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to set default method"
-      )
+      setError(err instanceof Error ? err.message : t.loadError)
     }
   }, [])
 
@@ -58,9 +61,7 @@ function PaymentMethodsContent({ methods }: { methods: PaymentMethod[] }) {
       setDeleteDialogOpen(false)
       setMethodToDelete(null)
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to remove payment method"
-      )
+      setError(err instanceof Error ? err.message : t.loadError)
     } finally {
       setIsDeleting(false)
     }
@@ -77,12 +78,14 @@ function PaymentMethodsContent({ methods }: { methods: PaymentMethod[] }) {
         <CardContent className="py-8">
           <div className="text-center">
             <BankIcon className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 text-lg font-medium">No payment methods</h3>
+            <h3 className="mt-4 text-lg font-medium">{t.emptyTitle}</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Add a payment method to top up your balance.
+              {t.emptyDescription}
             </p>
             <Button asChild className="mt-4">
-              <Link href="/console/billing/topup">Add Payment Method</Link>
+              <Link href={`/${locale}/console/billing/topup`}>
+                {t.addMethod}
+              </Link>
             </Button>
           </div>
         </CardContent>
@@ -113,7 +116,7 @@ function PaymentMethodsContent({ methods }: { methods: PaymentMethod[] }) {
                       {method.isDefault && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                           <StarIcon className="h-3 w-3" />
-                          Default
+                          {t.defaultBadge}
                         </span>
                       )}
                     </div>
@@ -129,7 +132,7 @@ function PaymentMethodsContent({ methods }: { methods: PaymentMethod[] }) {
                       size="sm"
                       onClick={() => handleSetDefault(method.id)}
                     >
-                      Set as Default
+                      {t.setDefaultLabel}
                     </Button>
                   )}
                   {!method.isDefault && (
@@ -137,6 +140,7 @@ function PaymentMethodsContent({ methods }: { methods: PaymentMethod[] }) {
                       variant="ghost"
                       size="icon"
                       className="text-destructive hover:text-destructive"
+                      aria-label={t.removeMethod}
                       onClick={() => openDeleteDialog(method)}
                     >
                       <TrashIcon className="h-4 w-4" />
@@ -152,11 +156,8 @@ function PaymentMethodsContent({ methods }: { methods: PaymentMethod[] }) {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Remove Payment Method</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to remove this payment method? This action
-              cannot be undone.
-            </DialogDescription>
+            <DialogTitle>{t.removeTitle}</DialogTitle>
+            <DialogDescription>{t.removeDescription}</DialogDescription>
           </DialogHeader>
           {methodToDelete && (
             <div className="rounded-lg border p-3">
@@ -172,14 +173,14 @@ function PaymentMethodsContent({ methods }: { methods: PaymentMethod[] }) {
               onClick={() => setDeleteDialogOpen(false)}
               disabled={isDeleting}
             >
-              Cancel
+              {t.cancel}
             </Button>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={isDeleting}
             >
-              {isDeleting ? "Removing..." : "Remove"}
+              {isDeleting ? t.removing : t.removeButton}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -189,9 +190,10 @@ function PaymentMethodsContent({ methods }: { methods: PaymentMethod[] }) {
 }
 
 export function PaymentMethodsList() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const t = getMessages(locale).console.billing.paymentMethods
   const [methods, setMethods] = useState<PaymentMethod[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -204,11 +206,7 @@ export function PaymentMethodsList() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : "Failed to load payment methods"
-          )
+          setError(err instanceof Error ? err.message : t.loadError)
         }
       } finally {
         if (!cancelled) {

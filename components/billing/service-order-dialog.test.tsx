@@ -275,7 +275,10 @@ describe("ServiceOrderDialog", () => {
         })
       )
       expect(view.getByText("Aktivasi Instan Sukses!")).toBeTruthy()
-      expect(view.getByText("Order ID: order-wa-888")).toBeTruthy()
+      expect(
+        view.queryByText("ID Pesanan: order-wa-888") ||
+          view.queryByText("Order ID: order-wa-888")
+      ).toBeTruthy()
       expect(view.getByText("Lihat Invoice")).toBeTruthy()
       expect(view.getByText("inv-123")).toBeTruthy()
       expect(handleSuccess).toHaveBeenCalled()

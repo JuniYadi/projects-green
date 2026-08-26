@@ -151,6 +151,7 @@ export default async function ConsoleLayout({
             topupUrl={topupPath}
             isZero={balanceGate.isZero}
             messages={messages.console.billing.balanceGate}
+            lang={locale}
           />
         ) : null}
         {children}

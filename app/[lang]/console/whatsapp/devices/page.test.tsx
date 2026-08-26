@@ -61,44 +61,10 @@ mock.module("@/components/billing/service-order-dialog", () => ({
     props.open ? <div role="dialog">Service Order Dialog</div> : null,
 }))
 
+import { enMessages } from "@/lib/i18n/messages/en"
+
 mock.module("@/lib/i18n/messages", () => ({
-  getMessages: () => ({
-    console: {
-      whatsapp: {
-        devices: {
-          heading: "WhatsApp Devices",
-          description: "Manage your WhatsApp devices",
-          cardTitle: "Devices",
-          cardDescription: "Connected WhatsApp devices",
-          connectNewDevice: "Connect New Device",
-          quotaUsage: "Quota Usage",
-          quotaUsageTooltip: "Current message quota consumed",
-          displayName: "Display Name",
-          displayNameTooltip: "Official Meta-verified display name",
-          statusTitle: "Status",
-          statusTooltip: "Device activation status",
-          healthTooltip: "Connection health to Meta API",
-          namePending: "Pending Review",
-          nameDeclined: "Declined",
-          nameExpired: "Expired",
-          nameUnset: "Unset",
-          quota: "Quota: {used} / {total} msgs",
-          dailyLimit: "Daily limit: {limit} msgs",
-          balance: "Balance: Rp{amount}",
-          remaining: "{remaining} msgs left",
-          quotaExhausted: "Quota exhausted",
-          manage: "Manage",
-          noDevices: "No devices found",
-          active: "Active",
-          inactive: "Inactive",
-          disconnected: "Disconnected",
-          unknown: "Unknown",
-          unableToLoad: "Unable to load devices",
-          notifyAdmin: "Contact admin to activate",
-        },
-      },
-    },
-  }),
+  getMessages: () => enMessages,
 }))
 mock.module("@/lib/i18n/pathname", () => ({
   localizePathname: (opts: { pathname: string; locale: string }) =>

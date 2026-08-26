@@ -68,7 +68,7 @@ export default function TransactionsPage() {
   }, [])
 
   function formatCurrency(amount: number): string {
-    return new Intl.NumberFormat("id-ID", {
+    return new Intl.NumberFormat(locale === "id" ? "id-ID" : "en-US", {
       style: "currency",
       currency: "IDR",
       minimumFractionDigits: 0,
@@ -76,8 +76,8 @@ export default function TransactionsPage() {
   }
 
   function formatDate(dateStr: string | null): string {
-    if (!dateStr) return "N/A"
-    return new Intl.DateTimeFormat("id-ID", {
+    if (!dateStr) return transactionMessages.notAvailable
+    return new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", {
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -90,11 +90,11 @@ export default function TransactionsPage() {
     if (!method) return "-"
     switch (method) {
       case "VA":
-        return "Virtual Account"
+        return transactionMessages.methodVirtualAccount
       case "QRIS":
         return "QRIS"
       case "MANUAL_BANK":
-        return "Manual Bank"
+        return transactionMessages.methodManualBank
       default:
         return method
     }
@@ -118,12 +118,15 @@ export default function TransactionsPage() {
       {
         accessorKey: "invoiceNumber",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Invoice" />
+          <DataTableColumnHeader
+            column={column}
+            title={transactionMessages.invoice}
+          />
         ),
         cell: ({ row }) => (
           <div>
             <Link
-              href={`/console/billing/invoices/${row.original.id}`}
+              href={`/${locale}/console/billing/invoices/${row.original.id}`}
               className="font-medium text-primary hover:underline"
             >
               {row.original.invoiceNumber}
@@ -137,18 +140,25 @@ export default function TransactionsPage() {
       {
         accessorKey: "status",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnHeader
+            column={column}
+            title={transactionMessages.status}
+          />
         ),
         cell: ({ row }) => (
           <InvoiceStatusBadge
             status={row.original.status as "OPEN" | "PAID" | "VOID"}
+            lang={locale}
           />
         ),
       },
       {
         accessorKey: "paymentMethod",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Method" />
+          <DataTableColumnHeader
+            column={column}
+            title={transactionMessages.method}
+          />
         ),
         cell: ({ row }) => (
           <span className="text-sm">
@@ -159,7 +169,10 @@ export default function TransactionsPage() {
       {
         accessorKey: "totalAmount",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Amount" />
+          <DataTableColumnHeader
+            column={column}
+            title={transactionMessages.amount}
+          />
         ),
         cell: ({ row }) => (
           <span className="text-right text-sm font-medium">
@@ -170,7 +183,10 @@ export default function TransactionsPage() {
       {
         accessorKey: "createdAt",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Date" />
+          <DataTableColumnHeader
+            column={column}
+            title={transactionMessages.date}
+          />
         ),
         cell: ({ row }) => (
           <span className="text-right text-xs text-muted-foreground">
@@ -190,7 +206,7 @@ export default function TransactionsPage() {
       <header className="space-y-1">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" asChild>
-            <Link href="/console/billing">
+            <Link href={`/${locale}/console/billing`}>
               <ArrowLeftIcon className="h-4 w-4" />
             </Link>
           </Button>
@@ -222,17 +238,17 @@ export default function TransactionsPage() {
               columns={columns}
               data={transactions}
               searchableColumns={["invoiceNumber"]}
-              searchPlaceholder="Search invoices..."
+              searchPlaceholder={transactionMessages.searchPlaceholder}
               facetFilters={[
                 {
                   columnId: "status",
-                  label: "Status",
-                  allLabel: "All status",
+                  label: transactionMessages.status,
+                  allLabel: transactionMessages.statusAll,
                   options: [
-                    { label: "All", value: "ALL" },
-                    { label: "Open", value: "OPEN" },
-                    { label: "Paid", value: "PAID" },
-                    { label: "Void", value: "VOID" },
+                    { label: transactionMessages.statusAll, value: "ALL" },
+                    { label: transactionMessages.statusOpen, value: "OPEN" },
+                    { label: transactionMessages.statusPaid, value: "PAID" },
+                    { label: transactionMessages.statusVoid, value: "VOID" },
                   ],
                 },
               ]}
@@ -242,8 +258,11 @@ export default function TransactionsPage() {
               }}
               emptyMessage={
                 filter === "ALL"
-                  ? "No transactions found"
-                  : `No ${filter.toLowerCase()} transactions`
+                  ? transactionMessages.emptyAll
+                  : transactionMessages.emptyFiltered.replace(
+                      "{status}",
+                      filter.toLowerCase()
+                    )
               }
             />
           )}
