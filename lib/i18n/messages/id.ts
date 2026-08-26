@@ -1393,5 +1393,19 @@ export const idMessages: AppMessages = {
       detector: "Kontrol Detector",
     },
   },
+  indonesianLocale: {
+    controlLabel: "Pilihan bahasa",
+    currentLanguageLabel: "Bahasa saat ini: Indonesia",
+    englishLabel: "Inggris",
+    indonesianLabel: "Indonesia",
+    promptTitle: "Lanjutkan dalam bahasa Indonesia?",
+    promptDescription:
+      "Bahasa Indonesia mungkin lebih sesuai dengan browser Anda. Anda dapat mengubahnya kapan saja.",
+    stayAction: "Tetap dalam bahasa Inggris",
+    switchAction: "Gunakan bahasa Indonesia",
+    title: "Pilihan bahasa",
+    description:
+      "Gunakan kontrol ini untuk beralih antara bahasa Inggris dan Indonesia.",
+  },
   legal: legalId,
 }

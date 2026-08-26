@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation"
 
+import { IndonesianLocaleControl } from "@/components/indonesian-locale-control"
+import { getMessages } from "@/lib/i18n/messages"
 import { isLocale } from "@/lib/i18n/pathname"
 
 type LocaleLayoutProps = {
@@ -19,5 +21,15 @@ export default async function LocaleLayout({
     notFound()
   }
 
-  return children
+  const messages = getMessages(lang)
+
+  return (
+    <>
+      {children}
+      <IndonesianLocaleControl
+        locale={lang}
+        messages={messages.indonesianLocale}
+      />
+    </>
+  )
 }

@@ -1266,6 +1266,18 @@ export type AppMessages = {
       detector: string
     }
   }
+  indonesianLocale: {
+    controlLabel: string
+    currentLanguageLabel: string
+    englishLabel: string
+    indonesianLabel: string
+    promptTitle: string
+    promptDescription: string
+    stayAction: string
+    switchAction: string
+    title: string
+    description: string
+  }
   legal: {
     centerTitle: string
     badgeLabel: string
