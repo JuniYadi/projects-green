@@ -74,6 +74,52 @@ export type AppMessages = {
       accountAge: string
       period: string
       status: string
+      // Actionable overview sections
+      invoices: {
+        title: string
+        description: string
+        viewAll: string
+        noInvoiceTitle: string
+        noInvoiceDesc: string
+        viewInvoicesCta: string
+        payNowCta: string
+        viewDetailsCta: string
+        issuedOn: string
+        dueOn: string
+        amountLabel: string
+        failedToLoad: string
+      }
+      services: {
+        title: string
+        description: string
+        manageAll: string
+        noServicesTitle: string
+        noServicesDesc: string
+        browseServicesCta: string
+        renewsOn: string
+        failedToLoad: string
+        activeCount: string
+      }
+      support: {
+        title: string
+        description: string
+        viewAll: string
+        noTicketsTitle: string
+        noTicketsDesc: string
+        createTicketCta: string
+        openCount: string
+        lastUpdated: string
+        failedToLoad: string
+      }
+      announcements: {
+        title: string
+        description: string
+        noAnnouncementsTitle: string
+        noAnnouncementsDesc: string
+        viewDocsCta: string
+        platformStatusTitle: string
+        platformStatusDesc: string
+      }
     }
     organization: {
       heading: string
