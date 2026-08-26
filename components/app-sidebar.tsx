@@ -19,8 +19,9 @@ import {
   BookOpenIcon,
   BuildingsIcon,
   CaretLeftIcon,
+  ChatCircle,
+  ChartLine as ChartLineIcon,
   Clock as ClockIcon,
-  ChartLineIcon,
   CrosshairIcon,
   DeviceMobileIcon,
   GaugeIcon,
@@ -824,6 +825,15 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
           }),
           icon: <Lightning />,
           isActive: startsWithRoute(path, "/console/whatsapp/templates"),
+        },
+        {
+          title: "Inbox",
+          url: localizePathname({
+            pathname: "/console/whatsapp/inbox",
+            locale,
+          }),
+          icon: <ChatCircle />,
+          isActive: startsWithRoute(path, "/console/whatsapp/inbox"),
         },
         {
           title: "Messages",

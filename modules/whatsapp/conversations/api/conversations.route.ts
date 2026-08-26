@@ -31,8 +31,38 @@ const conversationUpdateSchema = t.Partial(
     whatsappDeviceId: t.Nullable(t.String()),
     internalNotes: t.Nullable(t.String()),
     labelIds: t.Nullable(t.Array(t.String())),
+    status: t.Optional(
+      t.Union([t.Literal("OPEN"), t.Literal("PENDING"), t.Literal("RESOLVED")])
+    ),
+    stage: t.Optional(
+      t.Nullable(
+        t.Union([
+          t.Literal("NEW"),
+          t.Literal("CONTACTED"),
+          t.Literal("QUALIFIED"),
+          t.Literal("PROPOSAL"),
+          t.Literal("NEGOTIATION"),
+          t.Literal("WON"),
+          t.Literal("LOST"),
+        ])
+      )
+    ),
+    assigneeId: t.Optional(t.Nullable(t.String())),
+    lastReadAt: t.Optional(t.Nullable(t.String())),
+    csatScore: t.Optional(t.Nullable(t.Number())),
   })
 )
+
+const noteBodySchema = t.Object({
+  body: t.String({ minLength: 1 }),
+  authorName: t.Optional(t.Nullable(t.String())),
+})
+
+function extractMentions(body: string): string[] {
+  const matches = body.match(/@([a-zA-Z0-9._-]+)/g)
+  if (!matches) return []
+  return [...new Set(matches.map((m) => m.slice(1)))]
+}
 
 const labelBodySchema = t.Object({
   name: t.String({ minLength: 1, maxLength: 50 }),
@@ -50,7 +80,15 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
       }
       if (!whatsappAuth.organizationId) return toNoOrganization(set)
       const organizationId = whatsappAuth.organizationId
-      const { contactPhone, status, limit } = query as any
+      const {
+        contactPhone,
+        status,
+        lifecycleStatus,
+        stage,
+        assigneeId,
+        unreadOnly,
+        limit,
+      } = query as any
 
       const where: any = {
         organizationId,
@@ -69,8 +107,31 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
         }
       }
 
-      // Filter conversations that have messages with the given status
-      if (status && status !== "all") {
+      if (
+        lifecycleStatus &&
+        ["OPEN", "PENDING", "RESOLVED"].includes(lifecycleStatus.toUpperCase())
+      ) {
+        where.status = lifecycleStatus.toUpperCase()
+      }
+
+      if (stage) {
+        where.stage = stage.toUpperCase()
+      }
+
+      if (assigneeId !== undefined) {
+        where.assigneeId = assigneeId === "unassigned" ? null : assigneeId
+      }
+
+      if (unreadOnly === "true" || unreadOnly === true) {
+        where.lastDirection = "INBOX"
+      }
+
+      // Filter conversations that have messages with the given message delivery status
+      if (
+        status &&
+        status !== "all" &&
+        !["OPEN", "PENDING", "RESOLVED"].includes(status.toUpperCase())
+      ) {
         where.whatsappMessages = {
           some: {
             statusHistory: {
@@ -78,8 +139,12 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
             },
           },
         }
+      } else if (
+        status &&
+        ["OPEN", "PENDING", "RESOLVED"].includes(status.toUpperCase())
+      ) {
+        where.status = status.toUpperCase()
       }
-
       const take = parseConversationLimit(limit)
 
       const conversations = await prisma.whatsappConversation.findMany({
@@ -92,6 +157,10 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
           },
           conversationLabels: {
             include: { label: true },
+          },
+          whatsappMessages: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
           },
         },
       })
@@ -182,7 +251,7 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
           },
           whatsappMessages: {
             orderBy: { createdAt: "desc" },
-            take: 50,
+            take: 100,
             include: {
               statusHistory: {
                 orderBy: [{ timestamp: "desc" }, { createdAt: "desc" }],
@@ -191,6 +260,14 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
           },
           conversationLabels: {
             include: { label: true },
+          },
+          notes: {
+            orderBy: { createdAt: "desc" },
+            take: 50,
+          },
+          activities: {
+            orderBy: { createdAt: "desc" },
+            take: 50,
           },
         },
       })
@@ -281,13 +358,68 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
       }
 
       const data: Prisma.WhatsappConversationUncheckedUpdateInput = {}
+      const activitiesToCreate: Array<{
+        actorId: string
+        actorName?: string
+        type: any
+        fromValue?: string
+        toValue?: string
+      }> = []
+
+      const actorId = whatsappAuth.userId || whatsappAuth.organizationId
+      const actorName = whatsappAuth.userName || undefined
+
       if (body.whatsappDeviceId !== undefined) {
         data.whatsappDeviceId = body.whatsappDeviceId
       }
       if (body.internalNotes !== undefined) {
         data.internalNotes = body.internalNotes
       }
-
+      if (body.status !== undefined && body.status !== conversation.status) {
+        data.status = body.status
+        activitiesToCreate.push({
+          actorId,
+          actorName,
+          type: "STATUS_CHANGE",
+          fromValue: conversation.status,
+          toValue: body.status,
+        })
+      }
+      if (body.stage !== undefined && body.stage !== conversation.stage) {
+        data.stage = body.stage
+        activitiesToCreate.push({
+          actorId,
+          actorName,
+          type: "STAGE_CHANGE",
+          fromValue: conversation.stage ?? undefined,
+          toValue: body.stage ?? undefined,
+        })
+      }
+      if (
+        body.assigneeId !== undefined &&
+        body.assigneeId !== conversation.assigneeId
+      ) {
+        data.assigneeId = body.assigneeId
+        activitiesToCreate.push({
+          actorId,
+          actorName,
+          type: "ASSIGNMENT_CHANGE",
+          fromValue: conversation.assigneeId ?? undefined,
+          toValue: body.assigneeId ?? undefined,
+        })
+      }
+      if (body.lastReadAt !== undefined) {
+        data.lastReadAt = body.lastReadAt ? new Date(body.lastReadAt) : null
+      }
+      if (body.csatScore !== undefined) {
+        data.csatScore = body.csatScore
+        activitiesToCreate.push({
+          actorId,
+          actorName,
+          type: "CSAT_RATING_RECEIVED",
+          toValue: String(body.csatScore),
+        })
+      }
       const labelIds = Array.isArray(body.labelIds)
         ? [...new Set(body.labelIds as string[])]
         : null
@@ -328,12 +460,33 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
           }
         }
 
+        if (activitiesToCreate.length > 0) {
+          await tx.whatsappConversationActivity.createMany({
+            data: activitiesToCreate.map((act) => ({
+              conversationId: id,
+              actorId: act.actorId,
+              actorName: act.actorName,
+              type: act.type,
+              fromValue: act.fromValue,
+              toValue: act.toValue,
+            })),
+          })
+        }
+
         return tx.whatsappConversation.update({
           where: { id },
           data,
           include: {
             conversationLabels: {
               include: { label: true },
+            },
+            activities: {
+              orderBy: { createdAt: "desc" },
+              take: 20,
+            },
+            notes: {
+              orderBy: { createdAt: "desc" },
+              take: 20,
             },
           },
         })
@@ -381,5 +534,119 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
       })
 
       return { ok: true, message: "Conversation deleted." }
+    }
+  )
+  // ── Conversation Notes ───────────────────────────────────────────────
+  .post(
+    "/:id/notes",
+    async ({
+      request,
+      params: { id },
+      body,
+      set,
+    }: {
+      request: any
+      params: { id: string }
+      body: { body: string; authorName?: string | null }
+      set: any
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      if (!whatsappAuth.organizationId) return toNoOrganization(set)
+      const organizationId = whatsappAuth.organizationId
+      const conversation = await prisma.whatsappConversation.findFirst({
+        where: { id, organizationId },
+      })
+      if (!conversation) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Conversation not found.",
+        }
+      }
+      const authorId = whatsappAuth.userId || whatsappAuth.organizationId
+      const authorName = body.authorName || whatsappAuth.userName || null
+      const actorId = authorId
+      const actorName = authorName
+      const mentions = extractMentions(body.body)
+      const note = await prisma.$transaction(async (tx) => {
+        const createdNote = await tx.whatsappConversationNote.create({
+          data: {
+            conversationId: id,
+            authorId,
+            authorName,
+            body: body.body,
+            mentions,
+          },
+        })
+
+        await tx.whatsappConversationActivity.create({
+          data: {
+            conversationId: id,
+            actorId: authorId,
+            actorName,
+            type: "NOTE_ADDED",
+            noteId: createdNote.id,
+            toValue: body.body.slice(0, 100),
+          },
+        })
+
+        return createdNote
+      })
+
+      return { ok: true, note }
+    },
+    {
+      body: noteBodySchema,
+    }
+  )
+  // ── Conversation CSAT Survey Trigger ─────────────────────────────────
+  .post(
+    "/:id/csat",
+    async ({
+      request,
+      params: { id },
+      set,
+    }: {
+      request: any
+      params: { id: string }
+      set: any
+    }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      if (!whatsappAuth.organizationId) return toNoOrganization(set)
+      const organizationId = whatsappAuth.organizationId
+      const conversation = await prisma.whatsappConversation.findFirst({
+        where: { id, organizationId },
+      })
+      if (!conversation) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Conversation not found.",
+        }
+      }
+
+      const actorId = whatsappAuth.userId || whatsappAuth.organizationId
+      const actorName = whatsappAuth.userName || undefined
+
+      await prisma.whatsappConversationActivity.create({
+        data: {
+          conversationId: id,
+          actorId,
+          actorName,
+          type: "CSAT_SURVEY_SENT",
+        },
+      })
+
+      return { ok: true, message: "CSAT survey dispatched." }
     }
   )

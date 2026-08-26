@@ -2003,6 +2003,31 @@ enum WhatsappOrganizationApiKeyStatus {
   REVOKED
 }
 
+enum WhatsappConversationStatus {
+  OPEN
+  PENDING
+  RESOLVED
+}
+
+enum WhatsappConversationStage {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum WhatsappActivityType {
+  STATUS_CHANGE
+  ASSIGNMENT_CHANGE
+  STAGE_CHANGE
+  NOTE_ADDED
+  CSAT_SURVEY_SENT
+  CSAT_RATING_RECEIVED
+}
+
 enum WebhookDeliveryStatus {
   PENDING
   SUCCESS
@@ -2264,6 +2289,11 @@ model WhatsappConversation {
   contactPhone   String
   lastMessageAt  DateTime?
   lastDirection  WhatsappMessageDirection?
+  status         WhatsappConversationStatus @default(OPEN)
+  stage          WhatsappConversationStage?
+  assigneeId     String?
+  lastReadAt     DateTime?
+  csatScore      Int?
   createdAt      DateTime                  @default(now())
   updatedAt      DateTime                  @updatedAt
 
@@ -2272,9 +2302,46 @@ model WhatsappConversation {
   whatsappDeviceId   String?
   internalNotes      String?                                   @db.Text
   conversationLabels WhatsappConversationLabelOnConversation[]
+  notes              WhatsappConversationNote[]
+  activities         WhatsappConversationActivity[]
 
   @@unique([organizationId, contactPhone])
   @@index([organizationId, lastMessageAt])
+  @@index([organizationId, status])
+  @@index([organizationId, assigneeId])
+}
+
+model WhatsappConversationNote {
+  id             String               @id @default(cuid())
+  conversationId String
+  conversation   WhatsappConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  authorId       String
+  authorName     String?
+  body           String               @db.Text
+  mentions       String[]             @default([])
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  activities WhatsappConversationActivity[]
+
+  @@index([conversationId, createdAt])
+}
+
+model WhatsappConversationActivity {
+  id             String               @id @default(cuid())
+  conversationId String
+  conversation   WhatsappConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  actorId        String
+  actorName      String?
+  type           WhatsappActivityType
+  fromValue      String?
+  toValue        String?
+  noteId         String?
+  note           WhatsappConversationNote? @relation(fields: [noteId], references: [id], onDelete: SetNull)
+  metadata       Json?
+  createdAt      DateTime             @default(now())
+
+  @@index([conversationId, createdAt])
 }
 
 model WhatsappConversationLabel {
