@@ -383,15 +383,34 @@ function MessageBubble({
     )
 
     return (
-      <div className="flex flex-col items-end gap-1">
+      <div className="flex flex-col items-end">
         <div className="group relative max-w-[85%] sm:max-w-[78%]">
-          <WhatsAppTemplatePreview
-            language={meta.templateLanguageData!}
-            values={values}
-            mode="full"
-            showOuterContainer={false}
-            hideInternalStatus={true}
-          />
+          <div className="relative">
+            <WhatsAppTemplatePreview
+              language={meta.templateLanguageData!}
+              values={values}
+              mode="full"
+              showOuterContainer={false}
+              hideInternalStatus={true}
+            />
+            {/* Integrated timestamp and delivery status directly inside template card bottom right */}
+            <div className="absolute right-3.5 bottom-2 flex items-center gap-1 text-[10px] text-muted-foreground select-none">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>{formatTime(message.createdAt)}</span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {formatLocalDateTime(message.createdAt)}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <MessageStatusBadge
+                statusHistory={message.statusHistory}
+                direction={message.direction}
+              />
+            </div>
+          </div>
           {message.waMessageId && (
             <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
               <Link
@@ -404,22 +423,6 @@ function MessageBubble({
               </Link>
             </div>
           )}
-        </div>
-        <div className="mr-1 flex items-center gap-1 text-[11px] text-muted-foreground">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>{formatTime(message.createdAt)}</span>
-              </TooltipTrigger>
-              <TooltipContent>
-                {formatLocalDateTime(message.createdAt)}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <MessageStatusBadge
-            statusHistory={message.statusHistory}
-            direction={message.direction}
-          />
         </div>
       </div>
     )

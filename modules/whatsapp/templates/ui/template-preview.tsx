@@ -311,7 +311,6 @@ export function WhatsAppTemplatePreview({
   values,
   className,
   mode = "full",
-  businessName = "Official WhatsApp Business",
   showOuterContainer = true,
   hideInternalStatus = false,
 }: {
@@ -319,7 +318,6 @@ export function WhatsAppTemplatePreview({
   values?: TemplatePreviewValues
   className?: string
   mode?: "full" | "compact"
-  businessName?: string
   showOuterContainer?: boolean
   hideInternalStatus?: boolean
 }) {
@@ -361,19 +359,8 @@ export function WhatsAppTemplatePreview({
   }
   const bubbleContent = (
     <div
-      className={`relative max-w-full rounded-2xl rounded-tr-xs border border-emerald-500/20 bg-emerald-600/10 p-3 text-sm shadow-xs dark:border-emerald-500/20 dark:bg-emerald-950/30 ${className ?? ""}`}
+      className={`relative max-w-full rounded-2xl rounded-tr-xs border border-emerald-500/20 bg-emerald-600/10 p-3.5 text-sm shadow-xs dark:border-emerald-500/20 dark:bg-emerald-950/30 ${className ?? ""}`}
     >
-      {/* Header bar */}
-      <div className="mb-2 flex items-center justify-between border-b border-border/40 pb-1.5 text-xs">
-        <div className="flex items-center gap-1.5 font-medium text-foreground">
-          <span className="size-2 rounded-full bg-emerald-500" />
-          <span className="text-xs">{businessName}</span>
-        </div>
-        <span className="text-[10px] text-muted-foreground">
-          <WhatsAppText id="s238" />
-        </span>
-      </div>
-
       {language.headerText ? (
         <div className="mb-2 text-sm font-bold text-foreground">
           {language.headerText}
@@ -431,7 +418,6 @@ export function WhatsAppTemplatePreview({
         </div>
       )}
 
-      {/* Timestamp and Read Status if not hidden */}
       {!hideInternalStatus && (
         <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
           <span>10:45</span>

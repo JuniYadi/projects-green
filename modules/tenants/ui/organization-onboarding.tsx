@@ -1,17 +1,16 @@
 "use client"
 
-import { FormEvent, useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { useAuth } from "@workos-inc/authkit-nextjs/components"
 import { useRouter } from "next/navigation"
+import { eden } from "@/lib/eden"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   isTenantApiError,
-  type TenantApiError,
-  type TenantBootstrapCreateResponse,
   type TenantBootstrapMembership,
-  type TenantBootstrapResponse,
 } from "@/modules/tenants/contracts/tenant-api.contract"
 
 type OrganizationOnboardingProps = {
@@ -39,69 +38,59 @@ export function OrganizationOnboarding({
 }: OrganizationOnboardingProps) {
   const router = useRouter()
   const { switchToOrganization } = useAuth({ ensureSignedIn: true })
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [memberships, setMemberships] = useState<TenantBootstrapMembership[]>(
-    []
-  )
   const [organizationName, setOrganizationName] = useState(() =>
     getOrgNameSuggestion(userEmail)
   )
   const [isCreating, setIsCreating] = useState(false)
   const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null)
   const [currency, setCurrency] = useState<"IDR" | "USD">("IDR")
+  const [actionError, setActionError] = useState<string | null>(null)
 
-  const activeMemberships = useMemo(() => {
-    return memberships.filter((membership) => membership.status === "active")
-  }, [memberships])
-
-  const pendingMemberships = useMemo(() => {
-    return memberships.filter((membership) => membership.status === "pending")
-  }, [memberships])
-
-  useEffect(() => {
-    let isActive = true
-
-    const run = async () => {
+  const {
+    data: memberships = [],
+    isLoading,
+    error: queryError,
+  } = useQuery<TenantBootstrapMembership[]>({
+    queryKey: ["tenant-bootstrap-onboarding"],
+    queryFn: async () => {
       try {
-        const response = await fetch("/api/tenants/bootstrap")
-        const payload = (await response.json().catch(() => null)) as
-          | TenantBootstrapResponse
-          | TenantApiError
-          | null
-
-        if (!isActive) {
-          return
-        }
-
-        if (!response.ok || !payload || isTenantApiError(payload)) {
-          setError(
+        const { data: payload, error } = await eden.api.tenants.bootstrap.get()
+        if (error || !payload || isTenantApiError(payload)) {
+          throw new Error(
             payload && isTenantApiError(payload)
               ? payload.message
               : "Unable to load organization onboarding data."
           )
-          return
         }
-
-        setMemberships(payload.memberships)
-      } catch {
-        if (isActive) {
-          setError("Network error while loading organization data.")
+        return payload.memberships
+      } catch (err: unknown) {
+        if (err instanceof Error && err.message) {
+          throw err
         }
-      } finally {
-        if (isActive) {
-          setIsLoading(false)
-        }
+        throw new Error("Network error while loading organization data.")
       }
-    }
+    },
+    staleTime: 30000,
+    retry: false,
+  })
 
-    void run()
+  const activeMemberships = useMemo(() => {
+    return memberships.filter((membership) => membership.status === "active")
+  }, [memberships])
+  const pendingMemberships = useMemo(() => {
+    return memberships.filter((membership) => membership.status === "pending")
+  }, [memberships])
 
-    return () => {
-      isActive = false
-    }
-  }, [])
-
+  const error =
+    actionError ||
+    (queryError
+      ? queryError.message.includes("fetch") ||
+        queryError.message.includes("Network") ||
+        queryError.message.includes("Failed")
+        ? "Network error while loading organization data."
+        : queryError.message
+      : null)
+  const setError = setActionError
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (isCreating || Boolean(switchingOrgId)) {
