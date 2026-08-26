@@ -379,15 +379,10 @@ export async function syncTemplatesFromMeta(
     const rejectReason =
       metaTpl.rejected_reason !== "NONE" ? metaTpl.rejected_reason : null
 
-    // Meta identifiers match only technical slugs; local names are display labels.
+    // Meta identifiers match only technical slugs with underscores.
     const canonicalSlug = formatTemplateSlug(metaTpl.name)
-    const hyphenatedSlug = metaTpl.name
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
     const possibleSlugs = Array.from(
-      new Set([canonicalSlug, metaTpl.name, hyphenatedSlug].filter(Boolean))
+      new Set([canonicalSlug, metaTpl.name].filter(Boolean))
     )
 
     let template = await prisma.whatsappTemplate.findFirst({

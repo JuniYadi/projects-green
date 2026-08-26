@@ -360,6 +360,7 @@ describe("messagesRoutes", () => {
     it("dispatches template message with legacy KrmPesan payload format", async () => {
       mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce({
         id: "template-1",
+        slug: "otp_login",
         name: "otp_login",
         whatsappDeviceId: "device-1",
         category: "AUTHENTICATION",
@@ -399,6 +400,7 @@ describe("messagesRoutes", () => {
     it("dispatches template message with non-sequential placeholders correctly", async () => {
       mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce({
         id: "template-2",
+        slug: "invoice_receipt",
         name: "invoice_receipt",
         whatsappDeviceId: "device-1",
         category: "UTILITY",
@@ -458,6 +460,7 @@ describe("messagesRoutes", () => {
     it("returns 422 if required template field is missing", async () => {
       mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce({
         id: "template-1",
+        slug: "otp_login",
         name: "otp_login",
         whatsappDeviceId: "device-1",
         languages: [
@@ -533,6 +536,7 @@ describe("messagesRoutes", () => {
     it("handles InsufficientBalanceError in template and free-form routes", async () => {
       mockPrisma.whatsappTemplate.findFirst.mockResolvedValueOnce({
         id: "template-1",
+        slug: "otp_login",
         name: "otp_login",
         whatsappDeviceId: "device-1",
         languages: [{ id: "l1", lang: "id", body: "OTP: {{1}}" }],

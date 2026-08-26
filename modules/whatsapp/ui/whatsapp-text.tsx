@@ -15,11 +15,10 @@ type WhatsAppTextProps = {
 const resolveWhatsAppLocale = (locale?: string) => {
   if (locale) return resolveLocaleOrDefault(locale)
 
-  return (
-    typeof document !== "undefined" && document.documentElement.lang === "id"
-      ? "id"
-      : "en"
-  )
+  return typeof document !== "undefined" &&
+    document.documentElement.lang === "id"
+    ? "id"
+    : "en"
 }
 
 export function getWhatsAppText(id: WhatsAppStaticMessageId, locale?: string) {
@@ -31,13 +30,15 @@ export function formatWhatsAppText(
   values: Record<string, number | string>,
   locale?: string
 ) {
-  return getWhatsAppText(id, locale).replace(
-    /\{(\w+)\}/g,
-    (_, key: string) => String(values[key] ?? `{${key}}`)
+  return getWhatsAppText(id, locale).replace(/\{(\w+)\}/g, (_, key: string) =>
+    String(values[key] ?? `{${key}}`)
   )
 }
 
-export function WhatsAppText({ id, locale: suppliedLocale }: WhatsAppTextProps) {
+export function WhatsAppText({
+  id,
+  locale: suppliedLocale,
+}: WhatsAppTextProps) {
   const params = useParams<{ lang?: string }>()
   const locale = suppliedLocale ?? params?.lang
 

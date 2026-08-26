@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { FiAlertTriangle, FiArrowUpCircle, FiX } from "react-icons/fi"
-
+import { Lightning } from "@/components/ui/phosphor-icons"
+import { ExpressTopupModal } from "@/components/billing/express-topup-modal"
 import {
   Alert,
   AlertDescription,
@@ -46,6 +47,7 @@ export function BillingBalanceGateBanner({
     return true
   })
   const [mounted, setMounted] = useState(false)
+  const [expressOpen, setExpressOpen] = useState(false)
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -65,42 +67,66 @@ export function BillingBalanceGateBanner({
   if (!mounted || dismissed) return null
 
   return (
-    <div className="px-6 pb-4">
-      <Alert variant="destructive">
-        <FiAlertTriangle />
-        <AlertTitle>
-          {isZero ? messages.zeroTitle : messages.lowTitle}
-        </AlertTitle>
-        <AlertDescription>
-          {messages.description.replace("{balance}", formattedBalance)}
-        </AlertDescription>
-        <AlertAction className="!right-3 flex flex-row items-center gap-2">
-          <Button
-            asChild
-            variant="default"
-            size="sm"
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
-            aria-label={messages.topUpLabel}
-            title={messages.topUpLabel}
-          >
-            <Link href={topupUrl}>
-              <FiArrowUpCircle className="size-4" />
-              {messages.topUp}
-            </Link>
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={handleDismiss}
-            className="text-foreground/50 hover:bg-foreground/10 hover:text-foreground"
-            aria-label={messages.dismissLabel}
-            title={messages.dismissTitle}
-          >
-            <FiX className="size-4" />
-          </Button>
-        </AlertAction>
-      </Alert>
-    </div>
+    <>
+      <div className="px-6 pb-4">
+        <Alert variant="destructive">
+          <FiAlertTriangle />
+          <AlertTitle>
+            {isZero ? messages.zeroTitle : messages.lowTitle}
+          </AlertTitle>
+          <AlertDescription>
+            {messages.description.replace("{balance}", formattedBalance)}
+          </AlertDescription>
+          <AlertAction className="!right-3 flex flex-row items-center gap-2">
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+              aria-label="Express Top Up"
+              title="Express Top Up"
+              onClick={() => setExpressOpen(true)}
+            >
+              <Lightning className="size-4" weight="fill" />
+              <span>Express Top Up</span>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              aria-label={messages.topUpLabel}
+              title={messages.topUpLabel}
+            >
+              <Link href={topupUrl}>
+                <FiArrowUpCircle className="size-4" />
+                {messages.topUp}
+              </Link>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={handleDismiss}
+              className="text-foreground/50 hover:bg-foreground/10 hover:text-foreground"
+              aria-label={messages.dismissLabel}
+              title={messages.dismissTitle}
+            >
+              <FiX className="size-4" />
+            </Button>
+          </AlertAction>
+        </Alert>
+      </div>
+      <ExpressTopupModal
+        open={expressOpen}
+        onOpenChange={setExpressOpen}
+        currentBalance={formattedBalance}
+        onSuccess={() => {
+          // Reload balance / page after successful top up
+          if (typeof window !== "undefined") {
+            window.location.reload()
+          }
+        }}
+      />
+    </>
   )
 }

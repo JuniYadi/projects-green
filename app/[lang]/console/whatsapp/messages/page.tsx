@@ -1351,6 +1351,27 @@ export default function WhatsAppMessagesPage() {
                         (t) => t.id === selectedTemplateId
                       )
                       if (!tpl) return null
+                      if (tpl.languages.length === 1) {
+                        const singleLang = tpl.languages[0]
+                        const presentation = getLanguagePresentation(
+                          singleLang.lang
+                        )
+                        return (
+                          <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-3.5 py-2.5">
+                            <span className="text-xs font-medium text-muted-foreground">
+                              Language
+                            </span>
+                            <span className="inline-flex items-center gap-2 text-sm font-medium">
+                              <span aria-hidden="true">
+                                {presentation.flag}
+                              </span>
+                              <span>
+                                {presentation.name} ({singleLang.lang})
+                              </span>
+                            </span>
+                          </div>
+                        )
+                      }
                       return (
                         <FieldSet className="gap-2">
                           <FieldLegend variant="label">Language *</FieldLegend>
@@ -1424,26 +1445,55 @@ export default function WhatsAppMessagesPage() {
                       )
                       const indexes = getTemplatePlaceholderIndexes(lang?.body)
                       if (indexes.length === 0) return null
+
+                      // Extract example variables from Meta component if available
+                      const params = lang?.parameters as {
+                        components?: Array<{
+                          type: string
+                          example?: { body_text?: string[][] }
+                        }>
+                      }
+                      const bodyComp = params?.components?.find(
+                        (c) => c.type === "BODY"
+                      )
+                      const exampleValues =
+                        bodyComp?.example?.body_text?.[0] || []
+
                       return (
                         <>
-                          {indexes.map((index) => (
-                            <div className="grid gap-2" key={index}>
-                              <Label htmlFor={`field-${index}`}>
-                                Field {`{{${index}}}`}
-                              </Label>
-                              <Input
-                                id={`field-${index}`}
-                                placeholder={`Value for {{${index}}}`}
-                                value={templateFieldValues[index] ?? ""}
-                                onChange={(e) =>
-                                  setTemplateFieldValues((prev) => ({
-                                    ...prev,
-                                    [index]: e.target.value,
-                                  }))
-                                }
-                              />
-                            </div>
-                          ))}
+                          {indexes.map((index) => {
+                            const exampleHint = exampleValues[index - 1]
+                            const placeholder = `Value for {{${index}}}`
+
+                            return (
+                              <div className="grid gap-2" key={index}>
+                                <div className="flex items-center justify-between">
+                                  <Label htmlFor={`field-${index}`}>
+                                    Field {`{{${index}}}`}
+                                  </Label>
+                                  {exampleHint && (
+                                    <span className="text-[11px] text-muted-foreground">
+                                      Example:{" "}
+                                      <span className="font-mono text-foreground/80">
+                                        {exampleHint}
+                                      </span>
+                                    </span>
+                                  )}
+                                </div>
+                                <Input
+                                  id={`field-${index}`}
+                                  placeholder={placeholder}
+                                  value={templateFieldValues[index] ?? ""}
+                                  onChange={(e) =>
+                                    setTemplateFieldValues((prev) => ({
+                                      ...prev,
+                                      [index]: e.target.value,
+                                    }))
+                                  }
+                                />
+                              </div>
+                            )
+                          })}
                         </>
                       )
                     })()}

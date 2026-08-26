@@ -809,9 +809,7 @@ export default function WhatsAppPricingPage() {
                 }}
               >
                 <SelectTrigger className="text-xs">
-                  <SelectValue
-                    placeholder={getWhatsAppText("s113", locale)}
-                  />
+                  <SelectValue placeholder={getWhatsAppText("s113", locale)} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">
