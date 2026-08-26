@@ -1,14 +1,5 @@
-import type { driver as DriverFunction } from "driver.js"
+import type { Config as DriverConfig } from "driver.js"
 import type { AppLocale } from "@/lib/i18n/config"
-
-export type TourStepMessages = {
-  title: string
-  description: string
-  nextBtnText: string
-  prevBtnText: string
-  doneBtnText: string
-}
-
 export type ConsoleTourMessages = {
   nextBtnText: string
   prevBtnText: string
@@ -86,8 +77,15 @@ export const defaultTourMessages: Record<AppLocale, ConsoleTourMessages> = {
 
 export const CONSOLE_TOUR_STORAGE_KEY = "pfnapp_console_tour_completed_v1"
 
-type CueLoaders = {
-  loadDriver: () => Promise<{ driver: typeof DriverFunction }>
+export type TourDriverInstance = {
+  drive: () => void
+  destroy: () => void
+}
+
+export type CueLoaders = {
+  loadDriver: () => Promise<{
+    driver: (options?: DriverConfig) => TourDriverInstance
+  }>
   loadStyles: () => Promise<unknown>
 }
 

@@ -37,13 +37,13 @@ export function ConsoleOnboardingTour() {
       return null
     }
 
-    let timer: ReturnType<typeof setTimeout> | null = window.setTimeout(() => {
-      timer = checkAndStartTour()
+    let timerId: number | null = window.setTimeout(() => {
+      timerId = checkAndStartTour()
     }, 800)
 
     return () => {
-      if (timer) {
-        window.clearTimeout(timer)
+      if (timerId !== null) {
+        window.clearTimeout(timerId)
       }
     }
   }, [pathname])

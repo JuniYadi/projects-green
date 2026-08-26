@@ -2,6 +2,8 @@ import { beforeEach, afterAll, describe, expect, it, mock } from "bun:test"
 import { render } from "@testing-library/react"
 import "@testing-library/jest-dom"
 
+import { createAuthMock } from "@/test/layout-test-mocks"
+
 const mockRedirect = mock((url: string) => {
   throw new Error(`REDIRECT:${url}`)
 })
@@ -12,8 +14,6 @@ mock.module("next/navigation", () => ({
   useRouter: () => ({ replace: mock(() => {}), refresh: mock(() => {}) }),
   useSearchParams: () => new URLSearchParams(),
 }))
-
-import { createAuthMock } from "@/test/layout-test-mocks"
 type MockAuthPayload = {
   user: {
     id: string
@@ -50,7 +50,6 @@ const mockGetOrganization = mock(async (_organizationId?: string) => ({
   id: "org_123",
   name: "Acme Inc",
 }))
-
 const mockGetPlatformAccessForUser = mock(
   async (): Promise<import("@/lib/platform-role").PlatformAccess> => ({
     exists: false,

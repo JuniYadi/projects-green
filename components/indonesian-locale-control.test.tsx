@@ -9,7 +9,6 @@ import {
 } from "@/lib/i18n/indonesian-locale"
 
 const replace = mock(() => {})
-const runIndonesianLocaleCue = mock(async () => null)
 let pathname = "/en/console/apps"
 let searchParams = new URLSearchParams("tab=logs")
 
@@ -19,17 +18,12 @@ mock.module("next/navigation", () => ({
   useSearchParams: () => searchParams,
 }))
 
-mock.module("@/lib/i18n/indonesian-locale-cue", () => ({
-  runIndonesianLocaleCue,
-}))
-
 const { IndonesianLocaleControl } =
   await import("@/components/indonesian-locale-control")
 
 describe("IndonesianLocaleControl", () => {
   beforeEach(() => {
     replace.mockClear()
-    runIndonesianLocaleCue.mockClear()
     window.localStorage.clear()
     document.cookie = "NEXT_LOCALE=; Path=/; Max-Age=0"
     pathname = "/en/console/apps"
@@ -60,14 +54,13 @@ describe("IndonesianLocaleControl", () => {
     fireEvent.click(view.getByRole("button", { name: "Stay in English" }))
 
     await waitFor(() => {
-      expect(runIndonesianLocaleCue).toHaveBeenCalledTimes(1)
+      expect(
+        JSON.parse(
+          window.localStorage.getItem(indonesianLocalePreferenceStorageKey) ||
+            "{}"
+        )
+      ).toEqual({ version: 1, decision: "stay", cueShown: false })
     })
-    expect(
-      JSON.parse(
-        window.localStorage.getItem(indonesianLocalePreferenceStorageKey) ||
-          "{}"
-      )
-    ).toEqual({ version: 1, decision: "stay", cueShown: true })
     expect(view.queryByText("Continue in Indonesian?")).not.toBeInTheDocument()
   })
 
