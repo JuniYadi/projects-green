@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma"
 import { DocsSidebar } from "./components/docs-sidebar"
 import { LanguageFlags } from "./components/language-flags"
 import { NavbarSearch } from "./components/navbar-search"
-
+import { ThemeToggle } from "@/components/theme-toggle"
 type Props = {
   children: React.ReactNode
   params: Promise<{ lang: string }>
@@ -111,9 +111,11 @@ export default async function PublicDocsLayout({ children, params }: Props) {
               <span>OpenAPI Reference</span>
             </Link>
 
+            {/* Theme Toggle (Light / Dark Mode) */}
+            <ThemeToggle />
+
             {/* Language Switcher Flags (Icon Only) */}
             <LanguageFlags currentLang={lang} />
-
             {/* Console Action Button with Icon */}
             <Link
               href={`/${lang}/console`}
