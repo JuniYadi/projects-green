@@ -217,6 +217,8 @@ export default function WhatsAppPricingPage() {
           productTitle="WhatsApp Gateway"
           open={isOrderOpen}
           onOpenChange={setIsOrderOpen}
+          lang={locale}
+          messages={getMessages(locale).console.billing.serviceOrder}
           onSuccess={() => {}}
         />
       </>
@@ -1022,6 +1024,8 @@ export default function WhatsAppPricingPage() {
         productTitle="WhatsApp Gateway"
         open={isOrderOpen}
         onOpenChange={setIsOrderOpen}
+        lang={locale}
+        messages={getMessages(locale).console.billing.serviceOrder}
         onSuccess={() => {
           setRefreshKey((k) => k + 1)
         }}

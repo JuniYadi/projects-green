@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -22,6 +22,8 @@ import {
   ProvisioningFormField,
   matchesPattern,
 } from "@/components/billing/provisioning-form-field"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 function formatCurrency(amount: string, currency: string = "IDR"): string {
   const safeCurrency =
@@ -34,8 +36,8 @@ function formatCurrency(amount: string, currency: string = "IDR"): string {
   }).format(Number.isNaN(value) ? 0 : value)
 }
 
-function formatDate(iso: string | null): string {
-  if (!iso) return "N/A"
+function formatDate(iso: string | null, fallback: string): string {
+  if (!iso) return fallback
   return new Intl.DateTimeFormat("id-ID", {
     day: "numeric",
     month: "short",
@@ -57,7 +59,19 @@ function isRetryable(errorCode: string): boolean {
   )
 }
 
+function replaceTemplate(template: string, values: Record<string, string>) {
+  return Object.entries(values).reduce(
+    (result, [key, value]) => result.replace(`{${key}}`, value),
+    template
+  )
+}
+
 export default function CheckoutPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.console.billing.checkout
+  const orderMessages = messages.console.billing.serviceOrder
   const searchParams = useSearchParams()
   const pricingIdParam = searchParams.get("pricingId") || ""
   const [selectedPricingId, setSelectedPricingId] = useState<string | null>(
@@ -146,7 +160,7 @@ export default function CheckoutPage() {
         // Display error inside the voucher section and keep/preserve base quote.
         setVoucherError(
           result.error === "BILLING_CURRENCY_MISMATCH"
-            ? "This balance-credit voucher must match your billing account currency. The voucher claim was not consumed."
+            ? t.voucherCurrencyMismatch
             : result.message
         )
         setQuotePreview((prev) => {
@@ -240,8 +254,7 @@ export default function CheckoutPage() {
         setError(result.message)
       }
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Checkout submission failed"
+      const message = err instanceof Error ? err.message : t.submissionFailed
       setError(message)
     } finally {
       setIsLoading(false)
@@ -255,11 +268,11 @@ export default function CheckoutPage() {
   }
 
   const handleAddBalance = (): void => {
-    window.location.href = "/console/billing/topup"
+    window.location.href = `/${locale}/console/billing/topup`
   }
 
   const handleChooseAnother = (): void => {
-    window.location.href = "/console/billing"
+    window.location.href = `/${locale}/console/billing`
   }
 
   const isSuccess = quote?.ok === true
@@ -271,19 +284,14 @@ export default function CheckoutPage() {
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <header className="flex items-center gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Checkout</h1>
-          <p className="text-sm text-muted-foreground">
-            Review and confirm your subscription order
-          </p>
+          <h1 className="text-2xl font-semibold">{t.heading}</h1>
+          <p className="text-sm text-muted-foreground">{t.description}</p>
         </div>
       </header>
 
       {!hasPricing && (
         <Alert variant="destructive">
-          <AlertDescription>
-            No pricing plan was selected. Please choose a plan from the catalog
-            before checking out.
-          </AlertDescription>
+          <AlertDescription>{t.noPricingSelected}</AlertDescription>
         </Alert>
       )}
 
@@ -313,7 +321,7 @@ export default function CheckoutPage() {
                     variant="outline"
                     className="px-2.5 py-1 text-xs font-medium"
                   >
-                    {quotePreview.billingPeriod} Cycle
+                    {quotePreview.billingPeriod} {t.cycle}
                   </Badge>
                 </div>
                 {quotePreview.packageDescription && (
@@ -333,7 +341,7 @@ export default function CheckoutPage() {
                 ).length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                      Included Resources & Specifications
+                      {t.includedResources}
                     </Label>
                     <div className="grid gap-2 sm:grid-cols-2">
                       {Object.entries(resources)
@@ -369,7 +377,7 @@ export default function CheckoutPage() {
                 ).size > 1 && (
                   <div className="space-y-2 border-t pt-3">
                     <Label className="text-xs font-medium">
-                      Switch Billing Cycle
+                      {t.switchBillingCycle}
                     </Label>
                     <div className="flex flex-wrap gap-2">
                       {(quotePreview.availableTerms ?? []).map((term) => (
@@ -408,11 +416,10 @@ export default function CheckoutPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">
-                    Device & Service Provisioning Configuration
+                    {t.provisioningTitle}
                   </CardTitle>
                   <p className="text-xs text-muted-foreground">
-                    Configure details required to activate and provision your
-                    service upon payment.
+                    {t.provisioningDesc}
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -460,7 +467,7 @@ export default function CheckoutPage() {
                             onChange={onChangeVal}
                             testIdPrefix="checkout"
                             idPrefix="field"
-                            validationErrorMessage="Format input tidak valid sesuai pola yang ditentukan."
+                            validationErrorMessage={t.invalidFieldFormat}
                           />
                         </div>
                       )
@@ -474,7 +481,9 @@ export default function CheckoutPage() {
             {addonOptions.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Available Add-ons</CardTitle>
+                  <CardTitle className="text-base">
+                    {t.availableAddons}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {addonOptions.map((addon) => (
@@ -501,7 +510,7 @@ export default function CheckoutPage() {
                         </span>
                         <span className="ml-2 text-xs text-muted-foreground">
                           {formatCurrency(addon.price, addon.currency)}
-                          {addon.required ? " · Required" : ""}
+                          {addon.required ? ` · ${t.requiredAddon}` : ""}
                         </span>
                       </Label>
                     </div>
@@ -513,13 +522,11 @@ export default function CheckoutPage() {
             {/* Voucher Section */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">
-                  Promotions & Vouchers
-                </CardTitle>
+                <CardTitle className="text-base">{t.promotionsTitle}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 <Label htmlFor="voucher-code" className="text-xs">
-                  Voucher code
+                  {t.voucherCodeLabel}
                 </Label>
                 <div className="flex gap-2">
                   <input
@@ -530,7 +537,7 @@ export default function CheckoutPage() {
                       if (voucherError) setVoucherError(null)
                     }}
                     className="min-w-0 flex-1 rounded-md border bg-background px-3 py-2 text-sm"
-                    placeholder="Optional voucher"
+                    placeholder={t.voucherPlaceholder}
                   />
                   <Button
                     type="button"
@@ -538,7 +545,7 @@ export default function CheckoutPage() {
                     onClick={handleApplyVoucher}
                     disabled={quoteLoading}
                   >
-                    Apply voucher
+                    {t.applyVoucher}
                   </Button>
                 </div>
                 {voucherError && (
@@ -548,34 +555,33 @@ export default function CheckoutPage() {
                 )}
                 {quotePreview.voucher && !voucherError && (
                   <p className="text-xs text-muted-foreground">
-                    {quotePreview.voucher.code} expires{" "}
-                    {formatDate(quotePreview.voucher.quoteExpiresAt)}
+                    {quotePreview.voucher.code} {t.expires}{" "}
+                    {formatDate(
+                      quotePreview.voucher.quoteExpiresAt,
+                      t.notAvailable
+                    )}
                   </p>
                 )}
               </CardContent>
             </Card>
           </div>
-
           {/* Right Column: Sticky Summary & Total Billing Breakdown */}
           <div className="space-y-6 lg:col-span-5 xl:col-span-4">
             <div className="sticky top-6 space-y-4">
               <Card className="border-primary/20 shadow-md">
                 <CardHeader>
-                  <CardTitle className="text-lg">Order Summary</CardTitle>
+                  <CardTitle className="text-lg">{t.orderSummary}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {quotePreview.isProrated && (
                     <div className="rounded-md border border-sky-200 bg-sky-50 p-2.5 text-xs text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-200">
-                      <p className="font-semibold">
-                        Prorated Billing (Calendar Alignment)
-                      </p>
+                      <p className="font-semibold">{t.proratedTitle}</p>
                       <p className="mt-0.5">
-                        Charged for {quotePreview.proratedDays} remaining days
-                        in the current month (out of{" "}
-                        {quotePreview.totalDaysInPeriod} days) aligned to
-                        regular calendar renewal. Your first regular full
-                        renewal begins on {formatDate(quotePreview.nextRenewal)}
-                        .
+                        {replaceTemplate(t.proratedDesc, {
+                          days: String(quotePreview.proratedDays),
+                          total: String(quotePreview.totalDaysInPeriod),
+                        })}{" "}
+                        {formatDate(quotePreview.nextRenewal, t.notAvailable)}
                       </p>
                     </div>
                   )}
@@ -584,8 +590,8 @@ export default function CheckoutPage() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">
                         {quotePreview.isProrated
-                          ? "Prorated Subtotal"
-                          : "Subtotal"}
+                          ? t.proratedSubtotal
+                          : t.subtotal}
                       </span>
                       <span className="font-medium">
                         {formatCurrency(
@@ -596,7 +602,7 @@ export default function CheckoutPage() {
                     </div>
                     {Number(quotePreview.discount) > 0 && (
                       <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
-                        <span>Discount</span>
+                        <span>{t.discount}</span>
                         <span>
                           -{" "}
                           {formatCurrency(
@@ -607,7 +613,7 @@ export default function CheckoutPage() {
                       </div>
                     )}
                     <div className="flex items-baseline justify-between border-t pt-2.5 text-base font-bold">
-                      <span>First payment</span>
+                      <span>{t.firstPayment}</span>
                       <span className="text-xl text-primary">
                         {formatCurrency(
                           quotePreview.firstPayment,
@@ -616,8 +622,10 @@ export default function CheckoutPage() {
                       </span>
                     </div>
                     <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Next renewal</span>
-                      <span>{formatDate(quotePreview.nextRenewal)}</span>
+                      <span>{t.nextRenewal}</span>
+                      <span>
+                        {formatDate(quotePreview.nextRenewal, t.notAvailable)}
+                      </span>
                     </div>
                   </div>
 
@@ -635,8 +643,7 @@ export default function CheckoutPage() {
                         htmlFor="confirm-terms"
                         className="text-xs leading-snug"
                       >
-                        I confirm this purchase and agree to the recurring
-                        billing terms.
+                        {t.confirmationText}
                       </Label>
                     </div>
 
@@ -649,11 +656,13 @@ export default function CheckoutPage() {
                       className="w-full text-sm font-semibold"
                       size="lg"
                     >
-                      {quoteLoading
-                        ? "Updating quote..."
-                        : Number(quotePreview.firstPayment) === 0
-                          ? "Confirm and activate"
-                          : "Confirm and pay"}
+                      {isLoading
+                        ? orderMessages.processingActivation
+                        : quoteLoading
+                          ? t.updatingQuote
+                          : Number(quotePreview.firstPayment) === 0
+                            ? t.confirmAndActivate
+                            : t.confirmAndPay}
                     </Button>
                   </div>
                 </CardContent>
@@ -678,46 +687,49 @@ export default function CheckoutPage() {
         <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
           <CardHeader>
             <CardTitle className="text-green-700 dark:text-green-300">
-              Order Confirmed
+              {t.orderConfirmed}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Order ID</span>
+              <span className="text-muted-foreground">{t.orderId}</span>
               <span className="font-mono text-xs">{quote.orderId}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Status</span>
+              <span className="text-muted-foreground">{t.status}</span>
               <span className="font-medium">{quote.status}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Subtotal</span>
+              <span className="text-muted-foreground">{t.subtotal}</span>
               <span>{formatCurrency(quote.subtotal, quote.currency)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Discount</span>
+              <span className="text-muted-foreground">{t.discount}</span>
               <span>{formatCurrency(quote.discount, quote.currency)}</span>
             </div>
             <div className="flex justify-between text-sm font-semibold">
-              <span>First Payment</span>
+              <span>{t.firstPaymentSummary}</span>
               <span>{formatCurrency(quote.firstPayment, quote.currency)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Next Renewal</span>
-              <span>{formatDate(quote.nextRenewal)}</span>
+              <span className="text-muted-foreground">
+                {t.nextRenewalSummary}
+              </span>
+              <span>{formatDate(quote.nextRenewal, t.notAvailable)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Currency</span>
+              <span className="text-muted-foreground">{t.currency}</span>
               <span>{quote.currency}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Billing Period</span>
+              <span className="text-muted-foreground">{t.billingPeriod}</span>
               <span>{quote.billingPeriod}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Period</span>
+              <span className="text-muted-foreground">{t.period}</span>
               <span>
-                {formatDate(quote.periodStart)} — {formatDate(quote.periodEnd)}
+                {formatDate(quote.periodStart, t.notAvailable)} —{" "}
+                {formatDate(quote.periodEnd, t.notAvailable)}
               </span>
             </div>
           </CardContent>
@@ -727,7 +739,7 @@ export default function CheckoutPage() {
       {isFailure && quote && (
         <Card className="border-destructive/20">
           <CardHeader>
-            <CardTitle className="text-destructive">Order Failed</CardTitle>
+            <CardTitle className="text-destructive">{t.orderFailed}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Alert variant="destructive">
@@ -739,7 +751,7 @@ export default function CheckoutPage() {
                 <>
                   <Button onClick={handleRetry} className="w-full">
                     <ArrowCounterClockwise className="mr-2 size-4" />
-                    Retry
+                    {t.retry}
                   </Button>
                   <Button
                     variant="outline"
@@ -747,7 +759,7 @@ export default function CheckoutPage() {
                     className="w-full"
                   >
                     <WalletIcon className="mr-2 size-4" />
-                    Add Balance
+                    {t.addBalance}
                   </Button>
                 </>
               )}
@@ -756,7 +768,7 @@ export default function CheckoutPage() {
                 onClick={handleChooseAnother}
                 className="w-full"
               >
-                Choose Another Plan
+                {t.chooseAnotherPlan}
               </Button>
             </div>
           </CardContent>

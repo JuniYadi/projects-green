@@ -98,29 +98,10 @@ mock.module("@/modules/whatsapp/templates/api/templates.hooks", () => ({
   useSyncTemplate: mockUseSyncTemplate,
 }))
 
+import { enMessages } from "@/lib/i18n/messages/en"
+
 mock.module("@/lib/i18n/messages", () => ({
-  getMessages: () => ({
-    console: {
-      whatsapp: {
-        templates: {
-          heading: "Templates",
-          description: "Manage your WhatsApp message templates",
-          cardTitle: "Templates",
-          cardDescription: "Create and manage WhatsApp Business templates",
-          synced: "Synced",
-          pendingSync: "Pending Sync",
-          syncing: "Syncing...",
-          syncTemplates: "Sync All",
-          createTemplate: "Create Template",
-          pullFromMeta: "Sync",
-          pulling: "Syncing...",
-          pulledSuccess: "Successfully synced {count} templates with WhatsApp!",
-          selectDevice: "Select Device",
-          allDevices: "All Devices",
-        },
-      },
-    },
-  }),
+  getMessages: () => enMessages,
 }))
 
 mock.module("@/lib/i18n/pathname", () => ({

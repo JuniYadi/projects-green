@@ -11,8 +11,12 @@ import {
 } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
 import { isLocale, localizePathname } from "@/lib/i18n/pathname"
 import { type AppLocale } from "@/lib/i18n/config"
+import type { AppMessages } from "@/lib/i18n/messages/types"
+
+type SetupStatusMessages = AppMessages["console"]["billing"]["setupStatus"]
 
 type PrerequisiteKey = "gateways" | "bank-accounts" | "currencies"
 
@@ -101,7 +105,7 @@ const isActiveGateway = (item: unknown): boolean => {
 const buildDefaultPrerequisites = (): Prerequisite[] => [
   {
     key: "gateways",
-    label: "Payment gateway",
+    label: "gateways",
     fixHref: "/portal/billing/payments?tab=gateways",
     isMissing: () =>
       checkEmpty(async () => {
@@ -114,7 +118,7 @@ const buildDefaultPrerequisites = (): Prerequisite[] => [
   },
   {
     key: "bank-accounts",
-    label: "Bank account",
+    label: "bank-accounts",
     fixHref: "/portal/billing/payments?tab=bank-accounts",
     isMissing: () =>
       checkEmpty(async () => {
@@ -127,7 +131,7 @@ const buildDefaultPrerequisites = (): Prerequisite[] => [
   },
   {
     key: "currencies",
-    label: "Currency",
+    label: "currencies",
     fixHref: "/portal/billing/payments?tab=currencies",
     isMissing: () =>
       checkEmpty(async () => {
@@ -206,6 +210,7 @@ export const useBillingSetupStatus = (
 
 type BillingSetupBannerProps = BillingSetupStatusOptions & {
   className?: string
+  messages?: SetupStatusMessages
 }
 
 export function BillingSetupBanner({
@@ -213,7 +218,9 @@ export function BillingSetupBanner({
   prerequisites,
   ttlMs,
   className,
+  messages,
 }: BillingSetupBannerProps) {
+  const t = messages ?? getMessages(locale).console.billing.setupStatus
   const { missing, loading } = useBillingSetupStatus({
     locale,
     prerequisites,
@@ -255,7 +262,7 @@ export function BillingSetupBanner({
       className={className}
       role="status"
     >
-      <AlertTitle>Billing setup incomplete</AlertTitle>
+      <AlertTitle>{t.heading}</AlertTitle>
       <AlertDescription>
         <ul className="space-y-1">
           {missing.map((prereq) => {
@@ -263,17 +270,25 @@ export function BillingSetupBanner({
               pathname: prereq.fixHref,
               locale,
             })
+            const label =
+              prereq.label === "gateways"
+                ? t.paymentGateway
+                : prereq.label === "bank-accounts"
+                  ? t.bankAccount
+                  : prereq.label === "currencies"
+                    ? t.currency
+                    : prereq.label
             return (
               <li
                 key={prereq.key}
                 className="flex items-center justify-between gap-2"
               >
-                <span>{prereq.label}</span>
+                <span>{label}</span>
                 <Link
                   href={localizedHref}
                   className="font-medium underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
                 >
-                  Set up
+                  {t.setup}
                 </Link>
               </li>
             )
@@ -286,7 +301,7 @@ export function BillingSetupBanner({
           variant="ghost"
           size="icon-sm"
           onClick={handleDismiss}
-          aria-label="Dismiss billing setup warning"
+          aria-label={t.dismissWarning}
         >
           <FiX className="size-4" />
         </Button>
@@ -298,12 +313,20 @@ export function BillingSetupBanner({
 type BillingSetupBannerClientProps = {
   locale: string
   className?: string
+  messages?: SetupStatusMessages
 }
 
 export function BillingSetupBannerClient({
   locale,
   className,
+  messages,
 }: BillingSetupBannerClientProps) {
   const narrowed: AppLocale = isLocale(locale) ? locale : "en"
-  return <BillingSetupBanner locale={narrowed} className={className} />
+  return (
+    <BillingSetupBanner
+      locale={narrowed}
+      className={className}
+      messages={messages ?? getMessages(narrowed).console.billing.setupStatus}
+    />
+  )
 }

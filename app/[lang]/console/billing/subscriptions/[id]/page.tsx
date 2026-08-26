@@ -20,6 +20,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import type { AppMessages } from "@/lib/i18n/messages/types"
 import {
   useSubscriptionsQuery,
   useInvoiceQuery,
@@ -30,29 +31,39 @@ import type { SubscriptionItem } from "@/lib/billing-client"
 import { ArrowLeftIcon } from "@phosphor-icons/react"
 import Link from "next/link"
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "N/A"
-  return new Intl.DateTimeFormat("en-US", {
+function formatDate(
+  dateStr: string | null,
+  fallback: string,
+  locale = "en"
+): string {
+  if (!dateStr) return fallback
+  return new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
   }).format(new Date(dateStr))
 }
 
-function formatCurrency(amount: string, currency = "IDR"): string {
-  return new Intl.NumberFormat("en-US", {
+function formatCurrency(
+  amount: string,
+  currency = "IDR",
+  locale = "en"
+): string {
+  return new Intl.NumberFormat(locale === "id" ? "id-ID" : "en-US", {
     style: "currency",
     currency,
     minimumFractionDigits: 0,
   }).format(Number.parseFloat(amount))
 }
-
-function getStatusLabel(status: string): string {
+function getStatusLabel(
+  status: string,
+  t: AppMessages["console"]["billing"]["subscriptions"]
+): string {
   const map: Record<string, string> = {
-    ACTIVE: "Active",
-    SUSPENDED: "Suspended",
-    CANCELLED: "Cancelled",
-    PENDING: "Pending",
+    ACTIVE: t.statusFilterActive,
+    SUSPENDED: t.statusFilterSuspended,
+    CANCELLED: t.statusFilterCancelled,
+    PENDING: t.statusFilterPending,
   }
   return map[status.toUpperCase()] ?? status
 }
@@ -71,12 +82,17 @@ function getStatusVariant(status: string): string {
   return styles[status.toUpperCase()] ?? styles.CANCELLED
 }
 
-function getTermLabel(billingPeriod: string | null | undefined): string {
-  if (billingPeriod === "MONTHLY") return "Monthly"
-  if (billingPeriod === "QUARTERLY") return "Quarterly"
-  if (billingPeriod === "SEMI_ANNUAL") return "Semi-annual"
-  if (billingPeriod === "ANNUAL") return "Annual"
-  return billingPeriod ?? "N/A"
+function getTermLabel(
+  billingPeriod: string | null | undefined,
+  t: AppMessages["console"]["billing"]["subscriptions"]
+): string {
+  const map: Record<string, string> = {
+    MONTHLY: t.termMonthly,
+    QUARTERLY: t.termQuarterly,
+    SEMI_ANNUAL: t.termSemiAnnual,
+    ANNUAL: t.termAnnual,
+  }
+  return map[billingPeriod ?? ""] ?? billingPeriod ?? t.notAvailable
 }
 
 type DialogState = { type: "none" } | { type: "cancel" }
@@ -86,6 +102,7 @@ export default function SubscriptionDetailPage() {
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
   const subscriptionId = params.id as string
+  const d = messages.console.billing.subscriptions.detail
 
   const queryClient = useQueryClient()
   const subscriptionsQuery = useSubscriptionsQuery()
@@ -109,8 +126,6 @@ export default function SubscriptionDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [cancelReason, setCancelReason] = useState("")
 
-  const d = messages.console.billing.subscriptions.detail
-
   async function refreshSubscriptions() {
     await queryClient.invalidateQueries({
       queryKey: ["billing", "subscriptions"],
@@ -127,9 +142,7 @@ export default function SubscriptionDetailPage() {
       await refreshSubscriptions()
     } catch (err) {
       setActionError(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong while cancelling the subscription."
+        err instanceof Error ? err.message : d.manage.cancel.cancelError
       )
     } finally {
       setActionLoading(false)
@@ -165,7 +178,7 @@ export default function SubscriptionDetailPage() {
               {messages.console.billing.invoiceNotFound}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              The subscription you are looking for does not exist.
+              {d.notFoundDescription}
             </p>
           </CardContent>
         </Card>
@@ -201,16 +214,16 @@ export default function SubscriptionDetailPage() {
 
   // Product-specific quick links
   let serviceDashboardUrl: string | null = null
-  let serviceLabel = "Open Service"
+  let serviceLabel = d.openService
   if (sub.packageCode === "WHATSAPP") {
-    serviceDashboardUrl = "/console/whatsapp/dashboard"
-    serviceLabel = "Go to WhatsApp Console"
+    serviceDashboardUrl = `/${locale}/console/whatsapp/dashboard`
+    serviceLabel = d.whatsappConsole
   } else if (sub.packageCode === "VPN") {
-    serviceDashboardUrl = "/console/vpn/dashboard"
-    serviceLabel = "Go to VPN Dashboard"
+    serviceDashboardUrl = `/${locale}/console/vpn/dashboard`
+    serviceLabel = d.vpnDashboard
   } else if (sub.packageCode === "APP_HOSTING") {
-    serviceDashboardUrl = "/console/app"
-    serviceLabel = "Go to Applications"
+    serviceDashboardUrl = `/${locale}/console/app`
+    serviceLabel = d.applications
   }
 
   // Extract key form values like phone number, business name, display name
@@ -223,31 +236,36 @@ export default function SubscriptionDetailPage() {
 
   // Extract core user data
   const orderDate = sub.currentPeriodStart
-    ? formatDate(sub.currentPeriodStart)
+    ? formatDate(sub.currentPeriodStart, d.notFound, locale)
     : "-"
-  const renewalDate = sub.currentPeriodEnd
-    ? formatDate(sub.currentPeriodEnd)
-    : "-"
+  const renewalDate = formatDate(sub.currentPeriodEnd, "-", locale)
   const firstSubtotal = checkoutQuote?.subtotal
-    ? formatCurrency(String(checkoutQuote.subtotal), sub.currency ?? "IDR")
+    ? formatCurrency(
+        String(checkoutQuote.subtotal),
+        sub.currency ?? "IDR",
+        locale
+      )
     : sub.periodPrice
-      ? formatCurrency(sub.periodPrice, sub.currency ?? "IDR")
+      ? formatCurrency(sub.periodPrice, sub.currency ?? "IDR", locale)
       : "-"
   const nextRecurringPrice = formatCurrency(
     sub.periodPrice ?? sub.monthlyRateIdr ?? "0",
-    sub.currency ?? "IDR"
+    sub.currency ?? "IDR",
+    locale
   )
-  const billingCycle = getTermLabel(sub.billingPeriod)
-
+  const billingCycle = getTermLabel(
+    sub.billingPeriod,
+    messages.console.billing.subscriptions
+  )
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       {/* Header with Title and Actions */}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <Button variant="ghost" size="sm" className="-ml-3" asChild>
-            <Link href="/console/billing/subscriptions">
+            <Link href={`/${locale}/console/billing/subscriptions`}>
               <ArrowLeftIcon className="mr-2 size-4" />
-              Kembali ke Subscriptions
+              {d.backToSubscriptions}
             </Link>
           </Button>
           <div className="flex flex-wrap items-center gap-3">
@@ -257,9 +275,14 @@ export default function SubscriptionDetailPage() {
                 : sub.packageCode}
             </h1>
             <Badge className={getStatusVariant(sub.status)}>
-              {getStatusLabel(sub.status)}
+              {getStatusLabel(
+                sub.status,
+                messages.console.billing.subscriptions
+              )}
             </Badge>
-            <Badge variant="outline">{sub.planCode} Plan</Badge>
+            <Badge variant="outline">
+              {sub.planCode} {d.overview.plan}
+            </Badge>
           </div>
           {rawPhone && (
             <p className="text-sm font-medium text-primary">
@@ -276,8 +299,10 @@ export default function SubscriptionDetailPage() {
           )}
           {invoiceData?.id && (
             <Button asChild variant="outline" size="sm">
-              <Link href={`/console/billing/invoices/${invoiceData.id}`}>
-                Lihat Invoice
+              <Link
+                href={`/${locale}/console/billing/invoices/${invoiceData.id}`}
+              >
+                {d.invoiceLink}
               </Link>
             </Button>
           )}
@@ -287,20 +312,18 @@ export default function SubscriptionDetailPage() {
       {/* Section 1: Rincian Langganan & Perpanjangan */}
       <Card>
         <div className="border-b px-5 py-3">
-          <h2 className="text-sm font-semibold">
-            Rincian Langganan & Perpanjangan
-          </h2>
+          <h2 className="text-sm font-semibold">{d.overviewSection}</h2>
         </div>
         <CardContent className="p-5">
           <dl className="divide-y divide-border/60 text-sm">
             <div className="grid grid-cols-1 py-2 sm:grid-cols-3">
-              <dt className="text-muted-foreground">Tanggal Order Pertama</dt>
+              <dt className="text-muted-foreground">{d.firstOrderDate}</dt>
               <dd className="font-medium text-foreground sm:col-span-2">
                 {orderDate}
               </dd>
             </div>
             <div className="grid grid-cols-1 py-2 sm:grid-cols-3">
-              <dt className="text-muted-foreground">Biaya Pertama Order</dt>
+              <dt className="text-muted-foreground">{d.firstOrderCost}</dt>
               <dd className="font-medium text-foreground sm:col-span-2">
                 {firstSubtotal}{" "}
                 <span className="text-xs font-semibold text-green-600 dark:text-green-400">
@@ -309,26 +332,22 @@ export default function SubscriptionDetailPage() {
               </dd>
             </div>
             <div className="grid grid-cols-1 py-2 sm:grid-cols-3">
-              <dt className="text-muted-foreground">
-                Tanggal Perpanjangan Berikutnya
-              </dt>
+              <dt className="text-muted-foreground">{d.nextRenewalDate}</dt>
               <dd className="font-semibold text-primary sm:col-span-2">
                 {renewalDate}{" "}
                 <span className="text-xs font-normal text-muted-foreground">
-                  (Otomatis dipotong dari saldo organisasi)
+                  {d.autoDebitNote}
                 </span>
               </dd>
             </div>
             <div className="grid grid-cols-1 py-2 sm:grid-cols-3">
-              <dt className="text-muted-foreground">
-                Biaya Perpanjangan (Next Order)
-              </dt>
+              <dt className="text-muted-foreground">{d.renewalCost}</dt>
               <dd className="font-bold text-foreground sm:col-span-2">
                 {nextRecurringPrice} / {billingCycle.toLowerCase()}
               </dd>
             </div>
             <div className="grid grid-cols-1 py-2 sm:grid-cols-3">
-              <dt className="text-muted-foreground">Paket & Siklus</dt>
+              <dt className="text-muted-foreground">{d.planAndCycle}</dt>
               <dd className="font-medium text-foreground sm:col-span-2">
                 {sub.planCode} · {billingCycle}
               </dd>
@@ -340,14 +359,12 @@ export default function SubscriptionDetailPage() {
       {/* Section 2: Data Formulir Pendaftaran Saat Order */}
       <Card>
         <div className="border-b px-5 py-3">
-          <h2 className="text-sm font-semibold">
-            Data Formulir Pendaftaran Saat Order
-          </h2>
+          <h2 className="text-sm font-semibold">{d.signupFormData}</h2>
         </div>
         <CardContent className="p-5">
           {formEntries.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Tidak ada data formulir tambahan yang tercatat.
+              {d.noAdditionalFormData}
             </p>
           ) : (
             <dl className="divide-y divide-border/60 text-sm">
@@ -362,7 +379,7 @@ export default function SubscriptionDetailPage() {
                         rel="noreferrer"
                         className="text-primary underline hover:text-primary/80"
                       >
-                        Lihat Tautan / Dokumen
+                        {d.viewLinksDocuments}
                       </a>
                     ) : (
                       String(val)
@@ -380,11 +397,10 @@ export default function SubscriptionDetailPage() {
         <div className="flex items-center justify-between rounded-xl border border-border/80 bg-card p-4">
           <div>
             <h3 className="text-sm font-medium text-foreground">
-              Batalkan Perpanjangan Otomatis
+              {d.cancelAutoRenewalTitle}
             </h3>
             <p className="text-xs text-muted-foreground">
-              Layanan akan tetap aktif sampai {renewalDate}. Setelah itu tidak
-              akan diperpanjang lagi.
+              {d.cancelAutoRenewalDescription}
             </p>
           </div>
           <Button
@@ -392,7 +408,7 @@ export default function SubscriptionDetailPage() {
             size="sm"
             onClick={() => setDialog({ type: "cancel" })}
           >
-            Batalkan Perpanjangan
+            {d.cancelAutoRenewalButton}
           </Button>
         </div>
       )}

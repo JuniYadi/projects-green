@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import type { AppMessages } from "@/lib/i18n/messages/types"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 const DISMISSED_KEY = "billing-balance-banner-dismissed"
 
@@ -24,6 +26,7 @@ type BillingBalanceGateBannerProps = {
   /** True when the balance is zero (stronger CTA than merely low). */
   isZero: boolean
   messages: AppMessages["console"]["billing"]["balanceGate"]
+  lang?: string
 }
 
 /**
@@ -35,7 +38,10 @@ export function BillingBalanceGateBanner({
   topupUrl,
   isZero,
   messages,
+  lang,
 }: BillingBalanceGateBannerProps) {
+  const expressMessages = getMessages(resolveLocaleOrDefault(lang)).console
+    .billing.expressTopUp
   const [dismissed, setDismissed] = useState(() => {
     if (typeof window !== "undefined") {
       try {
@@ -83,12 +89,12 @@ export function BillingBalanceGateBanner({
               variant="default"
               size="sm"
               className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
-              aria-label="Express Top Up"
-              title="Express Top Up"
+              aria-label={expressMessages.heading}
+              title={expressMessages.heading}
               onClick={() => setExpressOpen(true)}
             >
               <Lightning className="size-4" weight="fill" />
-              <span>Express Top Up</span>
+              <span>{expressMessages.heading}</span>
             </Button>
             <Button
               asChild
@@ -120,6 +126,8 @@ export function BillingBalanceGateBanner({
         open={expressOpen}
         onOpenChange={setExpressOpen}
         currentBalance={formattedBalance}
+        lang={lang}
+        messages={expressMessages}
         onSuccess={() => {
           // Reload balance / page after successful top up
           if (typeof window !== "undefined") {

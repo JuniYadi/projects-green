@@ -4,6 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import QRCode from "qrcode"
 import { eden } from "@/lib/eden"
 import { getInvoice } from "@/lib/billing-client"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import type { AppMessages } from "@/lib/i18n/messages/types"
 import {
   Dialog,
   DialogContent,
@@ -25,12 +28,16 @@ import {
   ArrowsOutSimple,
 } from "@/components/ui/phosphor-icons"
 
+type ExpressTopupMessages = AppMessages["console"]["billing"]["expressTopUp"]
+
 export type ExpressTopupModalProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   currentBalance?: string | number | null
   suggestedAmount?: number
   currency?: "IDR" | "USD"
+  lang?: string
+  messages?: ExpressTopupMessages
   onSuccess?: () => void
 }
 
@@ -49,22 +56,10 @@ interface CurrencyConfig {
 
 const INSTANT_METHODS: {
   value: InstantMethod
-  label: string
   icon: React.ElementType
-  description: string
 }[] = [
-  {
-    value: "QRIS",
-    label: "QRIS Instant",
-    icon: QrCodeIcon,
-    description: "Scan QR with GoPay, OVO, Dana, BCA, or any banking app",
-  },
-  {
-    value: "VA",
-    label: "Virtual Account",
-    icon: HandCoinsIcon,
-    description: "Instant automatic verification via bank transfer",
-  },
+  { value: "QRIS", icon: QrCodeIcon },
+  { value: "VA", icon: HandCoinsIcon },
 ]
 
 export function ExpressTopupModal({
@@ -73,8 +68,23 @@ export function ExpressTopupModal({
   currentBalance,
   suggestedAmount,
   currency = "IDR",
+  lang,
+  messages,
   onSuccess,
 }: ExpressTopupModalProps) {
+  const t =
+    messages ??
+    getMessages(resolveLocaleOrDefault(lang)).console.billing.expressTopUp
+  const methodMessages: Record<
+    InstantMethod,
+    { label: string; description: string }
+  > = {
+    QRIS: { label: t.qrisMethod, description: t.qrisMethodDescription },
+    VA: {
+      label: t.virtualAccountMethod,
+      description: t.virtualAccountMethodDescription,
+    },
+  }
   const [step, setStep] = useState<Step>("select")
   const [selectedMethod, setSelectedMethod] = useState<InstantMethod>("QRIS")
   const [amount, setAmount] = useState<number>(suggestedAmount || 50000)
@@ -197,7 +207,7 @@ export function ExpressTopupModal({
       })
 
       if (!result || !result.ok || !result.invoice?.id) {
-        throw new Error(result?.message || "Failed to create express top-up")
+        throw new Error(result?.message || t.topupCreateFailed)
       }
 
       const invId = result.invoice.id
@@ -224,9 +234,7 @@ export function ExpressTopupModal({
 
       setStep("payment")
     } catch (err) {
-      setErrorMessage(
-        err instanceof Error ? err.message : "Error creating top-up payment"
-      )
+      setErrorMessage(err instanceof Error ? err.message : t.topupCreateFailed)
     } finally {
       setIsSubmitting(false)
     }
@@ -249,16 +257,13 @@ export function ExpressTopupModal({
               <Lightning className="size-4" weight="fill" />
             </span>
             <DialogTitle className="text-lg font-semibold">
-              Express Top Up
+              {t.heading}
             </DialogTitle>
           </div>
           <DialogDescription className="text-xs text-muted-foreground">
-            {step === "select" &&
-              "Instantly add balance without leaving your current workspace."}
-            {step === "payment" &&
-              "Complete your instant payment. Balance will update automatically."}
-            {step === "success" &&
-              "Top up successful! Your balance is refreshed and ready to use."}
+            {step === "select" && t.selectDescription}
+            {step === "payment" && t.paymentDescription}
+            {step === "success" && t.successDescription}
           </DialogDescription>
         </DialogHeader>
 
@@ -267,7 +272,9 @@ export function ExpressTopupModal({
           <div className="space-y-4 pt-2">
             {currentBalance !== undefined && currentBalance !== null && (
               <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2 text-xs">
-                <span className="text-muted-foreground">Current Balance:</span>
+                <span className="text-muted-foreground">
+                  {t.currentBalance}
+                </span>
                 <span className="font-semibold text-foreground">
                   {typeof currentBalance === "number"
                     ? formatCurrency(currentBalance)
@@ -279,7 +286,7 @@ export function ExpressTopupModal({
             {/* Quick Presets */}
             <Field>
               <FieldLabel className="text-xs font-medium">
-                Choose Amount ({currency})
+                {t.chooseAmount} {currency})
               </FieldLabel>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {currencyConfig.presets.map((preset) => (
@@ -305,7 +312,7 @@ export function ExpressTopupModal({
               <div className="mt-2 flex items-center gap-2">
                 <Input
                   type="number"
-                  placeholder="Or enter custom amount..."
+                  placeholder={t.customAmountPlaceholder}
                   value={customAmount}
                   onChange={(e) => {
                     const val = e.target.value
@@ -321,8 +328,8 @@ export function ExpressTopupModal({
 
               {!isValidAmount && amount > 0 && (
                 <p className="mt-1 text-xs text-destructive">
-                  Amount must be between{" "}
-                  {formatCurrency(currencyConfig.minTopup)} and{" "}
+                  {t.amountMustBeBetween}{" "}
+                  {formatCurrency(currencyConfig.minTopup)} {t.amountRangeAnd}{" "}
                   {formatCurrency(currencyConfig.maxTopup)}
                 </p>
               )}
@@ -331,7 +338,7 @@ export function ExpressTopupModal({
             {/* Instant Payment Channel Selection */}
             <Field>
               <FieldLabel className="text-xs font-medium">
-                Instant Payment Method
+                {t.instantPaymentMethod}
               </FieldLabel>
               <div className="grid grid-cols-2 gap-2">
                 {INSTANT_METHODS.map((method) => {
@@ -350,10 +357,10 @@ export function ExpressTopupModal({
                     >
                       <div className="flex items-center gap-2 text-xs font-medium">
                         <Icon className="size-4 text-emerald-600 dark:text-emerald-400" />
-                        <span>{method.label}</span>
+                        <span>{methodMessages[method.value].label}</span>
                       </div>
                       <span className="text-[10px] leading-tight text-muted-foreground">
-                        {method.description}
+                        {methodMessages[method.value].description}
                       </span>
                     </button>
                   )
@@ -375,10 +382,10 @@ export function ExpressTopupModal({
               {isSubmitting ? (
                 <div className="flex items-center gap-2">
                   <ArrowsClockwise className="size-4 animate-spin" />
-                  <span>Creating Payment...</span>
+                  <span>{t.creatingPayment}</span>
                 </div>
               ) : (
-                `Pay ${formatCurrency(amount)} Instantly`
+                t.paymentAction.replace("{amount}", formatCurrency(amount))
               )}
             </Button>
           </div>
@@ -389,14 +396,14 @@ export function ExpressTopupModal({
           <div className="flex flex-col items-center space-y-4 pt-2 text-center">
             <div className="w-full rounded-lg border bg-muted/30 p-3 text-left text-xs">
               <div className="flex justify-between font-medium">
-                <span className="text-muted-foreground">Total Payment:</span>
+                <span className="text-muted-foreground">{t.totalPayment}</span>
                 <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
                   {formatCurrency(amount)}
                 </span>
               </div>
               {invoiceNumber && (
                 <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
-                  <span>Invoice:</span>
+                  <span>{t.invoice}</span>
                   <span className="font-mono">{invoiceNumber}</span>
                 </div>
               )}
@@ -409,16 +416,15 @@ export function ExpressTopupModal({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={qrCodeDataUrl}
-                      alt="QRIS Payment Code"
                       className="size-48 rounded"
+                      alt={t.qrCodeAlt}
                     />
                   ) : (
                     <Skeleton className="size-48" />
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Scan this QR code using any Indonesian e-wallet or mobile
-                  banking
+                  {t.scanQrDescription}
                 </p>
                 {paymentUrl && (
                   <Button
@@ -432,7 +438,7 @@ export function ExpressTopupModal({
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <span>Open Payment Page</span>
+                      <span>{t.openPaymentPage}</span>
                       <ArrowsOutSimple className="size-3.5" />
                     </a>
                   </Button>
@@ -444,11 +450,11 @@ export function ExpressTopupModal({
               <div className="w-full space-y-3">
                 <div className="rounded-lg border bg-card p-4 text-center">
                   <span className="text-xs text-muted-foreground">
-                    Virtual Account Number
+                    {t.virtualAccountNumber}
                   </span>
                   <div className="mt-2 flex items-center justify-center gap-2">
                     <span className="font-mono text-lg font-bold tracking-wider text-foreground">
-                      {vaNumber || "Available at payment gateway"}
+                      {vaNumber || t.paymentGatewayUnavailable}
                     </span>
                     {vaNumber && (
                       <Button
@@ -464,7 +470,7 @@ export function ExpressTopupModal({
                   </div>
                   {copied && (
                     <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400">
-                      Copied to clipboard!
+                      {t.copiedToClipboard}
                     </p>
                   )}
                 </div>
@@ -480,7 +486,7 @@ export function ExpressTopupModal({
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <span>Proceed to Payment Gateway</span>
+                      <span>{t.proceedToGateway}</span>
                       <ArrowsOutSimple className="size-3.5" />
                     </a>
                   </Button>
@@ -491,7 +497,7 @@ export function ExpressTopupModal({
             {/* Waiting for payment indicator */}
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <ArrowsClockwise className="size-3.5 animate-spin text-emerald-600" />
-              <span>Waiting for your payment confirmation...</span>
+              <span>{t.waitingForConfirmation}</span>
             </div>
 
             <Button
@@ -504,7 +510,7 @@ export function ExpressTopupModal({
                 }
               }}
             >
-              I have already paid / Check Status
+              {t.checkStatus}
             </Button>
           </div>
         )}
@@ -517,18 +523,20 @@ export function ExpressTopupModal({
             </div>
             <div className="space-y-1">
               <h3 className="text-base font-semibold text-foreground">
-                Payment Received!
+                {t.paymentReceived}
               </h3>
               <p className="text-xs text-muted-foreground">
-                Successfully added {formatCurrency(amount)} to your wallet. You
-                can now resume your work immediately.
+                {t.amountAddedToWallet.replace(
+                  "{amount}",
+                  formatCurrency(amount)
+                )}
               </p>
             </div>
             <Button
               className="w-full bg-emerald-600 text-xs text-white hover:bg-emerald-700"
               onClick={() => onOpenChange(false)}
             >
-              Continue Working
+              {t.continueWorking}
             </Button>
           </div>
         )}

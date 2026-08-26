@@ -1,8 +1,15 @@
 import Link from "next/link"
-import { GlobeIcon, RocketLaunchIcon } from "@/components/ui/phosphor-icons"
+import { useParams } from "next/navigation"
+import {
+  GlobeIcon,
+  RocketLaunchIcon,
+  WhatsappLogoIcon,
+} from "@/components/ui/phosphor-icons"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 type SubscriptionItem = {
   id: string
   packageCode: string
@@ -32,31 +39,10 @@ type PackageInfo = {
   description: string
 }
 
-const packageConfig: Record<string, PackageInfo> = {
-  WHATSAPP: {
-    label: "WhatsApp",
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        className="h-5 w-5"
-      >
-        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-      </svg>
-    ),
-    description: "WhatsApp Business messaging",
-  },
-  VPN: {
-    label: "VPN",
-    icon: <GlobeIcon className="h-5 w-5" />,
-    description: "Virtual Private Network",
-  },
-  APP_HOSTING: {
-    label: "App Hosting",
-    icon: <RocketLaunchIcon className="h-5 w-5" />,
-    description: "Application hosting platform",
-  },
+const packageIcons: Record<string, React.ReactNode> = {
+  WHATSAPP: <WhatsappLogoIcon className="h-5 w-5" />,
+  VPN: <GlobeIcon className="h-5 w-5" />,
+  APP_HOSTING: <RocketLaunchIcon className="h-5 w-5" />,
 }
 
 const statusStyles: Record<string, string> = {
@@ -90,21 +76,60 @@ export function SubscriptionCard({
   subscription,
   className,
 }: SubscriptionCardProps) {
-  const packageInfo = packageConfig[subscription.packageCode] ?? {
-    label: subscription.packageCode,
-    icon: <RocketLaunchIcon className="h-5 w-5" />,
-    description: subscription.packageCode,
-  }
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const t = getMessages(locale).console.billing.subscriptions
+  const packageInfo: PackageInfo =
+    subscription.packageCode === "WHATSAPP"
+      ? {
+          label: t.packageWhatsApp,
+          icon: packageIcons.WHATSAPP,
+          description: t.packageWhatsAppDescription,
+        }
+      : subscription.packageCode === "VPN"
+        ? {
+            label: t.packageVpn,
+            icon: packageIcons.VPN,
+            description: t.packageVpnDescription,
+          }
+        : subscription.packageCode === "APP_HOSTING"
+          ? {
+              label: t.packageAppHosting,
+              icon: packageIcons.APP_HOSTING,
+              description: t.packageAppHostingDescription,
+            }
+          : {
+              label: subscription.packageCode,
+              icon: <RocketLaunchIcon className="h-5 w-5" />,
+              description: subscription.packageCode,
+            }
 
   const statusStyle =
     statusStyles[subscription.status] ?? statusStyles.CANCELLED
-
+  const statusLabels: Record<string, string> = {
+    ACTIVE: t.statusFilterActive,
+    SUSPENDED: t.statusFilterSuspended,
+    CANCELLED: t.statusFilterCancelled,
+    PENDING: t.statusFilterPending,
+  }
+  const statusLabel =
+    statusLabels[subscription.status.toUpperCase()] ?? subscription.status
+  const termLabels: Record<string, string> = {
+    MONTHLY: t.termMonthly,
+    QUARTERLY: t.termQuarterly,
+    SEMI_ANNUAL: t.termSemiAnnual,
+    ANNUAL: t.termAnnual,
+  }
+  const termLabel =
+    termLabels[subscription.billingPeriod ?? ""] ??
+    subscription.billingPeriod ??
+    t.notAvailable
   return (
     <Card
       className={cn("transition-colors hover:border-primary/50", className)}
     >
       <Link
-        href={`/console/billing/subscriptions/${subscription.id}`}
+        href={`/${locale}/console/billing/subscriptions/${subscription.id}`}
         className="block focus-visible:outline-hidden"
       >
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -120,25 +145,25 @@ export function SubscriptionCard({
               statusStyle
             )}
           >
-            {subscription.status}
+            {statusLabel}
           </span>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
             {packageInfo.description}
           </p>
-
           <div className="space-y-1">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Plan</span>
+              <span className="text-muted-foreground">{t.columnPlan}</span>
               <span className="font-medium">{subscription.planCode}</span>
             </div>
-
             {subscription.packageCode === "WHATSAPP" && (
               <>
                 {subscription.quotaIn != null && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Quota In</span>
+                    <span className="text-muted-foreground">
+                      {t.columnQuotaIn}
+                    </span>
                     <span className="font-medium">
                       {subscription.quotaIn.toLocaleString("id-ID")}
                     </span>
@@ -146,7 +171,9 @@ export function SubscriptionCard({
                 )}
                 {subscription.quotaOut != null && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Quota Out</span>
+                    <span className="text-muted-foreground">
+                      {t.columnQuotaOut}
+                    </span>
                     <span className="font-medium">
                       {subscription.quotaOut.toLocaleString("id-ID")}
                     </span>
@@ -154,10 +181,9 @@ export function SubscriptionCard({
                 )}
               </>
             )}
-
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">
-                {subscription.billingPeriod ?? "Period"} Price
+                {termLabel} {t.cardPeriodPrice}
               </span>
               <span className="font-medium">
                 {formatCurrency(
@@ -165,10 +191,9 @@ export function SubscriptionCard({
                 )}
               </span>
             </div>
-
             {subscription.currentPeriodEnd && (
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Next Billing</span>
+                <span className="text-muted-foreground">{t.columnRenewal}</span>
                 <span className="font-medium">
                   {formatDate(subscription.currentPeriodEnd)}
                 </span>

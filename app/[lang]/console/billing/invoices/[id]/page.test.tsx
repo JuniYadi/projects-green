@@ -144,13 +144,11 @@ describe("Billing InvoiceDetailPage", () => {
       ).toBeInTheDocument()
     )
 
-    expect(
-      view.getByRole("link", {
-        name: /confirm payment and upload receipt/i,
-      })
-    ).toHaveAttribute(
-      "href",
-      "/console/billing/payments/confirm?invoiceId=inv-1"
+    const link = view.getByRole("link", {
+      name: /confirm payment and upload receipt/i,
+    })
+    expect(link.getAttribute("href")).toBe(
+      "/en/console/billing/payments/confirm?invoiceId=inv-1"
     )
   })
 

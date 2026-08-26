@@ -182,46 +182,47 @@ function ConfirmationPageContent() {
   const isValid = bankAccountId && initialPaymentDateTime && displayAmount > 0
 
   // ── Screenshot upload handler ──
-  const uploadScreenshot = useCallback(async (file: File) => {
-    const allowedTypes = ["image/png", "image/jpeg"]
-    if (!allowedTypes.includes(file.type)) {
-      setErrorMessage("Only PNG and JPG files are allowed")
-      return
-    }
+  const uploadScreenshot = useCallback(
+    async (file: File) => {
+      const allowedTypes = ["image/png", "image/jpeg"]
+      if (!allowedTypes.includes(file.type)) {
+        setErrorMessage(t.uploadErrorType)
+        return
+      }
 
-    const maxSize = 10 * 1024 * 1024
-    if (file.size > maxSize) {
-      setErrorMessage("File size must be under 10MB")
-      return
-    }
+      const maxSize = 10 * 1024 * 1024
+      if (file.size > maxSize) {
+        setErrorMessage(t.uploadErrorSize)
+        return
+      }
 
-    setIsUploadingScreenshot(true)
-    setErrorMessage(null)
+      setIsUploadingScreenshot(true)
+      setErrorMessage(null)
 
-    try {
-      const formData = new FormData()
-      formData.append("file", file)
+      try {
+        const formData = new FormData()
+        formData.append("file", file)
 
-      const { data: result } = await eden.api.payments[
-        "upload-screenshot"
-      ].post({
-        $fetch: { method: "POST", body: formData } as RequestInit,
-      } as never)
-      if (!result?.ok)
-        throw new Error(
-          (result as { message?: string })?.message || "Upload failed"
-        )
+        const { data: result } = await eden.api.payments[
+          "upload-screenshot"
+        ].post({
+          $fetch: { method: "POST", body: formData } as RequestInit,
+        } as never)
+        if (!result?.ok)
+          throw new Error(
+            (result as { message?: string })?.message || t.uploadFailed
+          )
 
-      setScreenshotUrl((result as { url: string }).url)
-      setScreenshotPreview(URL.createObjectURL(file))
-    } catch (err) {
-      setErrorMessage(
-        err instanceof Error ? err.message : "Failed to upload screenshot"
-      )
-    } finally {
-      setIsUploadingScreenshot(false)
-    }
-  }, [])
+        setScreenshotUrl((result as { url: string }).url)
+        setScreenshotPreview(URL.createObjectURL(file))
+      } catch (err) {
+        setErrorMessage(err instanceof Error ? err.message : t.uploadFailed)
+      } finally {
+        setIsUploadingScreenshot(false)
+      }
+    },
+    [t]
+  )
 
   const removeScreenshot = useCallback(() => {
     if (screenshotPreview) URL.revokeObjectURL(screenshotPreview)
@@ -285,18 +286,13 @@ function ConfirmationPageContent() {
 
       if (!result?.ok) {
         throw new Error(
-          (result as { message?: string })?.message ||
-            "Confirmation failed. Please try again."
+          (result as { message?: string })?.message || t.confirmationFailed
         )
       }
 
       setFormState("success")
     } catch (err) {
-      setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : "Confirmation failed. Please try again."
-      )
+      setErrorMessage(err instanceof Error ? err.message : t.confirmationFailed)
       setFormState("error")
     }
   }
@@ -313,7 +309,9 @@ function ConfirmationPageContent() {
         <header className="space-y-1">
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" asChild>
-              <Link href="/console/billing">
+              <Link
+                href={`/${resolveLocaleOrDefault(params?.lang)}/console/billing`}
+              >
                 <ArrowLeftIcon className="h-4 w-4" />
               </Link>
             </Button>
@@ -332,14 +330,16 @@ function ConfirmationPageContent() {
             <div className="mt-6 w-full max-w-sm rounded-lg border bg-muted/30 p-4">
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Amount</span>
+                  <span className="text-muted-foreground">{t.amount}</span>
                   <span className="font-medium">
                     {formatCurrency(displayAmount, displayCurrency)}
                   </span>
                 </div>
                 {selectedBank && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Destination</span>
+                    <span className="text-muted-foreground">
+                      {t.destination}
+                    </span>
                     <span className="font-medium">{selectedBank.bankName}</span>
                   </div>
                 )}
@@ -348,10 +348,18 @@ function ConfirmationPageContent() {
 
             <div className="mt-6 flex gap-3">
               <Button variant="outline" asChild>
-                <Link href="/console/billing">{t.backToBilling}</Link>
+                <Link
+                  href={`/${resolveLocaleOrDefault(params?.lang)}/console/billing`}
+                >
+                  {t.backToBilling}
+                </Link>
               </Button>
               <Button asChild>
-                <Link href="/console/billing/invoices">{t.viewInvoices}</Link>
+                <Link
+                  href={`/${resolveLocaleOrDefault(params?.lang)}/console/billing/invoices`}
+                >
+                  {t.viewInvoices}
+                </Link>
               </Button>
             </div>
           </CardContent>
@@ -388,7 +396,9 @@ function ConfirmationPageContent() {
       <header className="space-y-1">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" asChild>
-            <Link href="/console/billing/topup">
+            <Link
+              href={`/${resolveLocaleOrDefault(params?.lang)}/console/billing/topup`}
+            >
               <ArrowLeftIcon className="h-4 w-4" />
             </Link>
           </Button>
@@ -409,7 +419,7 @@ function ConfirmationPageContent() {
                 <div className="rounded-lg border bg-muted/30 p-4">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">
-                      Amount to Confirm
+                      {t.amountToConfirm}
                     </span>
                     <span className="text-xl font-semibold">
                       {formatCurrency(displayAmount, displayCurrency)}
@@ -417,14 +427,14 @@ function ConfirmationPageContent() {
                   </div>
                   {invoiceId && (
                     <div className="mt-1 text-xs text-muted-foreground">
-                      Invoice: {invoiceId}
+                      {t.invoiceLabel} {invoiceId}
                     </div>
                   )}
                 </div>
 
                 {/* Bank Account Selection */}
                 <Field>
-                  <FieldLabel>Destination Bank Account</FieldLabel>
+                  <FieldLabel>{t.destinationBankAccount}</FieldLabel>
                   {bankAccounts.length > 0 ? (
                     <div className="space-y-2">
                       {bankAccounts.map((account) => {
@@ -454,17 +464,13 @@ function ConfirmationPageContent() {
                       })}
                     </div>
                   ) : (
-                    <Input
-                      type="text"
-                      value="No bank accounts available"
-                      disabled
-                    />
+                    <Input type="text" value={t.noBankAccounts} disabled />
                   )}
                 </Field>
 
                 {/* Payment DateTime */}
                 <Field>
-                  <FieldLabel>Transfer Date & Time</FieldLabel>
+                  <FieldLabel>{t.transferDateTime}</FieldLabel>
                   <Input
                     type="datetime-local"
                     value={initialPaymentDateTime}
@@ -477,34 +483,34 @@ function ConfirmationPageContent() {
                   <h3 className="text-sm font-medium">{t.senderDetails}</h3>
 
                   <Field>
-                    <FieldLabel>Sender Bank Name</FieldLabel>
+                    <FieldLabel>{t.senderBankName}</FieldLabel>
                     <Input
                       type="text"
                       value={senderBankName}
                       onChange={(e) => setSenderBankName(e.target.value)}
-                      placeholder="e.g., Bank BCA"
+                      placeholder={t.senderBankNamePlaceholder}
                       disabled={formState === "submitting"}
                     />
                   </Field>
 
                   <Field>
-                    <FieldLabel>Sender Name</FieldLabel>
+                    <FieldLabel>{t.senderName}</FieldLabel>
                     <Input
                       type="text"
                       value={senderName}
                       onChange={(e) => setSenderName(e.target.value)}
-                      placeholder="Account holder name"
+                      placeholder={t.senderNamePlaceholder}
                       disabled={formState === "submitting"}
                     />
                   </Field>
 
                   <Field>
-                    <FieldLabel>Sender Account Number</FieldLabel>
+                    <FieldLabel>{t.senderAccountNumber}</FieldLabel>
                     <Input
                       type="text"
                       value={senderAccount}
                       onChange={(e) => setSenderAccount(e.target.value)}
-                      placeholder="Sender account number"
+                      placeholder={t.senderAccountNumberPlaceholder}
                       disabled={formState === "submitting"}
                     />
                   </Field>
@@ -512,19 +518,19 @@ function ConfirmationPageContent() {
 
                 {/* Screenshot Upload (Optional) */}
                 <Field>
-                  <FieldLabel>Payment Proof (Optional)</FieldLabel>
+                  <FieldLabel>{t.paymentProofOptional}</FieldLabel>
 
                   {screenshotPreview ? (
                     <div className="relative overflow-hidden rounded-lg border">
                       {/* eslint-disable-next-line @next/next/no-img-element -- blob URL, cannot use next/image */}
                       <img
                         src={screenshotPreview}
-                        alt="Payment proof preview"
+                        alt={t.paymentProofAlt}
                         className="max-h-48 w-full bg-muted/20 object-contain"
                       />
                       <div className="flex items-center justify-between border-t bg-muted/30 px-3 py-2">
                         <span className="text-xs text-muted-foreground">
-                          Proof uploaded
+                          {t.proofUploaded}
                         </span>
                         <Button
                           type="button"
@@ -588,11 +594,11 @@ function ConfirmationPageContent() {
 
                 {/* Notes */}
                 <Field>
-                  <FieldLabel>Notes (Optional)</FieldLabel>
+                  <FieldLabel>{t.notesOptional}</FieldLabel>
                   <Textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Any additional information about the payment"
+                    placeholder={t.notesPlaceholder}
                     rows={3}
                     disabled={formState === "submitting"}
                   />
@@ -606,16 +612,18 @@ function ConfirmationPageContent() {
 
                 <div className="flex gap-3">
                   <Button type="button" variant="outline" asChild>
-                    <Link href="/console/billing/topup">Cancel</Link>
+                    <Link
+                      href={`/${resolveLocaleOrDefault(params?.lang)}/console/billing/topup`}
+                    >
+                      {t.cancel}
+                    </Link>
                   </Button>
                   <Button
                     type="submit"
                     className="flex-1"
                     disabled={!isValid || formState === "submitting"}
                   >
-                    {formState === "submitting"
-                      ? "Submitting..."
-                      : "Submit Confirmation"}
+                    {formState === "submitting" ? t.submitting : t.submitButton}
                   </Button>
                 </div>
               </form>
@@ -654,16 +662,17 @@ function ConfirmationPageContent() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Need Help?</CardTitle>
+              <CardTitle className="text-base">{t.needHelp}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                If you have any questions about the payment process, please
-                contact our support team.
+                {t.helpDescription}
               </p>
               <Button variant="outline" size="sm" className="mt-3" asChild>
-                <Link href="/console/support-tickets/new">
-                  Create Support Ticket
+                <Link
+                  href={`/${resolveLocaleOrDefault(params?.lang)}/console/support-tickets/new`}
+                >
+                  {t.createSupportTicket}
                 </Link>
               </Button>
             </CardContent>

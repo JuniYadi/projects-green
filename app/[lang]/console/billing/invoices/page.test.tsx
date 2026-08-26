@@ -35,13 +35,11 @@ describe("Billing InvoicesPage", () => {
     const view = render(<InvoicesPage />)
 
     await waitFor(() =>
-      expect(
-        view.getByText("No invoices match your filters.")
-      ).toBeInTheDocument()
+      expect(view.getByText("No invoices yet.")).toBeInTheDocument()
     )
 
     expect(view.getByLabelText("Search invoices...")).toBeInTheDocument()
-    expect(view.getByText("All status")).toBeInTheDocument()
+    expect(view.getByText("All")).toBeInTheDocument()
     expect(view.getByRole("button", { name: /columns/i })).toBeInTheDocument()
   })
 

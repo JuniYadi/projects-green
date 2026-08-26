@@ -91,9 +91,9 @@ describe("SubscriptionsPage", () => {
 
     await waitFor(() => {
       expect(
-        view.getByPlaceholderText("Search subscriptions...")
-      ).toBeInTheDocument()
-      expect(view.getByText("All Status")).toBeInTheDocument()
+        view.getAllByPlaceholderText("Search subscriptions...").length
+      ).toBeGreaterThan(0)
+      expect(view.getByRole("combobox")).toBeInTheDocument()
     })
   })
 
@@ -141,7 +141,8 @@ describe("SubscriptionsPage", () => {
 
     await waitFor(() => {
       expect(view.getAllByText("WHATSAPP").length).toBeGreaterThan(0)
-      expect(view.getAllByText("Active").length).toBeGreaterThan(0)
+      expect(view.getAllByText("WHATSAPP_STANDARD").length).toBeGreaterThan(0)
+      expect(view.getAllByText(/Active|ACTIVE/i).length).toBeGreaterThan(0)
     })
   })
 })

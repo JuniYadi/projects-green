@@ -1,8 +1,14 @@
 import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { render, waitFor } from "@testing-library/react"
-import { useParams } from "next/navigation"
 
+const mockUseParams = mock(() => ({ lang: "en", product: "whatsapp" }))
+mock.module("next/navigation", () => ({
+  useParams: mockUseParams,
+  useRouter: mock(() => ({ push: mock() })),
+}))
+
+import { useParams } from "next/navigation"
 import ProductDetailPage from "./page"
 
 const originalFetch = globalThis.fetch
@@ -74,7 +80,7 @@ const whatsappProductResponse = {
 
 describe("ProductDetailPage", () => {
   beforeEach(() => {
-    ;(useParams as ReturnType<typeof mock>).mockReturnValue({
+    mockUseParams.mockReturnValue({
       lang: "en",
       product: "whatsapp",
     })
@@ -100,15 +106,12 @@ describe("ProductDetailPage", () => {
   it("renders back link to services", async () => {
     const view = render(<ProductDetailPage />)
 
-    await waitFor(() =>
-      expect(view.getByText(/back to services/i)).toBeInTheDocument()
-    )
-    expect(view.getByText(/back to services/i).closest("a")).toHaveAttribute(
-      "href",
-      "/console/billing/services"
-    )
+    await waitFor(() => {
+      const backLink = view.getByRole("link", { name: /back to services/i })
+      expect(backLink).toBeTruthy()
+      expect(backLink.getAttribute("href")).toBe("/en/console/billing/services")
+    })
   })
-
   it("renders product name and description", async () => {
     const view = render(<ProductDetailPage />)
 
@@ -209,10 +212,9 @@ describe("ProductDetailPage", () => {
     const starterLink = checkoutLinks.find((l) =>
       l.closest("a")?.href.includes("offer-wa-starter-monthly")
     )
-    expect(starterLink).toBeTruthy()
     const href = starterLink?.closest("a")?.getAttribute("href") ?? ""
     expect(href).toBe(
-      "/console/billing/checkout?pricingId=offer-wa-starter-monthly"
+      "/en/console/billing/checkout?pricingId=offer-wa-starter-monthly"
     )
   })
 

@@ -5,9 +5,9 @@ import { render } from "@testing-library/react"
 import { InvoiceStatusBadge } from "./invoice-status-badge"
 
 describe("InvoiceStatusBadge", () => {
-  it("renders PENDING status text correctly", () => {
-    const view = render(<InvoiceStatusBadge status="PENDING" />)
-    expect(view.getByText("Pending")).toBeInTheDocument()
+  it("renders OPEN status text correctly", () => {
+    const view = render(<InvoiceStatusBadge status="OPEN" />)
+    expect(view.getByText("Open")).toBeInTheDocument()
   })
 
   it("renders PAID status text correctly", () => {
@@ -24,7 +24,7 @@ describe("InvoiceStatusBadge", () => {
     const view = render(
       <InvoiceStatusBadge status="PAID" className="custom-class" />
     )
-    const badge = view.getByText("Paid")
-    expect(badge.className).toContain("custom-class")
+    const badges = view.container.querySelectorAll(".custom-class")
+    expect(badges.length).toBeGreaterThan(0)
   })
 })

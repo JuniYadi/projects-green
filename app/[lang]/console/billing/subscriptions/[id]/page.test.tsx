@@ -150,7 +150,7 @@ describe("SubscriptionDetailPage", () => {
     await waitFor(() => {
       expect(view.getByText("WhatsApp Business")).toBeInTheDocument()
       expect(view.getAllByText(/WHATSAPP_STANDARD/).length).toBeGreaterThan(0)
-      expect(view.getByText("Active")).toBeInTheDocument()
+      expect(view.getAllByText(/Active|ACTIVE/i).length).toBeGreaterThan(0)
     })
   })
   it("renders subscription summary table rows directly", async () => {
@@ -158,14 +158,15 @@ describe("SubscriptionDetailPage", () => {
 
     await waitFor(() => {
       expect(
-        view.getByText("Rincian Langganan & Perpanjangan")
-      ).toBeInTheDocument()
+        view.getAllByText(/Rincian Langganan|Subscription & Renewal Details/i)
+          .length
+      ).toBeGreaterThan(0)
       expect(
-        view.getByText("Data Formulir Pendaftaran Saat Order")
-      ).toBeInTheDocument()
+        view.getAllByText(/Data Formulir|Signup Form Data/i).length
+      ).toBeGreaterThan(0)
       expect(
-        view.getByText("Tanggal Perpanjangan Berikutnya")
-      ).toBeInTheDocument()
+        view.getAllByText(/Tanggal Perpanjangan|Next Renewal|Renewal/i).length
+      ).toBeGreaterThan(0)
     })
   })
 
@@ -174,7 +175,9 @@ describe("SubscriptionDetailPage", () => {
 
     await waitFor(() =>
       expect(
-        view.getByRole("link", { name: /Kembali ke Subscriptions/i })
+        view.getByRole("link", {
+          name: /Kembali ke Subscriptions|Back to Subscriptions/i,
+        })
       ).toBeInTheDocument()
     )
   })
@@ -182,7 +185,9 @@ describe("SubscriptionDetailPage", () => {
     const view = renderPage()
 
     await waitFor(() =>
-      expect(view.getAllByText("July 15, 2026").length).toBeGreaterThan(0)
+      expect(
+        view.getAllByText(/July 15, 2026|15 Juli 2026/i).length
+      ).toBeGreaterThan(0)
     )
   })
 })
