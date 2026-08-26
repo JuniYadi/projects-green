@@ -107,6 +107,9 @@ mock.module("@/lib/i18n/messages", () => ({
           cardDescription: "Manage your WhatsApp devices",
           active: "Active",
           inactive: "Inactive",
+          connected: "Connected",
+          disconnected: "Disconnected",
+          unknown: "Unknown",
           edit: "Edit",
           editDialogTitle: "Edit Profile",
           editDialogDescription: "Update device profile",
@@ -171,10 +174,10 @@ const mockFetch = mock((input: string | URL | Request, init?: RequestInit) => {
 
 describe("ConsoleWhatsAppDeviceDetailPage", () => {
   beforeEach(() => {
+    document.body.innerHTML = ""
     mockFetch.mockClear()
     globalThis.fetch = mockFetch as unknown as typeof fetch
   })
-
   afterEach(() => {
     globalThis.fetch = ORIGINAL_FETCH
   })

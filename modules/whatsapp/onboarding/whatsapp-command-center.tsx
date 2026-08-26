@@ -23,7 +23,8 @@ import {
   CardDescription,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { getWhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
 import type { WhatsAppOnboardingState } from "./use-whatsapp-onboarding"
 
 export type WhatsAppCommandCenterProps = {
@@ -38,7 +39,10 @@ export function WhatsAppCommandCenter({
   locale: suppliedLocale,
 }: WhatsAppCommandCenterProps) {
   const params = useParams<{ lang?: string }>()
-  const locale = suppliedLocale ?? params?.lang
+  const locale = resolveLocaleOrDefault(suppliedLocale ?? params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.console.whatsapp.onboarding.commandCenter
+  const tLevels = messages.console.whatsapp.onboarding.levels
   const {
     level,
     progressPercent,
@@ -49,21 +53,21 @@ export function WhatsAppCommandCenter({
   } = onboarding
 
   const numericLevel = level === "0_pending" ? 0.5 : level
-  const levelName = React.useMemo(() => {
+  const levelName = (() => {
     switch (level) {
       case 0:
-        return "Level 0 • Ground Control"
+        return tLevels.groundControl
       case "0_pending":
-        return "Level 0 • Tower Clearance Pending"
+        return tLevels.towerClearancePending
       case 1:
-        return "Level 1 • Transponder Active"
+        return tLevels.transponderActive
       case 2:
-        return "Level 2 • Flight Operations"
+        return tLevels.flightOperations
       case 3:
       default:
-        return "Level 3 • Full Cockpit Master"
+        return tLevels.fullCockpitMaster
     }
-  }, [level])
+  })()
 
   return (
     <div className="animate-in space-y-6 duration-300 fade-in">
@@ -92,7 +96,7 @@ export function WhatsAppCommandCenter({
             <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
               <div className="text-right">
                 <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                  Flight Readiness
+                  {t.flightReadiness}
                 </span>
                 <div className="text-3xl font-black tracking-tight text-primary">
                   {progressPercent}%
@@ -104,7 +108,7 @@ export function WhatsAppCommandCenter({
                 onClick={graduateNow}
                 className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-primary"
               >
-                Skip Tutorial
+                {t.skipTutorial}
                 <ArrowRight className="size-3" />
               </Button>
             </div>
@@ -144,7 +148,14 @@ export function WhatsAppCommandCenter({
 
             {level === 0 && (
               <Button variant="outline" size="lg" asChild>
-                <Link href="/console/whatsapp/usage">Explore Quotas</Link>
+                <Link
+                  href={localizePathname({
+                    pathname: "/console/whatsapp/usage",
+                    locale,
+                  })}
+                >
+                  {t.exploreQuotas}
+                </Link>
               </Button>
             )}
           </div>
@@ -157,11 +168,11 @@ export function WhatsAppCommandCenter({
             <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
               <ClockCountdown className="size-5" weight="bold" />
               <CardTitle className="text-base font-bold">
-                {getWhatsAppText("s394", locale)}
+                {t.pendingTitle}
               </CardTitle>
             </div>
             <CardDescription className="text-muted-foreground">
-              {getWhatsAppText("s395", locale)}
+              {t.pendingDescription}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -173,10 +184,10 @@ export function WhatsAppCommandCenter({
                 />
                 <div className="text-xs">
                   <p className="font-semibold text-foreground">
-                    Plan Subscribed
+                    {t.planSubscribed}
                   </p>
                   <p className="text-muted-foreground">
-                    Active WhatsApp tier allocated
+                    {t.planSubscribedDesc}
                   </p>
                 </div>
               </div>
@@ -187,19 +198,21 @@ export function WhatsAppCommandCenter({
                 </div>
                 <div className="text-xs">
                   <p className="font-semibold text-amber-700 dark:text-amber-300">
-                    Admin Review
+                    {t.adminReview}
                   </p>
                   <p className="text-muted-foreground">
-                    {getWhatsAppText("s396", locale)}
+                    {t.wabaRegistration}
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-3 rounded-xl border bg-background/50 p-3 opacity-60">
                 <Circle className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                 <div className="text-xs">
-                  <p className="font-semibold text-foreground">Cockpit Live</p>
+                  <p className="font-semibold text-foreground">
+                    {t.cockpitLive}
+                  </p>
                   <p className="text-muted-foreground">
-                    {getWhatsAppText("s397", locale)}
+                    {t.level1Ready}
                   </p>
                 </div>
               </div>
@@ -207,7 +220,7 @@ export function WhatsAppCommandCenter({
 
             <div className="flex items-center justify-between rounded-lg border bg-muted/30 p-3 text-xs">
               <span className="text-muted-foreground">
-                {getWhatsAppText("s398", locale)}
+                {t.checkPendingDetails}
               </span>
               <Button
                 variant="outline"
@@ -215,8 +228,13 @@ export function WhatsAppCommandCenter({
                 asChild
                 className="h-7 text-xs"
               >
-                <Link href="/console/whatsapp/devices">
-                  {getWhatsAppText("s399", locale)}
+                <Link
+                  href={localizePathname({
+                    pathname: "/console/whatsapp/devices",
+                    locale,
+                  })}
+                >
+                  {t.viewDevicesTab}
                 </Link>
               </Button>
             </div>
@@ -227,11 +245,9 @@ export function WhatsAppCommandCenter({
       {/* Tech Tree / Progression Roadmap */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold tracking-tight">
-            Mission Flight Roadmap
-          </h2>
+          <h2 className="text-lg font-bold tracking-tight">{t.roadmapTitle}</h2>
           <span className="text-xs text-muted-foreground">
-            Progression unlocks advanced cockpit tabs
+            {t.roadmapSubtitle}
           </span>
         </div>
 
@@ -261,13 +277,13 @@ export function WhatsAppCommandCenter({
                 )}
               </div>
               <div>
-                <h3 className="text-sm font-bold">1. Plan Subscription</h3>
+                <h3 className="text-sm font-bold">{t.planTitle}</h3>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Activate WhatsApp business tier.
+                  {t.planDesc}
                 </p>
               </div>
               <p className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                {hasSubscription || hasDevice ? "✓ Unlocked" : "Pending Action"}
+                {hasSubscription || hasDevice ? t.planUnlocked : t.planPending}
               </p>
             </CardContent>
           </Card>
@@ -299,17 +315,13 @@ export function WhatsAppCommandCenter({
                 )}
               </div>
               <div>
-                <h3 className="text-sm font-bold">
-                  {getWhatsAppText("s400", locale)}
-                </h3>
+                <h3 className="text-sm font-bold">{t.deviceTitle}</h3>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {getWhatsAppText("s401", locale)}
+                  {t.deviceDesc}
                 </p>
               </div>
               <p className="text-[11px] font-medium text-muted-foreground">
-                {hasDevice
-                  ? "✓ Messages & Contacts Unlocked"
-                  : "Unlocks Messages & Contacts"}
+                {hasDevice ? t.deviceUnlocked : t.deviceLocked}
               </p>
             </CardContent>
           </Card>
@@ -341,17 +353,13 @@ export function WhatsAppCommandCenter({
                 )}
               </div>
               <div>
-                <h3 className="text-sm font-bold">
-                  3. Operations & Broadcasts
-                </h3>
+                <h3 className="text-sm font-bold">{t.opsTitle}</h3>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {getWhatsAppText("s402", locale)}
+                  {t.opsDesc}
                 </p>
               </div>
               <p className="text-[11px] font-medium text-muted-foreground">
-                {numericLevel >= 2
-                  ? "✓ Broadcasts & Catalogs Unlocked"
-                  : "Unlocks Broadcasts & Catalogs"}
+                {numericLevel >= 2 ? t.opsUnlocked : t.opsLocked}
               </p>
             </CardContent>
           </Card>
@@ -381,15 +389,13 @@ export function WhatsAppCommandCenter({
                 )}
               </div>
               <div>
-                <h3 className="text-sm font-bold">4. Radar & Telemetry</h3>
+                <h3 className="text-sm font-bold">{t.telemetryTitle}</h3>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Generate API Keys & Webhooks.
+                  {t.telemetryDesc}
                 </p>
               </div>
               <p className="text-[11px] font-medium text-muted-foreground">
-                {level === 3
-                  ? "✓ Full Cockpit Master"
-                  : "Unlocks Logs & Full Telemetry"}
+                {level === 3 ? t.telemetryUnlocked : t.telemetryLocked}
               </p>
             </CardContent>
           </Card>

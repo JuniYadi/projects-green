@@ -41,15 +41,16 @@ export default function WhatsAppBroadcastsPage() {
   const router = useRouter()
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
-  const t = getMessages(locale).console.whatsapp.broadcasts
+  const messages = getMessages(locale)
+  const t = messages.console.whatsapp.broadcasts
+  const tLocked = messages.console.whatsapp.onboarding.lockedFeatures.broadcasts
   const basePath = localizePathname({
     pathname: "/console/whatsapp/broadcasts",
     locale,
   })
   const [broadcasts, setBroadcasts] = React.useState<Broadcast[]>([])
   const [loading, setLoading] = React.useState(true)
-  const onboarding = useWhatsAppOnboarding()
-
+  const onboarding = useWhatsAppOnboarding({ locale })
   const loadBroadcasts = React.useCallback(async () => {
     setLoading(true)
     try {
@@ -194,14 +195,15 @@ export default function WhatsAppBroadcastsPage() {
     return (
       <>
         <LockedFeatureTeaser
-          featureTitle="Broadcast Campaigns"
-          featureDescription="Send personalized WhatsApp messages to bulk recipient audiences simultaneously with tracking and delivery analytics."
+          featureTitle={tLocked.title}
+          featureDescription={tLocked.description}
           unlockLevel={2}
-          prerequisiteDescription="Send your first message and approve a template to unlock bulk broadcast operations."
+          prerequisiteDescription={tLocked.prerequisite}
           activeMissionHref="/console/whatsapp/messages"
-          activeMissionLabel="Send Test Message"
+          activeMissionLabel={tLocked.activeLabel}
+          locale={locale}
         />
-        <FlightHudWidget onboarding={onboarding} />
+        <FlightHudWidget onboarding={onboarding} locale={locale} />
       </>
     )
   }

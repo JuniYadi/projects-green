@@ -9,6 +9,7 @@ import { useParams, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   Card,
@@ -48,9 +49,10 @@ const AUDIT_STATUSES = ["OK", "FAILED", "STARTED", "PENDING"]
 export default function ConsoleWhatsAppAuditLogsPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const tLocked = messages.console.whatsapp.onboarding.lockedFeatures.auditLogs
   const searchParams = useSearchParams()
-  const onboarding = useWhatsAppOnboarding()
-
+  const onboarding = useWhatsAppOnboarding({ locale })
   const [logs, setLogs] = React.useState<AuditLogDTO[]>([])
   const [page, setPage] = React.useState(Number(searchParams.get("page")) || 1)
   const [total, setTotal] = React.useState(0)
@@ -152,14 +154,15 @@ export default function ConsoleWhatsAppAuditLogsPage() {
     return (
       <>
         <LockedFeatureTeaser
-          featureTitle="Enterprise Audit Trail"
-          featureDescription="Immutable forensic compliance log tracking all template syncs, device callbacks, message transmissions, and security actions."
+          featureTitle={tLocked.title}
+          featureDescription={tLocked.description}
           unlockLevel={3}
-          prerequisiteDescription="Send your first message and approve a template to unlock enterprise audit trails."
+          prerequisiteDescription={tLocked.prerequisite}
           activeMissionHref="/console/whatsapp/messages"
-          activeMissionLabel="Complete Active Mission"
+          activeMissionLabel={tLocked.activeLabel}
+          locale={locale}
         />
-        <FlightHudWidget onboarding={onboarding} />
+        <FlightHudWidget onboarding={onboarding} locale={locale} />
       </>
     )
   }

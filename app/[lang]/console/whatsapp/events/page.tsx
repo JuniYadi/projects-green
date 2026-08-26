@@ -70,6 +70,7 @@ export default function WhatsAppWebhookEventsPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
+  const tLocked = messages.console.whatsapp.onboarding.lockedFeatures.events
   const loadErrorMsg = messages.console.whatsapp.events.loadError
   const basePath = localizePathname({
     pathname: "/console/whatsapp/events",
@@ -94,7 +95,7 @@ export default function WhatsAppWebhookEventsPage() {
   const [filters, setFilters] =
     React.useState<WebhookEventFilterState>(DEFAULT_FILTER_STATE)
   const [page, setPage] = React.useState(1)
-  const onboarding = useWhatsAppOnboarding()
+  const onboarding = useWhatsAppOnboarding({ locale })
 
   // ── Load devices on mount ────────────────────────────────────────────────
 
@@ -180,14 +181,15 @@ export default function WhatsAppWebhookEventsPage() {
     return (
       <>
         <LockedFeatureTeaser
-          featureTitle="Raw Event Stream"
-          featureDescription="Real-time telemetry log tracking raw Meta webhook events and processing states across connected devices."
+          featureTitle={tLocked.title}
+          featureDescription={tLocked.description}
           unlockLevel={3}
-          prerequisiteDescription="Send your first message and approve a template to unlock raw event telemetry."
+          prerequisiteDescription={tLocked.prerequisite}
           activeMissionHref="/console/whatsapp/messages"
-          activeMissionLabel="Complete Active Mission"
+          activeMissionLabel={tLocked.activeLabel}
+          locale={locale}
         />
-        <FlightHudWidget onboarding={onboarding} />
+        <FlightHudWidget onboarding={onboarding} locale={locale} />
       </>
     )
   }

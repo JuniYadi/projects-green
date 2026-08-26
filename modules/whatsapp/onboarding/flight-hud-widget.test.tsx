@@ -1,5 +1,5 @@
-import { describe, expect, it, mock } from "bun:test"
-import { fireEvent, render } from "@testing-library/react"
+import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { cleanup, fireEvent, render } from "@testing-library/react"
 import { FlightHudWidget } from "./flight-hud-widget"
 import type { WhatsAppOnboardingState } from "./use-whatsapp-onboarding"
 
@@ -41,6 +41,10 @@ const mockState: WhatsAppOnboardingState = {
 }
 
 describe("FlightHudWidget", () => {
+  beforeEach(() => {
+    cleanup()
+  })
+
   it("renders the onboarding guide pill", () => {
     const view = render(<FlightHudWidget onboarding={mockState} />)
     expect(view.getByText("Onboarding Guide")).toBeInTheDocument()
@@ -50,8 +54,33 @@ describe("FlightHudWidget", () => {
   it("renders Indonesian HUD controls for the supplied locale", () => {
     const view = render(<FlightHudWidget onboarding={mockState} locale="id" />)
 
-    fireEvent.click(view.getByText("Onboarding Guide"))
+    expect(view.getByText("Panduan Penyiapan")).toBeInTheDocument()
+    fireEvent.click(view.getByText("Panduan Penyiapan"))
 
     expect(view.getByText("Butuh Bantuan?")).toBeInTheDocument()
+  })
+
+  it("renders localized Lv 0 (Tower) when level is 0_pending in English", () => {
+    const pendingState: WhatsAppOnboardingState = {
+      ...mockState,
+      level: "0_pending",
+    }
+    const view = render(
+      <FlightHudWidget onboarding={pendingState} locale="en" />
+    )
+    fireEvent.click(view.getByText("Onboarding Guide"))
+    expect(view.getByText("Lv 0 (Tower)")).toBeInTheDocument()
+  })
+
+  it("renders localized Lv 0 (Verifikasi) when level is 0_pending in Indonesian", () => {
+    const pendingState: WhatsAppOnboardingState = {
+      ...mockState,
+      level: "0_pending",
+    }
+    const view = render(
+      <FlightHudWidget onboarding={pendingState} locale="id" />
+    )
+    fireEvent.click(view.getByText("Panduan Penyiapan"))
+    expect(view.getByText("Lv 0 (Verifikasi)")).toBeInTheDocument()
   })
 })

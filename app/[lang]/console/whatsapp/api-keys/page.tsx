@@ -1,26 +1,33 @@
 "use client"
 
-import * as React from "react"
+import { useParams } from "next/navigation"
 import { WhatsappOrganizationApiKeySelfService } from "@/modules/whatsapp/organization-api-keys/ui/organization-api-key-self-service"
 import { useWhatsAppOnboarding } from "@/modules/whatsapp/onboarding/use-whatsapp-onboarding"
 import { LockedFeatureTeaser } from "@/modules/whatsapp/onboarding/locked-feature-teaser"
 import { FlightHudWidget } from "@/modules/whatsapp/onboarding/flight-hud-widget"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export default function ConsoleWhatsAppApiKeysPage() {
-  const onboarding = useWhatsAppOnboarding()
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const tLocked = messages.console.whatsapp.onboarding.lockedFeatures.apiKeys
+  const onboarding = useWhatsAppOnboarding({ locale })
 
   if (onboarding.isFeatureLocked("api_keys")) {
     return (
       <>
         <LockedFeatureTeaser
-          featureTitle="Production API Keys"
-          featureDescription="Create, scope, and rotate programmatic API keys for server-to-server WhatsApp messaging and automated integrations."
+          featureTitle={tLocked.title}
+          featureDescription={tLocked.description}
           unlockLevel={3}
-          prerequisiteDescription="Send your first message and approve a template to unlock automated API keys and developer tools."
+          prerequisiteDescription={tLocked.prerequisite}
           activeMissionHref="/console/whatsapp/messages"
-          activeMissionLabel="Complete Active Mission"
+          activeMissionLabel={tLocked.activeLabel}
+          locale={locale}
         />
-        <FlightHudWidget onboarding={onboarding} />
+        <FlightHudWidget onboarding={onboarding} locale={locale} />
       </>
     )
   }

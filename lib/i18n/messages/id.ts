@@ -930,6 +930,181 @@ export const idMessages: AppMessages = {
       },
     },
     whatsapp: {
+      onboarding: {
+        missions: {
+          subscribe: {
+            title: "Aktifkan Paket WhatsApp",
+            subtitle: "Mulai Penyiapan",
+            description:
+              "Aktifkan layanan untuk memulai pendaftaran nomor dan perangkat WhatsApp Business Anda.",
+            actionLabel: "Pilih Paket",
+          },
+          transponderDevices: {
+            title: "Alokasi Nomor & Perangkat",
+            subtitle: "Verifikasi Admin",
+            description:
+              "Admin sedang memverifikasi kredensial dan menyiapkan nomor Meta WABA Anda.",
+            actionLabel: "Lihat Status Perangkat",
+          },
+          firstMessage: {
+            title: "Kirim Pesan Pertama",
+            subtitle: "Uji Pengiriman",
+            description:
+              "Buka ruang pesan untuk mengirimkan pesan WhatsApp uji coba ke nomor tujuan.",
+            actionLabel: "Buka Pesan",
+          },
+          template: {
+            title: "Buat & Setujui Template Pesan",
+            subtitle: "Kesiapan Siaran",
+            description:
+              "Buat template pemasaran atau utilitas untuk membuka fitur siaran massal dan katalog.",
+            actionLabel: "Buat Template",
+          },
+          apiKey: {
+            title: "Buat API Key Produksi",
+            subtitle: "Otomasi Integrasi",
+            description:
+              "Buat kredensial otomatis dan hubungkan webhook untuk integrasi menyeluruh.",
+            actionLabel: "Buat API Key",
+          },
+          completed: {
+            title: "Semua Penyiapan Selesai",
+            subtitle: "Siap Produksi",
+            description:
+              "Semua tahapan penyiapan awal WhatsApp telah selesai. Akun Anda siap digunakan untuk produksi.",
+            actionLabel: "Buka Dasbor",
+          },
+        },
+        levels: {
+          groundControl: "Level 0 • Mulai Penyiapan",
+          towerClearancePending: "Level 0 • Menunggu Verifikasi Perangkat",
+          level0Pending: "Lv 0 (Verifikasi)",
+          transponderActive: "Level 1 • Perangkat Aktif",
+          flightOperations: "Level 2 • Operasional Pesan",
+          fullCockpitMaster: "Level 3 • Otomasi Penuh",
+          levelPrefix: "Level {level}",
+        },
+        hud: {
+          flightDeckHud: "Panduan Penyiapan",
+          flightReadiness: "Kesiapan Sistem",
+          collapseHud: "Ciutkan Panduan",
+          closeHud: "Tutup HUD",
+          closeGuide: "Tutup Panduan",
+          needHelp: "Butuh Bantuan?",
+          stepOf: "Langkah {step} dari {total}",
+          setupFinished: "Penyiapan Selesai (Semua Langkah Tuntas)",
+          prevStep: "Langkah sebelumnya",
+          nextStep: "Langkah berikutnya",
+          checklist: "Daftar Periksa",
+          viewing: "Dilihat",
+          replay: "Ulangi",
+          readyForProduction: "Siap untuk Produksi • Selesai",
+          allOnboardingComplete: "Semua Penyiapan Selesai",
+          onboardingGuide: "Panduan Penyiapan",
+          dismissedToast:
+            "Panduan penyiapan disembunyikan. Anda dapat membukanya kembali kapan saja dari dasbor.",
+          showOnboardingGuide: "Tampilkan Panduan Penyiapan",
+          subscribePlan: "Pilih Paket",
+        },
+        commandCenter: {
+          flightReadiness: "Kesiapan Penyiapan",
+          skipTutorial: "Lewati Panduan",
+          exploreQuotas: "Lihat Kuota",
+          planSubscribed: "Paket Aktif",
+          planSubscribedDesc: "Paket WhatsApp telah dialokasikan",
+          adminReview: "Tinjauan Admin",
+          cockpitLive: "Layanan Aktif",
+          roadmapTitle: "Alur Penyiapan WhatsApp",
+          roadmapSubtitle: "Kemajuan membuka akses tab dan fitur lanjutan",
+          planTitle: "1. Langganan Paket",
+          planDesc: "Aktifkan paket bisnis WhatsApp.",
+          planUnlocked: "✓ Terbuka",
+          planPending: "Perlu Tindakan",
+          deviceTitle: "2. Perangkat WhatsApp",
+          deviceDesc: "Hubungkan nomor WhatsApp Meta yang aktif.",
+          deviceUnlocked: "✓ Pesan & Kontak Terbuka",
+          deviceLocked: "Membuka Pesan & Kontak",
+          opsTitle: "3. Operasional & Siaran",
+          opsDesc: "Kirim pesan pertama dan buat template.",
+          opsUnlocked: "✓ Siaran & Katalog Terbuka",
+          opsLocked: "Membuka Siaran & Katalog",
+          telemetryTitle: "4. API & Telemetri",
+          telemetryDesc: "Buat API Key & Webhook.",
+          telemetryUnlocked: "✓ Otomasi Penuh",
+          telemetryLocked: "Membuka Log & Telemetri Lengkap",
+          pendingTitle: "Verifikasi Perangkat Sedang Berlangsung",
+          pendingDescription:
+            "Langganan Anda aktif! Admin platform sedang menyiapkan dan menghubungkan nomor WhatsApp Business Meta Anda.",
+          wabaRegistration: "Pendaftaran nomor WABA",
+          level1Ready: "Level 1 siap digunakan",
+          checkPendingDetails:
+            "Ingin memeriksa detail perangkat yang masih tertunda?",
+          viewDevicesTab: "Lihat Tab Perangkat",
+        },
+        lockedFeature: {
+          lockedTitle: "Fitur Terkunci • Level {level}",
+          unlockPrerequisite: "Syarat Pembukaan",
+          defaultActiveLabel: "Selesaikan Misi Aktif",
+        },
+        lockedFeatures: {
+          apiKeys: {
+            title: "API Key Produksi",
+            description:
+              "Buat, atur cakupan, dan rotasi API key untuk pengiriman pesan WhatsApp server-ke-server dan integrasi otomatis.",
+            prerequisite:
+              "Kirim pesan pertama dan setujui template untuk membuka API key otomatis serta alat pengembang.",
+            activeLabel: "Selesaikan Misi Aktif",
+          },
+          auditLogs: {
+            title: "Jejak Audit Enterprise",
+            description:
+              "Log kepatuhan forensik untuk melacak sinkronisasi template, callback perangkat, transmisi pesan, dan tindakan keamanan.",
+            prerequisite:
+              "Kirim pesan pertama dan setujui template untuk membuka jejak audit enterprise.",
+            activeLabel: "Selesaikan Misi Aktif",
+          },
+          broadcasts: {
+            title: "Kampanye Siaran",
+            description:
+              "Kirim pesan WhatsApp yang dipersonalisasi ke banyak penerima secara bersamaan lengkap dengan pelacakan dan analitik pengiriman.",
+            prerequisite:
+              "Kirim pesan pertama dan setujui template untuk membuka operasi siaran massal.",
+            activeLabel: "Kirim Pesan Uji Coba",
+          },
+          catalogs: {
+            title: "Katalog & Niaga WhatsApp",
+            description:
+              "Tampilkan koleksi produk interaktif, keranjang belanja, dan inventaris langsung di dalam percakapan WhatsApp.",
+            prerequisite:
+              "Kirim pesan pertama dan setujui template untuk membuka fitur katalog niaga.",
+            activeLabel: "Kirim Pesan Uji Coba",
+          },
+          events: {
+            title: "Aliran Data Event Mentah",
+            description:
+              "Log telemetri langsung yang melacak event webhook Meta mentah dan status pemrosesan di seluruh perangkat yang terhubung.",
+            prerequisite:
+              "Kirim pesan pertama dan setujui template untuk membuka telemetri event mentah.",
+            activeLabel: "Selesaikan Misi Aktif",
+          },
+          pricing: {
+            title: "Harga, Kuota & Buku Kas",
+            description:
+              "Rincian biaya percakapan, pemotongan saldo, isi ulang kuota, dan buku besar audit transaksi.",
+            prerequisite:
+              "Kirim pesan pertama dan setujui template untuk membuka buku kas transaksi rinci.",
+            activeLabel: "Selesaikan Misi Aktif",
+          },
+          webhookLogs: {
+            title: "Radar Event Webhook",
+            description:
+              "Pantau pengiriman webhook masuk secara langsung, antrean coba lagi, dead letter, dan payload callback status Meta.",
+            prerequisite:
+              "Kirim pesan pertama dan setujui template untuk membuka radar pengembang dan log webhook.",
+            activeLabel: "Selesaikan Misi Aktif",
+          },
+        },
+      },
       dashboard: {
         heading: "Dasbor WhatsApp",
         description:

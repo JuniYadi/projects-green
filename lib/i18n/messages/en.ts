@@ -926,6 +926,181 @@ export const enMessages: AppMessages = {
       },
     },
     whatsapp: {
+      onboarding: {
+        missions: {
+          subscribe: {
+            title: "Subscribe to WhatsApp Plan",
+            subtitle: "Ground Control",
+            description:
+              "Activate your WhatsApp Business tier to unlock transponder registration and device allocation.",
+            actionLabel: "Subscribe Plan",
+          },
+          transponderDevices: {
+            title: "Transponder Hardware Allocation",
+            subtitle: "Tower Clearance",
+            description:
+              "Admin is verifying credentials and provisioning your Meta WABA device number.",
+            actionLabel: "View Devices Status",
+          },
+          firstMessage: {
+            title: "Transmit First Message",
+            subtitle: "Payload Ignition",
+            description:
+              "Open the live communicator to send your first WhatsApp message to a test recipient.",
+            actionLabel: "Open Messages",
+          },
+          template: {
+            title: "Draft & Approve Message Template",
+            subtitle: "Broadcast Readiness",
+            description:
+              "Create a high-impact marketing or utility template to unlock bulk broadcasts and catalogs.",
+            actionLabel: "Create Template",
+          },
+          apiKey: {
+            title: "Generate Production API Key",
+            subtitle: "Full Cockpit Automation",
+            description:
+              "Issue automated credentials and subscribe webhooks for end-to-end integration.",
+            actionLabel: "Generate API Key",
+          },
+          completed: {
+            title: "All Onboarding Complete",
+            subtitle: "Ready for Production",
+            description:
+              "All WhatsApp setup milestones are complete. Your account is ready for production.",
+            actionLabel: "Open Dashboard",
+          },
+        },
+        levels: {
+          groundControl: "Level 0 • Ground Control",
+          towerClearancePending: "Level 0 • Tower Clearance Pending",
+          level0Pending: "Lv 0 (Tower)",
+          transponderActive: "Level 1 • Transponder Active",
+          flightOperations: "Level 2 • Flight Operations",
+          fullCockpitMaster: "Level 3 • Full Cockpit Master",
+          levelPrefix: "Level {level}",
+        },
+        hud: {
+          flightDeckHud: "Flight Deck HUD",
+          flightReadiness: "Flight Readiness",
+          collapseHud: "Collapse HUD",
+          closeHud: "Close HUD",
+          closeGuide: "Close Guide",
+          needHelp: "Need Help?",
+          stepOf: "Step {step} of {total}",
+          setupFinished: "Setup Finished (All Milestones Done)",
+          prevStep: "Previous step",
+          nextStep: "Next step",
+          checklist: "Checklist",
+          viewing: "Viewing",
+          replay: "Replay",
+          readyForProduction: "Ready for Production • Done",
+          allOnboardingComplete: "All Onboarding Complete",
+          onboardingGuide: "Onboarding Guide",
+          dismissedToast:
+            "Onboarding guide dismissed. You can reopen it anytime from the dashboard.",
+          showOnboardingGuide: "Show Onboarding Guide",
+          subscribePlan: "Subscribe Plan",
+        },
+        commandCenter: {
+          flightReadiness: "Flight Readiness",
+          skipTutorial: "Skip Tutorial",
+          exploreQuotas: "Explore Quotas",
+          planSubscribed: "Plan Subscribed",
+          planSubscribedDesc: "Active WhatsApp tier allocated",
+          adminReview: "Admin Review",
+          cockpitLive: "Cockpit Live",
+          roadmapTitle: "Mission Flight Roadmap",
+          roadmapSubtitle: "Progression unlocks advanced cockpit tabs",
+          planTitle: "1. Plan Subscription",
+          planDesc: "Activate WhatsApp business tier.",
+          planUnlocked: "✓ Unlocked",
+          planPending: "Pending Action",
+          deviceTitle: "2. Device Transponder",
+          deviceDesc: "Connect active Meta WhatsApp number.",
+          deviceUnlocked: "✓ Messages & Contacts Unlocked",
+          deviceLocked: "Unlocks Messages & Contacts",
+          opsTitle: "3. Operations & Broadcasts",
+          opsDesc: "Send 1st message and create template.",
+          opsUnlocked: "✓ Broadcasts & Catalogs Unlocked",
+          opsLocked: "Unlocks Broadcasts & Catalogs",
+          telemetryTitle: "4. Radar & Telemetry",
+          telemetryDesc: "Generate API Keys & Webhooks.",
+          telemetryUnlocked: "✓ Full Cockpit Master",
+          telemetryLocked: "Unlocks Logs & Full Telemetry",
+          pendingTitle: "Transponder Verification in Progress",
+          pendingDescription:
+            "Your subscription is active! Platform admins are currently provisioning and linking your Meta WhatsApp Business number.",
+          wabaRegistration: "WABA number registration",
+          level1Ready: "Level 1 ready for take-off",
+          checkPendingDetails:
+            "Want to check your pending transponder hardware details?",
+          viewDevicesTab: "View Devices Tab",
+        },
+        lockedFeature: {
+          lockedTitle: "Locked Cockpit Feature • Level {level}",
+          unlockPrerequisite: "Unlock Prerequisite",
+          defaultActiveLabel: "Complete Active Mission",
+        },
+        lockedFeatures: {
+          apiKeys: {
+            title: "Production API Keys",
+            description:
+              "Create, scope, and rotate programmatic API keys for server-to-server WhatsApp messaging and automated integrations.",
+            prerequisite:
+              "Send your first message and approve a template to unlock automated API keys and developer tools.",
+            activeLabel: "Complete Active Mission",
+          },
+          auditLogs: {
+            title: "Enterprise Audit Trail",
+            description:
+              "Immutable forensic compliance log tracking all template syncs, device callbacks, message transmissions, and security actions.",
+            prerequisite:
+              "Send your first message and approve a template to unlock enterprise audit trails.",
+            activeLabel: "Complete Active Mission",
+          },
+          broadcasts: {
+            title: "Broadcast Campaigns",
+            description:
+              "Send personalized WhatsApp messages to bulk recipient audiences simultaneously with tracking and delivery analytics.",
+            prerequisite:
+              "Send your first message and approve a template to unlock bulk broadcast operations.",
+            activeLabel: "Send Test Message",
+          },
+          catalogs: {
+            title: "WhatsApp Catalogs & Commerce",
+            description:
+              "Showcase interactive product collections, carts, and commerce inventory directly inside WhatsApp conversations.",
+            prerequisite:
+              "Send your first message and approve a template to unlock commerce catalog tools.",
+            activeLabel: "Send Test Message",
+          },
+          events: {
+            title: "Raw Event Stream",
+            description:
+              "Real-time telemetry log tracking raw Meta webhook events and processing states across connected devices.",
+            prerequisite:
+              "Send your first message and approve a template to unlock raw event telemetry.",
+            activeLabel: "Complete Active Mission",
+          },
+          pricing: {
+            title: "Pricing, Quotas & Ledger",
+            description:
+              "Granular conversation costing breakdown, balance deductions, top-ups, and transaction audit ledger.",
+            prerequisite:
+              "Send your first message and approve a template to unlock granular ledger billing.",
+            activeLabel: "Complete Active Mission",
+          },
+          webhookLogs: {
+            title: "Webhook Event Radar",
+            description:
+              "Inspect real-time inbound webhook deliveries, dead letters, retry queues, and Meta status callback payloads.",
+            prerequisite:
+              "Send your first message and approve a template to unlock developer radar and webhook logs.",
+            activeLabel: "Complete Active Mission",
+          },
+        },
+      },
       dashboard: {
         heading: "WhatsApp Dashboard",
         description:

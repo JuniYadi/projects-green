@@ -1,7 +1,11 @@
 "use client"
 
 import * as React from "react"
+import { useParams } from "next/navigation"
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+
 export type WhatsAppFeature =
   | "devices"
   | "messages"
@@ -54,6 +58,7 @@ export type WhatsAppOnboardingInput = {
   messageCount?: number
   apiKeyCount?: number
   bypassGating?: boolean
+  locale?: string
 }
 
 const GRADUATED_STORAGE_KEY = "whatsapp_onboarding_graduated"
@@ -107,6 +112,11 @@ export function computeOnboardingLevel(
 export function useWhatsAppOnboarding(
   input: WhatsAppOnboardingInput = {}
 ): WhatsAppOnboardingState {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(input.locale ?? params?.lang)
+  const messages = getMessages(locale)
+  const obMessages = messages.console.whatsapp.onboarding.missions
+
   const [manualGraduated, setManualGraduated] = React.useState<boolean>(() => {
     if (input.bypassGating) return true
     if (typeof window === "undefined") return false
@@ -218,56 +228,65 @@ export function useWhatsAppOnboarding(
     return [
       {
         level: 0,
-        title: "Subscribe to WhatsApp Plan",
-        subtitle: "Ground Control",
-        description:
-          "Activate your WhatsApp Business tier to unlock transponder registration and device allocation.",
-        actionLabel: "Subscribe Plan",
+        title: obMessages.subscribe.title,
+        subtitle: obMessages.subscribe.subtitle,
+        description: obMessages.subscribe.description,
+        actionLabel: obMessages.subscribe.actionLabel,
         isActionDialog: true,
         completed: hasSubscription || hasDevice,
       },
       {
         level: "0_pending",
-        title: "Transponder Hardware Allocation",
-        subtitle: "Tower Clearance",
-        description:
-          "Admin is verifying credentials and provisioning your Meta WABA device number.",
-        actionLabel: "View Devices Status",
-        actionHref: "/console/whatsapp/devices",
+        title: obMessages.transponderDevices.title,
+        subtitle: obMessages.transponderDevices.subtitle,
+        description: obMessages.transponderDevices.description,
+        actionLabel: obMessages.transponderDevices.actionLabel,
+        actionHref: localizePathname({
+          pathname: "/console/whatsapp/devices",
+          locale,
+        }),
         completed: hasDevice,
       },
       {
         level: 1,
-        title: "Transmit First Message",
-        subtitle: "Payload Ignition",
-        description:
-          "Open the live communicator to send your first WhatsApp message to a test recipient.",
-        actionLabel: "Open Messages",
-        actionHref: "/console/whatsapp/messages",
+        title: obMessages.firstMessage.title,
+        subtitle: obMessages.firstMessage.subtitle,
+        description: obMessages.firstMessage.description,
+        actionLabel: obMessages.firstMessage.actionLabel,
+        actionHref: localizePathname({
+          pathname: "/console/whatsapp/messages",
+          locale,
+        }),
         completed: hasMessage,
       },
       {
         level: 2,
-        title: "Draft & Approve Message Template",
-        subtitle: "Broadcast Readiness",
-        description:
-          "Create a high-impact marketing or utility template to unlock bulk broadcasts and catalogs.",
-        actionLabel: "Create Template",
-        actionHref: "/console/whatsapp/templates/new",
+        title: obMessages.template.title,
+        subtitle: obMessages.template.subtitle,
+        description: obMessages.template.description,
+        actionLabel: obMessages.template.actionLabel,
+        actionHref: localizePathname({
+          pathname: "/console/whatsapp/templates/new",
+          locale,
+        }),
         completed: hasTemplate,
       },
       {
         level: 3,
-        title: "Generate Production API Key",
-        subtitle: "Full Cockpit Automation",
-        description:
-          "Issue automated credentials and subscribe webhooks for end-to-end integration.",
-        actionLabel: "Generate API Key",
-        actionHref: "/console/whatsapp/api-keys",
+        title: obMessages.apiKey.title,
+        subtitle: obMessages.apiKey.subtitle,
+        description: obMessages.apiKey.description,
+        actionLabel: obMessages.apiKey.actionLabel,
+        actionHref: localizePathname({
+          pathname: "/console/whatsapp/api-keys",
+          locale,
+        }),
         completed: hasApiKey || isGraduated,
       },
     ]
   }, [
+    obMessages,
+    locale,
     hasSubscription,
     hasDevice,
     hasMessage,
@@ -295,17 +314,21 @@ export function useWhatsAppOnboarding(
     if (!hasApiKey && !isGraduated) return missions[4]
     return {
       level: 3 as OnboardingLevel,
-      title: "All Steps Completed!",
-      subtitle: "Setup Ready",
-      description:
-        "You have completed all initial onboarding milestones. You can click any step below to replay its guide anytime.",
-      actionLabel: "View Messages",
-      actionHref: "/console/whatsapp/messages",
+      title: obMessages.completed.title,
+      subtitle: obMessages.completed.subtitle,
+      description: obMessages.completed.description,
+      actionLabel: obMessages.completed.actionLabel,
+      actionHref: localizePathname({
+        pathname: "/console/whatsapp/messages",
+        locale,
+      }),
       completed: true,
     }
   }, [
     replayLevel,
     missions,
+    obMessages,
+    locale,
     hasSubscription,
     hasDevice,
     hasMessage,

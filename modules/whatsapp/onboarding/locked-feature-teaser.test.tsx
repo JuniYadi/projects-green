@@ -19,4 +19,24 @@ describe("LockedFeatureTeaser", () => {
     expect(view.getByText(/Level 2/i)).toBeInTheDocument()
     expect(view.getByText("Open Messages")).toBeInTheDocument()
   })
+
+  it("renders Indonesian copy and localizes the mission link", () => {
+    const view = render(
+      <LockedFeatureTeaser
+        featureTitle="API Key Produksi"
+        featureDescription="Buat dan kelola API key untuk integrasi WhatsApp."
+        unlockLevel={2}
+        prerequisiteDescription="Kirim pesan pertama dan setujui template."
+        activeMissionHref="/console/whatsapp/messages"
+        locale="id"
+      />
+    )
+
+    expect(view.getByText("Fitur Terkunci • Level 2")).toBeInTheDocument()
+    expect(view.getByText("Syarat Pembukaan")).toBeInTheDocument()
+    expect(view.getByText("Selesaikan Misi Aktif")).toBeInTheDocument()
+    expect(
+      view.getByRole("link", { name: "Selesaikan Misi Aktif" })
+    ).toHaveAttribute("href", "/id/console/whatsapp/messages")
+  })
 })

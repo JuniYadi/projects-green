@@ -19,7 +19,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { ServiceOrderDialog } from "@/components/billing/service-order-dialog"
-import { getWhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
 import type { WhatsAppOnboardingState } from "./use-whatsapp-onboarding"
 
 export type FlightHudWidgetProps = {
@@ -34,7 +35,10 @@ export function FlightHudWidget({
   locale: suppliedLocale,
 }: FlightHudWidgetProps) {
   const params = useParams<{ lang?: string }>()
-  const locale = suppliedLocale ?? params?.lang
+  const locale = resolveLocaleOrDefault(suppliedLocale ?? params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.console.whatsapp.onboarding.hud
+  const tLevels = messages.console.whatsapp.onboarding.levels
   const HUD_STORAGE_KEY = "whatsapp_onboarding_hud_closed"
   const [isDismissed, setIsDismissed] = React.useState<boolean>(() => {
     if (typeof window === "undefined") return false
@@ -60,14 +64,17 @@ export function FlightHudWidget({
     } else {
       setIsInternalOrderOpen(true)
     }
-  }, [onSubscribeClick])
+  }, [onSubscribeClick, setIsInternalOrderOpen])
 
   if (isDismissed) {
     return null
   }
   const { activeMission, progressPercent, missions, level } = onboarding
 
-  const levelDisplay = level === "0_pending" ? "Lv 0 (Tower)" : `Level ${level}`
+  const levelDisplay =
+    level === "0_pending"
+      ? tLevels.level0Pending
+      : tLevels.levelPrefix.replace("{level}", String(level))
 
   return (
     <div className="fixed right-6 bottom-6 z-40 hidden md:block">
@@ -81,7 +88,7 @@ export function FlightHudWidget({
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold tracking-wider text-primary uppercase">
-                    Flight Deck HUD
+                    {t.flightDeckHud}
                   </span>
                   <Badge
                     variant="outline"
@@ -91,7 +98,7 @@ export function FlightHudWidget({
                   </Badge>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  {progressPercent}% flight readiness
+                  {progressPercent}% {t.flightReadiness.toLowerCase()}
                 </p>
               </div>
             </div>
@@ -101,7 +108,7 @@ export function FlightHudWidget({
                 size="icon"
                 className="size-6 text-muted-foreground hover:text-foreground"
                 onClick={() => setIsExpanded(false)}
-                title="Collapse HUD"
+                title={t.collapseHud}
               >
                 <CaretDown className="size-3.5" />
               </Button>
@@ -110,7 +117,7 @@ export function FlightHudWidget({
                 size="icon"
                 className="size-6 text-muted-foreground hover:text-foreground"
                 onClick={handleDismiss}
-                title={getWhatsAppText("s391", locale)}
+                title={t.closeHud}
               >
                 <X className="size-3.5" />
               </Button>
@@ -122,10 +129,28 @@ export function FlightHudWidget({
               <span className="flex items-center gap-1.5 font-bold text-primary">
                 <Sparkle className="size-3.5" weight="fill" />
                 {onboarding.replayLevel !== null
-                  ? `Step ${missions.findIndex((m) => m.level === activeMission.level) + 1} of ${missions.length}`
+                  ? t.stepOf
+                      .replace(
+                        "{step}",
+                        String(
+                          missions.findIndex(
+                            (m) => m.level === activeMission.level
+                          ) + 1
+                        )
+                      )
+                      .replace("{total}", String(missions.length))
                   : activeMission.completed
-                    ? "Setup Finished (All Milestones Done)"
-                    : `Step ${missions.findIndex((m) => m.level === activeMission.level) + 1} of ${missions.length}`}
+                    ? t.setupFinished
+                    : t.stepOf
+                        .replace(
+                          "{step}",
+                          String(
+                            missions.findIndex(
+                              (m) => m.level === activeMission.level
+                            ) + 1
+                          )
+                        )
+                        .replace("{total}", String(missions.length))}
               </span>
               <div className="flex items-center gap-1">
                 <button
@@ -139,7 +164,7 @@ export function FlightHudWidget({
                     onboarding.setReplayLevel(missions[prevIdx].level)
                   }}
                   className="flex size-5 items-center justify-center rounded-md border bg-background text-xs font-bold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  title="Previous step"
+                  title={t.prevStep}
                 >
                   ‹
                 </button>
@@ -158,7 +183,7 @@ export function FlightHudWidget({
                     onboarding.setReplayLevel(missions[nextIdx].level)
                   }}
                   className="flex size-5 items-center justify-center rounded-md border bg-background text-xs font-bold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  title="Next step"
+                  title={t.nextStep}
                 >
                   ›
                 </button>
@@ -224,7 +249,7 @@ export function FlightHudWidget({
 
             <div className="space-y-2">
               <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                Checklist
+                {t.checklist}
               </span>
               <div className="space-y-1.5">
                 {missions.map((m, idx) => {
@@ -278,7 +303,7 @@ export function FlightHudWidget({
                               : "border-border/60 text-muted-foreground group-hover:text-foreground"
                           }`}
                         >
-                          {isCurrentActive ? "Viewing" : "Replay"}
+                          {isCurrentActive ? t.viewing : t.replay}
                         </Badge>
                       ) : null}
                     </button>
@@ -307,8 +332,8 @@ export function FlightHudWidget({
                     )}
                     <span className="font-semibold tracking-tight text-foreground">
                       {progressPercent === 100
-                        ? "Ready for Production • Done"
-                        : "All Onboarding Complete"}
+                        ? t.readyForProduction
+                        : t.allOnboardingComplete}
                     </span>
                   </div>
                   <Badge
@@ -329,20 +354,21 @@ export function FlightHudWidget({
                 onClick={() => {
                   onboarding.graduateNow()
                   handleDismiss()
-                  toast.success(
-                    "Onboarding guide dismissed. You can reopen it anytime from the dashboard."
-                  )
+                  toast.success(t.dismissedToast)
                 }}
                 className="text-muted-foreground transition-colors hover:text-foreground hover:underline"
               >
-                {getWhatsAppText("s392", locale)}
+                {t.closeGuide}
               </button>
               <Link
-                href="/console/support-tickets"
+                href={localizePathname({
+                  pathname: "/console/support-tickets",
+                  locale,
+                })}
                 className="flex items-center gap-1 font-medium text-muted-foreground transition-colors hover:text-foreground hover:underline"
               >
                 <Lifebuoy className="size-3.5" />
-                {getWhatsAppText("s393", locale)}
+                {t.needHelp}
               </Link>
             </div>
           </CardContent>
@@ -359,7 +385,7 @@ export function FlightHudWidget({
             <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
           </div>
           <span className="font-semibold text-foreground">
-            {progressPercent === 100 ? "Onboarding Guide" : "Onboarding Guide"}
+            {t.onboardingGuide}
           </span>
           <Badge
             variant={progressPercent === 100 ? "default" : "secondary"}

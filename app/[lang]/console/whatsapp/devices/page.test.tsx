@@ -55,6 +55,26 @@ mock.module("@/lib/api/whatsapp-client", () => ({
     },
   },
 }))
+mock.module("@/lib/eden", () => ({
+  eden: {
+    api: {
+      whatsapp: {
+        onboarding: {
+          status: {
+            get: mock(() =>
+              Promise.resolve({
+                data: {
+                  ok: true,
+                  data: { hasSubscription: false },
+                },
+              })
+            ),
+          },
+        },
+      },
+    },
+  },
+}))
 
 mock.module("@/components/billing/service-order-dialog", () => ({
   ServiceOrderDialog: (props: { open: boolean }) =>
