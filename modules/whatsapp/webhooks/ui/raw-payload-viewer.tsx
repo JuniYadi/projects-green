@@ -6,6 +6,7 @@
  */
 
 "use client"
+import { getWhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import { useCallback, useState } from "react"
 import { CopySimple, CheckCircle } from "@phosphor-icons/react"
@@ -57,7 +58,7 @@ export function RawPayloadViewer({
             handleCopy()
           }}
           className="shrink-0"
-          aria-label="Copy payload to clipboard"
+          aria-label={getWhatsAppText("s281")}
         >
           {copied ? (
             <CheckCircle className="size-3.5 text-emerald-500" />

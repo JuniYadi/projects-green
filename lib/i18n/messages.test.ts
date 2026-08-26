@@ -26,5 +26,8 @@ describe("i18n messages", () => {
     expect(Object.keys(idMessages.console.billing.balanceGate).sort()).toEqual(
       Object.keys(enMessages.console.billing.balanceGate).sort()
     )
+    expect(Object.keys(idMessages.indonesianLocale).sort()).toEqual(
+      Object.keys(enMessages.indonesianLocale).sort()
+    )
   })
 })

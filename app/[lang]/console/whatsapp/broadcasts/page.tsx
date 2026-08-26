@@ -18,6 +18,7 @@ import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { type ColumnDef } from "@tanstack/react-table"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { getMessages } from "@/lib/i18n/messages"
 import {
   whatsappClient,
   type Broadcast,
@@ -40,6 +41,7 @@ export default function WhatsAppBroadcastsPage() {
   const router = useRouter()
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const t = getMessages(locale).console.whatsapp.broadcasts
   const basePath = localizePathname({
     pathname: "/console/whatsapp/broadcasts",
     locale,
@@ -53,13 +55,11 @@ export default function WhatsAppBroadcastsPage() {
     try {
       setBroadcasts(await whatsappClient.listBroadcasts())
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unable to load broadcasts"
-      )
+      toast.error(error instanceof Error ? error.message : t.list.loadError)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t.list.loadError])
 
   React.useEffect(() => {
     ;(async () => {
@@ -74,31 +74,31 @@ export default function WhatsAppBroadcastsPage() {
         toast.success(message)
         await loadBroadcasts()
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Unable to send broadcast"
-        )
+        toast.error(error instanceof Error ? error.message : t.list.sendError)
       }
     },
-    [loadBroadcasts]
+    [loadBroadcasts, t.list.sendError]
   )
 
   const handleDelete = React.useCallback(
     async (broadcast: Broadcast) => {
-      if (!window.confirm(`Delete broadcast ${broadcast.templateName}?`)) {
+      if (
+        !window.confirm(
+          t.list.deleteConfirmation.replace("{name}", broadcast.templateName)
+        )
+      ) {
         return
       }
 
       try {
         await whatsappClient.deleteBroadcast(broadcast.id)
-        toast.success("Broadcast deleted")
+        toast.success(t.list.deleted)
         await loadBroadcasts()
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Unable to delete broadcast"
-        )
+        toast.error(error instanceof Error ? error.message : t.list.deleteError)
       }
     },
-    [loadBroadcasts]
+    [loadBroadcasts, t.list]
   )
 
   const columns = React.useMemo<ColumnDef<Broadcast>[]>(() => {
@@ -107,7 +107,7 @@ export default function WhatsAppBroadcastsPage() {
         id: "templateName",
         accessorFn: (row) => row.templateName,
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Template" />
+          <DataTableColumnHeader column={column} title={t.columnTemplate} />
         ),
         cell: ({ row }) => (
           <div>
@@ -121,7 +121,7 @@ export default function WhatsAppBroadcastsPage() {
       {
         accessorKey: "status",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnHeader column={column} title={t.columnStatus} />
         ),
         cell: ({ row }) => (
           <Badge variant={statusVariant(row.original.status)}>
@@ -133,26 +133,28 @@ export default function WhatsAppBroadcastsPage() {
         id: "progress",
         accessorFn: (row) => row.sent,
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Progress" />
+          <DataTableColumnHeader column={column} title={t.columnProgress} />
         ),
         cell: ({ row }) => (
           <span>
-            {row.original.sent} sent / {row.original.failed} failed /{" "}
-            {row.original.total} total
+            {t.list.progress
+              .replace("{sent}", String(row.original.sent))
+              .replace("{failed}", String(row.original.failed))
+              .replace("{total}", String(row.original.total))}
           </span>
         ),
       },
       {
         accessorKey: "createdAt",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Created" />
+          <DataTableColumnHeader column={column} title={t.columnCreatedAt} />
         ),
         cell: ({ row }) => <span>{formatDate(row.original.createdAt)}</span>,
       },
       {
         id: "actions",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Actions" />
+          <DataTableColumnHeader column={column} title={t.list.actions} />
         ),
         cell: ({ row }) => (
           <div className="flex justify-end space-x-2">
@@ -162,7 +164,7 @@ export default function WhatsAppBroadcastsPage() {
               onClick={() => router.push(`${basePath}/${row.original.id}`)}
             >
               <Eye className="mr-1 size-4" />
-              View
+              {t.list.view}
             </Button>
             <Button
               size="sm"
@@ -171,7 +173,7 @@ export default function WhatsAppBroadcastsPage() {
               onClick={() => void handleSend(row.original)}
             >
               <PaperPlaneTilt className="mr-1 size-4" />
-              Send
+              {t.list.send}
             </Button>
             <Button
               size="sm"
@@ -179,14 +181,14 @@ export default function WhatsAppBroadcastsPage() {
               onClick={() => void handleDelete(row.original)}
             >
               <Trash className="mr-1 size-4" />
-              Delete
+              {t.list.delete}
             </Button>
           </div>
         ),
         enableHiding: false,
       },
     ]
-  }, [basePath, handleSend, handleDelete, router])
+  }, [basePath, handleSend, handleDelete, router, t])
 
   if (onboarding.isFeatureLocked("broadcasts")) {
     return (
@@ -208,28 +210,24 @@ export default function WhatsAppBroadcastsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Broadcasts</h1>
-          <p className="text-muted-foreground">
-            Create, send, and monitor WhatsApp template broadcasts.
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">{t.heading}</h1>
+          <p className="text-muted-foreground">{t.description}</p>
         </div>
         <Button onClick={() => router.push(`${basePath}/new`)}>
           <Plus weight="bold" className="mr-2 size-4" />
-          New broadcast
+          {t.createBroadcast}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Campaigns</CardTitle>
-          <CardDescription>
-            Broadcast campaigns with delivery progress and status.
-          </CardDescription>
+          <CardTitle>{t.list.campaigns}</CardTitle>
+          <CardDescription>{t.list.campaignsDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="py-12 text-center text-muted-foreground">
-              Loading broadcasts…
+              {t.list.loading}
             </div>
           ) : (
             <DataTable
@@ -237,11 +235,11 @@ export default function WhatsAppBroadcastsPage() {
               columns={columns}
               data={broadcasts}
               searchableColumns={["templateName"]}
-              searchPlaceholder="Search broadcasts..."
+              searchPlaceholder={t.searchPlaceholder}
               defaultColumnVisibility={{
                 createdAt: false,
               }}
-              emptyMessage="No broadcasts yet."
+              emptyMessage={t.emptyTitle}
             />
           )}
         </CardContent>

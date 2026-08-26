@@ -1,4 +1,8 @@
 "use client"
+import {
+  formatWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import {
@@ -288,7 +292,7 @@ export default function WhatsAppUsagePage() {
           </div>
           <Button variant="outline" size="sm" asChild className="gap-1.5">
             <Link href="/console/whatsapp/ledger">
-              View Full Ledger
+              <WhatsAppText id="s46" />
               <ArrowRight className="size-4" />
             </Link>
           </Button>
@@ -303,7 +307,9 @@ export default function WhatsAppUsagePage() {
           onChange={(e) => setSelectedDevice(e.target.value)}
           className="rounded-md border bg-background px-3 py-1.5 text-sm"
         >
-          <option value="all">All Devices</option>
+          <option value="all">
+            <WhatsAppText id="s47" />
+          </option>
           {devices.map((d) => (
             <option key={d.id} value={d.id}>
               {d.phoneNumber}
@@ -317,7 +323,7 @@ export default function WhatsAppUsagePage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Messages
+              <WhatsAppText id="s44" />
             </CardTitle>
             <ChatCircle className="size-4 text-muted-foreground" />
           </CardHeader>
@@ -332,7 +338,9 @@ export default function WhatsAppUsagePage() {
                 {totalMessages.toLocaleString()}
               </div>
             )}
-            <p className="text-xs text-muted-foreground">This month</p>
+            <p className="text-xs text-muted-foreground">
+              <WhatsAppText id="s48" />
+            </p>
           </CardContent>
         </Card>
 
@@ -352,7 +360,9 @@ export default function WhatsAppUsagePage() {
                 {totalInbound.toLocaleString()}
               </div>
             )}
-            <p className="text-xs text-muted-foreground">Messages received</p>
+            <p className="text-xs text-muted-foreground">
+              <WhatsAppText id="s49" />
+            </p>
           </CardContent>
         </Card>
 
@@ -374,13 +384,17 @@ export default function WhatsAppUsagePage() {
                 {totalOutbound.toLocaleString()}
               </div>
             )}
-            <p className="text-xs text-muted-foreground">Messages sent</p>
+            <p className="text-xs text-muted-foreground">
+              <WhatsAppText id="s50" />
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              <WhatsAppText id="s45" />
+            </CardTitle>
             <CurrencyDollar className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -398,7 +412,11 @@ export default function WhatsAppUsagePage() {
               </div>
             )}
             <p className="text-xs text-muted-foreground">
-              {costData?.totalEntries ?? 0} ledger entries
+              {formatWhatsAppText(
+                "s300",
+                { count: costData?.totalEntries ?? 0 },
+                locale
+              )}
             </p>
           </CardContent>
         </Card>
@@ -430,7 +448,7 @@ export default function WhatsAppUsagePage() {
               </div>
             )}
             <p className="text-xs text-muted-foreground">
-              Quota credits used this month
+              <WhatsAppText id="s51" />
             </p>
           </CardContent>
         </Card>
@@ -455,7 +473,7 @@ export default function WhatsAppUsagePage() {
               </div>
             )}
             <p className="text-xs text-muted-foreground">
-              Remaining credits this period
+              <WhatsAppText id="s52" />
             </p>
           </CardContent>
         </Card>
@@ -510,7 +528,9 @@ export default function WhatsAppUsagePage() {
       {state === "loaded" && costBreakdown && (
         <Card>
           <CardHeader>
-            <CardTitle>Cost Breakdown by Device</CardTitle>
+            <CardTitle>
+              <WhatsAppText id="s53" />
+            </CardTitle>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span>
                 Projected:{" "}
@@ -528,7 +548,7 @@ export default function WhatsAppUsagePage() {
           <CardContent className="space-y-4">
             {costBreakdown.byDevice.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">
-                No device data available.
+                <WhatsAppText id="s54" />
               </p>
             ) : (
               costBreakdown.byDevice.map((dev) => (
@@ -539,8 +559,14 @@ export default function WhatsAppUsagePage() {
                         {dev.phoneNumber ?? "Unknown"}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {dev.quotaUsed} credits used · {dev.messageCount}{" "}
-                        messages
+                        {formatWhatsAppText(
+                          "s301",
+                          {
+                            credits: dev.quotaUsed,
+                            messages: dev.messageCount,
+                          },
+                          locale
+                        )}
                       </p>
                     </div>
                     <div className="text-right text-sm">
@@ -559,7 +585,9 @@ export default function WhatsAppUsagePage() {
             )}
             {costBreakdown.byDevice.length > 0 && (
               <div className="flex items-center justify-between border-t pt-3 text-sm font-medium">
-                <span>Total</span>
+                <span>
+                  <WhatsAppText id="s56" />
+                </span>
                 <span>
                   Rp{" "}
                   {costBreakdown.byDevice
@@ -576,11 +604,14 @@ export default function WhatsAppUsagePage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Daily Message Trend</CardTitle>
+            <CardTitle>
+              <WhatsAppText id="s57" />
+            </CardTitle>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Calendar className="size-3" />
               <span>
-                {dateRange.from} to {dateRange.to}
+                {dateRange.from} <WhatsAppText id="s23" />
+                {dateRange.to}
               </span>
             </div>
           </CardHeader>
@@ -594,7 +625,7 @@ export default function WhatsAppUsagePage() {
                   weight="fill"
                 />
                 <p className="text-sm text-muted-foreground">
-                  No daily data for selected range.
+                  <WhatsAppText id="s58" />
                 </p>
               </div>
             ) : (
@@ -646,7 +677,9 @@ export default function WhatsAppUsagePage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Cost by Category</CardTitle>
+            <CardTitle>
+              <WhatsAppText id="s59" />
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {state === "loading" ? (
@@ -658,7 +691,7 @@ export default function WhatsAppUsagePage() {
             ) : !costData || costData.byCategory.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <p className="text-sm text-muted-foreground">
-                  No cost category data available for this period.
+                  <WhatsAppText id="s60" />
                 </p>
               </div>
             ) : (
@@ -682,7 +715,11 @@ export default function WhatsAppUsagePage() {
                               .toUpperCase()}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
-                            {cat.count.toLocaleString()} entries
+                            {formatWhatsAppText(
+                              "s299",
+                              { count: cat.count.toLocaleString() },
+                              locale
+                            )}
                           </span>
                         </div>
                         <div className="text-right">
@@ -725,7 +762,7 @@ export default function WhatsAppUsagePage() {
             </div>
           ) : monthlyCounts.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              No monthly data available.
+              <WhatsAppText id="s61" />
             </p>
           ) : (
             <div className="space-y-3">
@@ -741,10 +778,22 @@ export default function WhatsAppUsagePage() {
                         {getMonthName(m.month)} {m.year}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {m.messageInboxCount.toLocaleString()} in /{" "}
-                        {m.messageOutboxCount.toLocaleString()} out
-                        {m.messageFailedCount > 0 &&
-                          ` · ${m.messageFailedCount} failed`}
+                        {formatWhatsAppText(
+                          "s298",
+                          {
+                            inbound: m.messageInboxCount.toLocaleString(),
+                            outbound: m.messageOutboxCount.toLocaleString(),
+                            failed:
+                              m.messageFailedCount > 0
+                                ? formatWhatsAppText(
+                                    "s355",
+                                    { count: m.messageFailedCount },
+                                    locale
+                                  )
+                                : "",
+                          },
+                          locale
+                        )}
                       </p>
                     </div>
                     <div className="text-right">
@@ -752,7 +801,7 @@ export default function WhatsAppUsagePage() {
                         {total.toLocaleString()}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        total messages
+                        <WhatsAppText id="s63" />
                       </p>
                     </div>
                   </div>
@@ -767,14 +816,16 @@ export default function WhatsAppUsagePage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Recent Deductions</CardTitle>
+            <CardTitle>
+              <WhatsAppText id="s382" locale={locale} />
+            </CardTitle>
             <p className="text-xs text-muted-foreground">
-              Latest 5 quota/balance deduction entries
+              <WhatsAppText id="s383" locale={locale} />
             </p>
           </div>
           <Button variant="outline" size="sm" asChild className="gap-1.5">
             <Link href="/console/whatsapp/ledger">
-              View full ledger
+              <WhatsAppText id="s64" />
               <ArrowRight className="size-4" />
             </Link>
           </Button>
@@ -784,10 +835,14 @@ export default function WhatsAppUsagePage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Time</TableHead>
-                <TableHead>Phone</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s10" />
+                </TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Credits</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s302" locale={locale} />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -817,7 +872,7 @@ export default function WhatsAppUsagePage() {
                     colSpan={5}
                     className="h-20 text-center text-sm text-muted-foreground"
                   >
-                    No deduction entries yet.
+                    <WhatsAppText id="s65" />
                   </TableCell>
                 </TableRow>
               ) : (
@@ -889,13 +944,16 @@ export default function WhatsAppUsagePage() {
               className="mb-4 size-12 text-muted-foreground"
               weight="fill"
             />
-            <h3 className="mb-1 text-lg font-medium">No usage data yet</h3>
+            <h3 className="mb-1 text-lg font-medium">
+              <WhatsAppText id="s66" />
+            </h3>
             <p className="max-w-md text-sm text-muted-foreground">
-              Once your WhatsApp devices start sending and receiving messages,
-              usage data will appear here with charts and cost breakdowns.
+              <WhatsAppText id="s67" />
             </p>
             <Button variant="outline" asChild className="mt-3">
-              <Link href="?doc=1">Open documentation</Link>
+              <Link href="?doc=1">
+                <WhatsAppText id="s68" />
+              </Link>
             </Button>
           </CardContent>
         </Card>

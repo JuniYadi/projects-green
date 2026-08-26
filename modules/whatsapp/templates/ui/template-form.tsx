@@ -8,6 +8,10 @@
  */
 
 "use client"
+import {
+  getWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import {
@@ -559,7 +563,8 @@ export function TemplateForm({
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="whatsappDeviceId">
-                  WhatsApp Device <span className="text-destructive">*</span>
+                  <WhatsAppText id="s240" />
+                  <span className="text-destructive">*</span>
                 </Label>
                 {devices.filter((d) => !d.status || d.status === "ACTIVE")
                   .length === 0 ? (
@@ -581,7 +586,7 @@ export function TemplateForm({
                     disabled={approvedTemplateLocked || loadingDevices}
                   >
                     <SelectTrigger id="whatsappDeviceId">
-                      <SelectValue placeholder="Select Device" />
+                      <SelectValue placeholder={getWhatsAppText("s241")} />
                     </SelectTrigger>
                     <SelectContent>
                       {devices
@@ -606,7 +611,8 @@ export function TemplateForm({
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name">
-                    Template Name <span className="text-destructive">*</span>
+                    <WhatsAppText id="s242" />
+                    <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="name"
@@ -622,7 +628,7 @@ export function TemplateForm({
 
                 <div className="space-y-2">
                   <Label htmlFor="slug">
-                    Template Slug / Code{" "}
+                    <WhatsAppText id="s243" />{" "}
                     <span className="text-destructive">*</span>
                   </Label>
                   <Input
@@ -637,7 +643,7 @@ export function TemplateForm({
                     className="font-mono text-sm"
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    Lowercase letters, numbers, and underscores only.
+                    <WhatsAppText id="s244" />
                   </p>
                   {errors.slug && (
                     <p className="text-xs text-destructive">{errors.slug}</p>
@@ -667,7 +673,7 @@ export function TemplateForm({
                     disabled={approvedTemplateLocked}
                   >
                     <SelectTrigger id="category">
-                      <SelectValue placeholder="Select Category" />
+                      <SelectValue placeholder={getWhatsAppText("s245")} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="UTILITY">Utility</SelectItem>
@@ -697,7 +703,7 @@ export function TemplateForm({
                     disabled={approvedTemplateLocked}
                   >
                     <SelectTrigger id="lang">
-                      <SelectValue placeholder="Select Language" />
+                      <SelectValue placeholder={getWhatsAppText("s246")} />
                     </SelectTrigger>
                     <SelectContent>
                       {SUPPORTED_LANGUAGES.map((l) => (
@@ -712,12 +718,14 @@ export function TemplateForm({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description (Optional)</Label>
+                <Label htmlFor="description">
+                  <WhatsAppText id="s247" />
+                </Label>
                 <Input
                   id="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Internal notes about when this template is sent"
+                  placeholder={getWhatsAppText("s248")}
                 />
               </div>
             </CardContent>
@@ -728,12 +736,14 @@ export function TemplateForm({
             <Card>
               <CardHeader className="pb-4">
                 <CardTitle className="text-base font-semibold">
-                  2. Header (Optional)
+                  <WhatsAppText id="s249" />
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Header Type</Label>
+                  <Label>
+                    <WhatsAppText id="s250" />
+                  </Label>
                   <div className="flex flex-wrap gap-2">
                     {(
                       ["NONE", "TEXT", "IMAGE", "VIDEO", "DOCUMENT"] as const
@@ -754,7 +764,8 @@ export function TemplateForm({
                 {headerType === "TEXT" && (
                   <div className="space-y-2">
                     <Label htmlFor="headerText">
-                      Header Text <span className="text-destructive">*</span>
+                      <WhatsAppText id="s251" />
+                      <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="headerText"
@@ -785,9 +796,7 @@ export function TemplateForm({
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Media sample ini digunakan Meta untuk proses review
-                        template. Anda tetap dapat mengirimkan media dinamis
-                        yang berbeda saat broadcast.
+                        <WhatsAppText id="s373" />
                       </p>
                     </div>
                     <StorageDropzone
@@ -861,7 +870,7 @@ export function TemplateForm({
                         htmlFor="security-rec"
                         className="text-sm font-medium"
                       >
-                        Add Security Recommendation
+                        <WhatsAppText id="s252" />
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         {lang.startsWith("en")
@@ -884,7 +893,7 @@ export function TemplateForm({
                   <div className="space-y-2 rounded-lg border p-3.5">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="code-exp" className="text-sm font-medium">
-                        Code Expiration (Minutes)
+                        <WhatsAppText id="s253" />
                       </Label>
                       <span className="font-mono text-xs font-medium text-primary">
                         {codeExpirationMinutes}{" "}
@@ -959,7 +968,7 @@ export function TemplateForm({
                       htmlFor="otp-btn-text"
                       className="text-sm font-medium"
                     >
-                      OTP Copy Code Button Text
+                      <WhatsAppText id="s254" />
                     </Label>
                     <p className="text-xs text-muted-foreground">
                       {lang.startsWith("en")
@@ -984,7 +993,8 @@ export function TemplateForm({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="body">
-                      Body Text <span className="text-destructive">*</span>
+                      <WhatsAppText id="s255" />
+                      <span className="text-destructive">*</span>
                     </Label>
                     <span className="text-xs text-muted-foreground">
                       {body.length} / 1024
@@ -1129,7 +1139,7 @@ export function TemplateForm({
                             onClick={() => setCategory(rw.suggestedCategory!)}
                             className="h-7 shrink-0 border-amber-500/40 bg-amber-500/20 text-xs font-semibold text-amber-900 hover:bg-amber-500/30 dark:text-amber-100"
                           >
-                            Ubah ke {rw.suggestedCategory}
+                            <WhatsAppText id="s374" /> {rw.suggestedCategory}
                           </Button>
                         )}
                     </div>
@@ -1208,8 +1218,7 @@ export function TemplateForm({
                   placeholder="e.g. PT Perusahaan Maju Jaya"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Small disclaimer text displayed below message body (max 60
-                  chars).
+                  <WhatsAppText id="s256" />
                 </p>
               </CardContent>
             </Card>
@@ -1249,7 +1258,8 @@ export function TemplateForm({
                       onClick={() => addButton("PHONE_NUMBER")}
                       disabled={buttons.length >= 3}
                     >
-                      <Plus className="mr-1 size-3.5" /> Phone
+                      <Plus className="mr-1 size-3.5" />{" "}
+                      <WhatsAppText id="s10" />
                     </Button>
                   </div>
                 </div>
@@ -1257,7 +1267,7 @@ export function TemplateForm({
               <CardContent className="space-y-3">
                 {buttons.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic">
-                    No interactive buttons added.
+                    <WhatsAppText id="s257" />
                   </p>
                 ) : (
                   buttons.map((btn, i) => (
@@ -1327,7 +1337,7 @@ export function TemplateForm({
           <div className="sticky top-6 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-                Template Preview
+                <WhatsAppText id="s258" />
               </h2>
               <div className="flex rounded-md border p-0.5">
                 <Button

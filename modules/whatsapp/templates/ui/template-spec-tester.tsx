@@ -10,6 +10,7 @@
  */
 
 "use client"
+import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import { Sparkle } from "@phosphor-icons/react"
@@ -58,7 +59,7 @@ export function TemplateSpecTester({
   if (!currentLanguage) {
     return (
       <div className="p-4 text-xs text-muted-foreground">
-        No language variant selected.
+        <WhatsAppText id="s282" />
       </div>
     )
   }
@@ -107,7 +108,7 @@ export function TemplateSpecTester({
               1
             </span>
             <span className="text-xs font-semibold tracking-wider text-foreground uppercase">
-              Header Component
+              <WhatsAppText id="s283" />
             </span>
           </div>
           <Badge variant="secondary" className="text-[10px]">
@@ -119,7 +120,7 @@ export function TemplateSpecTester({
           {!currentLanguage.headerType ||
           currentLanguage.headerType === "NONE" ? (
             <p className="text-muted-foreground">
-              No header configured for this template.
+              <WhatsAppText id="s284" />
             </p>
           ) : (
             <div className="space-y-1.5">
@@ -146,7 +147,7 @@ export function TemplateSpecTester({
               2
             </span>
             <span className="text-xs font-semibold tracking-wider text-foreground uppercase">
-              Body & Variables
+              <WhatsAppText id="s285" />
             </span>
           </div>
           <Badge
@@ -163,7 +164,7 @@ export function TemplateSpecTester({
           {/* Template Raw Text */}
           <div>
             <Label className="text-[11px] text-muted-foreground">
-              Template Text Definition:
+              <WhatsAppText id="s286" />
             </Label>
             <div className="mt-1 rounded-md bg-muted/40 p-2.5 font-mono text-xs leading-relaxed text-foreground">
               <WhatsAppFormattedText text={currentLanguage.body ?? ""} />
@@ -176,7 +177,7 @@ export function TemplateSpecTester({
               <div className="flex items-center gap-1.5">
                 <Sparkle weight="fill" className="size-3.5 text-primary" />
                 <span className="text-xs font-medium text-foreground">
-                  Interactive Variable Tester (Try Changing Values):
+                  <WhatsAppText id="s287" />
                 </span>
               </div>
               <div className="grid gap-2.5 sm:grid-cols-2">
@@ -195,14 +196,12 @@ export function TemplateSpecTester({
                 ))}
               </div>
               <p className="text-[11px] text-muted-foreground">
-                ⚡ Typing here updates both the Live WhatsApp Preview and the
-                Ready-to-Use JSON payload in real-time.
+                <WhatsAppText id="s288" />
               </p>
             </div>
           ) : (
             <p className="text-xs text-muted-foreground">
-              This template body is static and does not require any dynamic
-              parameters.
+              <WhatsAppText id="s289" />
             </p>
           )}
         </div>
@@ -230,7 +229,9 @@ export function TemplateSpecTester({
               {currentLanguage.footer}
             </div>
           ) : (
-            <p className="text-muted-foreground">No footer text configured.</p>
+            <p className="text-muted-foreground">
+              <WhatsAppText id="s290" />
+            </p>
           )}
         </div>
       </div>
@@ -243,7 +244,7 @@ export function TemplateSpecTester({
               4
             </span>
             <span className="text-xs font-semibold tracking-wider text-foreground uppercase">
-              Buttons & Action CTA
+              <WhatsAppText id="s291" />
             </span>
           </div>
           <Badge variant="outline" className="text-[10px]">
@@ -254,7 +255,7 @@ export function TemplateSpecTester({
         <div className="space-y-2 pt-3 text-xs">
           {buttons.length === 0 ? (
             <p className="text-muted-foreground">
-              No interactive buttons attached.
+              <WhatsAppText id="s292" />
             </p>
           ) : (
             buttons.map((btn, i) => {

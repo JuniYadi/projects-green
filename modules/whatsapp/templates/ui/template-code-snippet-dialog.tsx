@@ -6,6 +6,7 @@
  */
 
 "use client"
+import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import { Check, Copy, Code } from "@phosphor-icons/react"
@@ -251,10 +252,11 @@ func main() {
               <Code className="size-5" />
             </div>
             <div>
-              <DialogTitle>Developer Integration Code</DialogTitle>
+              <DialogTitle>
+                <WhatsAppText id="s293" />
+              </DialogTitle>
               <DialogDescription>
-                Ready-to-use code snippet populated with your template variables
-                and structure.
+                <WhatsAppText id="s294" />
               </DialogDescription>
             </div>
           </div>
@@ -294,7 +296,7 @@ func main() {
               ) : (
                 <>
                   <Copy className="size-3.5" />
-                  Copy Snippet
+                  <WhatsAppText id="s295" />
                 </>
               )}
             </Button>

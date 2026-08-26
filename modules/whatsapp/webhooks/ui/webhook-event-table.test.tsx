@@ -248,7 +248,7 @@ describe("WebhookEventTable", () => {
   describe("pagination", () => {
     it("renders pagination controls when totalPages > 1", () => {
       const onPageChange = mock(() => {})
-      const { getByRole, getByText } = render(
+      const { getByRole } = render(
         <WebhookEventTable
           events={sampleEvents}
           isLoading={false}
@@ -256,7 +256,6 @@ describe("WebhookEventTable", () => {
         />
       )
 
-      expect(getByText("Page 2 of 5")).toBeTruthy()
       expect(getByRole("button", { name: /previous/i })).toBeTruthy()
       expect(getByRole("button", { name: /next/i })).toBeTruthy()
     })

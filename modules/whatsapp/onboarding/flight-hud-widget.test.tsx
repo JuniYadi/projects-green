@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
-import { render } from "@testing-library/react"
+import { fireEvent, render } from "@testing-library/react"
 import { FlightHudWidget } from "./flight-hud-widget"
 import type { WhatsAppOnboardingState } from "./use-whatsapp-onboarding"
 
@@ -45,5 +45,13 @@ describe("FlightHudWidget", () => {
     const view = render(<FlightHudWidget onboarding={mockState} />)
     expect(view.getByText("Onboarding Guide")).toBeInTheDocument()
     expect(view.getByText("60%")).toBeInTheDocument()
+  })
+
+  it("renders Indonesian HUD controls for the supplied locale", () => {
+    const view = render(<FlightHudWidget onboarding={mockState} locale="id" />)
+
+    fireEvent.click(view.getByText("Onboarding Guide"))
+
+    expect(view.getByText("Butuh Bantuan?")).toBeInTheDocument()
   })
 })

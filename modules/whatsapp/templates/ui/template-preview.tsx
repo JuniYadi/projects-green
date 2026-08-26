@@ -1,3 +1,4 @@
+import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 /**
  * WhatsApp Template Preview — Shared preview renderer
  *
@@ -335,7 +336,7 @@ export function WhatsAppTemplatePreview({
     return (
       <div className={className}>
         <p className="text-sm text-muted-foreground italic">
-          No preview content
+          <WhatsAppText id="s237" />
         </p>
       </div>
     )
@@ -366,7 +367,7 @@ export function WhatsAppTemplatePreview({
           <span>{businessName}</span>
         </div>
         <span className="text-[10px] text-muted-foreground">
-          Template Message
+          <WhatsAppText id="s238" />
         </span>
       </div>
 
@@ -410,7 +411,7 @@ export function WhatsAppTemplatePreview({
               </div>
             ) : (
               <div className="p-2 text-center text-xs text-muted-foreground">
-                {language.headerType} Header
+                {language.headerType} <WhatsAppText id="s239" />
               </div>
             )}
           </div>
