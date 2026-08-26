@@ -98,35 +98,7 @@ describe("IndonesianLocaleControl", () => {
       />
     )
 
-    await waitFor(() => {
-      expect(
-        view.getByRole("button", { name: "Language options" })
-      ).toBeVisible()
-    })
     expect(view.queryByText("Continue in Indonesian?")).not.toBeInTheDocument()
     expect(replace).not.toHaveBeenCalled()
-  })
-
-  it("provides keyboard-accessible locale choices that preserve path and query", async () => {
-    pathname = "/id/portal/settings"
-    searchParams = new URLSearchParams("section=members")
-    Object.defineProperty(navigator, "languages", {
-      configurable: true,
-      value: ["en-US"],
-    })
-
-    const view = render(
-      <IndonesianLocaleControl
-        locale="id"
-        messages={getMessages("id").indonesianLocale}
-      />
-    )
-
-    const control = view.getByRole("button", { name: "Pilihan bahasa" })
-    expect(control).toHaveAttribute("data-language-control")
-    fireEvent.keyDown(control, { key: "Enter" })
-    fireEvent.click(await view.findByRole("menuitemradio", { name: "Inggris" }))
-
-    expect(replace).toHaveBeenCalledWith("/en/portal/settings?section=members")
   })
 })

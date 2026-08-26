@@ -1,6 +1,5 @@
 "use client"
 
-import { GlobeIcon } from "@phosphor-icons/react"
 import { useEffect, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
@@ -13,13 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import type { AppLocale } from "@/lib/i18n/config"
 import {
   buildLocalizedPath,
@@ -70,6 +62,15 @@ export function IndonesianLocaleControl({
   useEffect(() => {
     const preference = readIndonesianLocalePreference(getBrowserStorage())
     const timer = window.setTimeout(() => {
+      // If Driver.js tour is currently active, avoid racing with dialog prompt
+      const isTourActive = Boolean(
+        document.querySelector(".driver-popover") ||
+        document.querySelector(".driver-overlay")
+      )
+      if (isTourActive) {
+        return
+      }
+
       if (
         shouldShowIndonesianLocalePrompt({
           locale,
@@ -134,15 +135,6 @@ export function IndonesianLocaleControl({
       locale: nextLocale,
     })
 
-  const changeLocale = (nextLocale: AppLocale) => {
-    if (nextLocale === locale) {
-      return
-    }
-
-    setLocaleCookie(nextLocale)
-    router.replace(targetPath(nextLocale))
-  }
-
   const decide = (decision: IndonesianLocaleDecision) => {
     setPromptOpen(false)
     writeIndonesianLocalePreference({
@@ -160,64 +152,29 @@ export function IndonesianLocaleControl({
   }
 
   return (
-    <>
-      <div className="pointer-events-none fixed right-[calc(1rem+env(safe-area-inset-right))] bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              ref={controlRef}
-              variant="outline"
-              size="sm"
-              className="pointer-events-auto shadow-md"
-              aria-label={messages.controlLabel}
-              data-language-control
-            >
-              <GlobeIcon aria-hidden="true" className="size-4" />
-              <span>{locale.toUpperCase()}</span>
-              <span className="sr-only">{messages.currentLanguageLabel}</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="top" sideOffset={8}>
-            <DropdownMenuRadioGroup
-              value={locale}
-              onValueChange={(value) =>
-                changeLocale(value === "id" ? "id" : "en")
-              }
-            >
-              <DropdownMenuRadioItem value="en">
-                {messages.englishLabel}
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="id">
-                {messages.indonesianLabel}
-              </DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <Dialog
-        open={promptOpen}
-        onOpenChange={(open) => {
-          if (!open && promptOpen) {
-            decide("stay")
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{messages.promptTitle}</DialogTitle>
-            <DialogDescription>{messages.promptDescription}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => decide("stay")}>
-              {messages.stayAction}
-            </Button>
-            <Button onClick={() => decide("switch")}>
-              {messages.switchAction}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+    <Dialog
+      open={promptOpen}
+      onOpenChange={(open) => {
+        if (!open && promptOpen) {
+          decide("stay")
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{messages.promptTitle}</DialogTitle>
+          <DialogDescription>{messages.promptDescription}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => decide("stay")}>
+            {messages.stayAction}
+          </Button>
+          <Button onClick={() => decide("switch")}>
+            {messages.switchAction}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
+  /* Cleaned up floating language button: language switcher is hosted in NavUser (bottom left) */
 }

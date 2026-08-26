@@ -269,6 +269,18 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     smokeProjects: [],
   },
   {
+    name: "console-onboarding-tour",
+    sourcePrefixes: [
+      "lib/onboarding/",
+      "components/console-onboarding-tour.tsx",
+    ],
+    testPrefixes: [
+      "lib/onboarding/console-tour.test.ts",
+      "components/console-onboarding-tour.test.tsx",
+    ],
+    smokeProjects: [],
+  },
+  {
     name: "docs",
     sourcePrefixes: [
       "app/[lang]/docs/",
