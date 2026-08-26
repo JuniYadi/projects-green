@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useParams } from "next/navigation"
 import {
   LockKeyOpen,
   RocketLaunch,
@@ -12,16 +13,18 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
 export type LockedFeatureTeaserProps = {
   featureTitle: string
   featureDescription: string
   unlockLevel: number
   prerequisiteDescription: string
   activeMissionHref: string
-  activeMissionLabel: string
+  activeMissionLabel?: string
   onActionClick?: () => void
   icon?: React.ReactNode
+  locale?: string
 }
 
 export function LockedFeatureTeaser({
@@ -30,10 +33,25 @@ export function LockedFeatureTeaser({
   unlockLevel,
   prerequisiteDescription,
   activeMissionHref,
-  activeMissionLabel,
+  activeMissionLabel: suppliedActiveMissionLabel,
   onActionClick,
   icon,
+  locale: suppliedLocale,
 }: LockedFeatureTeaserProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(suppliedLocale ?? params?.lang)
+  const messages = getMessages(locale)
+  const t = messages?.console?.whatsapp?.onboarding?.lockedFeature ?? {
+    lockedTitle: "Locked Cockpit Feature • Level {level}",
+    unlockPrerequisite: "Unlock Prerequisite",
+    defaultActiveLabel: "Complete Active Mission",
+  }
+  const activeMissionLabel = suppliedActiveMissionLabel ?? t.defaultActiveLabel
+  const localizedHref = localizePathname({
+    pathname: activeMissionHref,
+    locale,
+  })
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
       <Card className="max-w-xl border-dashed border-primary/40 bg-gradient-to-b from-primary/5 via-background to-background shadow-sm">
@@ -47,7 +65,7 @@ export function LockedFeatureTeaser({
             className="mb-3 gap-1.5 border-primary/30 px-3 py-1 text-xs font-semibold text-primary"
           >
             <Sparkle className="size-3.5 fill-primary" />
-            Locked Cockpit Feature • Level {unlockLevel}
+            {t.lockedTitle.replace("{level}", String(unlockLevel))}
           </Badge>
 
           <h2 className="text-2xl font-bold tracking-tight">{featureTitle}</h2>
@@ -63,7 +81,7 @@ export function LockedFeatureTeaser({
               />
               <div>
                 <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                  Unlock Prerequisite
+                  {t.unlockPrerequisite}
                 </p>
                 <p className="text-sm font-medium text-foreground">
                   {prerequisiteDescription}
@@ -80,7 +98,7 @@ export function LockedFeatureTeaser({
               </Button>
             ) : (
               <Button asChild className="gap-2 shadow-sm">
-                <Link href={activeMissionHref}>
+                <Link href={localizedHref}>
                   <RocketLaunch className="size-4" weight="bold" />
                   {activeMissionLabel}
                   <ArrowRight className="size-4" />

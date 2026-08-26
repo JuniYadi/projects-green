@@ -20,20 +20,22 @@ export default function CatalogsPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
-  const onboarding = useWhatsAppOnboarding()
+  const tLocked = messages.console.whatsapp.onboarding.lockedFeatures.catalogs
+  const onboarding = useWhatsAppOnboarding({ locale })
 
   if (onboarding.isFeatureLocked("catalogs")) {
     return (
       <>
         <LockedFeatureTeaser
-          featureTitle="WhatsApp Catalogs & Commerce"
-          featureDescription="Showcase interactive product collections, carts, and commerce inventory directly inside WhatsApp conversations."
+          featureTitle={tLocked.title}
+          featureDescription={tLocked.description}
           unlockLevel={2}
-          prerequisiteDescription="Send your first message and approve a template to unlock commerce catalog tools."
+          prerequisiteDescription={tLocked.prerequisite}
           activeMissionHref="/console/whatsapp/messages"
-          activeMissionLabel="Send Test Message"
+          activeMissionLabel={tLocked.activeLabel}
+          locale={locale}
         />
-        <FlightHudWidget onboarding={onboarding} />
+        <FlightHudWidget onboarding={onboarding} locale={locale} />
       </>
     )
   }

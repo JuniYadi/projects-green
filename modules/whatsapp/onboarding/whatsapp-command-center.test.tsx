@@ -75,7 +75,7 @@ describe("WhatsAppCommandCenter", () => {
     )
 
     expect(
-      view.getByText("Verifikasi Transponder Sedang Berlangsung")
+      view.getByText("Verifikasi Perangkat Sedang Berlangsung")
     ).toBeInTheDocument()
     expect(view.getByText("Pendaftaran nomor WABA")).toBeInTheDocument()
     expect(view.getByText("Lihat Tab Perangkat")).toBeInTheDocument()

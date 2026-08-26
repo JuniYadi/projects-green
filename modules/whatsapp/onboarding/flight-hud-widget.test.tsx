@@ -50,7 +50,8 @@ describe("FlightHudWidget", () => {
   it("renders Indonesian HUD controls for the supplied locale", () => {
     const view = render(<FlightHudWidget onboarding={mockState} locale="id" />)
 
-    fireEvent.click(view.getByText("Onboarding Guide"))
+    expect(view.getByText("Panduan Penyiapan")).toBeInTheDocument()
+    fireEvent.click(view.getByText("Panduan Penyiapan"))
 
     expect(view.getByText("Butuh Bantuan?")).toBeInTheDocument()
   })

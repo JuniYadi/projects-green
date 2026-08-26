@@ -60,7 +60,8 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(locale)
-  // Device list (for filter dropdown)
+  const tLocked =
+    messages.console.whatsapp.onboarding.lockedFeatures.webhookLogs
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
 
   // Events
@@ -77,7 +78,7 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
   const [filters, setFilters] =
     React.useState<WebhookEventFilterState>(DEFAULT_FILTER_STATE)
   const [page, setPage] = React.useState(1)
-  const onboarding = useWhatsAppOnboarding()
+  const onboarding = useWhatsAppOnboarding({ locale })
 
   // ── Load devices on mount ────────────────────────────────────────────────
 
@@ -162,14 +163,15 @@ export default function ConsoleWhatsAppWebhookLogsPage() {
     return (
       <>
         <LockedFeatureTeaser
-          featureTitle="Webhook Event Radar"
-          featureDescription="Inspect real-time inbound webhook deliveries, dead letters, retry queues, and Meta status callback payloads."
+          featureTitle={tLocked.title}
+          featureDescription={tLocked.description}
           unlockLevel={3}
-          prerequisiteDescription="Send your first message and approve a template to unlock developer radar and webhook logs."
+          prerequisiteDescription={tLocked.prerequisite}
           activeMissionHref="/console/whatsapp/messages"
-          activeMissionLabel="Complete Active Mission"
+          activeMissionLabel={tLocked.activeLabel}
+          locale={locale}
         />
-        <FlightHudWidget onboarding={onboarding} />
+        <FlightHudWidget onboarding={onboarding} locale={locale} />
       </>
     )
   }

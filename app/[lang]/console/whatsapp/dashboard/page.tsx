@@ -229,7 +229,7 @@ export default function WhatsAppDashboardPage() {
     [conversations]
   )
 
-  const onboarding = useWhatsAppOnboarding()
+  const onboarding = useWhatsAppOnboarding({ locale })
 
   if (!onboarding.isGraduated && state === "loaded") {
     return (
@@ -237,6 +237,7 @@ export default function WhatsAppDashboardPage() {
         <WhatsAppCommandCenter
           onboarding={onboarding}
           onSubscribeClick={() => setIsOrderOpen(true)}
+          locale={locale}
         />
         <ServiceOrderDialog
           productCode="WHATSAPP"
@@ -250,6 +251,7 @@ export default function WhatsAppDashboardPage() {
         <FlightHudWidget
           onboarding={onboarding}
           onSubscribeClick={() => setIsOrderOpen(true)}
+          locale={locale}
         />
       </div>
     )
@@ -275,11 +277,13 @@ export default function WhatsAppDashboardPage() {
             className="gap-1.5 text-xs"
           >
             <Sparkle className="size-3.5 text-primary" weight="fill" />
-            Show Onboarding Guide
+            {locale === "id"
+              ? "Tampilkan Panduan Penyiapan"
+              : "Show Onboarding Guide"}
           </Button>
           <Button variant="outline" onClick={() => setIsOrderOpen(true)}>
             <Sparkle className="mr-2 size-4 text-primary" />
-            Subscribe Plan
+            {locale === "id" ? "Pilih Paket" : "Subscribe Plan"}
           </Button>
           <Button variant="outline" asChild>
             <Link href="/console/whatsapp/devices">

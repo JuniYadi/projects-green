@@ -156,7 +156,7 @@ export default function WhatsAppPricingPage() {
     searchParams.get("deviceId") || "all"
   )
   const [isOrderOpen, setIsOrderOpen] = React.useState(false)
-  const onboarding = useWhatsAppOnboarding()
+  const onboarding = useWhatsAppOnboarding({ locale })
 
   React.useEffect(() => {
     let cancelled = false
@@ -201,16 +201,29 @@ export default function WhatsAppPricingPage() {
     return (
       <>
         <LockedFeatureTeaser
-          featureTitle="Pricing, Quotas & Ledger"
-          featureDescription="Granular conversation costing breakdown, balance deductions, top-ups, and transaction audit ledger."
+          featureTitle={
+            messages.console.whatsapp.onboarding.lockedFeatures.pricing.title
+          }
+          featureDescription={
+            messages.console.whatsapp.onboarding.lockedFeatures.pricing
+              .description
+          }
           unlockLevel={3}
-          prerequisiteDescription="Send your first message and approve a template to unlock granular ledger billing."
+          prerequisiteDescription={
+            messages.console.whatsapp.onboarding.lockedFeatures.pricing
+              .prerequisite
+          }
           activeMissionHref="/console/whatsapp/messages"
-          activeMissionLabel="Complete Active Mission"
+          activeMissionLabel={
+            messages.console.whatsapp.onboarding.lockedFeatures.pricing
+              .activeLabel
+          }
+          locale={locale}
         />
         <FlightHudWidget
           onboarding={onboarding}
           onSubscribeClick={() => setIsOrderOpen(true)}
+          locale={locale}
         />
         <ServiceOrderDialog
           productCode="WHATSAPP"

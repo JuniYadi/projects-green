@@ -55,6 +55,26 @@ mock.module("@/lib/api/whatsapp-client", () => ({
     },
   },
 }))
+mock.module("@/lib/eden", () => ({
+  eden: {
+    api: {
+      whatsapp: {
+        onboarding: {
+          status: {
+            get: mock(() =>
+              Promise.resolve({
+                data: {
+                  ok: true,
+                  data: { hasSubscription: false },
+                },
+              })
+            ),
+          },
+        },
+      },
+    },
+  },
+}))
 
 mock.module("@/components/billing/service-order-dialog", () => ({
   ServiceOrderDialog: (props: { open: boolean }) =>
@@ -91,10 +111,22 @@ mock.module("@/lib/i18n/messages", () => ({
           noDevices: "No devices found",
           active: "Active",
           inactive: "Inactive",
+          connected: "Connected",
           disconnected: "Disconnected",
           unknown: "Unknown",
           unableToLoad: "Unable to load devices",
           notifyAdmin: "Contact admin to activate",
+        },
+        shared: {
+          justNow: "Just now",
+          never: "Never",
+          minutesAgo: "{count}m ago",
+          hoursAgo: "{count}h ago",
+          daysAgo: "{count}d ago",
+          lastSeen: "Last seen: {time}",
+          connected: "Connected",
+          disconnected: "Disconnected",
+          unknown: "Unknown",
         },
       },
     },

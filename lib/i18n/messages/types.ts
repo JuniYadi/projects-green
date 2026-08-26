@@ -430,6 +430,149 @@ export type AppMessages = {
       }
     }
     whatsapp: {
+      onboarding: {
+        missions: {
+          subscribe: {
+            title: string
+            subtitle: string
+            description: string
+            actionLabel: string
+          }
+          transponderDevices: {
+            title: string
+            subtitle: string
+            description: string
+            actionLabel: string
+          }
+          firstMessage: {
+            title: string
+            subtitle: string
+            description: string
+            actionLabel: string
+          }
+          template: {
+            title: string
+            subtitle: string
+            description: string
+            actionLabel: string
+          }
+          apiKey: {
+            title: string
+            subtitle: string
+            description: string
+            actionLabel: string
+          }
+          completed: {
+            title: string
+            subtitle: string
+            description: string
+            actionLabel: string
+          }
+        }
+        levels: {
+          groundControl: string
+          towerClearancePending: string
+          transponderActive: string
+          flightOperations: string
+          fullCockpitMaster: string
+          levelPrefix: string
+        }
+        hud: {
+          flightDeckHud: string
+          flightReadiness: string
+          collapseHud: string
+          closeHud: string
+          closeGuide: string
+          needHelp: string
+          stepOf: string
+          setupFinished: string
+          prevStep: string
+          nextStep: string
+          checklist: string
+          viewing: string
+          replay: string
+          readyForProduction: string
+          allOnboardingComplete: string
+          onboardingGuide: string
+          dismissedToast: string
+        }
+        commandCenter: {
+          flightReadiness: string
+          skipTutorial: string
+          exploreQuotas: string
+          planSubscribed: string
+          planSubscribedDesc: string
+          adminReview: string
+          cockpitLive: string
+          roadmapTitle: string
+          roadmapSubtitle: string
+          planTitle: string
+          planDesc: string
+          planUnlocked: string
+          planPending: string
+          deviceTitle: string
+          deviceDesc: string
+          deviceUnlocked: string
+          deviceLocked: string
+          opsTitle: string
+          opsDesc: string
+          opsUnlocked: string
+          opsLocked: string
+          telemetryTitle: string
+          telemetryDesc: string
+          telemetryUnlocked: string
+          telemetryLocked: string
+        }
+        lockedFeature: {
+          lockedTitle: string
+          unlockPrerequisite: string
+          defaultActiveLabel: string
+        }
+        lockedFeatures: {
+          apiKeys: {
+            title: string
+            description: string
+            prerequisite: string
+            activeLabel: string
+          }
+          auditLogs: {
+            title: string
+            description: string
+            prerequisite: string
+            activeLabel: string
+          }
+          broadcasts: {
+            title: string
+            description: string
+            prerequisite: string
+            activeLabel: string
+          }
+          catalogs: {
+            title: string
+            description: string
+            prerequisite: string
+            activeLabel: string
+          }
+          events: {
+            title: string
+            description: string
+            prerequisite: string
+            activeLabel: string
+          }
+          pricing: {
+            title: string
+            description: string
+            prerequisite: string
+            activeLabel: string
+          }
+          webhookLogs: {
+            title: string
+            description: string
+            prerequisite: string
+            activeLabel: string
+          }
+        }
+      }
       dashboard: {
         heading: string
         description: string
