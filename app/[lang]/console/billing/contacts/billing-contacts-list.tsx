@@ -165,7 +165,9 @@ type BillingContactsListProps = {
   orgId?: string
 }
 
-export function BillingContactsList({ orgId }: BillingContactsListProps = {}) {
+export function BillingContactsList({
+  orgId: _orgId,
+}: BillingContactsListProps = {}) {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
   const t = getMessages(locale).console.billing.contacts
@@ -197,7 +199,7 @@ export function BillingContactsList({ orgId }: BillingContactsListProps = {}) {
 
   const fetchAccount = useCallback(async () => {
     try {
-      const result = await getBillingAccount(orgId ? { orgId } : undefined)
+      const result = await getBillingAccount()
       setAccount(result)
       setError(null)
     } catch (err) {
@@ -205,7 +207,7 @@ export function BillingContactsList({ orgId }: BillingContactsListProps = {}) {
     } finally {
       setLoading(false)
     }
-  }, [orgId, t.loadError])
+  }, [t.loadError])
 
   useEffect(() => {
     const run = async () => {
@@ -269,10 +271,7 @@ export function BillingContactsList({ orgId }: BillingContactsListProps = {}) {
     setAddError(null)
 
     try {
-      const result = await addBillingContact({
-        ...addForm,
-        ...(orgId ? { orgId } : {}),
-      })
+      const result = await addBillingContact(addForm)
       // Update local list with the returned contact
       setAccount((prev) => {
         if (!prev) return prev
@@ -294,17 +293,14 @@ export function BillingContactsList({ orgId }: BillingContactsListProps = {}) {
     } finally {
       setAddSubmitting(false)
     }
-  }, [addForm, orgId, t.addFailed])
+  }, [addForm, t.addFailed])
 
   const handleDeactivateContact = useCallback(async () => {
     if (!deactivateTarget) return
     setDeactivating(true)
 
     try {
-      await deactivateBillingContact(
-        deactivateTarget.id,
-        orgId ? { orgId } : undefined
-      )
+      await deactivateBillingContact(deactivateTarget.id)
       setAccount((prev) => {
         if (!prev) return prev
         return {
@@ -318,20 +314,16 @@ export function BillingContactsList({ orgId }: BillingContactsListProps = {}) {
     } finally {
       setDeactivating(false)
     }
-  }, [deactivateTarget, orgId, t.deactivateFailed])
+  }, [deactivateTarget, t.deactivateFailed])
 
   const handleEditContact = useCallback(async () => {
     if (!editTarget) return
     setEditSubmitting(true)
 
     try {
-      const result = await updateBillingContact(
-        editTarget.id,
-        {
-          name: editName || null,
-        },
-        orgId ? { orgId } : undefined
-      )
+      const result = await updateBillingContact(editTarget.id, {
+        name: editName || null,
+      })
       setAccount((prev) => {
         if (!prev) return prev
         return {
@@ -347,7 +339,7 @@ export function BillingContactsList({ orgId }: BillingContactsListProps = {}) {
     } finally {
       setEditSubmitting(false)
     }
-  }, [editTarget, editName, orgId])
+  }, [editTarget, editName])
 
   const columns = useMemo<ColumnDef<BillingContactDTO, unknown>[]>(
     () => [
