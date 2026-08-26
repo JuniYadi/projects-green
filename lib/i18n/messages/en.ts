@@ -1386,5 +1386,18 @@ export const enMessages: AppMessages = {
       detector: "Detector Control",
     },
   },
+  indonesianLocale: {
+    controlLabel: "Language options",
+    currentLanguageLabel: "Current language: English",
+    englishLabel: "English",
+    indonesianLabel: "Indonesian",
+    promptTitle: "Continue in Indonesian?",
+    promptDescription:
+      "Indonesian may be a better fit for your browser. You can change this anytime.",
+    stayAction: "Stay in English",
+    switchAction: "Use Indonesian",
+    title: "Language options",
+    description: "Use this control to switch between English and Indonesian.",
+  },
   legal: legalEn,
 }

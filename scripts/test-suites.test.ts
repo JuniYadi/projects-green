@@ -103,6 +103,21 @@ describe("selectSmokeProjects", () => {
       ])
     )
   })
+  test("maps Indonesian locale offer sources to their focused tests", () => {
+    expect(
+      findFeatureMappings("components/indonesian-locale-control.tsx")
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "indonesian-locale-offer",
+          testPrefixes: expect.arrayContaining([
+            "components/indonesian-locale-control.test.tsx",
+            "lib/i18n/indonesian-locale.test.ts",
+          ]),
+        }),
+      ])
+    )
+  })
   test("reports an unmapped UI feature instead of running nothing", () => {
     const selection = selectSmokeProjects([
       "modules/new-feature/ui/new-page.tsx",

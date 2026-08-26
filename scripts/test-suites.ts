@@ -254,6 +254,21 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     smokeProjects: [],
   },
   {
+    name: "indonesian-locale-offer",
+    sourcePrefixes: [
+      "app/[lang]/layout.tsx",
+      "components/indonesian-locale-control.tsx",
+      "lib/i18n/indonesian-locale",
+    ],
+    testPrefixes: [
+      "app/[lang]/layout.test.tsx",
+      "components/indonesian-locale-control.test.tsx",
+      "lib/i18n/indonesian-locale.test.ts",
+      "lib/i18n/indonesian-locale-cue.test.ts",
+    ],
+    smokeProjects: [],
+  },
+  {
     name: "docs",
     sourcePrefixes: [
       "app/[lang]/docs/",
