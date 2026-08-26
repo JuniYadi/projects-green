@@ -15,6 +15,10 @@ import {
   CatalogRegionNotFoundError,
 } from "./catalog-admin.service"
 import type { RecurringBillingPeriod } from "../pricing/pricing.types"
+import {
+  catalogExportPayloadSchema,
+  catalogImportOptionsSchema,
+} from "./catalog-migration.dto"
 
 // ─── Zod schemas ────────────────────────────────────────────────────────────
 
@@ -505,6 +509,52 @@ export const createCatalogAdminRoutes = (deps: CatalogAdminRouteDeps = {}) => {
             })
             set.status = 200
             return { ok: true as const, data: product }
+          } catch (error) {
+            return handleServiceError(set, error)
+          }
+        }
+      )
+
+      // ─── GET /admin/catalog/:catalogCode/export ──────────────────────
+      .get("/admin/catalog/:catalogCode/export", async ({ params, set }) => {
+        const actor = await guard(set)
+        if ("ok" in actor && !actor.ok) return actor as AdminApiError
+
+        try {
+          const payload = await service.exportCatalog(
+            params.catalogCode as string
+          )
+          return { ok: true as const, data: payload }
+        } catch (error) {
+          return handleServiceError(set, error)
+        }
+      })
+
+      // ─── POST /admin/catalog/:catalogCode/import ─────────────────────
+      .post(
+        "/admin/catalog/:catalogCode/import",
+        async ({ params, body, set }) => {
+          const actor = await guard(set)
+          if ("ok" in actor && !actor.ok) return actor as AdminApiError
+
+          const importBodySchema = z.object({
+            payload: catalogExportPayloadSchema,
+            options: catalogImportOptionsSchema.optional(),
+          })
+
+          const parsed = importBodySchema.safeParse(body)
+          if (!parsed.success)
+            return validationError(set, "Invalid catalog migration payload.")
+
+          try {
+            const result = await service.importCatalog(parsed.data.payload, {
+              dryRun: Boolean(parsed.data.options?.dryRun),
+              overrideCatalogCode:
+                parsed.data.options?.overrideCatalogCode ||
+                (params.catalogCode as string),
+            })
+            set.status = 200
+            return { ok: true as const, data: result }
           } catch (error) {
             return handleServiceError(set, error)
           }

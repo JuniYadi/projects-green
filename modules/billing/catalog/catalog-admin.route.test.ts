@@ -62,6 +62,31 @@ const service = {
   upsertPlanAddonAttachment: mock(async () => ({
     id: "spa-1",
   })),
+  exportCatalog: mock(async (catalogCode: string) => ({
+    schemaVersion: "2026-08.1",
+    catalogCode,
+    catalogName: "Test Catalog",
+    exportedAt: new Date().toISOString(),
+    sourceEnv: "development",
+    products: [],
+    addons: [],
+  })),
+  importCatalog: mock(async () => ({
+    ok: true,
+    catalogCode: "WHATSAPP",
+    dryRun: false,
+    summary: {
+      productsToCreate: 1,
+      productsToUpdate: 0,
+      productsUnchanged: 0,
+      addonsToCreate: 0,
+      addonsToUpdate: 0,
+      addonsUnchanged: 0,
+      totalProcessed: 1,
+    },
+    diffs: { products: [], addons: [] },
+    warnings: [],
+  })),
   publishProduct: mock(async () => ({
     id: "pkg-1",
     code: "VPN",
@@ -786,6 +811,63 @@ describe("catalog admin routes", () => {
 
       expect(response.status).toBe(422)
       expect((await response.json()).message).toContain("No region available")
+    })
+  })
+
+  describe("GET /admin/catalog/:catalogCode/export", () => {
+    it("returns exported catalog configuration", async () => {
+      const response = await app().handle(
+        new Request("http://localhost/admin/catalog/WHATSAPP/export")
+      )
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.catalogCode).toBe("WHATSAPP")
+      expect(service.exportCatalog).toHaveBeenCalledWith("WHATSAPP")
+    })
+  })
+
+  describe("POST /admin/catalog/:catalogCode/import", () => {
+    it("validates payload and imports catalog", async () => {
+      const payload = {
+        schemaVersion: "2026-08.1",
+        catalogCode: "WHATSAPP",
+        catalogName: "WhatsApp",
+        exportedAt: new Date().toISOString(),
+        sourceEnv: "development",
+        products: [
+          {
+            code: "WA_PRO",
+            name: "Pro",
+            resources: {},
+            billingStrategy: "FIXED_CYCLE",
+            stockControl: "UNLIMITED",
+            allowBackorder: false,
+            isActive: true,
+            offers: [
+              {
+                billingPeriod: "MONTHLY",
+                chargeUnit: "SUBSCRIPTION",
+                periodPrice: 100000,
+                currency: "IDR",
+                isActive: true,
+              },
+            ],
+          },
+        ],
+        addons: [],
+      }
+
+      const response = await app().handle(
+        json("http://localhost/admin/catalog/WHATSAPP/import", {
+          payload,
+          options: { dryRun: true },
+        })
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(service.importCatalog).toHaveBeenCalled()
     })
   })
 })

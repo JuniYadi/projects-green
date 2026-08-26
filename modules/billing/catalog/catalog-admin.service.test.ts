@@ -70,6 +70,7 @@ const db = {
   },
   serviceAddon: {
     findFirst: mock<MockFunction>(() => null),
+    findUnique: mock<MockFunction>(() => null),
     create: mock<MockFunction>(() => ({
       id: "addon-1",
       code: "EXTRA_IP",
@@ -1068,6 +1069,135 @@ describe("CatalogAdminService", () => {
           }),
         })
       )
+    })
+  })
+
+  describe("exportCatalog & importCatalog", () => {
+    it("exports catalog with plans, pricings, and addons", async () => {
+      const mockPkg = {
+        id: "pkg-1",
+        code: "WHATSAPP",
+        name: "WhatsApp Service",
+        description: "WhatsApp Catalog",
+        plans: [
+          {
+            id: "plan-1",
+            code: "WA_STARTER",
+            name: "Starter",
+            resources: { messages: 1000 },
+            billingStrategy: "FIXED_CYCLE",
+            stockControl: "UNLIMITED",
+            stockCount: null,
+            allowBackorder: false,
+            isActive: true,
+            pricings: [
+              {
+                billingPeriod: "MONTHLY",
+                chargeUnit: "SUBSCRIPTION",
+                periodPrice: 50000,
+                currency: "IDR",
+                effectiveFrom: new Date("2026-01-01"),
+                effectiveTo: null,
+                isActive: true,
+                region: { code: "ID" },
+              },
+            ],
+            addons: [
+              {
+                label: "Dedicated Number",
+                description: "Extra number",
+                isRequired: false,
+                displayOrder: 1,
+                enabledTerms: ["MONTHLY"],
+                isActive: true,
+                addon: {
+                  id: "addon-1",
+                  code: "EXTRA_NUM",
+                  name: "Extra Number",
+                  description: "Phone number",
+                  billingMode: "RECURRING",
+                  isActive: true,
+                  prices: [
+                    {
+                      billingPeriod: "MONTHLY",
+                      amount: 25000,
+                      currency: "IDR",
+                      effectiveFrom: new Date("2026-01-01"),
+                      effectiveTo: null,
+                      isActive: true,
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      }
+      db.servicePackage.findFirst.mockReturnValue(mockPkg)
+
+      const service = createService()
+      const exported = await service.exportCatalog("WHATSAPP")
+
+      expect(exported.catalogCode).toBe("WHATSAPP")
+      expect(exported.products).toHaveLength(1)
+      expect(exported.products[0].code).toBe("WA_STARTER")
+      expect(exported.products[0].offers).toHaveLength(1)
+      expect(exported.products[0].offers[0].periodPrice).toBe(50000)
+      expect(exported.addons).toHaveLength(1)
+      expect(exported.addons?.[0].code).toBe("EXTRA_NUM")
+    })
+
+    it("throws CatalogPackageNotFoundError if package does not exist on export", async () => {
+      db.servicePackage.findFirst.mockReturnValue(null)
+      const service = createService()
+      expect(service.exportCatalog("UNKNOWN")).rejects.toThrow(
+        CatalogPackageNotFoundError
+      )
+    })
+
+    it("performs dry-run diff calculation without committing changes", async () => {
+      db.servicePackage.findFirst.mockReturnValue(null)
+      db.serviceAddon.findUnique.mockReturnValue(null)
+
+      const service = createService()
+      const result = await service.importCatalog(
+        {
+          schemaVersion: "2026-08.1",
+          catalogCode: "WHATSAPP",
+          catalogName: "WhatsApp",
+          exportedAt: new Date().toISOString(),
+          sourceEnv: "development",
+          products: [
+            {
+              code: "WA_STARTER",
+              name: "Starter",
+              resources: {},
+              billingStrategy: "FIXED_CYCLE",
+              stockControl: "UNLIMITED",
+              allowBackorder: false,
+              isActive: true,
+              offers: [
+                {
+                  billingPeriod: "MONTHLY",
+                  chargeUnit: "SUBSCRIPTION",
+                  periodPrice: 50000,
+                  currency: "IDR",
+                  isActive: true,
+                },
+              ],
+            },
+          ],
+          addons: [],
+        },
+        { dryRun: true }
+      )
+
+      expect(result.ok).toBe(true)
+      expect(result.dryRun).toBe(true)
+      expect(result.summary.productsToCreate).toBe(1)
+      expect(result.summary.productsToUpdate).toBe(0)
+      expect(result.diffs.products[0].action).toBe("create")
+      expect(result.appliedAt).toBeUndefined()
     })
   })
 })
