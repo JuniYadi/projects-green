@@ -122,6 +122,7 @@
     "react-icons": "^5.6.0",
     "recharts": "3.8.0",
     "shadcn": "^4.13.1",
+    "sharp": "^0.35.0",
     "sonner": "^2.0.7",
     "ssh2": "^1.17.0",
     "sshpk": "^1.18.0",
@@ -159,5 +160,8 @@
     "prisma": "^7.9.1",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "sharp": "^0.35.0"
   }
 }

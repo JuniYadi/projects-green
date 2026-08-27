@@ -2,6 +2,9 @@
 const nextConfig = {
   output: "standalone",
   serverExternalPackages: ["pino", "pino-pretty", "ssh2"],
+  images: {
+    unoptimized: true,
+  },
   turbopack: {
     root: process.cwd(),
   },
