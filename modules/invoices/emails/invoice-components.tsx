@@ -15,6 +15,20 @@ interface InvoiceSummaryProps {
   organizationName?: string
 }
 
+const getStatusBadgeStyle = (status: string) => {
+  const normalized = status.trim().toLowerCase()
+  if (normalized === "paid") {
+    return styles.statusBadgePaid
+  }
+  if (normalized === "overdue") {
+    return styles.statusBadgeOverdue
+  }
+  if (normalized === "cancelled" || normalized === "canceled") {
+    return styles.statusBadgeCancelled
+  }
+  return styles.statusBadge
+}
+
 export const InvoiceSummarySection = ({
   invoiceNumber,
   status,
@@ -27,6 +41,8 @@ export const InvoiceSummarySection = ({
   recipientEmail,
   organizationName,
 }: InvoiceSummaryProps) => {
+  const statusStyle = getStatusBadgeStyle(status)
+
   return (
     <Section style={styles.card}>
       <Text style={styles.cardHeader}>INVOICE DETAILS</Text>
@@ -91,7 +107,7 @@ export const InvoiceSummarySection = ({
 
       <Text style={styles.metaRow}>
         <span style={styles.metaLabel}>Status:</span>{" "}
-        <span style={styles.statusBadge}>{status}</span>
+        <span style={statusStyle}>{status}</span>
       </Text>
     </Section>
   )
@@ -114,11 +130,27 @@ export const InvoiceItemsList = ({ lineItems }: InvoiceItemsListProps) => {
         <React.Fragment key={item.id || index}>
           {index > 0 && <Hr style={styles.itemDivider} />}
           <div style={styles.itemRow}>
-            <Text style={styles.itemTitle}>{item.description}</Text>
-            <Text style={styles.itemSubtitle}>
-              Qty {item.quantity} × {item.unitPrice}
-              <span style={styles.itemTotalFloat}>{item.amount}</span>
-            </Text>
+            <table
+              width="100%"
+              cellPadding="0"
+              cellSpacing="0"
+              border={0}
+              style={styles.table}
+            >
+              <tbody>
+                <tr>
+                  <td style={styles.itemLeftCol}>
+                    <Text style={styles.itemTitle}>{item.description}</Text>
+                    <Text style={styles.itemSubtitle}>
+                      Qty {item.quantity} × {item.unitPrice}
+                    </Text>
+                  </td>
+                  <td align="right" style={styles.itemRightCol}>
+                    <Text style={styles.itemPrice}>{item.amount}</Text>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </React.Fragment>
       ))}
@@ -143,45 +175,97 @@ export const InvoiceCostBreakdown = ({
 }: InvoiceCostBreakdownProps) => {
   const hasSubtotal = Boolean(subtotalAmount && subtotalAmount !== "N/A")
   const hasTax = Boolean(
-    taxAmount && taxAmount !== "N/A" && taxAmount !== "$0.00"
+    taxAmount && taxAmount !== "N/A" && /[1-9]/.test(taxAmount)
   )
   const hasDiscount = Boolean(
-    discountAmount && discountAmount !== "N/A" && discountAmount !== "$0.00"
+    discountAmount && discountAmount !== "N/A" && /[1-9]/.test(discountAmount)
   )
 
   return (
     <Section style={styles.card}>
       <Text style={styles.cardHeader}>PAYMENT BREAKDOWN</Text>
 
-      {hasSubtotal && (
-        <Text style={styles.breakdownRow}>
-          <span style={styles.metaLabel}>Subtotal:</span>{" "}
-          <span style={styles.breakdownValue}>{subtotalAmount}</span>
-        </Text>
-      )}
+      <table
+        width="100%"
+        cellPadding="0"
+        cellSpacing="0"
+        border={0}
+        style={styles.table}
+      >
+        <tbody>
+          {hasSubtotal && (
+            <tr>
+              <td style={styles.breakdownLeftCol}>
+                <Text style={styles.breakdownRow}>
+                  <span style={styles.metaLabel}>Subtotal:</span>
+                </Text>
+              </td>
+              <td align="right" style={styles.breakdownRightCol}>
+                <Text style={styles.breakdownRow}>
+                  <span style={styles.breakdownValue}>{subtotalAmount}</span>
+                </Text>
+              </td>
+            </tr>
+          )}
 
-      {hasDiscount && (
-        <Text style={styles.breakdownRow}>
-          <span style={styles.metaLabel}>Discount / Voucher:</span>{" "}
-          <span style={styles.discountValue}>-{discountAmount}</span>
-        </Text>
-      )}
+          {hasDiscount && (
+            <tr>
+              <td style={styles.breakdownLeftCol}>
+                <Text style={styles.breakdownRow}>
+                  <span style={styles.metaLabel}>Discount / Voucher:</span>
+                </Text>
+              </td>
+              <td align="right" style={styles.breakdownRightCol}>
+                <Text style={styles.breakdownRow}>
+                  <span style={styles.discountValue}>-{discountAmount}</span>
+                </Text>
+              </td>
+            </tr>
+          )}
 
-      {hasTax && (
-        <Text style={styles.breakdownRow}>
-          <span style={styles.metaLabel}>Tax:</span>{" "}
-          <span style={styles.breakdownValue}>{taxAmount}</span>
-        </Text>
-      )}
+          {hasTax && (
+            <tr>
+              <td style={styles.breakdownLeftCol}>
+                <Text style={styles.breakdownRow}>
+                  <span style={styles.metaLabel}>Tax:</span>
+                </Text>
+              </td>
+              <td align="right" style={styles.breakdownRightCol}>
+                <Text style={styles.breakdownRow}>
+                  <span style={styles.breakdownValue}>{taxAmount}</span>
+                </Text>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
 
       {(hasSubtotal || hasTax || hasDiscount) && (
         <Hr style={styles.itemDivider} />
       )}
 
-      <Text style={styles.totalRow}>
-        <span style={styles.totalLabel}>{totalLabel}:</span>{" "}
-        <span style={styles.totalValue}>{amount}</span>
-      </Text>
+      <table
+        width="100%"
+        cellPadding="0"
+        cellSpacing="0"
+        border={0}
+        style={styles.table}
+      >
+        <tbody>
+          <tr>
+            <td style={styles.breakdownLeftCol}>
+              <Text style={styles.totalRow}>
+                <span style={styles.totalLabel}>{totalLabel}:</span>
+              </Text>
+            </td>
+            <td align="right" style={styles.breakdownRightCol}>
+              <Text style={styles.totalRow}>
+                <span style={styles.totalValue}>{amount}</span>
+              </Text>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </Section>
   )
 }
@@ -283,6 +367,34 @@ export const styles = {
     borderRadius: "4px",
     letterSpacing: "0.4px",
   },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse" as const,
+  },
+  itemLeftCol: {
+    verticalAlign: "top" as const,
+    textAlign: "left" as const,
+  },
+  itemRightCol: {
+    verticalAlign: "bottom" as const,
+    textAlign: "right" as const,
+    whiteSpace: "nowrap" as const,
+  },
+  itemPrice: {
+    color: "#1a202c",
+    fontSize: "14px",
+    fontWeight: "600" as const,
+    margin: "0",
+  },
+  breakdownLeftCol: {
+    verticalAlign: "middle" as const,
+    textAlign: "left" as const,
+  },
+  breakdownRightCol: {
+    verticalAlign: "middle" as const,
+    textAlign: "right" as const,
+    whiteSpace: "nowrap" as const,
+  },
   itemRow: {
     margin: "6px 0",
   },
@@ -298,9 +410,9 @@ export const styles = {
     margin: "0",
   },
   itemTotalFloat: {
-    float: "right" as const,
     color: "#1a202c",
     fontWeight: "600" as const,
+    textAlign: "right" as const,
   },
   itemDivider: {
     borderColor: "#e2e8f0",
@@ -314,14 +426,14 @@ export const styles = {
     margin: "6px 0",
   },
   breakdownValue: {
-    float: "right" as const,
     color: "#1a202c",
     fontWeight: "500" as const,
+    textAlign: "right" as const,
   },
   discountValue: {
-    float: "right" as const,
     color: "#16a34a",
     fontWeight: "600" as const,
+    textAlign: "right" as const,
   },
   totalRow: {
     color: "#1a202c",
@@ -333,9 +445,9 @@ export const styles = {
     color: "#1a202c",
   },
   totalValue: {
-    float: "right" as const,
     color: "#0f172a",
     fontSize: "18px",
+    textAlign: "right" as const,
   },
   actions: {
     textAlign: "center" as const,
