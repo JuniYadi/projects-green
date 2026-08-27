@@ -160,5 +160,8 @@
     "prisma": "^7.9.1",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "sharp": "^0.35.0"
   }
 }
