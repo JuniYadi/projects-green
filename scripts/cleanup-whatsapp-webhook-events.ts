@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 const RETENTION_DAYS = 90
 const BATCH_SIZE = 1000
@@ -16,14 +17,24 @@ function parseDurationMs(start: bigint): string {
 const main = async () => {
   const dryRun = isDryRun()
   const startTime = process.hrtime.bigint()
-
-  console.info(`[cleanup-webhook-events] starting${dryRun ? " (DRY RUN)" : ""}`)
+  logger.info(
+    {
+      event: "cleanup.whatsapp_webhook_events.started",
+      dryRun,
+    },
+    `[cleanup-webhook-events] starting${dryRun ? " (DRY RUN)" : ""}`
+  )
 
   // Calculate cutoff date: 90 days ago
   const cutoffDate = new Date()
   cutoffDate.setDate(cutoffDate.getDate() - RETENTION_DAYS)
 
-  console.info(
+  logger.info(
+    {
+      event: "cleanup.whatsapp_webhook_events.cutoff_calculated",
+      cutoffDate: cutoffDate.toISOString(),
+      retentionDays: RETENTION_DAYS,
+    },
     `[cleanup-webhook-events] cutoff date: ${cutoffDate.toISOString()}`
   )
 
@@ -34,21 +45,33 @@ const main = async () => {
     },
   })
 
-  console.info(
+  logger.info(
+    {
+      event: "cleanup.whatsapp_webhook_events.count_found",
+      totalCount,
+      retentionDays: RETENTION_DAYS,
+    },
     `[cleanup-webhook-events] found ${totalCount} event(s) older than ${RETENTION_DAYS} days`
   )
 
   if (totalCount === 0) {
-    console.info("[cleanup-webhook-events] nothing to clean up")
+    logger.info(
+      {
+        event: "cleanup.whatsapp_webhook_events.noop",
+      },
+      "[cleanup-webhook-events] nothing to clean up"
+    )
     return
   }
 
   if (dryRun) {
-    console.info(
-      `[cleanup-webhook-events] dry run: would delete ${totalCount} event(s)`
-    )
-    console.info(
-      `[cleanup-webhook-events] completed in ${parseDurationMs(startTime)}`
+    logger.info(
+      {
+        event: "cleanup.whatsapp_webhook_events.dry_run_summary",
+        totalCount,
+        duration: parseDurationMs(startTime),
+      },
+      `[cleanup-webhook-events] dry run: would delete ${totalCount} event(s) in ${parseDurationMs(startTime)}`
     )
     return
   }
@@ -76,19 +99,36 @@ const main = async () => {
 
     deletedTotal += result.count
 
-    console.info(
+    logger.info(
+      {
+        event: "cleanup.whatsapp_webhook_events.batch_deleted",
+        batchCount: result.count,
+        deletedTotal,
+        totalCount,
+      },
       `[cleanup-webhook-events] deleted batch of ${result.count} events (${deletedTotal}/${totalCount})`
     )
   }
 
-  console.info(
+  logger.info(
+    {
+      event: "cleanup.whatsapp_webhook_events.completed",
+      deletedTotal,
+      duration: parseDurationMs(startTime),
+    },
     `[cleanup-webhook-events] completed: deleted ${deletedTotal} event(s) in ${parseDurationMs(startTime)}`
   )
 }
 
 main()
   .catch((error) => {
-    console.error("[cleanup-webhook-events] failed", error)
+    logger.error(
+      {
+        event: "cleanup.whatsapp_webhook_events.failed",
+        err: error,
+      },
+      "[cleanup-webhook-events] failed"
+    )
     process.exitCode = 1
   })
   .finally(async () => {

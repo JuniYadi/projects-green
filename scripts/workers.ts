@@ -27,6 +27,7 @@
  */
 
 import { Worker, type Job } from "bullmq"
+import { logger } from "@/lib/logger"
 import { prisma } from "@/lib/prisma"
 import {
   getRedisConnection,
@@ -180,8 +181,15 @@ async function processMonthlyBilling(): Promise<{
   const finalized = await billingCycle.finalizeServiceInvoices()
   const result = await billingCycle.processMonthlyBilling()
 
-  console.info(
-    `[billing-cron] monthly billing: finalized=${finalized.finalized} processed=${result.processed} skipped=${result.skipped} invoices=${result.invoices.length}`
+  logger.info(
+    {
+      event: "billing.monthly_billing.completed",
+      finalized: finalized.finalized,
+      processed: result.processed,
+      skipped: result.skipped,
+      invoicesCount: result.invoices.length,
+    },
+    "Monthly billing processed"
   )
 
   return { processed: result.processed, skipped: result.skipped }
@@ -194,8 +202,13 @@ async function processInvoiceStatusManager(): Promise<{
   const statusManager = new InvoiceStatusManager(prisma, invoiceEmailService)
   const result = await statusManager.runDailyTransitions()
 
-  console.info(
-    `[billing-cron] invoice status manager: issued=${result.issued} overdue=${result.overdue}`
+  logger.info(
+    {
+      event: "billing.invoice_status_manager.completed",
+      issued: result.issued,
+      overdue: result.overdue,
+    },
+    "Invoice status transitions completed"
   )
 
   return result
@@ -205,7 +218,13 @@ async function processPaymentReminder(): Promise<{ sent: number }> {
   const statusManager = new InvoiceStatusManager(prisma, invoiceEmailService)
   const result = await statusManager.sendPaymentReminders()
 
-  console.info(`[billing-cron] payment reminder: sent=${result.sent}`)
+  logger.info(
+    {
+      event: "billing.payment_reminder.completed",
+      sent: result.sent,
+    },
+    "Payment reminders sent"
+  )
 
   return result
 }
@@ -215,13 +234,21 @@ const billingDailyWorker = new Worker<BillingCronJobData>(
   async (job: Job<BillingCronJobData>) => {
     if (job.name === BILLING_DAILY_RESET_JOB) {
       const deleted = await processDailyReset()
-      console.info(
-        `[billing-cron] daily reset: deleted ${deleted} old daily count rows`
+      logger.info(
+        {
+          event: "billing.daily_reset.completed",
+          deletedCount: deleted,
+        },
+        "Daily reset deleted old daily count rows"
       )
     } else if (job.name === BILLING_MONTHLY_RESET_JOB) {
       const deleted = await processMonthlyReset()
-      console.info(
-        `[billing-cron] monthly reset: deleted ${deleted} old monthly count rows`
+      logger.info(
+        {
+          event: "billing.monthly_reset.completed",
+          deletedCount: deleted,
+        },
+        "Monthly reset deleted old monthly count rows"
       )
     }
   },
@@ -234,8 +261,12 @@ const billingMonthlyWorker = new Worker<BillingCronJobData>(
   async (job: Job<BillingCronJobData>) => {
     if (job.name === BILLING_MONTHLY_RESET_JOB) {
       const deleted = await processMonthlyReset()
-      console.info(
-        `[billing-cron] monthly reset: deleted ${deleted} old monthly count rows`
+      logger.info(
+        {
+          event: "billing.monthly_reset.completed",
+          deletedCount: deleted,
+        },
+        "Monthly reset deleted old monthly count rows"
       )
     } else if (job.name === BILLING_MONTHLY_BILLING_JOB) {
       await processMonthlyBilling()
@@ -301,8 +332,13 @@ const quotaWorker = new Worker<QuotaReconciliationJobData>(
     })
 
     if (!device) {
-      console.error(
-        `[quota-reconciliation] Device not found: deviceId=${deviceId}`
+      logger.error(
+        {
+          event: "whatsapp.quota_reconciliation.device_not_found",
+          deviceId,
+          organizationId,
+        },
+        "Device not found for quota reconciliation"
       )
       return
     }
@@ -408,8 +444,14 @@ const whatsappTemplateSyncWorker = new Worker<WhatsAppTemplateSyncJobData>(
   }
 )
 whatsappTemplateSyncWorker.on("completed", (job, summary) => {
-  console.info(
-    `[whatsapp-template-sync] completed ${job.name} id=${job.id} result=${JSON.stringify(summary ?? null)}`
+  logger.info(
+    {
+      event: "whatsapp.template_sync.completed",
+      jobName: job.name,
+      jobId: job.id,
+      result: summary ?? null,
+    },
+    "WhatsApp template sync completed"
   )
 })
 allWorkers.push(whatsappTemplateSyncWorker)
@@ -478,21 +520,51 @@ for (const worker of allWorkers) {
   const name = worker.name
 
   worker.on("active", (job) => {
-    console.info(`[${name}] active ${job.name} id=${job.id}`)
+    logger.info(
+      {
+        event: "worker.job.active",
+        workerName: name,
+        jobName: job.name,
+        jobId: job.id,
+      },
+      `[${name}] active ${job.name}`
+    )
   })
 
   worker.on("completed", (job) => {
-    console.info(`[${name}] completed ${job.name} id=${job.id}`)
+    logger.info(
+      {
+        event: "worker.job.completed",
+        workerName: name,
+        jobName: job.name,
+        jobId: job.id,
+      },
+      `[${name}] completed ${job.name}`
+    )
   })
 
   worker.on("failed", (job, error) => {
     if (!job) {
-      console.error(`[${name}] failed job missing payload`, error)
+      logger.error(
+        {
+          err: error,
+          event: "worker.job.failed",
+          workerName: name,
+        },
+        `[${name}] failed job missing payload`
+      )
       return
     }
-    console.error(
-      `[${name}] failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`,
-      error
+    logger.error(
+      {
+        err: error,
+        event: "worker.job.failed",
+        workerName: name,
+        jobName: job.name,
+        jobId: job.id,
+        attemptsMade: job.attemptsMade,
+      },
+      `[${name}] failed ${job.name}`
     )
   })
 }
@@ -510,12 +582,19 @@ if (!isConsumerMode) {
     try {
       const results = await monitorActiveDeployments()
       if (results.length > 0) {
-        console.info(
-          `[deploy-monitor] checked ${results.length} active deployment(s)`
+        logger.info(
+          {
+            event: "deploy.monitor.checked",
+            checkedCount: results.length,
+          },
+          "Checked active deployments"
         )
       }
     } catch (error) {
-      console.error("[deploy-monitor] monitor cycle failed:", error)
+      logger.error(
+        { err: error, event: "deploy.monitor.failed" },
+        "Deploy monitor cycle failed"
+      )
     }
   }, 60_000)
   intervals.push(deployMonitorInterval)
@@ -557,7 +636,14 @@ if (!isConsumerMode) {
           }
         } catch (error) {
           errors++
-          console.error(`[app-hosting-billing] stack=${stack.id} error:`, error)
+          logger.error(
+            {
+              err: error,
+              event: "billing.app_hosting.charge_failed",
+              stackId: stack.id,
+            },
+            "App hosting billing stack charge failed"
+          )
         }
       }
 
@@ -576,18 +662,32 @@ if (!isConsumerMode) {
           })
           if (result.suspended) suspended++
         } catch (error) {
-          console.error(
-            `[app-hosting-billing] grace check stack=${stack.id} error:`,
-            error
+          logger.error(
+            {
+              err: error,
+              event: "billing.app_hosting.grace_check_failed",
+              stackId: stack.id,
+            },
+            "App hosting billing grace check failed"
           )
         }
       }
 
-      console.info(
-        `[app-hosting-billing] charged=${charged} grace=${graceEntered} suspended=${suspended} errors=${errors}`
+      logger.info(
+        {
+          event: "billing.app_hosting.cycle_completed",
+          charged,
+          graceEntered,
+          suspended,
+          errors,
+        },
+        "App hosting billing cycle completed"
       )
     } catch (error) {
-      console.error("[app-hosting-billing] cycle failed:", error)
+      logger.error(
+        { err: error, event: "billing.app_hosting.cycle_failed" },
+        "App hosting billing cycle failed"
+      )
     }
   }, 3_600_000) // 1 hour
   intervals.push(appHostingBillingInterval)
@@ -598,11 +698,20 @@ if (!isConsumerMode) {
         prisma,
         new BillingOrderService(prisma)
       )
-      console.info(
-        `[whatsapp-billing] charged=${result.charged} skipped=${result.skipped} errors=${result.errors}`
+      logger.info(
+        {
+          event: "billing.whatsapp.cycle_completed",
+          charged: result.charged,
+          skipped: result.skipped,
+          errors: result.errors,
+        },
+        "WhatsApp billing cycle completed"
       )
     } catch (error) {
-      console.error("[whatsapp-billing] cycle failed:", error)
+      logger.error(
+        { err: error, event: "billing.whatsapp.cycle_failed" },
+        "WhatsApp billing cycle failed"
+      )
     }
   }, 3_600_000) // 1 hour
   intervals.push(whatsappBillingInterval)
@@ -637,24 +746,42 @@ if (!isConsumerMode) {
           })
           synced += result.syncedCount
           if (result.discrepancies.length > 0) {
-            console.warn(
-              `[whatsapp-analytics] device=${device.id} discrepancies=${result.discrepancies.length}`
+            logger.warn(
+              {
+                event: "whatsapp.analytics.discrepancies_found",
+                deviceId: device.id,
+                discrepanciesCount: result.discrepancies.length,
+              },
+              "WhatsApp analytics discrepancies detected"
             )
           }
         } catch (error) {
           errors++
-          console.error(
-            `[whatsapp-analytics] device=${device.id} error:`,
-            error
+          logger.error(
+            {
+              err: error,
+              event: "whatsapp.analytics.sync_failed",
+              deviceId: device.id,
+            },
+            "WhatsApp analytics device sync failed"
           )
         }
       }
 
-      console.info(
-        `[whatsapp-analytics] synced=${synced} errors=${errors} devices=${activeDevices.length}`
+      logger.info(
+        {
+          event: "whatsapp.analytics.sync_completed",
+          synced,
+          errors,
+          devicesCount: activeDevices.length,
+        },
+        "WhatsApp analytics sync cycle completed"
       )
     } catch (error) {
-      console.error("[whatsapp-analytics] cycle failed:", error)
+      logger.error(
+        { err: error, event: "whatsapp.analytics.cycle_failed" },
+        "WhatsApp analytics cycle failed"
+      )
     }
   }, 3_600_000) // 1 hour
   intervals.push(whatsappAnalyticsInterval)
@@ -667,11 +794,20 @@ if (!isConsumerMode) {
 
       const result = await renewalService.renewDueSubscriptions()
 
-      console.info(
-        `[vpn-renewal] renewed=${result.renewed} retried=${result.retried} errors=${result.errors}`
+      logger.info(
+        {
+          event: "vpn.renewal.cycle_completed",
+          renewed: result.renewed,
+          retried: result.retried,
+          errors: result.errors,
+        },
+        "VPN renewal cycle completed"
       )
     } catch (error) {
-      console.error("[vpn-renewal] cycle failed:", error)
+      logger.error(
+        { err: error, event: "vpn.renewal.cycle_failed" },
+        "VPN renewal cycle failed"
+      )
     }
   }, 3_600_000) // 1 hour
   intervals.push(vpnRenewalInterval)
@@ -696,7 +832,10 @@ const shutdown = async (signal: string) => {
   if (shuttingDown) return
   shuttingDown = true
 
-  console.info(`[workers] received ${signal}, shutting down gracefully...`)
+  logger.info(
+    { event: "worker.runtime.shutdown_started", signal },
+    `Received ${signal}, shutting down gracefully...`
+  )
 
   // Stop all intervals
   for (const interval of intervals) {
@@ -713,7 +852,10 @@ const shutdown = async (signal: string) => {
   // Disconnect Prisma
   await prisma.$disconnect()
 
-  console.info("[workers] shutdown complete")
+  logger.info(
+    { event: "worker.runtime.shutdown_completed" },
+    "Worker process shutdown complete"
+  )
   process.exit(0)
 }
 
@@ -721,11 +863,17 @@ process.on("SIGTERM", () => void shutdown("SIGTERM"))
 process.on("SIGINT", () => void shutdown("SIGINT"))
 
 process.on("unhandledRejection", (reason) => {
-  console.error("[workers] unhandled rejection:", reason)
+  logger.error(
+    { err: reason, event: "worker.runtime.unhandled_rejection" },
+    "Worker runtime unhandled rejection"
+  )
 })
 
 process.on("uncaughtException", (error) => {
-  console.error("[workers] uncaught exception:", error)
+  logger.error(
+    { err: error, event: "worker.runtime.uncaught_exception" },
+    "Worker runtime uncaught exception"
+  )
   process.exit(1)
 })
 
@@ -743,23 +891,56 @@ if (!isConsumerMode) {
   try {
     const results = await monitorActiveDeployments()
     if (results.length > 0) {
-      console.info(
-        `[deploy-monitor] initial check: ${results.length} active deployment(s)`
+      logger.info(
+        {
+          event: "deploy.monitor.initial_check",
+          checkedCount: results.length,
+        },
+        "Deploy monitor initial check completed"
       )
     }
   } catch (error) {
-    console.error("[deploy-monitor] initial check failed:", error)
+    logger.error(
+      { err: error, event: "deploy.monitor.initial_check_failed" },
+      "Deploy monitor initial check failed"
+    )
   }
 }
 
-console.info(
-  `[workers] unified worker process ready (mode=${isConsumerMode ? "consumer" : "all"})`
-)
-console.info(
-  `[workers] bullmq queues: ${GithubEventJob.queue}, ${BILLING_DAILY_RESET_QUEUE}, ${BILLING_MONTHLY_RESET_QUEUE}, ${BILLING_INVOICE_STATUS_QUEUE}, ${BILLING_PAYMENT_REMINDER_QUEUE}, ${OPENSEARCH_INGEST_QUEUE}, ${QUOTA_RECONCILIATION_QUEUE}, ${WHATSAPP_BROADCAST_QUEUE_NAME}, ${WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME}, ${EmailJob.queue}, ${WHATSAPP_WEBHOOK_OUTGOING_QUEUE}`
+logger.info(
+  {
+    event: "worker.runtime.ready",
+    mode: isConsumerMode ? "consumer" : "all",
+    queues: [
+      GithubEventJob.queue,
+      BILLING_DAILY_RESET_QUEUE,
+      BILLING_MONTHLY_RESET_QUEUE,
+      BILLING_INVOICE_STATUS_QUEUE,
+      BILLING_PAYMENT_REMINDER_QUEUE,
+      OPENSEARCH_INGEST_QUEUE,
+      QUOTA_RECONCILIATION_QUEUE,
+      WHATSAPP_BROADCAST_QUEUE_NAME,
+      WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME,
+      EmailJob.queue,
+      WHATSAPP_WEBHOOK_OUTGOING_QUEUE,
+    ],
+  },
+  `Unified worker process ready (mode=${isConsumerMode ? "consumer" : "all"})`
 )
 if (!isConsumerMode) {
-  console.info(
-    "[workers] interval tasks: deploy-monitor (60s), app-hosting-billing (1h), whatsapp-billing (1h), vpn-renewal (1h), vpn-reconciliation (5m), vpn-health (15m), vpn-session-cleanup (5m)"
+  logger.info(
+    {
+      event: "worker.runtime.interval_tasks_configured",
+      tasks: [
+        "deploy-monitor (60s)",
+        "app-hosting-billing (1h)",
+        "whatsapp-billing (1h)",
+        "vpn-renewal (1h)",
+        "vpn-reconciliation (5m)",
+        "vpn-health (15m)",
+        "vpn-session-cleanup (5m)",
+      ],
+    },
+    "Interval tasks registered"
   )
 }

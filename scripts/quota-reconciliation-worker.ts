@@ -13,13 +13,13 @@
  */
 
 import { Worker } from "bullmq"
+import { logger } from "@/lib/logger"
 import {
   getQuotaReconciliationRedisConnection,
   QUOTA_RECONCILIATION_QUEUE,
 } from "@/lib/queue/quota-reconciliation"
 import type { QuotaReconciliationJobData } from "@/lib/queue/quota-reconciliation"
 import { prisma } from "@/lib/prisma"
-
 const CONCURRENCY = 4
 
 async function processQuotaReconciliation(job: {
@@ -28,7 +28,14 @@ async function processQuotaReconciliation(job: {
 }): Promise<void> {
   const { organizationId, deviceId, direction, messageId, timestamp } = job.data
 
-  console.log(
+  logger.info(
+    {
+      event: "quota_reconciliation.processing_job",
+      jobId: job.id,
+      organizationId,
+      deviceId,
+      direction,
+    },
     `[QuotaReconciliation] Processing job ${job.id} for org=${organizationId} device=${deviceId} direction=${direction}`
   )
 
@@ -40,7 +47,12 @@ async function processQuotaReconciliation(job: {
     })
 
     if (!device) {
-      console.error(
+      logger.error(
+        {
+          event: "quota_reconciliation.device_not_found",
+          jobId: job.id,
+          deviceId,
+        },
         `[QuotaReconciliation] Device not found: deviceId=${deviceId}`
       )
       return // Don't retry - no device means nothing to reconcile
@@ -121,20 +133,37 @@ async function processQuotaReconciliation(job: {
       })
     }
 
-    console.log(
+    logger.info(
+      {
+        event: "quota_reconciliation.reconciled",
+        jobId: job.id,
+        messageId,
+        organizationId,
+        deviceId,
+      },
       `[QuotaReconciliation] Successfully reconciled quota for job=${job.id} messageId=${messageId}`
     )
   } catch (error) {
-    console.error(
-      `[QuotaReconciliation] Error processing job ${job.id}:`,
-      error
+    logger.error(
+      {
+        err: error,
+        event: "quota_reconciliation.job_error",
+        jobId: job.id,
+        messageId,
+        organizationId,
+        deviceId,
+      },
+      `[QuotaReconciliation] Error processing job ${job.id}:`
     )
     throw error // Re-throw to trigger retry
   }
 }
 
 async function main() {
-  console.log("[QuotaReconciliation] Worker starting...")
+  logger.info(
+    { event: "quota_reconciliation.worker_starting" },
+    "[QuotaReconciliation] Worker starting..."
+  )
 
   const connection = getQuotaReconciliationRedisConnection()
 
@@ -153,26 +182,44 @@ async function main() {
 
   worker.on("completed", (job) => {
     if (job.id) {
-      console.log(`[QuotaReconciliation] Job ${job.id} completed`)
+      logger.info(
+        {
+          event: "quota_reconciliation.job_completed",
+          jobId: job.id,
+          jobName: job.name,
+        },
+        `[QuotaReconciliation] Job ${job.id} completed`
+      )
     }
   })
 
   worker.on("failed", (job, error) => {
     if (job?.id) {
-      console.error(
-        `[QuotaReconciliation] Job ${job.id} failed:`,
-        error.message
+      logger.error(
+        {
+          err: error,
+          event: "quota_reconciliation.job_failed",
+          jobId: job.id,
+          jobName: job.name,
+        },
+        `[QuotaReconciliation] Job ${job.id} failed:`
       )
     }
   })
 
   worker.on("error", (error) => {
-    console.error("[QuotaReconciliation] Worker error:", error)
+    logger.error(
+      { err: error, event: "quota_reconciliation.worker_error" },
+      "[QuotaReconciliation] Worker error:"
+    )
   })
 
   // Graceful shutdown
   const shutdown = async () => {
-    console.log("[QuotaReconciliation] Shutting down...")
+    logger.info(
+      { event: "quota_reconciliation.shutting_down" },
+      "[QuotaReconciliation] Shutting down..."
+    )
     await worker.close()
     process.exit(0)
   }
@@ -180,12 +227,16 @@ async function main() {
   process.on("SIGINT", shutdown)
   process.on("SIGTERM", shutdown)
 
-  console.log(
+  logger.info(
+    { event: "quota_reconciliation.worker_running", concurrency: CONCURRENCY },
     `[QuotaReconciliation] Worker running with concurrency=${CONCURRENCY}`
   )
 }
 
 main().catch((error) => {
-  console.error("[QuotaReconciliation] Fatal error:", error)
+  logger.error(
+    { err: error, event: "quota_reconciliation.fatal_error" },
+    "[QuotaReconciliation] Fatal error:"
+  )
   process.exit(1)
 })

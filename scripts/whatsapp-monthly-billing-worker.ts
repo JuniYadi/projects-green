@@ -23,6 +23,7 @@
  * Usage: bun run scripts/whatsapp-monthly-billing-worker.ts
  */
 
+import { logger } from "@/lib/logger"
 import { prisma } from "@/lib/prisma"
 import { BillingOrderService } from "@/modules/billing/orders/order.service"
 import { runWhatsappBillingCycle } from "@/modules/whatsapp/billing/whatsapp-billing.service"
@@ -47,13 +48,26 @@ async function chargeMonthlyBases(): Promise<{
 }
 
 async function main() {
-  console.info("[whatsapp-billing] Starting monthly billing cycle...")
+  logger.info(
+    { event: "whatsapp_billing.cycle_started" },
+    "[whatsapp-billing] Starting monthly billing cycle..."
+  )
   const period = await getCurrentPeriod()
-  console.info(`[whatsapp-billing] Period: ${period}`)
+  logger.info(
+    { event: "whatsapp_billing.period_resolved", period },
+    `[whatsapp-billing] Period: ${period}`
+  )
 
   const result = await chargeMonthlyBases()
 
-  console.info(
+  logger.info(
+    {
+      event: "whatsapp_billing.cycle_completed",
+      charged: result.charged,
+      skipped: result.skipped,
+      errors: result.errors,
+      period,
+    },
     `[whatsapp-billing] Complete: ${result.charged} charged, ${result.skipped} skipped, ${result.errors} errors`
   )
 
@@ -63,6 +77,9 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("[whatsapp-billing] Fatal error:", err)
+  logger.error(
+    { err, event: "whatsapp_billing.fatal_error" },
+    "[whatsapp-billing] Fatal error:"
+  )
   process.exit(1)
 })

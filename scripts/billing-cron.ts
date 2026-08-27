@@ -1,5 +1,6 @@
 import { Worker, type Job } from "bullmq"
 
+import { logger } from "@/lib/logger"
 import { prisma } from "@/lib/prisma"
 import {
   BILLING_DAILY_RESET_JOB,
@@ -22,7 +23,6 @@ import { InvoiceStatusManager } from "@/modules/billing/invoice-status.service"
 import { RenewalCoordinatorService } from "@/modules/billing/renewal/renewal-coordinator.service"
 import { createVpnRenewalCallbacks } from "@/modules/vpn/billing/vpn-renewal-callbacks"
 import { invoiceEmailService } from "@/modules/invoices/email.service"
-
 const redisConnection = getRedisConnection()
 
 /**
@@ -84,7 +84,14 @@ async function processMonthlyBilling(): Promise<{
   const finalized = await billingCycle.finalizeServiceInvoices()
   const result = await billingCycle.processMonthlyBilling()
 
-  console.info(
+  logger.info(
+    {
+      event: "billing_cron.monthly_billing_processed",
+      finalized: finalized.finalized,
+      processed: result.processed,
+      skipped: result.skipped,
+      invoicesCount: result.invoices.length,
+    },
     `[billing-cron] monthly billing: finalized=${finalized.finalized} processed=${result.processed} skipped=${result.skipped} invoices=${result.invoices.length}`
   )
 
@@ -101,7 +108,12 @@ async function processInvoiceStatusManager(): Promise<{
   const statusManager = new InvoiceStatusManager(prisma, invoiceEmailService)
   const result = await statusManager.runDailyTransitions()
 
-  console.info(
+  logger.info(
+    {
+      event: "billing_cron.invoice_status_transitions_run",
+      issued: result.issued,
+      overdue: result.overdue,
+    },
     `[billing-cron] invoice status manager: issued=${result.issued} overdue=${result.overdue}`
   )
 
@@ -115,7 +127,13 @@ async function processPaymentReminder(): Promise<{ sent: number }> {
   const statusManager = new InvoiceStatusManager(prisma, invoiceEmailService)
   const result = await statusManager.sendPaymentReminders()
 
-  console.info(`[billing-cron] payment reminder: sent=${result.sent}`)
+  logger.info(
+    {
+      event: "billing_cron.payment_reminders_sent",
+      sent: result.sent,
+    },
+    `[billing-cron] payment reminder: sent=${result.sent}`
+  )
 
   return result
 }
@@ -137,12 +155,24 @@ const worker = new Worker<BillingCronJobData>(
   async (job: Job<BillingCronJobData>) => {
     if (job.name === BILLING_DAILY_RESET_JOB) {
       const deleted = await processDailyReset()
-      console.info(
+      logger.info(
+        {
+          event: "billing_cron.daily_reset_completed",
+          jobId: job.id,
+          jobName: job.name,
+          deletedCount: deleted,
+        },
         `[billing-cron] daily reset: deleted ${deleted} old daily count rows`
       )
     } else if (job.name === BILLING_MONTHLY_RESET_JOB) {
       const deleted = await processMonthlyReset()
-      console.info(
+      logger.info(
+        {
+          event: "billing_cron.monthly_reset_completed",
+          jobId: job.id,
+          jobName: job.name,
+          deletedCount: deleted,
+        },
         `[billing-cron] monthly reset: deleted ${deleted} old monthly count rows`
       )
     }
@@ -159,12 +189,25 @@ const monthlyWorker = new Worker<BillingCronJobData>(
   async (job: Job<BillingCronJobData>) => {
     if (job.name === BILLING_MONTHLY_RESET_JOB) {
       const deleted = await processMonthlyReset()
-      console.info(
+      logger.info(
+        {
+          event: "billing_cron.monthly_reset_completed",
+          jobId: job.id,
+          jobName: job.name,
+          deletedCount: deleted,
+        },
         `[billing-cron] monthly reset: deleted ${deleted} old monthly count rows`
       )
     } else if (job.name === BILLING_MONTHLY_BILLING_JOB) {
       const result = await processMonthlyBilling()
-      console.info(
+      logger.info(
+        {
+          event: "billing_cron.monthly_billing_completed",
+          jobId: job.id,
+          jobName: job.name,
+          processed: result.processed,
+          skipped: result.skipped,
+        },
         `[billing-cron] monthly billing: ${result.processed} processed`
       )
     }
@@ -181,7 +224,14 @@ const statusWorker = new Worker<BillingCronJobData>(
   async (job: Job<BillingCronJobData>) => {
     if (job.name === BILLING_INVOICE_STATUS_JOB) {
       const result = await processInvoiceStatusManager()
-      console.info(
+      logger.info(
+        {
+          event: "billing_cron.invoice_status_completed",
+          jobId: job.id,
+          jobName: job.name,
+          issued: result.issued,
+          overdue: result.overdue,
+        },
         `[billing-cron] invoice status: ${result.issued} issued, ${result.overdue} overdue`
       )
     }
@@ -198,7 +248,15 @@ const reminderWorker = new Worker<BillingCronJobData>(
   async (job: Job<BillingCronJobData>) => {
     if (job.name === BILLING_PAYMENT_REMINDER_JOB) {
       const result = await processPaymentReminder()
-      console.info(`[billing-cron] payment reminder: sent=${result.sent}`)
+      logger.info(
+        {
+          event: "billing_cron.payment_reminder_completed",
+          jobId: job.id,
+          jobName: job.name,
+          sent: result.sent,
+        },
+        `[billing-cron] payment reminder: sent=${result.sent}`
+      )
     }
   },
   {
@@ -213,7 +271,13 @@ const renewalLadderWorker = new Worker<BillingCronJobData>(
   async (job: Job<BillingCronJobData>) => {
     if (job.name === BILLING_RENEWAL_LADDER_JOB) {
       const transitioned = await processRenewalLadder()
-      console.info(
+      logger.info(
+        {
+          event: "billing_cron.renewal_ladder_completed",
+          jobId: job.id,
+          jobName: job.name,
+          transitioned,
+        },
         `[billing-cron] renewal ladder: ${transitioned} transitioned`
       )
     }
@@ -225,88 +289,240 @@ const renewalLadderWorker = new Worker<BillingCronJobData>(
 )
 
 worker.on("active", (job) => {
-  console.info(`[billing-cron] processing ${job.name} id=${job.id}`)
+  logger.info(
+    {
+      event: "billing_cron.job_active",
+      queue: "daily_reset",
+      jobName: job.name,
+      jobId: job.id,
+    },
+    `[billing-cron] processing ${job.name} id=${job.id}`
+  )
 })
 
 worker.on("completed", (job) => {
-  console.info(`[billing-cron] completed ${job.name} id=${job.id}`)
+  logger.info(
+    {
+      event: "billing_cron.job_completed",
+      queue: "daily_reset",
+      jobName: job.name,
+      jobId: job.id,
+    },
+    `[billing-cron] completed ${job.name} id=${job.id}`
+  )
 })
 
 worker.on("failed", (job, error) => {
   if (!job) {
-    console.error("[billing-cron] failed job missing payload", error)
+    logger.error(
+      { err: error, event: "billing_cron.job_failed", queue: "daily_reset" },
+      "[billing-cron] failed job missing payload"
+    )
     return
   }
 
-  console.error(
-    `[billing-cron] failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`,
-    error
+  logger.error(
+    {
+      err: error,
+      event: "billing_cron.job_failed",
+      queue: "daily_reset",
+      jobName: job.name,
+      jobId: job.id,
+      attemptsMade: job.attemptsMade,
+    },
+    `[billing-cron] failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`
   )
 })
 
 monthlyWorker.on("active", (job) => {
-  console.info(`[billing-cron] processing ${job.name} id=${job.id}`)
+  logger.info(
+    {
+      event: "billing_cron.job_active",
+      queue: "monthly_reset",
+      jobName: job.name,
+      jobId: job.id,
+    },
+    `[billing-cron] processing ${job.name} id=${job.id}`
+  )
 })
 
 monthlyWorker.on("completed", (job) => {
-  console.info(`[billing-cron] completed ${job.name} id=${job.id}`)
+  logger.info(
+    {
+      event: "billing_cron.job_completed",
+      queue: "monthly_reset",
+      jobName: job.name,
+      jobId: job.id,
+    },
+    `[billing-cron] completed ${job.name} id=${job.id}`
+  )
 })
 
 monthlyWorker.on("failed", (job, error) => {
   if (!job) {
-    console.error("[billing-cron] monthly failed job missing payload", error)
+    logger.error(
+      { err: error, event: "billing_cron.job_failed", queue: "monthly_reset" },
+      "[billing-cron] monthly failed job missing payload"
+    )
     return
   }
 
-  console.error(
-    `[billing-cron] monthly failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`,
-    error
+  logger.error(
+    {
+      err: error,
+      event: "billing_cron.job_failed",
+      queue: "monthly_reset",
+      jobName: job.name,
+      jobId: job.id,
+      attemptsMade: job.attemptsMade,
+    },
+    `[billing-cron] monthly failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`
   )
 })
 
 statusWorker.on("active", (job) => {
-  console.info(`[billing-cron] processing ${job.name} id=${job.id}`)
+  logger.info(
+    {
+      event: "billing_cron.job_active",
+      queue: "invoice_status",
+      jobName: job.name,
+      jobId: job.id,
+    },
+    `[billing-cron] processing ${job.name} id=${job.id}`
+  )
 })
 
 statusWorker.on("completed", (job) => {
-  console.info(`[billing-cron] completed ${job.name} id=${job.id}`)
+  logger.info(
+    {
+      event: "billing_cron.job_completed",
+      queue: "invoice_status",
+      jobName: job.name,
+      jobId: job.id,
+    },
+    `[billing-cron] completed ${job.name} id=${job.id}`
+  )
 })
 
 statusWorker.on("failed", (job, error) => {
   if (!job) {
-    console.error(
-      "[billing-cron] status worker failed job missing payload",
-      error
+    logger.error(
+      { err: error, event: "billing_cron.job_failed", queue: "invoice_status" },
+      "[billing-cron] status worker failed job missing payload"
     )
     return
   }
 
-  console.error(
-    `[billing-cron] status worker failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`,
-    error
+  logger.error(
+    {
+      err: error,
+      event: "billing_cron.job_failed",
+      queue: "invoice_status",
+      jobName: job.name,
+      jobId: job.id,
+      attemptsMade: job.attemptsMade,
+    },
+    `[billing-cron] status worker failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`
   )
 })
 
 reminderWorker.on("active", (job) => {
-  console.info(`[billing-cron] processing ${job.name} id=${job.id}`)
+  logger.info(
+    {
+      event: "billing_cron.job_active",
+      queue: "payment_reminder",
+      jobName: job.name,
+      jobId: job.id,
+    },
+    `[billing-cron] processing ${job.name} id=${job.id}`
+  )
 })
 
 reminderWorker.on("completed", (job) => {
-  console.info(`[billing-cron] completed ${job.name} id=${job.id}`)
+  logger.info(
+    {
+      event: "billing_cron.job_completed",
+      queue: "payment_reminder",
+      jobName: job.name,
+      jobId: job.id,
+    },
+    `[billing-cron] completed ${job.name} id=${job.id}`
+  )
 })
 
 reminderWorker.on("failed", (job, error) => {
   if (!job) {
-    console.error(
-      "[billing-cron] reminder worker failed job missing payload",
-      error
+    logger.error(
+      {
+        err: error,
+        event: "billing_cron.job_failed",
+        queue: "payment_reminder",
+      },
+      "[billing-cron] reminder worker failed job missing payload"
     )
     return
   }
 
-  console.error(
-    `[billing-cron] reminder worker failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`,
-    error
+  logger.error(
+    {
+      err: error,
+      event: "billing_cron.job_failed",
+      queue: "payment_reminder",
+      jobName: job.name,
+      jobId: job.id,
+      attemptsMade: job.attemptsMade,
+    },
+    `[billing-cron] reminder worker failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`
+  )
+})
+
+renewalLadderWorker.on("active", (job) => {
+  logger.info(
+    {
+      event: "billing_cron.job_active",
+      queue: "renewal_ladder",
+      jobName: job.name,
+      jobId: job.id,
+    },
+    `[billing-cron] processing ${job.name} id=${job.id}`
+  )
+})
+
+renewalLadderWorker.on("completed", (job) => {
+  logger.info(
+    {
+      event: "billing_cron.job_completed",
+      queue: "renewal_ladder",
+      jobName: job.name,
+      jobId: job.id,
+    },
+    `[billing-cron] completed ${job.name} id=${job.id}`
+  )
+})
+
+renewalLadderWorker.on("failed", (job, error) => {
+  if (!job) {
+    logger.error(
+      {
+        err: error,
+        event: "billing_cron.job_failed",
+        queue: "renewal_ladder",
+      },
+      "[billing-cron] renewal ladder worker failed job missing payload"
+    )
+    return
+  }
+
+  logger.error(
+    {
+      err: error,
+      event: "billing_cron.job_failed",
+      queue: "renewal_ladder",
+      jobName: job.name,
+      jobId: job.id,
+      attemptsMade: job.attemptsMade,
+    },
+    `[billing-cron] renewal ladder worker failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`
   )
 })
 
@@ -395,7 +611,10 @@ export async function registerRepeatableJobs() {
   await reminderQueue.close()
   await renewalLadderQueue.close()
 
-  console.info("[billing-cron] repeatable jobs registered")
+  logger.info(
+    { event: "billing_cron.repeatable_jobs_registered" },
+    "[billing-cron] repeatable jobs registered"
+  )
 }
 
 let shuttingDown = false
@@ -406,7 +625,10 @@ const shutdown = async (signal: string) => {
   }
 
   shuttingDown = true
-  console.info(`[billing-cron] received ${signal}, shutting down`)
+  logger.info(
+    { event: "billing_cron.shutting_down", signal },
+    `[billing-cron] received ${signal}, shutting down`
+  )
 
   try {
     await worker.close()
@@ -417,7 +639,10 @@ const shutdown = async (signal: string) => {
     await prisma.$disconnect()
     process.exit(0)
   } catch (error) {
-    console.error("[billing-cron] shutdown failed", error)
+    logger.error(
+      { err: error, event: "billing_cron.shutdown_failed", signal },
+      "[billing-cron] shutdown failed"
+    )
     process.exit(1)
   }
 }
@@ -433,7 +658,17 @@ process.on("SIGINT", () => {
 // Auto-register and start only when run as standalone entry point
 if (import.meta.main) {
   void registerRepeatableJobs().then(() => {
-    console.info(
+    logger.info(
+      {
+        event: "billing_cron.ready",
+        queues: [
+          BILLING_DAILY_RESET_QUEUE,
+          BILLING_MONTHLY_RESET_QUEUE,
+          BILLING_INVOICE_STATUS_QUEUE,
+          BILLING_PAYMENT_REMINDER_QUEUE,
+          BILLING_RENEWAL_LADDER_QUEUE,
+        ],
+      },
       `[billing-cron] ready queues=${BILLING_DAILY_RESET_QUEUE},${BILLING_MONTHLY_RESET_QUEUE},${BILLING_INVOICE_STATUS_QUEUE},${BILLING_PAYMENT_REMINDER_QUEUE},${BILLING_RENEWAL_LADDER_QUEUE}`
     )
   })

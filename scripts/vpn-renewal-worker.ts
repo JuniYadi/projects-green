@@ -17,19 +17,28 @@
  * Usage: bun run scripts/vpn-renewal-worker.ts
  */
 
+import { logger } from "@/lib/logger"
 import { prisma } from "@/lib/prisma"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { VpnRenewalService } from "@/modules/vpn/billing/vpn-renewal.service"
-
 async function main() {
-  console.info("[vpn-renewal] Starting VPN monthly renewal cycle...")
+  logger.info(
+    { event: "vpn_renewal.cycle_started" },
+    "[vpn-renewal] Starting VPN monthly renewal cycle..."
+  )
 
   const transactions = new BillingTransactionService(prisma)
   const renewalService = new VpnRenewalService(prisma, transactions)
 
   const result = await renewalService.renewDueSubscriptions()
 
-  console.info(
+  logger.info(
+    {
+      event: "vpn_renewal.cycle_completed",
+      renewed: result.renewed,
+      retried: result.retried,
+      errors: result.errors,
+    },
     `[vpn-renewal] Complete: ${result.renewed} renewed, ${result.retried} retried, ${result.errors} errors`
   )
 
@@ -39,6 +48,9 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("[vpn-renewal] Fatal error:", err)
+  logger.error(
+    { err, event: "vpn_renewal.fatal_error" },
+    "[vpn-renewal] Fatal error:"
+  )
   process.exit(1)
 })

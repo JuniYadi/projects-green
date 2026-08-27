@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger"
 import { monitorActiveDeployments } from "@/modules/deploy/deploy-monitor.service"
 
 const POLL_INTERVAL_MS = 60_000 // 1 minute
@@ -8,12 +9,22 @@ const runMonitor = async () => {
   try {
     const results = await monitorActiveDeployments()
     if (results.length > 0) {
-      console.info(
+      logger.info(
+        {
+          event: "deploy.monitor.checked",
+          count: results.length,
+        },
         `[deploy-monitor] checked ${results.length} active deployment(s)`
       )
     }
   } catch (error) {
-    console.error("[deploy-monitor] monitor cycle failed:", error)
+    logger.error(
+      {
+        event: "deploy.monitor.cycle_failed",
+        err: error,
+      },
+      "[deploy-monitor] monitor cycle failed"
+    )
   }
 }
 
@@ -23,7 +34,13 @@ const shutdown = async (signal: string) => {
   }
 
   shuttingDown = true
-  console.info(`[deploy-monitor] received ${signal}, shutting down`)
+  logger.info(
+    {
+      event: "deploy.monitor.shutdown",
+      signal,
+    },
+    `[deploy-monitor] received ${signal}, shutting down`
+  )
   process.exit(0)
 }
 
@@ -35,7 +52,11 @@ process.on("SIGINT", () => {
   void shutdown("SIGINT")
 })
 
-console.info(
+logger.info(
+  {
+    event: "deploy.monitor.started",
+    pollIntervalMs: POLL_INTERVAL_MS,
+  },
   `[deploy-monitor] starting interval poll every ${POLL_INTERVAL_MS}ms`
 )
 
