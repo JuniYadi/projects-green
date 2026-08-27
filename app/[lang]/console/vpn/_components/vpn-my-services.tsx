@@ -481,14 +481,13 @@ function RegionSummary({ sub }: { sub: VpnSubscription }) {
 
 function SubscriptionStatusBadge({ sub }: { sub: VpnSubscription }) {
   const status = billingStatus(sub)
-  if (status === "ACTIVE") return null
 
   return (
     <Badge
       variant={
         status === "CANCELLING" ? "secondary" : STATUS_VARIANT[sub.status]
       }
-      className="text-[10px] font-medium uppercase"
+      className="text-xs font-medium uppercase"
     >
       {status === "CANCELLING" ? "Cancelling" : sub.status}
     </Badge>
@@ -807,18 +806,14 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
           const sub = row.original
           const displayId =
             sub.id.length > 24 ? `${sub.id.slice(0, 24)}…` : sub.id
-
           return (
             <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <Link
-                  href={`/console/vpn/subscriptions/${sub.id}`}
-                  className="font-semibold text-foreground hover:underline"
-                >
-                  {sub.packageName}
-                </Link>
-                <SubscriptionStatusBadge sub={sub} />
-              </div>
+              <Link
+                href={`/console/vpn/subscriptions/${sub.id}`}
+                className="font-semibold text-foreground hover:underline"
+              >
+                {sub.packageName}
+              </Link>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <span className="font-mono" title={sub.id}>
                   {displayId}
@@ -836,6 +831,19 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
             </div>
           )
         },
+      },
+      {
+        id: "status",
+        accessorFn: (sub) => billingStatus(sub),
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Status" />
+        ),
+        filterFn: (row, _columnId, value) => {
+          if (value === "ALL") return true
+          const status = billingStatus(row.original)
+          return status === value
+        },
+        cell: ({ row }) => <SubscriptionStatusBadge sub={row.original} />,
       },
       {
         id: "servers",
@@ -1068,6 +1076,17 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
           searchPlaceholder="Search subscriptions..."
           searchableColumns={["packageName", "servers"]}
           facetFilters={[
+            {
+              columnId: "status",
+              label: "Status",
+              allLabel: "All statuses",
+              options: [
+                { label: "Active", value: "ACTIVE" },
+                { label: "Cancelling", value: "CANCELLING" },
+                { label: "Suspended", value: "SUSPENDED" },
+                { label: "Expired", value: "EXPIRED" },
+              ],
+            },
             {
               columnId: "servers",
               label: "Region",

@@ -307,7 +307,9 @@ describe("VpnMyServices", () => {
       />
     )
 
-    const regionSelect = within(view.container).getByRole("combobox")
+    const comboboxes = within(view.container).getAllByRole("combobox")
+    // comboboxes[0] is Status, comboboxes[1] is Region
+    const regionSelect = comboboxes[1] ?? comboboxes[0]!
     fireEvent.click(regionSelect)
     const sgOption = Array.from(
       document.body.querySelectorAll('[role="option"]')
