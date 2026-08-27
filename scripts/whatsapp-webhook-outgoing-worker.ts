@@ -7,6 +7,7 @@ import {
   WHATSAPP_WEBHOOK_OUTGOING_QUEUE,
   type WhatsappOutgoingWebhookJobData,
 } from "@/lib/queue/whatsapp-webhook-outgoing"
+import { logger } from "@/lib/logger"
 
 const redisConnection = getRedisConnection()
 
@@ -26,15 +27,23 @@ export async function processOutgoingWebhookJob(
   })
 
   if (!webhook) {
-    console.warn(
-      `[wa-webhook-outgoing] webhook not found: ${webhookId}, skipping`
+    logger.warn(
+      {
+        event: "whatsapp.webhook_outgoing.not_found",
+        webhookId,
+      },
+      `webhook not found: ${webhookId}, skipping`
     )
     return
   }
 
   if (!webhook.active) {
-    console.info(
-      `[wa-webhook-outgoing] webhook ${webhookId} is inactive, skipping`
+    logger.info(
+      {
+        event: "whatsapp.webhook_outgoing.inactive",
+        webhookId,
+      },
+      `webhook ${webhookId} is inactive, skipping`
     )
     return
   }
@@ -112,8 +121,14 @@ export async function processOutgoingWebhookJob(
         })
       }
 
-      console.info(
-        `[wa-webhook-outgoing] delivered webhook=${webhookId} event=${eventType} status=${response.status}`
+      logger.info(
+        {
+          event: "whatsapp.webhook_outgoing.delivered",
+          webhookId,
+          eventType,
+          responseStatus: response.status,
+        },
+        `delivered webhook=${webhookId} event=${eventType} status=${response.status}`
       )
       return
     }
@@ -161,8 +176,15 @@ export async function processOutgoingWebhookJob(
         })
       }
 
-      console.error(
-        `[wa-webhook-outgoing] dead-lettered webhook=${webhookId} event=${eventType} after ${attempt} attempts: ${errorMsg}`
+      logger.error(
+        {
+          event: "whatsapp.webhook_outgoing.dead_lettered",
+          webhookId,
+          eventType,
+          attempts: attempt,
+          errorMsg,
+        },
+        `dead-lettered webhook=${webhookId} event=${eventType} after ${attempt} attempts: ${errorMsg}`
       )
       return // don't re-throw — BullMQ should not retry
     }
@@ -246,8 +268,16 @@ export async function processOutgoingWebhookJob(
         })
       }
 
-      console.error(
-        `[wa-webhook-outgoing] dead-lettered webhook=${webhookId} event=${eventType} after ${attempt} attempts (network): ${errorMsg}`
+      logger.error(
+        {
+          event: "whatsapp.webhook_outgoing.dead_lettered",
+          webhookId,
+          eventType,
+          attempts: attempt,
+          reason: "network",
+          errorMsg,
+        },
+        `dead-lettered webhook=${webhookId} event=${eventType} after ${attempt} attempts (network): ${errorMsg}`
       )
       return
     }
@@ -330,25 +360,55 @@ const worker = new Worker<WhatsappOutgoingWebhookJobData>(
 )
 
 worker.on("active", (job) => {
-  console.info(
-    `[wa-webhook-outgoing] processing ${job.name} id=${job.id} webhook=${job.data.webhookId} event=${job.data.eventType}`
+  logger.info(
+    {
+      event: "worker.job.active",
+      workerName: "whatsapp-webhook-outgoing",
+      jobName: job.name,
+      jobId: job.id,
+      webhookId: job.data.webhookId,
+      eventType: job.data.eventType,
+    },
+    `processing ${job.name} id=${job.id} webhook=${job.data.webhookId} event=${job.data.eventType}`
   )
 })
 
 worker.on("completed", (job) => {
-  console.info(
-    `[wa-webhook-outgoing] completed ${job.name} id=${job.id} webhook=${job.data.webhookId}`
+  logger.info(
+    {
+      event: "worker.job.completed",
+      workerName: "whatsapp-webhook-outgoing",
+      jobName: job.name,
+      jobId: job.id,
+      webhookId: job.data.webhookId,
+    },
+    `completed ${job.name} id=${job.id} webhook=${job.data.webhookId}`
   )
 })
 
 worker.on("failed", (job, error) => {
   if (!job) {
-    console.error("[wa-webhook-outgoing] failed job missing payload", error)
+    logger.error(
+      {
+        event: "worker.job.failed",
+        workerName: "whatsapp-webhook-outgoing",
+        err: error,
+      },
+      "failed job missing payload"
+    )
     return
   }
-  console.error(
-    `[wa-webhook-outgoing] failed ${job.name} id=${job.id} webhook=${job.data.webhookId} attempts=${job.attemptsMade}`,
-    error
+  logger.error(
+    {
+      event: "worker.job.failed",
+      workerName: "whatsapp-webhook-outgoing",
+      jobName: job.name,
+      jobId: job.id,
+      webhookId: job.data.webhookId,
+      attempts: job.attemptsMade,
+      err: error,
+    },
+    `failed ${job.name} id=${job.id} webhook=${job.data.webhookId} attempts=${job.attemptsMade}`
   )
 })
 
@@ -357,15 +417,26 @@ let shuttingDown = false
 const shutdown = async (signal: string) => {
   if (shuttingDown) return
   shuttingDown = true
-  console.info(`[wa-webhook-outgoing] received ${signal}, shutting down`)
+  logger.info(
+    {
+      event: "worker.shutdown.started",
+      workerName: "whatsapp-webhook-outgoing",
+      signal,
+    },
+    `received ${signal}, shutting down`
+  )
 
   try {
     await worker.close()
     process.exit(0)
   } catch (error) {
-    console.error(
-      "[wa-webhook-outgoing] shutdown failed while closing worker",
-      error
+    logger.error(
+      {
+        event: "worker.shutdown.failed",
+        workerName: "whatsapp-webhook-outgoing",
+        err: error,
+      },
+      "shutdown failed while closing worker"
     )
     process.exit(1)
   }

@@ -10,9 +10,16 @@
 
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "@prisma/client"
+import { logger } from "@/lib/logger"
 
 async function runCommand(cmd: string[]): Promise<void> {
-  console.log(`\n> ${cmd.join(" ")}`)
+  logger.info(
+    {
+      event: "deploy.migrate.command.started",
+      command: cmd.join(" "),
+    },
+    `> ${cmd.join(" ")}`
+  )
   const proc = Bun.spawn(cmd, {
     stdout: "inherit",
     stderr: "inherit",
@@ -34,11 +41,17 @@ async function verifyDatabase(databaseUrl: string): Promise<void> {
   })
 
   try {
-    console.log("\n🔍 Verifying Database Integrity & Counts...")
+    logger.info(
+      { event: "deploy.migrate.verify.started" },
+      "Verifying Database Integrity & Counts..."
+    )
 
     // 1. Connection check
     await prisma.$queryRaw`SELECT 1 as connected;`
-    console.log("  [1/4] DB Connection: OK")
+    logger.info(
+      { event: "deploy.migrate.verify.connection_ok" },
+      "[1/4] DB Connection: OK"
+    )
 
     // 2. Applied migrations check
     const appliedMigrations = (await prisma.$queryRaw`
@@ -49,12 +62,14 @@ async function verifyDatabase(databaseUrl: string): Promise<void> {
       LIMIT 5;
     `) as Array<{ migration_name: string; finished_at: Date }>
 
-    console.log(
-      `  [2/4] Applied Migrations Checked (Latest ${appliedMigrations.length}): OK`
+    logger.info(
+      {
+        event: "deploy.migrate.verify.migrations_ok",
+        count: appliedMigrations.length,
+        migrations: appliedMigrations.map((m) => m.migration_name),
+      },
+      `[2/4] Applied Migrations Checked (Latest ${appliedMigrations.length}): OK`
     )
-    for (const m of appliedMigrations) {
-      console.log(`        - ${m.migration_name}`)
-    }
 
     // 3. Check core table records count
     const [
@@ -79,48 +94,72 @@ async function verifyDatabase(databaseUrl: string): Promise<void> {
       prisma.detectorRule.count(),
     ])
 
-    console.log("  [3/4] Core Table Counts:")
-    console.log(`        - AppHostingCluster:     ${appHostingClusters}`)
-    console.log(`        - VpnServer:             ${vpnServers}`)
-    console.log(`        - ServicePackages:       ${servicePackages}`)
-    console.log(`        - ServicePlans:          ${servicePlans}`)
-    console.log(`        - ServicePricings:       ${servicePricings}`)
-    console.log(`        - PaymentCurrencies:     ${currencies}`)
-    console.log(`        - PaymentGateways:       ${paymentGateways}`)
-    console.log(`        - DocsKnowledgeDocument: ${knowledgeDocs}`)
-    console.log(`        - DetectorRules:         ${detectorRules}`)
+    logger.info(
+      {
+        event: "deploy.migrate.verify.counts",
+        counts: {
+          appHostingClusters,
+          vpnServers,
+          servicePackages,
+          servicePlans,
+          servicePricings,
+          currencies,
+          paymentGateways,
+          knowledgeDocs,
+          detectorRules,
+        },
+      },
+      "[3/4] Core Table Counts verified"
+    )
 
-    console.log("  [4/4] Verification completed successfully.")
+    logger.info(
+      { event: "deploy.migrate.verify.completed" },
+      "[4/4] Verification completed successfully."
+    )
   } finally {
     await prisma.$disconnect()
   }
 }
 
 async function main(): Promise<void> {
-  console.log("==================================================")
-  console.log(" Starting Production DB Migration & Verification ")
-  console.log("==================================================")
+  logger.info(
+    { event: "deploy.migrate.started" },
+    "Starting Production DB Migration & Verification"
+  )
 
   const databaseUrl = process.env.DATABASE_URL?.trim()
   if (!databaseUrl) {
-    console.error(
-      "❌ Error: DATABASE_URL is missing or empty in environment / .env"
+    logger.error(
+      { event: "deploy.migrate.missing_db_url" },
+      "Error: DATABASE_URL is missing or empty in environment / .env"
     )
     process.exit(1)
   }
 
-  console.log("✅ DATABASE_URL is present.")
+  logger.info(
+    { event: "deploy.migrate.db_url_present" },
+    "DATABASE_URL is present."
+  )
 
   // 1. Prisma Migrate Deploy
-  console.log("\n📦 Running Prisma Migrate Deploy...")
+  logger.info(
+    { event: "deploy.migrate.step.migrate_deploy" },
+    "Running Prisma Migrate Deploy..."
+  )
   await runCommand(["bun", "--bun", "prisma", "migrate", "deploy"])
 
   // 2. Prisma Generate Client
-  console.log("\n⚙️ Generating Prisma Client...")
+  logger.info(
+    { event: "deploy.migrate.step.generate_client" },
+    "Generating Prisma Client..."
+  )
   await runCommand(["bun", "--bun", "prisma", "generate"])
 
   // 3. Targeted Seeders (Excluding seed:system)
-  console.log("\n🌱 Running Production Seeders...")
+  logger.info(
+    { event: "deploy.migrate.step.seeders" },
+    "Running Production Seeders..."
+  )
 
   // Core system seeders run by exact name (avoids SqlRestore/sql dump wipe)
   const seeders = [
@@ -134,7 +173,10 @@ async function main(): Promise<void> {
   ]
 
   for (const seeder of seeders) {
-    console.log(`-> Seeding ${seeder}...`)
+    logger.info(
+      { event: "deploy.migrate.seeder.started", seeder },
+      `Seeding ${seeder}...`
+    )
     try {
       await runCommand([
         "bun",
@@ -143,7 +185,10 @@ async function main(): Promise<void> {
         `--seed=${seeder}`,
       ])
     } catch (err) {
-      console.warn(`⚠️ Seeder ${seeder} failed or encountered an error:`, err)
+      logger.warn(
+        { event: "deploy.migrate.seeder.failed", seeder, err },
+        `Seeder ${seeder} failed or encountered an error`
+      )
       if (seeder === "Billing" || seeder === "Currencies") {
         throw err
       }
@@ -152,23 +197,34 @@ async function main(): Promise<void> {
 
   // Standalone cluster & VPN coordinates
   if (await Bun.file("scripts/seed-app-hosting-cluster.ts").exists()) {
-    console.log("-> Seeding App Hosting Cluster...")
+    logger.info(
+      { event: "deploy.migrate.seeder.started", seeder: "AppHostingCluster" },
+      "Seeding App Hosting Cluster..."
+    )
     await runCommand(["bun", "run", "scripts/seed-app-hosting-cluster.ts"])
   }
 
   if (await Bun.file("scripts/seed-vpn-server-coordinates.ts").exists()) {
-    console.log("-> Seeding VPN Server Coordinates...")
+    logger.info(
+      {
+        event: "deploy.migrate.seeder.started",
+        seeder: "VpnServerCoordinates",
+      },
+      "Seeding VPN Server Coordinates..."
+    )
     await runCommand(["bun", "run", "scripts/seed-vpn-server-coordinates.ts"])
   }
+
   // 4. Verify Database
   await verifyDatabase(databaseUrl)
 
-  console.log("\n==================================================")
-  console.log(" 🎉 Migration and DB Verification Complete!       ")
-  console.log("==================================================")
+  logger.info(
+    { event: "deploy.migrate.completed" },
+    "Migration and DB Verification Complete!"
+  )
 }
 
 main().catch((err) => {
-  console.error("\n❌ Execution failed:", err)
+  logger.error({ event: "deploy.migrate.failed", err }, "Execution failed")
   process.exit(1)
 })

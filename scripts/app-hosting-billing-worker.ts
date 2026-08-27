@@ -11,10 +11,10 @@
 
 import { Prisma } from "@prisma/client"
 import { unlinkSync } from "fs"
+import { logger } from "@/lib/logger"
 import { prisma } from "@/lib/prisma"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { AppHostingBillingService } from "@/modules/deploy/billing/app-hosting-billing.service"
-
 async function chargeActivePaygStacks(
   billingService: AppHostingBillingService
 ): Promise<{ charged: number; graceEntered: number; errors: number }> {
@@ -45,20 +45,36 @@ async function chargeActivePaygStacks(
 
       if (result.graceEntered) {
         graceEntered++
-        console.info(
+        logger.info(
+          {
+            event: "app_hosting_billing.grace_entered",
+            stackId: stack.id,
+            stackName: stack.name,
+          },
           `[app-hosting-billing] stack=${stack.id} name=${stack.name} entered PAYMENT_GRACE`
         )
       } else if (!result.alreadyProcessed) {
         charged++
-        console.info(
+        logger.info(
+          {
+            event: "app_hosting_billing.charged",
+            stackId: stack.id,
+            stackName: stack.name,
+            hourlyCost: hourlyCost.toString(),
+          },
           `[app-hosting-billing] stack=${stack.id} name=${stack.name} charged ${hourlyCost.toString()}`
         )
       }
     } catch (error) {
       errors++
-      console.error(
-        `[app-hosting-billing] stack=${stack.id} name=${stack.name} error:`,
-        error
+      logger.error(
+        {
+          err: error,
+          event: "app_hosting_billing.charge_error",
+          stackId: stack.id,
+          stackName: stack.name,
+        },
+        `[app-hosting-billing] stack=${stack.id} name=${stack.name} error:`
       )
     }
   }
@@ -89,14 +105,23 @@ async function checkGraceSuspension(
 
       if (result.suspended) {
         suspended++
-        console.info(
+        logger.info(
+          {
+            event: "app_hosting_billing.suspended",
+            stackId: stack.id,
+            stackName: stack.name,
+          },
           `[app-hosting-billing] stack=${stack.id} name=${stack.name} SUSPENDED after grace period`
         )
       }
     } catch (error) {
-      console.error(
-        `[app-hosting-billing] grace check stack=${stack.id} error:`,
-        error
+      logger.error(
+        {
+          err: error,
+          event: "app_hosting_billing.grace_check_error",
+          stackId: stack.id,
+        },
+        `[app-hosting-billing] grace check stack=${stack.id} error:`
       )
     }
   }
@@ -116,7 +141,8 @@ async function acquireLock(): Promise<boolean> {
       if (!isNaN(pid)) {
         try {
           process.kill(pid, 0) // Check if process is alive
-          console.info(
+          logger.info(
+            { event: "app_hosting_billing.worker_already_running", pid },
             `[app-hosting-billing] another worker is running (pid=${pid}), skipping`
           )
           return false
@@ -142,7 +168,10 @@ function releaseLock() {
 }
 
 async function main() {
-  console.info("[app-hosting-billing] worker started")
+  logger.info(
+    { event: "app_hosting_billing.worker_started" },
+    "[app-hosting-billing] worker started"
+  )
 
   if (!(await acquireLock())) {
     process.exit(0)
@@ -153,22 +182,38 @@ async function main() {
 
   // Charge active PAYG stacks
   const chargeResult = await chargeActivePaygStacks(billingService)
-  console.info(
+  logger.info(
+    {
+      event: "app_hosting_billing.charges_completed",
+      charged: chargeResult.charged,
+      graceEntered: chargeResult.graceEntered,
+      errors: chargeResult.errors,
+    },
     `[app-hosting-billing] charges: charged=${chargeResult.charged} grace=${chargeResult.graceEntered} errors=${chargeResult.errors}`
   )
 
   // Check grace suspension
   const graceResult = await checkGraceSuspension(billingService)
-  console.info(
+  logger.info(
+    {
+      event: "app_hosting_billing.grace_check_completed",
+      suspended: graceResult.suspended,
+    },
     `[app-hosting-billing] grace: suspended=${graceResult.suspended}`
   )
 
-  console.info("[app-hosting-billing] worker completed")
+  logger.info(
+    { event: "app_hosting_billing.worker_completed" },
+    "[app-hosting-billing] worker completed"
+  )
   releaseLock()
 }
 
 main().catch((error) => {
-  console.error("[app-hosting-billing] worker failed:", error)
+  logger.error(
+    { err: error, event: "app_hosting_billing.worker_failed" },
+    "[app-hosting-billing] worker failed:"
+  )
   releaseLock()
   process.exit(1)
 })

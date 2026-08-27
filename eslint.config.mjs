@@ -132,6 +132,14 @@ const eslintConfig = defineConfig([
       "@next/next/no-assign-module-variable": "off",
     },
   },
+  // Scripts and CLI tooling - allow console logging and script utility patterns
+  {
+    files: ["scripts/**/*.{ts,tsx,js,mjs}"],
+    rules: {
+      "no-console": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

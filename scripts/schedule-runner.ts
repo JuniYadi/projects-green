@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger"
 import { cronMatches } from "@/lib/cron/cron-matcher"
 import { syncCronJobDefinitions } from "@/lib/cron/registry"
 import { withCronTelemetry } from "@/lib/cron/telemetry"
@@ -197,23 +198,26 @@ export const dispatchScheduledJobs = async (
   return { dispatched, failed }
 }
 if (import.meta.main) {
-  await syncCronJobDefinitions().catch((e) =>
-    console.warn("[schedule-runner] Failed to sync cron definitions:", e)
+  await syncCronJobDefinitions().catch((err) =>
+    logger.warn(
+      { err, event: "schedule.sync_definitions_failed" },
+      "Failed to sync cron definitions"
+    )
   )
   const now = new Date()
   const result = await dispatchScheduledJobs(now)
 
   if (result.dispatched.length > 0 || result.failed.length > 0) {
-    console.info(
-      JSON.stringify({
-        level: "info",
+    logger.info(
+      {
         event: "schedule.tick",
         timestamp: now.toISOString(),
         dispatchedCount: result.dispatched.length,
         dispatched: result.dispatched,
         failedCount: result.failed.length,
         failed: result.failed,
-      })
+      },
+      "Scheduled jobs dispatched"
     )
   }
 

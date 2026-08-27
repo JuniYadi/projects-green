@@ -7,12 +7,13 @@ import {
 import { Worker, type Job } from "bullmq"
 
 import { prisma } from "@/lib/prisma"
+import { getQueueRuntimeConfig } from "@/lib/queue/queue-config"
 import {
   WHATSAPP_TEMPLATE_SYNC_QUEUE_NAME,
   getWhatsAppTemplateSyncRedisConnection,
   type WhatsAppTemplateSyncJobData,
 } from "@/lib/queue/whatsapp-template-sync"
-import { getQueueRuntimeConfig } from "@/lib/queue/queue-config"
+import { logger } from "@/lib/logger"
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 import {
@@ -244,9 +245,14 @@ async function pushLocalTemplatesToMeta(
           },
         })
       } catch (err) {
-        console.warn(
-          `[whatsapp-template-sync-worker] failed to push template ${tpl.name} (${lang.lang}) to Meta:`,
-          err
+        logger.warn(
+          {
+            event: "whatsapp.template_sync.push_failed",
+            templateName: tpl.name,
+            lang: lang.lang,
+            err,
+          },
+          `failed to push template ${tpl.name} (${lang.lang}) to Meta`
         )
       }
     }
@@ -334,7 +340,16 @@ export async function syncTemplates(
       status: "STARTED",
     })
   } catch (e) {
-    console.warn("[whatsapp-template-sync-worker] audit failed", e)
+    logger.warn(
+      {
+        event: "whatsapp.template_sync.audit_failed",
+        action: "TEMPLATE_SYNC_STARTED",
+        organizationId: jobData.organizationId,
+        deviceId: jobData.deviceId,
+        err: e,
+      },
+      "audit failed"
+    )
   }
 
   // ponytail: independent try-catch — early-stage errors (createClient, fetchAllTemplates)
@@ -364,7 +379,16 @@ export async function syncTemplates(
         status: "FAILED",
       })
     } catch (e) {
-      console.warn("[whatsapp-template-sync-worker] audit failed", e)
+      logger.warn(
+        {
+          event: "whatsapp.template_sync.audit_failed",
+          action: "TEMPLATE_SYNC_FAILED",
+          organizationId: jobData.organizationId,
+          deviceId: jobData.deviceId,
+          err: e,
+        },
+        "audit failed"
+      )
     }
     throw error
   }
@@ -391,9 +415,15 @@ export async function syncTemplates(
       summary[result] += 1
     } catch (error) {
       summary.failed += 1
-      console.error(
-        `[whatsapp-template-sync-worker] failed template name=${template.name} org=${jobData.organizationId} device=${jobData.deviceId}`,
-        error
+      logger.error(
+        {
+          event: "whatsapp.template_sync.template_failed",
+          templateName: template.name,
+          organizationId: jobData.organizationId,
+          deviceId: jobData.deviceId,
+          err: error,
+        },
+        `failed template name=${template.name} org=${jobData.organizationId} device=${jobData.deviceId}`
       )
     }
   }
@@ -416,8 +446,14 @@ export async function syncTemplates(
   })
   summary.notInMeta = notInMeta.count
 
-  console.info(
-    `[whatsapp-template-sync-worker] sync-templates result org=${jobData.organizationId} device=${jobData.deviceId} fetched=${summary.fetched} created=${summary.created} updated=${summary.updated} notInMeta=${summary.notInMeta} failed=${summary.failed}`
+  logger.info(
+    {
+      event: "whatsapp.template_sync.sync_templates.completed",
+      organizationId: jobData.organizationId,
+      deviceId: jobData.deviceId,
+      summary,
+    },
+    `sync-templates result org=${jobData.organizationId} device=${jobData.deviceId} fetched=${summary.fetched} created=${summary.created} updated=${summary.updated} notInMeta=${summary.notInMeta} failed=${summary.failed}`
   )
 
   if (summary.failed > 0) {
@@ -433,7 +469,16 @@ export async function syncTemplates(
         details: { summary } as any,
       })
     } catch (e) {
-      console.warn("[whatsapp-template-sync-worker] audit failed", e)
+      logger.warn(
+        {
+          event: "whatsapp.template_sync.audit_failed",
+          action: "TEMPLATE_SYNC_FAILED",
+          organizationId: jobData.organizationId,
+          deviceId: jobData.deviceId,
+          err: e,
+        },
+        "audit failed"
+      )
     }
     throw new Error(
       `Template sync partially failed: failed=${summary.failed} fetched=${summary.fetched}`
@@ -451,7 +496,16 @@ export async function syncTemplates(
       details: { summary } as any,
     })
   } catch (e) {
-    console.warn("[whatsapp-template-sync-worker] audit failed", e)
+    logger.warn(
+      {
+        event: "whatsapp.template_sync.audit_failed",
+        action: "TEMPLATE_SYNCED",
+        organizationId: jobData.organizationId,
+        deviceId: jobData.deviceId,
+        err: e,
+      },
+      "audit failed"
+    )
   }
 
   return summary
@@ -472,7 +526,16 @@ export async function syncTemplateStatus(
       status: "STARTED",
     })
   } catch (e) {
-    console.warn("[whatsapp-template-sync-worker] audit failed", e)
+    logger.warn(
+      {
+        event: "whatsapp.template_sync.audit_failed",
+        action: "TEMPLATE_SYNC_STARTED",
+        organizationId: jobData.organizationId,
+        deviceId: jobData.deviceId,
+        err: e,
+      },
+      "audit failed"
+    )
   }
 
   // ponytail: independent try-catch — early-stage errors (createClient, fetchAllTemplates)
@@ -495,7 +558,16 @@ export async function syncTemplateStatus(
         status: "FAILED",
       })
     } catch (e) {
-      console.warn("[whatsapp-template-sync-worker] audit failed", e)
+      logger.warn(
+        {
+          event: "whatsapp.template_sync.audit_failed",
+          action: "TEMPLATE_SYNC_FAILED",
+          organizationId: jobData.organizationId,
+          deviceId: jobData.deviceId,
+          err: e,
+        },
+        "audit failed"
+      )
     }
     throw error
   }
@@ -561,15 +633,27 @@ export async function syncTemplateStatus(
       summary.updated += 1
     } catch (error) {
       summary.failed += 1
-      console.error(
-        `[whatsapp-template-sync-worker] failed template status name=${template.name} org=${jobData.organizationId} device=${jobData.deviceId}`,
-        error
+      logger.error(
+        {
+          event: "whatsapp.template_sync.template_status_failed",
+          templateName: template.name,
+          organizationId: jobData.organizationId,
+          deviceId: jobData.deviceId,
+          err: error,
+        },
+        `failed template status name=${template.name} org=${jobData.organizationId} device=${jobData.deviceId}`
       )
     }
   }
 
-  console.info(
-    `[whatsapp-template-sync-worker] sync-status result org=${jobData.organizationId} device=${jobData.deviceId} fetched=${summary.fetched} updated=${summary.updated} skipped=${summary.skipped} failed=${summary.failed}`
+  logger.info(
+    {
+      event: "whatsapp.template_sync.sync_status.completed",
+      organizationId: jobData.organizationId,
+      deviceId: jobData.deviceId,
+      summary,
+    },
+    `sync-status result org=${jobData.organizationId} device=${jobData.deviceId} fetched=${summary.fetched} updated=${summary.updated} skipped=${summary.skipped} failed=${summary.failed}`
   )
 
   if (summary.failed > 0) {
@@ -585,7 +669,16 @@ export async function syncTemplateStatus(
         details: { summary } as any,
       })
     } catch (e) {
-      console.warn("[whatsapp-template-sync-worker] audit failed", e)
+      logger.warn(
+        {
+          event: "whatsapp.template_sync.audit_failed",
+          action: "TEMPLATE_SYNC_FAILED",
+          organizationId: jobData.organizationId,
+          deviceId: jobData.deviceId,
+          err: e,
+        },
+        "audit failed"
+      )
     }
     throw new Error(
       `Template status sync partially failed: failed=${summary.failed} fetched=${summary.fetched}`
@@ -603,7 +696,16 @@ export async function syncTemplateStatus(
       details: { summary } as any,
     })
   } catch (e) {
-    console.warn("[whatsapp-template-sync-worker] audit failed", e)
+    logger.warn(
+      {
+        event: "whatsapp.template_sync.audit_failed",
+        action: "TEMPLATE_SYNCED",
+        organizationId: jobData.organizationId,
+        deviceId: jobData.deviceId,
+        err: e,
+      },
+      "audit failed"
+    )
   }
 
   return summary
@@ -646,29 +748,53 @@ if (import.meta.main) {
   )
 
   worker.on("active", (job) => {
-    console.info(
-      `[whatsapp-template-sync-worker] processing ${job.name} id=${job.id}`
+    logger.info(
+      {
+        event: "worker.job.active",
+        workerName: "whatsapp-template-sync",
+        jobName: job.name,
+        jobId: job.id,
+      },
+      `processing ${job.name} id=${job.id}`
     )
   })
 
   worker.on("completed", (job, summary) => {
-    console.info(
-      `[whatsapp-template-sync-worker] completed ${job.name} id=${job.id} result=${JSON.stringify(summary ?? null)}`
+    logger.info(
+      {
+        event: "worker.job.completed",
+        workerName: "whatsapp-template-sync",
+        jobName: job.name,
+        jobId: job.id,
+        summary,
+      },
+      `completed ${job.name} id=${job.id}`
     )
   })
 
   worker.on("failed", (job, error) => {
     if (!job) {
-      console.error(
-        "[whatsapp-template-sync-worker] failed job missing payload",
-        error
+      logger.error(
+        {
+          event: "worker.job.failed",
+          workerName: "whatsapp-template-sync",
+          err: error,
+        },
+        "failed job missing payload"
       )
       return
     }
 
-    console.error(
-      `[whatsapp-template-sync-worker] failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`,
-      error
+    logger.error(
+      {
+        event: "worker.job.failed",
+        workerName: "whatsapp-template-sync",
+        jobName: job.name,
+        jobId: job.id,
+        attempts: job.attemptsMade,
+        err: error,
+      },
+      `failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`
     )
   })
 
@@ -680,17 +806,25 @@ if (import.meta.main) {
     }
 
     shuttingDown = true
-    console.info(
-      `[whatsapp-template-sync-worker] received ${signal}, shutting down`
+    logger.info(
+      {
+        event: "worker.shutdown.started",
+        workerName: "whatsapp-template-sync",
+        signal,
+      },
+      `received ${signal}, shutting down`
     )
-
     try {
       await worker.close()
       process.exit(0)
     } catch (error) {
-      console.error(
-        "[whatsapp-template-sync-worker] shutdown failed while closing worker",
-        error
+      logger.error(
+        {
+          event: "worker.shutdown.failed",
+          workerName: "whatsapp-template-sync",
+          err: error,
+        },
+        "shutdown failed while closing worker"
       )
       process.exit(1)
     }

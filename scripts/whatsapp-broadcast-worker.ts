@@ -8,6 +8,7 @@ import {
   getWhatsAppBroadcastRedisConnection,
   type WhatsAppBroadcastJobData,
 } from "@/lib/queue/whatsapp-broadcast"
+import { logger } from "@/lib/logger"
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
 import { upsertWhatsappContactFromMessage } from "@/modules/whatsapp/contacts/contacts.service"
 import { resolveWhatsappQuotaCredit } from "@/modules/whatsapp/messages/quota-credit.service"
@@ -15,7 +16,6 @@ import {
   getHourlyMessageLimit,
   DEFAULT_DAILY_LIMIT_MESSAGE,
 } from "@/modules/whatsapp/devices/devices.constants"
-
 const redisConnection = getWhatsAppBroadcastRedisConnection()
 const broadcastQueue = new Queue<WhatsAppBroadcastJobData>(
   WHATSAPP_BROADCAST_QUEUE_NAME,
@@ -531,29 +531,53 @@ const worker =
       )
 if (worker) {
   worker.on("active", (job) => {
-    console.info(
-      `[whatsapp-broadcast-worker] processing ${job.name} id=${job.id} campaign=${job.data.campaignId}`
+    logger.info(
+      {
+        event: "worker.job.active",
+        workerName: "whatsapp-broadcast",
+        jobName: job.name,
+        jobId: job.id,
+        campaignId: job.data.campaignId,
+      },
+      `processing ${job.name} id=${job.id} campaign=${job.data.campaignId}`
     )
   })
 
   worker.on("completed", (job) => {
-    console.info(
-      `[whatsapp-broadcast-worker] completed ${job.name} id=${job.id}`
+    logger.info(
+      {
+        event: "worker.job.completed",
+        workerName: "whatsapp-broadcast",
+        jobName: job.name,
+        jobId: job.id,
+      },
+      `completed ${job.name} id=${job.id}`
     )
   })
 
   worker.on("failed", (job, error) => {
     if (!job) {
-      console.error(
-        "[whatsapp-broadcast-worker] failed job missing payload",
-        error
+      logger.error(
+        {
+          event: "worker.job.failed",
+          workerName: "whatsapp-broadcast",
+          err: error,
+        },
+        "failed job missing payload"
       )
       return
     }
 
-    console.error(
-      `[whatsapp-broadcast-worker] failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`,
-      error
+    logger.error(
+      {
+        event: "worker.job.failed",
+        workerName: "whatsapp-broadcast",
+        jobName: job.name,
+        jobId: job.id,
+        attempts: job.attemptsMade,
+        err: error,
+      },
+      `failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`
     )
   })
 }
@@ -566,15 +590,25 @@ const shutdown = async (signal: string) => {
   }
 
   shuttingDown = true
-  console.info(`[whatsapp-broadcast-worker] received ${signal}, shutting down`)
-
+  logger.info(
+    {
+      event: "worker.shutdown.started",
+      workerName: "whatsapp-broadcast",
+      signal,
+    },
+    `received ${signal}, shutting down`
+  )
   try {
     await worker.close()
     await broadcastQueue.close()
   } catch (error) {
-    console.error(
-      "[whatsapp-broadcast-worker] shutdown failed while closing worker",
-      error
+    logger.error(
+      {
+        event: "worker.shutdown.failed",
+        workerName: "whatsapp-broadcast",
+        err: error,
+      },
+      "shutdown failed while closing worker"
     )
     process.exit(1)
   }

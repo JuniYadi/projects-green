@@ -11,6 +11,7 @@ import {
 } from "@/modules/whatsapp/webhooks/webhooks.service"
 import { createDeadLetter } from "@/modules/whatsapp/webhooks/services/webhook-dead-letter.service"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 const redisConnection = getWhatsAppWebhookRedisConnection()
 
@@ -23,14 +24,24 @@ const worker = new Worker<WhatsAppWebhookJobData>(
     if (organizationId) {
       const deviceOrgId = await getDeviceOrganization(deviceId)
       if (!deviceOrgId) {
-        console.warn(
-          `[whatsapp-webhook-worker] device not found: ${deviceId}, skipping event`
+        logger.warn(
+          {
+            event: "whatsapp.webhook.device_not_found",
+            deviceId,
+          },
+          `device not found: ${deviceId}, skipping event`
         )
         return
       }
       if (deviceOrgId !== organizationId) {
-        console.error(
-          `[whatsapp-webhook-worker] organization mismatch: device=${deviceId} belongs to org=${deviceOrgId}, not org=${organizationId}`
+        logger.error(
+          {
+            event: "whatsapp.webhook.organization_mismatch",
+            deviceId,
+            deviceOrgId,
+            organizationId,
+          },
+          `organization mismatch: device=${deviceId} belongs to org=${deviceOrgId}, not org=${organizationId}`
         )
         return
       }
@@ -47,14 +58,25 @@ const worker = new Worker<WhatsAppWebhookJobData>(
     }
 
     if (eventType === "error") {
-      console.error(
-        `[whatsapp-webhook-worker] error event for device=${deviceId}:`,
-        payload
+      logger.error(
+        {
+          event: "whatsapp.webhook.error_event",
+          deviceId,
+          payload,
+        },
+        `error event for device=${deviceId}`
       )
       return
     }
 
-    console.warn(`[whatsapp-webhook-worker] unknown event type: ${eventType}`)
+    logger.warn(
+      {
+        event: "whatsapp.webhook.unknown_event_type",
+        eventType: String(eventType),
+        deviceId,
+      },
+      `unknown event type: ${String(eventType)}`
+    )
   },
   {
     connection: redisConnection,
@@ -81,16 +103,24 @@ async function handleMessageEvent(
   const organizationId = await getDeviceOrganization(deviceId)
 
   if (!organizationId) {
-    console.warn(
-      `[whatsapp-webhook-worker] device not found: ${deviceId}, skipping message`
+    logger.warn(
+      {
+        event: "whatsapp.webhook.device_not_found",
+        deviceId,
+      },
+      `device not found: ${deviceId}, skipping message`
     )
     return
   }
 
   const from = messagePayload.from as string | undefined
   if (!from) {
-    console.warn(
-      `[whatsapp-webhook-worker] message missing 'from' field for device=${deviceId}`
+    logger.warn(
+      {
+        event: "whatsapp.webhook.missing_from_field",
+        deviceId,
+      },
+      `message missing 'from' field for device=${deviceId}`
     )
     return
   }
@@ -102,13 +132,26 @@ async function handleMessageEvent(
       organizationId
     )
 
-    console.info(
-      `[whatsapp-webhook-worker] processed inbound message id=${result.messageId} conv=${result.conversationId} from=${from}${result.isNewConversation ? " (new conversation)" : ""}`
+    logger.info(
+      {
+        event: "whatsapp.webhook.message_processed",
+        messageId: result.messageId,
+        conversationId: result.conversationId,
+        from,
+        deviceId,
+        isNewConversation: result.isNewConversation,
+      },
+      `processed inbound message id=${result.messageId} conv=${result.conversationId} from=${from}${result.isNewConversation ? " (new conversation)" : ""}`
     )
   } catch (error) {
-    console.error(
-      `[whatsapp-webhook-worker] failed to process message from=${from} device=${deviceId}:`,
-      error
+    logger.error(
+      {
+        event: "whatsapp.webhook.message_processing_failed",
+        from,
+        deviceId,
+        err: error,
+      },
+      `failed to process message from=${from} device=${deviceId}`
     )
     throw error // Let BullMQ handle retry
   }
@@ -124,16 +167,24 @@ async function handleStatusEvent(
   const organizationId = await getDeviceOrganization(deviceId)
 
   if (!organizationId) {
-    console.warn(
-      `[whatsapp-webhook-worker] device not found: ${deviceId}, skipping status`
+    logger.warn(
+      {
+        event: "whatsapp.webhook.device_not_found",
+        deviceId,
+      },
+      `device not found: ${deviceId}, skipping status`
     )
     return
   }
 
   const waMessageId = statusPayload.id as string | undefined
   if (!waMessageId) {
-    console.warn(
-      `[whatsapp-webhook-worker] status missing 'id' field for device=${deviceId}`
+    logger.warn(
+      {
+        event: "whatsapp.webhook.missing_status_id",
+        deviceId,
+      },
+      `status missing 'id' field for device=${deviceId}`
     )
     return
   }
@@ -146,36 +197,76 @@ async function handleStatusEvent(
     )
 
     if (result.messageId) {
-      console.info(
-        `[whatsapp-webhook-worker] status update: waMessageId=${waMessageId} status=${result.status} msgId=${result.messageId}`
+      logger.info(
+        {
+          event: "whatsapp.webhook.status_updated",
+          waMessageId,
+          status: result.status,
+          messageId: result.messageId,
+          deviceId,
+        },
+        `status update: waMessageId=${waMessageId} status=${result.status} msgId=${result.messageId}`
       )
     } else {
-      console.info(
-        `[whatsapp-webhook-worker] status for unknown message: waMessageId=${waMessageId} status=${result.status}`
+      logger.info(
+        {
+          event: "whatsapp.webhook.status_unknown_message",
+          waMessageId,
+          status: result.status,
+          deviceId,
+        },
+        `status for unknown message: waMessageId=${waMessageId} status=${result.status}`
       )
     }
   } catch (error) {
-    console.error(
-      `[whatsapp-webhook-worker] failed to process status waMessageId=${waMessageId} device=${deviceId}:`,
-      error
+    logger.error(
+      {
+        event: "whatsapp.webhook.status_processing_failed",
+        waMessageId,
+        deviceId,
+        err: error,
+      },
+      `failed to process status waMessageId=${waMessageId} device=${deviceId}`
     )
     throw error // Let BullMQ handle retry
   }
 }
 
 worker.on("active", (job) => {
-  console.info(
-    `[whatsapp-webhook-worker] processing ${job.name} id=${job.id} eventType=${job.data.eventType}`
+  logger.info(
+    {
+      event: "worker.job.active",
+      workerName: "whatsapp-webhook",
+      jobName: job.name,
+      jobId: job.id,
+      eventType: job.data.eventType,
+    },
+    `processing ${job.name} id=${job.id} eventType=${job.data.eventType}`
   )
 })
 
 worker.on("completed", (job) => {
-  console.info(`[whatsapp-webhook-worker] completed ${job.name} id=${job.id}`)
+  logger.info(
+    {
+      event: "worker.job.completed",
+      workerName: "whatsapp-webhook",
+      jobName: job.name,
+      jobId: job.id,
+    },
+    `completed ${job.name} id=${job.id}`
+  )
 })
 
 worker.on("failed", async (job, error) => {
   if (!job) {
-    console.error("[whatsapp-webhook-worker] failed job missing payload", error)
+    logger.error(
+      {
+        event: "worker.job.failed",
+        workerName: "whatsapp-webhook",
+        err: error,
+      },
+      "failed job missing payload"
+    )
     return
   }
 
@@ -183,9 +274,18 @@ worker.on("failed", async (job, error) => {
   const attempts = job.attemptsMade ?? 0
   const maxAttempts = job.opts?.attempts ?? 3
 
-  console.error(
-    `[whatsapp-webhook-worker] failed ${job.name} id=${job.id} eventType=${eventType} deviceId=${deviceId} attempts=${attempts}`,
-    error
+  logger.error(
+    {
+      event: "worker.job.failed",
+      workerName: "whatsapp-webhook",
+      jobName: job.name,
+      jobId: job.id,
+      eventType,
+      deviceId,
+      attempts,
+      err: error,
+    },
+    `failed ${job.name} id=${job.id} eventType=${eventType} deviceId=${deviceId} attempts=${attempts}`
   )
 
   // Store in dead-letter queue when retries exhausted
@@ -199,13 +299,23 @@ worker.on("failed", async (job, error) => {
         attemptCount: attempts,
       })
 
-      console.info(
-        `[whatsapp-webhook-worker] stored dead-letter for device=${deviceId} eventType=${eventType}`
+      logger.info(
+        {
+          event: "whatsapp.webhook.dead_letter_stored",
+          deviceId,
+          eventType,
+        },
+        `stored dead-letter for device=${deviceId} eventType=${eventType}`
       )
     } catch (dlqError) {
-      console.error(
-        `[whatsapp-webhook-worker] failed to create dead-letter for device=${deviceId}:`,
-        dlqError
+      logger.error(
+        {
+          event: "whatsapp.webhook.dead_letter_failed",
+          deviceId,
+          eventType,
+          err: dlqError,
+        },
+        `failed to create dead-letter for device=${deviceId}`
       )
     }
   }
@@ -225,20 +335,30 @@ const shutdown = async (signal: string) => {
   }
 
   shuttingDown = true
-  console.info(`[whatsapp-webhook-worker] received ${signal}, shutting down`)
+  logger.info(
+    {
+      event: "worker.shutdown.started",
+      workerName: "whatsapp-webhook",
+      signal,
+    },
+    `received ${signal}, shutting down`
+  )
 
   try {
     await worker.close()
     process.exit(0)
   } catch (error) {
-    console.error(
-      "[whatsapp-webhook-worker] shutdown failed while closing worker",
-      error
+    logger.error(
+      {
+        event: "worker.shutdown.failed",
+        workerName: "whatsapp-webhook",
+        err: error,
+      },
+      "shutdown failed while closing worker"
     )
     process.exit(1)
   }
 }
-
 process.on("SIGTERM", () => {
   void shutdown("SIGTERM")
 })

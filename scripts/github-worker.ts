@@ -1,5 +1,6 @@
 import { Worker, type Job } from "bullmq"
 
+import { logger } from "@/lib/logger"
 import {
   GITHUB_EVENTS_JOB_NAME,
   GITHUB_EVENTS_QUEUE_NAME,
@@ -29,26 +30,51 @@ const worker = new Worker<GithubEventJobData>(
 )
 
 worker.on("active", (job) => {
-  console.info(
+  logger.info(
+    {
+      event: "github.worker.job.active",
+      jobName: job.name,
+      jobId: job.id,
+      eventId: job.data.eventId,
+    },
     `[github-worker] processing ${job.name} id=${job.id} eventId=${job.data.eventId}`
   )
 })
 
 worker.on("completed", (job) => {
-  console.info(
+  logger.info(
+    {
+      event: "github.worker.job.completed",
+      jobName: job.name,
+      jobId: job.id,
+      eventId: job.data.eventId,
+    },
     `[github-worker] completed ${job.name} id=${job.id} eventId=${job.data.eventId}`
   )
 })
 
 worker.on("failed", (job, error) => {
   if (!job) {
-    console.error("[github-worker] failed job missing payload", error)
+    logger.error(
+      {
+        event: "github.worker.job.failed",
+        err: error,
+      },
+      "[github-worker] failed job missing payload"
+    )
     return
   }
 
-  console.error(
-    `[github-worker] failed ${job.name} id=${job.id} attempts=${job.attemptsMade} eventId=${job.data.eventId}`,
-    error
+  logger.error(
+    {
+      event: "github.worker.job.failed",
+      jobName: job.name,
+      jobId: job.id,
+      attempts: job.attemptsMade,
+      eventId: job.data.eventId,
+      err: error,
+    },
+    `[github-worker] failed ${job.name} id=${job.id} attempts=${job.attemptsMade} eventId=${job.data.eventId}`
   )
 })
 
@@ -60,13 +86,25 @@ const shutdown = async (signal: string) => {
   }
 
   shuttingDown = true
-  console.info(`[github-worker] received ${signal}, shutting down`)
+  logger.info(
+    {
+      event: "github.worker.shutdown",
+      signal,
+    },
+    `[github-worker] received ${signal}, shutting down`
+  )
 
   try {
     await worker.close()
     process.exit(0)
   } catch (error) {
-    console.error("[github-worker] shutdown failed while closing worker", error)
+    logger.error(
+      {
+        event: "github.worker.shutdown.failed",
+        err: error,
+      },
+      "[github-worker] shutdown failed while closing worker"
+    )
     process.exit(1)
   }
 }
@@ -79,6 +117,11 @@ process.on("SIGINT", () => {
   void shutdown("SIGINT")
 })
 
-console.info(
+logger.info(
+  {
+    event: "github.worker.ready",
+    queue: GITHUB_EVENTS_QUEUE_NAME,
+    job: GITHUB_EVENTS_JOB_NAME,
+  },
   `[github-worker] ready queue=${GITHUB_EVENTS_QUEUE_NAME} job=${GITHUB_EVENTS_JOB_NAME}`
 )
