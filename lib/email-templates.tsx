@@ -22,13 +22,36 @@ export type EmailTemplateMeta = {
 // ponytail: mock data baked in — no DB, no env lookup needed for preview
 const INVOICE_MOCK = {
   invoiceNumber: "INV-2026-001",
-  amount: "USD 150.00",
+  amount: "$150.00",
   currency: "USD",
-  status: "OPEN",
-  issuedAt: "Jan 1, 2026",
-  dueAt: "Jan 15, 2026",
-  periodStart: "Jan 1, 2026",
-  periodEnd: "Jan 31, 2026",
+  status: "Open",
+  issuedAt: "January 1, 2026",
+  dueAt: "January 15, 2026",
+  periodStart: "January 1, 2026",
+  periodEnd: "January 31, 2026",
+  subtotalAmount: "$140.00",
+  taxAmount: "$10.00",
+  discountAmount: "$0.00",
+  recipientEmail: "billing@acme.corp",
+  organizationName: "Acme Corporation",
+  paymentMethod: "Bank Transfer",
+  paidAt: "January 12, 2026",
+  lineItems: [
+    {
+      id: "li_1",
+      description: "VPN Enterprise Plan - Singapore Gateway (Monthly)",
+      quantity: 1,
+      unitPrice: "$120.00",
+      amount: "$120.00",
+    },
+    {
+      id: "li_2",
+      description: "Dedicated Static IPv4 Add-on",
+      quantity: 2,
+      unitPrice: "$10.00",
+      amount: "$20.00",
+    },
+  ],
 }
 
 const TICKET_MOCK = {

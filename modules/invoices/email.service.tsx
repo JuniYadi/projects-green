@@ -11,6 +11,10 @@ import { InvoiceCancelledEmail } from "./emails/invoice-cancelled"
 import { PaymentConfirmationSubmittedEmail } from "./emails/payment-confirmation-submitted"
 
 import type {
+  InvoiceEmailLineItem,
+  InvoiceEmailCommonProps,
+} from "./emails/types"
+import type {
   InvoiceDetail,
   InvoiceListItem,
   InvoiceStatus,
@@ -23,32 +27,41 @@ export class InvoiceEmailServiceError extends Error {
   }
 }
 
+export type InvoiceEmailServiceOptions = {
+  organizationName?: string
+}
+
 export type InvoiceEmailService = {
   sendInvoiceCreated(
     invoice: InvoiceListItem | InvoiceDetail,
     recipientEmail: string,
-    organizationId?: string
+    organizationId?: string,
+    options?: InvoiceEmailServiceOptions
   ): Promise<void>
   sendPaymentReminder(
     invoice: InvoiceListItem | InvoiceDetail,
     recipientEmail: string,
-    organizationId?: string
+    organizationId?: string,
+    options?: InvoiceEmailServiceOptions
   ): Promise<void>
   sendInvoicePaid(
     invoice: InvoiceListItem | InvoiceDetail,
     recipientEmail: string,
-    organizationId?: string
+    organizationId?: string,
+    options?: InvoiceEmailServiceOptions
   ): Promise<void>
   sendInvoiceOverdue(
     invoice: InvoiceListItem | InvoiceDetail,
     recipientEmail: string,
-    organizationId?: string
+    organizationId?: string,
+    options?: InvoiceEmailServiceOptions
   ): Promise<void>
   sendInvoiceCancelled(
     invoice: InvoiceListItem | InvoiceDetail,
     recipientEmail: string,
     reason?: string,
-    organizationId?: string
+    organizationId?: string,
+    options?: InvoiceEmailServiceOptions
   ): Promise<void>
   sendPaymentConfirmationSubmitted(
     data: {
@@ -79,7 +92,7 @@ const formatCurrency = (amount: number, currency: string): string => {
   }).format(amount)
 }
 
-const formatDate = (dateStr: string | null): string => {
+const formatDate = (dateStr: string | null | undefined): string => {
   if (!dateStr) return "N/A"
   const date = new Date(dateStr)
   return date.toLocaleDateString("en-US", {
@@ -90,32 +103,86 @@ const formatDate = (dateStr: string | null): string => {
 }
 
 export const getInvoiceEmailData = (
-  invoice: InvoiceListItem | InvoiceDetail
-) => {
+  invoice: InvoiceListItem | InvoiceDetail,
+  recipientEmail?: string,
+  organizationName?: string
+): InvoiceEmailCommonProps => {
   const amount = "totalAmount" in invoice ? invoice.totalAmount : 0
   const currency = invoice.currency
   const periodStart = "periodStart" in invoice ? invoice.periodStart : null
   const periodEnd = "periodEnd" in invoice ? invoice.periodEnd : null
+  const isDetail = "lineItems" in invoice
+
+  let lineItems: InvoiceEmailLineItem[] | undefined
+  let subtotalAmount: string | undefined
+  let taxAmount: string | undefined
+  let discountAmount: string | undefined
+  let paidAt: string | undefined
+  let paymentMethod: string | undefined
+
+  if (isDetail) {
+    const detail = invoice as InvoiceDetail
+    if (detail.lineItems && detail.lineItems.length > 0) {
+      lineItems = detail.lineItems.map((item) => ({
+        id: item.id,
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: formatCurrency(item.unitPrice, item.currency || currency),
+        amount: formatCurrency(item.amount, item.currency || currency),
+      }))
+    }
+
+    if (detail.subtotalAmount !== undefined && detail.subtotalAmount !== null) {
+      subtotalAmount = formatCurrency(detail.subtotalAmount, currency)
+    }
+
+    if (detail.taxAmount !== undefined && detail.taxAmount !== null) {
+      taxAmount = formatCurrency(detail.taxAmount, currency)
+    }
+
+    if (detail.discountAmount !== undefined && detail.discountAmount !== null) {
+      discountAmount = formatCurrency(detail.discountAmount, currency)
+    }
+
+    if (detail.paidAt) {
+      paidAt = formatDate(detail.paidAt)
+    }
+
+    if (detail.paymentMethod) {
+      paymentMethod = detail.paymentMethod
+    }
+  }
 
   return {
     invoiceNumber: invoice.invoiceNumber,
     amount: formatCurrency(amount, currency),
     currency,
-    status: INVOICE_STATUS_LABELS[invoice.status],
+    status: INVOICE_STATUS_LABELS[invoice.status] ?? invoice.status,
     issuedAt: formatDate(invoice.issuedAt),
     dueAt: formatDate(invoice.dueAt),
     periodStart: formatDate(periodStart),
     periodEnd: formatDate(periodEnd),
+    subtotalAmount,
+    taxAmount,
+    discountAmount,
+    lineItems,
+    paidAt,
+    paymentMethod,
+    recipientEmail,
+    organizationName,
   }
 }
 
 export const createInvoiceEmailService = (): InvoiceEmailService => ({
-  async sendInvoiceCreated(invoice, recipientEmail, organizationId) {
+  async sendInvoiceCreated(invoice, recipientEmail, organizationId, options) {
     try {
-      const html = await render(
-        <InvoiceCreatedEmail {...getInvoiceEmailData(invoice)} />
+      const emailData = getInvoiceEmailData(
+        invoice,
+        recipientEmail,
+        options?.organizationName
       )
-      const subject = `Invoice ${invoice.invoiceNumber} - Payment Due ${invoice.dueAt}`
+      const html = await render(<InvoiceCreatedEmail {...emailData} />)
+      const subject = `Invoice ${invoice.invoiceNumber} - Payment Due ${emailData.dueAt}`
       const emailLogId = await createEmailLog({
         recipientEmail,
         type: "INVOICE_CREATED",
@@ -140,11 +207,14 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
     }
   },
 
-  async sendPaymentReminder(invoice, recipientEmail, organizationId) {
+  async sendPaymentReminder(invoice, recipientEmail, organizationId, options) {
     try {
-      const html = await render(
-        <PaymentReminderEmail {...getInvoiceEmailData(invoice)} />
+      const emailData = getInvoiceEmailData(
+        invoice,
+        recipientEmail,
+        options?.organizationName
       )
+      const html = await render(<PaymentReminderEmail {...emailData} />)
       const subject = `Reminder: Invoice ${invoice.invoiceNumber} Due Soon`
       const emailLogId = await createEmailLog({
         recipientEmail,
@@ -169,11 +239,15 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
       )
     }
   },
-  async sendInvoicePaid(invoice, recipientEmail, organizationId) {
+
+  async sendInvoicePaid(invoice, recipientEmail, organizationId, options) {
     try {
-      const html = await render(
-        <InvoicePaidEmail {...getInvoiceEmailData(invoice)} />
+      const emailData = getInvoiceEmailData(
+        invoice,
+        recipientEmail,
+        options?.organizationName
       )
+      const html = await render(<InvoicePaidEmail {...emailData} />)
       const subject = `Payment Received - Invoice ${invoice.invoiceNumber}`
       const emailLogId = await createEmailLog({
         recipientEmail,
@@ -198,11 +272,15 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
       )
     }
   },
-  async sendInvoiceOverdue(invoice, recipientEmail, organizationId) {
+
+  async sendInvoiceOverdue(invoice, recipientEmail, organizationId, options) {
     try {
-      const html = await render(
-        <InvoiceOverdueEmail {...getInvoiceEmailData(invoice)} />
+      const emailData = getInvoiceEmailData(
+        invoice,
+        recipientEmail,
+        options?.organizationName
       )
+      const html = await render(<InvoiceOverdueEmail {...emailData} />)
       const subject = `OVERDUE: Invoice ${invoice.invoiceNumber} Payment Required`
       const emailLogId = await createEmailLog({
         recipientEmail,
@@ -227,13 +305,22 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
       )
     }
   },
-  async sendInvoiceCancelled(invoice, recipientEmail, reason, organizationId) {
+
+  async sendInvoiceCancelled(
+    invoice,
+    recipientEmail,
+    reason,
+    organizationId,
+    options
+  ) {
     try {
+      const emailData = getInvoiceEmailData(
+        invoice,
+        recipientEmail,
+        options?.organizationName
+      )
       const html = await render(
-        <InvoiceCancelledEmail
-          {...getInvoiceEmailData(invoice)}
-          reason={reason}
-        />
+        <InvoiceCancelledEmail {...emailData} reason={reason} />
       )
       const subject = `Invoice ${invoice.invoiceNumber} Has Been Cancelled`
       const emailLogId = await createEmailLog({

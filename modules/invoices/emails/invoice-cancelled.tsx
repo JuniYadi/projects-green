@@ -11,157 +11,93 @@ import {
   Text,
 } from "@react-email/components"
 import { getEmailBaseUrl } from "@/lib/email-url"
-
-interface InvoiceCancelledEmailProps {
-  invoiceNumber: string
-  amount: string
-  currency: string
-  status: string
-  issuedAt: string
-  dueAt: string
-  periodStart: string
-  periodEnd: string
-  reason?: string
-}
+import type { InvoiceCancelledEmailProps } from "./types"
+import {
+  InvoiceCostBreakdown,
+  InvoiceItemsList,
+  InvoiceSummarySection,
+  styles,
+} from "./invoice-components"
 
 export const InvoiceCancelledEmail = ({
   invoiceNumber,
   amount,
+  status = "Canceled",
+  issuedAt,
+  dueAt,
+  periodStart,
+  periodEnd,
   reason,
+  subtotalAmount,
+  taxAmount,
+  discountAmount,
+  lineItems,
+  recipientEmail,
+  organizationName,
 }: InvoiceCancelledEmailProps) => {
   const invoiceUrl = `${getEmailBaseUrl()}/console/invoices/${invoiceNumber}`
 
   return (
     <Html>
       <Head />
-      <Preview>Invoice {invoiceNumber} Has Been Cancelled</Preview>
+      <Preview>
+        Notice: Invoice {invoiceNumber} Has Been Cancelled ({amount})
+      </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
           <Heading style={styles.heading}>Invoice Cancelled</Heading>
 
           <Text style={styles.intro}>
-            Invoice {invoiceNumber} has been cancelled. No payment is required
-            for this invoice.
+            Invoice {invoiceNumber} has been officially cancelled. No payment is
+            required for this invoice, and no further action is needed from you.
           </Text>
 
-          <Section style={styles.invoiceInfo}>
-            <Heading as="h3" style={styles.invoiceNumber}>
-              {invoiceNumber}
-            </Heading>
-
-            <Text style={styles.amount}>{amount}</Text>
-
-            <Text style={styles.statusBadge}>CANCELLED</Text>
-
-            {reason && (
-              <Text style={styles.reason}>
-                <strong>Reason:</strong> {reason}
+          {reason && (
+            <Section style={styles.noticeBox}>
+              <Text style={styles.noticeText}>
+                <strong>Cancellation Reason:</strong> {reason}
               </Text>
-            )}
-          </Section>
+            </Section>
+          )}
 
-          <Hr style={styles.divider} />
+          <InvoiceSummarySection
+            invoiceNumber={invoiceNumber}
+            status={status}
+            issuedAt={issuedAt}
+            dueAt={dueAt}
+            periodStart={periodStart}
+            periodEnd={periodEnd}
+            recipientEmail={recipientEmail}
+            organizationName={organizationName}
+          />
+
+          <InvoiceItemsList lineItems={lineItems} />
+
+          <InvoiceCostBreakdown
+            amount={amount}
+            subtotalAmount={subtotalAmount}
+            taxAmount={taxAmount}
+            discountAmount={discountAmount}
+            totalLabel="Cancelled Amount"
+          />
 
           <Section style={styles.actions}>
-            <Button href={invoiceUrl} style={styles.button}>
-              View Invoice
+            <Button
+              href={invoiceUrl}
+              style={{ ...styles.button, backgroundColor: "#64748b" }}
+            >
+              View Invoice Details
             </Button>
           </Section>
 
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            If you have any questions about this cancellation, please contact
-            our billing team.
+            If you have questions regarding this cancellation or need a revised
+            invoice, please reach out to our billing team.
           </Text>
         </Container>
       </Body>
     </Html>
   )
-}
-
-const styles = {
-  body: {
-    backgroundColor: "#f6f9fc",
-    fontFamily:
-      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-  },
-  container: {
-    backgroundColor: "#ffffff",
-    borderRadius: "8px",
-    margin: "40px auto",
-    padding: "40px",
-    maxWidth: "600px",
-  },
-  heading: {
-    color: "#6c757d",
-    fontSize: "24px",
-    fontWeight: "600" as const,
-    margin: "0 0 24px 0",
-  },
-  intro: {
-    color: "#525f7f",
-    fontSize: "16px",
-    lineHeight: "24px",
-    margin: "0 0 24px 0",
-  },
-  invoiceInfo: {
-    backgroundColor: "#f8f9fa",
-    borderRadius: "6px",
-    padding: "24px",
-    margin: "0 0 24px 0",
-  },
-  invoiceNumber: {
-    color: "#1a1a1a",
-    fontSize: "20px",
-    fontWeight: "600" as const,
-    margin: "0 0 16px 0",
-  },
-  amount: {
-    color: "#6c757d",
-    fontSize: "32px",
-    fontWeight: "700" as const,
-    margin: "0 0 16px 0",
-    textDecoration: "line-through",
-  },
-  statusBadge: {
-    backgroundColor: "#6c757d",
-    color: "#ffffff",
-    fontSize: "14px",
-    fontWeight: "600" as const,
-    padding: "4px 12px",
-    borderRadius: "4px",
-    display: "inline-block",
-    margin: "0 0 16px 0",
-  },
-  reason: {
-    color: "#525f7f",
-    fontSize: "14px",
-    lineHeight: "20px",
-    margin: "16px 0 0 0",
-  },
-  divider: {
-    borderColor: "#e6ebf1",
-    borderWidth: "1px",
-    margin: "24px 0",
-  },
-  actions: {
-    textAlign: "center" as const,
-    margin: "24px 0",
-  },
-  button: {
-    backgroundColor: "#5469d4",
-    borderRadius: "4px",
-    color: "#ffffff",
-    fontSize: "16px",
-    fontWeight: "600" as const,
-    padding: "12px 24px",
-    textDecoration: "none",
-  },
-  footer: {
-    color: "#8898aa",
-    fontSize: "14px",
-    lineHeight: "20px",
-    margin: "0",
-  },
 }

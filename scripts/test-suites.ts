@@ -58,6 +58,7 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
       "app/[lang]/portal/vpn/",
       "components/billing/",
       "lib/billing-client.ts",
+      "lib/email-templates.tsx",
       "lib/queue/billing-cron.ts",
       "modules/billing/",
       "modules/invoices/",
