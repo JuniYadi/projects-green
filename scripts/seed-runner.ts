@@ -18,7 +18,6 @@
  * they parse from process.argv directly.
  */
 
-import { logger } from "@/lib/logger"
 import {
   discoverSeeders,
   getSeeders,
@@ -65,31 +64,9 @@ async function runList(): Promise<void> {
   const configs = listSeeders()
 
   if (configs.length === 0) {
-    logger.info(
-      {
-        event: "seed.runner.list.empty",
-        count: 0,
-      },
-      "No seeders registered"
-    )
     console.log("\n  No seeders registered.\n")
     return
   }
-
-  logger.info(
-    {
-      event: "seed.runner.list",
-      count: configs.length,
-      seeders: configs.map((c) => ({
-        name: c.name,
-        classification: c.classification,
-        runOrder: c.runOrder,
-        tag: c.seedTag ?? null,
-        description: c.description,
-      })),
-    },
-    `Available Seeders (${configs.length})`
-  )
 
   console.log("\n📋 Available Seeders\n")
   console.log(
@@ -103,24 +80,18 @@ async function runList(): Promise<void> {
   console.log("  " + "─".repeat(95))
 
   for (const c of configs) {
-    const icon = c.classification === "system" ? "⚙️" : "🧪"
-    const typeCol = `${icon} ${c.classification}`
+    const icon = c.classification === "system" ? "⚙️ " : "🧪"
     const tag = c.seedTag ?? "—"
     console.log(
       "  " +
         c.name.padEnd(32) +
-        typeCol.padEnd(10) +
+        `${icon} ${c.classification}`.padEnd(10) +
         String(c.runOrder).padEnd(7) +
         tag.padEnd(22) +
         c.description
     )
   }
   console.log()
-}
-
-function fmtDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`
-  return `${(ms / 1000).toFixed(1)}s`
 }
 
 // ── Seed / Unseed ─────────────────────────────────────────────────────────
@@ -139,24 +110,12 @@ async function runSeeders(
     : allSeeders
 
   if (specific && targets.length === 0) {
-    logger.error(
-      {
-        event: "seed.runner.not_found",
-        seeder: specific,
-      },
-      `Seeder "${specific}" not found`
-    )
+    console.error(`\n❌ Seeder "${specific}" not found.\n`)
     process.exit(1)
   }
 
   if (targets.length === 0) {
-    logger.info(
-      {
-        event: "seed.runner.no_targets",
-        classification: classification ?? "all",
-      },
-      "No seeders found for the given criteria"
-    )
+    console.log("\n  No seeders found for the given criteria.\n")
     return
   }
 
@@ -168,16 +127,7 @@ async function runSeeders(
         : "all"
 
   const verb = mode === "unseed" ? "Unseed" : "Seed"
-  logger.info(
-    {
-      event: "seed.runner.batch.started",
-      mode,
-      classification: label,
-      count: targets.length,
-      targets: targets.map((t) => t.seederName),
-    },
-    `${verb} [${label}] — ${targets.length} seeder(s)`
-  )
+  console.log(`\n🚀 ${verb} [${label}] — ${targets.length} seeder(s)\n`)
 
   const stats: RunStats[] = []
   let hasErrors = false
@@ -207,14 +157,8 @@ async function runOne(
   // Check required env vars
   const missing = SeederClass.validateEnv()
   if (missing.length > 0) {
-    logger.info(
-      {
-        event: "seed.runner.seeder.skipped",
-        seeder: seederName,
-        classification,
-        missingEnv: missing,
-      },
-      `${seederName} — skipped (missing: ${missing.join(", ")})`
+    console.log(
+      `  ⏭️  ${seederName} — skipped (missing: ${missing.join(", ")})`
     )
     return {
       name: seederName,
@@ -244,42 +188,10 @@ async function runOne(
   }
 
   const result = instance.getResult()
-  const durationMs = Date.now() - start
-  const allErrors = [...result.errors, ...caughtErrors]
-
-  if (allErrors.length > 0) {
-    logger.error(
-      {
-        event: "seed.runner.seeder.failed",
-        seeder: seederName,
-        classification,
-        mode,
-        durationMs,
-        errors: allErrors,
-      },
-      `Seeder ${seederName} failed with ${allErrors.length} error(s)`
-    )
-  } else {
-    logger.info(
-      {
-        event: "seed.runner.seeder.completed",
-        seeder: seederName,
-        classification,
-        mode,
-        durationMs,
-        created: result.created,
-        updated: result.updated,
-        deleted: result.deleted,
-        skipped: result.skipped,
-      },
-      `Seeder ${seederName} completed in ${durationMs}ms`
-    )
-  }
-
   return {
     ...result,
-    errors: allErrors,
-    durationMs,
+    errors: [...result.errors, ...caughtErrors],
+    durationMs: Date.now() - start,
   }
 }
 
@@ -287,34 +199,6 @@ async function runOne(
 
 function printSummary(stats: RunStats[]): void {
   if (stats.length === 0) return
-
-  const totals = { created: 0, updated: 0, deleted: 0, skipped: 0, errors: 0 }
-
-  for (const s of stats) {
-    totals.created += s.created
-    totals.updated += s.updated
-    totals.deleted += s.deleted
-    totals.skipped += s.skipped
-    totals.errors += s.errors.length
-  }
-
-  logger.info(
-    {
-      event: "seed.runner.summary",
-      totals,
-      stats: stats.map((s) => ({
-        name: s.name,
-        classification: s.classification,
-        created: s.created,
-        updated: s.updated,
-        deleted: s.deleted,
-        skipped: s.skipped,
-        errors: s.errors,
-        durationMs: s.durationMs,
-      })),
-    },
-    `Seed runner summary: created=${totals.created} updated=${totals.updated} deleted=${totals.deleted} skipped=${totals.skipped} errors=${totals.errors}`
-  )
 
   console.log("\n📊 Summary\n")
   console.log(
@@ -329,6 +213,8 @@ function printSummary(stats: RunStats[]): void {
   )
   console.log("  " + "─".repeat(90))
 
+  const totals = { created: 0, updated: 0, deleted: 0, skipped: 0, errors: 0 }
+
   for (const s of stats) {
     const icon = s.errors.length > 0 ? "❌" : "✅"
     console.log(
@@ -341,6 +227,12 @@ function printSummary(stats: RunStats[]): void {
         String(s.errors.length).padEnd(8) +
         fmtDuration(s.durationMs)
     )
+
+    totals.created += s.created
+    totals.updated += s.updated
+    totals.deleted += s.deleted
+    totals.skipped += s.skipped
+    totals.errors += s.errors.length
 
     for (const err of s.errors) {
       console.log(`         ⚠️  ${err}`)
@@ -358,6 +250,11 @@ function printSummary(stats: RunStats[]): void {
       String(totals.errors).padEnd(8)
   )
   console.log()
+}
+
+function fmtDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`
+  return `${(ms / 1000).toFixed(1)}s`
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────
@@ -383,10 +280,7 @@ async function main(): Promise<void> {
     !params.has("--seed") &&
     !params.has("--unseed")
   ) {
-    logger.error(
-      {
-        event: "seed.runner.invalid_usage",
-      },
+    console.log(
       "Usage: seed-runner [--system|--dummy|--all|--list|--seed=Name|--unseed=Name]"
     )
     process.exit(1)
