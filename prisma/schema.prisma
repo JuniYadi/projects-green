@@ -1561,11 +1561,33 @@ model ServiceSubscription {
   orders          BillingOrder[]
   vpnSubscription VpnSubscription?
   addons          ServiceSubscriptionAddon[]
+  provisionAccounts ServiceProvisionAccount[]
 
   @@unique([organizationId, packageId, planId], map: "ServiceSubscription_tenantId_packageId_planId_key")
   @@index([organizationId, status], map: "ServiceSubscription_tenantId_status_idx")
   @@index([packageId], map: "ServiceSubscription_packageId_idx")
   @@map("Subscription")
+}
+
+model ServiceProvisionAccount {
+  id                 String                    @id @default(cuid())
+  subscriptionId     String
+  serviceType        ServiceType
+  targetId           String?
+  identifier         String
+  status             ProvisioningStatus        @default(PENDING)
+  encryptedSecret    String?
+  vaultPath          String?
+  metadata           Json                      @default("{}")
+  failureReason      String?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+
+  subscription       ServiceSubscription       @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId, serviceType])
+  @@index([status])
+  @@map("ServiceProvisionAccount")
 }
 
 model VpnClient {
@@ -1718,6 +1740,14 @@ enum VpnSubscriptionStatus {
 }
 
 enum VpnProvisioningStatus {
+  PENDING
+  PROVISIONING
+  ACTIVE
+  FAILED
+  REVOKED
+}
+
+enum ProvisioningStatus {
   PENDING
   PROVISIONING
   ACTIVE

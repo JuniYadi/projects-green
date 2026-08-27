@@ -17,6 +17,7 @@ import type {
   VoucherDiscountType,
   VoucherKind,
 } from "@prisma/client"
+import { getProvisionAdapter } from "@/modules/billing/provisioning/provision-adapter-registry"
 
 // ─── Products (ServicePackage) ──────────────────────────────────────────────
 
@@ -237,7 +238,9 @@ export function validateProductPlanIdentities(
 
 export function validateProductPublish(
   input: {
-    basics: Pick<ProductBasicsForm, "name" | "description">
+    basics: Pick<ProductBasicsForm, "name" | "description"> & {
+      code?: ServiceType
+    }
     plans: ProductPlanEditorForm[]
   },
   enabledCurrencies: SupportedCurrency[]
@@ -256,6 +259,18 @@ export function validateProductPublish(
   const activePlans = input.plans.filter((plan) => plan.isActive)
   if (activePlans.length === 0 || enabledCurrencies.length === 0) {
     invalidTabs.add("plans")
+  }
+
+  const provisionAdapter = input.basics.code
+    ? getProvisionAdapter(input.basics.code)
+    : undefined
+
+  if (provisionAdapter?.validatePlanConfig) {
+    for (const plan of activePlans) {
+      if (!provisionAdapter.validatePlanConfig(plan.resources).valid) {
+        invalidTabs.add("plans")
+      }
+    }
   }
 
   for (const plan of activePlans) {

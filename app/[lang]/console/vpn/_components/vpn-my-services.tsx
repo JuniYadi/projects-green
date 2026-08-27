@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import QRCode from "qrcode"
 import Link from "next/link"
 import type { ColumnDef } from "@tanstack/react-table"
 
@@ -126,23 +127,43 @@ function ProxyCredentialCell({
   const [revealed, setRevealed] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  const load = async () => {
+    if (password !== null) return password
+    const creds = await getVpnProxyCredentials(subscriptionId, account.id)
+    setPassword(creds.password ?? "—")
+    return creds.password ?? "—"
+  }
+
   const toggle = async () => {
     if (revealed) {
       setRevealed(false)
       return
     }
-    if (password === null) {
-      setLoading(true)
-      try {
-        const creds = await getVpnProxyCredentials(subscriptionId, account.id)
-        setPassword(creds.password ?? "—")
-      } catch {
-        setPassword("—")
-      } finally {
-        setLoading(false)
-      }
+    setLoading(true)
+    try {
+      await load()
+      setRevealed(true)
+    } catch {
+      setPassword("—")
+      setRevealed(true)
+    } finally {
+      setLoading(false)
     }
-    setRevealed(true)
+  }
+
+  const copy = async () => {
+    setLoading(true)
+    try {
+      const value = await load()
+      await navigator.clipboard.writeText(
+        `username=${account.username}\npassword=${value}`
+      )
+      toast.success("Proxy credentials copied")
+    } catch {
+      toast.error("Failed to copy proxy credentials")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -158,7 +179,7 @@ function ProxyCredentialCell({
           size="sm"
           variant="ghost"
           className="h-6 px-1"
-          onClick={toggle}
+          onClick={() => void toggle()}
           disabled={loading}
           aria-label={revealed ? "Hide password" : "Show password"}
         >
@@ -168,8 +189,88 @@ function ProxyCredentialCell({
             <EyeIcon className="h-4 w-4" />
           )}
         </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 px-1"
+          onClick={() => void copy()}
+          disabled={loading}
+          aria-label="Copy Proxy Credentials"
+        >
+          <CopySimpleIcon className="h-4 w-4" />
+        </Button>
       </span>
     </div>
+  )
+}
+
+function WireGuardQrAction({
+  subscriptionId,
+  accountId,
+}: {
+  subscriptionId: string
+  accountId: string
+}) {
+  const [open, setOpen] = useState(false)
+  const [qrData, setQrData] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
+
+  const showQr = async () => {
+    setOpen(true)
+    if (qrData !== null) return
+    setLoading(true)
+    setError(false)
+    try {
+      // eslint-disable-next-line no-restricted-globals
+      const response = await fetch(
+        vpnConfigDownloadUrl(subscriptionId, accountId)
+      )
+      if (!response.ok) throw new Error("Failed to download configuration")
+      const config = await response.text()
+      setQrData(await QRCode.toDataURL(config, { width: 256, margin: 2 }))
+    } catch {
+      setError(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-7 px-2 text-xs"
+        onClick={() => void showQr()}
+        aria-label="WireGuard QR Code"
+      >
+        WireGuard QR Code
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>WireGuard QR Code</DialogTitle>
+            <DialogDescription>
+              Scan this code with the WireGuard app to add the profile.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex min-h-64 items-center justify-center">
+            {loading ? (
+              <span className="text-sm text-muted-foreground">
+                Loading QR code…
+              </span>
+            ) : error ? (
+              <span className="text-sm text-destructive">
+                Unable to generate QR code.
+              </span>
+            ) : qrData ? (
+              <img src={qrData} alt="WireGuard QR Code" />
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
@@ -200,12 +301,20 @@ function ConfigCell({
     return <span className="text-xs text-muted-foreground">Provisioning…</span>
   }
   return (
-    <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
-      <a href={vpnConfigDownloadUrl(subscriptionId, account.id)}>
-        <DownloadIcon className="mr-1 h-3.5 w-3.5" />
-        {ext}
-      </a>
-    </Button>
+    <div className="flex flex-wrap items-center gap-1">
+      <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
+        <a href={vpnConfigDownloadUrl(subscriptionId, account.id)} download>
+          <DownloadIcon className="mr-1 h-3.5 w-3.5" />
+          Download {ext}
+        </a>
+      </Button>
+      {account.protocol === "WIREGUARD" && (
+        <WireGuardQrAction
+          subscriptionId={subscriptionId}
+          accountId={account.id}
+        />
+      )}
+    </div>
   )
 }
 
@@ -215,7 +324,11 @@ type ProtocolIconProps = {
 
 function ProtocolIcon({ protocol }: ProtocolIconProps) {
   const label =
-    protocol === "OPENVPN" ? "OVPN" : protocol === "WIREGUARD" ? "WG" : "Proxy"
+    protocol === "OPENVPN"
+      ? "OpenVPN"
+      : protocol === "WIREGUARD"
+        ? "WireGuard"
+        : "Proxy"
   return (
     <span className="inline-flex items-center justify-center rounded bg-muted px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground uppercase">
       {label}
@@ -258,15 +371,6 @@ function ProtocolControl({
       )}
     </div>
   )
-}
-
-type ServerGroup = {
-  serverId: string
-  serverName: string
-  hostname: string
-  ipAddress: string | null
-  region: { name: string; slug: string; countryCode: string } | null
-  accounts: VpnServerAccount[]
 }
 
 function groupByServer(accounts: VpnServerAccount[]): ServerGroup[] {
@@ -390,29 +494,50 @@ function SubscriptionStatusBadge({ sub }: { sub: VpnSubscription }) {
   )
 }
 
-function ServerSummaryCell({
+function ConnectionSummaryCell({ sub }: { sub: VpnSubscription }) {
+  const groups = groupByServer(sub.serverAccounts)
+  const visibleGroups = groups.slice(0, 2)
+  const extraCount = groups.length - visibleGroups.length
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {visibleGroups.map((group) => (
+          <RegionBadge key={group.serverId} region={group.region} />
+        ))}
+        {extraCount > 0 && (
+          <Badge variant="outline" className="text-xs text-muted-foreground">
+            +{extraCount} more
+          </Badge>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-1">
+        {[
+          ...new Set(sub.serverAccounts.map((account) => account.protocol)),
+        ].map((protocol) => (
+          <ProtocolIcon key={protocol} protocol={protocol} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DeviceSummaryCell({
   sub,
   devices,
 }: {
   sub: VpnSubscription
   devices: Array<{ deviceName: string; platform: string; status: string }>
 }) {
-  const groups = groupByServer(sub.serverAccounts)
   const maxDevices =
     sub.serverAccounts.filter(
       (account) => account.provisioningStatus === "ACTIVE"
     ).length * 2
 
   return (
-    <div className="min-w-[220px] space-y-1">
-      <div className="text-sm font-medium">
-        {groups.length} servers · {sub.serverAccounts.length} accounts
-      </div>
-      <div className="text-xs text-muted-foreground">
-        Devices {devices.length}/{maxDevices}
-      </div>
-      <RegionSummary sub={sub} />
-    </div>
+    <span className="text-sm">
+      {devices.length}/{maxDevices} devices
+    </span>
   )
 }
 
@@ -478,6 +603,9 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
   >({})
   const [refreshKey, setRefreshKey] = useState(0)
   const [pairingSubId, setPairingSubId] = useState<string | null>(null)
+  const [pairingQrConfigUrl, setPairingQrConfigUrl] = useState<string | null>(
+    null
+  )
 
   // ponytail: inline async, no useCallback wrapper to appease the lint rule
   useEffect(() => {
@@ -573,7 +701,7 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
       {
         accessorKey: "packageName",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Package" />
+          <DataTableColumnHeader column={column} title="Connection Profile" />
         ),
         cell: ({ row }) => {
           const sub = row.original
@@ -581,21 +709,27 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
             sub.id.length > 24 ? `${sub.id.slice(0, 24)}…` : sub.id
 
           return (
-            <div className="min-w-[200px] space-y-1">
-              <div className="font-medium">{sub.packageName}</div>
-              <Button
-                asChild
-                variant="link"
-                size="sm"
-                className="h-auto p-0 text-xs"
-              >
-                <Link href={`/console/vpn/subscriptions/${sub.id}`}>
-                  View details
-                </Link>
-              </Button>
-              <div className="flex items-center gap-2">
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold text-foreground">
+                  {sub.packageName}
+                </span>
+                <SubscriptionStatusBadge sub={sub} />
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <Button
+                  asChild
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-xs"
+                >
+                  <Link href={`/console/vpn/subscriptions/${sub.id}`}>
+                    View details
+                  </Link>
+                </Button>
+                <span className="text-muted-foreground">·</span>
                 <span
-                  className="font-mono text-xs text-muted-foreground"
+                  className="font-mono text-muted-foreground"
                   title={sub.id}
                 >
                   {displayId}
@@ -603,11 +737,11 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-1.5"
+                  className="h-5 px-1 text-muted-foreground hover:text-foreground"
                   onClick={() => void copySubscriptionId(sub.id)}
                   aria-label="Copy subscription ID"
                 >
-                  <CopySimpleIcon className="h-3.5 w-3.5" />
+                  <CopySimpleIcon className="h-3 w-3" />
                 </Button>
               </div>
             </div>
@@ -615,85 +749,101 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
         },
       },
       {
-        id: "billingStatus",
-        accessorFn: billingStatus,
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Status" />
-        ),
-        cell: ({ row }) => <SubscriptionStatusBadge sub={row.original} />,
-      },
-      {
         id: "servers",
         accessorFn: subscriptionSearchText,
-        header: "Service",
+        header: "Location Coverage",
         filterFn: (row, _columnId, value) =>
           regionFilterValue(row.original).split("|").includes(String(value)),
+        cell: ({ row }) => <ConnectionSummaryCell sub={row.original} />,
+      },
+      {
+        id: "devices",
+        accessorFn: (sub) => devicesBySub[sub.id]?.length ?? 0,
+        header: "Devices",
         cell: ({ row }) => (
-          <ServerSummaryCell
+          <DeviceSummaryCell
             sub={row.original}
             devices={devicesBySub[row.original.id] ?? []}
           />
         ),
       },
       {
-        accessorKey: "createdAt",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="First buy" />
-        ),
-        sortingFn: "datetime",
-        cell: ({ row }) => formatDate(row.original.createdAt),
-      },
-      {
-        id: "firstPayment",
-        accessorFn: (sub) => sub.firstPayment?.amount ?? "",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="First payment" />
-        ),
+        id: "quickActions",
+        header: () => <div className="text-right">Setup & Connect</div>,
         cell: ({ row }) => {
-          const payment = row.original.firstPayment
-          if (!payment) return <span className="text-muted-foreground">—</span>
+          const sub = row.original
           return (
-            <div className="space-y-1 text-sm">
-              <div>
-                {payment.amount} {payment.currency}
-              </div>
-              {payment.paidAt && (
-                <div className="text-xs text-muted-foreground">
-                  {formatDate(payment.paidAt)}
-                </div>
-              )}
+            <div className="flex justify-end">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <DownloadIcon className="h-4 w-4 text-primary" />
+                    <span>Get Config</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 space-y-1">
+                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase">
+                    Download Profiles
+                  </div>
+                  {sub.serverAccounts.map((account) => {
+                    const isWireGuard = account.protocol === "WIREGUARD"
+                    const isOpenVpn = account.protocol === "OPENVPN"
+                    const isProxy = account.protocol === "PROXY"
+                    const ext = isWireGuard ? ".conf" : ".ovpn"
+                    const downloadUrl = vpnConfigDownloadUrl(sub.id, account.id)
+
+                    if (isProxy) {
+                      return (
+                        <ProxyCredentialCell
+                          key={account.id}
+                          subscriptionId={sub.id}
+                          account={account}
+                        />
+                      )
+                    }
+
+                    return (
+                      <div
+                        key={account.id}
+                        className="flex items-center justify-between px-2 py-1 text-xs"
+                      >
+                        <span className="font-mono text-muted-foreground">
+                          {account.protocol}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {isWireGuard && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-1.5 text-xs"
+                              onClick={() => setPairingQrConfigUrl(downloadUrl)}
+                            >
+                              QR
+                            </Button>
+                          )}
+                          <Button
+                            asChild
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-1.5 text-xs font-medium text-primary"
+                          >
+                            <a href={downloadUrl} download>
+                              {ext}
+                            </a>
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )
         },
       },
       {
-        id: "renewPrice",
-        accessorFn: (sub) => `${sub.priceLocked} ${sub.currency}`,
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Renew price" />
-        ),
-        cell: ({ row }) => subscriptionPriceLabel(row.original),
-      },
-      {
-        accessorKey: "currentPeriodEnd",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Next payment" />
-        ),
-        sortingFn: "datetime",
-        cell: ({ row }) => (
-          <div className="space-y-1 text-sm">
-            <div>{formatDate(row.original.currentPeriodEnd)}</div>
-            {row.original.cancelAtPeriodEnd && (
-              <div className="text-xs text-muted-foreground">
-                Cancels after this date
-              </div>
-            )}
-          </div>
-        ),
-      },
-      {
         id: "actions",
-        header: "Actions",
+        header: "",
         cell: ({ row }) => {
           const sub = row.original
           const subDevices = devicesBySub[sub.id] ?? []
@@ -770,34 +920,67 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
 
   return (
     <>
-      <DataTable
-        tableId="console-vpn-subscriptions"
-        columns={columns}
-        data={subscriptions}
-        defaultColumnVisibility={{}}
-        searchPlaceholder="Search subscriptions..."
-        searchableColumns={["packageName", "billingStatus", "servers"]}
-        facetFilters={[
-          {
-            columnId: "billingStatus",
-            label: "Status",
-            allLabel: "All status",
-            options: [
-              { label: "Active", value: "ACTIVE" },
-              { label: "Cancelling", value: "CANCELLING" },
-              { label: "Suspended", value: "SUSPENDED" },
-              { label: "Expired", value: "EXPIRED" },
-            ],
-          },
-          {
-            columnId: "servers",
-            label: "Region",
-            allLabel: "All regions",
-            options: regionOptions,
-          },
-        ]}
-        emptyMessage="No VPN subscriptions found."
-      />
+      <div className="flex flex-col gap-4">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">
+              Connection & Access Profiles
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Manage your VPN locations, protocols, and connected devices.
+            </p>
+          </div>
+          {subscriptions.length === 1 ? (
+            <Button asChild variant="outline" size="sm">
+              <a
+                href={`/api/vpn/subscriptions/${subscriptions[0].id}/download-all`}
+                download
+              >
+                <DownloadIcon className="mr-2 h-4 w-4" />
+                Download All ZIP
+              </a>
+            </Button>
+          ) : subscriptions.length > 1 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <DownloadIcon className="mr-2 h-4 w-4" />
+                  Download All ZIP
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {subscriptions.map((sub) => (
+                  <DropdownMenuItem key={sub.id} asChild>
+                    <a
+                      href={`/api/vpn/subscriptions/${sub.id}/download-all`}
+                      download
+                    >
+                      {sub.packageName}
+                    </a>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+        </header>
+        <DataTable
+          tableId="console-vpn-subscriptions"
+          columns={columns}
+          data={subscriptions}
+          defaultColumnVisibility={{}}
+          searchPlaceholder="Search subscriptions..."
+          searchableColumns={["packageName", "servers"]}
+          facetFilters={[
+            {
+              columnId: "servers",
+              label: "Region",
+              allLabel: "All regions",
+              options: regionOptions,
+            },
+          ]}
+          emptyMessage="No VPN subscriptions found."
+        />
+      </div>
 
       {/* Pair modal */}
       <VpnPairingQrModal
@@ -1026,6 +1209,40 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
             </Dialog>
           )
         })()}
+      {pairingQrConfigUrl && (
+        <Dialog
+          open={Boolean(pairingQrConfigUrl)}
+          onOpenChange={(open) => {
+            if (!open) setPairingQrConfigUrl(null)
+          }}
+        >
+          <DialogContent className="text-center sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>WireGuard QR Code</DialogTitle>
+              <DialogDescription>
+                Scan this QR code with the WireGuard app on your phone to
+                connect instantly.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col items-center justify-center p-4">
+              <img
+                src={`/api/qr?data=${encodeURIComponent(pairingQrConfigUrl)}`}
+                alt="WireGuard QR Code"
+                className="h-48 w-48 rounded-lg border p-2"
+                onError={(e) => {
+                  // Fallback to data URI generator if /api/qr not present
+                  ;(e.target as HTMLElement).style.display = "none"
+                }}
+              />
+              <Button asChild variant="outline" size="sm" className="mt-4">
+                <a href={pairingQrConfigUrl} download>
+                  Download .conf File
+                </a>
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   )
 }

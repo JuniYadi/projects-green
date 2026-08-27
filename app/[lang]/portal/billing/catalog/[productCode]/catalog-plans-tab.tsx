@@ -28,6 +28,11 @@ import {
 import type { ProductPlanIdentityErrors } from "@/components/billing/admin/catalog/catalog-editor.types"
 import { billingPeriodLabel } from "@/lib/billing-client"
 import { formatBillingMoney } from "@/modules/billing/format-money"
+import {
+  getProvisionAdapter,
+  type ProductProvisionAdapter,
+} from "@/modules/billing/provisioning"
+import type { ServiceType } from "@prisma/client"
 
 const newOffer = (
   currency: SupportedCurrency,
@@ -63,6 +68,7 @@ function PlanCard({
   onRemove,
   selectedPlanId,
   identityErrors,
+  provisionAdapter,
 }: Readonly<{
   plan: ProductPlanEditorForm
   currencies: SupportedCurrency[]
@@ -70,6 +76,7 @@ function PlanCard({
   onRemove: () => void
   selectedPlanId?: string | null
   identityErrors?: ProductPlanIdentityErrors[string]
+  provisionAdapter?: ProductProvisionAdapter
 }>) {
   const isSelected = selectedPlanId === plan.id
   const enabledTerms = plan.enabledTerms
@@ -107,6 +114,21 @@ function PlanCard({
       : enabledTerms.filter((term) => term !== billingPeriod)
     onUpdate({ ...plan, enabledTerms: nextTerms })
   }
+  const rawProvisioning = plan.resources.provisioning
+  const provisioning =
+    rawProvisioning &&
+    typeof rawProvisioning === "object" &&
+    !Array.isArray(rawProvisioning)
+      ? (rawProvisioning as Record<string, unknown>)
+      : plan.resources
+  const provisionConfig = provisionAdapter
+    ? (provisionAdapter.parsePlanConfig?.(provisioning) ??
+      provisionAdapter.defaultConfig ??
+      provisioning)
+    : null
+  const provisionErrors =
+    provisionAdapter?.validatePlanConfig?.(provisioning)?.errors
+  const ProvisionConfig = provisionAdapter?.PlanConfigComponent
 
   return (
     <Card
@@ -283,6 +305,21 @@ function PlanCard({
             )}
           </div>
         </div>
+        {ProvisionConfig && provisionConfig && (
+          <ProvisionConfig
+            value={provisionConfig}
+            errors={provisionErrors}
+            onChange={(config) =>
+              onUpdate({
+                ...plan,
+                resources: {
+                  ...plan.resources,
+                  provisioning: { ...provisioning, ...config },
+                },
+              })
+            }
+          />
+        )}
         {plan.offers.length === 0 && (
           <p className="rounded-md border border-dashed p-3 text-sm text-amber-700">
             Pricing required before this plan can be published.
@@ -389,14 +426,19 @@ export function CatalogPlansTab({
   onChange,
   showPreview,
   selectedPlanId,
+  productCode,
 }: Readonly<{
   plans: ProductPlanEditorForm[]
   currencies: SupportedCurrency[]
   onChange: (plans: ProductPlanEditorForm[]) => void
   showPreview?: boolean
   selectedPlanId?: string | null
+  productCode?: ServiceType
 }>) {
   const identityErrors = validateProductPlanIdentities(plans)
+  const provisionAdapter = productCode
+    ? getProvisionAdapter(productCode)
+    : undefined
 
   const handleAddPlan = () => {
     onChange([
@@ -405,7 +447,11 @@ export function CatalogPlansTab({
         id: `new-plan-${crypto.randomUUID()}`,
         code: newPlanCode(plans),
         name: "",
-        resources: {},
+        resources: {
+          features: {},
+          provisioning: {},
+          provisioningFields: [],
+        },
         isActive: true,
         enabledTerms: ["MONTHLY"],
         offers: [],
@@ -454,6 +500,7 @@ export function CatalogPlansTab({
             onRemove={() =>
               onChange(plans.filter((item) => item.id !== plan.id))
             }
+            provisionAdapter={provisionAdapter}
             selectedPlanId={selectedPlanId}
             identityErrors={identityErrors[plan.id]}
           />

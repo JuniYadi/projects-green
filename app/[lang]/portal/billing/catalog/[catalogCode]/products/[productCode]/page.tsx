@@ -52,6 +52,8 @@ import {
   TrashIcon,
   WarningIcon,
 } from "@/components/ui/phosphor-icons"
+import { getProvisionAdapter } from "@/modules/billing/provisioning/provision-adapter-registry"
+import "@/modules/billing/provisioning"
 import {
   getAdminCatalogProductDetail,
   upsertAdminCatalogProduct,
@@ -69,6 +71,76 @@ import {
   isValidAddonPriceAmount,
 } from "@/components/billing/admin/catalog/addon-pricing-validation"
 import { toast } from "sonner"
+import type { PlanResourcePartitions } from "@/modules/billing/provisioning/product-provision-adapter.types"
+
+const PROVISIONING_RESOURCE_KEYS = new Set([
+  "provisioningFields",
+  "deviceSetup",
+  "requireDeviceSetup",
+  "phoneRequired",
+  "displayNameEnabled",
+  "profileUrlEnabled",
+  "serverIds",
+  "customUsername",
+  "customUsernameAllowed",
+  "allowedProtocols",
+  "clusterId",
+  "compute",
+  "networking",
+  "requiredDependencies",
+  "quotaInMonthly",
+  "quotaOutMonthly",
+  "maxDevices",
+  "enableBroadcasts",
+])
+function resourceRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {}
+  return value as Record<string, unknown>
+}
+
+function partitionResources(
+  value: unknown,
+  adapter?: ReturnType<typeof getProvisionAdapter>
+): PlanResourcePartitions {
+  const raw = resourceRecord(value)
+  const hasFeatures =
+    typeof raw.features === "object" &&
+    raw.features !== null &&
+    !Array.isArray(raw.features)
+  const hasProvisioning =
+    typeof raw.provisioning === "object" &&
+    raw.provisioning !== null &&
+    !Array.isArray(raw.provisioning)
+  const features = hasFeatures
+    ? resourceRecord(raw.features)
+    : Object.fromEntries(
+        Object.entries(raw).filter(
+          ([key]) =>
+            !PROVISIONING_RESOURCE_KEYS.has(key) &&
+            key !== "features" &&
+            key !== "provisioning"
+        )
+      )
+  const nestedProvisioning = resourceRecord(raw.provisioning)
+  const provisioning = hasProvisioning
+    ? Object.fromEntries(
+        Object.entries(nestedProvisioning).filter(
+          ([key]) => key !== "provisioningFields"
+        )
+      )
+    : (adapter?.parsePlanConfig?.(raw) ??
+      Object.fromEntries(
+        Object.entries(raw).filter(([key]) =>
+          PROVISIONING_RESOURCE_KEYS.has(key)
+        )
+      ))
+  const provisioningFields = Array.isArray(raw.provisioningFields)
+    ? raw.provisioningFields
+    : Array.isArray(nestedProvisioning.provisioningFields)
+      ? nestedProvisioning.provisioningFields
+      : []
+  return { features, provisioning, provisioningFields }
+}
 
 export default function ProductDetailPage() {
   const router = useRouter()
@@ -124,6 +196,9 @@ export default function ProductDetailPage() {
     ProvisioningField[]
   >([])
   const [selectedFieldIndices, setSelectedFieldIndices] = useState<number[]>([])
+  const [provisionConfig, setProvisionConfig] = useState<
+    Record<string, unknown>
+  >({})
 
   const [resourceEntries, setResourceEntries] = useState<
     Array<{ key: string; value: string }>
@@ -158,33 +233,18 @@ export default function ProductDetailPage() {
         setAllowBackorder(Boolean(p.allowBackorder))
         setIsActive(p.isActive ?? true)
 
-        const resObj = (p.resources ?? {}) as Record<string, unknown>
-        // Parse dynamic custom form fields
-        // Pure database driven: load whatever provisioningFields array is stored in DB
-        if (Array.isArray(resObj.provisioningFields)) {
-          setProvisioningFields(
-            resObj.provisioningFields as ProvisioningField[]
-          )
-        } else {
-          setProvisioningFields([])
-        }
-
-        // Filter out internal provisioning flags from the custom key-value quota list
-        const reservedKeys = new Set([
-          "provisioningFields",
-          "deviceSetup",
-          "requireDeviceSetup",
-          "phoneRequired",
-          "displayNameEnabled",
-          "profileUrlEnabled",
-        ])
-        const entries = Object.entries(resObj)
-          .filter(([k]) => !reservedKeys.has(k))
-          .map(([k, v]) => ({
-            key: k,
-            value: typeof v === "object" ? JSON.stringify(v) : String(v),
+        const adapter = getProvisionAdapter(catalogCode)
+        const { features, provisioning, provisioningFields } =
+          partitionResources(p.resources, adapter)
+        setProvisioningFields(provisioningFields as ProvisioningField[])
+        setResourceEntries(
+          Object.entries(features).map(([key, value]) => ({
+            key,
+            value:
+              typeof value === "object" ? JSON.stringify(value) : String(value),
           }))
-        setResourceEntries(entries)
+        )
+        setProvisionConfig(provisioning)
         const initialPrices: AddonPricingForm[] = (p.offers ?? []).map(
           (offer) => ({
             id: offer.id,
@@ -319,8 +379,7 @@ export default function ProductDetailPage() {
         allowBackorder,
         isActive,
         resources: {
-          provisioningFields,
-          ...resourceEntries.reduce<Record<string, unknown>>(
+          features: resourceEntries.reduce<Record<string, unknown>>(
             (acc, { key, value }) => {
               const trimmedKey = key.trim()
               if (!trimmedKey) return acc
@@ -341,6 +400,8 @@ export default function ProductDetailPage() {
             },
             {}
           ),
+          provisioning: provisionConfig,
+          provisioningFields,
         },
         prices: prices.map((p) => ({
           billingPeriod: p.billingPeriod,
@@ -413,10 +474,14 @@ export default function ProductDetailPage() {
         productCode
       )
       const p = detail.product
+      const resources = partitionResources(
+        p.resources,
+        getProvisionAdapter(catalogCode)
+      )
       await upsertAdminCatalogProduct(catalogCode, code, {
         name: newName,
         code,
-        resources: p.resources,
+        resources,
         billingStrategy: p.billingStrategy,
         stockControl: p.stockControl,
         stockCount: p.stockCount,
@@ -865,6 +930,33 @@ export default function ProductDetailPage() {
             </div>
           </CardContent>
         </Card>
+        {/* Dynamic Provisioning Adapter Configuration (VPN / App Hosting / WhatsApp) */}
+        {(() => {
+          const adapter = catalogCode
+            ? getProvisionAdapter(catalogCode.toUpperCase())
+            : undefined
+          const ProvisionConfig = adapter?.PlanConfigComponent
+          if (!ProvisionConfig) return null
+          const currentConfig =
+            adapter.parsePlanConfig?.(provisionConfig) ??
+            adapter.defaultConfig ??
+            provisionConfig
+          const errors = adapter.validatePlanConfig?.(currentConfig)?.errors
+          return (
+            <div className="md:col-span-2">
+              <ProvisionConfig
+                value={currentConfig as never}
+                errors={errors}
+                onChange={(nextConfig) =>
+                  setProvisionConfig((prev) => ({
+                    ...prev,
+                    ...(nextConfig as Record<string, unknown>),
+                  }))
+                }
+              />
+            </div>
+          )
+        })()}
 
         {/* Device Provisioning & Checkout Configuration */}
         {/* Dynamic Checkout Form Builder */}

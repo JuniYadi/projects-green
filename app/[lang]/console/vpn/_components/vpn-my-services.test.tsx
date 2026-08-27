@@ -1,5 +1,12 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { act, render, waitFor, within } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+  within,
+} from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { VpnMyServices, VpnServerAccountsDetail } from "./vpn-my-services"
@@ -73,7 +80,7 @@ const subscription = (
       username: "org-test-def",
       provisioningStatus: "FAILED",
       failureReason: "SSH key mismatch on server",
-      hasConfig: false,
+      hasConfig: true,
       port: 51820,
     }),
   ],
@@ -108,6 +115,7 @@ function manyServerSubscription(count: number): VpnSubscription {
 beforeEach(() => {
   localStorage.clear()
 })
+afterEach(cleanup)
 
 describe("VpnMyServices", () => {
   it("renders subscription table with package name and status", () => {
@@ -118,6 +126,19 @@ describe("VpnMyServices", () => {
     expect(view.getByText("Pro VPN - SG Standard")).toBeInTheDocument()
     const badges = view.getAllByText("ACTIVE")
     expect(badges.length).toBeGreaterThanOrEqual(1)
+  })
+  it("focuses each row on connection details and quick actions", () => {
+    const view = renderAsync(
+      <VpnMyServices subscriptions={[subscription()]} onChanged={() => {}} />
+    )
+
+    expect(view.getByText("Location Coverage")).toBeInTheDocument()
+    expect(view.getByText("Devices")).toBeInTheDocument()
+    expect(view.getByText("Setup & Connect")).toBeInTheDocument()
+    expect(view.getByRole("button", { name: "Get Config" })).toBeInTheDocument()
+    expect(
+      view.getByRole("link", { name: "Download All ZIP" })
+    ).toBeInTheDocument()
   })
 
   it("links each subscription to a dedicated detail page", async () => {
@@ -130,7 +151,7 @@ describe("VpnMyServices", () => {
 
     expect(within(view.container).getAllByRole("row").length).toBe(2)
     expect(view.getByText("Pro VPN - SG Standard")).toBeInTheDocument()
-    expect(view.getByText("10 servers · 10 accounts")).toBeInTheDocument()
+    expect(view.getByText("+8 more")).toBeInTheDocument()
 
     const detailsLink = view.getByRole("link", { name: "View details" })
     expect(detailsLink).toHaveAttribute(
@@ -168,8 +189,8 @@ describe("VpnMyServices", () => {
     const view = render(
       <VpnServerAccountsDetail subscription={subscription()} />
     )
-    expect(view.getByText("OVPN")).toBeInTheDocument()
-    expect(view.getByText("WG")).toBeInTheDocument()
+    expect(view.getByText("OpenVPN")).toBeInTheDocument()
+    expect(view.getByText("WireGuard")).toBeInTheDocument()
   })
 
   it("shows port numbers per protocol in the detail component", () => {
@@ -305,9 +326,13 @@ describe("VpnMyServices", () => {
       />
     )
 
-    const regionSelect = within(view.container).getAllByRole("combobox")[1]
-    await userEvent.click(regionSelect)
-    await userEvent.click(view.getByRole("option", { name: "Singapore (SG)" }))
+    const regionSelect = within(view.container).getByRole("combobox")
+    fireEvent.click(regionSelect)
+    const sgOption = Array.from(
+      document.body.querySelectorAll('[role="option"]')
+    ).find((o) => o.textContent?.includes("Singapore"))
+    expect(sgOption).toBeDefined()
+    fireEvent.click(sgOption!)
 
     await waitFor(() => {
       expect(within(view.container).getAllByRole("row").length).toBe(2)

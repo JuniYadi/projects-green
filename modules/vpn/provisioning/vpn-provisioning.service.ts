@@ -14,7 +14,12 @@ import { WireGuardSshAdapter } from "./wireguard-ssh-adapter"
 import { ProxySshAdapter } from "./proxy-ssh-adapter"
 import type { SshTarget } from "./vpn-server-ssh-executor"
 
-type PrismaLike = Pick<PrismaClient, "vpnServerAccount" | "vpnServer">
+type PrismaLike = Pick<PrismaClient, "vpnServerAccount" | "vpnServer"> & {
+  serviceProvisionAccount?: Pick<
+    PrismaClient["serviceProvisionAccount"],
+    "updateMany"
+  >
+}
 
 const accountWithServer = {
   include: {
@@ -121,6 +126,11 @@ export class VpnProvisioningService {
           ...data,
         },
       })
+      await this.syncProvisionAccount(serverAccountId, {
+        status: "ACTIVE",
+        encryptedSecret: data.configEncrypted ?? data.password ?? null,
+        failureReason: null,
+      })
       console.info(
         `[vpn-provisioning] success account=${serverAccountId} protocol=${account.protocol}`
       )
@@ -144,6 +154,10 @@ export class VpnProvisioningService {
       await this.prisma.vpnServerAccount.update({
         where: { id: serverAccountId },
         data: { provisioningStatus: "FAILED", failureReason: reason },
+      })
+      await this.syncProvisionAccount(serverAccountId, {
+        status: "FAILED",
+        failureReason: reason,
       })
       console.error(
         `[vpn-provisioning] failed account=${serverAccountId}: ${reason}`
@@ -308,6 +322,28 @@ export class VpnProvisioningService {
     })
     if (!account) throw new VpnServerAccountNotFoundError()
     return account
+  }
+  private async syncProvisionAccount(
+    serverAccountId: string,
+    data: {
+      status: "ACTIVE" | "FAILED"
+      encryptedSecret?: string | null
+      failureReason: string | null
+    }
+  ): Promise<void> {
+    if (!this.prisma.serviceProvisionAccount) return
+    await this.prisma.serviceProvisionAccount.updateMany({
+      where: {
+        serviceType: "VPN",
+        metadata: {
+          path: ["serverAccountId"],
+          equals: serverAccountId,
+        },
+      },
+      data,
+    } as unknown as Parameters<
+      PrismaClient["serviceProvisionAccount"]["updateMany"]
+    >[0])
   }
 
   private toSshTarget(account: AccountWithServer): SshTarget {

@@ -3,6 +3,8 @@ import { z } from "zod"
 
 import { prisma as defaultPrisma } from "@/lib/prisma"
 import { VpnProvisioningJob } from "@/lib/queue/vpn-provisioning"
+import { VaultClient } from "@/lib/vault/vault-client"
+import { claimManagedStock } from "@/modules/deploy/app-managed-stock.service"
 import { buildAccountUsername } from "@/modules/vpn/subscriptions/vpn-account-username"
 
 export type BillingFulfillmentInput = {
@@ -133,6 +135,22 @@ type AdapterDependencies = {
   username?: (organizationId: string) => string
 }
 
+type ManagedStockRecord = {
+  id: string
+  serviceType: string
+  vaultPath: string
+}
+
+type AppHostingAdapterDependencies = {
+  claimStock?: (input: {
+    orgId: string
+    stackId: string
+    serviceType: string
+    environment: string
+  }) => Promise<ManagedStockRecord>
+  vault?: Pick<VaultClient, "writeKV"> & Partial<Pick<VaultClient, "readKV">>
+}
+
 type ServicePricingRecord = {
   id: string
   type: "PAYG" | "BUNDLE" | "CUSTOM"
@@ -152,6 +170,7 @@ type ServicePricingRecord = {
     id: string
     packageId: string
     package: { id: string; code: ServiceType }
+    resources?: Prisma.JsonValue
   }
 }
 type RecurringPricingRecord = ServicePricingRecord & {
@@ -208,6 +227,40 @@ function metadataObject(
 ): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {}
   return value as Record<string, unknown>
+}
+
+function recordResource(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {}
+  return value as Record<string, unknown>
+}
+
+function provisioningResource(value: unknown): Record<string, unknown> {
+  const raw = recordResource(value)
+  return recordResource(raw.provisioning ?? raw)
+}
+
+function stringResources(
+  resources: Record<string, unknown>,
+  key: string
+): string[] {
+  const value = resources[key]
+  if (!Array.isArray(value)) return []
+  return value.filter(
+    (item): item is string => typeof item === "string" && item.trim().length > 0
+  )
+}
+
+function provisioningUsername(
+  metadata: Record<string, unknown>,
+  organizationId: string,
+  fallback: (organizationId: string) => string
+): string {
+  const answers = metadata.provisioningAnswers
+  if (answers && typeof answers === "object" && !Array.isArray(answers)) {
+    const username = (answers as Record<string, unknown>).username
+    if (typeof username === "string" && username.trim()) return username.trim()
+  }
+  return fallback(organizationId)
 }
 
 function recurringPricing(
@@ -335,7 +388,8 @@ async function upsertServiceSubscription(
 }
 
 function enabledProtocols(
-  server: VpnPackageRecord["servers"][number]["server"]
+  server: VpnPackageRecord["servers"][number]["server"],
+  allowedProtocols?: ReadonlySet<string>
 ): Array<"OPENVPN" | "WIREGUARD" | "PROXY"> {
   return [
     server.hasOpenVpn ? "OPENVPN" : null,
@@ -343,7 +397,8 @@ function enabledProtocols(
     server.hasProxy ? "PROXY" : null,
   ].filter(
     (protocol): protocol is "OPENVPN" | "WIREGUARD" | "PROXY" =>
-      protocol !== null
+      protocol !== null &&
+      (allowedProtocols === undefined || allowedProtocols.has(protocol))
   )
 }
 
@@ -360,12 +415,48 @@ async function createOrUpdateVpnFulfillment(
     pricing,
     metadata
   )
-  const vpnPackage = (await tx.vpnPackage.findFirst({
+  let vpnPackage = (await tx.vpnPackage.findFirst({
     where: {
       servicePlanId: input.planId,
     } as unknown as Prisma.VpnPackageWhereInput,
     include: { servers: { include: { server: true } } },
   })) as VpnPackageRecord | null
+
+  // If plan was created via dynamic Global Catalog, auto-create matching VpnPackage row
+  if (!vpnPackage && tx.vpnPackage?.create) {
+    const plan = pricing.servicePlan
+    const resources = provisioningResource(plan.resources)
+    const serverIds = stringResources(resources, "serverIds")
+    if (serverIds.length > 0) {
+      const activeServers = tx.vpnServer?.findMany
+        ? await tx.vpnServer.findMany({
+            where: { id: { in: serverIds }, isActive: true },
+            select: { id: true },
+          })
+        : []
+
+      vpnPackage = (await tx.vpnPackage.create({
+        data: {
+          name:
+            ("name" in plan && typeof plan.name === "string"
+              ? plan.name
+              : undefined) ?? "VPN Plan",
+          servicePlanId: plan.id,
+          price: input.unitPrice,
+          currency: input.currency,
+          isActive:
+            ("isActive" in plan && typeof plan.isActive === "boolean"
+              ? plan.isActive
+              : undefined) ?? true,
+          servers: {
+            create: activeServers.map((s) => ({ serverId: s.id })),
+          },
+        },
+        include: { servers: { include: { server: true } } },
+      })) as VpnPackageRecord
+    }
+  }
+
   if (!vpnPackage || !vpnPackage.isActive)
     throw new Error("VPN_PACKAGE_NOT_FOUND")
 
@@ -401,6 +492,42 @@ async function createOrUpdateVpnFulfillment(
         } as unknown as Prisma.VpnSubscriptionUncheckedCreateInput,
       })
 
+  const resources = provisioningResource(pricing.servicePlan.resources)
+  const configuredServerIds = stringResources(resources, "serverIds")
+  const configuredProtocols = stringResources(
+    resources,
+    "allowedProtocols"
+  ).map((protocol) => protocol.toUpperCase())
+  const serverIds =
+    configuredServerIds.length > 0 ? new Set(configuredServerIds) : null
+  const allowedProtocols =
+    configuredProtocols.length > 0 ? new Set(configuredProtocols) : undefined
+  const resourceServers =
+    configuredServerIds.length > 0 && tx.vpnServer?.findMany
+      ? await tx.vpnServer.findMany({
+          where: {
+            id: { in: configuredServerIds },
+            isActive: true,
+          },
+          select: {
+            id: true,
+            hasOpenVpn: true,
+            hasWireGuard: true,
+            hasProxy: true,
+          },
+        })
+      : null
+  const selectedServers =
+    resourceServers && resourceServers.length > 0
+      ? resourceServers.map((server) => ({ server }))
+      : vpnPackage.servers.filter(
+          ({ server }) => serverIds === null || serverIds.has(server.id)
+        )
+  const accountUsername = provisioningUsername(
+    metadata,
+    input.organizationId,
+    username
+  )
   const existingAccounts = new Map(
     (existingVpn?.serverAccounts ?? []).map((account) => [
       `${account.serverId}:${account.protocol}`,
@@ -408,8 +535,8 @@ async function createOrUpdateVpnFulfillment(
     ])
   )
   const accountIds: string[] = []
-  for (const entry of vpnPackage.servers) {
-    for (const protocol of enabledProtocols(entry.server)) {
+  for (const entry of selectedServers) {
+    for (const protocol of enabledProtocols(entry.server, allowedProtocols)) {
       const key = `${entry.server.id}:${protocol}`
       const existingAccount = existingAccounts.get(key)
       if (existingAccount) {
@@ -427,10 +554,26 @@ async function createOrUpdateVpnFulfillment(
           subscriptionId: vpnSubscription.id,
           serverId: entry.server.id,
           protocol,
-          username: username(input.organizationId),
+          username: accountUsername,
           provisioningStatus: "PENDING",
         },
       })
+      if (tx.serviceProvisionAccount) {
+        await tx.serviceProvisionAccount.create({
+          data: {
+            subscriptionId: serviceSubscription.id,
+            serviceType: "VPN",
+            targetId: entry.server.id,
+            identifier: accountUsername,
+            status: "PENDING",
+            metadata: _jsonObject({
+              protocol,
+              serverAccountId: account.id,
+              serverId: entry.server.id,
+            }),
+          },
+        })
+      }
       accountIds.push(account.id)
     }
   }
@@ -587,11 +730,7 @@ async function applyWhatsappFulfillment(
     const newDevice = extractNewDeviceMetadata(metadata)
     if (newDevice && newDevice.phoneNumber) {
       const phoneNumber = newDevice.phoneNumber
-      const planResources = metadataObject(
-        (pricing.servicePlan as Record<string, unknown>).resources as
-          | Prisma.JsonValue
-          | undefined
-      )
+      const planResources = provisioningResource(pricing.servicePlan.resources)
       const planQuota =
         typeof planResources.quota === "number" ||
         typeof planResources.quota === "string"
@@ -686,11 +825,16 @@ export function createWhatsappFulfillmentAdapter(
 async function applyAppHostingFulfillment(
   prisma: PrismaClient,
   input: BillingFulfillmentInput,
-  transactionClient?: Prisma.TransactionClient
+  transactionClient?: Prisma.TransactionClient,
+  dependencies: AppHostingAdapterDependencies = {}
 ): Promise<AppHostingFulfillmentResult> {
   const parsed = parseAppHostingFulfillmentContext(input.metadata)
   if (!parsed.ok) throw new AppHostingFulfillmentError(parsed.failure)
 
+  const claimStock =
+    dependencies.claimStock ??
+    (claimManagedStock as AppHostingAdapterDependencies["claimStock"])
+  const vault = dependencies.vault ?? new VaultClient()
   const run = async (
     tx: Prisma.TransactionClient
   ): Promise<AppHostingFulfillmentResult> => {
@@ -701,9 +845,57 @@ async function applyAppHostingFulfillment(
       })) as ServicePricingRecord | null,
       input
     )
+    const resources = provisioningResource(pricing.servicePlan.resources)
+    const dependenciesToClaim = stringResources(
+      resources,
+      "requiredDependencies"
+    ).map((dependency) => dependency.toUpperCase())
     const subscription = await upsertServiceSubscription(tx, input, pricing, {
       [APP_HOSTING_FULFILLMENT_METADATA_KEY]: parsed.context,
     })
+    const environment =
+      typeof input.metadata.environment === "string"
+        ? input.metadata.environment
+        : "production"
+
+    for (const dependency of dependenciesToClaim) {
+      const stock = await claimStock({
+        orgId: input.organizationId,
+        stackId: parsed.context.stackId,
+        serviceType: dependency,
+        environment,
+      })
+      const credentials = vault.readKV
+        ? await vault.readKV(stock.vaultPath)
+        : {}
+      const vaultPath = [
+        "tenants",
+        input.organizationId,
+        "stacks",
+        parsed.context.stackId,
+        dependency,
+      ].join("/")
+      await vault.writeKV(vaultPath, credentials)
+
+      if (tx.serviceProvisionAccount) {
+        await tx.serviceProvisionAccount.create({
+          data: {
+            subscriptionId: subscription.id,
+            serviceType: "APP_HOSTING",
+            targetId: stock.id,
+            identifier: dependency,
+            status: "PENDING",
+            vaultPath,
+            metadata: _jsonObject({
+              dependency,
+              stockId: stock.id,
+              compute: resources.compute,
+              networking: resources.networking,
+            }),
+          },
+        })
+      }
+    }
 
     return {
       ok: true,
@@ -716,7 +908,8 @@ async function applyAppHostingFulfillment(
 }
 
 export function createAppHostingFulfillmentAdapter(
-  prisma: PrismaClient = defaultPrisma
+  prisma: PrismaClient = defaultPrisma,
+  dependencies: AppHostingAdapterDependencies = {}
 ): BillingFulfillmentAdapter {
   return {
     packageCode: "APP_HOSTING",
@@ -724,7 +917,8 @@ export function createAppHostingFulfillmentAdapter(
       const result = await applyAppHostingFulfillment(
         prisma,
         input,
-        transactionClient
+        transactionClient,
+        dependencies
       )
       if (!result.ok) throw new AppHostingFulfillmentError(result.failure)
       return { subscriptionId: result.subscriptionId }
@@ -733,7 +927,8 @@ export function createAppHostingFulfillmentAdapter(
       const result = await applyAppHostingFulfillment(
         prisma,
         input,
-        transactionClient
+        transactionClient,
+        dependencies
       )
       if (!result.ok) throw new AppHostingFulfillmentError(result.failure)
     },

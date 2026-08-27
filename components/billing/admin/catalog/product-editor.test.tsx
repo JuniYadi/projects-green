@@ -177,7 +177,7 @@ describe("ProductEditor", () => {
       (key: string) =>
         ({
           planId: "plan-vpn-package",
-          returnTo: "/en/portal/vpn/packages",
+          returnTo: "/en/portal/billing/catalog/products/vpn",
         })[key] ?? null
     )
     mockGetAdminCatalogProduct.mockResolvedValue({
@@ -206,7 +206,7 @@ describe("ProductEditor", () => {
     )
     expect(view.getByText("Back to VPN packages")).toHaveAttribute(
       "href",
-      "/en/portal/vpn/packages"
+      "/en/portal/billing/catalog/products/vpn"
     )
     expect(view.getByText(/Pricing required/)).toBeTruthy()
     expect(
