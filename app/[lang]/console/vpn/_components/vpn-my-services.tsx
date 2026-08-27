@@ -274,6 +274,85 @@ function WireGuardQrAction({
     </>
   )
 }
+function WireGuardConfigQrModal({
+  configUrl,
+  onClose,
+}: {
+  configUrl: string
+  onClose: () => void
+}) {
+  const [qrData, setQrData] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        // eslint-disable-next-line no-restricted-globals
+        const response = await fetch(configUrl)
+        if (!response.ok) throw new Error("Failed to download configuration")
+        const config = await response.text()
+        const qr = await QRCode.toDataURL(config, { width: 256, margin: 2 })
+        if (!cancelled) {
+          setQrData(qr)
+        }
+      } catch {
+        if (!cancelled) {
+          setError(true)
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [configUrl])
+
+  return (
+    <Dialog
+      open={true}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
+      <DialogContent className="text-center sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>WireGuard QR Code</DialogTitle>
+          <DialogDescription>
+            Scan this QR code with the WireGuard app on your phone to connect
+            instantly.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col items-center justify-center p-4">
+          <div className="flex min-h-48 w-48 items-center justify-center rounded-lg border p-2">
+            {loading ? (
+              <span className="text-sm text-muted-foreground">
+                Loading QR code…
+              </span>
+            ) : error ? (
+              <span className="text-sm text-destructive">
+                Unable to generate QR code.
+              </span>
+            ) : qrData ? (
+              <img src={qrData} alt="WireGuard QR Code" className="h-48 w-48" />
+            ) : null}
+          </div>
+          <Button asChild variant="outline" size="sm" className="mt-4">
+            <a href={configUrl} download>
+              Download .conf File
+            </a>
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 function ConfigCell({
   subscriptionId,
@@ -370,6 +449,14 @@ function ProtocolControl({
       </div>
     </div>
   )
+}
+type ServerGroup = {
+  serverId: string
+  serverName: string
+  hostname: string
+  ipAddress: string | null
+  region: { name: string; slug: string; countryCode: string } | null
+  accounts: VpnServerAccount[]
 }
 
 function groupByServer(accounts: VpnServerAccount[]): ServerGroup[] {
@@ -618,10 +705,10 @@ export function VpnServerAccountsDetail({
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filteredGroups.map((group) => {
             const allActive = group.accounts.every(
-              (a) => a.provisioningStatus === "ACTIVE"
+              (a: VpnServerAccount) => a.provisioningStatus === "ACTIVE"
             )
             const anyFailed = group.accounts.some(
-              (a) => a.provisioningStatus === "FAILED"
+              (a: VpnServerAccount) => a.provisioningStatus === "FAILED"
             )
 
             return (
@@ -662,7 +749,7 @@ export function VpnServerAccountsDetail({
                 </CardHeader>
 
                 <CardContent className="space-y-1.5 p-3.5 pt-0">
-                  {group.accounts.map((account) => (
+                  {group.accounts.map((account: VpnServerAccount) => (
                     <ProtocolControl
                       key={account.id}
                       subscriptionId={subscription.id}
@@ -892,7 +979,7 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                         <RegionBadge region={group.region} />
                       </div>
                       <div className="space-y-0.5">
-                        {group.accounts.map((account) => {
+                        {group.accounts.map((account: VpnServerAccount) => {
                           const isWireGuard = account.protocol === "WIREGUARD"
                           const isProxy = account.protocol === "PROXY"
                           const downloadUrl = vpnConfigDownloadUrl(
@@ -1326,38 +1413,10 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
           )
         })()}
       {pairingQrConfigUrl && (
-        <Dialog
-          open={Boolean(pairingQrConfigUrl)}
-          onOpenChange={(open) => {
-            if (!open) setPairingQrConfigUrl(null)
-          }}
-        >
-          <DialogContent className="text-center sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>WireGuard QR Code</DialogTitle>
-              <DialogDescription>
-                Scan this QR code with the WireGuard app on your phone to
-                connect instantly.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col items-center justify-center p-4">
-              <img
-                src={`/api/qr?data=${encodeURIComponent(pairingQrConfigUrl)}`}
-                alt="WireGuard QR Code"
-                className="h-48 w-48 rounded-lg border p-2"
-                onError={(e) => {
-                  // Fallback to data URI generator if /api/qr not present
-                  ;(e.target as HTMLElement).style.display = "none"
-                }}
-              />
-              <Button asChild variant="outline" size="sm" className="mt-4">
-                <a href={pairingQrConfigUrl} download>
-                  Download .conf File
-                </a>
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <WireGuardConfigQrModal
+          configUrl={pairingQrConfigUrl}
+          onClose={() => setPairingQrConfigUrl(null)}
+        />
       )}
     </>
   )

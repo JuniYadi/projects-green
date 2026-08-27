@@ -66,6 +66,20 @@ function replaceTemplate(template: string, values: Record<string, string>) {
   )
 }
 
+// Filter internal provisioning configuration keys from commercial benefits view
+const INTERNAL_RESOURCE_KEYS = new Set([
+  "provisioningFields",
+  "provisioningType",
+  "serverIds",
+  "allowedProtocols",
+  "customUsername",
+  "customUsernameAllowed",
+  "clusterId",
+  "compute",
+  "networking",
+  "requiredDependencies",
+])
+
 export default function CheckoutPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
@@ -103,19 +117,6 @@ export default function CheckoutPage() {
   const resources = (quotePreview?.resources ?? {}) as Record<string, unknown>
   const packageCode = quotePreview?.packageCode?.toUpperCase()
 
-  // Filter internal provisioning configuration keys from commercial benefits view
-  const INTERNAL_RESOURCE_KEYS = new Set([
-    "provisioningFields",
-    "provisioningType",
-    "serverIds",
-    "allowedProtocols",
-    "customUsername",
-    "customUsernameAllowed",
-    "clusterId",
-    "compute",
-    "networking",
-    "requiredDependencies",
-  ])
   const flatFilteredResources = Object.fromEntries(
     Object.entries(resources).filter(
       ([key]) => !INTERNAL_RESOURCE_KEYS.has(key)

@@ -859,6 +859,7 @@ async function applyAppHostingFulfillment(
         : "production"
 
     for (const dependency of dependenciesToClaim) {
+      if (!claimStock) continue
       const stock = await claimStock({
         orgId: input.organizationId,
         stackId: parsed.context.stackId,

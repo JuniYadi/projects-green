@@ -52,6 +52,7 @@ import {
   TrashIcon,
   WarningIcon,
 } from "@/components/ui/phosphor-icons"
+import type { ServiceType } from "@prisma/client"
 import { getProvisionAdapter } from "@/modules/billing/provisioning/provision-adapter-registry"
 import "@/modules/billing/provisioning"
 import {
@@ -233,7 +234,7 @@ export default function ProductDetailPage() {
         setAllowBackorder(Boolean(p.allowBackorder))
         setIsActive(p.isActive ?? true)
 
-        const adapter = getProvisionAdapter(catalogCode)
+        const adapter = getProvisionAdapter(catalogCode as ServiceType)
         const { features, provisioning, provisioningFields } =
           partitionResources(p.resources, adapter)
         setProvisioningFields(provisioningFields as ProvisioningField[])
@@ -476,7 +477,7 @@ export default function ProductDetailPage() {
       const p = detail.product
       const resources = partitionResources(
         p.resources,
-        getProvisionAdapter(catalogCode)
+        getProvisionAdapter(catalogCode as ServiceType)
       )
       await upsertAdminCatalogProduct(catalogCode, code, {
         name: newName,
@@ -933,7 +934,7 @@ export default function ProductDetailPage() {
         {/* Dynamic Provisioning Adapter Configuration (VPN / App Hosting / WhatsApp) */}
         {(() => {
           const adapter = catalogCode
-            ? getProvisionAdapter(catalogCode.toUpperCase())
+            ? getProvisionAdapter(catalogCode.toUpperCase() as ServiceType)
             : undefined
           const ProvisionConfig = adapter?.PlanConfigComponent
           if (!ProvisionConfig) return null
@@ -942,15 +943,21 @@ export default function ProductDetailPage() {
             adapter.defaultConfig ??
             provisionConfig
           const errors = adapter.validatePlanConfig?.(currentConfig)?.errors
+          const ConfigComponent = ProvisionConfig as React.ComponentType<{
+            value: Record<string, unknown>
+            onChange: (config: Record<string, unknown>) => void
+            disabled?: boolean
+            errors?: Record<string, string>
+          }>
           return (
             <div className="md:col-span-2">
-              <ProvisionConfig
-                value={currentConfig as never}
+              <ConfigComponent
+                value={currentConfig}
                 errors={errors}
                 onChange={(nextConfig) =>
                   setProvisionConfig((prev) => ({
                     ...prev,
-                    ...(nextConfig as Record<string, unknown>),
+                    ...nextConfig,
                   }))
                 }
               />

@@ -91,7 +91,7 @@ describe("ConsoleVpnSubscriptionsPage", () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     })
-    const subData = [
+    const subData: VpnSubscription[] = [
       {
         id: "sub_1",
         organizationId: "org_1",

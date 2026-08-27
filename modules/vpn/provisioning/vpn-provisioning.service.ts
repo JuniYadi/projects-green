@@ -14,11 +14,24 @@ import { WireGuardSshAdapter } from "./wireguard-ssh-adapter"
 import { ProxySshAdapter } from "./proxy-ssh-adapter"
 import type { SshTarget } from "./vpn-server-ssh-executor"
 
-type PrismaLike = Pick<PrismaClient, "vpnServerAccount" | "vpnServer"> & {
+export type PrismaLike = Pick<
+  PrismaClient,
+  "vpnServerAccount" | "vpnServer"
+> & {
   serviceProvisionAccount?: Pick<
     PrismaClient["serviceProvisionAccount"],
     "updateMany"
   >
+}
+
+function extractSecretValue(
+  field: Prisma.VpnServerAccountUpdateInput["configEncrypted"]
+): string | null {
+  if (typeof field === "string") return field
+  if (field && typeof field === "object" && "set" in field) {
+    return typeof field.set === "string" ? field.set : null
+  }
+  return null
 }
 
 const accountWithServer = {
@@ -126,9 +139,12 @@ export class VpnProvisioningService {
           ...data,
         },
       })
+      const encryptedSecret =
+        extractSecretValue(data.configEncrypted) ??
+        extractSecretValue(data.password)
       await this.syncProvisionAccount(serverAccountId, {
         status: "ACTIVE",
-        encryptedSecret: data.configEncrypted ?? data.password ?? null,
+        encryptedSecret,
         failureReason: null,
       })
       console.info(

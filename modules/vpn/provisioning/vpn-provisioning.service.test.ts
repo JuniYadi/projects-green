@@ -1,13 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import type { PrismaClient } from "@prisma/client"
-
-type ProvisionAccountUpdater = {
-  updateMany: (args: unknown) => Promise<unknown>
-}
-
-type PrismaLike = Pick<PrismaClient, "vpnServerAccount" | "vpnServer"> & {
-  serviceProvisionAccount?: ProvisionAccountUpdater
-}
+import type { PrismaLike } from "./vpn-provisioning.service"
 
 const mockAuditLogs: Array<{
   action: string

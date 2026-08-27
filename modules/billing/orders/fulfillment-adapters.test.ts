@@ -166,7 +166,12 @@ describe("App Hosting fulfillment adapter", () => {
       serviceType,
       vaultPath: `stocks/${serviceType.toLowerCase()}`,
     }))
-    const writeKV = mock(async () => ({ version: 3 }))
+    const writeKV = mock(async () => ({
+      version: 1,
+      createdTime: new Date().toISOString(),
+      deletionTime: "",
+      destroyed: false,
+    }))
     const appHosting = createAppHostingFulfillmentAdapter(
       prisma as unknown as PrismaClient,
       {
