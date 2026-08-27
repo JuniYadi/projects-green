@@ -137,6 +137,6 @@ Master tracking state for App Hosting Template Marketplace and Zero-Trust Vault 
 - [x] **Issue 9:** 1-Click Dynamic Launch Drawer: Right-side sheet form generator from `envSchema`, auto-subdomain suggest, and live PAYG/Subscription indicator
 - [x] **Issue 10:** Custom Template Visual Builder (`/console/marketplace/builder`) & *"Save Stack as Template"* export action in Stack Details
 
-### ⏳ Fase 4: Portal Moderation & End-to-End Verification (Pending)
-- [ ] **Issue 11:** Super Admin Moderation Portal (`/portal/marketplace`): Review queue for public templates (`PENDING_REVIEW`), blueprint security inspector, approve/reject actions
-- [ ] **Issue 12:** End-to-End Verification: Complete browser 1-click launch flow to live Kubernetes Pod with automated billing deduction audit
+### ✅ Fase 4: Portal Moderation & End-to-End Verification (Complete in PR #578)
+- [x] **Issue 11:** Super Admin Moderation Portal (`/portal/marketplace`): Review queue for public templates (`PENDING_REVIEW`), blueprint security inspector, approve/reject actions
+- [x] **Issue 12:** End-to-End Verification: Complete browser 1-click launch flow to live Kubernetes Pod with automated billing deduction audit

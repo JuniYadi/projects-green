@@ -19,6 +19,7 @@ import { deployJenkinsImageReadyRoutes } from "@/modules/deploy/api/routes/jenki
 import { podStatusRoutes } from "@/modules/deploy/api/routes/pod-status.route"
 import { publicSourceRoutes } from "@/modules/deploy/api/routes/public-source.route"
 import { appTemplateRoutes } from "@/modules/deploy/api/routes/templates.route"
+import { adminTemplateRoutes } from "@/modules/deploy/api/routes/admin-templates.route"
 
 export const deployRoutes = new Elysia()
   .use(aiDeploymentSessionRoutes)
@@ -38,3 +39,4 @@ export const deployRoutes = new Elysia()
   .use(deployJenkinsImageReadyRoutes)
   .use(podStatusRoutes)
   .use(appTemplateRoutes)
+  .use(adminTemplateRoutes)

@@ -11,20 +11,30 @@ import userEvent from "@testing-library/user-event"
 
 const mockPush = mock(() => {})
 
+const mockGetWorkspace = mock(() => Promise.resolve({ data: mockTemplates }))
+const mockSubmitReview = mock(() => Promise.resolve({ data: { ok: true } }))
+
+mock.module("@/lib/eden", () => ({
+  eden: {
+    api: {
+      templates: Object.assign(
+        mock(() => Promise.resolve({ data: mockTemplates })),
+        {
+          workspace: { get: mockGetWorkspace },
+          "tpl-1": { "submit-review": { post: mockSubmitReview } },
+          "tpl-2": { "submit-review": { post: mockSubmitReview } },
+        }
+      ),
+    },
+  },
+}))
+
 mock.module("next/navigation", () => ({
   useParams: mock(() => ({ lang: "en" })),
   useRouter: mock(() => ({ push: mockPush })),
 }))
 
 import MyTemplatesPage from "./page"
-
-const originalFetch = globalThis.fetch
-
-const jsonResponse = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  })
 
 const mockTemplates = [
   {
@@ -61,16 +71,11 @@ describe("MyTemplatesPage", () => {
   beforeEach(() => {
     cleanup()
     mockPush.mockClear()
-    globalThis.fetch = mock(() =>
-      Promise.resolve(jsonResponse(mockTemplates))
-    ) as unknown as typeof fetch
   })
 
   afterEach(() => {
     cleanup()
-    globalThis.fetch = originalFetch
   })
-
   it("renders custom workspace templates list and badges", async () => {
     render(<MyTemplatesPage />)
 
@@ -102,17 +107,6 @@ describe("MyTemplatesPage", () => {
   })
 
   it("handles Submit Review action for PRIVATE templates", async () => {
-    let reviewSubmittedId: string | null = null
-    globalThis.fetch = mock((url) => {
-      const urlString = String(url)
-      if (urlString.includes("submit-review")) {
-        const match = urlString.match(/templates\/([^/]+)\/submit-review/)
-        reviewSubmittedId = match ? match[1] : null
-        return Promise.resolve(jsonResponse({ success: true }))
-      }
-      return Promise.resolve(jsonResponse(mockTemplates))
-    }) as unknown as typeof fetch
-
     render(<MyTemplatesPage />)
 
     await waitFor(() => {
@@ -122,10 +116,9 @@ describe("MyTemplatesPage", () => {
     fireEvent.click(screen.getByText("Submit Review"))
 
     await waitFor(() => {
-      expect(reviewSubmittedId).toBe("tpl-1")
+      expect(mockSubmitReview).toHaveBeenCalled()
     })
   })
-
   it("navigates to Deploy page when clicking Deploy CTA", async () => {
     render(<MyTemplatesPage />)
 

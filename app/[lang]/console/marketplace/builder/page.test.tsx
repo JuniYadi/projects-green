@@ -11,6 +11,28 @@ import userEvent from "@testing-library/user-event"
 
 const mockPush = mock(() => {})
 
+let capturedBody: Record<string, unknown> | null = null
+const mockCreateTemplate = mock((body: unknown) => {
+  capturedBody = body as Record<string, unknown>
+  return Promise.resolve({ data: { id: "tpl-123", ok: true } })
+})
+const mockSubmitReview = mock(() => Promise.resolve({ data: { ok: true } }))
+
+mock.module("@/lib/eden", () => ({
+  eden: {
+    api: {
+      templates: Object.assign(
+        {
+          post: mockCreateTemplate,
+        },
+        {
+          "tpl-123": { "submit-review": { post: mockSubmitReview } },
+        }
+      ),
+    },
+  },
+}))
+
 mock.module("next/navigation", () => ({
   useParams: mock(() => ({ lang: "en" })),
   useRouter: mock(() => ({ push: mockPush })),
@@ -18,28 +40,16 @@ mock.module("next/navigation", () => ({
 
 import TemplateBuilderPage from "./page"
 
-const originalFetch = globalThis.fetch
-
-const jsonResponse = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  })
-
 describe("TemplateBuilderPage", () => {
   beforeEach(() => {
     cleanup()
     mockPush.mockClear()
-    globalThis.fetch = mock(() =>
-      Promise.resolve(jsonResponse({ id: "tpl-123" }, 201))
-    ) as unknown as typeof fetch
+    capturedBody = null
   })
 
   afterEach(() => {
     cleanup()
-    globalThis.fetch = originalFetch
   })
-
   it("renders Step 1: General Info by default", () => {
     render(<TemplateBuilderPage />)
     expect(screen.getByText("Custom Template Builder")).toBeDefined()
@@ -148,25 +158,9 @@ describe("TemplateBuilderPage", () => {
   })
 
   it("submits the template successfully as workspace template", async () => {
-    let capturedBody: Record<string, unknown> | null = null
-    globalThis.fetch = mock((url, init) => {
-      if (
-        typeof url === "string" &&
-        url.includes("/api/templates") &&
-        init?.method === "POST"
-      ) {
-        capturedBody = JSON.parse(init.body as string)
-        return Promise.resolve(
-          jsonResponse({ id: "tpl-abc", slug: "my-custom-stack" }, 201)
-        )
-      }
-      return Promise.resolve(jsonResponse({}))
-    }) as unknown as typeof fetch
-
-    render(<TemplateBuilderPage />)
     const user = userEvent.setup()
+    render(<TemplateBuilderPage />)
 
-    // Fill Step 1
     await user.type(
       screen.getByPlaceholderText("e.g. Next.js High Performance Stack"),
       "Production NextJS"
@@ -196,7 +190,7 @@ describe("TemplateBuilderPage", () => {
     const saveBtn = screen.getByRole("button", {
       name: /Save as Workspace Template/i,
     })
-    fireEvent.click(saveBtn)
+    await user.click(saveBtn)
 
     await waitFor(() => {
       expect(capturedBody).not.toBeNull()
