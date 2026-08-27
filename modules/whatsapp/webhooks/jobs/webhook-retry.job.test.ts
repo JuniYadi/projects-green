@@ -13,7 +13,7 @@ mock.module("@/lib/prisma", () => ({
 const mockEnqueue = mock(() => Promise.resolve({}))
 mock.module("@/lib/queue/base-job", () => {
   class BaseJob {
-    static enqueue(data: unknown, opts: unknown) {
+    static enqueue(data?: unknown, opts?: unknown) {
       return mockEnqueue(data, opts)
     }
   }

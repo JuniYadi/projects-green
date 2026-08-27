@@ -67,6 +67,7 @@ describe("whatsapp users.service", () => {
             },
             status: "active",
             createdAt: "2026-08-28T00:00:00.000Z",
+            updatedAt: "2026-08-28T00:00:00.000Z",
           },
         ],
       } as unknown as never)
@@ -85,6 +86,7 @@ describe("whatsapp users.service", () => {
         roleSlug: "admin",
         status: "active",
         createdAt: "2026-08-28T00:00:00.000Z",
+        updatedAt: "2026-08-28T00:00:00.000Z",
       })
     })
   })
@@ -108,6 +110,7 @@ describe("whatsapp users.service", () => {
         user: { email: "member@example.com" },
         status: "active",
         createdAt: "2026-08-28T00:00:00.000Z",
+        updatedAt: "2026-08-28T00:00:00.000Z",
       } as unknown as never)
 
       const user = await getWhatsAppUser("mem-1")
@@ -150,6 +153,7 @@ describe("whatsapp users.service", () => {
         user: { email: "user@example.com" },
         status: "active",
         createdAt: "2026-08-28T00:00:00.000Z",
+        updatedAt: "2026-08-28T00:00:00.000Z",
       } as unknown as never)
 
       const updated = await updateWhatsAppUserRole("mem-1", "admin")

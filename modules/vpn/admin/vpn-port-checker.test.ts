@@ -71,9 +71,9 @@ describe("vpn-port-checker", () => {
   describe("defaultTcpDial", () => {
     it("successfully connects to local open TCP server", async () => {
       const server = net.createServer()
-      await new Promise<void>((resolve) => {
-        server.listen(0, "127.0.0.1", () => resolve())
-      })
+      const { promise, resolve } = Promise.withResolvers<void>()
+      server.listen(0, "127.0.0.1", () => resolve())
+      await promise
       const port = (server.address() as net.AddressInfo).port
 
       try {
@@ -88,7 +88,14 @@ describe("vpn-port-checker", () => {
     })
 
     it("handles connection failure on closed TCP port", async () => {
-      const res = await defaultTcpDial("127.0.0.1", 59999, 1000)
+      const tmpServer = net.createServer()
+      const { promise, resolve } = Promise.withResolvers<void>()
+      tmpServer.listen(0, "127.0.0.1", () => resolve())
+      await promise
+      const closedPort = (tmpServer.address() as net.AddressInfo).port
+      tmpServer.close()
+
+      const res = await defaultTcpDial("127.0.0.1", closedPort, 1000)
       expect(res.ok).toBe(false)
     })
   })
@@ -100,9 +107,9 @@ describe("vpn-port-checker", () => {
         server.send(Buffer.from("pong"), rinfo.port, rinfo.address)
       })
 
-      await new Promise<void>((resolve) => {
-        server.bind(0, "127.0.0.1", () => resolve())
-      })
+      const { promise, resolve } = Promise.withResolvers<void>()
+      server.bind(0, "127.0.0.1", () => resolve())
+      await promise
       const port = server.address().port
 
       try {

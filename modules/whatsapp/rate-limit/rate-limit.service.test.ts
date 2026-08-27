@@ -103,7 +103,7 @@ describe("ApiCallTracker", () => {
     mockGroupBy.mockResolvedValueOnce([
       { phoneNumberId: "phone-1", _count: { id: 150 } },
       { phoneNumberId: null, _count: { id: 10 } },
-    ])
+    ] as unknown as never)
 
     const volume = await apiCallTracker.getDailyVolume("org-123")
 

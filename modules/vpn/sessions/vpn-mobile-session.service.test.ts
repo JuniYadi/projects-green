@@ -294,9 +294,10 @@ describe("VpnMobileSessionService", () => {
         .mockResolvedValueOnce([
           { serverId: "srv-1", _count: { id: 4 } },
           { serverId: "srv-2", _count: { id: 2 } },
-        ])
-        .mockResolvedValueOnce([{ subscriptionId: "sub-1", _count: { id: 6 } }])
-
+        ] as unknown as never)
+        .mockResolvedValueOnce([
+          { subscriptionId: "sub-1", _count: { id: 6 } },
+        ] as unknown as never)
       const stats = await service.getStats("org-1")
 
       expect(stats).toEqual({

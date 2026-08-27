@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { Elysia } from "elysia"
 
 const mockStackFindFirst = mock(() => Promise.resolve(null))
@@ -43,6 +43,14 @@ describe("deploy jenkins-webhook.route", () => {
     app = new Elysia().use(deployJenkinsWebhookRoutes)
   })
 
+  afterEach(() => {
+    if (originalToken === undefined) {
+      delete process.env.JENKINS_WEBHOOK_TOKEN
+    } else {
+      process.env.JENKINS_WEBHOOK_TOKEN = originalToken
+    }
+  })
+
   it("returns 401 on missing or invalid webhook token", async () => {
     const res = await app.handle(
       new Request("http://localhost/deploy/jenkins-webhook", {
@@ -57,6 +65,8 @@ describe("deploy jenkins-webhook.route", () => {
     )
 
     expect(res.status).toBe(401)
+    const body = await res.json()
+    expect(body).toEqual({ ok: false, error: "UNAUTHORIZED" })
   })
 
   it("handles build phase events (QUEUED, RUNNING, COMPLETED)", async () => {
