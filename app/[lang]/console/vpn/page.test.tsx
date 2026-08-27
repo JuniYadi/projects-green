@@ -38,7 +38,9 @@ mock.module("@/lib/vpn-mobile-client", () => ({
 }))
 
 const mockEdenSubscriptionsGet = mock(() =>
-  Promise.resolve({ data: { ok: true, data: [] } })
+  Promise.resolve({
+    data: { ok: true as boolean, data: [] as VpnSubscription[] },
+  })
 )
 
 mock.module("@/lib/eden", () => ({
