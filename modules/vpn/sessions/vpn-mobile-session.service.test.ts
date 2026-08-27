@@ -3,7 +3,6 @@ import { VpnMobileSessionService } from "./vpn-mobile-session.service"
 
 describe("VpnMobileSessionService", () => {
   const fixedNow = new Date("2026-08-28T12:00:00.000Z")
-
   const mockCreate = mock(() => Promise.resolve({}))
   const mockFindFirst = mock(() => Promise.resolve(null))
   const mockFindUnique = mock(() => Promise.resolve(null))
@@ -12,7 +11,6 @@ describe("VpnMobileSessionService", () => {
   const mockUpdateMany = mock(() => Promise.resolve({ count: 0 }))
   const mockCount = mock(() => Promise.resolve(0))
   const mockGroupBy = mock(() => Promise.resolve([]))
-
   const mockPrisma = {
     vpnMobileSession: {
       create: mockCreate,
@@ -83,22 +81,22 @@ describe("VpnMobileSessionService", () => {
 
   describe("findById", () => {
     it("finds session by id", async () => {
-      mockFindFirst.mockResolvedValueOnce({ id: "sess-1" })
+      mockFindFirst.mockResolvedValueOnce({ id: "sess-1" } as unknown as never)
 
       const res = await service.findById("sess-1")
 
-      expect(res).toEqual({ id: "sess-1" })
+      expect(res).toEqual({ id: "sess-1" } as unknown as never)
       expect(mockFindFirst).toHaveBeenCalledWith({
         where: { id: "sess-1" },
       })
     })
 
     it("scopes by organizationId when provided", async () => {
-      mockFindFirst.mockResolvedValueOnce({ id: "sess-1" })
+      mockFindFirst.mockResolvedValueOnce({ id: "sess-1" } as unknown as never)
 
       const res = await service.findById("sess-1", "org-123")
 
-      expect(res).toEqual({ id: "sess-1" })
+      expect(res).toEqual({ id: "sess-1" } as unknown as never)
       expect(mockFindFirst).toHaveBeenCalledWith({
         where: {
           id: "sess-1",
@@ -110,11 +108,17 @@ describe("VpnMobileSessionService", () => {
 
   describe("ping", () => {
     it("updates lastPingAt for active session", async () => {
-      mockUpdate.mockResolvedValueOnce({ id: "sess-1", lastPingAt: fixedNow })
+      mockUpdate.mockResolvedValueOnce({
+        id: "sess-1",
+        lastPingAt: fixedNow,
+      } as unknown as never)
 
       const res = await service.ping("sess-1")
 
-      expect(res).toEqual({ id: "sess-1", lastPingAt: fixedNow })
+      expect(res).toEqual({
+        id: "sess-1",
+        lastPingAt: fixedNow,
+      } as unknown as never)
       expect(mockUpdate).toHaveBeenCalledWith({
         where: { id: "sess-1", status: "ACTIVE" },
         data: { lastPingAt: fixedNow },

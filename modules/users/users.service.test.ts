@@ -26,7 +26,7 @@ describe("users.service", () => {
         id: "user-1",
         name: "John Doe",
         email: "john@example.com",
-      })
+      } as unknown as never)
 
       const user = await usersService.createUser({
         name: "John Doe",
@@ -78,7 +78,7 @@ describe("users.service", () => {
         id: "user-1",
         name: "John Doe",
         email: "john@example.com",
-      })
+      } as unknown as never)
 
       const user = await usersService.getUserById("user-1")
 

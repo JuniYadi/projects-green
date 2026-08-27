@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { Elysia } from "elysia"
 
 const mockVerifyToken = mock(() => Promise.resolve(true))
 const mockResolveApplicationStack = mock(() => Promise.resolve(null))
@@ -22,14 +21,16 @@ mock.module("../jenkins-webhook.handler", () => ({
 import { jenkinsWebhookRoutes } from "./jenkins-webhook.route"
 
 describe("jenkins-webhook.route", () => {
-  let app: Elysia
+  let app: { handle: (req: Request) => Promise<Response> }
 
   beforeEach(() => {
     mockVerifyToken.mockClear()
     mockResolveApplicationStack.mockClear()
     mockSyncVersion.mockClear()
     mockGetWebhookStatus.mockClear()
-    app = new Elysia().use(jenkinsWebhookRoutes)
+    app = jenkinsWebhookRoutes as unknown as {
+      handle: (req: Request) => Promise<Response>
+    }
   })
 
   describe("GET /webhooks/jenkins/status", () => {

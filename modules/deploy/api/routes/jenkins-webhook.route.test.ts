@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { Elysia } from "elysia"
 
 const mockStackFindFirst = mock(() => Promise.resolve(null))
 const mockDeploymentFindFirst = mock(() => Promise.resolve(null))
@@ -29,7 +28,7 @@ mock.module("../../deploy-event.service", () => ({
 import { deployJenkinsWebhookRoutes } from "./jenkins-webhook.route"
 
 describe("deploy jenkins-webhook.route", () => {
-  let app: Elysia
+  let app: { handle: (req: Request) => Promise<Response> }
   const originalToken = process.env.JENKINS_WEBHOOK_TOKEN
 
   beforeEach(() => {
@@ -40,7 +39,9 @@ describe("deploy jenkins-webhook.route", () => {
     mockStackUpdate.mockClear()
     mockRecordDeployEventOnce.mockClear()
     mockRecordDeployLog.mockClear()
-    app = new Elysia().use(deployJenkinsWebhookRoutes)
+    app = deployJenkinsWebhookRoutes as unknown as {
+      handle: (req: Request) => Promise<Response>
+    }
   })
 
   afterEach(() => {

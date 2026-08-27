@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { Elysia } from "elysia"
 
 const mockGetJenkinsJobStatus = mock(() => Promise.resolve(null))
 const mockTriggerJenkinsJob = mock(() => Promise.resolve())
@@ -19,14 +18,16 @@ mock.module("../jenkins-dsl", () => ({
 import { createJenkinsRoutes } from "./jenkins.route"
 
 describe("jenkins.route", () => {
-  let app: Elysia
+  let app: { handle: (req: Request) => Promise<Response> }
 
   beforeEach(() => {
     mockGetJenkinsJobStatus.mockClear()
     mockTriggerJenkinsJob.mockClear()
     mockListJenkinsJobs.mockClear()
     mockGenerateJenkinsDsl.mockClear()
-    app = createJenkinsRoutes()
+    app = createJenkinsRoutes() as unknown as {
+      handle: (req: Request) => Promise<Response>
+    }
   })
 
   describe("GET /integrations/jenkins/status", () => {

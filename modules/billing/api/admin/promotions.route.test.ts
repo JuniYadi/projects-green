@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { Elysia } from "elysia"
 import { createAdminPromotionsRoutes } from "./promotions.route"
 import { VoucherNotFoundError } from "@/modules/vouchers/vouchers.errors"
 
@@ -67,7 +66,7 @@ const sampleVoucher = {
 }
 
 describe("admin promotions.route", () => {
-  let app: Elysia
+  let app: { handle: (req: Request) => Promise<Response> }
 
   beforeEach(() => {
     mockRequireSuperAdmin.mockClear()
@@ -79,12 +78,10 @@ describe("admin promotions.route", () => {
     mockDisablePromotionVoucher.mockClear()
     mockGetPromotionClaims.mockClear()
 
-    app = new Elysia().use(
-      createAdminPromotionsRoutes({
-        requireSuperAdmin: mockRequireSuperAdmin as unknown as never,
-        service: mockService,
-      })
-    )
+    app = createAdminPromotionsRoutes({
+      requireSuperAdmin: mockRequireSuperAdmin as unknown as never,
+      service: mockService,
+    }) as unknown as { handle: (req: Request) => Promise<Response> }
   })
 
   describe("GET /admin/promotions", () => {

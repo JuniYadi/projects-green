@@ -13,9 +13,7 @@ mock.module("@/lib/prisma", () => ({
 const mockEnqueue = mock(() => Promise.resolve({}))
 mock.module("@/lib/queue/base-job", () => {
   class BaseJob {
-    static enqueue(data?: unknown, opts?: unknown) {
-      return mockEnqueue(data, opts)
-    }
+    static enqueue = mockEnqueue
   }
   return { BaseJob }
 })
@@ -61,8 +59,8 @@ describe("WebhookRetryJob", () => {
   })
   it("dispatches job with eventId in data and jobId option", async () => {
     const enqueueSpy = mock(() => Promise.resolve({} as unknown as never))
-    WebhookRetryJob.enqueue = enqueueSpy
-
+    ;(WebhookRetryJob as unknown as { enqueue: typeof enqueueSpy }).enqueue =
+      enqueueSpy
     await WebhookRetryJob.dispatch({
       eventId: "evt-123",
       eventType: "message",

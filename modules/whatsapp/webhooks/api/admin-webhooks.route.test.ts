@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { Elysia } from "elysia"
+import { createAdminWebhooksRoutes } from "./admin-webhooks.route"
 
 const mockListWebhookEvents = mock(() =>
   Promise.resolve({
@@ -82,10 +82,8 @@ mock.module("@/modules/admin/api/admin.guards", () => ({
   requireSuperAdmin: mockRequireSuperAdmin,
 }))
 
-import { createAdminWebhooksRoutes } from "./admin-webhooks.route"
-
 describe("admin-webhooks.route", () => {
-  let app: Elysia
+  let app: { handle: (req: Request) => Promise<Response> }
 
   beforeEach(() => {
     mockListWebhookEvents.mockClear()
@@ -105,11 +103,9 @@ describe("admin-webhooks.route", () => {
     mockDispatch.mockClear()
     mockRequireSuperAdmin.mockClear()
 
-    app = new Elysia().use(
-      createAdminWebhooksRoutes({
-        requireSuperAdmin: mockRequireSuperAdmin as unknown as never,
-      })
-    )
+    app = createAdminWebhooksRoutes({
+      requireSuperAdmin: mockRequireSuperAdmin as unknown as never,
+    }) as unknown as { handle: (req: Request) => Promise<Response> }
   })
 
   describe("GET /admin/whatsapp/webhooks/events", () => {
@@ -128,10 +124,16 @@ describe("admin-webhooks.route", () => {
     })
 
     it("returns error if admin guard fails", async () => {
-      mockRequireSuperAdmin.mockImplementationOnce(async (set) => {
-        set.status = 403
-        return { ok: false, error: "FORBIDDEN", message: "Super admin only" }
-      })
+      mockRequireSuperAdmin.mockImplementationOnce(
+        async (set: { status?: number | string }) => {
+          set.status = 403
+          return {
+            ok: false,
+            error: "FORBIDDEN",
+            message: "Super admin only",
+          } as unknown as never
+        }
+      )
 
       const res = await app.handle(
         new Request("http://localhost/admin/whatsapp/webhooks/events")
