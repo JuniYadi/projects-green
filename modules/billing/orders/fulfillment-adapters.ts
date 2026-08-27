@@ -859,6 +859,7 @@ async function applyAppHostingFulfillment(
         : "production"
 
     const tenantVaultPath = `tenants/${input.organizationId}/stacks/${parsed.context.stackId}/prod/app-env`
+    const allCredentials: Record<string, string> = {}
 
     for (const dependency of dependenciesToClaim) {
       if (!claimStock) continue
@@ -872,13 +873,11 @@ async function applyAppHostingFulfillment(
       const credentials = vault.readKV
         ? await vault.readKV(stock.vaultPath || adminStockVaultPath)
         : {}
-      const mappedCredentials: Record<string, string> = {}
       for (const [key, value] of Object.entries(credentials)) {
         if (typeof value === "string") {
-          mappedCredentials[key] = value
+          allCredentials[key] = value
         }
       }
-      await vault.writeKV(tenantVaultPath, mappedCredentials)
 
       if (tx.serviceProvisionAccount) {
         await tx.serviceProvisionAccount.create({
@@ -898,6 +897,10 @@ async function applyAppHostingFulfillment(
           },
         })
       }
+    }
+
+    if (Object.keys(allCredentials).length > 0 && vault.writeKV) {
+      await vault.writeKV(tenantVaultPath, allCredentials)
     }
 
     return {

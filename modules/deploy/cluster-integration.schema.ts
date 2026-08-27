@@ -37,6 +37,7 @@ export const clusterMetadataSchema = z.strictObject({
   vaultPath: z.string().trim().min(1).optional(),
   vaultVersion: z.number().int().positive().optional(),
 })
+export type ClusterMetadataInput = z.infer<typeof clusterMetadataSchema>
 
 // ── Per-Type Metadata Schemas ──────────────────────────
 

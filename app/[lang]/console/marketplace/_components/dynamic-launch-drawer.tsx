@@ -34,27 +34,11 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Switch } from "@/components/ui/switch"
-import type {
-  AppTemplateBlueprint,
-  AppTemplateBlueprintEnvVar,
-} from "@/modules/deploy/blueprint/app-template-blueprint.schema"
+import type { AppTemplateBlueprintEnvVar } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
 import { buildInitialEnvVars } from "@/modules/deploy/blueprint/app-template-blueprint.service"
 
-export interface MarketplaceTemplateItem {
-  id: string
-  slug: string
-  name: string
-  tagline?: string
-  description?: string
-  category?: string
-  iconUrl?: string | null
-  isOfficial?: boolean
-  isFeatured?: boolean
-  installCount?: number
-  priceMonthly?: number
-  currency?: string
-  blueprint: AppTemplateBlueprint
-}
+import type { MarketplaceTemplateItem } from "./template-card"
+export type { MarketplaceTemplateItem }
 
 export interface DynamicLaunchDrawerProps {
   open: boolean

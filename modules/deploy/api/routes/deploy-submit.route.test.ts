@@ -69,11 +69,24 @@ const mockPrisma = {
       balance: new Prisma.Decimal("100.00"),
     })),
   },
+  serviceSubscription: {
+    findFirst: mock(async () => ({
+      id: "sub-1",
+      organizationId: "org-1",
+      status: "ACTIVE",
+      quantity: 5,
+      allocatedConfig: { maxStacks: 5 },
+      plan: {
+        resources: { maxStacks: 5 },
+      },
+    })),
+  },
   applicationStack: {
     findUnique: mock(async () => ({ ...stackRecord, clusterId: null })),
     findUniqueOrThrow: mock(async () => ({ ...stackRecord })),
     create: mock(async () => ({ ...stackRecord })),
     update: mock(async () => ({ ...stackRecord })),
+    count: mock(async () => 0),
   },
   applicationDeployment: {
     count: mock(async () => 0),

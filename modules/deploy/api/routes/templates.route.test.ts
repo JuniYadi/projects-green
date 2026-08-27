@@ -443,6 +443,27 @@ describe("appTemplateRoutes", () => {
       expect(data.error).toBe("INVALID_BLUEPRINT")
       expect(data.errors).toBeDefined()
     })
+    it("rejects invalid category with 422", async () => {
+      const payload = {
+        name: "Custom App",
+        tagline: "Invalid category app",
+        description: "Test description",
+        category: "INVALID_CAT",
+        blueprintJson: validBlueprint,
+      }
+
+      const response = await appTemplateRoutes.handle(
+        new Request("http://localhost/templates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+      )
+
+      expect(response.status).toBe(422)
+      const data = (await response.json()) as { error: string }
+      expect(data.error).toBe("INVALID_CATEGORY")
+    })
 
     it("requires authentication and organization context", async () => {
       mockAuth.organizationId = null
@@ -487,6 +508,31 @@ describe("appTemplateRoutes", () => {
       expect(response.status).toBe(404)
       const data = (await response.json()) as { error: string }
       expect(data.error).toBe("NOT_FOUND")
+    })
+    it("rejects submission if template is already PUBLIC or PENDING_REVIEW", async () => {
+      mockTemplates.push({
+        id: "tpl-5",
+        slug: "already-public-crm",
+        name: "Already Public CRM",
+        tagline: "Org-1 public CRM",
+        description: "Public template",
+        category: "UTILITIES",
+        visibility: "PUBLIC",
+        isOfficial: false,
+        isFeatured: false,
+        organizationId: "org-1",
+        blueprintJson: validBlueprint,
+      })
+
+      const response = await appTemplateRoutes.handle(
+        new Request("http://localhost/templates/tpl-5/submit-review", {
+          method: "POST",
+        })
+      )
+
+      expect(response.status).toBe(422)
+      const data = (await response.json()) as { error: string }
+      expect(data.error).toBe("INVALID_STATE")
     })
   })
 })

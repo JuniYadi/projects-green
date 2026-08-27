@@ -36,6 +36,16 @@ export type GraceClearResult = {
 const GRACE_PERIOD_MS = 24 * 60 * 60 * 1000 // 24 hours
 const MIN_BUFFER_HOURS = 24
 
+function extractMaxSlots(
+  config: Record<string, unknown>,
+  ...keys: string[]
+): number | undefined {
+  for (const key of keys) {
+    if (typeof config[key] === "number") return config[key] as number
+  }
+  return undefined
+}
+
 // ─── Service ────────────────────────────────────────────────────────────
 
 export class AppHostingBillingService {
@@ -143,25 +153,24 @@ export class AppHostingBillingService {
         : {}
 
     const configuredSlots =
-      typeof allocatedConfig.maxStacks === "number"
-        ? allocatedConfig.maxStacks
-        : typeof allocatedConfig.stackSlots === "number"
-          ? allocatedConfig.stackSlots
-          : typeof allocatedConfig.slots === "number"
-            ? allocatedConfig.slots
-            : typeof allocatedConfig.maxApps === "number"
-              ? allocatedConfig.maxApps
-              : typeof planResources.maxStacks === "number"
-                ? planResources.maxStacks
-                : typeof planResources.stackSlots === "number"
-                  ? planResources.stackSlots
-                  : typeof planResources.slots === "number"
-                    ? planResources.slots
-                    : typeof planResources.maxApps === "number"
-                      ? planResources.maxApps
-                      : subscription.quantity != null
-                        ? Number(subscription.quantity)
-                        : 1
+      extractMaxSlots(
+        allocatedConfig,
+        "maxStacks",
+        "stackSlots",
+        "slots",
+        "maxApps"
+      ) ??
+      extractMaxSlots(
+        planResources,
+        "maxStacks",
+        "stackSlots",
+        "slots",
+        "maxApps"
+      ) ??
+      (subscription.quantity != null
+        ? Number(subscription.quantity)
+        : undefined) ??
+      1
 
     const maxSlots = Math.max(1, configuredSlots)
 

@@ -80,10 +80,10 @@ describe("TemplateBuilderPage", () => {
 
     // Click Next -> Step 2
     const nextButton = screen.getByRole("button", { name: /Next/i })
-    fireEvent.click(nextButton)
+    await user.click(nextButton)
 
     await waitFor(() => {
-      expect(screen.getByText("Step 2: Container Runtime")).toBeDefined()
+      expect(screen.getByText("Step 2: Container Runtime")).toBeInTheDocument()
     })
 
     // Step 2 - Fill image
@@ -93,19 +93,21 @@ describe("TemplateBuilderPage", () => {
     await user.type(imageInput, "ghcr.io/org/my-app:v1.0.0")
 
     // Click Next -> Step 3
-    fireEvent.click(screen.getByRole("button", { name: /Next/i }))
+    await user.click(screen.getByRole("button", { name: /Next/i }))
 
     await waitFor(() => {
-      expect(screen.getByText("Step 3: Dependencies & Storage")).toBeDefined()
+      expect(
+        screen.getByText("Step 3: Dependencies & Storage")
+      ).toBeInTheDocument()
     })
 
     // Step 3 - Click Next -> Step 4
-    fireEvent.click(screen.getByRole("button", { name: /Next/i }))
+    await user.click(screen.getByRole("button", { name: /Next/i }))
 
     await waitFor(() => {
       expect(
         screen.getByText("Step 4: Environment Schema Builder")
-      ).toBeDefined()
+      ).toBeInTheDocument()
     })
   })
 
@@ -126,34 +128,44 @@ describe("TemplateBuilderPage", () => {
       screen.getByPlaceholderText(/Explain what this stack does/i),
       "Description"
     )
-    fireEvent.click(screen.getByRole("button", { name: /Next/i }))
+    await user.click(screen.getByRole("button", { name: /Next/i }))
 
     // Step 2
     await waitFor(() =>
-      screen.getByPlaceholderText(/e\.g\. ghcr\.io\/org\/my-app/i)
+      expect(
+        screen.getByPlaceholderText(/e\.g\. ghcr\.io\/org\/my-app/i)
+      ).toBeInTheDocument()
     )
     await user.type(
       screen.getByPlaceholderText(/e\.g\. ghcr\.io\/org\/my-app/i),
       "node:20-alpine"
     )
 
-    fireEvent.click(screen.getByRole("button", { name: /Next/i }))
+    await user.click(screen.getByRole("button", { name: /Next/i }))
 
     // Step 3
-    await waitFor(() => screen.getByText("Step 3: Dependencies & Storage"))
-    fireEvent.click(screen.getByRole("button", { name: /Next/i }))
+    await waitFor(() =>
+      expect(
+        screen.getByText("Step 3: Dependencies & Storage")
+      ).toBeInTheDocument()
+    )
+    await user.click(screen.getByRole("button", { name: /Next/i }))
 
     // Step 4
-    await waitFor(() => screen.getByText("Step 4: Environment Schema Builder"))
+    await waitFor(() =>
+      expect(
+        screen.getByText("Step 4: Environment Schema Builder")
+      ).toBeInTheDocument()
+    )
 
     // Add variable
     const addVarBtn = screen.getByRole("button", { name: /Add Variable/i })
-    fireEvent.click(addVarBtn)
+    await user.click(addVarBtn)
 
     await waitFor(() => {
       expect(
         screen.getByPlaceholderText(/e\.g\. API_KEY or PORT/i)
-      ).toBeDefined()
+      ).toBeInTheDocument()
     })
   })
 
@@ -177,9 +189,11 @@ describe("TemplateBuilderPage", () => {
     )
 
     // Go to Step 2
-    fireEvent.click(screen.getByRole("button", { name: /Next/i }))
+    await user.click(screen.getByRole("button", { name: /Next/i }))
     await waitFor(() =>
-      screen.getByPlaceholderText(/e\.g\. ghcr\.io\/org\/my-app/i)
+      expect(
+        screen.getByPlaceholderText(/e\.g\. ghcr\.io\/org\/my-app/i)
+      ).toBeInTheDocument()
     )
     await user.type(
       screen.getByPlaceholderText(/e\.g\. ghcr\.io\/org\/my-app/i),

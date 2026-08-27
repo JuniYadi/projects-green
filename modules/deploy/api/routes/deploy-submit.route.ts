@@ -333,6 +333,26 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
           topupUrl: "/console/billing/topup",
         }
       }
+      if (message === "NO_ACTIVE_SUBSCRIPTION") {
+        set.status = 402
+        return {
+          ok: false,
+          error: "NO_ACTIVE_SUBSCRIPTION",
+          message:
+            "No active App Hosting subscription found for this organization.",
+          subscribeUrl: "/console/billing/catalog",
+        }
+      }
+      if (message === "STACK_QUOTA_EXCEEDED") {
+        set.status = 403
+        return {
+          ok: false,
+          error: "STACK_QUOTA_EXCEEDED",
+          message:
+            "You have reached the maximum allowed apps for your current plan.",
+          upgradeUrl: "/console/billing/catalog",
+        }
+      }
       if (
         message.includes("No active default App Hosting cluster") ||
         message.includes("Multiple active default App Hosting clusters")

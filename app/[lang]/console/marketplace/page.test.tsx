@@ -23,6 +23,7 @@ describe("Console Marketplace Hub & Template Cards", () => {
     render(
       <TemplateCard
         template={{
+          id: template.slug,
           slug: template.slug,
           name: template.name,
           tagline: template.tagline,
@@ -63,6 +64,7 @@ describe("Console Marketplace Hub & Template Cards", () => {
     render(
       <TemplateCard
         template={{
+          id: template.slug,
           slug: template.slug,
           name: template.name,
           tagline: template.tagline,

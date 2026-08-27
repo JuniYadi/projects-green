@@ -492,10 +492,13 @@ describe("Marketplace & Auto-Provisioning End-to-End Lifecycle", () => {
       },
       {
         billing: mockBillingService as never,
-        resolveCluster: async () => ({
-          cluster: { id: "cluster_primary" } as never,
-          integration: {} as never,
-        }),
+        resolveCluster: (async () => ({
+          id: "cluster_primary",
+          code: "primary",
+          name: "Primary Cluster",
+          region: "us-east-1",
+          metadata: {},
+        })) as never,
       }
     )
     expect(mockBillingService.assertCanStartPayg).toHaveBeenCalledTimes(1)

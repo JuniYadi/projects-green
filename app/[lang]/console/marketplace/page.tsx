@@ -25,9 +25,8 @@ export default function ConsoleMarketplacePage() {
         template={selectedTemplate}
         open={isDrawerOpen}
         onOpenChange={setIsDrawerOpen}
-        onDeploy={async (submission) => {
+        onDeploy={async (_submission) => {
           // Launch completed callback
-          console.log("Deployed template:", submission)
           setIsDrawerOpen(false)
         }}
       />

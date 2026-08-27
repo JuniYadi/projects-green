@@ -11,12 +11,12 @@ import {
 import type { AppTemplateBlueprint } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
 
 export interface MarketplaceTemplateItem {
-  id?: string
+  id: string
   slug: string
   name: string
   tagline: string
   description?: string
-  iconUrl?: string
+  iconUrl?: string | null
   category:
     | "ALL"
     | "AI"
@@ -30,6 +30,8 @@ export interface MarketplaceTemplateItem {
   isOfficial?: boolean
   isFeatured?: boolean
   installCount?: number
+  priceMonthly?: number
+  currency?: string
   blueprint: AppTemplateBlueprint
 }
 

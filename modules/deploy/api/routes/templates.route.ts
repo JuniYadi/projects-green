@@ -141,6 +141,27 @@ export const appTemplateRoutes = new Elysia({ prefix: "/templates" })
         }
       }
 
+      const VALID_CATEGORIES = [
+        "AI",
+        "AUTOMATION",
+        "CMS",
+        "DATABASE",
+        "DEVELOPER_TOOLS",
+        "ANALYTICS",
+        "UTILITIES",
+      ] as const
+      if (
+        !VALID_CATEGORIES.includes(
+          body.category as (typeof VALID_CATEGORIES)[number]
+        )
+      ) {
+        set.status = 422
+        return {
+          error: "INVALID_CATEGORY",
+          message: "Category must be one of the allowed values.",
+        }
+      }
+
       const validation = validateBlueprint(body.blueprintJson)
       if (!validation.valid || !validation.data) {
         set.status = 422
@@ -150,7 +171,6 @@ export const appTemplateRoutes = new Elysia({ prefix: "/templates" })
           errors: validation.errors,
         }
       }
-
       const baseSlug = slugify(body.name)
       let uniqueSlug = baseSlug
       let counter = 1
@@ -221,6 +241,17 @@ export const appTemplateRoutes = new Elysia({ prefix: "/templates" })
       if (!template || template.organizationId !== auth.organizationId) {
         set.status = 404
         return { error: "NOT_FOUND", message: "Template not found." }
+      }
+      if (
+        template.visibility !== "PRIVATE" &&
+        template.visibility !== "REJECTED"
+      ) {
+        set.status = 422
+        return {
+          error: "INVALID_STATE",
+          message:
+            "Only PRIVATE or REJECTED templates can be submitted for review.",
+        }
       }
 
       const updated = await prisma.appTemplate.update({

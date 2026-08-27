@@ -219,7 +219,14 @@ describe("DynamicLaunchDrawer", () => {
     fireEvent.click(deployButton)
 
     expect(handleDeploy).toHaveBeenCalledTimes(1)
-    const payload = handleDeploy.mock.calls[0][0]
+    const payload = (handleDeploy.mock.calls as unknown[][])[0]![0] as {
+      templateId: string
+      templateSlug: string
+      appName: string
+      subdomain: string
+      billingMode: string
+      envVars: Record<string, string>
+    }
     expect(payload.templateId).toBe("tpl_n8n_123")
     expect(payload.templateSlug).toBe("n8n")
     expect(payload.appName).toBe("my-custom-n8n")

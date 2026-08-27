@@ -654,7 +654,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                 id="cluster-kubernetes-version"
                 value={clusterMetadata.kubernetesVersion ?? ""}
                 onChange={(event) =>
-                  setClusterMetadata((prev) => ({
+                  setClusterMetadata((prev: ClusterMetadataInput) => ({
                     ...prev,
                     kubernetesVersion: event.target.value || undefined,
                   }))
@@ -673,7 +673,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                 id="cluster-node-pool-name"
                 value={clusterMetadata.nodePoolName ?? ""}
                 onChange={(event) =>
-                  setClusterMetadata((prev) => ({
+                  setClusterMetadata((prev: ClusterMetadataInput) => ({
                     ...prev,
                     nodePoolName: event.target.value || undefined,
                   }))
@@ -694,7 +694,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   id="cluster-node-pool-instance-type"
                   value={clusterMetadata.nodePoolInstanceType ?? ""}
                   onChange={(event) =>
-                    setClusterMetadata((prev) => ({
+                    setClusterMetadata((prev: ClusterMetadataInput) => ({
                       ...prev,
                       nodePoolInstanceType: event.target.value || undefined,
                     }))
@@ -714,7 +714,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                   min="1"
                   value={clusterMetadata.nodeCount ?? ""}
                   onChange={(event) =>
-                    setClusterMetadata((prev) => ({
+                    setClusterMetadata((prev: ClusterMetadataInput) => ({
                       ...prev,
                       nodeCount: event.target.value
                         ? Number(event.target.value)
@@ -735,7 +735,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                 id="cluster-notes"
                 value={clusterMetadata.notes ?? ""}
                 onChange={(event) =>
-                  setClusterMetadata((prev) => ({
+                  setClusterMetadata((prev: ClusterMetadataInput) => ({
                     ...prev,
                     notes: event.target.value || undefined,
                   }))

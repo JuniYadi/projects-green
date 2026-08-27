@@ -166,19 +166,21 @@ describe("App Hosting fulfillment adapter", () => {
       serviceType,
       vaultPath: `admin/managed-stock/${serviceType.toLowerCase()}-stock`,
     }))
-    const readKV = mock(async (path: string) => {
-      if (path.includes("postgresql")) {
+    const readKV = mock(
+      async (path: string): Promise<Record<string, string>> => {
+        if (path.includes("postgresql")) {
+          return {
+            DB_HOST: "pg.internal",
+            DB_PASSWORD: "pg-secret-password",
+            DB_USER: "postgres",
+          }
+        }
         return {
-          DB_HOST: "pg.internal",
-          DB_PASSWORD: "pg-secret-password",
-          DB_USER: "postgres",
+          REDIS_HOST: "redis.internal",
+          REDIS_PASSWORD: "redis-secret-password",
         }
       }
-      return {
-        REDIS_HOST: "redis.internal",
-        REDIS_PASSWORD: "redis-secret-password",
-      }
-    })
+    )
     const writeKV = mock(async () => ({
       version: 1,
       createdTime: new Date().toISOString(),
@@ -226,6 +228,7 @@ describe("App Hosting fulfillment adapter", () => {
       "admin/managed-stock/postgresql-stock"
     )
     expect(readKV).toHaveBeenNthCalledWith(2, "admin/managed-stock/redis-stock")
+    expect(writeKV).toHaveBeenCalledTimes(1)
     expect(writeKV).toHaveBeenNthCalledWith(
       1,
       "tenants/org-1/stacks/stack-1/prod/app-env",
@@ -233,17 +236,10 @@ describe("App Hosting fulfillment adapter", () => {
         DB_HOST: "pg.internal",
         DB_PASSWORD: "pg-secret-password",
         DB_USER: "postgres",
-      }
-    )
-    expect(writeKV).toHaveBeenNthCalledWith(
-      2,
-      "tenants/org-1/stacks/stack-1/prod/app-env",
-      {
         REDIS_HOST: "redis.internal",
         REDIS_PASSWORD: "redis-secret-password",
       }
     )
-    expect(writeKV).toHaveBeenCalledTimes(2)
     expect(prisma.serviceProvisionAccount.create).toHaveBeenCalledTimes(2)
     expect(prisma.serviceProvisionAccount.create).toHaveBeenNthCalledWith(
       1,

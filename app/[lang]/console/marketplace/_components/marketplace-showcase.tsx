@@ -45,6 +45,7 @@ export function MarketplaceShowcase({
 
   const officialTemplates: MarketplaceTemplateItem[] = useMemo(() => {
     return OFFICIAL_APP_TEMPLATES.map((tmpl) => ({
+      id: tmpl.slug,
       slug: tmpl.slug,
       name: tmpl.name,
       tagline: tmpl.tagline,
