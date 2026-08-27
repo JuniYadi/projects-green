@@ -363,6 +363,7 @@ worker.on("active", (job) => {
   logger.info(
     {
       event: "worker.job.active",
+      workerName: "whatsapp-webhook-outgoing",
       jobName: job.name,
       jobId: job.id,
       webhookId: job.data.webhookId,
@@ -376,6 +377,7 @@ worker.on("completed", (job) => {
   logger.info(
     {
       event: "worker.job.completed",
+      workerName: "whatsapp-webhook-outgoing",
       jobName: job.name,
       jobId: job.id,
       webhookId: job.data.webhookId,
@@ -389,6 +391,7 @@ worker.on("failed", (job, error) => {
     logger.error(
       {
         event: "worker.job.failed",
+        workerName: "whatsapp-webhook-outgoing",
         err: error,
       },
       "failed job missing payload"
@@ -398,6 +401,7 @@ worker.on("failed", (job, error) => {
   logger.error(
     {
       event: "worker.job.failed",
+      workerName: "whatsapp-webhook-outgoing",
       jobName: job.name,
       jobId: job.id,
       webhookId: job.data.webhookId,
@@ -416,6 +420,7 @@ const shutdown = async (signal: string) => {
   logger.info(
     {
       event: "worker.shutdown.started",
+      workerName: "whatsapp-webhook-outgoing",
       signal,
     },
     `received ${signal}, shutting down`
@@ -428,6 +433,7 @@ const shutdown = async (signal: string) => {
     logger.error(
       {
         event: "worker.shutdown.failed",
+        workerName: "whatsapp-webhook-outgoing",
         err: error,
       },
       "shutdown failed while closing worker"

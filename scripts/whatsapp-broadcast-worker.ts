@@ -534,6 +534,7 @@ if (worker) {
     logger.info(
       {
         event: "worker.job.active",
+        workerName: "whatsapp-broadcast",
         jobName: job.name,
         jobId: job.id,
         campaignId: job.data.campaignId,
@@ -546,6 +547,7 @@ if (worker) {
     logger.info(
       {
         event: "worker.job.completed",
+        workerName: "whatsapp-broadcast",
         jobName: job.name,
         jobId: job.id,
       },
@@ -558,6 +560,7 @@ if (worker) {
       logger.error(
         {
           event: "worker.job.failed",
+          workerName: "whatsapp-broadcast",
           err: error,
         },
         "failed job missing payload"
@@ -568,6 +571,7 @@ if (worker) {
     logger.error(
       {
         event: "worker.job.failed",
+        workerName: "whatsapp-broadcast",
         jobName: job.name,
         jobId: job.id,
         attempts: job.attemptsMade,
@@ -589,11 +593,11 @@ const shutdown = async (signal: string) => {
   logger.info(
     {
       event: "worker.shutdown.started",
+      workerName: "whatsapp-broadcast",
       signal,
     },
     `received ${signal}, shutting down`
   )
-
   try {
     await worker.close()
     await broadcastQueue.close()
@@ -601,6 +605,7 @@ const shutdown = async (signal: string) => {
     logger.error(
       {
         event: "worker.shutdown.failed",
+        workerName: "whatsapp-broadcast",
         err: error,
       },
       "shutdown failed while closing worker"

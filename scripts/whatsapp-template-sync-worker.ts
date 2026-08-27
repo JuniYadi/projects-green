@@ -751,6 +751,7 @@ if (import.meta.main) {
     logger.info(
       {
         event: "worker.job.active",
+        workerName: "whatsapp-template-sync",
         jobName: job.name,
         jobId: job.id,
       },
@@ -762,6 +763,7 @@ if (import.meta.main) {
     logger.info(
       {
         event: "worker.job.completed",
+        workerName: "whatsapp-template-sync",
         jobName: job.name,
         jobId: job.id,
         summary,
@@ -775,6 +777,7 @@ if (import.meta.main) {
       logger.error(
         {
           event: "worker.job.failed",
+          workerName: "whatsapp-template-sync",
           err: error,
         },
         "failed job missing payload"
@@ -785,6 +788,7 @@ if (import.meta.main) {
     logger.error(
       {
         event: "worker.job.failed",
+        workerName: "whatsapp-template-sync",
         jobName: job.name,
         jobId: job.id,
         attempts: job.attemptsMade,
@@ -805,11 +809,11 @@ if (import.meta.main) {
     logger.info(
       {
         event: "worker.shutdown.started",
+        workerName: "whatsapp-template-sync",
         signal,
       },
       `received ${signal}, shutting down`
     )
-
     try {
       await worker.close()
       process.exit(0)
@@ -817,6 +821,7 @@ if (import.meta.main) {
       logger.error(
         {
           event: "worker.shutdown.failed",
+          workerName: "whatsapp-template-sync",
           err: error,
         },
         "shutdown failed while closing worker"

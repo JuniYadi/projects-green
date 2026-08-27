@@ -72,6 +72,7 @@ async function runList(): Promise<void> {
       },
       "No seeders registered"
     )
+    console.log("\n  No seeders registered.\n")
     return
   }
 
@@ -89,6 +90,37 @@ async function runList(): Promise<void> {
     },
     `Available Seeders (${configs.length})`
   )
+
+  console.log("\n📋 Available Seeders\n")
+  console.log(
+    "  " +
+      "Name".padEnd(32) +
+      "Type".padEnd(10) +
+      "Order".padEnd(7) +
+      "Tag".padEnd(22) +
+      "Description"
+  )
+  console.log("  " + "─".repeat(95))
+
+  for (const c of configs) {
+    const icon = c.classification === "system" ? "⚙️" : "🧪"
+    const typeCol = `${icon} ${c.classification}`
+    const tag = c.seedTag ?? "—"
+    console.log(
+      "  " +
+        c.name.padEnd(32) +
+        typeCol.padEnd(10) +
+        String(c.runOrder).padEnd(7) +
+        tag.padEnd(22) +
+        c.description
+    )
+  }
+  console.log()
+}
+
+function fmtDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`
+  return `${(ms / 1000).toFixed(1)}s`
 }
 
 // ── Seed / Unseed ─────────────────────────────────────────────────────────
@@ -283,6 +315,49 @@ function printSummary(stats: RunStats[]): void {
     },
     `Seed runner summary: created=${totals.created} updated=${totals.updated} deleted=${totals.deleted} skipped=${totals.skipped} errors=${totals.errors}`
   )
+
+  console.log("\n📊 Summary\n")
+  console.log(
+    "  " +
+      "Seeder".padEnd(32) +
+      "Created".padEnd(9) +
+      "Updated".padEnd(9) +
+      "Deleted".padEnd(9) +
+      "Skipped".padEnd(9) +
+      "Errors".padEnd(8) +
+      "Time"
+  )
+  console.log("  " + "─".repeat(90))
+
+  for (const s of stats) {
+    const icon = s.errors.length > 0 ? "❌" : "✅"
+    console.log(
+      "  " +
+        `${icon} ${s.name}`.padEnd(32) +
+        String(s.created).padEnd(9) +
+        String(s.updated).padEnd(9) +
+        String(s.deleted).padEnd(9) +
+        String(s.skipped).padEnd(9) +
+        String(s.errors.length).padEnd(8) +
+        fmtDuration(s.durationMs)
+    )
+
+    for (const err of s.errors) {
+      console.log(`         ⚠️  ${err}`)
+    }
+  }
+
+  console.log("  " + "─".repeat(90))
+  console.log(
+    "  " +
+      "TOTAL".padEnd(32) +
+      String(totals.created).padEnd(9) +
+      String(totals.updated).padEnd(9) +
+      String(totals.deleted).padEnd(9) +
+      String(totals.skipped).padEnd(9) +
+      String(totals.errors).padEnd(8)
+  )
+  console.log()
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────

@@ -72,10 +72,10 @@ const worker = new Worker<WhatsAppWebhookJobData>(
     logger.warn(
       {
         event: "whatsapp.webhook.unknown_event_type",
-        eventType,
+        eventType: String(eventType),
         deviceId,
       },
-      `unknown event type: ${eventType}`
+      `unknown event type: ${String(eventType)}`
     )
   },
   {
@@ -236,6 +236,7 @@ worker.on("active", (job) => {
   logger.info(
     {
       event: "worker.job.active",
+      workerName: "whatsapp-webhook",
       jobName: job.name,
       jobId: job.id,
       eventType: job.data.eventType,
@@ -248,6 +249,7 @@ worker.on("completed", (job) => {
   logger.info(
     {
       event: "worker.job.completed",
+      workerName: "whatsapp-webhook",
       jobName: job.name,
       jobId: job.id,
     },
@@ -260,6 +262,7 @@ worker.on("failed", async (job, error) => {
     logger.error(
       {
         event: "worker.job.failed",
+        workerName: "whatsapp-webhook",
         err: error,
       },
       "failed job missing payload"
@@ -274,6 +277,7 @@ worker.on("failed", async (job, error) => {
   logger.error(
     {
       event: "worker.job.failed",
+      workerName: "whatsapp-webhook",
       jobName: job.name,
       jobId: job.id,
       eventType,
@@ -334,6 +338,7 @@ const shutdown = async (signal: string) => {
   logger.info(
     {
       event: "worker.shutdown.started",
+      workerName: "whatsapp-webhook",
       signal,
     },
     `received ${signal}, shutting down`
@@ -346,6 +351,7 @@ const shutdown = async (signal: string) => {
     logger.error(
       {
         event: "worker.shutdown.failed",
+        workerName: "whatsapp-webhook",
         err: error,
       },
       "shutdown failed while closing worker"
