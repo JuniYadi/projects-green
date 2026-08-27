@@ -170,5 +170,25 @@ describe("AdminSettingsRoute", () => {
       expect(json.ok).toBe(true)
       expect(json.message).toBe("Settings updated")
     })
+
+    it("returns 500 when unhandled database/service error occurs", async () => {
+      mockAuthValue = {
+        user: { id: "u-admin", email: "admin@example.com" },
+        organizationId: "org-admin",
+      }
+      mockGetPlatformRoleForUser.mockRejectedValueOnce(
+        new Error("Database failure")
+      )
+
+      const res = await app().handle(
+        new Request("http://localhost/portal/payments/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expiryDays: 14 }),
+        })
+      )
+
+      expect(res.status).toBe(500)
+    })
   })
 })

@@ -1,21 +1,23 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 
-const mockFindUnique = mock(async () => null)
-const mockFindMany = mock(async () => [])
-const mockCount = mock(async () => 0)
-const mockUpdate = mock(async () => ({}))
+const mockWebhookFindUnique = mock(async () => null)
+const mockWebhookFindMany = mock(async () => [])
+const mockDeliveryLogFindUnique = mock(async () => null)
+const mockDeliveryLogFindMany = mock(async () => [])
+const mockDeliveryLogCount = mock(async () => 0)
+const mockDeliveryLogUpdate = mock(async () => ({}))
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
     whatsappWebhook: {
-      findUnique: mockFindUnique,
-      findMany: mockFindMany,
+      findUnique: mockWebhookFindUnique,
+      findMany: mockWebhookFindMany,
     },
     whatsappWebhookDeliveryLog: {
-      findUnique: mockFindUnique,
-      findMany: mockFindMany,
-      count: mockCount,
-      update: mockUpdate,
+      findUnique: mockDeliveryLogFindUnique,
+      findMany: mockDeliveryLogFindMany,
+      count: mockDeliveryLogCount,
+      update: mockDeliveryLogUpdate,
     },
   },
 }))
@@ -30,10 +32,12 @@ const { webhookDispatcher, toDeliveryLogDTO } =
 
 describe("webhook-dispatcher.service", () => {
   beforeEach(() => {
-    mockFindUnique.mockClear()
-    mockFindMany.mockClear()
-    mockCount.mockClear()
-    mockUpdate.mockClear()
+    mockWebhookFindUnique.mockClear()
+    mockWebhookFindMany.mockClear()
+    mockDeliveryLogFindUnique.mockClear()
+    mockDeliveryLogFindMany.mockClear()
+    mockDeliveryLogCount.mockClear()
+    mockDeliveryLogUpdate.mockClear()
     mockEnqueueOutgoingWebhook.mockClear()
   })
 
@@ -88,7 +92,7 @@ describe("webhook-dispatcher.service", () => {
 
   describe("dispatch", () => {
     it("dispatches event when webhook exists", async () => {
-      mockFindUnique.mockResolvedValueOnce({
+      mockWebhookFindUnique.mockResolvedValueOnce({
         organizationId: "org-1",
         whatsappDeviceId: "dev-1",
       } as any)
@@ -100,7 +104,7 @@ describe("webhook-dispatcher.service", () => {
         "trig-1"
       )
 
-      expect(mockFindUnique).toHaveBeenCalledWith({
+      expect(mockWebhookFindUnique).toHaveBeenCalledWith({
         where: { id: "wh-1" },
         select: { organizationId: true, whatsappDeviceId: true },
       })
@@ -115,18 +119,18 @@ describe("webhook-dispatcher.service", () => {
     })
 
     it("skips dispatch when webhook not found", async () => {
-      mockFindUnique.mockResolvedValueOnce(null)
+      mockWebhookFindUnique.mockResolvedValueOnce(null)
 
       await webhookDispatcher.dispatch("wh-none", "message.received", {})
 
-      expect(mockFindUnique).toHaveBeenCalled()
+      expect(mockWebhookFindUnique).toHaveBeenCalled()
       expect(mockEnqueueOutgoingWebhook).not.toHaveBeenCalled()
     })
   })
 
   describe("dispatchForDevice", () => {
     it("enqueues outgoing webhook for each active webhook on device", async () => {
-      mockFindMany.mockResolvedValueOnce([
+      mockWebhookFindMany.mockResolvedValueOnce([
         { id: "wh-1", organizationId: "org-1" },
         { id: "wh-2", organizationId: "org-1" },
       ] as any)
@@ -138,7 +142,7 @@ describe("webhook-dispatcher.service", () => {
         "trig-2"
       )
 
-      expect(mockFindMany).toHaveBeenCalledWith({
+      expect(mockWebhookFindMany).toHaveBeenCalledWith({
         where: { whatsappDeviceId: "dev-1", active: true },
       })
       expect(mockEnqueueOutgoingWebhook).toHaveBeenCalledTimes(2)
@@ -161,13 +165,13 @@ describe("webhook-dispatcher.service", () => {
     })
 
     it("does nothing when device has no active webhooks", async () => {
-      mockFindMany.mockResolvedValueOnce([])
+      mockWebhookFindMany.mockResolvedValueOnce([])
 
       await webhookDispatcher.dispatchForDevice("dev-empty", "message.sent", {
         id: "msg-1",
       })
 
-      expect(mockFindMany).toHaveBeenCalledWith({
+      expect(mockWebhookFindMany).toHaveBeenCalledWith({
         where: { whatsappDeviceId: "dev-empty", active: true },
       })
       expect(mockEnqueueOutgoingWebhook).not.toHaveBeenCalled()
@@ -196,15 +200,15 @@ describe("webhook-dispatcher.service", () => {
         createdAt: new Date(),
       }
 
-      mockCount.mockResolvedValueOnce(15)
-      mockFindMany.mockResolvedValueOnce([mockLog] as any)
+      mockDeliveryLogCount.mockResolvedValueOnce(15)
+      mockDeliveryLogFindMany.mockResolvedValueOnce([mockLog] as any)
 
       const result = await webhookDispatcher.getDeliveryLogs("wh-1", {})
 
-      expect(mockCount).toHaveBeenCalledWith({
+      expect(mockDeliveryLogCount).toHaveBeenCalledWith({
         where: { webhookId: "wh-1" },
       })
-      expect(mockFindMany).toHaveBeenCalledWith({
+      expect(mockDeliveryLogFindMany).toHaveBeenCalledWith({
         where: { webhookId: "wh-1" },
         orderBy: { createdAt: "desc" },
         skip: 0,
@@ -222,8 +226,8 @@ describe("webhook-dispatcher.service", () => {
     })
 
     it("applies eventType, status, from, to, and custom pagination filters", async () => {
-      mockCount.mockResolvedValueOnce(50)
-      mockFindMany.mockResolvedValueOnce([])
+      mockDeliveryLogCount.mockResolvedValueOnce(50)
+      mockDeliveryLogFindMany.mockResolvedValueOnce([])
 
       const fromDate = "2026-01-01T00:00:00.000Z"
       const toDate = "2026-01-31T23:59:59.000Z"
@@ -237,7 +241,7 @@ describe("webhook-dispatcher.service", () => {
         limit: 10,
       })
 
-      expect(mockCount).toHaveBeenCalledWith({
+      expect(mockDeliveryLogCount).toHaveBeenCalledWith({
         where: {
           webhookId: "wh-1",
           eventType: "message.sent",
@@ -248,7 +252,7 @@ describe("webhook-dispatcher.service", () => {
           },
         },
       })
-      expect(mockFindMany).toHaveBeenCalledWith({
+      expect(mockDeliveryLogFindMany).toHaveBeenCalledWith({
         where: {
           webhookId: "wh-1",
           eventType: "message.sent",
@@ -272,13 +276,13 @@ describe("webhook-dispatcher.service", () => {
     })
 
     it("applies only from or only to date filter", async () => {
-      mockCount.mockResolvedValueOnce(0)
-      mockFindMany.mockResolvedValueOnce([])
+      mockDeliveryLogCount.mockResolvedValueOnce(0)
+      mockDeliveryLogFindMany.mockResolvedValueOnce([])
 
       const fromDate = "2026-01-01T00:00:00.000Z"
       await webhookDispatcher.getDeliveryLogs("wh-1", { from: fromDate })
 
-      expect(mockCount).toHaveBeenCalledWith({
+      expect(mockDeliveryLogCount).toHaveBeenCalledWith({
         where: {
           webhookId: "wh-1",
           createdAt: {
@@ -302,14 +306,14 @@ describe("webhook-dispatcher.service", () => {
         status: "FAILED",
       }
 
-      mockFindUnique.mockResolvedValueOnce(mockLog as any)
+      mockDeliveryLogFindUnique.mockResolvedValueOnce(mockLog as any)
 
       await webhookDispatcher.resendDelivery("log-failed-1")
 
-      expect(mockFindUnique).toHaveBeenCalledWith({
+      expect(mockDeliveryLogFindUnique).toHaveBeenCalledWith({
         where: { id: "log-failed-1" },
       })
-      expect(mockUpdate).toHaveBeenCalledWith({
+      expect(mockDeliveryLogUpdate).toHaveBeenCalledWith({
         where: { id: "log-failed-1" },
         data: expect.objectContaining({
           status: "PENDING",
@@ -330,25 +334,25 @@ describe("webhook-dispatcher.service", () => {
     })
 
     it("throws error when delivery log does not exist", async () => {
-      mockFindUnique.mockResolvedValueOnce(null)
+      mockDeliveryLogFindUnique.mockResolvedValueOnce(null)
 
       await expect(
         webhookDispatcher.resendDelivery("log-nonexistent")
       ).rejects.toThrow("Delivery log not found: log-nonexistent")
-      expect(mockUpdate).not.toHaveBeenCalled()
-      expect(mockEnqueueOutgoingWebhook).not.toHaveBeenCalled()
+      expect(mockDeliveryLogUpdate).not.toHaveBeenCalled()
     })
 
     it("throws error when attempting to resend a successful delivery", async () => {
-      mockFindUnique.mockResolvedValueOnce({
+      mockDeliveryLogFindUnique.mockResolvedValueOnce({
         id: "log-success",
         status: "SUCCESS",
-      } as any)
-
+      } as unknown as Parameters<
+        typeof mockDeliveryLogFindUnique.mockResolvedValueOnce
+      >[0])
       await expect(
         webhookDispatcher.resendDelivery("log-success")
       ).rejects.toThrow("Cannot resend a successful delivery")
-      expect(mockUpdate).not.toHaveBeenCalled()
+      expect(mockDeliveryLogUpdate).not.toHaveBeenCalled()
       expect(mockEnqueueOutgoingWebhook).not.toHaveBeenCalled()
     })
   })

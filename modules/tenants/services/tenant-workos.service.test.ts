@@ -3,7 +3,6 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { NotFoundException } from "@workos-inc/node"
 
-// WorkOS service coverage is kept local because CI does not provide real WorkOS keys.
 const describeTenantWorkosService = describe
 
 const mockAutoPagination = mock(async () => [])

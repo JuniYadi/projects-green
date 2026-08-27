@@ -203,6 +203,27 @@ describe("AdminGatewayRoute", () => {
         supportedCurrencies: undefined,
       })
     })
+
+    it("returns 500 when updating gateway fails with unexpected error", async () => {
+      mockAuthValue = {
+        user: { id: "u-admin", email: "admin@example.com" },
+        organizationId: "org-admin",
+      }
+      mockPlatformRoleValue = "super_admin"
+      mockGatewayUpdate.mockRejectedValueOnce(
+        new Error("Database connection error")
+      )
+
+      const res = await app().handle(
+        new Request("http://localhost/gateways/gw-1", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: "Updated Duitku" }),
+        })
+      )
+
+      expect(res.status).toBe(500)
+    })
   })
 
   describe("GET /gateways/providers", () => {
@@ -248,6 +269,25 @@ describe("AdminGatewayRoute", () => {
       const json = await res.json()
       expect(json.isActive).toBe(false)
       expect(mockGatewayToggle).toHaveBeenCalledWith("gw-1")
+    })
+
+    it("returns 500 when toggling gateway fails with unexpected error", async () => {
+      mockAuthValue = {
+        user: { id: "u-admin", email: "admin@example.com" },
+        organizationId: "org-admin",
+      }
+      mockPlatformRoleValue = "super_admin"
+      mockGatewayToggle.mockRejectedValueOnce(
+        new Error("Database connection error")
+      )
+
+      const res = await app().handle(
+        new Request("http://localhost/gateways/gw-1/toggle", {
+          method: "PATCH",
+        })
+      )
+
+      expect(res.status).toBe(500)
     })
   })
 })

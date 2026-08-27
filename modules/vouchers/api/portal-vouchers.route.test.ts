@@ -541,5 +541,28 @@ describe("Portal Voucher Routes", () => {
       expect(body.ok).toBe(false)
       expect(body.error).toBe("VALIDATION_ERROR")
     })
+
+    it("returns 500 when voucher update service throws unexpected error", async () => {
+      const deps = createDeps()
+      deps.service.updateVoucher = mock(() =>
+        Promise.reject(new Error("Database connection failed"))
+      )
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal/v_1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            maxClaims: 20,
+          }),
+        })
+      )
+
+      expect(res.status).toBe(500)
+      const body = await res.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("INTERNAL_SERVER_ERROR")
+      expect(body.message).toBe("Database connection failed")
+    })
   })
 })
