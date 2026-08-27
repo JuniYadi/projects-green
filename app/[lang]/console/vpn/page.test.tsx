@@ -184,13 +184,12 @@ describe("ConsoleVpnSubscriptionsPage", () => {
       view.getByPlaceholderText("Search subscriptions...")
     ).toBeInTheDocument()
     expect(view.getByRole("button", { name: /columns/i })).toBeInTheDocument()
-    expect(view.getByText("VPN Standard")).toBeInTheDocument()
-    expect(view.getByText("Location Coverage")).toBeInTheDocument()
-    expect(view.getByRole("button", { name: "Get Config" })).toBeInTheDocument()
-    expect(view.getByRole("link", { name: "View details" })).toHaveAttribute(
+    expect(view.getByRole("link", { name: "VPN Standard" })).toHaveAttribute(
       "href",
       "/console/vpn/subscriptions/sub_1"
     )
+    expect(view.getByText("Location Coverage")).toBeInTheDocument()
+    expect(view.getByRole("button", { name: "Get Config" })).toBeInTheDocument()
   }, 15000)
   it("forwards legacy subscriptions route to profiles", async () => {
     try {

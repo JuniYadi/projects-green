@@ -9,6 +9,7 @@ import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { toast } from "sonner"
 import {
   cancelVpnSubscription,
@@ -296,16 +297,15 @@ function ConfigCell({
       <ProxyCredentialCell subscriptionId={subscriptionId} account={account} />
     )
   }
-  const ext = account.protocol === "WIREGUARD" ? ".conf" : ".ovpn"
   if (!account.hasConfig) {
     return <span className="text-xs text-muted-foreground">Provisioning…</span>
   }
   return (
-    <div className="flex flex-wrap items-center gap-1">
+    <div className="flex items-center gap-1.5">
       <Button asChild size="sm" variant="outline" className="h-7 px-2 text-xs">
         <a href={vpnConfigDownloadUrl(subscriptionId, account.id)} download>
           <DownloadIcon className="mr-1 h-3.5 w-3.5" />
-          Download {ext}
+          Download
         </a>
       </Button>
       {account.protocol === "WIREGUARD" && (
@@ -345,30 +345,29 @@ function ProtocolControl({
   account: VpnServerAccount
   subStatus: VpnSubscription["status"]
 }) {
+  const isFailed = account.provisioningStatus === "FAILED"
+
   return (
-    <div className="min-w-0 rounded-md border bg-muted/20 px-2.5 py-2">
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <ProtocolIcon protocol={account.protocol} />
-        {account.port != null && (
-          <span className="font-mono text-xs text-muted-foreground">
-            :{account.port}
-          </span>
-        )}
+    <div className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-2.5 py-1.5">
+      <span className="text-xs font-medium">
+        {account.protocol === "WIREGUARD"
+          ? "WireGuard"
+          : account.protocol === "OPENVPN"
+            ? "OpenVPN"
+            : "Proxy"}
+      </span>
+      <div className="flex items-center gap-1.5">
         <ConfigCell
           subscriptionId={subscriptionId}
           account={account}
           subStatus={subStatus}
         />
-        <Badge
-          variant={PROVISIONING_VARIANT[account.provisioningStatus]}
-          className="ml-auto"
-        >
-          {account.provisioningStatus}
-        </Badge>
+        {isFailed && (
+          <Badge variant="destructive" className="text-[10px]">
+            Failed
+          </Badge>
+        )}
       </div>
-      {account.provisioningStatus === "FAILED" && account.failureReason && (
-        <p className="mt-1 text-xs text-destructive">{account.failureReason}</p>
-      )}
     </div>
   )
 }
@@ -547,36 +546,65 @@ export function VpnServerAccountsDetail({
   subscription: VpnSubscription
 }) {
   return (
-    <div className="space-y-2">
-      {groupByServer(subscription.serverAccounts).map((group) => (
-        <div
-          key={group.serverId}
-          className="grid gap-3 rounded-lg border px-3 py-2.5 lg:grid-cols-[minmax(220px,320px)_1fr] lg:items-center"
-        >
-          <div className="min-w-0 space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-semibold">{group.serverName}</span>
-              <RegionBadge region={group.region} />
-            </div>
-            <p className="truncate text-xs text-muted-foreground">
-              {group.hostname || "—"}
-              <span className="mx-1">·</span>
-              {group.ipAddress || "—"}
-            </p>
-          </div>
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {groupByServer(subscription.serverAccounts).map((group) => {
+        const allActive = group.accounts.every(
+          (a) => a.provisioningStatus === "ACTIVE"
+        )
+        const anyFailed = group.accounts.some(
+          (a) => a.provisioningStatus === "FAILED"
+        )
 
-          <div className="grid min-w-0 gap-2 md:grid-cols-2 xl:grid-cols-3">
-            {group.accounts.map((account) => (
-              <ProtocolControl
-                key={account.id}
-                subscriptionId={subscription.id}
-                account={account}
-                subStatus={subscription.status}
-              />
-            ))}
-          </div>
-        </div>
-      ))}
+        return (
+          <Card
+            key={group.serverId}
+            className="flex flex-col justify-between overflow-hidden"
+          >
+            <CardHeader className="p-3.5 pb-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm leading-tight font-semibold">
+                      {group.serverName}
+                    </span>
+                    <RegionBadge region={group.region} />
+                  </div>
+                  <p className="truncate font-mono text-xs text-muted-foreground">
+                    {group.hostname || group.ipAddress || "—"}
+                  </p>
+                </div>
+                {anyFailed ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-destructive">
+                    <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
+                    Error
+                  </span>
+                ) : allActive ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    Ready
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    Provisioning
+                  </span>
+                )}
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-1.5 p-3.5 pt-0">
+              {group.accounts.map((account) => (
+                <ProtocolControl
+                  key={account.id}
+                  subscriptionId={subscription.id}
+                  account={account}
+                  subStatus={subscription.status}
+                />
+              ))}
+            </CardContent>
+          </Card>
+        )
+      })}
     </div>
   )
 }
@@ -711,27 +739,16 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
           return (
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-semibold text-foreground">
+                <Link
+                  href={`/console/vpn/subscriptions/${sub.id}`}
+                  className="font-semibold text-foreground hover:underline"
+                >
                   {sub.packageName}
-                </span>
+                </Link>
                 <SubscriptionStatusBadge sub={sub} />
               </div>
-              <div className="flex items-center gap-2 text-xs">
-                <Button
-                  asChild
-                  variant="link"
-                  size="sm"
-                  className="h-auto p-0 text-xs"
-                >
-                  <Link href={`/console/vpn/subscriptions/${sub.id}`}>
-                    View details
-                  </Link>
-                </Button>
-                <span className="text-muted-foreground">·</span>
-                <span
-                  className="font-mono text-muted-foreground"
-                  title={sub.id}
-                >
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="font-mono" title={sub.id}>
                   {displayId}
                 </span>
                 <Button
@@ -921,15 +938,7 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
   return (
     <>
       <div className="flex flex-col gap-4">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">
-              Connection & Access Profiles
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Manage your VPN locations, protocols, and connected devices.
-            </p>
-          </div>
+        <div className="flex justify-end">
           {subscriptions.length === 1 ? (
             <Button asChild variant="outline" size="sm">
               <a
@@ -962,7 +971,7 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : null}
-        </header>
+        </div>
         <DataTable
           tableId="console-vpn-subscriptions"
           columns={columns}

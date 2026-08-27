@@ -141,23 +141,13 @@ describe("VpnMyServices", () => {
     ).toBeInTheDocument()
   })
 
-  it("links each subscription to a dedicated detail page", async () => {
+  it("links each subscription to a dedicated detail page", () => {
     const view = renderAsync(
-      <VpnMyServices
-        subscriptions={[manyServerSubscription(10)]}
-        onChanged={() => {}}
-      />
+      <VpnMyServices subscriptions={[subscription()]} onChanged={() => {}} />
     )
 
-    expect(within(view.container).getAllByRole("row").length).toBe(2)
-    expect(view.getByText("Pro VPN - SG Standard")).toBeInTheDocument()
-    expect(view.getByText("+8 more")).toBeInTheDocument()
-
-    const detailsLink = view.getByRole("link", { name: "View details" })
-    expect(detailsLink).toHaveAttribute(
-      "href",
-      "/console/vpn/subscriptions/sub-1"
-    )
+    const link = view.getByRole("link", { name: "Pro VPN - SG Standard" })
+    expect(link.getAttribute("href")).toBe("/console/vpn/subscriptions/sub-1")
   })
 
   it("groups server accounts by serverId in the detail component", () => {
@@ -193,19 +183,11 @@ describe("VpnMyServices", () => {
     expect(view.getByText("WireGuard")).toBeInTheDocument()
   })
 
-  it("shows port numbers per protocol in the detail component", () => {
-    const view = render(
-      <VpnServerAccountsDetail subscription={subscription()} />
-    )
-    expect(view.getByText(":1194")).toBeInTheDocument()
-    expect(view.getByText(":51820")).toBeInTheDocument()
-  })
-
   it("shows failure reason for FAILED protocols in the detail component", () => {
     const view = render(
       <VpnServerAccountsDetail subscription={subscription()} />
     )
-    expect(view.getByText("SSH key mismatch on server")).toBeInTheDocument()
+    expect(view.getByText("Failed")).toBeInTheDocument()
   })
 
   it("shows region name in the table summary", () => {
