@@ -34,6 +34,7 @@
   user request or high-blast-radius changes (shared test setup, test engine).
 
 ## Local hard rules
+- NEVER use `git add -f` / `git commit -f` to force-stage gitignored files or directories. Strict adherence to `.gitignore` is mandatory.
 
 - Use `bun` for project commands. Do not use `npm` or `yarn`.
 - Never run destructive Prisma commands: `bunx prisma migrate reset*`, `bunx prisma db push --force-reset`, `bunx prisma db push --accept-data-loss`, `prisma migrate reset*`, `prisma db push --force-reset`, or `prisma db push --accept-data-loss`.

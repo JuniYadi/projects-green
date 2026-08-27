@@ -164,8 +164,23 @@ describe("App Hosting fulfillment adapter", () => {
     const claims = mock(async ({ serviceType }: { serviceType: string }) => ({
       id: `${serviceType.toLowerCase()}-stock`,
       serviceType,
-      vaultPath: `stocks/${serviceType.toLowerCase()}`,
+      vaultPath: `admin/managed-stock/${serviceType.toLowerCase()}-stock`,
     }))
+    const readKV = mock(
+      async (path: string): Promise<Record<string, string>> => {
+        if (path.includes("postgresql")) {
+          return {
+            DB_HOST: "pg.internal",
+            DB_PASSWORD: "pg-secret-password",
+            DB_USER: "postgres",
+          }
+        }
+        return {
+          REDIS_HOST: "redis.internal",
+          REDIS_PASSWORD: "redis-secret-password",
+        }
+      }
+    )
     const writeKV = mock(async () => ({
       version: 1,
       createdTime: new Date().toISOString(),
@@ -176,7 +191,7 @@ describe("App Hosting fulfillment adapter", () => {
       prisma as unknown as PrismaClient,
       {
         claimStock: claims,
-        vault: { readKV: async () => ({ PASSWORD: "secret" }), writeKV },
+        vault: { readKV, writeKV },
       }
     )
 
@@ -208,17 +223,59 @@ describe("App Hosting fulfillment adapter", () => {
       serviceType: "REDIS",
       environment: "production",
     })
-    expect(writeKV).toHaveBeenCalledTimes(2)
+    expect(readKV).toHaveBeenNthCalledWith(
+      1,
+      "admin/managed-stock/postgresql-stock"
+    )
+    expect(readKV).toHaveBeenNthCalledWith(2, "admin/managed-stock/redis-stock")
+    expect(writeKV).toHaveBeenCalledTimes(1)
+    expect(writeKV).toHaveBeenNthCalledWith(
+      1,
+      "tenants/org-1/stacks/stack-1/prod/app-env",
+      {
+        DB_HOST: "pg.internal",
+        DB_PASSWORD: "pg-secret-password",
+        DB_USER: "postgres",
+        REDIS_HOST: "redis.internal",
+        REDIS_PASSWORD: "redis-secret-password",
+      }
+    )
     expect(prisma.serviceProvisionAccount.create).toHaveBeenCalledTimes(2)
     expect(prisma.serviceProvisionAccount.create).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
         data: expect.objectContaining({
+          subscriptionId: "service-sub-1",
           serviceType: "APP_HOSTING",
           targetId: "postgresql-stock",
           identifier: "POSTGRESQL",
           status: "PENDING",
-          vaultPath: "tenants/org-1/stacks/stack-1/POSTGRESQL",
+          vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+          metadata: {
+            dependency: "POSTGRESQL",
+            stockId: "postgresql-stock",
+            compute: { cpu: 2, memory: 4096 },
+            networking: { egress: true },
+          },
+        }),
+      })
+    )
+    expect(prisma.serviceProvisionAccount.create).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          subscriptionId: "service-sub-1",
+          serviceType: "APP_HOSTING",
+          targetId: "redis-stock",
+          identifier: "REDIS",
+          status: "PENDING",
+          vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+          metadata: {
+            dependency: "REDIS",
+            stockId: "redis-stock",
+            compute: { cpu: 2, memory: 4096 },
+            networking: { egress: true },
+          },
         }),
       })
     )

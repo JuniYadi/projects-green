@@ -4,7 +4,10 @@ import { BillingTransactionService } from "@/modules/billing/billing-transaction
 import { AppHostingBillingService } from "./billing/app-hosting-billing.service"
 import { resolveAppHostingClusterForStack } from "./cluster-integration.service"
 
-type BillingGate = Pick<AppHostingBillingService, "assertCanStartPayg">
+type BillingGate = Pick<
+  AppHostingBillingService,
+  "assertCanStartPayg" | "assertCanDeploySubscription"
+>
 type ClusterResolver = typeof resolveAppHostingClusterForStack
 
 export type DeployExecutionGateInput = {
@@ -25,17 +28,20 @@ export async function assertDeployExecutionGates(
   input: DeployExecutionGateInput,
   dependencies: DeployExecutionGateDependencies = {}
 ): Promise<void> {
-  if (input.billingMode === "PAYG" && input.resourcePlanId === "payg") {
-    const billing =
-      dependencies.billing ??
-      new AppHostingBillingService(
-        prisma,
-        new BillingTransactionService(prisma)
-      )
+  const billing =
+    dependencies.billing ??
+    new AppHostingBillingService(prisma, new BillingTransactionService(prisma))
+
+  if (input.billingMode === "PAYG") {
     await billing.assertCanStartPayg({
       organizationId: input.organizationId,
       hourlyCost: new Prisma.Decimal(String(input.hourlyCost)),
       bufferHours: input.paygBufferHours,
+    })
+  } else {
+    await billing.assertCanDeploySubscription({
+      organizationId: input.organizationId,
+      stackId: input.stackId,
     })
   }
 

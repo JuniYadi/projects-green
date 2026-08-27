@@ -34,8 +34,9 @@ export const clusterMetadataSchema = z.strictObject({
   notes: z.string().trim().optional(),
   namespacePattern: z.string().trim().min(1).optional(),
   labelSelector: z.string().trim().min(1).optional(),
+  vaultPath: z.string().trim().min(1).optional(),
+  vaultVersion: z.number().int().positive().optional(),
 })
-
 export type ClusterMetadataInput = z.infer<typeof clusterMetadataSchema>
 
 // ── Per-Type Metadata Schemas ──────────────────────────
@@ -50,6 +51,8 @@ export const jenkinsMetadataSchema = z.strictObject({
     .min(1, "Jenkins Git credential ID is required."),
   sharedLibraryName: z.string().trim().min(1).optional(),
   sharedLibraryBranch: z.string().trim().min(1).optional(),
+  vaultPath: z.string().trim().min(1).optional(),
+  vaultVersion: z.number().int().positive().optional(),
 })
 export const gitopsMetadataSchema = z.strictObject({
   repo: z
@@ -67,11 +70,15 @@ export const gitopsMetadataSchema = z.strictObject({
     ),
   authorName: z.string().trim().min(1).optional(),
   authorEmail: z.email("Author email must be valid.").optional(),
+  vaultPath: z.string().trim().min(1).optional(),
+  vaultVersion: z.number().int().positive().optional(),
 })
 export const registryMetadataSchema = z.strictObject({
   host: z.string().trim().min(1, "Registry host is required."),
   namespace: z.string().trim().min(1).optional(),
   pullSecretName: z.string().trim().min(1).optional(),
+  vaultPath: z.string().trim().min(1).optional(),
+  vaultVersion: z.number().int().positive().optional(),
 })
 export const argocdMetadataSchema = z.strictObject({
   apiUrl: z.url("Argo CD URL must be valid."),
@@ -79,6 +86,8 @@ export const argocdMetadataSchema = z.strictObject({
   appNamespace: z.string().trim().min(1, "Application namespace is required."),
   chartRepo: z.string().trim().min(1).optional(),
   chartVersion: z.string().trim().min(1).optional(),
+  vaultPath: z.string().trim().min(1).optional(),
+  vaultVersion: z.number().int().positive().optional(),
 })
 export const kubeconfigMetadataSchema = z.strictObject({
   namespacePattern: z
@@ -97,15 +106,21 @@ export const kubeconfigMetadataSchema = z.strictObject({
       (value) => value.includes("{slug}"),
       "Label selector must contain {slug}."
     ),
+  vaultPath: z.string().trim().min(1).optional(),
+  vaultVersion: z.number().int().positive().optional(),
 })
 export const opensearchMetadataSchema = z.strictObject({
   host: z.string().trim().min(1, "OpenSearch host is required."),
   sslVerify: z.boolean().default(true),
   timeout: z.number().int().positive().default(30),
+  vaultPath: z.string().trim().min(1).optional(),
+  vaultVersion: z.number().int().positive().optional(),
 })
 
 export const prometheusMetadataSchema = z.strictObject({
   endpoint: z.url("Prometheus endpoint must be valid."),
+  vaultPath: z.string().trim().min(1).optional(),
+  vaultVersion: z.number().int().positive().optional(),
 })
 
 // ── Per-Type Secret Schemas (full) ─────────────────────

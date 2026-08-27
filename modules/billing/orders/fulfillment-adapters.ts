@@ -858,6 +858,9 @@ async function applyAppHostingFulfillment(
         ? input.metadata.environment
         : "production"
 
+    const tenantVaultPath = `tenants/${input.organizationId}/stacks/${parsed.context.stackId}/prod/app-env`
+    const allCredentials: Record<string, string> = {}
+
     for (const dependency of dependenciesToClaim) {
       if (!claimStock) continue
       const stock = await claimStock({
@@ -866,17 +869,15 @@ async function applyAppHostingFulfillment(
         serviceType: dependency,
         environment,
       })
+      const adminStockVaultPath = `admin/managed-stock/${stock.id}`
       const credentials = vault.readKV
-        ? await vault.readKV(stock.vaultPath)
+        ? await vault.readKV(stock.vaultPath || adminStockVaultPath)
         : {}
-      const vaultPath = [
-        "tenants",
-        input.organizationId,
-        "stacks",
-        parsed.context.stackId,
-        dependency,
-      ].join("/")
-      await vault.writeKV(vaultPath, credentials)
+      for (const [key, value] of Object.entries(credentials)) {
+        if (typeof value === "string") {
+          allCredentials[key] = value
+        }
+      }
 
       if (tx.serviceProvisionAccount) {
         await tx.serviceProvisionAccount.create({
@@ -886,7 +887,7 @@ async function applyAppHostingFulfillment(
             targetId: stock.id,
             identifier: dependency,
             status: "PENDING",
-            vaultPath,
+            vaultPath: tenantVaultPath,
             metadata: _jsonObject({
               dependency,
               stockId: stock.id,
@@ -896,6 +897,10 @@ async function applyAppHostingFulfillment(
           },
         })
       }
+    }
+
+    if (Object.keys(allCredentials).length > 0 && vault.writeKV) {
+      await vault.writeKV(tenantVaultPath, allCredentials)
     }
 
     return {

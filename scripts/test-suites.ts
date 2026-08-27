@@ -39,6 +39,8 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
       "modules/deploy/",
       "modules/framework-detection/",
       "app/[lang]/console/app/",
+      "app/[lang]/console/marketplace/",
+      "app/[lang]/portal/marketplace/",
       "app/api/deploy/",
       "app/api/integrations/github/",
       "scripts/seed-app-hosting-policy.ts",
@@ -46,6 +48,8 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     testPrefixes: [
       "modules/deploy/",
       "modules/framework-detection/",
+      "app/[lang]/console/marketplace/",
+      "app/[lang]/portal/marketplace/",
       "app/api/deploy/",
     ],
     smokeProjects: ["smoke-deploy"],

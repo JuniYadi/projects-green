@@ -17,6 +17,10 @@ const mockPrisma = {
   applicationStack: {
     findUnique: vi.fn(),
     update: vi.fn(),
+    count: vi.fn(),
+  },
+  serviceSubscription: {
+    findFirst: vi.fn(),
   },
   $executeRaw: vi.fn(),
 }
@@ -512,6 +516,69 @@ describe("AppHostingBillingService", () => {
 
       expect(result.cleared).toBe(false)
       expect(mockPrisma.applicationStack.update).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("assertCanDeploySubscription", () => {
+    it("allows deployment when active subscription has available slots", async () => {
+      mockPrisma.serviceSubscription.findFirst.mockResolvedValue({
+        id: "sub_1",
+        organizationId: "org_1",
+        status: "ACTIVE",
+        quantity: decimal("3"),
+        allocatedConfig: { maxStacks: 3 },
+        plan: {
+          code: "PRO",
+          resources: { maxStacks: 2 },
+        },
+      })
+      mockPrisma.applicationStack.count.mockResolvedValue(1)
+
+      const result = await service.assertCanDeploySubscription({
+        organizationId: "org_1",
+        stackId: "stack_new",
+      })
+
+      expect(result).toEqual({
+        subscriptionId: "sub_1",
+        maxSlots: 3,
+        usedSlots: 1,
+      })
+      expect(mockPrisma.applicationStack.count).toHaveBeenCalledWith({
+        where: {
+          organizationId: "org_1",
+          id: { not: "stack_new" },
+        },
+      })
+    })
+
+    it("throws NO_ACTIVE_SUBSCRIPTION when no active subscription exists", async () => {
+      mockPrisma.serviceSubscription.findFirst.mockResolvedValue(null)
+
+      await expect(
+        service.assertCanDeploySubscription({
+          organizationId: "org_1",
+        })
+      ).rejects.toThrow("NO_ACTIVE_SUBSCRIPTION")
+    })
+
+    it("throws STACK_QUOTA_EXCEEDED when existing stack count reaches max slots", async () => {
+      mockPrisma.serviceSubscription.findFirst.mockResolvedValue({
+        id: "sub_1",
+        organizationId: "org_1",
+        status: "ACTIVE",
+        quantity: decimal("1"),
+        allocatedConfig: { maxStacks: 2 },
+        plan: { code: "BASIC", resources: {} },
+      })
+      mockPrisma.applicationStack.count.mockResolvedValue(2)
+
+      await expect(
+        service.assertCanDeploySubscription({
+          organizationId: "org_1",
+          stackId: "stack_new",
+        })
+      ).rejects.toThrow("STACK_QUOTA_EXCEEDED")
     })
   })
 })

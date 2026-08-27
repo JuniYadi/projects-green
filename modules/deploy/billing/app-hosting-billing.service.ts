@@ -36,6 +36,16 @@ export type GraceClearResult = {
 const GRACE_PERIOD_MS = 24 * 60 * 60 * 1000 // 24 hours
 const MIN_BUFFER_HOURS = 24
 
+function extractMaxSlots(
+  config: Record<string, unknown>,
+  ...keys: string[]
+): number | undefined {
+  for (const key of keys) {
+    if (typeof config[key] === "number") return config[key] as number
+  }
+  return undefined
+}
+
 // ─── Service ────────────────────────────────────────────────────────────
 
 export class AppHostingBillingService {
@@ -102,6 +112,84 @@ export class AppHostingBillingService {
     }
 
     return quote
+  }
+
+  /**
+   * Assert that the organization has an active APP_HOSTING subscription with
+   * available stack slots / valid allocation.
+   */
+  async assertCanDeploySubscription(input: {
+    organizationId: string
+    stackId?: string
+  }): Promise<{
+    subscriptionId: string
+    maxSlots: number
+    usedSlots: number
+  }> {
+    const subscription = await this.prisma.serviceSubscription.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        status: "ACTIVE",
+        package: { code: "APP_HOSTING" },
+      },
+      include: {
+        plan: true,
+      },
+    })
+
+    if (!subscription) {
+      throw new Error("NO_ACTIVE_SUBSCRIPTION")
+    }
+
+    const allocatedConfig =
+      subscription.allocatedConfig &&
+      typeof subscription.allocatedConfig === "object"
+        ? (subscription.allocatedConfig as Record<string, unknown>)
+        : {}
+    const planResources =
+      subscription.plan?.resources &&
+      typeof subscription.plan.resources === "object"
+        ? (subscription.plan.resources as Record<string, unknown>)
+        : {}
+
+    const configuredSlots =
+      extractMaxSlots(
+        allocatedConfig,
+        "maxStacks",
+        "stackSlots",
+        "slots",
+        "maxApps"
+      ) ??
+      extractMaxSlots(
+        planResources,
+        "maxStacks",
+        "stackSlots",
+        "slots",
+        "maxApps"
+      ) ??
+      (subscription.quantity != null
+        ? Number(subscription.quantity)
+        : undefined) ??
+      1
+
+    const maxSlots = Math.max(1, configuredSlots)
+
+    const existingStacksCount = await this.prisma.applicationStack.count({
+      where: {
+        organizationId: input.organizationId,
+        ...(input.stackId ? { id: { not: input.stackId } } : {}),
+      },
+    })
+
+    if (existingStacksCount >= maxSlots) {
+      throw new Error("STACK_QUOTA_EXCEEDED")
+    }
+
+    return {
+      subscriptionId: subscription.id,
+      maxSlots,
+      usedSlots: existingStacksCount,
+    }
   }
 
   /**

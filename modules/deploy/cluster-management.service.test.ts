@@ -44,18 +44,34 @@ mock.module("@/lib/prisma", () => ({
 
 // ── Encryption mock ──────────────────────────────────
 
+const actualClusterIntegration =
+  await import("@/modules/deploy/cluster-integration.service")
+
 const mockEncryptClusterIntegrationSecrets = mock(
-  () => "encrypted-ciphertext-abc"
+  actualClusterIntegration.encryptClusterIntegrationSecrets
 )
-const mockMaskClusterIntegrationSecret = mock(() => "abcd…efgh")
-const mockDecryptClusterIntegrationSecrets = mock(() => ({}))
+const mockMaskClusterIntegrationSecret = mock(
+  actualClusterIntegration.maskClusterIntegrationSecret
+)
+const mockDecryptClusterIntegrationSecrets = mock(
+  actualClusterIntegration.decryptClusterIntegrationSecrets
+)
 
 mock.module("@/modules/deploy/cluster-integration.service", () => ({
+  ...actualClusterIntegration,
   decryptClusterIntegrationSecrets: mockDecryptClusterIntegrationSecrets,
   encryptClusterIntegrationSecrets: mockEncryptClusterIntegrationSecrets,
   maskClusterIntegrationSecret: mockMaskClusterIntegrationSecret,
 }))
+const mockVaultWriteKV = mock(async () => ({ version: 1 }))
+const mockVaultReadKV = mock(async () => ({}))
 
+mock.module("@/lib/vault/vault-client", () => ({
+  VaultClient: class {
+    writeKV = mockVaultWriteKV
+    readKV = mockVaultReadKV
+  },
+}))
 // ── Dynamic import after mocks ───────────────────────
 
 const {
