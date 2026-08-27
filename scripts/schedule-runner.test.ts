@@ -1,5 +1,15 @@
 import { describe, expect, mock, test } from "bun:test"
-import { scheduledJobsRegistry, dispatchScheduledJobs } from "./schedule-runner"
+
+mock.module("@/lib/cron/telemetry", () => ({
+  withCronTelemetry: async (
+    _name: string,
+    fn: (logger: {
+      log: (...args: unknown[]) => void
+      warn: (...args: unknown[]) => void
+      error: (...args: unknown[]) => void
+    }) => Promise<unknown>
+  ) => fn({ log: () => {}, warn: () => {}, error: () => {} }),
+}))
 
 // Mock queue-config
 const mockAdd = mock(async () => ({ id: "job-123" }))
@@ -11,6 +21,7 @@ mock.module("@/lib/queue/queue-config", () => ({
   getQueue: mockGetQueue,
 }))
 
+import { scheduledJobsRegistry, dispatchScheduledJobs } from "./schedule-runner"
 describe("schedule-runner", () => {
   test("scheduledJobsRegistry contains all required scheduled operations", () => {
     expect(scheduledJobsRegistry.length).toBeGreaterThanOrEqual(14)
