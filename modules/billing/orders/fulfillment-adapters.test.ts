@@ -66,6 +66,8 @@ const createPrismaMock = () => {
       update: mock(),
     },
     vpnServerAccount: { create: mock(), update: mock() },
+    serviceProvisionAccount: { create: mock(), update: mock() },
+    appManagedStock: { findFirst: mock(), update: mock() },
     whatsappDevice: { findMany: mock(), update: mock(), upsert: mock() },
   }
   prisma.$transaction.mockImplementation(
@@ -144,6 +146,83 @@ describe("BillingFulfillmentRegistry", () => {
 })
 
 describe("App Hosting fulfillment adapter", () => {
+  it("claims required dependencies and records their Vault-backed accounts", async () => {
+    const prisma = createPrismaMock()
+    prisma.servicePricing.findUnique.mockResolvedValue({
+      ...vpnPricing,
+      servicePlan: {
+        ...vpnPricing.servicePlan,
+        resources: {
+          compute: { cpu: 2, memory: 4096 },
+          networking: { egress: true },
+          requiredDependencies: ["POSTGRESQL", "REDIS"],
+        },
+        package: { id: "package-app-hosting", code: "APP_HOSTING" as const },
+      },
+    })
+    prisma.serviceProvisionAccount.create.mockResolvedValue({ id: "dep-1" })
+    const claims = mock(async ({ serviceType }: { serviceType: string }) => ({
+      id: `${serviceType.toLowerCase()}-stock`,
+      serviceType,
+      vaultPath: `stocks/${serviceType.toLowerCase()}`,
+    }))
+    const writeKV = mock(async () => ({
+      version: 1,
+      createdTime: new Date().toISOString(),
+      deletionTime: "",
+      destroyed: false,
+    }))
+    const appHosting = createAppHostingFulfillmentAdapter(
+      prisma as unknown as PrismaClient,
+      {
+        claimStock: claims,
+        vault: { readKV: async () => ({ PASSWORD: "secret" }), writeKV },
+      }
+    )
+
+    await expect(
+      appHosting.create(
+        fulfillmentInput({
+          packageCode: "APP_HOSTING",
+          metadata: {
+            appHostingFulfillment: {
+              stackId: "stack-1",
+              deploymentId: "deployment-1",
+              sourceType: "TEMPLATE",
+              resourcePlanId: "starter",
+            },
+          },
+        })
+      )
+    ).resolves.toEqual({ subscriptionId: "service-sub-1" })
+
+    expect(claims).toHaveBeenNthCalledWith(1, {
+      orgId: "org-1",
+      stackId: "stack-1",
+      serviceType: "POSTGRESQL",
+      environment: "production",
+    })
+    expect(claims).toHaveBeenNthCalledWith(2, {
+      orgId: "org-1",
+      stackId: "stack-1",
+      serviceType: "REDIS",
+      environment: "production",
+    })
+    expect(writeKV).toHaveBeenCalledTimes(2)
+    expect(prisma.serviceProvisionAccount.create).toHaveBeenCalledTimes(2)
+    expect(prisma.serviceProvisionAccount.create).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          serviceType: "APP_HOSTING",
+          targetId: "postgresql-stock",
+          identifier: "POSTGRESQL",
+          status: "PENDING",
+          vaultPath: "tenants/org-1/stacks/stack-1/POSTGRESQL",
+        }),
+      })
+    )
+  })
   it("creates a subscription from safe deployment context without persisting secrets", async () => {
     const prisma = createPrismaMock()
     prisma.servicePricing.findUnique.mockResolvedValue({
@@ -330,6 +409,52 @@ describe("VPN fulfillment adapter", () => {
     expect(dispatch).toHaveBeenNthCalledWith(1, "account-openvpn")
     expect(dispatch).toHaveBeenNthCalledWith(2, "account-wireguard")
     expect(dispatch).toHaveBeenNthCalledWith(3, "account-proxy")
+  })
+  it("uses VPN server and protocol resources and provisioning username", async () => {
+    const prisma = createPrismaMock()
+    prisma.servicePricing.findUnique.mockResolvedValue({
+      ...vpnPricing,
+      servicePlan: {
+        ...vpnPricing.servicePlan,
+        resources: {
+          serverIds: ["server-1"],
+          allowedProtocols: ["WIREGUARD"],
+        },
+      },
+    })
+    const dispatch = mock(async (_accountId: string) => {})
+    const vpn = createVpnFulfillmentAdapter(prisma as unknown as PrismaClient, {
+      dispatch,
+      username: () => "fallback-user",
+    })
+
+    await vpn.create(
+      fulfillmentInput({
+        metadata: { provisioningAnswers: { username: "chosen-user" } },
+      })
+    )
+
+    expect(prisma.vpnServerAccount.create).toHaveBeenCalledTimes(1)
+    expect(prisma.vpnServerAccount.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          serverId: "server-1",
+          protocol: "WIREGUARD",
+          username: "chosen-user",
+        }),
+      })
+    )
+    expect(prisma.serviceProvisionAccount.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          serviceType: "VPN",
+          targetId: "server-1",
+          identifier: "chosen-user",
+          status: "PENDING",
+        }),
+      })
+    )
+    expect(dispatch).toHaveBeenCalledWith("account-openvpn")
   })
 
   it("updates inactive existing accounts while retaining active accounts", async () => {

@@ -345,12 +345,6 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         isActive: startsWithRoute(path, "/portal/vpn/servers"),
       },
       {
-        title: "Packages",
-        url: localizePathname({ pathname: "/portal/vpn/packages", locale }),
-        icon: <PackageIcon />,
-        isActive: startsWithRoute(path, "/portal/vpn/packages"),
-      },
-      {
         title: "VPN Operations",
         url: localizePathname({
           pathname: "/portal/vpn/subscriptions",
@@ -908,22 +902,13 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         isActive: path === "/console/vpn/dashboard",
       },
       {
-        title: "Order Package",
+        title: locale === "id" ? "Profil Akses" : "Access Profiles",
         url: localizePathname({
-          pathname: "/console/vpn/order",
-          locale,
-        }),
-        icon: <PackageIcon />,
-        isActive: startsWithRoute(path, "/console/vpn/order"),
-      },
-      {
-        title: "My Subscriptions",
-        url: localizePathname({
-          pathname: "/console/vpn/subscriptions",
+          pathname: "/console/vpn/profiles",
           locale,
         }),
         icon: <ReceiptIcon />,
-        isActive: startsWithRoute(path, "/console/vpn/subscriptions"),
+        isActive: startsWithRoute(path, "/console/vpn/profiles"),
       },
       {
         title: "Devices",

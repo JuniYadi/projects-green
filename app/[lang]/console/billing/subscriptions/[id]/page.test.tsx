@@ -190,4 +190,38 @@ describe("SubscriptionDetailPage", () => {
       ).toBeGreaterThan(0)
     )
   })
+
+  it("links VPN subscriptions to access profiles", async () => {
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes("/api/billing/subscriptions")) {
+        return jsonResponse({
+          ok: true,
+          subscriptions: [
+            {
+              id: "sub-1",
+              packageCode: "VPN",
+              planCode: "VPN_STANDARD",
+              status: "ACTIVE",
+              allocatedConfig: null,
+              monthlyRateIdr: "100000.00",
+              periodPrice: "100000.00",
+              billingPeriod: "MONTHLY",
+              currentPeriodEnd: "2026-07-15T00:00:00Z",
+              billingInvoiceId: null,
+            },
+          ],
+        })
+      }
+      return jsonResponse({ ok: true })
+    }) as unknown as typeof fetch
+
+    const view = renderPage()
+
+    await waitFor(() =>
+      expect(
+        view.getByRole("link", { name: "Open VPN Profiles" })
+      ).toHaveAttribute("href", "/en/console/vpn/profiles")
+    )
+  })
 })

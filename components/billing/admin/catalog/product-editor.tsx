@@ -556,6 +556,7 @@ export function ProductEditor({
                 onChange={updatePlans}
                 showPreview={showPreview}
                 selectedPlanId={selectedPlanId}
+                productCode={state.basics.code}
               />
             </CardContent>
           </Card>

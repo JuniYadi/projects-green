@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import type { PrismaClient } from "@prisma/client"
-
-type PrismaLike = Pick<PrismaClient, "vpnServerAccount" | "vpnServer">
+import type { PrismaLike } from "./vpn-provisioning.service"
 
 const mockAuditLogs: Array<{
   action: string
@@ -18,6 +16,7 @@ const mockPrisma = {
     findUnique: mock(),
     update: mock(),
   },
+  serviceProvisionAccount: { updateMany: mock() },
   vpnServer: { findUnique: mock() },
   vpnAuditLog: {
     create: mock().mockImplementation(async ({ data }) => {
@@ -107,6 +106,7 @@ beforeEach(() => {
   mockPrisma.vpnServerAccount.findUnique.mockReset()
   mockPrisma.vpnServerAccount.update.mockReset()
   mockPrisma.vpnServer.findUnique.mockReset()
+  mockPrisma.serviceProvisionAccount.updateMany.mockReset()
   mockPrisma.vpnAuditLog.create.mockClear()
 
   // Reset adapter mocks too — they persist across parallel tests
@@ -178,6 +178,18 @@ describe("VpnProvisioningService audit logging", () => {
     expect(
       mockAuditLogs.find((l) => l.action === "PROVISIONING_FAILED")
     ).toBeUndefined()
+  })
+  it("synchronizes the generic provision account on success", async () => {
+    await service.provisionAccount(ACCOUNT_ID)
+
+    expect(mockPrisma.serviceProvisionAccount.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "ACTIVE",
+          encryptedSecret: expect.any(String),
+        }),
+      })
+    )
   })
 
   it("logs PROVISIONING_STARTED then PROVISIONING_FAILED on error", async () => {

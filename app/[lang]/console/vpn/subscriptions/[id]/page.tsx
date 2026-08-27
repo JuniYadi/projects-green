@@ -255,31 +255,13 @@ export default function ConsoleVpnSubscriptionDetailPage() {
         </Button>
       </div>
 
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <InfoCard
           label="First buy"
           value={formatDate(subscription.createdAt)}
           subValue={
             subscription.firstPayment
               ? `Paid ${subscription.firstPayment.amount} ${subscription.firstPayment.currency}`
-              : undefined
-          }
-        />
-        <InfoCard
-          label="First payment"
-          value={
-            subscription.firstPayment ? (
-              <>
-                {subscription.firstPayment.amount}{" "}
-                {subscription.firstPayment.currency}
-              </>
-            ) : (
-              "—"
-            )
-          }
-          subValue={
-            subscription.firstPayment?.paidAt
-              ? formatDate(subscription.firstPayment.paidAt)
               : undefined
           }
         />

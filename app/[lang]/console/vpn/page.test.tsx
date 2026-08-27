@@ -1,7 +1,12 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { render, waitFor } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { cleanup, render, waitFor } from "@testing-library/react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import type { VpnPackageSummary, VpnSubscription } from "@/lib/vpn-client"
 import type { MobileDeviceEntry } from "@/lib/vpn-mobile-client"
+
+const mockRedirect = mock((url: string) => {
+  throw new Error(`REDIRECT:${url}`)
+})
 
 const mockListVpnSubscriptions = mock(() =>
   Promise.resolve([] as VpnSubscription[])
@@ -12,6 +17,11 @@ const mockListVpnPackages = mock(() =>
 const mockListMobileDevices = mock(() =>
   Promise.resolve([] as MobileDeviceEntry[])
 )
+
+mock.module("next/navigation", () => ({
+  redirect: mockRedirect,
+  useParams: () => ({ lang: "en" }),
+}))
 
 mock.module("@/lib/vpn-client", () => ({
   listVpnSubscriptions: mockListVpnSubscriptions,
@@ -27,21 +37,63 @@ mock.module("@/lib/vpn-mobile-client", () => ({
   listMobileDevices: mockListMobileDevices,
 }))
 
-import ConsoleVpnDashboardPage from "./dashboard/page"
+const mockEdenSubscriptionsGet = mock(() =>
+  Promise.resolve({
+    data: { ok: true as boolean, data: [] as VpnSubscription[] },
+  })
+)
+
+mock.module("@/lib/eden", () => ({
+  eden: {
+    api: {
+      vpn: {
+        subscriptions: {
+          get: mockEdenSubscriptionsGet,
+        },
+      },
+    },
+  },
+}))
+import ConsoleVpnProfilesPage from "./profiles/page"
 import ConsoleVpnOrderPage from "./order/page"
-
 import ConsoleVpnSubscriptionsPage from "./subscriptions/page"
-
+import ConsoleVpnDashboardPage from "./dashboard/page"
 describe("ConsoleVpnSubscriptionsPage", () => {
   beforeEach(() => {
     mockListVpnSubscriptions.mockResolvedValue([])
     mockListVpnPackages.mockResolvedValue([])
     mockListMobileDevices.mockRejectedValue(new Error("devices unavailable"))
+    mockEdenSubscriptionsGet.mockResolvedValue({ data: { ok: true, data: [] } })
     localStorage.clear()
   })
 
+  it("offers VPN plans when no access profiles exist", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const view = render(
+      <QueryClientProvider client={queryClient}>
+        <ConsoleVpnProfilesPage />
+      </QueryClientProvider>
+    )
+
+    await waitFor(
+      () => {
+        expect(view.getByText("Access Profiles")).toBeInTheDocument()
+      },
+      { timeout: 10000 }
+    )
+
+    expect(
+      view.getByRole("link", { name: "Browse VPN Plans" })
+    ).toHaveAttribute("href", "/en/console/billing/services/vpn")
+  })
+
   it("renders subscriptions as a table with server details on demand", async () => {
-    mockListVpnSubscriptions.mockResolvedValue([
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    const subData: VpnSubscription[] = [
       {
         id: "sub_1",
         organizationId: "org_1",
@@ -112,13 +164,20 @@ describe("ConsoleVpnSubscriptionsPage", () => {
           },
         ],
       },
-    ])
-
-    const view = render(<ConsoleVpnSubscriptionsPage />)
+    ]
+    mockEdenSubscriptionsGet.mockResolvedValue({
+      data: { ok: true, data: subData },
+    })
+    mockListVpnSubscriptions.mockResolvedValue(subData)
+    const view = render(
+      <QueryClientProvider client={queryClient}>
+        <ConsoleVpnProfilesPage />
+      </QueryClientProvider>
+    )
 
     await waitFor(
       () => {
-        expect(view.getByText("My VPN Subscriptions")).toBeInTheDocument()
+        expect(view.getByText("Access Profiles")).toBeInTheDocument()
       },
       { timeout: 10000 }
     )
@@ -127,13 +186,24 @@ describe("ConsoleVpnSubscriptionsPage", () => {
       view.getByPlaceholderText("Search subscriptions...")
     ).toBeInTheDocument()
     expect(view.getByRole("button", { name: /columns/i })).toBeInTheDocument()
-    expect(view.getByText("VPN Standard")).toBeInTheDocument()
-    expect(view.getByText("2 servers · 2 accounts")).toBeInTheDocument()
-    expect(view.getByRole("link", { name: "View details" })).toHaveAttribute(
+    expect(view.getByRole("link", { name: "VPN Standard" })).toHaveAttribute(
       "href",
       "/console/vpn/subscriptions/sub_1"
     )
+    expect(view.getByText("Location Coverage")).toBeInTheDocument()
+    expect(view.getByRole("button", { name: "Get Config" })).toBeInTheDocument()
   }, 15000)
+  it("forwards legacy subscriptions route to profiles", async () => {
+    try {
+      await ConsoleVpnSubscriptionsPage({
+        params: Promise.resolve({ lang: "en" }),
+      })
+      expect.unreachable("Expected redirect to be thrown")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      expect(message).toContain("REDIRECT:/en/console/vpn/profiles")
+    }
+  })
 })
 describe("ConsoleVpnDashboardPage", () => {
   beforeEach(() => {
@@ -234,59 +304,15 @@ describe("ConsoleVpnDashboardPage", () => {
 })
 
 describe("ConsoleVpnOrderPage", () => {
-  beforeEach(() => {
-    mockListVpnSubscriptions.mockResolvedValue([])
-    mockListVpnPackages.mockResolvedValue([])
-    mockListMobileDevices.mockResolvedValue([])
-  })
-
-  it("renders package cards with comparison", async () => {
-    mockListVpnPackages.mockResolvedValue([
-      {
-        id: "pkg_1",
-        name: "Starter Indonesia",
-        description: "Good for first VPN setup.",
-        price: "100000",
-        currency: "IDR",
-        serverCount: 2,
-        protocolCount: 2,
-        regions: ["Indonesia"],
-        convertedPrice: null,
-        convertedCurrency: null,
-        exchangeRate: null,
-      },
-      {
-        id: "pkg_2",
-        name: "Premium Asia",
-        description: "More coverage across Asia.",
-        price: "250000",
-        currency: "IDR",
-        serverCount: 6,
-        protocolCount: 3,
-        regions: ["Indonesia", "Singapore", "Japan"],
-        convertedPrice: null,
-        convertedCurrency: null,
-        exchangeRate: null,
-      },
-    ])
-
-    const view = render(<ConsoleVpnOrderPage />)
-
-    await waitFor(
-      () => {
-        expect(view.getByText("Order VPN Package")).toBeInTheDocument()
-      },
-      { timeout: 10000 }
-    )
-
-    expect(view.getByText("Recommended for You")).toBeInTheDocument()
-    expect(view.getByText("Protocol Benefits")).toBeInTheDocument()
-    expect(view.getByText("WireGuard")).toBeInTheDocument()
-    expect(view.getByText("OpenVPN")).toBeInTheDocument()
-    expect(view.getByText("Proxy")).toBeInTheDocument()
-    expect(view.getByText("Compare Packages")).toBeInTheDocument()
-    expect(view.getAllByText("Starter Indonesia").length).toBeGreaterThan(0)
-    expect(view.getAllByText("Premium Asia").length).toBeGreaterThan(0)
-    expect(view.getAllByText("Most coverage").length).toBeGreaterThan(0)
+  it("redirects to the billing VPN service catalog", async () => {
+    try {
+      await ConsoleVpnOrderPage({
+        params: Promise.resolve({ lang: "en" }),
+      })
+      expect.unreachable("Expected redirect to be thrown")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      expect(message).toContain("REDIRECT:/en/console/billing/services/vpn")
+    }
   })
 })

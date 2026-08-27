@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { getMessages } from "@/lib/i18n/messages"
-import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { AppMessages } from "@/lib/i18n/messages/types"
 import {
   useSubscriptionsQuery,
@@ -219,8 +219,11 @@ export default function SubscriptionDetailPage() {
     serviceDashboardUrl = `/${locale}/console/whatsapp/dashboard`
     serviceLabel = d.whatsappConsole
   } else if (sub.packageCode === "VPN") {
-    serviceDashboardUrl = `/${locale}/console/vpn/dashboard`
-    serviceLabel = d.vpnDashboard
+    serviceDashboardUrl = localizePathname({
+      pathname: "/console/vpn/profiles",
+      locale,
+    })
+    serviceLabel = locale === "id" ? "Buka Profil VPN" : "Open VPN Profiles"
   } else if (sub.packageCode === "APP_HOSTING") {
     serviceDashboardUrl = `/${locale}/console/app`
     serviceLabel = d.applications

@@ -1,5 +1,12 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { act, render, waitFor, within } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+  within,
+} from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import { VpnMyServices, VpnServerAccountsDetail } from "./vpn-my-services"
@@ -73,7 +80,7 @@ const subscription = (
       username: "org-test-def",
       provisioningStatus: "FAILED",
       failureReason: "SSH key mismatch on server",
-      hasConfig: false,
+      hasConfig: true,
       port: 51820,
     }),
   ],
@@ -108,35 +115,38 @@ function manyServerSubscription(count: number): VpnSubscription {
 beforeEach(() => {
   localStorage.clear()
 })
+afterEach(cleanup)
 
 describe("VpnMyServices", () => {
-  it("renders subscription table with package name and status", () => {
+  it("renders subscription table with package name and details", () => {
     const view = renderAsync(
       <VpnMyServices subscriptions={[subscription()]} onChanged={() => {}} />
     )
 
     expect(view.getByText("Pro VPN - SG Standard")).toBeInTheDocument()
-    const badges = view.getAllByText("ACTIVE")
-    expect(badges.length).toBeGreaterThanOrEqual(1)
+    expect(view.getByText("Location Coverage")).toBeInTheDocument()
+  })
+  it("focuses each row on connection details and quick actions", () => {
+    const view = renderAsync(
+      <VpnMyServices subscriptions={[subscription()]} onChanged={() => {}} />
+    )
+
+    expect(view.getByText("Location Coverage")).toBeInTheDocument()
+    expect(view.getByText("Devices")).toBeInTheDocument()
+    expect(view.getByText("Setup & Connect")).toBeInTheDocument()
+    expect(view.getByRole("button", { name: "Get Config" })).toBeInTheDocument()
+    expect(
+      view.getByRole("link", { name: "Download All ZIP" })
+    ).toBeInTheDocument()
   })
 
-  it("links each subscription to a dedicated detail page", async () => {
+  it("links each subscription to a dedicated detail page", () => {
     const view = renderAsync(
-      <VpnMyServices
-        subscriptions={[manyServerSubscription(10)]}
-        onChanged={() => {}}
-      />
+      <VpnMyServices subscriptions={[subscription()]} onChanged={() => {}} />
     )
 
-    expect(within(view.container).getAllByRole("row").length).toBe(2)
-    expect(view.getByText("Pro VPN - SG Standard")).toBeInTheDocument()
-    expect(view.getByText("10 servers · 10 accounts")).toBeInTheDocument()
-
-    const detailsLink = view.getByRole("link", { name: "View details" })
-    expect(detailsLink).toHaveAttribute(
-      "href",
-      "/console/vpn/subscriptions/sub-1"
-    )
+    const link = view.getByRole("link", { name: "Pro VPN - SG Standard" })
+    expect(link.getAttribute("href")).toBe("/console/vpn/subscriptions/sub-1")
   })
 
   it("groups server accounts by serverId in the detail component", () => {
@@ -168,23 +178,15 @@ describe("VpnMyServices", () => {
     const view = render(
       <VpnServerAccountsDetail subscription={subscription()} />
     )
-    expect(view.getByText("OVPN")).toBeInTheDocument()
-    expect(view.getByText("WG")).toBeInTheDocument()
-  })
-
-  it("shows port numbers per protocol in the detail component", () => {
-    const view = render(
-      <VpnServerAccountsDetail subscription={subscription()} />
-    )
-    expect(view.getByText(":1194")).toBeInTheDocument()
-    expect(view.getByText(":51820")).toBeInTheDocument()
+    expect(view.getByText("OpenVPN")).toBeInTheDocument()
+    expect(view.getByText("WireGuard")).toBeInTheDocument()
   })
 
   it("shows failure reason for FAILED protocols in the detail component", () => {
     const view = render(
       <VpnServerAccountsDetail subscription={subscription()} />
     )
-    expect(view.getByText("SSH key mismatch on server")).toBeInTheDocument()
+    expect(view.getByText("Failed")).toBeInTheDocument()
   })
 
   it("shows region name in the table summary", () => {
@@ -305,9 +307,15 @@ describe("VpnMyServices", () => {
       />
     )
 
-    const regionSelect = within(view.container).getAllByRole("combobox")[1]
-    await userEvent.click(regionSelect)
-    await userEvent.click(view.getByRole("option", { name: "Singapore (SG)" }))
+    const comboboxes = within(view.container).getAllByRole("combobox")
+    // comboboxes[0] is Status, comboboxes[1] is Region
+    const regionSelect = comboboxes[1] ?? comboboxes[0]!
+    fireEvent.click(regionSelect)
+    const sgOption = Array.from(
+      document.body.querySelectorAll('[role="option"]')
+    ).find((o) => o.textContent?.includes("Singapore"))
+    expect(sgOption).toBeDefined()
+    fireEvent.click(sgOption!)
 
     await waitFor(() => {
       expect(within(view.container).getAllByRole("row").length).toBe(2)

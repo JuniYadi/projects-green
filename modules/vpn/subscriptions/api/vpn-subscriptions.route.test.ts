@@ -45,6 +45,7 @@ const subscription = {
   id: "sub_1",
   organizationId: "org_1",
   packageId: "pkg_1",
+  packageName: "Standard VPN",
   status: "ACTIVE",
   priceLocked: new Prisma.Decimal("3240"),
   currency: "IDR",
@@ -340,5 +341,49 @@ describe("VPN subscription routes", () => {
       )
       expect(response.status).toBe(404)
     })
+  })
+  it("downloads all active OpenVPN and WireGuard configs as a ZIP", async () => {
+    const service = {
+      getForOrganization: mock().mockResolvedValue({
+        ...subscription,
+        serverAccounts: [
+          {
+            ...subscription.serverAccounts[0],
+            configEncrypted:
+              '{"encrypted":"c7AZT3KoMnKUcZt2xnGQlqjE8w==","iv":"b3EM9sLsx8hJK2Lpm+lzwg==","tag":"VLfxCavUeBS2LiOcCJOLmw=="}',
+          },
+          {
+            ...subscription.serverAccounts[0],
+            id: "sa_2",
+            protocol: "WIREGUARD",
+            configEncrypted:
+              '{"encrypted":"c7AZT3KoMnKUcZt2xnGQlqjE8w==","iv":"b3EM9sLsx8hJK2Lpm+lzwg==","tag":"VLfxCavUeBS2LiOcCJOLmw=="}',
+            server: {
+              ...subscription.serverAccounts[0].server,
+              hostname: "us01.vpn.example.com",
+            },
+          },
+        ],
+      }),
+    }
+    const app = new Elysia().use(
+      createVpnSubscriptionRoutes({
+        authenticate: async () => ({
+          organizationId: "org_1",
+          user: { id: "user_1" },
+        }),
+        service: service as unknown as VpnSubscriptionService,
+      })
+    )
+
+    const response = await app.handle(
+      new Request("http://localhost/vpn/subscriptions/sub_1/download-all")
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("content-type")).toBe("application/zip")
+    expect(response.headers.get("content-disposition")).toContain("attachment;")
+    expect(response.headers.get("content-disposition")).toContain(".zip")
+    expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(22)
   })
 })

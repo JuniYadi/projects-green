@@ -212,6 +212,7 @@ describe("resolveSidebarMenu", () => {
     })
 
     const operations = navMain.find((item) => item.title === "VPN Operations")
+    expect(navMain.map((item) => item.title)).not.toContain("Packages")
     expect(operations?.url).toBe("/en/portal/vpn/subscriptions")
     expect(operations?.isActive).toBe(true)
   })
@@ -637,23 +638,26 @@ describe("resolveSidebarMenu", () => {
     )
   })
 
-  it("includes order package in console vpn context", () => {
+  it("shows access profiles instead of the order flow in console vpn context", () => {
     const { navMain, navMainLabel } = resolveSidebarMenu({
       surface: "console",
-      pathname: "/console/vpn/order",
+      pathname: "/console/vpn/profiles",
       locale: "en",
     })
 
     expect(navMainLabel).toBe("VPN")
     expect(navMain.map((item) => item.title)).toEqual([
       "Dashboard",
-      "Order Package",
-      "My Subscriptions",
+      "Access Profiles",
       "Devices",
     ])
     expect(
-      navMain.find((item) => item.title === "Order Package")?.isActive
+      navMain.find((item) => item.title === "Access Profiles")?.isActive
     ).toBe(true)
+    expect(navMain.find((item) => item.title === "Access Profiles")?.url).toBe(
+      "/en/console/vpn/profiles"
+    )
+    expect(navMain.map((item) => item.title)).not.toContain("Order Package")
   })
   it("returns one portal orgs link and keeps detail active", () => {
     const { navMain, projects, navMainLabel } = resolveSidebarMenu({

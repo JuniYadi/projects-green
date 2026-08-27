@@ -9,6 +9,7 @@ import {
   decryptVpnConfig,
   decryptProxyPassword,
 } from "@/modules/vpn/vpn-crypto"
+import { bundleVpnConfigs } from "../vpn-zip-bundle.service"
 
 import { logAuditEvent } from "@/lib/audit.service"
 import {
@@ -250,6 +251,53 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
         })
       }
     )
+    .get("/vpn/subscriptions/:id/download-all", async ({ params, set }) => {
+      const ctx = await resolveOrg(set)
+      if ("error" in ctx) return ctx.error
+      const sub = await service.getForOrganization(
+        ctx.organizationId,
+        params.id
+      )
+      if (!sub) return notFound(set)
+      if (sub.status !== "ACTIVE") {
+        set.status = 403
+        return {
+          ok: false as const,
+          error: "SUBSCRIPTION_NOT_ACTIVE" as const,
+          message:
+            "Config download is only available for active subscriptions.",
+        }
+      }
+      const accounts = sub.serverAccounts.filter(
+        (account) =>
+          account.provisioningStatus === "ACTIVE" &&
+          Boolean(account.configEncrypted) &&
+          account.protocol !== "PROXY"
+      )
+      const zip = bundleVpnConfigs(
+        accounts.map((account) => ({
+          serverHostname: account.server.hostname,
+          protocol: account.protocol as "OPENVPN" | "WIREGUARD",
+          configEncrypted: account.configEncrypted!,
+        }))
+      )
+      const rawName =
+        ("packageName" in sub && typeof sub.packageName === "string"
+          ? sub.packageName
+          : "") || "configs"
+      const nameSlug =
+        rawName
+          .toLowerCase()
+          .replace(/[^a-z0-9_-]+/g, "-")
+          .replace(/^-+|-+$/g, "") || "configs"
+      const filename = `vpn-${nameSlug}-${sub.id.slice(-6)}.zip`
+      return new Response(new Uint8Array(zip), {
+        headers: {
+          "content-type": "application/zip",
+          "content-disposition": `attachment; filename="${filename}"`,
+        },
+      })
+    })
     .get(
       "/vpn/subscriptions/:id/servers/:saId/credentials",
       async ({ params, set }) => {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -66,6 +66,20 @@ function replaceTemplate(template: string, values: Record<string, string>) {
   )
 }
 
+// Filter internal provisioning configuration keys from commercial benefits view
+const INTERNAL_RESOURCE_KEYS = new Set([
+  "provisioningFields",
+  "provisioningType",
+  "serverIds",
+  "allowedProtocols",
+  "customUsername",
+  "customUsernameAllowed",
+  "clusterId",
+  "compute",
+  "networking",
+  "requiredDependencies",
+])
+
 export default function CheckoutPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
@@ -101,11 +115,58 @@ export default function CheckoutPage() {
   const [profilePictureUrl, setProfilePictureUrl] = useState("")
 
   const resources = (quotePreview?.resources ?? {}) as Record<string, unknown>
-  const dynamicFields: ProvisioningFieldDef[] = Array.isArray(
-    resources.provisioningFields
+  const packageCode = quotePreview?.packageCode?.toUpperCase()
+
+  const flatFilteredResources = Object.fromEntries(
+    Object.entries(resources).filter(
+      ([key]) => !INTERNAL_RESOURCE_KEYS.has(key)
+    )
   )
-    ? (resources.provisioningFields as ProvisioningFieldDef[])
-    : []
+  const features =
+    resources.features &&
+    typeof resources.features === "object" &&
+    !Array.isArray(resources.features)
+      ? (resources.features as Record<string, unknown>)
+      : flatFilteredResources
+  const provisioning =
+    resources.provisioning &&
+    typeof resources.provisioning === "object" &&
+    !Array.isArray(resources.provisioning)
+      ? (resources.provisioning as Record<string, unknown>)
+      : resources
+
+  const rawDynamicFields: ProvisioningFieldDef[] = Array.isArray(
+    provisioning.provisioningFields
+  )
+    ? (provisioning.provisioningFields as ProvisioningFieldDef[])
+    : Array.isArray(resources.provisioningFields)
+      ? (resources.provisioningFields as ProvisioningFieldDef[])
+      : []
+
+  // Auto-inject VPN Custom Username input when plan has customUsername: true
+  const dynamicFields = useMemo(() => {
+    const list = [...rawDynamicFields]
+    if (
+      (provisioning.customUsername === true ||
+        provisioning.customUsernameAllowed === true) &&
+      !list.some((f) => f.name === "username")
+    ) {
+      list.unshift({
+        id: "vpn-custom-username",
+        name: "username",
+        label: "VPN Username",
+        type: "text",
+        required: false,
+        placeholder: "e.g. my-vpn-user (optional)",
+        helperText: "Leave blank to auto-generate a secure username.",
+      })
+    }
+    return list
+  }, [
+    rawDynamicFields,
+    provisioning.customUsername,
+    provisioning.customUsernameAllowed,
+  ])
 
   const showDynamicForm = dynamicFields.length > 0
   const hasMissingRequiredFields = dynamicFields.some((f) => {
@@ -332,22 +393,20 @@ export default function CheckoutPage() {
               </CardHeader>
               <CardContent className="space-y-4 pt-4">
                 {/* Plan Resources & Included Benefits */}
-                {Object.keys(resources).filter(
+                {Object.keys(features).filter(
                   (k) =>
-                    k !== "provisioningFields" &&
-                    typeof resources[k] !== "object" &&
-                    resources[k] !== null &&
-                    resources[k] !== undefined
+                    typeof features[k] !== "object" &&
+                    features[k] !== null &&
+                    features[k] !== undefined
                 ).length > 0 && (
                   <div className="space-y-2">
                     <Label className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                       {t.includedResources}
                     </Label>
                     <div className="grid gap-2 sm:grid-cols-2">
-                      {Object.entries(resources)
+                      {Object.entries(features)
                         .filter(
-                          ([name, value]) =>
-                            name !== "provisioningFields" &&
+                          ([, value]) =>
                             typeof value !== "object" &&
                             value !== null &&
                             value !== undefined

@@ -18,6 +18,7 @@ const mockPrisma = {
     update: mock(),
   },
   vpnServerAccount: { create: mock(), update: mock() },
+  serviceProvisionAccount: { create: mock(), update: mock() },
   whatsappDevice: { findMany: mock(), update: mock() },
 }
 
@@ -85,6 +86,9 @@ beforeEach(() => {
   mockPrisma.vpnServerAccount.create
     .mockResolvedValueOnce({ id: "account-openvpn" })
     .mockResolvedValueOnce({ id: "account-wireguard" })
+  mockPrisma.serviceProvisionAccount.create
+    .mockResolvedValueOnce({ id: "provision-openvpn" })
+    .mockResolvedValueOnce({ id: "provision-wireguard" })
   mockPrisma.vpnServerAccount.update.mockResolvedValue({
     id: "account-updated",
   })
@@ -131,7 +135,55 @@ describe("concrete billing fulfillment adapters", () => {
       })
     )
     expect(mockPrisma.vpnServerAccount.create).toHaveBeenCalledTimes(2)
+    expect(mockPrisma.serviceProvisionAccount.create).toHaveBeenCalledTimes(2)
+    expect(mockPrisma.serviceProvisionAccount.create).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          serviceType: "VPN",
+          status: "PENDING",
+          targetId: "server-1",
+        }),
+      })
+    )
     expect(dispatch).toHaveBeenCalledTimes(2)
+  })
+  it("reads VPN configuration from the provisioning resource partition", async () => {
+    mockPrisma.servicePricing.findUnique.mockResolvedValue({
+      ...pricing,
+      servicePlan: {
+        ...pricing.servicePlan,
+        resources: {
+          features: { label: "Commercial plan" },
+          provisioning: { allowedProtocols: ["OPENVPN"] },
+        },
+      },
+    })
+    const adapter = createVpnFulfillmentAdapter(
+      mockPrisma as unknown as PrismaClient,
+      { username: () => "vpn-user", dispatch }
+    )
+
+    await adapter.create({
+      orderId: "order-partitioned",
+      organizationId: "org-1",
+      pricingId: "pricing-1",
+      packageCode: "VPN",
+      planId: "plan-1",
+      quantity: decimal("1"),
+      unitPrice: decimal("100"),
+      currency: "IDR",
+      periodStart: new Date("2026-08-01T00:00:00Z"),
+      periodEnd: new Date("2026-09-01T00:00:00Z"),
+      metadata: {},
+    })
+
+    expect(mockPrisma.vpnServerAccount.create).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.vpnServerAccount.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ protocol: "OPENVPN" }),
+      })
+    )
   })
   it("rejects a subscription id owned by another organization", async () => {
     mockPrisma.serviceSubscription.findUnique.mockResolvedValue({
