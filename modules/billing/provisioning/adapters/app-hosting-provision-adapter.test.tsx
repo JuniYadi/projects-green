@@ -1,6 +1,5 @@
-import { describe, expect, it, mock } from "bun:test"
-import { fireEvent, render } from "@testing-library/react"
-
+import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { cleanup, fireEvent, render } from "@testing-library/react"
 import {
   APP_HOSTING_DEPENDENCIES,
   AppHostingPlanConfigComponent,
@@ -14,6 +13,10 @@ import {
 } from "./app-hosting-provision-adapter"
 
 describe("AppHostingProvisionAdapter", () => {
+  beforeEach(() => {
+    cleanup()
+  })
+
   it("exposes default config and blueprint with updated defaults", () => {
     expect(AppHostingProvisionAdapter.id).toBe("APP_HOSTING")
     expect(AppHostingProvisionAdapter.name).toBe("App Hosting")
