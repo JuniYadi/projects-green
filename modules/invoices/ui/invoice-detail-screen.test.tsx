@@ -1,7 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import { useRouter, usePathname, useSearchParams } from "next/navigation"
-import { fireEvent, render, waitFor } from "@testing-library/react"
 
+const mockRouterRefresh = mock(() => {})
+const mockUseRouter = mock(() => ({
+  refresh: mockRouterRefresh,
+}))
+const mockUsePathname = mock(() => "/en/console/invoices/inv_1")
+const mockUseSearchParams = mock(() => new URLSearchParams())
+
+mock.module("next/navigation", () => ({
+  useRouter: mockUseRouter,
+  usePathname: mockUsePathname,
+  useSearchParams: mockUseSearchParams,
+}))
+
+import { fireEvent, render, waitFor } from "@testing-library/react"
 import { InvoiceDetailScreen } from "@/modules/invoices/ui/invoice-detail-screen"
 
 const originalFetch = globalThis.fetch
@@ -16,19 +28,13 @@ const jsonResponse = (body: unknown, status = 200) => {
 }
 
 describe("InvoiceDetailScreen", () => {
-  let mockRouterRefresh: ReturnType<typeof mock>
-
   beforeEach(() => {
-    mockRouterRefresh = mock(() => {})
-    ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
+    mockRouterRefresh.mockClear()
+    mockUseRouter.mockReturnValue({
       refresh: mockRouterRefresh,
     })
-    ;(usePathname as ReturnType<typeof mock>).mockReturnValue(
-      "/en/console/invoices/inv_1"
-    )
-    ;(useSearchParams as ReturnType<typeof mock>).mockReturnValue(
-      new URLSearchParams()
-    )
+    mockUsePathname.mockReturnValue("/en/console/invoices/inv_1")
+    mockUseSearchParams.mockReturnValue(new URLSearchParams())
 
     globalThis.fetch = mock(
       async (input: RequestInfo | URL, init?: RequestInit) => {

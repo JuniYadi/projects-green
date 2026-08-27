@@ -49,7 +49,7 @@ describe("invoice PDF", () => {
       {
         bankName: "Bank Central Asia",
         bankCode: "BCA",
-        accountName: "PFNApp Technologies",
+        accountName: "PT. Premium Fast Network",
         accountNumber: "1234567890",
         swiftCode: null,
       },
