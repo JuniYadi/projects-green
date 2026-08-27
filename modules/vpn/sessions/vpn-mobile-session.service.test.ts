@@ -3,14 +3,18 @@ import { VpnMobileSessionService } from "./vpn-mobile-session.service"
 
 describe("VpnMobileSessionService", () => {
   const fixedNow = new Date("2026-08-28T12:00:00.000Z")
-  const mockCreate = mock(() => Promise.resolve({}))
-  const mockFindFirst = mock(() => Promise.resolve(null))
-  const mockFindUnique = mock(() => Promise.resolve(null))
-  const mockFindMany = mock(() => Promise.resolve([]))
-  const mockUpdate = mock(() => Promise.resolve({}))
-  const mockUpdateMany = mock(() => Promise.resolve({ count: 0 }))
+
+  const mockCreate = mock(() => Promise.resolve({} as unknown as never))
+  const mockFindFirst = mock(() => Promise.resolve(null as unknown as never))
+  const mockFindUnique = mock(() => Promise.resolve(null as unknown as never))
+  const mockFindMany = mock(() => Promise.resolve([] as unknown as never))
+  const mockUpdate = mock(() => Promise.resolve({} as unknown as never))
+  const mockUpdateMany = mock(() =>
+    Promise.resolve({ count: 0 } as unknown as never)
+  )
   const mockCount = mock(() => Promise.resolve(0))
-  const mockGroupBy = mock(() => Promise.resolve([]))
+  const mockGroupBy = mock(() => Promise.resolve([] as unknown as never))
+
   const mockPrisma = {
     vpnMobileSession: {
       create: mockCreate,
@@ -51,7 +55,7 @@ describe("VpnMobileSessionService", () => {
         serverId: "srv-1",
         startedAt: fixedNow,
         lastPingAt: fixedNow,
-      })
+      } as unknown as never)
 
       const session = await service.create({
         deviceId: "dev-1",
@@ -136,7 +140,7 @@ describe("VpnMobileSessionService", () => {
 
   describe("close", () => {
     it("returns null if session does not exist", async () => {
-      mockFindUnique.mockResolvedValueOnce(null)
+      mockFindUnique.mockResolvedValueOnce(null as unknown as never)
 
       const res = await service.close("sess-nonexistent")
 
@@ -148,12 +152,12 @@ describe("VpnMobileSessionService", () => {
         status: "ACTIVE",
         txBytes: BigInt(0),
         rxBytes: BigInt(0),
-      })
+      } as unknown as never)
       mockUpdate.mockResolvedValueOnce({
         id: "sess-1",
         status: "CLOSED",
         endedAt: fixedNow,
-      })
+      } as unknown as never)
 
       const res = await service.close("sess-1", {
         txBytes: 1024,
@@ -182,11 +186,11 @@ describe("VpnMobileSessionService", () => {
         status: "CLOSED",
         txBytes: BigInt(1000),
         rxBytes: BigInt(2000),
-      })
+      } as unknown as never)
       mockUpdate.mockResolvedValueOnce({
         id: "sess-1",
         status: "CLOSED",
-      })
+      } as unknown as never)
 
       const res = await service.close("sess-1", {
         txBytes: 500,
@@ -227,7 +231,7 @@ describe("VpnMobileSessionService", () => {
           server: { name: "SG-1", region: { name: "Singapore" } },
           serverAccount: { protocol: "WIREGUARD" },
         },
-      ])
+      ] as unknown as never)
 
       const res = await service.list({
         status: "ACTIVE",
@@ -254,7 +258,7 @@ describe("VpnMobileSessionService", () => {
           server: { name: "SG-1", region: { name: "Singapore" } },
           serverAccount: { protocol: "WIREGUARD" },
         },
-      ])
+      ] as unknown as never)
 
       const cursorJson = JSON.stringify({
         startedAt: "2026-08-28T10:00:00.000Z",
@@ -273,7 +277,7 @@ describe("VpnMobileSessionService", () => {
 
   describe("cleanStale", () => {
     it("updates stale active sessions whose lastPingAt exceeded threshold", async () => {
-      mockUpdateMany.mockResolvedValueOnce({ count: 3 })
+      mockUpdateMany.mockResolvedValueOnce({ count: 3 } as unknown as never)
 
       const count = await service.cleanStale(15)
 
@@ -302,6 +306,7 @@ describe("VpnMobileSessionService", () => {
         .mockResolvedValueOnce([
           { subscriptionId: "sub-1", _count: { id: 6 } },
         ] as unknown as never)
+
       const stats = await service.getStats("org-1")
 
       expect(stats).toEqual({
