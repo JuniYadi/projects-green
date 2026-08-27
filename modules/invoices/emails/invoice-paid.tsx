@@ -11,142 +11,86 @@ import {
   Text,
 } from "@react-email/components"
 import { getEmailBaseUrl } from "@/lib/email-url"
-
-interface InvoicePaidEmailProps {
-  invoiceNumber: string
-  amount: string
-  currency: string
-  status: string
-  issuedAt: string
-  dueAt: string
-  periodStart: string
-  periodEnd: string
-}
+import type { InvoicePaidEmailProps } from "./types"
+import {
+  InvoiceCostBreakdown,
+  InvoiceItemsList,
+  InvoiceSummarySection,
+  styles,
+} from "./invoice-components"
 
 export const InvoicePaidEmail = ({
   invoiceNumber,
   amount,
+  status = "Paid",
+  issuedAt,
+  dueAt,
+  periodStart,
+  periodEnd,
+  paidAt,
+  paymentMethod,
+  subtotalAmount,
+  taxAmount,
+  discountAmount,
+  lineItems,
+  recipientEmail,
+  organizationName,
 }: InvoicePaidEmailProps) => {
   const invoiceUrl = `${getEmailBaseUrl()}/console/invoices/${invoiceNumber}`
 
   return (
     <Html>
       <Head />
-      <Preview>Payment Received - Invoice {invoiceNumber}</Preview>
+      <Preview>
+        Payment Receipt - Invoice {invoiceNumber} ({amount})
+      </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
-          <Heading style={styles.heading}>Payment Confirmed</Heading>
+          <Heading style={styles.heading}>Payment Receipt</Heading>
 
           <Text style={styles.intro}>
-            Thank you! We have received your payment for Invoice {invoiceNumber}
-            . Your account is in good standing.
+            Thank you! We have successfully received and confirmed your payment
+            for Invoice {invoiceNumber}. Your account is active and in good
+            standing.
           </Text>
 
-          <Section style={styles.invoiceInfo}>
-            <Heading as="h3" style={styles.invoiceNumber}>
-              {invoiceNumber}
-            </Heading>
+          <InvoiceSummarySection
+            invoiceNumber={invoiceNumber}
+            status={status}
+            issuedAt={issuedAt}
+            dueAt={dueAt}
+            periodStart={periodStart}
+            periodEnd={periodEnd}
+            paidAt={paidAt}
+            paymentMethod={paymentMethod}
+            recipientEmail={recipientEmail}
+            organizationName={organizationName}
+          />
 
-            <Text style={styles.amount}>{amount}</Text>
+          <InvoiceItemsList lineItems={lineItems} />
 
-            <Text style={styles.statusBadge}>PAID</Text>
-          </Section>
-
-          <Hr style={styles.divider} />
+          <InvoiceCostBreakdown
+            amount={amount}
+            subtotalAmount={subtotalAmount}
+            taxAmount={taxAmount}
+            discountAmount={discountAmount}
+            totalLabel="Total Paid"
+          />
 
           <Section style={styles.actions}>
             <Button href={invoiceUrl} style={styles.button}>
-              View Receipt
+              View Receipt in Console
             </Button>
           </Section>
 
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            Thank you for your business. If you have any questions, please
-            contact our billing team.
+            Thank you for choosing our services. If you need any assistance,
+            feel free to reply or contact support.
           </Text>
         </Container>
       </Body>
     </Html>
   )
-}
-
-const styles = {
-  body: {
-    backgroundColor: "#f6f9fc",
-    fontFamily:
-      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-  },
-  container: {
-    backgroundColor: "#ffffff",
-    borderRadius: "8px",
-    margin: "40px auto",
-    padding: "40px",
-    maxWidth: "600px",
-  },
-  heading: {
-    color: "#28a745",
-    fontSize: "24px",
-    fontWeight: "600" as const,
-    margin: "0 0 24px 0",
-  },
-  intro: {
-    color: "#525f7f",
-    fontSize: "16px",
-    lineHeight: "24px",
-    margin: "0 0 24px 0",
-  },
-  invoiceInfo: {
-    backgroundColor: "#e8f5e9",
-    borderRadius: "6px",
-    padding: "24px",
-    margin: "0 0 24px 0",
-  },
-  invoiceNumber: {
-    color: "#1a1a1a",
-    fontSize: "20px",
-    fontWeight: "600" as const,
-    margin: "0 0 16px 0",
-  },
-  amount: {
-    color: "#1a1a1a",
-    fontSize: "32px",
-    fontWeight: "700" as const,
-    margin: "0 0 16px 0",
-  },
-  statusBadge: {
-    backgroundColor: "#28a745",
-    color: "#ffffff",
-    fontSize: "14px",
-    fontWeight: "600" as const,
-    padding: "4px 12px",
-    borderRadius: "4px",
-    display: "inline-block",
-    margin: "0",
-  },
-  divider: {
-    borderColor: "#e6ebf1",
-    borderWidth: "1px",
-    margin: "24px 0",
-  },
-  actions: {
-    textAlign: "center" as const,
-    margin: "24px 0",
-  },
-  button: {
-    backgroundColor: "#28a745",
-    borderRadius: "4px",
-    color: "#ffffff",
-    fontSize: "16px",
-    fontWeight: "600" as const,
-    padding: "12px 24px",
-    textDecoration: "none",
-  },
-  footer: {
-    color: "#8898aa",
-    fontSize: "14px",
-    lineHeight: "20px",
-    margin: "0",
-  },
 }

@@ -263,5 +263,45 @@ describe("invoiceEmailService", () => {
       expect(data.issuedAt).toBe("May 1, 2026")
       expect(data.dueAt).toBe("May 15, 2026")
     })
+
+    it("maps line items and cost breakdown when detail is provided", async () => {
+      const module = await import("./email.service")
+      const detailInvoice = {
+        ...mockInvoice,
+        subtotalAmount: 140,
+        taxAmount: 10,
+        discountAmount: 0,
+        periodStart: "2026-05-01T00:00:00.000Z",
+        periodEnd: "2026-05-31T00:00:00.000Z",
+        paidAt: "2026-05-10T00:00:00.000Z",
+        paymentMethod: "Bank Transfer",
+        type: "SUBSCRIPTION",
+        lineItems: [
+          {
+            id: "li-1",
+            description: "VPN Plan",
+            quantity: 1,
+            unitPrice: 140,
+            amount: 140,
+            currency: "USD",
+          },
+        ],
+      }
+
+      const data = module.getInvoiceEmailData(
+        detailInvoice,
+        "admin@org.com",
+        "Acme Corp"
+      )
+
+      expect(data.subtotalAmount).toBe("$140.00")
+      expect(data.taxAmount).toBe("$10.00")
+      expect(data.recipientEmail).toBe("admin@org.com")
+      expect(data.organizationName).toBe("Acme Corp")
+      expect(data.lineItems).toBeDefined()
+      expect(data.lineItems?.[0].description).toBe("VPN Plan")
+      expect(data.paymentMethod).toBe("Bank Transfer")
+      expect(data.paidAt).toBe("May 10, 2026")
+    })
   })
 })

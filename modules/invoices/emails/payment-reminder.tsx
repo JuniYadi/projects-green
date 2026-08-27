@@ -11,142 +11,82 @@ import {
   Text,
 } from "@react-email/components"
 import { getEmailBaseUrl } from "@/lib/email-url"
-
-interface PaymentReminderEmailProps {
-  invoiceNumber: string
-  amount: string
-  currency: string
-  status: string
-  issuedAt: string
-  dueAt: string
-  periodStart: string
-  periodEnd: string
-}
+import type { PaymentReminderEmailProps } from "./types"
+import {
+  InvoiceCostBreakdown,
+  InvoiceItemsList,
+  InvoiceSummarySection,
+  styles,
+} from "./invoice-components"
 
 export const PaymentReminderEmail = ({
   invoiceNumber,
   amount,
   dueAt,
+  status,
+  issuedAt,
+  periodStart,
+  periodEnd,
+  subtotalAmount,
+  taxAmount,
+  discountAmount,
+  lineItems,
+  recipientEmail,
+  organizationName,
 }: PaymentReminderEmailProps) => {
   const invoiceUrl = `${getEmailBaseUrl()}/console/invoices/${invoiceNumber}`
 
   return (
     <Html>
       <Head />
-      <Preview>Reminder: Invoice {invoiceNumber} Due Soon</Preview>
+      <Preview>
+        Payment Reminder: Invoice {invoiceNumber} is due on {dueAt} ({amount})
+      </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
           <Heading style={styles.heading}>Payment Reminder</Heading>
 
           <Text style={styles.intro}>
-            This is a friendly reminder that Invoice {invoiceNumber} is due
-            soon. Please ensure payment is made by the due date to avoid any
-            service interruptions.
+            This is a friendly reminder that Invoice {invoiceNumber} is due for
+            payment on <strong>{dueAt}</strong>. Please ensure timely payment to
+            avoid any service interruption.
           </Text>
 
-          <Section style={styles.invoiceInfo}>
-            <Heading as="h3" style={styles.invoiceNumber}>
-              {invoiceNumber}
-            </Heading>
+          <InvoiceSummarySection
+            invoiceNumber={invoiceNumber}
+            status={status}
+            issuedAt={issuedAt}
+            dueAt={dueAt}
+            periodStart={periodStart}
+            periodEnd={periodEnd}
+            recipientEmail={recipientEmail}
+            organizationName={organizationName}
+          />
 
-            <Text style={styles.amount}>{amount}</Text>
+          <InvoiceItemsList lineItems={lineItems} />
 
-            <Text style={styles.meta}>
-              <strong>Due Date:</strong> {dueAt}
-            </Text>
-          </Section>
-
-          <Hr style={styles.divider} />
+          <InvoiceCostBreakdown
+            amount={amount}
+            subtotalAmount={subtotalAmount}
+            taxAmount={taxAmount}
+            discountAmount={discountAmount}
+            totalLabel="Amount Due"
+          />
 
           <Section style={styles.actions}>
             <Button href={invoiceUrl} style={styles.button}>
-              Pay Now
+              Pay Invoice Now
             </Button>
           </Section>
 
           <Hr style={styles.divider} />
 
           <Text style={styles.footer}>
-            If you have already made payment, please disregard this reminder.
-            Contact us if you have any questions.
+            If you have already processed this payment, please disregard this
+            reminder.
           </Text>
         </Container>
       </Body>
     </Html>
   )
-}
-
-const styles = {
-  body: {
-    backgroundColor: "#f6f9fc",
-    fontFamily:
-      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-  },
-  container: {
-    backgroundColor: "#ffffff",
-    borderRadius: "8px",
-    margin: "40px auto",
-    padding: "40px",
-    maxWidth: "600px",
-  },
-  heading: {
-    color: "#1a1a1a",
-    fontSize: "24px",
-    fontWeight: "600" as const,
-    margin: "0 0 24px 0",
-  },
-  intro: {
-    color: "#525f7f",
-    fontSize: "16px",
-    lineHeight: "24px",
-    margin: "0 0 24px 0",
-  },
-  invoiceInfo: {
-    backgroundColor: "#fff8e6",
-    borderRadius: "6px",
-    padding: "24px",
-    margin: "0 0 24px 0",
-  },
-  invoiceNumber: {
-    color: "#1a1a1a",
-    fontSize: "20px",
-    fontWeight: "600" as const,
-    margin: "0 0 16px 0",
-  },
-  amount: {
-    color: "#1a1a1a",
-    fontSize: "32px",
-    fontWeight: "700" as const,
-    margin: "0 0 16px 0",
-  },
-  meta: {
-    color: "#525f7f",
-    fontSize: "14px",
-    lineHeight: "20px",
-    margin: "8px 0",
-  },
-  divider: {
-    borderColor: "#e6ebf1",
-    borderWidth: "1px",
-    margin: "24px 0",
-  },
-  actions: {
-    textAlign: "center" as const,
-    margin: "24px 0",
-  },
-  button: {
-    backgroundColor: "#f5a623",
-    borderRadius: "4px",
-    color: "#ffffff",
-    fontSize: "16px",
-    fontWeight: "600" as const,
-    padding: "12px 24px",
-    textDecoration: "none",
-  },
-  footer: {
-    color: "#8898aa",
-    fontSize: "14px",
-    lineHeight: "20px",
-    margin: "0",
-  },
 }
