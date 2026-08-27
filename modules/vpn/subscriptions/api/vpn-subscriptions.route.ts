@@ -281,10 +281,11 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
           configEncrypted: account.configEncrypted!,
         }))
       )
+      const filename = `vpn-${sub.packageName.toLowerCase().replace(/[^a-z0-9_-]+/g, "-")}-${sub.id.slice(-6)}.zip`
       return new Response(new Uint8Array(zip), {
         headers: {
           "content-type": "application/zip",
-          "content-disposition": 'attachment; filename="vpn-configs.zip"',
+          "content-disposition": `attachment; filename="${filename}"`,
         },
       })
     })

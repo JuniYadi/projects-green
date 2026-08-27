@@ -45,6 +45,7 @@ const subscription = {
   id: "sub_1",
   organizationId: "org_1",
   packageId: "pkg_1",
+  packageName: "Standard VPN",
   status: "ACTIVE",
   priceLocked: new Prisma.Decimal("3240"),
   currency: "IDR",
@@ -381,9 +382,8 @@ describe("VPN subscription routes", () => {
 
     expect(response.status).toBe(200)
     expect(response.headers.get("content-type")).toBe("application/zip")
-    expect(response.headers.get("content-disposition")).toBe(
-      'attachment; filename="vpn-configs.zip"'
-    )
+    expect(response.headers.get("content-disposition")).toContain("attachment;")
+    expect(response.headers.get("content-disposition")).toContain(".zip")
     expect((await response.arrayBuffer()).byteLength).toBeGreaterThan(22)
   })
 })
