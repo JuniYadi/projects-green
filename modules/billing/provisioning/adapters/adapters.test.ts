@@ -29,10 +29,10 @@ describe("built-in provision adapters", () => {
       customUsername: false,
     })
     expect(DEFAULT_APP_HOSTING_PLAN_CONFIG).toEqual({
-      cpu: 1,
-      memory: 512,
-      storage: 10,
-      maxCustomDomains: 1,
+      cpu: 1000,
+      memory: 1024,
+      storage: 20,
+      maxCustomDomains: 3,
       wildcard: false,
       requiredDependencies: [],
     })

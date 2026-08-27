@@ -356,6 +356,24 @@ enum DeploySource {
   MANUAL
 }
 
+enum AppTemplateCategory {
+  AI
+  AUTOMATION
+  CMS
+  DATABASE
+  DEVELOPER_TOOLS
+  ANALYTICS
+  UTILITIES
+}
+
+enum AppTemplateVisibility {
+  PRIVATE
+  PENDING_REVIEW
+  PUBLIC
+  REJECTED
+  UNLISTED
+}
+
 // DetectorRule is used by the AI framework detection engine to store
 // governance rules that influence classification and build recommendations.
 model DetectorRule {
@@ -432,6 +450,7 @@ model ApplicationStack {
   buildCommand           String?
   dockerfileDetected     Boolean      @default(false)
   resourcePlanId         String?
+  templateId             String?
   clusterId              String?
   billingMode            String?      @default("PAYG")
   hourlyCost             Decimal?     @db.Decimal(10, 4)
@@ -451,12 +470,45 @@ model ApplicationStack {
   cluster              AppHostingCluster?          @relation(fields: [clusterId], references: [id], onDelete: SetNull)
   domains              ApplicationDomain[]
   managedStock         AppManagedStock?
+  template             AppTemplate?                @relation(fields: [templateId], references: [id])
 
   @@unique([organizationId, slug])
   @@index([organizationId])
   @@index([repositoryConnectionId])
   @@index([status])
   @@index([clusterId])
+}
+
+model AppTemplate {
+  id             String                @id @default(cuid())
+  organizationId String?
+  slug           String                @unique
+  name           String
+  tagline        String
+  description    String                @db.Text
+  readmeMarkdown String?               @db.Text
+  iconUrl        String?
+  category       AppTemplateCategory   @default(UTILITIES)
+  visibility     AppTemplateVisibility @default(PRIVATE)
+  version        String                @default("1.0.0")
+  blueprintJson  Json
+  isOfficial     Boolean               @default(false)
+  isFeatured     Boolean               @default(false)
+  verifiedAt     DateTime?
+  reviewedBy     String?
+  reviewNotes    String?               @db.Text
+  installCount   Int                   @default(0)
+  priceMonthly   Decimal?              @db.Decimal(12, 2)
+  currency       String                @default("USD")
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  stacks         ApplicationStack[]
+
+  @@index([visibility, category])
+  @@index([organizationId])
+  @@index([isFeatured, installCount])
+  @@map("AppTemplate")
 }
 
 model VaultSecretAuditLog {

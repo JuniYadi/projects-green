@@ -2,6 +2,7 @@ import { Prisma, type AppHostingClusterIntegrationType } from "@prisma/client"
 import { z } from "zod"
 
 import { prisma } from "@/lib/prisma"
+import { VaultClient } from "@/lib/vault/vault-client"
 import {
   decryptClusterIntegrationSecrets,
   encryptClusterIntegrationSecrets,
@@ -294,11 +295,15 @@ export async function updateClusterStatus(
   return toClusterDTO(row)
 }
 
+const getVaultClient = (): Pick<VaultClient, "writeKV"> => new VaultClient()
+
 export async function upsertClusterIntegration(
   clusterId: string,
   type: AppHostingClusterIntegrationType,
-  input: UpsertIntegrationInput
+  input: UpsertIntegrationInput,
+  vaultClient?: Pick<VaultClient, "writeKV">
 ) {
+  const client = vaultClient ?? getVaultClient()
   throwIfNotFound(
     await prisma.appHostingCluster.findUnique({ where: { id: clusterId } }),
     "Cluster"
@@ -319,6 +324,34 @@ export async function upsertClusterIntegration(
     input.secrets ?? {},
     existingSecrets
   )
+
+  // Convert all secrets to string map for Vault KV v2 storage
+  const stringSecrets: Record<string, string> = {}
+  for (const [k, v] of Object.entries(validated.secrets)) {
+    if (v !== undefined && v !== null) {
+      stringSecrets[k] = String(v)
+    }
+  }
+
+  const vaultPath = `admin/clusters/${clusterId}/integrations/${type}`
+  let vaultVersion: number | undefined
+  try {
+    const writeResult = await client.writeKV(vaultPath, stringSecrets)
+    vaultVersion = writeResult.version
+  } catch (error) {
+    // Vault write failure log - proceed or allow for resilient operations
+    console.warn(
+      `[Vault] Failed to write cluster integration secrets to ${vaultPath}:`,
+      error
+    )
+  }
+
+  const metadataWithVault = {
+    ...validated.metadata,
+    vaultPath,
+    ...(vaultVersion !== undefined && { vaultVersion }),
+  }
+
   const secretCiphertext = encryptClusterIntegrationSecrets(validated.secrets)
   const secretPreview = maskClusterIntegrationSecret(validated.secrets)
 
@@ -327,12 +360,12 @@ export async function upsertClusterIntegration(
     create: {
       clusterId,
       type,
-      metaJson: validated.metadata as Prisma.InputJsonValue,
+      metaJson: metadataWithVault as Prisma.InputJsonValue,
       secretCiphertext,
       secretPreview,
     },
     update: {
-      metaJson: validated.metadata as Prisma.InputJsonValue,
+      metaJson: metadataWithVault as Prisma.InputJsonValue,
       secretCiphertext,
       secretPreview,
     },

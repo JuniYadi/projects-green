@@ -1,12 +1,22 @@
 "use client"
 
-import { useState } from "react"
 import { z } from "zod"
 
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import type { ProductProvisionAdapter } from "../product-provision-adapter.types"
+
+export const APP_HOSTING_DEPENDENCIES = [
+  "POSTGRESQL",
+  "MYSQL",
+  "REDIS",
+] as const
+
+export type AppHostingDependency = (typeof APP_HOSTING_DEPENDENCIES)[number]
+
+export const appHostingDependencySchema = z.enum(APP_HOSTING_DEPENDENCIES)
 
 export type AppHostingPlanConfig = {
   cpu: number
@@ -14,26 +24,26 @@ export type AppHostingPlanConfig = {
   storage: number
   maxCustomDomains: number
   wildcard: boolean
-  requiredDependencies: string[]
+  requiredDependencies: AppHostingDependency[]
 }
 
 export const DEFAULT_APP_HOSTING_PLAN_CONFIG: AppHostingPlanConfig = {
-  cpu: 1,
-  memory: 512,
-  storage: 10,
-  maxCustomDomains: 1,
+  cpu: 1000,
+  memory: 1024,
+  storage: 20,
+  maxCustomDomains: 3,
   wildcard: false,
   requiredDependencies: [],
 }
 export const DEFAULT_APP_HOSTING_BLUEPRINT = DEFAULT_APP_HOSTING_PLAN_CONFIG
 
 const appHostingPlanConfigSchema = z.object({
-  cpu: z.number().finite().int().min(1).default(1),
-  memory: z.number().finite().int().min(128).default(512),
-  storage: z.number().finite().int().min(1).default(10),
-  maxCustomDomains: z.number().finite().int().min(0).default(1),
+  cpu: z.number().finite().int().min(1).default(1000),
+  memory: z.number().finite().int().min(128).default(1024),
+  storage: z.number().finite().int().min(1).default(20),
+  maxCustomDomains: z.number().finite().int().min(0).default(3),
   wildcard: z.boolean().default(false),
-  requiredDependencies: z.array(z.string().trim().min(1)).default([]),
+  requiredDependencies: z.array(appHostingDependencySchema).default([]),
 })
 
 export function parseAppHostingPlanConfig(
@@ -105,6 +115,28 @@ function NumberField({
   )
 }
 
+const DEPENDENCY_OPTIONS: Array<{
+  id: AppHostingDependency
+  label: string
+  description: string
+}> = [
+  {
+    id: "POSTGRESQL",
+    label: "PostgreSQL",
+    description: "Managed relational database engine with extensions.",
+  },
+  {
+    id: "MYSQL",
+    label: "MySQL",
+    description: "Managed relational database engine for standard workloads.",
+  },
+  {
+    id: "REDIS",
+    label: "Redis",
+    description: "In-memory key-value data store for cache and queues.",
+  },
+]
+
 export function AppHostingPlanConfigComponent({
   value,
   onChange,
@@ -116,18 +148,17 @@ export function AppHostingPlanConfigComponent({
   disabled?: boolean
   errors?: Record<string, string>
 }>) {
-  const [dependenciesText, setDependenciesText] = useState(
-    value.requiredDependencies.join(", ")
-  )
+  const toggleDependency = (
+    dependency: AppHostingDependency,
+    checked: boolean
+  ) => {
+    const nextDependencies = checked
+      ? [...new Set([...value.requiredDependencies, dependency])]
+      : value.requiredDependencies.filter((dep) => dep !== dependency)
 
-  const updateDependencies = (text: string) => {
-    setDependenciesText(text)
     onChange({
       ...value,
-      requiredDependencies: text
-        .split(",")
-        .map((dependency) => dependency.trim())
-        .filter(Boolean),
+      requiredDependencies: nextDependencies,
     })
   }
 
@@ -142,7 +173,7 @@ export function AppHostingPlanConfigComponent({
       <div className="grid gap-4 sm:grid-cols-3">
         <NumberField
           id="app-hosting-cpu"
-          label="CPU (vCPU)"
+          label="CPU (mCPU)"
           value={value.cpu}
           min={1}
           onChange={(cpu) => onChange({ ...value, cpu })}
@@ -193,22 +224,43 @@ export function AppHostingPlanConfigComponent({
           disabled={disabled}
         />
       </div>
-      <div className="space-y-2 border-t pt-3">
-        <Label htmlFor="app-hosting-dependencies">
-          Required dependencies for template
-        </Label>
-        <Input
-          id="app-hosting-dependencies"
-          value={dependenciesText}
-          onChange={(event) => updateDependencies(event.target.value)}
-          placeholder="e.g. node, postgres"
-          disabled={disabled}
-          aria-describedby={
-            errors?.requiredDependencies
-              ? "app-hosting-dependencies-error"
-              : undefined
-          }
-        />
+      <div className="space-y-3 border-t pt-3">
+        <div>
+          <Label>Required database dependencies</Label>
+          <p className="text-xs text-muted-foreground">
+            Select database dependencies required by this template.
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {DEPENDENCY_OPTIONS.map((option) => {
+            const isChecked = value.requiredDependencies.includes(option.id)
+            return (
+              <label
+                key={option.id}
+                htmlFor={`app-hosting-dep-${option.id.toLowerCase()}`}
+                className="flex cursor-pointer items-start gap-3 rounded-md border p-3"
+              >
+                <Checkbox
+                  id={`app-hosting-dep-${option.id.toLowerCase()}`}
+                  checked={isChecked}
+                  onCheckedChange={(checked) =>
+                    toggleDependency(option.id, Boolean(checked))
+                  }
+                  disabled={disabled}
+                  aria-label={option.label}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium">
+                    {option.label}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {option.description}
+                  </span>
+                </span>
+              </label>
+            )
+          })}
+        </div>
         {errors?.requiredDependencies && (
           <p
             id="app-hosting-dependencies-error"

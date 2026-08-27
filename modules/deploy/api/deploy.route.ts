@@ -18,6 +18,7 @@ import { deployJenkinsWebhookRoutes } from "@/modules/deploy/api/routes/jenkins-
 import { deployJenkinsImageReadyRoutes } from "@/modules/deploy/api/routes/jenkins-image-ready.route"
 import { podStatusRoutes } from "@/modules/deploy/api/routes/pod-status.route"
 import { publicSourceRoutes } from "@/modules/deploy/api/routes/public-source.route"
+import { appTemplateRoutes } from "@/modules/deploy/api/routes/templates.route"
 
 export const deployRoutes = new Elysia()
   .use(aiDeploymentSessionRoutes)
@@ -36,3 +37,4 @@ export const deployRoutes = new Elysia()
   .use(deployJenkinsWebhookRoutes)
   .use(deployJenkinsImageReadyRoutes)
   .use(podStatusRoutes)
+  .use(appTemplateRoutes)

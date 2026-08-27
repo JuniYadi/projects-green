@@ -6,6 +6,7 @@ import {
   serializeEncryptedField,
 } from "@/lib/encryption"
 import { prisma } from "@/lib/prisma"
+import { VaultClient } from "@/lib/vault/vault-client"
 
 const CLUSTER_INTEGRATION_KEY_SALT = "app-hosting-cluster-integration"
 const CLUSTER_INTEGRATION_KEY_INFO_PREFIX = "app-hosting-integration-v"
@@ -312,9 +313,16 @@ export async function resolveDefaultAppHostingClusterId(): Promise<string> {
   return defaults[0].id
 }
 
+const getVaultClient = (): Pick<VaultClient, "readKV"> => new VaultClient()
+
 export async function resolveClusterIntegration<
   T extends keyof ClusterIntegrationConfigMap,
->(stackId: string, type: T): Promise<ClusterIntegrationConfigMap[T]> {
+>(
+  stackId: string,
+  type: T,
+  vaultClient?: Pick<VaultClient, "readKV">
+): Promise<ClusterIntegrationConfigMap[T]> {
+  const client = vaultClient ?? getVaultClient()
   const cluster = await resolveAppHostingClusterForStack(stackId)
   const integration = await prisma.appHostingClusterIntegration.findFirst({
     where: { clusterId: cluster.id, type, isActive: true },
@@ -328,9 +336,33 @@ export async function resolveClusterIntegration<
     integration.metaJson && typeof integration.metaJson === "object"
       ? (integration.metaJson as Record<string, unknown>)
       : {}
-  const secrets = decryptClusterIntegrationSecrets(
-    integration.secretCiphertext,
-    integration.keyVersion
-  )
+
+  let secrets: Record<string, unknown> = {}
+  const vaultPath = typeof meta.vaultPath === "string" ? meta.vaultPath : null
+
+  if (vaultPath) {
+    try {
+      const vaultVersion =
+        typeof meta.vaultVersion === "number" ? meta.vaultVersion : undefined
+      const vaultData = await client.readKV(vaultPath, vaultVersion)
+      if (vaultData && typeof vaultData === "object") {
+        secrets = vaultData
+      }
+    } catch (vaultError) {
+      console.warn(
+        `[Vault] Failed to read cluster integration secrets from ${vaultPath}, falling back to DB:`,
+        vaultError
+      )
+    }
+  }
+
+  // Gracefully fallback to legacy DB decryption if secrets were not retrieved from Vault
+  if (Object.keys(secrets).length === 0 && integration.secretCiphertext) {
+    secrets = decryptClusterIntegrationSecrets(
+      integration.secretCiphertext,
+      integration.keyVersion
+    )
+  }
+
   return buildTypedConfig(type, meta, secrets)
 }

@@ -105,6 +105,85 @@ export class AppHostingBillingService {
   }
 
   /**
+   * Assert that the organization has an active APP_HOSTING subscription with
+   * available stack slots / valid allocation.
+   */
+  async assertCanDeploySubscription(input: {
+    organizationId: string
+    stackId?: string
+  }): Promise<{
+    subscriptionId: string
+    maxSlots: number
+    usedSlots: number
+  }> {
+    const subscription = await this.prisma.serviceSubscription.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        status: "ACTIVE",
+        package: { code: "APP_HOSTING" },
+      },
+      include: {
+        plan: true,
+      },
+    })
+
+    if (!subscription) {
+      throw new Error("NO_ACTIVE_SUBSCRIPTION")
+    }
+
+    const allocatedConfig =
+      subscription.allocatedConfig &&
+      typeof subscription.allocatedConfig === "object"
+        ? (subscription.allocatedConfig as Record<string, unknown>)
+        : {}
+    const planResources =
+      subscription.plan?.resources &&
+      typeof subscription.plan.resources === "object"
+        ? (subscription.plan.resources as Record<string, unknown>)
+        : {}
+
+    const configuredSlots =
+      typeof allocatedConfig.maxStacks === "number"
+        ? allocatedConfig.maxStacks
+        : typeof allocatedConfig.stackSlots === "number"
+          ? allocatedConfig.stackSlots
+          : typeof allocatedConfig.slots === "number"
+            ? allocatedConfig.slots
+            : typeof allocatedConfig.maxApps === "number"
+              ? allocatedConfig.maxApps
+              : typeof planResources.maxStacks === "number"
+                ? planResources.maxStacks
+                : typeof planResources.stackSlots === "number"
+                  ? planResources.stackSlots
+                  : typeof planResources.slots === "number"
+                    ? planResources.slots
+                    : typeof planResources.maxApps === "number"
+                      ? planResources.maxApps
+                      : subscription.quantity != null
+                        ? Number(subscription.quantity)
+                        : 1
+
+    const maxSlots = Math.max(1, configuredSlots)
+
+    const existingStacksCount = await this.prisma.applicationStack.count({
+      where: {
+        organizationId: input.organizationId,
+        ...(input.stackId ? { id: { not: input.stackId } } : {}),
+      },
+    })
+
+    if (existingStacksCount >= maxSlots) {
+      throw new Error("STACK_QUOTA_EXCEEDED")
+    }
+
+    return {
+      subscriptionId: subscription.id,
+      maxSlots,
+      usedSlots: existingStacksCount,
+    }
+  }
+
+  /**
    * Charge one hour of PAYG runtime through the billing foundation.
    * On insufficient balance, enters PAYMENT_GRACE instead of throwing.
    */
