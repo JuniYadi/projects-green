@@ -329,7 +329,7 @@ describe("invoices routes", () => {
         id: "ba_1",
         bankCode: "BCA",
         bankName: "Bank Central Asia",
-        accountName: "PFNApp Technologies",
+        accountName: "PT. Premium Fast Network",
         accountNumber: "1234567890",
         currency: "USD",
         supportedCurrencies: ["USD"],

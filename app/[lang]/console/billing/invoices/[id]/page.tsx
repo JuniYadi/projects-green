@@ -481,24 +481,11 @@ export default function InvoiceDetailPage() {
                   <p className="text-xs text-muted-foreground">
                     {billing.invoices.providerName}
                   </p>
-                  <p
-                    className="text-xs text-muted-foreground"
-                    suppressHydrationWarning
-                  >
-                    {(() => {
-                      if (typeof window !== "undefined") {
-                        try {
-                          const hostname = window.location.hostname.replace(
-                            /^www\./,
-                            ""
-                          )
-                          return `billing@${hostname}`
-                        } catch {
-                          return "billing@premiumfast.net"
-                        }
-                      }
-                      return "billing@premiumfast.net"
-                    })()}
+                  <p className="text-xs text-muted-foreground">
+                    Jl. Bungurasih Tengah No 70, Waru, Sidoarjo, Jawa Timur 61256
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Email: support@pfnapp.id | Whatsapp: +6281216667996
                   </p>
                 </div>
                 <div className="space-y-1 text-left sm:text-right">

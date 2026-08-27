@@ -374,13 +374,14 @@ export function InvoiceDetailScreen({
           </CardHeader>
           <CardContent className="space-y-1.5 text-sm">
             <p className="font-semibold text-foreground">
-              PFNApp Technologies Inc.
+              PT. Premium Fast Network
             </p>
             <p className="text-muted-foreground">
-              Sudirman Central Business District (SCBD)
+              Jl. Bungurasih Tengah No 70, Waru
             </p>
-            <p className="text-muted-foreground">Jakarta, DKI Jakarta</p>
-            <p className="text-muted-foreground">Indonesia, 12190</p>
+            <p className="text-muted-foreground">Sidoarjo, Jawa Timur 61256</p>
+            <p className="text-muted-foreground">Email: support@pfnapp.id</p>
+            <p className="text-muted-foreground">Whatsapp: +6281216667996</p>
           </CardContent>
         </Card>
       </div>

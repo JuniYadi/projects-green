@@ -94,7 +94,7 @@ describe("Billing InvoiceDetailPage", () => {
               id: "bank-1",
               bankCode: "BCA",
               bankName: "Bank Central Asia",
-              accountName: "PFNApp Technologies Inc.",
+              accountName: "PT. Premium Fast Network",
               accountNumber: "1234567890",
               isActive: true,
               isDefault: true,
@@ -129,7 +129,7 @@ describe("Billing InvoiceDetailPage", () => {
     )
 
     expect(view.getByText("1234567890")).toBeInTheDocument()
-    expect(view.getByText("PFNApp Technologies Inc.")).toBeInTheDocument()
+    expect(view.getAllByText("PT. Premium Fast Network").length).toBeGreaterThan(0)
     expect(
       view.getByRole("link", { name: "Confirm Payment" })
     ).toBeInTheDocument()
