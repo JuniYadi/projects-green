@@ -34,6 +34,7 @@
   user request or high-blast-radius changes (shared test setup, test engine).
 
 ## Local hard rules
+- NEVER use `git add -f` / `git commit -f` to force-stage gitignored files or directories. Strict adherence to `.gitignore` is mandatory.
 
 - Use `bun` for project commands. Do not use `npm` or `yarn`.
 - Never run destructive Prisma commands: `bunx prisma migrate reset*`, `bunx prisma db push --force-reset`, `bunx prisma db push --accept-data-loss`, `prisma migrate reset*`, `prisma db push --force-reset`, or `prisma db push --accept-data-loss`.
@@ -110,3 +111,32 @@
   focused queries are insufficient.
 - After relevant source-code changes in this repository, run `graphify update .`.
   Do not update the graph for prompt, documentation, or configuration-only edits.
+
+## App Hosting Template Marketplace & Zero-Trust Auto-Provisioning Tracker
+
+Master tracking state for App Hosting Template Marketplace and Zero-Trust Vault provisioning.
+
+### ✅ Fase 0: Architectural Design & Security Runbooks (Complete)
+- [x] **Spec 0.1:** Obsidian PRD — `PRD - App Hosting Template Marketplace and Custom Blueprint Engine`
+- [x] **Spec 0.2:** Obsidian PRD — `PRD - App Hosting Unified Billing, Subscription Order, and Zero-Trust Provisioning Pipeline`
+- [x] **Spec 0.3:** Operations Runbook — `Runbook - HashiCorp Vault Setup, AppRole Policies, and Kubernetes ESO Integration`
+
+### ✅ Fase 1: App Hosting & Vault Core Backend (Foundation - Complete in PR #578)
+- [x] **Issue 1:** `AppTemplate` Database Schema, Category/Visibility Enums, and 5 Official Templates Seed
+- [x] **Issue 2:** Declarative Zod Blueprint Engine, Validator Service & Auto-Gen Hex Secret Generator
+- [x] **Issue 3:** Zero-Trust Vault Migration for Cluster Integration Secrets (`admin/clusters/{clusterId}/integrations/{type}`)
+- [x] **Issue 4:** Elysia Template Marketplace API Routes (`/api/templates`), Public/Workspace Scoping & Anti-IDOR
+
+### ✅ Fase 2: Billing & Auto-Provisioning Pipeline (Complete in PR #578)
+- [x] **Issue 5:** Global Catalog Editor `AppHostingProvisionAdapter` Persistence & Database Dependencies Multiselect
+- [x] **Issue 6:** Order Fulfillment Engine Atomic Multi-Stock Claim (`AppManagedStock`) & Canonical Tenant Vault Copy
+- [x] **Issue 7:** Billing Gating `INSUFFICIENT_PAYG_BUFFER` (min. 24h balance) & Monthly Subscription Slot Deductions
+
+### ✅ Fase 3: Console UX & Template Marketplace (Complete in PR #578)
+- [x] **Issue 8:** Console Showcase Hub (`/console/marketplace`): Featured hero banner, category chips, real-time search, verified green badge, and resource requirement chips
+- [x] **Issue 9:** 1-Click Dynamic Launch Drawer: Right-side sheet form generator from `envSchema`, auto-subdomain suggest, and live PAYG/Subscription indicator
+- [x] **Issue 10:** Custom Template Visual Builder (`/console/marketplace/builder`) & *"Save Stack as Template"* export action in Stack Details
+
+### ⏳ Fase 4: Portal Moderation & End-to-End Verification (Pending)
+- [ ] **Issue 11:** Super Admin Moderation Portal (`/portal/marketplace`): Review queue for public templates (`PENDING_REVIEW`), blueprint security inspector, approve/reject actions
+- [ ] **Issue 12:** End-to-End Verification: Complete browser 1-click launch flow to live Kubernetes Pod with automated billing deduction audit
