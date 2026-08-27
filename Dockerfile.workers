@@ -1,5 +1,6 @@
 # Build stage — compile TS, generate Prisma client
 FROM oven/bun:1-alpine AS builder
+RUN apk update && apk upgrade --no-cache
 
 WORKDIR /app
 
@@ -38,6 +39,7 @@ RUN bun build ./scripts/schedule-runner.ts \
 
 # ── Production stage ────────────────────────────────────────────────────────
 FROM oven/bun:1-alpine
+RUN apk update && apk upgrade --no-cache
 
 WORKDIR /app
 
