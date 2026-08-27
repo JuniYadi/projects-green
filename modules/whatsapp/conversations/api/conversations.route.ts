@@ -1,6 +1,5 @@
 import { Elysia, t } from "elysia"
-import { Prisma } from "@prisma/client"
-
+import type { Prisma, WhatsappActivityType } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { resolveAuthContext } from "@/lib/auth/resolve-proxy-auth"
 import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
@@ -361,14 +360,19 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
       const activitiesToCreate: Array<{
         actorId: string
         actorName?: string
-        type: Prisma.$Enums.WhatsappActivityType
+        type: WhatsappActivityType
         fromValue?: string
         toValue?: string
       }> = []
 
-      const actorId = whatsappAuth.userId || whatsappAuth.organizationId
-      const actorName = whatsappAuth.userName || undefined
-
+      const actorId =
+        whatsappAuth.type === "workos"
+          ? whatsappAuth.userId
+          : whatsappAuth.organizationId
+      const actorName =
+        whatsappAuth.type === "workos"
+          ? (whatsappAuth as any).userName || undefined
+          : undefined
       if (body.whatsappDeviceId !== undefined) {
         data.whatsappDeviceId = body.whatsappDeviceId
       }
@@ -568,8 +572,15 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
           message: "Conversation not found.",
         }
       }
-      const authorId = whatsappAuth.userId || whatsappAuth.organizationId
-      const authorName = body.authorName || whatsappAuth.userName || null
+      const authorId =
+        whatsappAuth.type === "workos"
+          ? whatsappAuth.userId
+          : whatsappAuth.organizationId
+      const authorName =
+        body.authorName ||
+        (whatsappAuth.type === "workos"
+          ? (whatsappAuth as any).userName || null
+          : null)
       const actorId = authorId
       const actorName = authorName
       const mentions = extractMentions(body.body)
@@ -635,9 +646,14 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
         }
       }
 
-      const actorId = whatsappAuth.userId || whatsappAuth.organizationId
-      const actorName = whatsappAuth.userName || undefined
-
+      const actorId =
+        whatsappAuth.type === "workos"
+          ? whatsappAuth.userId
+          : whatsappAuth.organizationId
+      const actorName =
+        whatsappAuth.type === "workos"
+          ? (whatsappAuth as any).userName || undefined
+          : undefined
       await prisma.whatsappConversationActivity.create({
         data: {
           conversationId: id,

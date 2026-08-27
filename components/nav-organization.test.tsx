@@ -33,6 +33,7 @@ const { NavOrganization } = await import("@/components/nav-organization")
 const { SidebarProvider } = await import("@/components/ui/sidebar")
 const { QueryClient, QueryClientProvider } =
   await import("@tanstack/react-query")
+import type { QueryClient as QueryClientType } from "@tanstack/react-query"
 const originalFetch = globalThis.fetch
 
 const jsonResponse = (body: unknown, status = 200) => {
@@ -45,7 +46,7 @@ const jsonResponse = (body: unknown, status = 200) => {
 }
 
 describe("NavOrganization", () => {
-  let queryClient: QueryClient
+  let queryClient: QueryClientType
 
   afterEach(() => {
     globalThis.fetch = originalFetch

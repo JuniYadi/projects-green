@@ -19,13 +19,15 @@ mock.module("@/lib/auth/resolve-proxy-auth", () => ({
 
 // ─── Prisma mock ──────────────────────────────────────────────────────────
 
-const mockFindMany = mock(async (_args: unknown) => [])
-const mockFindFirst = mock(async (_args: unknown) => null)
-const mockUpdate = mock(async (_args: unknown) => ({}))
-const mockCreate = mock(async (_args: unknown) => ({}))
-const mockDelete = mock(async (_args: unknown) => ({}))
-const mockActivityCreate = mock(async (_args: unknown) => ({}))
-const mockActivityCreateMany = mock(async (_args: unknown) => ({ count: 1 }))
+const mockFindMany = mock(async (_args: unknown): Promise<any> => [])
+const mockFindFirst = mock(async (_args: unknown): Promise<any> => null)
+const mockUpdate = mock(async (_args: unknown): Promise<any> => ({}))
+const mockCreate = mock(async (_args: unknown): Promise<any> => ({}))
+const mockDelete = mock(async (_args: unknown): Promise<any> => ({}))
+const mockActivityCreate = mock(async (_args: unknown): Promise<any> => ({}))
+const mockActivityCreateMany = mock(
+  async (_args: unknown): Promise<any> => ({ count: 1 })
+)
 const mockNoteCreate = mock(async (args: unknown) => {
   const typed = args as { data?: { body?: string; mentions?: string[] } }
   return {

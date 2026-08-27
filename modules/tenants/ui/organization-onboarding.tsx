@@ -1,5 +1,6 @@
 "use client"
 
+import type { FormEvent } from "react"
 import { useEffect, useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useAuth } from "@workos-inc/authkit-nextjs/components"
@@ -10,6 +11,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   isTenantApiError,
+  type TenantApiError,
+  type TenantBootstrapCreateResponse,
   type TenantBootstrapMembership,
 } from "@/modules/tenants/contracts/tenant-api.contract"
 
