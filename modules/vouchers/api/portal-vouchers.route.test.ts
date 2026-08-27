@@ -478,4 +478,91 @@ describe("Portal Voucher Routes", () => {
       expect(body.data).toHaveLength(1)
     })
   })
+
+  describe("PATCH /vouchers/portal/:id", () => {
+    it("updates voucher properties successfully", async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const deps = createDeps() as any
+      const updateDate = new Date(Date.now() + 172800000)
+      deps.service.updateVoucher = mock(() =>
+        Promise.resolve({
+          id: "v_1",
+          code: "TEST1234",
+          prefix: null,
+          status: "ACTIVE",
+          maxClaims: 20,
+          claimedCount: 2,
+          expiresAt: updateDate,
+          amount: { toFixed: () => "50000" },
+          currency: "IDR",
+          targetWorkosUserId: null,
+          targetOrganizationId: null,
+          createdByWorkosUserId: "user_1",
+          metadataJson: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+      )
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal/v_1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            maxClaims: 20,
+            expiresAt: updateDate.toISOString(),
+          }),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.maxClaims).toBe(20)
+      expect(deps.service.updateVoucher).toHaveBeenCalledWith(
+        "v_1",
+        expect.objectContaining({ maxClaims: 20 })
+      )
+    })
+
+    it("returns 422 for invalid patch payload", async () => {
+      const res = await toApp(createDeps()).handle(
+        new Request("http://localhost/vouchers/portal/v_1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            maxClaims: -5,
+          }),
+        })
+      )
+
+      expect(res.status).toBe(422)
+      const body = await res.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("VALIDATION_ERROR")
+    })
+
+    it("returns 500 when voucher update service throws unexpected error", async () => {
+      const deps = createDeps()
+      deps.service.updateVoucher = mock(() =>
+        Promise.reject(new Error("Database connection failed"))
+      )
+
+      const res = await toApp(deps).handle(
+        new Request("http://localhost/vouchers/portal/v_1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            maxClaims: 20,
+          }),
+        })
+      )
+
+      expect(res.status).toBe(500)
+      const body = await res.json()
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("INTERNAL_SERVER_ERROR")
+      expect(body.message).toBe("Database connection failed")
+    })
+  })
 })
