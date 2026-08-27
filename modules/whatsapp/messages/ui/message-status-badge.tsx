@@ -91,11 +91,12 @@ export function MessageStatusBadge({
 
   if (latestStatus === "FAILED") {
     return (
-      <TooltipProvider>
+      <TooltipProvider delayDuration={0}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span
-              className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium text-destructive hover:bg-destructive/10"
+            <button
+              type="button"
+              className="inline-flex cursor-pointer items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium text-destructive hover:bg-destructive/10"
               title={getWhatsAppText("s235")}
             >
               <WarningCircle
@@ -105,13 +106,16 @@ export function MessageStatusBadge({
               <span>
                 <WhatsAppText id="s155" />
               </span>
-            </span>
+            </button>
           </TooltipTrigger>
-          <TooltipContent className="max-w-[240px] text-xs">
+          <TooltipContent
+            side="top"
+            className="flex max-w-sm flex-col items-start gap-1 border border-border bg-popover p-3 text-xs text-popover-foreground shadow-md [&_svg]:bg-popover [&_svg]:fill-popover"
+          >
             <p className="font-semibold text-destructive">
               <WhatsAppText id="s236" />
             </p>
-            <p className="mt-0.5 text-muted-foreground">
+            <p className="leading-relaxed break-words text-muted-foreground">
               {failureReason || "Message could not be delivered by WhatsApp."}
             </p>
           </TooltipContent>
@@ -121,14 +125,22 @@ export function MessageStatusBadge({
   }
 
   return (
-    <TooltipProvider>
+    <TooltipProvider delayDuration={0}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="inline-flex items-center">
+          <button
+            type="button"
+            className="inline-flex cursor-pointer items-center text-muted-foreground hover:text-foreground"
+            title={STATUS_CONFIG[latestStatus].label}
+            aria-label={STATUS_CONFIG[latestStatus].label}
+          >
             <StatusIcon status={latestStatus} className="size-3.5" />
-          </span>
+          </button>
         </TooltipTrigger>
-        <TooltipContent className="text-xs">
+        <TooltipContent
+          side="top"
+          className="border border-border bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md [&_svg]:bg-popover [&_svg]:fill-popover"
+        >
           {STATUS_CONFIG[latestStatus].label}
         </TooltipContent>
       </Tooltip>

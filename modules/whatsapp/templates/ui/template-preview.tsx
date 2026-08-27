@@ -311,13 +311,15 @@ export function WhatsAppTemplatePreview({
   values,
   className,
   mode = "full",
-  businessName = "Official WhatsApp Business",
+  showOuterContainer = true,
+  hideInternalStatus = false,
 }: {
   language: WhatsAppTemplateLanguage
   values?: TemplatePreviewValues
   className?: string
   mode?: "full" | "compact"
-  businessName?: string
+  showOuterContainer?: boolean
+  hideInternalStatus?: boolean
 }) {
   const resolved = resolveTemplatePreviewValues(language, values)
   const bodyText = renderTemplateBody(language.body, resolved)
@@ -355,105 +357,101 @@ export function WhatsAppTemplatePreview({
       </div>
     )
   }
+  const bubbleContent = (
+    <div
+      className={`relative max-w-full rounded-2xl rounded-tr-xs border border-emerald-500/20 bg-emerald-600/10 p-3.5 text-sm shadow-xs dark:border-emerald-500/20 dark:bg-emerald-950/30 ${className ?? ""}`}
+    >
+      {language.headerText ? (
+        <div className="mb-2 text-sm font-bold text-foreground">
+          {language.headerText}
+        </div>
+      ) : null}
+
+      {language.headerType &&
+      language.headerType !== "NONE" &&
+      !language.headerText ? (
+        <div className="mb-2 overflow-hidden rounded-lg border border-border/40 bg-muted/40">
+          {language.headerType === "DOCUMENT" ? (
+            <div className="flex items-center gap-3 p-2.5">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-destructive/15 text-xs font-bold text-destructive uppercase">
+                PDF
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-foreground">
+                  {language.headerUrl
+                    ? language.headerUrl.split("/").pop()?.split("?")[0] ||
+                      "attachment.pdf"
+                    : "Document Attachment (PDF)"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  WhatsApp Document
+                </p>
+              </div>
+            </div>
+          ) : language.headerType === "IMAGE" ? (
+            <div className="flex h-32 items-center justify-center bg-muted/60 text-xs text-muted-foreground">
+              <span>🖼️ Image Attachment</span>
+            </div>
+          ) : language.headerType === "VIDEO" ? (
+            <div className="flex h-32 items-center justify-center bg-muted/60 text-xs text-muted-foreground">
+              <span>🎥 Video Attachment</span>
+            </div>
+          ) : (
+            <div className="p-2 text-center text-xs text-muted-foreground">
+              {language.headerType} <WhatsAppText id="s239" />
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {/* Message Body with WhatsApp Markdown Formatting */}
+      {bodyText && (
+        <div className="text-sm leading-relaxed break-words text-foreground/90">
+          <WhatsAppFormattedText text={bodyText} />
+        </div>
+      )}
+
+      {/* Footer Text */}
+      {language.footer && (
+        <div className="mt-2 text-[11px] text-muted-foreground">
+          {language.footer}
+        </div>
+      )}
+
+      {!hideInternalStatus && (
+        <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
+          <span>10:45</span>
+          <span className="font-bold text-emerald-500">✓✓</span>
+        </div>
+      )}
+      {/* Interactive Buttons — Clean WhatsApp Card Style */}
+      {buttons.length > 0 && (
+        <div className="-mx-3 mt-2 -mb-3 divide-y divide-border/40 border-t border-border/40">
+          {buttons.map((btn, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-center text-xs font-semibold text-[#00a884] transition-colors hover:bg-muted/30 dark:text-[#00a884]"
+            >
+              {btn.type === "URL" && <span>🔗</span>}
+              {btn.type === "PHONE_NUMBER" && <span>📞</span>}
+              {btn.type === "OTP" && <span>🔑</span>}
+              {getButtonLabel(btn)}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+
+  if (!showOuterContainer) {
+    return bubbleContent
+  }
 
   return (
     <div
       className={`overflow-hidden rounded-xl border bg-[#efeae2]/60 p-4 font-sans text-[#111b21] dark:bg-[#0b141a]/90 dark:text-[#e9edef] ${className ?? ""}`}
     >
-      {/* Mockup Header bar */}
-      <div className="mb-3 flex items-center justify-between border-b border-border/40 pb-2 text-xs">
-        <div className="flex items-center gap-1.5 font-medium text-foreground">
-          <span className="size-2 rounded-full bg-emerald-500" />
-          <span>{businessName}</span>
-        </div>
-        <span className="text-[10px] text-muted-foreground">
-          <WhatsAppText id="s238" />
-        </span>
-      </div>
-
-      {/* WhatsApp Message Bubble Container */}
-      <div className="relative max-w-[90%] rounded-xl rounded-tl-none border border-black/5 bg-white p-3 text-sm shadow-md sm:max-w-[80%] dark:border-white/5 dark:bg-[#1f2c34]">
-        {/* Header Text / Media Attachment */}
-        {language.headerText ? (
-          <div className="mb-2 text-sm font-bold text-foreground">
-            {language.headerText}
-          </div>
-        ) : null}
-
-        {language.headerType &&
-        language.headerType !== "NONE" &&
-        !language.headerText ? (
-          <div className="mb-2 overflow-hidden rounded-lg border border-border/40 bg-muted/40">
-            {language.headerType === "DOCUMENT" ? (
-              <div className="flex items-center gap-3 p-2.5">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-destructive/15 text-xs font-bold text-destructive uppercase">
-                  PDF
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium text-foreground">
-                    {language.headerUrl
-                      ? language.headerUrl.split("/").pop()?.split("?")[0] ||
-                        "attachment.pdf"
-                      : "Document Attachment (PDF)"}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">
-                    WhatsApp Document
-                  </p>
-                </div>
-              </div>
-            ) : language.headerType === "IMAGE" ? (
-              <div className="flex h-32 items-center justify-center bg-muted/60 text-xs text-muted-foreground">
-                <span>🖼️ Image Attachment</span>
-              </div>
-            ) : language.headerType === "VIDEO" ? (
-              <div className="flex h-32 items-center justify-center bg-muted/60 text-xs text-muted-foreground">
-                <span>🎥 Video Attachment</span>
-              </div>
-            ) : (
-              <div className="p-2 text-center text-xs text-muted-foreground">
-                {language.headerType} <WhatsAppText id="s239" />
-              </div>
-            )}
-          </div>
-        ) : null}
-
-        {/* Message Body with WhatsApp Markdown Formatting */}
-        {bodyText && (
-          <div className="text-sm leading-relaxed break-words text-foreground/90">
-            <WhatsAppFormattedText text={bodyText} />
-          </div>
-        )}
-
-        {/* Footer Text */}
-        {language.footer && (
-          <div className="mt-2 text-[11px] text-muted-foreground">
-            {language.footer}
-          </div>
-        )}
-
-        {/* Timestamp and Read Status */}
-        <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
-          <span>10:45</span>
-          <span className="font-bold text-emerald-500">✓✓</span>
-        </div>
-
-        {/* Interactive Buttons — Clean WhatsApp Card Style */}
-        {buttons.length > 0 && (
-          <div className="-mx-3 mt-2 -mb-3 divide-y divide-border/40 border-t border-border/40">
-            {buttons.map((btn, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-center gap-1.5 px-3 py-2.5 text-center text-xs font-semibold text-[#00a884] transition-colors hover:bg-muted/30 dark:text-[#00a884]"
-              >
-                {btn.type === "URL" && <span>🔗</span>}
-                {btn.type === "PHONE_NUMBER" && <span>📞</span>}
-                {btn.type === "OTP" && <span>🔑</span>}
-                {getButtonLabel(btn)}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {bubbleContent}
     </div>
   )
 }

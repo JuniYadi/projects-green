@@ -1,31 +1,44 @@
-import { mock } from "bun:test"
-import { useRouter, usePathname } from "next/navigation"
-
+import { mock, afterEach, beforeEach, describe, expect, it } from "bun:test"
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import React from "react"
 const mockRouterReplace = mock(() => {})
 const mockRouterRefresh = mock(() => {})
 const mockSwitchToOrganization = mock(async () => {})
 
-mock.module("@workos-inc/authkit-nextjs/components", () => {
-  return {
-    useAuth: () => ({
-      switchToOrganization: mockSwitchToOrganization,
-    }),
-  }
-})
+mock.module("next/navigation", () => ({
+  useRouter: () => ({
+    replace: mockRouterReplace,
+    refresh: mockRouterRefresh,
+    push: () => {},
+  }),
+  usePathname: () => "/en/console",
+}))
 
-import { afterEach, beforeEach, describe, expect, it } from "bun:test"
-import { fireEvent, render, waitFor } from "@testing-library/react"
+mock.module("@workos-inc/authkit-nextjs/components", () => ({
+  useAuth: () => ({
+    switchToOrganization: mockSwitchToOrganization,
+  }),
+}))
 
 let cachedOrganizationOnboarding:
   | (typeof import("@/modules/tenants/ui/organization-onboarding"))["OrganizationOnboarding"]
   | null = null
-
 const loadOrganizationOnboarding = async () => {
   if (!cachedOrganizationOnboarding) {
     const mod = await import("@/modules/tenants/ui/organization-onboarding")
     cachedOrganizationOnboarding = mod.OrganizationOnboarding
   }
   return cachedOrganizationOnboarding
+}
+
+const renderWithQueryClient = (ui: React.ReactElement) => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+  )
 }
 
 const jsonResponse = (body: unknown, status = 200) => {
@@ -67,18 +80,12 @@ beforeEach(() => {
   mockRouterReplace.mockClear()
   mockRouterRefresh.mockClear()
   mockSwitchToOrganization.mockClear()
-  ;(useRouter as ReturnType<typeof mock>).mockReturnValue({
-    replace: mockRouterReplace,
-    refresh: mockRouterRefresh,
-    push: () => {},
-  })
-  ;(usePathname as ReturnType<typeof mock>).mockReturnValue("/en/console")
 })
 
 afterEach(() => {
+  cleanup()
   globalThis.fetch = originalFetch
 })
-
 describe("OrganizationOnboarding", () => {
   it("pre-fills organization name suggestion based on user email", async () => {
     const OrganizationOnboarding = await loadOrganizationOnboarding()
@@ -87,7 +94,7 @@ describe("OrganizationOnboarding", () => {
       return jsonResponse({ memberships: [] })
     }) as unknown as typeof fetch
 
-    const view = render(
+    const view = renderWithQueryClient(
       <OrganizationOnboarding
         nextPath="/console"
         userEmail="john.doe@gmail.com"
@@ -109,7 +116,7 @@ describe("OrganizationOnboarding", () => {
       return jsonResponse({ memberships: [] })
     }) as unknown as typeof fetch
 
-    const view = render(
+    const view = renderWithQueryClient(
       <OrganizationOnboarding
         nextPath="/console"
         userEmail="alex@company.com"
@@ -131,7 +138,9 @@ describe("OrganizationOnboarding", () => {
       return jsonResponse({ memberships: [] })
     }) as unknown as typeof fetch
 
-    const view = render(<OrganizationOnboarding nextPath="/console" />)
+    const view = renderWithQueryClient(
+      <OrganizationOnboarding nextPath="/console" />
+    )
 
     await waitFor(() => {
       const input = view.getByPlaceholderText(
@@ -148,7 +157,9 @@ describe("OrganizationOnboarding", () => {
       return jsonResponse({ memberships: [] })
     }) as unknown as typeof fetch
 
-    const view = render(<OrganizationOnboarding nextPath="/console" />)
+    const view = renderWithQueryClient(
+      <OrganizationOnboarding nextPath="/console" />
+    )
 
     await waitFor(() => {
       const input = view.getByPlaceholderText("Organization name")
@@ -177,7 +188,9 @@ describe("OrganizationOnboarding", () => {
       })
     }) as unknown as typeof fetch
 
-    const view = render(<OrganizationOnboarding nextPath="/console" />)
+    const view = renderWithQueryClient(
+      <OrganizationOnboarding nextPath="/console" />
+    )
 
     await waitFor(() => {
       expect(view.getByText("Test Org 1")).toBeTruthy()
@@ -205,7 +218,9 @@ describe("OrganizationOnboarding", () => {
       })
     }) as unknown as typeof fetch
 
-    const view = render(<OrganizationOnboarding nextPath="/console" />)
+    const view = renderWithQueryClient(
+      <OrganizationOnboarding nextPath="/console" />
+    )
 
     await waitFor(() => {
       expect(
@@ -228,7 +243,9 @@ describe("OrganizationOnboarding", () => {
       return jsonResponse({ memberships: [] })
     }) as unknown as typeof fetch
 
-    const view = render(<OrganizationOnboarding nextPath="/console" />)
+    const view = renderWithQueryClient(
+      <OrganizationOnboarding nextPath="/console" />
+    )
 
     await waitFor(() => {
       expect(
@@ -258,7 +275,9 @@ describe("OrganizationOnboarding", () => {
       })
     }) as unknown as typeof fetch
 
-    const view = render(<OrganizationOnboarding nextPath="/console" />)
+    const view = renderWithQueryClient(
+      <OrganizationOnboarding nextPath="/console" />
+    )
 
     await waitFor(() => {
       expect(
@@ -279,7 +298,7 @@ describe("OrganizationOnboarding", () => {
       return jsonResponse({ memberships: [] })
     }) as unknown as typeof fetch
 
-    const view = render(
+    const view = renderWithQueryClient(
       <OrganizationOnboarding nextPath="/console" showWarning={true} />
     )
 
@@ -297,7 +316,7 @@ describe("OrganizationOnboarding", () => {
       return jsonResponse({ memberships: [] })
     }) as unknown as typeof fetch
 
-    const view = render(
+    const view = renderWithQueryClient(
       <OrganizationOnboarding nextPath="/console" showWarning={false} />
     )
 
@@ -324,7 +343,9 @@ describe("OrganizationOnboarding", () => {
       )
     }) as unknown as typeof fetch
 
-    const view = render(<OrganizationOnboarding nextPath="/console" />)
+    const view = renderWithQueryClient(
+      <OrganizationOnboarding nextPath="/console" />
+    )
 
     await waitFor(() => {
       expect(view.getByText("Bootstrap unavailable.")).toBeTruthy()
@@ -341,7 +362,9 @@ describe("OrganizationOnboarding", () => {
       })
     }) as unknown as typeof fetch
 
-    const view = render(<OrganizationOnboarding nextPath="/console" />)
+    const view = renderWithQueryClient(
+      <OrganizationOnboarding nextPath="/console" />
+    )
 
     await waitFor(() => {
       expect(
@@ -357,7 +380,9 @@ describe("OrganizationOnboarding", () => {
       throw new TypeError("Failed to fetch")
     }) as unknown as typeof fetch
 
-    const view = render(<OrganizationOnboarding nextPath="/console" />)
+    const view = renderWithQueryClient(
+      <OrganizationOnboarding nextPath="/console" />
+    )
 
     await waitFor(() => {
       expect(
@@ -382,7 +407,9 @@ describe("OrganizationOnboarding", () => {
       })
     }) as unknown as typeof fetch
 
-    const view = render(<OrganizationOnboarding nextPath="/dashboard" />)
+    const view = renderWithQueryClient(
+      <OrganizationOnboarding nextPath="/dashboard" />
+    )
 
     await waitFor(() => {
       expect(view.getByText("Switch Org")).toBeTruthy()
@@ -417,7 +444,9 @@ describe("OrganizationOnboarding", () => {
       })
     }) as unknown as typeof fetch
 
-    const view = render(<OrganizationOnboarding nextPath="/console" />)
+    const view = renderWithQueryClient(
+      <OrganizationOnboarding nextPath="/console" />
+    )
 
     await waitFor(() => {
       expect(view.getByText("Fail Org")).toBeTruthy()
@@ -440,7 +469,9 @@ describe("OrganizationOnboarding", () => {
     }) as unknown as typeof fetch
 
     // No userEmail -> no pre-fill -> name is empty string
-    const view = render(<OrganizationOnboarding nextPath="/console" />)
+    const view = renderWithQueryClient(
+      <OrganizationOnboarding nextPath="/console" />
+    )
 
     await waitFor(() => {
       expect(view.getByPlaceholderText("Organization name")).toBeTruthy()
@@ -468,7 +499,7 @@ describe("OrganizationOnboarding", () => {
       return jsonResponse({ memberships: [] })
     })
 
-    const view = render(
+    const view = renderWithQueryClient(
       <OrganizationOnboarding nextPath="/console" userEmail="create@test.com" />
     )
 
@@ -508,7 +539,7 @@ describe("OrganizationOnboarding", () => {
       return jsonResponse({ memberships: [] })
     })
 
-    const view = render(
+    const view = renderWithQueryClient(
       <OrganizationOnboarding nextPath="/console" userEmail="fail@test.com" />
     )
 
@@ -538,7 +569,7 @@ describe("OrganizationOnboarding", () => {
       return jsonResponse({ memberships: [] })
     })
 
-    const view = render(
+    const view = renderWithQueryClient(
       <OrganizationOnboarding nextPath="/console" userEmail="some@test.com" />
     )
 
@@ -567,7 +598,7 @@ describe("OrganizationOnboarding", () => {
       return jsonResponse({ memberships: [] })
     })
 
-    const view = render(
+    const view = renderWithQueryClient(
       <OrganizationOnboarding nextPath="/console" userEmail="net@test.com" />
     )
 

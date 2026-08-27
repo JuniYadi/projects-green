@@ -103,6 +103,9 @@ type ConversationListItem = {
   contactPhone: string
   lastMessageAt: string | null
   lastDirection: MessageDirection | null
+  status?: "OPEN" | "PENDING" | "RESOLVED"
+  stage?: string | null
+  assigneeId?: string | null
   whatsappDeviceId: string | null
   createdAt: string
   updatedAt: string
@@ -138,7 +141,7 @@ type ConversationDetail = ConversationListItem & {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const formatTime = (iso: string | null | undefined) => {
+const formatConversationTime = (iso: string | null | undefined) => {
   if (!iso) return ""
   const d = new Date(iso)
   const now = new Date()
@@ -148,9 +151,28 @@ const formatTime = (iso: string | null | undefined) => {
     d.getDate() === now.getDate()
 
   if (sameDay) {
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    return d.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
   }
   return d.toLocaleDateString([], { day: "numeric", month: "short" })
+}
+
+const formatMessageTime = (iso: string | null | undefined) => {
+  if (!iso) return ""
+  try {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return ""
+    return d.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+  } catch {
+    return ""
+  }
 }
 
 const formatPhone = (phone: string) => {
@@ -159,17 +181,17 @@ const formatPhone = (phone: string) => {
 }
 
 function formatLocalDateTime(iso: string | null | undefined): string {
-  if (!iso) return ""
+  if (!iso) return "No date"
   try {
     const d = new Date(iso)
-    if (isNaN(d.getTime())) return ""
-    return new Intl.DateTimeFormat(undefined, {
+    if (isNaN(d.getTime())) return String(iso)
+    return d.toLocaleString(undefined, {
       dateStyle: "medium",
       timeStyle: "short",
-      timeZoneName: "short",
-    }).format(d)
+      hour12: false,
+    })
   } catch {
-    return ""
+    return String(iso)
   }
 }
 
@@ -287,20 +309,34 @@ function ConversationItem({
               {formatPhone(conversation.contactPhone)}
             </span>
             <span className="shrink-0 text-xs text-muted-foreground">
-              {formatTime(conversation.lastMessageAt)}
+              {formatConversationTime(conversation.lastMessageAt)}
             </span>
           </div>
-          <div className="mt-0.5 flex items-center gap-1.5">
-            <DirectionIcon className="size-3 text-muted-foreground" />
-            <span className="truncate text-xs text-muted-foreground">
-              {conversation.lastDirection === "INBOX" ? "Received" : "Sent"}
-            </span>
-            {conversation.lastDirection === "INBOX" && (
+          <div className="mt-1 flex items-center justify-between gap-1.5">
+            <div className="flex items-center gap-1.5">
+              <DirectionIcon className="size-3 text-muted-foreground" />
+              <span className="truncate text-xs text-muted-foreground">
+                {conversation.lastDirection === "INBOX" ? "Received" : "Sent"}
+              </span>
+              {conversation.lastDirection === "INBOX" && (
+                <span
+                  className="size-2 rounded-full bg-emerald-500"
+                  title="New unread message"
+                />
+              )}
+            </div>
+            {conversation.status && (
               <Badge
                 variant="outline"
-                className="ml-auto shrink-0 border-amber-500/30 bg-amber-500/15 text-[10px] text-amber-700 dark:text-amber-300"
+                className={`h-4 border-0 px-1.5 py-0 text-[10px] ${
+                  conversation.status === "OPEN"
+                    ? "bg-emerald-500/10 text-emerald-600"
+                    : conversation.status === "PENDING"
+                      ? "bg-amber-500/10 text-amber-600"
+                      : "bg-zinc-500/10 text-zinc-600"
+                }`}
               >
-                Needs Reply
+                {conversation.status}
               </Badge>
             )}
           </div>
@@ -364,15 +400,47 @@ function MessageBubble({
       },
       {}
     )
+    const formattedDateTime = formatLocalDateTime(message.createdAt)
 
     return (
-      <div className="flex flex-col items-end gap-1">
-        <div className="group relative">
-          <WhatsAppTemplatePreview
-            language={meta.templateLanguageData!}
-            values={values}
-            mode="full"
-          />
+      <div className="flex flex-col items-end">
+        <div className="group relative max-w-[85%] sm:max-w-[78%]">
+          <div className="relative">
+            <WhatsAppTemplatePreview
+              language={meta.templateLanguageData!}
+              values={values}
+              mode="full"
+              showOuterContainer={false}
+              hideInternalStatus={true}
+            />
+            {/* Integrated timestamp and delivery status directly inside template card bottom right */}
+            <div className="absolute right-3.5 bottom-2 z-20 flex items-center gap-1 text-[10px] text-muted-foreground select-none">
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="cursor-pointer font-medium hover:text-foreground"
+                      title={formattedDateTime}
+                    >
+                      {formatMessageTime(message.createdAt)}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    sideOffset={6}
+                    className="border border-border bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md [&_svg]:bg-popover [&_svg]:fill-popover"
+                  >
+                    {formattedDateTime}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <MessageStatusBadge
+                statusHistory={message.statusHistory}
+                direction={message.direction}
+              />
+            </div>
+          </div>
           {message.waMessageId && (
             <div className="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
               <Link
@@ -385,22 +453,6 @@ function MessageBubble({
               </Link>
             </div>
           )}
-        </div>
-        <div className="mr-1 flex items-center gap-1 text-[11px] text-muted-foreground">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>{formatTime(message.createdAt)}</span>
-              </TooltipTrigger>
-              <TooltipContent>
-                {formatLocalDateTime(message.createdAt)}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <MessageStatusBadge
-            statusHistory={message.statusHistory}
-            direction={message.direction}
-          />
         </div>
       </div>
     )
@@ -434,9 +486,12 @@ function MessageBubble({
           >
             <Tooltip>
               <TooltipTrigger asChild>
-                <span>{formatTime(message.createdAt)}</span>
+                <span>{formatMessageTime(message.createdAt)}</span>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent
+                side="top"
+                className="border border-border bg-popover px-2.5 py-1 text-xs text-popover-foreground shadow-md [&_svg]:bg-popover [&_svg]:fill-popover"
+              >
                 {formatLocalDateTime(message.createdAt)}
               </TooltipContent>
             </Tooltip>
@@ -478,6 +533,7 @@ export default function WhatsAppMessagesPage() {
   const searchParams = useSearchParams()
   const onboarding = useWhatsAppOnboarding()
   const [searchQuery, setSearchQuery] = React.useState("")
+  const [lifecycleFilter, setLifecycleFilter] = React.useState("all")
   const [directionFilter, setDirectionFilter] = React.useState("all")
   const [replyFilter, setReplyFilter] = React.useState<
     "all" | "unreplied" | "replied"
@@ -485,7 +541,6 @@ export default function WhatsAppMessagesPage() {
   const [statusFilter, setStatusFilter] = React.useState("all")
   // State - label filters
   const [labelFilterIds, setLabelFilterIds] = React.useState<string[]>([])
-
   // State - action menu
   const [selectedConversationId, setSelectedConversationId] = React.useState<
     string | null
@@ -740,6 +795,10 @@ export default function WhatsAppMessagesPage() {
       result = result.filter((c) => c.contactPhone.toLowerCase().includes(q))
     }
 
+    if (lifecycleFilter !== "all") {
+      result = result.filter((c) => (c.status ?? "OPEN") === lifecycleFilter)
+    }
+
     if (directionFilter !== "all") {
       result = result.filter((c) => c.lastDirection === directionFilter)
     }
@@ -763,7 +822,14 @@ export default function WhatsAppMessagesPage() {
     }
 
     return result
-  }, [conversations, searchQuery, directionFilter, replyFilter, labelFilterIds])
+  }, [
+    conversations,
+    searchQuery,
+    lifecycleFilter,
+    directionFilter,
+    replyFilter,
+    labelFilterIds,
+  ])
 
   // Reverse messages to show oldest first (they come desc from API)
   const orderedMessages = React.useMemo(
@@ -792,12 +858,19 @@ export default function WhatsAppMessagesPage() {
 
   const activeFilterCount = React.useMemo(() => {
     let count = 0
+    if (lifecycleFilter !== "all") count++
     if (directionFilter !== "all") count++
     if (statusFilter !== "all") count++
-    if (labelFilterIds.length > 0) count++
+    if (replyFilter !== "all") count++
+    if (labelFilterIds.length > 0) count += labelFilterIds.length
     return count
-  }, [directionFilter, statusFilter, labelFilterIds])
-  // 24-Hour Customer Service Window check (based on latest INBOX message)
+  }, [
+    lifecycleFilter,
+    directionFilter,
+    statusFilter,
+    replyFilter,
+    labelFilterIds,
+  ])
   const sessionWindowInfo = React.useMemo(() => {
     if (!activeConversation || orderedMessages.length === 0) {
       return { isOpen: false, lastInboxAt: null, timeRemaining: null }
@@ -1652,6 +1725,25 @@ export default function WhatsAppMessagesPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Lifecycle Status</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={lifecycleFilter}
+                    onValueChange={setLifecycleFilter}
+                  >
+                    <DropdownMenuRadioItem value="all">
+                      All Lifecycles
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="OPEN">
+                      Open
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="PENDING">
+                      Pending
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="RESOLVED">
+                      Resolved
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
                   <DropdownMenuLabel>Reply State</DropdownMenuLabel>
                   <DropdownMenuRadioGroup
                     value={replyFilter}
@@ -1869,10 +1961,9 @@ export default function WhatsAppMessagesPage() {
             )}
           </div>
 
-          {/* Messages Area */}
-          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-muted/20 p-3">
-            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pr-1">
-              {/* Loading */}
+          {/* Messages Area — seamless WhatsApp wallpaper styling */}
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#efeae2]/30 dark:bg-[#0b141a]/40">
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3 pr-2">
               {activeLoading && (
                 <div className="flex flex-1 flex-col justify-end gap-3">
                   {Array.from({ length: 3 }).map((_, i) => (
@@ -1942,7 +2033,7 @@ export default function WhatsAppMessagesPage() {
 
             {/* Bottom 24-Hour Context & Composer */}
             {activeConversation && (
-              <div className="mt-2 shrink-0 border-t pt-2">
+              <div className="shrink-0 border-t bg-card p-3">
                 {sessionWindowInfo.isOpen ? (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between px-1 text-[11px] text-muted-foreground">

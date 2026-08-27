@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { eden } from "@/lib/eden"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
@@ -29,7 +30,6 @@ import type { AppSidebarOrganization } from "@/components/app-sidebar"
 import {
   isTenantApiError,
   type TenantBillingCurrency,
-  type TenantBootstrapMembership,
 } from "@/modules/tenants/contracts/tenant-api.contract"
 
 const resolveOrganizationInitials = (value: string) => {
@@ -53,11 +53,6 @@ export function NavOrganization({
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const [memberships, setMemberships] = useState<TenantBootstrapMembership[]>(
-    []
-  )
-  const [bootstrapOrgId, setBootstrapOrgId] = useState<string | null>(null)
-  const [isLoadingMemberships, setIsLoadingMemberships] = useState(true)
   const [switchingOrgId, setSwitchingOrgId] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
@@ -66,6 +61,26 @@ export function NavOrganization({
   const { locale: pathnameLocale } = getLocaleFromPathname(pathname)
   const activeLocale = (pathnameLocale ?? defaultLocale) as AppLocale
   const messages = getMessages(activeLocale)
+
+  const { data: bootstrapData, isLoading: isLoadingMemberships } = useQuery({
+    queryKey: ["tenant-bootstrap"],
+    queryFn: async () => {
+      const { data: payload } = await eden.api.tenants.bootstrap.get()
+      if (!payload || isTenantApiError(payload)) {
+        return { currentOrganizationId: null, memberships: [] }
+      }
+      return {
+        currentOrganizationId: payload.currentOrganizationId,
+        memberships: payload.memberships,
+      }
+    },
+    staleTime: 30000,
+  })
+
+  const memberships = useMemo(() => {
+    return bootstrapData?.memberships ?? []
+  }, [bootstrapData?.memberships])
+  const bootstrapOrgId = bootstrapData?.currentOrganizationId ?? null
 
   const currentPathWithQuery = useMemo(() => {
     const query = searchParams.toString()
@@ -96,47 +111,6 @@ export function NavOrganization({
       ) ?? null
     )
   }, [activeMemberships, currentOrganizationId])
-
-  useEffect(() => {
-    let isActive = true
-
-    const run = async () => {
-      setIsLoadingMemberships(true)
-
-      try {
-        const { data: payload } = await eden.api.tenants.bootstrap.get()
-
-        if (!isActive) {
-          return
-        }
-
-        if (!payload || isTenantApiError(payload)) {
-          setBootstrapOrgId(null)
-          setMemberships([])
-          return
-        }
-
-        setBootstrapOrgId(payload.currentOrganizationId)
-        setMemberships(payload.memberships)
-      } catch {
-        if (isActive) {
-          setBootstrapOrgId(null)
-          setMemberships([])
-        }
-      } finally {
-        if (isActive) {
-          setIsLoadingMemberships(false)
-        }
-      }
-    }
-
-    void run()
-
-    return () => {
-      isActive = false
-    }
-  }, [])
-
   const handleSwitchOrganization = async (organizationId: string) => {
     if (!organizationId || organizationId === currentOrganizationId) {
       return

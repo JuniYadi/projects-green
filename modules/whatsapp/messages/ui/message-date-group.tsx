@@ -6,8 +6,8 @@ interface MessageDateGroupProps {
 
 export function MessageDateGroup({ label }: MessageDateGroupProps) {
   return (
-    <div className="sticky top-0 z-10 flex items-center justify-center">
-      <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+    <div className="my-2 flex items-center justify-center">
+      <span className="rounded-full bg-muted/80 px-3 py-0.5 text-[11px] font-medium text-muted-foreground shadow-2xs backdrop-blur">
         {label}
       </span>
     </div>
