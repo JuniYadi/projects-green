@@ -1,61 +1,124 @@
-import { describe, it, expect } from "bun:test"
+import { describe, expect, it } from "bun:test"
+import {
+  classifyIcmpError,
+  classifyTcpError,
+  defaultTcpDial,
+  defaultUdpProbe,
+} from "./vpn-port-checker"
+import net from "node:net"
+import dgram from "node:dgram"
 
-import { classifyTcpError, classifyIcmpError } from "./vpn-port-checker"
+describe("vpn-port-checker", () => {
+  describe("classifyTcpError", () => {
+    it("classifies ECONNREFUSED as closed port fail", () => {
+      const err = new Error("connection refused") as NodeJS.ErrnoException
+      err.code = "ECONNREFUSED"
 
-const errWithCode = (code: string): NodeJS.ErrnoException => {
-  const e = new Error(code) as NodeJS.ErrnoException
-  e.code = code
-  return e
-}
+      const res = classifyTcpError(err)
 
-describe("classifyTcpError", () => {
-  it("treats refused as a fail (port closed)", () => {
-    const r = classifyTcpError(errWithCode("ECONNREFUSED"))
-    expect(r.kind).toBe("fail")
-    expect(r.message).toContain("refused")
+      expect(res.kind).toBe("fail")
+      expect(res.message).toBe("Connection refused (port closed)")
+      expect(res.detail).toBeDefined()
+    })
+
+    it("classifies EHOSTUNREACH and ENETUNREACH as fail", () => {
+      const hostErr = new Error("host unreachable") as NodeJS.ErrnoException
+      hostErr.code = "EHOSTUNREACH"
+      expect(classifyTcpError(hostErr).kind).toBe("fail")
+
+      const netErr = new Error("network unreachable") as NodeJS.ErrnoException
+      netErr.code = "ENETUNREACH"
+      expect(classifyTcpError(netErr).kind).toBe("fail")
+    })
+
+    it("classifies DNS and timeout errors", () => {
+      const dnsErr = new Error("not found") as NodeJS.ErrnoException
+      dnsErr.code = "ENOTFOUND"
+      expect(classifyTcpError(dnsErr).message).toBe("DNS resolution failed")
+
+      const timeoutErr = new Error("timed out") as NodeJS.ErrnoException
+      timeoutErr.code = "ETIMEDOUT"
+      expect(classifyTcpError(timeoutErr).message).toBe("Connection timed out")
+    })
+
+    it("classifies unknown generic errors", () => {
+      const genericErr = new Error("Custom error") as NodeJS.ErrnoException
+      expect(classifyTcpError(genericErr).message).toBe("Custom error")
+    })
   })
 
-  it("treats host unreachable as a fail", () => {
-    const r = classifyTcpError(errWithCode("EHOSTUNREACH"))
-    expect(r.kind).toBe("fail")
-    expect(r.message).toContain("Host unreachable")
+  describe("classifyIcmpError", () => {
+    it("maps ICMP error codes to human readable strings", () => {
+      const refused = new Error() as NodeJS.ErrnoException
+      refused.code = "ECONNREFUSED"
+      expect(classifyIcmpError(refused)).toBe(
+        "ICMP Port Unreachable — port is closed"
+      )
+
+      const hostUnreach = new Error() as NodeJS.ErrnoException
+      hostUnreach.code = "EHOSTUNREACH"
+      expect(classifyIcmpError(hostUnreach)).toBe("ICMP Host Unreachable")
+
+      const netUnreach = new Error() as NodeJS.ErrnoException
+      netUnreach.code = "ENETUNREACH"
+      expect(classifyIcmpError(netUnreach)).toBe("ICMP Network Unreachable")
+
+      const other = new Error("other error") as NodeJS.ErrnoException
+      expect(classifyIcmpError(other)).toBe("other error")
+    })
   })
 
-  it("treats network unreachable as a fail", () => {
-    const r = classifyTcpError(errWithCode("ENETUNREACH"))
-    expect(r.kind).toBe("fail")
-    expect(r.message).toContain("Network unreachable")
+  describe("defaultTcpDial", () => {
+    it("successfully connects to local open TCP server", async () => {
+      const server = net.createServer()
+      await new Promise<void>((resolve) => {
+        server.listen(0, "127.0.0.1", () => resolve())
+      })
+      const port = (server.address() as net.AddressInfo).port
+
+      try {
+        const res = await defaultTcpDial("127.0.0.1", port, 1000)
+        expect(res.ok).toBe(true)
+        if (res.ok) {
+          expect(res.message).toContain("TCP connection succeeded")
+        }
+      } finally {
+        server.close()
+      }
+    })
+
+    it("handles connection failure on closed TCP port", async () => {
+      const res = await defaultTcpDial("127.0.0.1", 59999, 1000)
+      expect(res.ok).toBe(false)
+    })
   })
 
-  it("treats timeout as an error", () => {
-    const r = classifyTcpError(errWithCode("ETIMEDOUT"))
-    expect(r.kind).toBe("error")
-    expect(r.message).toContain("timed out")
-  })
+  describe("defaultUdpProbe", () => {
+    it("successfully probes open/listening UDP socket and receives message", async () => {
+      const server = dgram.createSocket("udp4")
+      server.on("message", (_, rinfo) => {
+        server.send(Buffer.from("pong"), rinfo.port, rinfo.address)
+      })
 
-  it("treats DNS failure as an error", () => {
-    const r = classifyTcpError(errWithCode("ENOTFOUND"))
-    expect(r.kind).toBe("error")
-    expect(r.message).toContain("DNS")
-  })
-})
+      await new Promise<void>((resolve) => {
+        server.bind(0, "127.0.0.1", () => resolve())
+      })
+      const port = server.address().port
 
-describe("classifyIcmpError", () => {
-  it("maps ECONNREFUSED to port unreachable", () => {
-    expect(classifyIcmpError(errWithCode("ECONNREFUSED"))).toContain(
-      "Port Unreachable"
-    )
-  })
+      try {
+        const res = await defaultUdpProbe("127.0.0.1", port, 1000)
+        expect(res.ok).toBe(true)
+      } finally {
+        server.close()
+      }
+    })
 
-  it("maps EHOSTUNREACH to host unreachable", () => {
-    expect(classifyIcmpError(errWithCode("EHOSTUNREACH"))).toContain(
-      "Host Unreachable"
-    )
-  })
-
-  it("maps ENETUNREACH to network unreachable", () => {
-    expect(classifyIcmpError(errWithCode("ENETUNREACH"))).toContain(
-      "Network Unreachable"
-    )
+    it("times out and assumes port appears open when no ICMP received", async () => {
+      const res = await defaultUdpProbe("127.0.0.1", 59998, 100)
+      expect(res.ok).toBe(true)
+      if (res.ok) {
+        expect(res.message).toContain("No ICMP error received")
+      }
+    })
   })
 })
