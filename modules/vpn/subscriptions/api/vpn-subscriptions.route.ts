@@ -281,7 +281,16 @@ export const createVpnSubscriptionRoutes = (deps: Deps = {}) => {
           configEncrypted: account.configEncrypted!,
         }))
       )
-      const filename = `vpn-${sub.packageName.toLowerCase().replace(/[^a-z0-9_-]+/g, "-")}-${sub.id.slice(-6)}.zip`
+      const rawName =
+        ("packageName" in sub && typeof sub.packageName === "string"
+          ? sub.packageName
+          : "") || "configs"
+      const nameSlug =
+        rawName
+          .toLowerCase()
+          .replace(/[^a-z0-9_-]+/g, "-")
+          .replace(/^-+|-+$/g, "") || "configs"
+      const filename = `vpn-${nameSlug}-${sub.id.slice(-6)}.zip`
       return new Response(new Uint8Array(zip), {
         headers: {
           "content-type": "application/zip",
