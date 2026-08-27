@@ -481,12 +481,14 @@ function RegionSummary({ sub }: { sub: VpnSubscription }) {
 
 function SubscriptionStatusBadge({ sub }: { sub: VpnSubscription }) {
   const status = billingStatus(sub)
+  if (status === "ACTIVE") return null
 
   return (
     <Badge
       variant={
         status === "CANCELLING" ? "secondary" : STATUS_VARIANT[sub.status]
       }
+      className="text-[10px] font-medium uppercase"
     >
       {status === "CANCELLING" ? "Cancelling" : sub.status}
     </Badge>
@@ -545,66 +547,136 @@ export function VpnServerAccountsDetail({
 }: {
   subscription: VpnSubscription
 }) {
+  const [search, setSearch] = useState("")
+  const [regionFilter, setRegionFilter] = useState("all")
+
+  const serverGroups = useMemo(
+    () => groupByServer(subscription.serverAccounts),
+    [subscription.serverAccounts]
+  )
+
+  const regionOptions = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const g of serverGroups) {
+      if (g.region) {
+        map.set(g.region.slug, `${g.region.name} (${g.region.countryCode})`)
+      }
+    }
+    return [...map.entries()].map(([slug, label]) => ({ slug, label }))
+  }, [serverGroups])
+
+  const filteredGroups = useMemo(() => {
+    return serverGroups.filter((g) => {
+      if (regionFilter !== "all" && g.region?.slug !== regionFilter) {
+        return false
+      }
+      if (!search.trim()) return true
+      const q = search.toLowerCase()
+      return (
+        g.serverName.toLowerCase().includes(q) ||
+        (g.hostname && g.hostname.toLowerCase().includes(q)) ||
+        (g.ipAddress && g.ipAddress.toLowerCase().includes(q)) ||
+        (g.region?.name && g.region.name.toLowerCase().includes(q))
+      )
+    })
+  }, [serverGroups, search, regionFilter])
+
+  const showFilterControls = serverGroups.length > 3
+
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {groupByServer(subscription.serverAccounts).map((group) => {
-        const allActive = group.accounts.every(
-          (a) => a.provisioningStatus === "ACTIVE"
-        )
-        const anyFailed = group.accounts.some(
-          (a) => a.provisioningStatus === "FAILED"
-        )
-
-        return (
-          <Card
-            key={group.serverId}
-            className="flex flex-col justify-between overflow-hidden"
-          >
-            <CardHeader className="p-3.5 pb-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 space-y-0.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm leading-tight font-semibold">
-                      {group.serverName}
-                    </span>
-                    <RegionBadge region={group.region} />
-                  </div>
-                  <p className="truncate font-mono text-xs text-muted-foreground">
-                    {group.hostname || group.ipAddress || "—"}
-                  </p>
-                </div>
-                {anyFailed ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-destructive">
-                    <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
-                    Error
-                  </span>
-                ) : allActive ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    Ready
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                    Provisioning
-                  </span>
-                )}
-              </div>
-            </CardHeader>
-
-            <CardContent className="space-y-1.5 p-3.5 pt-0">
-              {group.accounts.map((account) => (
-                <ProtocolControl
-                  key={account.id}
-                  subscriptionId={subscription.id}
-                  account={account}
-                  subStatus={subscription.status}
-                />
+    <div className="space-y-3">
+      {showFilterControls && (
+        <div className="flex flex-wrap items-center gap-3">
+          <Input
+            placeholder="Search servers..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-8 max-w-xs text-xs"
+          />
+          {regionOptions.length > 1 && (
+            <select
+              value={regionFilter}
+              onChange={(e) => setRegionFilter(e.target.value)}
+              className="h-8 rounded-md border border-input bg-background px-2.5 text-xs text-foreground focus:ring-1 focus:ring-ring focus:outline-none"
+              aria-label="Filter by region"
+            >
+              <option value="all">All regions ({serverGroups.length})</option>
+              {regionOptions.map((r) => (
+                <option key={r.slug} value={r.slug}>
+                  {r.label}
+                </option>
               ))}
-            </CardContent>
-          </Card>
-        )
-      })}
+            </select>
+          )}
+        </div>
+      )}
+
+      {filteredGroups.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-6 text-center text-xs text-muted-foreground">
+          No server locations match your filter.
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredGroups.map((group) => {
+            const allActive = group.accounts.every(
+              (a) => a.provisioningStatus === "ACTIVE"
+            )
+            const anyFailed = group.accounts.some(
+              (a) => a.provisioningStatus === "FAILED"
+            )
+
+            return (
+              <Card
+                key={group.serverId}
+                className="flex flex-col justify-between overflow-hidden"
+              >
+                <CardHeader className="p-3.5 pb-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm leading-tight font-semibold">
+                          {group.serverName}
+                        </span>
+                        <RegionBadge region={group.region} />
+                      </div>
+                      <p className="truncate font-mono text-xs text-muted-foreground">
+                        {group.hostname || group.ipAddress || "—"}
+                      </p>
+                    </div>
+                    {anyFailed ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-destructive">
+                        <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
+                        Error
+                      </span>
+                    ) : allActive ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        Ready
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                        Provisioning
+                      </span>
+                    )}
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-1.5 p-3.5 pt-0">
+                  {group.accounts.map((account) => (
+                    <ProtocolControl
+                      key={account.id}
+                      subscriptionId={subscription.id}
+                      account={account}
+                      subStatus={subscription.status}
+                    />
+                  ))}
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -798,60 +870,76 @@ export function VpnMyServices({ subscriptions, onChanged }: Props) {
                     <span>Get Config</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 space-y-1">
-                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase">
-                    Download Profiles
-                  </div>
-                  {sub.serverAccounts.map((account) => {
-                    const isWireGuard = account.protocol === "WIREGUARD"
-                    const isOpenVpn = account.protocol === "OPENVPN"
-                    const isProxy = account.protocol === "PROXY"
-                    const ext = isWireGuard ? ".conf" : ".ovpn"
-                    const downloadUrl = vpnConfigDownloadUrl(sub.id, account.id)
-
-                    if (isProxy) {
-                      return (
-                        <ProxyCredentialCell
-                          key={account.id}
-                          subscriptionId={sub.id}
-                          account={account}
-                        />
-                      )
-                    }
-
-                    return (
-                      <div
-                        key={account.id}
-                        className="flex items-center justify-between px-2 py-1 text-xs"
-                      >
-                        <span className="font-mono text-muted-foreground">
-                          {account.protocol}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          {isWireGuard && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-1.5 text-xs"
-                              onClick={() => setPairingQrConfigUrl(downloadUrl)}
-                            >
-                              QR
-                            </Button>
-                          )}
-                          <Button
-                            asChild
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-1.5 text-xs font-medium text-primary"
-                          >
-                            <a href={downloadUrl} download>
-                              {ext}
-                            </a>
-                          </Button>
-                        </div>
+                <DropdownMenuContent
+                  align="end"
+                  className="max-h-80 w-64 space-y-2 overflow-y-auto p-1.5"
+                >
+                  {groupByServer(sub.serverAccounts).map((group, idx) => (
+                    <div
+                      key={group.serverId}
+                      className={idx > 0 ? "border-t pt-1.5" : ""}
+                    >
+                      <div className="flex items-center gap-1.5 px-2 py-1 text-xs font-semibold text-foreground">
+                        <span>{group.serverName}</span>
+                        <RegionBadge region={group.region} />
                       </div>
-                    )
-                  })}
+                      <div className="space-y-0.5">
+                        {group.accounts.map((account) => {
+                          const isWireGuard = account.protocol === "WIREGUARD"
+                          const isProxy = account.protocol === "PROXY"
+                          const downloadUrl = vpnConfigDownloadUrl(
+                            sub.id,
+                            account.id
+                          )
+
+                          if (isProxy) {
+                            return (
+                              <ProxyCredentialCell
+                                key={account.id}
+                                subscriptionId={sub.id}
+                                account={account}
+                              />
+                            )
+                          }
+
+                          return (
+                            <div
+                              key={account.id}
+                              className="flex items-center justify-between rounded px-2 py-1 text-xs hover:bg-muted/50"
+                            >
+                              <span className="font-medium text-muted-foreground">
+                                {isWireGuard ? "WireGuard" : "OpenVPN"}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                {isWireGuard && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-1.5 text-xs"
+                                    onClick={() =>
+                                      setPairingQrConfigUrl(downloadUrl)
+                                    }
+                                  >
+                                    QR
+                                  </Button>
+                                )}
+                                <Button
+                                  asChild
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-1.5 text-xs font-medium text-primary"
+                                >
+                                  <a href={downloadUrl} download>
+                                    Download
+                                  </a>
+                                </Button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

@@ -118,14 +118,13 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe("VpnMyServices", () => {
-  it("renders subscription table with package name and status", () => {
+  it("renders subscription table with package name and details", () => {
     const view = renderAsync(
       <VpnMyServices subscriptions={[subscription()]} onChanged={() => {}} />
     )
 
     expect(view.getByText("Pro VPN - SG Standard")).toBeInTheDocument()
-    const badges = view.getAllByText("ACTIVE")
-    expect(badges.length).toBeGreaterThanOrEqual(1)
+    expect(view.getByText("Location Coverage")).toBeInTheDocument()
   })
   it("focuses each row on connection details and quick actions", () => {
     const view = renderAsync(
