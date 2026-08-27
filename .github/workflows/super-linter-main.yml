@@ -46,8 +46,10 @@ jobs:
           VALIDATE_GITHUB_ACTIONS: false
           VALIDATE_GITHUB_ACTIONS_ZIZMOR: false
           VALIDATE_MARKDOWN: false
+          VALIDATE_MARKDOWN_PRETTIER: false
           VALIDATE_NATURAL_LANGUAGE: false
           VALIDATE_SPELL: false
+          VALIDATE_SPELL_CODESPELL: false
           VALIDATE_PYTHON_CODESPELL: false
           VALIDATE_TEXTLINT: false
           VALIDATE_SQLFLUFF: false
