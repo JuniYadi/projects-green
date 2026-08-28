@@ -19,12 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Eye,
-  CheckCircle,
-  Star,
-  MagnifyingGlass,
-} from "@/components/ui/phosphor-icons"
+import { Eye, CheckCircle, Star, MagnifyingGlass } from "@phosphor-icons/react"
 import type { AdminTemplateRecord } from "./template-inspector-drawer"
 
 interface TemplateModerationTableProps {
@@ -100,7 +95,6 @@ export function TemplateModerationTable({
             <SelectContent>
               <SelectItem value="ALL">All Categories</SelectItem>
               <SelectItem value="AI">AI</SelectItem>
-              <SelectItem value="AUTOMATION">Automation</SelectItem>
               <SelectItem value="CMS">CMS</SelectItem>
               <SelectItem value="DATABASE">Database</SelectItem>
               <SelectItem value="DEVELOPER_TOOLS">Developer Tools</SelectItem>
@@ -198,7 +192,7 @@ export function TemplateModerationTable({
                       <Star
                         className={`size-4 ${
                           template.isFeatured
-                            ? "fill-amber-400 text-amber-500"
+                            ? "fill-amber-400 text-amber-400"
                             : "text-muted-foreground"
                         }`}
                       />

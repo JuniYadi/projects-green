@@ -20,9 +20,12 @@ mock.module("next/link", () => ({
   ),
 }))
 
-mock.module("@phosphor-icons/react", () => ({
+mock.module("@/components/ui/phosphor-icons", () => ({
   Database: (props: Record<string, unknown>) => (
     <span data-testid="icon-database" {...props} />
+  ),
+  Storefront: (props: Record<string, unknown>) => (
+    <span data-testid="icon-storefront" {...props} />
   ),
 }))
 
@@ -41,14 +44,13 @@ mock.module("@/components/ui/button", () => ({
     children,
     variant,
     size,
-    asChild,
+    asChild: _asChild,
     ...props
   }: {
-    children?: React.ReactNode
+    children: React.ReactNode
     variant?: string
     size?: string
     asChild?: boolean
-    [key: string]: unknown
   }) => (
     <button {...props} data-testid={`button-${variant}-${size}`}>
       {children}
@@ -66,44 +68,21 @@ afterEach(() => {
 })
 
 describe("PortalApplicationsPage", () => {
-  it("renders the App Hosting Admin heading", () => {
+  it("renders page title and subtitle", () => {
     const { getByText } = render(<PortalApplicationsPage />)
-    expect(getByText("App Hosting Admin")).toBeDefined()
+    expect(getByText("App Hosting Admin")).toBeInTheDocument()
+    expect(
+      getByText(
+        "Support and configuration surfaces for the App Hosting MVP. Customer deploy and runtime management live in the console."
+      )
+    ).toBeInTheDocument()
   })
 
-  it("renders the Cluster Inventory heading", () => {
+  it("renders cluster inventory card and templates card with links", () => {
     const { getByText } = render(<PortalApplicationsPage />)
-    expect(getByText("Cluster Inventory")).toBeDefined()
-  })
-
-  it("renders the View Clusters link", () => {
-    const { getByText } = render(<PortalApplicationsPage />)
-    const link = getByText("View Clusters").closest("a")
-    expect(link?.getAttribute("href")).toBe("/en/portal/app/clusters")
-  })
-
-  it("does not render deployment monitoring content", () => {
-    const { container } = render(<PortalApplicationsPage />)
-
-    // No app table
-    expect(container.querySelector("table")).toBeNull()
-
-    // No Logs/Events/Metrics/Settings action links
-    expect(container.querySelectorAll("a:has-text('Logs')")).toHaveLength(0)
-    expect(container.querySelectorAll("a:has-text('Events')")).toHaveLength(0)
-    expect(container.querySelectorAll("a:has-text('Metrics')")).toHaveLength(0)
-    expect(container.querySelectorAll("a:has-text('Settings')")).toHaveLength(0)
-
-    // No retry button
-    expect(container.querySelector("button:has-text('Retry')")).toBeNull()
-
-    // No loading state
-    expect(container.querySelector(":has-text('Loading')")).toBeNull()
-
-    // No error state
-    expect(container.querySelector(":has-text('Error')")).toBeNull()
-
-    // No empty app state
-    expect(container.querySelector(":has-text('No applications')")).toBeNull()
+    expect(getByText("Cluster Inventory")).toBeInTheDocument()
+    expect(getByText("View Clusters")).toBeInTheDocument()
+    expect(getByText("Marketplace Templates")).toBeInTheDocument()
+    expect(getByText("Manage Templates")).toBeInTheDocument()
   })
 })

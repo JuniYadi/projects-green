@@ -411,6 +411,17 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
         isActive: startsWithRoute(path, "/portal/app/clusters"),
       },
       {
+        title: "Templates",
+        url: localizePathname({
+          pathname: "/portal/app/templates",
+          locale,
+        }),
+        icon: <StorefrontIcon />,
+        isActive:
+          startsWithRoute(path, "/portal/app/templates") ||
+          startsWithRoute(path, "/portal/marketplace"),
+      },
+      {
         title: "Managed Stocks",
         url: localizePathname({
           pathname: "/portal/app/managed-stocks",
