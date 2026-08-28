@@ -4,6 +4,7 @@ import {
   formatTemplateSlug,
   validateTemplateBodyRules,
   buildMetaTemplateComponents,
+  validateTemplateButtons,
 } from "./template-validator"
 
 describe("template-validator", () => {
@@ -199,6 +200,37 @@ describe("template-validator", () => {
           text: "Simple body without variables",
         },
       ])
+    })
+  })
+
+  describe("validateTemplateButtons", () => {
+    it("passes for valid buttons under 25 chars", () => {
+      const buttons = [
+        {
+          type: "PHONE_NUMBER",
+          text: "Call Support",
+          phoneNumber: "+62812345",
+        },
+        { type: "URL", text: "Visit Website", url: "https://example.com" },
+      ]
+      const res = validateTemplateButtons(buttons)
+      expect(res.isValid).toBe(true)
+      expect(res.errors).toHaveLength(0)
+    })
+
+    it("fails when button text exceeds 25 chars", () => {
+      const buttons = [
+        {
+          type: "PHONE_NUMBER",
+          text: "Call Support UPD PMI Kab. Kulon Progo",
+          phoneNumber: "+6282133403011",
+        },
+      ]
+      const res = validateTemplateButtons(buttons)
+      expect(res.isValid).toBe(false)
+      expect(res.errors[0]).toContain(
+        "exceeds Meta's maximum limit of 25 characters"
+      )
     })
   })
 })

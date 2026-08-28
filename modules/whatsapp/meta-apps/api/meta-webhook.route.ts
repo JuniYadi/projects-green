@@ -160,6 +160,17 @@ function extractWebhookItems(payload: unknown): WebhookItem[] | null {
         continue
       }
 
+      // Ignored informational change fields (like template_category_update, account_update, etc.)
+      // that are valid Meta webhook payloads but do not require inbound event queueing
+      if (
+        change.field === "template_category_update" ||
+        change.field === "account_update" ||
+        change.field === "phone_number_name_update" ||
+        change.field === "phone_number_quality_update"
+      ) {
+        continue
+      }
+
       const metadata = change.value.metadata
       if (
         !isRecord(metadata) ||
@@ -200,8 +211,7 @@ function extractWebhookItems(payload: unknown): WebhookItem[] | null {
       }
     }
   }
-
-  return items.length > 0 ? items : null
+  return items
 }
 
 export const metaWebhookRoutes = new Elysia({
@@ -333,8 +343,8 @@ export const metaWebhookRoutes = new Elysia({
         })
         return invalidResponse(set, 422, "INVALID_PAYLOAD")
       }
-      const items = extractWebhookItems(payload)
-      if (!items) {
+      const extraction = extractWebhookItems(payload)
+      if (extraction === null) {
         logWebhookRejection({
           reason: "INVALID_ENVELOPE_OR_EMPTY_ITEMS",
           webhookKey: params.webhookKey,
@@ -345,6 +355,13 @@ export const metaWebhookRoutes = new Elysia({
         })
         return invalidResponse(set, 422, "INVALID_PAYLOAD")
       }
+
+      // If payload is valid Meta envelope but contains only ignored informational events, return 200 OK without rejection
+      if (extraction.length === 0) {
+        return { success: true, ignored: true }
+      }
+
+      const items = extraction
 
       const deviceLookupKeys = [
         ...new Set(

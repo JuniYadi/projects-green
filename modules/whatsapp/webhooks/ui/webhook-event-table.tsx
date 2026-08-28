@@ -45,6 +45,7 @@ import {
 import { cn } from "@/lib/utils"
 
 import { RawPayloadViewer } from "./raw-payload-viewer"
+import { WebhookEventDetailSheet } from "./webhook-event-sheet"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -171,11 +172,13 @@ export function WebhookEventTable({
   onRetry,
   pagination,
   emptyActionLabel = "Verify Webhook Configuration",
-  emptyActionHref,
-  showPayload = false,
+  emptyActionHref = "/portal/whatsapp/webhooks",
+  showPayload = true,
   messageJourneyBasePath = "/console/whatsapp/messages",
 }: WebhookEventTableProps) {
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null)
+  const [selectedEventForSheet, setSelectedEventForSheet] =
+    useState<WebhookEventDTO | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const handleCopyMessageId = useCallback(
@@ -341,6 +344,7 @@ export function WebhookEventTable({
                 <TableHead>
                   <WhatsAppText id="s306" />
                 </TableHead>
+                <TableHead className="w-16 text-right">Inspect</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -435,6 +439,19 @@ export function WebhookEventTable({
                       <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
                         {formatTimestamp(event.createdAt)}
                       </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs font-normal"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedEventForSheet(event)
+                          }}
+                        >
+                          Details →
+                        </Button>
+                      </TableCell>
                     </TableRow>
                     {showPayload && isExpanded && (
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
@@ -483,6 +500,13 @@ export function WebhookEventTable({
             </Button>
           </div>
         )}
+        <WebhookEventDetailSheet
+          event={selectedEventForSheet}
+          open={Boolean(selectedEventForSheet)}
+          onOpenChange={(open) => {
+            if (!open) setSelectedEventForSheet(null)
+          }}
+        />
       </div>
     </TooltipProvider>
   )

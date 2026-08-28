@@ -1279,14 +1279,35 @@ export function TemplateForm({
                         {btn.type}
                       </Badge>
                       <div className="flex-1 space-y-2">
-                        <Input
-                          value={"text" in btn ? btn.text : ""}
-                          onChange={(e) =>
-                            updateButton(i, { text: e.target.value })
-                          }
-                          placeholder="Button Text"
-                          className="text-xs"
-                        />
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-[11px] text-muted-foreground">
+                              Button Label
+                            </Label>
+                            <span
+                              className={`text-[10px] ${
+                                ("text" in btn ? btn.text.length : 0) > 25
+                                  ? "font-semibold text-destructive"
+                                  : "text-muted-foreground"
+                              }`}
+                            >
+                              {"text" in btn ? btn.text.length : 0}/25
+                            </span>
+                          </div>
+                          <Input
+                            value={"text" in btn ? btn.text : ""}
+                            maxLength={25}
+                            onChange={(e) =>
+                              updateButton(i, { text: e.target.value })
+                            }
+                            placeholder="Button Text (max 25 chars)"
+                            className={`text-xs ${
+                              ("text" in btn ? btn.text.length : 0) > 25
+                                ? "border-destructive focus-visible:ring-destructive"
+                                : ""
+                            }`}
+                          />
+                        </div>
                         {btn.type === "URL" && (
                           <Input
                             value={btn.url}
