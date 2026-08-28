@@ -38,8 +38,9 @@ export interface AdminTemplateRecord {
   blueprintJson: AppTemplateBlueprint
   isOfficial: boolean
   isFeatured: boolean
+  priceMonthly?: number | string | null
+  currency?: string | null
   verifiedAt?: string | Date | null
-  reviewedBy?: string | null
   reviewNotes?: string | null
   installCount: number
   organizationId?: string | null

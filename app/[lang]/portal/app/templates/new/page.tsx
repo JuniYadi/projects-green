@@ -39,9 +39,6 @@ export default function PortalNewAppTemplatePage() {
         router.push(`/${lang}/portal/app/templates`)
       }
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to create template"
-      toast.error(msg)
       throw err
     } finally {
       setIsSaving(false)

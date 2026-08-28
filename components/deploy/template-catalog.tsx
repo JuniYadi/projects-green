@@ -38,7 +38,7 @@ import {
 import { cn } from "@/lib/utils"
 import { getCatalogProduct, type CatalogPlan } from "@/lib/billing-client"
 import { formatBillingMoney } from "@/modules/billing/format-money"
-
+import { getPlanResources } from "@/modules/deploy/catalog-plan-utils"
 type TemplateVisual = {
   icon: Icon
   description: string
@@ -162,30 +162,6 @@ type QuickDeployDialogProps = {
 const makeSubdomain = (template: ManagedAppTemplate) =>
   `${template.defaultSubdomain}-${Math.random().toString(36).slice(2, 7)}`
 
-function getPlanResources(plan: CatalogPlan | undefined) {
-  if (!plan) return { cpu: 500, mem: 512 }
-  const res = plan.resources as Record<string, unknown> | undefined
-  const provisioning = res?.provisioning as Record<string, unknown> | undefined
-  const features = res?.features as Record<string, unknown> | undefined
-
-  const cpu =
-    Number(provisioning?.cpu) ||
-    Number(features?.defaultCpu) ||
-    Number(res?.defaultCpu) ||
-    Number(res?.cpu) ||
-    (plan.code === "MEDIUM" ? 1000 : 500)
-
-  const rawMem =
-    Number(provisioning?.memory) ||
-    Number(features?.defaultMem) ||
-    Number(res?.defaultMem) ||
-    Number(res?.memory) ||
-    (plan.code === "MEDIUM" ? 2048 : 512)
-
-  const mem = rawMem > 32768 ? Math.round(rawMem / 1000) : rawMem
-
-  return { cpu, mem }
-}
 
 function QuickDeployDialog({
   template,

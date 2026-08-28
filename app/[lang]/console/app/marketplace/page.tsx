@@ -46,7 +46,7 @@ export default function ConsoleMarketplacePage() {
               name: submission.appName,
               subdomain: submission.subdomain.replace(/\.pfnapp\.com$/, ""),
               billingMode:
-                submission.billingMode === "SUBSCRIPTION" ? "PACKAGE" : "PAYG",
+                submission.billingMode === "PACKAGE" ? "PACKAGE" : "PAYG",
               resourcePlanId: submission.resourcePlanId ?? "payg",
               cpu: submission.cpu,
               memory: submission.memory,

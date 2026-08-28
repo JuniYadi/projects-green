@@ -75,9 +75,6 @@ export default function PortalMarketplaceModerationPage() {
         setTemplates((prev) =>
           prev.map((t) => (t.id === id ? { ...t, ...updated } : t))
         )
-        if (selectedTemplate?.id === id) {
-          setSelectedTemplate((prev) => (prev ? { ...prev, ...updated } : null))
-        }
       }
     } catch (err) {
       console.error("Failed to approve template:", err)
@@ -106,9 +103,6 @@ export default function PortalMarketplaceModerationPage() {
         setTemplates((prev) =>
           prev.map((t) => (t.id === id ? { ...t, ...updated } : t))
         )
-        if (selectedTemplate?.id === id) {
-          setSelectedTemplate((prev) => (prev ? { ...prev, ...updated } : null))
-        }
       }
     } catch (err) {
       console.error("Failed to reject template:", err)
@@ -135,9 +129,6 @@ export default function PortalMarketplaceModerationPage() {
         setTemplates((prev) =>
           prev.map((t) => (t.id === id ? { ...t, ...updated } : t))
         )
-        if (selectedTemplate?.id === id) {
-          setSelectedTemplate((prev) => (prev ? { ...prev, ...updated } : null))
-        }
       }
     } catch (err) {
       console.error("Failed to toggle featured status:", err)
