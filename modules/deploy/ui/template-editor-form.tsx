@@ -483,18 +483,26 @@ export function TemplateEditorForm({
                   </Label>
                   <div className="flex items-center gap-3">
                     <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted/30 p-1.5">
-                      {iconUrl ? (
-                        <img
-                          src={iconUrl}
-                          alt="Icon preview"
-                          className="size-full object-contain"
-                          onError={(e) => {
-                            ;(e.target as HTMLElement).style.display = "none"
-                          }}
-                        />
-                      ) : (
-                        <Globe className="size-5 text-muted-foreground" />
-                      )}
+                      {(() => {
+                        const trimmed = iconUrl.trim()
+                        const isSafeUrl =
+                          trimmed.startsWith("/") ||
+                          trimmed.startsWith("https://") ||
+                          trimmed.startsWith("http://")
+                        return isSafeUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={trimmed}
+                            alt="Icon preview"
+                            className="size-full object-contain"
+                            onError={(e) => {
+                              ;(e.target as HTMLElement).style.display = "none"
+                            }}
+                          />
+                        ) : (
+                          <Globe className="size-5 text-muted-foreground" />
+                        )
+                      })()}
                     </div>
                     <Input
                       id="template-icon"
