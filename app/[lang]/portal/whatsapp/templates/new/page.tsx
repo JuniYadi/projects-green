@@ -29,10 +29,10 @@ export default function PortalNewTemplatePage() {
   const duplicateId = searchParams.get("duplicate")
 
   const { template: sourceTemplate, loading: loadingSource } = useTemplate(
-    duplicateId || ""
+    duplicateId ?? ""
   )
   const { create, creating } = useCreateTemplate()
-  const [devices, setDevices] = React.useState<DeviceListItem[]>([])
+  const [activeDevices, setActiveDevices] = React.useState<DeviceListItem[]>([])
   const [loadingDevices, setLoadingDevices] = React.useState(true)
 
   React.useEffect(() => {
@@ -45,7 +45,7 @@ export default function PortalNewTemplatePage() {
           devices?: DeviceListItem[]
         }
         if (!cancelled && body?.ok && Array.isArray(body.devices)) {
-          setDevices(body.devices)
+          setActiveDevices(body.devices.filter((d) => d.status === "ACTIVE"))
         }
       } catch {
         // Fallback
@@ -58,11 +58,6 @@ export default function PortalNewTemplatePage() {
       cancelled = true
     }
   }, [])
-
-  const activeDevices = React.useMemo(
-    () => devices.filter((d) => d.status === "ACTIVE"),
-    [devices]
-  )
 
   const handleSubmit = async (data: {
     name: string
