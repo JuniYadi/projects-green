@@ -3,7 +3,6 @@
 import React, { useMemo, useState } from "react"
 import {
   Check,
-  CheckCircle,
   Clock,
   Cpu,
   Database,
@@ -51,6 +50,9 @@ export interface DynamicLaunchDrawerProps {
     subdomain: string
     billingMode: "PAYG" | "SUBSCRIPTION"
     envVars: Record<string, string>
+    cpu?: number
+    memory?: number
+    resourcePlanId?: "starter" | "pro" | "payg"
   }) => Promise<void> | void
   isDeploying?: boolean
   userBalance?: number
@@ -106,11 +108,20 @@ export function DynamicLaunchDrawer({
   const [billingMode, setBillingMode] = useState<"PAYG" | "SUBSCRIPTION">(
     "PAYG"
   )
+  const [selectedPlanId, setSelectedPlanId] = useState<
+    "starter" | "pro" | "payg"
+  >("payg")
+  const [cpuOverride, setCpuOverride] = useState<number | null>(null)
+  const [memoryOverride, setMemoryOverride] = useState<number | null>(null)
   const [envOverrides, setEnvOverrides] = useState<Record<string, string>>({})
   const [revealedSecrets, setRevealedSecrets] = useState<
     Record<string, boolean>
   >({})
 
+  const currentCpu =
+    cpuOverride ?? template?.blueprint?.resources?.defaultCpu ?? 500
+  const currentMemory =
+    memoryOverride ?? template?.blueprint?.resources?.defaultMemory ?? 512
   const initialEnvValues = useMemo(() => {
     return template ? buildInitialEnvVars(template.blueprint) : {}
   }, [template])
@@ -156,14 +167,15 @@ export function DynamicLaunchDrawer({
       subdomain,
       billingMode,
       envVars: envValues,
+      cpu: currentCpu,
+      memory: currentMemory,
+      resourcePlanId: selectedPlanId,
     })
   }
-
   if (!template) return null
 
   const { blueprint } = template
   const envSchema = blueprint?.envSchema || []
-  const resources = blueprint?.resources
   const dependencies = blueprint?.dependencies || []
   const storage = blueprint?.storage
 
@@ -237,44 +249,105 @@ export function DynamicLaunchDrawer({
           </div>
 
           {/* Resource Summary Banner */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Allocated Resources & Stock
-            </h4>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-xl border border-border bg-card p-3 shadow-2xs">
+          {/* Resource & Package Selection */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                Resource & Sizing Package
+              </h4>
+            </div>
+
+            {/* Package selector */}
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  { id: "starter", name: "Starter", cpu: 250, mem: 256 },
+                  { id: "pro", name: "Pro", cpu: 500, mem: 512 },
+                  { id: "payg", name: "PAYG", cpu: 1000, mem: 1024 },
+                ] as const
+              ).map((pkg) => (
+                <button
+                  key={pkg.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedPlanId(pkg.id)
+                    setCpuOverride(pkg.cpu)
+                    setMemoryOverride(pkg.mem)
+                  }}
+                  className={`flex flex-col items-center justify-center rounded-xl border p-2.5 text-xs transition-all ${
+                    selectedPlanId === pkg.id
+                      ? "border-primary bg-primary/10 font-semibold text-primary"
+                      : "border-border bg-card text-muted-foreground hover:bg-muted/40"
+                  }`}
+                >
+                  <span>{pkg.name}</span>
+                  <span className="mt-0.5 text-[10px] text-muted-foreground">
+                    {pkg.cpu}m / {pkg.mem}MB
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Resource inputs */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Cpu className="size-4" />
-                  <span className="text-xs">CPU</span>
+                  <Cpu className="size-3.5" />
+                  <Label
+                    htmlFor="custom-cpu-input"
+                    className="text-xs font-medium"
+                  >
+                    CPU (mCore)
+                  </Label>
                 </div>
-                <div className="mt-1 text-sm font-semibold">
-                  {resources?.defaultCpu ? `${resources.defaultCpu}m` : "500m"}
-                </div>
+                <Input
+                  id="custom-cpu-input"
+                  type="number"
+                  min={100}
+                  max={8000}
+                  step={100}
+                  value={currentCpu}
+                  onChange={(e) =>
+                    setCpuOverride(Number(e.target.value) || 100)
+                  }
+                  className="text-xs"
+                />
               </div>
 
-              <div className="rounded-xl border border-border bg-card p-3 shadow-2xs">
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <HardDrive className="size-4" />
-                  <span className="text-xs">RAM</span>
+                  <HardDrive className="size-3.5" />
+                  <Label
+                    htmlFor="custom-mem-input"
+                    className="text-xs font-medium"
+                  >
+                    RAM (MB)
+                  </Label>
                 </div>
-                <div className="mt-1 text-sm font-semibold">
-                  {resources?.defaultMemory
-                    ? `${resources.defaultMemory} MB`
-                    : "512 MB"}
-                </div>
+                <Input
+                  id="custom-mem-input"
+                  type="number"
+                  min={128}
+                  max={32768}
+                  step={128}
+                  value={currentMemory}
+                  onChange={(e) =>
+                    setMemoryOverride(Number(e.target.value) || 128)
+                  }
+                  className="text-xs"
+                />
               </div>
+            </div>
 
-              <div className="rounded-xl border border-border bg-card p-3 shadow-2xs">
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Database className="size-4" />
-                  <span className="text-xs">DB Stock</span>
-                </div>
-                <div className="mt-1 flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle className="size-3.5" />
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 shadow-2xs">
+              <Database className="size-4 text-muted-foreground" />
+              <div className="flex-1 text-xs">
+                <span className="text-muted-foreground">DB Dependencies: </span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                   {dependencies.length > 0
                     ? dependencies.map((d) => d.serviceType).join(", ")
-                    : "In-Stock"}
-                </div>
+                    : "Self-contained / In-Stock"}
+                </span>
               </div>
             </div>
 

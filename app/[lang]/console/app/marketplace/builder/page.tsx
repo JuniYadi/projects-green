@@ -298,9 +298,7 @@ export default function TemplateBuilderPage() {
 
       const res = await (
         eden.api.templates as unknown as {
-          post: (
-            b: unknown
-          ) => Promise<{
+          post: (b: unknown) => Promise<{
             data?: { id?: string; ok?: boolean; message?: string }
             error?: { value?: { message?: string } }
           }>
@@ -331,12 +329,12 @@ export default function TemplateBuilderPage() {
           toast.warning("Saved template, but failed to submit for review")
         } else {
           toast.success("Template submitted for marketplace review!")
-          router.push(`/${lang}/console/marketplace/my-templates`)
+          router.push(`/${lang}/console/app/marketplace/my-templates`)
           return
         }
       }
       toast.success("Workspace template saved successfully!")
-      router.push(`/${lang}/console/marketplace/my-templates`)
+      router.push(`/${lang}/console/app/marketplace/my-templates`)
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : "An unexpected error occurred"
@@ -357,7 +355,7 @@ export default function TemplateBuilderPage() {
               size="sm"
               className="-ml-2 h-7 px-2 text-muted-foreground hover:text-foreground"
               onClick={() =>
-                router.push(`/${lang}/console/marketplace/my-templates`)
+                router.push(`/${lang}/console/app/marketplace/my-templates`)
               }
             >
               <ArrowLeft className="mr-1 h-4 w-4" />

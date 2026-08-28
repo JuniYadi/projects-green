@@ -18,6 +18,7 @@ describe("resolveSidebarMenu", () => {
 
     expect(navMain.map((item) => item.title)).toEqual([
       "Deploy",
+      "Marketplace",
       "Deployments",
       "Overview",
       "Logs",

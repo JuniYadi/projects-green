@@ -100,9 +100,7 @@ describe("DynamicLaunchDrawer", () => {
     expect(view.getByText("Deploy n8n Workflow Automation")).toBeDefined()
     expect(view.getByText("Fair-code workflow automation tool")).toBeDefined()
     expect(view.getByText("Official")).toBeDefined()
-    expect(view.getByText("Allocated Resources & Stock")).toBeDefined()
-    expect(view.getByText("500m")).toBeDefined()
-    expect(view.getByText("512 MB")).toBeDefined()
+    expect(view.getByText("Resource & Sizing Package")).toBeDefined()
     expect(view.getByText("POSTGRESQL")).toBeDefined()
   })
 

@@ -104,7 +104,7 @@ export function MarketplaceShowcase({
           <TabsList>
             <TabsTrigger value="marketplace">Marketplace Hub</TabsTrigger>
             <TabsTrigger value="workspace" asChild>
-              <Link href={`/${locale}/console/marketplace/my-templates`}>
+              <Link href={`/${locale}/console/app/marketplace/my-templates`}>
                 My Workspace Templates
               </Link>
             </TabsTrigger>
@@ -112,7 +112,7 @@ export function MarketplaceShowcase({
         </Tabs>
 
         <Button asChild variant="outline" size="sm" className="w-fit gap-1.5">
-          <Link href={`/${locale}/console/marketplace/builder`}>
+          <Link href={`/${locale}/console/app/marketplace/builder`}>
             <Plus className="size-4" />
             <span>Create Custom Template</span>
           </Link>

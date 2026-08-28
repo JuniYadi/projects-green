@@ -53,7 +53,13 @@ export default function DeployPage() {
     useState<ManagedAppTemplate | null>(null)
   const [templateDeploying, setTemplateDeploying] = useState(false)
 
-  const submitTemplate = async (subdomain: string) => {
+  const submitTemplate = async (params: {
+    subdomain: string
+    cpu?: number
+    memory?: number
+    resourcePlanId?: "starter" | "pro" | "payg"
+    billingMode?: "PAYG" | "PACKAGE"
+  }) => {
     if (!selectedTemplate) return
 
     setTemplateDeploying(true)
@@ -61,11 +67,12 @@ export default function DeployPage() {
       const { data: payload } = await eden.api.deploy.submit.post({
         sourceType: "MANAGED_TEMPLATE",
         templateId: selectedTemplate.id,
-        subdomain,
-        billingMode: "PAYG",
-        resourcePlanId: "payg",
+        subdomain: params.subdomain,
+        billingMode: params.billingMode ?? "PAYG",
+        resourcePlanId: params.resourcePlanId ?? "payg",
+        cpu: params.cpu,
+        memory: params.memory,
       })
-
       if (!payload || !("ok" in payload) || !payload.ok) {
         const msg =
           payload && "message" in payload

@@ -45,6 +45,7 @@ import {
   Robot as RobotIcon,
   Brain as BrainIcon,
   FileText as FileTextIcon,
+  Storefront as StorefrontIcon,
 } from "@phosphor-icons/react"
 import { defaultLocale, type AppLocale } from "@/lib/i18n/config"
 const getPathnameWithoutSearch = (pathname: string) => pathname.split("?")[0]
@@ -699,6 +700,12 @@ const CONSOLE_CONTEXTS: SidebarContextConfig[] = [
         url: localizePathname({ pathname: "/console/app/deploy", locale }),
         icon: <RocketLaunchIcon />,
         isActive: path === "/console/app/deploy",
+      },
+      {
+        title: "Marketplace",
+        url: localizePathname({ pathname: "/console/app/marketplace", locale }),
+        icon: <StorefrontIcon />,
+        isActive: startsWithRoute(path, "/console/app/marketplace"),
       },
       {
         title: "Deployments",

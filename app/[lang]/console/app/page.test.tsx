@@ -101,17 +101,6 @@ mock.module("@/lib/eden", () => ({
   },
 }))
 
-mock.module("@/modules/deploy/deploy.constants", () => ({
-  DEPLOY_STATUS_LABELS: {
-    running: "Running",
-    failed: "Failed",
-    building: "Building",
-    deploying: "Deploying",
-    queued: "Queued",
-    idle: "Not started",
-  },
-}))
-
 // ─── Dynamic imports after mocks ─────────────────────────────────────────────
 
 const {

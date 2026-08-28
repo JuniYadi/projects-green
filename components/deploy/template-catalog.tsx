@@ -148,7 +148,13 @@ type QuickDeployDialogProps = {
   template: ManagedAppTemplate | null
   open: boolean
   onClose: () => void
-  onConfirm: (subdomain: string) => void | Promise<void>
+  onConfirm: (payload: {
+    subdomain: string
+    cpu: number
+    memory: number
+    resourcePlanId: "starter" | "pro" | "payg"
+    billingMode: "PAYG" | "PACKAGE"
+  }) => void | Promise<void>
 }
 
 const makeSubdomain = (template: ManagedAppTemplate) =>
@@ -163,6 +169,11 @@ function QuickDeployDialog({
   const [subdomain, setSubdomain] = useState(() =>
     template ? makeSubdomain(template) : ""
   )
+  const [selectedPlanId, setSelectedPlanId] = useState<
+    "starter" | "pro" | "payg"
+  >("payg")
+  const [cpu, setCpu] = useState<number>(500)
+  const [memory, setMemory] = useState<number>(512)
   const [submitting, setSubmitting] = useState(false)
   // Sync subdomain when template changes (new deploy target)
   const displaySubdomain =
@@ -174,12 +185,17 @@ function QuickDeployDialog({
 
     setSubmitting(true)
     try {
-      await onConfirm(value)
+      await onConfirm({
+        subdomain: value,
+        cpu,
+        memory,
+        resourcePlanId: selectedPlanId,
+        billingMode: selectedPlanId === "payg" ? "PAYG" : "PACKAGE",
+      })
     } finally {
       setSubmitting(false)
     }
   }
-
   return (
     <Dialog
       open={open}
@@ -215,9 +231,75 @@ function QuickDeployDialog({
                 />
               </div>
               <div className="space-y-2">
-                <span className="text-sm">Plan</span>
-                <div className="rounded-lg border bg-muted/30 px-3 py-2 text-sm">
-                  PAYG
+                <label htmlFor="quick-deploy-plan" className="text-sm">
+                  Package Plan
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      { id: "starter", name: "Starter", cpu: 250, mem: 256 },
+                      { id: "pro", name: "Pro", cpu: 500, mem: 512 },
+                      { id: "payg", name: "PAYG", cpu: 1000, mem: 1024 },
+                    ] as const
+                  ).map((pkg) => (
+                    <button
+                      key={pkg.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPlanId(pkg.id)
+                        setCpu(pkg.cpu)
+                        setMemory(pkg.mem)
+                      }}
+                      className={`flex flex-col items-center justify-center rounded-lg border p-2.5 text-xs transition-all ${
+                        selectedPlanId === pkg.id
+                          ? "border-primary bg-primary/10 font-semibold text-primary"
+                          : "border-border bg-card text-muted-foreground hover:bg-muted/40"
+                      }`}
+                    >
+                      <span>{pkg.name}</span>
+                      <span className="mt-0.5 text-[10px] text-muted-foreground">
+                        {pkg.cpu}m / {pkg.mem}MB
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="quick-deploy-cpu"
+                    className="text-xs font-medium"
+                  >
+                    CPU (mCore)
+                  </label>
+                  <Input
+                    id="quick-deploy-cpu"
+                    type="number"
+                    min={100}
+                    max={8000}
+                    step={100}
+                    value={cpu}
+                    onChange={(e) => setCpu(Number(e.target.value) || 100)}
+                    disabled={submitting}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="quick-deploy-memory"
+                    className="text-xs font-medium"
+                  >
+                    Memory (MB)
+                  </label>
+                  <Input
+                    id="quick-deploy-memory"
+                    type="number"
+                    min={128}
+                    max={32768}
+                    step={128}
+                    value={memory}
+                    onChange={(e) => setMemory(Number(e.target.value) || 128)}
+                    disabled={submitting}
+                  />
                 </div>
               </div>
               <p
