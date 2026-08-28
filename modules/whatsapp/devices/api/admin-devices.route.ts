@@ -598,6 +598,62 @@ export const createAdminDevicesRoutes = (
 
       return { ok: true as const, message: "Sync job enqueued." }
     })
+    .post("/sync-all-templates", async ({ set }: any) => {
+      const actor = await guard(set)
+      if (isAdminError(actor)) return actor
+
+      const devices = await prisma.whatsappDevice.findMany({
+        where: {
+          status: "ACTIVE",
+          OR: [{ tokenEncrypted: { not: null } }, { token: { not: null } }],
+        },
+        select: {
+          id: true,
+          phoneNumber: true,
+          organizationId: true,
+        },
+      })
+
+      if (devices.length === 0) {
+        return {
+          ok: true as const,
+          enqueuedCount: 0,
+          message: "No active devices available for template sync.",
+        }
+      }
+
+      for (const device of devices) {
+        logWhatsappAuditEvent({
+          action: "TEMPLATE_SYNC_REQUESTED",
+          organizationId: device.organizationId,
+          deviceId: device.id,
+          adminId: actor.userId,
+          message: `Bulk template sync requested for device ${device.phoneNumber || device.id}`,
+          status: "STARTED",
+        })
+
+        await enqueueWhatsAppTemplateSync(
+          device.organizationId,
+          device.id,
+          "sync-templates"
+        )
+
+        logWhatsappAuditEvent({
+          action: "TEMPLATE_SYNCED",
+          organizationId: device.organizationId,
+          deviceId: device.id,
+          adminId: actor.userId,
+          message: `Bulk sync job enqueued for device ${device.phoneNumber || device.id}`,
+          status: "OK",
+        })
+      }
+
+      return {
+        ok: true as const,
+        enqueuedCount: devices.length,
+        message: `Enqueued template sync for ${devices.length} active device(s).`,
+      }
+    })
     .post("/:id/top-up", async ({ params: { id }, body, set }: any) => {
       const actor = await guard(set)
       if (isAdminError(actor)) return actor

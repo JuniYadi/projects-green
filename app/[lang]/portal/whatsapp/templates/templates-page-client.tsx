@@ -343,6 +343,45 @@ export function TemplatesPageClient({
     }
   }
 
+  const [isSyncingAll, setIsSyncingAll] = React.useState(false)
+
+  const handleSyncAllDevices = async () => {
+    if (cooldownRemaining > 0) {
+      toast.warning(
+        `Please wait ${cooldownRemaining}s before syncing again to protect Meta rate limits.`
+      )
+      return
+    }
+
+    setIsSyncingAll(true)
+    try {
+      const res = await whatsappClient.devices.syncAllTemplates()
+      if (res.ok) {
+        toast.success(
+          res.message ||
+            "Enqueued bidirectional template sync for all active devices!"
+        )
+        setLastPullTime(Date.now())
+        setCooldownRemaining(60)
+        setTimeout(() => {
+          void reload()
+        }, 3000)
+      } else {
+        toast.error(
+          res.message || "Failed to trigger template sync for all devices"
+        )
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Failed to trigger template sync for all devices"
+      )
+    } finally {
+      setIsSyncingAll(false)
+    }
+  }
+
   // ── Filter helpers ──────────────────────────────────────────────────
   const setParam = (key: string, value: string | undefined) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -651,6 +690,32 @@ export function TemplatesPageClient({
 
           {/* Primary Action Buttons */}
           <div className="flex flex-wrap items-center gap-2">
+            {isSuperAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={() => void handleSyncAllDevices()}
+                disabled={
+                  isSyncingAll || isPulling || loading || cooldownRemaining > 0
+                }
+                title={
+                  cooldownRemaining > 0
+                    ? `Rate limit protection: available in ${cooldownRemaining}s`
+                    : "Trigger bidirectional template sync across all active WhatsApp devices"
+                }
+              >
+                <ArrowsClockwise
+                  className={`mr-1.5 size-4 ${isSyncingAll ? "animate-spin" : ""}`}
+                />
+                {isSyncingAll
+                  ? "Syncing All..."
+                  : cooldownRemaining > 0
+                    ? `Sync All (${cooldownRemaining}s)`
+                    : "Sync All Devices"}
+              </Button>
+            )}
+
             <Button
               variant="outline"
               size="sm"
@@ -658,6 +723,7 @@ export function TemplatesPageClient({
               onClick={() => void handlePullFromMeta()}
               disabled={
                 isPulling ||
+                isSyncingAll ||
                 loading ||
                 cooldownRemaining > 0 ||
                 !whatsappDeviceId
