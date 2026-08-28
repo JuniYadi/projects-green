@@ -336,19 +336,45 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
-      const { conversationId, direction, messageType } = query as any
+      const isSuperAdmin =
+        whatsappAuth.type === "workos" &&
+        whatsappAuth.platformRole === "super_admin"
+      if (!isSuperAdmin && !whatsappAuth.organizationId) {
+        set.status = 403
+        return {
+          ok: false,
+          error: "FORBIDDEN",
+          message: "No active organization found.",
+        }
+      }
+
+      const {
+        conversationId,
+        direction,
+        messageType,
+        organizationId: queryOrgId,
+        whatsappDeviceId,
+      } = query as any
       const { page, limit, skip } = getPagination(query)
 
-      const where: any = {
-        conversation: {
-          organizationId: whatsappAuth.organizationId!,
-        },
+      const conversationWhere: Record<string, unknown> = {}
+      if (!isSuperAdmin) {
+        conversationWhere.organizationId = whatsappAuth.organizationId!
+      } else if (queryOrgId) {
+        conversationWhere.organizationId = String(queryOrgId)
+      }
+      if (whatsappDeviceId) {
+        conversationWhere.whatsappDeviceId = String(whatsappDeviceId)
+      }
+
+      const where: any = {}
+      if (Object.keys(conversationWhere).length > 0) {
+        where.conversation = conversationWhere
       }
 
       if (conversationId) where.conversationId = conversationId
       if (direction) where.direction = direction
       if (messageType) where.messageType = messageType
-
       const [total, messages] = await Promise.all([
         prisma.whatsappMessage.count({ where }),
         prisma.whatsappMessage.findMany({
@@ -374,7 +400,17 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       }
     },
     {
-      query: t.Optional(t.Any()),
+      query: t.Optional(
+        t.Object({
+          conversationId: t.Optional(t.String()),
+          direction: t.Optional(t.String()),
+          messageType: t.Optional(t.String()),
+          page: t.Optional(t.Union([t.String(), t.Number()])),
+          limit: t.Optional(t.Union([t.String(), t.Number()])),
+          organizationId: t.Optional(t.String()),
+          whatsappDeviceId: t.Optional(t.String()),
+        })
+      ),
       response: {
         200: t.Object({
           ok: t.Boolean({ example: true }),

@@ -351,6 +351,8 @@ export const whatsappClient = {
       contactPhone?: string
       status?: string
       limit?: number
+      organizationId?: string
+      whatsappDeviceId?: string
     }) =>
       serverFetch<{ ok: boolean; conversations: any[] }>(
         "/api/whatsapp/conversations",
