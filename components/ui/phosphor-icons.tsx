@@ -106,6 +106,8 @@ export {
   SidebarIcon,
   SignOutIcon,
   SpinnerIcon,
+  Storefront,
+  Storefront as StorefrontIcon,
   SquaresFour,
   SquaresFour as SquaresFourIcon,
   Star,

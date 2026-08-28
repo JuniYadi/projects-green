@@ -1,12 +1,6 @@
 import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import {
-  cleanup,
-  render,
-  screen,
-  waitFor,
-  fireEvent,
-} from "@testing-library/react"
+import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 const mockPush = mock(() => {})
@@ -214,7 +208,7 @@ describe("TemplateBuilderPage", () => {
       }
       expect(blueprint?.runtime?.image).toBe("nextjs:latest")
       expect(mockPush).toHaveBeenCalledWith(
-        "/en/console/marketplace/my-templates"
+        "/en/console/app/marketplace/my-templates"
       )
     })
   })

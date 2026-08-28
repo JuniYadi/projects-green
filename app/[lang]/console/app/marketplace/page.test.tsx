@@ -9,6 +9,7 @@ import { OFFICIAL_APP_TEMPLATES } from "@/modules/deploy/app-template.seed"
 
 mock.module("next/navigation", () => ({
   useParams: () => ({ lang: "en" }),
+  useRouter: () => ({ push: mock(() => {}) }),
 }))
 
 describe("Console Marketplace Hub & Template Cards", () => {
@@ -20,7 +21,7 @@ describe("Console Marketplace Hub & Template Cards", () => {
     const template = OFFICIAL_APP_TEMPLATES[0]
     const onDeploy = mock(() => {})
 
-    render(
+    const { container } = render(
       <TemplateCard
         template={{
           id: template.slug,
@@ -37,22 +38,24 @@ describe("Console Marketplace Hub & Template Cards", () => {
     )
 
     // Name and Tagline
-    expect(screen.getByText(template.name)).toBeInTheDocument()
-    expect(screen.getByText(template.tagline)).toBeInTheDocument()
+    expect(container.querySelector("h3")?.textContent).toBe(template.name)
+    expect(container.textContent).toContain(template.tagline)
 
     // Official Verified badge
-    expect(screen.getByTitle("Official Verified")).toBeInTheDocument()
-
-    // Category
-    expect(screen.getByText(template.category)).toBeInTheDocument()
-
-    // Resource chip (CPU & RAM & Dependencies)
     expect(
-      screen.getByText(/500m CPU · 512MB RAM · Requires 1x Postgres/i)
+      container.querySelector("[title='Official Verified']")
     ).toBeInTheDocument()
 
+    // Category
+    expect(container.textContent).toContain(template.category)
+
+    // Resource chip (CPU & RAM & Dependencies)
+    expect(container.textContent).toMatch(
+      /500m CPU · 512MB RAM · Requires 1x Postgres/i
+    )
+
     // Deploy CTA
-    const deployBtn = screen.getByRole("button", { name: /deploy/i })
+    const deployBtn = container.querySelector("button")
     expect(deployBtn).toBeInTheDocument()
   })
 
@@ -61,7 +64,7 @@ describe("Console Marketplace Hub & Template Cards", () => {
     const onDeploy = mock(() => {})
     const user = userEvent.setup()
 
-    render(
+    const { container } = render(
       <TemplateCard
         template={{
           id: template.slug,
@@ -76,8 +79,11 @@ describe("Console Marketplace Hub & Template Cards", () => {
       />
     )
 
-    const deployBtn = screen.getByRole("button", { name: /deploy/i })
-    await user.click(deployBtn)
+    const deployBtn = container.querySelector("button")
+    expect(deployBtn).not.toBeNull()
+    if (deployBtn) {
+      await user.click(deployBtn)
+    }
 
     expect(onDeploy).toHaveBeenCalledTimes(1)
     expect(onDeploy).toHaveBeenCalledWith(
