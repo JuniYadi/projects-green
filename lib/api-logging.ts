@@ -32,6 +32,12 @@ const sensitiveFieldMarker =
 const sensitivePathMarker =
   /(?:authorization|api[-_]?key|bearer|credential|secret|token|webhook)/i
 
+const ignoredHealthPathPrefixes = ["/api/healthz", "/api/health"]
+
+export const isHealthCheckPath = (pathname: string) =>
+  ignoredHealthPathPrefixes.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  )
 export const redactSensitivePathname = (pathname: string) => {
   let redactNext = false
 
@@ -247,8 +253,13 @@ const emitCompletion = (
   response: unknown
 ) => {
   const statusCode = statusCodeOf(set, response, 200)
-  const caller = extractCaller(context, request)
   const pathname = pathnameOf(request)
+
+  if (isHealthCheckPath(pathname) && statusCode < 400) {
+    return
+  }
+
+  const caller = extractCaller(context, request)
   const durationMs = durationSince(context.startedAt)
 
   const logPayload: Record<string, unknown> = {

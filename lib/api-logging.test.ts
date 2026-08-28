@@ -63,7 +63,7 @@ describe.serial("Elysia API logging", () => {
     const { response, logs } = await captureLogs(() =>
       app.handle(
         new Request(
-          "http://localhost/api/health?apiKey=query-secret&token=token-secret",
+          "http://localhost/api/openapi/json?apiKey=query-secret&token=token-secret",
           {
             method: "GET",
             headers: {
@@ -85,9 +85,7 @@ describe.serial("Elysia API logging", () => {
     expect(Object.keys(logs[0]).sort()).toEqual([...completedLogKeys].sort())
     expect(logs[0]).toMatchObject({
       event: "api.request.completed",
-      method: "GET",
-      pathname: "/api/health",
-      statusCode: 200,
+      pathname: "/api/openapi/json",
       caller: {
         type: "workos",
         userId: "user_123",
@@ -392,5 +390,50 @@ describe.serial("Elysia API logging", () => {
     expect(response.status).toBe(500)
     const errorLog = logs.find((log) => log.event === "api.request.error")
     expect(errorLog?.errorCode).toBe("UNKNOWN")
+  })
+
+  test("ignores successful completion logs for /api/health and /api/healthz paths", async () => {
+    const testApp = new Elysia()
+      .use(createApiLoggingPlugin())
+      .get("/api/health", () => ({ ok: true }))
+      .get("/api/healthz/ready", () => ({ ok: true }))
+      .get("/api/health/liveness", () => ({ ok: true }))
+
+    const { logs: healthLogs } = await captureLogs(() =>
+      testApp.handle(new Request("http://localhost/api/health"))
+    )
+    expect(healthLogs).toHaveLength(0)
+
+    const { logs: healthzLogs } = await captureLogs(() =>
+      testApp.handle(new Request("http://localhost/api/healthz/ready"))
+    )
+    expect(healthzLogs).toHaveLength(0)
+
+    const { logs: livenessLogs } = await captureLogs(() =>
+      testApp.handle(new Request("http://localhost/api/health/liveness"))
+    )
+    expect(livenessLogs).toHaveLength(0)
+  })
+
+  test("still logs errors for health check paths when status is 5xx", async () => {
+    const testApp = new Elysia()
+      .use(createApiLoggingPlugin())
+      .get("/api/healthz/ready", ({ set }) => {
+        set.status = 503
+        return { ok: false, error: "Database unreachable" }
+      })
+
+    const { response, logs } = await captureLogs(() =>
+      testApp.handle(new Request("http://localhost/api/healthz/ready"))
+    )
+
+    expect(response.status).toBe(503)
+    expect(logs).toHaveLength(1)
+    expect(logs[0]).toMatchObject({
+      event: "api.request.completed",
+      method: "GET",
+      pathname: "/api/healthz/ready",
+      statusCode: 503,
+    })
   })
 })
