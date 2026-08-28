@@ -19,7 +19,14 @@ import {
   VoucherDiscountConfigurationError,
 } from "./vouchers.errors"
 
-type MockPrisma = Record<string, unknown>
+type MockPrisma = {
+  voucher: Record<string, ReturnType<typeof mock>>
+  voucherClaim: Record<string, ReturnType<typeof mock>>
+  billingAccount: Record<string, ReturnType<typeof mock>>
+  billingAdjustment: Record<string, ReturnType<typeof mock>>
+  $transaction: ReturnType<typeof mock>
+}
+
 function createMockTx() {
   return {
     voucher: {
