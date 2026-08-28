@@ -73,7 +73,6 @@ export default function PortalEditAppTemplatePage() {
       }
     } catch (err) {
       console.error("Failed to update template", err)
-      toast.error("Failed to update template")
       throw err
     } finally {
       setIsSaving(false)

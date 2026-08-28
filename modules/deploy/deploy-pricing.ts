@@ -45,8 +45,11 @@ export const computeHourlyCost = (input: {
 }): number => {
   const planKey = input.resourcePlanId.toLowerCase()
   if (planKey !== "payg") {
-    return (
-      FIXED_PLAN_HOURLY_COST[planKey as Exclude<ResourcePlanId, "payg">] ?? 0.02
+    const cost =
+      FIXED_PLAN_HOURLY_COST[planKey as Exclude<ResourcePlanId, "payg">]
+    if (cost !== undefined) return cost
+    console.warn(
+      `[deploy-pricing] Unknown resourcePlanId: "${planKey}", falling back to PAYG`
     )
   }
 

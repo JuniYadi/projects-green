@@ -104,7 +104,13 @@ const mockPrisma = {
       }
     ),
     update: mock(
-      async ({ where, data }: { where: { id: string }; data: any }) => {
+      async ({
+        where,
+        data,
+      }: {
+        where: { id: string }
+        data: Partial<MockTemplate>
+      }) => {
         const idx = mockTemplates.findIndex((t) => t.id === where.id)
         if (idx === -1) {
           throw new Error("Template not found")
@@ -115,6 +121,37 @@ const mockPrisma = {
           updatedAt: new Date(),
         }
         return mockTemplates[idx]
+      }
+    ),
+    create: mock(
+      async ({
+        data,
+      }: {
+        data: Omit<
+          MockTemplate,
+          "id" | "createdAt" | "updatedAt" | "reviewNotes"
+        >
+      }) => {
+        const newTemplate: MockTemplate = {
+          id: `tpl-${mockTemplates.length + 1}`,
+          slug: data.slug,
+          name: data.name,
+          tagline: data.tagline,
+          description: data.description,
+          category: data.category,
+          visibility: data.visibility,
+          isOfficial: data.isOfficial ?? true,
+          isFeatured: data.isFeatured ?? false,
+          organizationId: data.organizationId ?? null,
+          blueprintJson: data.blueprintJson,
+          verifiedAt: data.verifiedAt ?? null,
+          reviewedBy: data.reviewedBy ?? null,
+          reviewNotes: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+        mockTemplates.push(newTemplate)
+        return newTemplate
       }
     ),
   },
@@ -307,6 +344,80 @@ describe("adminTemplateRoutes", () => {
       expect(res2.status).toBe(200)
       const data2 = await res2.json()
       expect(data2.isFeatured).toBe(false)
+    })
+  })
+  describe("POST /admin/templates blueprint validation", () => {
+    it("rejects invalid blueprintJson with 400", async () => {
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slug: "invalid-bp-tpl",
+            name: "Invalid BP Template",
+            tagline: "Tagline",
+            description: "Description",
+            category: "CMS",
+            visibility: "PUBLIC",
+            blueprintJson: { version: "1.0.0" }, // missing runtime, resources
+          }),
+        })
+      )
+      expect(res.status).toBe(400)
+      const data = await res.json()
+      expect(data.error).toBe("Invalid blueprintJson")
+      expect(data.details).toBeDefined()
+    })
+
+    it("creates template when blueprintJson is valid", async () => {
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slug: "valid-bp-tpl",
+            name: "Valid BP Template",
+            tagline: "Tagline",
+            description: "Description",
+            category: "CMS",
+            visibility: "PUBLIC",
+            blueprintJson: validBlueprint,
+          }),
+        })
+      )
+      expect(res.status).toBe(200)
+      const data = await res.json()
+      expect(data.slug).toBe("valid-bp-tpl")
+    })
+  })
+
+  describe("PUT /admin/templates/:id blueprint validation", () => {
+    it("rejects invalid blueprintJson with 400", async () => {
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates/tpl-1", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            blueprintJson: { version: "1.0.0" }, // missing runtime, resources
+          }),
+        })
+      )
+      expect(res.status).toBe(400)
+      const data = await res.json()
+      expect(data.error).toBe("Invalid blueprintJson")
+    })
+
+    it("updates template when blueprintJson is valid", async () => {
+      const res = await adminTemplateRoutes.handle(
+        new Request("http://localhost/admin/templates/tpl-1", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            blueprintJson: validBlueprint,
+          }),
+        })
+      )
+      expect(res.status).toBe(200)
     })
   })
 })

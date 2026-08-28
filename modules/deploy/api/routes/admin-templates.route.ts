@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { hasScopedSuperAdminClaim } from "@/modules/tenants/tenant-policy"
 import { Prisma } from "@prisma/client"
+import { appTemplateBlueprintSchema } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
 
 export const adminTemplateRoutes = new Elysia({ prefix: "/admin/templates" })
   // GET /api/admin/templates - List all templates with filters (visibility, category, search)
@@ -133,6 +134,14 @@ export const adminTemplateRoutes = new Elysia({ prefix: "/admin/templates" })
         set.status = 409
         return { error: "Template slug already exists" }
       }
+      const bpParsed = appTemplateBlueprintSchema.safeParse(body.blueprintJson)
+      if (!bpParsed.success) {
+        set.status = 400
+        return {
+          error: "Invalid blueprintJson",
+          details: bpParsed.error.flatten(),
+        }
+      }
 
       const template = await prisma.appTemplate.create({
         data: {
@@ -147,7 +156,7 @@ export const adminTemplateRoutes = new Elysia({ prefix: "/admin/templates" })
           visibility:
             body.visibility as Prisma.EnumAppTemplateVisibilityFilter["equals"],
           version: body.version || "1.0.0",
-          blueprintJson: body.blueprintJson,
+          blueprintJson: bpParsed.data,
           isOfficial: body.isOfficial ?? true,
           isFeatured: body.isFeatured ?? false,
           priceMonthly:
@@ -217,6 +226,18 @@ export const adminTemplateRoutes = new Elysia({ prefix: "/admin/templates" })
         if (slugConflict) {
           set.status = 409
           return { error: "Template slug already in use" }
+        }
+      }
+      if (body.blueprintJson !== undefined) {
+        const bpParsed = appTemplateBlueprintSchema.safeParse(
+          body.blueprintJson
+        )
+        if (!bpParsed.success) {
+          set.status = 400
+          return {
+            error: "Invalid blueprintJson",
+            details: bpParsed.error.flatten(),
+          }
         }
       }
 
