@@ -9,7 +9,6 @@ import {
   Star,
   FloppyDisk,
   Trash,
-  Code,
   ShieldCheck,
 } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
@@ -33,6 +32,24 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Plus,
+  Trash as TrashIcon,
+  Cpu,
+  Database,
+  HardDrive,
+  Globe,
+  Key,
+} from "@phosphor-icons/react"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -91,36 +108,58 @@ export function TemplateEditorForm({
   )
   const [currency] = useState(initialData?.currency || "USD")
 
-  // Raw Blueprint JSON Editor state
-  const defaultBlueprint: AppTemplateBlueprint = {
-    schemaVersion: "1.0.0",
-    name: name || "Custom App",
-    slug: slug || "custom-app",
-    version: version || "1.0.0",
-    image: "nginx:alpine",
-    port: 80,
-    runAsNonRoot: true,
-    resources: {
-      defaultCpu: 500,
-      defaultMemory: 512,
-    },
-    dependencies: [],
-    envSchema: [],
-  }
+  // Modular Blueprint State
+  const [runtimeImage, setRuntimeImage] = useState(
+    initialData?.blueprintJson?.runtime?.image || "nginx:alpine"
+  )
+  const [defaultPort, setDefaultPort] = useState<number>(
+    initialData?.blueprintJson?.runtime?.defaultPort || 80
+  )
+  const [healthCheckPath, setHealthCheckPath] = useState(
+    initialData?.blueprintJson?.runtime?.healthCheckPath || "/healthz"
+  )
+  const [runAsNonRoot, setRunAsNonRoot] = useState(
+    initialData?.blueprintJson?.runtime?.runAsNonRoot ?? true
+  )
+  const [defaultCpu, setDefaultCpu] = useState<number>(
+    initialData?.blueprintJson?.resources?.defaultCpu || 500
+  )
+  const [defaultMemory, setDefaultMemory] = useState<number>(
+    initialData?.blueprintJson?.resources?.defaultMemory || 512
+  )
+  const [storageEnabled, setStorageEnabled] = useState(
+    initialData?.blueprintJson?.storage?.enabled ?? false
+  )
+  const [storageMountPath, setStorageMountPath] = useState(
+    initialData?.blueprintJson?.storage?.mountPath || "/data"
+  )
+  const [storageSizeGb, setStorageSizeGb] = useState<number>(
+    initialData?.blueprintJson?.storage?.sizeGbDefault || 10
+  )
+  const [dependencies, setDependencies] = useState<
+    Array<{
+      serviceType: "POSTGRESQL" | "MYSQL" | "REDIS"
+      alias: string
+      envPrefix: string
+    }>
+  >(initialData?.blueprintJson?.dependencies || [])
 
-  const [blueprintJsonStr, setBlueprintJsonStr] = useState(() => {
-    return JSON.stringify(
-      initialData?.blueprintJson || defaultBlueprint,
-      null,
-      2
-    )
-  })
-  const [jsonError, setJsonError] = useState<string | null>(null)
+  const [envSchema, setEnvSchema] = useState<
+    Array<{
+      key: string
+      label: string
+      description?: string
+      defaultValue?: string
+      required: boolean
+      isSecret: boolean
+      dataType: "string" | "number" | "boolean" | "select"
+    }>
+  >(initialData?.blueprintJson?.envSchema || [])
+
   const [activeTab, setActiveTab] = useState("general")
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [rejectNotes, setRejectNotes] = useState("")
   const [showRejectDialog, setShowRejectDialog] = useState(false)
-
   const handleSlugAutoFill = (val: string) => {
     setName(val)
     if (isNew && !slug) {
@@ -133,27 +172,74 @@ export function TemplateEditorForm({
     }
   }
 
-  const handleJsonChange = (val: string) => {
-    setBlueprintJsonStr(val)
-    try {
-      JSON.parse(val)
-      setJsonError(null)
-    } catch (e: unknown) {
-      if (e instanceof Error) setJsonError(e.message)
+  const constructBlueprint = (): AppTemplateBlueprint => ({
+    version: "1.0.0",
+    runtime: {
+      image: runtimeImage,
+      defaultPort,
+      healthCheckPath: healthCheckPath || undefined,
+      runAsNonRoot,
+    },
+    resources: {
+      defaultCpu,
+      defaultMemory,
+    },
+    ...(storageEnabled
+      ? {
+          storage: {
+            enabled: true,
+            mountPath: storageMountPath,
+            sizeGbDefault: storageSizeGb,
+          },
+        }
+      : {}),
+    dependencies,
+    envSchema,
+  })
+
+  const addEnvVar = () => {
+    setEnvSchema([
+      ...envSchema,
+      {
+        key: `ENV_VAR_${envSchema.length + 1}`,
+        label: `Variable ${envSchema.length + 1}`,
+        defaultValue: "",
+        required: false,
+        isSecret: false,
+        dataType: "string",
+      },
+    ])
+  }
+
+  const removeEnvVar = (idx: number) => {
+    setEnvSchema(envSchema.filter((_, i) => i !== idx))
+  }
+
+  const updateEnvVar = (idx: number, patch: Partial<(typeof envSchema)[0]>) => {
+    setEnvSchema(
+      envSchema.map((item, i) => (i === idx ? { ...item, ...patch } : item))
+    )
+  }
+
+  const toggleDependency = (type: "POSTGRESQL" | "MYSQL" | "REDIS") => {
+    const exists = dependencies.some((d) => d.serviceType === type)
+    if (exists) {
+      setDependencies(dependencies.filter((d) => d.serviceType !== type))
+    } else {
+      setDependencies([
+        ...dependencies,
+        {
+          serviceType: type,
+          alias: type.toLowerCase(),
+          envPrefix: type === "POSTGRESQL" ? "DB" : type,
+        },
+      ])
     }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    let parsedBlueprint: AppTemplateBlueprint
-    try {
-      parsedBlueprint = JSON.parse(blueprintJsonStr)
-    } catch {
-      toast.error("Invalid Blueprint JSON structure")
-      setActiveTab("blueprint")
-      return
-    }
-
+    const parsedBlueprint = constructBlueprint()
     if (!name.trim()) {
       toast.error("Template name is required")
       setActiveTab("general")
@@ -283,9 +369,9 @@ export function TemplateEditorForm({
                   className="gap-1 text-xs"
                 >
                   <Star
-                    className={`size-4 ${isFeatured ? "fill-amber-400" : ""}`}
+                    className={`size-4 ${isFeatured ? "fill-amber-400 text-amber-400" : ""}`}
                   />
-                  {isFeatured ? "Featured" : "Feature"}
+                  {isFeatured ? "Unfeature" : "Feature"}
                 </Button>
               )}
               {onDelete && (
@@ -322,12 +408,12 @@ export function TemplateEditorForm({
         onValueChange={setActiveTab}
         className="space-y-4"
       >
-        <TabsList>
-          <TabsTrigger value="general">General Details</TabsTrigger>
-          <TabsTrigger value="blueprint">
-            Blueprint Specification (JSON)
-          </TabsTrigger>
-          <TabsTrigger value="documentation">Docs & Readme</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="general">1. General</TabsTrigger>
+          <TabsTrigger value="runtime">2. Runtime & Specs</TabsTrigger>
+          <TabsTrigger value="dependencies">3. Dependencies</TabsTrigger>
+          <TabsTrigger value="env">4. Env Schema</TabsTrigger>
+          <TabsTrigger value="documentation">5. Readme & Docs</TabsTrigger>
         </TabsList>
 
         {/* Tab 1: General Info */}
@@ -394,16 +480,32 @@ export function TemplateEditorForm({
                   <Label htmlFor="template-icon">
                     Icon URL / SVG identifier
                   </Label>
-                  <Input
-                    id="template-icon"
-                    value={iconUrl}
-                    onChange={(e) => setIconUrl(e.target.value)}
-                    placeholder="e.g. /app-hosting/icons/n8n.svg or https://..."
-                  />
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted/30 p-1.5">
+                      {iconUrl ? (
+                        <img
+                          src={iconUrl}
+                          alt="Icon preview"
+                          className="size-full object-contain"
+                          onError={(e) => {
+                            ;(e.target as HTMLElement).style.display = "none"
+                          }}
+                        />
+                      ) : (
+                        <Globe className="size-5 text-muted-foreground" />
+                      )}
+                    </div>
+                    <Input
+                      id="template-icon"
+                      value={iconUrl}
+                      onChange={(e) => setIconUrl(e.target.value)}
+                      placeholder="e.g. /app-hosting/icons/n8n.svg or https://..."
+                      className="flex-1 text-xs"
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
-
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">
@@ -479,18 +581,23 @@ export function TemplateEditorForm({
 
                   <div className="space-y-1.5">
                     <Label htmlFor="template-price">
-                      Monthly Price (Optional)
+                      Monthly Price (USD $)
                     </Label>
-                    <Input
-                      id="template-price"
-                      type="number"
-                      value={priceMonthly}
-                      onChange={(e) => setPriceMonthly(e.target.value)}
-                      placeholder="0.00"
-                    />
+                    <div className="relative">
+                      <span className="absolute top-1/2 left-3 -translate-y-1/2 text-xs font-medium text-muted-foreground">
+                        $
+                      </span>
+                      <Input
+                        id="template-price"
+                        type="number"
+                        value={priceMonthly}
+                        onChange={(e) => setPriceMonthly(e.target.value)}
+                        placeholder="0.00"
+                        className="pl-7"
+                      />
+                    </div>
                   </div>
                 </div>
-
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between rounded-lg border p-3">
                     <div className="space-y-0.5">
@@ -527,37 +634,369 @@ export function TemplateEditorForm({
           </div>
         </TabsContent>
 
-        {/* Tab 2: Blueprint JSON */}
-        <TabsContent value="blueprint" className="space-y-4">
+        {/* Tab 2: Runtime & Compute Specs */}
+        <TabsContent value="runtime" className="space-y-4">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Cpu className="size-4" /> Container Runtime
+                </CardTitle>
+                <CardDescription>
+                  Docker image, container port, and health check path
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="runtime-image">Docker Image *</Label>
+                  <Input
+                    id="runtime-image"
+                    value={runtimeImage}
+                    onChange={(e) => setRuntimeImage(e.target.value)}
+                    placeholder="e.g. n8nio/n8n:latest"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="runtime-port">Default Port *</Label>
+                    <Input
+                      id="runtime-port"
+                      type="number"
+                      value={defaultPort}
+                      onChange={(e) =>
+                        setDefaultPort(parseInt(e.target.value) || 80)
+                      }
+                      placeholder="80"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="runtime-health">Health Check Path</Label>
+                    <Input
+                      id="runtime-health"
+                      value={healthCheckPath}
+                      onChange={(e) => setHealthCheckPath(e.target.value)}
+                      placeholder="/healthz"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">
+                      Run as Non-Root
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Enforces pod security standards
+                    </p>
+                  </div>
+                  <Switch
+                    checked={runAsNonRoot}
+                    onCheckedChange={setRunAsNonRoot}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <HardDrive className="size-4" /> Resources & Storage
+                </CardTitle>
+                <CardDescription>
+                  Compute allocations and persistent storage
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="res-cpu">Default CPU</Label>
+                      <span className="text-[11px] text-muted-foreground">
+                        {(defaultCpu / 1000).toFixed(2)} vCPU
+                      </span>
+                    </div>
+                    <Input
+                      id="res-cpu"
+                      type="number"
+                      value={defaultCpu}
+                      onChange={(e) =>
+                        setDefaultCpu(parseInt(e.target.value) || 500)
+                      }
+                      placeholder="500 mCPU"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="res-mem">Default Memory</Label>
+                      <span className="text-[11px] text-muted-foreground">
+                        {defaultMemory >= 1024
+                          ? `${(defaultMemory / 1024).toFixed(1)} GB`
+                          : `${defaultMemory} MB`}
+                      </span>
+                    </div>
+                    <Input
+                      id="res-mem"
+                      type="number"
+                      value={defaultMemory}
+                      onChange={(e) =>
+                        setDefaultMemory(parseInt(e.target.value) || 512)
+                      }
+                      placeholder="512 MB"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3 rounded-lg border p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">
+                        Persistent Storage
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Mount dedicated PVC for data persistence
+                      </p>
+                    </div>
+                    <Switch
+                      checked={storageEnabled}
+                      onCheckedChange={setStorageEnabled}
+                    />
+                  </div>
+                  {storageEnabled && (
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="storage-mount">Mount Path</Label>
+                        <Input
+                          id="storage-mount"
+                          value={storageMountPath}
+                          onChange={(e) => setStorageMountPath(e.target.value)}
+                          placeholder="/data"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="storage-size">Default Size (GB)</Label>
+                        <Input
+                          id="storage-size"
+                          type="number"
+                          value={storageSizeGb}
+                          onChange={(e) =>
+                            setStorageSizeGb(parseInt(e.target.value) || 10)
+                          }
+                          placeholder="10"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Tab 3: Dependencies */}
+        <TabsContent value="dependencies" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Database className="size-4" /> Managed Database & Cache
+                Dependencies
+              </CardTitle>
+              <CardDescription>
+                Select required add-on services that platform will automatically
+                provision and inject
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {(["POSTGRESQL", "MYSQL", "REDIS"] as const).map((type) => {
+                  const dep = dependencies.find((d) => d.serviceType === type)
+                  const isSelected = Boolean(dep)
+                  return (
+                    <div
+                      key={type}
+                      className={`flex flex-col justify-between rounded-lg border p-4 transition-all ${
+                        isSelected
+                          ? "border-primary bg-primary/5"
+                          : "border-border"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold">{type}</span>
+                        <Switch
+                          checked={isSelected}
+                          onCheckedChange={() => toggleDependency(type)}
+                        />
+                      </div>
+                      {isSelected && dep && (
+                        <div className="mt-3 space-y-2 text-xs">
+                          <div>
+                            <Label className="text-xs">ENV Prefix</Label>
+                            <Input
+                              size={1}
+                              value={dep.envPrefix}
+                              onChange={(e) => {
+                                setDependencies(
+                                  dependencies.map((d) =>
+                                    d.serviceType === type
+                                      ? { ...d, envPrefix: e.target.value }
+                                      : d
+                                  )
+                                )
+                              }}
+                              placeholder={type === "POSTGRESQL" ? "DB" : type}
+                              className="h-7 font-mono text-xs"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 4: Env Schema Builder */}
+        <TabsContent value="env" className="space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Code className="size-4" /> Container Runtime & Blueprint
-                  Schema
+                  <Key className="size-4" /> Environment Variables Schema
                 </CardTitle>
                 <CardDescription>
-                  Define image, exposed ports, database dependencies, volumes,
-                  and environment variables schema
+                  Define configurable environment variables with typing, default
+                  values, and secrets
                 </CardDescription>
               </div>
-              {jsonError ? (
-                <Badge variant="destructive" className="text-xs">
-                  Invalid JSON: {jsonError}
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="text-xs text-emerald-600">
-                  Valid JSON Schema
-                </Badge>
-              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addEnvVar}
+                className="gap-1 text-xs"
+              >
+                <Plus className="size-3.5" /> Add Variable
+              </Button>
             </CardHeader>
             <CardContent>
-              <Textarea
-                rows={18}
-                value={blueprintJsonStr}
-                onChange={(e) => handleJsonChange(e.target.value)}
-                className="font-mono text-xs"
-              />
+              {envSchema.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+                  <p className="text-sm">No environment variables defined.</p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={addEnvVar}
+                    className="mt-2 text-xs text-primary"
+                  >
+                    + Add your first variable
+                  </Button>
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Key</TableHead>
+                        <TableHead>Label</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Default</TableHead>
+                        <TableHead className="w-20 text-center text-xs">
+                          Required
+                        </TableHead>
+                        <TableHead className="w-20 text-center text-xs">
+                          Secret 🔒
+                        </TableHead>
+                        <TableHead className="w-12"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {envSchema.map((item, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell className="p-2">
+                            <Input
+                              value={item.key}
+                              onChange={(e) =>
+                                updateEnvVar(idx, { key: e.target.value })
+                              }
+                              className="h-8 font-mono text-xs"
+                            />
+                          </TableCell>
+                          <TableCell className="p-2">
+                            <Input
+                              value={item.label}
+                              onChange={(e) =>
+                                updateEnvVar(idx, { label: e.target.value })
+                              }
+                              className="h-8 text-xs"
+                            />
+                          </TableCell>
+                          <TableCell className="p-2">
+                            <Select
+                              value={item.dataType}
+                              onValueChange={(
+                                val: "string" | "number" | "boolean" | "select"
+                              ) => updateEnvVar(idx, { dataType: val })}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="string">string</SelectItem>
+                                <SelectItem value="number">number</SelectItem>
+                                <SelectItem value="boolean">boolean</SelectItem>
+                                <SelectItem value="select">select</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="p-2">
+                            <Input
+                              value={item.defaultValue || ""}
+                              onChange={(e) =>
+                                updateEnvVar(idx, {
+                                  defaultValue: e.target.value,
+                                })
+                              }
+                              className="h-8 font-mono text-xs"
+                            />
+                          </TableCell>
+                          <TableCell className="p-2 text-center">
+                            <Checkbox
+                              checked={item.required}
+                              onCheckedChange={(checked) =>
+                                updateEnvVar(idx, {
+                                  required: Boolean(checked),
+                                })
+                              }
+                            />
+                          </TableCell>
+                          <TableCell className="p-2 text-center">
+                            <Checkbox
+                              checked={item.isSecret}
+                              onCheckedChange={(checked) =>
+                                updateEnvVar(idx, {
+                                  isSecret: Boolean(checked),
+                                })
+                              }
+                            />
+                          </TableCell>
+                          <TableCell className="p-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeEnvVar(idx)}
+                              className="size-8 p-0 text-muted-foreground hover:text-destructive"
+                            >
+                              <TrashIcon className="size-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
