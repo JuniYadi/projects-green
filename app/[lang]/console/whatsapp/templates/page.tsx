@@ -114,13 +114,14 @@ export default function ConsoleTemplatesPage() {
   }, [lastPullTime])
 
   const handlePullFromMeta = async () => {
-    const targetDevice =
-      selectedDeviceId !== "all" ? selectedDeviceId : devices[0]?.id
-
-    if (!targetDevice) {
-      toast.error("Please select a device first.")
+    if (selectedDeviceId === "all" || !selectedDeviceId) {
+      toast.error(
+        "Please select a specific device to pull templates from Meta."
+      )
       return
     }
+
+    const targetDevice = selectedDeviceId
 
     if (cooldownRemaining > 0) {
       toast.warning(
@@ -530,13 +531,21 @@ export default function ConsoleTemplatesPage() {
             ) : null}
             <Button
               onClick={() => void handlePullFromMeta()}
-              disabled={isPulling || loading || cooldownRemaining > 0}
+              disabled={
+                isPulling ||
+                loading ||
+                cooldownRemaining > 0 ||
+                selectedDeviceId === "all" ||
+                !selectedDeviceId
+              }
               variant="outline"
               size="sm"
               title={
-                cooldownRemaining > 0
-                  ? `Rate limit protection: available in ${cooldownRemaining}s`
-                  : "Pull approved templates from Meta Graph API into your database"
+                selectedDeviceId === "all" || !selectedDeviceId
+                  ? "Select a specific device to pull templates from Meta"
+                  : cooldownRemaining > 0
+                    ? `Rate limit protection: available in ${cooldownRemaining}s`
+                    : "Pull approved templates from Meta Graph API into your database"
               }
             >
               <ArrowsClockwise

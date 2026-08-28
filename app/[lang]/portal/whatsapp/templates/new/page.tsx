@@ -1,9 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, WarningCircle, DeviceMobile } from "@phosphor-icons/react"
+import { ArrowLeft, WarningCircle } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { eden } from "@/lib/eden"
 
@@ -15,16 +15,24 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { useCreateTemplate } from "@/modules/whatsapp/templates/api/templates.hooks"
+import {
+  useCreateTemplate,
+  useTemplate,
+} from "@/modules/whatsapp/templates/api/templates.hooks"
 import type { TemplateFormInput } from "@/modules/whatsapp/templates/api/templates.hooks"
 import { TemplateForm } from "@/modules/whatsapp/templates/ui/template-form"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 
 export default function PortalNewTemplatePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const duplicateId = searchParams.get("duplicate")
+
+  const { template: sourceTemplate, loading: loadingSource } = useTemplate(
+    duplicateId ?? ""
+  )
   const { create, creating } = useCreateTemplate()
-  const [devices, setDevices] = React.useState<DeviceListItem[]>([])
+  const [activeDevices, setActiveDevices] = React.useState<DeviceListItem[]>([])
   const [loadingDevices, setLoadingDevices] = React.useState(true)
 
   React.useEffect(() => {
@@ -37,7 +45,7 @@ export default function PortalNewTemplatePage() {
           devices?: DeviceListItem[]
         }
         if (!cancelled && body?.ok && Array.isArray(body.devices)) {
-          setDevices(body.devices)
+          setActiveDevices(body.devices.filter((d) => d.status === "ACTIVE"))
         }
       } catch {
         // Fallback
@@ -50,11 +58,6 @@ export default function PortalNewTemplatePage() {
       cancelled = true
     }
   }, [])
-
-  const activeDevices = React.useMemo(
-    () => devices.filter((d) => d.status === "ACTIVE"),
-    [devices]
-  )
 
   const handleSubmit = async (data: {
     name: string
@@ -81,6 +84,39 @@ export default function PortalNewTemplatePage() {
       toast.error("Failed to create template.")
     }
   }
+  // Pre-fill initial data if duplicating
+  const initialData = React.useMemo(() => {
+    if (!sourceTemplate) return undefined
+
+    return {
+      name: `${sourceTemplate.name} Copy`,
+      slug: `${sourceTemplate.slug}_copy`,
+      description: sourceTemplate.description,
+      category: sourceTemplate.category,
+      languages: sourceTemplate.languages.map((l) => ({
+        id: l.id,
+        lang: l.lang,
+        headerType: l.headerType ?? "NONE",
+        headerText: l.headerText ?? "",
+        headerUrl: l.headerUrl ?? "",
+        body: l.body ?? "",
+        footer: l.footer ?? "",
+        parameters: l.parameters,
+        buttons: l.buttons,
+      })),
+    }
+  }, [sourceTemplate])
+
+  if (duplicateId && loadingSource) {
+    return (
+      <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
+        <p className="animate-pulse text-sm text-muted-foreground">
+          Loading template to duplicate...
+        </p>
+      </main>
+    )
+  }
+
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div>
@@ -91,57 +127,59 @@ export default function PortalNewTemplatePage() {
           </Link>
         </Button>
         <h1 className="mt-2 text-2xl font-bold tracking-tight">
-          Create Template
+          {duplicateId ? "Duplicate Template" : "Create Template"}
         </h1>
         <p className="text-muted-foreground">
-          Create a new WhatsApp message template
+          {duplicateId
+            ? "Create a new template based on an existing one."
+            : "Create a new WhatsApp message template."}
         </p>
       </div>
 
-      {loadingDevices ? (
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-64 w-full" />
-        </div>
-      ) : activeDevices.length === 0 ? (
-        <Card className="border-warning/30 bg-warning/5">
-          <CardHeader>
-            <div className="flex items-center gap-2 text-warning">
-              <WarningCircle className="size-5" />
-              <CardTitle className="text-base font-semibold">
-                Active WhatsApp Device Required
-              </CardTitle>
+      {!loadingDevices && activeDevices.length === 0 && (
+        <Card className="border-warning/50 bg-warning/5">
+          <CardContent className="flex items-center gap-3 p-4">
+            <WarningCircle className="text-warning size-5 shrink-0" />
+            <div className="text-sm">
+              <p className="font-medium text-foreground">
+                No Active WhatsApp Devices
+              </p>
+              <p className="text-muted-foreground">
+                You need at least one active WhatsApp device to create
+                templates.{" "}
+                <Link
+                  href="/portal/whatsapp/devices/new"
+                  className="font-medium text-primary underline underline-offset-4 hover:text-primary/80"
+                >
+                  Connect a device
+                </Link>
+              </p>
             </div>
-            <CardDescription>
-              You need at least one active WhatsApp device with a valid subscription before you can create message templates.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild size="sm">
-              <Link href="../devices">
-                <DeviceMobile className="mr-1.5 size-4" />
-                Go to Devices
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Template Details</CardTitle>
-            <CardDescription>
-              Fill in the template details and language variants
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <TemplateForm
-              devices={devices}
-              submitting={creating}
-              onSubmit={handleSubmit}
-            />
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Template Details</CardTitle>
+          <CardDescription>
+            Configure the template name, category, and language variants.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TemplateForm
+            initialData={initialData}
+            submitting={creating}
+            onSubmit={handleSubmit}
+            mode="create"
+            devices={activeDevices.map((d) => ({
+              id: d.id,
+              phoneNumber: d.phoneNumber,
+              name: d.name ?? undefined,
+            }))}
+          />
+        </CardContent>
+      </Card>
     </main>
   )
 }

@@ -185,6 +185,15 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         prisma.whatsappTemplate.findMany({
           where,
           include: {
+            whatsappDevice: {
+              select: {
+                id: true,
+                phoneNumber: true,
+                status: true,
+                whatsappBusinessAccountId: true,
+                whatsappPhoneId: true,
+              },
+            },
             languages:
               query.broadcastEligible === "true"
                 ? {

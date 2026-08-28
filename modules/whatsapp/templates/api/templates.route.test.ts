@@ -882,6 +882,15 @@ describe("templatesRoutes", () => {
           },
         },
         include: {
+          whatsappDevice: {
+            select: {
+              id: true,
+              phoneNumber: true,
+              status: true,
+              whatsappBusinessAccountId: true,
+              whatsappPhoneId: true,
+            },
+          },
           languages: {
             where: {
               OR: [{ isApproved: true }, { metaStatus: "APPROVED" }],

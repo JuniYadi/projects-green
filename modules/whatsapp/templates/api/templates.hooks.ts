@@ -137,6 +137,12 @@ export function useTemplate(id: string) {
   const [error, setError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
+    if (!id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTemplate(null)
+      setLoading(false)
+      return
+    }
     let cancelled = false
 
     void (async () => {
