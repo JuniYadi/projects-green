@@ -1,3 +1,4 @@
+import "@/test/register"
 import { describe, expect, it, mock, afterEach } from "bun:test"
 import { render, cleanup } from "@testing-library/react"
 import "@testing-library/jest-dom"
@@ -31,6 +32,7 @@ mock.module("@/components/ui/phosphor-icons", () => ({
 
 mock.module("next/navigation", () => ({
   useParams: mock(() => ({ lang: "en" })),
+  useRouter: mock(() => ({ push: mock(() => {}) })),
 }))
 
 mock.module("@/lib/i18n/pathname", () => ({
