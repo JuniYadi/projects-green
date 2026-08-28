@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { Icon } from "@phosphor-icons/react"
 import {
   ArrowsSplit,
@@ -36,6 +36,8 @@ import {
   type ManagedAppTemplate,
 } from "@/modules/deploy/managed-app-templates"
 import { cn } from "@/lib/utils"
+import { getCatalogProduct, type CatalogPlan } from "@/lib/billing-client"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 
 type TemplateVisual = {
   icon: Icon
@@ -152,8 +154,8 @@ type QuickDeployDialogProps = {
     subdomain: string
     cpu: number
     memory: number
-    resourcePlanId: "starter" | "pro" | "payg"
-    billingMode: "PAYG" | "PACKAGE"
+    resourcePlanId: string
+    billingMode: "PACKAGE"
   }) => void | Promise<void>
 }
 
@@ -169,12 +171,33 @@ function QuickDeployDialog({
   const [subdomain, setSubdomain] = useState(() =>
     template ? makeSubdomain(template) : ""
   )
-  const [selectedPlanId, setSelectedPlanId] = useState<
-    "starter" | "pro" | "payg"
-  >("payg")
+  const [plans, setPlans] = useState<CatalogPlan[]>([])
+  const [selectedPlanCode, setSelectedPlanCode] = useState<string>("STARTER")
   const [cpu, setCpu] = useState<number>(500)
   const [memory, setMemory] = useState<number>(512)
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    let isMounted = true
+    async function loadPlans() {
+      try {
+        const res = await getCatalogProduct("APP_HOSTING")
+        if (isMounted && res?.product?.plans) {
+          setPlans(res.product.plans)
+          if (res.product.plans[0]) {
+            setSelectedPlanCode(res.product.plans[0].code)
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch app hosting catalog", err)
+      }
+    }
+    loadPlans()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
   // Sync subdomain when template changes (new deploy target)
   const displaySubdomain =
     subdomain || (template ? makeSubdomain(template) : "")
@@ -189,8 +212,8 @@ function QuickDeployDialog({
         subdomain: value,
         cpu,
         memory,
-        resourcePlanId: selectedPlanId,
-        billingMode: selectedPlanId === "payg" ? "PAYG" : "PACKAGE",
+        resourcePlanId: (selectedPlanCode || "starter").toLowerCase(),
+        billingMode: "PACKAGE",
       })
     } finally {
       setSubmitting(false)
@@ -231,38 +254,63 @@ function QuickDeployDialog({
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="quick-deploy-plan" className="text-sm">
-                  Package Plan
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(
-                    [
-                      { id: "starter", name: "Starter", cpu: 250, mem: 256 },
-                      { id: "pro", name: "Pro", cpu: 500, mem: 512 },
-                      { id: "payg", name: "PAYG", cpu: 1000, mem: 1024 },
-                    ] as const
-                  ).map((pkg) => (
-                    <button
-                      key={pkg.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedPlanId(pkg.id)
-                        setCpu(pkg.cpu)
-                        setMemory(pkg.mem)
-                      }}
-                      className={`flex flex-col items-center justify-center rounded-lg border p-2.5 text-xs transition-all ${
-                        selectedPlanId === pkg.id
-                          ? "border-primary bg-primary/10 font-semibold text-primary"
-                          : "border-border bg-card text-muted-foreground hover:bg-muted/40"
-                      }`}
-                    >
-                      <span>{pkg.name}</span>
-                      <span className="mt-0.5 text-[10px] text-muted-foreground">
-                        {pkg.cpu}m / {pkg.mem}MB
-                      </span>
-                    </button>
-                  ))}
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="quick-deploy-plan"
+                    className="text-sm font-medium"
+                  >
+                    Package Plan
+                  </label>
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] text-muted-foreground"
+                  >
+                    Monthly Subscription
+                  </Badge>
                 </div>
+                {plans.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {plans.map((pkg) => {
+                      const isSelected = selectedPlanCode === pkg.code
+                      const monthlyOffer =
+                        pkg.offers?.find(
+                          (o) => o.billingPeriod === "MONTHLY"
+                        ) || pkg.offers?.[0]
+                      return (
+                        <button
+                          key={pkg.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedPlanCode(pkg.code)
+                          }}
+                          className={`flex flex-col items-start justify-center rounded-lg border p-2.5 text-left text-xs transition-all ${
+                            isSelected
+                              ? "border-primary bg-primary/10 font-semibold text-primary"
+                              : "border-border bg-card text-muted-foreground hover:bg-muted/40"
+                          }`}
+                        >
+                          <div className="flex w-full items-center justify-between">
+                            <span>{pkg.name}</span>
+                            {isSelected && (
+                              <Badge className="h-4 px-1 text-[9px]">
+                                Active
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="mt-0.5 text-[10px] text-muted-foreground">
+                            {monthlyOffer?.periodPrice
+                              ? `${formatBillingMoney(monthlyOffer.periodPrice, monthlyOffer.currency || "IDR")} / mo`
+                              : "Included"}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border bg-muted/20 p-2.5 text-xs text-muted-foreground">
+                    Starter Plan — Monthly Subscription
+                  </div>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">

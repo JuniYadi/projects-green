@@ -39,12 +39,15 @@ const round4 = (value: number): number => {
  * use their flat rate.
  */
 export const computeHourlyCost = (input: {
-  resourcePlanId: ResourcePlanId
+  resourcePlanId: string
   cpu?: number | null
   memory?: number | null
 }): number => {
-  if (input.resourcePlanId !== "payg") {
-    return FIXED_PLAN_HOURLY_COST[input.resourcePlanId]
+  const planKey = input.resourcePlanId.toLowerCase()
+  if (planKey !== "payg") {
+    return (
+      FIXED_PLAN_HOURLY_COST[planKey as Exclude<ResourcePlanId, "payg">] ?? 0.02
+    )
   }
 
   const cpu = input.cpu && input.cpu > 0 ? input.cpu : DEFAULT_PAYG_CPU
@@ -61,7 +64,7 @@ export const computeHourlyCost = (input: {
  * Decimal variant for persistence and billing-gate math.
  */
 export const computeHourlyCostDecimal = (input: {
-  resourcePlanId: ResourcePlanId
+  resourcePlanId: string
   cpu?: number | null
   memory?: number | null
 }): Prisma.Decimal => {
