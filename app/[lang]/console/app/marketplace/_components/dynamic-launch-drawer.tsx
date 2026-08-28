@@ -13,6 +13,7 @@ import {
   RocketLaunchIcon,
   ShieldCheckIcon,
 } from "@/components/ui/phosphor-icons"
+import { TemplateLogo } from "./template-logo"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -101,6 +102,32 @@ export function generateSuggestedAppName(templateSlug: string): string {
   return `${cleanSlug || "app"}-${adj}-${noun}`
 }
 
+function getPlanResources(plan: CatalogPlan | undefined) {
+  if (!plan) return { cpu: 500, mem: 512 }
+  const res = plan.resources as Record<string, unknown> | undefined
+  const provisioning = res?.provisioning as Record<string, unknown> | undefined
+  const features = res?.features as Record<string, unknown> | undefined
+
+  const cpu =
+    Number(provisioning?.cpu) ||
+    Number(features?.defaultCpu) ||
+    Number(res?.defaultCpu) ||
+    Number(res?.cpu) ||
+    (plan.code === "MEDIUM" ? 1000 : 500)
+
+  const rawMem =
+    Number(provisioning?.memory) ||
+    Number(features?.defaultMem) ||
+    Number(res?.defaultMem) ||
+    Number(res?.memory) ||
+    (plan.code === "MEDIUM" ? 2048 : 512)
+
+  // Normalize memory if stored as large integer (e.g. 1024048 -> 1024)
+  const mem = rawMem > 32768 ? Math.round(rawMem / 1000) : rawMem
+
+  return { cpu, mem }
+}
+
 export function DynamicLaunchDrawer({
   open,
   onOpenChange,
@@ -114,7 +141,7 @@ export function DynamicLaunchDrawer({
   const [catalogData, setCatalogData] =
     useState<CatalogProductDetailResponse | null>(null)
   const [catalogLoading, setCatalogLoading] = useState(false)
-  const [selectedPlanCode, setSelectedPlanCode] = useState<string>("STARTER")
+  const [selectedPlanCode, setSelectedPlanCode] = useState<string>("SMALL")
   const [cpuOverride, setCpuOverride] = useState<number | null>(null)
   const [memoryOverride, setMemoryOverride] = useState<number | null>(null)
   const [envOverrides, setEnvOverrides] = useState<Record<string, string>>({})
@@ -133,6 +160,9 @@ export function DynamicLaunchDrawer({
           const firstPlan = res.product?.plans?.[0]
           if (firstPlan) {
             setSelectedPlanCode(firstPlan.code)
+            const defaults = getPlanResources(firstPlan)
+            setCpuOverride(defaults.cpu)
+            setMemoryOverride(defaults.mem)
           }
         }
       } catch (err) {
@@ -155,16 +185,17 @@ export function DynamicLaunchDrawer({
     return plans.find((p) => p.code === selectedPlanCode) || plans[0]
   }, [plans, selectedPlanCode])
 
+  // Reset or initialize CPU/RAM whenever template or selectedPlan changes if not overridden
   const currentCpu =
     cpuOverride ??
+    getPlanResources(selectedPlan).cpu ??
     template?.blueprint?.resources?.defaultCpu ??
-    (selectedPlan?.resources as { defaultCpu?: number })?.defaultCpu ??
     500
 
   const currentMemory =
     memoryOverride ??
+    getPlanResources(selectedPlan).mem ??
     template?.blueprint?.resources?.defaultMemory ??
-    (selectedPlan?.resources as { defaultMem?: number })?.defaultMem ??
     512
 
   const initialEnvValues = useMemo(() => {
@@ -214,7 +245,7 @@ export function DynamicLaunchDrawer({
       envVars: envValues,
       cpu: currentCpu,
       memory: currentMemory,
-      resourcePlanId: (selectedPlanCode || "starter").toLowerCase(),
+      resourcePlanId: (selectedPlanCode || "small").toLowerCase(),
     })
   }
   if (!template) return null
@@ -232,17 +263,14 @@ export function DynamicLaunchDrawer({
       >
         <SheetHeader className="border-b border-border p-6 text-left">
           <div className="flex items-center gap-3">
-            {template.iconUrl ? (
-              <img
-                src={template.iconUrl}
-                alt={template.name}
-                className="size-10 rounded-xl border border-border object-contain p-1.5 shadow-xs"
+            <div className="flex size-10 items-center justify-center rounded-xl border border-border bg-muted/40 p-2 shadow-xs">
+              <TemplateLogo
+                slug={template.slug}
+                name={template.name}
+                iconUrl={template.iconUrl}
+                className="size-6"
               />
-            ) : (
-              <div className="flex size-10 items-center justify-center rounded-xl border border-border bg-muted/40 shadow-xs">
-                <RocketLaunchIcon className="size-5 text-muted-foreground" />
-              </div>
-            )}
+            </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <SheetTitle className="truncate text-lg font-semibold">
@@ -311,7 +339,7 @@ export function DynamicLaunchDrawer({
             {plans.length > 0 ? (
               <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 {plans.map((plan) => {
-                  const isSelected = selectedPlan?.code === plan.code
+                  const isSelected = selectedPlanCode === plan.code
                   const monthlyOffer =
                     plan.offers?.find((o) => o.billingPeriod === "MONTHLY") ||
                     plan.offers?.[0]
@@ -322,6 +350,9 @@ export function DynamicLaunchDrawer({
                       type="button"
                       onClick={() => {
                         setSelectedPlanCode(plan.code)
+                        const defaults = getPlanResources(plan)
+                        setCpuOverride(defaults.cpu)
+                        setMemoryOverride(defaults.mem)
                       }}
                       className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-all ${
                         isSelected

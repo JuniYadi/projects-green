@@ -163,7 +163,7 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
       "Unified OpenAI-compatible proxy with fallback routing, load balancing, rate limiting, and cost tracking across AI providers.",
     readmeMarkdown:
       "# 9router\n\nUltra-low-latency AI routing gateway for production LLM traffic.",
-    iconUrl: "https://assets.pfnapp.com/templates/9router.svg",
+    iconUrl: "/app-hosting/icons/9router.svg",
     category: "AI",
     visibility: "PUBLIC",
     version: "1.0.0",

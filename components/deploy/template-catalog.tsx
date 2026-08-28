@@ -162,6 +162,31 @@ type QuickDeployDialogProps = {
 const makeSubdomain = (template: ManagedAppTemplate) =>
   `${template.defaultSubdomain}-${Math.random().toString(36).slice(2, 7)}`
 
+function getPlanResources(plan: CatalogPlan | undefined) {
+  if (!plan) return { cpu: 500, mem: 512 }
+  const res = plan.resources as Record<string, unknown> | undefined
+  const provisioning = res?.provisioning as Record<string, unknown> | undefined
+  const features = res?.features as Record<string, unknown> | undefined
+
+  const cpu =
+    Number(provisioning?.cpu) ||
+    Number(features?.defaultCpu) ||
+    Number(res?.defaultCpu) ||
+    Number(res?.cpu) ||
+    (plan.code === "MEDIUM" ? 1000 : 500)
+
+  const rawMem =
+    Number(provisioning?.memory) ||
+    Number(features?.defaultMem) ||
+    Number(res?.defaultMem) ||
+    Number(res?.memory) ||
+    (plan.code === "MEDIUM" ? 2048 : 512)
+
+  const mem = rawMem > 32768 ? Math.round(rawMem / 1000) : rawMem
+
+  return { cpu, mem }
+}
+
 function QuickDeployDialog({
   template,
   open,
@@ -172,7 +197,7 @@ function QuickDeployDialog({
     template ? makeSubdomain(template) : ""
   )
   const [plans, setPlans] = useState<CatalogPlan[]>([])
-  const [selectedPlanCode, setSelectedPlanCode] = useState<string>("STARTER")
+  const [selectedPlanCode, setSelectedPlanCode] = useState<string>("SMALL")
   const [cpu, setCpu] = useState<number>(500)
   const [memory, setMemory] = useState<number>(512)
   const [submitting, setSubmitting] = useState(false)
@@ -184,8 +209,12 @@ function QuickDeployDialog({
         const res = await getCatalogProduct("APP_HOSTING")
         if (isMounted && res?.product?.plans) {
           setPlans(res.product.plans)
-          if (res.product.plans[0]) {
-            setSelectedPlanCode(res.product.plans[0].code)
+          const firstPlan = res.product.plans[0]
+          if (firstPlan) {
+            setSelectedPlanCode(firstPlan.code)
+            const defaults = getPlanResources(firstPlan)
+            setCpu(defaults.cpu)
+            setMemory(defaults.mem)
           }
         }
       } catch (err) {
@@ -197,7 +226,6 @@ function QuickDeployDialog({
       isMounted = false
     }
   }, [])
-
   // Sync subdomain when template changes (new deploy target)
   const displaySubdomain =
     subdomain || (template ? makeSubdomain(template) : "")
@@ -282,6 +310,9 @@ function QuickDeployDialog({
                           type="button"
                           onClick={() => {
                             setSelectedPlanCode(pkg.code)
+                            const defaults = getPlanResources(pkg)
+                            setCpu(defaults.cpu)
+                            setMemory(defaults.mem)
                           }}
                           className={`flex flex-col items-start justify-center rounded-lg border p-2.5 text-left text-xs transition-all ${
                             isSelected
