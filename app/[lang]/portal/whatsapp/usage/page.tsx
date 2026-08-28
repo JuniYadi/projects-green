@@ -9,7 +9,9 @@ import {
   Calendar,
   Funnel,
   Warning,
+  Buildings,
 } from "@phosphor-icons/react"
+import { eden } from "@/lib/eden"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -156,6 +158,11 @@ function StatCardSkeleton() {
   )
 }
 
+interface OrganizationOption {
+  id: string
+  name: string
+}
+
 export default function PortalWhatsAppUsagePage() {
   const [state, setState] = React.useState<PageState>("loading")
   const [error, setError] = React.useState("")
@@ -165,41 +172,97 @@ export default function PortalWhatsAppUsagePage() {
   const [dailyCounts, setDailyCounts] = React.useState<DailyCount[]>([])
   const [monthlyCounts, setMonthlyCounts] = React.useState<MonthlyCount[]>([])
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
+  const [organizations, setOrganizations] = React.useState<
+    OrganizationOption[]
+  >([])
+  const [selectedOrganization, setSelectedOrganization] =
+    React.useState<string>("all")
   const [selectedDevice, setSelectedDevice] = React.useState<string>("all")
   const [dateRange, setDateRange] = React.useState(getLast30DaysRange)
 
+  const organizationId =
+    selectedOrganization === "all" ? undefined : selectedOrganization
   const deviceId = selectedDevice === "all" ? undefined : selectedDevice
+
+  // Load organizations and initial device list
+  React.useEffect(() => {
+    let cancelled = false
+    const loadMetadata = async () => {
+      try {
+        const [orgRes, deviceRes] = await Promise.all([
+          eden.api.admin.organizations.get({ $query: { limit: 100 } }),
+          eden.api.admin.devices.get({ $query: { take: "200" } }),
+        ])
+
+        if (cancelled) return
+
+        const orgBody = orgRes.data as unknown as {
+          ok: boolean
+          data?: { organizations: OrganizationOption[] }
+          organizations?: OrganizationOption[]
+        }
+        if (orgBody?.ok) {
+          const orgList =
+            orgBody.data?.organizations ?? orgBody.organizations ?? []
+          setOrganizations(orgList)
+        }
+
+        const devBody = deviceRes.data as unknown as {
+          ok: boolean
+          devices: DeviceListItem[]
+        }
+        if (devBody?.ok) {
+          setDevices(devBody.devices)
+        }
+      } catch (err) {
+        console.error("Failed to load organizations/devices:", err)
+      }
+    }
+
+    void loadMetadata()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Filter devices list based on selected organization
+  const filteredDevices = React.useMemo(() => {
+    if (!organizationId) return devices
+    return devices.filter((d) => d.organizationId === organizationId)
+  }, [devices, organizationId])
+
+  const handleOrgChange = (newOrg: string) => {
+    setSelectedOrganization(newOrg)
+    setSelectedDevice("all")
+  }
 
   const loadData = React.useCallback(() => {
     let cancelled = false
 
     const run = async () => {
       try {
+        setState("loading")
         const last6 = getLast6Months()
 
-        const [
-          overviewRes,
-          dailyRes,
-          deviceRes,
-          costBreakdownRes,
-          ...monthlyResults
-        ] = await Promise.all([
-          whatsappClient.usage.overview(),
-          whatsappClient.usage.daily({
-            from: dateRange.from,
-            to: dateRange.to,
-            deviceId,
-          }),
-          whatsappClient.devices.list(),
-          whatsappClient.usage.costBreakdown({ deviceId }),
-          ...last6.map((m) =>
-            whatsappClient.usage.monthly({
-              year: m.year,
-              month: m.month,
+        const [overviewRes, dailyRes, costBreakdownRes, ...monthlyResults] =
+          await Promise.all([
+            whatsappClient.usage.overview({ organizationId }),
+            whatsappClient.usage.daily({
+              from: dateRange.from,
+              to: dateRange.to,
               deviceId,
-            })
-          ),
-        ])
+              organizationId,
+            }),
+            whatsappClient.usage.costBreakdown({ deviceId, organizationId }),
+            ...last6.map((m) =>
+              whatsappClient.usage.monthly({
+                year: m.year,
+                month: m.month,
+                deviceId,
+                organizationId,
+              })
+            ),
+          ])
 
         if (cancelled) return
 
@@ -212,7 +275,6 @@ export default function PortalWhatsAppUsagePage() {
             messageOutboxCount: c.messageOutboxCount,
           }))
         )
-        setDevices(deviceRes.devices)
 
         const allMonthly: MonthlyCount[] = []
         for (const res of monthlyResults) {
@@ -237,7 +299,7 @@ export default function PortalWhatsAppUsagePage() {
     return () => {
       cancelled = true
     }
-  }, [dateRange.from, dateRange.to, deviceId])
+  }, [dateRange.from, dateRange.to, deviceId, organizationId])
 
   React.useEffect(() => {
     return loadData()
@@ -274,23 +336,44 @@ export default function PortalWhatsAppUsagePage() {
               Business account.
             </p>
           </div>
-          {devices.length > 1 && (
-            <div className="flex items-center gap-2">
-              <Funnel className="size-4 text-muted-foreground" />
-              <select
-                value={selectedDevice}
-                onChange={(e) => setSelectedDevice(e.target.value)}
-                className="rounded-md border bg-background px-3 py-1.5 text-sm"
-              >
-                <option value="all">All Devices</option>
-                {devices.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.phoneNumber ?? d.id}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-3">
+            {organizations.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Buildings className="size-4 text-muted-foreground" />
+                <select
+                  aria-label="Filter by organization"
+                  value={selectedOrganization}
+                  onChange={(e) => handleOrgChange(e.target.value)}
+                  className="rounded-md border bg-background px-3 py-1.5 text-sm"
+                >
+                  <option value="all">All Organizations</option>
+                  {organizations.map((org) => (
+                    <option key={org.id} value={org.id}>
+                      {org.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {(filteredDevices.length > 1 || selectedDevice !== "all") && (
+              <div className="flex items-center gap-2">
+                <Funnel className="size-4 text-muted-foreground" />
+                <select
+                  aria-label="Filter by device"
+                  value={selectedDevice}
+                  onChange={(e) => setSelectedDevice(e.target.value)}
+                  className="rounded-md border bg-background px-3 py-1.5 text-sm"
+                >
+                  <option value="all">All Devices</option>
+                  {filteredDevices.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.phoneNumber ?? d.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

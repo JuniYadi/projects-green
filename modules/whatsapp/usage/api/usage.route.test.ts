@@ -450,4 +450,110 @@ describe("Usage Routes", () => {
       expect(body.period).toBeDefined()
     })
   })
+
+  // ── Organization Scoping & Super Admin ─────────────────────────────────
+
+  describe("organizationId scoping and super_admin behavior", () => {
+    it("non-super_admin ignores organizationId query and uses token org", async () => {
+      setMockAuthContext({
+        type: "workos",
+        userId: "user-1",
+        email: "member@example.com",
+        organizationId: "org-tenant-1",
+        orgRole: "admin",
+        platformRole: "none",
+      })
+
+      mockFindMany.mockImplementation(async () => [])
+      const app = createTestApp()
+
+      await app.handle(
+        new Request("http://localhost/usage/daily?organizationId=org-other-2")
+      )
+
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            organizationId: "org-tenant-1",
+          }),
+        })
+      )
+    })
+
+    it("super_admin with organizationId=all queries globally without organizationId filter", async () => {
+      setMockAuthContext({
+        type: "workos",
+        userId: "super-1",
+        email: "super@example.com",
+        organizationId: "org-admin",
+        orgRole: "admin",
+        platformRole: "super_admin",
+      })
+
+      mockFindMany.mockImplementation(async () => [])
+      const app = createTestApp()
+
+      await app.handle(
+        new Request("http://localhost/usage/daily?organizationId=all")
+      )
+
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.not.objectContaining({
+            organizationId: expect.anything(),
+          }),
+        })
+      )
+    })
+
+    it("super_admin without organizationId query queries globally", async () => {
+      setMockAuthContext({
+        type: "workos",
+        userId: "super-1",
+        email: "super@example.com",
+        organizationId: "org-admin",
+        orgRole: "admin",
+        platformRole: "super_admin",
+      })
+
+      mockFindMany.mockImplementation(async () => [])
+      const app = createTestApp()
+
+      await app.handle(new Request("http://localhost/usage/daily"))
+
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.not.objectContaining({
+            organizationId: expect.anything(),
+          }),
+        })
+      )
+    })
+
+    it("super_admin with specific organizationId filters by that organizationId", async () => {
+      setMockAuthContext({
+        type: "workos",
+        userId: "super-1",
+        email: "super@example.com",
+        organizationId: "org-admin",
+        orgRole: "admin",
+        platformRole: "super_admin",
+      })
+
+      mockFindMany.mockImplementation(async () => [])
+      const app = createTestApp()
+
+      await app.handle(
+        new Request("http://localhost/usage/daily?organizationId=org-target-99")
+      )
+
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            organizationId: "org-target-99",
+          }),
+        })
+      )
+    })
+  })
 })

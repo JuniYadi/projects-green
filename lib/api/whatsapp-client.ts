@@ -471,7 +471,7 @@ export const whatsappClient = {
   },
 
   usage: {
-    overview: () =>
+    overview: (params?: { organizationId?: string }) =>
       serverFetch<{
         ok: boolean
         month: any[]
@@ -489,20 +489,30 @@ export const whatsappClient = {
           sessionCount: number
           messageFailedCount: number
         }[]
-      }>("/api/whatsapp/usage/overview"),
+      }>("/api/whatsapp/usage/overview", { params }),
 
-    daily: (params?: { from?: string; to?: string; deviceId?: string }) =>
+    daily: (params?: {
+      from?: string
+      to?: string
+      deviceId?: string
+      organizationId?: string
+    }) =>
       serverFetch<{ ok: boolean; counts: any[] }>("/api/whatsapp/usage/daily", {
         params,
       }),
 
-    monthly: (params?: { year?: number; month?: number; deviceId?: string }) =>
+    monthly: (params?: {
+      year?: number
+      month?: number
+      deviceId?: string
+      organizationId?: string
+    }) =>
       serverFetch<{ ok: boolean; counts: any[] }>(
         "/api/whatsapp/usage/monthly",
         { params }
       ),
 
-    cost: (params: { period: string }) =>
+    cost: (params: { period: string; organizationId?: string }) =>
       serverFetch<{
         ok: boolean
         totalAmount: number
@@ -514,7 +524,11 @@ export const whatsappClient = {
         }[]
       }>("/api/whatsapp/usage/cost", { params }),
 
-    costBreakdown: (params?: { period?: string; deviceId?: string }) =>
+    costBreakdown: (params?: {
+      period?: string
+      deviceId?: string
+      organizationId?: string
+    }) =>
       serverFetch<{
         ok: boolean
         period: string
@@ -540,6 +554,7 @@ export const whatsappClient = {
         currency: string
       }>("/api/whatsapp/usage/cost-breakdown", { params }),
     ledger: (params?: {
+      organizationId?: string
       deviceId?: string
       category?: string
       status?: string
@@ -550,7 +565,6 @@ export const whatsappClient = {
       limit?: number
     }) =>
       serverFetch<{
-        ok: boolean
         data: {
           id: string
           organizationId: string
