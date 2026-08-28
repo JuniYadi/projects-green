@@ -183,7 +183,10 @@ const formatMessageTime = (iso: string | null | undefined) => {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 }
 
-const formatPhone = (phone: string) => phone
+const formatPhone = (phone: string) => {
+  if (phone.startsWith("+")) return phone
+  return `+${phone}`
+}
 
 function formatLocalDateTime(iso: string | null | undefined): string {
   if (!iso) return "—"
@@ -209,14 +212,9 @@ const findConversationByPhone = (
 ): ConversationListItem | undefined => {
   const digits = cleanPhoneForQuery(phone)
   if (!digits) return undefined
-  return conversations.find((c) => {
-    const itemDigits = cleanPhoneForQuery(c.contactPhone)
-    return (
-      itemDigits === digits ||
-      itemDigits.endsWith(digits) ||
-      digits.endsWith(itemDigits)
-    )
-  })
+  return conversations.find(
+    (c) => cleanPhoneForQuery(c.contactPhone) === digits
+  )
 }
 
 type TemplateCategory = NonNullable<WhatsAppTemplate["category"]>
