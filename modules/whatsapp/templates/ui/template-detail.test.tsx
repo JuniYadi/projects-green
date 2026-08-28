@@ -144,10 +144,10 @@ describe("TemplateDetailView", () => {
     )
 
     expect(view.getByText("Kategori Meta: MARKETING")).toBeInTheDocument()
-    expect(view.getByText("Informasi dari Meta")).toBeInTheDocument()
+    expect(view.getByText("Information from Meta")).toBeInTheDocument()
     expect(
       view.getByText(
-        "Alasan dari Meta: Template no longer meets utility guidance"
+        "Reason from Meta: Template no longer meets utility guidance"
       )
     ).toBeInTheDocument()
     expect(view.getByText("Approved")).toBeInTheDocument()

@@ -84,9 +84,7 @@ export const tokensRoutes = new Elysia({ prefix: "/tokens" })
         data: {
           ...body,
           organizationId:
-            whatsappAuth.type === "workos"
-              ? whatsappAuth.organizationId!
-              : (body as any).organizationId,
+            whatsappAuth.organizationId ?? (body as any).organizationId ?? "",
         },
       })
 
