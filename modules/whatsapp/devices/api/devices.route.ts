@@ -1,4 +1,4 @@
-import { Elysia } from "elysia"
+import { Elysia, t } from "elysia"
 import { Prisma } from "@prisma/client"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 
@@ -141,48 +141,125 @@ const buildDeviceUpdateData = async (
   return data
 }
 
-export const devicesRoutes = new Elysia({ prefix: "/devices" })
-  .get("/", async ({ request, query, set }: any) => {
-    const whatsappAuth = await resolveDeviceAuth(request)
-    if (!whatsappAuth) return toUnauthorized(set)
+const deviceDTOSchema = t.Object({
+  id: t.String({
+    example: "dev_clt1234567890",
+    description: "WhatsApp device unique identifier",
+  }),
+  phoneNumber: t.String({
+    example: "+6281234567890",
+    description: "Registered WhatsApp phone number in E.164 format",
+  }),
+  name: t.Optional(t.Nullable(t.String({ example: "Customer Support Line" }))),
+  status: t.String({
+    example: "ACTIVE",
+    description: "Device connection status (ACTIVE, DISCONNECTED)",
+  }),
+  environment: t.Optional(t.String({ example: "LIVE" })),
+  organizationId: t.String({
+    example: "org_2tQ1y09...",
+    description: "Owner organization ID",
+  }),
+  whatsappBusinessAccountId: t.Optional(
+    t.Nullable(t.String({ example: "waba_1234567890" }))
+  ),
+  whatsappPhoneId: t.Optional(
+    t.Nullable(t.String({ example: "phone_1234567890" }))
+  ),
+  rates: t.Optional(t.Nullable(t.String({ example: "BASE" }))),
+  quotaBaseOut: t.Optional(t.Nullable(t.Number({ example: 1000 }))),
+  addonQuota: t.Optional(t.Nullable(t.Number({ example: 250 }))),
+  createdAt: t.Optional(t.Any()),
+  updatedAt: t.Optional(t.Any()),
+})
 
-    const where: Record<string, unknown> = {}
-    if (!isSuperAdmin(whatsappAuth)) {
-      where.organizationId = whatsappAuth.organizationId!
-    } else if (query?.organizationId) {
-      where.organizationId = String(query.organizationId)
+export const devicesRoutes = new Elysia({
+  prefix: "/devices",
+  detail: {
+    tags: ["WhatsApp Devices"],
+  },
+})
+  .get(
+    "/",
+    async ({ request, query, set }: any) => {
+      const whatsappAuth = await resolveDeviceAuth(request)
+      if (!whatsappAuth) return toUnauthorized(set)
+
+      const where: Record<string, unknown> = {}
+      if (!isSuperAdmin(whatsappAuth)) {
+        where.organizationId = whatsappAuth.organizationId!
+      } else if (query?.organizationId) {
+        where.organizationId = String(query.organizationId)
+      }
+
+      const devices = await prisma.whatsappDevice.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+      })
+
+      return { ok: true, devices: devices.map(toDeviceListItem) }
+    },
+    {
+      response: {
+        200: t.Object({
+          ok: t.Boolean({ example: true }),
+          devices: t.Array(deviceDTOSchema),
+        }),
+      },
+      detail: {
+        summary: "List WhatsApp Devices",
+        description:
+          "Retrieves all registered and active WhatsApp Cloud API devices belonging to the authenticated organization.",
+        tags: ["WhatsApp Devices"],
+      },
     }
+  )
+  .get(
+    "/:id",
+    async ({ request, params: { id }, set }: any) => {
+      const whatsappAuth = await resolveDeviceAuth(request)
+      if (!whatsappAuth) return toUnauthorized(set)
 
-    const devices = await prisma.whatsappDevice.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-    })
+      const device = await prisma.whatsappDevice.findUnique({
+        where: { id },
+      })
 
-    return { ok: true, devices: devices.map(toDeviceListItem) }
-  })
-  .get("/:id", async ({ request, params: { id }, set }: any) => {
-    const whatsappAuth = await resolveDeviceAuth(request)
-    if (!whatsappAuth) return toUnauthorized(set)
+      if (!device) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Device not found." }
+      }
 
-    const device = await prisma.whatsappDevice.findUnique({
-      where: { id },
-    })
+      if (
+        !isSuperAdmin(whatsappAuth) &&
+        device.organizationId !== whatsappAuth.organizationId
+      ) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
 
-    if (!device) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Device not found." }
+      return { ok: true, device: toDeviceDetail(device) }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "dev_clt1234567890",
+          description: "WhatsApp device unique ID",
+        }),
+      }),
+      response: {
+        200: t.Object({
+          ok: t.Boolean({ example: true }),
+          device: deviceDTOSchema,
+        }),
+      },
+      detail: {
+        summary: "Get WhatsApp Device Details",
+        description:
+          "Fetches connection health, phone number ID, WABA ID, and webhook signing configuration for a device.",
+        tags: ["WhatsApp Devices"],
+      },
     }
-
-    if (
-      !isSuperAdmin(whatsappAuth) &&
-      device.organizationId !== whatsappAuth.organizationId
-    ) {
-      set.status = 403
-      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
-    }
-
-    return { ok: true, device: toDeviceDetail(device) }
-  })
+  )
   .post(
     "/",
     ({ set }: any) =>
@@ -210,99 +287,133 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
       ),
     { detail: { hide: true } }
   )
-  .post("/:id/verify", async ({ request, params: { id }, set }: any) => {
-    const whatsappAuth = await resolveDeviceAuth(request)
-    if (!whatsappAuth) return toUnauthorized(set)
+  .post(
+    "/:id/verify",
+    async ({ request, params: { id }, set }: any) => {
+      const whatsappAuth = await resolveDeviceAuth(request)
+      if (!whatsappAuth) return toUnauthorized(set)
 
-    const device = await prisma.whatsappDevice.findUnique({
-      where: { id },
-    })
+      const device = await prisma.whatsappDevice.findUnique({
+        where: { id },
+      })
 
-    if (!device) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Device not found." }
-    }
-
-    if (
-      !isSuperAdmin(whatsappAuth) &&
-      device.organizationId !== whatsappAuth.organizationId
-    ) {
-      set.status = 403
-      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
-    }
-
-    // Ensure phone ID exists
-    if (!device.whatsappPhoneId) {
-      set.status = 422
-      return {
-        ok: false,
-        error: "VALIDATION_ERROR",
-        message: "Device missing phone ID.",
+      if (!device) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Device not found." }
       }
-    }
 
-    // Call Meta API to verify device health
-    const healthResult = await checkDeviceHealth({
-      organizationId: device.organizationId,
-      phoneId: device.whatsappPhoneId,
-    })
+      if (
+        !isSuperAdmin(whatsappAuth) &&
+        device.organizationId !== whatsappAuth.organizationId
+      ) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
 
-    // Log the health check result
-    await logWhatsappAuditEvent({
-      action: "DEVICE_STATUS_CHANGED",
-      status: healthResult.ok ? "OK" : "FAILED",
-      organizationId: device.organizationId,
-      deviceId: device.id,
-      adminId: whatsappAuth.type === "workos" ? whatsappAuth.userId : null,
-      message: healthResult.ok
-        ? "Health check passed — device is connected"
-        : `Health check failed: ${healthResult.error}`,
-    })
+      // Ensure phone ID exists
+      if (!device.whatsappPhoneId) {
+        set.status = 422
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message: "Device missing phone ID.",
+        }
+      }
 
-    // Update status based on health result
-    const updated = await prisma.whatsappDevice.update({
-      where: { id },
-      data: {
-        status: healthResult.ok ? "ACTIVE" : "DISCONNECTED",
-        lastHeartbeatAt: healthResult.ok ? new Date() : undefined,
-        lastDisconnectedAt: !healthResult.ok ? new Date() : undefined,
+      // Call Meta API to verify device health
+      const healthResult = await checkDeviceHealth({
+        organizationId: device.organizationId,
+        phoneId: device.whatsappPhoneId,
+      })
+
+      // Log the health check result
+      await logWhatsappAuditEvent({
+        action: "DEVICE_STATUS_CHANGED",
+        status: healthResult.ok ? "OK" : "FAILED",
+        organizationId: device.organizationId,
+        deviceId: device.id,
+        adminId: whatsappAuth.type === "workos" ? whatsappAuth.userId : null,
+        message: healthResult.ok
+          ? "Health check passed — device is connected"
+          : `Health check failed: ${healthResult.error}`,
+      })
+
+      // Update status based on health result
+      const updated = await prisma.whatsappDevice.update({
+        where: { id },
+        data: {
+          status: healthResult.ok ? "ACTIVE" : "DISCONNECTED",
+          lastHeartbeatAt: healthResult.ok ? new Date() : undefined,
+          lastDisconnectedAt: !healthResult.ok ? new Date() : undefined,
+        },
+      })
+
+      return {
+        ok: true,
+        device: toDeviceDetail(updated),
+        health: healthResult,
+      }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "dev_clt1234567890",
+          description: "WhatsApp device unique ID",
+        }),
+      }),
+      detail: {
+        summary: "Verify Device Health",
+        description:
+          "Performs real-time ping to Meta Cloud API checking token validity and WhatsApp phone number connection status.",
+        tags: ["WhatsApp Devices"],
       },
-    })
-
-    return {
-      ok: true,
-      device: toDeviceDetail(updated),
-      health: healthResult,
     }
-  })
-  .post("/:id/reconnect", async ({ request, params: { id }, set }: any) => {
-    const whatsappAuth = await resolveDeviceAuth(request)
-    if (!whatsappAuth) return toUnauthorized(set)
+  )
+  .post(
+    "/:id/reconnect",
+    async ({ request, params: { id }, set }: any) => {
+      const whatsappAuth = await resolveDeviceAuth(request)
+      if (!whatsappAuth) return toUnauthorized(set)
 
-    const device = await prisma.whatsappDevice.findUnique({
-      where: { id },
-    })
+      const device = await prisma.whatsappDevice.findUnique({
+        where: { id },
+      })
 
-    if (!device) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Device not found." }
+      if (!device) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Device not found." }
+      }
+
+      if (
+        !isSuperAdmin(whatsappAuth) &&
+        device.organizationId !== whatsappAuth.organizationId
+      ) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
+
+      const updated = await prisma.whatsappDevice.update({
+        where: { id },
+        data: { status: "ACTIVE" },
+      })
+
+      return { ok: true, device: toDeviceDetail(updated) }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "dev_clt1234567890",
+          description: "WhatsApp device unique ID",
+        }),
+      }),
+      detail: {
+        summary: "Reconnect WhatsApp Device",
+        description:
+          "Manually re-activates an offline device connection state.",
+        tags: ["WhatsApp Devices"],
+      },
     }
-
-    if (
-      !isSuperAdmin(whatsappAuth) &&
-      device.organizationId !== whatsappAuth.organizationId
-    ) {
-      set.status = 403
-      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
-    }
-
-    const updated = await prisma.whatsappDevice.update({
-      where: { id },
-      data: { status: "ACTIVE" },
-    })
-
-    return { ok: true, device: toDeviceDetail(updated) }
-  })
+  )
   .post(
     "/:id/sync-templates",
     async ({ request, params: { id }, set }: any) => {
@@ -413,6 +524,20 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
         return toQueueUnavailable(set)
       }
       return { ok: true, message: "Sync job enqueued." }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "dev_clt1234567890",
+          description: "WhatsApp device unique ID",
+        }),
+      }),
+      detail: {
+        summary: "Sync Device Templates",
+        description:
+          "Enqueues a background job to synchronize Meta templates associated with this device.",
+        tags: ["WhatsApp Devices"],
+      },
     }
   )
   .post(
@@ -452,6 +577,20 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
           message: error?.message || "Failed to pull templates from Meta",
         }
       }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "dev_clt1234567890",
+          description: "WhatsApp device unique ID",
+        }),
+      }),
+      detail: {
+        summary: "Pull Templates from Meta",
+        description:
+          "Directly requests and pulls current template configurations from Meta Cloud API.",
+        tags: ["WhatsApp Devices"],
+      },
     }
   )
   // POST /:id/regenerate-signing-secret — regenerate webhook HMAC signing secret
@@ -491,5 +630,19 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
         message:
           "Signing secret regenerated. Update your webhook configuration.",
       }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "dev_clt1234567890",
+          description: "WhatsApp device unique ID",
+        }),
+      }),
+      detail: {
+        summary: "Regenerate Webhook Signing Secret",
+        description:
+          "Generates a new HMAC SHA-256 signing secret for validating webhook signatures received from Meta.",
+        tags: ["WhatsApp Devices"],
+      },
     }
   )
