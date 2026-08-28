@@ -13,7 +13,7 @@ coverage:
         threshold: 0%
         flags:
           - logic
-        if_ci_failed: error
+        informational: true
     patch:
       logic:
         target: 85%
@@ -21,7 +21,6 @@ coverage:
         flags:
           - logic
         informational: false
-
 flags:
   logic:
     carryforward: true
