@@ -7,13 +7,43 @@ import { resolveWhatsappContactGroupId } from "../contacts.service"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 
 const contactBodySchema = t.Object({
-  phoneNumber: t.String(),
-  name: t.String(),
-  email: t.String(),
-  contactGroupId: t.Optional(t.String()),
-  status: t.Optional(t.Enum({ ACTIVE: "ACTIVE", INACTIVE: "INACTIVE" })),
-  whatsappDeviceId: t.Optional(t.String()),
-  dynamicValues: t.Optional(t.Any()),
+  phoneNumber: t.String({
+    example: "+6281234567890",
+    description: "Contact phone number in E.164 format",
+  }),
+  name: t.String({
+    example: "Budi Santoso",
+    description: "Contact full name",
+  }),
+  email: t.String({
+    example: "budi@example.com",
+    description: "Contact email address",
+  }),
+  contactGroupId: t.Optional(
+    t.String({
+      example: "grp_clt1234567890",
+      description:
+        "Optional WhatsApp contact group ID (defaults to 'Ungrouped')",
+    })
+  ),
+  status: t.Optional(
+    t.Enum(
+      { ACTIVE: "ACTIVE", INACTIVE: "INACTIVE" },
+      { example: "ACTIVE", description: "Contact status" }
+    )
+  ),
+  whatsappDeviceId: t.Optional(
+    t.String({
+      example: "dev_clt1234567890",
+      description: "Optional primary sender device ID",
+    })
+  ),
+  dynamicValues: t.Optional(
+    t.Any({
+      example: { company: "PT Maju Bersama", tier: "VIP" },
+      description: "Custom metadata / dynamic placeholder key-values",
+    })
+  ),
   dynamicRaw: t.Optional(t.String()),
 })
 const contactUpdateSchema = t.Partial(contactBodySchema)
@@ -30,7 +60,12 @@ function getPagination(query: Record<string, unknown>) {
   return { page, limit, skip: (page - 1) * limit }
 }
 
-export const contactsRoutes = new Elysia({ prefix: "/contacts" })
+export const contactsRoutes = new Elysia({
+  prefix: "/contacts",
+  detail: {
+    tags: ["WhatsApp Contacts"],
+  },
+})
   .get(
     "/",
     async ({ request, set, query }: { request: any; set: any; query: any }) => {
@@ -106,6 +141,14 @@ export const contactsRoutes = new Elysia({ prefix: "/contacts" })
         data,
         meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
       }
+    },
+    {
+      detail: {
+        summary: "List WhatsApp Contacts",
+        description:
+          "Retrieves a paginated list of contacts for the organization, enriched with recent conversation summary.",
+        tags: ["WhatsApp Contacts"],
+      },
     }
   )
   .get(
@@ -137,6 +180,20 @@ export const contactsRoutes = new Elysia({ prefix: "/contacts" })
       }
 
       return { ok: true, contact: toWhatsappContactDTO(contact) }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "cnt_clt1234567890",
+          description: "WhatsApp contact unique ID",
+        }),
+      }),
+      detail: {
+        summary: "Get WhatsApp Contact Details",
+        description:
+          "Retrieves contact details, group membership, and variable metadata by contact ID.",
+        tags: ["WhatsApp Contacts"],
+      },
     }
   )
   .post(
@@ -211,6 +268,12 @@ export const contactsRoutes = new Elysia({ prefix: "/contacts" })
     },
     {
       body: contactBodySchema,
+      detail: {
+        summary: "Create WhatsApp Contact",
+        description:
+          "Creates a new WhatsApp contact record associated with an organization and contact group.",
+        tags: ["WhatsApp Contacts"],
+      },
     }
   )
   .patch(
@@ -269,7 +332,19 @@ export const contactsRoutes = new Elysia({ prefix: "/contacts" })
       return { ok: true, contact: toWhatsappContactDTO(updated) }
     },
     {
+      params: t.Object({
+        id: t.String({
+          example: "cnt_clt1234567890",
+          description: "WhatsApp contact unique ID",
+        }),
+      }),
       body: contactUpdateSchema,
+      detail: {
+        summary: "Update WhatsApp Contact",
+        description:
+          "Updates contact details, name, email, or contact group assignment.",
+        tags: ["WhatsApp Contacts"],
+      },
     }
   )
   .delete(
@@ -304,5 +379,18 @@ export const contactsRoutes = new Elysia({ prefix: "/contacts" })
         where: { id },
       })
       return { ok: true, message: "Contact deleted." }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "cnt_clt1234567890",
+          description: "WhatsApp contact unique ID",
+        }),
+      }),
+      detail: {
+        summary: "Delete WhatsApp Contact",
+        description: "Removes a contact record from the database.",
+        tags: ["WhatsApp Contacts"],
+      },
     }
   )

@@ -38,69 +38,252 @@ function getMonthlyResetAt(): string {
   return reset.toISOString()
 }
 
+const whatsappSendResultDTOSchema = t.Object({
+  jobId: t.String({
+    example: "job_clt1234567890",
+    description: "Asynchronous background worker job ID",
+  }),
+  messageId: t.String({
+    example: "msg_clt1234567890",
+    description: "Internal message record ID",
+  }),
+  waMessageId: t.String({
+    example: "wamid.HBgLMzE2NDY0MTk...",
+    description: "Official Meta WhatsApp message ID (wamid)",
+  }),
+  status: t.String({ example: "sent" }),
+})
+
+const whatsappMessageDTOSchema = t.Object({
+  id: t.String({
+    example: "msg_clt1234567890",
+    description: "Internal message record ID",
+  }),
+  conversationId: t.Optional(
+    t.String({
+      example: "conv_clt1234567890",
+      description: "Conversation thread ID",
+    })
+  ),
+  direction: t.Optional(
+    t.String({
+      example: "OUTBOX",
+      description: "Message direction (INBOX or OUTBOX)",
+    })
+  ),
+  messageType: t.Optional(
+    t.String({ example: "text", description: "Message type" })
+  ),
+  body: t.Optional(
+    t.Nullable(
+      t.String({
+        example: "Halo Budi, terima kasih telah menghubungi kami!",
+        description: "Message text content",
+      })
+    )
+  ),
+  mediaUrl: t.Optional(
+    t.Nullable(
+      t.String({
+        example: "https://example.com/receipt.pdf",
+        description: "Public URL for attached media",
+      })
+    )
+  ),
+  waMessageId: t.Optional(
+    t.Nullable(
+      t.String({
+        example: "wamid.HBgLMzE2NDY0MTk...",
+        description: "Official Meta WhatsApp message ID",
+      })
+    )
+  ),
+  metadata: t.Optional(t.Nullable(t.Any())),
+  createdAt: t.Optional(t.Any()),
+  updatedAt: t.Optional(t.Any()),
+})
+
 const messageBodySchema = t.Object({
-  conversationId: t.String(),
-  direction: t.Enum({ INBOX: "INBOX", OUTBOX: "OUTBOX" }),
-  messageType: t.String(),
-  body: t.Optional(t.Nullable(t.String())),
-  mediaUrl: t.Optional(t.Nullable(t.String())),
-  waMessageId: t.Optional(t.Nullable(t.String())),
+  conversationId: t.String({
+    example: "conv_clt1234567890",
+    description: "Target conversation thread ID",
+  }),
+  direction: t.Enum(
+    { INBOX: "INBOX", OUTBOX: "OUTBOX" },
+    { description: "Message direction (INBOX or OUTBOX)", example: "OUTBOX" }
+  ),
+  messageType: t.String({
+    example: "text",
+    description:
+      "Type of message: text, image, document, audio, video, location",
+  }),
+  body: t.Optional(
+    t.Nullable(
+      t.String({
+        example: "Halo, selamat datang di layanan pelanggan kami.",
+        description: "Message text payload",
+      })
+    )
+  ),
+  mediaUrl: t.Optional(
+    t.Nullable(
+      t.String({
+        example: "https://example.com/file.pdf",
+        description: "Public URL for attached media file",
+      })
+    )
+  ),
+  waMessageId: t.Optional(
+    t.Nullable(
+      t.String({
+        example: "wamid.HBgLMzE2NDY0MTk...",
+        description: "Meta wamid identifier",
+      })
+    )
+  ),
   metadata: t.Optional(t.Nullable(t.Any())),
 })
+
 const sendTemplateSchema = t.Object({
-  phoneNumber: t.String({ minLength: 1 }),
-  templateId: t.String({ minLength: 1 }),
-  templateLanguage: t.String({ minLength: 1 }),
-  fields: t.Optional(t.Array(t.String())),
-  deviceId: t.String({ minLength: 1 }),
+  phoneNumber: t.String({
+    minLength: 1,
+    example: "+6281234567890",
+    description: "Destination WhatsApp phone number in E.164 format",
+  }),
+  templateId: t.String({
+    minLength: 1,
+    example: "tpl_clt9876543210",
+    description: "Template ID or slug to send",
+  }),
+  templateLanguage: t.String({
+    minLength: 1,
+    example: "id",
+    description: "Language locale code (e.g. 'id', 'en_US')",
+  }),
+  fields: t.Optional(
+    t.Array(t.String({ example: "Budi Santoso" }), {
+      description: "Positional placeholder replacement values ({{1}}, {{2}})",
+      example: ["Budi Santoso", "#ORD-9981", "JNE Express"],
+    })
+  ),
+  deviceId: t.String({
+    minLength: 1,
+    example: "dev_clt1234567890",
+    description: "Active WhatsApp device ID used to dispatch the message",
+  }),
 })
 
 const sendSchema = t.Object({
-  phoneNumber: t.String(),
+  phoneNumber: t.String({
+    example: "+6281234567890",
+    description: "Destination phone number in E.164 format",
+  }),
   type: t.Optional(
-    t.Union([
-      t.Literal("text"),
-      t.Literal("image"),
-      t.Literal("document"),
-      t.Literal("audio"),
-      t.Literal("video"),
-      t.Literal("location"),
-    ])
+    t.Union(
+      [
+        t.Literal("text"),
+        t.Literal("image"),
+        t.Literal("document"),
+        t.Literal("audio"),
+        t.Literal("video"),
+        t.Literal("location"),
+      ],
+      {
+        description: "Message content type",
+        example: "text",
+      }
+    )
   ),
-  message: t.Optional(t.String()),
-  mediaUrl: t.Optional(t.String()),
-  caption: t.Optional(t.String()),
-  filename: t.Optional(t.String()),
-  latitude: t.Optional(t.Number()),
-  longitude: t.Optional(t.Number()),
-  name: t.Optional(t.String()),
-  address: t.Optional(t.String()),
-  deviceId: t.Optional(t.String()),
+  message: t.Optional(
+    t.String({
+      example: "Halo, ada yang bisa kami bantu hari ini?",
+      description: "Text message body (required for text type)",
+    })
+  ),
+  mediaUrl: t.Optional(
+    t.String({
+      example: "https://example.com/banner.png",
+      description: "Direct public URL for media attachments",
+    })
+  ),
+  caption: t.Optional(
+    t.String({
+      example: "Katalog Promo Maret",
+      description: "Caption text for media messages",
+    })
+  ),
+  filename: t.Optional(
+    t.String({
+      example: "invoice-001.pdf",
+      description: "Custom filename for document messages",
+    })
+  ),
+  latitude: t.Optional(
+    t.Number({
+      example: -6.2088,
+      description: "Latitude for location messages",
+    })
+  ),
+  longitude: t.Optional(
+    t.Number({
+      example: 106.8456,
+      description: "Longitude for location messages",
+    })
+  ),
+  name: t.Optional(
+    t.String({
+      example: "Kantor Pusat",
+      description: "Location place name",
+    })
+  ),
+  address: t.Optional(
+    t.String({
+      example: "Jl. Sudirman No. 1, Jakarta Pusat",
+      description: "Location postal address",
+    })
+  ),
+  deviceId: t.Optional(
+    t.String({
+      example: "dev_clt1234567890",
+      description: "Optional sender device ID (defaults to primary device)",
+    })
+  ),
 })
+
 const unifiedMessageSchema = t.Object({
-  phoneNumber: t.Optional(t.String()),
-  phone: t.Optional(t.String()),
-  to: t.Optional(t.String()),
-  type: t.Optional(t.String()),
-  message: t.Optional(t.String()),
+  phoneNumber: t.Optional(
+    t.String({
+      example: "+6281234567890",
+      description: "Recipient phone number",
+    })
+  ),
+  phone: t.Optional(t.String({ example: "+6281234567890" })),
+  to: t.Optional(t.String({ example: "+6281234567890" })),
+  type: t.Optional(
+    t.String({
+      example: "text",
+      description: "Message type: text, image, document, template",
+    })
+  ),
+  message: t.Optional(t.String({ example: "Halo dari API WhatsApp!" })),
   text: t.Optional(t.Any()),
-  mediaUrl: t.Optional(t.String()),
-  media_url: t.Optional(t.String()),
-  caption: t.Optional(t.String()),
-  filename: t.Optional(t.String()),
-  latitude: t.Optional(t.Number()),
-  longitude: t.Optional(t.Number()),
-  name: t.Optional(t.String()),
-  address: t.Optional(t.String()),
-  deviceId: t.Optional(t.String()),
-  whatsappDeviceId: t.Optional(t.String()),
-  template_name: t.Optional(t.String()),
-  templateName: t.Optional(t.String()),
-  templateId: t.Optional(t.String()),
-  template_language: t.Optional(t.String()),
-  templateLanguage: t.Optional(t.String()),
+  mediaUrl: t.Optional(t.String({ example: "https://example.com/image.png" })),
+  media_url: t.Optional(t.String({ example: "https://example.com/image.png" })),
+  caption: t.Optional(t.String({ example: "Contoh lampiran gambar" })),
+  filename: t.Optional(t.String({ example: "document.pdf" })),
+  latitude: t.Optional(t.Number({ example: -6.2088 })),
+  longitude: t.Optional(t.Number({ example: 106.8456 })),
+  name: t.Optional(t.String({ example: "Kantor Pusat" })),
+  address: t.Optional(t.String({ example: "Jakarta" })),
+  deviceId: t.Optional(t.String({ example: "dev_clt1234567890" })),
+  whatsappDeviceId: t.Optional(t.String({ example: "dev_clt1234567890" })),
+  template_name: t.Optional(t.String({ example: "order_notification" })),
+  templateName: t.Optional(t.String({ example: "order_notification" })),
+  templateId: t.Optional(t.String({ example: "tpl_clt9876543210" })),
+  template_language: t.Optional(t.String({ example: "id" })),
+  templateLanguage: t.Optional(t.String({ example: "id" })),
   template: t.Optional(t.Any()),
-  fields: t.Optional(t.Array(t.String())),
+  fields: t.Optional(t.Array(t.String({ example: "Nilai Variabel" }))),
 })
 
 const messageUpdateSchema = t.Partial(messageBodySchema)
@@ -181,29 +364,135 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       const data = messages.map(toWhatsappMessageDTO)
       return {
         ok: true,
-        messages: data,
         data,
-        meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
       }
+    },
+    {
+      query: t.Optional(t.Any()),
+      response: {
+        200: t.Object({
+          ok: t.Boolean({ example: true }),
+          data: t.Optional(
+            t.Array(whatsappMessageDTOSchema, {
+              description: "Array of WhatsApp message logs",
+              example: [
+                {
+                  id: "cmt9js7nb0007004cinoauiop",
+                  conversationId: "cmt94y2va0001d04ccskioxii",
+                  direction: "OUTBOX",
+                  messageType: "template",
+                  body: "Hi Ahmad\nKami informasikan bahwa terkait pertanyaan anda tentang Konfirmasi Pembayaran.\n\nSekian informasi dari kami. Jika ada pertanyaan, jangan ragu untuk menghubungi kami.\nCustomer Support PFN",
+                  mediaUrl: null,
+                  waMessageId:
+                    "wamid.HBgNNjI4NTcwODI5NjQ4MhUCABEYEjIyODZEMkMzNjYxMkVBODdENgA=",
+                  metadata: {
+                    templateName: "help_quick_2",
+                    templateLanguage: "id",
+                  },
+                  createdAt: "2026-08-26T03:42:02.423Z",
+                  updatedAt: "2026-08-26T03:42:02.423Z",
+                },
+              ],
+            })
+          ),
+          meta: t.Optional(
+            t.Object(
+              {
+                total: t.Number({ example: 17 }),
+                page: t.Number({ example: 1 }),
+                limit: t.Number({ example: 20 }),
+                totalPages: t.Number({ example: 1 }),
+              },
+              {
+                example: {
+                  total: 17,
+                  page: 1,
+                  limit: 20,
+                  totalPages: 1,
+                },
+              }
+            )
+          ),
+        }),
+      },
+      detail: {
+        summary: "List WhatsApp Messages",
+        description:
+          "Retrieves a paginated list of logged WhatsApp messages (inbound & outbound) with status history.",
+        tags: ["WhatsApp Messages"],
+      },
     }
   )
-  .get("/pricing", async ({ request, set }: { request: any; set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-    }
+  .get(
+    "/pricing",
+    async ({ request, set }: { request: any; set: any }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
 
-    const pricing = await new WhatsappMessagePricingService(prisma).getPricing(
-      whatsappAuth.organizationId!
-    )
-    return { ok: true, ...toWhatsappMessagePricingDTO(pricing) }
-  })
+      const pricing = await new WhatsappMessagePricingService(
+        prisma
+      ).getPricing(whatsappAuth.organizationId!)
+      return { ok: true, ...toWhatsappMessagePricingDTO(pricing) }
+    },
+    {
+      response: {
+        200: t.Object({
+          ok: t.Boolean({ example: true }),
+          overage: t.Optional(t.Any()),
+          devices: t.Optional(t.Array(t.Any())),
+        }),
+      },
+      detail: {
+        summary: "Get WhatsApp Message Pricing Cards",
+        description:
+          "Retrieves real-time message unit pricing cards per category and device for the active organization.",
+        tags: ["WhatsApp Messages"],
+        response: {
+          200: t.Object({
+            ok: t.Boolean({ example: true }),
+            overage: t.Object({
+              unitPrice: t.String({ example: "197" }),
+              currency: t.String({ example: "IDR" }),
+              configured: t.Boolean({ example: true }),
+            }),
+            devices: t.Array(
+              t.Object({
+                deviceId: t.String({ example: "dev_clt1234567890" }),
+                phoneNumber: t.String({ example: "+6281234567890" }),
+                country: t.String({ example: "ID" }),
+                rateTier: t.String({ example: "BASE" }),
+                quotaRemaining: t.Number({ example: 75 }),
+                categories: t.Array(
+                  t.Object({
+                    category: t.String({ example: "MARKETING" }),
+                    quotaCredit: t.String({ example: "2.00" }),
+                    configured: t.Boolean({ example: true }),
+                    description: t.String({
+                      example: "Marketing template credit",
+                    }),
+                  })
+                ),
+              })
+            ),
+          }),
+        },
+      },
+    }
+  )
   .get(
     "/:id",
     async ({
       request,
-      params: { id },
+      params,
       set,
     }: {
       request: any
@@ -217,7 +506,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       }
       const message = await prisma.whatsappMessage.findFirst({
         where: {
-          id,
+          id: params.id,
           conversation: {
             organizationId: whatsappAuth.organizationId!,
           },
@@ -233,6 +522,69 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       }
 
       return { ok: true, message: toWhatsappMessageDTO(message) }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "msg_clt1234567890",
+          description: "Internal message record ID",
+        }),
+      }),
+      response: {
+        200: t.Object({
+          ok: t.Boolean({ example: true }),
+          message: t.Any(),
+        }),
+      },
+      detail: {
+        summary: "Get Message by ID",
+        description:
+          "Retrieves message payload, delivery status timeline, and metadata for a specific message.",
+        tags: ["WhatsApp Messages"],
+      },
+    }
+  )
+  .post(
+    "/internal",
+    async ({ request, body, set }: { request: any; body: any; set: any }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      // Validate conversation belongs to organization
+      const conversation = await prisma.whatsappConversation.findFirst({
+        where: {
+          id: body.conversationId,
+          organizationId: whatsappAuth.organizationId!,
+        },
+      })
+
+      if (!conversation) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Conversation not found or access denied.",
+        }
+      }
+
+      const message = await prisma.whatsappMessage.create({
+        data: {
+          ...body,
+        },
+      })
+
+      return { ok: true, message: toWhatsappMessageDTO(message) }
+    },
+    {
+      body: messageBodySchema,
+      detail: {
+        summary: "Record Internal Message Log",
+        description:
+          "Creates an internal database message entry without dispatching to Meta.",
+        tags: ["WhatsApp Messages"],
+      },
     }
   )
   .post(
@@ -684,6 +1036,21 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
     },
     {
       body: unifiedMessageSchema,
+      detail: {
+        summary: "Send Unified Message",
+        description:
+          "Single unified entrypoint supporting text, media files, location, and pre-approved WhatsApp templates with automatic parameter sanitization.",
+        tags: ["WhatsApp Messages"],
+        response: {
+          200: t.Object({
+            ok: t.Boolean({ example: true }),
+            jobId: t.String({ example: "job_clt1234567890" }),
+            messageId: t.String({ example: "msg_clt1234567890" }),
+            waMessageId: t.String({ example: "wamid.HBgLMzE2NDY0MTk..." }),
+            status: t.String({ example: "sent" }),
+          }),
+        },
+      },
     }
   )
   .patch(
@@ -726,7 +1093,18 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       return { ok: true, message: toWhatsappMessageDTO(updated) }
     },
     {
+      params: t.Object({
+        id: t.String({
+          example: "msg_clt1234567890",
+          description: "Internal message ID",
+        }),
+      }),
       body: messageUpdateSchema,
+      detail: {
+        summary: "Update Message Record",
+        description: "Updates internal metadata for a message record.",
+        tags: ["WhatsApp Messages"],
+      },
     }
   )
   .delete(
@@ -763,6 +1141,18 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         where: { id },
       })
       return { ok: true, message: "Message deleted." }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "msg_clt1234567890",
+          description: "Internal message ID",
+        }),
+      }),
+      detail: {
+        summary: "Delete Message Record",
+        description: "Removes an internal message record from database.",
+      },
     }
   )
   .post(
@@ -947,6 +1337,21 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
     },
     {
       body: sendSchema,
+      detail: {
+        summary: "Send Direct WhatsApp Message",
+        description:
+          "Sends text, image, document, audio, video, or location messages directly to a recipient phone number via WhatsApp Meta Cloud API.",
+        tags: ["WhatsApp Messages"],
+        response: {
+          200: t.Object({
+            ok: t.Boolean({ example: true }),
+            jobId: t.String({ example: "job_clt1234567890" }),
+            messageId: t.String({ example: "msg_clt1234567890" }),
+            waMessageId: t.String({ example: "wamid.HBgLMzE2NDY0MTk..." }),
+            status: t.String({ example: "sent" }),
+          }),
+        },
+      },
     }
   )
   .post(
@@ -1180,6 +1585,21 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
     },
     {
       body: sendTemplateSchema,
+      detail: {
+        summary: "Send WhatsApp Template Message",
+        description:
+          "Sends a pre-approved WhatsApp template with positional parameters ({{1}}, {{2}}) to a recipient phone number.",
+        tags: ["WhatsApp Messages"],
+        response: {
+          200: t.Object({
+            ok: t.Boolean({ example: true }),
+            jobId: t.String({ example: "job_clt1234567890" }),
+            messageId: t.String({ example: "msg_clt1234567890" }),
+            waMessageId: t.String({ example: "wamid.HBgLMzE2NDY0MTk..." }),
+            status: t.String({ example: "sent" }),
+          }),
+        },
+      },
     }
   )
   .post(
@@ -1380,6 +1800,12 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           }),
         ]),
       }),
+      detail: {
+        summary: "Send Interactive Message",
+        description:
+          "Sends interactive list or quick-reply button messages to a recipient phone number.",
+        tags: ["WhatsApp Messages"],
+      },
     }
   )
   .get(
@@ -1446,6 +1872,20 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         ok: true,
         mediaUrl: message.mediaUrl,
       }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "msg_clt1234567890",
+          description: "Message ID containing media attachment",
+        }),
+      }),
+      detail: {
+        summary: "Get Media Download URL",
+        description:
+          "Fetches or redirects to secure downloadable media URL for a received or sent WhatsApp media message.",
+        tags: ["WhatsApp Messages"],
+      },
     }
   )
   .get(
@@ -1703,5 +2143,19 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           })),
         },
       }
+    },
+    {
+      params: t.Object({
+        waMessageId: t.String({
+          example: "wamid.HBgLMzE2NDY0MTk...",
+          description: "Meta wamid or internal waMessageId identifier",
+        }),
+      }),
+      detail: {
+        summary: "Get Message Journey & Audit Timeline",
+        description:
+          "Returns end-to-end timeline tracking delivery status, webhook callbacks, billing deduction, and audit log for a message.",
+        tags: ["WhatsApp Messages"],
+      },
     }
   )

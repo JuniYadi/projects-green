@@ -618,7 +618,7 @@ function TemplateCountBadge({ deviceId }: { deviceId: string }) {
     void (async () => {
       try {
         const { data } = await eden.api.whatsapp.templates.get({
-          $query: { whatsappDeviceId: deviceId, limit: "1", page: "1" },
+          $query: { whatsappDeviceId: deviceId, limit: 1, page: 1 },
         })
         if (!cancelled) {
           const result = data as unknown as { meta: { total: number } }

@@ -21,8 +21,20 @@ const toNoOrganization = (set: any) => {
   }
 }
 const conversationBodySchema = t.Object({
-  contactPhone: t.String({ minLength: 10, maxLength: 20 } as any),
-  whatsappDeviceId: t.Optional(t.Nullable(t.String())),
+  contactPhone: t.String({
+    minLength: 10,
+    maxLength: 20,
+    example: "+6281234567890",
+    description: "Contact WhatsApp phone number in E.164 format",
+  } as any),
+  whatsappDeviceId: t.Optional(
+    t.Nullable(
+      t.String({
+        example: "dev_clt1234567890",
+        description: "Assigned WhatsApp device ID for this thread",
+      })
+    )
+  ),
 })
 
 const conversationUpdateSchema = t.Partial(
@@ -53,8 +65,19 @@ const conversationUpdateSchema = t.Partial(
 )
 
 const noteBodySchema = t.Object({
-  body: t.String({ minLength: 1 }),
-  authorName: t.Optional(t.Nullable(t.String())),
+  body: t.String({
+    minLength: 1,
+    example: "Customer requested pricing follow-up on @sales_agent",
+    description: "Internal team note with optional @mentions",
+  }),
+  authorName: t.Optional(
+    t.Nullable(
+      t.String({
+        example: "Budi Santoso",
+        description: "Author display name",
+      })
+    )
+  ),
 })
 
 function extractMentions(body: string): string[] {
@@ -64,11 +87,29 @@ function extractMentions(body: string): string[] {
 }
 
 const labelBodySchema = t.Object({
-  name: t.String({ minLength: 1, maxLength: 50 }),
-  color: t.Optional(t.Nullable(t.String({ maxLength: 7 }))),
+  name: t.String({
+    minLength: 1,
+    maxLength: 50,
+    example: "VIP Customer",
+    description: "Unique label name",
+  }),
+  color: t.Optional(
+    t.Nullable(
+      t.String({
+        maxLength: 7,
+        example: "#22c55e",
+        description: "Hex color code for the label badge",
+      })
+    )
+  ),
 })
 
-export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
+export const conversationsRoutes = new Elysia({
+  prefix: "/conversations",
+  detail: {
+    tags: ["WhatsApp Conversations"],
+  },
+})
   .get(
     "/",
     async ({ request, set, query }: { request: any; set: any; query: any }) => {
@@ -165,22 +206,41 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
       })
 
       return { ok: true, conversations }
+    },
+    {
+      detail: {
+        summary: "List WhatsApp Conversation Threads",
+        description:
+          "Retrieves inbox and outbox conversation threads with latest messages, labels, stages, and assignee info.",
+        tags: ["WhatsApp Conversations"],
+      },
     }
   )
   // ── Conversation Labels ───────────────────────────────────────────────
-  .get("/labels", async ({ request, set }: { request: any; set: any }) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+  .get(
+    "/labels",
+    async ({ request, set }: { request: any; set: any }) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      if (!whatsappAuth.organizationId) return toNoOrganization(set)
+      const labels = await prisma.whatsappConversationLabel.findMany({
+        where: { organizationId: whatsappAuth.organizationId },
+        orderBy: { name: "asc" },
+      })
+      return { ok: true, labels }
+    },
+    {
+      detail: {
+        summary: "List Conversation Labels",
+        description:
+          "Retrieves all conversation badges/labels configured for the organization.",
+        tags: ["WhatsApp Conversations"],
+      },
     }
-    if (!whatsappAuth.organizationId) return toNoOrganization(set)
-    const labels = await prisma.whatsappConversationLabel.findMany({
-      where: { organizationId: whatsappAuth.organizationId },
-      orderBy: { name: "asc" },
-    })
-    return { ok: true, labels }
-  })
+  )
   .post(
     "/labels",
     async ({ request, body, set }: { request: any; body: any; set: any }) => {
@@ -219,6 +279,11 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
     },
     {
       body: labelBodySchema,
+      detail: {
+        summary: "Create Conversation Label",
+        description: "Creates a new color-coded conversation badge/label.",
+        tags: ["WhatsApp Conversations"],
+      },
     }
   )
   .get(
@@ -279,8 +344,21 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
           message: "Conversation not found.",
         }
       }
-
       return { ok: true, conversation }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "conv_clt1234567890",
+          description: "Conversation thread ID",
+        }),
+      }),
+      detail: {
+        summary: "Get Conversation Thread Details",
+        description:
+          "Fetches full message history, internal notes, activity timeline, and labels for a conversation.",
+        tags: ["WhatsApp Conversations"],
+      },
     }
   )
   .post(
@@ -318,6 +396,12 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
     },
     {
       body: conversationBodySchema,
+      detail: {
+        summary: "Create Conversation Thread",
+        description:
+          "Initializes a conversation thread for a contact phone number.",
+        tags: ["WhatsApp Conversations"],
+      },
     }
   )
   .patch(
@@ -497,6 +581,21 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
       })
 
       return { ok: true, conversation: updated }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "conv_clt1234567890",
+          description: "Conversation thread ID",
+        }),
+      }),
+      body: conversationUpdateSchema,
+      detail: {
+        summary: "Update Conversation Status & Stage",
+        description:
+          "Updates lifecycle status (OPEN/PENDING/RESOLVED), pipeline stage, assignee, or internal notes.",
+        tags: ["WhatsApp Conversations"],
+      },
     }
   )
   .delete(
@@ -536,8 +635,20 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
       await prisma.whatsappConversation.delete({
         where: { id },
       })
-
       return { ok: true, message: "Conversation deleted." }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "conv_clt1234567890",
+          description: "Conversation thread ID",
+        }),
+      }),
+      detail: {
+        summary: "Delete Conversation Thread",
+        description: "Removes a conversation thread and associated messages.",
+        tags: ["WhatsApp Conversations"],
+      },
     }
   )
   // ── Conversation Notes ───────────────────────────────────────────────
@@ -612,7 +723,19 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
       return { ok: true, note }
     },
     {
+      params: t.Object({
+        id: t.String({
+          example: "conv_clt1234567890",
+          description: "Conversation thread ID",
+        }),
+      }),
       body: noteBodySchema,
+      detail: {
+        summary: "Add Internal Team Note",
+        description:
+          "Adds an internal note with @mention notifications to the conversation thread.",
+        tags: ["WhatsApp Conversations"],
+      },
     }
   )
   // ── Conversation CSAT Survey Trigger ─────────────────────────────────
@@ -664,5 +787,19 @@ export const conversationsRoutes = new Elysia({ prefix: "/conversations" })
       })
 
       return { ok: true, message: "CSAT survey activity recorded." }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "conv_clt1234567890",
+          description: "Conversation thread ID",
+        }),
+      }),
+      detail: {
+        summary: "Record CSAT Survey Event",
+        description:
+          "Records a customer satisfaction survey dispatch event in the conversation activity log.",
+        tags: ["WhatsApp Conversations"],
+      },
     }
   )

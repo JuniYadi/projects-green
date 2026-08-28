@@ -49,8 +49,12 @@ function determineEventType(payload: unknown): string {
   return "unknown"
 }
 
-export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
-
+export const webhooksRoutes = new Elysia({
+  prefix: "/webhooks",
+  detail: {
+    tags: ["WhatsApp Webhooks"],
+  },
+})
   // Capture raw body before Elysia's body parser consumes the stream
   // Required for HMAC signature verification in POST /:id
   .onRequest(async ({ request, store }: any) => {
@@ -97,17 +101,39 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
     },
     {
       query: t.Object({
-        deviceId: t.Optional(t.String()),
-        type: t.Optional(t.String()),
-        status: t.Optional(t.String()),
-        from: t.Optional(t.String()),
-        to: t.Optional(t.String()),
-        page: t.Optional(t.String()),
-        limit: t.Optional(t.String()),
+        deviceId: t.Optional(
+          t.String({
+            example: "dev_clt1234567890",
+            description: "Filter by connected WhatsApp device ID",
+          })
+        ),
+        type: t.Optional(
+          t.String({
+            example: "inbound_message",
+            description:
+              "Filter by event type (inbound_message, status_update)",
+          })
+        ),
+        status: t.Optional(
+          t.String({
+            example: "COMPLETED",
+            description:
+              "Filter by processing status (COMPLETED, PENDING, FAILED)",
+          })
+        ),
+        from: t.Optional(t.String({ example: "2026-08-01T00:00:00.000Z" })),
+        to: t.Optional(t.String({ example: "2026-08-31T23:59:59.999Z" })),
+        page: t.Optional(t.String({ example: "1" })),
+        limit: t.Optional(t.String({ example: "20" })),
       }),
+      detail: {
+        summary: "List Inbound Webhook Events",
+        description:
+          "Retrieves paginated historical raw webhook events received from Meta Cloud API across devices.",
+        tags: ["WhatsApp Webhooks"],
+      },
     }
   )
-
   // GET / — list webhook configs (paginated)
   .get(
     "/",
@@ -142,39 +168,62 @@ export const webhooksRoutes = new Elysia({ prefix: "/webhooks" })
     },
     {
       query: t.Object({
-        page: t.Optional(t.String()),
-        limit: t.Optional(t.String()),
+        page: t.Optional(t.String({ example: "1" })),
+        limit: t.Optional(t.String({ example: "20" })),
         organizationId: t.Optional(t.String()),
-        deviceId: t.Optional(t.String()),
+        deviceId: t.Optional(t.String({ example: "dev_clt1234567890" })),
       }),
+      detail: {
+        summary: "List Webhook Endpoint Subscriptions",
+        description:
+          "Lists configured outbound webhook consumer URLs and subscribed event topics.",
+        tags: ["WhatsApp Webhooks"],
+      },
     }
   )
 
   // GET /:id — get single webhook config
-  .get("/:id", async ({ request, params, set }: any) => {
-    const whatsappAuth = await resolveAuthContext(request)
-    if (!whatsappAuth) {
-      set.status = 401
-      return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-    }
-    const webhook = await prisma.whatsappWebhook.findUnique({
-      where: { id: params.id },
-    })
-    if (!webhook) {
-      set.status = 404
-      return { ok: false, error: "NOT_FOUND", message: "Webhook not found." }
-    }
+  .get(
+    "/:id",
+    async ({ request, params, set }: any) => {
+      const whatsappAuth = await resolveAuthContext(request)
+      if (!whatsappAuth) {
+        set.status = 401
+        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
+      }
+      const webhook = await prisma.whatsappWebhook.findUnique({
+        where: { id: params.id },
+      })
+      if (!webhook) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Webhook not found." }
+      }
 
-    if (
-      (whatsappAuth as any).platformRole !== "super_admin" &&
-      webhook.organizationId !== whatsappAuth.organizationId
-    ) {
-      set.status = 403
-      return { ok: false, error: "FORBIDDEN", message: "Access denied." }
-    }
+      if (
+        (whatsappAuth as any).platformRole !== "super_admin" &&
+        webhook.organizationId !== whatsappAuth.organizationId
+      ) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
+      }
 
-    return webhook
-  })
+      return webhook
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "whk_clt1234567890",
+          description: "Webhook subscription ID",
+        }),
+      }),
+      detail: {
+        summary: "Get Webhook Subscription Details",
+        description:
+          "Fetches webhook subscription URL, event filter rules, and active status.",
+        tags: ["WhatsApp Webhooks"],
+      },
+    }
+  )
 
   // POST / — create webhook config
   .post(

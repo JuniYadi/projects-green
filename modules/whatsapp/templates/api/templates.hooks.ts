@@ -205,8 +205,9 @@ export function useCreateTemplate() {
     setError(null)
 
     try {
-      const { data, error: edenError } =
-        await eden.api.whatsapp.templates.post(input)
+      const { data, error: edenError } = await eden.api.whatsapp.templates.post(
+        input as any
+      )
       if (edenError)
         throw new Error(edenError.message ?? "Failed to create template.")
       const result = data as unknown as {
