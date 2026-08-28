@@ -68,7 +68,7 @@ const whatsappTemplateDTOSchema = t.Object({
     )
   ),
   lastSyncedAt: t.Optional(
-    t.Nullable(t.String({ example: "2026-08-28T04:15:00.000Z" }))
+    t.Nullable(t.Any({ example: "2026-08-28T04:15:00.000Z" }))
   ),
   category: t.Optional(
     t.Nullable(
@@ -558,7 +558,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       response: {
         200: t.Object({
           ok: t.Boolean({ example: true }),
-          data: t.Array(whatsappTemplateDTOSchema),
+          data: t.Array(t.Any({ description: "WhatsApp template item" })),
           meta: t.Object({
             total: t.Number({ example: 42 }),
             page: t.Number({ example: 1 }),
