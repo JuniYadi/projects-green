@@ -6,8 +6,10 @@ import { TemplateLogo } from "./template-logo"
 describe("TemplateLogo", () => {
   it("renders React Icon from simple-icons for recognized slug (e.g. n8n)", () => {
     const { container } = render(<TemplateLogo slug="n8n" name="n8n" />)
-    const svg = container.querySelector("svg")
-    expect(svg).toBeTruthy()
+    const icon =
+      container.querySelector('[data-testid="si-sin8n"]') ||
+      container.querySelector("svg")
+    expect(icon).toBeTruthy()
   })
 
   it("renders React Icon for hermes and wordpress", () => {
@@ -19,7 +21,10 @@ describe("TemplateLogo", () => {
     const { container: wpContainer } = render(
       <TemplateLogo slug="wordpress" name="WordPress" />
     )
-    expect(wpContainer.querySelector("svg")).toBeTruthy()
+    const wpIcon =
+      wpContainer.querySelector('[data-testid="si-siwordpress"]') ||
+      wpContainer.querySelector("svg")
+    expect(wpIcon).toBeTruthy()
   })
   it("renders img tag when iconUrl is provided for custom or unmapped template", () => {
     const { container } = render(

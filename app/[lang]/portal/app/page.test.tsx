@@ -21,15 +21,6 @@ mock.module("next/link", () => ({
   ),
 }))
 
-mock.module("@/components/ui/phosphor-icons", () => ({
-  Database: (props: Record<string, unknown>) => (
-    <span data-testid="icon-database" {...props} />
-  ),
-  Storefront: (props: Record<string, unknown>) => (
-    <span data-testid="icon-storefront" {...props} />
-  ),
-}))
-
 mock.module("next/navigation", () => ({
   useParams: mock(() => ({ lang: "en" })),
   useRouter: mock(() => ({ push: mock(() => {}) })),

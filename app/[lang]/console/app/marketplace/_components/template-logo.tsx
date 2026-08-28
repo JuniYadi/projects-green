@@ -1,14 +1,5 @@
 import React from "react"
-import {
-  SiDocker,
-  SiGhost,
-  SiN8N,
-  SiPostgresql,
-  SiRedis,
-  SiStrapi,
-  SiUmami,
-  SiWordpress,
-} from "react-icons/si"
+import { SiDocker, SiN8N, SiUmami, SiWordpress } from "react-icons/si"
 import { Cpu, Database, Package } from "@phosphor-icons/react"
 
 // Mapping for known React Icons (Simple Icons or Phosphor Icons) by slug / keyword
@@ -20,9 +11,9 @@ const REACT_ICON_MAP: Record<
   hermes: Cpu,
   umami: SiUmami,
   wordpress: SiWordpress,
-  postgres: SiPostgresql,
-  postgresql: SiPostgresql,
-  redis: SiRedis,
+  postgres: Database,
+  postgresql: Database,
+  redis: Database,
   mysql: Database,
   docker: SiDocker,
 }

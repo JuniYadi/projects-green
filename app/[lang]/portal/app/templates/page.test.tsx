@@ -8,21 +8,6 @@ mock.module("next/navigation", () => ({
   useRouter: mock(() => ({ push: mockPush })),
 }))
 
-mock.module("@/components/ui/phosphor-icons", () => ({
-  ShieldCheckIcon: () => <span data-testid="icon-shield-check" />,
-  Globe: () => <span data-testid="icon-globe" />,
-  Clock: () => <span data-testid="icon-clock" />,
-  EyeIcon: () => <span data-testid="icon-eye" />,
-  CheckCircle: () => <span data-testid="icon-check-circle" />,
-  XCircle: () => <span data-testid="icon-x-circle" />,
-  Star: () => <span data-testid="icon-star" />,
-  Cpu: () => <span data-testid="icon-cpu" />,
-  Database: () => <span data-testid="icon-database" />,
-  Lock: () => <span data-testid="icon-lock" />,
-  Package: () => <span data-testid="icon-package" />,
-  MagnifyingGlassIcon: () => <span data-testid="icon-search" />,
-}))
-
 mock.module("@/lib/eden", () => ({
   eden: {
     api: {

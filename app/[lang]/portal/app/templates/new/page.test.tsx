@@ -46,9 +46,8 @@ describe("PortalNewAppTemplatePage", () => {
   })
 
   it("submits the template form", async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     const { getByTestId, getByRole } = render(<PortalNewAppTemplatePage />)
-
     const nameInput = getByTestId("template-name-input")
     await user.type(nameInput, "Awesome Tool")
 
