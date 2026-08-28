@@ -38,19 +38,24 @@ export function TemplateLogo({
   iconUrl,
   className = "size-5",
 }: TemplateLogoProps) {
+  const [prevSource, setPrevSource] = React.useState<string | null>(null)
   const [hasError, setHasError] = React.useState(false)
   const normalizedSlug = slug.toLowerCase().trim()
   const ReactIcon = REACT_ICON_MAP[normalizedSlug]
+  const imageSource =
+    iconUrl ||
+    (normalizedSlug ? `/app-hosting/icons/${normalizedSlug}.svg` : null)
 
+  if (prevSource !== imageSource) {
+    setPrevSource(imageSource)
+    setHasError(false)
+  }
   // Priority 1: Use react-icons/si if it exists
   if (ReactIcon) {
     return <ReactIcon className={className} />
   }
 
   // Priority 2: Fallback to public/app-hosting/icons/<slug>.svg (or provided custom iconUrl)
-  const imageSource =
-    iconUrl ||
-    (normalizedSlug ? `/app-hosting/icons/${normalizedSlug}.svg` : null)
   if (imageSource && !hasError) {
     return (
       // eslint-disable-next-line @next/next/no-img-element

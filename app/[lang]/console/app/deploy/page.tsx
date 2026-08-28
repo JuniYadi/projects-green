@@ -57,7 +57,7 @@ export default function DeployPage() {
     subdomain: string
     cpu?: number
     memory?: number
-    resourcePlanId?: "starter" | "pro" | "payg"
+    resourcePlanId?: string
     billingMode?: "PAYG" | "PACKAGE"
   }) => {
     if (!selectedTemplate) return
