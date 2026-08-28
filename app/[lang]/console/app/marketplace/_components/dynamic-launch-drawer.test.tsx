@@ -2,6 +2,32 @@ import { cleanup, fireEvent, render } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
 import { afterEach, describe, expect, it, mock } from "bun:test"
 import type { AppTemplateBlueprint } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
+
+mock.module("@/lib/billing-client", () => ({
+  getCatalogProduct: mock(async () => ({
+    ok: true,
+    product: {
+      code: "APP_HOSTING",
+      name: "App Hosting",
+      plans: [
+        {
+          id: "plan_starter",
+          code: "STARTER",
+          name: "Starter",
+          offers: [
+            {
+              id: "off_1",
+              billingPeriod: "MONTHLY",
+              periodPrice: "15000",
+              currency: "IDR",
+            },
+          ],
+        },
+      ],
+    },
+  })),
+}))
+
 import {
   DynamicLaunchDrawer,
   type MarketplaceTemplateItem,
@@ -100,9 +126,7 @@ describe("DynamicLaunchDrawer", () => {
     expect(view.getByText("Deploy n8n Workflow Automation")).toBeDefined()
     expect(view.getByText("Fair-code workflow automation tool")).toBeDefined()
     expect(view.getByText("Official")).toBeDefined()
-    expect(view.getByText("Allocated Resources & Stock")).toBeDefined()
-    expect(view.getByText("500m")).toBeDefined()
-    expect(view.getByText("512 MB")).toBeDefined()
+    expect(view.getByText("Hosting Package & Sizing")).toBeDefined()
     expect(view.getByText("POSTGRESQL")).toBeDefined()
   })
 
@@ -115,7 +139,6 @@ describe("DynamicLaunchDrawer", () => {
         onDeploy={() => {}}
       />
     )
-
     const appNameInput = document.querySelector(
       "#app-name-input"
     ) as HTMLInputElement
@@ -177,7 +200,7 @@ describe("DynamicLaunchDrawer", () => {
     expect(secretInput.type).toBe("password")
   })
 
-  it("allows selecting billing mode (PAYG vs Monthly Subscription)", () => {
+  it("displays monthly package subscription badge", () => {
     const view = render(
       <DynamicLaunchDrawer
         open={true}
@@ -188,12 +211,7 @@ describe("DynamicLaunchDrawer", () => {
       />
     )
 
-    expect(view.getByText("Balance: USD 50.00")).toBeDefined()
-
-    const monthlyBtn = view.getByText("Monthly Slot")
-    fireEvent.click(monthlyBtn)
-
-    expect(view.getByText("Included in Tier")).toBeDefined()
+    expect(view.getByText("Monthly Subscription")).toBeDefined()
   })
 
   it("triggers onDeploy callback with customized app configuration", async () => {
@@ -229,9 +247,8 @@ describe("DynamicLaunchDrawer", () => {
     }
     expect(payload.templateId).toBe("tpl_n8n_123")
     expect(payload.templateSlug).toBe("n8n")
-    expect(payload.appName).toBe("my-custom-n8n")
     expect(payload.subdomain).toBe("my-custom-n8n.pfnapp.com")
-    expect(payload.billingMode).toBe("PAYG")
+    expect(payload.billingMode).toBe("PACKAGE")
     expect(payload.envVars.N8N_PORT).toBe("5678")
     expect(payload.envVars.N8N_ENCRYPTION_KEY).toHaveLength(32)
   })

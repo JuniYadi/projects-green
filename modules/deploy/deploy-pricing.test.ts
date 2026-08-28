@@ -48,6 +48,15 @@ describe("deploy-pricing", () => {
       computeHourlyCost({ resourcePlanId: "payg", cpu: 0, memory: -5 })
     ).toBe(explicit)
   })
+  it("warns and falls back to PAYG for unknown plan IDs", () => {
+    const cost = computeHourlyCost({
+      resourcePlanId: "unknown-custom-plan",
+      cpu: 100,
+      memory: 256,
+    })
+    // Matches PAYG calculation with 100m CPU and 256MiB memory
+    expect(cost).toBe(0.0076)
+  })
 
   it("produces a Decimal matching the numeric helper", () => {
     const decimal = computeHourlyCostDecimal({

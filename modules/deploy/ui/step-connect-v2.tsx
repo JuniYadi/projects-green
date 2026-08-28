@@ -7,7 +7,7 @@ import {
   CheckCircle,
   GitBranch,
   GithubLogo,
-} from "@/components/ui/phosphor-icons"
+} from "@phosphor-icons/react"
 import type {
   Branch,
   DeploySourceType,

@@ -46,6 +46,12 @@ describe("TemplateCatalog", () => {
         view.getByRole("button", { name: "Launch to Kubernetes" })
       )
     })
-    expect(onConfirm).toHaveBeenCalledWith(input.value)
+    expect(onConfirm).toHaveBeenCalledWith({
+      subdomain: input.value,
+      billingMode: "PACKAGE",
+      cpu: 500,
+      memory: 512,
+      resourcePlanId: "small",
+    })
   })
 })

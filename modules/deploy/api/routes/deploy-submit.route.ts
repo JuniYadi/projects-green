@@ -415,11 +415,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       secondaryEngine: t.Optional(t.String()),
       secondaryEngineVersion: t.Optional(t.String()),
       defaultPort: t.Optional(t.Number()),
-      resourcePlanId: t.Union([
-        t.Literal("starter"),
-        t.Literal("pro"),
-        t.Literal("payg"),
-      ]),
+      resourcePlanId: t.String({ minLength: 1 }),
       billingMode: t.Optional(
         t.Union([t.Literal("PAYG"), t.Literal("PACKAGE")])
       ),

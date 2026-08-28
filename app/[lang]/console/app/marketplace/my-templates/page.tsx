@@ -218,7 +218,7 @@ export default function MyTemplatesPage() {
               variant="ghost"
               size="sm"
               className="-ml-2 h-7 px-2 text-muted-foreground hover:text-foreground"
-              onClick={() => router.push(`/${lang}/console/marketplace`)}
+              onClick={() => router.push(`/${lang}/console/app/marketplace`)}
             >
               <ArrowLeft className="mr-1 h-4 w-4" />
               Marketplace
@@ -237,7 +237,9 @@ export default function MyTemplatesPage() {
 
         <Button
           className="bg-primary text-primary-foreground hover:bg-primary/90"
-          onClick={() => router.push(`/${lang}/console/marketplace/builder`)}
+          onClick={() =>
+            router.push(`/${lang}/console/app/marketplace/builder`)
+          }
         >
           <Plus className="mr-2 h-4 w-4" />
           Create Template
@@ -287,7 +289,7 @@ export default function MyTemplatesPage() {
                   className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90"
                   size="sm"
                   onClick={() =>
-                    router.push(`/${lang}/console/marketplace/builder`)
+                    router.push(`/${lang}/console/app/marketplace/builder`)
                   }
                 >
                   <Plus className="mr-1 h-4 w-4" />

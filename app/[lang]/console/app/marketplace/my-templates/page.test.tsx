@@ -28,6 +28,30 @@ mock.module("@/lib/eden", () => ({
     },
   },
 }))
+mock.module("@/lib/billing-client", () => ({
+  getCatalogProduct: mock(async () => ({
+    ok: true,
+    product: {
+      code: "APP_HOSTING",
+      name: "App Hosting",
+      plans: [
+        {
+          id: "plan_starter",
+          code: "STARTER",
+          name: "Starter",
+          offers: [
+            {
+              id: "off_1",
+              billingPeriod: "MONTHLY",
+              periodPrice: "15000",
+              currency: "IDR",
+            },
+          ],
+        },
+      ],
+    },
+  })),
+}))
 
 mock.module("next/navigation", () => ({
   useParams: mock(() => ({ lang: "en" })),

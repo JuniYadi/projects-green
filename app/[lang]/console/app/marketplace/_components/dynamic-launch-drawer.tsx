@@ -1,9 +1,8 @@
 "use client"
 
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import {
   Check,
-  CheckCircle,
   Clock,
   Cpu,
   Database,
@@ -14,10 +13,18 @@ import {
   RocketLaunchIcon,
   ShieldCheckIcon,
 } from "@/components/ui/phosphor-icons"
+import { TemplateLogo } from "./template-logo"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  getCatalogProduct,
+  type CatalogPlan,
+  type CatalogProductDetailResponse,
+} from "@/lib/billing-client"
+import { formatBillingMoney } from "@/modules/billing/format-money"
+import { getPlanResources } from "@/modules/deploy/catalog-plan-utils"
 import {
   Select,
   SelectContent,
@@ -49,8 +56,11 @@ export interface DynamicLaunchDrawerProps {
     templateSlug: string
     appName: string
     subdomain: string
-    billingMode: "PAYG" | "SUBSCRIPTION"
+    billingMode: "PAYG" | "PACKAGE"
     envVars: Record<string, string>
+    cpu?: number
+    memory?: number
+    resourcePlanId?: string
   }) => Promise<void> | void
   isDeploying?: boolean
   userBalance?: number
@@ -93,23 +103,76 @@ export function generateSuggestedAppName(templateSlug: string): string {
   return `${cleanSlug || "app"}-${adj}-${noun}`
 }
 
+
 export function DynamicLaunchDrawer({
   open,
   onOpenChange,
   template,
   onDeploy,
   isDeploying = false,
-  userBalance = 25.5,
+  userBalance: _userBalance = 25.5,
   currency = "USD",
 }: DynamicLaunchDrawerProps) {
   const [appNameOverride, setAppNameOverride] = useState<string | null>(null)
-  const [billingMode, setBillingMode] = useState<"PAYG" | "SUBSCRIPTION">(
-    "PAYG"
-  )
+  const [catalogData, setCatalogData] =
+    useState<CatalogProductDetailResponse | null>(null)
+  const [catalogLoading, setCatalogLoading] = useState(false)
+  const [selectedPlanCode, setSelectedPlanCode] = useState<string>("SMALL")
+  const [cpuOverride, setCpuOverride] = useState<number | null>(null)
+  const [memoryOverride, setMemoryOverride] = useState<number | null>(null)
   const [envOverrides, setEnvOverrides] = useState<Record<string, string>>({})
   const [revealedSecrets, setRevealedSecrets] = useState<
     Record<string, boolean>
   >({})
+
+  useEffect(() => {
+    let isMounted = true
+    async function loadCatalog() {
+      setCatalogLoading(true)
+      try {
+        const res = await getCatalogProduct("APP_HOSTING", currency)
+        if (isMounted && res) {
+          setCatalogData(res)
+          const firstPlan = res.product?.plans?.[0]
+          if (firstPlan) {
+            setSelectedPlanCode(firstPlan.code)
+            const defaults = getPlanResources(firstPlan)
+            setCpuOverride(defaults.cpu)
+            setMemoryOverride(defaults.mem)
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load catalog product for App Hosting", err)
+      } finally {
+        if (isMounted) setCatalogLoading(false)
+      }
+    }
+    loadCatalog()
+    return () => {
+      isMounted = false
+    }
+  }, [currency])
+
+  const plans = useMemo(() => {
+    return catalogData?.product?.plans ?? []
+  }, [catalogData])
+
+  const selectedPlan: CatalogPlan | undefined = useMemo(() => {
+    return plans.find((p) => p.code === selectedPlanCode) || plans[0]
+  }, [plans, selectedPlanCode])
+
+  // Reset or initialize CPU/RAM whenever template or selectedPlan changes if not overridden
+  const currentCpu =
+    cpuOverride ??
+    getPlanResources(selectedPlan).cpu ??
+    template?.blueprint?.resources?.defaultCpu ??
+    500
+
+  const currentMemory =
+    memoryOverride ??
+    getPlanResources(selectedPlan).mem ??
+    template?.blueprint?.resources?.defaultMemory ??
+    512
 
   const initialEnvValues = useMemo(() => {
     return template ? buildInitialEnvVars(template.blueprint) : {}
@@ -154,16 +217,17 @@ export function DynamicLaunchDrawer({
       templateSlug: template.slug,
       appName: appName.trim() || template.name,
       subdomain,
-      billingMode,
+      billingMode: "PACKAGE",
       envVars: envValues,
+      cpu: currentCpu,
+      memory: currentMemory,
+      resourcePlanId: (selectedPlanCode || "small").toLowerCase(),
     })
   }
-
   if (!template) return null
 
   const { blueprint } = template
   const envSchema = blueprint?.envSchema || []
-  const resources = blueprint?.resources
   const dependencies = blueprint?.dependencies || []
   const storage = blueprint?.storage
 
@@ -175,17 +239,14 @@ export function DynamicLaunchDrawer({
       >
         <SheetHeader className="border-b border-border p-6 text-left">
           <div className="flex items-center gap-3">
-            {template.iconUrl ? (
-              <img
-                src={template.iconUrl}
-                alt={template.name}
-                className="size-10 rounded-xl border border-border object-contain p-1.5 shadow-xs"
+            <div className="flex size-10 items-center justify-center rounded-xl border border-border bg-muted/40 p-2 shadow-xs">
+              <TemplateLogo
+                slug={template.slug}
+                name={template.name}
+                iconUrl={template.iconUrl}
+                className="size-6"
               />
-            ) : (
-              <div className="flex size-10 items-center justify-center rounded-xl border border-border bg-muted/40 shadow-xs">
-                <RocketLaunchIcon className="size-5 text-muted-foreground" />
-              </div>
-            )}
+            </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <SheetTitle className="truncate text-lg font-semibold">
@@ -236,45 +297,132 @@ export function DynamicLaunchDrawer({
             </div>
           </div>
 
-          {/* Resource Summary Banner */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Allocated Resources & Stock
-            </h4>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-xl border border-border bg-card p-3 shadow-2xs">
+          {/* Resource & Package Selection */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                Hosting Package & Sizing
+              </h4>
+              <Badge
+                variant="outline"
+                className="text-[10px] text-muted-foreground"
+              >
+                Monthly Subscription
+              </Badge>
+            </div>
+
+            {/* Real Catalog Plans */}
+            {plans.length > 0 ? (
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {plans.map((plan) => {
+                  const isSelected = selectedPlanCode === plan.code
+                  const monthlyOffer =
+                    plan.offers?.find((o) => o.billingPeriod === "MONTHLY") ||
+                    plan.offers?.[0]
+
+                  return (
+                    <button
+                      key={plan.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPlanCode(plan.code)
+                        const defaults = getPlanResources(plan)
+                        setCpuOverride(defaults.cpu)
+                        setMemoryOverride(defaults.mem)
+                      }}
+                      className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-all ${
+                        isSelected
+                          ? "border-primary bg-primary/5 ring-1 ring-primary"
+                          : "border-border bg-card hover:bg-muted/40"
+                      }`}
+                    >
+                      <div className="flex w-full items-center justify-between">
+                        <span className="text-xs font-semibold">
+                          {plan.name}
+                        </span>
+                        {isSelected && (
+                          <Check className="size-3.5 text-primary" />
+                        )}
+                      </div>
+                      <span className="text-[11px] text-muted-foreground">
+                        {monthlyOffer?.periodPrice
+                          ? `${formatBillingMoney(monthlyOffer.periodPrice, monthlyOffer.currency || currency)} / month`
+                          : "Free / Included"}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            ) : catalogLoading ? (
+              <div className="rounded-xl border border-border bg-card p-3 text-xs text-muted-foreground">
+                Loading available catalog plans…
+              </div>
+            ) : (
+              <div className="rounded-xl border border-border bg-card p-3 text-xs text-muted-foreground">
+                Starter Plan — Monthly Subscription
+              </div>
+            )}
+
+            {/* Resource inputs */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Cpu className="size-4" />
-                  <span className="text-xs">CPU</span>
+                  <Cpu className="size-3.5" />
+                  <Label
+                    htmlFor="custom-cpu-input"
+                    className="text-xs font-medium"
+                  >
+                    CPU (mCore)
+                  </Label>
                 </div>
-                <div className="mt-1 text-sm font-semibold">
-                  {resources?.defaultCpu ? `${resources.defaultCpu}m` : "500m"}
-                </div>
+                <Input
+                  id="custom-cpu-input"
+                  type="number"
+                  min={100}
+                  max={8000}
+                  step={100}
+                  value={currentCpu}
+                  onChange={(e) =>
+                    setCpuOverride(Number(e.target.value) || 100)
+                  }
+                  className="text-xs"
+                />
               </div>
 
-              <div className="rounded-xl border border-border bg-card p-3 shadow-2xs">
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <HardDrive className="size-4" />
-                  <span className="text-xs">RAM</span>
+                  <HardDrive className="size-3.5" />
+                  <Label
+                    htmlFor="custom-mem-input"
+                    className="text-xs font-medium"
+                  >
+                    RAM (MB)
+                  </Label>
                 </div>
-                <div className="mt-1 text-sm font-semibold">
-                  {resources?.defaultMemory
-                    ? `${resources.defaultMemory} MB`
-                    : "512 MB"}
-                </div>
+                <Input
+                  id="custom-mem-input"
+                  type="number"
+                  min={128}
+                  max={32768}
+                  step={128}
+                  value={currentMemory}
+                  onChange={(e) =>
+                    setMemoryOverride(Number(e.target.value) || 128)
+                  }
+                  className="text-xs"
+                />
               </div>
+            </div>
 
-              <div className="rounded-xl border border-border bg-card p-3 shadow-2xs">
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <Database className="size-4" />
-                  <span className="text-xs">DB Stock</span>
-                </div>
-                <div className="mt-1 flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle className="size-3.5" />
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 shadow-2xs">
+              <Database className="size-4 text-muted-foreground" />
+              <div className="flex-1 text-xs">
+                <span className="text-muted-foreground">DB Dependencies: </span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                   {dependencies.length > 0
                     ? dependencies.map((d) => d.serviceType).join(", ")
-                    : "In-Stock"}
-                </div>
+                    : "Self-contained / In-Stock"}
+                </span>
               </div>
             </div>
 
@@ -428,62 +576,6 @@ export function DynamicLaunchDrawer({
               </div>
             </div>
           )}
-
-          {/* Billing Mode Selector */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Billing Method
-            </h4>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setBillingMode("PAYG")}
-                className={`flex flex-col items-start gap-1 rounded-xl border p-3.5 text-left transition-all ${
-                  billingMode === "PAYG"
-                    ? "border-primary bg-primary/5 ring-1 ring-primary"
-                    : "border-border bg-card hover:bg-muted/40"
-                }`}
-              >
-                <div className="flex w-full items-center justify-between">
-                  <span className="text-xs font-semibold">Pay-As-You-Go</span>
-                  {billingMode === "PAYG" && (
-                    <Check className="size-3.5 text-primary" />
-                  )}
-                </div>
-                <span className="text-[11px] text-muted-foreground">
-                  Hourly metering from wallet balance.
-                </span>
-                <div className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                  Balance: {currency} {userBalance.toFixed(2)}
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setBillingMode("SUBSCRIPTION")}
-                className={`flex flex-col items-start gap-1 rounded-xl border p-3.5 text-left transition-all ${
-                  billingMode === "SUBSCRIPTION"
-                    ? "border-primary bg-primary/5 ring-1 ring-primary"
-                    : "border-border bg-card hover:bg-muted/40"
-                }`}
-              >
-                <div className="flex w-full items-center justify-between">
-                  <span className="text-xs font-semibold">Monthly Slot</span>
-                  {billingMode === "SUBSCRIPTION" && (
-                    <Check className="size-3.5 text-primary" />
-                  )}
-                </div>
-                <span className="text-[11px] text-muted-foreground">
-                  Fixed dedicated container quota slot.
-                </span>
-                <div className="mt-2 text-xs font-medium text-foreground">
-                  {template.priceMonthly && template.priceMonthly > 0
-                    ? `${currency} ${template.priceMonthly}/mo`
-                    : "Included in Tier"}
-                </div>
-              </button>
-            </div>
-          </div>
         </div>
 
         <SheetFooter className="border-t border-border p-6">

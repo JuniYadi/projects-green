@@ -27,16 +27,16 @@ import {
   Lock,
   Globe,
   Check,
-  Cpu,
-  HardDrive,
   FileCode,
   ArrowRight,
   SquaresFour,
   List,
   CaretLeft,
   CaretRight,
-  RocketLaunchIcon,
-} from "@/components/ui/phosphor-icons"
+  Cpu,
+  HardDrive,
+  RocketLaunch as RocketLaunchIcon,
+} from "@phosphor-icons/react"
 import {
   Select,
   SelectContent,

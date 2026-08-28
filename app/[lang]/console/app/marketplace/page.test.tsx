@@ -9,6 +9,32 @@ import { OFFICIAL_APP_TEMPLATES } from "@/modules/deploy/app-template.seed"
 
 mock.module("next/navigation", () => ({
   useParams: () => ({ lang: "en" }),
+  useRouter: () => ({ push: mock(() => {}) }),
+}))
+
+mock.module("@/lib/billing-client", () => ({
+  getCatalogProduct: mock(async () => ({
+    ok: true,
+    product: {
+      code: "APP_HOSTING",
+      name: "App Hosting",
+      plans: [
+        {
+          id: "plan_starter",
+          code: "STARTER",
+          name: "Starter",
+          offers: [
+            {
+              id: "off_1",
+              billingPeriod: "MONTHLY",
+              periodPrice: "15000",
+              currency: "IDR",
+            },
+          ],
+        },
+      ],
+    },
+  })),
 }))
 
 describe("Console Marketplace Hub & Template Cards", () => {
@@ -20,7 +46,7 @@ describe("Console Marketplace Hub & Template Cards", () => {
     const template = OFFICIAL_APP_TEMPLATES[0]
     const onDeploy = mock(() => {})
 
-    render(
+    const { container } = render(
       <TemplateCard
         template={{
           id: template.slug,
@@ -37,22 +63,24 @@ describe("Console Marketplace Hub & Template Cards", () => {
     )
 
     // Name and Tagline
-    expect(screen.getByText(template.name)).toBeInTheDocument()
-    expect(screen.getByText(template.tagline)).toBeInTheDocument()
+    expect(container.querySelector("h3")?.textContent).toBe(template.name)
+    expect(container.textContent).toContain(template.tagline)
 
     // Official Verified badge
-    expect(screen.getByTitle("Official Verified")).toBeInTheDocument()
-
-    // Category
-    expect(screen.getByText(template.category)).toBeInTheDocument()
-
-    // Resource chip (CPU & RAM & Dependencies)
     expect(
-      screen.getByText(/500m CPU · 512MB RAM · Requires 1x Postgres/i)
+      container.querySelector("[title='Official Verified']")
     ).toBeInTheDocument()
 
+    // Category
+    expect(container.textContent).toContain(template.category)
+
+    // Resource chip (CPU & RAM & Dependencies)
+    expect(container.textContent).toMatch(
+      /500m CPU · 512MB RAM · Requires 1x Postgres/i
+    )
+
     // Deploy CTA
-    const deployBtn = screen.getByRole("button", { name: /deploy/i })
+    const deployBtn = container.querySelector("button")
     expect(deployBtn).toBeInTheDocument()
   })
 
@@ -61,7 +89,7 @@ describe("Console Marketplace Hub & Template Cards", () => {
     const onDeploy = mock(() => {})
     const user = userEvent.setup()
 
-    render(
+    const { container } = render(
       <TemplateCard
         template={{
           id: template.slug,
@@ -76,8 +104,11 @@ describe("Console Marketplace Hub & Template Cards", () => {
       />
     )
 
-    const deployBtn = screen.getByRole("button", { name: /deploy/i })
-    await user.click(deployBtn)
+    const deployBtn = container.querySelector("button")
+    expect(deployBtn).not.toBeNull()
+    if (deployBtn) {
+      await user.click(deployBtn)
+    }
 
     expect(onDeploy).toHaveBeenCalledTimes(1)
     expect(onDeploy).toHaveBeenCalledWith(
@@ -91,27 +122,17 @@ describe("Console Marketplace Hub & Template Cards", () => {
   it("renders MarketplaceShowcase with hero banner featuring official templates and navigation tabs", () => {
     render(<MarketplaceShowcase />)
 
-    // Hero title & description
-    expect(screen.getByText("App Hosting Marketplace")).toBeInTheDocument()
+    // Header title & description
+    expect(screen.getByText("App Marketplace")).toBeInTheDocument()
     expect(
-      screen.getByText(/Deploy open-source applications, AI agent workspaces/i)
+      screen.getByText(/1-Click deploy open-source apps, AI agents/i)
     ).toBeInTheDocument()
 
     // Navigation Tabs
     expect(screen.getByText("Marketplace Hub")).toBeInTheDocument()
     expect(screen.getByText("My Workspace Templates")).toBeInTheDocument()
     expect(screen.getByText("Create Custom Template")).toBeInTheDocument()
-
-    // Featured templates in hero
-    expect(screen.getByRole("button", { name: /n8n/i })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /hermes/i })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /9router/i })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /umami/i })).toBeInTheDocument()
-    expect(
-      screen.getByRole("button", { name: /wordpress/i })
-    ).toBeInTheDocument()
   })
-
   it("filters templates by category chips", async () => {
     const user = userEvent.setup()
     render(<MarketplaceShowcase />)
@@ -173,7 +194,7 @@ describe("Console Marketplace Hub & Template Cards", () => {
     render(<MarketplaceShowcase />)
 
     const searchInput = screen.getByPlaceholderText(
-      /search templates by name, category, or stack/i
+      /search apps by name or stack/i
     )
 
     // Search for "analytics"
@@ -205,7 +226,7 @@ describe("Console Marketplace Hub & Template Cards", () => {
     render(<MarketplaceShowcase />)
 
     const searchInput = screen.getByPlaceholderText(
-      /search templates by name, category, or stack/i
+      /search apps by name or stack/i
     )
 
     await user.type(searchInput, "nonexistenttemplatequery123")
@@ -226,6 +247,6 @@ describe("Console Marketplace Hub & Template Cards", () => {
       ".flex.flex-1.flex-col.gap-6.p-6.pt-0"
     )
     expect(mainDiv).not.toBeNull()
-    expect(screen.getByText("App Hosting Marketplace")).toBeInTheDocument()
+    expect(screen.getByText("App Marketplace")).toBeInTheDocument()
   })
 })

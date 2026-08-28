@@ -1,12 +1,6 @@
 import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import {
-  cleanup,
-  render,
-  screen,
-  waitFor,
-  fireEvent,
-} from "@testing-library/react"
+import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 const mockPush = mock(() => {})
@@ -61,7 +55,7 @@ describe("TemplateBuilderPage", () => {
 
   it("navigates through the 4 steps after filling required fields", async () => {
     render(<TemplateBuilderPage />)
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
 
     // Step 1 - Fill name, tagline, description
     const nameInput = screen.getByPlaceholderText(
@@ -113,7 +107,9 @@ describe("TemplateBuilderPage", () => {
 
   it("allows adding environment variables in Step 4", async () => {
     render(<TemplateBuilderPage />)
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
+
+    // Advance through steps quickly
     await user.type(
       screen.getByPlaceholderText("e.g. Next.js High Performance Stack"),
       "Stack with Env"
@@ -161,17 +157,14 @@ describe("TemplateBuilderPage", () => {
     // Add variable
     const addVarBtn = screen.getByRole("button", { name: /Add Variable/i })
     await user.click(addVarBtn)
-
-    await waitFor(() => {
-      expect(
-        screen.getByPlaceholderText(/e\.g\. API_KEY or PORT/i)
-      ).toBeInTheDocument()
-    })
+    expect(
+      screen.getByPlaceholderText("e.g. API_KEY or PORT")
+    ).toBeInTheDocument()
   })
 
   it("submits the template successfully as workspace template", async () => {
-    const user = userEvent.setup()
     render(<TemplateBuilderPage />)
+    const user = userEvent.setup({ delay: null })
 
     await user.type(
       screen.getByPlaceholderText("e.g. Next.js High Performance Stack"),
@@ -214,7 +207,7 @@ describe("TemplateBuilderPage", () => {
       }
       expect(blueprint?.runtime?.image).toBe("nextjs:latest")
       expect(mockPush).toHaveBeenCalledWith(
-        "/en/console/marketplace/my-templates"
+        "/en/console/app/marketplace/my-templates"
       )
     })
   })

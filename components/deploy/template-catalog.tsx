@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { Icon } from "@phosphor-icons/react"
 import {
   ArrowsSplit,
@@ -36,7 +36,9 @@ import {
   type ManagedAppTemplate,
 } from "@/modules/deploy/managed-app-templates"
 import { cn } from "@/lib/utils"
-
+import { getCatalogProduct, type CatalogPlan } from "@/lib/billing-client"
+import { formatBillingMoney } from "@/modules/billing/format-money"
+import { getPlanResources } from "@/modules/deploy/catalog-plan-utils"
 type TemplateVisual = {
   icon: Icon
   description: string
@@ -148,11 +150,18 @@ type QuickDeployDialogProps = {
   template: ManagedAppTemplate | null
   open: boolean
   onClose: () => void
-  onConfirm: (subdomain: string) => void | Promise<void>
+  onConfirm: (payload: {
+    subdomain: string
+    cpu: number
+    memory: number
+    resourcePlanId: string
+    billingMode: "PACKAGE"
+  }) => void | Promise<void>
 }
 
 const makeSubdomain = (template: ManagedAppTemplate) =>
   `${template.defaultSubdomain}-${Math.random().toString(36).slice(2, 7)}`
+
 
 function QuickDeployDialog({
   template,
@@ -163,7 +172,36 @@ function QuickDeployDialog({
   const [subdomain, setSubdomain] = useState(() =>
     template ? makeSubdomain(template) : ""
   )
+  const [plans, setPlans] = useState<CatalogPlan[]>([])
+  const [selectedPlanCode, setSelectedPlanCode] = useState<string>("SMALL")
+  const [cpu, setCpu] = useState<number>(500)
+  const [memory, setMemory] = useState<number>(512)
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    let isMounted = true
+    async function loadPlans() {
+      try {
+        const res = await getCatalogProduct("APP_HOSTING")
+        if (isMounted && res?.product?.plans) {
+          setPlans(res.product.plans)
+          const firstPlan = res.product.plans[0]
+          if (firstPlan) {
+            setSelectedPlanCode(firstPlan.code)
+            const defaults = getPlanResources(firstPlan)
+            setCpu(defaults.cpu)
+            setMemory(defaults.mem)
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch app hosting catalog", err)
+      }
+    }
+    loadPlans()
+    return () => {
+      isMounted = false
+    }
+  }, [])
   // Sync subdomain when template changes (new deploy target)
   const displaySubdomain =
     subdomain || (template ? makeSubdomain(template) : "")
@@ -174,12 +212,17 @@ function QuickDeployDialog({
 
     setSubmitting(true)
     try {
-      await onConfirm(value)
+      await onConfirm({
+        subdomain: value,
+        cpu,
+        memory,
+        resourcePlanId: (selectedPlanCode || "starter").toLowerCase(),
+        billingMode: "PACKAGE",
+      })
     } finally {
       setSubmitting(false)
     }
   }
-
   return (
     <Dialog
       open={open}
@@ -215,9 +258,103 @@ function QuickDeployDialog({
                 />
               </div>
               <div className="space-y-2">
-                <span className="text-sm">Plan</span>
-                <div className="rounded-lg border bg-muted/30 px-3 py-2 text-sm">
-                  PAYG
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="quick-deploy-plan"
+                    className="text-sm font-medium"
+                  >
+                    Package Plan
+                  </label>
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] text-muted-foreground"
+                  >
+                    Monthly Subscription
+                  </Badge>
+                </div>
+                {plans.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {plans.map((pkg) => {
+                      const isSelected = selectedPlanCode === pkg.code
+                      const monthlyOffer =
+                        pkg.offers?.find(
+                          (o) => o.billingPeriod === "MONTHLY"
+                        ) || pkg.offers?.[0]
+                      return (
+                        <button
+                          key={pkg.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedPlanCode(pkg.code)
+                            const defaults = getPlanResources(pkg)
+                            setCpu(defaults.cpu)
+                            setMemory(defaults.mem)
+                          }}
+                          className={`flex flex-col items-start justify-center rounded-lg border p-2.5 text-left text-xs transition-all ${
+                            isSelected
+                              ? "border-primary bg-primary/10 font-semibold text-primary"
+                              : "border-border bg-card text-muted-foreground hover:bg-muted/40"
+                          }`}
+                        >
+                          <div className="flex w-full items-center justify-between">
+                            <span>{pkg.name}</span>
+                            {isSelected && (
+                              <Badge className="h-4 px-1 text-[9px]">
+                                Active
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="mt-0.5 text-[10px] text-muted-foreground">
+                            {monthlyOffer?.periodPrice
+                              ? `${formatBillingMoney(monthlyOffer.periodPrice, monthlyOffer.currency || "IDR")} / mo`
+                              : "Included"}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border bg-muted/20 p-2.5 text-xs text-muted-foreground">
+                    Starter Plan — Monthly Subscription
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="quick-deploy-cpu"
+                    className="text-xs font-medium"
+                  >
+                    CPU (mCore)
+                  </label>
+                  <Input
+                    id="quick-deploy-cpu"
+                    type="number"
+                    min={100}
+                    max={8000}
+                    step={100}
+                    value={cpu}
+                    onChange={(e) => setCpu(Number(e.target.value) || 100)}
+                    disabled={submitting}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="quick-deploy-memory"
+                    className="text-xs font-medium"
+                  >
+                    Memory (MB)
+                  </label>
+                  <Input
+                    id="quick-deploy-memory"
+                    type="number"
+                    min={128}
+                    max={32768}
+                    step={128}
+                    value={memory}
+                    onChange={(e) => setMemory(Number(e.target.value) || 128)}
+                    disabled={submitting}
+                  />
                 </div>
               </div>
               <p

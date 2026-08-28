@@ -10,26 +10,20 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import {
-  Globe,
-  Clock,
-  ShieldCheckIcon as ShieldCheck,
-} from "@/components/ui/phosphor-icons"
+import { Globe, Clock, ShieldCheck, Plus } from "@phosphor-icons/react"
+import { useParams, useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
 import { eden } from "@/lib/eden"
 import { TemplateModerationTable } from "./_components/template-moderation-table"
-import {
-  TemplateInspectorDrawer,
-  type AdminTemplateRecord,
-} from "./_components/template-inspector-drawer"
+import type { AdminTemplateRecord } from "./_components/template-inspector-drawer"
 
 export default function PortalMarketplaceModerationPage() {
+  const router = useRouter()
+  const params = useParams<{ lang?: string }>()
+  const lang = params?.lang || "en"
   const [templates, setTemplates] = useState<AdminTemplateRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("pending")
-  const [selectedTemplate, setSelectedTemplate] =
-    useState<AdminTemplateRecord | null>(null)
-  const [isInspectorOpen, setIsInspectorOpen] = useState(false)
-
   useEffect(() => {
     let isCancelled = false
     const load = async () => {
@@ -63,10 +57,8 @@ export default function PortalMarketplaceModerationPage() {
   }, [])
 
   const handleInspect = (template: AdminTemplateRecord) => {
-    setSelectedTemplate(template)
-    setIsInspectorOpen(true)
+    router.push(`/${lang}/portal/app/templates/${template.id}`)
   }
-
   const handleApprove = async (id: string) => {
     try {
       const adminApi = (
@@ -83,9 +75,6 @@ export default function PortalMarketplaceModerationPage() {
         setTemplates((prev) =>
           prev.map((t) => (t.id === id ? { ...t, ...updated } : t))
         )
-        if (selectedTemplate?.id === id) {
-          setSelectedTemplate((prev) => (prev ? { ...prev, ...updated } : null))
-        }
       }
     } catch (err) {
       console.error("Failed to approve template:", err)
@@ -114,9 +103,6 @@ export default function PortalMarketplaceModerationPage() {
         setTemplates((prev) =>
           prev.map((t) => (t.id === id ? { ...t, ...updated } : t))
         )
-        if (selectedTemplate?.id === id) {
-          setSelectedTemplate((prev) => (prev ? { ...prev, ...updated } : null))
-        }
       }
     } catch (err) {
       console.error("Failed to reject template:", err)
@@ -143,9 +129,6 @@ export default function PortalMarketplaceModerationPage() {
         setTemplates((prev) =>
           prev.map((t) => (t.id === id ? { ...t, ...updated } : t))
         )
-        if (selectedTemplate?.id === id) {
-          setSelectedTemplate((prev) => (prev ? { ...prev, ...updated } : null))
-        }
       }
     } catch (err) {
       console.error("Failed to toggle featured status:", err)
@@ -162,14 +145,24 @@ export default function PortalMarketplaceModerationPage() {
   const officialTemplates = safeTemplates.filter((t) => t.isOfficial)
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold tracking-tight">
-          Marketplace Moderation & Governance
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Review community blueprints, verify security isolation parameters, and
-          manage featured marketplace catalog applications.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold tracking-tight">
+            Marketplace Moderation & Governance
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Review community blueprints, verify security isolation parameters,
+            and manage featured marketplace catalog applications.
+          </p>
+        </div>
+        <Button
+          type="button"
+          onClick={() => router.push(`/${lang}/portal/app/templates/new`)}
+          className="w-fit gap-1.5 bg-primary text-primary-foreground"
+        >
+          <Plus className="size-4" />
+          <span>New Template</span>
+        </Button>
       </div>
 
       <Tabs
@@ -270,15 +263,6 @@ export default function PortalMarketplaceModerationPage() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      <TemplateInspectorDrawer
-        template={selectedTemplate}
-        open={isInspectorOpen}
-        onOpenChange={setIsInspectorOpen}
-        onApprove={handleApprove}
-        onReject={handleReject}
-        onToggleFeatured={handleToggleFeatured}
-      />
     </div>
   )
 }

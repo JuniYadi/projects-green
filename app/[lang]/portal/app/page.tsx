@@ -4,8 +4,7 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { Database } from "@phosphor-icons/react"
-
+import { Database, Storefront } from "@/components/ui/phosphor-icons"
 export default function PortalApplicationsPage() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
@@ -19,25 +18,49 @@ export default function PortalApplicationsPage() {
           deploy and runtime management live in the console.
         </p>
       </header>
-      <div className="rounded-xl border border-border bg-muted/20 p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold">Cluster Inventory</h2>
-            <p className="text-xs text-muted-foreground">
-              Manage hosting clusters, regions, and integrations.
-            </p>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="rounded-xl border border-border bg-muted/20 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold">Cluster Inventory</h2>
+              <p className="text-xs text-muted-foreground">
+                Manage hosting clusters, regions, and integrations.
+              </p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link
+                href={localizePathname({
+                  pathname: "/portal/app/clusters",
+                  locale,
+                })}
+              >
+                <Database size={14} className="mr-1" />
+                View Clusters
+              </Link>
+            </Button>
           </div>
-          <Button asChild variant="outline" size="sm">
-            <Link
-              href={localizePathname({
-                pathname: "/portal/app/clusters",
-                locale,
-              })}
-            >
-              <Database size={14} className="mr-1" />
-              View Clusters
-            </Link>
-          </Button>
+        </div>
+
+        <div className="rounded-xl border border-border bg-muted/20 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold">Marketplace Templates</h2>
+              <p className="text-xs text-muted-foreground">
+                Review submissions, manage official and community blueprints.
+              </p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link
+                href={localizePathname({
+                  pathname: "/portal/app/templates",
+                  locale,
+                })}
+              >
+                <Storefront size={14} className="mr-1" />
+                Manage Templates
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
     </main>

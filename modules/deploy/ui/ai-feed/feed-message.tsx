@@ -1,15 +1,14 @@
 "use client"
 
 import type React from "react"
-
+import { cn } from "@/lib/utils"
 import {
   CheckCircle,
-  SpinnerIcon,
+  Spinner,
   Warning,
   WarningCircle,
   XCircle,
-} from "@/components/ui/phosphor-icons"
-import { cn } from "@/lib/utils"
+} from "@phosphor-icons/react"
 
 import type { FeedItemKind } from "./ai-deploy.types"
 
@@ -31,7 +30,7 @@ function FeedMessage({
   working = false,
 }: FeedMessageProps) {
   const icon = working ? (
-    <SpinnerIcon className="h-5 w-5 animate-spin text-primary" />
+    <Spinner className="h-5 w-5 animate-spin text-primary" />
   ) : kind.startsWith("source_found") ||
     kind.startsWith("access_verified") ||
     kind.startsWith("detection_success") ||
