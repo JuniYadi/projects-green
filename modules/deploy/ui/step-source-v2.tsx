@@ -2,13 +2,7 @@
 
 import { enMessages } from "@/lib/i18n/messages/en"
 import type { DeployWizardMessages } from "@/lib/i18n/messages/types"
-import { useMemo, useState, type ReactNode } from "react"
-import {
-  ArrowRight,
-  FileCode,
-  Folder,
-  GithubLogo,
-} from "@/components/ui/phosphor-icons"
+import { ArrowRight, FileCode, Folder, GithubLogo } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import {
   Collapsible,
