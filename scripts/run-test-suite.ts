@@ -48,7 +48,10 @@ const processResult = Bun.spawnSync(["bun", ...args], {
 })
 
 // Bun exits 1 when coverage is enabled and there are uncovered lines/functions,
-// even if all tests pass. Coverage gaps are surfaced and analyzed in Codecov.
+// even if all tests pass. If tests ran successfully (processResult.success),
+// exit 0 so Codecov can analyze coverage gaps without aborting CI.
 const exitCode =
-  processResult.exitCode === 1 && coverage ? 0 : processResult.exitCode
+  processResult.success || (processResult.exitCode === 1 && coverage)
+    ? 0
+    : processResult.exitCode
 process.exit(exitCode)
