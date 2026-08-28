@@ -365,7 +365,6 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       return {
         ok: true,
         data,
-        messages: data,
         meta: {
           total,
           page,
@@ -384,27 +383,20 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
               description: "Array of WhatsApp message logs",
               example: [
                 {
-                  id: "msg_clt1234567890",
-                  conversationId: "conv_clt1234567890",
+                  id: "cmt9js7nb0007004cinoauiop",
+                  conversationId: "cmt94y2va0001d04ccskioxii",
                   direction: "OUTBOX",
-                  messageType: "text",
-                  body: "Halo Budi, pesanan Anda sedang kami proses.",
-                  waMessageId: "wamid.HBgLMzE2NDY0MTk...",
-                },
-              ],
-            })
-          ),
-          messages: t.Optional(
-            t.Array(whatsappMessageDTOSchema, {
-              description: "Array of WhatsApp message logs (legacy alias)",
-              example: [
-                {
-                  id: "msg_clt1234567890",
-                  conversationId: "conv_clt1234567890",
-                  direction: "OUTBOX",
-                  messageType: "text",
-                  body: "Halo Budi, pesanan Anda sedang kami proses.",
-                  waMessageId: "wamid.HBgLMzE2NDY0MTk...",
+                  messageType: "template",
+                  body: "Hi Ahmad\nKami informasikan bahwa terkait pertanyaan anda tentang Konfirmasi Pembayaran.\n\nSekian informasi dari kami. Jika ada pertanyaan, jangan ragu untuk menghubungi kami.\nCustomer Support PFN",
+                  mediaUrl: null,
+                  waMessageId:
+                    "wamid.HBgNNjI4NTcwODI5NjQ4MhUCABEYEjIyODZEMkMzNjYxMkVBODdENgA=",
+                  metadata: {
+                    templateName: "help_quick_2",
+                    templateLanguage: "id",
+                  },
+                  createdAt: "2026-08-26T03:42:02.423Z",
+                  updatedAt: "2026-08-26T03:42:02.423Z",
                 },
               ],
             })
@@ -412,17 +404,17 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
           meta: t.Optional(
             t.Object(
               {
-                total: t.Number({ example: 120 }),
+                total: t.Number({ example: 17 }),
                 page: t.Number({ example: 1 }),
                 limit: t.Number({ example: 20 }),
-                totalPages: t.Number({ example: 6 }),
+                totalPages: t.Number({ example: 1 }),
               },
               {
                 example: {
-                  total: 120,
+                  total: 17,
                   page: 1,
                   limit: 20,
-                  totalPages: 6,
+                  totalPages: 1,
                 },
               }
             )

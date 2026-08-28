@@ -245,7 +245,8 @@ describe("messagesRoutes", () => {
 
       expect(res.status).toBe(200)
       const body = await res.json()
-      expect(body.messages).toBeDefined()
+      expect(body.data).toBeDefined()
+      expect(body.ok).toBe(true)
     })
   })
 
