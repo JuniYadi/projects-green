@@ -351,7 +351,14 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           organizationId: targetOrgId,
           status: "ACTIVE",
         },
-        select: { id: true },
+        select: {
+          id: true,
+          token: true,
+          tokenEncrypted: true,
+          tokenIv: true,
+          whatsappPhoneId: true,
+          whatsappBusinessAccountId: true,
+        },
       })
 
       if (!device) {
@@ -411,7 +418,101 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           },
         })
 
-        logWhatsappAuditEvent({
+        // Direct push to Meta if device has credentials
+        let finalTemplate = template
+        try {
+          const encryptedParts = device.tokenEncrypted?.split(".") ?? []
+          const accessToken =
+            device.tokenEncrypted &&
+            device.tokenIv &&
+            encryptedParts.length === 2
+              ? `${encryptedParts[0]}.${device.tokenIv}.${encryptedParts[1]}`
+              : (device.tokenEncrypted ?? device.token)
+          const phoneNumberId = device.whatsappPhoneId
+          const wabaId = device.whatsappBusinessAccountId
+
+          if (accessToken && phoneNumberId && wabaId) {
+            const metaClient = await WhatsAppDeviceClient.fromDevice({
+              accessToken,
+              phoneNumberId,
+              wabaId,
+              organizationId: targetOrgId,
+            })
+
+            let latestMetaStatus: WhatsappTemplateSyncStatus = "NOT_SYNCED"
+            let metaStatusValue: any = null
+
+            for (const lang of template.languages) {
+              try {
+                const components = buildMetaTemplateComponents({
+                  ...lang,
+                  category: template.category ?? undefined,
+                })
+                const payload = {
+                  name: template.slug || template.name,
+                  category: template.category || "UTILITY",
+                  language: lang.lang,
+                  components,
+                }
+                const metaResult = await metaClient.createTemplate(payload)
+                const rawStatus = metaResult?.status?.toUpperCase()
+                const supportedStatus =
+                  rawStatus === "APPROVED" ||
+                  rawStatus === "PENDING" ||
+                  rawStatus === "REJECTED"
+                    ? rawStatus
+                    : "PENDING"
+
+                metaStatusValue = supportedStatus
+                latestMetaStatus = "SYNCED"
+
+                await prisma.whatsappTemplateLanguage.update({
+                  where: { id: lang.id },
+                  data: {
+                    metaStatus: supportedStatus,
+                    isApproved: supportedStatus === "APPROVED",
+                  },
+                })
+              } catch (langErr) {
+                await logWhatsappAuditEvent({
+                  action: "TEMPLATE_META_CREATE_FAILED",
+                  organizationId: template.organizationId,
+                  adminId: auth.userId,
+                  deviceId: device.id,
+                  message: `Failed to push language variant ${lang.lang} to Meta for template ${template.name}`,
+                  errorMessage: String(langErr),
+                  status: "FAILED",
+                })
+              }
+            }
+
+            if (latestMetaStatus === "SYNCED") {
+              finalTemplate = (await prisma.whatsappTemplate.update({
+                where: { id: template.id },
+                data: {
+                  syncStatus: "SYNCED",
+                  metaStatus: metaStatusValue,
+                  lastSyncedAt: new Date(),
+                },
+                include: {
+                  languages: true,
+                },
+              })) as typeof template
+            }
+          }
+        } catch (pushErr) {
+          await logWhatsappAuditEvent({
+            action: "TEMPLATE_META_CREATE_FAILED",
+            organizationId: template.organizationId,
+            adminId: auth.userId,
+            deviceId: device.id,
+            message: `Direct push to Meta failed for template ${template.name}`,
+            errorMessage: String(pushErr),
+            status: "FAILED",
+          })
+        }
+
+        await logWhatsappAuditEvent({
           action: "TEMPLATE_CREATED",
           organizationId: template.organizationId,
           adminId: auth.userId,
@@ -423,10 +524,9 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
             slug: template.slug,
           },
         })
-
-        return { ok: true, template: toWhatsappTemplateDTO(template) }
+        return { ok: true, template: toWhatsappTemplateDTO(finalTemplate) }
       } catch (err) {
-        logWhatsappAuditEvent({
+        await logWhatsappAuditEvent({
           action: "TEMPLATE_CREATE_FAILED",
           organizationId: targetOrgId,
           adminId: auth.userId,
@@ -560,7 +660,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           },
         })
 
-        logWhatsappAuditEvent({
+        await logWhatsappAuditEvent({
           action: "TEMPLATE_UPDATED",
           organizationId: updated.organizationId,
           adminId: auth.userId,
@@ -570,7 +670,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
 
         return { ok: true, template: toWhatsappTemplateDTO(updated) }
       } catch (err: unknown) {
-        logWhatsappAuditEvent({
+        await logWhatsappAuditEvent({
           action: "TEMPLATE_UPDATE_FAILED",
           organizationId: template.organizationId,
           adminId: auth.userId,
@@ -640,7 +740,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         where: { id: params.id },
       })
 
-      logWhatsappAuditEvent({
+      await logWhatsappAuditEvent({
         action: "TEMPLATE_DELETED",
         organizationId: template.organizationId,
         adminId: auth.userId,
@@ -706,7 +806,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         }
       }
 
-      logWhatsappAuditEvent({
+      await logWhatsappAuditEvent({
         action: "TEMPLATE_SYNC_REQUESTED",
         organizationId: template.organizationId,
         adminId: auth.userId,
@@ -723,7 +823,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
 
         return { ok: true, message: "Sync job enqueued." }
       } catch (err) {
-        logWhatsappAuditEvent({
+        await logWhatsappAuditEvent({
           action: "TEMPLATE_SYNC_FAILED",
           organizationId: template.organizationId,
           adminId: auth.userId,
