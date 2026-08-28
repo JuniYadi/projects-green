@@ -99,7 +99,7 @@ describe("VoucherService", () => {
       ])
       prisma.voucher.count = mock(() => 2)
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       const result = await service.listVouchers({ limit: 10, offset: 0 })
 
       expect(result.vouchers).toHaveLength(2)
@@ -112,7 +112,7 @@ describe("VoucherService", () => {
       prisma.voucher.findMany = findMany as never
       prisma.voucher.count = mock(() => 0) as never
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       await service.listVouchers({ status: "ACTIVE" })
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -127,7 +127,7 @@ describe("VoucherService", () => {
       prisma.voucher.findMany = findMany as never
       prisma.voucher.count = count as never
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       await service.listVouchers({ organizationId: "org_1" })
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -158,7 +158,7 @@ describe("VoucherService", () => {
         claims: [],
       }))
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       const result = await service.getVoucherById("v_1")
 
       expect(result.id).toBe("v_1")
@@ -169,7 +169,7 @@ describe("VoucherService", () => {
       const prisma = createMockPrisma()
       prisma.voucher.findUnique = mock(() => null)
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       await expect(service.getVoucherById("nonexistent")).rejects.toThrow(
         VoucherNotFoundError
       )
@@ -206,7 +206,7 @@ describe("VoucherService", () => {
         currency: "IDR",
       }))
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       const result = await service.createVoucher({
         maxClaims: 10,
         expiresAt: new Date(Date.now() + 86400000).toISOString(),
@@ -245,7 +245,7 @@ describe("VoucherService", () => {
         currency: "IDR",
       }))
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       const result = await service.createVoucher({
         prefix: "PFN",
         maxClaims: 5,
@@ -271,7 +271,7 @@ describe("VoucherService", () => {
         currency: "IDR",
       }))
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       const result = await service.createVoucher({
         code: "discount100",
         maxClaims: 100,
@@ -304,7 +304,7 @@ describe("VoucherService", () => {
         code: "TEST1234",
       }))
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       await service.createVoucher({
         maxClaims: 1,
         expiresAt: new Date(Date.now() + 86400000).toISOString(),
@@ -336,7 +336,7 @@ describe("VoucherService", () => {
           code: "PROMO123",
         }))
 
-        const service = new VoucherService(prisma as PrismaClient)
+        const service = new VoucherService(prisma as unknown as PrismaClient)
         await service.createPromotion({
           maxClaims: 10,
           expiresAt: new Date(Date.now() + 86400000).toISOString(),
@@ -403,7 +403,7 @@ describe("VoucherService", () => {
         currency: "IDR",
       }))
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       const result = await service.createPromotion({
         code: "merdeka80",
         maxClaims: 50,
@@ -448,7 +448,7 @@ describe("VoucherService", () => {
         currency: "IDR",
       }))
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       const result = await service.disableVoucher("v_1")
 
       expect(result.status).toBe("DISABLED")
@@ -458,7 +458,7 @@ describe("VoucherService", () => {
       const prisma = createMockPrisma()
       prisma.voucher.findUnique = mock(() => null)
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       await expect(service.disableVoucher("nonexistent")).rejects.toThrow(
         VoucherNotFoundError
       )
@@ -515,7 +515,7 @@ describe("VoucherService", () => {
         (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => fn(tx)
       )
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       const result = await service.redeemVoucher({
         code: "TEST1234",
         workosUserId: "user_1",
@@ -546,7 +546,7 @@ describe("VoucherService", () => {
         (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => fn(tx)
       )
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       await expect(
         service.redeemVoucher({
           code: "EXPIRED",
@@ -576,7 +576,7 @@ describe("VoucherService", () => {
         (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => fn(tx)
       )
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       await expect(
         service.redeemVoucher({
           code: "DEPLETED",
@@ -606,7 +606,7 @@ describe("VoucherService", () => {
         (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => fn(tx)
       )
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       await expect(
         service.redeemVoucher({
           code: "DISABLED1",
@@ -636,7 +636,7 @@ describe("VoucherService", () => {
         (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => fn(tx)
       )
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       await expect(
         service.redeemVoucher({
           code: "TARGETED1",
@@ -666,7 +666,7 @@ describe("VoucherService", () => {
         (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => fn(tx)
       )
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       await expect(
         service.redeemVoucher({
           code: "TARGETED2",
@@ -701,7 +701,7 @@ describe("VoucherService", () => {
         (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => fn(tx)
       )
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       await expect(
         service.redeemVoucher({
           code: "DUPLICATE1",
@@ -732,7 +732,7 @@ describe("VoucherService", () => {
         (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => fn(tx)
       )
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       await expect(
         service.redeemVoucher({
           code: "RACE",
@@ -751,7 +751,7 @@ describe("VoucherService", () => {
         (fn: (tx: ReturnType<typeof createMockTx>) => unknown) => fn(tx)
       )
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       await expect(
         service.redeemVoucher({
           code: "NONEXIST",
@@ -783,7 +783,7 @@ describe("VoucherService", () => {
         },
       ])
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       const claims = await service.getUserClaims("user_1", "org_1")
 
       expect(claims).toHaveLength(1)
@@ -798,7 +798,7 @@ describe("VoucherService", () => {
       const prisma = createMockPrisma()
       prisma.voucher.findUnique = mock(() => null)
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       await expect(
         service.updateVoucher("missing", { maxClaims: 5 })
       ).rejects.toThrow(VoucherNotFoundError)
@@ -817,7 +817,7 @@ describe("VoucherService", () => {
         amount: { toString: () => "75000" },
       }))
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       const result = await service.updateVoucher("v_1", { amount: 75000 })
 
       expect(result.id).toBe("v_1")
@@ -832,7 +832,7 @@ describe("VoucherService", () => {
         claimedCount: 0,
       }))
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       await expect(
         service.updateVoucher("v_1", { amount: 50000 })
       ).rejects.toThrow(VoucherKindFieldMismatchError)
@@ -846,7 +846,7 @@ describe("VoucherService", () => {
         claimedCount: 0,
       }))
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       await expect(
         service.updateVoucher("v_1", { currency: "USD" })
       ).rejects.toThrow(VoucherKindFieldMismatchError)
@@ -860,7 +860,7 @@ describe("VoucherService", () => {
         claimedCount: 0,
       }))
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       try {
         await service.updateVoucher("v_1", {
           amount: 50000,
@@ -889,7 +889,7 @@ describe("VoucherService", () => {
         maxClaims: 10,
       }))
 
-      const service = new VoucherService(prisma as PrismaClient)
+      const service = new VoucherService(prisma as unknown as PrismaClient)
       const result = await service.updateVoucher("v_1", { maxClaims: 10 })
 
       expect(result.id).toBe("v_1")
