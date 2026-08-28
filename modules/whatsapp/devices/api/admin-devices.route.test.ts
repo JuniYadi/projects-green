@@ -48,13 +48,14 @@ const mockTransaction = mock<(...args: any[]) => any>(
 )
 
 const mockLogAudit = mock<(...args: any[]) => any>(async () => {})
+const mockEnqueueTemplateSync = mock<(...args: any[]) => any>(async () => {})
 
 mock.module("@/modules/whatsapp/audit/whatsapp-audit.service", () => ({
   logWhatsappAuditEvent: mockLogAudit,
 }))
 
 mock.module("@/lib/queue/whatsapp-template-sync", () => ({
-  enqueueWhatsAppTemplateSync: mock(async () => {}),
+  enqueueWhatsAppTemplateSync: mockEnqueueTemplateSync,
 }))
 
 mock.module("@/lib/prisma", () => ({
@@ -150,6 +151,7 @@ describe("Admin Devices Routes", () => {
 
   beforeEach(() => {
     mockFindMany.mockImplementation(async () => [])
+    mockEnqueueTemplateSync.mockClear()
     mockCount.mockImplementation(async () => 0)
     mockFindUnique.mockImplementation(async () => null)
     mockUpdate.mockImplementation(async () => ({}))
@@ -865,6 +867,94 @@ describe("Admin Devices Routes", () => {
       expect(res.status).toBe(200)
       expect(body.ok).toBe(true)
       expect(body.message).toContain("Sync")
+    })
+  })
+
+  // ─── POST /sync-all-templates ──────────────────────────────────────────
+
+  describe("POST /sync-all-templates", () => {
+    it("returns 401 when not authenticated", async () => {
+      const app = createTestApp(unauthorizedContext())
+      const res = await app.handle(
+        new Request(`${BASE}/sync-all-templates`, {
+          method: "POST",
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(401)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("UNAUTHORIZED")
+    })
+
+    it("returns 403 when not super admin", async () => {
+      const app = createTestApp(forbiddenContext())
+      const res = await app.handle(
+        new Request(`${BASE}/sync-all-templates`, {
+          method: "POST",
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(403)
+      expect(body.ok).toBe(false)
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns 0 enqueued count when no active devices exist", async () => {
+      mockFindMany.mockResolvedValue([])
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/sync-all-templates`, {
+          method: "POST",
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.enqueuedCount).toBe(0)
+      expect(mockEnqueueTemplateSync).not.toHaveBeenCalled()
+    })
+
+    it("enqueues sync jobs for all active devices with tokens", async () => {
+      mockFindMany.mockResolvedValue([
+        {
+          id: "dev-1",
+          phoneNumber: "+6281234567890",
+          organizationId: "org-1",
+        },
+        {
+          id: "dev-2",
+          phoneNumber: "+6289876543210",
+          organizationId: "org-2",
+        },
+      ])
+      mockEnqueueTemplateSync.mockResolvedValue(undefined)
+
+      const app = createTestApp()
+      const res = await app.handle(
+        new Request(`${BASE}/sync-all-templates`, {
+          method: "POST",
+        })
+      )
+      const body = await res.json()
+
+      expect(res.status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.enqueuedCount).toBe(2)
+      expect(mockEnqueueTemplateSync).toHaveBeenCalledTimes(2)
+      expect(mockEnqueueTemplateSync).toHaveBeenCalledWith(
+        "org-1",
+        "dev-1",
+        "sync-templates"
+      )
+      expect(mockEnqueueTemplateSync).toHaveBeenCalledWith(
+        "org-2",
+        "dev-2",
+        "sync-templates"
+      )
     })
   })
 

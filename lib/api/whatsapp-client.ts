@@ -205,6 +205,15 @@ export const whatsappClient = {
         method: "POST",
         body: "{}",
       }),
+    syncAllTemplates: () =>
+      serverFetch<{
+        ok: boolean
+        enqueuedCount: number
+        message: string
+      }>("/api/admin/devices/sync-all-templates", {
+        method: "POST",
+        body: "{}",
+      }),
     profile: {
       get: (id: string) =>
         serverFetch<{ ok: boolean; profile: BusinessProfileDTO }>(
