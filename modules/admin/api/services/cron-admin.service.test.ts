@@ -20,11 +20,19 @@ const mockGetQueue = mock((_queueName: string) => ({
   add: mockQueueAdd,
 }))
 
-const mockFindManyCronJobDefinition = mock(async () => [])
-const mockFindUniqueCronJobDefinition = mock(async () => null)
-const mockFindManyCronJobExecution = mock(async () => [])
-const mockFindUniqueCronJobExecution = mock(async () => null)
-const mockCountCronJobExecution = mock(async () => 0)
+const mockFindManyCronJobDefinition = mock(
+  async (): Promise<Record<string, unknown>[]> => []
+)
+const mockFindUniqueCronJobDefinition = mock(
+  async (): Promise<Record<string, unknown> | null> => null
+)
+const mockFindManyCronJobExecution = mock(
+  async (): Promise<Record<string, unknown>[]> => []
+)
+const mockFindUniqueCronJobExecution = mock(
+  async (): Promise<Record<string, unknown> | null> => null
+)
+const mockCountCronJobExecution = mock(async (): Promise<number> => 0)
 
 mock.module("@/lib/cron/registry", () => ({
   syncCronJobDefinitions: mockSyncCronJobDefinitions,

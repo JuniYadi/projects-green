@@ -35,7 +35,7 @@ describe("TenantsMembershipsRoute", () => {
   const defaultActor: TenantActorContext = {
     userId: "user_actor_1",
     organizationId: "org_1",
-    platformRole: "user",
+    platformRole: "none",
     tenantRole: "owner",
   }
 
