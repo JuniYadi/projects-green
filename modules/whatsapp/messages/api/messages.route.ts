@@ -1912,7 +1912,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       // 1. Query message record
       const orgFilter = isSuperAdmin
         ? {}
-        : { organizationId: auth.organizationId }
+        : { organizationId: auth.organizationId! }
       const message = await prisma.whatsappMessage.findFirst({
         where: {
           waMessageId: decodedWamid,
@@ -1920,7 +1920,7 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
             ? {}
             : {
                 conversation: {
-                  organizationId: auth.organizationId,
+                  organizationId: auth.organizationId!,
                 },
               }),
         },
