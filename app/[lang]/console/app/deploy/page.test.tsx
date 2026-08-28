@@ -22,6 +22,30 @@ mock.module("@/lib/eden", () => ({
     },
   },
 }))
+mock.module("@/lib/billing-client", () => ({
+  getCatalogProduct: mock(async () => ({
+    ok: true,
+    product: {
+      code: "APP_HOSTING",
+      name: "App Hosting",
+      plans: [
+        {
+          id: "plan_starter",
+          code: "STARTER",
+          name: "Starter",
+          offers: [
+            {
+              id: "off_1",
+              billingPeriod: "MONTHLY",
+              periodPrice: "15000",
+              currency: "IDR",
+            },
+          ],
+        },
+      ],
+    },
+  })),
+}))
 
 describe("DeployPage", () => {
   it("renders AI deployment assistant feed", async () => {
@@ -37,7 +61,7 @@ describe("DeployPage", () => {
     expect(view.getByText("Or launch a ready-made app")).toBeTruthy()
   })
 
-  it("submits a ready-made app with PAYG settings", async () => {
+  it("submits a ready-made app with package settings", async () => {
     capturedBody.current = null
     mockPost.mockClear()
 
@@ -59,8 +83,8 @@ describe("DeployPage", () => {
     expect(capturedBody.current).toMatchObject({
       sourceType: "MANAGED_TEMPLATE",
       templateId: "n8n",
-      billingMode: "PAYG",
-      resourcePlanId: "payg",
+      billingMode: "PACKAGE",
+      resourcePlanId: "starter",
     })
     expect(
       String(

@@ -5,12 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Lightning,
-  MagnifyingGlass,
-  Plus,
-  RocketLaunchIcon,
-} from "@/components/ui/phosphor-icons"
+import { MagnifyingGlass, Plus } from "@/components/ui/phosphor-icons"
 import { TemplateCard, type MarketplaceTemplateItem } from "./template-card"
 import { OFFICIAL_APP_TEMPLATES } from "@/modules/deploy/app-template.seed"
 
@@ -58,14 +53,6 @@ export function MarketplaceShowcase({
       blueprint: tmpl.blueprint,
     }))
   }, [])
-
-  // Featured hero templates: n8n, hermes, 9router, umami, wordpress
-  const featuredTemplates = useMemo(() => {
-    const featuredSlugs = ["n8n", "hermes", "9router", "umami", "wordpress"]
-    return officialTemplates.filter(
-      (tmpl) => tmpl.isFeatured || featuredSlugs.includes(tmpl.slug)
-    )
-  }, [officialTemplates])
 
   const filteredTemplates = useMemo(() => {
     return officialTemplates.filter((tmpl) => {
@@ -121,59 +108,33 @@ export function MarketplaceShowcase({
 
       {activeTab === "marketplace" && (
         <>
-          {/* Hero Banner featuring official templates */}
-          <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card via-card to-muted/30 p-6 md:p-8">
-            <div className="relative z-10 max-w-3xl space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-background/80 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
-                <Lightning className="size-3.5 text-primary" />
-                <span>Production-Ready Cloud Stacks</span>
+          {/* Compact Header & Toolbar */}
+          <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                  App Marketplace
+                </h1>
+                <p className="text-xs text-muted-foreground">
+                  1-Click deploy open-source apps, AI agents, automations, and
+                  databases.
+                </p>
               </div>
-              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                App Hosting Marketplace
-              </h1>
-              <p className="text-sm text-muted-foreground sm:text-base">
-                Deploy open-source applications, AI agent workspaces, workflow
-                automations, and privacy-first analytics with 1-click cloud
-                provisioning.
-              </p>
+
+              {/* Real-time search */}
+              <div className="relative w-full sm:w-72">
+                <MagnifyingGlass className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search apps by name or stack…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-8 pl-8 text-xs"
+                />
+              </div>
             </div>
 
-            {/* Featured quick badges */}
-            <div className="relative z-10 mt-6 flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-muted-foreground">
-                Featured:
-              </span>
-              {featuredTemplates.slice(0, 5).map((featured) => (
-                <button
-                  key={featured.slug}
-                  onClick={() => handleDeploy(featured)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs font-medium text-foreground transition-colors hover:border-border hover:bg-muted"
-                >
-                  <RocketLaunchIcon className="size-3 text-muted-foreground" />
-                  <span>{featured.name}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Decorative background blur glow */}
-            <div className="pointer-events-none absolute -top-16 -right-16 size-72 rounded-full bg-primary/5 blur-3xl" />
-          </div>
-
-          {/* Filter & Search Bar */}
-          <div className="flex flex-col gap-4">
-            {/* Real-time search */}
-            <div className="relative max-w-md">
-              <MagnifyingGlass className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search templates by name, category, or stack..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-
-            {/* Category Filter Tabs/Chips */}
-            <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto pb-1">
+            {/* Category Filter Chips */}
+            <div className="flex flex-wrap items-center gap-1 overflow-x-auto pt-1">
               {MARKETPLACE_CATEGORIES.map((cat) => {
                 const isSelected = selectedCategory === cat
                 return (
@@ -182,7 +143,7 @@ export function MarketplaceShowcase({
                     variant={isSelected ? "default" : "outline"}
                     size="sm"
                     onClick={() => setSelectedCategory(cat)}
-                    className="h-8 rounded-full text-xs font-medium"
+                    className="h-7 rounded-lg px-2.5 text-xs font-medium"
                   >
                     {cat.replace("_", " ")}
                   </Button>
@@ -191,9 +152,9 @@ export function MarketplaceShowcase({
             </div>
           </div>
 
-          {/* Template Grid */}
+          {/* Template Grid: 4-5 columns high density */}
           {filteredTemplates.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {filteredTemplates.map((template) => (
                 <TemplateCard
                   key={template.slug}

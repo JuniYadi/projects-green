@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import {
   Check,
   Clock,
@@ -17,6 +17,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  getCatalogProduct,
+  type CatalogPlan,
+  type CatalogProductDetailResponse,
+} from "@/lib/billing-client"
+import { formatBillingMoney } from "@/modules/billing/format-money"
 import {
   Select,
   SelectContent,
@@ -48,11 +54,11 @@ export interface DynamicLaunchDrawerProps {
     templateSlug: string
     appName: string
     subdomain: string
-    billingMode: "PAYG" | "SUBSCRIPTION"
+    billingMode: "PAYG" | "PACKAGE"
     envVars: Record<string, string>
     cpu?: number
     memory?: number
-    resourcePlanId?: "starter" | "pro" | "payg"
+    resourcePlanId?: string
   }) => Promise<void> | void
   isDeploying?: boolean
   userBalance?: number
@@ -101,16 +107,14 @@ export function DynamicLaunchDrawer({
   template,
   onDeploy,
   isDeploying = false,
-  userBalance = 25.5,
+  userBalance: _userBalance = 25.5,
   currency = "USD",
 }: DynamicLaunchDrawerProps) {
   const [appNameOverride, setAppNameOverride] = useState<string | null>(null)
-  const [billingMode, setBillingMode] = useState<"PAYG" | "SUBSCRIPTION">(
-    "PAYG"
-  )
-  const [selectedPlanId, setSelectedPlanId] = useState<
-    "starter" | "pro" | "payg"
-  >("payg")
+  const [catalogData, setCatalogData] =
+    useState<CatalogProductDetailResponse | null>(null)
+  const [catalogLoading, setCatalogLoading] = useState(false)
+  const [selectedPlanCode, setSelectedPlanCode] = useState<string>("STARTER")
   const [cpuOverride, setCpuOverride] = useState<number | null>(null)
   const [memoryOverride, setMemoryOverride] = useState<number | null>(null)
   const [envOverrides, setEnvOverrides] = useState<Record<string, string>>({})
@@ -118,10 +122,51 @@ export function DynamicLaunchDrawer({
     Record<string, boolean>
   >({})
 
+  useEffect(() => {
+    let isMounted = true
+    async function loadCatalog() {
+      setCatalogLoading(true)
+      try {
+        const res = await getCatalogProduct("APP_HOSTING", currency)
+        if (isMounted && res) {
+          setCatalogData(res)
+          const firstPlan = res.product?.plans?.[0]
+          if (firstPlan) {
+            setSelectedPlanCode(firstPlan.code)
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load catalog product for App Hosting", err)
+      } finally {
+        if (isMounted) setCatalogLoading(false)
+      }
+    }
+    loadCatalog()
+    return () => {
+      isMounted = false
+    }
+  }, [currency])
+
+  const plans = useMemo(() => {
+    return catalogData?.product?.plans ?? []
+  }, [catalogData])
+
+  const selectedPlan: CatalogPlan | undefined = useMemo(() => {
+    return plans.find((p) => p.code === selectedPlanCode) || plans[0]
+  }, [plans, selectedPlanCode])
+
   const currentCpu =
-    cpuOverride ?? template?.blueprint?.resources?.defaultCpu ?? 500
+    cpuOverride ??
+    template?.blueprint?.resources?.defaultCpu ??
+    (selectedPlan?.resources as { defaultCpu?: number })?.defaultCpu ??
+    500
+
   const currentMemory =
-    memoryOverride ?? template?.blueprint?.resources?.defaultMemory ?? 512
+    memoryOverride ??
+    template?.blueprint?.resources?.defaultMemory ??
+    (selectedPlan?.resources as { defaultMem?: number })?.defaultMem ??
+    512
+
   const initialEnvValues = useMemo(() => {
     return template ? buildInitialEnvVars(template.blueprint) : {}
   }, [template])
@@ -165,11 +210,11 @@ export function DynamicLaunchDrawer({
       templateSlug: template.slug,
       appName: appName.trim() || template.name,
       subdomain,
-      billingMode,
+      billingMode: "PACKAGE",
       envVars: envValues,
       cpu: currentCpu,
       memory: currentMemory,
-      resourcePlanId: selectedPlanId,
+      resourcePlanId: (selectedPlanCode || "starter").toLowerCase(),
     })
   }
   if (!template) return null
@@ -248,45 +293,68 @@ export function DynamicLaunchDrawer({
             </div>
           </div>
 
-          {/* Resource Summary Banner */}
           {/* Resource & Package Selection */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                Resource & Sizing Package
+                Hosting Package & Sizing
               </h4>
+              <Badge
+                variant="outline"
+                className="text-[10px] text-muted-foreground"
+              >
+                Monthly Subscription
+              </Badge>
             </div>
 
-            {/* Package selector */}
-            <div className="grid grid-cols-3 gap-2">
-              {(
-                [
-                  { id: "starter", name: "Starter", cpu: 250, mem: 256 },
-                  { id: "pro", name: "Pro", cpu: 500, mem: 512 },
-                  { id: "payg", name: "PAYG", cpu: 1000, mem: 1024 },
-                ] as const
-              ).map((pkg) => (
-                <button
-                  key={pkg.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedPlanId(pkg.id)
-                    setCpuOverride(pkg.cpu)
-                    setMemoryOverride(pkg.mem)
-                  }}
-                  className={`flex flex-col items-center justify-center rounded-xl border p-2.5 text-xs transition-all ${
-                    selectedPlanId === pkg.id
-                      ? "border-primary bg-primary/10 font-semibold text-primary"
-                      : "border-border bg-card text-muted-foreground hover:bg-muted/40"
-                  }`}
-                >
-                  <span>{pkg.name}</span>
-                  <span className="mt-0.5 text-[10px] text-muted-foreground">
-                    {pkg.cpu}m / {pkg.mem}MB
-                  </span>
-                </button>
-              ))}
-            </div>
+            {/* Real Catalog Plans */}
+            {plans.length > 0 ? (
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {plans.map((plan) => {
+                  const isSelected = selectedPlan?.code === plan.code
+                  const monthlyOffer =
+                    plan.offers?.find((o) => o.billingPeriod === "MONTHLY") ||
+                    plan.offers?.[0]
+
+                  return (
+                    <button
+                      key={plan.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPlanCode(plan.code)
+                      }}
+                      className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-all ${
+                        isSelected
+                          ? "border-primary bg-primary/5 ring-1 ring-primary"
+                          : "border-border bg-card hover:bg-muted/40"
+                      }`}
+                    >
+                      <div className="flex w-full items-center justify-between">
+                        <span className="text-xs font-semibold">
+                          {plan.name}
+                        </span>
+                        {isSelected && (
+                          <Check className="size-3.5 text-primary" />
+                        )}
+                      </div>
+                      <span className="text-[11px] text-muted-foreground">
+                        {monthlyOffer?.periodPrice
+                          ? `${formatBillingMoney(monthlyOffer.periodPrice, monthlyOffer.currency || currency)} / month`
+                          : "Free / Included"}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            ) : catalogLoading ? (
+              <div className="rounded-xl border border-border bg-card p-3 text-xs text-muted-foreground">
+                Loading available catalog plans…
+              </div>
+            ) : (
+              <div className="rounded-xl border border-border bg-card p-3 text-xs text-muted-foreground">
+                Starter Plan — Monthly Subscription
+              </div>
+            )}
 
             {/* Resource inputs */}
             <div className="grid grid-cols-2 gap-3">
@@ -501,62 +569,6 @@ export function DynamicLaunchDrawer({
               </div>
             </div>
           )}
-
-          {/* Billing Mode Selector */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              Billing Method
-            </h4>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setBillingMode("PAYG")}
-                className={`flex flex-col items-start gap-1 rounded-xl border p-3.5 text-left transition-all ${
-                  billingMode === "PAYG"
-                    ? "border-primary bg-primary/5 ring-1 ring-primary"
-                    : "border-border bg-card hover:bg-muted/40"
-                }`}
-              >
-                <div className="flex w-full items-center justify-between">
-                  <span className="text-xs font-semibold">Pay-As-You-Go</span>
-                  {billingMode === "PAYG" && (
-                    <Check className="size-3.5 text-primary" />
-                  )}
-                </div>
-                <span className="text-[11px] text-muted-foreground">
-                  Hourly metering from wallet balance.
-                </span>
-                <div className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                  Balance: {currency} {userBalance.toFixed(2)}
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setBillingMode("SUBSCRIPTION")}
-                className={`flex flex-col items-start gap-1 rounded-xl border p-3.5 text-left transition-all ${
-                  billingMode === "SUBSCRIPTION"
-                    ? "border-primary bg-primary/5 ring-1 ring-primary"
-                    : "border-border bg-card hover:bg-muted/40"
-                }`}
-              >
-                <div className="flex w-full items-center justify-between">
-                  <span className="text-xs font-semibold">Monthly Slot</span>
-                  {billingMode === "SUBSCRIPTION" && (
-                    <Check className="size-3.5 text-primary" />
-                  )}
-                </div>
-                <span className="text-[11px] text-muted-foreground">
-                  Fixed dedicated container quota slot.
-                </span>
-                <div className="mt-2 text-xs font-medium text-foreground">
-                  {template.priceMonthly && template.priceMonthly > 0
-                    ? `${currency} ${template.priceMonthly}/mo`
-                    : "Included in Tier"}
-                </div>
-              </button>
-            </div>
-          </div>
         </div>
 
         <SheetFooter className="border-t border-border p-6">

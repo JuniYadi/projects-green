@@ -10,6 +10,7 @@ import type { MarketplaceTemplateItem } from "./_components/template-card"
 export default function ConsoleMarketplacePage() {
   const params = useParams()
   const lang = (params?.lang as string) || "en"
+  const currency = lang === "id" ? "IDR" : "USD"
   const [selectedTemplate, setSelectedTemplate] =
     useState<MarketplaceTemplateItem | null>(null)
   const router = useRouter()
@@ -28,6 +29,7 @@ export default function ConsoleMarketplacePage() {
         open={isDrawerOpen}
         onOpenChange={setIsDrawerOpen}
         isDeploying={isDeploying}
+        currency={currency}
         onDeploy={async (submission) => {
           setIsDeploying(true)
           try {

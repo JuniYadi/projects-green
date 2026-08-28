@@ -1,7 +1,7 @@
 import React from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import {
   CheckCircle,
   Cpu,
@@ -79,73 +79,76 @@ export function TemplateCard({
   const resourceSummary = formatResourceSummary(template.blueprint)
 
   return (
-    <Card className="flex flex-col justify-between overflow-hidden border border-border bg-card transition-colors hover:border-border/80">
-      <CardHeader className="flex flex-row items-start justify-between gap-4 p-5 pb-3">
-        <div className="flex items-center gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/40 p-2 text-foreground">
-            {template.iconUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={template.iconUrl}
-                alt={template.name}
-                className="size-7 object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = "none"
-                  e.currentTarget.parentElement?.classList.add("fallback-icon")
-                }}
-              />
-            ) : (
-              <Package className="size-6 text-muted-foreground" />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <h3 className="truncate text-base font-semibold text-foreground">
-                {template.name}
-              </h3>
-              {template.isOfficial && (
-                <span
-                  title="Official Verified"
-                  aria-label="Official Verified"
-                  className="inline-flex items-center text-emerald-500"
-                >
-                  <CheckCircle className="size-4 fill-emerald-500/20 text-emerald-500" />
-                </span>
+    <Card className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-card p-3.5 transition-all hover:border-border/80 hover:shadow-xs">
+      <div className="space-y-2.5">
+        <div className="flex items-start justify-between gap-2.5">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/30 p-1.5 text-foreground">
+              {template.iconUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={template.iconUrl}
+                  alt={template.name}
+                  className="size-5 object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none"
+                    e.currentTarget.parentElement?.classList.add(
+                      "fallback-icon"
+                    )
+                  }}
+                />
+              ) : (
+                <Package className="size-5 text-muted-foreground" />
               )}
             </div>
-            <p className="line-clamp-1 text-xs text-muted-foreground">
-              {template.tagline}
-            </p>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1">
+                <h3 className="truncate text-sm font-semibold text-foreground">
+                  {template.name}
+                </h3>
+                {template.isOfficial && (
+                  <span
+                    title="Official Verified"
+                    aria-label="Official Verified"
+                    className="inline-flex shrink-0 items-center text-emerald-500"
+                  >
+                    <CheckCircle className="size-3.5 fill-emerald-500/20 text-emerald-500" />
+                  </span>
+                )}
+              </div>
+              <Badge
+                variant="secondary"
+                className="mt-0.5 h-4 border-0 px-1 py-0 text-[9px] font-medium text-muted-foreground"
+              >
+                {template.category.replace("_", " ")}
+              </Badge>
+            </div>
           </div>
         </div>
-        <Badge
-          variant="outline"
-          className="shrink-0 text-[10px] font-normal tracking-wider text-muted-foreground uppercase"
-        >
-          {template.category}
-        </Badge>
-      </CardHeader>
 
-      <CardContent className="space-y-3 p-5 pt-0">
+        <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+          {template.tagline}
+        </p>
+
         {resourceSummary && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Cpu className="size-3.5 shrink-0 text-muted-foreground" />
+          <div className="flex items-center gap-1 text-[11px] text-muted-foreground/80">
+            <Cpu className="size-3 shrink-0 text-muted-foreground" />
             <span className="truncate">{resourceSummary}</span>
           </div>
         )}
-      </CardContent>
+      </div>
 
-      <CardFooter className="border-t border-border/40 p-4 pt-3">
+      <div className="mt-3 border-t border-border/40 pt-2.5">
         <Button
           onClick={() => onDeploy(template)}
           disabled={isDeploying}
-          className="w-full gap-2"
+          className="h-8 w-full gap-1.5 text-xs font-medium"
           size="sm"
         >
-          <RocketLaunchIcon className="size-4" />
+          <RocketLaunchIcon className="size-3.5" />
           <span>Deploy</span>
         </Button>
-      </CardFooter>
+      </div>
     </Card>
   )
 }
