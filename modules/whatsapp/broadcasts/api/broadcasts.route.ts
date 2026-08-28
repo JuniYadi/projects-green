@@ -19,26 +19,71 @@ import {
 import {
   formatBroadcastVariableValidationError,
   validateBroadcastRecipientVariables,
+  validateBroadcastPreflight,
 } from "../broadcast-preflight"
-
 const E164_REGEX = /^[+]?[1-9]\d{6,14}$/
 const broadcastRecipientSchema = t.Object({
-  phoneNumber: t.String({ pattern: "^[+]?[1-9]\\d{6,14}$" }),
-  name: t.Optional(t.String()),
-  dynamicValues: t.Optional(t.Any()),
+  phoneNumber: t.String({
+    pattern: "^[+]?[1-9]\\d{6,14}$",
+    example: "+6281234567890",
+    description: "Recipient phone number in E.164 format",
+  }),
+  name: t.Optional(
+    t.String({ example: "Budi Santoso", description: "Recipient contact name" })
+  ),
+  dynamicValues: t.Optional(
+    t.Any({
+      example: { "1": "Budi Santoso", "2": "#ORD-9981" },
+      description: "Positional template variable key-values",
+    })
+  ),
 })
 
 const broadcastCampaignBodySchema = t.Object({
-  templateId: t.String(),
-  templateName: t.String(),
-  templateLanguage: t.String(),
+  templateId: t.String({
+    example: "tpl_clt9876543210",
+    description: "Approved Meta WhatsApp template ID",
+  }),
+  templateName: t.String({
+    example: "order_status_notification",
+    description: "Template slug name",
+  }),
+  templateLanguage: t.String({
+    example: "id",
+    description: "Language locale code (e.g. 'id', 'en_US')",
+  }),
   templateParams: t.Optional(t.Any()),
-  whatsappDeviceId: t.String(),
-  whatsappContactGroupId: t.Optional(t.String()),
-  throttleMaxMessages: t.Optional(t.Number()),
-  throttlePerMinutes: t.Optional(t.Number()),
-  acknowledgeMultiDay: t.Optional(t.Boolean()),
-  recipients: t.Array(broadcastRecipientSchema),
+  whatsappDeviceId: t.String({
+    example: "dev_clt1234567890",
+    description: "Connected WhatsApp device ID",
+  }),
+  whatsappContactGroupId: t.Optional(
+    t.String({
+      example: "grp_clt1234567890",
+      description: "Optional saved contact group ID",
+    })
+  ),
+  throttleMaxMessages: t.Optional(
+    t.Number({
+      example: 20,
+      description: "Maximum messages per throttle window",
+    })
+  ),
+  throttlePerMinutes: t.Optional(
+    t.Number({
+      example: 1,
+      description: "Throttle interval in minutes",
+    })
+  ),
+  acknowledgeMultiDay: t.Optional(
+    t.Boolean({
+      example: false,
+      description: "Acknowledge if broadcast duration exceeds 24 hours",
+    })
+  ),
+  recipients: t.Array(broadcastRecipientSchema, {
+    description: "List of recipients with phone numbers and variable values",
+  }),
 })
 
 const broadcastCampaignUpdateSchema = t.Partial(
@@ -46,17 +91,44 @@ const broadcastCampaignUpdateSchema = t.Partial(
 )
 
 const broadcastPreviewBodySchema = t.Object({
-  whatsappDeviceId: t.String(),
+  whatsappDeviceId: t.String({
+    example: "dev_clt1234567890",
+    description: "Active WhatsApp device ID",
+  }),
   recipients: t.Array(broadcastRecipientSchema),
 })
 const broadcastPreflightBodySchema = t.Object({
-  templateId: t.String(),
-  templateLanguage: t.String(),
-  whatsappDeviceId: t.String(),
-  throttleMaxMessages: t.Optional(t.Number()),
-  throttlePerMinutes: t.Optional(t.Number()),
-  acknowledgeMultiDay: t.Optional(t.Boolean()),
+  templateId: t.String({
+    example: "tpl_clt9876543210",
+    description: "Meta template ID",
+  }),
+  templateLanguage: t.String({
+    example: "id",
+    description: "Template language code",
+  }),
+  whatsappDeviceId: t.String({
+    example: "dev_clt1234567890",
+    description: "Sender WhatsApp device ID",
+  }),
+  throttleMaxMessages: t.Optional(t.Number({ example: 20 })),
+  throttlePerMinutes: t.Optional(t.Number({ example: 1 })),
+  acknowledgeMultiDay: t.Optional(t.Boolean({ example: false })),
   recipients: t.Array(broadcastRecipientSchema),
+})
+
+const broadcastCampaignDTOSchema = t.Object({
+  id: t.String({ example: "bc_clt1234567890" }),
+  organizationId: t.String({ example: "org_2tQ1y09..." }),
+  templateId: t.String({ example: "tpl_clt9876543210" }),
+  templateName: t.String({ example: "order_status_notification" }),
+  templateLanguage: t.String({ example: "id" }),
+  whatsappDeviceId: t.String({ example: "dev_clt1234567890" }),
+  status: t.String({ example: "QUEUED" }),
+  totalRecipients: t.Number({ example: 500 }),
+  sentCount: t.Number({ example: 0 }),
+  failedCount: t.Number({ example: 0 }),
+  createdAt: t.Optional(t.Any()),
+  updatedAt: t.Optional(t.Any()),
 })
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 100
@@ -242,7 +314,12 @@ function getPagination(query: Record<string, unknown>) {
   return { page, limit, skip: (page - 1) * limit }
 }
 
-export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
+export const broadcastsRoutes = new Elysia({
+  prefix: "/broadcasts",
+  detail: {
+    tags: ["WhatsApp Broadcasts"],
+  },
+})
   .get(
     "/",
     async ({ request, set, query }: { request: any; set: any; query: any }) => {
@@ -278,6 +355,14 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
         data,
         meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
       }
+    },
+    {
+      detail: {
+        summary: "List Broadcast Campaigns",
+        description:
+          "Retrieves a paginated list of broadcast campaigns for the active organization.",
+        tags: ["WhatsApp Broadcasts"],
+      },
     }
   )
   .get(
@@ -342,6 +427,14 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
         sent: sent._sum.sent ?? 0,
         failed: failed._sum.failed ?? 0,
       }
+    },
+    {
+      detail: {
+        summary: "Get Broadcast Analytics Summary",
+        description:
+          "Returns aggregated statistics on total campaigns, queued recipients, and delivery success counts.",
+        tags: ["WhatsApp Broadcasts"],
+      },
     }
   )
   .get(
@@ -385,6 +478,20 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
       }
 
       return { ok: true, campaign: toWhatsappBroadcastCampaignDTO(campaign) }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "bc_clt1234567890",
+          description: "Broadcast campaign ID",
+        }),
+      }),
+      detail: {
+        summary: "Get Broadcast Campaign Details",
+        description:
+          "Fetches full campaign parameters, throttling configs, and status.",
+        tags: ["WhatsApp Broadcasts"],
+      },
     }
   )
   .post(
@@ -409,6 +516,15 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
           ok: false,
           error: "BAD_REQUEST",
           message: "Organization ID required.",
+        }
+      }
+
+      if (!body.recipients || body.recipients.length === 0) {
+        set.status = 400
+        return {
+          ok: false,
+          error: "VALIDATION_ERROR",
+          message: "Add at least one valid recipient before continuing.",
         }
       }
 
@@ -439,6 +555,12 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
     },
     {
       body: broadcastPreflightBodySchema,
+      detail: {
+        summary: "Preflight Validate Broadcast Recipients",
+        description:
+          "Validates recipient dynamic variable placeholders against template parameters before initiating dispatch.",
+        tags: ["WhatsApp Broadcasts"],
+      },
     }
   )
   .post(
@@ -510,6 +632,12 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
     },
     {
       body: broadcastCampaignBodySchema,
+      detail: {
+        summary: "Create Broadcast Campaign",
+        description:
+          "Creates a new bulk message broadcast campaign with recipient list, throttling settings, and template parameters.",
+        tags: ["WhatsApp Broadcasts"],
+      },
     }
   )
   .patch(
@@ -585,7 +713,19 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
       return { ok: true, campaign: toWhatsappBroadcastCampaignDTO(updated) }
     },
     {
+      params: t.Object({
+        id: t.String({
+          example: "bc_clt1234567890",
+          description: "Broadcast campaign ID",
+        }),
+      }),
       body: broadcastCampaignUpdateSchema,
+      detail: {
+        summary: "Update Draft Broadcast Campaign",
+        description:
+          "Updates campaign metadata and throttling parameters before launch.",
+        tags: ["WhatsApp Broadcasts"],
+      },
     }
   )
   .delete(
@@ -628,8 +768,21 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
       await prisma.whatsappBroadcastCampaign.delete({
         where: { id },
       })
-
-      return { ok: true, message: "Broadcast campaign deleted." }
+      return { ok: true, message: "Campaign deleted." }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "bc_clt1234567890",
+          description: "Broadcast campaign ID",
+        }),
+      }),
+      detail: {
+        summary: "Delete Broadcast Campaign",
+        description:
+          "Deletes a draft or completed broadcast campaign and its associated recipient log entries.",
+        tags: ["WhatsApp Broadcasts"],
+      },
     }
   )
   .post(
@@ -743,6 +896,20 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
         ok: true,
         message: `Dispatched ${campaign.recipients.length} recipients for broadcasting.`,
       }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "bc_clt1234567890",
+          description: "Broadcast campaign ID",
+        }),
+      }),
+      detail: {
+        summary: "Launch Broadcast Campaign",
+        description:
+          "Enqueues background worker job to start sending bulk messages according to configured throttle rules.",
+        tags: ["WhatsApp Broadcasts"],
+      },
     }
   )
   .post(
@@ -791,5 +958,11 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
     },
     {
       body: broadcastPreviewBodySchema,
+      detail: {
+        summary: "Preview Broadcast Schedule & Capacity",
+        description:
+          "Calculates estimated dispatch duration and recommended throttle pacing based on sender device quota tier.",
+        tags: ["WhatsApp Broadcasts"],
+      },
     }
   )
