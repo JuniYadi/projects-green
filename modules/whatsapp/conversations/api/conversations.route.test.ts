@@ -392,4 +392,21 @@ describe("conversations routes", () => {
       })
     )
   })
+  it("returns not found when deleting a conversation outside the organization", async () => {
+    mockAuth.current = {
+      type: "session",
+      userId: "user-1",
+      organizationId: "org-1",
+      orgRole: "admin",
+      platformRole: "member",
+    }
+    mockFindFirst.mockResolvedValueOnce(null)
+    const res = await createTestApp().handle(
+      new Request("http://localhost/conversations/foreign", {
+        method: "DELETE",
+      })
+    )
+    expect(res.status).toBe(404)
+    expect(mockDelete).not.toHaveBeenCalled()
+  })
 })
