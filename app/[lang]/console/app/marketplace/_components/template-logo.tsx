@@ -1,16 +1,21 @@
 import React from "react"
 import {
   SiDocker,
+  SiGhost,
   SiN8N,
   SiPostgresql,
   SiRedis,
+  SiStrapi,
   SiUmami,
   SiWordpress,
 } from "react-icons/si"
 import { Cpu, Database, Package } from "@phosphor-icons/react"
 
 // Mapping for known React Icons (Simple Icons or Phosphor Icons) by slug / keyword
-const REACT_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+const REACT_ICON_MAP: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
   n8n: SiN8N,
   hermes: Cpu,
   umami: SiUmami,
