@@ -4,9 +4,8 @@ import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowRight, GitBranch } from "@/components/ui/phosphor-icons"
+import { ArrowRight, GitBranch } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
-
 type SourceComposerProps = {
   onSubmit: (url: string) => void
   disabled?: boolean

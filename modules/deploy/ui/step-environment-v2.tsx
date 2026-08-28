@@ -12,12 +12,11 @@ import type {
 } from "@/modules/deploy/deploy.types"
 import {
   Gear,
-  FileCode,
   ArrowLeft,
   ArrowRight,
   Globe,
-} from "@/components/ui/phosphor-icons"
-
+  FileCode,
+} from "@phosphor-icons/react"
 type StepEnvironmentV2Props = {
   generatedSubdomain: string
   useGeneratedSubdomain: boolean

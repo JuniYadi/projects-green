@@ -7,13 +7,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import {
-  CheckIcon,
-  SpinnerIcon,
-  WarningCircle,
-  XIcon,
-} from "@/components/ui/phosphor-icons"
-import { cn } from "@/lib/utils"
+import { CheckIcon, Spinner, WarningCircle, XIcon } from "@phosphor-icons/react"
 import {
   DEPLOY_EVENT_STEP_INDEX,
   buildDeployTimelineItems,
@@ -135,7 +129,7 @@ function StepIcon({ state }: { state: StepUiState }) {
   }
   if (state === "active") {
     return (
-      <SpinnerIcon
+      <Spinner
         aria-label="In progress"
         className="size-4 animate-spin text-blue-600"
       />
