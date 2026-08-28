@@ -155,17 +155,8 @@ mock.module("@/modules/whatsapp/templates/api/templates.hooks", () => ({
 const { TemplatesPageClient } = await import("./templates-page-client")
 
 describe("TemplatesPageClient (Portal)", () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     cleanup()
-    const nav = await import("next/navigation")
-    const router = nav.useRouter()
-    if (
-      router?.push &&
-      "mockClear" in router.push &&
-      typeof router.push.mockClear === "function"
-    ) {
-      ;(router.push as unknown as { mockClear: () => void }).mockClear()
-    }
     routerPush.mockClear()
     mockPullTemplates.mockClear()
     currentSearchParams = new URLSearchParams()
