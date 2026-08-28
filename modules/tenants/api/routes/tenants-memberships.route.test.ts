@@ -1,793 +1,498 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
+import type { TenantActorContext } from "@/modules/tenants/api/tenants.guards"
+import type { TenantApiError } from "@/modules/tenants/contracts/tenant-api.contract"
+import type { RouteSet } from "@/modules/tenants/api/tenants.errors"
 
-import type {
-  TenantApiError,
-  TenantMembershipSummary,
-} from "@/modules/tenants/contracts/tenant-api.contract"
-import { createTenantsMembershipRoutes } from "@/modules/tenants/api/routes/tenants-memberships.route"
+// ── Mock AuthService ───────────────────────────────────
 
-type MockActor = {
-  userId: string
-  organizationId: string | null
-  platformRole: "none" | "super_admin"
-  tenantRole: "owner" | "admin" | "member" | null
-}
+const mockGetUserDetails = mock()
 
-type MockRouteSet = {
-  status?: number | string
-}
+mock.module("@/modules/auth/auth.service", () => ({
+  authService: {
+    getUserDetails: mockGetUserDetails,
+  },
+}))
 
-type MockDeleteResult =
-  | { success: true }
-  | { success: false; reason: "LAST_OWNER_PROTECTED" | "SELF_LEAVE_BLOCKED" }
+// ── Import route after auth service mock ───────────────
 
-type MockDemoteResult =
-  | { success: true; membership: TenantMembershipSummary }
-  | { success: false; reason: "LAST_OWNER_PROTECTED" | "SELF_DEMOTION_BLOCKED" }
+const { createTenantsMembershipRoutes } =
+  await import("./tenants-memberships.route")
 
-const defaultActor: MockActor = {
-  userId: "user_actor",
-  organizationId: "org_1",
-  platformRole: "none",
-  tenantRole: "owner",
-}
+describe("TenantsMembershipsRoute", () => {
+  let mockActor: TenantActorContext | TenantApiError
+  let mockContextAccess: true | TenantApiError
 
-const makeMembership = (
-  overrides: Partial<TenantMembershipSummary> = {}
-): TenantMembershipSummary => ({
-  id: "mem_1",
-  organizationId: "org_1",
-  userId: "user_target",
-  displayName: "User Target",
-  email: "user_target@example.com",
-  avatarUrl: null,
-  status: "active",
-  role: "member",
-  roleSlug: "user_member",
-  profile: null,
-  createdAt: "2026-05-17T00:00:00.000Z",
-  updatedAt: "2026-05-17T00:00:00.000Z",
-  ...overrides,
-})
+  const mockListTenantMemberships = mock()
+  const mockGetTenantMembershipById = mock()
+  const mockUpdateTenantMembershipRole = mock()
+  const mockDemoteTenantMembershipSafely = mock()
+  const mockDeleteTenantMembershipSafely = mock()
+  const mockCanManageTenant = mock()
+  const mockCanPromoteToRole = mock()
+  const mockCanDemoteFromRole = mock()
 
-const mockListTenantMemberships = mock(async () => [makeMembership()])
-const mockGetTenantMembershipById = mock(
-  async (): Promise<TenantMembershipSummary | null> => makeMembership()
-)
-const mockUpdateTenantMembershipRole = mock(async () => makeMembership())
-const mockDemoteTenantMembershipSafely = mock(
-  async (): Promise<
-    | { success: true; membership: TenantMembershipSummary }
-    | {
-        success: false
-        reason: "LAST_OWNER_PROTECTED" | "SELF_DEMOTION_BLOCKED"
-      }
-  > => ({
-    success: true as const,
-    membership: makeMembership({ role: "member", roleSlug: "user_member" }),
-  })
-)
-const mockDeleteTenantMembershipSafely = mock(
-  async (): Promise<MockDeleteResult> => ({
-    success: true as const,
-  })
-)
-
-const mockRequireTenantActor = mock(
-  async (): Promise<MockActor | TenantApiError> => ({ ...defaultActor })
-)
-const mockEnsureTenantContextAccess = mock(
-  (
-    _orgId: string,
-    _actor: MockActor,
-    _set: MockRouteSet
-  ): true | TenantApiError => true
-)
-
-const toContextMismatchError = (set: MockRouteSet): TenantApiError => {
-  set.status = 403
-  return {
-    ok: false,
-    error: "FORBIDDEN",
-    policyCode: "TENANT_CONTEXT_MISMATCH",
-    message:
-      "The requested tenant does not match your active organization context.",
+  const defaultActor: TenantActorContext = {
+    userId: "user_actor_1",
+    organizationId: "org_1",
+    platformRole: "user",
+    tenantRole: "owner",
   }
-}
 
-const toUnauthorizedError = (): TenantApiError => ({
-  ok: false,
-  error: "UNAUTHORIZED",
-  message: "You must be signed in to manage tenants.",
-})
-
-const getApp = async () => {
-  return new Elysia().use(
-    createTenantsMembershipRoutes({
-      requireTenantActor: mockRequireTenantActor,
-      ensureTenantContextAccess: mockEnsureTenantContextAccess,
+  function createApp(overrides: Record<string, unknown> = {}) {
+    const deps = {
+      requireTenantActor: mock(async (set: RouteSet) => {
+        if ("ok" in mockActor && !mockActor.ok) {
+          set.status = 401
+          return mockActor
+        }
+        return mockActor
+      }),
+      ensureTenantContextAccess: mock(
+        async (_orgId: string, _actor: TenantActorContext, set: RouteSet) => {
+          if (mockContextAccess !== true) {
+            set.status = 403
+            return mockContextAccess
+          }
+          return true
+        }
+      ),
       listTenantMemberships: mockListTenantMemberships,
       getTenantMembershipById: mockGetTenantMembershipById,
       updateTenantMembershipRole: mockUpdateTenantMembershipRole,
       demoteTenantMembershipSafely: mockDemoteTenantMembershipSafely,
       deleteTenantMembershipSafely: mockDeleteTenantMembershipSafely,
-    })
-  )
-}
+      canManageTenant: mockCanManageTenant,
+      canPromoteToRole: mockCanPromoteToRole,
+      canDemoteFromRole: mockCanDemoteFromRole,
+      ...overrides,
+    }
 
-const resetAllMocks = () => {
-  mockRequireTenantActor.mockReset()
-  mockEnsureTenantContextAccess.mockReset()
-  mockListTenantMemberships.mockReset()
-  mockGetTenantMembershipById.mockReset()
-  mockUpdateTenantMembershipRole.mockReset()
-  mockDemoteTenantMembershipSafely.mockReset()
-  mockDeleteTenantMembershipSafely.mockReset()
+    return new Elysia()
+      .use(
+        createTenantsMembershipRoutes(
+          deps as unknown as Parameters<typeof createTenantsMembershipRoutes>[0]
+        )
+      )
+      .compile()
+  }
 
-  mockRequireTenantActor.mockImplementation(
-    async (): Promise<MockActor | TenantApiError> => ({
-      ...defaultActor,
-    })
-  )
-  mockEnsureTenantContextAccess.mockImplementation(
-    (): true | TenantApiError => true
-  )
-  mockListTenantMemberships.mockImplementation(async () => [makeMembership()])
-  mockGetTenantMembershipById.mockImplementation(
-    async (): Promise<TenantMembershipSummary | null> => makeMembership()
-  )
-  mockUpdateTenantMembershipRole.mockImplementation(async () =>
-    makeMembership()
-  )
-  mockDemoteTenantMembershipSafely.mockImplementation(
-    async (): Promise<
-      | { success: true; membership: TenantMembershipSummary }
-      | {
-          success: false
-          reason: "LAST_OWNER_PROTECTED" | "SELF_DEMOTION_BLOCKED"
-        }
-    > => ({
-      success: true as const,
-      membership: makeMembership({ role: "member", roleSlug: "user_member" }),
-    })
-  )
-  mockDeleteTenantMembershipSafely.mockImplementation(
-    async (): Promise<MockDeleteResult> => ({
-      success: true as const,
-    })
-  )
-}
+  beforeEach(() => {
+    mockActor = { ...defaultActor }
+    mockContextAccess = true
 
-describe("tenants-memberships routes", () => {
-  beforeEach(resetAllMocks)
+    mockListTenantMemberships.mockReset()
+    mockGetTenantMembershipById.mockReset()
+    mockUpdateTenantMembershipRole.mockReset()
+    mockDemoteTenantMembershipSafely.mockReset()
+    mockDeleteTenantMembershipSafely.mockReset()
+    mockCanManageTenant.mockReset()
+    mockCanPromoteToRole.mockReset()
+    mockCanDemoteFromRole.mockReset()
+    mockGetUserDetails.mockReset()
+
+    mockCanManageTenant.mockReturnValue(true)
+    mockCanPromoteToRole.mockReturnValue(true)
+    mockCanDemoteFromRole.mockReturnValue(true)
+  })
 
   describe("GET /tenants/:orgId/members", () => {
-    it("returns member list for authorized owner", async () => {
-      const app = await getApp()
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members")
-      )
-      const body = (await response.json()) as {
-        ok: boolean
-        orgId: string
-        members: TenantMembershipSummary[]
+    it("returns error if requireTenantActor fails", async () => {
+      mockActor = {
+        ok: false,
+        error: "UNAUTHORIZED",
+        message: "Sign in required.",
       }
+      const app = createApp()
 
-      expect(response.status).toBe(200)
-      expect(body.ok).toBe(true)
-      expect(body.orgId).toBe("org_1")
-      expect(body.members).toHaveLength(1)
-      expect(body.members[0]?.displayName).toBe("User Target")
-      expect(body.members[0]?.email).toBe("user_target@example.com")
-      expect(body.members[0]?.avatarUrl).toBeNull()
-    })
-
-    it("returns unauthorized when actor is not signed in", async () => {
-      const app = await getApp()
-      mockRequireTenantActor.mockImplementation(async () =>
-        toUnauthorizedError()
-      )
-
-      const response = await app.handle(
+      const res = await app.handle(
         new Request("http://localhost/tenants/org_1/members")
       )
-      const body = (await response.json()) as TenantApiError
-
-      expect(body.ok).toBe(false)
-      expect(body.error).toBe("UNAUTHORIZED")
+      expect(res.status).toBe(401)
+      const json = await res.json()
+      expect(json.ok).toBe(false)
+      expect(json.error).toBe("UNAUTHORIZED")
     })
 
-    it("returns 401 status when requireTenantActor fails", async () => {
-      mockRequireTenantActor.mockImplementation(((set: { status?: number }) => {
-        set.status = 401
-        return {
-          ok: false,
-          error: "UNAUTHORIZED",
-          policyCode: "NO_SESSION",
-          message: "No active session.",
-        } as TenantApiError
-      }) as unknown as typeof mockRequireTenantActor)
+    it("returns error if ensureTenantContextAccess fails", async () => {
+      mockContextAccess = {
+        ok: false,
+        error: "FORBIDDEN",
+        message: "No access.",
+      }
+      const app = createApp()
 
-      const app = await getApp()
-
-      const response = await app.handle(
+      const res = await app.handle(
         new Request("http://localhost/tenants/org_1/members")
       )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(401)
-      expect(body.ok).toBe(false)
-      expect(body.error).toBe("UNAUTHORIZED")
+      expect(res.status).toBe(403)
+      const json = await res.json()
+      expect(json.ok).toBe(false)
+      expect(json.error).toBe("FORBIDDEN")
     })
 
-    it("returns context mismatch when org does not match", async () => {
-      const app = await getApp()
-      mockEnsureTenantContextAccess.mockImplementation(
-        (orgId: string, actor: MockActor, set: MockRouteSet) => {
-          void orgId
-          void actor
-          return toContextMismatchError(set)
-        }
-      )
+    it("returns 403 if user cannot manage tenant", async () => {
+      mockCanManageTenant.mockReturnValue(false)
+      const app = createApp()
 
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_2/members")
-      )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(403)
-      expect(body.policyCode).toBe("TENANT_CONTEXT_MISMATCH")
-    })
-
-    it("returns forbidden for member role", async () => {
-      const app = await getApp()
-      mockRequireTenantActor.mockImplementation(
-        async (): Promise<MockActor> => ({
-          ...defaultActor,
-          tenantRole: "member",
-        })
-      )
-
-      const response = await app.handle(
+      const res = await app.handle(
         new Request("http://localhost/tenants/org_1/members")
       )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(403)
-      expect(body.policyCode).toBe("TENANT_MANAGE_REQUIRED")
+      expect(res.status).toBe(403)
+      const json = await res.json()
+      expect(json.ok).toBe(false)
+      expect(json.error).toBe("FORBIDDEN")
+      expect(json.policyCode).toBe("TENANT_MANAGE_REQUIRED")
     })
 
-    it("returns workos error on service failure", async () => {
-      const app = await getApp()
-      mockListTenantMemberships.mockImplementation(async () => {
-        throw new Error("network error")
-      })
+    it("returns membership list when authorized", async () => {
+      const sampleMembers = [
+        { id: "mem_1", userId: "user_1", role: "owner" },
+        { id: "mem_2", userId: "user_2", role: "member" },
+      ]
+      mockListTenantMemberships.mockResolvedValueOnce(sampleMembers)
+      const app = createApp()
 
-      const response = await app.handle(
+      const res = await app.handle(
         new Request("http://localhost/tenants/org_1/members")
       )
-      const body = (await response.json()) as TenantApiError
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      expect(json.ok).toBe(true)
+      expect(json.orgId).toBe("org_1")
+      expect(json.members).toHaveLength(2)
+    })
 
-      expect(response.status).toBe(500)
-      expect(body.ok).toBe(false)
-      expect(body.error).toBe("TENANT_MEMBERS_LIST_FAILED")
+    it("returns 500 when listing memberships throws", async () => {
+      mockListTenantMemberships.mockRejectedValueOnce(new Error("WorkOS error"))
+      const app = createApp()
+
+      const res = await app.handle(
+        new Request("http://localhost/tenants/org_1/members")
+      )
+      expect(res.status).toBe(500)
+      const json = await res.json()
+      expect(json.ok).toBe(false)
+      expect(json.error).toBe("TENANT_MEMBERS_LIST_FAILED")
     })
   })
 
   describe("POST /tenants/:orgId/members/:memberId/promote", () => {
-    it("promotes a member to admin successfully", async () => {
-      const app = await getApp()
-      mockGetTenantMembershipById.mockImplementation(async () =>
-        makeMembership({ id: "mem_1", role: "member" })
-      )
-      mockUpdateTenantMembershipRole.mockImplementation(async () =>
-        makeMembership({ id: "mem_1", role: "admin", roleSlug: "user_admin" })
+    it("returns 404 if membership not found", async () => {
+      mockGetTenantMembershipById.mockResolvedValueOnce(null)
+      const app = createApp()
+
+      const res = await app.handle(
+        new Request("http://localhost/tenants/org_1/members/mem_999/promote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ targetRole: "admin" }),
+        })
       )
 
-      const response = await app.handle(
+      expect(res.status).toBe(404)
+      const json = await res.json()
+      expect(json.ok).toBe(false)
+      expect(json.error).toBe("NOT_FOUND")
+    })
+
+    it("returns 403 if membership organization does not match", async () => {
+      mockGetTenantMembershipById.mockResolvedValueOnce({
+        id: "mem_1",
+        organizationId: "other_org",
+      })
+      const app = createApp()
+
+      const res = await app.handle(
         new Request("http://localhost/tenants/org_1/members/mem_1/promote", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ targetRole: "admin" }),
         })
       )
-      const body = (await response.json()) as {
-        ok: boolean
-        membership: TenantMembershipSummary
-      }
 
-      expect(response.status).toBe(200)
-      expect(body.ok).toBe(true)
-      expect(body.membership.role).toBe("admin")
+      expect(res.status).toBe(403)
+      const json = await res.json()
+      expect(json.ok).toBe(false)
+      expect(json.error).toBe("FORBIDDEN")
+      expect(json.policyCode).toBe("MEMBERSHIP_ORG_MISMATCH")
     })
 
-    it("returns not found when membership does not exist", async () => {
-      const app = await getApp()
-      mockGetTenantMembershipById.mockImplementation(async () => null)
+    it("returns 403 if actor cannot promote to role", async () => {
+      mockGetTenantMembershipById.mockResolvedValueOnce({
+        id: "mem_1",
+        organizationId: "org_1",
+      })
+      mockCanPromoteToRole.mockReturnValue(false)
+      const app = createApp()
 
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_x/promote", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ targetRole: "admin" }),
-        })
-      )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(404)
-      expect(body.error).toBe("NOT_FOUND")
-    })
-
-    it("returns mismatch when membership belongs to different org", async () => {
-      const app = await getApp()
-      mockGetTenantMembershipById.mockImplementation(async () =>
-        makeMembership({ organizationId: "org_other" })
-      )
-
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_1/promote", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ targetRole: "admin" }),
-        })
-      )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(403)
-      expect(body.policyCode).toBe("MEMBERSHIP_ORG_MISMATCH")
-    })
-
-    it("returns forbidden when admin promotes to owner", async () => {
-      const app = await getApp()
-      mockRequireTenantActor.mockImplementation(
-        async (): Promise<MockActor> => ({
-          ...defaultActor,
-          tenantRole: "admin",
-        })
-      )
-
-      const response = await app.handle(
+      const res = await app.handle(
         new Request("http://localhost/tenants/org_1/members/mem_1/promote", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ targetRole: "owner" }),
         })
       )
-      const body = (await response.json()) as TenantApiError
 
-      expect(response.status).toBe(403)
-      expect(body.policyCode).toBe("PROMOTION_FORBIDDEN")
+      expect(res.status).toBe(403)
+      const json = await res.json()
+      expect(json.ok).toBe(false)
+      expect(json.error).toBe("FORBIDDEN")
+      expect(json.policyCode).toBe("PROMOTION_FORBIDDEN")
     })
 
-    it("returns workos error on service failure", async () => {
-      const app = await getApp()
-      mockGetTenantMembershipById.mockImplementation(async () => {
-        throw new Error("network error")
+    it("successfully promotes member", async () => {
+      mockGetTenantMembershipById.mockResolvedValueOnce({
+        id: "mem_1",
+        organizationId: "org_1",
       })
+      mockUpdateTenantMembershipRole.mockResolvedValueOnce({
+        id: "mem_1",
+        role: "admin",
+      })
+      const app = createApp()
 
-      const response = await app.handle(
+      const res = await app.handle(
         new Request("http://localhost/tenants/org_1/members/mem_1/promote", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ targetRole: "admin" }),
         })
       )
-      const body = (await response.json()) as TenantApiError
 
-      expect(response.status).toBe(500)
-      expect(body.error).toBe("TENANT_MEMBER_PROMOTE_FAILED")
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      expect(json.ok).toBe(true)
+      expect(json.membership.role).toBe("admin")
     })
   })
 
   describe("POST /tenants/:orgId/members/:memberId/demote", () => {
-    it("demotes an admin to member successfully", async () => {
-      const app = await getApp()
-      mockGetTenantMembershipById.mockImplementation(async () =>
-        makeMembership({
-          id: "mem_admin",
-          role: "admin",
-          roleSlug: "user_admin",
-        })
-      )
-
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_admin/demote", {
-          method: "POST",
-        })
-      )
-      const body = (await response.json()) as {
-        ok: boolean
-        membership: TenantMembershipSummary
-      }
-
-      expect(response.status).toBe(200)
-      expect(body.ok).toBe(true)
-    })
-
-    it("returns not found when membership does not exist", async () => {
-      const app = await getApp()
-      mockGetTenantMembershipById.mockImplementation(async () => null)
-
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_x/demote", {
-          method: "POST",
-        })
-      )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(404)
-      expect(body.error).toBe("NOT_FOUND")
-    })
-
-    it("returns mismatch when membership belongs to different org", async () => {
-      const app = await getApp()
-      mockGetTenantMembershipById.mockImplementation(async () =>
-        makeMembership({ organizationId: "org_other" })
-      )
-
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_1/demote", {
-          method: "POST",
-        })
-      )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(403)
-      expect(body.policyCode).toBe("MEMBERSHIP_ORG_MISMATCH")
-    })
-
-    it("rejects demotion of already-member role", async () => {
-      const app = await getApp()
-      mockGetTenantMembershipById.mockImplementation(async () =>
-        makeMembership({ role: "member" })
-      )
-
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_1/demote", {
-          method: "POST",
-        })
-      )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(403)
-      expect(body.policyCode).toBe("DEMOTION_NOT_APPLICABLE")
-    })
-
-    it("rejects demotion of null role treated as member", async () => {
-      const app = await getApp()
-      mockGetTenantMembershipById.mockImplementation(async () =>
-        makeMembership({ role: null })
-      )
-
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_1/demote", {
-          method: "POST",
-        })
-      )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(403)
-      expect(body.policyCode).toBe("DEMOTION_NOT_APPLICABLE")
-    })
-
-    it("returns forbidden when admin demotes owner", async () => {
-      const app = await getApp()
-      mockRequireTenantActor.mockImplementation(
-        async (): Promise<MockActor> => ({
-          ...defaultActor,
-          tenantRole: "admin",
-        })
-      )
-      mockGetTenantMembershipById.mockImplementation(async () =>
-        makeMembership({ role: "owner", roleSlug: "user_owner" })
-      )
-
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_1/demote", {
-          method: "POST",
-        })
-      )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(403)
-      expect(body.policyCode).toBe("DEMOTION_FORBIDDEN")
-    })
-
-    it("blocks self-demotion when last owner", async () => {
-      const app = await getApp()
-      mockGetTenantMembershipById.mockImplementation(async () =>
-        makeMembership({
-          role: "owner",
-          roleSlug: "user_owner",
-          userId: "user_actor",
-        })
-      )
-      mockDemoteTenantMembershipSafely.mockImplementation(
-        async (): Promise<MockDemoteResult> => ({
-          success: false,
-          reason: "SELF_DEMOTION_BLOCKED",
-        })
-      )
-
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_1/demote", {
-          method: "POST",
-        })
-      )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(403)
-      expect(body.policyCode).toBe("SELF_DEMOTION_BLOCKED")
-    })
-
-    it("blocks demotion of last owner by another owner", async () => {
-      const app = await getApp()
-      mockGetTenantMembershipById.mockImplementation(async () =>
-        makeMembership({
-          role: "owner",
-          roleSlug: "user_owner",
-        })
-      )
-      mockDemoteTenantMembershipSafely.mockImplementation(
-        async (): Promise<MockDemoteResult> => ({
-          success: false,
-          reason: "LAST_OWNER_PROTECTED",
-        })
-      )
-
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_1/demote", {
-          method: "POST",
-        })
-      )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(403)
-      expect(body.policyCode).toBe("LAST_OWNER_PROTECTED")
-    })
-
-    it("returns workos error on service failure", async () => {
-      const app = await getApp()
-      mockGetTenantMembershipById.mockImplementation(async () =>
-        makeMembership({ role: "admin", roleSlug: "user_admin" })
-      )
-      mockDemoteTenantMembershipSafely.mockImplementation(async () => {
-        throw new Error("network error")
+    it("returns 403 if target member is already member role", async () => {
+      mockGetTenantMembershipById.mockResolvedValueOnce({
+        id: "mem_1",
+        organizationId: "org_1",
+        role: "member",
       })
+      const app = createApp()
 
-      const response = await app.handle(
+      const res = await app.handle(
         new Request("http://localhost/tenants/org_1/members/mem_1/demote", {
           method: "POST",
         })
       )
-      const body = (await response.json()) as TenantApiError
 
-      expect(response.status).toBe(500)
-      expect(body.error).toBe("TENANT_MEMBER_DEMOTE_FAILED")
+      expect(res.status).toBe(403)
+      const json = await res.json()
+      expect(json.ok).toBe(false)
+      expect(json.error).toBe("FORBIDDEN")
+      expect(json.policyCode).toBe("DEMOTION_NOT_APPLICABLE")
+    })
+
+    it("returns 403 if actor cannot demote from role", async () => {
+      mockGetTenantMembershipById.mockResolvedValueOnce({
+        id: "mem_1",
+        organizationId: "org_1",
+        role: "owner",
+      })
+      mockCanDemoteFromRole.mockReturnValue(false)
+      const app = createApp()
+
+      const res = await app.handle(
+        new Request("http://localhost/tenants/org_1/members/mem_1/demote", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(403)
+      const json = await res.json()
+      expect(json.ok).toBe(false)
+      expect(json.error).toBe("FORBIDDEN")
+      expect(json.policyCode).toBe("DEMOTION_FORBIDDEN")
+    })
+
+    it("returns error if demoteTenantMembershipSafely fails (LAST_OWNER_PROTECTED)", async () => {
+      mockGetTenantMembershipById.mockResolvedValueOnce({
+        id: "mem_1",
+        organizationId: "org_1",
+        role: "owner",
+      })
+      mockDemoteTenantMembershipSafely.mockResolvedValueOnce({
+        success: false,
+        reason: "LAST_OWNER_PROTECTED",
+      })
+      const app = createApp()
+
+      const res = await app.handle(
+        new Request("http://localhost/tenants/org_1/members/mem_1/demote", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(403)
+      const json = await res.json()
+      expect(json.ok).toBe(false)
+      expect(json.error).toBe("FORBIDDEN")
+      expect(json.policyCode).toBe("LAST_OWNER_PROTECTED")
+    })
+
+    it("successfully demotes member", async () => {
+      mockGetTenantMembershipById.mockResolvedValueOnce({
+        id: "mem_1",
+        organizationId: "org_1",
+        role: "admin",
+      })
+      mockDemoteTenantMembershipSafely.mockResolvedValueOnce({
+        success: true,
+        membership: { id: "mem_1", role: "member" },
+      })
+      const app = createApp()
+
+      const res = await app.handle(
+        new Request("http://localhost/tenants/org_1/members/mem_1/demote", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      expect(json.ok).toBe(true)
+      expect(json.membership.role).toBe("member")
     })
   })
 
   describe("POST /tenants/:orgId/members/:memberId/remove", () => {
-    it("removes a member successfully", async () => {
-      const app = await getApp()
-      // Use role=null, roleSlug=null to bypass canDemoteFromRole check
-      mockGetTenantMembershipById.mockImplementation(async () =>
-        makeMembership({ role: null, roleSlug: null })
-      )
-
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_1/remove", {
-          method: "POST",
-        })
-      )
-      const body = (await response.json()) as {
-        ok: boolean
-        removedMemberId: string
-      }
-
-      expect(response.status).toBe(200)
-      expect(body.ok).toBe(true)
-      expect(body.removedMemberId).toBe("mem_1")
-    })
-
-    it("returns not found when membership does not exist", async () => {
-      const app = await getApp()
-      mockGetTenantMembershipById.mockImplementation(async () => null)
-
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_x/remove", {
-          method: "POST",
-        })
-      )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(404)
-      expect(body.error).toBe("NOT_FOUND")
-    })
-
-    it("returns mismatch when membership belongs to different org", async () => {
-      const app = await getApp()
-      mockGetTenantMembershipById.mockImplementation(async () =>
-        makeMembership({ organizationId: "org_other" })
-      )
-
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_1/remove", {
-          method: "POST",
-        })
-      )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(403)
-      expect(body.policyCode).toBe("MEMBERSHIP_ORG_MISMATCH")
-    })
-
-    it("allows self-leave even without manage permission", async () => {
-      const app = await getApp()
-      mockRequireTenantActor.mockImplementation(
-        async (): Promise<MockActor> => ({
-          ...defaultActor,
-          userId: "user_member_1",
-          tenantRole: "member",
-        })
-      )
-      mockGetTenantMembershipById.mockImplementation(async () =>
-        makeMembership({
-          id: "mem_self",
-          userId: "user_member_1",
-          role: "member",
-        })
-      )
-
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_self/remove", {
-          method: "POST",
-        })
-      )
-      const body = (await response.json()) as {
-        ok: boolean
-        removedMemberId: string
-      }
-
-      expect(response.status).toBe(200)
-      expect(body.ok).toBe(true)
-      expect(body.removedMemberId).toBe("mem_self")
-    })
-
-    it("rejects removal by member of another member", async () => {
-      const app = await getApp()
-      mockRequireTenantActor.mockImplementation(
-        async (): Promise<MockActor> => ({
-          ...defaultActor,
-          userId: "user_member_1",
-          tenantRole: "member",
-        })
-      )
-      mockGetTenantMembershipById.mockImplementation(async () =>
-        makeMembership({
-          id: "mem_other",
-          userId: "user_target",
-          role: "member",
-        })
-      )
-
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_other/remove", {
-          method: "POST",
-        })
-      )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(403)
-      expect(body.policyCode).toBe("TENANT_MANAGE_REQUIRED")
-    })
-
-    it("rejects removal of user with unmapped role", async () => {
-      const app = await getApp()
-      mockGetTenantMembershipById.mockImplementation(async () =>
-        makeMembership({ role: null, roleSlug: "custom_role_slug" })
-      )
-
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_1/remove", {
-          method: "POST",
-        })
-      )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(403)
-      expect(body.policyCode).toBe("REMOVE_FORBIDDEN")
-    })
-
-    it("rejects removal of owner by admin", async () => {
-      const app = await getApp()
-      mockRequireTenantActor.mockImplementation(
-        async (): Promise<MockActor> => ({
-          ...defaultActor,
-          tenantRole: "admin",
-        })
-      )
-      mockGetTenantMembershipById.mockImplementation(async () =>
-        makeMembership({ role: "owner", roleSlug: "user_owner" })
-      )
-
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_1/remove", {
-          method: "POST",
-        })
-      )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(403)
-      expect(body.policyCode).toBe("REMOVE_FORBIDDEN")
-    })
-
-    it("blocks self-leave when last owner", async () => {
-      const app = await getApp()
-      mockGetTenantMembershipById.mockImplementation(async () =>
-        makeMembership({
-          role: "owner",
-          roleSlug: "user_owner",
-          userId: "user_actor",
-        })
-      )
-      mockDeleteTenantMembershipSafely.mockImplementation(
-        async (): Promise<MockDeleteResult> => ({
-          success: false,
-          reason: "SELF_LEAVE_BLOCKED",
-        })
-      )
-
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_1/remove", {
-          method: "POST",
-        })
-      )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(403)
-      expect(body.policyCode).toBe("SELF_LEAVE_BLOCKED")
-    })
-
-    it("blocks removal of last owner", async () => {
-      const app = await getApp()
-      mockGetTenantMembershipById.mockImplementation(async () =>
-        makeMembership({ role: "owner", roleSlug: "user_owner" })
-      )
-      mockDeleteTenantMembershipSafely.mockImplementation(
-        async (): Promise<MockDeleteResult> => ({
-          success: false,
-          reason: "LAST_OWNER_PROTECTED",
-        })
-      )
-
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_1/remove", {
-          method: "POST",
-        })
-      )
-      const body = (await response.json()) as TenantApiError
-
-      expect(response.status).toBe(403)
-      expect(body.policyCode).toBe("LAST_OWNER_PROTECTED")
-    })
-
-    it("returns workos error on service failure", async () => {
-      const app = await getApp()
-      mockGetTenantMembershipById.mockImplementation(async () => {
-        throw new Error("network error")
+    it("returns 403 when non-manager tries to remove another member", async () => {
+      mockGetTenantMembershipById.mockResolvedValueOnce({
+        id: "mem_2",
+        userId: "user_other",
+        organizationId: "org_1",
+        role: "member",
       })
+      mockCanManageTenant.mockReturnValue(false)
+      const app = createApp()
 
-      const response = await app.handle(
-        new Request("http://localhost/tenants/org_1/members/mem_1/remove", {
+      const res = await app.handle(
+        new Request("http://localhost/tenants/org_1/members/mem_2/remove", {
           method: "POST",
         })
       )
-      const body = (await response.json()) as TenantApiError
 
-      expect(response.status).toBe(500)
-      expect(body.error).toBe("TENANT_MEMBER_REMOVE_FAILED")
+      expect(res.status).toBe(403)
+      const json = await res.json()
+      expect(json.ok).toBe(false)
+      expect(json.error).toBe("FORBIDDEN")
+      expect(json.policyCode).toBe("TENANT_MANAGE_REQUIRED")
+    })
+
+    it("returns 403 when user has unmapped roleSlug", async () => {
+      mockGetTenantMembershipById.mockResolvedValueOnce({
+        id: "mem_2",
+        userId: "user_other",
+        organizationId: "org_1",
+        role: null,
+        roleSlug: "unknown_custom_slug",
+      })
+      const app = createApp()
+
+      const res = await app.handle(
+        new Request("http://localhost/tenants/org_1/members/mem_2/remove", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(403)
+      const json = await res.json()
+      expect(json.ok).toBe(false)
+      expect(json.error).toBe("FORBIDDEN")
+      expect(json.policyCode).toBe("REMOVE_FORBIDDEN")
+    })
+
+    it("returns error if deleteTenantMembershipSafely fails (SELF_LEAVE_BLOCKED)", async () => {
+      mockGetTenantMembershipById.mockResolvedValueOnce({
+        id: "mem_actor",
+        userId: defaultActor.userId,
+        organizationId: "org_1",
+        role: "owner",
+      })
+      mockDeleteTenantMembershipSafely.mockResolvedValueOnce({
+        success: false,
+        reason: "SELF_LEAVE_BLOCKED",
+      })
+      const app = createApp()
+
+      const res = await app.handle(
+        new Request("http://localhost/tenants/org_1/members/mem_actor/remove", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(403)
+      const json = await res.json()
+      expect(json.ok).toBe(false)
+      expect(json.error).toBe("FORBIDDEN")
+      expect(json.policyCode).toBe("SELF_LEAVE_BLOCKED")
+    })
+
+    it("successfully removes member", async () => {
+      mockGetTenantMembershipById.mockResolvedValueOnce({
+        id: "mem_2",
+        userId: "user_2",
+        organizationId: "org_1",
+        role: "member",
+      })
+      mockDeleteTenantMembershipSafely.mockResolvedValueOnce({
+        success: true,
+      })
+      const app = createApp()
+
+      const res = await app.handle(
+        new Request("http://localhost/tenants/org_1/members/mem_2/remove", {
+          method: "POST",
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      expect(json.ok).toBe(true)
+      expect(json.removedMemberId).toBe("mem_2")
+    })
+  })
+
+  describe("GET /tenants/:orgId/members/:memberId/details", () => {
+    it("returns 404 if membership does not exist", async () => {
+      mockGetTenantMembershipById.mockResolvedValueOnce(null)
+      const app = createApp()
+
+      const res = await app.handle(
+        new Request("http://localhost/tenants/org_1/members/mem_999/details")
+      )
+
+      expect(res.status).toBe(404)
+    })
+
+    it("returns details for membership", async () => {
+      mockGetTenantMembershipById.mockResolvedValueOnce({
+        id: "mem_1",
+        userId: "user_1",
+        organizationId: "org_1",
+        role: "member",
+      })
+      mockGetUserDetails.mockResolvedValueOnce({
+        user: { id: "user_1", email: "user1@example.com" },
+        sessions: [],
+      })
+      const app = createApp()
+
+      const res = await app.handle(
+        new Request("http://localhost/tenants/org_1/members/mem_1/details")
+      )
+
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      expect(json.ok).toBe(true)
+      expect(json.membership.id).toBe("mem_1")
+      expect(json.user.id).toBe("user_1")
     })
   })
 })

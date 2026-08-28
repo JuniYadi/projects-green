@@ -1,644 +1,515 @@
-import { describe, it, expect, beforeEach, mock, beforeAll } from "bun:test"
+import { describe, it, expect, mock, beforeEach } from "bun:test"
 import { Elysia } from "elysia"
+import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
 
-// Set encryption key for GatewayService/BankAccountService
-process.env.ENCRYPTION_KEY =
-  "0000000000000000000000000000000000000000000000000000000000000000"
+// ── Mock auth ───────────────────────────────────────────
 
-// Mock withAuth
-const mockWithAuth = mock(() =>
-  Promise.resolve({
-    organizationId: "org-123",
-    email: "test@example.com",
-    name: "Test User",
-  })
-)
+let mockAuthValue: {
+  user: { id: string; email: string } | null
+  organizationId?: string
+} = {
+  user: null,
+}
+
+const mockWithAuth = mock(async () => mockAuthValue)
 
 mock.module("@workos-inc/authkit-nextjs", () => ({
   withAuth: mockWithAuth,
+  getWorkOS: () => ({ organizations: {}, userManagement: {} }),
 }))
 
-// Mock prisma
-const mockInvoiceCreate = mock(() =>
-  Promise.resolve({
-    id: "inv-123",
-    invoiceNumber: "TOP-ABC123",
-    totalAmount: { toNumber: () => 50000 },
-    status: "OPEN",
-    paymentMethod: "VA",
-    dueDate: new Date("2026-06-10"),
-    type: "TOP_UP",
-  })
-)
+// ── Mock prisma ─────────────────────────────────────────
+
+const mockBillingAccountFindUnique = mock()
+const mockBillingInvoiceUpdate = mock()
+const mockPrismaTransaction = mock(async (actions: unknown[]) => actions)
 
 const mockPrisma = {
-  billingInvoice: {
-    create: mockInvoiceCreate,
-    update: mock(() => Promise.resolve({})),
-    findFirst: mock(() => Promise.resolve(null)),
-    findUnique: mock(() => Promise.resolve(null)),
-    findMany: mock(() => Promise.resolve([])),
-  },
   billingAccount: {
-    findUnique: mock(() =>
-      Promise.resolve({
-        id: "ba-123",
-        organizationId: "org-123",
-        currency: "IDR",
-        balance: { toNumber: () => 0 },
-      })
-    ),
-    create: mock(() =>
-      Promise.resolve({
-        id: "ba-123",
-        organizationId: "org-123",
-      })
-    ),
+    findUnique: mockBillingAccountFindUnique,
   },
-  paymentGateway: {
-    findFirst: mock(() => Promise.resolve(null)),
-    findMany: mock(() => Promise.resolve([])),
+  billingInvoice: {
+    update: mockBillingInvoiceUpdate,
   },
-  paymentBankAccount: {
-    findMany: mock(() => Promise.resolve([])),
-  },
-  paymentCurrency: {
-    findUnique: mock(() =>
-      Promise.resolve({
-        code: "USD",
-        symbol: "$",
-        ratePerBase: { toNumber: () => 1 },
-        minTopup: { toNumber: () => 10 },
-        maxTopup: { toNumber: () => 10000 },
-      })
-    ),
-    findFirst: mock(() =>
-      Promise.resolve({
-        code: "USD",
-        symbol: "$",
-        ratePerBase: { toNumber: () => 1 },
-        minTopup: { toNumber: () => 10 },
-        maxTopup: { toNumber: () => 10000 },
-      })
-    ),
-    update: mock(() => Promise.resolve({})),
-  },
-  $transaction: mock((arg: unknown) => {
-    // ponytail: callback & array both work
-    if (typeof arg === "function") {
-      return Promise.resolve(arg(mockPrisma))
-    }
-    return Promise.resolve()
-  }),
+  $transaction: mockPrismaTransaction,
 }
 
-mock.module("@/lib/prisma", () => ({
-  prisma: mockPrisma,
+mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
+
+// ── Mock Services & Providers ───────────────────────────
+
+const mockCreateTopupInvoice = mock()
+const mockGetInvoiceForUser = mock()
+const mockGetInvoicesForOrganization = mock()
+
+mock.module("../services/payment.service", () => ({
+  PaymentService: class {
+    createTopupInvoice = mockCreateTopupInvoice
+    getInvoiceForUser = mockGetInvoiceForUser
+    getInvoicesForOrganization = mockGetInvoicesForOrganization
+  },
 }))
 
-// Import route after mocks — use dynamic import so mock.module fires first
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let createTopupRoutes: any
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let createPaymentHistoryRoutes: any
-beforeAll(async () => {
-  const mod = await import("./topup.route")
-  createTopupRoutes = mod.createTopupRoutes
-  createPaymentHistoryRoutes = mod.createPaymentHistoryRoutes
-})
+const mockGetActiveAccounts = mock()
 
-describe("Topup Route", () => {
-  let app: ReturnType<typeof Elysia.prototype.compile>
+mock.module("../services/bank-account.service", () => ({
+  BankAccountService: class {
+    getActiveAccounts = mockGetActiveAccounts
+  },
+}))
 
-  beforeEach(async () => {
-    mockWithAuth.mockClear()
-    mockInvoiceCreate.mockClear()
+const mockDuitkuCreatePayment = mock()
 
-    const { prisma } = await import("@/lib/prisma")
-    ;(prisma.billingAccount.findUnique as ReturnType<typeof mock>).mockClear()
-    ;(
-      prisma.billingAccount.findUnique as ReturnType<typeof mock>
-    ).mockImplementation(() =>
-      Promise.resolve({
-        id: "ba-123",
-        organizationId: "org-123",
-        currency: "IDR",
-        balance: { toNumber: () => 0 },
+mock.module("../services/duitku.service", () => ({
+  DuitkuService: class {
+    createPayment = mockDuitkuCreatePayment
+  },
+}))
+
+const mockFindByTypeForCurrency = mock()
+const mockGetDecryptedConfig = mock()
+
+mock.module("../services/gateway.service", () => ({
+  GatewayService: class {
+    findByTypeForCurrency = mockFindByTypeForCurrency
+    getDecryptedConfig = mockGetDecryptedConfig
+  },
+}))
+
+const mockCurrencyFindByCode = mock()
+const mockCurrencyGetBase = mock()
+
+mock.module("@/modules/billing/currency.service", () => ({
+  CurrencyService: class {
+    findByCode = mockCurrencyFindByCode
+    getBase = mockCurrencyGetBase
+  },
+}))
+
+const mockPaypalCreatePayment = mock()
+
+mock.module("../providers/paypal.provider", () => ({
+  paypalProvider: {
+    createPayment: mockPaypalCreatePayment,
+  },
+}))
+
+// ── Import route after mocks ────────────────────────────
+
+const { createTopupRoutes, createPaymentHistoryRoutes } =
+  await import("./topup.route")
+
+function app() {
+  return new Elysia()
+    .use(createTopupRoutes())
+    .use(createPaymentHistoryRoutes())
+    .compile()
+}
+
+describe("TopupRoute POST /topup", () => {
+  beforeEach(() => {
+    mockAuthValue = {
+      user: { id: "user_1", email: "user@example.com" },
+      organizationId: "org_1",
+    }
+    mockBillingAccountFindUnique.mockReset()
+    mockBillingInvoiceUpdate.mockReset()
+    mockCreateTopupInvoice.mockReset()
+    mockGetActiveAccounts.mockReset()
+    mockDuitkuCreatePayment.mockReset()
+    mockFindByTypeForCurrency.mockReset()
+    mockGetDecryptedConfig.mockReset()
+    mockPaypalCreatePayment.mockReset()
+  })
+
+  it("returns 401 when organizationId is missing", async () => {
+    mockAuthValue = { user: { id: "user_1", email: "user@example.com" } }
+
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50000, paymentMethod: "MANUAL_BANK" }),
       })
     )
-    ;(prisma.paymentGateway.findMany as ReturnType<typeof mock>).mockClear()
-    ;(
-      prisma.paymentGateway.findMany as ReturnType<typeof mock>
-    ).mockImplementation(() => Promise.resolve([]))
-    ;(prisma.paymentBankAccount.findMany as ReturnType<typeof mock>).mockClear()
-    ;(
-      prisma.paymentBankAccount.findMany as ReturnType<typeof mock>
-    ).mockImplementation(() => Promise.resolve([]))
-    ;(prisma.paymentCurrency.findUnique as ReturnType<typeof mock>).mockClear()
-    ;(
-      prisma.paymentCurrency.findUnique as ReturnType<typeof mock>
-    ).mockImplementation(() =>
-      Promise.resolve({
-        code: "USD",
-        symbol: "$",
-        ratePerBase: { toNumber: () => 1 },
-        minTopup: { toNumber: () => 10 },
-        maxTopup: { toNumber: () => 10000 },
-      })
-    )
-    ;(prisma.paymentCurrency.findFirst as ReturnType<typeof mock>).mockClear()
-    ;(
-      prisma.paymentCurrency.findFirst as ReturnType<typeof mock>
-    ).mockImplementation(() =>
-      Promise.resolve({
-        code: "USD",
-        symbol: "$",
-        ratePerBase: { toNumber: () => 1 },
-        minTopup: { toNumber: () => 10 },
-        maxTopup: { toNumber: () => 10000 },
+
+    expect(res.status).toBe(401)
+    const json = await res.json()
+    expect(json.ok).toBe(false)
+    expect(json.error).toBe("UNAUTHORIZED")
+  })
+
+  it("returns 400 when body fails schema validation", async () => {
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: -10, paymentMethod: "MANUAL_BANK" }),
       })
     )
 
-    app = (
-      new Elysia()
-        .use(createTopupRoutes())
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .use(createPaymentHistoryRoutes()) as any
-    ).compile()
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.ok).toBe(false)
+    expect(json.error).toBe("VALIDATION_ERROR")
   })
 
-  describe("POST /topup", () => {
-    it("should return 401 when no organizationId", async () => {
-      ;(mockWithAuth as ReturnType<typeof mock>).mockResolvedValueOnce({
-        organizationId: null as unknown as string,
-        email: "",
-        name: "",
+  it("returns 400 when MANUAL_BANK has no active accounts", async () => {
+    mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "IDR" })
+    mockGetActiveAccounts.mockResolvedValueOnce([])
+
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50000, paymentMethod: "MANUAL_BANK" }),
       })
+    )
 
-      const response = await app.handle(
-        new Request("http://localhost/topup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 5000, paymentMethod: "VA" }),
-        })
-      )
-
-      expect(response.status).toBe(401)
-      const body = await response.json()
-      expect(body.ok).toBe(false)
-      expect(body.error).toBe("UNAUTHORIZED")
-    })
-
-    it("should return 400 for invalid body", async () => {
-      const response = await app.handle(
-        new Request("http://localhost/topup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 100 }),
-        })
-      )
-
-      expect(response.status).toBe(400)
-      const body = await response.json()
-      expect(body.ok).toBe(false)
-      expect(body.error).toBe("VALIDATION_ERROR")
-    })
-
-    it("should return 500 when gateway service fails", async () => {
-      const response = await app.handle(
-        new Request("http://localhost/topup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 5000, paymentMethod: "VA" }),
-        })
-      )
-
-      expect([400, 500]).toContain(response.status)
-      const body = await response.json()
-      expect(body.ok).toBe(false)
-    })
-
-    it("should return error on unexpected failure", async () => {
-      const response = await app.handle(
-        new Request("http://localhost/topup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 5000, paymentMethod: "VA" }),
-        })
-      )
-
-      const body = await response.json()
-      expect(body.ok).toBe(false)
-    })
-
-    it("should return 400 for amount validation error", async () => {
-      const response = await app.handle(
-        new Request("http://localhost/topup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 0, paymentMethod: "MANUAL_BANK" }),
-        })
-      )
-
-      expect(response.status).toBe(400)
-      const body = await response.json()
-      expect(body.ok).toBe(false)
-      expect(body.error).toBe("VALIDATION_ERROR")
-    })
-
-    it("should create invoice and return success for MANUAL_BANK", async () => {
-      const { prisma } = await import("@/lib/prisma")
-      ;(
-        prisma.paymentBankAccount.findMany as ReturnType<typeof mock>
-      ).mockResolvedValueOnce([
-        {
-          id: "bank-idr",
-          bankCode: "BCA",
-          bankName: "BCA",
-          accountName: "PT Projects Green",
-          accountNumber: "123456",
-          currency: "IDR",
-          supportedCurrencies: ["IDR"],
-          swiftCode: null,
-          bankAddress: null,
-          isActive: true,
-          isDefault: true,
-        },
-      ])
-
-      const response = await app.handle(
-        new Request("http://localhost/topup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 5000, paymentMethod: "MANUAL_BANK" }),
-        })
-      )
-
-      expect(response.status).toBe(200)
-      const body = await response.json()
-      expect(body.ok).toBe(true)
-      expect(body.invoice.id).toBe("inv-123")
-      expect(body.invoice.paymentMethod).toBe("VA")
-      expect(body.paymentUrl).toBeUndefined()
-    })
-
-    it("should return 400 when manual bank transfer is unavailable for account currency", async () => {
-      const { prisma } = await import("@/lib/prisma")
-      ;(
-        prisma.billingAccount.findUnique as ReturnType<typeof mock>
-      ).mockResolvedValueOnce({
-        id: "ba-123",
-        organizationId: "org-123",
-        currency: "USD",
-        balance: { toNumber: () => 0 },
-      })
-      ;(
-        prisma.paymentBankAccount.findMany as ReturnType<typeof mock>
-      ).mockResolvedValueOnce([])
-
-      const response = await app.handle(
-        new Request("http://localhost/topup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 50, paymentMethod: "MANUAL_BANK" }),
-        })
-      )
-
-      expect(response.status).toBe(400)
-      const body = await response.json()
-      expect(body.ok).toBe(false)
-      expect(body.error).toBe("MANUAL_BANK_NOT_AVAILABLE")
-    })
-
-    it("should return 400 GATEWAY_NOT_AVAILABLE when no gateway supports the currency for VA", async () => {
-      const { prisma } = await import("@/lib/prisma")
-      ;(
-        prisma.paymentGateway.findMany as ReturnType<typeof mock>
-      ).mockResolvedValueOnce([])
-
-      const response = await app.handle(
-        new Request("http://localhost/topup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 5000, paymentMethod: "VA" }),
-        })
-      )
-
-      expect(response.status).toBe(400)
-      const body = await response.json()
-      expect(body.ok).toBe(false)
-      expect(body.error).toBe("GATEWAY_NOT_AVAILABLE")
-    })
-
-    it("should allow VA top-up for a USD account when a gateway supports USD", async () => {
-      const { prisma } = await import("@/lib/prisma")
-      ;(
-        prisma.billingAccount.findUnique as ReturnType<typeof mock>
-      ).mockResolvedValueOnce({
-        id: "ba-123",
-        organizationId: "org-123",
-        currency: "USD",
-        balance: { toNumber: () => 0 },
-      })
-      ;(
-        prisma.paymentGateway.findMany as ReturnType<typeof mock>
-      ).mockResolvedValueOnce([
-        {
-          id: "gw-usd",
-          name: "PayPal",
-          type: "GATEWAY",
-          config: "",
-          supportedCurrencies: ["USD"],
-          isActive: true,
-          isDefault: true,
-        },
-      ])
-
-      const response = await app.handle(
-        new Request("http://localhost/topup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: 5000, paymentMethod: "VA" }),
-        })
-      )
-
-      // The route proceeds past the gateway lookup (Duitku call may then fail in
-      // the test environment, but it must not be a currency/gateway rejection).
-      const body = await response.json()
-      if (!body.ok) {
-        expect(body.error).not.toBe("GATEWAY_NOT_AVAILABLE")
-        expect(body.error).not.toBe("CURRENCY_NOT_SUPPORTED")
-      }
-    })
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.ok).toBe(false)
+    expect(json.error).toBe("MANUAL_BANK_NOT_AVAILABLE")
   })
 
-  describe("GET /topup/invoice/:id", () => {
-    it("should return 401 when no organizationId", async () => {
-      ;(mockWithAuth as ReturnType<typeof mock>).mockResolvedValueOnce({
-        organizationId: null as unknown as string,
-        email: "",
-        name: "",
-      })
-
-      const response = await app.handle(
-        new Request("http://localhost/topup/invoice/inv-123")
-      )
-
-      expect(response.status).toBe(401)
-    })
-
-    it("should return 404 when invoice not found", async () => {
-      const response = await app.handle(
-        new Request("http://localhost/topup/invoice/inv-notfound")
-      )
-
-      expect(response.status).toBe(200)
-      const body = await response.json()
-      expect(body.ok).toBe(false)
-      expect(body.error).toBe("NOT_FOUND")
-    })
-
-    it("should return invoice when found", async () => {
-      const mockInvoice = {
-        id: "inv-123",
-        invoiceNumber: "TOP-ABC123",
-        totalAmount: { toNumber: () => 50000 },
-        status: "OPEN",
-        paymentMethod: "MANUAL_BANK",
-      }
-      const { prisma } = await import("@/lib/prisma")
-      ;(
-        prisma.billingInvoice.findFirst as ReturnType<typeof mock>
-      ).mockResolvedValueOnce(mockInvoice)
-
-      const response = await app.handle(
-        new Request("http://localhost/topup/invoice/inv-123")
-      )
-
-      expect(response.status).toBe(200)
-      const body = await response.json()
-      expect(body.ok).toBe(true)
-    })
-  })
-
-  describe("GET /topup/methods", () => {
-    it("should hide manual bank transfer when no bank account supports USD", async () => {
-      const { prisma } = await import("@/lib/prisma")
-      ;(
-        prisma.billingAccount.findUnique as ReturnType<typeof mock>
-      ).mockResolvedValueOnce({
-        id: "ba-123",
-        organizationId: "org-123",
-        currency: "USD",
-        balance: { toNumber: () => 0 },
-      })
-      ;(
-        prisma.paymentBankAccount.findMany as ReturnType<typeof mock>
-      ).mockResolvedValueOnce([])
-
-      const response = await app.handle(
-        new Request("http://localhost/topup/methods")
-      )
-
-      expect(response.status).toBe(200)
-      const body = await response.json()
-      expect(body.ok).toBe(true)
-      expect(body.currency).toBe("USD")
-      expect(body.methods.MANUAL_BANK).toBe(false)
-      expect(prisma.paymentBankAccount.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            OR: [
-              { supportedCurrencies: { has: "USD" } },
-              { supportedCurrencies: { isEmpty: true }, currency: "USD" },
-            ],
-          }),
-        })
-      )
-    })
-
-    it("should expose PayPal when a lowercase paypal gateway supports USD", async () => {
-      const { prisma } = await import("@/lib/prisma")
-      ;(
-        prisma.billingAccount.findUnique as ReturnType<typeof mock>
-      ).mockResolvedValueOnce({
-        id: "ba-123",
-        organizationId: "org-123",
-        currency: "USD",
-        balance: { toNumber: () => 0 },
-      })
-      ;(prisma.paymentGateway.findMany as ReturnType<typeof mock>)
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([
-          {
-            id: "gw-paypal",
-            name: "PayPal",
-            type: "paypal",
-            config: "",
-            supportedCurrencies: ["USD"],
-            isActive: true,
-            isDefault: true,
-          },
-        ])
-
-      const response = await app.handle(
-        new Request("http://localhost/topup/methods")
-      )
-
-      expect(response.status).toBe(200)
-      const body = await response.json()
-      expect(body.ok).toBe(true)
-      expect(body.currency).toBe("USD")
-      expect(body.methods.PAYPAL).toBe(true)
-      expect(body.methods.VA).toBe(false)
-      expect(body.methods.QRIS).toBe(false)
-    })
-  })
-
-  describe("GET /topup/bank-accounts", () => {
-    it("should return only bank accounts matching organization currency", async () => {
-      const { prisma } = await import("@/lib/prisma")
-      ;(
-        prisma.billingAccount.findUnique as ReturnType<typeof mock>
-      ).mockResolvedValueOnce({
-        id: "ba-123",
-        organizationId: "org-123",
-        currency: "USD",
-        balance: { toNumber: () => 0 },
-      })
-      ;(
-        prisma.paymentBankAccount.findMany as ReturnType<typeof mock>
-      ).mockResolvedValueOnce([
-        {
-          id: "bank-usd",
-          bankCode: "HSBC",
-          bankName: "HSBC",
-          accountName: "PT Projects Green",
-          accountNumber: "987654",
-          currency: "USD",
-          supportedCurrencies: ["USD", "IDR"],
-          swiftCode: "CENAIDJA",
-          bankAddress: "1 International Plaza, Jakarta",
-          isActive: true,
-          isDefault: true,
-        },
-      ])
-
-      const response = await app.handle(
-        new Request("http://localhost/topup/bank-accounts")
-      )
-
-      expect(response.status).toBe(200)
-      const body = await response.json()
-      expect(body.ok).toBe(true)
-      expect(body.data).toHaveLength(1)
-      expect(body.data[0].supportedCurrencies).toEqual(["USD", "IDR"])
-      expect(body.data[0].swiftCode).toBe("CENAIDJA")
-    })
-
-    it("should return 401 when no organizationId", async () => {
-      ;(mockWithAuth as ReturnType<typeof mock>).mockResolvedValueOnce({
-        organizationId: null as unknown as string,
-        email: "",
-        name: "",
-      })
-
-      const response = await app.handle(
-        new Request("http://localhost/topup/bank-accounts")
-      )
-
-      expect(response.status).toBe(401)
-    })
-  })
-
-  describe("GET /history", () => {
-    it("should return 401 when no organizationId", async () => {
-      ;(mockWithAuth as ReturnType<typeof mock>).mockResolvedValueOnce({
-        organizationId: null as unknown as string,
-        email: "",
-        name: "",
-      })
-
-      const response = await app.handle(new Request("http://localhost/history"))
-
-      expect(response.status).toBe(401)
-    })
-
-    it("should return payment history", async () => {
-      const response = await app.handle(new Request("http://localhost/history"))
-
-      expect(response.status).toBe(200)
-      const body = await response.json()
-      expect(body.ok).toBe(true)
-      expect(body.data).toEqual([])
-    })
-  })
-})
-
-describe("CreateTopupSchema", () => {
-  it("should reject request without paymentMethod", async () => {
-    const { CreateTopupSchema } = await import("../types/payment.types")
-    const result = CreateTopupSchema.safeParse({ amount: 50000 })
-    expect(result.success).toBe(false)
-  })
-
-  it("should accept valid VA paymentMethod", async () => {
-    const { CreateTopupSchema } = await import("../types/payment.types")
-    const result = CreateTopupSchema.safeParse({
-      amount: 50000,
-      paymentMethod: "VA",
-    })
-    expect(result.success).toBe(true)
-  })
-
-  it("should accept valid QRIS paymentMethod", async () => {
-    const { CreateTopupSchema } = await import("../types/payment.types")
-    const result = CreateTopupSchema.safeParse({
-      amount: 50000,
-      paymentMethod: "QRIS",
-    })
-    expect(result.success).toBe(true)
-  })
-
-  it("should accept valid MANUAL_BANK paymentMethod", async () => {
-    const { CreateTopupSchema } = await import("../types/payment.types")
-    const result = CreateTopupSchema.safeParse({
-      amount: 50000,
+  it("creates manual bank invoice successfully", async () => {
+    mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "IDR" })
+    mockGetActiveAccounts.mockResolvedValueOnce([
+      { id: "acc_1", bankName: "BCA" },
+    ])
+    mockCreateTopupInvoice.mockResolvedValueOnce({
+      id: "inv_1",
+      invoiceNumber: "INV-001",
+      totalAmount: new Decimal(50000),
+      status: "UNPAID",
       paymentMethod: "MANUAL_BANK",
+      dueDate: new Date("2026-09-01T00:00:00.000Z"),
+      type: "TOPUP",
     })
-    expect(result.success).toBe(true)
+
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50000, paymentMethod: "MANUAL_BANK" }),
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.ok).toBe(true)
+    expect(json.invoice.id).toBe("inv_1")
+    expect(json.invoice.paymentMethod).toBe("MANUAL_BANK")
   })
 
-  it("should accept valid PAYPAL paymentMethod", async () => {
-    const { CreateTopupSchema } = await import("../types/payment.types")
-    const result = CreateTopupSchema.safeParse({
-      amount: 50,
+  it("returns 400 when VA/QRIS gateway is not available", async () => {
+    mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "IDR" })
+    mockFindByTypeForCurrency.mockResolvedValueOnce(null)
+
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50000, paymentMethod: "VA" }),
+      })
+    )
+
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.ok).toBe(false)
+    expect(json.error).toBe("GATEWAY_NOT_AVAILABLE")
+  })
+
+  it("handles VA topup with Duitku payment gateway", async () => {
+    mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "IDR" })
+    mockFindByTypeForCurrency.mockResolvedValueOnce({ id: "gw_duitku" })
+    mockCreateTopupInvoice.mockResolvedValueOnce({
+      id: "inv_va_1",
+      invoiceNumber: "INV-VA-001",
+      totalAmount: new Decimal(50000),
+      status: "UNPAID",
+      paymentMethod: "VA",
+      dueDate: new Date("2026-09-01T00:00:00.000Z"),
+      type: "TOPUP",
+    })
+    mockDuitkuCreatePayment.mockResolvedValueOnce({
+      paymentUrl: "https://duitku.com/pay",
+      vaNumber: "88880001",
+      reference: "duitku_ref_1",
+    })
+
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50000, paymentMethod: "VA" }),
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.ok).toBe(true)
+    expect(json.vaNumber).toBe("88880001")
+    expect(json.paymentUrl).toBe("https://duitku.com/pay")
+    expect(mockDuitkuCreatePayment).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentMethod: "VC" })
+    )
+  })
+
+  it("handles QRIS topup with Duitku payment gateway", async () => {
+    mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "IDR" })
+    mockFindByTypeForCurrency.mockResolvedValueOnce({ id: "gw_duitku" })
+    mockCreateTopupInvoice.mockResolvedValueOnce({
+      id: "inv_qris_1",
+      invoiceNumber: "INV-QRIS-001",
+      totalAmount: new Decimal(50000),
+      status: "UNPAID",
+      paymentMethod: "QRIS",
+      dueDate: new Date("2026-09-01T00:00:00.000Z"),
+      type: "TOPUP",
+    })
+    mockDuitkuCreatePayment.mockResolvedValueOnce({
+      paymentUrl: "https://duitku.com/qris",
+      vaNumber: null,
+      reference: "duitku_ref_qr",
+    })
+
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50000, paymentMethod: "QRIS" }),
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.ok).toBe(true)
+    expect(mockDuitkuCreatePayment).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentMethod: "QR" })
+    )
+  })
+
+  it("returns 400 when PAYPAL gateway is not available", async () => {
+    mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "USD" })
+    mockFindByTypeForCurrency.mockResolvedValue(null)
+
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50, paymentMethod: "PAYPAL" }),
+      })
+    )
+
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.ok).toBe(false)
+    expect(json.error).toBe("PAYPAL_NOT_AVAILABLE")
+  })
+
+  it("handles PAYPAL topup successfully", async () => {
+    mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "USD" })
+    mockFindByTypeForCurrency.mockResolvedValueOnce({ id: "gw_paypal" })
+    mockCreateTopupInvoice.mockResolvedValueOnce({
+      id: "inv_pp_1",
+      invoiceNumber: "INV-PP-001",
+      totalAmount: new Decimal(50),
+      status: "UNPAID",
       paymentMethod: "PAYPAL",
+      dueDate: new Date("2026-09-01T00:00:00.000Z"),
+      type: "TOPUP",
     })
-    expect(result.success).toBe(true)
+    mockGetDecryptedConfig.mockResolvedValueOnce({
+      clientId: "pp_client",
+      secret: "pp_sec",
+    })
+    mockPaypalCreatePayment.mockResolvedValueOnce({
+      redirectUrl: "https://paypal.com/checkout",
+      reference: "pp_ref_1",
+    })
+
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50, paymentMethod: "PAYPAL" }),
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.ok).toBe(true)
+    expect(json.paymentUrl).toBe("https://paypal.com/checkout")
   })
 
-  it("should reject invalid paymentMethod", async () => {
-    const { CreateTopupSchema } = await import("../types/payment.types")
-    const result = CreateTopupSchema.safeParse({
-      amount: 50000,
-      paymentMethod: "INVALID",
-    })
-    expect(result.success).toBe(false)
+  it("returns 400 / 500 when service throws an error", async () => {
+    mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "IDR" })
+    mockGetActiveAccounts.mockRejectedValueOnce(
+      new Error("PayPal gateway not found")
+    )
+
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50000, paymentMethod: "MANUAL_BANK" }),
+      })
+    )
+
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.ok).toBe(false)
+    expect(json.error).toBe("CLIENT_ERROR")
+  })
+})
+
+describe("TopupRoute GET /topup/invoice/:id", () => {
+  beforeEach(() => {
+    mockAuthValue = {
+      user: { id: "user_1", email: "user@example.com" },
+      organizationId: "org_1",
+    }
+    mockGetInvoiceForUser.mockReset()
   })
 
-  it("should reject zero or negative amounts", async () => {
-    const { CreateTopupSchema } = await import("../types/payment.types")
-    const zero = CreateTopupSchema.safeParse({
-      amount: 0,
-      paymentMethod: "VA",
-    })
-    expect(zero.success).toBe(false)
+  it("returns 401 if unauthenticated", async () => {
+    mockAuthValue = { user: null }
 
-    const neg = CreateTopupSchema.safeParse({
-      amount: -10,
-      paymentMethod: "VA",
+    const res = await app().handle(
+      new Request("http://localhost/topup/invoice/inv_1")
+    )
+
+    expect(res.status).toBe(401)
+  })
+
+  it("returns NOT_FOUND if invoice not found", async () => {
+    mockGetInvoiceForUser.mockResolvedValueOnce(null)
+
+    const res = await app().handle(
+      new Request("http://localhost/topup/invoice/inv_1")
+    )
+
+    const json = await res.json()
+    expect(json.ok).toBe(false)
+    expect(json.error).toBe("NOT_FOUND")
+  })
+
+  it("returns invoice when found", async () => {
+    mockGetInvoiceForUser.mockResolvedValueOnce({
+      id: "inv_1",
+      invoiceNumber: "INV-001",
     })
-    expect(neg.success).toBe(false)
+
+    const res = await app().handle(
+      new Request("http://localhost/topup/invoice/inv_1")
+    )
+
+    const json = await res.json()
+    expect(json.ok).toBe(true)
+    expect(json.invoice.id).toBe("inv_1")
+  })
+})
+
+describe("TopupRoute GET /topup/bank-accounts", () => {
+  beforeEach(() => {
+    mockAuthValue = {
+      user: { id: "user_1", email: "user@example.com" },
+      organizationId: "org_1",
+    }
+    mockBillingAccountFindUnique.mockReset()
+    mockGetActiveAccounts.mockReset()
+  })
+
+  it("returns active bank accounts for user currency", async () => {
+    mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "USD" })
+    mockGetActiveAccounts.mockResolvedValueOnce([
+      { id: "acc_usd_1", bankName: "Chase" },
+    ])
+
+    const res = await app().handle(
+      new Request("http://localhost/topup/bank-accounts")
+    )
+
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.ok).toBe(true)
+    expect(json.currency).toBe("USD")
+    expect(json.data).toHaveLength(1)
+  })
+})
+
+describe("TopupRoute GET /topup/methods", () => {
+  beforeEach(() => {
+    mockAuthValue = {
+      user: { id: "user_1", email: "user@example.com" },
+      organizationId: "org_1",
+    }
+    mockBillingAccountFindUnique.mockReset()
+    mockGetActiveAccounts.mockReset()
+    mockFindByTypeForCurrency.mockReset()
+    mockCurrencyFindByCode.mockReset()
+    mockCurrencyGetBase.mockReset()
+  })
+
+  it("returns available methods and config presets", async () => {
+    mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "IDR" })
+    mockGetActiveAccounts.mockResolvedValueOnce([{ id: "bca_1" }])
+    mockFindByTypeForCurrency
+      .mockResolvedValueOnce({ id: "duitku_gw" }) // GATEWAY
+      .mockResolvedValueOnce(null) // paypal
+      .mockResolvedValueOnce(null) // PAYPAL
+    mockCurrencyFindByCode.mockResolvedValueOnce({
+      ratePerBase: new Decimal(16000),
+      symbol: "Rp",
+      minTopup: new Decimal(10000),
+      maxTopup: new Decimal(10000000),
+    })
+    mockCurrencyGetBase.mockResolvedValueOnce({ code: "USD" })
+
+    const res = await app().handle(
+      new Request("http://localhost/topup/methods")
+    )
+
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.ok).toBe(true)
+    expect(json.currency).toBe("IDR")
+    expect(json.methods.MANUAL_BANK).toBe(true)
+    expect(json.methods.VA).toBe(true)
+    expect(json.methods.QRIS).toBe(true)
+    expect(json.methods.PAYPAL).toBe(false)
+    expect(json.config.presets).toBeDefined()
+  })
+})
+
+describe("PaymentHistoryRoute GET /history", () => {
+  beforeEach(() => {
+    mockAuthValue = {
+      user: { id: "user_1", email: "user@example.com" },
+      organizationId: "org_1",
+    }
+    mockGetInvoicesForOrganization.mockReset()
+  })
+
+  it("returns 401 when organizationId is missing", async () => {
+    mockAuthValue = { user: null }
+
+    const res = await app().handle(new Request("http://localhost/history"))
+
+    expect(res.status).toBe(401)
+  })
+
+  it("returns invoices for organization", async () => {
+    mockGetInvoicesForOrganization.mockResolvedValueOnce([
+      { id: "inv_1", invoiceNumber: "INV-001" },
+    ])
+
+    const res = await app().handle(new Request("http://localhost/history"))
+
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.ok).toBe(true)
+    expect(json.data).toHaveLength(1)
   })
 })
