@@ -19,7 +19,6 @@ import {
 import {
   formatBroadcastVariableValidationError,
   validateBroadcastRecipientVariables,
-  validateBroadcastPreflight,
 } from "../broadcast-preflight"
 const E164_REGEX = /^[+]?[1-9]\d{6,14}$/
 const broadcastRecipientSchema = t.Object({
