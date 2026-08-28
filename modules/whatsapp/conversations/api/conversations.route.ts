@@ -11,6 +11,8 @@ const parseConversationLimit = (value: unknown): number => {
   if (!Number.isFinite(num)) return DEFAULT_CONVERSATION_LIMIT
   return Math.min(Math.max(Math.trunc(num), 1), MAX_CONVERSATION_LIMIT)
 }
+const isSuperAdmin = (auth: any) =>
+  auth?.type === "workos" && auth?.platformRole === "super_admin"
 
 const toNoOrganization = (set: any) => {
   set.status = 403
@@ -118,8 +120,9 @@ export const conversationsRoutes = new Elysia({
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
-      if (!whatsappAuth.organizationId) return toNoOrganization(set)
-      const organizationId = whatsappAuth.organizationId
+      const isSuper = isSuperAdmin(whatsappAuth)
+      if (!isSuper && !whatsappAuth.organizationId) return toNoOrganization(set)
+
       const {
         contactPhone,
         status,
@@ -128,12 +131,19 @@ export const conversationsRoutes = new Elysia({
         assigneeId,
         unreadOnly,
         limit,
+        organizationId: queryOrgId,
+        whatsappDeviceId,
       } = query as any
 
-      const where: any = {
-        organizationId,
+      const where: any = {}
+      if (!isSuper) {
+        where.organizationId = whatsappAuth.organizationId
+      } else if (queryOrgId) {
+        where.organizationId = String(queryOrgId)
       }
-
+      if (whatsappDeviceId) {
+        where.whatsappDeviceId = String(whatsappDeviceId)
+      }
       if (contactPhone) {
         const normalized = normalizeIndonesianPhoneNumber(contactPhone)
         if (normalized) {
@@ -208,6 +218,19 @@ export const conversationsRoutes = new Elysia({
       return { ok: true, conversations }
     },
     {
+      query: t.Optional(
+        t.Object({
+          contactPhone: t.Optional(t.String()),
+          status: t.Optional(t.String()),
+          lifecycleStatus: t.Optional(t.String()),
+          stage: t.Optional(t.String()),
+          assigneeId: t.Optional(t.String()),
+          unreadOnly: t.Optional(t.Union([t.String(), t.Boolean()])),
+          limit: t.Optional(t.Union([t.String(), t.Number()])),
+          organizationId: t.Optional(t.String()),
+          whatsappDeviceId: t.Optional(t.String()),
+        })
+      ),
       detail: {
         summary: "List WhatsApp Conversation Threads",
         description:

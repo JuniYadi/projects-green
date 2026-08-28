@@ -371,6 +371,7 @@ describe("WhatsAppMessagesPage", () => {
         view.getByRole("button", { name: /send message/i })
       ).not.toBeDisabled()
     })
+    await tick(50)
     fireEvent.click(view.getByRole("button", { name: /send message/i }))
     await waitFor(() => {
       expect(

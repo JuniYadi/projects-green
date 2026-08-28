@@ -248,6 +248,76 @@ describe("messagesRoutes", () => {
       expect(body.data).toBeDefined()
       expect(body.ok).toBe(true)
     })
+    it("allows super_admin to query messages across all orgs or with organizationId and whatsappDeviceId", async () => {
+      mockResolveAuthContext.current = {
+        type: "workos",
+        userId: "admin-1",
+        email: "superadmin@example.com",
+        organizationId: null,
+        orgRole: null,
+        platformRole: "super_admin",
+        source: "proxy_header",
+      }
+
+      const app = createTestApp()
+
+      // 1. Without org or device filter
+      let res = await app.handle(authRequest("/messages"))
+      expect(res.status).toBe(200)
+      expect(mockPrisma.whatsappMessage.findMany).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          where: {},
+        })
+      )
+
+      // 2. With org and device filter
+      res = await app.handle(
+        authRequest(
+          "/messages?organizationId=target-org&whatsappDeviceId=target-dev"
+        )
+      )
+      expect(res.status).toBe(200)
+      expect(mockPrisma.whatsappMessage.findMany).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          where: {
+            conversation: {
+              organizationId: "target-org",
+              whatsappDeviceId: "target-dev",
+            },
+          },
+        })
+      )
+    })
+
+    it("forces regular user to stay scoped to their organizationId when querying messages", async () => {
+      mockResolveAuthContext.current = {
+        type: "workos",
+        userId: "user-1",
+        email: "admin@example.com",
+        organizationId: "org-1",
+        orgRole: "admin",
+        platformRole: "none",
+        source: "proxy_header",
+      }
+
+      const app = createTestApp()
+      const res = await app.handle(
+        authRequest(
+          "/messages?organizationId=sneaky-org&whatsappDeviceId=target-dev"
+        )
+      )
+      expect(res.status).toBe(200)
+      expect(mockPrisma.whatsappMessage.findMany).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          where: {
+            conversation: {
+              organizationId: "org-1",
+              whatsappDeviceId: "target-dev",
+            },
+          },
+        })
+      )
+    })
   })
 
   describe("GET /messages/pricing", () => {

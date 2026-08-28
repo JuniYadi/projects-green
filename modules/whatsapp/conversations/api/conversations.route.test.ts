@@ -182,6 +182,63 @@ describe("conversations routes", () => {
     expect(res.status).toBe(200)
     expect(mockFindMany).toHaveBeenCalledTimes(1)
   })
+  it("allows super_admin to query across all organizations or filter by organizationId and whatsappDeviceId", async () => {
+    mockAuth.current = {
+      type: "workos",
+      userId: "admin_1",
+      organizationId: null,
+      orgRole: null,
+      platformRole: "super_admin",
+    }
+
+    // 1. Without organizationId or whatsappDeviceId
+    mockFindMany.mockImplementationOnce(async (args: any) => {
+      expect(args.where.organizationId).toBeUndefined()
+      expect(args.where.whatsappDeviceId).toBeUndefined()
+      return []
+    })
+    const app = createTestApp()
+    let res = await app.handle(new Request("http://localhost/conversations"))
+    expect(res.status).toBe(200)
+    expect(mockFindMany).toHaveBeenCalledTimes(1)
+
+    // 2. With organizationId and whatsappDeviceId
+    mockFindMany.mockImplementationOnce(async (args: any) => {
+      expect(args.where.organizationId).toBe("org_target")
+      expect(args.where.whatsappDeviceId).toBe("dev_123")
+      return []
+    })
+    res = await app.handle(
+      new Request(
+        "http://localhost/conversations?organizationId=org_target&whatsappDeviceId=dev_123"
+      )
+    )
+    expect(res.status).toBe(200)
+    expect(mockFindMany).toHaveBeenCalledTimes(2)
+  })
+
+  it("allows regular user to filter by whatsappDeviceId within their organization", async () => {
+    mockAuth.current = {
+      type: "workos",
+      userId: "user_1",
+      organizationId: "org_1",
+      orgRole: "admin",
+      platformRole: "none",
+    }
+    mockFindMany.mockImplementationOnce(async (args: any) => {
+      expect(args.where.organizationId).toBe("org_1")
+      expect(args.where.whatsappDeviceId).toBe("dev_123")
+      return []
+    })
+    const app = createTestApp()
+    const res = await app.handle(
+      new Request(
+        "http://localhost/conversations?organizationId=org_sneaky&whatsappDeviceId=dev_123"
+      )
+    )
+    expect(res.status).toBe(200)
+    expect(mockFindMany).toHaveBeenCalledTimes(1)
+  })
 
   it("filters conversations by lifecycle status, stage, and unreadOnly", async () => {
     mockAuth.current = {
