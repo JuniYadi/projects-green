@@ -18,62 +18,342 @@ import { buildMetaTemplateComponents } from "../template-validator"
 const isSuperAdmin = (auth: ResolvedAuth) =>
   auth.type === "workos" && auth.platformRole === "super_admin"
 
-const templateLanguageSchema = t.Object({
-  lang: t.String(),
-  headerType: t.Optional(t.String()),
-  headerUrl: t.Optional(t.String()),
-  headerText: t.Optional(t.String()),
-  body: t.Optional(t.String()),
-  parameters: t.Optional(t.Any()),
-  footer: t.Optional(t.String()),
-  buttons: t.Optional(t.Any()),
-  authConfig: t.Optional(t.Any()),
+const templateLanguageResponseSchema = t.Any({
+  description: "WhatsApp template language variant DTO",
 })
-
-const templateBodySchema = t.Object({
-  slug: t.String(),
-  name: t.String(),
-  description: t.Optional(t.String()),
-  whatsappDeviceId: t.String(),
-  category: t.Optional(
-    t.Union([
-      t.Literal("MARKETING"),
-      t.Literal("UTILITY"),
-      t.Literal("AUTHENTICATION"),
-    ])
+const templateDeviceResponseSchema = t.Object({
+  id: t.String({ example: "dev_clt1234567890" }),
+  phoneNumber: t.String({ example: "+6281234567890" }),
+  status: t.String({ example: "ACTIVE" }),
+  whatsappBusinessAccountId: t.Optional(
+    t.Nullable(t.String({ example: "109876543210987" }))
   ),
-  languages: t.Array(templateLanguageSchema),
+  whatsappPhoneId: t.Optional(
+    t.Nullable(t.String({ example: "123456789012345" }))
+  ),
 })
 
-const templateUpdateLanguageSchema = t.Object({
-  lang: t.String(),
-  headerType: t.Optional(t.String()),
-  headerUrl: t.Optional(t.String()),
-  headerText: t.Optional(t.String()),
-  body: t.Optional(t.String()),
-  parameters: t.Optional(t.Any()),
-  footer: t.Optional(t.String()),
-  buttons: t.Optional(t.Any()),
-  id: t.Optional(t.String()),
+const whatsappTemplateDTOSchema = t.Object({
+  id: t.String({ example: "tpl_clt9876543210" }),
+  slug: t.String({
+    example: "promo_gajian_2026",
+    description: "Unique template slug used for API message dispatch",
+  }),
+  name: t.String({
+    example: "Promo Gajian Bulanan",
+    description: "Human-readable template name",
+  }),
+  description: t.Optional(
+    t.Nullable(
+      t.String({
+        example: "Template notifikasi promo gajian diskon 50%",
+        description: "Internal description of the template purpose",
+      })
+    )
+  ),
+  organizationId: t.String({ example: "org_2tQ1y09..." }),
+  whatsappDeviceId: t.Optional(
+    t.Nullable(t.String({ example: "dev_clt1234567890" }))
+  ),
+  syncStatus: t.String({
+    example: "SYNCED",
+    description: "Sync status with Meta Cloud API",
+  }),
+  metaStatus: t.Optional(
+    t.Nullable(
+      t.String({
+        example: "APPROVED",
+        description: "Official Meta review status",
+      })
+    )
+  ),
+  lastSyncedAt: t.Optional(
+    t.Nullable(t.String({ example: "2026-08-28T04:15:00.000Z" }))
+  ),
+  category: t.Optional(
+    t.Nullable(
+      t.String({
+        example: "MARKETING",
+        description: "Meta template category",
+      })
+    )
+  ),
+  createdAt: t.Optional(t.Any()),
+  updatedAt: t.Optional(t.Any()),
+  languages: t.Optional(t.Array(templateLanguageResponseSchema)),
+  device: t.Optional(t.Nullable(templateDeviceResponseSchema)),
 })
 
-const templateUpdateSchema = t.Partial(
-  t.Object({
-    slug: t.String(),
-    name: t.String(),
-    description: t.Optional(t.String()),
-    whatsappDeviceId: t.Optional(t.String()),
-    category: t.Optional(
-      t.Union([
-        t.Literal("MARKETING"),
-        t.Literal("UTILITY"),
-        t.Literal("AUTHENTICATION"),
-      ])
+const templateLanguageSchema = t.Object(
+  {
+    lang: t.String({
+      example: "id",
+      description:
+        "Language / locale code (e.g. 'id' for Indonesian, 'en_US' for English)",
+    }),
+    headerType: t.Optional(
+      t.String({
+        description:
+          "Header component type: NONE, TEXT, IMAGE, VIDEO, DOCUMENT",
+        example: "TEXT",
+      })
     ),
-    languages: t.Optional(t.Array(templateUpdateLanguageSchema)),
-  })
+    headerUrl: t.Optional(
+      t.String({
+        example: "https://example.com/assets/banner.png",
+        description:
+          "Direct public URL or S3 view URL for media header types (IMAGE/VIDEO/DOCUMENT)",
+      })
+    ),
+    headerText: t.Optional(
+      t.String({
+        example: "Promo Spesial Gajian",
+        description: "Text header content (max 60 characters)",
+      })
+    ),
+    body: t.String({
+      example:
+        "Halo {{1}}, pesanan Anda {{2}} telah dikirim via {{3}} dengan nomor resi {{4}}. Terima kasih!",
+      description:
+        "Main body text supporting sequential {{1}}, {{2}} placeholders (max 1024 chars)",
+    }),
+    parameters: t.Optional(
+      t.Array(
+        t.Object({
+          type: t.String({ example: "BODY" }),
+          text: t.String({ example: "Budi Santoso" }),
+        }),
+        {
+          description:
+            "Sample parameter values matching body placeholders in order",
+          example: [
+            { type: "BODY", text: "Budi Santoso" },
+            { type: "BODY", text: "#ORD-9981" },
+            { type: "BODY", text: "JNE Express" },
+            { type: "BODY", text: "JNE12345678" },
+          ],
+        }
+      )
+    ),
+    footer: t.Optional(
+      t.String({
+        example: "PT Maju Bersama · Syarat & Ketentuan Berlaku",
+        description: "Footer text (max 60 characters, no variables allowed)",
+      })
+    ),
+    buttons: t.Optional(
+      t.Array(
+        t.Object({
+          type: t.String({
+            example: "URL",
+            description: "Button type: QUICK_REPLY, URL, or OTP",
+          }),
+          text: t.String({
+            example: "Lacak Pesanan",
+            description: "Button label text (max 25 characters)",
+          }),
+          url: t.Optional(
+            t.String({
+              example: "https://example.com/track/{{1}}",
+              description: "Target URL for URL buttons",
+            })
+          ),
+          phoneNumber: t.Optional(
+            t.String({
+              example: "+6281234567890",
+              description: "Phone number with country code for call buttons",
+            })
+          ),
+        }),
+        {
+          description: "Interactive button components (max 3-10 buttons)",
+          example: [
+            {
+              type: "URL",
+              text: "Lacak Pesanan",
+              url: "https://example.com/track/JNE12345678",
+            },
+            {
+              type: "QUICK_REPLY",
+              text: "Hubungi CS",
+            },
+          ],
+        }
+      )
+    ),
+    authConfig: t.Optional(
+      t.Object(
+        {
+          expirationMinutes: t.Optional(t.Number({ example: 10 })),
+          codeLength: t.Optional(t.Number({ example: 6 })),
+        },
+        {
+          description:
+            "Configuration for OTP authentication copy-code templates",
+        }
+      )
+    ),
+    id: t.Optional(t.String({ example: "lang_clt1234567890" })),
+    isApproved: t.Optional(t.Boolean({ example: true })),
+    metaStatus: t.Optional(t.String({ example: "APPROVED" })),
+    rejectReason: t.Optional(t.String({ example: null })),
+    metaReason: t.Optional(t.String({ example: null })),
+    createdAt: t.Optional(t.Any()),
+    updatedAt: t.Optional(t.Any()),
+  },
+  {
+    description: "Template language content and message components",
+    example: {
+      lang: "id",
+      headerType: "TEXT",
+      headerText: "Promo Spesial Gajian",
+      body: "Halo {{1}}, pesanan Anda {{2}} telah dikirim via {{3}} dengan nomor resi {{4}}. Terima kasih!",
+      footer: "PT Maju Bersama · Syarat & Ketentuan Berlaku",
+      parameters: [
+        { type: "BODY", text: "Budi Santoso" },
+        { type: "BODY", text: "#ORD-9981" },
+        { type: "BODY", text: "JNE Express" },
+        { type: "BODY", text: "JNE12345678" },
+      ],
+      buttons: [
+        {
+          type: "URL",
+          text: "Lacak Pesanan",
+          url: "https://example.com/track/JNE12345678",
+        },
+      ],
+    },
+  }
 )
 
+const templateBodySchema = t.Object(
+  {
+    slug: t.String({
+      example: "order_status_notification",
+      description:
+        "Unique lowercase alphanumeric slug (a-z, 0-9, _) used for API dispatch",
+    }),
+    name: t.String({
+      example: "Notifikasi Status Pesanan",
+      description: "Human-readable template name",
+    }),
+    description: t.Optional(
+      t.String({
+        example:
+          "Notifikasi otomatis saat kurir memperbarui status paket pelanggan",
+        description: "Internal description explaining the template purpose",
+      })
+    ),
+    whatsappDeviceId: t.String({
+      example: "dev_clt1234567890",
+      description: "ID of the active connected WhatsApp device (WABA)",
+    }),
+    category: t.Optional(
+      t.Union(
+        [
+          t.Literal("UTILITY"),
+          t.Literal("MARKETING"),
+          t.Literal("AUTHENTICATION"),
+        ],
+        {
+          description:
+            "WhatsApp Meta billing category (UTILITY: transactional/orders, MARKETING: promos, AUTHENTICATION: OTP)",
+          example: "UTILITY",
+        }
+      )
+    ),
+    languages: t.Array(templateLanguageSchema, {
+      description:
+        "List of localized language variants (at least one required)",
+      minItems: 1,
+      example: [
+        {
+          lang: "id",
+          headerType: "TEXT",
+          headerText: "Status Pesanan",
+          body: "Halo {{1}}, pesanan Anda {{2}} telah dikirim via {{3}} dengan nomor resi {{4}}. Terima kasih!",
+          footer: "PT Maju Bersama · Syarat & Ketentuan Berlaku",
+          parameters: [
+            { type: "BODY", text: "Budi Santoso" },
+            { type: "BODY", text: "#ORD-9981" },
+            { type: "BODY", text: "JNE Express" },
+            { type: "BODY", text: "JNE12345678" },
+          ],
+          buttons: [
+            {
+              type: "URL",
+              text: "Lacak Pesanan",
+              url: "https://example.com/track/JNE12345678",
+            },
+          ],
+        },
+      ],
+    }),
+  },
+  {
+    description:
+      "Payload to create and register a WhatsApp message template with Meta",
+    example: {
+      slug: "order_status_notification",
+      name: "Notifikasi Status Pesanan",
+      description:
+        "Notifikasi otomatis saat kurir memperbarui status paket pelanggan",
+      whatsappDeviceId: "dev_clt1234567890",
+      category: "UTILITY",
+      languages: [
+        {
+          lang: "id",
+          headerType: "TEXT",
+          headerText: "Status Pesanan",
+          body: "Halo {{1}}, pesanan Anda {{2}} telah dikirim via {{3}} dengan nomor resi {{4}}. Terima kasih!",
+          footer: "PT Maju Bersama · Syarat & Ketentuan Berlaku",
+          parameters: [
+            { type: "BODY", text: "Budi Santoso" },
+            { type: "BODY", text: "#ORD-9981" },
+            { type: "BODY", text: "JNE Express" },
+            { type: "BODY", text: "JNE12345678" },
+          ],
+          buttons: [
+            {
+              type: "URL",
+              text: "Lacak Pesanan",
+              url: "https://example.com/track/JNE12345678",
+            },
+          ],
+        },
+      ],
+    },
+  }
+)
+const templateUpdateLanguageSchema = t.Object({
+  lang: t.String({
+    example: "id",
+    description: "Language/locale code (e.g. 'id', 'en_US')",
+  }),
+  headerType: t.Optional(
+    t.String({
+      description: "Header component type",
+      example: "TEXT",
+    })
+  ),
+  headerUrl: t.Optional(
+    t.String({ example: "https://example.com/banner.png" })
+  ),
+  headerText: t.Optional(t.String({ example: "Promo Spesial" })),
+  body: t.Optional(
+    t.String({
+      example: "Halo {{1}}, kami memperbarui rincian pesanan Anda.",
+    })
+  ),
+  parameters: t.Optional(t.Any()),
+  footer: t.Optional(t.String({ example: "Info lebih lanjut hubungi CS" })),
+  buttons: t.Optional(t.Any()),
+  id: t.Optional(t.String({ example: "lang_clt1234567890" })),
+})
+
+const templateUpdateSchema = t.Any({
+  description: "Updated template fields",
+})
 type AuthContext = {
   platformRole: string
   organizationId: string
@@ -219,6 +499,80 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           totalPages: Math.ceil(total / limit),
         },
       }
+    },
+    {
+      query: t.Optional(
+        t.Object({
+          page: t.Optional(
+            t.Numeric({
+              example: 1,
+              description: "Page number (defaults to 1)",
+            })
+          ),
+          limit: t.Optional(
+            t.Numeric({
+              example: 50,
+              description: "Items per page (max 100)",
+            })
+          ),
+          whatsappDeviceId: t.Optional(
+            t.String({
+              example: "dev_clt1234567890",
+              description: "Filter by connected WhatsApp device ID",
+            })
+          ),
+          wabaId: t.Optional(
+            t.String({
+              example: "waba-123",
+              description: "Filter by WhatsApp Business Account ID (WABA)",
+            })
+          ),
+          phoneId: t.Optional(
+            t.String({
+              example: "phone-123",
+              description: "Filter by WhatsApp Phone Number ID",
+            })
+          ),
+          syncStatus: t.Optional(
+            t.String({
+              example: "SYNCED",
+              description:
+                "Filter by sync status (SYNCED, NOT_SYNCED, NOT_IN_META)",
+            })
+          ),
+          broadcastEligible: t.Optional(
+            t.String({
+              example: "true",
+              description:
+                "Filter templates eligible for broadcast campaigns (APPROVED & SYNCED)",
+            })
+          ),
+          sort: t.Optional(
+            t.String({
+              example: "desc",
+              description: "Sort order by creation time (asc or desc)",
+            })
+          ),
+        })
+      ),
+      response: {
+        200: t.Object({
+          ok: t.Boolean({ example: true }),
+          data: t.Array(whatsappTemplateDTOSchema),
+          meta: t.Object({
+            total: t.Number({ example: 42 }),
+            page: t.Number({ example: 1 }),
+            limit: t.Number({ example: 50 }),
+            totalPages: t.Number({ example: 1 }),
+          }),
+        }),
+      },
+      detail: {
+        summary: "List WhatsApp Templates",
+        description:
+          "Retrieves a paginated list of WhatsApp templates for the current organization with optional device and approval status filters.",
+        tags: ["WhatsApp Templates"],
+      },
     }
   )
   .get(
@@ -280,6 +634,26 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       }
 
       return { ok: true, template: toWhatsappTemplateDTO(template) }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "tpl_clt9876543210",
+          description: "WhatsApp template unique ID",
+        }),
+      }),
+      response: {
+        200: t.Object({
+          ok: t.Boolean({ example: true }),
+          template: t.Any({ description: "WhatsApp template detail DTO" }),
+        }),
+      },
+      detail: {
+        summary: "Get WhatsApp Template Details",
+        description:
+          "Fetches detailed metadata, language variants, parameter mappings, and connected device info for a single template.",
+        tags: ["WhatsApp Templates"],
+      },
     }
   )
   .post(
@@ -547,6 +921,19 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
     },
     {
       body: templateBodySchema,
+      response: {
+        200: t.Object({
+          ok: t.Boolean({ example: true }),
+          template: t.Any({ description: "Created WhatsApp template DTO" }),
+          metaResponse: t.Optional(t.Any()),
+        }),
+      },
+      detail: {
+        summary: "Create WhatsApp Template",
+        description:
+          "Creates a new WhatsApp message template with localized message bodies, headers, buttons, and parameters, and submits it to the Meta Cloud API for review.",
+        tags: ["WhatsApp Templates"],
+      },
     }
   )
   .patch(
@@ -695,7 +1082,25 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       }
     },
     {
+      params: t.Object({
+        id: t.String({
+          example: "tpl_clt9876543210",
+          description: "WhatsApp template unique ID",
+        }),
+      }),
       body: templateUpdateSchema,
+      response: {
+        200: t.Object({
+          ok: t.Boolean({ example: true }),
+          template: whatsappTemplateDTOSchema,
+        }),
+      },
+      detail: {
+        summary: "Update Draft WhatsApp Template",
+        description:
+          "Updates an unapproved or draft WhatsApp message template. Approved templates locked by Meta cannot be modified.",
+        tags: ["WhatsApp Templates"],
+      },
     }
   )
   .delete(
@@ -755,8 +1160,27 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         message: `Template deleted: ${template.name}`,
         status: "OK",
       })
-
       return { ok: true, message: "Template deleted." }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "tpl_clt9876543210",
+          description: "WhatsApp template unique ID",
+        }),
+      }),
+      response: {
+        200: t.Object({
+          ok: t.Boolean({ example: true }),
+          message: t.String({ example: "Template deleted." }),
+        }),
+      },
+      detail: {
+        summary: "Delete WhatsApp Template",
+        description:
+          "Removes a WhatsApp template record and its localized language variants from the database.",
+        tags: ["WhatsApp Templates"],
+      },
     }
   )
   .post(
@@ -846,5 +1270,25 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           message: "Failed to enqueue sync job.",
         }
       }
+    },
+    {
+      params: t.Object({
+        id: t.String({
+          example: "tpl_clt9876543210",
+          description: "WhatsApp template unique ID",
+        }),
+      }),
+      response: {
+        200: t.Object({
+          ok: t.Boolean({ example: true }),
+          message: t.String({ example: "Sync job enqueued." }),
+        }),
+      },
+      detail: {
+        summary: "Sync Template with Meta Cloud API",
+        description:
+          "Enqueues a background reconciliation job to synchronize the template status and language approval states directly from Meta Cloud API.",
+        tags: ["WhatsApp Templates"],
+      },
     }
   )
