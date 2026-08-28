@@ -55,20 +55,48 @@ const whatsappSendResultDTOSchema = t.Object({
 })
 
 const whatsappMessageDTOSchema = t.Object({
-  id: t.String({ example: "msg_clt1234567890" }),
-  conversationId: t.String({ example: "conv_clt1234567890" }),
-  direction: t.String({ example: "OUTBOX" }),
-  messageType: t.String({ example: "text" }),
+  id: t.String({
+    example: "msg_clt1234567890",
+    description: "Internal message record ID",
+  }),
+  conversationId: t.Optional(
+    t.String({
+      example: "conv_clt1234567890",
+      description: "Conversation thread ID",
+    })
+  ),
+  direction: t.Optional(
+    t.String({
+      example: "OUTBOX",
+      description: "Message direction (INBOX or OUTBOX)",
+    })
+  ),
+  messageType: t.Optional(
+    t.String({ example: "text", description: "Message type" })
+  ),
   body: t.Optional(
     t.Nullable(
-      t.String({ example: "Halo Budi, terima kasih telah menghubungi kami!" })
+      t.String({
+        example: "Halo Budi, terima kasih telah menghubungi kami!",
+        description: "Message text content",
+      })
     )
   ),
   mediaUrl: t.Optional(
-    t.Nullable(t.String({ example: "https://example.com/receipt.pdf" }))
+    t.Nullable(
+      t.String({
+        example: "https://example.com/receipt.pdf",
+        description: "Public URL for attached media",
+      })
+    )
   ),
   waMessageId: t.Optional(
-    t.Nullable(t.String({ example: "wamid.HBgLMzE2NDY0MTk..." }))
+    t.Nullable(
+      t.String({
+        example: "wamid.HBgLMzE2NDY0MTk...",
+        description: "Official Meta WhatsApp message ID",
+      })
+    )
   ),
   metadata: t.Optional(t.Nullable(t.Any())),
   createdAt: t.Optional(t.Any()),
@@ -348,6 +376,59 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
     },
     {
       query: t.Optional(t.Any()),
+      response: {
+        200: t.Object({
+          ok: t.Boolean({ example: true }),
+          data: t.Optional(
+            t.Array(whatsappMessageDTOSchema, {
+              description: "Array of WhatsApp message logs",
+              example: [
+                {
+                  id: "msg_clt1234567890",
+                  conversationId: "conv_clt1234567890",
+                  direction: "OUTBOX",
+                  messageType: "text",
+                  body: "Halo Budi, pesanan Anda sedang kami proses.",
+                  waMessageId: "wamid.HBgLMzE2NDY0MTk...",
+                },
+              ],
+            })
+          ),
+          messages: t.Optional(
+            t.Array(whatsappMessageDTOSchema, {
+              description: "Array of WhatsApp message logs (legacy alias)",
+              example: [
+                {
+                  id: "msg_clt1234567890",
+                  conversationId: "conv_clt1234567890",
+                  direction: "OUTBOX",
+                  messageType: "text",
+                  body: "Halo Budi, pesanan Anda sedang kami proses.",
+                  waMessageId: "wamid.HBgLMzE2NDY0MTk...",
+                },
+              ],
+            })
+          ),
+          meta: t.Optional(
+            t.Object(
+              {
+                total: t.Number({ example: 120 }),
+                page: t.Number({ example: 1 }),
+                limit: t.Number({ example: 20 }),
+                totalPages: t.Number({ example: 6 }),
+              },
+              {
+                example: {
+                  total: 120,
+                  page: 1,
+                  limit: 20,
+                  totalPages: 6,
+                },
+              }
+            )
+          ),
+        }),
+      },
       detail: {
         summary: "List WhatsApp Messages",
         description:
@@ -371,11 +452,47 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       return { ok: true, ...toWhatsappMessagePricingDTO(pricing) }
     },
     {
+      response: {
+        200: t.Object({
+          ok: t.Boolean({ example: true }),
+          overage: t.Optional(t.Any()),
+          devices: t.Optional(t.Array(t.Any())),
+        }),
+      },
       detail: {
         summary: "Get WhatsApp Message Pricing Cards",
         description:
           "Retrieves real-time message unit pricing cards per category and device for the active organization.",
         tags: ["WhatsApp Messages"],
+        response: {
+          200: t.Object({
+            ok: t.Boolean({ example: true }),
+            overage: t.Object({
+              unitPrice: t.String({ example: "197" }),
+              currency: t.String({ example: "IDR" }),
+              configured: t.Boolean({ example: true }),
+            }),
+            devices: t.Array(
+              t.Object({
+                deviceId: t.String({ example: "dev_clt1234567890" }),
+                phoneNumber: t.String({ example: "+6281234567890" }),
+                country: t.String({ example: "ID" }),
+                rateTier: t.String({ example: "BASE" }),
+                quotaRemaining: t.Number({ example: 75 }),
+                categories: t.Array(
+                  t.Object({
+                    category: t.String({ example: "MARKETING" }),
+                    quotaCredit: t.String({ example: "2.00" }),
+                    configured: t.Boolean({ example: true }),
+                    description: t.String({
+                      example: "Marketing template credit",
+                    }),
+                  })
+                ),
+              })
+            ),
+          }),
+        },
       },
     }
   )
@@ -969,6 +1086,15 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         description:
           "Single unified entrypoint supporting text, media files, location, and pre-approved WhatsApp templates with automatic parameter sanitization.",
         tags: ["WhatsApp Messages"],
+        response: {
+          200: t.Object({
+            ok: t.Boolean({ example: true }),
+            jobId: t.String({ example: "job_clt1234567890" }),
+            messageId: t.String({ example: "msg_clt1234567890" }),
+            waMessageId: t.String({ example: "wamid.HBgLMzE2NDY0MTk..." }),
+            status: t.String({ example: "sent" }),
+          }),
+        },
       },
     }
   )

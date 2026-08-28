@@ -204,7 +204,12 @@ function schemaExample(schema: unknown, seen: Set<unknown>): unknown {
     const result: JsonObject = {}
 
     for (const [key, property] of Object.entries(properties)) {
-      if (!required || required.has(key)) {
+      if (
+        !required ||
+        required.has(key) ||
+        (isRecord(property) &&
+          (hasOwn(property, "example") || hasOwn(property, "default")))
+      ) {
         result[key] = schemaExample(property, nextSeen)
       }
     }
