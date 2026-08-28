@@ -29,7 +29,7 @@ function resolveTargetOrgId(
   auth: ResolvedAuth,
   queryOrgId?: string
 ): string | undefined {
-  if (auth.platformRole === "super_admin") {
+  if (auth.type === "workos" && auth.platformRole === "super_admin") {
     if (queryOrgId && queryOrgId !== "all") {
       return queryOrgId
     }

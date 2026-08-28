@@ -565,6 +565,7 @@ export const whatsappClient = {
       limit?: number
     }) =>
       serverFetch<{
+        ok: boolean
         data: {
           id: string
           organizationId: string
