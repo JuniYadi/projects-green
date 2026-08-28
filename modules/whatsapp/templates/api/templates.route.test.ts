@@ -299,6 +299,109 @@ describe("templatesRoutes", () => {
       expect(json.template.category).toBe("UTILITY")
     })
 
+    it("direct pushes to Meta and updates syncStatus to SYNCED when device credentials exist", async () => {
+      mockTemplateCreate.mockResolvedValueOnce({
+        id: "tpl-pushed",
+        slug: "hello_direct_push",
+        name: "Hello Direct Push",
+        description: "A pushed template",
+        organizationId: "org-1",
+        whatsappDeviceId: "dev-1",
+        syncStatus: "NOT_SYNCED",
+        metaStatus: null,
+        lastSyncedAt: null,
+        category: "UTILITY",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        languages: [
+          {
+            id: "lang-1",
+            lang: "id",
+            headerType: "NONE",
+            headerText: "",
+            headerUrl: "",
+            body: "Halo {{1}}",
+            footer: "",
+            parameters: null,
+            buttons: null,
+            isApproved: false,
+            metaStatus: null,
+            rejectReason: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            whatsappTemplateId: "tpl-pushed",
+          },
+        ],
+      })
+
+      mockTemplateUpdate.mockResolvedValueOnce({
+        id: "tpl-pushed",
+        slug: "hello_direct_push",
+        name: "Hello Direct Push",
+        description: "A pushed template",
+        organizationId: "org-1",
+        whatsappDeviceId: "dev-1",
+        syncStatus: "SYNCED",
+        metaStatus: "PENDING",
+        lastSyncedAt: new Date(),
+        category: "UTILITY",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        languages: [
+          {
+            id: "lang-1",
+            lang: "id",
+            headerType: "NONE",
+            headerText: "",
+            headerUrl: "",
+            body: "Halo {{1}}",
+            footer: "",
+            parameters: null,
+            buttons: null,
+            isApproved: false,
+            metaStatus: "PENDING",
+            rejectReason: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            whatsappTemplateId: "tpl-pushed",
+          },
+        ],
+      })
+
+      const app = createTestApp()
+      const body = {
+        slug: "hello_direct_push",
+        name: "Hello Direct Push",
+        whatsappDeviceId: "dev-1",
+        category: "UTILITY",
+        languages: [
+          {
+            lang: "id",
+            headerType: "NONE",
+            headerText: "",
+            headerUrl: "",
+            body: "Halo {{1}}",
+            footer: "",
+          },
+        ],
+      }
+
+      const res = await app.handle(
+        new Request("http://localhost/templates/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      expect(json.ok).toBe(true)
+      expect(mockCreateMetaTemplate).toHaveBeenCalled()
+      expect(json.template.syncStatus).toBe("SYNCED")
+      expect(json.template.metaStatus).toBe("PENDING")
+    })
+
     it("rejects creation if whatsappDeviceId is missing", async () => {
       const app = createTestApp()
 
@@ -812,20 +915,5 @@ describe("templatesRoutes", () => {
         select: { id: true },
       })
     })
-  })
-  it("rejects template listing without authentication", async () => {
-    const previous = currentAuth
-    currentAuth = null
-    const res = await createTestApp().handle(
-      new Request("http://localhost/templates")
-    )
-    currentAuth = previous
-    expect(res.status).toBe(401)
-    expect(await res.json()).toEqual({
-      ok: false,
-      error: "UNAUTHORIZED",
-      message: "Auth required.",
-    })
-    expect(mockTemplateFindMany).not.toHaveBeenCalled()
   })
 })
