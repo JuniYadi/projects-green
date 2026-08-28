@@ -420,17 +420,29 @@ export const devicesRoutes = new Elysia({ prefix: "/devices" })
     async ({ request, params: { id }, set }: any) => {
       const whatsappAuth = await resolveDeviceAuth(request)
       if (!whatsappAuth) return toUnauthorized(set)
-      if (!whatsappAuth.organizationId) {
-        return toBadRequest(set, "Organization context required.")
+
+      const device = await prisma.whatsappDevice.findUnique({
+        where: { id },
+        select: { id: true, organizationId: true },
+      })
+
+      if (!device) {
+        set.status = 404
+        return { ok: false, error: "NOT_FOUND", message: "Device not found." }
+      }
+
+      if (
+        !isSuperAdmin(whatsappAuth) &&
+        device.organizationId !== whatsappAuth.organizationId
+      ) {
+        set.status = 403
+        return { ok: false, error: "FORBIDDEN", message: "Access denied." }
       }
 
       try {
         const { syncTemplatesFromMeta } =
           await import("../business-profile.service")
-        const result = await syncTemplatesFromMeta(
-          id,
-          whatsappAuth.organizationId
-        )
+        const result = await syncTemplatesFromMeta(id, device.organizationId)
         return { ok: true, ...result }
       } catch (error: any) {
         set.status = 500

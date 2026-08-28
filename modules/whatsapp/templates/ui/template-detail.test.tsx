@@ -12,7 +12,7 @@ mock.module("next/navigation", () => ({
   useRouter: () => ({ push: routerPush }),
   usePathname: () => "",
   useSearchParams: () => new URLSearchParams(),
-  useParams: () => ({}),
+  useParams: () => ({ lang: "en" }),
   redirect: mock(),
   notFound: mock(),
 }))
@@ -144,10 +144,10 @@ describe("TemplateDetailView", () => {
     )
 
     expect(view.getByText("Kategori Meta: MARKETING")).toBeInTheDocument()
-    expect(view.getByText("Informasi dari Meta")).toBeInTheDocument()
+    expect(view.getByText("Information from Meta")).toBeInTheDocument()
     expect(
       view.getByText(
-        "Alasan dari Meta: Template no longer meets utility guidance"
+        "Reason from Meta: Template no longer meets utility guidance"
       )
     ).toBeInTheDocument()
     expect(view.getByText("Approved")).toBeInTheDocument()
@@ -158,8 +158,8 @@ describe("TemplateDetailView", () => {
     const view = render(<TemplateDetailView {...propsFor()} />)
 
     expect(view.getByText("Kategori Meta: UTILITY")).toBeInTheDocument()
-    expect(view.queryByText("Informasi dari Meta")).not.toBeInTheDocument()
-    expect(view.queryByText(/Alasan dari Meta:/)).not.toBeInTheDocument()
+    expect(view.queryByText("Information from Meta")).not.toBeInTheDocument()
+    expect(view.queryByText(/Reason from Meta:/)).not.toBeInTheDocument()
   })
 
   it("removes outer divider rings while preserving the responsive columns", () => {

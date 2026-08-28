@@ -83,6 +83,7 @@ mock.module("@/lib/api/whatsapp-client", () => ({
   whatsappClient: {
     devices: {
       list: mock(() => Promise.resolve({ ok: true, devices: [] })),
+      pullTemplates: mock(() => Promise.resolve({ ok: true, syncedCount: 0 })),
     },
   },
 }))

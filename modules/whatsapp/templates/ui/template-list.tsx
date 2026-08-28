@@ -181,39 +181,59 @@ export function TemplateList({
 
   return (
     <div className="space-y-3">
-      {templates.map((template) => (
-        <div
-          key={template.id}
-          className="flex items-center justify-between rounded-lg border p-4"
-        >
-          <div className="flex items-center gap-4">
-            <div className="flex size-10 items-center justify-center rounded-full bg-yellow-50 dark:bg-yellow-900/20">
-              <Lightning className="size-5 text-yellow-600" weight="fill" />
+      {templates.map((template) => {
+        const deviceName =
+          template.device?.phoneNumber ||
+          (template.whatsappDeviceId
+            ? `Device: ${template.whatsappDeviceId}`
+            : null)
+
+        return (
+          <div
+            key={template.id}
+            className="flex items-center justify-between rounded-lg border p-4"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex size-10 items-center justify-center rounded-full bg-yellow-50 dark:bg-yellow-900/20">
+                <Lightning className="size-5 text-yellow-600" weight="fill" />
+              </div>
+              <div>
+                <button
+                  type="button"
+                  className="text-left font-medium hover:underline"
+                  onClick={() =>
+                    onSelectTemplate?.(template) ?? onSelect?.(template.id)
+                  }
+                >
+                  {template.name}
+                </button>
+                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  <span className="font-mono">{template.slug}</span>
+                  {deviceName && (
+                    <>
+                      <span>•</span>
+                      <span className="text-xs text-foreground/80">
+                        📱 {deviceName}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
-            <div>
-              <button
-                type="button"
-                className="text-left font-medium hover:underline"
-                onClick={() =>
-                  onSelectTemplate?.(template) ?? onSelect?.(template.id)
-                }
-              >
-                {template.name}
-              </button>
-              <p className="text-sm text-muted-foreground">{template.slug}</p>
+            <div className="flex items-center gap-2">
+              {template.category && (
+                <Badge variant="outline" className="text-xs">
+                  {template.category}
+                </Badge>
+              )}
+              <TemplateStatusBadge
+                status={template.syncStatus ?? "NOT_SYNCED"}
+              />
+              <MetaStatusBadge status={template.metaStatus} />
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {template.category && (
-              <Badge variant="outline" className="text-xs">
-                {template.category}
-              </Badge>
-            )}
-            <TemplateStatusBadge status={template.syncStatus ?? "NOT_SYNCED"} />
-            <MetaStatusBadge status={template.metaStatus} />
-          </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
