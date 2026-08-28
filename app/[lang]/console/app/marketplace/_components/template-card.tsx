@@ -6,8 +6,8 @@ import {
   CheckCircle,
   Cpu,
   RocketLaunchIcon,
-  Package,
 } from "@/components/ui/phosphor-icons"
+import { TemplateLogo } from "./template-logo"
 import type { AppTemplateBlueprint } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
 
 export interface MarketplaceTemplateItem {
@@ -84,22 +84,12 @@ export function TemplateCard({
         <div className="flex items-start justify-between gap-2.5">
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/30 p-1.5 text-foreground">
-              {template.iconUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={template.iconUrl}
-                  alt={template.name}
-                  className="size-5 object-contain"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none"
-                    e.currentTarget.parentElement?.classList.add(
-                      "fallback-icon"
-                    )
-                  }}
-                />
-              ) : (
-                <Package className="size-5 text-muted-foreground" />
-              )}
+              <TemplateLogo
+                slug={template.slug}
+                name={template.name}
+                iconUrl={template.iconUrl}
+                className="size-5"
+              />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1">

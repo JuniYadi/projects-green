@@ -61,6 +61,10 @@ mock.module("react-icons/si", () => {
     SiPocketbase: createMock("SiPocketbase"),
     SiUmami: createMock("SiUmami"),
     SiPlausibleanalytics: createMock("SiPlausibleanalytics"),
+    SiHermes: createMock("SiHermes"),
+    SiPostgresql: createMock("SiPostgresql"),
+    SiRedis: createMock("SiRedis"),
+    SiMysql: createMock("SiMysql"),
   }
 })
 
