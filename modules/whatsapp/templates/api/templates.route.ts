@@ -356,22 +356,19 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         }
       }
       // Validate buttons on each language variant
-      for (const lang of rawLanguages!) {
-        const btnValidation = validateTemplateButtons(lang.buttons)
-        if (!btnValidation.isValid) {
-          set.status = 422
-          return {
-            ok: false,
-            error: "INVALID_BUTTONS",
-            message: btnValidation.errors.join(" "),
+      if (Array.isArray(rawLanguages)) {
+        for (const lang of rawLanguages) {
+          const btnValidation = validateTemplateButtons(lang.buttons)
+          if (!btnValidation.isValid) {
+            set.status = 422
+            return {
+              ok: false,
+              error: "INVALID_BUTTONS",
+              message: btnValidation.errors.join(" "),
+            }
           }
         }
       }
-
-      const targetOrgId =
-        isSuperAdmin(whatsappAuth) && explicitOrgId
-          ? explicitOrgId
-          : whatsappAuth.organizationId!
 
       // Guard: device must exist, belong to org, and be ACTIVE
       const device = await prisma.whatsappDevice.findFirst({
@@ -472,8 +469,9 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
             let metaStatusValue: any = null
 
             for (const lang of template.languages) {
+              let components: Array<Record<string, unknown>> | undefined
               try {
-                const components = buildMetaTemplateComponents({
+                components = buildMetaTemplateComponents({
                   ...lang,
                   category: template.category ?? undefined,
                 })
@@ -522,12 +520,11 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
                     fbtraceId: metaErr?.fbtrace_id,
                     httpStatus: metaErr?.httpStatus,
                     language: lang.lang,
-                    components,
-                  } as unknown as Prisma.InputJsonValue,
+                    ...(components ? { components } : {}),
+                  },
                 })
               }
             }
-
             if (latestMetaStatus === "SYNCED") {
               finalTemplate = (await prisma.whatsappTemplate.update({
                 where: { id: template.id },
