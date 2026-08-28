@@ -182,6 +182,40 @@ export function validateTemplateBodyRules(
   }
 }
 
+export const META_BUTTON_TEXT_MAX_LENGTH = 25
+
+/**
+ * Validates template buttons against Meta constraints (max length 25 chars per button text).
+ */
+export function validateTemplateButtons(buttons?: unknown): {
+  isValid: boolean
+  errors: string[]
+} {
+  const errors: string[] = []
+  if (!Array.isArray(buttons) || buttons.length === 0) {
+    return { isValid: true, errors: [] }
+  }
+
+  if (buttons.length > 10) {
+    errors.push("Meta allows a maximum of 10 buttons per template.")
+  }
+
+  for (let i = 0; i < buttons.length; i++) {
+    const btn = buttons[i] as Record<string, any>
+    const text = typeof btn.text === "string" ? btn.text.trim() : ""
+    if (text.length > META_BUTTON_TEXT_MAX_LENGTH) {
+      errors.push(
+        `Button #${i + 1} ("${text.slice(0, 15)}...") exceeds Meta's maximum limit of ${META_BUTTON_TEXT_MAX_LENGTH} characters (${text.length} characters).`
+      )
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  }
+}
+
 /**
  * Formats a raw template name into a valid WhatsApp slug.
  * Meta requirement: lowercase alphanumeric characters and underscores only.

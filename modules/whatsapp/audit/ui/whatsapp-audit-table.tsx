@@ -35,6 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { actionTone, type ActionTone } from "./whatsapp-audit-details"
+import { AuditLogDetailSheet } from "./whatsapp-audit-sheet"
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -181,6 +182,8 @@ export function AuditLogTable({
   messageJourneyBasePath = "/console/whatsapp/messages",
 }: AuditLogTableProps) {
   const [expandedRowId, setExpandedRowId] = React.useState<string | null>(null)
+  const [selectedLogForSheet, setSelectedLogForSheet] =
+    React.useState<AuditLogDTO | null>(null)
 
   if (isLoading) {
     return (
@@ -313,6 +316,7 @@ export function AuditLogTable({
                 <TableHead>
                   <WhatsAppText id="s306" />
                 </TableHead>
+                <TableHead className="w-16 text-right">Inspect</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -424,6 +428,19 @@ export function AuditLogTable({
                       <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
                         {formatTime(log.createdAt)}
                       </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs font-normal"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedLogForSheet(log)
+                          }}
+                        >
+                          Details →
+                        </Button>
+                      </TableCell>
                     </TableRow>
                     {showPayload && isExpanded && (
                       <TableRow>
@@ -517,6 +534,14 @@ export function AuditLogTable({
             </div>
           </div>
         )}
+
+        <AuditLogDetailSheet
+          log={selectedLogForSheet}
+          open={Boolean(selectedLogForSheet)}
+          onOpenChange={(open) => {
+            if (!open) setSelectedLogForSheet(null)
+          }}
+        />
       </div>
     </TooltipProvider>
   )

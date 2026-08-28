@@ -13,7 +13,11 @@ import { enqueueWhatsAppTemplateSync } from "@/lib/queue/whatsapp-template-sync"
 import { toWhatsappTemplateDTO } from "../templates.dto"
 import { logWhatsappAuditEvent } from "@/modules/whatsapp/audit/whatsapp-audit.service"
 import { WhatsAppDeviceClient } from "@/lib/whatsapp/meta-cloud/device-client"
-import { buildMetaTemplateComponents } from "../template-validator"
+import { MetaCloudError } from "@/lib/whatsapp/meta-cloud/errors"
+import {
+  buildMetaTemplateComponents,
+  validateTemplateButtons,
+} from "../template-validator"
 
 const isSuperAdmin = (auth: ResolvedAuth) =>
   auth.type === "workos" && auth.platformRole === "super_admin"
@@ -347,10 +351,27 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         set.status = 400
         return {
           ok: false,
-          error: "BAD_REQUEST",
-          message: "Active WhatsApp device is required.",
+          error: "DEVICE_REQUIRED",
+          message: "A WhatsApp device is required to create a template.",
         }
       }
+      // Validate buttons on each language variant
+      for (const lang of rawLanguages!) {
+        const btnValidation = validateTemplateButtons(lang.buttons)
+        if (!btnValidation.isValid) {
+          set.status = 422
+          return {
+            ok: false,
+            error: "INVALID_BUTTONS",
+            message: btnValidation.errors.join(" "),
+          }
+        }
+      }
+
+      const targetOrgId =
+        isSuperAdmin(whatsappAuth) && explicitOrgId
+          ? explicitOrgId
+          : whatsappAuth.organizationId!
 
       // Guard: device must exist, belong to org, and be ACTIVE
       const device = await prisma.whatsappDevice.findFirst({
@@ -481,15 +502,28 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
                     isApproved: supportedStatus === "APPROVED",
                   },
                 })
-              } catch (langErr) {
+              } catch (langErr: unknown) {
+                const metaErr =
+                  langErr instanceof MetaCloudError ? langErr : null
                 await logWhatsappAuditEvent({
                   action: "TEMPLATE_META_CREATE_FAILED",
                   organizationId: template.organizationId,
                   adminId: auth.userId,
                   deviceId: device.id,
                   message: `Failed to push language variant ${lang.lang} to Meta for template ${template.name}`,
-                  errorMessage: String(langErr),
+                  errorMessage:
+                    langErr instanceof Error
+                      ? langErr.message
+                      : String(langErr),
                   status: "FAILED",
+                  details: {
+                    metaErrorCode: metaErr?.code,
+                    metaErrorType: metaErr?.type,
+                    fbtraceId: metaErr?.fbtrace_id,
+                    httpStatus: metaErr?.httpStatus,
+                    language: lang.lang,
+                    components,
+                  } as unknown as Prisma.InputJsonValue,
                 })
               }
             }
@@ -614,6 +648,22 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       }
       // ── Unapproved template update ─────────────────────────────────────
       try {
+        // Validate buttons on update
+        if (Array.isArray(bodyRecord.languages)) {
+          for (const lang of bodyRecord.languages as Array<
+            Record<string, unknown>
+          >) {
+            const btnValidation = validateTemplateButtons(lang.buttons)
+            if (!btnValidation.isValid) {
+              set.status = 422
+              return {
+                ok: false,
+                error: "INVALID_BUTTONS",
+                message: btnValidation.errors.join(" "),
+              }
+            }
+          }
+        }
         const hasLanguages =
           Array.isArray(bodyRecord.languages) && bodyRecord.languages.length > 0
         const {

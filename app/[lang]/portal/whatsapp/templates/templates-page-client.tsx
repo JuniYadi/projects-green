@@ -13,6 +13,9 @@ import {
   CloudSlash,
   Question,
   Eye,
+  PencilSimple,
+  Trash,
+  DotsThreeVertical,
 } from "@phosphor-icons/react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { toast } from "sonner"
@@ -34,8 +37,19 @@ import {
   whatsappClient,
   type WhatsAppTemplate,
 } from "@/lib/api/whatsapp-client"
-import { useTemplates } from "@/modules/whatsapp/templates/api/templates.hooks"
+import {
+  useTemplates,
+  useDeleteTemplate,
+} from "@/modules/whatsapp/templates/api/templates.hooks"
 import { TemplateLanguageBadge } from "@/modules/whatsapp/templates/ui/template-preview"
+import { TemplateDeleteDialog } from "@/modules/whatsapp/templates/ui/template-delete-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 type TemplatesPageClientProps = {
   isSuperAdmin: boolean
@@ -215,6 +229,9 @@ export function TemplatesPageClient({
     syncStatus: syncStatus || undefined,
     sort,
   })
+  const { remove: deleteTemplate, deleting } = useDeleteTemplate()
+  const [templateToDelete, setTemplateToDelete] =
+    React.useState<WhatsAppTemplate | null>(null)
 
   // ── Org list for super_admin ────────────────────────────────────────
   const [organizations, setOrganizations] = React.useState<
@@ -571,19 +588,64 @@ export function TemplatesPageClient({
     },
     {
       id: "actions",
-      cell: ({ row }) => (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8"
-          onClick={() =>
-            router.push(`/portal/whatsapp/templates/${row.original.id}`)
-          }
-        >
-          <Eye className="mr-1.5 size-3.5" />
-          View
-        </Button>
-      ),
+      cell: ({ row }) => {
+        const tpl = row.original
+        return (
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() =>
+                router.push(`/portal/whatsapp/templates/${tpl.id}`)
+              }
+            >
+              <Eye className="mr-1.5 size-3.5" />
+              View
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  aria-label="More actions"
+                >
+                  <DotsThreeVertical className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem
+                  onClick={() =>
+                    router.push(`/portal/whatsapp/templates/${tpl.id}`)
+                  }
+                >
+                  <PencilSimple className="mr-2 size-4" />
+                  Edit / Manage
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    router.push(
+                      `/portal/whatsapp/templates/new?duplicate=${tpl.id}`
+                    )
+                  }
+                >
+                  <Plus className="mr-2 size-4" />
+                  Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                  onClick={() => setTemplateToDelete(tpl)}
+                >
+                  <Trash className="mr-2 size-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )
+      },
     },
   ]
 
@@ -783,6 +845,26 @@ export function TemplatesPageClient({
             searchableColumns={["name", "category"]}
           />
         )}
+
+        <TemplateDeleteDialog
+          open={Boolean(templateToDelete)}
+          onOpenChange={(open) => {
+            if (!open) setTemplateToDelete(null)
+          }}
+          templateName={templateToDelete?.name ?? "this template"}
+          deleting={deleting}
+          onConfirm={async () => {
+            if (!templateToDelete) return
+            try {
+              await deleteTemplate(templateToDelete.id)
+              toast.success("Template deleted successfully.")
+              setTemplateToDelete(null)
+              void reload()
+            } catch {
+              toast.error("Failed to delete template.")
+            }
+          }}
+        />
       </div>
     </ErrorBoundary>
   )
