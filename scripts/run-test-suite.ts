@@ -51,7 +51,7 @@ const processResult = Bun.spawnSync(["bun", ...args], {
 // even if all tests pass. If tests ran successfully (processResult.success),
 // exit 0 so Codecov can analyze coverage gaps without aborting CI.
 const exitCode =
-  processResult.success || (processResult.exitCode === 1 && coverage)
+  processResult.success && processResult.exitCode === 1 && coverage
     ? 0
     : processResult.exitCode
 process.exit(exitCode)
