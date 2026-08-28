@@ -21,7 +21,7 @@ import {
   Database,
   Lock,
   Package,
-} from "@/components/ui/phosphor-icons"
+} from "@phosphor-icons/react"
 import type { AppTemplateBlueprint } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
 
 export interface AdminTemplateRecord {
@@ -140,14 +140,25 @@ export function TemplateInspectorDrawer({
                   template.visibility === "PUBLIC"
                     ? "default"
                     : template.visibility === "PENDING_REVIEW"
-                      ? "secondary"
-                      : "destructive"
+                      ? "destructive"
+                      : "secondary"
                 }
                 className="text-xs"
               >
                 {template.visibility}
               </Badge>
             </div>
+            <Button
+              variant={template.isFeatured ? "default" : "outline"}
+              size="sm"
+              onClick={() => onToggleFeatured(template.id)}
+              className="gap-1.5"
+            >
+              <Star
+                className={`size-4 ${template.isFeatured ? "fill-amber-400" : ""}`}
+              />
+              {template.isFeatured ? "Featured" : "Feature on Marketplace"}
+            </Button>
           </div>
           <SheetTitle className="text-xl font-bold">{template.name}</SheetTitle>
           <SheetDescription className="text-sm text-muted-foreground">

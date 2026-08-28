@@ -10,11 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import {
-  Globe,
-  Clock,
-  ShieldCheckIcon as ShieldCheck,
-} from "@/components/ui/phosphor-icons"
+import { Globe, Clock, ShieldCheck } from "@phosphor-icons/react"
 import { eden } from "@/lib/eden"
 import { TemplateModerationTable } from "./_components/template-moderation-table"
 import {
