@@ -1,5 +1,12 @@
+import "@/test/register"
 import { describe, expect, it, mock } from "bun:test"
 import { render, screen } from "@testing-library/react"
+
+const mockPush = mock(() => {})
+mock.module("next/navigation", () => ({
+  useParams: mock(() => ({ lang: "en" })),
+  useRouter: mock(() => ({ push: mockPush })),
+}))
 
 mock.module("@/components/ui/phosphor-icons", () => ({
   ShieldCheckIcon: () => <span data-testid="icon-shield-check" />,
@@ -48,7 +55,7 @@ mock.module("@/lib/eden", () => ({
   },
 }))
 
-const { default: PortalAppTemplatesPage } = await import("./page")
+import PortalAppTemplatesPage from "./page"
 
 describe("PortalAppTemplatesPage", () => {
   it("renders the marketplace moderation view", async () => {

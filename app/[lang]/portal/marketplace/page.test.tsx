@@ -1,7 +1,15 @@
+import "@/test/register"
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
 import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import type { AdminTemplateRecord } from "./_components/template-inspector-drawer"
+
+const mockPush = mock(() => {})
+
+mock.module("next/navigation", () => ({
+  useParams: mock(() => ({ lang: "en" })),
+  useRouter: mock(() => ({ push: mockPush })),
+}))
 
 const mockTemplates: AdminTemplateRecord[] = [
   {
@@ -117,21 +125,6 @@ const mockToggleFeatured = mock(() =>
   Promise.resolve({ data: { isFeatured: true } })
 )
 
-mock.module("@/components/ui/phosphor-icons", () => ({
-  ShieldCheckIcon: () => <span data-testid="icon-shield-check" />,
-  Globe: () => <span data-testid="icon-globe" />,
-  Clock: () => <span data-testid="icon-clock" />,
-  EyeIcon: () => <span data-testid="icon-eye" />,
-  CheckCircle: () => <span data-testid="icon-check-circle" />,
-  XCircle: () => <span data-testid="icon-x-circle" />,
-  Star: () => <span data-testid="icon-star" />,
-  Cpu: () => <span data-testid="icon-cpu" />,
-  Database: () => <span data-testid="icon-database" />,
-  Lock: () => <span data-testid="icon-lock" />,
-  Package: () => <span data-testid="icon-package" />,
-  MagnifyingGlassIcon: () => <span data-testid="icon-search" />,
-}))
-
 mock.module("@/lib/eden", () => ({
   eden: {
     api: {
@@ -152,7 +145,7 @@ mock.module("@/lib/eden", () => ({
   },
 }))
 
-const { default: PortalMarketplaceModerationPage } = await import("./page")
+import PortalMarketplaceModerationPage from "./page"
 
 describe("PortalMarketplaceModerationPage", () => {
   beforeEach(() => {
@@ -170,13 +163,14 @@ describe("PortalMarketplaceModerationPage", () => {
       screen.getByText("Marketplace Moderation & Governance")
     ).toBeInTheDocument()
     expect(screen.getByText("Pending Review")).toBeInTheDocument()
+    expect(screen.getByText("New Template")).toBeInTheDocument()
 
     await waitFor(() => {
       expect(screen.getByText("Custom Ghost")).toBeInTheDocument()
     })
   })
 
-  it("allows inspecting a pending template and opening drawer", async () => {
+  it("navigates to dedicated editor page when inspecting", async () => {
     const user = userEvent.setup()
     render(<PortalMarketplaceModerationPage />)
 
@@ -186,16 +180,9 @@ describe("PortalMarketplaceModerationPage", () => {
 
     const inspectBtn = screen.getByRole("button", { name: /inspect/i })
     await user.click(inspectBtn)
-
-    await waitFor(() => {
-      expect(
-        screen.getByText("Ghost blog description with details")
-      ).toBeInTheDocument()
-      expect(screen.getAllByText("ghost:5-alpine").length).toBeGreaterThan(0)
-    })
   })
 
-  it("allows approving a pending template directly or via drawer", async () => {
+  it("allows approving a pending template directly", async () => {
     const user = userEvent.setup()
     render(<PortalMarketplaceModerationPage />)
 
