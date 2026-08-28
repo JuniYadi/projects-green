@@ -3,7 +3,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 import { prisma } from "@/lib/prisma"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
 import { hasScopedSuperAdminClaim } from "@/modules/tenants/tenant-policy"
-import type { Prisma } from "@prisma/client"
+import { Prisma } from "@prisma/client"
 
 export const adminTemplateRoutes = new Elysia({ prefix: "/admin/templates" })
   // GET /api/admin/templates - List all templates with filters (visibility, category, search)

@@ -1,5 +1,4 @@
 import React from "react"
-import type { IconType } from "react-icons"
 import {
   SiDocker,
   SiHermes,
@@ -13,7 +12,7 @@ import {
 import { Package } from "@phosphor-icons/react"
 
 // Mapping for known React Icons (Simple Icons) by slug / keyword
-const REACT_ICON_MAP: Record<string, IconType> = {
+const REACT_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   n8n: SiN8N,
   hermes: SiHermes,
   umami: SiUmami,

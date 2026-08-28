@@ -49,6 +49,7 @@ const mockTemplates: AdminTemplateRecord[] = [
           dataType: "string",
           defaultValue: "production",
           required: true,
+          isSecret: false,
         },
       ],
     },
@@ -72,6 +73,7 @@ const mockTemplates: AdminTemplateRecord[] = [
       runtime: {
         image: "directus/directus:latest",
         defaultPort: 8055,
+        runAsNonRoot: true,
       },
       resources: {
         defaultCpu: 500,
@@ -100,6 +102,7 @@ const mockTemplates: AdminTemplateRecord[] = [
       runtime: {
         image: "n8nio/n8n:latest",
         defaultPort: 5678,
+        runAsNonRoot: true,
       },
       resources: {
         defaultCpu: 500,
