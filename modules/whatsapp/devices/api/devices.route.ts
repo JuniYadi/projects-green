@@ -200,12 +200,6 @@ export const devicesRoutes = new Elysia({
       return { ok: true, devices: devices.map(toDeviceListItem) }
     },
     {
-      response: {
-        200: t.Object({
-          ok: t.Boolean({ example: true }),
-          devices: t.Array(deviceDTOSchema),
-        }),
-      },
       detail: {
         summary: "List WhatsApp Devices",
         description:
@@ -246,12 +240,6 @@ export const devicesRoutes = new Elysia({
           description: "WhatsApp device unique ID",
         }),
       }),
-      response: {
-        200: t.Object({
-          ok: t.Boolean({ example: true }),
-          device: deviceDTOSchema,
-        }),
-      },
       detail: {
         summary: "Get WhatsApp Device Details",
         description:

@@ -118,22 +118,16 @@ const templateLanguageSchema = t.Object(
         "Main body text supporting sequential {{1}}, {{2}} placeholders (max 1024 chars)",
     }),
     parameters: t.Optional(
-      t.Array(
-        t.Object({
-          type: t.String({ example: "BODY" }),
-          text: t.String({ example: "Budi Santoso" }),
-        }),
-        {
-          description:
-            "Sample parameter values matching body placeholders in order",
-          example: [
-            { type: "BODY", text: "Budi Santoso" },
-            { type: "BODY", text: "#ORD-9981" },
-            { type: "BODY", text: "JNE Express" },
-            { type: "BODY", text: "JNE12345678" },
-          ],
-        }
-      )
+      t.Any({
+        description:
+          "Sample parameter values matching body placeholders in order",
+        example: [
+          { type: "BODY", text: "Budi Santoso" },
+          { type: "BODY", text: "#ORD-9981" },
+          { type: "BODY", text: "JNE Express" },
+          { type: "BODY", text: "JNE12345678" },
+        ],
+      })
     ),
     footer: t.Optional(
       t.String({
@@ -142,44 +136,20 @@ const templateLanguageSchema = t.Object(
       })
     ),
     buttons: t.Optional(
-      t.Array(
-        t.Object({
-          type: t.String({
-            example: "URL",
-            description: "Button type: QUICK_REPLY, URL, or OTP",
-          }),
-          text: t.String({
-            example: "Lacak Pesanan",
-            description: "Button label text (max 25 characters)",
-          }),
-          url: t.Optional(
-            t.String({
-              example: "https://example.com/track/{{1}}",
-              description: "Target URL for URL buttons",
-            })
-          ),
-          phoneNumber: t.Optional(
-            t.String({
-              example: "+6281234567890",
-              description: "Phone number with country code for call buttons",
-            })
-          ),
-        }),
-        {
-          description: "Interactive button components (max 3-10 buttons)",
-          example: [
-            {
-              type: "URL",
-              text: "Lacak Pesanan",
-              url: "https://example.com/track/JNE12345678",
-            },
-            {
-              type: "QUICK_REPLY",
-              text: "Hubungi CS",
-            },
-          ],
-        }
-      )
+      t.Any({
+        description: "Interactive button components (max 3-10 buttons)",
+        example: [
+          {
+            type: "URL",
+            text: "Lacak Pesanan",
+            url: "https://example.com/track/JNE12345678",
+          },
+          {
+            type: "QUICK_REPLY",
+            text: "Hubungi CS",
+          },
+        ],
+      })
     ),
     authConfig: t.Optional(
       t.Object(
@@ -555,18 +525,6 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           ),
         })
       ),
-      response: {
-        200: t.Object({
-          ok: t.Boolean({ example: true }),
-          data: t.Array(t.Any({ description: "WhatsApp template item" })),
-          meta: t.Object({
-            total: t.Number({ example: 42 }),
-            page: t.Number({ example: 1 }),
-            limit: t.Number({ example: 50 }),
-            totalPages: t.Number({ example: 1 }),
-          }),
-        }),
-      },
       detail: {
         summary: "List WhatsApp Templates",
         description:
@@ -642,12 +600,6 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           description: "WhatsApp template unique ID",
         }),
       }),
-      response: {
-        200: t.Object({
-          ok: t.Boolean({ example: true }),
-          template: t.Any({ description: "WhatsApp template detail DTO" }),
-        }),
-      },
       detail: {
         summary: "Get WhatsApp Template Details",
         description:
@@ -921,13 +873,6 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
     },
     {
       body: templateBodySchema,
-      response: {
-        200: t.Object({
-          ok: t.Boolean({ example: true }),
-          template: t.Any({ description: "Created WhatsApp template DTO" }),
-          metaResponse: t.Optional(t.Any()),
-        }),
-      },
       detail: {
         summary: "Create WhatsApp Template",
         description:
@@ -1089,12 +1034,6 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
         }),
       }),
       body: templateUpdateSchema,
-      response: {
-        200: t.Object({
-          ok: t.Boolean({ example: true }),
-          template: whatsappTemplateDTOSchema,
-        }),
-      },
       detail: {
         summary: "Update Draft WhatsApp Template",
         description:

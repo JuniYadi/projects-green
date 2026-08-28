@@ -588,43 +588,6 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
     }
   )
   .post(
-    "/",
-    "/:id",
-    async ({
-      request,
-      params: { id },
-      set,
-    }: {
-      request: any
-      params: { id: string }
-      set: any
-    }) => {
-      const whatsappAuth = await resolveAuthContext(request)
-      if (!whatsappAuth) {
-        set.status = 401
-        return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
-      }
-      const message = await prisma.whatsappMessage.findFirst({
-        where: {
-          id,
-          conversation: {
-            organizationId: whatsappAuth.organizationId!,
-          },
-        },
-        include: {
-          statusHistory: true,
-        },
-      })
-
-      if (!message) {
-        set.status = 404
-        return { ok: false, error: "NOT_FOUND", message: "Message not found." }
-      }
-
-      return { ok: true, message: toWhatsappMessageDTO(message) }
-    }
-  )
-  .post(
     "/internal",
     async ({ request, body, set }: { request: any; body: any; set: any }) => {
       const whatsappAuth = await resolveAuthContext(request)
@@ -1374,20 +1337,20 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
     },
     {
       body: sendSchema,
-      response: {
-        200: t.Object({
-          ok: t.Boolean({ example: true }),
-          jobId: t.String({ example: "job_clt1234567890" }),
-          messageId: t.String({ example: "msg_clt1234567890" }),
-          waMessageId: t.String({ example: "wamid.HBgLMzE2NDY0MTk..." }),
-          status: t.String({ example: "sent" }),
-        }),
-      },
       detail: {
         summary: "Send Direct WhatsApp Message",
         description:
           "Sends text, image, document, audio, video, or location messages directly to a recipient phone number via WhatsApp Meta Cloud API.",
         tags: ["WhatsApp Messages"],
+        response: {
+          200: t.Object({
+            ok: t.Boolean({ example: true }),
+            jobId: t.String({ example: "job_clt1234567890" }),
+            messageId: t.String({ example: "msg_clt1234567890" }),
+            waMessageId: t.String({ example: "wamid.HBgLMzE2NDY0MTk..." }),
+            status: t.String({ example: "sent" }),
+          }),
+        },
       },
     }
   )
@@ -1622,20 +1585,20 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
     },
     {
       body: sendTemplateSchema,
-      response: {
-        200: t.Object({
-          ok: t.Boolean({ example: true }),
-          jobId: t.String({ example: "job_clt1234567890" }),
-          messageId: t.String({ example: "msg_clt1234567890" }),
-          waMessageId: t.String({ example: "wamid.HBgLMzE2NDY0MTk..." }),
-          status: t.String({ example: "sent" }),
-        }),
-      },
       detail: {
         summary: "Send WhatsApp Template Message",
         description:
           "Sends a pre-approved WhatsApp template with positional parameters ({{1}}, {{2}}) to a recipient phone number.",
         tags: ["WhatsApp Messages"],
+        response: {
+          200: t.Object({
+            ok: t.Boolean({ example: true }),
+            jobId: t.String({ example: "job_clt1234567890" }),
+            messageId: t.String({ example: "msg_clt1234567890" }),
+            waMessageId: t.String({ example: "wamid.HBgLMzE2NDY0MTk..." }),
+            status: t.String({ example: "sent" }),
+          }),
+        },
       },
     }
   )
