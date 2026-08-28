@@ -25,6 +25,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { TemplateLogo } from "@/app/[lang]/console/app/marketplace/_components/template-logo"
 import {
   Select,
   SelectContent,
@@ -39,7 +40,6 @@ import {
   Cpu,
   Database,
   HardDrive,
-  Globe,
   Key,
 } from "@phosphor-icons/react"
 import {
@@ -483,26 +483,12 @@ export function TemplateEditorForm({
                   </Label>
                   <div className="flex items-center gap-3">
                     <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted/30 p-1.5">
-                      {(() => {
-                        const trimmed = iconUrl.trim()
-                        const isSafeUrl =
-                          trimmed.startsWith("/") ||
-                          trimmed.startsWith("https://") ||
-                          trimmed.startsWith("http://")
-                        return isSafeUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={trimmed}
-                            alt="Icon preview"
-                            className="size-full object-contain"
-                            onError={(e) => {
-                              ;(e.target as HTMLElement).style.display = "none"
-                            }}
-                          />
-                        ) : (
-                          <Globe className="size-5 text-muted-foreground" />
-                        )
-                      })()}
+                      <TemplateLogo
+                        slug={slug}
+                        name={name}
+                        iconUrl={iconUrl}
+                        className="size-full"
+                      />
                     </div>
                     <Input
                       id="template-icon"

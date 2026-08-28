@@ -35,9 +35,17 @@ export function TemplateLogo({
   const [hasError, setHasError] = React.useState(false)
   const normalizedSlug = slug.toLowerCase().trim()
   const ReactIcon = REACT_ICON_MAP[normalizedSlug]
-  const imageSource =
+  const rawSource =
     iconUrl ||
     (normalizedSlug ? `/app-hosting/icons/${normalizedSlug}.svg` : null)
+  const trimmedSource = rawSource?.trim() || null
+  const imageSource =
+    trimmedSource &&
+    (trimmedSource.startsWith("/") ||
+      trimmedSource.startsWith("https://") ||
+      trimmedSource.startsWith("http://"))
+      ? trimmedSource
+      : null
 
   if (prevSource !== imageSource) {
     setPrevSource(imageSource)
