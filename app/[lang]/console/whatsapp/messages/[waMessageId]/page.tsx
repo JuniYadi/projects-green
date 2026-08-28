@@ -56,20 +56,45 @@ export default function ConsoleWhatsAppMessageJourneyPage() {
         data: WhatsappMessageJourneyDTO
         message?: string
       } | null
-      const error = res.error as unknown as { message?: string } | null
+      const error = res.error as unknown as {
+        status?: number
+        value?: { ok?: boolean; error?: string; message?: string } | string
+        message?: string
+      } | null
 
       if (error || !data || !data.ok) {
-        throw new Error(
-          error?.message ?? data?.message ?? "Failed to load message journey"
-        )
+        const errValue = error?.value
+        const extractedError =
+          typeof errValue === "object" &&
+          errValue !== null &&
+          "message" in errValue &&
+          typeof errValue.message === "string"
+            ? errValue.message
+            : typeof errValue === "string"
+              ? errValue
+              : (error?.message ??
+                data?.message ??
+                "Failed to load message journey")
+        throw new Error(extractedError)
       }
 
       setJourney(data.data)
       setPageState("loaded")
-    } catch (_err) {
-      setErrorMessage(
-        _err instanceof Error ? _err.message : "Failed to load message journey"
-      )
+    } catch (_err: unknown) {
+      let msg = "Failed to load message journey"
+      if (_err instanceof Error) {
+        msg = _err.message
+      } else if (
+        typeof _err === "object" &&
+        _err !== null &&
+        "message" in _err &&
+        typeof _err.message === "string"
+      ) {
+        msg = _err.message
+      } else if (typeof _err === "string") {
+        msg = _err
+      }
+      setErrorMessage(msg)
       setPageState("error")
     }
   }, [waMessageId])

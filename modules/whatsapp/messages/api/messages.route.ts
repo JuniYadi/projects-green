@@ -1896,7 +1896,9 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
         set.status = 401
         return { ok: false, error: "UNAUTHORIZED", message: "Auth required." }
       }
-      if (!auth.organizationId) {
+      const isSuperAdmin =
+        auth.type === "workos" && auth.platformRole === "super_admin"
+      if (!isSuperAdmin && !auth.organizationId) {
         set.status = 403
         return {
           ok: false,
@@ -1908,12 +1910,19 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       const decodedWamid = decodeURIComponent(waMessageId)
 
       // 1. Query message record
+      const orgFilter = isSuperAdmin
+        ? {}
+        : { organizationId: auth.organizationId! }
       const message = await prisma.whatsappMessage.findFirst({
         where: {
           waMessageId: decodedWamid,
-          conversation: {
-            organizationId: auth.organizationId,
-          },
+          ...(isSuperAdmin
+            ? {}
+            : {
+                conversation: {
+                  organizationId: auth.organizationId!,
+                },
+              }),
         },
         include: {
           conversation: {
@@ -1931,16 +1940,14 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       const billingLedger = await prisma.whatsappBillingLedger.findFirst({
         where: {
           waMessageId: decodedWamid,
-          organizationId: auth.organizationId,
+          ...orgFilter,
         },
       })
 
       // 3. Query audit log by structured message ID.
-      // Message text can contain a wamid from an unrelated message and create
-      // a false journey link.
       const auditLog = await prisma.whatsappAuditLog.findFirst({
         where: {
-          organizationId: auth.organizationId,
+          ...orgFilter,
           details: { path: ["waMessageId"], equals: decodedWamid },
         },
         orderBy: { createdAt: "asc" },
@@ -1950,11 +1957,10 @@ export const messagesRoutes = new Elysia({ prefix: "/messages" })
       const webhookEvents = await prisma.whatsappWebhookEvent.findMany({
         where: {
           waMessageId: decodedWamid,
-          organizationId: auth.organizationId,
+          ...orgFilter,
         },
         orderBy: { createdAt: "asc" },
       })
-
       if (
         !message &&
         !billingLedger &&
