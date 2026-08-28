@@ -475,7 +475,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
                 })
               } catch (langErr) {
                 await logWhatsappAuditEvent({
-                  action: "TEMPLATE_META_PUSH_LANG_FAILED",
+                  action: "TEMPLATE_META_CREATE_FAILED",
                   organizationId: template.organizationId,
                   adminId: auth.userId,
                   deviceId: device.id,
@@ -502,7 +502,7 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
           }
         } catch (pushErr) {
           await logWhatsappAuditEvent({
-            action: "TEMPLATE_DIRECT_PUSH_FAILED",
+            action: "TEMPLATE_META_CREATE_FAILED",
             organizationId: template.organizationId,
             adminId: auth.userId,
             deviceId: device.id,
