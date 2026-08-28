@@ -813,4 +813,19 @@ describe("templatesRoutes", () => {
       })
     })
   })
+  it("rejects template listing without authentication", async () => {
+    const previous = currentAuth
+    currentAuth = null
+    const res = await createTestApp().handle(
+      new Request("http://localhost/templates")
+    )
+    currentAuth = previous
+    expect(res.status).toBe(401)
+    expect(await res.json()).toEqual({
+      ok: false,
+      error: "UNAUTHORIZED",
+      message: "Auth required.",
+    })
+    expect(mockTemplateFindMany).not.toHaveBeenCalled()
+  })
 })

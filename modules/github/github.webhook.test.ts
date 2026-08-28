@@ -5,6 +5,7 @@ import {
   enqueueGithubWebhookEvent,
   evaluatePushRules,
   extractBranchFromRef,
+  matchesBranchFilters,
   processGithubWebhookEvent,
   signGithubWebhookBody,
   verifyGithubWebhookSignature,
@@ -781,5 +782,84 @@ describe("enqueueGithubWebhookEvent", () => {
       eventId: "event_existing",
     })
     expect(queue.enqueue).toHaveBeenCalledTimes(0)
+  })
+})
+describe("github webhook pure edge cases", () => {
+  it("accepts the legacy signature argument and rejects malformed signatures", () => {
+    const payload = '{"ok":true}'
+    const valid = signGithubWebhookBody(payload, WEBHOOK_SECRET)
+    expect(
+      verifyGithubWebhookSignature({
+        rawBody: payload,
+        signature: valid,
+        secret: WEBHOOK_SECRET,
+      })
+    ).toBe(true)
+    expect(
+      verifyGithubWebhookSignature({
+        rawBody: payload,
+        signatureHeader: "sha1=deadbeef",
+        secret: WEBHOOK_SECRET,
+      })
+    ).toBe(false)
+    expect(
+      verifyGithubWebhookSignature({
+        rawBody: payload,
+        signatureHeader: `sha256=${"a".repeat(62)}`,
+        secret: WEBHOOK_SECRET,
+      })
+    ).toBe(false)
+  })
+
+  it("handles disabled, deleted, non-head, and unmatched pushes", () => {
+    const payload = { ref: "refs/heads/main" }
+    const baseConn = {
+      id: "conn-1",
+      enabled: true,
+      branchFilters: ["main"],
+      organizationId: "org-1",
+      installationId: "inst-1",
+      repoName: "repo",
+      fullName: "org/repo",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      buildConfigJson: {},
+    }
+    expect(
+      evaluatePushRules({
+        payload,
+        connection: { ...baseConn, enabled: false } as never,
+      })
+    ).toEqual({ shouldDispatch: false, reason: "CONNECTION_DISABLED" })
+    expect(
+      evaluatePushRules({
+        payload: { ...payload, deleted: true },
+        connection: baseConn as never,
+      })
+    ).toEqual({ shouldDispatch: false, reason: "PUSH_DELETED" })
+    expect(
+      evaluatePushRules({
+        payload: { ref: "refs/tags/v1" },
+        connection: baseConn as never,
+      })
+    ).toEqual({ shouldDispatch: false, reason: "NON_HEAD_REF" })
+    expect(
+      evaluatePushRules({
+        payload,
+        connection: { ...baseConn, branchFilters: [" develop "] } as never,
+      })
+    ).toEqual({ shouldDispatch: false, reason: "BRANCH_FILTER_MISS" })
+  })
+
+  it("extracts only heads refs and rejects empty branches or filters", () => {
+    expect(extractBranchFromRef(null)).toBeNull()
+    expect(extractBranchFromRef("refs/tags/v1")).toBeNull()
+    expect(extractBranchFromRef("refs/heads/feature/x")).toBe("feature/x")
+    expect(
+      matchesBranchFilters({ branch: "  ", branchFilters: ["main"] })
+    ).toBe(false)
+    expect(matchesBranchFilters({ branch: "main", branchFilters: [] })).toBe(
+      false
+    )
   })
 })

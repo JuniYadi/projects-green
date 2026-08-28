@@ -111,10 +111,13 @@ const mockComputeRecommendedSchedule = mock<
 }))
 const mockValidateSchedule = mock<() => Promise<void>>(async () => {})
 
+const mockCampaignFindMany = mock<() => Promise<Campaign[]>>(async () => [])
+
 const mockPrisma = {
   whatsappBroadcastCampaign: {
     count: mockCount,
     aggregate: mockAggregate,
+    findMany: mockCampaignFindMany,
     findUnique: mockFindUnique,
     update: mockCampaignUpdate,
     create: mockCampaignCreate,
@@ -243,6 +246,53 @@ describe("broadcastsRoutes summary", () => {
     expect(mockAggregate).toHaveBeenNthCalledWith(2, {
       where: { organizationId: "org-1" },
       _sum: { failed: true },
+    })
+  })
+})
+describe("broadcastsRoutes listing and detail", () => {
+  it("applies bounded pagination when listing campaigns", async () => {
+    mockCount.mockResolvedValueOnce(3)
+    mockPrisma.whatsappBroadcastCampaign.findMany.mockResolvedValueOnce([])
+    const response = await createTestApp().handle(
+      new Request("http://localhost/broadcasts?page=2&limit=999")
+    )
+    expect(response.status).toBe(200)
+    expect((await response.json()).meta).toEqual({
+      total: 3,
+      page: 2,
+      limit: 100,
+      totalPages: 1,
+    })
+    expect(mockPrisma.whatsappBroadcastCampaign.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 100, take: 100 })
+    )
+  })
+
+  it("returns not found for an unknown campaign", async () => {
+    mockFindUnique.mockResolvedValueOnce(null)
+    const response = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/missing")
+    )
+    expect(response.status).toBe(404)
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: "NOT_FOUND",
+      message: "Broadcast campaign not found.",
+    })
+  })
+
+  it("prevents another organization from reading a campaign", async () => {
+    mockFindUnique.mockResolvedValueOnce(
+      campaign({ organizationId: "org-other" })
+    )
+    const response = await createTestApp().handle(
+      new Request("http://localhost/broadcasts/foreign")
+    )
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: "FORBIDDEN",
+      message: "Access denied.",
     })
   })
 })

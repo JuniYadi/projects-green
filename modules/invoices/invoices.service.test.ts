@@ -520,4 +520,22 @@ describe("invoice service", () => {
     expect(detail.paymentMethod).toBe("MANUAL_BANK")
     expect(detail.paidAt).toBe("2026-06-01T00:00:00.000Z")
   })
+  it("forwards organization and query and preserves an empty result", async () => {
+    const calls: Array<{ organizationId?: string | null; query: unknown }> = []
+    const service = createInvoiceService({
+      repository: {
+        listByOrganization: async (input) => {
+          calls.push(input)
+          return []
+        },
+        findByIdForOrganization: async () => null,
+        updateStatusByIdForOrganization: async () => undefined,
+      },
+    })
+    const query = { status: "paid" as const, page: 2, pageSize: 25 }
+    await expect(
+      service.listInvoices({ organizationId: "org_9", query })
+    ).resolves.toEqual([])
+    expect(calls).toEqual([{ organizationId: "org_9", query }])
+  })
 })

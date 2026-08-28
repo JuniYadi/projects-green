@@ -113,7 +113,7 @@ describe("cluster-secrets-vault lifecycle", () => {
       },
       secrets: {
         apiServerUrl: "https://k8s-api.internal:6443",
-        serviceAccountToken: "eyJhbGciOiJSUzI1NiIsImtpZCI6...",
+        serviceAccountToken: "dummy-sa-token-sample",
         caCertificate: "-----BEGIN CERTIFICATE-----\nMIIB...",
         kubeconfig: "apiVersion: v1\nclusters:\n- cluster:...",
       },
@@ -130,7 +130,7 @@ describe("cluster-secrets-vault lifecycle", () => {
       `admin/clusters/${clusterId}/integrations/KUBECONFIG`,
       expect.objectContaining({
         apiServerUrl: "https://k8s-api.internal:6443",
-        serviceAccountToken: "eyJhbGciOiJSUzI1NiIsImtpZCI6...",
+        serviceAccountToken: "dummy-sa-token-sample",
         caCertificate: "-----BEGIN CERTIFICATE-----\nMIIB...",
         kubeconfig: "apiVersion: v1\nclusters:\n- cluster:...",
       })
@@ -377,7 +377,7 @@ describe("cluster-secrets-vault lifecycle", () => {
 
     const fallbackSecrets = {
       username: "jenkins-admin",
-      apiToken: "11abcdef1234567890",
+      apiToken: "dummy-api-token-value",
       webhookToken: "whk-secret-token",
     }
     const fallbackCiphertext = encryptClusterIntegrationSecrets(fallbackSecrets)
@@ -411,7 +411,7 @@ describe("cluster-secrets-vault lifecycle", () => {
     )
     expect(resolved.baseUrl).toBe("https://jenkins.internal")
     expect(resolved.username).toBe("jenkins-admin")
-    expect(resolved.apiToken).toBe("11abcdef1234567890")
+    expect(resolved.apiToken).toBe("dummy-api-token-value")
     expect(resolved.webhookToken).toBe("whk-secret-token")
   })
 })

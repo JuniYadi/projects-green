@@ -121,7 +121,14 @@ describe("vpn-port-checker", () => {
     })
 
     it("times out and assumes port appears open when no ICMP received", async () => {
-      const res = await defaultUdpProbe("127.0.0.1", 59998, 100)
+      const tmpSocket = dgram.createSocket("udp4")
+      const { promise, resolve } = Promise.withResolvers<void>()
+      tmpSocket.bind(0, "127.0.0.1", () => resolve())
+      await promise
+      const port = tmpSocket.address().port
+      tmpSocket.close()
+
+      const res = await defaultUdpProbe("127.0.0.1", port, 100)
       expect(res.ok).toBe(true)
       if (res.ok) {
         expect(res.message).toContain("No ICMP error received")
