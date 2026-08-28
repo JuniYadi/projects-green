@@ -64,10 +64,8 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
-import type {
-  WhatsAppTemplate,
-  DeviceListItem,
-} from "@/lib/api/whatsapp-client"
+import type { WhatsAppTemplate } from "@/lib/api/whatsapp-client"
+import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
 import {
   useTemplates,
   useTemplate,
@@ -925,7 +923,9 @@ export function WhatsAppInbox({
     if (labelFilterIds.length > 0) {
       result = result.filter((c) => {
         const conversationLabelIds =
-          c.conversationLabels?.map((cl) => cl.label.id) ?? []
+          c.conversationLabels?.map(
+            (cl: { label: { id: string } }) => cl.label.id
+          ) ?? []
         return labelFilterIds.every((fid) => conversationLabelIds.includes(fid))
       })
     }
@@ -1093,7 +1093,7 @@ export function WhatsAppInbox({
       setSelectedTemplateLanguage("")
       setTemplateFieldValues({})
       setTemplateSearchQuery("")
-      let sentConversation: ConversationListItem | null = null
+      let sentConversation: ConversationListItem | null | undefined = null
       try {
         sentConversation = await loadConversationForPhone(
           variables.phoneNumber,
