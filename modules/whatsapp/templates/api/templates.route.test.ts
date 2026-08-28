@@ -402,6 +402,56 @@ describe("templatesRoutes", () => {
       expect(json.template.metaStatus).toBe("PENDING")
     })
 
+    it("creates template successfully when authenticated via API key (type platform)", async () => {
+      setMockAuthContext({
+        type: "platform",
+        keyId: "key-1",
+        keyName: "WhatsApp organization API key",
+        organizationId: "org-1",
+        environment: "LIVE",
+        scopes: [],
+        source: "api_key",
+      })
+      mockDeviceFindFirst.mockResolvedValueOnce({
+        id: "dev-1",
+        token: "tok-1",
+        tokenEncrypted: "encrypted",
+        tokenIv: "iv",
+        whatsappPhoneId: "phone-1",
+        whatsappBusinessAccountId: "waba-1",
+      } as any)
+
+      const app = createTestApp()
+      const body = {
+        slug: "hello_api_key",
+        name: "Hello API Key",
+        whatsappDeviceId: "dev-1",
+        category: "UTILITY",
+        languages: [
+          {
+            lang: "id",
+            headerType: "NONE",
+            headerText: "",
+            headerUrl: "",
+            body: "Halo {{1}}",
+            footer: "",
+          },
+        ],
+      }
+
+      const res = await app.handle(
+        new Request("http://localhost/templates/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      expect(json.ok).toBe(true)
+    })
+
     it("rejects creation if whatsappDeviceId is missing", async () => {
       const app = createTestApp()
 

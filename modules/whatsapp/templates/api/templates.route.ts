@@ -304,10 +304,9 @@ export const templatesRoutes = new Elysia({ prefix: "/templates" })
       }
 
       const targetOrgId =
-        (whatsappAuth.type === "workos"
-          ? whatsappAuth.organizationId
-          : (body as Record<string, string | undefined>).organizationId) ?? ""
-
+        whatsappAuth.organizationId ??
+        (body as Record<string, string | undefined>).organizationId ??
+        ""
       if (!targetOrgId) {
         set.status = 400
         return {

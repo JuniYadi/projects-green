@@ -465,9 +465,7 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
         ...campaignData
       } = body
       const organizationId =
-        whatsappAuth.type === "workos"
-          ? whatsappAuth.organizationId!
-          : (body as any).organizationId
+        whatsappAuth.organizationId ?? (body as any).organizationId ?? ""
 
       const preflight = await validateBroadcastPreflight({
         organizationId,
@@ -765,9 +763,7 @@ export const broadcastsRoutes = new Elysia({ prefix: "/broadcasts" })
       }
 
       const organizationId =
-        whatsappAuth.type === "workos"
-          ? whatsappAuth.organizationId!
-          : body.organizationId
+        whatsappAuth.organizationId ?? body.organizationId ?? ""
 
       try {
         const [capacity, recommendation] = await Promise.all([
