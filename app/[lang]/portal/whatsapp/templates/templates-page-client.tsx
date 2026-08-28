@@ -713,6 +713,8 @@ export function TemplatesPageClient({
             tableId="portal-whatsapp-templates"
             columns={columns}
             data={templates}
+            searchPlaceholder="Search templates..."
+            searchableColumns={["name", "category"]}
           />
         )}
       </div>

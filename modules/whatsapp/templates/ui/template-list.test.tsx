@@ -77,4 +77,58 @@ describe("TemplateList", () => {
     ).toBeGreaterThan(0)
     cleanup()
   })
+  it("renders error state with retry button", () => {
+    const onRetry = mock()
+    const view = render(
+      <TemplateList
+        templates={[]}
+        loading={false}
+        error="Failed to fetch templates"
+        onRetry={onRetry}
+      />
+    )
+
+    expect(view.getByRole("alert")).toHaveTextContent(
+      "Failed to fetch templates"
+    )
+    fireEvent.click(view.getByRole("button"))
+    expect(onRetry).toHaveBeenCalled()
+    cleanup()
+  })
+
+  it("renders empty state with create button", () => {
+    const onCreate = mock()
+    const view = render(
+      <TemplateList
+        templates={[]}
+        loading={false}
+        error={null}
+        onRetry={mock()}
+        onCreate={onCreate}
+      />
+    )
+
+    expect(view.getByText("No templates configured yet")).toBeInTheDocument()
+    const createButton = view.getByRole("button", { name: "Create Template" })
+    fireEvent.click(createButton)
+    expect(onCreate).toHaveBeenCalled()
+    cleanup()
+  })
+
+  it("triggers onSelect callback when clicking on template name if onSelectTemplate is not provided", () => {
+    const onSelect = mock()
+    const view = render(
+      <TemplateList
+        templates={[baseTemplate]}
+        loading={false}
+        error={null}
+        onRetry={mock()}
+        onSelect={onSelect}
+      />
+    )
+
+    fireEvent.click(view.getByRole("button", { name: "Welcome Message" }))
+    expect(onSelect).toHaveBeenCalledWith("tpl-1")
+    cleanup()
+  })
 })

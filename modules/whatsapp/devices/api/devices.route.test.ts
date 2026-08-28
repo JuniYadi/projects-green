@@ -18,13 +18,37 @@ const mockFindMany = mock(async (): Promise<any[]> => [])
 const mockUpdate = mock(async (): Promise<any> => createMockDevice())
 const mockEnqueueWhatsAppTemplateSync = mock(async () => {})
 const originalAppKey = process.env.APP_KEY
-const TEST_APP_KEY = Buffer.alloc(32, 5).toString("base64")
-const mockWithAuth = mock(async () => ({
-  user: { id: "user_1", email: "admin@example.com" },
-  organizationId: "org_1",
-  role: "admin",
-  roles: ["admin"],
+const mockSyncTemplatesFromMeta = mock(async () => ({
+  syncedCount: 2,
+  totalMetaCount: 2,
 }))
+const mockGetProfile = mock(async () => ({}))
+const mockSyncDeviceFromMeta = mock(async () => ({}))
+const mockRecordMetaRefreshUnavailable = mock(async () => {})
+const mockUpdateProfile = mock(async () => ({}))
+const mockUploadProfilePicture = mock(async () => ({}))
+const mockGetPlatformRoleForUser = mock(async () => "none")
+
+mock.module("../business-profile.service", () => ({
+  getProfile: mockGetProfile,
+  syncDeviceFromMeta: mockSyncDeviceFromMeta,
+  recordMetaRefreshUnavailable: mockRecordMetaRefreshUnavailable,
+  syncTemplatesFromMeta: mockSyncTemplatesFromMeta,
+  updateProfile: mockUpdateProfile,
+  uploadProfilePicture: mockUploadProfilePicture,
+  DeviceNoPhoneIdError: class DeviceNoPhoneIdError extends Error {},
+  DeviceNoMetaAppIdError: class DeviceNoMetaAppIdError extends Error {},
+  ProfileNotFoundError: class ProfileNotFoundError extends Error {},
+}))
+const TEST_APP_KEY = Buffer.alloc(32, 5).toString("base64")
+const mockWithAuth = mock(
+  async (): Promise<any> => ({
+    user: { id: "user_1", email: "admin@example.com" },
+    organizationId: "org_1",
+    role: "admin",
+    roles: ["admin"],
+  })
+)
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -45,7 +69,7 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
 }))
 
 mock.module("@/lib/platform-role", () => ({
-  getPlatformRoleForUser: mock(async () => "none"),
+  getPlatformRoleForUser: mockGetPlatformRoleForUser,
 }))
 
 // ─── Auth mock ─────────────────────────────────────────────────────────────────
@@ -111,6 +135,13 @@ describe("devices routes", () => {
     mockUpdate.mockClear()
     mockEnqueueWhatsAppTemplateSync.mockClear()
     mockWithAuth.mockClear()
+    mockSyncTemplatesFromMeta.mockClear()
+    mockGetPlatformRoleForUser.mockClear()
+    mockGetPlatformRoleForUser.mockImplementation(async () => "none")
+    mockSyncTemplatesFromMeta.mockImplementation(async () => ({
+      syncedCount: 2,
+      totalMetaCount: 2,
+    }))
     mockFindUnique.mockImplementation(async () => null)
     mockFindMany.mockImplementation(async () => [])
     mockUpdate.mockImplementation(async () => createMockDevice())
@@ -619,5 +650,206 @@ describe("devices routes", () => {
     expect(payload.ok).toBe(false)
     expect(payload.error).toBe("QUEUE_UNAVAILABLE")
     expect(payload.message).toContain("REDIS_URL")
+  })
+  // ── Pull templates from Meta (POST /:id/pull-templates) ───────────────────
+
+  it("returns 401 when unauthorized for pull-templates", async () => {
+    mockWithAuth.mockImplementationOnce(
+      async () =>
+        ({ user: null }) as unknown as {
+          user: { id: string; email: string }
+          organizationId: string
+          role: string
+          roles: string[]
+        }
+    )
+    setMockAuthContext(null)
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/pull-templates", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(401)
+    const payload = (await response.json()) as { ok: boolean; error: string }
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("UNAUTHORIZED")
+  })
+
+  it("returns 404 when device not found for pull-templates", async () => {
+    mockFindUnique.mockImplementationOnce(async () => null)
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_missing/pull-templates", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(404)
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+      message: string
+    }
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("NOT_FOUND")
+    expect(payload.message).toBe("Device not found.")
+  })
+
+  it("returns 403 when user belongs to different org for pull-templates", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({ id: "dev_other", organizationId: "org_other" })
+    )
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_other/pull-templates", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(403)
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+      message: string
+    }
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("FORBIDDEN")
+    expect(payload.message).toBe("Access denied.")
+  })
+
+  it("successfully pulls templates from Meta for own org device", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({ id: "dev_1", organizationId: "org_1" })
+    )
+    mockSyncTemplatesFromMeta.mockResolvedValueOnce({
+      syncedCount: 5,
+      totalMetaCount: 5,
+    })
+
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/pull-templates", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const payload = (await response.json()) as {
+      ok: boolean
+      syncedCount: number
+      totalMetaCount: number
+    }
+    expect(payload.ok).toBe(true)
+    expect(payload.syncedCount).toBe(5)
+    expect(payload.totalMetaCount).toBe(5)
+    expect(mockSyncTemplatesFromMeta).toHaveBeenCalledWith("dev_1", "org_1")
+  })
+
+  it("allows super_admin to pull templates for any org device", async () => {
+    mockWithAuth.mockImplementationOnce(async () => ({
+      user: { id: "admin_user", email: "superadmin@example.com" },
+      organizationId: "org_super",
+      role: "admin",
+      roles: ["admin"],
+    }))
+    mockGetPlatformRoleForUser.mockResolvedValueOnce("super_admin")
+    setMockAuthContext({
+      type: "workos",
+      userId: "admin_user",
+      email: "superadmin@example.com",
+      organizationId: "org_super",
+      orgRole: "admin",
+      platformRole: "super_admin",
+    })
+
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({ id: "dev_other", organizationId: "org_other" })
+    )
+    mockSyncTemplatesFromMeta.mockImplementationOnce(async () => ({
+      syncedCount: 3,
+      totalMetaCount: 3,
+    }))
+
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_other/pull-templates", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(200)
+    const payload = (await response.json()) as {
+      ok: boolean
+      syncedCount: number
+      totalMetaCount: number
+    }
+    expect(payload.ok).toBe(true)
+    expect(payload.syncedCount).toBe(3)
+    expect(payload.totalMetaCount).toBe(3)
+    expect(mockSyncTemplatesFromMeta).toHaveBeenCalledWith(
+      "dev_other",
+      "org_other"
+    )
+  })
+
+  it("returns 500 with error message when syncTemplatesFromMeta fails", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({ id: "dev_1", organizationId: "org_1" })
+    )
+    mockSyncTemplatesFromMeta.mockImplementationOnce(async () => {
+      throw new Error("Meta API rate limit reached")
+    })
+
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/pull-templates", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(500)
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+      message: string
+    }
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("PULL_TEMPLATES_FAILED")
+    expect(payload.message).toBe("Meta API rate limit reached")
+  })
+
+  it("returns 500 with fallback message when syncTemplatesFromMeta throws non-Error", async () => {
+    mockFindUnique.mockImplementationOnce(async () =>
+      createMockDevice({ id: "dev_1", organizationId: "org_1" })
+    )
+    mockSyncTemplatesFromMeta.mockImplementationOnce(async () => {
+      throw "some string rejection"
+    })
+
+    const app = createTestApp()
+
+    const response = await app.handle(
+      new Request("http://localhost/devices/dev_1/pull-templates", {
+        method: "POST",
+      })
+    )
+
+    expect(response.status).toBe(500)
+    const payload = (await response.json()) as {
+      ok: boolean
+      error: string
+      message: string
+    }
+    expect(payload.ok).toBe(false)
+    expect(payload.error).toBe("PULL_TEMPLATES_FAILED")
+    expect(payload.message).toBe("Failed to pull templates from Meta")
   })
 })

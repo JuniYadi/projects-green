@@ -92,6 +92,27 @@ mock.module("next/navigation", () => ({
     push: mock(() => {}),
   }),
   useParams: () => ({ lang: "en" }),
+  usePathname: () => "/en/console/whatsapp/templates",
+  useSearchParams: () => new URLSearchParams(),
+}))
+
+mock.module("@/modules/whatsapp/onboarding/use-whatsapp-onboarding", () => ({
+  useWhatsAppOnboarding: () => ({
+    isFeatureLocked: () => false,
+    isGraduated: true,
+    level: 3,
+    progressPercent: 100,
+    missions: [],
+    activeMission: {
+      title: "Done",
+      subtitle: "Done",
+      description: "Done",
+      actionLabel: "Done",
+      completed: true,
+    },
+    graduateNow: () => {},
+    resetOnboarding: () => {},
+  }),
 }))
 
 mock.module("@/modules/whatsapp/templates/api/templates.hooks", () => ({
