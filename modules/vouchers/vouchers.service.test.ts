@@ -19,7 +19,7 @@ import {
   VoucherDiscountConfigurationError,
 } from "./vouchers.errors"
 
-type MockPrisma = unknown
+type MockPrisma = Record<string, unknown>
 function createMockTx() {
   return {
     voucher: {

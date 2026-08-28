@@ -26,11 +26,17 @@ mock.module("@/lib/auth/resolve-proxy-auth", () => ({
   resolveAuthContext: async () => mockAuthContext.current,
 }))
 
-const mockGroupFindFirst = mock(async () => ({
-  id: "group_default",
-  organizationId: "org_1",
-  name: "Ungrouped",
-}))
+const mockGroupFindFirst = mock(
+  async (): Promise<{
+    id: string
+    organizationId: string
+    name: string
+  } | null> => ({
+    id: "group_default",
+    organizationId: "org_1",
+    name: "Ungrouped",
+  })
+)
 const mockGroupCreate = mock(async () => ({
   id: "group_default",
   organizationId: "org_1",
@@ -320,7 +326,10 @@ describe("contacts routes", () => {
       mockGroupCreate.mockClear()
       mockContactFindFirst.mockClear()
       mockContactCreate.mockClear()
-      mockGroupFindFirst.mockImplementation(async () => null)
+      mockGroupFindFirst.mockImplementation(
+        async () =>
+          null as { id: string; organizationId: string; name: string } | null
+      )
       mockGroupCreate.mockImplementation(async () => ({
         id: "group_default",
         organizationId: "org_1",
@@ -415,7 +424,10 @@ describe("contacts routes", () => {
     })
 
     it("rejects a provided group that does not belong to the organization", async () => {
-      mockGroupFindFirst.mockImplementation(async () => null)
+      mockGroupFindFirst.mockImplementation(
+        async () =>
+          null as { id: string; organizationId: string; name: string } | null
+      )
 
       const app = createTestApp()
 
