@@ -10,7 +10,7 @@ import {
   SiUmami,
   SiWordpress,
 } from "react-icons/si"
-import { Package } from "@/components/ui/phosphor-icons"
+import { Package } from "@phosphor-icons/react"
 
 // Mapping for known React Icons (Simple Icons) by slug / keyword
 const REACT_ICON_MAP: Record<string, IconType> = {
