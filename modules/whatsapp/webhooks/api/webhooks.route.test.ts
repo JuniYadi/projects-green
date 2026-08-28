@@ -4,9 +4,10 @@ import { workosNodeMock } from "../../../../test/workos-node-mock"
 
 const mockAuthContext = {
   current: null as {
-    organizationId?: string
+    organizationId?: string | null
     type: string
     userId?: string
+    orgRole?: string | null
     platformRole?: string
   } | null,
 }
@@ -24,10 +25,13 @@ const mockWebhookUpdate = mock(() => Promise.resolve({}))
 const mockWebhookDelete = mock(() => Promise.resolve({}))
 const mockWebhookCount = mock(() => Promise.resolve(0))
 
+const mockDeviceFindUnique = mock(async () => null)
 const mockDeviceFindFirst = mock(() => Promise.resolve(null))
-const mockEventCreate = mock(() => Promise.resolve({}))
-const mockEventFindMany = mock(() => Promise.resolve([]))
-const mockEventCount = mock(() => Promise.resolve(0))
+const mockEventCreate = mock(() => Promise.resolve({ id: "event-1" }))
+const mockEventFindMany = mock(async () => [])
+const mockEventCount = mock(async () => 0)
+
+const mockDeliveryLogFindUnique = mock(async () => null)
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -40,12 +44,16 @@ mock.module("@/lib/prisma", () => ({
       count: mockWebhookCount,
     },
     whatsappDevice: {
+      findUnique: mockDeviceFindUnique,
       findFirst: mockDeviceFindFirst,
     },
     whatsappWebhookEvent: {
       create: mockEventCreate,
       findMany: mockEventFindMany,
       count: mockEventCount,
+    },
+    whatsappWebhookDeliveryLog: {
+      findUnique: mockDeliveryLogFindUnique,
     },
   },
 }))
@@ -68,8 +76,8 @@ mock.module("../webhooks.service", () => ({
 
 const mockGetDeliveryLogs = mock(() =>
   Promise.resolve({
-    data: [],
-    meta: { total: 0, page: 1, limit: 20, totalPages: 0 },
+    data: [{ id: "del-1", statusCode: 200 }],
+    meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
   })
 )
 const mockResendDelivery = mock(() => Promise.resolve({ success: true }))
@@ -80,6 +88,7 @@ mock.module("../webhook-dispatcher.service", () => ({
     getDeliveryLogs: mockGetDeliveryLogs,
     resendDelivery: mockResendDelivery,
     dispatch: mockDispatch,
+    resend: mockResendDelivery,
   },
   toDeliveryLogDTO: (log: unknown) => log,
 }))
@@ -102,6 +111,49 @@ function createTestApp() {
   return new Elysia().use(webhooksRoutes)
 }
 
+function getEventsUrl(
+  deviceId: string,
+  query: Record<string, string> = {}
+): string {
+  const params = new URLSearchParams(query).toString()
+  return `http://localhost/webhooks/${deviceId}/events${params ? `?${params}` : ""}`
+}
+
+const mockDevice = {
+  id: "device-1",
+  organizationId: "org-1",
+  phoneNumber: "+62811111111",
+  status: "ACTIVE",
+  quotaBase: 1000,
+  dailyLimitMessage: 500,
+  tokenEncrypted: null,
+  tokenIv: null,
+  whatsappBusinessAccountId: null,
+  whatsappPhoneId: null,
+  whatsappApplicationId: null,
+  whatsappProfile: null,
+  features: null,
+  callbackUrl: null,
+  expiredAt: null,
+  balance: 0,
+  quotaBaseOut: 0,
+  createdAt: new Date("2026-01-01T00:00:00.000Z"),
+  updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+}
+
+const mockEvent = {
+  id: "event-1",
+  organizationId: "org-1",
+  whatsappDeviceId: "device-1",
+  eventType: "inbound_message",
+  processingStatus: "SUCCESS",
+  metaPayload: { test: "data" },
+  waMessageId: null,
+  errorMessage: null,
+  processedAt: new Date("2026-06-18T12:01:00.000Z"),
+  createdAt: new Date("2026-06-18T12:00:00.000Z"),
+}
+
 describe("webhooks.route", () => {
   let app: ReturnType<typeof createTestApp>
 
@@ -113,15 +165,18 @@ describe("webhooks.route", () => {
     mockWebhookUpdate.mockClear()
     mockWebhookDelete.mockClear()
     mockWebhookCount.mockClear()
+    mockDeviceFindUnique.mockClear()
     mockDeviceFindFirst.mockClear()
     mockEventCreate.mockClear()
     mockEventFindMany.mockClear()
+    mockEventCount.mockClear()
     mockListWebhookEvents.mockClear()
     mockHandleIncomingWebhook.mockClear()
     mockGetDeliveryLogs.mockClear()
     mockResendDelivery.mockClear()
     mockDispatch.mockClear()
     mockJobDispatch.mockClear()
+    mockDeliveryLogFindUnique.mockClear()
     app = createTestApp()
   })
 
@@ -266,6 +321,58 @@ describe("webhooks.route", () => {
     })
   })
 
+  describe("GET /webhooks/:id/deliveries & resend", () => {
+    it("returns 404 when webhook not found", async () => {
+      mockAuthContext.current = {
+        organizationId: "org-1",
+        type: "workos",
+      }
+      mockWebhookFindUnique.mockResolvedValueOnce(null)
+
+      const res = await app.handle(
+        new Request("http://localhost/webhooks/wh-404/deliveries")
+      )
+      expect(res.status).toBe(404)
+    })
+
+    it("lists delivery logs", async () => {
+      mockAuthContext.current = {
+        organizationId: "org-1",
+        type: "workos",
+      }
+      mockWebhookFindUnique.mockResolvedValueOnce({
+        id: "wh-1",
+        organizationId: "org-1",
+      } as unknown as never)
+
+      const res = await app.handle(
+        new Request("http://localhost/webhooks/wh-1/deliveries")
+      )
+      expect(res.status).toBe(200)
+      const data = await res.json()
+      expect(data.data).toHaveLength(1)
+    })
+
+    it("resends a delivery log", async () => {
+      mockAuthContext.current = {
+        organizationId: "org-1",
+        type: "workos",
+      }
+      mockDeliveryLogFindUnique.mockResolvedValueOnce({
+        id: "del-1",
+        webhookId: "wh-1",
+        organizationId: "org-1",
+      } as unknown as never)
+
+      const res = await app.handle(
+        new Request("http://localhost/webhooks/wh-1/deliveries/del-1/resend", {
+          method: "POST",
+        })
+      )
+      expect(res.status).toBe(200)
+    })
+  })
+
   describe("POST /webhooks/:id/test", () => {
     it("enqueues test dispatch", async () => {
       mockAuthContext.current = {
@@ -290,22 +397,72 @@ describe("webhooks.route", () => {
     })
   })
 
-  describe("GET /webhooks/:id (Meta Verification GET)", () => {
-    it("handles Meta webhook verification challenge", async () => {
-      mockDeviceFindFirst.mockResolvedValueOnce({
-        id: "dev-1",
-        webhookVerifyToken: "my-verify-token",
+  describe("GET /webhooks/:id/events (device-scoped events)", () => {
+    it("returns 401 without auth", async () => {
+      mockAuthContext.current = null
+
+      const response = await app.handle(new Request(getEventsUrl("device-1")))
+
+      expect(response.status).toBe(401)
+      const body = await response.json()
+      expect(body.error).toBe("UNAUTHORIZED")
+    })
+
+    it("returns 403 for device from other org", async () => {
+      mockAuthContext.current = {
+        type: "workos",
+        userId: "user_1",
+        organizationId: "org-1",
+        orgRole: "admin",
+        platformRole: "none",
+      }
+      mockDeviceFindUnique.mockResolvedValueOnce({
+        ...mockDevice,
+        organizationId: "org-2",
       } as unknown as never)
 
-      const res = await app.handle(
-        new Request(
-          "http://localhost/webhooks/dev-1/verify?hub.mode=subscribe&hub.verify_token=my-verify-token&hub.challenge=CHALLENGE_CODE"
-        )
+      const response = await app.handle(
+        new Request(getEventsUrl("device-other"))
       )
 
-      expect(res.status).toBe(200)
-      const text = await res.text()
-      expect(text).toBe("CHALLENGE_CODE")
+      expect(response.status).toBe(403)
+      const body = await response.json()
+      expect(body.error).toBe("FORBIDDEN")
+    })
+
+    it("returns 404 when device not found", async () => {
+      mockAuthContext.current = {
+        type: "workos",
+        userId: "user_1",
+        organizationId: "org-1",
+      }
+      mockDeviceFindUnique.mockResolvedValueOnce(null)
+
+      const response = await app.handle(
+        new Request(getEventsUrl("device-missing"))
+      )
+
+      expect(response.status).toBe(404)
+    })
+
+    it("returns paginated events for device", async () => {
+      mockAuthContext.current = {
+        type: "workos",
+        userId: "user_1",
+        organizationId: "org-1",
+      }
+      mockDeviceFindUnique.mockResolvedValueOnce(mockDevice as unknown as never)
+      mockListWebhookEvents.mockResolvedValueOnce({
+        data: [mockEvent],
+        meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
+      } as unknown as never)
+
+      const response = await app.handle(new Request(getEventsUrl("device-1")))
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(body.data).toHaveLength(1)
     })
   })
 })
