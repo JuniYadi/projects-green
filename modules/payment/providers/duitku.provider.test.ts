@@ -151,7 +151,7 @@ describe("DuitkuPaymentProvider", () => {
           ok: false,
           status: 502,
         } as unknown as Response
-      }) as typeof fetch
+      }) as unknown as typeof fetch
 
       await expect(
         duitkuProvider.createPayment(paymentRequest, validConfig)
@@ -168,7 +168,7 @@ describe("DuitkuPaymentProvider", () => {
             statusMessage: "Bad Signature",
           }),
         } as unknown as Response
-      }) as typeof fetch
+      }) as unknown as typeof fetch
 
       await expect(
         duitkuProvider.createPayment(paymentRequest, validConfig)
