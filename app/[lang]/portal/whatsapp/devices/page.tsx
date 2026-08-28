@@ -29,7 +29,80 @@ import { StatusBadge, DeviceEmptyState } from "./_components/devices-ui"
 import { DeviceHealthBadge } from "@/modules/whatsapp/ui/device-health-badge"
 import { SyncButton } from "./_components/sync-button"
 import { Button } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
+function QuotaUsageCell({ device }: { device: DeviceListItem }) {
+  const total = device.quotaBase > 0 ? device.quotaBase : 1000
+  // In the billing model: quotaBaseOut is the REMAINING base quota!
+  // So: used = total - remaining (quotaBaseOut)
+  const remaining = Math.max(0, Math.min(device.quotaBaseOut, total))
+  const used = Math.max(0, total - remaining)
+  const percent = Math.min(Math.round((used / total) * 100), 100)
+
+  // Color bar: used >= 90% (or remaining <= 10%) = red/destructive, 75-90% = amber, <75% = emerald
+  const barColor =
+    percent >= 90
+      ? "bg-destructive"
+      : percent >= 75
+        ? "bg-amber-500"
+        : "bg-emerald-500"
+
+  return (
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex w-36 cursor-pointer flex-col gap-1.5 py-1 text-left">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium">
+                {used.toLocaleString()} / {total.toLocaleString()}
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                {percent}%
+              </span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+                style={{ width: `${percent}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>Used: {used.toLocaleString()}</span>
+              <span>Left: {remaining.toLocaleString()}</span>
+            </div>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="flex flex-col gap-1 text-xs">
+          <p className="font-semibold">Quota Usage</p>
+          <p>
+            {used.toLocaleString()} of {total.toLocaleString()} messages used
+          </p>
+          <p className="text-muted-foreground">
+            {remaining === 0
+              ? "🔴 Base quota exhausted"
+              : `🟢 ${remaining.toLocaleString()} messages remaining`}
+          </p>
+          {device.dailyLimitMessage > 0 && (
+            <p className="text-muted-foreground">
+              Daily limit: {device.dailyLimitMessage.toLocaleString()}{" "}
+              messages/day
+            </p>
+          )}
+          {Number(device.balance) > 0 && (
+            <p className="text-muted-foreground">
+              Balance: Rp {Number(device.balance).toLocaleString("id-ID")}
+            </p>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
 type DevicesPageProps = {
   params: Promise<{
     lang: string
@@ -207,7 +280,7 @@ export default async function PortalWhatsAppDevicesPage({
                     <TableHead>Status</TableHead>
                     <TableHead>Health</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
-                    <TableHead className="text-right">Quota Base</TableHead>
+                    <TableHead>Quota Usage</TableHead>
                     <TableHead className="text-right">Daily Limit</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -245,8 +318,8 @@ export default async function PortalWhatsAppDevicesPage({
                       <TableCell className="text-right font-medium">
                         {formatCurrency(device.balance)}
                       </TableCell>
-                      <TableCell className="text-right">
-                        {device.quotaBase.toLocaleString()}
+                      <TableCell>
+                        <QuotaUsageCell device={device} />
                       </TableCell>
                       <TableCell className="text-right">
                         {device.dailyLimitMessage.toLocaleString()}

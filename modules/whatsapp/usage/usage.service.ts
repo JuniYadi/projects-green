@@ -43,11 +43,13 @@ export class WhatsappUsageService {
   /**
    * Query WhatsappDailyCount with date range and optional device filter.
    */
-  async getDailyCounts(organizationId: string, opts: DateRangeOpts = {}) {
-    const where: Record<string, unknown> = { organizationId }
+  async getDailyCounts(organizationId?: string, opts: DateRangeOpts = {}) {
+    const where: Prisma.WhatsappDailyCountWhereInput = {
+      ...(organizationId ? { organizationId } : {}),
+    }
 
     if (opts.from || opts.to) {
-      const dateFilter: Record<string, Date> = {}
+      const dateFilter: Prisma.DateTimeFilter = {}
       if (opts.from) dateFilter.gte = new Date(opts.from)
       if (opts.to) dateFilter.lte = new Date(opts.to)
       where.date = dateFilter
@@ -67,8 +69,10 @@ export class WhatsappUsageService {
    * Query WhatsappMonthlyCount with year/month range and optional device
    * filter.
    */
-  async getMonthlyCounts(organizationId: string, opts: MonthRangeOpts = {}) {
-    const where: Record<string, unknown> = { organizationId }
+  async getMonthlyCounts(organizationId?: string, opts: MonthRangeOpts = {}) {
+    const where: Prisma.WhatsappMonthlyCountWhereInput = {
+      ...(organizationId ? { organizationId } : {}),
+    }
 
     if (opts.year) {
       where.year = opts.year
@@ -92,7 +96,7 @@ export class WhatsappUsageService {
    * Priority 2: Fallback to BillingAdjustment / BillingUsageLedger if no billing ledger rows exist.
    */
   async getCostSummary(
-    organizationId: string,
+    organizationId: string | undefined,
     period: string
   ): Promise<CostSummaryDTO> {
     const [yearStr, monthStr] = period.split("-")
@@ -109,7 +113,7 @@ export class WhatsappUsageService {
     const [whatsappLedgerRows, account, ledgerEntries] = await Promise.all([
       prisma.whatsappBillingLedger.findMany({
         where: {
-          organizationId,
+          ...(organizationId ? { organizationId } : {}),
           isReverted: false,
           createdAt: {
             gte: startDate,
@@ -117,13 +121,15 @@ export class WhatsappUsageService {
           },
         },
       }),
-      prisma.billingAccount.findUnique({
-        where: { organizationId },
-        select: { id: true },
-      }),
+      organizationId
+        ? prisma.billingAccount.findUnique({
+            where: { organizationId },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
       prisma.billingUsageLedger.findMany({
         where: {
-          organizationId,
+          ...(organizationId ? { organizationId } : {}),
           period,
           OR: [
             { category: { in: WHATSAPP_CATEGORIES } },
@@ -154,17 +160,26 @@ export class WhatsappUsageService {
         addCategory(cat, cost)
       }
     } else {
-      const adjustments = account
-        ? await prisma.billingAdjustment.findMany({
+      const adjustments = organizationId
+        ? account
+          ? await prisma.billingAdjustment.findMany({
+              where: {
+                billingAccountId: account.id,
+                createdAt: {
+                  gte: startDate,
+                  lt: endDate,
+                },
+              },
+            })
+          : []
+        : await prisma.billingAdjustment.findMany({
             where: {
-              billingAccountId: account.id,
               createdAt: {
                 gte: startDate,
                 lt: endDate,
               },
             },
           })
-        : []
 
       const whatsappAdjustments = adjustments.filter((adj) => {
         const meta = adj.metadataJson as Record<string, unknown> | null
@@ -205,12 +220,12 @@ export class WhatsappUsageService {
    * Group BillingUsageLedger entries by category for a period.
    */
   async getCategoryBreakdown(
-    organizationId: string,
+    organizationId: string | undefined,
     period: string
   ): Promise<CategoryBreakdownDTO[]> {
     const rows = await prisma.billingUsageLedger.findMany({
       where: {
-        organizationId,
+        ...(organizationId ? { organizationId } : {}),
         category: { in: WHATSAPP_CATEGORIES },
         period,
       },
@@ -246,7 +261,7 @@ export class WhatsappUsageService {
    * Combine current month counts, cost, and device summary into a single
    * dashboard-friendly response.
    */
-  async getUsageOverview(organizationId: string) {
+  async getUsageOverview(organizationId?: string) {
     const now = new Date()
     const year = now.getUTCFullYear()
     const month = now.getUTCMonth() + 1
@@ -255,14 +270,18 @@ export class WhatsappUsageService {
 
     // Fetch monthly counts for current month
     const monthlyCounts = await prisma.whatsappMonthlyCount.findMany({
-      where: { organizationId, year, month },
+      where: {
+        ...(organizationId ? { organizationId } : {}),
+        year,
+        month,
+      },
       orderBy: { createdAt: "asc" },
     })
 
     // Fetch daily counts for today
     const todayCounts = await prisma.whatsappDailyCount.findMany({
       where: {
-        organizationId,
+        ...(organizationId ? { organizationId } : {}),
         date: new Date(todayStr),
       },
       orderBy: { createdAt: "asc" },
@@ -282,7 +301,7 @@ export class WhatsappUsageService {
         const devices = await prisma.whatsappDevice.findMany({
           where: {
             id: { in: filteredIds },
-            organizationId,
+            ...(organizationId ? { organizationId } : {}),
           },
           select: { id: true, phoneNumber: true },
         })
@@ -309,7 +328,7 @@ export class WhatsappUsageService {
    * Forecast: linear extrapolation from current spend.
    */
   async getCostBreakdown(
-    organizationId: string,
+    organizationId: string | undefined,
     period: string,
     opts: { deviceId?: string } = {}
   ): Promise<CostBreakdownResponseDTO> {
@@ -322,9 +341,10 @@ export class WhatsappUsageService {
     const daysElapsed = isCurrentPeriod ? today : daysInMonth
     const daysRemaining = Math.max(0, daysInMonth - daysElapsed)
 
-    const deviceWhere = opts.deviceId
-      ? { organizationId, id: opts.deviceId }
-      : { organizationId }
+    const deviceWhere: Prisma.WhatsappDeviceWhereInput = {
+      ...(organizationId ? { organizationId } : {}),
+      ...(opts.deviceId ? { id: opts.deviceId } : {}),
+    }
     const devices = await prisma.whatsappDevice.findMany({
       where: deviceWhere,
       select: {
@@ -338,15 +358,31 @@ export class WhatsappUsageService {
     })
 
     // ── Cost source: BillingAdjustment with source=WHATSAPP ─────────────
-    const account = await prisma.billingAccount.findUnique({
-      where: { organizationId },
-      select: { id: true, balance: true, currency: true },
-    })
+    const account = organizationId
+      ? await prisma.billingAccount.findUnique({
+          where: { organizationId },
+          select: { id: true, balance: true, currency: true },
+        })
+      : null
 
-    const costAdjustments = account
-      ? await prisma.billingAdjustment.findMany({
+    const costAdjustments = organizationId
+      ? account
+        ? await prisma.billingAdjustment.findMany({
+            where: {
+              billingAccountId: account.id,
+              createdAt: {
+                gte: new Date(`${period}-01`),
+                lt: new Date(
+                  month === 12 ? year + 1 : year,
+                  month === 12 ? 0 : month,
+                  1
+                ),
+              },
+            },
+          })
+        : []
+      : await prisma.billingAdjustment.findMany({
           where: {
-            billingAccountId: account.id,
             createdAt: {
               gte: new Date(`${period}-01`),
               lt: new Date(
@@ -357,7 +393,6 @@ export class WhatsappUsageService {
             },
           },
         })
-      : []
 
     // Filter to only WhatsApp source adjustments (stored in metadataJson)
     const whatsappAdjustments = costAdjustments.filter((adj) => {
@@ -379,7 +414,7 @@ export class WhatsappUsageService {
     // ── Category source: WhatsappBillingLedger ─────────────────────────
     const whatsappLedgerRows = await prisma.whatsappBillingLedger.findMany({
       where: {
-        organizationId,
+        ...(organizationId ? { organizationId } : {}),
         isReverted: false,
         createdAt: {
           gte: new Date(`${period}-01`),
@@ -472,7 +507,7 @@ export class WhatsappUsageService {
    * Query itemized WhatsappBillingLedger entries with pagination and filters.
    */
   async getLedgerEntries(
-    organizationId: string,
+    organizationId?: string,
     opts: {
       deviceId?: string
       category?: string
@@ -489,7 +524,7 @@ export class WhatsappUsageService {
     const skip = (page - 1) * limit
 
     const where: Prisma.WhatsappBillingLedgerWhereInput = {
-      organizationId,
+      ...(organizationId ? { organizationId } : {}),
     }
 
     if (opts.deviceId) {
@@ -545,17 +580,22 @@ export class WhatsappUsageService {
         },
       }),
       prisma.whatsappBillingLedger.aggregate({
-        where: { organizationId, isReverted: false },
+        where: {
+          ...(organizationId ? { organizationId } : {}),
+          isReverted: false,
+        },
         _sum: { quotaValue: true },
         _count: true,
       }),
       prisma.whatsappBillingLedger.aggregate({
-        where: { organizationId, isReverted: true },
+        where: {
+          ...(organizationId ? { organizationId } : {}),
+          isReverted: true,
+        },
         _sum: { quotaValue: true },
         _count: true,
       }),
     ])
-
     const totalCredits =
       toNum(summaryAgg._sum.quotaValue ?? 0) +
       toNum(refundedAgg._sum.quotaValue ?? 0)
